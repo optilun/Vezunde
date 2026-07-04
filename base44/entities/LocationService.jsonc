@@ -8,6 +8,14 @@
     "service_key": {
       "type": "string"
     },
+    "accepts_requests": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
     "notes": {
       "type": "string"
     }

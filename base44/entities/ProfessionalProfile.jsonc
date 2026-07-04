@@ -5,6 +5,14 @@
     "full_name": {
       "type": "string"
     },
+    "role": {
+      "type": "string",
+      "enum": [
+        "medic_oftalmolog",
+        "optometrist",
+        "optician"
+      ]
+    },
     "specializations": {
       "type": "array",
       "items": {
@@ -13,6 +21,10 @@
     },
     "bio": {
       "type": "string"
+    },
+    "is_public": {
+      "type": "boolean",
+      "default": true
     }
   },
   "required": [

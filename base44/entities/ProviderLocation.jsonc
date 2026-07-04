@@ -39,6 +39,9 @@
     "phone_public": {
       "type": "string"
     },
+    "public_email": {
+      "type": "string"
+    },
     "website": {
       "type": "string"
     },
@@ -63,6 +66,14 @@
         "suspendata"
       ],
       "default": "draft"
+    },
+    "active_status": {
+      "type": "string",
+      "enum": [
+        "activa",
+        "inactiva"
+      ],
+      "default": "activa"
     },
     "is_verified": {
       "type": "boolean",

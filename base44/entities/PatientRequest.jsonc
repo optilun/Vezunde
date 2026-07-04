@@ -76,18 +76,22 @@
       "type": "boolean",
       "default": false
     },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "status": {
       "type": "string",
       "enum": [
         "noua",
         "procesata",
-        "inchisa"
+        "inchisa",
+        "expirata"
       ],
       "default": "noua"
     }
   },
   "required": [
-    "intent",
-    "contact_name"
+    "intent"
   ]
 }

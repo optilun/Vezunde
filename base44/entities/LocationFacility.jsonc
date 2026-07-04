@@ -1,0 +1,27 @@
+{
+  "name": "LocationFacility",
+  "type": "object",
+  "properties": {
+    "location_id": {
+      "type": "string"
+    },
+    "facility_key": {
+      "type": "string",
+      "enum": [
+        "laborator_optic_propriu",
+        "atelier_service_propriu",
+        "reparatii_pe_loc",
+        "laborator_partener",
+        "montaj_lentile_in_locatie"
+      ]
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "location_id",
+    "facility_key"
+  ]
+}

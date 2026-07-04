@@ -10,6 +10,14 @@
     },
     "website": {
       "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "activa",
+        "inactiva"
+      ],
+      "default": "activa"
     }
   },
   "required": [

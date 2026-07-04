@@ -1,0 +1,19 @@
+{
+  "name": "PatientRequestAnswer",
+  "type": "object",
+  "properties": {
+    "request_id": {
+      "type": "string"
+    },
+    "question_key": {
+      "type": "string"
+    },
+    "answer_value": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "request_id",
+    "question_key"
+  ]
+}
