@@ -16,6 +16,23 @@ Deno.serve(async (req) => {
     const p = await req.json().catch(() => ({}));
     if (!p.location_id) return Response.json({ error: 'location_id este obligatoriu' }, { status: 400 });
 
+    // Module 3F.2.3: geographic payload contract validated BEFORE any data access.
+    // city/county/county_name are NEVER provider-editable; locality changes only
+    // via a validated canonical locality_siruta_code (GeographicLocality).
+    const staged = p.staged || {};
+    const sf = staged.fields || {};
+    if (sf.city !== undefined || sf.county !== undefined || sf.county_name !== undefined) {
+      return Response.json({ error: 'Orasul si judetul nu pot fi editate direct — selecteaza localitatea din lista oficiala' }, { status: 400 });
+    }
+    let stagedSiruta = null;
+    if (sf.locality_siruta_code !== undefined) {
+      const code = String(sf.locality_siruta_code || '').trim();
+      if (!code) return Response.json({ error: 'Codul localitatii selectate lipseste' }, { status: 400 });
+      const geoRows = await svc.entities.GeographicLocality.filter({ siruta_code: code, is_active: true });
+      if (!geoRows[0]) return Response.json({ error: 'Localitatea selectata nu exista sau nu este activa' }, { status: 400 });
+      stagedSiruta = code;
+    }
+
     if (user.role !== 'admin') {
       const memberships = await svc.entities.ProviderMembership.filter({
         user_id: user.id, location_id: p.location_id, status: 'active',
@@ -40,21 +57,6 @@ Deno.serve(async (req) => {
       upd.availability_updated_at = new Date().toISOString();
     }
 
-    const staged = p.staged || {};
-    const sf = staged.fields || {};
-    // Module 3F.2.2: free-text city/county cannot be staged — a locality change
-    // must use the canonical locality selection (locality_siruta_code).
-    if (sf.city !== undefined || sf.county !== undefined) {
-      return Response.json({ error: 'Orasul si judetul nu pot fi editate direct — selecteaza localitatea din lista oficiala' }, { status: 400 });
-    }
-    let stagedSiruta = null;
-    if (sf.locality_siruta_code !== undefined) {
-      const code = String(sf.locality_siruta_code || '').trim();
-      if (!code) return Response.json({ error: 'Codul localitatii selectate lipseste' }, { status: 400 });
-      const geoRows = await svc.entities.GeographicLocality.filter({ siruta_code: code, is_active: true });
-      if (!geoRows[0]) return Response.json({ error: 'Localitatea selectata nu exista sau nu este activa' }, { status: 400 });
-      stagedSiruta = code;
-    }
     const hasStagedFields = staged.fields && Object.keys(staged.fields).length > 0;
     const hasStagedArrays = Array.isArray(staged.services) || Array.isArray(staged.specializations) || Array.isArray(staged.facilities);
     if (hasStagedFields || hasStagedArrays) {

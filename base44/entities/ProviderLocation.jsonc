@@ -35,6 +35,9 @@
     "county_code": {
       "type": "string"
     },
+    "county_name": {
+      "type": "string"
+    },
     "uat_code": {
       "type": "string"
     },
@@ -524,7 +527,8 @@
     "name",
     "provider_type",
     "city",
-    "locality_siruta_code"
+    "locality_siruta_code",
+    "county_name"
   ],
   "rls": {
     "write": {

@@ -104,6 +104,7 @@ Deno.serve(async (req) => {
       // Reject manually submitted city/county that conflict with canonical geography.
       if (loc.city && norm(loc.city) !== norm(geo.name)) return bad('Orasul trimis nu corespunde localitatii canonice selectate');
       if (loc.county && norm(loc.county) !== norm(geo.county_name || '')) return bad('Judetul trimis nu corespunde localitatii canonice selectate');
+      if (loc.county_name && norm(loc.county_name) !== norm(geo.county_name || '')) return bad('Judetul trimis nu corespunde localitatii canonice selectate');
 
       // Module 3F duplicate detection: normalized org/location name, city, address,
       // website domain and public phone. Never auto-merges and never blocks —
@@ -152,6 +153,7 @@ Deno.serve(async (req) => {
         locality_siruta_code: geo.siruta_code,
         locality_name: geo.name,
         county_code: geo.county_code || '',
+        county_name: geo.county_name || '',
         uat_code: geo.uat_code || '',
         uat_name: geo.uat_name || '',
         // Compatibility mirrors ONLY — never geographic truth:

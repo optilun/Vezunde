@@ -71,6 +71,7 @@ Deno.serve(async (req) => {
         locality_siruta_code: geo.siruta_code,
         locality_name: geo.name,
         county_code: geo.county_code || '',
+        county_name: geo.county_name || '',
         uat_code: geo.uat_code || '',
         uat_name: geo.uat_name || '',
         // Compatibility mirrors ONLY — never geographic truth:

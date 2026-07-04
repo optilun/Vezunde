@@ -8,6 +8,7 @@ import DirOpsMigrationQueue from "@/components/admin/directory/DirOpsMigrationQu
 import DirOpsClaims from "@/components/admin/directory/DirOpsClaims";
 import DirOpsAudit from "@/components/admin/directory/DirOpsAudit";
 import DirResearch from "@/components/admin/directory/DirResearch";
+import GeoContractChecks from "@/components/admin/directory/GeoContractChecks";
 
 const TABS = [
   { key: "dashboard", label: "Panou" },
@@ -18,6 +19,7 @@ const TABS = [
   { key: "migrare", label: "Review migrare" },
   { key: "revendicari", label: "Revendicari" },
   { key: "audit", label: "Istoric audit" },
+  { key: "contract_geo", label: "Contract geografic" },
 ];
 
 export default function AdminDirectoryOps() {
@@ -62,6 +64,7 @@ export default function AdminDirectoryOps() {
         {tab === "migrare" && <DirOpsMigrationQueue />}
         {tab === "revendicari" && <DirOpsClaims />}
         {tab === "audit" && <DirOpsAudit />}
+        {tab === "contract_geo" && <GeoContractChecks />}
       </div>
     </div>
   );
