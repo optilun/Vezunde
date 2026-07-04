@@ -32,17 +32,22 @@ export default function MatchResults({ results }) {
     <div>
       {top3.length > 0 ? (
         <>
-          <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight">Cele mai potrivite optiuni pentru tine</h2>
+          <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight">Cele mai potrivite optiuni</h2>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Selectate pe baza serviciilor confirmate si a potrivirii cu nevoia ta.
+          </p>
           <div className="mt-5 space-y-3">
             {top3.map((loc) => <MatchResultCard key={loc.id} location={loc} />)}
           </div>
         </>
       ) : (
         <>
-          <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight">Nu avem inca recomandari confirmate pentru aceasta nevoie</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Niciun furnizor nu are deocamdata acest serviciu confirmat in zona aleasa. Mai jos gasesti alte profiluri care ar putea fi relevante.
-          </p>
+          <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight">Nu avem inca optiuni confirmate pentru aceasta nevoie in zona ta</h2>
+          {directory.length > 0 && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Poti vedea mai jos cateva profiluri din director.
+            </p>
+          )}
         </>
       )}
 
@@ -58,7 +63,7 @@ export default function MatchResults({ results }) {
 
       {expanded && confirmed.length > 0 && (
         <div className="mt-8">
-          <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Alte optiuni confirmate</div>
+          <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Mai multe optiuni relevante</div>
           <div className="mt-3 space-y-3">
             {confirmed.map((loc) => <MatchResultCard key={loc.id} location={loc} />)}
           </div>
@@ -67,9 +72,9 @@ export default function MatchResults({ results }) {
 
       {expanded && directory.length > 0 && (
         <div className="mt-8">
-          <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Profiluri din director</div>
+          <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Optiuni din director</div>
           <p className="mt-1.5 text-xs text-muted-foreground">
-            Informatii preluate din surse publice, neconfirmate inca de furnizor. Nu sunt recomandari Vezunde.
+            Aceste profiluri provin din surse publice. Vezunde nu a confirmat toate informatiile afisate.
           </p>
           <div className="mt-3 space-y-3">
             {directory.map((loc) => <MatchResultCard key={loc.id} location={loc} />)}

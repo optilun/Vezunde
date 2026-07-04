@@ -119,11 +119,11 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       initial={{ opacity: 0, scale: 0.96, y: 10 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.45, ease: "easeOut" }}
-      className="w-full max-w-2xl mx-auto bg-white rounded-[1.75rem] p-6 sm:p-10 text-left shadow-[0_24px_70px_rgba(20,20,20,0.12)] border border-black/[0.05]"
+      className="w-full max-w-2xl mx-auto bg-card rounded-[1.75rem] p-6 sm:p-10 text-left shadow-[0_24px_70px_rgba(20,20,20,0.12)] border border-border"
     >
       {initialMessage && (
-        <p className="mb-6 text-xs" style={{ color: "#9B968D" }}>
-          Ai spus: <span className="italic" style={{ color: "#6B675F" }}>&bdquo;{initialMessage}&rdquo;</span>
+        <p className="mb-6 text-xs text-muted-foreground">
+          Ai spus: <span className="italic">&bdquo;{initialMessage}&rdquo;</span>
         </p>
       )}
 
@@ -141,8 +141,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
             ) : <span />}
             <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden">
               <motion.div
-                className="h-full rounded-full"
-                style={{ backgroundColor: "#171717" }}
+                className="h-full rounded-full bg-primary"
                 animate={{ width: `${Math.max(progress, 4)}%` }}
                 transition={{ duration: 0.35 }}
               />
@@ -157,7 +156,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
               exit={{ opacity: 0, x: -14 }}
               transition={{ duration: 0.22 }}
             >
-              <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight" style={{ color: "#141414" }}>
+              <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                 {current.title}
               </h2>
               {current.type === "choice" && <QuestionChoice question={current} onSelect={handleChoice} />}
@@ -167,7 +166,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
           </AnimatePresence>
 
           {intentDef?.notice && (
-            <p className="mt-7 text-xs leading-relaxed" style={{ color: "#A5A099" }}>{intentDef.notice}</p>
+            <p className="mt-7 text-xs leading-relaxed text-muted-foreground">{intentDef.notice}</p>
           )}
         </>
       )}
@@ -186,8 +185,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
           <button
             type="button"
             onClick={() => setPhase("questions")}
-            className="mt-4 px-5 py-2.5 rounded-full text-sm font-medium text-white"
-            style={{ backgroundColor: "#171717" }}
+            className="mt-4 px-5 py-2.5 rounded-full text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
           >
             Incearca din nou
           </button>

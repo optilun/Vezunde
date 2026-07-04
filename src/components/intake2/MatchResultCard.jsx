@@ -1,77 +1,10 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import { BadgeCheck, MapPin } from "lucide-react";
-import { PROVIDER_TYPES } from "@/lib/vezunde";
+import ResultCard from "@/components/results/ResultCard";
 
-const TIER_LABELS = {
-  apropiere: "In zona apropiata",
-  judet: "In judet",
-  national: "In alt oras din Romania",
-};
-
-// Module 3E public badges — profile_control_status only, never legacy is_verified.
-const STATUS_BADGES = {
-  verified: "Profil verificat de Vezunde",
-  claimed: "Profil revendicat",
-  directory: "Profil din director",
-};
+// Module UI-1: variant is derived strictly from the existing result_bucket
+// value returned by matchProviders — never recomputed or overridden here.
+const BUCKET_VARIANT = { top3: "top3", extended_confirmed: "confirmed", extended_directory: "directory" };
 
 export default function MatchResultCard({ location }) {
-  // Module 3E.1: only whitelist public-safe services from the backend response.
-  const matched = (location.matched_public_services || []).slice(0, 3);
-  const status = location.profile_control_status;
-
-  return (
-    <div className="rounded-2xl border border-border bg-secondary/40 p-5">
-      <div className="text-xs text-muted-foreground">{PROVIDER_TYPES[location.provider_type]}</div>
-      <h3 className="mt-1 font-heading font-bold text-lg tracking-tight flex items-center gap-1.5">
-        {location.name}
-        {status === "verified" && <BadgeCheck className="w-4 h-4 text-primary shrink-0" />}
-      </h3>
-      <div className="mt-1 flex items-center flex-wrap gap-1.5 text-sm text-muted-foreground">
-        <MapPin className="w-3.5 h-3.5" />
-        {location.city}
-        {STATUS_BADGES[status] && (
-          <span className={`text-xs rounded-full px-2 py-0.5 ml-1 border ${status === "verified" ? "text-primary bg-accent border-transparent" : "bg-card border-border"}`}>
-            {STATUS_BADGES[status]}
-          </span>
-        )}
-        {TIER_LABELS[location.expansion_tier] && (
-          <span className="text-xs bg-card border border-border rounded-full px-2 py-0.5">
-            {TIER_LABELS[location.expansion_tier]}
-          </span>
-        )}
-      </div>
-
-      {matched.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {matched.map((s) => (
-            <span key={s.key} className="text-xs bg-card border border-border rounded-full px-2.5 py-1">{s.label}</span>
-          ))}
-        </div>
-      )}
-
-      {(location.match_reasons || []).length > 0 && (
-        <p className="mt-3 text-sm text-muted-foreground">{location.match_reasons.slice(0, 2).join(" · ")}</p>
-      )}
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Link
-          to={`/furnizor/${location.id}`}
-          className="px-4 py-2 rounded-full text-sm font-medium text-white transition-colors"
-          style={{ backgroundColor: "#171717" }}
-        >
-          Vezi profilul
-        </Link>
-        {location.phone && (
-          <a
-            href={`tel:${location.phone.replace(/\s/g, "")}`}
-            className="px-4 py-2 rounded-full border border-border bg-card text-sm font-medium hover:border-foreground/40 transition-colors"
-          >
-            Suna direct
-          </a>
-        )}
-      </div>
-    </div>
-  );
+  return <ResultCard location={location} variant={BUCKET_VARIANT[location.result_bucket] || "neutral"} />;
 }

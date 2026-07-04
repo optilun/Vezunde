@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, BadgeCheck } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
+import TrustBadge from "@/components/results/TrustBadge";
 
 export default function ProvidersShowcase() {
   const [locations, setLocations] = useState(null);
@@ -46,7 +47,7 @@ export default function ProvidersShowcase() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <h3 className="font-heading text-xl sm:text-2xl font-bold tracking-tight group-hover:text-primary transition-colors">{loc.name}</h3>
-                  {loc.profile_control_status === "verified" && <BadgeCheck className="w-4.5 h-4.5 text-primary shrink-0" />}
+                  <TrustBadge status={loc.profile_control_status} />
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {PROVIDER_TYPES[loc.provider_type]} · {loc.city}

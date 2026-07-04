@@ -51,13 +51,13 @@ export default function Search() {
         {results === null && <p className="text-sm text-muted-foreground">Se incarca...</p>}
         {results?.length === 0 && (
           <div className="sm:col-span-2 bg-card border border-border rounded-2xl p-10 text-center">
-            <p className="font-heading font-bold">Nu am gasit furnizori pentru aceste criterii.</p>
-            <p className="mt-2 text-sm text-muted-foreground">Descrie-ne nevoia ta si te ghidam noi.</p>
+            <p className="font-heading font-bold">Nu am gasit profiluri care sa corespunda cautarii tale.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Incearca un alt oras sau o formulare mai generala.</p>
             <Link to="/cerere" className="mt-5 inline-block bg-primary text-primary-foreground rounded-full px-6 py-3 text-sm font-medium hover:opacity-90 transition-opacity">Trimite o cerere</Link>
           </div>
         )}
         {results?.map((loc) => (
-          <ProviderCard key={loc.id} location={loc} matchedServices={loc.matched_public_services || []} />
+          <ProviderCard key={loc.id} location={loc} />
         ))}
       </div>
       <p className="pb-10 text-xs text-muted-foreground">Vezunde nu ofera diagnostic medical.</p>

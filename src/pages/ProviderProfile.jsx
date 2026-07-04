@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { MapPin, Phone, Clock, BadgeCheck, ArrowRight } from "lucide-react";
+import { MapPin, Phone, Clock, ArrowRight } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES, PROFESSIONAL_TYPES, SERVICES } from "@/lib/vezunde";
+import TrustBadge from "@/components/results/TrustBadge";
+import ServiceChip from "@/components/results/ServiceChip";
 
 // Module 3E: public profile renders ONLY the whitelisted payload returned by
 // getPublicProviderProfile — never raw ProviderLocation / LocationService reads.
@@ -30,12 +32,7 @@ export default function ProviderProfile() {
       <div className="text-xs font-medium text-primary">{PROVIDER_TYPES[profile.provider_type]}</div>
       <div className="mt-1 flex flex-wrap items-center gap-3">
         <h1 className="font-heading text-3xl sm:text-4xl font-bold tracking-tight">{profile.name}</h1>
-        {profile.status_label && (
-          <span className={`inline-flex items-center gap-1 text-xs font-medium rounded-full px-2.5 py-1 ${status === "verified" ? "text-primary bg-accent" : "text-muted-foreground bg-secondary"}`}>
-            {status === "verified" && <BadgeCheck className="w-3.5 h-3.5" />}
-            {profile.status_label}
-          </span>
-        )}
+        <TrustBadge status={status} />
       </div>
       <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
         {profile.address && (
@@ -53,17 +50,27 @@ export default function ProviderProfile() {
               <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{profile.description}</p>
             </div>
           )}
-          <div className="bg-card border border-border rounded-2xl p-6">
-            <h2 className="font-heading font-bold">Servicii</h2>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {profile.services.map((s) => (
-                <span key={s} className="text-sm bg-secondary rounded-full px-3 py-1.5">{SERVICES[s] || s}</span>
-              ))}
-              {profile.services.length === 0 && (
-                <p className="text-sm text-muted-foreground">Serviciile confirmate nu au fost inca publicate.</p>
-              )}
+          {profile.services.length > 0 && (
+            <div className="bg-card border border-border rounded-2xl p-6">
+              <h2 className="font-heading font-bold">Servicii</h2>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {profile.services.map((s) => <ServiceChip key={s} label={SERVICES[s] || s} />)}
+              </div>
             </div>
-          </div>
+          )}
+          {status === "directory" && (
+            <div className="bg-secondary/40 border border-dashed border-border/80 rounded-2xl p-6">
+              <p className="text-sm text-muted-foreground">
+                Informatiile acestui profil provin din surse publice si pot fi actualizate de furnizor prin revendicarea profilului.
+              </p>
+              <Link
+                to="/adauga-sau-revendica"
+                className="mt-3 inline-block text-sm font-semibold underline underline-offset-4"
+              >
+                Aceasta este locatia ta? Revendica profilul
+              </Link>
+            </div>
+          )}
           {profile.team.length > 0 && (
             <div className="bg-card border border-border rounded-2xl p-6">
               <h2 className="font-heading font-bold">Echipa</h2>
