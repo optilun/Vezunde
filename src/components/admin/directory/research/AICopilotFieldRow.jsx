@@ -9,7 +9,7 @@ export default function AICopilotFieldRow({ label, value, evidence = [], decisio
   const state = decision?.decision;
 
   return (
-    <div className={`border rounded-md p-3 ${state === "approve" ? "border-green-600/40 bg-green-50/50" : state === "reject" ? "border-border opacity-60" : "border-border bg-card"}`}>
+    <div className={`border rounded-md p-3 ${state === "approve" ? "border-green-600/40 bg-green-50/50" : state === "reject" ? "border-border opacity-60" : state === "needs_additional_source" ? "border-amber-500/60 bg-amber-50" : "border-border bg-card"}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-muted-foreground">{label}</p>
@@ -23,6 +23,9 @@ export default function AICopilotFieldRow({ label, value, evidence = [], decisio
               &quot;{ev.snippet}&quot; — <span className="italic">{ev.source_ref}</span> · {CONF[ev.confidence] || ev.confidence}
             </p>
           ))}
+          {state === "needs_additional_source" && (
+            <p className="text-xs text-amber-700 mt-1 font-semibold">Necesita sursa suplimentara: {decision?.reason || "valoarea editata nu are dovada in sursele stocate"}</p>
+          )}
         </div>
         {!disabled && (
           <div className="flex gap-1 shrink-0">

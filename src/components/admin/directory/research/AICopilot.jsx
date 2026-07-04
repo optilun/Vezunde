@@ -3,6 +3,8 @@ import { base44 } from "@/api/base44Client";
 import { Loader2 } from "lucide-react";
 import AICopilotSourceForm from "./AICopilotSourceForm";
 import AICopilotDraftReview from "./AICopilotDraftReview";
+import AICopilotAttachText from "./AICopilotAttachText";
+import AICopilotDiagnostics from "./AICopilotDiagnostics";
 
 // MODULE 3G.1 - AI Research Copilot (admin-only). Creates research sources and
 // AI drafts only — never provider records. The only exit is prefilling the
@@ -84,6 +86,9 @@ export default function AICopilot({ onNavigate }) {
                   </button>
                 )}
               </div>
+              {s.source_type === "url" && (s.fetch_status === "blocked" || s.fetch_status === "failed") && (
+                <AICopilotAttachText sourceId={s.id} onDone={load} />
+              )}
               {srcDrafts.length > 0 && (
                 <div className="mt-3 border-t border-border pt-2 space-y-1">
                   {srcDrafts.map((d) => (
@@ -98,6 +103,7 @@ export default function AICopilot({ onNavigate }) {
           );
         })}
       </div>
+      <AICopilotDiagnostics />
     </div>
   );
 }
