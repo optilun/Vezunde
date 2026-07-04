@@ -1,0 +1,27 @@
+{
+  "name": "GooglePlacesUsage",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string"
+    },
+    "month": {
+      "type": "string"
+    },
+    "autocomplete_sessions_count": {
+      "type": "number",
+      "default": 0
+    },
+    "details_requests_count": {
+      "type": "number",
+      "default": 0
+    },
+    "blocked_reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "date",
+    "month"
+  ]
+}

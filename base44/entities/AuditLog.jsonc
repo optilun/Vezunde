@@ -1,0 +1,15 @@
+{
+  "name": "AuditLog",
+  "type": "object",
+  "properties": {
+    "event_type": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "event_type"
+  ]
+}

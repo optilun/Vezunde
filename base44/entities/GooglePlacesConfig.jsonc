@@ -1,0 +1,18 @@
+{
+  "name": "GooglePlacesConfig",
+  "type": "object",
+  "properties": {
+    "daily_session_limit": {
+      "type": "number",
+      "default": 50
+    },
+    "monthly_session_limit": {
+      "type": "number",
+      "default": 500
+    },
+    "enable_google_places": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}
