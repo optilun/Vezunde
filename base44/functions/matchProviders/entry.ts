@@ -355,8 +355,18 @@ Deno.serve(async (req) => {
 
     const safetyKeys = SAFETY_RULES.filter((rule) => rule.enabled).map((rule) => rule.key);
 
-    // Persist RequestMatch records when a real PatientRequest exists.
+    // Module 3D hardening: persist matches ONLY for a real, fresh (<=15 min),
+    // still-unmatched PatientRequest created through the public request flow.
+    // Arbitrary or replayed request IDs are ignored (results stay read-only).
+    let persistAllowed = false;
     if (payload.request_id) {
+      const reqRec = await svc.entities.PatientRequest.get(String(payload.request_id)).catch(() => null);
+      if (reqRec && reqRec.status === 'noua' && (now - new Date(reqRec.created_date).getTime()) <= 15 * 60000) {
+        const priorMatches = await svc.entities.RequestMatch.filter({ request_id: reqRec.id }, null, 1);
+        persistAllowed = priorMatches.length === 0;
+      }
+    }
+    if (persistAllowed) {
       const rows = finalVisible.slice(0, 10).map((r, i) => ({
         request_id: payload.request_id,
         location_id: r.loc.id,

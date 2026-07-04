@@ -66,6 +66,19 @@ Deno.serve(async (req) => {
       verified_by: user.email,
       verified_at: now,
     });
+    // Module 3D: bridge into the central directory audit history.
+    await svc.entities.DirectoryAuditRecord.create({
+      entity_type: 'ProviderLocation',
+      entity_id: loc.id,
+      action_type: p.decision === 'aproba' ? 'approve_profile_changes' : 'reject_profile_changes',
+      changed_fields: Object.keys(changes.fields || {}),
+      previous_values: '{}',
+      new_values: JSON.stringify(changes.fields || {}),
+      admin_user_id: user.id,
+      admin_email: user.email,
+      note: p.notes || '',
+      performed_at: now,
+    });
 
     return Response.json({ success: true });
   } catch (error) {

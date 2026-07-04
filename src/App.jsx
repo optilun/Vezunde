@@ -17,6 +17,9 @@ import AddOrClaim from './pages/AddOrClaim';
 import MyAccount from './pages/MyAccount';
 import AdminVerifications from './pages/AdminVerifications';
 import AdminDirectoryOps from './pages/AdminDirectoryOps';
+import PostLogin from './pages/PostLogin';
+import RequireAuth from '@/components/guards/RequireAuth';
+import RequireAdmin from '@/components/guards/RequireAdmin';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 
@@ -56,9 +59,14 @@ const AuthenticatedApp = () => {
         <Route path="/revendica-profil" element={<Navigate to="/adauga-sau-revendica" replace />} />
         <Route path="/inscriere" element={<Navigate to="/adauga-sau-revendica" replace />} />
         <Route path="/adauga-sau-revendica" element={<AddOrClaim />} />
-        <Route path="/contul-meu" element={<MyAccount />} />
-        <Route path="/admin/verificari" element={<AdminVerifications />} />
-        <Route path="/admin/operatiuni" element={<AdminDirectoryOps />} />
+        <Route element={<RequireAuth />}>
+          <Route path="/contul-meu" element={<MyAccount />} />
+          <Route path="/dupa-login" element={<PostLogin />} />
+        </Route>
+        <Route element={<RequireAdmin />}>
+          <Route path="/admin/verificari" element={<AdminVerifications />} />
+          <Route path="/admin/operatiuni" element={<AdminDirectoryOps />} />
+        </Route>
         <Route path="/confidentialitate" element={<Privacy />} />
         <Route path="/termeni" element={<Terms />} />
       </Route>

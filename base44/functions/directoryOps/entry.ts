@@ -300,6 +300,8 @@ Deno.serve(async (req) => {
         profile_control_status_updated_at: new Date().toISOString(),
         profile_control_status_reason: note || 'Revendicare aprobata',
       };
+      // New locations submitted via the public wizard go live once their claim is approved.
+      if (loc.status === 'in_verificare') locUpdates.status = 'publicata';
       await svc.entities.ProviderLocation.update(loc.id, locUpdates);
       await svc.entities.ProviderClaimRequest.update(claim.id, { status: 'aprobata', reviewed_at: new Date().toISOString(), review_notes: note });
       // Provider access is granted ONLY through this explicit ownership assignment.
