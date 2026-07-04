@@ -118,7 +118,8 @@ Deno.serve(async (req) => {
     });
     if (!gRes.ok) {
       console.error('Places details failed', gRes.status, await gRes.text());
-      return Response.json({ error: QUOTA_MSG, quota: true }, { status: 503 });
+      // Google-side failure (permission, key, billing, network, etc.) — sanitized error, not a quota block.
+      return Response.json({ error: QUOTA_MSG, google_error: true }, { status: 503 });
     }
     const place = await gRes.json();
 

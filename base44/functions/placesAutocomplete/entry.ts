@@ -88,20 +88,7 @@ Deno.serve(async (req) => {
     const allowed = await consumeActorQuota(svc, actorId, day);
     if (!allowed) return Response.json({ error: QUOTA_MSG, quota: true }, { status: 429 });
 
-    // Count one session per unique session token (only actual Google-mode sessions reach this function).
     const token = String(p.session_token || '').slice(0, 64);
-    if (token) {
-      const sessionKey = `gsession:${token}`;
-      const seen = await svc.entities.PlacesApiUsage.filter({ bucket_key: sessionKey });
-      if (seen.length === 0) {
-        await svc.entities.PlacesApiUsage.create({ bucket_key: sessionKey, count: 1 });
-        await svc.entities.GooglePlacesUsage.update(usage.id, {
-          autocomplete_sessions_count: (usage.autocomplete_sessions_count || 0) + 1,
-        });
-        await svc.entities.AuditLog.create({ event_type: 'google_search_activated', message: `Sesiune de cautare Google Places pornita (${actorId})` });
-      }
-    }
-
     const apiKey = Deno.env.get('GOOGLE_PLACES_API_KEY');
     const body = { input, includedRegionCodes: ['RO'], languageCode: 'ro' };
     if (token) body.sessionToken = token;
@@ -113,9 +100,23 @@ Deno.serve(async (req) => {
     });
     if (!gRes.ok) {
       console.error('Places autocomplete failed', gRes.status, await gRes.text());
-      return Response.json({ error: QUOTA_MSG, quota: true }, { status: 503 });
+      // Google-side failure (permission, key, billing, network, etc.) — sanitized error, not a quota block.
+      return Response.json({ error: QUOTA_MSG, google_error: true }, { status: 503 });
     }
     const data = await gRes.json();
+
+    // Count one session per unique session token, only after a real Google response actually succeeded.
+    if (token) {
+      const sessionKey = `gsession:${token}`;
+      const seen = await svc.entities.PlacesApiUsage.filter({ bucket_key: sessionKey });
+      if (seen.length === 0) {
+        await svc.entities.PlacesApiUsage.create({ bucket_key: sessionKey, count: 1 });
+        await svc.entities.GooglePlacesUsage.update(usage.id, {
+          autocomplete_sessions_count: (usage.autocomplete_sessions_count || 0) + 1,
+        });
+        await svc.entities.AuditLog.create({ event_type: 'google_search_activated', message: `Sesiune de cautare Google Places pornita (${actorId})` });
+      }
+    }
     const predictions = (data.suggestions || [])
       .map((s) => s.placePrediction)
       .filter(Boolean)
