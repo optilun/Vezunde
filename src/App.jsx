@@ -16,6 +16,7 @@ import ForSpecialists from './pages/ForSpecialists';
 import AddOrClaim from './pages/AddOrClaim';
 import MyAccount from './pages/MyAccount';
 import AdminVerifications from './pages/AdminVerifications';
+import AdminDirectoryOps from './pages/AdminDirectoryOps';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 
@@ -57,6 +58,7 @@ const AuthenticatedApp = () => {
         <Route path="/adauga-sau-revendica" element={<AddOrClaim />} />
         <Route path="/contul-meu" element={<MyAccount />} />
         <Route path="/admin/verificari" element={<AdminVerifications />} />
+        <Route path="/admin/operatiuni" element={<AdminDirectoryOps />} />
         <Route path="/confidentialitate" element={<Privacy />} />
         <Route path="/termeni" element={<Terms />} />
       </Route>
