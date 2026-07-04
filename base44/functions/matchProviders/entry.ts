@@ -89,21 +89,11 @@ const SERVICE_ALIAS_PAIRS = [
 const SERVICE_ALIASES = {};
 for (const [a, b] of SERVICE_ALIAS_PAIRS) { SERVICE_ALIASES[a] = b; SERVICE_ALIASES[b] = a; }
 
-// ===== Module 3B: broad discovery fallback (category relevance only) =====
-// Deterministic provider-type fallback for broad GENERAL discovery intents only.
-// Never for repairs/adjustments/fitting/contact-lens fitting or any specialized
-// medical request. Does not imply any service — bucket stays extended_directory.
-const DISCOVERY_PROVIDER_TYPES = {
-  caut_optica: ['optica_medicala'],
-  ochelari_lentile: ['optica_medicala'],
-  caut_oftalmolog: ['cabinet_oftalmologic', 'clinica_oftalmologica'],
-  simptome_oftalmologice: ['cabinet_oftalmologic', 'clinica_oftalmologica'],
-};
-function isDiscoveryCandidate(loc, intent, needLevel) {
-  if (needLevel !== 'general') return false;
-  if ((loc.profile_control_status || 'directory') !== 'directory') return false;
-  return (DISCOVERY_PROVIDER_TYPES[intent] || []).includes(loc.provider_type);
-}
+// Module 3B fix: provider-type discovery fallback REMOVED. A directory profile
+// may appear in extended_directory only with an explicit matching LocationService
+// that is publicly_listed/provider_confirmed/vezunde_verified AND matching_allowed,
+// and only for general-need requests.
+const DIRECTORY_OK_CONF = ['publicly_listed', 'provider_confirmed', 'vezunde_verified'];
 const CONF_ORDER = { not_confirmed: 0, publicly_listed: 1, provider_confirmed: 2, vezunde_verified: 3 };
 
 function needLevelOf(key) {
@@ -243,8 +233,7 @@ Deno.serve(async (req) => {
         const hasRepairFacility = locFacilities.some((k) => REPAIR_FACILITIES.includes(k));
         if (matched.length === 0 && !hasRepairFacility) continue;
       } else if (serviceKeys.length > 0 && matched.length === 0) {
-        // Module 3B: keep the location only as a broad discovery fallback candidate.
-        if (!isDiscoveryCandidate(loc, intent, needLevel)) continue;
+        continue;
       }
 
       if (requiredRoles.length > 0 && !requiredRoles.some((r) => roles.includes(r))) continue;
@@ -280,11 +269,17 @@ Deno.serve(async (req) => {
       else if (needLevel === 'specialized_medical') bucket = 'excluded';
       else if (elig.pcs === 'suspended') bucket = 'excluded';
       else if (matchedRows.length > 0) {
-        bucket = 'extended_directory';
-        if (serviceKeys.length > 0) directoryMatchType = 'service_alias_match';
-      } else if (isDiscoveryCandidate(loc, intent, needLevel)) {
-        bucket = 'extended_directory';
-        directoryMatchType = 'provider_type_discovery_match';
+        // Directory profiles require an explicit, confirmed, matching-allowed service
+        // and a general-need request; claimed/verified profiles keep Module 3A behavior.
+        const directoryQualifies = needLevel === 'general' && matchedRows.some(
+          (s) => s.matching_allowed === true && DIRECTORY_OK_CONF.includes(s.confirmation_level)
+        );
+        if (elig.pcs === 'directory' && !directoryQualifies) {
+          bucket = 'excluded';
+        } else {
+          bucket = 'extended_directory';
+          if (serviceKeys.length > 0) directoryMatchType = 'service_alias_match';
+        }
       } else {
         bucket = 'excluded';
       }
