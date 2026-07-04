@@ -33,6 +33,7 @@ Deno.serve(async (req) => {
       if (existing.length > 0) {
         return Response.json({ error: 'Ai deja o cerere in asteptare pentru aceasta locatie' }, { status: 400 });
       }
+      await svc.entities.ProviderLocation.update(locationId, { claim_verification_status: 'pending' });
     } else if (p.mode === 'new_location') {
       const l = p.location || {};
       if (!l.name || !l.provider_type || !l.city) {
@@ -60,6 +61,11 @@ Deno.serve(async (req) => {
         saturday_hours: sched.saturday_hours || '',
         availability_status: availabilityConfirmed ? sched.availability_status : 'necunoscuta',
         status: 'in_verificare',
+        profile_control_status: 'directory',
+        claim_verification_status: 'pending',
+        profile_control_status_updated_at: new Date().toISOString(),
+        profile_control_status_reason: 'Locatie noua trimisa spre verificare',
+        // Legacy fields kept in sync temporarily for backward compatibility only.
         verification_state: 'in_verification',
         active_status: 'activa',
         is_verified: false,
@@ -75,10 +81,29 @@ Deno.serve(async (req) => {
       locationId = loc.id;
       businessName = l.name;
 
+      // Module 3A service trust catalog (same values as matchProviders — functions cannot share local imports).
+      const NEED_LEVELS = {
+        control_vedere_adulti: 'general', control_vedere_copii: 'general', consult_oftalmologic: 'general',
+        lentile_contact: 'general', lentile_progresive: 'general',
+        reparatii_ochelari: 'technical', reglaj_rame: 'technical', montaj_lentile: 'technical',
+        oct: 'specialized_medical', retina: 'specialized_medical', glaucom: 'specialized_medical',
+        cataracta: 'specialized_medical', chirurgie_refractiva: 'specialized_medical', managementul_miopiei: 'specialized_medical',
+      };
       const services = Array.isArray(p.services) ? p.services : [];
       if (services.length > 0) {
         await svc.entities.LocationService.bulkCreate(
-          services.map((k) => ({ location_id: locationId, service_key: k, is_active: true, accepts_requests: true }))
+          services.map((k) => {
+            const known = Object.prototype.hasOwnProperty.call(NEED_LEVELS, k);
+            const level = NEED_LEVELS[k] || 'general';
+            return {
+              location_id: locationId, service_key: k, is_active: true, accepts_requests: true,
+              service_need_level: level,
+              is_advanced_service: level === 'specialized_medical',
+              confirmation_level: 'not_confirmed',
+              matching_allowed: false,
+              migration_review_required: !known,
+            };
+          })
         );
       }
       const specializations = Array.isArray(p.specializations) ? p.specializations : [];

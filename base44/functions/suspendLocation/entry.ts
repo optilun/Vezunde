@@ -16,6 +16,10 @@ Deno.serve(async (req) => {
     const now = new Date().toISOString();
     await svc.entities.ProviderLocation.update(loc.id, {
       status: 'suspendata',
+      profile_control_status: 'suspended',
+      profile_control_status_updated_at: now,
+      profile_control_status_reason: p.notes || 'Locatie suspendata de admin',
+      // Legacy fields kept in sync temporarily for backward compatibility only.
       verification_state: 'suspended',
       is_verified: false,
     });

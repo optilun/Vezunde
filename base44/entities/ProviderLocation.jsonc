@@ -69,6 +69,68 @@
       ],
       "default": "draft"
     },
+    "profile_control_status": {
+      "type": "string",
+      "enum": [
+        "directory",
+        "claimed",
+        "verified",
+        "suspended"
+      ],
+      "default": "directory"
+    },
+    "claim_verification_status": {
+      "type": "string",
+      "enum": [
+        "none",
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "none"
+    },
+    "profile_control_status_updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "profile_control_status_reason": {
+      "type": "string"
+    },
+    "migration_review_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "source_name": {
+      "type": "string"
+    },
+    "source_type": {
+      "type": "string"
+    },
+    "source_checked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "collected_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "collected_by": {
+      "type": "string"
+    },
+    "data_confidence": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "source_notes": {
+      "type": "string"
+    },
     "verification_state": {
       "type": "string",
       "enum": [

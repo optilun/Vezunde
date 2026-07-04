@@ -19,10 +19,26 @@ Deno.serve(async (req) => {
     if (claim.location_id) {
       await svc.entities.ProviderLocation.update(claim.location_id, {
         status: 'publicata',
+        profile_control_status: 'verified',
+        claim_verification_status: 'approved',
+        profile_control_status_updated_at: now,
+        profile_control_status_reason: 'Cerere de revendicare aprobata manual',
+        // Legacy fields kept in sync temporarily for backward compatibility only.
         verification_state: 'verified',
         is_verified: true,
         last_verified_at: now,
       });
+      // Provider-declared services become provider_confirmed on claim approval.
+      // Specialized medical services remain gated by vezunde_verified in matching.
+      const locServices = await svc.entities.LocationService.filter({ location_id: claim.location_id });
+      for (const s of locServices) {
+        if (s.is_active === false) continue;
+        await svc.entities.LocationService.update(s.id, {
+          confirmation_level: s.confirmation_level === 'vezunde_verified' ? 'vezunde_verified' : 'provider_confirmed',
+          service_confirmed_at: now,
+          matching_allowed: true,
+        });
+      }
       // First approved claimant becomes owner
       const existingMembers = await svc.entities.ProviderMembership.filter({
         location_id: claim.location_id, status: 'active',

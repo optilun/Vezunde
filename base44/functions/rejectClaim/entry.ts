@@ -27,9 +27,9 @@ Deno.serve(async (req) => {
         verified_at: now,
       });
       // New locations that were rejected stay hidden as drafts.
-      if (claim.mode === 'new_location') {
-        await svc.entities.ProviderLocation.update(claim.location_id, { status: 'draft' });
-      }
+      const rejectUpdate = { claim_verification_status: 'rejected' };
+      if (claim.mode === 'new_location') rejectUpdate.status = 'draft';
+      await svc.entities.ProviderLocation.update(claim.location_id, rejectUpdate);
     }
 
     await svc.entities.ProviderClaimRequest.update(claim.id, {

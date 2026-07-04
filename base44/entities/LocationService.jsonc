@@ -18,6 +18,51 @@
     },
     "notes": {
       "type": "string"
+    },
+    "confirmation_level": {
+      "type": "string",
+      "enum": [
+        "not_confirmed",
+        "publicly_listed",
+        "provider_confirmed",
+        "vezunde_verified"
+      ],
+      "default": "not_confirmed"
+    },
+    "service_need_level": {
+      "type": "string",
+      "enum": [
+        "general",
+        "technical",
+        "specialized_medical"
+      ],
+      "default": "general"
+    },
+    "is_advanced_service": {
+      "type": "boolean",
+      "default": false
+    },
+    "service_source_url": {
+      "type": "string"
+    },
+    "service_confirmed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "service_verified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "service_verified_by": {
+      "type": "string"
+    },
+    "matching_allowed": {
+      "type": "boolean",
+      "default": false
+    },
+    "migration_review_required": {
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [

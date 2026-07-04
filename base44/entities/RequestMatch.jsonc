@@ -38,6 +38,42 @@
         "dismissed"
       ],
       "default": "matched"
+    },
+    "result_bucket": {
+      "type": "string",
+      "enum": [
+        "top3",
+        "extended_confirmed",
+        "extended_directory",
+        "excluded"
+      ]
+    },
+    "need_level_snapshot": {
+      "type": "string",
+      "enum": [
+        "general",
+        "technical",
+        "specialized_medical"
+      ]
+    },
+    "profile_control_status_snapshot": {
+      "type": "string"
+    },
+    "service_confirmation_level_snapshot": {
+      "type": "string"
+    },
+    "is_top3_eligible": {
+      "type": "boolean",
+      "default": false
+    },
+    "exclusion_reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "bucket_rank": {
+      "type": "number"
     }
   },
   "required": [

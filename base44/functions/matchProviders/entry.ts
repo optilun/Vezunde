@@ -53,6 +53,67 @@ const OPTICAL_TYPES = ['optica_medicala', 'laborator_optic', 'cabinet_optometric
 const REPAIR_FACILITIES = ['atelier_service_propriu', 'reparatii_pe_loc', 'laborator_optic_propriu', 'laborator_partener', 'montaj_lentile_in_locatie'];
 const FACILITY_INTENTS = ['reparatii_ochelari', 'ochelari_lentile', 'lentile_contact'];
 
+// ===== Module 3A: central service catalog + Top-3 trust eligibility =====
+// Single source of truth used by matching. Never based on: company size, paid
+// status, chain status, price, Google data, fake availability, or the legacy
+// is_verified / verification_state fields.
+const SERVICE_NEED_LEVELS = {
+  // general
+  eyeglasses: 'general', frames: 'general', prescription_lenses: 'general', contact_lenses: 'general',
+  optometry_consultation: 'general', ophthalmology_consultation: 'general',
+  control_vedere_adulti: 'general', control_vedere_copii: 'general', consult_oftalmologic: 'general',
+  lentile_contact: 'general', lentile_progresive: 'general',
+  // technical
+  eyeglasses_adjustment: 'technical', eyeglasses_repair: 'technical', lens_fitting: 'technical',
+  reparatii_ochelari: 'technical', reglaj_rame: 'technical', montaj_lentile: 'technical',
+  // specialized_medical
+  oct: 'specialized_medical', retina_consultation: 'specialized_medical', glaucoma_consultation: 'specialized_medical',
+  cataract_surgery: 'specialized_medical', refractive_surgery: 'specialized_medical',
+  pediatric_ophthalmology: 'specialized_medical', myopia_management: 'specialized_medical', emergency_ophthalmology: 'specialized_medical',
+  retina: 'specialized_medical', glaucom: 'specialized_medical', cataracta: 'specialized_medical',
+  chirurgie_refractiva: 'specialized_medical', managementul_miopiei: 'specialized_medical',
+};
+const NEED_ORDER = { general: 0, technical: 1, specialized_medical: 2 };
+const CONF_ORDER = { not_confirmed: 0, publicly_listed: 1, provider_confirmed: 2, vezunde_verified: 3 };
+
+function needLevelOf(key) {
+  // Unknown/uncategorized services default to general (and are never matching_allowed by data rules).
+  return SERVICE_NEED_LEVELS[key] || 'general';
+}
+
+function requestNeedLevel(serviceKeys, intent) {
+  let level = intent === 'reparatii_ochelari' ? 'technical' : 'general';
+  for (const k of serviceKeys) {
+    const l = needLevelOf(k);
+    if (NEED_ORDER[l] > NEED_ORDER[level]) level = l;
+  }
+  return level;
+}
+
+// Central Top-3 eligibility function (Module 3A rules A/B/C).
+function evaluateEligibility(loc, matchedRows, needLevel, hasServiceFilter) {
+  const pcs = loc.profile_control_status || 'directory';
+  if (pcs === 'suspended') return { eligible: false, reasons: ['profile_suspended'], pcs, qualifying: [] };
+  const reasons = [];
+  if (loc.migration_review_required) reasons.push('migration_review_required');
+  const requiredPcs = needLevel === 'specialized_medical' ? ['verified'] : ['claimed', 'verified'];
+  if (!requiredPcs.includes(pcs)) {
+    reasons.push(needLevel === 'specialized_medical' ? 'profile_not_verified' : 'profile_not_claimed_or_verified');
+  }
+  if (matchedRows.length === 0) {
+    reasons.push('service_not_present');
+  } else {
+    const okConf = needLevel === 'specialized_medical' ? ['vezunde_verified'] : ['provider_confirmed', 'vezunde_verified'];
+    const qualifying = matchedRows.filter((s) => s.matching_allowed === true && okConf.includes(s.confirmation_level) && !s.migration_review_required);
+    if (qualifying.length === 0) {
+      if (!matchedRows.some((s) => s.matching_allowed === true)) reasons.push('matching_not_allowed');
+      reasons.push(needLevel === 'specialized_medical' ? 'service_not_vezunde_verified' : 'service_not_confirmed');
+    }
+    if (reasons.length === 0) return { eligible: true, reasons: [], pcs, qualifying };
+  }
+  return { eligible: false, reasons, pcs, qualifying: [] };
+}
+
 function haversineKm(lat1, lng1, lat2, lng2) {
   const rad = Math.PI / 180;
   const dLat = (lat2 - lat1) * rad;
@@ -82,6 +143,7 @@ Deno.serve(async (req) => {
     const userLat = typeof payload.lat === 'number' ? payload.lat : null;
     const userLng = typeof payload.lng === 'number' ? payload.lng : null;
     const limit = Math.min(payload.limit || 20, 50);
+    const needLevel = requestNeedLevel(serviceKeys, intent);
 
     const [locations, services, specs, assigns, facilities] = await Promise.all([
       svc.entities.ProviderLocation.filter({ status: 'publicata' }, null, 500),
@@ -91,11 +153,12 @@ Deno.serve(async (req) => {
       svc.entities.LocationFacility.list(null, 2000),
     ]);
 
-    const svcMap = {};
+    // Full LocationService rows per location — trust fields are needed for eligibility.
+    const svcRowMap = {};
     for (const s of services) {
       if (s.is_active === false) continue;
-      if (!svcMap[s.location_id]) svcMap[s.location_id] = [];
-      svcMap[s.location_id].push(s.service_key);
+      if (!svcRowMap[s.location_id]) svcRowMap[s.location_id] = [];
+      svcRowMap[s.location_id].push(s);
     }
     const specMap = {};
     for (const s of specs) {
@@ -122,17 +185,20 @@ Deno.serve(async (req) => {
     const now = Date.now();
 
     // Ranking uses ONLY: service/specialization/facility match, provider type,
-    // professional roles, geographic tier, verification, and provider-published
-    // fresh availability. Never: company size, price, paid ranking, demo bonuses.
+    // professional roles, geographic tier, profile trust status, and
+    // provider-published fresh availability.
     const scored = [];
+    const excludedList = [];
     for (const loc of locations) {
       if (loc.active_status === 'inactiva') continue;
       if (providerTypes.length > 0 && !providerTypes.includes(loc.provider_type)) continue;
 
-      const locServices = svcMap[loc.id] || [];
+      const locRows = svcRowMap[loc.id] || [];
+      const locServices = locRows.map((r) => r.service_key);
       const roles = roleMap[loc.id] || [];
       const locFacilities = facMap[loc.id] || [];
-      const matched = locServices.filter((k) => serviceKeys.includes(k));
+      const matchedRows = serviceKeys.length > 0 ? locRows.filter((r) => serviceKeys.includes(r.service_key)) : locRows;
+      const matched = serviceKeys.length > 0 ? matchedRows.map((r) => r.service_key) : [];
 
       // Intent-based hard constraints
       if (intent === 'simptome_oftalmologice' || intent === 'investigatii') {
@@ -171,31 +237,56 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Module 3A trust evaluation (central eligibility function).
+      const elig = evaluateEligibility(loc, matchedRows, needLevel, serviceKeys.length > 0);
+      let bucket;
+      if (elig.eligible) bucket = 'eligible';
+      else if (needLevel === 'specialized_medical') bucket = 'excluded';
+      else if (elig.pcs === 'suspended') bucket = 'excluded';
+      else if (matchedRows.length === 0) bucket = 'excluded';
+      else bucket = 'extended_directory';
+
       let score = matched.length * 3 + specMatched.length * 2 + Math.min(relevantFacilities.length, 2);
       const reasons = matched.slice(0, 2).map(serviceReason);
       if (relevantFacilities.length > 0) reasons.push(FACILITY_REASONS[relevantFacilities[0]]);
       if (specMatched.length > 0) reasons.push('Specializare potrivita');
-      if (loc.is_verified) score += 2;
+      if (elig.pcs === 'verified') score += 2;
+      else if (elig.pcs === 'claimed') score += 1;
       if (availabilityLabel) { score += 1; reasons.push('Disponibilitate publicata de furnizor'); }
 
-      scored.push({ loc, matched, tier, score, reasons, availabilityLabel, locServices, locSpecs, roles, locFacilities, relevantFacilities });
+      const entry = { loc, matched, matchedRows, tier, score, reasons, availabilityLabel, locServices, locSpecs, roles, locFacilities, relevantFacilities, elig, bucket };
+      if (bucket === 'excluded') excludedList.push(entry);
+      else scored.push(entry);
     }
 
     const tierOrder = { oras: 0, apropiere: 1, judet: 2, national: 3 };
     scored.sort((a, b) => (tierOrder[a.tier] - tierOrder[b.tier]) || (b.score - a.score));
 
     // Expansion ladder: city -> nearby -> county; nationwide only when the user
-    // chose national scope or too few local results exist (never mixed silently —
-    // every result carries its expansion_tier for honest grouping).
+    // chose national scope or too few local results exist.
     let visible = scored;
     if (city && scope !== 'national') {
       const local = scored.filter((r) => r.tier !== 'national');
       visible = local.length >= 3 ? local : scored;
     }
-    visible = visible.slice(0, limit);
+
+    // Bucketize: Top 3 = first 3 ELIGIBLE results only (never rank position alone).
+    const eligibleSorted = visible.filter((r) => r.bucket === 'eligible');
+    const directorySorted = visible.filter((r) => r.bucket === 'extended_directory');
+    eligibleSorted.forEach((r, i) => {
+      r.finalBucket = i < 3 ? 'top3' : 'extended_confirmed';
+      r.bucketRank = i < 3 ? i + 1 : i - 2;
+    });
+    directorySorted.forEach((r, i) => { r.finalBucket = 'extended_directory'; r.bucketRank = i + 1; });
+    const finalVisible = [...eligibleSorted, ...directorySorted].slice(0, limit);
+
+    const confSnapshot = (r) => r.matchedRows.reduce(
+      (best, s) => (CONF_ORDER[s.confirmation_level || 'not_confirmed'] > CONF_ORDER[best] ? (s.confirmation_level || 'not_confirmed') : best),
+      'not_confirmed'
+    );
 
     // Public field whitelist only — never internal/verification/patient data.
-    const results = visible.map((r) => ({
+    const results = finalVisible.map((r) => ({
       id: r.loc.id,
       name: r.loc.name,
       provider_type: r.loc.provider_type,
@@ -207,6 +298,7 @@ Deno.serve(async (req) => {
       opening_hours: r.loc.opening_hours || null,
       saturday_hours: r.loc.saturday_hours || null,
       is_verified: !!r.loc.is_verified,
+      profile_control_status: r.elig.pcs,
       services: r.locServices,
       specializations: r.locSpecs,
       professional_types: r.roles,
@@ -216,21 +308,46 @@ Deno.serve(async (req) => {
       availability_label: r.availabilityLabel,
       match_reasons: r.reasons,
       expansion_tier: r.tier,
+      result_bucket: r.finalBucket,
+      bucket_rank: r.bucketRank,
+      is_top3_eligible: r.bucket === 'eligible',
     }));
 
     const safetyKeys = SAFETY_RULES.filter((rule) => rule.enabled).map((rule) => rule.key);
 
     // Persist RequestMatch records when a real PatientRequest exists.
     if (payload.request_id) {
-      const rows = results.slice(0, 10).map((r, i) => ({
+      const rows = finalVisible.slice(0, 10).map((r, i) => ({
         request_id: payload.request_id,
-        location_id: r.id,
+        location_id: r.loc.id,
         rank: i + 1,
-        match_reasons: r.match_reasons,
-        expansion_tier: r.expansion_tier,
+        match_reasons: r.reasons,
+        expansion_tier: r.tier,
         status: 'matched',
+        result_bucket: r.finalBucket,
+        need_level_snapshot: needLevel,
+        profile_control_status_snapshot: r.elig.pcs,
+        service_confirmation_level_snapshot: confSnapshot(r),
+        is_top3_eligible: r.bucket === 'eligible',
+        exclusion_reasons: r.elig.reasons,
+        bucket_rank: r.bucketRank,
       }));
-      if (rows.length > 0) await svc.entities.RequestMatch.bulkCreate(rows);
+      const exRows = excludedList.slice(0, 10).map((r, i) => ({
+        request_id: payload.request_id,
+        location_id: r.loc.id,
+        match_reasons: [],
+        expansion_tier: r.tier,
+        status: 'matched',
+        result_bucket: 'excluded',
+        need_level_snapshot: needLevel,
+        profile_control_status_snapshot: r.elig.pcs,
+        service_confirmation_level_snapshot: confSnapshot(r),
+        is_top3_eligible: false,
+        exclusion_reasons: r.elig.reasons,
+        bucket_rank: i + 1,
+      }));
+      const allRows = [...rows, ...exRows];
+      if (allRows.length > 0) await svc.entities.RequestMatch.bulkCreate(allRows);
       if (safetyKeys.length > 0) {
         await svc.entities.SafetyFlag.bulkCreate(
           safetyKeys.map((k) => ({ request_id: payload.request_id, flag_key: k, rule_version: 'v0-disabled', shown_at: new Date().toISOString() }))
@@ -238,7 +355,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return Response.json({ results, safety_message_keys: safetyKeys });
+    return Response.json({ results, need_level: needLevel, safety_message_keys: safetyKeys });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

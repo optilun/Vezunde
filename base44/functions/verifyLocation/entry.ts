@@ -16,6 +16,10 @@ Deno.serve(async (req) => {
     const now = new Date().toISOString();
     await svc.entities.ProviderLocation.update(loc.id, {
       status: 'publicata',
+      profile_control_status: 'verified',
+      profile_control_status_updated_at: now,
+      profile_control_status_reason: p.notes || 'Locatie verificata manual de admin',
+      // Legacy fields kept in sync temporarily for backward compatibility only.
       verification_state: 'verified',
       is_verified: true,
       last_verified_at: now,
