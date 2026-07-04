@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ArrowUp } from "lucide-react";
 import { motion } from "framer-motion";
+import ConversationalCard from "@/components/intake2/ConversationalCard";
 
 const PROMPTS = [
   "Vad neclar la distanta si vreau un control...",
@@ -63,12 +64,12 @@ function useTypingPlaceholder(active) {
 export default function Hero() {
   const [text, setText] = useState("");
   const [animating, setAnimating] = useState(true);
-  const navigate = useNavigate();
-  const typed = useTypingPlaceholder(animating);
+  const [started, setStarted] = useState(false);
+  const typed = useTypingPlaceholder(animating && !started);
 
   const submit = (e) => {
     e.preventDefault();
-    navigate(`/cerere${text.trim() ? `?q=${encodeURIComponent(text.trim())}` : ""}`);
+    setStarted(true);
   };
 
   const stopAnimation = () => setAnimating(false);
@@ -94,6 +95,10 @@ export default function Hero() {
       />
 
       <div className="relative z-10 max-w-3xl mx-auto px-5 py-24 sm:py-28 w-full flex flex-col items-center text-center">
+        {started ? (
+          <ConversationalCard initialMessage={text.trim()} />
+        ) : (
+        <>
         <motion.h1
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -195,6 +200,8 @@ export default function Hero() {
         >
           Vezunde nu ofera diagnostic medical.
         </motion.p>
+        </>
+        )}
       </div>
     </section>
   );

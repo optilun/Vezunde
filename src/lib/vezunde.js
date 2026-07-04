@@ -16,6 +16,16 @@ export const SERVICES = {
   oct: "OCT",
   camp_vizual: "Camp vizual",
   tonometrie: "Tonometrie",
+  fund_de_ochi: "Fund de ochi",
+  topografie_corneana: "Topografie corneana",
+};
+
+export const FACILITIES = {
+  laborator_optic_propriu: "Laborator optic propriu",
+  atelier_service_propriu: "Atelier de service propriu",
+  reparatii_pe_loc: "Reparatii pe loc",
+  laborator_partener: "Laborator partener",
+  montaj_lentile_in_locatie: "Montaj lentile in locatie",
 };
 
 export const PROVIDER_TYPES = {
