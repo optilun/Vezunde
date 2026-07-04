@@ -124,7 +124,10 @@ export default function DirOpsAddLocation() {
           <p className="font-semibold text-sm">Posibile duplicate gasite — verifica inainte de creare:</p>
           <ul className="mt-2 space-y-1 text-sm">
             {duplicates.map((d) => (
-              <li key={d.id} className="text-muted-foreground">{d.name} — {d.city}, {d.address} ({PCS_LABELS[d.profile_control_status] || d.profile_control_status})</li>
+              <li key={d.id} className="text-muted-foreground">
+                {d.name} — {d.city}, {d.address} ({PCS_LABELS[d.profile_control_status] || d.profile_control_status})
+                {d.match_reasons?.length > 0 && <span className="block text-xs">Motiv: {d.match_reasons.join(", ")}</span>}
+              </li>
             ))}
           </ul>
           <div className="flex gap-3 mt-3">

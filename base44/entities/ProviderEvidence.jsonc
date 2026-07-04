@@ -1,0 +1,80 @@
+{
+  "name": "ProviderEvidence",
+  "type": "object",
+  "properties": {
+    "entity_type": {
+      "type": "string",
+      "enum": [
+        "ProviderOrganization",
+        "ProviderLocation",
+        "LocationService"
+      ]
+    },
+    "entity_id": {
+      "type": "string"
+    },
+    "field_name": {
+      "type": "string"
+    },
+    "value_snapshot": {
+      "type": "string"
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "source_type": {
+      "type": "string"
+    },
+    "source_title": {
+      "type": "string"
+    },
+    "collected_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "collected_by": {
+      "type": "string"
+    },
+    "checked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "evidence_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "superseded",
+        "rejected"
+      ],
+      "default": "active"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "entity_type",
+    "entity_id",
+    "source_url"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

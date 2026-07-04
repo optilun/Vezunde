@@ -95,17 +95,34 @@ Deno.serve(async (req) => {
       if (!['low', 'medium', 'high'].includes(prov.data_confidence)) return bad('data_confidence invalid');
       if (!p.organization_id && (!org.name || !norm(org.name))) return bad('Numele organizatiei este obligatoriu');
 
-      // Duplicate check: normalized name + city + address. Admin must explicitly force.
+      // Module 3F duplicate detection: normalized org/location name, city, address,
+      // website domain and public phone. Never auto-merges and never blocks —
+      // the admin must explicitly confirm via force_create.
       if (!p.force_create) {
-        const cityLocs = await svc.entities.ProviderLocation.filter({ city: loc.city }, null, 300);
+        const [allLocs, allOrgs] = await Promise.all([
+          svc.entities.ProviderLocation.list(null, 500),
+          svc.entities.ProviderOrganization.list(null, 500),
+        ]);
+        const orgNames = {};
+        for (const o of allOrgs) orgNames[o.id] = o.name || '';
+        const domainOf = (u) => { try { return new URL(String(u)).hostname.replace(/^www\./, ''); } catch { return ''; } };
+        const digits = (s) => String(s || '').replace(/\D/g, '');
         const nameToks = tokens(loc.name);
-        const addrToks = tokens(loc.address);
-        const duplicates = cityLocs.filter((l) => {
-          const nameHit = tokens(l.name).some((t) => nameToks.includes(t));
-          const addrHit = tokens(l.address || '').some((t) => addrToks.includes(t));
-          return nameHit || (addrHit && norm(l.address) === norm(loc.address));
-        }).slice(0, 10).map((l) => ({ id: l.id, name: l.name, city: l.city, address: l.address || '', provider_type: l.provider_type, profile_control_status: l.profile_control_status || 'directory' }));
-        if (duplicates.length > 0) return Response.json({ duplicates });
+        const orgToks = tokens(org.name || '');
+        const newDomain = domainOf(loc.website || org.website || '');
+        const newPhone = digits(loc.phone_public);
+        const duplicates = [];
+        for (const l of allLocs) {
+          const reasons = [];
+          const sameCity = norm(l.city) === norm(loc.city);
+          if (sameCity && tokens(l.name).some((t) => nameToks.includes(t))) reasons.push('nume asemanator in acelasi oras');
+          if (sameCity && l.address && norm(l.address) === norm(loc.address)) reasons.push('aceeasi adresa');
+          if (newDomain && domainOf(l.website) === newDomain) reasons.push('acelasi domeniu website');
+          if (newPhone.length >= 6 && digits(l.phone_public) === newPhone) reasons.push('acelasi telefon public');
+          if (sameCity && orgToks.length > 0 && tokens(orgNames[l.organization_id] || '').some((t) => orgToks.includes(t))) reasons.push('organizatie asemanatoare in acelasi oras');
+          if (reasons.length > 0) duplicates.push({ id: l.id, name: l.name, city: l.city, address: l.address || '', provider_type: l.provider_type, profile_control_status: l.profile_control_status || 'directory', match_reasons: reasons });
+        }
+        if (duplicates.length > 0) return Response.json({ duplicates: duplicates.slice(0, 10) });
       }
 
       let organizationId = p.organization_id || null;

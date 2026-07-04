@@ -7,9 +7,11 @@ import DirOpsServices from "@/components/admin/directory/DirOpsServices";
 import DirOpsMigrationQueue from "@/components/admin/directory/DirOpsMigrationQueue";
 import DirOpsClaims from "@/components/admin/directory/DirOpsClaims";
 import DirOpsAudit from "@/components/admin/directory/DirOpsAudit";
+import DirResearch from "@/components/admin/directory/DirResearch";
 
 const TABS = [
   { key: "dashboard", label: "Panou" },
+  { key: "research", label: "Research director" },
   { key: "adauga", label: "Adauga organizatie/locatie" },
   { key: "profiluri", label: "Profiluri directory" },
   { key: "servicii", label: "Servicii" },
@@ -53,6 +55,7 @@ export default function AdminDirectoryOps() {
       </div>
       <div className="mt-6">
         {tab === "dashboard" && <DirOpsDashboard onNavigate={setTab} />}
+        {tab === "research" && <DirResearch onNavigate={setTab} />}
         {tab === "adauga" && <DirOpsAddLocation />}
         {tab === "profiluri" && <DirOpsProfiles />}
         {tab === "servicii" && <DirOpsServices />}
