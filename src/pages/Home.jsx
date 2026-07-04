@@ -1,20 +1,22 @@
 import React from "react";
 import Hero from "@/components/home/Hero";
 import QuickCategories from "@/components/home/QuickCategories";
+import WhoCanHelp from "@/components/home/WhoCanHelp";
 import HowItWorks from "@/components/home/HowItWorks";
-import FairMatching from "@/components/home/FairMatching";
+import ServicesShowcase from "@/components/home/ServicesShowcase";
 import FeaturedProviders from "@/components/home/FeaturedProviders";
-import SpecialistsCta from "@/components/home/SpecialistsCta";
+import ClosingCta from "@/components/home/ClosingCta";
 
 export default function Home() {
   return (
-    <div className="pb-8">
+    <div className="pb-12">
       <Hero />
       <QuickCategories />
+      <WhoCanHelp />
       <HowItWorks />
-      <FairMatching />
+      <ServicesShowcase />
       <FeaturedProviders />
-      <SpecialistsCta />
+      <ClosingCta />
     </div>
   );
 }
