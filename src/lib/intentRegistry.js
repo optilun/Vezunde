@@ -203,3 +203,78 @@ export const LEGACY_CATEGORY_TO_INTENT = {
   lentile_ochelari: "ochelari_lentile",
   ochi_uscat: "simptome_oftalmologice",
 };
+
+// Detectie deterministica de intentie pe baza de cuvinte cheie, fara AI.
+// Se foloseste doar pentru a sari peste categorie atunci cand potrivirea e clara.
+const INTENT_KEYWORDS = {
+  control_copil: [
+    "consultatie copil",
+    "control copil",
+    "vedere copil",
+    "copil nu vede",
+    "nu vede tabla",
+    "copilul nu vede",
+    "control pentru copil",
+  ],
+  control_vedere: [
+    "consultatie vedere",
+    "control vedere",
+    "vad neclar",
+    "nu vad bine",
+    "dioptrii",
+    "verificare vedere",
+  ],
+  reparatii_ochelari: [
+    "ochelari rupti",
+    "rama rupta",
+    "balama",
+    "surub",
+    "reparatie ochelari",
+    "reglaj rama",
+    "mi s-au rupt ochelarii",
+  ],
+  ochelari_lentile: [
+    "lentile progresive",
+    "ochelari noi",
+    "schimbare lentile",
+    "rame noi",
+    "lentile pentru ochelari",
+  ],
+  lentile_contact: [
+    "lentile de contact",
+    "adaptare lentile",
+    "port lentile",
+  ],
+  investigatii: [
+    "oct",
+    "camp vizual",
+    "tonometrie",
+    "fund de ochi",
+    "topografie corneana",
+  ],
+  simptome_oftalmologice: [
+    "durere la ochi",
+    "ochi rosu",
+    "vedere dubla",
+    "ma doare ochiul",
+    "problema la ochi",
+  ],
+};
+
+function normalize(text) {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+export function detectIntentFromText(text) {
+  if (!text) return null;
+  const normalized = normalize(text);
+  for (const [intentKey, keywords] of Object.entries(INTENT_KEYWORDS)) {
+    if (keywords.some((kw) => normalized.includes(normalize(kw)))) {
+      return intentKey;
+    }
+  }
+  return null;
+}

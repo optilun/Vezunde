@@ -149,7 +149,7 @@ export default function Hero() {
             />
             <div className="flex items-center justify-between mt-2 px-1">
               <span className="text-xs hidden sm:block" style={{ color: "#9B968D" }}>
-                Scrie in cuvintele tale, ca intr-o conversatie
+                Descrie pe scurt ce cauti
               </span>
               <button
                 type="submit"

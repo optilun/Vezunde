@@ -2,14 +2,16 @@ import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { INTENTS, CATEGORY_QUESTION } from "@/lib/intentRegistry";
+import { INTENTS, CATEGORY_QUESTION, detectIntentFromText } from "@/lib/intentRegistry";
 import QuestionChoice from "./QuestionChoice";
 import QuestionText from "./QuestionText";
 import QuestionLocation from "./QuestionLocation";
 import MatchResults from "./MatchResults";
 
-const initState = (initialIntent) => {
-  const intent = initialIntent && INTENTS[initialIntent] ? initialIntent : null;
+const initState = (initialIntent, initialMessage) => {
+  const intent = (initialIntent && INTENTS[initialIntent])
+    ? initialIntent
+    : detectIntentFromText(initialMessage);
   return {
     intent,
     answers: [],
@@ -20,7 +22,7 @@ const initState = (initialIntent) => {
 };
 
 export default function ConversationalCard({ initialMessage = "", initialIntent = null }) {
-  const [state, setState] = useState(() => initState(initialIntent));
+  const [state, setState] = useState(() => initState(initialIntent, initialMessage));
   const [history, setHistory] = useState([]);
   const [phase, setPhase] = useState("questions"); // questions | submitting | results | error
   const [results, setResults] = useState(null);
