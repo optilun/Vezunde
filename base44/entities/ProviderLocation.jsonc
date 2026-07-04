@@ -274,7 +274,19 @@
       "default": "unclaimed"
     },
     "pending_changes": {
-      "type": "string"
+      "type": "string",
+      "rls": {
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
     },
     "active_status": {
       "type": "string",
@@ -315,7 +327,19 @@
     },
     "last_verified_at": {
       "type": "string",
-      "format": "date-time"
+      "format": "date-time",
+      "rls": {
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
     },
     "availability_status": {
       "type": "string",
@@ -337,5 +361,12 @@
     "name",
     "provider_type",
     "city"
-  ]
+  ],
+  "rls": {
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }
