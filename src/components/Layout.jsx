@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, Outlet } from "react-router-dom";
+import HeaderAccountLink from "@/components/HeaderAccountLink";
 
 export default function Layout() {
   const [scrolled, setScrolled] = useState(false);
@@ -29,6 +30,7 @@ export default function Layout() {
           <nav className="flex items-center gap-2 text-sm">
             <Link to="/cauta" className="px-3.5 py-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors">Cauta</Link>
             <Link to="/pentru-specialisti" className="px-3.5 py-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors hidden sm:block">Pentru specialisti</Link>
+            <HeaderAccountLink />
             <Link
               to="/cerere"
               className="ml-3 px-5 py-2 rounded-full text-white font-medium transition-colors"
