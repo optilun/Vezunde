@@ -8,8 +8,14 @@
     "claim_request_id": {
       "type": "string"
     },
-    "verified_by": {
-      "type": "string"
+    "verification_method": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "email",
+        "phone",
+        "document"
+      ]
     },
     "method": {
       "type": "string",
@@ -23,10 +29,14 @@
       "type": "string",
       "enum": [
         "aprobat",
-        "respins"
+        "respins",
+        "suspendat"
       ]
     },
     "notes": {
+      "type": "string"
+    },
+    "verified_by": {
       "type": "string"
     },
     "verified_at": {
@@ -36,7 +46,6 @@
   },
   "required": [
     "location_id",
-    "method",
     "result"
   ]
 }

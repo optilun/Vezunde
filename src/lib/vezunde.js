@@ -18,6 +18,8 @@ export const SERVICES = {
   tonometrie: "Tonometrie",
   fund_de_ochi: "Fund de ochi",
   topografie_corneana: "Topografie corneana",
+  pahimetrie: "Pahimetrie",
+  biometrie: "Biometrie",
 };
 
 export const FACILITIES = {
@@ -34,6 +36,8 @@ export const PROVIDER_TYPES = {
   cabinet_oftalmologic: "Cabinet oftalmologic",
   cabinet_optometric: "Cabinet optometric",
   laborator_optic: "Laborator optic",
+  optometrist_independent: "Optometrist independent",
+  medic_oftalmolog_independent: "Medic oftalmolog independent",
 };
 
 export const PROFESSIONAL_TYPES = {

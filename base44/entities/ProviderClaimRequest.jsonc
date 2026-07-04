@@ -2,14 +2,20 @@
   "name": "ProviderClaimRequest",
   "type": "object",
   "properties": {
+    "organization_id": {
+      "type": "string"
+    },
     "location_id": {
+      "type": "string"
+    },
+    "user_id": {
       "type": "string"
     },
     "mode": {
       "type": "string",
       "enum": [
         "claim",
-        "new"
+        "new_location"
       ]
     },
     "business_name": {
@@ -27,6 +33,10 @@
     "phone": {
       "type": "string"
     },
+    "representation_confirmed": {
+      "type": "boolean",
+      "default": false
+    },
     "submitted_payload": {
       "type": "string"
     },
@@ -38,10 +48,16 @@
         "respinsa"
       ],
       "default": "in_asteptare"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "review_notes": {
+      "type": "string"
     }
   },
   "required": [
-    "business_name",
     "contact_name",
     "email"
   ]

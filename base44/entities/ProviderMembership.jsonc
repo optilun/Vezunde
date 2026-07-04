@@ -1,0 +1,34 @@
+{
+  "name": "ProviderMembership",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "organization_id": {
+      "type": "string"
+    },
+    "location_id": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "owner",
+        "staff"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "revoked"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "user_id",
+    "role"
+  ]
+}

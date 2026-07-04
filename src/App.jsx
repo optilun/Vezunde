@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -13,9 +13,9 @@ import Search from './pages/Search';
 import ProviderProfile from './pages/ProviderProfile';
 import RequestFlow from './pages/RequestFlow';
 import ForSpecialists from './pages/ForSpecialists';
-import ClaimProfile from './pages/ClaimProfile';
-import ProviderOnboarding from './pages/ProviderOnboarding';
 import AddOrClaim from './pages/AddOrClaim';
+import MyAccount from './pages/MyAccount';
+import AdminVerifications from './pages/AdminVerifications';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 
@@ -52,9 +52,11 @@ const AuthenticatedApp = () => {
         <Route path="/furnizor/:id" element={<ProviderProfile />} />
         <Route path="/cerere" element={<RequestFlow />} />
         <Route path="/pentru-specialisti" element={<ForSpecialists />} />
-        <Route path="/revendica-profil" element={<ClaimProfile />} />
-        <Route path="/inscriere" element={<ProviderOnboarding />} />
+        <Route path="/revendica-profil" element={<Navigate to="/adauga-sau-revendica" replace />} />
+        <Route path="/inscriere" element={<Navigate to="/adauga-sau-revendica" replace />} />
         <Route path="/adauga-sau-revendica" element={<AddOrClaim />} />
+        <Route path="/contul-meu" element={<MyAccount />} />
+        <Route path="/admin/verificari" element={<AdminVerifications />} />
         <Route path="/confidentialitate" element={<Privacy />} />
         <Route path="/termeni" element={<Terms />} />
       </Route>
