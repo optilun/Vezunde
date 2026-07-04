@@ -2,6 +2,22 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const STAGED_FIELDS = ['name', 'address', 'city', 'county', 'phone_public', 'public_email', 'website', 'description', 'provider_type'];
 
+// Module 3E.2: known service keys (same catalog as matchProviders — backend
+// functions cannot share local imports). Any other key is 'unknown'.
+const KNOWN_LEVELS = {
+  eyeglasses: 'general', frames: 'general', prescription_lenses: 'general', contact_lenses: 'general',
+  optometry_consultation: 'general', ophthalmology_consultation: 'general',
+  control_vedere_adulti: 'general', control_vedere_copii: 'general', consult_oftalmologic: 'general',
+  lentile_contact: 'general', lentile_progresive: 'general',
+  eyeglasses_adjustment: 'technical', eyeglasses_repair: 'technical', lens_fitting: 'technical',
+  reparatii_ochelari: 'technical', reglaj_rame: 'technical', montaj_lentile: 'technical',
+  oct: 'specialized_medical', retina_consultation: 'specialized_medical', glaucoma_consultation: 'specialized_medical',
+  cataract_surgery: 'specialized_medical', refractive_surgery: 'specialized_medical',
+  pediatric_ophthalmology: 'specialized_medical', myopia_management: 'specialized_medical', emergency_ophthalmology: 'specialized_medical',
+  retina: 'specialized_medical', glaucom: 'specialized_medical', cataracta: 'specialized_medical',
+  chirurgie_refractiva: 'specialized_medical', managementul_miopiei: 'specialized_medical',
+};
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -31,11 +47,38 @@ Deno.serve(async (req) => {
       await svc.entities.ProviderLocation.update(loc.id, upd);
 
       if (Array.isArray(changes.services)) {
-        await svc.entities.LocationService.deleteMany({ location_id: loc.id });
-        if (changes.services.length > 0) {
-          await svc.entities.LocationService.bulkCreate(
-            changes.services.map((k) => ({ location_id: loc.id, service_key: k, is_active: true, accepts_requests: true }))
-          );
+        // Module 3E.2: NEVER bulk delete/recreate services — that would destroy
+        // trust/evidence metadata. Diff instead: reactivate/create requested keys,
+        // soft-deactivate removed ones. Existing rows keep confirmation_level,
+        // matching_allowed, need level, sources, verification and review flags.
+        const existing = await svc.entities.LocationService.filter({ location_id: loc.id }, null, 500);
+        const byKey = {};
+        for (const s of existing) byKey[s.service_key] = s;
+        const wanted = new Set(changes.services);
+        for (const k of changes.services) {
+          const cur = byKey[k];
+          if (cur) {
+            if (cur.is_active === false) await svc.entities.LocationService.update(cur.id, { is_active: true });
+          } else {
+            const known = Object.prototype.hasOwnProperty.call(KNOWN_LEVELS, k);
+            // New provider-submitted services always start unconfirmed and unmatched;
+            // unknown keys stay 'unknown' and are flagged for manual classification.
+            await svc.entities.LocationService.create({
+              location_id: loc.id, service_key: k, is_active: true, accepts_requests: true,
+              service_need_level: known ? KNOWN_LEVELS[k] : 'unknown',
+              is_advanced_service: known && KNOWN_LEVELS[k] === 'specialized_medical',
+              confirmation_level: 'not_confirmed',
+              matching_allowed: false,
+              migration_review_required: !known,
+            });
+          }
+        }
+        // Removal requests: soft-deactivate (auditable), never hard-delete
+        // rows that may carry verification/evidence history.
+        for (const s of existing) {
+          if (!wanted.has(s.service_key) && s.is_active !== false) {
+            await svc.entities.LocationService.update(s.id, { is_active: false });
+          }
         }
       }
       if (Array.isArray(changes.specializations)) {

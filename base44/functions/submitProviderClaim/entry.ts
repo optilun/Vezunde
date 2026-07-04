@@ -99,7 +99,8 @@ Deno.serve(async (req) => {
         await svc.entities.LocationService.bulkCreate(
           services.map((k) => {
             const known = Object.prototype.hasOwnProperty.call(NEED_LEVELS, k);
-            const level = NEED_LEVELS[k] || 'general';
+            // Module 3E.2: unknown keys are stored as 'unknown', never 'general'.
+            const level = known ? NEED_LEVELS[k] : 'unknown';
             return {
               location_id: locationId, service_key: k, is_active: true, accepts_requests: true,
               service_need_level: level,

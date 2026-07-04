@@ -34,7 +34,8 @@
       "enum": [
         "general",
         "technical",
-        "specialized_medical"
+        "specialized_medical",
+        "unknown"
       ],
       "default": "general"
     },

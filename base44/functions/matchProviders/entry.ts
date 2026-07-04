@@ -312,9 +312,10 @@ Deno.serve(async (req) => {
       const safeMatchedRows = matchedRows.filter((s) => isPublicSafeService(s, pcsForDisplay));
       const safeLocRows = locRows.filter((s) => isPublicSafeService(s, pcsForDisplay));
       let score = matched.length * 3 + specMatched.length * 2 + Math.min(relevantFacilities.length, 2);
+      // Module 3E.2: match reasons are built ONLY from public-safe services and
+      // trust/availability signals — never from unconfirmed specializations,
+      // facilities or professional capability data.
       const reasons = safeMatchedRows.slice(0, 2).map((s) => serviceReason(s.service_key));
-      if (relevantFacilities.length > 0) reasons.push(FACILITY_REASONS[relevantFacilities[0]]);
-      if (specMatched.length > 0) reasons.push('Specializare potrivita');
       if (elig.pcs === 'verified') score += 2;
       else if (elig.pcs === 'claimed') score += 1;
       if (availabilityLabel) { score += 1; reasons.push('Disponibilitate publicata de furnizor'); }
@@ -359,12 +360,10 @@ Deno.serve(async (req) => {
       opening_hours: r.loc.opening_hours || null,
       saturday_hours: r.loc.saturday_hours || null,
       profile_control_status: r.elig.pcs,
+      // Module 3E.2: specializations, professional_types and facilities are
+      // internal capability data without a confirmation model — never returned.
       public_services: r.safeLocRows.map(toPublicService),
-      specializations: r.locSpecs,
-      professional_types: r.roles,
-      facilities: r.locFacilities,
       matched_public_services: r.safeMatchedRows.map(toPublicService),
-      matched_facilities: r.relevantFacilities,
       availability_label: r.availabilityLabel,
       match_reasons: r.reasons,
       directory_match_type: r.directoryMatchType || null,

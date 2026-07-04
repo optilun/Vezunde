@@ -2,40 +2,33 @@ import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { Search, BadgeCheck, MapPin } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
-import { VERIFICATION_STATE_LABELS } from "@/lib/providerTaxonomy";
 import SimilarLocationCard from "@/components/provider/SimilarLocationCard";
 
 const GooglePlacesResults = lazy(() => import("@/components/provider/GooglePlacesResults"));
 
 const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
+// Module 3E.2: onboarding search reads ONLY the whitelist backend endpoint —
+// never ProviderLocation / ProviderOrganization entities directly.
 export default function ProviderSearch({ onClaim, onNew }) {
   const [query, setQuery] = useState("");
   const [locations, setLocations] = useState([]);
-  const [orgs, setOrgs] = useState({});
   const [googleMode, setGoogleMode] = useState(false);
   const [similar, setSimilar] = useState(null);
 
   useEffect(() => {
-    Promise.all([
-      base44.entities.ProviderLocation.filter({ status: "publicata" }, "name", 500),
-      base44.entities.ProviderOrganization.list(null, 200),
-    ]).then(([locs, orgList]) => {
-      setLocations(locs);
-      setOrgs(Object.fromEntries(orgList.map((o) => [o.id, o.name])));
-    });
+    base44.functions.invoke("getClaimableProviderLocations", {})
+      .then((res) => setLocations(res.data?.locations || []))
+      .catch(() => setLocations([]));
   }, []);
 
   const results = useMemo(() => {
     const q = norm(query.trim());
     if (q.length < 2) return [];
     return locations
-      .filter((l) => {
-        const orgName = l.organization_id ? orgs[l.organization_id] || "" : "";
-        return [l.name, l.city, l.address, l.phone_public, orgName].some((f) => norm(f).includes(q));
-      })
+      .filter((l) => [l.name, l.city, l.address, l.organization_name].some((f) => norm(f).includes(q)))
       .slice(0, 8);
-  }, [query, locations, orgs]);
+  }, [query, locations]);
 
   // Google fallback only when Vezunde search has 0 results and query >= 3 chars.
   const showGoogleTrigger = query.trim().length >= 3 && results.length === 0;
@@ -58,7 +51,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Cauta dupa nume, organizatie, oras, adresa sau telefon"
+          placeholder="Cauta dupa nume, organizatie, oras sau adresa"
           className="w-full rounded-xl border border-border bg-card pl-11 pr-4 py-3.5 text-sm outline-none focus:border-foreground/50 transition-colors"
         />
       </div>
@@ -71,17 +64,17 @@ export default function ProviderSearch({ onClaim, onNew }) {
                 <div className="text-xs text-muted-foreground">{PROVIDER_TYPES[loc.provider_type] || loc.provider_type}</div>
                 <div className="font-semibold flex items-center gap-1.5">
                   {loc.name}
-                  {loc.is_verified && <BadgeCheck className="w-4 h-4 text-primary" />}
+                  {loc.status_label === "Verificat de Vezunde" && <BadgeCheck className="w-4 h-4 text-primary" />}
                 </div>
-                {loc.organization_id && orgs[loc.organization_id] && (
-                  <div className="text-xs text-muted-foreground">{orgs[loc.organization_id]}</div>
+                {loc.organization_name && (
+                  <div className="text-xs text-muted-foreground">{loc.organization_name}</div>
                 )}
                 <div className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5" />
                   {loc.city}{loc.address ? `, ${loc.address}` : ""}
                 </div>
-                {loc.verification_state && loc.verification_state !== "unclaimed" && (
-                  <div className="text-xs mt-1 text-muted-foreground">{VERIFICATION_STATE_LABELS[loc.verification_state]}</div>
+                {loc.status_label && (
+                  <div className="text-xs mt-1 text-muted-foreground">{loc.status_label}</div>
                 )}
               </div>
               <button
