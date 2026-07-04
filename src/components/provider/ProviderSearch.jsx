@@ -1,43 +1,66 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
-import { Search, BadgeCheck, MapPin } from "lucide-react";
+import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Search, BadgeCheck, MapPin, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
 import SimilarLocationCard from "@/components/provider/SimilarLocationCard";
 
 const GooglePlacesResults = lazy(() => import("@/components/provider/GooglePlacesResults"));
 
-const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const PENDING_KEY = "pending_claim_location";
 
-// Module 3E.2: onboarding search reads ONLY the whitelist backend endpoint —
-// never ProviderLocation / ProviderOrganization entities directly.
+// Module 3E.2.1: unauthenticated specialists can SEARCH via the public whitelist
+// lookup; login is required only when they choose to claim a location.
 export default function ProviderSearch({ onClaim, onNew }) {
   const [query, setQuery] = useState("");
-  const [locations, setLocations] = useState([]);
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [googleMode, setGoogleMode] = useState(false);
   const [similar, setSimilar] = useState(null);
+  const reqRef = useRef(0);
 
+  // After login, resume a claim started before authentication.
   useEffect(() => {
-    base44.functions.invoke("getClaimableProviderLocations", {})
-      .then((res) => setLocations(res.data?.locations || []))
-      .catch(() => setLocations([]));
+    const raw = sessionStorage.getItem(PENDING_KEY);
+    if (!raw) return;
+    base44.auth.isAuthenticated().then((ok) => {
+      if (!ok) return;
+      sessionStorage.removeItem(PENDING_KEY);
+      try { onClaim(JSON.parse(raw)); } catch (_e) { /* ignore corrupt state */ }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const results = useMemo(() => {
-    const q = norm(query.trim());
-    if (q.length < 2) return [];
-    return locations
-      .filter((l) => [l.name, l.city, l.address, l.organization_name].some((f) => norm(f).includes(q)))
-      .slice(0, 8);
-  }, [query, locations]);
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) { setResults([]); return; }
+    const reqId = ++reqRef.current;
+    const t = setTimeout(async () => {
+      setLoading(true);
+      const res = await base44.functions
+        .invoke("getClaimableProviderLocations", { q })
+        .catch(() => ({ data: {} }));
+      if (reqId !== reqRef.current) return;
+      setLoading(false);
+      setResults(res.data?.locations || []);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const handleClaim = async (loc) => {
+    const ok = await base44.auth.isAuthenticated();
+    if (ok) { onClaim(loc); return; }
+    sessionStorage.setItem(PENDING_KEY, JSON.stringify(loc));
+    base44.auth.redirectToLogin(window.location.href);
+  };
 
   // Google fallback only when Vezunde search has 0 results and query >= 3 chars.
-  const showGoogleTrigger = query.trim().length >= 3 && results.length === 0;
+  const showGoogleTrigger = query.trim().length >= 3 && !loading && results.length === 0;
 
   if (similar) {
     return (
       <SimilarLocationCard
         location={similar.location}
-        onClaim={() => onClaim(similar.location)}
+        onClaim={() => handleClaim(similar.location)}
         onContinue={() => onNew(similar.draft)}
         onBack={() => setSimilar(null)}
       />
@@ -54,6 +77,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
           placeholder="Cauta dupa nume, organizatie, oras sau adresa"
           className="w-full rounded-xl border border-border bg-card pl-11 pr-4 py-3.5 text-sm outline-none focus:border-foreground/50 transition-colors"
         />
+        {loading && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
       </div>
 
       <div className="mt-4 space-y-3">
@@ -79,7 +103,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
               </div>
               <button
                 type="button"
-                onClick={() => onClaim(loc)}
+                onClick={() => handleClaim(loc)}
                 className="shrink-0 px-4 py-2 rounded-full text-xs font-semibold text-white transition-colors"
                 style={{ backgroundColor: "#171717" }}
               >
@@ -88,7 +112,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
             </div>
           </div>
         ))}
-        {query.trim().length >= 2 && results.length === 0 && !googleMode && (
+        {query.trim().length >= 2 && !loading && results.length === 0 && !googleMode && (
           <p className="text-sm text-muted-foreground">Nicio locatie gasita.</p>
         )}
       </div>
@@ -109,7 +133,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
         <Suspense fallback={<p className="mt-4 text-sm text-muted-foreground">Se incarca...</p>}>
           <GooglePlacesResults
             query={query}
-            onExisting={onClaim}
+            onExisting={handleClaim}
             onSimilar={setSimilar}
             onDraft={onNew}
           />
