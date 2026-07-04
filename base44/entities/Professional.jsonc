@@ -1,0 +1,33 @@
+{
+  "name": "Professional",
+  "type": "object",
+  "properties": {
+    "location_id": {
+      "type": "string"
+    },
+    "full_name": {
+      "type": "string"
+    },
+    "professional_type": {
+      "type": "string",
+      "enum": [
+        "medic_oftalmolog",
+        "optometrist",
+        "optician"
+      ]
+    },
+    "specializations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "bio": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "full_name",
+    "professional_type"
+  ]
+}

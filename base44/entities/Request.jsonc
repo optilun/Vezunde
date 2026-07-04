@@ -1,0 +1,67 @@
+{
+  "name": "Request",
+  "type": "object",
+  "properties": {
+    "need_category": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "service_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "city": {
+      "type": "string"
+    },
+    "for_whom": {
+      "type": "string",
+      "enum": [
+        "adult",
+        "copil"
+      ]
+    },
+    "urgency": {
+      "type": "string",
+      "enum": [
+        "normala",
+        "urgenta"
+      ]
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "contact_email": {
+      "type": "string"
+    },
+    "contact_phone": {
+      "type": "string"
+    },
+    "photo_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "provider_location_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "noua",
+        "procesata"
+      ],
+      "default": "noua"
+    }
+  },
+  "required": [
+    "need_category",
+    "city",
+    "contact_name",
+    "contact_email"
+  ]
+}

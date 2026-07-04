@@ -7,7 +7,15 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
 // Add page imports here
+import Layout from '@/components/Layout';
 import Home from './pages/Home';
+import Search from './pages/Search';
+import ProviderProfile from './pages/ProviderProfile';
+import RequestFlow from './pages/RequestFlow';
+import ForSpecialists from './pages/ForSpecialists';
+import ClaimProfile from './pages/ClaimProfile';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -36,7 +44,16 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       {/* Add your page Route elements here */}
-      <Route path="/" element={<Home />} />
+      <Route element={<Layout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/cauta" element={<Search />} />
+        <Route path="/furnizor/:id" element={<ProviderProfile />} />
+        <Route path="/cerere" element={<RequestFlow />} />
+        <Route path="/pentru-specialisti" element={<ForSpecialists />} />
+        <Route path="/revendica-profil" element={<ClaimProfile />} />
+        <Route path="/confidentialitate" element={<Privacy />} />
+        <Route path="/termeni" element={<Terms />} />
+      </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
