@@ -30,6 +30,9 @@
     "phone": {
       "type": "string"
     },
+    "website": {
+      "type": "string"
+    },
     "description": {
       "type": "string"
     },
@@ -39,11 +42,33 @@
         "type": "string"
       }
     },
+    "strengths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "team_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "opening_hours": {
+      "type": "string"
+    },
+    "saturday_hours": {
       "type": "string"
     },
     "availability_note": {
       "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "in_verificare",
+        "publicata"
+      ]
     },
     "is_verified": {
       "type": "boolean",
