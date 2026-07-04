@@ -124,7 +124,7 @@ export default function Hero() {
           transition={{ duration: 0.7, delay: 0.55, ease: "easeOut" }}
           className="mt-10 w-full max-w-xl"
         >
-          <div className="relative bg-white rounded-[1.5rem] p-4 shadow-[0_18px_55px_rgba(20,20,20,0.10)] border border-black/[0.05] focus-within:shadow-[0_22px_65px_rgba(85,70,216,0.16)] transition-shadow duration-500 text-left">
+          <div className="relative bg-white rounded-[1.5rem] p-4 shadow-[0_18px_55px_rgba(20,20,20,0.10)] border border-black/[0.05] focus-within:shadow-[0_22px_65px_rgba(20,20,20,0.16)] transition-shadow duration-500 text-left">
             {/* Animated typing placeholder overlay */}
             {animating && !text && (
               <div className="absolute left-6 top-5 right-16 pointer-events-none text-base truncate" style={{ color: "#9B968D" }}>
@@ -149,8 +149,10 @@ export default function Hero() {
               <button
                 type="submit"
                 aria-label="Trimite"
-                className="w-10 h-10 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-transform ml-auto shadow-[0_6px_18px_rgba(85,70,216,0.35)]"
-                style={{ backgroundColor: "#5546D8", color: "#FFFFFF" }}
+                className="w-10 h-10 rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all ml-auto shadow-[0_6px_18px_rgba(20,20,20,0.25)]"
+                style={{ backgroundColor: "#171717", color: "#FFFFFF" }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#2B2B2B"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#171717"; }}
               >
                 <ArrowUp className="w-5 h-5" strokeWidth={2.5} />
               </button>
@@ -171,8 +173,8 @@ export default function Hero() {
               className="text-sm underline underline-offset-4 transition-colors"
               style={{ color: "#8A857D", textDecorationColor: "#D8D4CC" }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.color = "#5546D8";
-                e.currentTarget.style.textDecorationColor = "#5546D8";
+                e.currentTarget.style.color = "#171717";
+                e.currentTarget.style.textDecorationColor = "#171717";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.color = "#8A857D";
