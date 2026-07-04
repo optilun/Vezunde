@@ -7,6 +7,7 @@ import QuestionChoice from "./QuestionChoice";
 import QuestionText from "./QuestionText";
 import QuestionLocation from "./QuestionLocation";
 import MatchResults from "./MatchResults";
+import SearchingTransition from "./SearchingTransition";
 
 const initState = (initialIntent, initialMessage) => {
   const intent = (initialIntent && INTENTS[initialIntent])
@@ -171,11 +172,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         </>
       )}
 
-      {phase === "submitting" && (
-        <div className="flex items-center gap-2.5 py-10 text-sm text-muted-foreground">
-          <Loader2 className="w-4 h-4 animate-spin" /> Cautam cele mai potrivite optiuni pentru tine...
-        </div>
-      )}
+      {phase === "submitting" && <SearchingTransition />}
 
       {phase === "results" && <MatchResults results={results} />}
 
