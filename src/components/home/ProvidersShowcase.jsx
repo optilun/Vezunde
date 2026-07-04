@@ -16,9 +16,9 @@ export default function ProvidersShowcase() {
     <section className="max-w-6xl mx-auto px-5 mt-32 sm:mt-44">
       <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="flex flex-wrap items-end justify-between gap-4">
         <h2 className="font-heading text-3xl sm:text-5xl font-extrabold tracking-[-0.03em] leading-[1.05]">
-          Locuri unde poti
+          Locuri unde poti merge
           <br />
-          merge chiar azi.
+          <span className="font-display italic font-medium text-primary">chiar azi.</span>
         </h2>
         <Link to="/cauta" className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:gap-2.5 transition-all">
           Exploreaza toti furnizorii <ArrowUpRight className="w-4 h-4" />

@@ -1,5 +1,6 @@
 import React from "react";
 import Hero from "@/components/home/Hero";
+import MarqueeStrip from "@/components/home/MarqueeStrip";
 import SituationExplainer from "@/components/home/SituationExplainer";
 import ServicesEditorial from "@/components/home/ServicesEditorial";
 import ProvidersShowcase from "@/components/home/ProvidersShowcase";
@@ -9,6 +10,7 @@ export default function Home() {
   return (
     <div className="pb-16 overflow-x-clip">
       <Hero />
+      <MarqueeStrip />
       <SituationExplainer />
       <ServicesEditorial />
       <ProvidersShowcase />

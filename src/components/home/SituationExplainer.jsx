@@ -51,7 +51,7 @@ export default function SituationExplainer() {
         <h2 className="font-heading text-3xl sm:text-5xl font-extrabold tracking-[-0.03em] max-w-2xl leading-[1.05]">
           Nu stii la cine sa mergi?
           <br />
-          <span className="text-muted-foreground/60">Nu trebuie sa stii.</span>
+          <span className="font-display italic font-medium text-muted-foreground/60">Nu trebuie sa stii.</span>
         </h2>
       </motion.div>
 

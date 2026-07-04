@@ -43,11 +43,16 @@ export default function Hero() {
       <div className="max-w-5xl mx-auto px-5 pt-20 sm:pt-32">
         <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: "easeOut" }}>
           <p className="text-sm font-semibold tracking-wide text-primary uppercase">Optica, fara ghicit</p>
-          <h1 className="mt-5 font-heading font-extrabold tracking-[-0.035em] leading-[0.98] text-[3rem] sm:text-[5.5rem] max-w-4xl">
+          <motion.h1
+            initial={{ filter: "blur(14px)", opacity: 0 }}
+            animate={{ filter: "blur(0px)", opacity: 1 }}
+            transition={{ duration: 1.1, ease: "easeOut" }}
+            className="mt-5 font-heading font-extrabold tracking-[-0.035em] leading-[0.98] text-[3rem] sm:text-[5.5rem] max-w-4xl"
+          >
             Spune ce ai nevoie.
             <br />
-            Vezi <span className="text-primary italic">unde</span> poti merge.
-          </h1>
+            Vezi <span className="font-display italic font-medium text-primary">unde</span> poti merge.
+          </motion.h1>
           <p className="mt-7 text-lg sm:text-xl text-muted-foreground max-w-xl leading-relaxed">
             Nu trebuie sa stii ce specialist iti trebuie. Descrie ce s-a intamplat, iar Vezunde te indruma catre locul potrivit.
           </p>
