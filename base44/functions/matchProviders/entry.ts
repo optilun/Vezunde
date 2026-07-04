@@ -102,6 +102,27 @@ function needLevelOf(key) {
   return SERVICE_NEED_LEVELS[key] || 'unknown';
 }
 
+// Module 3E.1: shared public-safe service visibility rule (mirrored in
+// getPublicProviderProfile — backend functions cannot share local imports).
+// Only these services may ever surface publicly; raw LocationService rows,
+// confirmation levels and trust metadata never leave this function.
+function isPublicSafeService(s, pcs) {
+  if (s.is_active === false) return false;
+  if (s.migration_review_required) return false;
+  if (!DIRECTORY_OK_CONF.includes(s.confirmation_level)) return false;
+  const level = (s.is_advanced_service || s.service_need_level === 'specialized_medical')
+    ? 'specialized_medical'
+    : needLevelOf(s.service_key);
+  if (level === 'specialized_medical' || level === 'unknown') {
+    return s.confirmation_level === 'vezunde_verified' && pcs === 'verified';
+  }
+  return true;
+}
+
+function toPublicService(s) {
+  return { key: s.service_key, label: SERVICE_LABELS[s.service_key] || s.service_key };
+}
+
 function requestNeedLevel(serviceKeys, intent) {
   let level = intent === 'reparatii_ochelari' ? 'technical' : 'general';
   for (const k of serviceKeys) {
@@ -220,7 +241,6 @@ Deno.serve(async (req) => {
       if (providerTypes.length > 0 && !providerTypes.includes(loc.provider_type)) continue;
 
       const locRows = svcRowMap[loc.id] || [];
-      const locServices = locRows.map((r) => r.service_key);
       const roles = roleMap[loc.id] || [];
       const locFacilities = facMap[loc.id] || [];
       const matchedRows = serviceKeys.length > 0 ? locRows.filter((r) => expandedServiceKeys.includes(r.service_key)) : locRows;
@@ -286,8 +306,13 @@ Deno.serve(async (req) => {
         bucket = 'excluded';
       }
 
+      // Module 3E.1: public display uses ONLY public-safe services — an unsafe
+      // service never surfaces just because it matched internally.
+      const pcsForDisplay = loc.profile_control_status || 'directory';
+      const safeMatchedRows = matchedRows.filter((s) => isPublicSafeService(s, pcsForDisplay));
+      const safeLocRows = locRows.filter((s) => isPublicSafeService(s, pcsForDisplay));
       let score = matched.length * 3 + specMatched.length * 2 + Math.min(relevantFacilities.length, 2);
-      const reasons = matched.slice(0, 2).map(serviceReason);
+      const reasons = safeMatchedRows.slice(0, 2).map((s) => serviceReason(s.service_key));
       if (relevantFacilities.length > 0) reasons.push(FACILITY_REASONS[relevantFacilities[0]]);
       if (specMatched.length > 0) reasons.push('Specializare potrivita');
       if (elig.pcs === 'verified') score += 2;
@@ -295,7 +320,7 @@ Deno.serve(async (req) => {
       if (availabilityLabel) { score += 1; reasons.push('Disponibilitate publicata de furnizor'); }
       if (directoryMatchType) reasons.push(directoryMatchType);
 
-      const entry = { loc, matched, matchedRows, tier, score, reasons, availabilityLabel, locServices, locSpecs, roles, locFacilities, relevantFacilities, elig, bucket, directoryMatchType };
+      const entry = { loc, matched, matchedRows, tier, score, reasons, availabilityLabel, safeLocRows, safeMatchedRows, locSpecs, roles, locFacilities, relevantFacilities, elig, bucket, directoryMatchType };
       if (bucket === 'excluded') excludedList.push(entry);
       else scored.push(entry);
     }
@@ -334,11 +359,11 @@ Deno.serve(async (req) => {
       opening_hours: r.loc.opening_hours || null,
       saturday_hours: r.loc.saturday_hours || null,
       profile_control_status: r.elig.pcs,
-      services: r.locServices,
+      public_services: r.safeLocRows.map(toPublicService),
       specializations: r.locSpecs,
       professional_types: r.roles,
       facilities: r.locFacilities,
-      matched_services: r.matched,
+      matched_public_services: r.safeMatchedRows.map(toPublicService),
       matched_facilities: r.relevantFacilities,
       availability_label: r.availabilityLabel,
       match_reasons: r.reasons,

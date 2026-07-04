@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { BadgeCheck, MapPin } from "lucide-react";
-import { SERVICES, PROVIDER_TYPES } from "@/lib/vezunde";
+import { PROVIDER_TYPES } from "@/lib/vezunde";
 
 const TIER_LABELS = {
   apropiere: "In zona apropiata",
@@ -17,7 +17,8 @@ const STATUS_BADGES = {
 };
 
 export default function MatchResultCard({ location }) {
-  const matched = (location.matched_services || []).slice(0, 3);
+  // Module 3E.1: only whitelist public-safe services from the backend response.
+  const matched = (location.matched_public_services || []).slice(0, 3);
   const status = location.profile_control_status;
 
   return (
@@ -45,7 +46,7 @@ export default function MatchResultCard({ location }) {
       {matched.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {matched.map((s) => (
-            <span key={s} className="text-xs bg-card border border-border rounded-full px-2.5 py-1">{SERVICES[s] || s}</span>
+            <span key={s.key} className="text-xs bg-card border border-border rounded-full px-2.5 py-1">{s.label}</span>
           ))}
         </div>
       )}

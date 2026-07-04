@@ -9,7 +9,10 @@ export default function ProvidersShowcase() {
   const [locations, setLocations] = useState(null);
 
   useEffect(() => {
-    base44.entities.ProviderLocation.filter({ status: "publicata", profile_control_status: "verified" }, "-updated_date", 5).then(setLocations);
+    // Modul 3E.1: doar prin functia publica whitelist, fara citire directa de entitati.
+    base44.functions.invoke("getPublicProviderShowcase", {})
+      .then((res) => setLocations(res.data?.locations || []))
+      .catch(() => setLocations([]));
   }, []);
 
   return (

@@ -25,6 +25,18 @@ const CATALOG = {
   emergency_ophthalmology: 'specialized_medical',
 };
 
+// Module 3E.1: legacy keys already stored in the directory, recognized for
+// classification only (never addable as new services). Any other key is 'unknown'
+// and requires explicit manual catalog classification before public use.
+const LEGACY_LEVELS = {
+  control_vedere_adulti: 'general', control_vedere_copii: 'general', consult_oftalmologic: 'general',
+  lentile_contact: 'general', lentile_progresive: 'general',
+  reparatii_ochelari: 'technical', reglaj_rame: 'technical', montaj_lentile: 'technical',
+  retina: 'specialized_medical', glaucom: 'specialized_medical', cataracta: 'specialized_medical',
+  chirurgie_refractiva: 'specialized_medical', managementul_miopiei: 'specialized_medical',
+};
+function classifyKey(key) { return CATALOG[key] || LEGACY_LEVELS[key] || 'unknown'; }
+
 const PROVIDER_TYPES = ['optica_medicala', 'clinica_oftalmologica', 'cabinet_oftalmologic', 'cabinet_optometric', 'laborator_optic', 'optometrist_independent', 'medic_oftalmolog_independent'];
 
 const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -35,6 +47,7 @@ function bad(msg) { return Response.json({ error: msg }, { status: 400 }); }
 // matching_allowed is NEVER automatic beyond these strict rules.
 function computeMatchingAllowed(level, needLevel, loc) {
   if (!loc || loc.active_status === 'inactiva' || loc.profile_control_status === 'suspended') return false;
+  if (needLevel === 'unknown') return false; // unclassified keys are never matchable
   if (needLevel === 'specialized_medical') {
     return level === 'vezunde_verified' && loc.profile_control_status === 'verified';
   }
@@ -178,10 +191,15 @@ Deno.serve(async (req) => {
       const loc = await svc.entities.ProviderLocation.get(s.location_id).catch(() => null);
       if (!loc) return bad('Locatia nu exista');
       const level = p.level;
-      const needLevel = CATALOG[s.service_key] || s.service_need_level || 'general';
+      // Module 3E.1: unknown keys are never defaulted to general — they require
+      // explicit catalog classification before any public listing or matching.
+      const needLevel = classifyKey(s.service_key);
       const note = String(p.note || '').trim();
 
       if (!['not_confirmed', 'publicly_listed', 'provider_confirmed', 'vezunde_verified'].includes(level)) return bad('Nivel invalid');
+      if (needLevel === 'unknown' && level !== 'not_confirmed') {
+        return bad('Serviciu neclasificat in catalog — necesita clasificare manuala inainte de publicare');
+      }
       const updates = { confirmation_level: level };
       if (level === 'publicly_listed') {
         const srcUrl = p.service_source_url || s.service_source_url;

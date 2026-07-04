@@ -51,7 +51,8 @@ export const CITIES = ["Bucuresti", "Cluj-Napoca", "Timisoara", "Iasi", "Brasov"
 export const CATEGORIES = [
   { key: "control_vedere", label: "Control vedere", services: ["control_vedere_adulti", "control_vedere_copii"] },
   { key: "consult_oftalmologic", label: "Consult oftalmologic", services: ["consult_oftalmologic"] },
-  { key: "copii_miopie", label: "Copii si miopie", services: ["control_vedere_copii", "managementul_miopiei"] },
+  // Modul 3E.1: nevoia legata de copii ramane neutra — nu implica managementul miopiei.
+  { key: "copii_miopie", label: "Control vedere copii", services: ["control_vedere_copii"] },
   { key: "lentile_ochelari", label: "Lentile si ochelari", services: ["lentile_contact", "lentile_progresive", "montaj_lentile"] },
   { key: "reparatii", label: "Reparatii ochelari", services: ["reparatii_ochelari", "reglaj_rame", "montaj_lentile"] },
   { key: "ochi_uscat", label: "Ochi uscat", services: ["ochi_uscat"] },

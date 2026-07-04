@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const QUOTA_MSG = 'Momentan nu putem cauta pe Google Maps. Poti adauga locatia manual.';
+const DENIED_MSG = 'Cautarea pe Google Maps este disponibila doar in fluxul de inscriere a specialistilor, dupa autentificare.';
 const BLOCKED_MSG = 'Cautarea pe Google Maps este temporar indisponibila. Poti adauga locatia manual.';
 // Defaults — the live values are read from the GooglePlacesConfig entity (admin-editable in the dashboard).
 const DEFAULT_DAILY_SESSION_LIMIT = 50;
@@ -67,6 +68,15 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const svc = base44.asServiceRole;
     const p = await req.json().catch(() => ({}));
+
+    // Module 3E.1: Google Places is onboarding-only. Deny unauthenticated or
+    // non-onboarding calls BEFORE any usage write or Google request.
+    const user = await base44.auth.me().catch(() => null);
+    if (!user) return Response.json({ denied: true, error: DENIED_MSG }, { status: 401 });
+    if (p.context !== 'specialist_onboarding') {
+      return Response.json({ denied: true, error: DENIED_MSG }, { status: 403 });
+    }
+
     const input = String(p.input || '').trim().slice(0, 100);
     if (input.length < 3) return Response.json({ predictions: [] });
 
@@ -81,10 +91,8 @@ Deno.serve(async (req) => {
     const blocked = await checkCircuitBreaker(svc, config, usage, month);
     if (blocked) return blocked;
 
-    // Per-actor rate limit (user id when logged in, otherwise IP).
-    const user = await base44.auth.me().catch(() => null);
-    const ip = (req.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
-    const actorId = user ? `user:${user.id}` : `ip:${ip}`;
+    // Per-authenticated-user rate limit (auth already enforced above).
+    const actorId = `user:${user.id}`;
     const allowed = await consumeActorQuota(svc, actorId, day);
     if (!allowed) return Response.json({ error: QUOTA_MSG, quota: true }, { status: 429 });
 

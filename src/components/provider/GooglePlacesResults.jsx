@@ -9,6 +9,7 @@ export default function GooglePlacesResults({ query, onExisting, onSimilar, onDr
   const [loading, setLoading] = useState(false);
   const [selecting, setSelecting] = useState(null);
   const [error, setError] = useState("");
+  const [needsAuth, setNeedsAuth] = useState(false);
   const tokenRef = useRef(crypto.randomUUID());
   const cacheRef = useRef(new Map());
   const reqRef = useRef(0);
@@ -26,10 +27,11 @@ export default function GooglePlacesResults({ query, onExisting, onSimilar, onDr
     const t = setTimeout(async () => {
       setLoading(true);
       const res = await base44.functions
-        .invoke("placesAutocomplete", { input: q, session_token: tokenRef.current })
-        .catch((e) => ({ data: { error: e.response?.data?.error || QUOTA_MSG } }));
+        .invoke("placesAutocomplete", { input: q, session_token: tokenRef.current, context: "specialist_onboarding" })
+        .catch((e) => ({ authRequired: e.response?.status === 401, data: { error: e.response?.data?.error || QUOTA_MSG } }));
       if (reqId !== reqRef.current) return; // stale response — ignore
       setLoading(false);
+      if (res.authRequired) { setNeedsAuth(true); setPredictions([]); return; }
       if (res.data?.error) { setError(res.data.error); setPredictions([]); return; }
       setError("");
       const preds = res.data?.predictions || [];
@@ -43,10 +45,11 @@ export default function GooglePlacesResults({ query, onExisting, onSimilar, onDr
     setSelecting(pred.place_id);
     setError("");
     const res = await base44.functions
-      .invoke("placesDetails", { place_id: pred.place_id, session_token: tokenRef.current })
-      .catch((e) => ({ data: { error: e.response?.data?.error || QUOTA_MSG } }));
+      .invoke("placesDetails", { place_id: pred.place_id, session_token: tokenRef.current, context: "specialist_onboarding" })
+      .catch((e) => ({ authRequired: e.response?.status === 401, data: { error: e.response?.data?.error || QUOTA_MSG } }));
     tokenRef.current = crypto.randomUUID(); // new session after a selection
     setSelecting(null);
+    if (res.authRequired) { setNeedsAuth(true); return; }
     if (res.data?.error) { setError(res.data.error); return; }
     if (res.data?.existing_location) onExisting(res.data.existing_location);
     else if (res.data?.similar_location) onSimilar({ location: res.data.similar_location, draft: res.data.draft });
@@ -89,8 +92,21 @@ export default function GooglePlacesResults({ query, onExisting, onSimilar, onDr
             )}
           </button>
         ))}
-        {!loading && predictions.length === 0 && !error && (
+        {!loading && predictions.length === 0 && !error && !needsAuth && (
           <p className="text-sm text-muted-foreground">Nicio locatie gasita pe Google Maps.</p>
+        )}
+        {needsAuth && (
+          <div className="rounded-xl border border-border bg-card p-4 text-sm">
+            <p className="text-muted-foreground">Cautarea pe Google Maps este disponibila doar dupa autentificare, in fluxul de inscriere. Poti continua si manual, fara Google.</p>
+            <button
+              type="button"
+              onClick={() => base44.auth.redirectToLogin(window.location.href)}
+              className="mt-3 px-4 py-2 rounded-full text-xs font-semibold text-white"
+              style={{ backgroundColor: "#171717" }}
+            >
+              Autentifica-te
+            </button>
+          </div>
         )}
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>

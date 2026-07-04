@@ -1,10 +1,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { MapPin, BadgeCheck, Clock, Phone } from "lucide-react";
-import { PROVIDER_TYPES, SERVICES } from "@/lib/vezunde";
+import { PROVIDER_TYPES } from "@/lib/vezunde";
 
+// Module 3E.1: cards render ONLY public_services / matched_public_services from
+// the whitelist backend response — never raw entity or legacy service data.
 export default function ProviderCard({ location, matchedServices = [] }) {
-  const shownServices = (matchedServices.length > 0 ? matchedServices : (location.services || [])).slice(0, 3);
+  const publicServices = location.public_services || [];
+  const shown = (matchedServices.length > 0 ? matchedServices : publicServices).slice(0, 3);
   return (
     <Link
       to={`/furnizor/${location.id}`}
@@ -36,14 +39,16 @@ export default function ProviderCard({ location, matchedServices = [] }) {
           <span className="inline-flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{location.phone}</span>
         )}
       </div>
-      <div className="mt-4 flex flex-wrap gap-1.5">
-        {shownServices.map((s) => (
-          <span key={s} className="text-xs bg-secondary text-secondary-foreground rounded-full px-2.5 py-1">{SERVICES[s]}</span>
-        ))}
-        {(location.services || []).length > 3 && (
-          <span className="text-xs text-muted-foreground px-1 py-1">+{location.services.length - 3} servicii</span>
-        )}
-      </div>
+      {shown.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {shown.map((s) => (
+            <span key={s.key} className="text-xs bg-secondary text-secondary-foreground rounded-full px-2.5 py-1">{s.label}</span>
+          ))}
+          {publicServices.length > 3 && (
+            <span className="text-xs text-muted-foreground px-1 py-1">+{publicServices.length - 3} servicii</span>
+          )}
+        </div>
+      )}
     </Link>
   );
 }

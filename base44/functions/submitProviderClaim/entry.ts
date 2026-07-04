@@ -22,8 +22,13 @@ Deno.serve(async (req) => {
 
     if (p.mode === 'claim') {
       if (!locationId) return Response.json({ error: 'Locatia este obligatorie' }, { status: 400 });
-      const loc = await svc.entities.ProviderLocation.get(locationId);
+      const loc = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
       if (!loc) return Response.json({ error: 'Locatia nu a fost gasita' }, { status: 404 });
+      // Module 3E.1: only active, published, non-suspended locations can be claimed.
+      // Generic error — no internal state disclosure.
+      if (loc.status !== 'publicata' || loc.active_status === 'inactiva' || (loc.profile_control_status || 'directory') === 'suspended') {
+        return Response.json({ error: 'Aceasta locatie nu poate fi revendicata momentan.' }, { status: 400 });
+      }
       organizationId = loc.organization_id || null;
       businessName = loc.name;
       // Prevent duplicate pending claims by the same user for the same location

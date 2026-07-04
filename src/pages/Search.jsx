@@ -57,7 +57,7 @@ export default function Search() {
           </div>
         )}
         {results?.map((loc) => (
-          <ProviderCard key={loc.id} location={loc} matchedServices={loc.matched_services || []} />
+          <ProviderCard key={loc.id} location={loc} matchedServices={loc.matched_public_services || []} />
         ))}
       </div>
       <p className="pb-10 text-xs text-muted-foreground">Vezunde nu ofera diagnostic medical.</p>

@@ -11,10 +11,10 @@ export default function QuestionLocation({ onAnswer }) {
 
   useEffect(() => {
     if (mode !== "city" || cities !== null) return;
-    // Orasele vin din locatiile reale publicate, nu dintr-o lista fixa.
-    base44.entities.ProviderLocation.filter({ status: "publicata" }, null, 500).then((locs) => {
-      setCities([...new Set(locs.map((l) => l.city).filter(Boolean))].sort());
-    });
+    // Modul 3E.1: orasele vin printr-o functie publica whitelist, nu prin citire directa de entitati.
+    base44.functions.invoke("getPublicLocationsForSearch", {})
+      .then((res) => setCities(res.data?.cities || []))
+      .catch(() => setCities([]));
   }, [mode, cities]);
 
   if (mode === "city") {
