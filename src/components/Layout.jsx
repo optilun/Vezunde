@@ -7,13 +7,13 @@ export default function Layout() {
       <header className="sticky top-0 z-20 bg-background/85 backdrop-blur-md border-b border-border">
         <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">V</div>
+            <div className="w-7 h-7 rounded-lg text-white flex items-center justify-center text-sm font-bold" style={{ backgroundColor: "#5546D8" }}>V</div>
             <span className="font-heading text-lg font-bold tracking-tight">vezunde</span>
           </Link>
           <nav className="flex items-center gap-1 text-sm">
             <Link to="/cauta" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">Cauta</Link>
             <Link to="/pentru-specialisti" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors hidden sm:block">Pentru specialisti</Link>
-            <Link to="/cerere" className="ml-2 px-4 py-2 rounded-full bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity">Trimite o cerere</Link>
+            <Link to="/cerere" className="ml-2 px-4 py-2 rounded-full text-white font-medium hover:opacity-90 transition-opacity" style={{ backgroundColor: "#5546D8" }}>Trimite o cerere</Link>
           </nav>
         </div>
       </header>
