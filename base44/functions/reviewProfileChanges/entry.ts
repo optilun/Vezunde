@@ -1,6 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-const STAGED_FIELDS = ['name', 'address', 'city', 'county', 'phone_public', 'public_email', 'website', 'description', 'provider_type'];
+// Module 3F.2.2: city/county are compatibility mirrors — never applied from staged
+// free text. Geography changes are applied only via a validated locality_siruta_code.
+const STAGED_FIELDS = ['name', 'address', 'phone_public', 'public_email', 'website', 'description', 'provider_type'];
 
 // Module 3E.2: known service keys (same catalog as matchProviders — backend
 // functions cannot share local imports). Any other key is 'unknown'.
@@ -43,6 +45,22 @@ Deno.serve(async (req) => {
       const fields = changes.fields || {};
       for (const k of STAGED_FIELDS) {
         if (fields[k] !== undefined) upd[k] = fields[k];
+      }
+      // Module 3F.2.2: staged locality change — all geographic mirror fields are
+      // derived ONLY from GeographicLocality. Legacy staged free-text city/county
+      // (if present in old pending payloads) are never applied.
+      if (fields.locality_siruta_code !== undefined) {
+        const code = String(fields.locality_siruta_code || '').trim();
+        const geoRows = await svc.entities.GeographicLocality.filter({ siruta_code: code, is_active: true });
+        const geo = geoRows[0];
+        if (!geo) return Response.json({ error: 'Localitatea din modificarile in asteptare nu exista sau nu este activa' }, { status: 400 });
+        upd.locality_siruta_code = geo.siruta_code;
+        upd.locality_name = geo.name;
+        upd.county_code = geo.county_code || '';
+        upd.uat_code = geo.uat_code || '';
+        upd.uat_name = geo.uat_name || '';
+        upd.city = geo.name;
+        upd.county = geo.county_name || '';
       }
       await svc.entities.ProviderLocation.update(loc.id, upd);
 

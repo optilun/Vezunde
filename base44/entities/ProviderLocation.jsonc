@@ -523,7 +523,8 @@
   "required": [
     "name",
     "provider_type",
-    "city"
+    "city",
+    "locality_siruta_code"
   ],
   "rls": {
     "write": {

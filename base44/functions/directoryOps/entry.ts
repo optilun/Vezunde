@@ -86,14 +86,24 @@ Deno.serve(async (req) => {
       const prov = p.provenance || {};
       if (!loc.name || !norm(loc.name)) return bad('Numele locatiei este obligatoriu');
       if (!PROVIDER_TYPES.includes(loc.provider_type)) return bad('Tip de furnizor invalid');
-      if (!loc.city || !norm(loc.city)) return bad('Orasul este obligatoriu');
-      if (!loc.county) return bad('Judetul este obligatoriu');
+      // Module 3F.2.2: canonical locality (SIRUTA) is MANDATORY. Free-text city/county
+      // are never accepted as geographic truth — mirrors are derived server-side below.
+      const sirutaCode = String(loc.locality_siruta_code || '').trim();
+      if (!sirutaCode) return bad('Selectarea localitatii canonice (SIRUTA) este obligatorie');
       if (!loc.address) return bad('Adresa este obligatorie');
       if (!prov.source_url) return bad('source_url este obligatoriu pentru profiluri directory');
       if (!prov.source_checked_at) return bad('source_checked_at este obligatoriu');
       if (!prov.source_type) return bad('source_type este obligatoriu');
       if (!['low', 'medium', 'high'].includes(prov.data_confidence)) return bad('data_confidence invalid');
       if (!p.organization_id && (!org.name || !norm(org.name))) return bad('Numele organizatiei este obligatoriu');
+
+      // Module 3F.2.2: load + validate the canonical locality server-side.
+      const geoRows = await svc.entities.GeographicLocality.filter({ siruta_code: sirutaCode, is_active: true });
+      const geo = geoRows[0];
+      if (!geo) return bad('Localitatea selectata nu exista sau nu este activa');
+      // Reject manually submitted city/county that conflict with canonical geography.
+      if (loc.city && norm(loc.city) !== norm(geo.name)) return bad('Orasul trimis nu corespunde localitatii canonice selectate');
+      if (loc.county && norm(loc.county) !== norm(geo.county_name || '')) return bad('Judetul trimis nu corespunde localitatii canonice selectate');
 
       // Module 3F duplicate detection: normalized org/location name, city, address,
       // website domain and public phone. Never auto-merges and never blocks —
@@ -114,7 +124,7 @@ Deno.serve(async (req) => {
         const duplicates = [];
         for (const l of allLocs) {
           const reasons = [];
-          const sameCity = norm(l.city) === norm(loc.city);
+          const sameCity = norm(l.city) === norm(geo.name);
           if (sameCity && tokens(l.name).some((t) => nameToks.includes(t))) reasons.push('nume asemanator in acelasi oras');
           if (sameCity && l.address && norm(l.address) === norm(loc.address)) reasons.push('aceeasi adresa');
           if (newDomain && domainOf(l.website) === newDomain) reasons.push('acelasi domeniu website');
@@ -138,9 +148,15 @@ Deno.serve(async (req) => {
         organization_id: organizationId,
         name: loc.name,
         provider_type: loc.provider_type,
-        city: loc.city,
-        county: loc.county,
-        locality_siruta_code: loc.locality_siruta_code || '',
+        // Canonical geography — derived ONLY from GeographicLocality:
+        locality_siruta_code: geo.siruta_code,
+        locality_name: geo.name,
+        county_code: geo.county_code || '',
+        uat_code: geo.uat_code || '',
+        uat_name: geo.uat_name || '',
+        // Compatibility mirrors ONLY — never geographic truth:
+        city: geo.name,
+        county: geo.county_name || '',
         address: loc.address,
         phone_public: loc.phone_public || '',
         public_email: loc.public_email || '',
@@ -165,7 +181,7 @@ Deno.serve(async (req) => {
         collected_by: user.email,
       });
       // No automatic services, availability or verification are created.
-      await audit(svc, user, { entity_type: 'ProviderLocation', entity_id: newLoc.id, action_type: 'create_directory_location', changed_fields: ['name', 'provider_type', 'city', 'county', 'address', 'source_url'], next: { name: loc.name, city: loc.city, source_url: prov.source_url }, note: p.note || '' });
+      await audit(svc, user, { entity_type: 'ProviderLocation', entity_id: newLoc.id, action_type: 'create_directory_location', changed_fields: ['name', 'provider_type', 'locality_siruta_code', 'city', 'county', 'address', 'source_url'], next: { name: loc.name, locality_siruta_code: geo.siruta_code, city: geo.name, source_url: prov.source_url }, note: p.note || '' });
       return Response.json({ location: newLoc, organization_id: organizationId });
     }
 

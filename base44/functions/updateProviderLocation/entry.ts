@@ -3,7 +3,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 // Owners/staff can update opening hours + availability directly.
 // Everything else is staged in pending_changes for admin review.
 const DIRECT_FIELDS = ['opening_hours', 'saturday_hours', 'availability_status'];
-const STAGED_FIELDS = ['name', 'address', 'city', 'county', 'phone_public', 'public_email', 'website', 'description', 'provider_type'];
+// Module 3F.2.2: city/county are NOT provider-editable fields. Geography changes
+// are staged ONLY as a canonical locality_siruta_code (validated below).
+const STAGED_FIELDS = ['name', 'address', 'phone_public', 'public_email', 'website', 'description', 'provider_type'];
 
 Deno.serve(async (req) => {
   try {
@@ -39,6 +41,20 @@ Deno.serve(async (req) => {
     }
 
     const staged = p.staged || {};
+    const sf = staged.fields || {};
+    // Module 3F.2.2: free-text city/county cannot be staged — a locality change
+    // must use the canonical locality selection (locality_siruta_code).
+    if (sf.city !== undefined || sf.county !== undefined) {
+      return Response.json({ error: 'Orasul si judetul nu pot fi editate direct — selecteaza localitatea din lista oficiala' }, { status: 400 });
+    }
+    let stagedSiruta = null;
+    if (sf.locality_siruta_code !== undefined) {
+      const code = String(sf.locality_siruta_code || '').trim();
+      if (!code) return Response.json({ error: 'Codul localitatii selectate lipseste' }, { status: 400 });
+      const geoRows = await svc.entities.GeographicLocality.filter({ siruta_code: code, is_active: true });
+      if (!geoRows[0]) return Response.json({ error: 'Localitatea selectata nu exista sau nu este activa' }, { status: 400 });
+      stagedSiruta = code;
+    }
     const hasStagedFields = staged.fields && Object.keys(staged.fields).length > 0;
     const hasStagedArrays = Array.isArray(staged.services) || Array.isArray(staged.specializations) || Array.isArray(staged.facilities);
     if (hasStagedFields || hasStagedArrays) {
@@ -49,6 +65,8 @@ Deno.serve(async (req) => {
         for (const k of STAGED_FIELDS) {
           if (staged.fields[k] !== undefined) fields[k] = staged.fields[k];
         }
+        // Locality change is staged ONLY as the validated canonical siruta code.
+        if (stagedSiruta) fields.locality_siruta_code = stagedSiruta;
       }
       const next = { fields };
       if (Array.isArray(staged.services)) next.services = staged.services;

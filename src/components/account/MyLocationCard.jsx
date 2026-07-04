@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { AVAILABILITY_OPTIONS, VERIFICATION_STATE_LABELS } from "@/lib/providerTaxonomy";
+import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
 
 const inputCls = "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none";
 
@@ -19,6 +20,8 @@ export default function MyLocationCard({ location, membership, onSaved }) {
     address: location.address || "",
     description: location.description || "",
   });
+  // Module 3F.2.2: locality changes only via canonical selection (null = unchanged).
+  const [newLocality, setNewLocality] = useState(null);
 
   const save = async (payload, successMsg) => {
     setSaving(true);
@@ -69,7 +72,13 @@ export default function MyLocationCard({ location, membership, onSaved }) {
               <input className={inputCls} placeholder="Telefon public" value={staged.phone_public} onChange={(e) => setStaged({ ...staged, phone_public: e.target.value })} />
               <input className={inputCls} placeholder="Adresa" value={staged.address} onChange={(e) => setStaged({ ...staged, address: e.target.value })} />
               <textarea className={inputCls} rows={3} placeholder="Descriere" value={staged.description} onChange={(e) => setStaged({ ...staged, description: e.target.value })} />
-              <button disabled={saving} onClick={() => save({ staged: { fields: staged } }, "Modificarile au fost trimise spre aprobare.")} className="px-4 py-2 rounded-full text-xs font-semibold border border-border disabled:opacity-50">
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">
+                  Localitate curenta: {location.city}{location.county ? `, ${location.county}` : ""} — schimbarea se face doar prin selectie din lista oficiala.
+                </div>
+                <LocalityAutocomplete value={newLocality} onSelect={setNewLocality} placeholder="Schimba localitatea (optional)" />
+              </div>
+              <button disabled={saving} onClick={() => save({ staged: { fields: { ...staged, ...(newLocality?.siruta_code ? { locality_siruta_code: newLocality.siruta_code } : {}) } } }, "Modificarile au fost trimise spre aprobare.")} className="px-4 py-2 rounded-full text-xs font-semibold border border-border disabled:opacity-50">
                 Trimite spre aprobare
               </button>
             </div>

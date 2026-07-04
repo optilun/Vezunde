@@ -52,7 +52,8 @@ export default function DirOpsAddLocation() {
     setSaving(false);
   };
 
-  const requiredMissing = !f.name || !f.provider_type || !f.city || !f.county || !f.address || !f.source_url || !f.source_checked_at || !f.org_name;
+  // Module 3F.2.2: the canonical locality selection (SIRUTA) is the required geographic field.
+  const requiredMissing = !f.name || !f.provider_type || !f.locality_siruta_code || !f.address || !f.source_url || !f.source_checked_at || !f.org_name;
 
   return (
     <div className="max-w-2xl">
