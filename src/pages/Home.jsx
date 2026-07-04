@@ -1,22 +1,18 @@
 import React from "react";
 import Hero from "@/components/home/Hero";
-import QuickCategories from "@/components/home/QuickCategories";
-import WhoCanHelp from "@/components/home/WhoCanHelp";
-import HowItWorks from "@/components/home/HowItWorks";
-import ServicesShowcase from "@/components/home/ServicesShowcase";
-import FeaturedProviders from "@/components/home/FeaturedProviders";
-import ClosingCta from "@/components/home/ClosingCta";
+import SituationExplainer from "@/components/home/SituationExplainer";
+import ServicesEditorial from "@/components/home/ServicesEditorial";
+import ProvidersShowcase from "@/components/home/ProvidersShowcase";
+import ProCta from "@/components/home/ProCta";
 
 export default function Home() {
   return (
-    <div className="pb-12">
+    <div className="pb-16 overflow-x-clip">
       <Hero />
-      <QuickCategories />
-      <WhoCanHelp />
-      <HowItWorks />
-      <ServicesShowcase />
-      <FeaturedProviders />
-      <ClosingCta />
+      <SituationExplainer />
+      <ServicesEditorial />
+      <ProvidersShowcase />
+      <ProCta />
     </div>
   );
 }
