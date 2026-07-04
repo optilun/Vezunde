@@ -14,6 +14,7 @@ import ProviderProfile from './pages/ProviderProfile';
 import RequestFlow from './pages/RequestFlow';
 import ForSpecialists from './pages/ForSpecialists';
 import ClaimProfile from './pages/ClaimProfile';
+import ProviderOnboarding from './pages/ProviderOnboarding';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 
@@ -51,6 +52,7 @@ const AuthenticatedApp = () => {
         <Route path="/cerere" element={<RequestFlow />} />
         <Route path="/pentru-specialisti" element={<ForSpecialists />} />
         <Route path="/revendica-profil" element={<ClaimProfile />} />
+        <Route path="/inscriere" element={<ProviderOnboarding />} />
         <Route path="/confidentialitate" element={<Privacy />} />
         <Route path="/termeni" element={<Terms />} />
       </Route>

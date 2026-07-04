@@ -31,6 +31,15 @@
         "urgenta"
       ]
     },
+    "timing": {
+      "type": "string"
+    },
+    "preferences": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "contact_name": {
       "type": "string"
     },
@@ -39,6 +48,13 @@
     },
     "contact_phone": {
       "type": "string"
+    },
+    "contact_preference": {
+      "type": "string"
+    },
+    "consent": {
+      "type": "boolean",
+      "default": false
     },
     "photo_urls": {
       "type": "array",
@@ -61,7 +77,6 @@
   "required": [
     "need_category",
     "city",
-    "contact_name",
-    "contact_email"
+    "contact_name"
   ]
 }

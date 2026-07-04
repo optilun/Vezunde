@@ -1,83 +1,157 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { detectCategory, getCategory, rankLocations } from "@/lib/vezunde";
-import StepNeed from "@/components/request/StepNeed";
-import StepDetails from "@/components/request/StepDetails";
-import StepLocation from "@/components/request/StepLocation";
-import StepContact from "@/components/request/StepContact";
-import StepConfirm from "@/components/request/StepConfirm";
+import { LEGACY_CATEGORY_MAP, INTAKE_CATEGORIES } from "@/lib/intake";
+import { analyzeIntakeText } from "@/lib/aiIntake";
+import WizardShell from "@/components/intake/WizardShell";
+import StepCategory from "@/components/intake/StepCategory";
+import StepDetails from "@/components/intake/StepDetails";
+import StepCity from "@/components/intake/StepCity";
+import StepTiming from "@/components/intake/StepTiming";
+import StepPreferences from "@/components/intake/StepPreferences";
+import StepResults from "@/components/intake/StepResults";
+import StepContact from "@/components/intake/StepContact";
+import StepDone from "@/components/intake/StepDone";
 
-const STEP_LABELS = ["Nevoia", "Detalii", "Locatia", "Contact"];
+const TITLES = {
+  category: { title: "Cu ce te putem ajuta?", subtitle: "Alege situatia care ti se potriveste." },
+  city: { title: "Unde cauti?", subtitle: "Alege orasul in care vrei sa mergi." },
+  timing: { title: "Cand ai nevoie?" },
+  preferences: { title: "Ce conteaza pentru tine?", subtitle: "Poti alege mai multe optiuni." },
+  results: { title: "Unde poti merge", subtitle: "Locuri potrivite pentru nevoia ta." },
+  contact: { title: "Trimite solicitarea", subtitle: "Furnizorul primeste nevoia ta, nu datele tale de contact." },
+  done: { title: "" },
+};
 
 export default function RequestFlow() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const q = urlParams.get("q") || "";
-  const initialCategory = urlParams.get("categorie") || detectCategory(q) || "";
+  const params = new URLSearchParams(window.location.search);
+  const initialText = params.get("q") || "";
+  const legacyCat = LEGACY_CATEGORY_MAP[params.get("categorie")] || "";
 
-  const [step, setStep] = useState(0);
+  const [data, setData] = useState({
+    category: legacyCat,
+    detailLabel: "",
+    for_whom: "",
+    services: [],
+    problemText: "",
+    photos: [],
+    city: "",
+    timing: "",
+    urgency: "normala",
+    preferences: [],
+    provider: null,
+  });
+  const [stepKey, setStepKey] = useState("category");
+  const [aiSuggestion, setAiSuggestion] = useState(null);
+  const [aiLoading, setAiLoading] = useState(!!initialText);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [matches, setMatches] = useState([]);
-  const [data, setData] = useState({
-    description: q,
-    category: initialCategory,
-    services: getCategory(initialCategory)?.services || [],
-    forWhom: "adult",
-    urgency: "normala",
-    city: "",
-    name: "",
-    email: "",
-    phone: "",
-    photos: [],
-    providerId: urlParams.get("furnizor") || "",
-  });
+
+  useEffect(() => {
+    if (!initialText) return;
+    analyzeIntakeText(initialText)
+      .then(setAiSuggestion)
+      .catch(() => {})
+      .finally(() => setAiLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const hasDetails = (cat) => cat && cat !== "nesigur";
+
+  const flow = useMemo(() => {
+    const steps = ["category"];
+    if (hasDetails(data.category)) steps.push("details");
+    steps.push("city", "timing", "preferences", "results", "contact", "done");
+    return steps;
+  }, [data.category]);
+
+  const progressSteps = flow.filter((s) => !["results", "contact", "done"].includes(s));
+  const progressIndex = progressSteps.indexOf(stepKey);
 
   const update = (patch) => setData((d) => ({ ...d, ...patch }));
 
-  const submit = async () => {
+  const goNext = (categoryOverride) => {
+    const cat = categoryOverride || data.category;
+    const steps = ["category"];
+    if (hasDetails(cat)) steps.push("details");
+    steps.push("city", "timing", "preferences", "results", "contact", "done");
+    setStepKey(steps[steps.indexOf(stepKey) + 1]);
+  };
+
+  const goBack = () => {
+    const i = flow.indexOf(stepKey);
+    if (i > 0) setStepKey(flow[i - 1]);
+  };
+
+  const handleRequest = (location) => {
+    update({ provider: location });
+    setStepKey("contact");
+  };
+
+  const handleSubmit = async (contact) => {
     setSubmitting(true);
     setError("");
     try {
+      const descParts = [initialText, data.detailLabel, data.problemText].filter(Boolean);
       await base44.entities.Request.create({
         need_category: data.category,
-        description: data.description,
+        description: descParts.join(" | "),
         service_keys: data.services,
         city: data.city,
-        for_whom: data.forWhom,
+        ...(data.for_whom ? { for_whom: data.for_whom } : {}),
         urgency: data.urgency,
-        contact_name: data.name,
-        contact_email: data.email,
-        contact_phone: data.phone,
+        timing: data.timing,
+        preferences: data.preferences,
         photo_urls: data.photos,
-        provider_location_id: data.providerId,
+        provider_location_id: data.provider?.id || "",
         status: "noua",
+        ...contact,
       });
-      const all = await base44.entities.Location.list();
-      setMatches(rankLocations(all, data.services, data.city).slice(0, 4));
-      setStep(4);
+      setStepKey("done");
     } catch (e) {
-      setError("Nu am putut trimite cererea. Incearca din nou.");
+      setError("Solicitarea nu a putut fi trimisa. Incearca din nou.");
     }
     setSubmitting(false);
   };
 
+  const detailsTitle =
+    stepKey === "details"
+      ? INTAKE_CATEGORIES.find((c) => c.key === data.category)?.label
+      : "";
+
+  const meta = stepKey === "details"
+    ? { title: require_title(data.category), subtitle: detailsTitle }
+    : TITLES[stepKey];
+
   return (
-    <div className="max-w-2xl mx-auto px-5 pt-12 pb-8">
-      {step < 4 && (
-        <div className="mb-10 flex items-center gap-2">
-          {STEP_LABELS.map((label, i) => (
-            <React.Fragment key={label}>
-              <div className={`text-xs font-medium ${i <= step ? "text-primary" : "text-muted-foreground/50"}`}>{label}</div>
-              {i < STEP_LABELS.length - 1 && <div className={`flex-1 h-px ${i < step ? "bg-primary" : "bg-border"}`} />}
-            </React.Fragment>
-          ))}
-        </div>
-      )}
-      {step === 0 && <StepNeed data={data} update={update} onNext={() => setStep(1)} />}
-      {step === 1 && <StepDetails data={data} update={update} onNext={() => setStep(2)} onBack={() => setStep(0)} />}
-      {step === 2 && <StepLocation data={data} update={update} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
-      {step === 3 && <StepContact data={data} update={update} onSubmit={submit} onBack={() => setStep(2)} submitting={submitting} error={error} />}
-      {step === 4 && <StepConfirm matches={matches} data={data} />}
+    <div className="min-h-[80vh]">
+      <WizardShell
+        step={progressIndex >= 0 ? progressIndex + 1 : undefined}
+        total={progressIndex >= 0 ? progressSteps.length : undefined}
+        title={meta.title}
+        subtitle={meta.subtitle}
+        onBack={stepKey !== "category" && stepKey !== "done" ? goBack : undefined}
+      >
+        {stepKey === "category" && (
+          <StepCategory data={data} update={update} onNext={goNext} aiSuggestion={aiSuggestion} aiLoading={aiLoading} />
+        )}
+        {stepKey === "details" && <StepDetails data={data} update={update} onNext={goNext} />}
+        {stepKey === "city" && <StepCity data={data} update={update} onNext={goNext} />}
+        {stepKey === "timing" && <StepTiming data={data} update={update} onNext={goNext} />}
+        {stepKey === "preferences" && <StepPreferences data={data} update={update} onNext={goNext} />}
+        {stepKey === "results" && <StepResults data={data} onRequest={handleRequest} />}
+        {stepKey === "contact" && <StepContact onSubmit={handleSubmit} submitting={submitting} error={error} />}
+        {stepKey === "done" && <StepDone provider={data.provider} />}
+      </WizardShell>
     </div>
   );
+}
+
+function require_title(category) {
+  const titles = {
+    control_vedere: "Este pentru tine sau pentru un copil?",
+    ochelari_lentile: "Ce cauti?",
+    reparatii: "Ce s-a intamplat?",
+    problema_ochi: "Descrie ce te deranjeaza",
+  };
+  return titles[category] || "Detalii";
 }
