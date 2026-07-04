@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { INTENTS, CATEGORY_QUESTION, detectIntentFromText } from "@/lib/intentRegistry";
+import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill } from "@/lib/intentRegistry";
 import QuestionChoice from "./QuestionChoice";
 import QuestionText from "./QuestionText";
 import QuestionLocation from "./QuestionLocation";
@@ -12,13 +12,23 @@ const initState = (initialIntent, initialMessage) => {
   const intent = (initialIntent && INTENTS[initialIntent])
     ? initialIntent
     : detectIntentFromText(initialMessage);
-  return {
-    intent,
-    answers: [],
-    serviceKeys: intent ? [...INTENTS[intent].service_keys] : [],
-    city: "",
-    scope: "",
-  };
+
+  const answers = [];
+  let serviceKeys = intent ? [...INTENTS[intent].service_keys] : [];
+
+  if (intent) {
+    const prefill = detectSubIntentPrefill(intent, initialMessage);
+    if (prefill) {
+      const question = INTENTS[intent].questions.find((q) => q.key === prefill.question_key);
+      const option = question?.options?.find((o) => o.key === prefill.option_key);
+      if (option) {
+        answers.push({ question_key: prefill.question_key, answer_value: option.key });
+        if (option.service_keys) serviceKeys = [...new Set([...serviceKeys, ...option.service_keys])];
+      }
+    }
+  }
+
+  return { intent, answers, serviceKeys, city: "", scope: "" };
 };
 
 export default function ConversationalCard({ initialMessage = "", initialIntent = null }) {

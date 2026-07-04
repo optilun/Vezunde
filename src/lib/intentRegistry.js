@@ -209,12 +209,22 @@ export const LEGACY_CATEGORY_TO_INTENT = {
 const INTENT_KEYWORDS = {
   control_copil: [
     "consultatie copil",
+    "consultatie copii",
     "control copil",
+    "control copii",
     "vedere copil",
     "copil nu vede",
     "nu vede tabla",
     "copilul nu vede",
     "control pentru copil",
+    "control pentru copii",
+    "consult pediatric",
+    "consultatie pediatrica",
+    "control oftalmologic copil",
+    "control de vedere copil",
+    "verificare vedere copil",
+    "copil are probleme cu vederea",
+    "copilul vede neclar",
   ],
   control_vedere: [
     "consultatie vedere",
@@ -261,11 +271,17 @@ const INTENT_KEYWORDS = {
   ],
 };
 
+// Cuvinte de legatura ignorate la normalizare, ca sa nu influenteze potrivirea.
+const CONNECTOR_WORDS = ["pentru", "la", "un", "o", "vreau"];
+
 function normalize(text) {
-  return text
+  let t = text
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
+  t = t.replace(/\bam nevoie de\b/g, " ");
+  const words = t.split(/\s+/).filter((w) => w && !CONNECTOR_WORDS.includes(w));
+  return words.join(" ").trim();
 }
 
 export function detectIntentFromText(text) {
@@ -274,6 +290,30 @@ export function detectIntentFromText(text) {
   for (const [intentKey, keywords] of Object.entries(INTENT_KEYWORDS)) {
     if (keywords.some((kw) => normalized.includes(normalize(kw)))) {
       return intentKey;
+    }
+  }
+  return null;
+}
+
+// Prefill deterministic pentru sub-alegeri clar identificate in text,
+// pentru a nu mai intreba o data o optiune deja exprimata explicit.
+const SUB_INTENT_PREFILL = {
+  ochelari_lentile: [
+    { question_key: "ce_cauti", option_key: "lentile_progresive", keywords: ["lentile progresive"] },
+  ],
+  investigatii: [
+    { question_key: "investigatie", option_key: "oct", keywords: ["oct"] },
+  ],
+};
+
+export function detectSubIntentPrefill(intentKey, text) {
+  if (!intentKey || !text) return null;
+  const rules = SUB_INTENT_PREFILL[intentKey];
+  if (!rules) return null;
+  const normalized = normalize(text);
+  for (const rule of rules) {
+    if (rule.keywords.some((kw) => normalized.includes(normalize(kw)))) {
+      return { question_key: rule.question_key, option_key: rule.option_key };
     }
   }
   return null;
