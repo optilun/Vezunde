@@ -302,6 +302,19 @@ Deno.serve(async (req) => {
       };
       await svc.entities.ProviderLocation.update(loc.id, locUpdates);
       await svc.entities.ProviderClaimRequest.update(claim.id, { status: 'aprobata', reviewed_at: new Date().toISOString(), review_notes: note });
+      // Provider access is granted ONLY through this explicit ownership assignment.
+      if (claim.user_id) {
+        const existing = await svc.entities.ProviderMembership.filter({ user_id: claim.user_id, location_id: loc.id, status: 'active' });
+        if (existing.length === 0) {
+          await svc.entities.ProviderMembership.create({
+            user_id: claim.user_id,
+            location_id: loc.id,
+            organization_id: loc.organization_id || claim.organization_id || '',
+            role: 'owner',
+            status: 'active',
+          });
+        }
+      }
       // Services are NOT auto-upgraded to provider_confirmed — individual review required.
       await audit(svc, user, { entity_type: 'ProviderClaimRequest', entity_id: claim.id, action_type: 'approve_claim', changed_fields: ['status', 'claim_verification_status', 'profile_control_status'], previous: { status: claim.status, profile_control_status: loc.profile_control_status }, next: locUpdates, note });
       return Response.json({ success: true });

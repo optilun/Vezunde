@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
 
     const loc = await svc.entities.ProviderLocation.get(p.location_id);
     if (!loc) return Response.json({ error: 'Locatia nu a fost gasita' }, { status: 404 });
-    if (loc.verification_state === 'suspended') {
+    if (loc.verification_state === 'suspended' || loc.profile_control_status === 'suspended') {
       return Response.json({ error: 'Profilul este suspendat si nu poate fi modificat' }, { status: 403 });
     }
 
