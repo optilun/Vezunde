@@ -8,9 +8,16 @@ import NewLocationWizard from "@/components/provider/NewLocationWizard";
 export default function AddOrClaim() {
   const [stage, setStage] = useState("search"); // search | claim | wizard | done
   const [selected, setSelected] = useState(null);
+  const [draft, setDraft] = useState(null);
 
   if (stage === "wizard") {
-    return <NewLocationWizard onDone={() => setStage("done")} onExit={() => setStage("search")} />;
+    return (
+      <NewLocationWizard
+        prefill={draft}
+        onDone={() => setStage("done")}
+        onExit={() => { setDraft(null); setStage("search"); }}
+      />
+    );
   }
 
   return (
@@ -42,7 +49,7 @@ export default function AddOrClaim() {
           <div className="mt-7">
             <ProviderSearch
               onClaim={(loc) => { setSelected(loc); setStage("claim"); }}
-              onNew={() => setStage("wizard")}
+              onNew={(d) => { setDraft(d && d.place_id ? d : null); setStage("wizard"); }}
             />
           </div>
         </>

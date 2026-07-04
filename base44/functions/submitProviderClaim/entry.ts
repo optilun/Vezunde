@@ -63,8 +63,12 @@ Deno.serve(async (req) => {
         verification_state: 'in_verification',
         active_status: 'activa',
         is_verified: false,
-        data_source: 'manual',
+        data_source: l.place_id ? 'google_place_reference' : 'manual',
+        last_confirmed_at: new Date().toISOString(),
       };
+      if (l.place_id) locData.place_id = String(l.place_id);
+      if (typeof l.lat === 'number') locData.lat = l.lat;
+      if (typeof l.lng === 'number') locData.lng = l.lng;
       if (organizationId) locData.organization_id = organizationId;
       if (availabilityConfirmed) locData.availability_updated_at = new Date().toISOString();
       const loc = await svc.entities.ProviderLocation.create(locData);

@@ -34,8 +34,26 @@ const INITIAL = {
   contact: { contact_name: "", role: "", email: "", phone: "", representation_confirmed: false },
 };
 
-export default function NewLocationWizard({ onDone, onExit }) {
-  const [data, setData] = useState(INITIAL);
+export default function NewLocationWizard({ onDone, onExit, prefill }) {
+  const [data, setData] = useState(() =>
+    prefill
+      ? {
+          ...INITIAL,
+          location: {
+            ...INITIAL.location,
+            name: prefill.name || "",
+            city: prefill.city || "",
+            county: prefill.county || "",
+            address: prefill.address || "",
+            phone_public: prefill.phone || "",
+            website: prefill.website || "",
+            place_id: prefill.place_id || "",
+            lat: typeof prefill.lat === "number" ? prefill.lat : null,
+            lng: typeof prefill.lng === "number" ? prefill.lng : null,
+          },
+        }
+      : INITIAL
+  );
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -74,6 +92,11 @@ export default function NewLocationWizard({ onDone, onExit }) {
   const { title, subtitle, Comp } = STEPS[step];
   return (
     <WizardShell step={step + 1} total={STEPS.length} title={title} subtitle={subtitle} onBack={back}>
+      {step === 0 && data.location.place_id ? (
+        <p className="mb-5 text-xs rounded-lg border border-border bg-secondary px-3 py-2.5 text-muted-foreground">
+          Date preluate de pe Google Maps. Verifica si corecteaza inainte de trimitere.
+        </p>
+      ) : null}
       <Comp data={data} update={update} next={next} onSubmit={submit} submitting={submitting} error={error} />
     </WizardShell>
   );

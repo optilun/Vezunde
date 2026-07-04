@@ -1,8 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { Search, BadgeCheck, MapPin } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
 import { VERIFICATION_STATE_LABELS } from "@/lib/providerTaxonomy";
+import SimilarLocationCard from "@/components/provider/SimilarLocationCard";
+
+const GooglePlacesResults = lazy(() => import("@/components/provider/GooglePlacesResults"));
 
 const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
@@ -10,6 +13,8 @@ export default function ProviderSearch({ onClaim, onNew }) {
   const [query, setQuery] = useState("");
   const [locations, setLocations] = useState([]);
   const [orgs, setOrgs] = useState({});
+  const [googleMode, setGoogleMode] = useState(false);
+  const [similar, setSimilar] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -31,6 +36,20 @@ export default function ProviderSearch({ onClaim, onNew }) {
       })
       .slice(0, 8);
   }, [query, locations, orgs]);
+
+  // Google fallback only when Vezunde search has 0 results and query >= 3 chars.
+  const showGoogleTrigger = query.trim().length >= 3 && results.length === 0;
+
+  if (similar) {
+    return (
+      <SimilarLocationCard
+        location={similar.location}
+        onClaim={() => onClaim(similar.location)}
+        onContinue={() => onNew(similar.draft)}
+        onBack={() => setSimilar(null)}
+      />
+    );
+  }
 
   return (
     <div className="text-left">
@@ -76,15 +95,38 @@ export default function ProviderSearch({ onClaim, onNew }) {
             </div>
           </div>
         ))}
-        {query.trim().length >= 2 && results.length === 0 && (
+        {query.trim().length >= 2 && results.length === 0 && !googleMode && (
           <p className="text-sm text-muted-foreground">Nicio locatie gasita.</p>
         )}
       </div>
 
+      {showGoogleTrigger && !googleMode && (
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => setGoogleMode(true)}
+            className="w-full px-5 py-3 rounded-xl border border-dashed border-border bg-card text-sm font-semibold hover:border-foreground/40 transition-colors"
+          >
+            Nu gasesti locatia? Cauta pe Google Maps
+          </button>
+        </div>
+      )}
+
+      {googleMode && (
+        <Suspense fallback={<p className="mt-4 text-sm text-muted-foreground">Se incarca...</p>}>
+          <GooglePlacesResults
+            query={query}
+            onExisting={onClaim}
+            onSimilar={setSimilar}
+            onDraft={onNew}
+          />
+        </Suspense>
+      )}
+
       <div className="mt-6 text-center">
         <button
           type="button"
-          onClick={onNew}
+          onClick={() => onNew()}
           className="px-6 py-3 rounded-full border border-border bg-card text-sm font-semibold hover:border-foreground/40 transition-colors"
         >
           Nu gasesc locatia

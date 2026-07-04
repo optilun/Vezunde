@@ -1,0 +1,16 @@
+{
+  "name": "PlacesApiUsage",
+  "type": "object",
+  "properties": {
+    "bucket_key": {
+      "type": "string"
+    },
+    "count": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "bucket_key"
+  ]
+}
