@@ -14,8 +14,22 @@ const EMPTY = {
   mark_active: false,
 };
 
+// Module 3G.1: the AI Copilot "Transfera in formularul Adauga locatie" action
+// only pre-fills this form — the admin must still explicitly submit it.
+function initialForm() {
+  try {
+    const raw = sessionStorage.getItem("dirops_prefill");
+    if (raw) {
+      sessionStorage.removeItem("dirops_prefill");
+      const pre = JSON.parse(raw);
+      return { ...EMPTY, ...pre };
+    }
+  } catch { /* ignore */ }
+  return EMPTY;
+}
+
 export default function DirOpsAddLocation() {
-  const [f, setF] = useState(EMPTY);
+  const [f, setF] = useState(initialForm);
   const [duplicates, setDuplicates] = useState(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);

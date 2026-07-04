@@ -1,0 +1,70 @@
+{
+  "name": "AIResearchRun",
+  "type": "object",
+  "properties": {
+    "source_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "running",
+        "completed",
+        "failed",
+        "blocked"
+      ],
+      "default": "pending"
+    },
+    "model": {
+      "type": "string"
+    },
+    "prompt_version": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "error_message": {
+      "type": "string"
+    },
+    "warnings": {
+      "type": "string"
+    },
+    "raw_output_json": {
+      "type": "string"
+    },
+    "validation_summary": {
+      "type": "string"
+    },
+    "cost_estimate": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_id"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

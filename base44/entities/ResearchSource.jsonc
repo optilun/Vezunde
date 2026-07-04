@@ -1,0 +1,81 @@
+{
+  "name": "ResearchSource",
+  "type": "object",
+  "properties": {
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "url",
+        "manual_text"
+      ]
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "source_title": {
+      "type": "string"
+    },
+    "source_domain": {
+      "type": "string"
+    },
+    "manual_text": {
+      "type": "string"
+    },
+    "fetch_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "fetched",
+        "blocked",
+        "failed",
+        "manual"
+      ],
+      "default": "pending"
+    },
+    "fetched_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "content_hash": {
+      "type": "string"
+    },
+    "extracted_text": {
+      "type": "string"
+    },
+    "extracted_text_length": {
+      "type": "number"
+    },
+    "extraction_error": {
+      "type": "string"
+    },
+    "submitted_by": {
+      "type": "string"
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_google_blocked": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_type"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

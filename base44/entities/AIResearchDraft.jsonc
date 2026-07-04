@@ -1,0 +1,87 @@
+{
+  "name": "AIResearchDraft",
+  "type": "object",
+  "properties": {
+    "research_run_id": {
+      "type": "string"
+    },
+    "source_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "in_review",
+        "ready_to_transfer",
+        "rejected",
+        "transferred"
+      ],
+      "default": "draft"
+    },
+    "organization_json": {
+      "type": "string"
+    },
+    "location_json": {
+      "type": "string"
+    },
+    "services_json": {
+      "type": "string"
+    },
+    "specializations_json": {
+      "type": "string"
+    },
+    "field_evidence_json": {
+      "type": "string"
+    },
+    "confidence_json": {
+      "type": "string"
+    },
+    "conflicts_json": {
+      "type": "string"
+    },
+    "missing_fields_json": {
+      "type": "string"
+    },
+    "warnings": {
+      "type": "string"
+    },
+    "duplicate_candidates_json": {
+      "type": "string"
+    },
+    "locality_candidates_json": {
+      "type": "string"
+    },
+    "selected_locality_siruta_code": {
+      "type": "string"
+    },
+    "review_decisions_json": {
+      "type": "string"
+    },
+    "approved_fields_json": {
+      "type": "string"
+    },
+    "transferred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "transferred_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_id"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

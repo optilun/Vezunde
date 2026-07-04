@@ -4,10 +4,12 @@ import ResearchProfile from "./research/ResearchProfile";
 import ResearchCoverage from "./research/ResearchCoverage";
 import ResearchCsvTemplate from "./research/ResearchCsvTemplate";
 import GeoImport from "./research/GeoImport";
+import AICopilot from "./research/AICopilot";
 
 // MODULE 3F - "Research director": internal, admin-only research workflow.
 const VIEWS = [
   { key: "queue", label: "Coada de research" },
+  { key: "ai", label: "AI Copilot" },
   { key: "coverage", label: "Acoperire" },
   { key: "csv", label: "Sablon CSV" },
   { key: "geo", label: "Geografie Romania" },
@@ -35,6 +37,7 @@ export default function DirResearch({ onNavigate }) {
         ))}
       </div>
       {view === "queue" && <ResearchQueue onOpen={setSelectedId} />}
+      {view === "ai" && <AICopilot onNavigate={onNavigate} />}
       {view === "coverage" && <ResearchCoverage />}
       {view === "csv" && <ResearchCsvTemplate />}
       {view === "geo" && <GeoImport />}
