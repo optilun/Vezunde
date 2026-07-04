@@ -319,11 +319,6 @@ Deno.serve(async (req) => {
     directorySorted.forEach((r, i) => { r.finalBucket = 'extended_directory'; r.bucketRank = i + 1; });
     const finalVisible = [...eligibleSorted, ...directorySorted].slice(0, limit);
 
-    const confSnapshot = (r) => r.matchedRows.reduce(
-      (best, s) => (CONF_ORDER[s.confirmation_level || 'not_confirmed'] > CONF_ORDER[best] ? (s.confirmation_level || 'not_confirmed') : best),
-      'not_confirmed'
-    );
-
     // Public field whitelist only — never internal/verification/patient data.
     const results = finalVisible.map((r) => ({
       id: r.loc.id,
@@ -355,55 +350,10 @@ Deno.serve(async (req) => {
 
     const safetyKeys = SAFETY_RULES.filter((rule) => rule.enabled).map((rule) => rule.key);
 
-    // Module 3D hardening: persist matches ONLY for a real, fresh (<=15 min),
-    // still-unmatched PatientRequest created through the public request flow.
-    // Arbitrary or replayed request IDs are ignored (results stay read-only).
-    let persistAllowed = false;
-    if (payload.request_id) {
-      const reqRec = await svc.entities.PatientRequest.get(String(payload.request_id)).catch(() => null);
-      if (reqRec && reqRec.status === 'noua' && (now - new Date(reqRec.created_date).getTime()) <= 15 * 60000) {
-        const priorMatches = await svc.entities.RequestMatch.filter({ request_id: reqRec.id }, null, 1);
-        persistAllowed = priorMatches.length === 0;
-      }
-    }
-    if (persistAllowed) {
-      const rows = finalVisible.slice(0, 10).map((r, i) => ({
-        request_id: payload.request_id,
-        location_id: r.loc.id,
-        rank: i + 1,
-        match_reasons: r.reasons,
-        expansion_tier: r.tier,
-        status: 'matched',
-        result_bucket: r.finalBucket,
-        need_level_snapshot: needLevel,
-        profile_control_status_snapshot: r.elig.pcs,
-        service_confirmation_level_snapshot: confSnapshot(r),
-        is_top3_eligible: r.bucket === 'eligible',
-        exclusion_reasons: r.elig.reasons,
-        bucket_rank: r.bucketRank,
-      }));
-      const exRows = excludedList.slice(0, 10).map((r, i) => ({
-        request_id: payload.request_id,
-        location_id: r.loc.id,
-        match_reasons: [],
-        expansion_tier: r.tier,
-        status: 'matched',
-        result_bucket: 'excluded',
-        need_level_snapshot: needLevel,
-        profile_control_status_snapshot: r.elig.pcs,
-        service_confirmation_level_snapshot: confSnapshot(r),
-        is_top3_eligible: false,
-        exclusion_reasons: r.elig.reasons,
-        bucket_rank: i + 1,
-      }));
-      const allRows = [...rows, ...exRows];
-      if (allRows.length > 0) await svc.entities.RequestMatch.bulkCreate(allRows);
-      if (safetyKeys.length > 0) {
-        await svc.entities.SafetyFlag.bulkCreate(
-          safetyKeys.map((k) => ({ request_id: payload.request_id, flag_key: k, rule_version: 'v0-disabled', shown_at: new Date().toISOString() }))
-        );
-      }
-    }
+    // Module 3D.1: matchProviders is fully READ-ONLY. It never persists RequestMatch,
+    // SafetyFlag or any other patient-related record. A request_id in the payload is
+    // ignored safely (no lookup, no error, no existence disclosure). RequestMatch will
+    // be created only by a future protected server-side request-delivery workflow.
 
     return Response.json({ results, need_level: needLevel, safety_message_keys: safetyKeys });
   } catch (error) {
