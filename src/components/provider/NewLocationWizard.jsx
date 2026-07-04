@@ -25,7 +25,7 @@ const STEPS = [
 
 const INITIAL = {
   organization: { name: "", multi_location: false },
-  location: { name: "", provider_type: "", city: "", county: "", address: "", phone_public: "", public_email: "", website: "", description: "" },
+  location: { name: "", provider_type: "", city: "", county: "", locality_siruta_code: "", county_code: "", uat_code: "", uat_name: "", address: "", phone_public: "", public_email: "", website: "", description: "" },
   services: [],
   specializations: [],
   facilities: [],

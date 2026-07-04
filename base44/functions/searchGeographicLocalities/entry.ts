@@ -6,7 +6,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 const norm = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const TYPE_PRIORITY = { municipality_county_seat: 0, municipality: 1, town: 2, sector: 2, commune: 3 };
+const TYPE_PRIORITY = { municipality_county_seat: 0, bucharest_municipality: 0, municipality: 1, town: 2, bucharest_sector: 2, commune: 3 };
 
 Deno.serve(async (req) => {
   try {
@@ -46,10 +46,12 @@ Deno.serve(async (req) => {
       candidates = candidates.filter((r) => re.test(r.normalized_name));
     }
 
-    // Dedupe same name within the same county — keep the lower SIRUTA level (UAT over component).
+    // Module 3F.2.1: dedupe ONLY true same-identity duplicates — same name within the
+    // SAME UAT (keep lower SIRUTA level: the UAT over its identically-named component).
+    // Distinct localities sharing name+county but with different UAT/SIRUTA identity are preserved.
     const byKey = new Map();
     for (const r of candidates) {
-      const key = r.normalized_name + '|' + r.county_code;
+      const key = r.normalized_name + '|' + r.county_code + '|' + (r.uat_code || r.siruta_code);
       const cur = byKey.get(key);
       if (!cur || (r.siruta_level || '9') < (cur.siruta_level || '9')) byKey.set(key, r);
     }
@@ -67,20 +69,32 @@ Deno.serve(async (req) => {
 
     const top = candidates.slice(0, 10);
     const nameCounts = {};
-    for (const r of candidates) nameCounts[r.normalized_name] = (nameCounts[r.normalized_name] || 0) + 1;
+    const nameCountyCounts = {};
+    for (const r of candidates) {
+      nameCounts[r.normalized_name] = (nameCounts[r.normalized_name] || 0) + 1;
+      const nc = r.normalized_name + '|' + r.county_code;
+      nameCountyCounts[nc] = (nameCountyCounts[nc] || 0) + 1;
+    }
 
     const results = top.map((r) => {
       let aliases = [];
       try { const a = JSON.parse(r.aliases || '[]'); if (Array.isArray(a)) aliases = a.filter((x) => typeof x === 'string'); } catch (_e) { aliases = []; }
       const showCounty = (nameCounts[r.normalized_name] || 0) > 1;
+      const ambiguousInCounty = (nameCountyCounts[r.normalized_name + '|' + r.county_code] || 0) > 1;
+      // Ambiguity labels: same name in the same county -> "Nume, UAT, Judet";
+      // same name across counties -> "Nume, Judet"; otherwise just the name.
+      let displayLabel = r.name;
+      if (ambiguousInCounty && r.uat_name && r.uat_name !== r.name) displayLabel = r.name + ', ' + r.uat_name + ', ' + r.county_name;
+      else if (showCounty) displayLabel = r.name + ', ' + r.county_name;
       return {
         siruta_code: r.siruta_code,
         name: r.name,
         locality_type: r.locality_type,
         county_code: r.county_code,
         county_name: r.county_name,
+        uat_code: r.uat_code || undefined,
         uat_name: r.uat_name && r.uat_name !== r.name ? r.uat_name : undefined,
-        display_label: showCounty ? r.name + ', ' + r.county_name : r.name,
+        display_label: displayLabel,
         aliases,
       };
     });

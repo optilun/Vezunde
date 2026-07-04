@@ -29,6 +29,18 @@
     "locality_siruta_code": {
       "type": "string"
     },
+    "locality_name": {
+      "type": "string"
+    },
+    "county_code": {
+      "type": "string"
+    },
+    "uat_code": {
+      "type": "string"
+    },
+    "uat_name": {
+      "type": "string"
+    },
     "address": {
       "type": "string"
     },

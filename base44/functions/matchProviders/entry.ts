@@ -157,13 +157,9 @@ function evaluateEligibility(loc, matchedRows, needLevel, hasServiceFilter) {
   return { eligible: false, reasons, pcs, qualifying: [] };
 }
 
-function haversineKm(lat1, lng1, lat2, lng2) {
-  const rad = Math.PI / 180;
-  const dLat = (lat2 - lat1) * rad;
-  const dLng = (lng2 - lng1) * rad;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
+// Module 3F.2.1: haversine/radius/coordinate matching REMOVED. lat/lng/place_id
+// remain on ProviderLocation only for protected onboarding compatibility and
+// never influence public matching, ranking or search.
 
 function serviceReason(key) {
   if (key === 'control_vedere_copii') return 'Potrivit pentru control vedere copii';
@@ -181,10 +177,12 @@ Deno.serve(async (req) => {
     const serviceKeys = Array.isArray(payload.service_keys) ? payload.service_keys : [];
     const providerTypes = Array.isArray(payload.provider_types) ? payload.provider_types : [];
     const requiredRoles = Array.isArray(payload.required_professional_types) ? payload.required_professional_types : [];
+    // Module 3F.2.1: locality_siruta_code is the PRIMARY geographic matching key
+    // (canonical GeographicLocality). city is kept ONLY as a temporary compatibility
+    // fallback for old requests that genuinely lack a siruta code, and as a display mirror.
+    const sirutaCode = String(payload.locality_siruta_code || '').trim();
     const city = (payload.city || '').trim();
-    const scope = payload.scope || (city ? 'city' : 'national');
-    const userLat = typeof payload.lat === 'number' ? payload.lat : null;
-    const userLng = typeof payload.lng === 'number' ? payload.lng : null;
+    const scope = payload.scope || ((sirutaCode || city) ? 'city' : 'national');
     const limit = Math.min(payload.limit || 20, 50);
     const needLevel = requestNeedLevel(serviceKeys, intent);
     // Module 3B: alias expansion is read-only and NEVER applied to specialized medical requests.
@@ -225,10 +223,6 @@ Deno.serve(async (req) => {
       facMap[f.location_id].push(f.facility_key);
     }
 
-    const cityLoc = city ? locations.find((l) => l.city === city) : null;
-    const cityCounty = cityLoc ? cityLoc.county || '' : '';
-    const refLat = userLat ?? (cityLoc && typeof cityLoc.lat === 'number' ? cityLoc.lat : null);
-    const refLng = userLng ?? (cityLoc && typeof cityLoc.lng === 'number' ? cityLoc.lng : null);
     const now = Date.now();
 
     // Ranking uses ONLY: service/specialization/facility match, provider type,
@@ -260,13 +254,19 @@ Deno.serve(async (req) => {
 
       if (requiredRoles.length > 0 && !requiredRoles.some((r) => roles.includes(r))) continue;
 
-      // Geographic expansion tier
+      // Module 3F.2.1: STRICT canonical geographic scope. No automatic county,
+      // national, nearby or coordinate-based expansion. Future expansion requires
+      // explicit patient approval via a separate request parameter.
       let tier = 'national';
-      if (city) {
-        if (loc.city === city) tier = 'oras';
-        else if (refLat !== null && refLng !== null && typeof loc.lat === 'number' && typeof loc.lng === 'number'
-          && haversineKm(refLat, refLng, loc.lat, loc.lng) <= 40) tier = 'apropiere';
-        else if (cityCounty && loc.county === cityCounty) tier = 'judet';
+      if (scope !== 'national') {
+        if (sirutaCode) {
+          // Primary key: exact canonical locality (SIRUTA). city/county are never geographic truth.
+          if ((loc.locality_siruta_code || '') !== sirutaCode) continue;
+        } else if (city) {
+          // TEMPORARY compatibility fallback ONLY for old requests without a siruta code.
+          if (loc.city !== city) continue;
+        }
+        tier = 'oras';
       }
 
       const locSpecs = specMap[loc.id] || [];
@@ -326,16 +326,9 @@ Deno.serve(async (req) => {
       else scored.push(entry);
     }
 
-    const tierOrder = { oras: 0, apropiere: 1, judet: 2, national: 3 };
-    scored.sort((a, b) => (tierOrder[a.tier] - tierOrder[b.tier]) || (b.score - a.score));
-
-    // Expansion ladder: city -> nearby -> county; nationwide only when the user
-    // chose national scope or too few local results exist.
-    let visible = scored;
-    if (city && scope !== 'national') {
-      const local = scored.filter((r) => r.tier !== 'national');
-      visible = local.length >= 3 ? local : scored;
-    }
+    // Module 3F.2.1: expansion ladder REMOVED — results are already strictly scoped above.
+    scored.sort((a, b) => b.score - a.score);
+    const visible = scored;
 
     // Bucketize: Top 3 = first 3 ELIGIBLE results only (never rank position alone).
     const eligibleSorted = visible.filter((r) => r.bucket === 'eligible');
@@ -380,7 +373,16 @@ Deno.serve(async (req) => {
     // ignored safely (no lookup, no error, no existence disclosure). RequestMatch will
     // be created only by a future protected server-side request-delivery workflow.
 
-    return Response.json({ results, need_level: needLevel, safety_message_keys: safetyKeys });
+    const body = { results, need_level: needLevel, safety_message_keys: safetyKeys };
+    // Module 3F.2.1: explicit empty-coverage state — expansion is NEVER executed
+    // automatically; it must be requested explicitly by the patient in the future.
+    if (scope !== 'national' && (sirutaCode || city) && results.length === 0) {
+      body.coverage_status = 'no_local_results';
+      body.selected_locality_siruta_code = sirutaCode || null;
+      body.can_expand_to_county = true;
+      body.can_expand_nationally = true;
+    }
+    return Response.json(body);
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

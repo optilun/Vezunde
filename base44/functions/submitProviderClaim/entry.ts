@@ -41,8 +41,20 @@ Deno.serve(async (req) => {
       await svc.entities.ProviderLocation.update(locationId, { claim_verification_status: 'pending' });
     } else if (p.mode === 'new_location') {
       const l = p.location || {};
-      if (!l.name || !l.provider_type || !l.city) {
-        return Response.json({ error: 'Nume locatie, tip furnizor si oras sunt obligatorii' }, { status: 400 });
+      if (!l.name || !l.provider_type) {
+        return Response.json({ error: 'Nume locatie si tip furnizor sunt obligatorii' }, { status: 400 });
+      }
+      // Module 3F.2.1: a new location REQUIRES a canonical GeographicLocality selection.
+      // city/county are derived server-side as compatibility mirrors ONLY. Google
+      // place_id/lat/lng never provide canonical geography and cannot bypass this.
+      const sirutaCode = String(l.locality_siruta_code || '').trim();
+      if (!sirutaCode) {
+        return Response.json({ error: 'Selectarea localitatii din lista oficiala este obligatorie' }, { status: 400 });
+      }
+      const geoRows = await svc.entities.GeographicLocality.filter({ siruta_code: sirutaCode, is_active: true });
+      const geo = geoRows[0];
+      if (!geo) {
+        return Response.json({ error: 'Localitatea selectata nu este valida' }, { status: 400 });
       }
       if (p.organization && p.organization.name) {
         const org = await svc.entities.ProviderOrganization.create({
@@ -55,8 +67,15 @@ Deno.serve(async (req) => {
       const locData = {
         name: l.name,
         provider_type: l.provider_type,
-        city: l.city,
-        county: l.county || '',
+        // Canonical geography (from GeographicLocality only):
+        locality_siruta_code: geo.siruta_code,
+        locality_name: geo.name,
+        county_code: geo.county_code || '',
+        uat_code: geo.uat_code || '',
+        uat_name: geo.uat_name || '',
+        // Compatibility mirrors ONLY — never geographic truth:
+        city: geo.name,
+        county: geo.county_name || '',
         address: l.address || '',
         phone_public: l.phone_public || '',
         public_email: l.public_email || '',
