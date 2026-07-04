@@ -29,7 +29,7 @@ const initState = (initialIntent, initialMessage) => {
     }
   }
 
-  return { intent, answers, serviceKeys, city: "", scope: "" };
+  return { intent, answers, serviceKeys, city: "", scope: "", locality: null };
 };
 
 export default function ConversationalCard({ initialMessage = "", initialIntent = null }) {
@@ -74,12 +74,13 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     setState((s) => ({ ...s, answers: [...s.answers, { question_key: question.key, answer_value: value }] }));
   };
 
-  const handleLocation = ({ scope, city }) => {
+  const handleLocation = ({ scope, city, locality }) => {
     pushHistory();
     setState((s) => ({
       ...s,
       scope,
       city: city || "",
+      locality: locality || null,
       answers: [...s.answers, { question_key: "locatie", answer_value: scope === "city" ? city : "oriunde_in_romania" }],
     }));
   };
@@ -103,6 +104,9 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
           intent: state.intent,
           service_keys: state.serviceKeys,
           city: state.city,
+          // Module 3F.2: canonical locality reference — prepared for exact SIRUTA matching later.
+          locality_siruta_code: state.locality?.siruta_code || "",
+          county: state.locality?.county_name || "",
           scope: state.scope === "national" ? "national" : "city",
           limit: 20,
         });

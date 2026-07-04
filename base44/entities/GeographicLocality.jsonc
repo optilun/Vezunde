@@ -1,0 +1,98 @@
+{
+  "name": "GeographicLocality",
+  "type": "object",
+  "properties": {
+    "siruta_code": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "official_name": {
+      "type": "string"
+    },
+    "normalized_name": {
+      "type": "string"
+    },
+    "locality_type": {
+      "type": "string"
+    },
+    "siruta_level": {
+      "type": "string"
+    },
+    "siruta_type_code": {
+      "type": "string"
+    },
+    "postal_code": {
+      "type": "string"
+    },
+    "county_code": {
+      "type": "string"
+    },
+    "county_name": {
+      "type": "string"
+    },
+    "uat_code": {
+      "type": "string"
+    },
+    "uat_name": {
+      "type": "string"
+    },
+    "parent_siruta_code": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string"
+    },
+    "region_code": {
+      "type": "string"
+    },
+    "county_sort_key": {
+      "type": "string"
+    },
+    "locality_sort_key": {
+      "type": "string"
+    },
+    "nuts_code": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "aliases": {
+      "type": "string"
+    },
+    "data_source": {
+      "type": "string"
+    },
+    "source_version": {
+      "type": "string"
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "imported_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "siruta_code",
+    "name",
+    "normalized_name",
+    "locality_type"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -26,6 +26,9 @@
     "county": {
       "type": "string"
     },
+    "locality_siruta_code": {
+      "type": "string"
+    },
     "address": {
       "type": "string"
     },

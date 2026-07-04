@@ -140,6 +140,7 @@ Deno.serve(async (req) => {
         provider_type: loc.provider_type,
         city: loc.city,
         county: loc.county,
+        locality_siruta_code: loc.locality_siruta_code || '',
         address: loc.address,
         phone_public: loc.phone_public || '',
         public_email: loc.public_email || '',

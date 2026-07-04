@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES_3C, PCS_LABELS } from "@/lib/directoryOpsCatalog";
+import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
 
 const input = "w-full border border-input rounded-md px-3 py-2 text-sm bg-card";
 const label = "block text-xs font-semibold text-muted-foreground mt-3 mb-1";
 
 const EMPTY = {
   org_name: "", legal_name: "", org_website: "",
-  name: "", provider_type: "", city: "", county: "", address: "",
+  name: "", provider_type: "", city: "", county: "", locality_siruta_code: "", address: "",
   phone_public: "", public_email: "", website: "", description: "", opening_hours: "",
   source_url: "", source_type: "site_oficial", source_name: "", source_checked_at: "", data_confidence: "medium", source_notes: "",
   mark_active: false,
@@ -30,7 +31,8 @@ export default function DirOpsAddLocation() {
         mark_active: f.mark_active,
         organization: { name: f.org_name, legal_name: f.legal_name, website: f.org_website },
         location: {
-          name: f.name, provider_type: f.provider_type, city: f.city, county: f.county, address: f.address,
+          name: f.name, provider_type: f.provider_type, city: f.city, county: f.county,
+          locality_siruta_code: f.locality_siruta_code, address: f.address,
           phone_public: f.phone_public, public_email: f.public_email, website: f.website,
           description: f.description, opening_hours: f.opening_hours,
         },
@@ -70,9 +72,14 @@ export default function DirOpsAddLocation() {
         <option value="">Alege...</option>
         {PROVIDER_TYPES_3C.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
       </select>
+      <label className={label}>Localitate (geografie canonica) *</label>
+      <LocalityAutocomplete
+        value={f.locality_siruta_code ? { display_label: `${f.city}${f.county ? ", " + f.county : ""}` } : null}
+        onSelect={(loc) => setF({ ...f, locality_siruta_code: loc?.siruta_code || "", city: loc?.name || "", county: loc?.county_name || "" })}
+      />
       <div className="grid grid-cols-2 gap-3">
-        <div><label className={label}>Oras *</label><input className={input} value={f.city} onChange={set("city")} /></div>
-        <div><label className={label}>Judet *</label><input className={input} value={f.county} onChange={set("county")} /></div>
+        <div><label className={label}>Oras (oglinda)</label><input className={input} value={f.city} readOnly /></div>
+        <div><label className={label}>Judet (oglinda)</label><input className={input} value={f.county} readOnly /></div>
       </div>
       <label className={label}>Adresa *</label>
       <input className={input} value={f.address} onChange={set("address")} />

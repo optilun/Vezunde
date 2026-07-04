@@ -3,12 +3,14 @@ import ResearchQueue from "./research/ResearchQueue";
 import ResearchProfile from "./research/ResearchProfile";
 import ResearchCoverage from "./research/ResearchCoverage";
 import ResearchCsvTemplate from "./research/ResearchCsvTemplate";
+import GeoImport from "./research/GeoImport";
 
 // MODULE 3F - "Research director": internal, admin-only research workflow.
 const VIEWS = [
   { key: "queue", label: "Coada de research" },
   { key: "coverage", label: "Acoperire" },
   { key: "csv", label: "Sablon CSV" },
+  { key: "geo", label: "Geografie Romania" },
 ];
 
 export default function DirResearch({ onNavigate }) {
@@ -35,6 +37,7 @@ export default function DirResearch({ onNavigate }) {
       {view === "queue" && <ResearchQueue onOpen={setSelectedId} />}
       {view === "coverage" && <ResearchCoverage />}
       {view === "csv" && <ResearchCsvTemplate />}
+      {view === "geo" && <GeoImport />}
     </div>
   );
 }

@@ -15,9 +15,9 @@ export default function MatchResults({ results }) {
   if (top3.length === 0 && moreCount === 0) {
     return (
       <div>
-        <h2 className="font-heading text-xl font-bold tracking-tight">Nu am gasit inca o optiune potrivita</h2>
+        <h2 className="font-heading text-xl font-bold tracking-tight">Nu avem inca profiluri relevante in aceasta localitate.</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Nu avem inca furnizori publicati care sa acopere aceasta nevoie in zona aleasa.
+          Poti extinde cautarea in judet sau poti verifica din nou mai tarziu.
         </p>
         <Link to="/cauta" className="mt-4 inline-block text-sm font-semibold underline underline-offset-4">
           Exploreaza toti furnizorii
