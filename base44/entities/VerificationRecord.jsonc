@@ -1,0 +1,42 @@
+{
+  "name": "VerificationRecord",
+  "type": "object",
+  "properties": {
+    "location_id": {
+      "type": "string"
+    },
+    "claim_request_id": {
+      "type": "string"
+    },
+    "verified_by": {
+      "type": "string"
+    },
+    "method": {
+      "type": "string",
+      "enum": [
+        "phone",
+        "email",
+        "document"
+      ]
+    },
+    "result": {
+      "type": "string",
+      "enum": [
+        "aprobat",
+        "respins"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    },
+    "verified_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "location_id",
+    "method",
+    "result"
+  ]
+}

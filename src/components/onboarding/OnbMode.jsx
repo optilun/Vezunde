@@ -7,7 +7,7 @@ export default function OnbMode({ data, update, onNext }) {
 
   useEffect(() => {
     if (data.mode === "claim") {
-      base44.entities.Location.filter({ is_claimed: false }).then(setLocations);
+      base44.entities.ProviderLocation.list(null, 100).then(setLocations);
     }
   }, [data.mode]);
 
@@ -40,9 +40,8 @@ export default function OnbMode({ data, update, onNext }) {
                     provider_type: loc.provider_type,
                     city: loc.city,
                     address: loc.address || "",
-                    phone: loc.phone || "",
+                    phone: loc.phone_public || "",
                     opening_hours: loc.opening_hours || "",
-                    services: loc.services || [],
                   });
                   onNext("claim");
                 }}

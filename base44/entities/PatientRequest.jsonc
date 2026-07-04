@@ -1,0 +1,93 @@
+{
+  "name": "PatientRequest",
+  "type": "object",
+  "properties": {
+    "intent": {
+      "type": "string"
+    },
+    "original_message": {
+      "type": "string"
+    },
+    "service_keys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "location_scope": {
+      "type": "string",
+      "enum": [
+        "geo",
+        "city",
+        "national"
+      ],
+      "default": "city"
+    },
+    "city": {
+      "type": "string"
+    },
+    "county": {
+      "type": "string"
+    },
+    "for_whom": {
+      "type": "string",
+      "enum": [
+        "adult",
+        "copil"
+      ]
+    },
+    "urgency": {
+      "type": "string",
+      "enum": [
+        "normala",
+        "urgenta"
+      ],
+      "default": "normala"
+    },
+    "timing_key": {
+      "type": "string"
+    },
+    "preferences": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "selected_location_id": {
+      "type": "string"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "contact_email": {
+      "type": "string"
+    },
+    "contact_phone": {
+      "type": "string"
+    },
+    "contact_preference": {
+      "type": "string"
+    },
+    "consent": {
+      "type": "boolean",
+      "default": false
+    },
+    "precise_location_consent": {
+      "type": "boolean",
+      "default": false
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "noua",
+        "procesata",
+        "inchisa"
+      ],
+      "default": "noua"
+    }
+  },
+  "required": [
+    "intent",
+    "contact_name"
+  ]
+}

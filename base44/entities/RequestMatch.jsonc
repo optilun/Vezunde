@@ -1,0 +1,47 @@
+{
+  "name": "RequestMatch",
+  "type": "object",
+  "properties": {
+    "request_id": {
+      "type": "string"
+    },
+    "location_id": {
+      "type": "string"
+    },
+    "rank": {
+      "type": "number"
+    },
+    "match_reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "expansion_tier": {
+      "type": "string",
+      "enum": [
+        "oras",
+        "apropiere",
+        "judet",
+        "national"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "matched",
+        "viewed",
+        "profile_opened",
+        "called",
+        "request_started",
+        "request_sent",
+        "dismissed"
+      ],
+      "default": "matched"
+    }
+  },
+  "required": [
+    "request_id",
+    "location_id"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "name": "ProfessionalLocationAssignment",
+  "type": "object",
+  "properties": {
+    "professional_id": {
+      "type": "string"
+    },
+    "location_id": {
+      "type": "string"
+    },
+    "professional_type": {
+      "type": "string",
+      "enum": [
+        "medic_oftalmolog",
+        "optometrist",
+        "optician"
+      ]
+    },
+    "active_status": {
+      "type": "string",
+      "enum": [
+        "activ",
+        "inactiv"
+      ],
+      "default": "activ"
+    },
+    "public_status": {
+      "type": "string",
+      "enum": [
+        "public",
+        "privat"
+      ],
+      "default": "public"
+    }
+  },
+  "required": [
+    "professional_id",
+    "location_id",
+    "professional_type"
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "name": "ProviderLocation",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "provider_type": {
+      "type": "string",
+      "enum": [
+        "optica_medicala",
+        "clinica_oftalmologica",
+        "cabinet_oftalmologic",
+        "cabinet_optometric",
+        "laborator_optic"
+      ]
+    },
+    "city": {
+      "type": "string"
+    },
+    "county": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "lat": {
+      "type": "number"
+    },
+    "lng": {
+      "type": "number"
+    },
+    "place_id": {
+      "type": "string"
+    },
+    "phone_public": {
+      "type": "string"
+    },
+    "website": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "photo_url": {
+      "type": "string"
+    },
+    "opening_hours": {
+      "type": "string"
+    },
+    "saturday_hours": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "in_verificare",
+        "publicata",
+        "suspendata"
+      ],
+      "default": "draft"
+    },
+    "is_verified": {
+      "type": "boolean",
+      "default": false
+    },
+    "data_source": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "claim",
+        "public_source",
+        "google_place_reference"
+      ]
+    },
+    "last_confirmed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_verified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "availability_status": {
+      "type": "string",
+      "enum": [
+        "astazi",
+        "urmatoarele_zile",
+        "saptamana_aceasta",
+        "doar_programare",
+        "necunoscuta"
+      ],
+      "default": "necunoscuta"
+    },
+    "availability_updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "name",
+    "provider_type",
+    "city"
+  ]
+}

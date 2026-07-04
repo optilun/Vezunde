@@ -1,0 +1,29 @@
+{
+  "name": "SafetyFlag",
+  "type": "object",
+  "properties": {
+    "request_id": {
+      "type": "string"
+    },
+    "flag_key": {
+      "type": "string",
+      "enum": [
+        "urgent_care_notice",
+        "no_diagnosis_notice",
+        "repair_no_guarantee",
+        "child_under_3"
+      ]
+    },
+    "rule_version": {
+      "type": "string"
+    },
+    "shown_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "request_id",
+    "flag_key"
+  ]
+}

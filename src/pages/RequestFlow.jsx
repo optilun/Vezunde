@@ -91,20 +91,48 @@ export default function RequestFlow() {
     setSubmitting(true);
     setError("");
     try {
-      const descParts = [initialText, data.detailLabel, data.problemText].filter(Boolean);
-      await base44.entities.Request.create({
-        need_category: data.category,
-        description: descParts.join(" | "),
+      const request = await base44.entities.PatientRequest.create({
+        intent: data.category,
+        original_message: initialText,
         service_keys: data.services,
+        location_scope: "city",
         city: data.city,
         ...(data.for_whom ? { for_whom: data.for_whom } : {}),
         urgency: data.urgency,
-        timing: data.timing,
+        timing_key: data.timing,
         preferences: data.preferences,
-        photo_urls: data.photos,
-        provider_location_id: data.provider?.id || "",
+        selected_location_id: data.provider?.id || "",
         status: "noua",
         ...contact,
+      });
+      const nowIso = new Date().toISOString();
+      const answers = [
+        ["categorie", data.category],
+        ["detaliu", data.detailLabel],
+        ["descriere", data.problemText],
+        ["pentru_cine", data.for_whom],
+        ["oras", data.city],
+        ["moment", data.timing],
+        ["preferinte", data.preferences.join(", ")],
+      ]
+        .filter(([, v]) => v)
+        .map(([question_key, answer_value]) => ({
+          request_id: request.id,
+          question_key,
+          answer_value,
+          answered_at: nowIso,
+        }));
+      if (answers.length > 0) await base44.entities.IntakeAnswer.bulkCreate(answers);
+      if (data.photos.length > 0) {
+        await base44.entities.RequestAttachment.bulkCreate(
+          data.photos.map((url) => ({ request_id: request.id, file_url: url, kind: "photo" }))
+        );
+      }
+      await base44.functions.invoke("matchProviders", {
+        service_keys: data.services,
+        city: data.city,
+        request_id: request.id,
+        selected_location_id: data.provider?.id || undefined,
       });
       setStepKey("done");
     } catch (e) {

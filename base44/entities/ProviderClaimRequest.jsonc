@@ -1,0 +1,48 @@
+{
+  "name": "ProviderClaimRequest",
+  "type": "object",
+  "properties": {
+    "location_id": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "claim",
+        "new"
+      ]
+    },
+    "business_name": {
+      "type": "string"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "submitted_payload": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "in_asteptare",
+        "aprobata",
+        "respinsa"
+      ],
+      "default": "in_asteptare"
+    }
+  },
+  "required": [
+    "business_name",
+    "contact_name",
+    "email"
+  ]
+}

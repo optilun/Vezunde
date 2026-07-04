@@ -43,30 +43,59 @@ export default function ProviderOnboarding() {
     setSubmitting(true);
     setError("");
     try {
+      const nowIso = new Date().toISOString();
       let locationId = data.claimLocation?.id;
-      const strengthsText = data.strengths.length ? `Puncte forte: ${data.strengths.map((s) => SERVICES[s]).join(", ")}` : "";
-      const description = [data.description, strengthsText].filter(Boolean).join("\n");
-      if (!locationId) {
-        const loc = await base44.entities.Location.create({
-          name: data.name, provider_type: data.provider_type, city: data.city,
-          address: data.address, phone: data.phone, opening_hours: data.opening_hours,
-          description, services: data.services, is_verified: false, is_claimed: false,
-        });
+      const locationData = {
+        name: data.name, provider_type: data.provider_type, city: data.city,
+        address: data.address, phone_public: data.phone, opening_hours: data.opening_hours,
+        description: data.description, status: "in_verificare",
+        data_source: locationId ? "claim" : "manual", last_confirmed_at: nowIso,
+      };
+      if (locationId) {
+        await base44.entities.ProviderLocation.update(locationId, locationData);
+        await base44.entities.LocationService.deleteMany({ location_id: locationId });
+        await base44.entities.LocationSpecialization.deleteMany({ location_id: locationId });
+      } else {
+        const loc = await base44.entities.ProviderLocation.create({ ...locationData, is_verified: false });
         locationId = loc.id;
       }
-      if (data.team.length > 0) {
-        await base44.entities.Professional.bulkCreate(
-          data.team.map((m) => ({ ...m, location_id: locationId }))
+      if (data.services.length > 0) {
+        await base44.entities.LocationService.bulkCreate(
+          data.services.map((key) => ({ location_id: locationId, service_key: key }))
         );
       }
-      await base44.entities.ClaimRequest.create({
+      if (data.strengths.length > 0) {
+        await base44.entities.LocationSpecialization.bulkCreate(
+          data.strengths.map((key) => ({ location_id: locationId, specialization_key: key }))
+        );
+      }
+      for (const member of data.team) {
+        const profile = await base44.entities.ProfessionalProfile.create({
+          full_name: member.full_name,
+          specializations: member.specializations || [],
+          bio: member.bio || "",
+        });
+        await base44.entities.ProfessionalLocationAssignment.create({
+          professional_id: profile.id,
+          location_id: locationId,
+          professional_type: member.professional_type,
+          active_status: "activ",
+          public_status: "public",
+        });
+      }
+      await base44.entities.ProviderClaimRequest.create({
         location_id: locationId,
+        mode: data.mode === "claim" ? "claim" : "new",
         business_name: data.name,
         contact_name: contact.contact_name,
         role: contact.role,
         email: contact.email,
         phone: contact.phone,
-        message: `Onboarding ${data.mode === "claim" ? "revendicare" : "locatie noua"}. Servicii: ${data.services.map((s) => SERVICES[s]).join(", ")}. ${strengthsText}`,
+        submitted_payload: JSON.stringify({
+          services: data.services.map((s) => SERVICES[s]),
+          strengths: data.strengths.map((s) => SERVICES[s]),
+          team: data.team.map((m) => `${m.full_name} (${m.professional_type})`),
+        }),
         status: "in_asteptare",
       });
       setDone(true);

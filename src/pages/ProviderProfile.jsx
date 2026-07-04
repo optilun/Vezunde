@@ -3,26 +3,39 @@ import { Link, useParams } from "react-router-dom";
 import { MapPin, Phone, Clock, BadgeCheck, ArrowRight } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES, PROFESSIONAL_TYPES, SERVICES } from "@/lib/vezunde";
+import { getAvailabilityLabel } from "@/lib/availability";
 
 export default function ProviderProfile() {
   const { id } = useParams();
   const [location, setLocation] = useState(null);
+  const [services, setServices] = useState([]);
   const [professionals, setProfessionals] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
-      base44.entities.Location.get(id),
-      base44.entities.Professional.filter({ location_id: id }),
-    ]).then(([loc, pros]) => {
+      base44.entities.ProviderLocation.get(id),
+      base44.entities.LocationService.filter({ location_id: id }),
+      base44.entities.ProfessionalLocationAssignment.filter({ location_id: id, active_status: "activ", public_status: "public" }),
+    ]).then(async ([loc, svcs, assigns]) => {
+      const profiles = await Promise.all(
+        assigns.map((a) => base44.entities.ProfessionalProfile.get(a.professional_id).catch(() => null))
+      );
       setLocation(loc);
-      setProfessionals(pros);
+      setServices(svcs.map((s) => s.service_key));
+      setProfessionals(
+        assigns
+          .map((a, i) => (profiles[i] ? { ...profiles[i], professional_type: a.professional_type } : null))
+          .filter(Boolean)
+      );
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [id]);
 
   if (loading) return <div className="max-w-4xl mx-auto px-5 pt-20 text-sm text-muted-foreground">Se incarca...</div>;
   if (!location) return <div className="max-w-4xl mx-auto px-5 pt-20 text-sm text-muted-foreground">Furnizorul nu a fost gasit.</div>;
+
+  const availabilityLabel = getAvailabilityLabel(location);
 
   return (
     <div className="max-w-4xl mx-auto px-5 pt-12 pb-8">
@@ -42,16 +55,19 @@ export default function ProviderProfile() {
 
       <div className="mt-8 grid sm:grid-cols-3 gap-4">
         <div className="sm:col-span-2 space-y-4">
-          <div className="bg-card border border-border rounded-2xl p-6">
-            <h2 className="font-heading font-bold">Despre</h2>
-            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{location.description}</p>
-          </div>
+          {location.description && (
+            <div className="bg-card border border-border rounded-2xl p-6">
+              <h2 className="font-heading font-bold">Despre</h2>
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{location.description}</p>
+            </div>
+          )}
           <div className="bg-card border border-border rounded-2xl p-6">
             <h2 className="font-heading font-bold">Servicii</h2>
             <div className="mt-3 flex flex-wrap gap-2">
-              {(location.services || []).map((s) => (
+              {services.map((s) => (
                 <span key={s} className="text-sm bg-secondary rounded-full px-3 py-1.5">{SERVICES[s]}</span>
               ))}
+              {services.length === 0 && <p className="text-sm text-muted-foreground">Serviciile nu au fost inca publicate.</p>}
             </div>
           </div>
           {professionals.length > 0 && (
@@ -77,15 +93,15 @@ export default function ProviderProfile() {
         <div className="space-y-4">
           <div className="bg-card border border-border rounded-2xl p-6">
             <h2 className="font-heading font-bold text-sm">Contact direct</h2>
-            {location.phone ? (
-              <a href={`tel:${location.phone.replace(/\s/g, "")}`} className="mt-3 flex items-center gap-2 text-primary font-medium">
-                <Phone className="w-4 h-4" /> {location.phone}
+            {location.phone_public ? (
+              <a href={`tel:${location.phone_public.replace(/\s/g, "")}`} className="mt-3 flex items-center gap-2 text-primary font-medium">
+                <Phone className="w-4 h-4" /> {location.phone_public}
               </a>
             ) : (
               <p className="mt-3 text-sm text-muted-foreground">Telefon indisponibil.</p>
             )}
-            {location.availability_note && (
-              <p className="mt-3 text-xs text-muted-foreground">{location.availability_note}</p>
+            {availabilityLabel && (
+              <p className="mt-3 text-xs text-muted-foreground">{availabilityLabel} · publicat de furnizor</p>
             )}
           </div>
           <Link

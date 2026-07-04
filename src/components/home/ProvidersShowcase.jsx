@@ -9,7 +9,7 @@ export default function ProvidersShowcase() {
   const [locations, setLocations] = useState(null);
 
   useEffect(() => {
-    base44.entities.Location.list("-response_quality_score", 5).then(setLocations);
+    base44.entities.ProviderLocation.filter({ status: "publicata", is_verified: true }, "-updated_date", 5).then(setLocations);
   }, []);
 
   return (
@@ -47,7 +47,6 @@ export default function ProvidersShowcase() {
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {PROVIDER_TYPES[loc.provider_type]} · {loc.city}
-                  {loc.availability_note ? ` · ${loc.availability_note}` : ""}
                 </p>
               </div>
               <ArrowUpRight className="w-5 h-5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
@@ -55,7 +54,7 @@ export default function ProvidersShowcase() {
           </motion.div>
         ))}
       </div>
-      <p className="mt-6 text-xs text-muted-foreground/70">Exemple fictive, pentru demonstratie. Ordinea reflecta relevanta si calitatea profilului, nu marimea afacerii.</p>
+      <p className="mt-6 text-xs text-muted-foreground/70">Profiluri verificate. Ordinea nu reflecta niciodata marimea afacerii sau pretul.</p>
     </section>
   );
 }

@@ -1,10 +1,10 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Phone, BadgeCheck, Clock } from "lucide-react";
+import { Phone, BadgeCheck, Clock, MapPin } from "lucide-react";
 import { SERVICES, PROVIDER_TYPES } from "@/lib/vezunde";
 
-export default function ResultCard({ location, serviceKeys = [], onRequest }) {
-  const matched = (location.services || []).filter((s) => serviceKeys.includes(s));
+export default function ResultCard({ location, onRequest }) {
+  const matched = location.matched_services || [];
   const shown = (matched.length > 0 ? matched : location.services || []).slice(0, 3);
 
   return (
@@ -28,10 +28,11 @@ export default function ResultCard({ location, serviceKeys = [], onRequest }) {
       )}
 
       <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+        <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{[location.address, location.city].filter(Boolean).join(", ")}</div>
         {location.opening_hours && (
           <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />{location.opening_hours}</div>
         )}
-        {location.availability_note && <div>{location.availability_note}</div>}
+        {location.availability_label && <div>{location.availability_label} · publicat de furnizor</div>}
         {location.phone && (
           <div className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" />{location.phone}</div>
         )}
@@ -40,7 +41,7 @@ export default function ResultCard({ location, serviceKeys = [], onRequest }) {
       <div className="mt-5 flex flex-wrap gap-2">
         {location.phone && (
           <a
-            href={`tel:${location.phone}`}
+            href={`tel:${location.phone.replace(/\s/g, "")}`}
             className="px-4 py-2 rounded-full border border-border text-sm font-medium hover:border-foreground/40 transition-colors"
           >
             Suna direct

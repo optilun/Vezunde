@@ -1,0 +1,21 @@
+{
+  "name": "ProfessionalProfile",
+  "type": "object",
+  "properties": {
+    "full_name": {
+      "type": "string"
+    },
+    "specializations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "bio": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "full_name"
+  ]
+}

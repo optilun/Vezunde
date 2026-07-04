@@ -1,0 +1,19 @@
+{
+  "name": "LocationService",
+  "type": "object",
+  "properties": {
+    "location_id": {
+      "type": "string"
+    },
+    "service_key": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "location_id",
+    "service_key"
+  ]
+}

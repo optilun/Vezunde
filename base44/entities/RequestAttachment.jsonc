@@ -1,0 +1,23 @@
+{
+  "name": "RequestAttachment",
+  "type": "object",
+  "properties": {
+    "request_id": {
+      "type": "string"
+    },
+    "file_url": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "photo"
+      ],
+      "default": "photo"
+    }
+  },
+  "required": [
+    "request_id",
+    "file_url"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "IntakeAnswer",
+  "type": "object",
+  "properties": {
+    "request_id": {
+      "type": "string"
+    },
+    "question_key": {
+      "type": "string"
+    },
+    "answer_value": {
+      "type": "string"
+    },
+    "answered_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "request_id",
+    "question_key"
+  ]
+}

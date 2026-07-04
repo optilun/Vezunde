@@ -1,0 +1,16 @@
+{
+  "name": "LocationSpecialization",
+  "type": "object",
+  "properties": {
+    "location_id": {
+      "type": "string"
+    },
+    "specialization_key": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "location_id",
+    "specialization_key"
+  ]
+}

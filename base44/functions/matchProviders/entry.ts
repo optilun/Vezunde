@@ -1,0 +1,169 @@
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+
+// Safety rule registry — architecture in place, DISABLED by default.
+// Wording and trigger rules must be reviewed by a qualified ophthalmologist before enabling.
+const SAFETY_RULES = [
+  { key: 'urgent_care_notice', enabled: false },
+  { key: 'no_diagnosis_notice', enabled: false },
+  { key: 'repair_no_guarantee', enabled: false },
+  { key: 'child_under_3', enabled: false },
+];
+
+// Availability is shown/ranked ONLY when explicitly published by the provider and not stale.
+const AVAILABILITY_LABELS = {
+  astazi: 'Disponibil astazi',
+  urmatoarele_zile: 'Disponibil in urmatoarele zile',
+  saptamana_aceasta: 'Disponibil saptamana aceasta',
+  doar_programare: 'Doar cu programare',
+};
+const AVAILABILITY_STALE_DAYS = 30;
+
+Deno.serve(async (req) => {
+  try {
+    const base44 = createClientFromRequest(req);
+    const svc = base44.asServiceRole;
+    const payload = await req.json().catch(() => ({}));
+
+    const serviceKeys = Array.isArray(payload.service_keys) ? payload.service_keys : [];
+    const providerTypes = Array.isArray(payload.provider_types) ? payload.provider_types : [];
+    const requiredRoles = Array.isArray(payload.required_professional_types) ? payload.required_professional_types : [];
+    const city = (payload.city || '').trim();
+    const scope = payload.scope || (city ? 'city' : 'national');
+    const limit = Math.min(payload.limit || 20, 50);
+
+    const [locations, services, specs, assigns] = await Promise.all([
+      svc.entities.ProviderLocation.filter({ status: 'publicata' }, null, 500),
+      svc.entities.LocationService.list(null, 2000),
+      svc.entities.LocationSpecialization.list(null, 2000),
+      svc.entities.ProfessionalLocationAssignment.filter({ active_status: 'activ' }, null, 2000),
+    ]);
+
+    const svcMap = {};
+    for (const s of services) {
+      if (!svcMap[s.location_id]) svcMap[s.location_id] = [];
+      svcMap[s.location_id].push(s.service_key);
+    }
+    const specMap = {};
+    for (const s of specs) {
+      if (!specMap[s.location_id]) specMap[s.location_id] = [];
+      specMap[s.location_id].push(s.specialization_key);
+    }
+    const roleMap = {};
+    for (const a of assigns) {
+      if (!roleMap[a.location_id]) roleMap[a.location_id] = [];
+      roleMap[a.location_id].push(a.professional_type);
+    }
+
+    const cityLoc = city ? locations.find((l) => l.city === city) : null;
+    const cityCounty = cityLoc ? cityLoc.county || '' : '';
+    const now = Date.now();
+
+    // Ranking uses ONLY: service/specialization match, provider type, professional roles,
+    // geographic tier, verification, and provider-published fresh availability.
+    // Never: company/chain size, price, advertising, invented response times.
+    const scored = [];
+    for (const loc of locations) {
+      if (providerTypes.length > 0 && !providerTypes.includes(loc.provider_type)) continue;
+      const locServices = svcMap[loc.id] || [];
+      const matched = locServices.filter((k) => serviceKeys.includes(k));
+      if (serviceKeys.length > 0 && matched.length === 0) continue;
+      const roles = roleMap[loc.id] || [];
+      if (requiredRoles.length > 0 && !requiredRoles.some((r) => roles.includes(r))) continue;
+
+      let tier = 'national';
+      if (city) {
+        if (loc.city === city) tier = 'oras';
+        else if (cityCounty && loc.county === cityCounty) tier = 'judet';
+      }
+
+      const locSpecs = specMap[loc.id] || [];
+      const specMatched = locSpecs.filter((k) => serviceKeys.includes(k));
+
+      let availabilityLabel = null;
+      if (loc.availability_status && loc.availability_status !== 'necunoscuta' && loc.availability_updated_at) {
+        const ageDays = (now - new Date(loc.availability_updated_at).getTime()) / 86400000;
+        if (ageDays >= 0 && ageDays <= AVAILABILITY_STALE_DAYS) {
+          availabilityLabel = AVAILABILITY_LABELS[loc.availability_status] || null;
+        }
+      }
+
+      let score = matched.length * 3 + specMatched.length * 2;
+      const reasons = [];
+      if (matched.length > 0) reasons.push(matched.length === 1 ? '1 serviciu potrivit' : `${matched.length} servicii potrivite`);
+      if (specMatched.length > 0) reasons.push('Specializare potrivita');
+      if (loc.is_verified) { score += 2; reasons.push('Profil verificat'); }
+      if (availabilityLabel) { score += 1; reasons.push('Disponibilitate publicata de furnizor'); }
+      if (tier === 'oras') reasons.push('In orasul cautat');
+      else if (tier === 'judet') reasons.push('In acelasi judet');
+
+      scored.push({ loc, matched, tier, score, reasons, availabilityLabel, locServices, locSpecs, roles });
+    }
+
+    const tierOrder = { oras: 0, apropiere: 1, judet: 2, national: 3 };
+    scored.sort((a, b) => (tierOrder[a.tier] - tierOrder[b.tier]) || (b.score - a.score));
+
+    // Expansion ladder: same city -> county -> nationwide only if needed or explicitly requested.
+    let visible = scored;
+    if (city && scope !== 'national') {
+      const local = scored.filter((r) => r.tier !== 'national');
+      visible = local.length >= 3 ? local : scored;
+    }
+    visible = visible.slice(0, limit);
+
+    // Public field whitelist only — never internal/verification/contact data.
+    const results = visible.map((r) => ({
+      id: r.loc.id,
+      name: r.loc.name,
+      provider_type: r.loc.provider_type,
+      city: r.loc.city,
+      county: r.loc.county || null,
+      address: r.loc.address || null,
+      phone: r.loc.phone_public || null,
+      website: r.loc.website || null,
+      opening_hours: r.loc.opening_hours || null,
+      saturday_hours: r.loc.saturday_hours || null,
+      is_verified: !!r.loc.is_verified,
+      services: r.locServices,
+      specializations: r.locSpecs,
+      professional_types: r.roles,
+      matched_services: r.matched,
+      availability_label: r.availabilityLabel,
+      match_reasons: r.reasons,
+      expansion_tier: r.tier,
+    }));
+
+    const safetyKeys = SAFETY_RULES.filter((rule) => rule.enabled).map((rule) => rule.key);
+
+    // Persist RequestMatch records when a real PatientRequest exists.
+    if (payload.request_id) {
+      const rows = results.slice(0, 10).map((r, i) => ({
+        request_id: payload.request_id,
+        location_id: r.id,
+        rank: i + 1,
+        match_reasons: r.match_reasons,
+        expansion_tier: r.expansion_tier,
+        status: payload.selected_location_id === r.id ? 'request_sent' : 'matched',
+      }));
+      if (payload.selected_location_id && !rows.some((r) => r.location_id === payload.selected_location_id)) {
+        rows.push({
+          request_id: payload.request_id,
+          location_id: payload.selected_location_id,
+          rank: rows.length + 1,
+          match_reasons: ['Selectat de utilizator'],
+          expansion_tier: 'national',
+          status: 'request_sent',
+        });
+      }
+      if (rows.length > 0) await svc.entities.RequestMatch.bulkCreate(rows);
+      if (safetyKeys.length > 0) {
+        await svc.entities.SafetyFlag.bulkCreate(
+          safetyKeys.map((k) => ({ request_id: payload.request_id, flag_key: k, rule_version: 'v0-disabled', shown_at: new Date().toISOString() }))
+        );
+      }
+    }
+
+    return Response.json({ results, safety_message_keys: safetyKeys });
+  } catch (error) {
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+});

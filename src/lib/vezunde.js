@@ -65,22 +65,5 @@ export function getCategory(key) {
   return CATEGORIES.find((c) => c.key === key) || null;
 }
 
-// Relevance scoring: services matched, verified profile, response quality.
-// Never company size, chain size or price.
-export function scoreLocation(location, serviceKeys = [], city = "") {
-  if (city && location.city !== city) return -1;
-  const matched = (location.services || []).filter((s) => serviceKeys.includes(s)).length;
-  if (serviceKeys.length > 0 && matched === 0) return -1;
-  let score = matched * 3;
-  if (location.is_verified) score += 2;
-  score += (location.response_quality_score || 0) / 50;
-  return score;
-}
-
-export function rankLocations(locations, serviceKeys = [], city = "") {
-  return locations
-    .map((l) => ({ location: l, score: scoreLocation(l, serviceKeys, city) }))
-    .filter((r) => r.score >= 0)
-    .sort((a, b) => b.score - a.score)
-    .map((r) => r.location);
-}
+// Matching-ul real se face in functia backend matchProviders,
+// exclusiv pe baza serviciilor, specializarilor, echipei, locatiei si verificarii.

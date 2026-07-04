@@ -29,7 +29,7 @@ const EMPTY = {
   existing: null,
   name: "", city: "", address: "", phone: "", website: "",
   provider_type: "", services: [], strengths: [], team_types: [],
-  opening_hours: "", saturday_hours: "", availability_note: "",
+  opening_hours: "", saturday_hours: "", availability_status: "necunoscuta",
 };
 
 export default function AddOrClaim() {
@@ -41,19 +41,24 @@ export default function AddOrClaim() {
 
   const update = (patch) => setData((d) => ({ ...d, ...patch }));
 
-  const startFromLocation = (loc) => {
+  const startFromLocation = async (loc) => {
+    const [services, specs] = await Promise.all([
+      base44.entities.LocationService.filter({ location_id: loc.id }),
+      base44.entities.LocationSpecialization.filter({ location_id: loc.id }),
+    ]);
     setData({
       ...EMPTY,
       existing: loc,
       name: loc.name || "",
       city: loc.city || "",
       address: loc.address || "",
-      phone: loc.phone || "",
+      phone: loc.phone_public || "",
       website: loc.website || "",
       provider_type: loc.provider_type || "",
-      services: loc.services || [],
+      services: services.map((s) => s.service_key),
+      strengths: specs.map((s) => s.specialization_key),
       opening_hours: loc.opening_hours || "",
-      availability_note: loc.availability_note || "",
+      saturday_hours: loc.saturday_hours || "",
     });
     setStepIdx(0);
     setStage("wizard");
@@ -75,28 +80,51 @@ export default function AddOrClaim() {
     setSubmitting(true);
     setError("");
     try {
+      const nowIso = new Date().toISOString();
       const locationData = {
-        name: data.name, city: data.city, address: data.address, phone: data.phone,
-        website: data.website, provider_type: data.provider_type, services: data.services,
-        strengths: data.strengths, team_types: data.team_types,
+        name: data.name, city: data.city, address: data.address, phone_public: data.phone,
+        website: data.website, provider_type: data.provider_type,
         opening_hours: data.opening_hours, saturday_hours: data.saturday_hours,
-        availability_note: data.availability_note, status: "in_verificare",
+        availability_status: data.availability_status || "necunoscuta",
+        ...(data.availability_status && data.availability_status !== "necunoscuta"
+          ? { availability_updated_at: nowIso }
+          : {}),
+        status: "in_verificare",
+        data_source: data.existing ? "claim" : "manual",
+        last_confirmed_at: nowIso,
       };
       let locationId = data.existing?.id;
       if (locationId) {
-        await base44.entities.Location.update(locationId, locationData);
+        await base44.entities.ProviderLocation.update(locationId, locationData);
+        await base44.entities.LocationService.deleteMany({ location_id: locationId });
+        await base44.entities.LocationSpecialization.deleteMany({ location_id: locationId });
       } else {
-        const loc = await base44.entities.Location.create({ ...locationData, is_verified: false, is_claimed: false });
+        const loc = await base44.entities.ProviderLocation.create({ ...locationData, is_verified: false });
         locationId = loc.id;
       }
-      await base44.entities.ClaimRequest.create({
+      if (data.services.length > 0) {
+        await base44.entities.LocationService.bulkCreate(
+          data.services.map((key) => ({ location_id: locationId, service_key: key }))
+        );
+      }
+      if (data.strengths.length > 0) {
+        await base44.entities.LocationSpecialization.bulkCreate(
+          data.strengths.map((key) => ({ location_id: locationId, specialization_key: key }))
+        );
+      }
+      await base44.entities.ProviderClaimRequest.create({
         location_id: locationId,
+        mode: data.existing ? "claim" : "new",
         business_name: data.name,
         contact_name: contact.contact_name,
         role: contact.role,
         email: contact.email,
         phone: contact.phone,
-        message: `${data.existing ? "Revendicare" : "Locatie noua"}. Servicii: ${data.services.map((s) => SERVICES[s]).join(", ")}. Puncte forte: ${data.strengths.map((s) => SERVICES[s]).join(", ")}.`,
+        submitted_payload: JSON.stringify({
+          services: data.services.map((s) => SERVICES[s]),
+          strengths: data.strengths.map((s) => SERVICES[s]),
+          team_types: data.team_types,
+        }),
         status: "in_asteptare",
       });
       setStage("done");

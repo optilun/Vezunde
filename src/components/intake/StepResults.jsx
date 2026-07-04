@@ -2,16 +2,24 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { rankLocations } from "@/lib/vezunde";
 import ResultCard from "@/components/intake/ResultCard";
+
+const TIER_LABELS = {
+  oras: null, // shown in context, no header needed
+  apropiere: "In apropiere",
+  judet: "In acelasi judet",
+  national: "In alte judete",
+};
 
 export default function StepResults({ data, onRequest }) {
   const [results, setResults] = useState(null);
 
   useEffect(() => {
-    base44.entities.Location.list().then((locations) => {
-      setResults(rankLocations(locations, data.services, data.city).slice(0, 6));
-    });
+    base44.functions.invoke("matchProviders", {
+      service_keys: data.services,
+      city: data.city,
+      limit: 8,
+    }).then((res) => setResults(res.data.results || []));
   }, [data.services, data.city]);
 
   if (!results) {
@@ -21,6 +29,8 @@ export default function StepResults({ data, onRequest }) {
       </div>
     );
   }
+
+  let lastTier = "oras";
 
   return (
     <div>
@@ -35,13 +45,24 @@ export default function StepResults({ data, onRequest }) {
         </div>
       ) : (
         <div className="space-y-4">
-          {results.map((loc) => (
-            <ResultCard key={loc.id} location={loc} serviceKeys={data.services} onRequest={onRequest} />
-          ))}
+          {results.map((loc) => {
+            const showHeader = loc.expansion_tier !== lastTier && TIER_LABELS[loc.expansion_tier];
+            lastTier = loc.expansion_tier;
+            return (
+              <React.Fragment key={loc.id}>
+                {showHeader && (
+                  <div className="pt-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    {TIER_LABELS[loc.expansion_tier]}
+                  </div>
+                )}
+                <ResultCard location={loc} onRequest={onRequest} />
+              </React.Fragment>
+            );
+          })}
         </div>
       )}
       <p className="mt-6 text-xs text-muted-foreground">
-        Rezultate ordonate dupa potrivirea serviciilor si calitatea profilului. Vezunde nu afiseaza preturi si nu garanteaza disponibilitatea.
+        Rezultate bazate doar pe serviciile potrivite, echipa, locatie si verificarea profilului. Vezunde nu afiseaza preturi si nu garanteaza disponibilitatea.
       </p>
     </div>
   );
