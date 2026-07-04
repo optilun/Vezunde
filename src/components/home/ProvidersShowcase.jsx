@@ -9,7 +9,7 @@ export default function ProvidersShowcase() {
   const [locations, setLocations] = useState(null);
 
   useEffect(() => {
-    base44.entities.ProviderLocation.filter({ status: "publicata", is_verified: true }, "-updated_date", 5).then(setLocations);
+    base44.entities.ProviderLocation.filter({ status: "publicata", profile_control_status: "verified" }, "-updated_date", 5).then(setLocations);
   }, []);
 
   return (
@@ -43,7 +43,7 @@ export default function ProvidersShowcase() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <h3 className="font-heading text-xl sm:text-2xl font-bold tracking-tight group-hover:text-primary transition-colors">{loc.name}</h3>
-                  {loc.is_verified && <BadgeCheck className="w-4.5 h-4.5 text-primary shrink-0" />}
+                  {loc.profile_control_status === "verified" && <BadgeCheck className="w-4.5 h-4.5 text-primary shrink-0" />}
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {PROVIDER_TYPES[loc.provider_type]} · {loc.city}

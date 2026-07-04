@@ -95,25 +95,14 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     setPhase("submitting");
     (async () => {
       try {
-        const request = await base44.entities.PatientRequest.create({
-          intent: state.intent,
-          original_message: initialMessage || "",
-          service_keys: state.serviceKeys,
-          location_scope: state.scope || "national",
-          ...(state.city ? { city: state.city } : {}),
-          timing_key: state.answers.find((a) => a.question_key === "timing")?.answer_value || "",
-          status: "noua",
-          expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
-        });
-        await base44.entities.PatientRequestAnswer.bulkCreate(
-          state.answers.map((a) => ({ request_id: request.id, ...a }))
-        );
+        // Module 3E: public search is read-only. Answers stay in client state only —
+        // no PatientRequest / PatientRequestAnswer / RequestMatch / SafetyFlag records
+        // are created. A request is created only later, by explicit user action + consent.
         const res = await base44.functions.invoke("matchProviders", {
           intent: state.intent,
           service_keys: state.serviceKeys,
           city: state.city,
           scope: state.scope === "national" ? "national" : "city",
-          request_id: request.id,
           limit: 20,
         });
         setResults(res.data.results || []);

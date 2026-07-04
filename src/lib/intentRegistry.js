@@ -40,7 +40,9 @@ export const INTENTS = {
 
   control_copil: {
     label: "Control pentru copil",
-    service_keys: ["control_vedere_copii", "managementul_miopiei"],
+    // Module 3E: child vision checks route to a neutral pediatric review flow —
+    // never inferred as specialized myopia management availability.
+    service_keys: ["control_vedere_copii"],
     questions: [
       {
         key: "varsta_copil", type: "choice", title: "Ce varsta aproximativa are copilul?",

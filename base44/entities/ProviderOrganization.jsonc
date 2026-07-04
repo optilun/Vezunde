@@ -22,5 +22,12 @@
   },
   "required": [
     "name"
-  ]
+  ],
+  "rls": {
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }

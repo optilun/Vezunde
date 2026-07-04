@@ -3,79 +3,73 @@ import { Link, useParams } from "react-router-dom";
 import { MapPin, Phone, Clock, BadgeCheck, ArrowRight } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES, PROFESSIONAL_TYPES, SERVICES } from "@/lib/vezunde";
-import { getAvailabilityLabel } from "@/lib/availability";
 
+// Module 3E: public profile renders ONLY the whitelisted payload returned by
+// getPublicProviderProfile — never raw ProviderLocation / LocationService reads.
 export default function ProviderProfile() {
   const { id } = useParams();
-  const [location, setLocation] = useState(null);
-  const [services, setServices] = useState([]);
-  const [professionals, setProfessionals] = useState([]);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      base44.entities.ProviderLocation.get(id),
-      base44.entities.LocationService.filter({ location_id: id }),
-      base44.entities.ProfessionalLocationAssignment.filter({ location_id: id, active_status: "activ", public_status: "public" }),
-    ]).then(async ([loc, svcs, assigns]) => {
-      const profiles = await Promise.all(
-        assigns.map((a) => base44.entities.ProfessionalProfile.get(a.professional_id).catch(() => null))
-      );
-      setLocation(loc);
-      setServices(svcs.map((s) => s.service_key));
-      setProfessionals(
-        assigns
-          .map((a, i) => (profiles[i] ? { ...profiles[i], professional_type: a.professional_type } : null))
-          .filter(Boolean)
-      );
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    setLoading(true);
+    base44.functions
+      .invoke("getPublicProviderProfile", { location_id: id })
+      .then((res) => setProfile(res.data?.profile || null))
+      .catch(() => setProfile(null))
+      .finally(() => setLoading(false));
   }, [id]);
 
   if (loading) return <div className="max-w-4xl mx-auto px-5 pt-20 text-sm text-muted-foreground">Se incarca...</div>;
-  if (!location) return <div className="max-w-4xl mx-auto px-5 pt-20 text-sm text-muted-foreground">Furnizorul nu a fost gasit.</div>;
+  if (!profile) return <div className="max-w-4xl mx-auto px-5 pt-20 text-sm text-muted-foreground">Furnizorul nu a fost gasit.</div>;
 
-  const availabilityLabel = getAvailabilityLabel(location);
+  const status = profile.profile_control_status;
 
   return (
     <div className="max-w-4xl mx-auto px-5 pt-12 pb-8">
-      <div className="text-xs font-medium text-primary">{PROVIDER_TYPES[location.provider_type]}</div>
+      <div className="text-xs font-medium text-primary">{PROVIDER_TYPES[profile.provider_type]}</div>
       <div className="mt-1 flex flex-wrap items-center gap-3">
-        <h1 className="font-heading text-3xl sm:text-4xl font-bold tracking-tight">{location.name}</h1>
-        {location.is_verified && (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary bg-accent rounded-full px-2.5 py-1">
-            <BadgeCheck className="w-3.5 h-3.5" /> Profil verificat
+        <h1 className="font-heading text-3xl sm:text-4xl font-bold tracking-tight">{profile.name}</h1>
+        {profile.status_label && (
+          <span className={`inline-flex items-center gap-1 text-xs font-medium rounded-full px-2.5 py-1 ${status === "verified" ? "text-primary bg-accent" : "text-muted-foreground bg-secondary"}`}>
+            {status === "verified" && <BadgeCheck className="w-3.5 h-3.5" />}
+            {profile.status_label}
           </span>
         )}
       </div>
       <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5"><MapPin className="w-4 h-4" />{location.address}, {location.city}</span>
-        {location.opening_hours && <span className="inline-flex items-center gap-1.5"><Clock className="w-4 h-4" />{location.opening_hours}</span>}
+        {profile.address && (
+          <span className="inline-flex items-center gap-1.5"><MapPin className="w-4 h-4" />{profile.address}, {profile.city}</span>
+        )}
+        {!profile.address && <span className="inline-flex items-center gap-1.5"><MapPin className="w-4 h-4" />{profile.city}</span>}
+        {profile.opening_hours && <span className="inline-flex items-center gap-1.5"><Clock className="w-4 h-4" />{profile.opening_hours}</span>}
       </div>
 
       <div className="mt-8 grid sm:grid-cols-3 gap-4">
         <div className="sm:col-span-2 space-y-4">
-          {location.description && (
+          {profile.description && (
             <div className="bg-card border border-border rounded-2xl p-6">
               <h2 className="font-heading font-bold">Despre</h2>
-              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{location.description}</p>
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{profile.description}</p>
             </div>
           )}
           <div className="bg-card border border-border rounded-2xl p-6">
             <h2 className="font-heading font-bold">Servicii</h2>
             <div className="mt-3 flex flex-wrap gap-2">
-              {services.map((s) => (
-                <span key={s} className="text-sm bg-secondary rounded-full px-3 py-1.5">{SERVICES[s]}</span>
+              {profile.services.map((s) => (
+                <span key={s} className="text-sm bg-secondary rounded-full px-3 py-1.5">{SERVICES[s] || s}</span>
               ))}
-              {services.length === 0 && <p className="text-sm text-muted-foreground">Serviciile nu au fost inca publicate.</p>}
+              {profile.services.length === 0 && (
+                <p className="text-sm text-muted-foreground">Serviciile confirmate nu au fost inca publicate.</p>
+              )}
             </div>
           </div>
-          {professionals.length > 0 && (
+          {profile.team.length > 0 && (
             <div className="bg-card border border-border rounded-2xl p-6">
               <h2 className="font-heading font-bold">Echipa</h2>
               <div className="mt-4 space-y-4">
-                {professionals.map((pro) => (
-                  <div key={pro.id} className="flex gap-4">
+                {profile.team.map((pro, i) => (
+                  <div key={i} className="flex gap-4">
                     <div className="w-10 h-10 rounded-full bg-accent text-primary flex items-center justify-center font-heading font-bold shrink-0">
                       {pro.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
                     </div>
@@ -93,19 +87,19 @@ export default function ProviderProfile() {
         <div className="space-y-4">
           <div className="bg-card border border-border rounded-2xl p-6">
             <h2 className="font-heading font-bold text-sm">Contact direct</h2>
-            {location.phone_public ? (
-              <a href={`tel:${location.phone_public.replace(/\s/g, "")}`} className="mt-3 flex items-center gap-2 text-primary font-medium">
-                <Phone className="w-4 h-4" /> {location.phone_public}
+            {profile.phone_public ? (
+              <a href={`tel:${profile.phone_public.replace(/\s/g, "")}`} className="mt-3 flex items-center gap-2 text-primary font-medium">
+                <Phone className="w-4 h-4" /> {profile.phone_public}
               </a>
             ) : (
               <p className="mt-3 text-sm text-muted-foreground">Telefon indisponibil.</p>
             )}
-            {availabilityLabel && (
-              <p className="mt-3 text-xs text-muted-foreground">{availabilityLabel} · publicat de furnizor</p>
+            {profile.availability_label && (
+              <p className="mt-3 text-xs text-muted-foreground">{profile.availability_label} · publicat de furnizor</p>
             )}
           </div>
           <Link
-            to={`/cerere?furnizor=${location.id}`}
+            to={`/cerere?furnizor=${profile.id}`}
             className="flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-2xl px-6 py-4 font-medium hover:opacity-90 transition-opacity"
           >
             Trimite o cerere <ArrowRight className="w-4 h-4" />

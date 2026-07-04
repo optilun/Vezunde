@@ -97,14 +97,16 @@ const DIRECTORY_OK_CONF = ['publicly_listed', 'provider_confirmed', 'vezunde_ver
 const CONF_ORDER = { not_confirmed: 0, publicly_listed: 1, provider_confirmed: 2, vezunde_verified: 3 };
 
 function needLevelOf(key) {
-  // Unknown/uncategorized services default to general (and are never matching_allowed by data rules).
-  return SERVICE_NEED_LEVELS[key] || 'general';
+  // Module 3E: unknown/uncategorized service keys are 'unknown' — never eligible for
+  // specialized or confirmed matching; they require manual classification/review.
+  return SERVICE_NEED_LEVELS[key] || 'unknown';
 }
 
 function requestNeedLevel(serviceKeys, intent) {
   let level = intent === 'reparatii_ochelari' ? 'technical' : 'general';
   for (const k of serviceKeys) {
     const l = needLevelOf(k);
+    if (l === 'unknown') continue; // unknown keys never influence the need level
     if (NEED_ORDER[l] > NEED_ORDER[level]) level = l;
   }
   return level;
@@ -124,7 +126,7 @@ function evaluateEligibility(loc, matchedRows, needLevel, hasServiceFilter) {
     reasons.push('service_not_present');
   } else {
     const okConf = needLevel === 'specialized_medical' ? ['vezunde_verified'] : ['provider_confirmed', 'vezunde_verified'];
-    const qualifying = matchedRows.filter((s) => s.matching_allowed === true && okConf.includes(s.confirmation_level) && !s.migration_review_required);
+    const qualifying = matchedRows.filter((s) => s.matching_allowed === true && okConf.includes(s.confirmation_level) && !s.migration_review_required && needLevelOf(s.service_key) !== 'unknown');
     if (qualifying.length === 0) {
       if (!matchedRows.some((s) => s.matching_allowed === true)) reasons.push('matching_not_allowed');
       reasons.push(needLevel === 'specialized_medical' ? 'service_not_vezunde_verified' : 'service_not_confirmed');
@@ -272,7 +274,7 @@ Deno.serve(async (req) => {
         // Directory profiles require an explicit, confirmed, matching-allowed service
         // and a general-need request; claimed/verified profiles keep Module 3A behavior.
         const directoryQualifies = needLevel === 'general' && matchedRows.some(
-          (s) => s.matching_allowed === true && DIRECTORY_OK_CONF.includes(s.confirmation_level)
+          (s) => s.matching_allowed === true && DIRECTORY_OK_CONF.includes(s.confirmation_level) && needLevelOf(s.service_key) !== 'unknown'
         );
         if (elig.pcs === 'directory' && !directoryQualifies) {
           bucket = 'excluded';
@@ -331,7 +333,6 @@ Deno.serve(async (req) => {
       website: r.loc.website || null,
       opening_hours: r.loc.opening_hours || null,
       saturday_hours: r.loc.saturday_hours || null,
-      is_verified: !!r.loc.is_verified,
       profile_control_status: r.elig.pcs,
       services: r.locServices,
       specializations: r.locSpecs,

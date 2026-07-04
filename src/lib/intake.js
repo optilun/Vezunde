@@ -15,7 +15,7 @@ export const DETAILS_CONFIG = {
     title: "Este pentru tine sau pentru un copil?",
     options: [
       { label: "Pentru mine", for_whom: "adult", services: ["control_vedere_adulti"] },
-      { label: "Pentru copil", for_whom: "copil", services: ["control_vedere_copii", "managementul_miopiei"] },
+      { label: "Pentru copil", for_whom: "copil", services: ["control_vedere_copii"] },
     ],
   },
   ochelari_lentile: {

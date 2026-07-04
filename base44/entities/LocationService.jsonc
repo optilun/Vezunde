@@ -17,19 +17,7 @@
       "default": true
     },
     "notes": {
-      "type": "string",
-      "rls": {
-        "read": {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        "write": {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      }
+      "type": "string"
     },
     "confirmation_level": {
       "type": "string",
@@ -55,66 +43,18 @@
       "default": false
     },
     "service_source_url": {
-      "type": "string",
-      "rls": {
-        "read": {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        "write": {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      }
+      "type": "string"
     },
     "service_confirmed_at": {
       "type": "string",
-      "format": "date-time",
-      "rls": {
-        "read": {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        "write": {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      }
+      "format": "date-time"
     },
     "service_verified_at": {
       "type": "string",
-      "format": "date-time",
-      "rls": {
-        "read": {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        "write": {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      }
+      "format": "date-time"
     },
     "service_verified_by": {
-      "type": "string",
-      "rls": {
-        "read": {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        "write": {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      }
+      "type": "string"
     },
     "matching_allowed": {
       "type": "boolean",
@@ -122,23 +62,23 @@
     },
     "migration_review_required": {
       "type": "boolean",
-      "default": false,
-      "rls": {
-        "read": {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        "write": {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      }
+      "default": false
     }
   },
   "required": [
     "location_id",
     "service_key"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }

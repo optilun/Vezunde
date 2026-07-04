@@ -9,21 +9,34 @@ const TIER_LABELS = {
   national: "In alt oras din Romania",
 };
 
+// Module 3E public badges — profile_control_status only, never legacy is_verified.
+const STATUS_BADGES = {
+  verified: "Profil verificat de Vezunde",
+  claimed: "Profil revendicat",
+  directory: "Profil din director",
+};
+
 export default function MatchResultCard({ location }) {
   const matched = (location.matched_services || []).slice(0, 3);
+  const status = location.profile_control_status;
 
   return (
     <div className="rounded-2xl border border-border bg-secondary/40 p-5">
       <div className="text-xs text-muted-foreground">{PROVIDER_TYPES[location.provider_type]}</div>
       <h3 className="mt-1 font-heading font-bold text-lg tracking-tight flex items-center gap-1.5">
         {location.name}
-        {location.is_verified && <BadgeCheck className="w-4 h-4 text-primary shrink-0" />}
+        {status === "verified" && <BadgeCheck className="w-4 h-4 text-primary shrink-0" />}
       </h3>
-      <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+      <div className="mt-1 flex items-center flex-wrap gap-1.5 text-sm text-muted-foreground">
         <MapPin className="w-3.5 h-3.5" />
         {location.city}
+        {STATUS_BADGES[status] && (
+          <span className={`text-xs rounded-full px-2 py-0.5 ml-1 border ${status === "verified" ? "text-primary bg-accent border-transparent" : "bg-card border-border"}`}>
+            {STATUS_BADGES[status]}
+          </span>
+        )}
         {TIER_LABELS[location.expansion_tier] && (
-          <span className="text-xs bg-card border border-border rounded-full px-2 py-0.5 ml-1">
+          <span className="text-xs bg-card border border-border rounded-full px-2 py-0.5">
             {TIER_LABELS[location.expansion_tier]}
           </span>
         )}

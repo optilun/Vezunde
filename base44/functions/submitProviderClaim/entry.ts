@@ -146,7 +146,9 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Mod invalid' }, { status: 400 });
     }
 
-    // Created user-scoped so the applicant can read their own claim.
+    // Module 3E: direct entity creation is blocked by RLS — claims are created only
+    // here, via service role, after authentication and validation above. user_id
+    // keeps read access scoped to the applicant.
     const claimData = {
       location_id: locationId,
       user_id: user.id,
@@ -161,7 +163,7 @@ Deno.serve(async (req) => {
       status: 'in_asteptare',
     };
     if (organizationId) claimData.organization_id = organizationId;
-    const claim = await base44.entities.ProviderClaimRequest.create(claimData);
+    const claim = await svc.entities.ProviderClaimRequest.create(claimData);
 
     return Response.json({ claim_request_id: claim.id, location_id: locationId });
   } catch (error) {

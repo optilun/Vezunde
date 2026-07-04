@@ -15,10 +15,16 @@ export default function ProviderCard({ location, matchedServices = [] }) {
           <div className="text-xs font-medium text-primary">{PROVIDER_TYPES[location.provider_type]}</div>
           <h3 className="mt-1 font-heading font-bold text-lg leading-snug group-hover:text-primary transition-colors">{location.name}</h3>
         </div>
-        {location.is_verified && (
+        {location.profile_control_status === "verified" && (
           <span className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary bg-accent rounded-full px-2.5 py-1">
-            <BadgeCheck className="w-3.5 h-3.5" /> Verificat
+            <BadgeCheck className="w-3.5 h-3.5" /> Verificat de Vezunde
           </span>
+        )}
+        {location.profile_control_status === "claimed" && (
+          <span className="shrink-0 text-xs font-medium text-muted-foreground bg-secondary rounded-full px-2.5 py-1">Profil revendicat</span>
+        )}
+        {location.profile_control_status === "directory" && (
+          <span className="shrink-0 text-xs font-medium text-muted-foreground bg-secondary rounded-full px-2.5 py-1">Profil din director</span>
         )}
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
