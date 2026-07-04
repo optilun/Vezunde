@@ -74,6 +74,36 @@ const SERVICE_NEED_LEVELS = {
   chirurgie_refractiva: 'specialized_medical', managementul_miopiei: 'specialized_medical',
 };
 const NEED_ORDER = { general: 0, technical: 1, specialized_medical: 2 };
+
+// ===== Module 3B: read-only canonical service alias layer =====
+// Used ONLY during matching. Never changes stored service_key values and never
+// upgrades confirmation_level, matching_allowed, profile status or Top 3 rules.
+// Only safe, unambiguous, non-specialized pairs. Bidirectional.
+const SERVICE_ALIAS_PAIRS = [
+  ['contact_lenses', 'lentile_contact'],
+  ['ophthalmology_consultation', 'consult_oftalmologic'],
+  ['prescription_lenses', 'lentile_progresive'],
+  ['eyeglasses_adjustment', 'reglaj_rame'],
+  ['eyeglasses_repair', 'reparatii_ochelari'],
+];
+const SERVICE_ALIASES = {};
+for (const [a, b] of SERVICE_ALIAS_PAIRS) { SERVICE_ALIASES[a] = b; SERVICE_ALIASES[b] = a; }
+
+// ===== Module 3B: broad discovery fallback (category relevance only) =====
+// Deterministic provider-type fallback for broad GENERAL discovery intents only.
+// Never for repairs/adjustments/fitting/contact-lens fitting or any specialized
+// medical request. Does not imply any service — bucket stays extended_directory.
+const DISCOVERY_PROVIDER_TYPES = {
+  caut_optica: ['optica_medicala'],
+  ochelari_lentile: ['optica_medicala'],
+  caut_oftalmolog: ['cabinet_oftalmologic', 'clinica_oftalmologica'],
+  simptome_oftalmologice: ['cabinet_oftalmologic', 'clinica_oftalmologica'],
+};
+function isDiscoveryCandidate(loc, intent, needLevel) {
+  if (needLevel !== 'general') return false;
+  if ((loc.profile_control_status || 'directory') !== 'directory') return false;
+  return (DISCOVERY_PROVIDER_TYPES[intent] || []).includes(loc.provider_type);
+}
 const CONF_ORDER = { not_confirmed: 0, publicly_listed: 1, provider_confirmed: 2, vezunde_verified: 3 };
 
 function needLevelOf(key) {
@@ -144,6 +174,10 @@ Deno.serve(async (req) => {
     const userLng = typeof payload.lng === 'number' ? payload.lng : null;
     const limit = Math.min(payload.limit || 20, 50);
     const needLevel = requestNeedLevel(serviceKeys, intent);
+    // Module 3B: alias expansion is read-only and NEVER applied to specialized medical requests.
+    const expandedServiceKeys = needLevel === 'specialized_medical'
+      ? serviceKeys
+      : [...new Set(serviceKeys.flatMap((k) => (SERVICE_ALIASES[k] ? [k, SERVICE_ALIASES[k]] : [k])))];
 
     const [locations, services, specs, assigns, facilities] = await Promise.all([
       svc.entities.ProviderLocation.filter({ status: 'publicata' }, null, 500),
@@ -197,7 +231,7 @@ Deno.serve(async (req) => {
       const locServices = locRows.map((r) => r.service_key);
       const roles = roleMap[loc.id] || [];
       const locFacilities = facMap[loc.id] || [];
-      const matchedRows = serviceKeys.length > 0 ? locRows.filter((r) => serviceKeys.includes(r.service_key)) : locRows;
+      const matchedRows = serviceKeys.length > 0 ? locRows.filter((r) => expandedServiceKeys.includes(r.service_key)) : locRows;
       const matched = serviceKeys.length > 0 ? matchedRows.map((r) => r.service_key) : [];
 
       // Intent-based hard constraints
@@ -209,7 +243,8 @@ Deno.serve(async (req) => {
         const hasRepairFacility = locFacilities.some((k) => REPAIR_FACILITIES.includes(k));
         if (matched.length === 0 && !hasRepairFacility) continue;
       } else if (serviceKeys.length > 0 && matched.length === 0) {
-        continue;
+        // Module 3B: keep the location only as a broad discovery fallback candidate.
+        if (!isDiscoveryCandidate(loc, intent, needLevel)) continue;
       }
 
       if (requiredRoles.length > 0 && !requiredRoles.some((r) => roles.includes(r))) continue;
@@ -240,11 +275,19 @@ Deno.serve(async (req) => {
       // Module 3A trust evaluation (central eligibility function).
       const elig = evaluateEligibility(loc, matchedRows, needLevel, serviceKeys.length > 0);
       let bucket;
+      let directoryMatchType = null;
       if (elig.eligible) bucket = 'eligible';
       else if (needLevel === 'specialized_medical') bucket = 'excluded';
       else if (elig.pcs === 'suspended') bucket = 'excluded';
-      else if (matchedRows.length === 0) bucket = 'excluded';
-      else bucket = 'extended_directory';
+      else if (matchedRows.length > 0) {
+        bucket = 'extended_directory';
+        if (serviceKeys.length > 0) directoryMatchType = 'service_alias_match';
+      } else if (isDiscoveryCandidate(loc, intent, needLevel)) {
+        bucket = 'extended_directory';
+        directoryMatchType = 'provider_type_discovery_match';
+      } else {
+        bucket = 'excluded';
+      }
 
       let score = matched.length * 3 + specMatched.length * 2 + Math.min(relevantFacilities.length, 2);
       const reasons = matched.slice(0, 2).map(serviceReason);
@@ -253,8 +296,9 @@ Deno.serve(async (req) => {
       if (elig.pcs === 'verified') score += 2;
       else if (elig.pcs === 'claimed') score += 1;
       if (availabilityLabel) { score += 1; reasons.push('Disponibilitate publicata de furnizor'); }
+      if (directoryMatchType) reasons.push(directoryMatchType);
 
-      const entry = { loc, matched, matchedRows, tier, score, reasons, availabilityLabel, locServices, locSpecs, roles, locFacilities, relevantFacilities, elig, bucket };
+      const entry = { loc, matched, matchedRows, tier, score, reasons, availabilityLabel, locServices, locSpecs, roles, locFacilities, relevantFacilities, elig, bucket, directoryMatchType };
       if (bucket === 'excluded') excludedList.push(entry);
       else scored.push(entry);
     }
@@ -307,6 +351,7 @@ Deno.serve(async (req) => {
       matched_facilities: r.relevantFacilities,
       availability_label: r.availabilityLabel,
       match_reasons: r.reasons,
+      directory_match_type: r.directoryMatchType || null,
       expansion_tier: r.tier,
       result_bucket: r.finalBucket,
       bucket_rank: r.bucketRank,
