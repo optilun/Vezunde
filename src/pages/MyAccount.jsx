@@ -1,90 +1,62 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { isAdmin } from "@/lib/access";
-import ClaimStatusRow from "@/components/account/ClaimStatusRow";
-import MyLocationCard from "@/components/account/MyLocationCard";
-import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
+import PersonalAccountWorkspace from "@/components/workspace/personal/PersonalAccountWorkspace";
+import ApplicantWorkspaceRoot from "@/components/workspace/applicant/ApplicantWorkspaceRoot";
+import ProviderWorkspaceRoot from "@/components/workspace/provider/ProviderWorkspaceRoot";
 
+// MODULE 3H.1D — role-aware authenticated area router.
+// Reads getMyProviderWorkspace mode (none / applicant_preparation / provider_workspace)
+// and renders the matching workspace. No entity/schema/backend changes.
 export default function MyAccount() {
   const [user, setUser] = useState(null);
-  const [claims, setClaims] = useState([]);
-  const [items, setItems] = useState([]); // { membership, location }
+  const [workspace, setWorkspace] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [viewOverride, setViewOverride] = useState(null); // null | "personal"
   const { logout } = useAuth();
 
-  const load = async (u) => {
-    // Module 3H.1A.1: direct public entity reads are closed — location data comes
-    // only through the provider workspace whitelist function.
-    const [claimList, memberships, ws] = await Promise.all([
-      base44.entities.ProviderClaimRequest.filter({ user_id: u.id }, "-created_date", 50),
-      base44.entities.ProviderMembership.filter({ user_id: u.id, status: "active" }, null, 50),
-      base44.functions.invoke("profileFoundationOps", { action: "get_my_workspace" }).catch(() => ({ data: { locations: [] } })),
+  const load = async () => {
+    const [u, ws] = await Promise.all([
+      base44.auth.me(),
+      base44.functions.invoke("getMyProviderWorkspace", {}),
     ]);
-    const locById = {};
-    for (const l of ws.data?.locations || []) locById[l.id] = l;
-    const withLoc = memberships
-      .filter((m) => m.location_id && locById[m.location_id])
-      .map((m) => ({ membership: m, location: locById[m.location_id] }));
-    setClaims(claimList);
-    setItems(withLoc);
+    setUser(u);
+    setWorkspace(ws.data);
     setLoading(false);
   };
 
   useEffect(() => {
-    base44.auth
-      .me()
-      .then((u) => { setUser(u); load(u); })
-      .catch(() => base44.auth.redirectToLogin(window.location.href));
+    load().catch(() => base44.auth.redirectToLogin(window.location.href));
   }, []);
 
-  if (!user || loading) {
+  if (loading || !user || !workspace) {
     return <div className="min-h-[60vh] flex items-center justify-center text-muted-foreground text-sm">Se incarca...</div>;
   }
 
-  const publicProfileUrl = items.length > 0 ? `/furnizor/${items[0].location.id}` : null;
+  const onLogout = () => logout(true);
+
+  if (workspace.mode === "provider_workspace" && viewOverride !== "personal") {
+    return (
+      <ProviderWorkspaceRoot
+        user={user}
+        workspace={workspace}
+        onLogout={onLogout}
+        onRefresh={load}
+        onSwitchPersonal={() => setViewOverride("personal")}
+      />
+    );
+  }
+
+  if (workspace.mode === "applicant_preparation") {
+    return <ApplicantWorkspaceRoot user={user} workspace={workspace} onLogout={onLogout} onRefresh={load} />;
+  }
 
   return (
-    <ProviderAppShell user={user} onLogout={() => logout(true)} publicProfileUrl={publicProfileUrl}>
-      <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight">Contul meu</h1>
-      <p className="mt-2 text-muted-foreground text-sm">Cererile si locatiile tale in Vezunde.</p>
-      <p className="mt-3 inline-block rounded-full bg-secondary px-3 py-1 text-xs font-semibold">
-        {isAdmin(user)
-          ? "Administrator"
-          : items.length > 0
-            ? "Furnizor activ"
-            : claims.some((c) => c.status === "in_asteptare")
-              ? "Cerere de furnizor in asteptare"
-              : "Cont utilizator"}
-      </p>
-
-      <h2 className="mt-8 text-sm font-bold uppercase tracking-wide text-muted-foreground">Cererile mele</h2>
-      <div className="mt-3 space-y-3">
-        {claims.length === 0 && <p className="text-sm text-muted-foreground">Nu ai nicio cerere trimisa.</p>}
-        {claims.map((c) => <ClaimStatusRow key={c.id} claim={c} />)}
-      </div>
-
-      <h2 className="mt-10 text-sm font-bold uppercase tracking-wide text-muted-foreground">Locatiile mele</h2>
-      <div className="mt-3 space-y-3">
-        {items.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            Nu ai inca locatii active. Dupa aprobarea unei cereri, locatia va aparea aici.
-          </p>
-        )}
-        {items.map(({ membership, location }) => (
-          <MyLocationCard key={membership.id} location={location} membership={membership} onSaved={() => load(user)} />
-        ))}
-      </div>
-
-      <div className="mt-8">
-        <Link
-          to="/adauga-sau-revendica"
-          className="inline-block px-6 py-3 rounded-full border border-border bg-card text-sm font-semibold hover:border-foreground/40 transition-colors"
-        >
-          Adauga sau revendica alta locatie
-        </Link>
-      </div>
-    </ProviderAppShell>
+    <PersonalAccountWorkspace
+      user={user}
+      workspace={viewOverride === "personal" ? {} : workspace}
+      onLogout={onLogout}
+      onSwitchBack={workspace.mode === "provider_workspace" ? () => setViewOverride(null) : null}
+    />
   );
 }

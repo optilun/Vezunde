@@ -3,23 +3,32 @@ import { Link } from "react-router-dom";
 import { Menu, ExternalLink } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import ProviderSidebarContent from "./ProviderSidebarContent";
-import { PROVIDER_NAV_LABELS } from "@/lib/providerNavConfig";
 
-// UI-1.1 PART 2: internal shell for authenticated provider/specialist account
-// pages — sidebar + compact utility top bar, no public navbar.
-export default function ProviderAppShell({ activeKey = "overview", user, onLogout, publicProfileUrl, children }) {
+// Generalized internal app shell — used by personal account, applicant
+// preparation, and provider workspace areas. No public website navbar.
+export default function ProviderAppShell({ navItems, activeKey, onNavigate, user, onLogout, publicProfileUrl, title, subtitle, statusBadge, modeSwitch, children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const initials = (user?.full_name || "U").trim().charAt(0).toUpperCase();
+  const activeLabel = navItems.find((n) => n.key === activeKey)?.label || navItems[0]?.label || "";
 
   return (
     <div className="min-h-screen bg-background flex workspace-neutral">
       <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:border-r lg:border-border lg:bg-card">
-        <ProviderSidebarContent activeKey={activeKey} onNavigate={() => {}} user={user} onLogout={onLogout} />
+        <ProviderSidebarContent navItems={navItems} activeKey={activeKey} onNavigate={onNavigate} user={user} onLogout={onLogout} title={title} subtitle={subtitle} modeSwitch={modeSwitch} />
       </aside>
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-72 p-0 gap-0 [&>button]:z-10">
-          <ProviderSidebarContent activeKey={activeKey} onNavigate={() => setMobileOpen(false)} user={user} onLogout={onLogout} />
+          <ProviderSidebarContent
+            navItems={navItems}
+            activeKey={activeKey}
+            onNavigate={(k) => { onNavigate(k); setMobileOpen(false); }}
+            user={user}
+            onLogout={onLogout}
+            title={title}
+            subtitle={subtitle}
+            modeSwitch={modeSwitch}
+          />
         </SheetContent>
       </Sheet>
 
@@ -30,9 +39,10 @@ export default function ProviderAppShell({ activeKey = "overview", user, onLogou
               <Menu className="w-5 h-5" />
             </button>
             <span className="text-xs sm:text-sm text-muted-foreground truncate">
-              Contul meu <span className="mx-1 text-border">/</span>
-              <span className="text-foreground font-medium">{PROVIDER_NAV_LABELS[activeKey] || "Prezentare generala"}</span>
+              {subtitle || "Contul meu"} <span className="mx-1 text-border">/</span>
+              <span className="text-foreground font-medium">{activeLabel}</span>
             </span>
+            {statusBadge}
           </div>
           <div className="flex items-center gap-3 shrink-0">
             {publicProfileUrl && (
@@ -45,7 +55,7 @@ export default function ProviderAppShell({ activeKey = "overview", user, onLogou
             </div>
           </div>
         </div>
-        <main className="max-w-3xl mx-auto px-5 sm:px-8 py-8">
+        <main className="max-w-5xl mx-auto px-5 sm:px-8 py-8">
           {children}
         </main>
       </div>
