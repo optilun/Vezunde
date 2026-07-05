@@ -10,18 +10,22 @@ import WizFacilities from "@/components/provider/steps/WizFacilities";
 import WizTeam from "@/components/provider/steps/WizTeam";
 import WizSchedule from "@/components/provider/steps/WizSchedule";
 import WizIdentity from "@/components/provider/steps/WizIdentity";
+import WizPublicProfile from "@/components/provider/steps/WizPublicProfile";
+import WizReview from "@/components/provider/steps/WizReview";
 import IdentityDuplicatePanel from "@/components/provider/IdentityDuplicatePanel";
 
 const STEPS = [
-  { key: "org", title: "Organizatie si locatie", subtitle: "Cum se numeste organizatia si aceasta locatie?", Comp: WizOrg },
+  { key: "org", title: "Confirma relatia cu locatia", subtitle: "Cum se numeste organizatia si aceasta locatie? Trebuie sa fii conectat la aceasta afacere.", Comp: WizOrg },
   { key: "type", title: "Tip de furnizor", subtitle: "Alege categoria care descrie cel mai bine locatia.", Comp: WizType },
-  { key: "contact", title: "Adresa si contact public", subtitle: "Datele publice afisate pacientilor.", Comp: WizContact },
-  { key: "services", title: "Servicii oferite", subtitle: "Alege serviciile disponibile in aceasta locatie.", Comp: WizServices },
+  { key: "contact", title: "Date de contact", subtitle: "Datele devin publice doar dupa verificare.", Comp: WizContact },
+  { key: "publicProfile", title: "Profil public", subtitle: "Vei putea vedea ce date sunt in review.", Comp: WizPublicProfile },
+  { key: "services", title: "Servicii oferite", subtitle: "Serviciile trimise aici nu devin automat confirmate sau vizibile public.", Comp: WizServices },
   { key: "specs", title: "Specializari", subtitle: "Optional — alege specializarile relevante.", Comp: WizSpecs },
   { key: "facilities", title: "Dotari si servicii tehnice", subtitle: "Optional — laborator, atelier, montaj.", Comp: WizFacilities },
   { key: "team", title: "Echipa", subtitle: "Adauga profesionistii din locatie (optional).", Comp: WizTeam },
   { key: "schedule", title: "Program si disponibilitate", subtitle: "Programul de lucru al locatiei.", Comp: WizSchedule },
-  { key: "identity", title: "Identitate si trimitere", subtitle: "Datele tale de contact pentru verificare.", Comp: WizIdentity },
+  { key: "identity", title: "Datele tale", subtitle: "Datele tale de contact pentru verificare.", Comp: WizIdentity },
+  { key: "review", title: "Revizuire", subtitle: "Mai ai cateva lucruri de completat? Verifica inainte de trimitere.", Comp: WizReview },
 ];
 
 const INITIAL = {

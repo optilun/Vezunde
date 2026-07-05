@@ -80,6 +80,12 @@ export default function ProviderSearch({ onClaim, onNew }) {
         {loading && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
       </div>
 
+      {query.trim().length === 0 && (
+        <p className="mt-3 text-sm text-muted-foreground">
+          Verificam mai intai daca profilul exista deja. Incepe sa scrii pentru a cauta.
+        </p>
+      )}
+
       <div className="mt-4 space-y-3">
         {results.map((loc) => (
           <div key={loc.id} className="rounded-xl border border-border bg-card p-4">
