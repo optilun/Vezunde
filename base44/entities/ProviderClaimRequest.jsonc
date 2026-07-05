@@ -19,6 +19,22 @@
         "new_location_duplicate_review"
       ]
     },
+    "claim_subject_type": {
+      "type": "string",
+      "enum": [
+        "organization",
+        "independent_professional"
+      ]
+    },
+    "claimant_relationship": {
+      "type": "string",
+      "enum": [
+        "owner",
+        "organization_representative",
+        "location_manager",
+        "authorized_staff"
+      ]
+    },
     "business_name": {
       "type": "string"
     },
@@ -60,6 +76,7 @@
       "type": "string",
       "enum": [
         "in_asteptare",
+        "needs_more_info",
         "aprobata",
         "respinsa"
       ],

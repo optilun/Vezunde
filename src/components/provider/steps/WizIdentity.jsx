@@ -4,7 +4,7 @@ import ContinueButton from "@/components/intake/ContinueButton";
 
 export default function WizIdentity({ data, update, next }) {
   const c = data.contact;
-  const valid = c.contact_name.trim() && c.email.trim() && c.representation_confirmed;
+  const valid = c.contact_name.trim() && c.email.trim() && c.claimant_relationship && c.representation_confirmed;
   return (
     <div className="text-left">
       <p className="text-sm text-muted-foreground mb-4">

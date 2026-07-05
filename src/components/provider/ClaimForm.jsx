@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ArrowLeft, MapPin, AlertTriangle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import ContactIdentityFields from "@/components/provider/ContactIdentityFields";
+import ContactIdentityFields, { CLAIMANT_RELATIONSHIPS } from "@/components/provider/ContactIdentityFields";
 import ContinueButton from "@/components/intake/ContinueButton";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
 
@@ -14,10 +14,10 @@ export default function ClaimForm({ location, onDone, onBack }) {
       const raw = sessionStorage.getItem(CONTACT_RESUME_KEY);
       if (raw) {
         sessionStorage.removeItem(CONTACT_RESUME_KEY);
-        return { contact_name: "", role: "", email: "", phone: "", representation_confirmed: false, ...JSON.parse(raw) };
+        return { contact_name: "", claimant_relationship: "", email: "", phone: "", representation_confirmed: false, ...JSON.parse(raw) };
       }
     } catch { /* ignore corrupt state */ }
-    return { contact_name: "", role: "", email: "", phone: "", representation_confirmed: false };
+    return { contact_name: "", claimant_relationship: "", email: "", phone: "", representation_confirmed: false };
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -39,6 +39,7 @@ export default function ClaimForm({ location, onDone, onBack }) {
         mode: "claim",
         location_id: location.id,
         contact,
+        claimant_relationship: contact.claimant_relationship,
         representation_confirmed: contact.representation_confirmed,
       })
       .catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
@@ -47,7 +48,7 @@ export default function ClaimForm({ location, onDone, onBack }) {
     else onDone();
   };
 
-  const valid = contact.contact_name.trim() && contact.email.trim() && contact.representation_confirmed;
+  const valid = contact.contact_name.trim() && contact.email.trim() && contact.claimant_relationship && contact.representation_confirmed;
 
   const LocationCard = (
     <div className="rounded-xl border border-border bg-card p-4">
@@ -70,7 +71,7 @@ export default function ClaimForm({ location, onDone, onBack }) {
         <div className="mt-3">{LocationCard}</div>
         <div className="mt-3 rounded-xl border border-border bg-card p-4 space-y-1.5 text-sm">
           <div className="flex justify-between"><span className="text-muted-foreground">Nume</span><span className="font-medium">{contact.contact_name}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Rol</span><span className="font-medium">{contact.role || "—"}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Relatie</span><span className="font-medium">{CLAIMANT_RELATIONSHIPS[contact.claimant_relationship] || "—"}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Email</span><span className="font-medium">{contact.email}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Telefon</span><span className="font-medium">{contact.phone || "—"}</span></div>
         </div>

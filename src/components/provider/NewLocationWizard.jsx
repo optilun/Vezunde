@@ -36,7 +36,7 @@ const INITIAL = {
   facilities: [],
   team: [],
   schedule: { opening_hours: "", saturday_hours: "", availability_status: "", availability_confirmed: false },
-  contact: { contact_name: "", role: "", email: "", phone: "", representation_confirmed: false },
+  contact: { contact_name: "", claimant_relationship: "", email: "", phone: "", representation_confirmed: false },
 };
 
 // Module 3H.1B.2: minimum temporary session state to resume the wizard after login.
@@ -108,6 +108,9 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
     const res = await base44.functions
       .invoke("submitProviderClaim", {
         mode: "new_location",
+        // Module 3H.1B.3.A: the current wizard is the organization flow.
+        claim_subject_type: "organization",
+        claimant_relationship: data.contact.claimant_relationship,
         organization: data.organization,
         location: data.location,
         services: data.services,

@@ -3,6 +3,7 @@ import { AlertTriangle } from "lucide-react";
 import ContinueButton from "@/components/intake/ContinueButton";
 import { PROVIDER_TYPES, SERVICES, FACILITIES } from "@/lib/vezunde";
 import { SPECIALIZATIONS, TEAM_ROLES, AVAILABILITY_OPTIONS } from "@/lib/providerTaxonomy";
+import { CLAIMANT_RELATIONSHIPS } from "@/components/provider/ContactIdentityFields";
 
 const Row = ({ label, value }) => (
   <div className="flex justify-between gap-4 py-1.5 text-sm border-b border-border last:border-0">
@@ -21,8 +22,11 @@ export default function WizReview({ data, onSubmit, submitting, error }) {
   if (!loc.name?.trim()) missing.push("Numele locatiei");
   if (!loc.provider_type) missing.push("Tipul de furnizor");
   if (!loc.locality_siruta_code) missing.push("Localitatea");
+  if (!loc.address?.trim()) missing.push("Adresa locatiei");
+  if (!loc.phone_public?.trim() && !loc.public_email?.trim()) missing.push("Telefon sau email public");
   if (!contact.contact_name?.trim()) missing.push("Numele tau");
   if (!contact.email?.trim()) missing.push("Emailul tau");
+  if (!contact.claimant_relationship) missing.push("Relatia ta cu locatia");
   if (!contact.representation_confirmed) missing.push("Confirmarea reprezentarii");
 
   return (
@@ -57,7 +61,7 @@ export default function WizReview({ data, onSubmit, submitting, error }) {
       <div className="rounded-xl border border-border bg-card p-4 mt-3">
         <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Datele tale</div>
         <Row label="Nume" value={contact.contact_name} />
-        <Row label="Rol" value={contact.role} />
+        <Row label="Relatie" value={CLAIMANT_RELATIONSHIPS[contact.claimant_relationship]} />
         <Row label="Email" value={contact.email} />
         <Row label="Telefon" value={contact.phone} />
       </div>

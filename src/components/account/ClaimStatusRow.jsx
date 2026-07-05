@@ -2,6 +2,7 @@ import React from "react";
 
 const STATUS = {
   in_asteptare: { label: "In verificare", cls: "bg-secondary text-foreground" },
+  needs_more_info: { label: "Necesita informatii suplimentare", cls: "bg-amber-100 text-amber-800" },
   aprobata: { label: "Aprobata", cls: "bg-green-100 text-green-800" },
   respinsa: { label: "Respinsa", cls: "bg-destructive/10 text-destructive" },
 };
