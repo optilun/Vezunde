@@ -12,7 +12,7 @@ export default function AdminAppShell({ activeKey, onNavigate, user, onLogout, c
   const navigate = (key) => { onNavigate(key); setMobileOpen(false); };
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex workspace-neutral">
       <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:border-r lg:border-border lg:bg-card">
         <AdminSidebarContent activeKey={activeKey} onNavigate={navigate} user={user} onLogout={onLogout} />
       </aside>

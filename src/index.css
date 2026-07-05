@@ -84,6 +84,16 @@
 
 
 
+/* UI-1 color update: neutral override for authenticated admin & provider
+   workspaces only. Scoping the CSS variables here (instead of editing :root)
+   keeps the public site's warm brick/orange brand accent untouched. */
+.workspace-neutral {
+  --primary: 0 0% 9%;
+  --primary-foreground: 0 0% 98%;
+  --accent: 40 14% 93%;
+  --accent-foreground: 0 0% 9%;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

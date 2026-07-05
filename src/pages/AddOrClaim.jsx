@@ -12,19 +12,21 @@ export default function AddOrClaim() {
 
   if (stage === "wizard") {
     return (
-      <NewLocationWizard
-        prefill={draft}
-        onDone={() => setStage("done")}
-        onExit={() => { setDraft(null); setStage("search"); }}
-      />
+      <div className="workspace-neutral">
+        <NewLocationWizard
+          prefill={draft}
+          onDone={() => setStage("done")}
+          onExit={() => { setDraft(null); setStage("search"); }}
+        />
+      </div>
     );
   }
 
   return (
-    <div className="max-w-xl mx-auto px-5 py-10 sm:py-14">
+    <div className="max-w-xl mx-auto px-5 py-10 sm:py-14 workspace-neutral">
       {stage === "done" ? (
         <div className="text-center py-16">
-          <CheckCircle2 className="w-12 h-12 mx-auto text-primary" />
+          <CheckCircle2 className="w-12 h-12 mx-auto text-green-600" />
           <h1 className="mt-5 font-heading text-2xl font-extrabold">Cererea ta este in verificare.</h1>
           <p className="mt-2 text-muted-foreground">Te vom anunta pe email dupa analizare.</p>
           <div className="mt-6 flex justify-center gap-4 text-sm">

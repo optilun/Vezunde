@@ -2,7 +2,7 @@ import React from "react";
 
 const STATUS = {
   in_asteptare: { label: "In verificare", cls: "bg-secondary text-foreground" },
-  aprobata: { label: "Aprobata", cls: "bg-primary/10 text-primary" },
+  aprobata: { label: "Aprobata", cls: "bg-green-100 text-green-800" },
   respinsa: { label: "Respinsa", cls: "bg-destructive/10 text-destructive" },
 };
 

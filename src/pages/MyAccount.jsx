@@ -41,7 +41,7 @@ export default function MyAccount() {
   }
 
   return (
-    <div className="max-w-xl mx-auto px-5 py-10 sm:py-14">
+    <div className="max-w-xl mx-auto px-5 py-10 sm:py-14 workspace-neutral">
       <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight">Contul meu</h1>
       <p className="mt-2 text-muted-foreground text-sm">Cererile si locatiile tale in Vezunde.</p>
       <p className="mt-3 inline-block rounded-full bg-secondary px-3 py-1 text-xs font-semibold">
