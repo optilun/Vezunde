@@ -88,10 +88,18 @@
    workspaces only. Scoping the CSS variables here (instead of editing :root)
    keeps the public site's warm brick/orange brand accent untouched. */
 .workspace-neutral {
+  --background: 45 22% 96%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 9%;
   --primary: 0 0% 9%;
   --primary-foreground: 0 0% 98%;
-  --accent: 40 14% 93%;
+  --secondary: 45 15% 95%;
+  --secondary-foreground: 0 0% 9%;
+  --muted: 45 15% 95%;
+  --accent: 45 13% 94%;
   --accent-foreground: 0 0% 9%;
+  --border: 43 13% 90%;
+  --input: 43 13% 90%;
 }
 
 @layer base {
