@@ -5,8 +5,10 @@ import ResearchCoverage from "./research/ResearchCoverage";
 import ResearchCsvTemplate from "./research/ResearchCsvTemplate";
 import GeoImport from "./research/GeoImport";
 import AICopilot from "./research/AICopilot";
+import AdminCard from "../ui/AdminCard";
+import AdminPageHeader from "../ui/AdminPageHeader";
 
-// MODULE 3F - "Research director": internal, admin-only research workflow.
+// MODULE 3F / 3H.1E - "Research director": internal, admin-only research workflow, card-based layout.
 const VIEWS = [
   { key: "queue", label: "Coada de research" },
   { key: "ai", label: "AI Copilot" },
@@ -24,18 +26,23 @@ export default function DirResearch({ onNavigate }) {
   }
 
   return (
-    <div>
-      <div className="inline-flex flex-wrap gap-1 bg-secondary rounded-lg p-1 mb-5">
+    <div className="space-y-5">
+      <AdminCard className="p-5">
+        <AdminPageHeader title="Research director" subtitle="Coordoneaza verificarea si completarea profilurilor furnizorilor din director." />
+      </AdminCard>
+
+      <AdminCard className="p-2 inline-flex flex-wrap gap-1">
         {VIEWS.map((v) => (
           <button
             key={v.key}
             onClick={() => setView(v.key)}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${view === v.key ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${view === v.key ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             {v.label}
           </button>
         ))}
-      </div>
+      </AdminCard>
+
       {view === "queue" && <ResearchQueue onOpen={setSelectedId} />}
       {view === "ai" && <AICopilot onNavigate={onNavigate} />}
       {view === "coverage" && <ResearchCoverage />}
