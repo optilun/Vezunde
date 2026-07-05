@@ -1,41 +1,32 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import WizardShell from "@/components/intake/WizardShell";
-import WizOrg from "@/components/provider/steps/WizOrg";
-import WizType from "@/components/provider/steps/WizType";
-import WizContact from "@/components/provider/steps/WizContact";
-import WizServices from "@/components/provider/steps/WizServices";
-import WizSpecs from "@/components/provider/steps/WizSpecs";
-import WizFacilities from "@/components/provider/steps/WizFacilities";
-import WizTeam from "@/components/provider/steps/WizTeam";
-import WizSchedule from "@/components/provider/steps/WizSchedule";
-import WizIdentity from "@/components/provider/steps/WizIdentity";
-import WizPublicProfile from "@/components/provider/steps/WizPublicProfile";
-import WizReview from "@/components/provider/steps/WizReview";
+import WizSubjectType from "@/components/provider/steps/WizSubjectType";
+import WizOrgBasics from "@/components/provider/steps/WizOrgBasics";
+import WizProfessionalBasics from "@/components/provider/steps/WizProfessionalBasics";
+import WizReviewShort from "@/components/provider/steps/WizReviewShort";
 import IdentityDuplicatePanel from "@/components/provider/IdentityDuplicatePanel";
 
+// Module 3H.1B.3.UI: routes to the org or professional basics screen based on
+// the subject type chosen on the first step.
+function WizDetails(props) {
+  return props.data.claimSubjectType === "independent_professional"
+    ? <WizProfessionalBasics {...props} />
+    : <WizOrgBasics {...props} />;
+}
+
+// Module 3H.1B.3.UI: short new-location flow — 3 screens before submit.
 const STEPS = [
-  { key: "org", title: "Confirma relatia cu locatia", subtitle: "Cum se numeste organizatia si aceasta locatie? Trebuie sa fii conectat la aceasta afacere.", Comp: WizOrg },
-  { key: "type", title: "Tip de furnizor", subtitle: "Alege categoria care descrie cel mai bine locatia.", Comp: WizType },
-  { key: "contact", title: "Date de contact", subtitle: "Datele devin publice doar dupa verificare.", Comp: WizContact },
-  { key: "publicProfile", title: "Profil public", subtitle: "Vei putea vedea ce date sunt in review.", Comp: WizPublicProfile },
-  { key: "services", title: "Servicii oferite", subtitle: "Serviciile trimise aici nu devin automat confirmate sau vizibile public.", Comp: WizServices },
-  { key: "specs", title: "Specializari", subtitle: "Optional — alege specializarile relevante.", Comp: WizSpecs },
-  { key: "facilities", title: "Dotari si servicii tehnice", subtitle: "Optional — laborator, atelier, montaj.", Comp: WizFacilities },
-  { key: "team", title: "Echipa", subtitle: "Adauga profesionistii din locatie (optional).", Comp: WizTeam },
-  { key: "schedule", title: "Program si disponibilitate", subtitle: "Programul de lucru al locatiei.", Comp: WizSchedule },
-  { key: "identity", title: "Datele tale", subtitle: "Datele tale de contact pentru verificare.", Comp: WizIdentity },
-  { key: "review", title: "Revizuire", subtitle: "Mai ai cateva lucruri de completat? Verifica inainte de trimitere.", Comp: WizReview },
+  { key: "subject", title: "Cum vrei sa apara pe Vezunde?", subtitle: "Alege optiunea care descrie cel mai bine activitatea ta.", Comp: WizSubjectType },
+  { key: "details", title: "Datele de baza ale locatiei", subtitle: "Aceste date sunt suficiente pentru trimiterea cererii.", Comp: WizDetails },
+  { key: "review", title: "Revizuieste solicitarea", subtitle: "Verifica datele inainte de trimitere.", Comp: WizReviewShort },
 ];
 
 const INITIAL = {
-  organization: { name: "", multi_location: false },
-  location: { name: "", provider_type: "", provider_profile_type: "", city: "", county: "", locality_siruta_code: "", county_code: "", uat_code: "", uat_name: "", address: "", phone_public: "", public_email: "", website: "", description: "" },
-  services: [],
-  specializations: [],
-  facilities: [],
-  team: [],
-  schedule: { opening_hours: "", saturday_hours: "", availability_status: "", availability_confirmed: false },
+  claimSubjectType: "",
+  organization: { name: "" },
+  professional: { full_name: "", professional_type: "" },
+  location: { name: "", provider_type: "", provider_profile_type: "", city: "", county: "", locality_siruta_code: "", county_code: "", uat_code: "", uat_name: "", address: "", phone_public: "", public_email: "", place_id: "", lat: null, lng: null },
   contact: { contact_name: "", claimant_relationship: "", email: "", phone: "", representation_confirmed: false },
 };
 
@@ -103,21 +94,19 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
       base44.auth.redirectToLogin(window.location.href);
       return;
     }
+    const isOrg = data.claimSubjectType === "organization";
     setSubmitting(true);
     setError("");
     const res = await base44.functions
       .invoke("submitProviderClaim", {
         mode: "new_location",
-        // Module 3H.1B.3.A: the current wizard is the organization flow.
-        claim_subject_type: "organization",
+        claim_subject_type: data.claimSubjectType,
         claimant_relationship: data.contact.claimant_relationship,
-        organization: data.organization,
-        location: data.location,
-        services: data.services,
-        specializations: data.specializations,
-        facilities: data.facilities,
-        team: data.team,
-        schedule: data.schedule,
+        organization: isOrg ? data.organization : undefined,
+        professional: !isOrg ? data.professional : undefined,
+        // Independent professionals may leave the location name blank in the
+        // UI — default it silently to satisfy the existing required field.
+        location: { ...data.location, name: data.location.name || (!isOrg ? data.professional.full_name : data.location.name) },
         contact: data.contact,
         representation_confirmed: data.contact.representation_confirmed,
         ...identityExtra,
@@ -152,7 +141,7 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
   const { title, subtitle, Comp } = STEPS[step];
   return (
     <WizardShell step={step + 1} total={STEPS.length} title={title} subtitle={subtitle} onBack={back}>
-      {step === 0 && data.location.place_id ? (
+      {step === 1 && data.location.place_id ? (
         <p className="mb-5 text-xs rounded-lg border border-border bg-secondary px-3 py-2.5 text-muted-foreground">
           Date preluate de pe Google Maps. Verifica si corecteaza inainte de trimitere.
         </p>
