@@ -1,8 +1,19 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-// MODULE 3H.1C.1 — Single-location workspace overview.
-// Provider-scoped: membership verified before any data is returned.
-// Returns a preview-safe public profile summary + deterministic completeness.
+// MODULE 3H.1C.1/3 — Single-location workspace overview.
+// Provider members get the full provider overview. Pending claimants get only
+// their own claim status, safe location summary and private preparation drafts.
+
+const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
+const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
+const PROVIDER_ALLOWED_SECTIONS = ['public_profile', 'location_details', 'services', 'team', 'media', 'article'];
+const CLAIM_PREP_ALLOWED_SECTIONS = ['public_profile', 'operating_hours', 'services'];
+const CLAIM_STATUS_MESSAGES = {
+  in_asteptare: 'Solicitarea este in verificare. Poti pregati datele profilului intre timp.',
+  needs_more_info: 'Avem nevoie de cateva completari pentru solicitarea ta.',
+  aprobata: 'Revendicarea a fost aprobata. Workspace-ul furnizorului este disponibil.',
+  respinsa: 'Revendicarea a fost respinsa.',
+};
 
 function computeCompleteness(loc) {
   const items = [
@@ -26,8 +37,7 @@ function computeCompleteness(loc) {
 }
 
 async function getContentSummary(svc, locationId) {
-  const activeStatuses = ['draft', 'pending_review', 'needs_more_info'];
-  const submissions = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: locationId, status: { $in: activeStatuses } }, '-created_date', 50);
+  const submissions = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: locationId, status: { $in: ACTIVE_SUBMISSION_STATUSES } }, '-created_date', 50);
   const services = await svc.entities.LocationService.filter({ location_id: locationId, is_active: true });
   const specialties = await svc.entities.LocationSpecialization.filter({ location_id: locationId, is_active: true });
   const team = await svc.entities.ProfessionalLocationAssignment.filter({ location_id: locationId, active_status: 'activ', public_status: 'public' });
@@ -46,6 +56,72 @@ async function getContentSummary(svc, locationId) {
   };
 }
 
+function safeLocationSummary(loc) {
+  return {
+    id: loc.id,
+    name: loc.name,
+    provider_type: loc.provider_type || '',
+    provider_profile_type: loc.provider_profile_type || '',
+    public_display_name: loc.public_display_name || '',
+    locality_name: loc.locality_name || loc.city || '',
+    locality_siruta_code: loc.locality_siruta_code || '',
+    county_name: loc.county_name || loc.county || '',
+    address: loc.address || '',
+    status: loc.status || 'draft',
+    profile_control_status: loc.profile_control_status || 'directory',
+    claim_verification_status: loc.claim_verification_status || 'pending',
+  };
+}
+
+function sanitizePreparationDraft(sub) {
+  return {
+    id: sub.id,
+    location_id: sub.location_id,
+    claim_request_id: sub.claim_request_id || '',
+    access_origin: sub.access_origin || 'claim_preparation',
+    section: sub.section,
+    item_key: sub.item_key || '',
+    status: sub.status,
+    payload_json: sub.payload_json || '{}',
+    created_date: sub.created_date || null,
+    updated_date: sub.updated_date || null,
+  };
+}
+
+async function applicantOverview(svc, user, loc, claim) {
+  const drafts = await svc.entities.ProviderWorkspaceSubmission.filter({
+    location_id: loc.id,
+    claim_request_id: claim.id,
+    submitted_by_user_id: user.id,
+    access_origin: 'claim_preparation',
+  }, '-created_date', 50);
+  return {
+    mode: 'applicant_preparation',
+    claim: {
+      id: claim.id,
+      status: claim.status,
+      mode: claim.mode || '',
+      business_name: claim.business_name || '',
+      contact_name: claim.contact_name || '',
+      role: claim.role || '',
+      email: claim.email || '',
+      phone: claim.phone || '',
+      status_message: CLAIM_STATUS_MESSAGES[claim.status] || '',
+      latest_admin_note: claim.status === 'needs_more_info' ? (claim.review_notes || '') : '',
+    },
+    location: safeLocationSummary(loc),
+    preparation_drafts: drafts.map(sanitizePreparationDraft),
+    pending_submissions: drafts.map(sanitizePreparationDraft),
+    allowed_sections: CLAIM_PREP_ALLOWED_SECTIONS,
+    public_preview: {
+      display_name: loc.public_display_name || loc.name,
+      address: loc.address || '',
+      city: loc.city || loc.locality_name || '',
+      county: loc.county || loc.county_name || '',
+    },
+  };
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -56,18 +132,28 @@ Deno.serve(async (req) => {
 
     if (!p.location_id) return Response.json({ error: 'location_id este obligatoriu' }, { status: 400 });
 
-    // Verify membership (admin bypasses — admin can view any location).
-    if (user.role !== 'admin') {
+    let hasProviderAccess = user.role === 'admin';
+    let activeClaim = null;
+    if (!hasProviderAccess) {
       const memberships = await svc.entities.ProviderMembership.filter({
         user_id: user.id, location_id: p.location_id, status: 'active',
       });
-      if (memberships.length === 0) {
-        return Response.json({ error: 'Nu ai acces la aceasta locatie' }, { status: 403 });
+      hasProviderAccess = memberships.length > 0;
+      if (!hasProviderAccess) {
+        const claims = await svc.entities.ProviderClaimRequest.filter({
+          user_id: user.id,
+          location_id: p.location_id,
+          status: { $in: ACTIVE_CLAIM_STATUSES },
+        }, '-created_date', 5);
+        activeClaim = claims[0] || null;
+        if (!activeClaim) return Response.json({ error: 'Nu ai acces la aceasta locatie' }, { status: 403 });
       }
     }
 
     const loc = await svc.entities.ProviderLocation.get(p.location_id).catch(() => null);
     if (!loc) return Response.json({ error: 'Locatia nu a fost gasita' }, { status: 404 });
+
+    if (!hasProviderAccess) return Response.json(await applicantOverview(svc, user, loc, activeClaim));
 
     let orgName = null;
     if (loc.organization_id) {
@@ -75,13 +161,11 @@ Deno.serve(async (req) => {
       orgName = org?.name || null;
     }
 
-    // Pending submissions for this location.
     const pendingSubs = await svc.entities.ProviderWorkspaceSubmission.filter({
       location_id: p.location_id,
-      status: { $in: ['draft', 'pending_review', 'needs_more_info'] },
+      status: { $in: ACTIVE_SUBMISSION_STATUSES },
     }, '-created_date', 50);
 
-    // Latest admin review note (from needs_more_info / rejected / approved).
     const reviewedSubs = await svc.entities.ProviderWorkspaceSubmission.filter({
       location_id: p.location_id,
       status: { $in: ['needs_more_info', 'rejected', 'approved'] },
@@ -90,10 +174,10 @@ Deno.serve(async (req) => {
 
     const completeness = computeCompleteness(loc);
     const contentSummary = await getContentSummary(svc, p.location_id);
-
     const ownLatestReview = latestReview?.submitted_by_user_id === user.id ? latestReview : null;
 
     return Response.json({
+      mode: 'provider_workspace',
       location: {
         id: loc.id,
         name: loc.name,
@@ -116,6 +200,8 @@ Deno.serve(async (req) => {
       pending_submissions: pendingSubs.map((s) => s.submitted_by_user_id === user.id ? ({
         id: s.id,
         section: s.section,
+        item_key: s.item_key || '',
+        access_origin: s.access_origin || 'provider_workspace',
         status: s.status,
         submitted_at: s.submitted_at || null,
       }) : ({
@@ -144,7 +230,7 @@ Deno.serve(async (req) => {
         opening_hours: loc.opening_hours || '',
         saturday_hours: loc.saturday_hours || '',
       },
-      allowed_sections: ['public_profile', 'location_details', 'operating_hours', 'services', 'team', 'media', 'article'],
+      allowed_sections: PROVIDER_ALLOWED_SECTIONS,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
