@@ -56,6 +56,16 @@
       "type": "string",
       "format": "date-time"
     },
+    "preparation_locked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "preparation_lock_reason": {
+      "type": "string",
+      "enum": [
+        "claim_rejected"
+      ]
+    },
     "reviewed_by_user_id": {
       "type": "string",
       "rls": {

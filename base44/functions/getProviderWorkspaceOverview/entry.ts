@@ -36,8 +36,9 @@ function computeCompleteness(loc) {
   };
 }
 
-async function getContentSummary(svc, locationId) {
-  const submissions = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: locationId, status: { $in: ACTIVE_SUBMISSION_STATUSES } }, '-created_date', 50);
+async function getContentSummary(svc, locationId, userId) {
+  const rawSubmissions = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: locationId, access_origin: 'provider_workspace', status: { $in: ACTIVE_SUBMISSION_STATUSES } }, '-created_date', 50);
+  const submissions = rawSubmissions.filter((s) => !s.claim_request_id || s.submitted_by_user_id === userId);
   const services = await svc.entities.LocationService.filter({ location_id: locationId, is_active: true });
   const specialties = await svc.entities.LocationSpecialization.filter({ location_id: locationId, is_active: true });
   const team = await svc.entities.ProfessionalLocationAssignment.filter({ location_id: locationId, active_status: 'activ', public_status: 'public' });
@@ -89,12 +90,13 @@ function sanitizePreparationDraft(sub) {
 }
 
 async function applicantOverview(svc, user, loc, claim) {
-  const drafts = await svc.entities.ProviderWorkspaceSubmission.filter({
+  const rawDrafts = await svc.entities.ProviderWorkspaceSubmission.filter({
     location_id: loc.id,
     claim_request_id: claim.id,
     submitted_by_user_id: user.id,
     access_origin: 'claim_preparation',
   }, '-created_date', 50);
+  const drafts = rawDrafts.filter((s) => !s.preparation_locked_at && s.preparation_lock_reason !== 'claim_rejected');
   return {
     mode: 'applicant_preparation',
     claim: {
@@ -161,10 +163,12 @@ Deno.serve(async (req) => {
       orgName = org?.name || null;
     }
 
-    const pendingSubs = await svc.entities.ProviderWorkspaceSubmission.filter({
+    const rawPendingSubs = await svc.entities.ProviderWorkspaceSubmission.filter({
       location_id: p.location_id,
+      access_origin: 'provider_workspace',
       status: { $in: ACTIVE_SUBMISSION_STATUSES },
     }, '-created_date', 50);
+    const pendingSubs = rawPendingSubs.filter((s) => !s.claim_request_id || s.submitted_by_user_id === user.id);
 
     const reviewedSubs = await svc.entities.ProviderWorkspaceSubmission.filter({
       location_id: p.location_id,
@@ -173,7 +177,7 @@ Deno.serve(async (req) => {
     const latestReview = reviewedSubs[0] || null;
 
     const completeness = computeCompleteness(loc);
-    const contentSummary = await getContentSummary(svc, p.location_id);
+    const contentSummary = await getContentSummary(svc, p.location_id, user.id);
     const ownLatestReview = latestReview?.submitted_by_user_id === user.id ? latestReview : null;
 
     return Response.json({

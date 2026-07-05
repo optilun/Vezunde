@@ -361,7 +361,8 @@ Deno.serve(async (req) => {
     if (action === 'approve_claim') {
       const claim = await svc.entities.ProviderClaimRequest.get(p.claim_id).catch(() => null);
       if (!claim) return bad('Revendicarea nu exista');
-      if (claim.status !== 'in_asteptare') return bad('Revendicarea nu este in asteptare');
+      const alreadyApproved = claim.status === 'aprobata';
+      if (!['in_asteptare', 'aprobata'].includes(claim.status)) return bad('Revendicarea nu este in asteptare sau aprobata');
       // Module 3H.1B.2: duplicate-review requests can never be approved into a
       // location — a genuinely distinct location goes through the canonical
       // "Adauga locatie" admin flow only.
@@ -372,21 +373,25 @@ Deno.serve(async (req) => {
       // Module 3H.1A.1: a location cannot be approved/activated without profile classification.
       if (!loc.provider_profile_type) return bad('Locatia nu are provider_profile_type — clasifica profilul inainte de aprobare');
       const note = String(p.note || '').trim();
-      const locUpdates = {
+      const locUpdates = alreadyApproved ? {} : {
         claim_verification_status: 'approved',
         profile_control_status: loc.profile_control_status === 'verified' ? 'verified' : 'claimed',
         profile_control_status_updated_at: new Date().toISOString(),
         profile_control_status_reason: note || 'Revendicare aprobata',
       };
       // New locations submitted via the public wizard go live once their claim is approved.
-      if (loc.status === 'in_verificare') locUpdates.status = 'publicata';
-      await svc.entities.ProviderLocation.update(loc.id, locUpdates);
-      await svc.entities.ProviderClaimRequest.update(claim.id, { status: 'aprobata', reviewed_at: new Date().toISOString(), review_notes: note });
+      if (!alreadyApproved && loc.status === 'in_verificare') locUpdates.status = 'publicata';
+      if (!alreadyApproved) {
+        await svc.entities.ProviderLocation.update(loc.id, locUpdates);
+        await svc.entities.ProviderClaimRequest.update(claim.id, { status: 'aprobata', reviewed_at: new Date().toISOString(), review_notes: note });
+      }
       // Provider access is granted ONLY through this explicit ownership assignment.
+      let activeMembership = null;
       if (claim.user_id) {
         const existing = await svc.entities.ProviderMembership.filter({ user_id: claim.user_id, location_id: loc.id, status: 'active' });
-        if (existing.length === 0) {
-          await svc.entities.ProviderMembership.create({
+        activeMembership = existing[0] || null;
+        if (!activeMembership && !alreadyApproved) {
+          activeMembership = await svc.entities.ProviderMembership.create({
             user_id: claim.user_id,
             location_id: loc.id,
             organization_id: loc.organization_id || claim.organization_id || '',
@@ -395,9 +400,28 @@ Deno.serve(async (req) => {
           });
         }
       }
+      // Module 3H.1C.3A: promote only this claimant's unlocked preparation drafts.
+      // Idempotent: already-promoted drafts no longer match access_origin=claim_preparation.
+      let promotedDraftCount = 0;
+      if (activeMembership && claim.user_id) {
+        const prepDrafts = await svc.entities.ProviderWorkspaceSubmission.filter({
+          claim_request_id: claim.id,
+          submitted_by_user_id: claim.user_id,
+          access_origin: 'claim_preparation',
+          location_id: loc.id,
+          status: { $in: ['draft', 'needs_more_info'] },
+        }, '-created_date', 100);
+        for (const draft of prepDrafts) {
+          if (draft.preparation_locked_at) continue;
+          await svc.entities.ProviderWorkspaceSubmission.update(draft.id, { access_origin: 'provider_workspace' });
+          promotedDraftCount += 1;
+        }
+      }
       // Services are NOT auto-upgraded to provider_confirmed — individual review required.
-      await audit(svc, user, { entity_type: 'ProviderClaimRequest', entity_id: claim.id, action_type: 'approve_claim', changed_fields: ['status', 'claim_verification_status', 'profile_control_status'], previous: { status: claim.status, profile_control_status: loc.profile_control_status }, next: locUpdates, note });
-      return Response.json({ success: true });
+      if (!alreadyApproved || promotedDraftCount > 0) {
+        await audit(svc, user, { entity_type: 'ProviderClaimRequest', entity_id: claim.id, action_type: 'approve_claim', changed_fields: alreadyApproved ? ['preparation_draft_promotion'] : ['status', 'claim_verification_status', 'profile_control_status', 'preparation_draft_promotion'], previous: { status: claim.status, profile_control_status: loc.profile_control_status }, next: { ...locUpdates, promoted_preparation_drafts: promotedDraftCount }, note });
+      }
+      return Response.json({ success: true, promoted_preparation_drafts: promotedDraftCount, already_approved: alreadyApproved });
     }
 
     // ---------- CLAIM REJECTION (note required) ----------
@@ -407,13 +431,29 @@ Deno.serve(async (req) => {
       if (claim.status !== 'in_asteptare') return bad('Revendicarea nu este in asteptare');
       const note = String(p.note || '').trim();
       if (!note) return bad('Respingerea unei revendicari necesita o nota');
-      await svc.entities.ProviderClaimRequest.update(claim.id, { status: 'respinsa', reviewed_at: new Date().toISOString(), review_notes: note });
+      const rejectedAt = new Date().toISOString();
+      await svc.entities.ProviderClaimRequest.update(claim.id, { status: 'respinsa', reviewed_at: rejectedAt, review_notes: note });
       if (claim.location_id) {
         const loc = await svc.entities.ProviderLocation.get(claim.location_id).catch(() => null);
         if (loc) await svc.entities.ProviderLocation.update(loc.id, { claim_verification_status: 'rejected' });
       }
-      await audit(svc, user, { entity_type: 'ProviderClaimRequest', entity_id: claim.id, action_type: 'reject_claim', changed_fields: ['status'], previous: { status: claim.status }, next: { status: 'respinsa' }, note });
-      return Response.json({ success: true });
+      // Module 3H.1C.3A: rejected-claim preparation drafts remain admin-auditable
+      // but are explicitly locked and hidden from applicant/provider workspaces.
+      const prepDrafts = await svc.entities.ProviderWorkspaceSubmission.filter({
+        claim_request_id: claim.id,
+        access_origin: 'claim_preparation',
+      }, '-created_date', 100);
+      let lockedDraftCount = 0;
+      for (const draft of prepDrafts) {
+        if (draft.preparation_locked_at) continue;
+        await svc.entities.ProviderWorkspaceSubmission.update(draft.id, {
+          preparation_locked_at: rejectedAt,
+          preparation_lock_reason: 'claim_rejected',
+        });
+        lockedDraftCount += 1;
+      }
+      await audit(svc, user, { entity_type: 'ProviderClaimRequest', entity_id: claim.id, action_type: 'reject_claim', changed_fields: ['status', 'preparation_draft_lock'], previous: { status: claim.status }, next: { status: 'respinsa', locked_preparation_drafts: lockedDraftCount }, note });
+      return Response.json({ success: true, locked_preparation_drafts: lockedDraftCount });
     }
 
     return bad('Actiune necunoscuta');

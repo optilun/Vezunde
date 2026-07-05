@@ -44,8 +44,9 @@ function computeCompleteness(loc) {
   };
 }
 
-async function getContentSummary(svc, locationId) {
-  const submissions = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: locationId, status: { $in: ACTIVE_SUBMISSION_STATUSES } }, '-created_date', 50);
+async function getContentSummary(svc, locationId, userId) {
+  const rawSubmissions = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: locationId, access_origin: 'provider_workspace', status: { $in: ACTIVE_SUBMISSION_STATUSES } }, '-created_date', 50);
+  const submissions = rawSubmissions.filter((s) => !s.claim_request_id || s.submitted_by_user_id === userId);
   const services = await svc.entities.LocationService.filter({ location_id: locationId, is_active: true });
   const specialties = await svc.entities.LocationSpecialization.filter({ location_id: locationId, is_active: true });
   const team = await svc.entities.ProfessionalLocationAssignment.filter({ location_id: locationId, active_status: 'activ', public_status: 'public' });
@@ -188,11 +189,12 @@ async function getApplicantPreparationWorkspace(svc, user) {
   }
 
   const loc = activeClaim.location_id ? await svc.entities.ProviderLocation.get(activeClaim.location_id).catch(() => null) : null;
-  const drafts = await svc.entities.ProviderWorkspaceSubmission.filter({
+  const rawDrafts = await svc.entities.ProviderWorkspaceSubmission.filter({
     claim_request_id: activeClaim.id,
     submitted_by_user_id: user.id,
     access_origin: 'claim_preparation',
   }, '-created_date', 50);
+  const drafts = rawDrafts.filter((s) => !s.preparation_locked_at && s.preparation_lock_reason !== 'claim_rejected');
 
   return {
     mode: 'applicant_preparation',
@@ -242,14 +244,15 @@ Deno.serve(async (req) => {
     for (const locId of locMap.keys()) {
       const subs = await svc.entities.ProviderWorkspaceSubmission.filter({
         location_id: locId,
+        access_origin: 'provider_workspace',
         status: { $in: ACTIVE_SUBMISSION_STATUSES },
       });
-      pendingReviewCount += subs.length;
+      pendingReviewCount += subs.filter((s) => !s.claim_request_id || s.submitted_by_user_id === user.id).length;
     }
 
     const contentSummaries = new Map();
     for (const locId of locMap.keys()) {
-      contentSummaries.set(locId, await getContentSummary(svc, locId));
+      contentSummaries.set(locId, await getContentSummary(svc, locId, user.id));
     }
 
     const membershipData = memberships

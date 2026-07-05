@@ -262,6 +262,14 @@ function safeConflict(sub) {
   return { conflict: true, section: sub.section, status: sub.status, message: 'Exista deja o modificare in lucru pentru aceasta sectiune.' };
 }
 
+function isLockedPreparation(sub) {
+  return !!sub.preparation_locked_at || sub.preparation_lock_reason === 'claim_rejected';
+}
+
+function isPromotedPrivateDraft(sub) {
+  return (sub.access_origin || 'provider_workspace') === 'provider_workspace' && !!sub.claim_request_id;
+}
+
 async function audit(svc, user, rec) {
   await svc.entities.DirectoryAuditRecord.create({
     entity_type: rec.entity_type,
@@ -350,7 +358,7 @@ function activeSubmissionQuery(access, section, itemKey = '') {
       status: { $in: ACTIVE_STATUSES },
     };
   }
-  const query = { location_id: access.location_id, section, status: { $in: ACTIVE_STATUSES } };
+  const query = { location_id: access.location_id, access_origin: 'provider_workspace', section, status: { $in: ACTIVE_STATUSES } };
   if (section === 'article') query.item_key = itemKey;
   return query;
 }
@@ -377,15 +385,15 @@ Deno.serve(async (req) => {
           access_origin: 'claim_preparation',
           submitted_by_user_id: user.id,
         }, '-created_date', 50);
-        return Response.json({ mode: access.mode, submissions: ownSubs.map(sanitizeSubmission), conflicts: [] });
+        return Response.json({ mode: access.mode, submissions: ownSubs.filter((s) => !isLockedPreparation(s)).map(sanitizeSubmission), conflicts: [] });
       }
-      const ownSubs = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: access.location_id, submitted_by_user_id: user.id }, '-created_date', 50);
-      const otherActive = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: access.location_id, status: { $in: ACTIVE_STATUSES } }, '-created_date', 50);
+      const ownSubs = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: access.location_id, submitted_by_user_id: user.id, access_origin: 'provider_workspace' }, '-created_date', 50);
+      const otherActive = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: access.location_id, access_origin: 'provider_workspace', status: { $in: ACTIVE_STATUSES } }, '-created_date', 50);
       return Response.json({
         mode: access.mode,
         submissions: ownSubs.map(sanitizeSubmission),
         conflicts: otherActive
-          .filter((s) => s.submitted_by_user_id !== user.id && s.section !== 'article' && (s.access_origin || 'provider_workspace') === 'provider_workspace')
+          .filter((s) => s.submitted_by_user_id !== user.id && s.section !== 'article' && !isPromotedPrivateDraft(s))
           .map(safeConflict),
       });
     }
@@ -403,9 +411,13 @@ Deno.serve(async (req) => {
 
       const existing = await svc.entities.ProviderWorkspaceSubmission.filter(activeSubmissionQuery(access, p.section, itemKey), '-created_date', 10);
       if (existing.length > 0) {
-        const own = existing.find((s) => s.submitted_by_user_id === user.id);
+        const own = existing.find((s) => {
+          if (s.submitted_by_user_id !== user.id || isLockedPreparation(s)) return false;
+          if (access.mode === 'applicant_preparation') return s.access_origin === 'claim_preparation' && s.claim_request_id === access.claim.id;
+          return (s.access_origin || 'provider_workspace') === 'provider_workspace';
+        });
         if (own) return Response.json({ submission: sanitizeSubmission(own), resumed: true });
-        const blocking = existing.find((s) => (s.access_origin || 'provider_workspace') === 'provider_workspace');
+        const blocking = existing.find((s) => (s.access_origin || 'provider_workspace') === 'provider_workspace' && !isPromotedPrivateDraft(s));
         if (blocking) return Response.json(safeConflict(blocking), { status: 409 });
       }
 
@@ -435,11 +447,15 @@ Deno.serve(async (req) => {
       if (!p.payload) return Response.json({ error: 'payload este obligatoriu' }, { status: 400 });
       const sub = await svc.entities.ProviderWorkspaceSubmission.get(p.submission_id).catch(() => null);
       if (!sub) return Response.json({ error: 'Draftul nu a fost gasit' }, { status: 404 });
+      if (isLockedPreparation(sub)) return Response.json({ error: 'Draftul de pregatire este blocat' }, { status: 403 });
       if (sub.location_id !== access.location_id) return Response.json({ error: 'Draftul nu apartine acestei locatii' }, { status: 403 });
       if (sub.section !== p.section) return Response.json({ error: 'Sectiunea draftului nu se potriveste' }, { status: 400 });
       if (sub.submitted_by_user_id !== user.id) return Response.json({ error: 'Nu poti modifica acest draft' }, { status: 403 });
       if (access.mode === 'applicant_preparation' && (sub.access_origin !== 'claim_preparation' || sub.claim_request_id !== access.claim.id)) {
         return Response.json({ error: 'Draftul nu apartine revendicarii tale active' }, { status: 403 });
+      }
+      if (access.mode === 'provider_workspace' && (sub.access_origin || 'provider_workspace') !== 'provider_workspace') {
+        return Response.json({ error: 'Draftul de pregatire nu poate fi modificat din workspace-ul providerului' }, { status: 403 });
       }
       if (!['draft', 'needs_more_info'].includes(sub.status)) return Response.json({ error: 'Doar drafturile pot fi modificate' }, { status: 400 });
 
@@ -464,8 +480,10 @@ Deno.serve(async (req) => {
       if (!p.submission_id) return Response.json({ error: 'submission_id este obligatoriu' }, { status: 400 });
       const sub = await svc.entities.ProviderWorkspaceSubmission.get(p.submission_id).catch(() => null);
       if (!sub) return Response.json({ error: 'Draftul nu a fost gasit' }, { status: 404 });
+      if (isLockedPreparation(sub)) return Response.json({ error: 'Draftul de pregatire este blocat' }, { status: 403 });
       if (sub.location_id !== access.location_id) return Response.json({ error: 'Draftul nu apartine acestei locatii' }, { status: 403 });
       if (sub.submitted_by_user_id !== user.id) return Response.json({ error: 'Nu poti trimite acest draft' }, { status: 403 });
+      if ((sub.access_origin || 'provider_workspace') !== 'provider_workspace') return Response.json({ error: 'Draftul de pregatire nu poate fi trimis' }, { status: 403 });
       if (sub.section === 'operating_hours') return Response.json({ error: 'Programul se aplica prin update rapid, nu prin review admin' }, { status: 400 });
       if (!['draft', 'needs_more_info'].includes(sub.status)) return Response.json({ error: 'Draftul nu poate fi trimis' }, { status: 400 });
       const now = new Date().toISOString();
@@ -478,10 +496,14 @@ Deno.serve(async (req) => {
       if (!p.submission_id) return Response.json({ error: 'submission_id este obligatoriu' }, { status: 400 });
       const sub = await svc.entities.ProviderWorkspaceSubmission.get(p.submission_id).catch(() => null);
       if (!sub) return Response.json({ error: 'Submission nu a fost gasit' }, { status: 404 });
+      if (isLockedPreparation(sub)) return Response.json({ error: 'Draftul de pregatire este blocat' }, { status: 403 });
       if (sub.location_id !== access.location_id) return Response.json({ error: 'Submission nu apartine acestei locatii' }, { status: 403 });
       if (sub.submitted_by_user_id !== user.id) return Response.json({ error: 'Nu poti retrage aceasta submission' }, { status: 403 });
       if (access.mode === 'applicant_preparation' && (sub.access_origin !== 'claim_preparation' || sub.claim_request_id !== access.claim.id)) {
         return Response.json({ error: 'Draftul nu apartine revendicarii tale active' }, { status: 403 });
+      }
+      if (access.mode === 'provider_workspace' && (sub.access_origin || 'provider_workspace') !== 'provider_workspace') {
+        return Response.json({ error: 'Draftul de pregatire nu poate fi retras din workspace-ul providerului' }, { status: 403 });
       }
       if (!ACTIVE_STATUSES.includes(sub.status)) return Response.json({ error: 'Submission nu poate fi retrasa' }, { status: 400 });
       await svc.entities.ProviderWorkspaceSubmission.update(sub.id, { status: 'withdrawn' });
