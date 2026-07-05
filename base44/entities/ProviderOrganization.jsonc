@@ -86,9 +86,15 @@
     }
   },
   "required": [
-    "name"
+    "name",
+    "organization_type"
   ],
   "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
     "write": {
       "user_condition": {
         "role": "admin"
