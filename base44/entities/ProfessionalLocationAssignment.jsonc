@@ -11,7 +11,7 @@
     "professional_type": {
       "type": "string",
       "enum": [
-        "medic_oftalmolog",
+        "ophthalmologist",
         "optometrist",
         "optician"
       ]

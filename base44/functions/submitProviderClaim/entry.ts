@@ -1,5 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
+// Module 3H.1A.1: mandatory profile classification (approved enum only) +
+// canonical professional taxonomy (legacy Romanian keys normalized, enum-only roles).
+const PROFILE_TYPES = ['independent_optical_store', 'optical_chain', 'ophthalmology_clinic', 'ophthalmology_office', 'independent_ophthalmologist', 'independent_optometrist', 'independent_optician', 'optical_laboratory_b2c', 'optical_laboratory_b2b', 'future_b2b_distributor'];
+const ROLE_CANONICAL = { medic_oftalmolog: 'ophthalmologist', ophthalmologist: 'ophthalmologist', optometrist: 'optometrist', optician: 'optician' };
+const LEGACY_ROLES = ['medic_oftalmolog', 'optometrist', 'optician'];
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -44,6 +50,10 @@ Deno.serve(async (req) => {
       if (!l.name || !l.provider_type) {
         return Response.json({ error: 'Nume locatie si tip furnizor sunt obligatorii' }, { status: 400 });
       }
+      // Module 3H.1A.1: provider_profile_type is mandatory and enum-only (never derived from free text).
+      if (!PROFILE_TYPES.includes(l.provider_profile_type)) {
+        return Response.json({ error: 'Tipul de profil al furnizorului lipseste sau este invalid' }, { status: 400 });
+      }
       // Module 3F.2.1: a new location REQUIRES a canonical GeographicLocality selection.
       // city/county are derived server-side as compatibility mirrors ONLY. Google
       // place_id/lat/lng never provide canonical geography and cannot bypass this.
@@ -59,6 +69,7 @@ Deno.serve(async (req) => {
       if (p.organization && p.organization.name) {
         const org = await svc.entities.ProviderOrganization.create({
           name: p.organization.name, status: 'activa',
+          organization_type: l.provider_profile_type,
         });
         organizationId = org.id;
       }
@@ -67,6 +78,7 @@ Deno.serve(async (req) => {
       const locData = {
         name: l.name,
         provider_type: l.provider_type,
+        provider_profile_type: l.provider_profile_type,
         // Canonical geography (from GeographicLocality only):
         locality_siruta_code: geo.siruta_code,
         locality_name: geo.name,
@@ -147,6 +159,9 @@ Deno.serve(async (req) => {
       const team = Array.isArray(p.team) ? p.team : [];
       for (const member of team) {
         if (!member || !member.role) continue;
+        // Module 3H.1A.1: canonical taxonomy only — unknown roles are skipped, never stored.
+        const canonicalType = ROLE_CANONICAL[member.role];
+        if (!canonicalType) continue;
         let professionalId = member.professional_id || null;
         if (professionalId) {
           const prof = await svc.entities.ProfessionalProfile.get(professionalId).catch(() => null);
@@ -155,7 +170,9 @@ Deno.serve(async (req) => {
           if (!member.full_name) continue;
           const prof = await svc.entities.ProfessionalProfile.create({
             full_name: member.full_name,
-            role: member.role,
+            professional_type: canonicalType,
+            // Legacy Romanian role kept only for display compatibility.
+            ...(LEGACY_ROLES.includes(member.role) ? { role: member.role } : {}),
             is_public: member.is_public !== false,
           });
           professionalId = prof.id;
@@ -163,7 +180,7 @@ Deno.serve(async (req) => {
         await svc.entities.ProfessionalLocationAssignment.create({
           professional_id: professionalId,
           location_id: locationId,
-          professional_type: member.role,
+          professional_type: canonicalType,
           active_status: 'activ',
           public_status: member.is_public !== false ? 'public' : 'privat',
         });

@@ -39,6 +39,10 @@ function classifyKey(key) { return CATALOG[key] || LEGACY_LEVELS[key] || 'unknow
 
 const PROVIDER_TYPES = ['optica_medicala', 'clinica_oftalmologica', 'cabinet_oftalmologic', 'cabinet_optometric', 'laborator_optic', 'optometrist_independent', 'medic_oftalmolog_independent'];
 
+// Module 3H.1A.1: mandatory provider profile classification — approved enum only,
+// never derived from free text.
+const PROFILE_TYPES = ['independent_optical_store', 'optical_chain', 'ophthalmology_clinic', 'ophthalmology_office', 'independent_ophthalmologist', 'independent_optometrist', 'independent_optician', 'optical_laboratory_b2c', 'optical_laboratory_b2b', 'future_b2b_distributor'];
+
 const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 const tokens = (s) => norm(s).split(' ').filter((t) => t.length > 2);
 
@@ -86,6 +90,10 @@ Deno.serve(async (req) => {
       const prov = p.provenance || {};
       if (!loc.name || !norm(loc.name)) return bad('Numele locatiei este obligatoriu');
       if (!PROVIDER_TYPES.includes(loc.provider_type)) return bad('Tip de furnizor invalid');
+      // Module 3H.1A.1: provider_profile_type is mandatory (enum-only).
+      if (!PROFILE_TYPES.includes(loc.provider_profile_type)) return bad('provider_profile_type lipseste sau este invalid');
+      const orgType = org.organization_type || loc.provider_profile_type;
+      if (!p.organization_id && !PROFILE_TYPES.includes(orgType)) return bad('organization_type lipseste sau este invalid');
       // Module 3F.2.2: canonical locality (SIRUTA) is MANDATORY. Free-text city/county
       // are never accepted as geographic truth — mirrors are derived server-side below.
       const sirutaCode = String(loc.locality_siruta_code || '').trim();
@@ -140,6 +148,7 @@ Deno.serve(async (req) => {
       if (!organizationId) {
         const newOrg = await svc.entities.ProviderOrganization.create({
           name: org.name, legal_name: org.legal_name || '', website: org.website || '', status: 'activa',
+          organization_type: orgType,
         });
         organizationId = newOrg.id;
         await audit(svc, user, { entity_type: 'ProviderOrganization', entity_id: newOrg.id, action_type: 'create_organization', changed_fields: ['name', 'legal_name', 'website'], next: { name: org.name }, note: p.note || '' });
@@ -149,6 +158,7 @@ Deno.serve(async (req) => {
         organization_id: organizationId,
         name: loc.name,
         provider_type: loc.provider_type,
+        provider_profile_type: loc.provider_profile_type,
         // Canonical geography — derived ONLY from GeographicLocality:
         locality_siruta_code: geo.siruta_code,
         locality_name: geo.name,
@@ -347,6 +357,8 @@ Deno.serve(async (req) => {
       if (!claim.location_id) return bad('Revendicarea nu are locatie asociata');
       const loc = await svc.entities.ProviderLocation.get(claim.location_id).catch(() => null);
       if (!loc) return bad('Locatia revendicata nu exista');
+      // Module 3H.1A.1: a location cannot be approved/activated without profile classification.
+      if (!loc.provider_profile_type) return bad('Locatia nu are provider_profile_type — clasifica profilul inainte de aprobare');
       const note = String(p.note || '').trim();
       const locUpdates = {
         claim_verification_status: 'approved',
