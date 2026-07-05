@@ -1,18 +1,27 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-// MODULE 3H.1C.1/1A/2B — Provider Workspace draft/submit/withdraw.
-// Provider-scoped submissions only. Services/team/media remain one active batch
-// per location+section. Articles are item-level drafts. All payloads are strict
-// allowlists and never public until admin approval.
+// MODULE 3H.1C.1/1A/2B/3 — Provider Workspace draft/submit/withdraw.
+// Provider members keep the normal reviewed workspace. Pending claimants get a
+// private claim-preparation workspace only: no publication, no membership, no
+// submit-for-review before claim approval.
 
-const WRITABLE_SECTIONS = ['public_profile', 'location_details', 'services', 'team', 'media', 'article'];
+const PROVIDER_WORKSPACE_SECTIONS = ['public_profile', 'location_details', 'services', 'team', 'media', 'article'];
+const CLAIM_PREP_SECTIONS = ['public_profile', 'operating_hours', 'services'];
+const WRITABLE_SECTIONS = [...new Set([...PROVIDER_WORKSPACE_SECTIONS, ...CLAIM_PREP_SECTIONS])];
 const ACTIVE_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
+const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
 const MAX_FIELD_LEN = 2000;
 const MAX_ARTICLE_BODY = 20000;
+const MAX_HOURS_LEN = 500;
+
+const CLAIM_PREP_PUBLIC_PROFILE_FIELDS = ['public_description', 'website_url', 'facebook_url', 'instagram_url', 'linkedin_url', 'public_phone', 'public_email'];
+const CLAIM_PREP_SERVICE_GROUPS = ['patient_services', 'technical_activities'];
+const AVAILABILITY_STATUSES = ['astazi', 'urmatoarele_zile', 'saptamana_aceasta', 'doar_programare', 'necunoscuta'];
 
 const SECTION_FIELDS = {
   public_profile: ['public_display_name', 'public_description', 'website_url', 'facebook_url', 'instagram_url', 'linkedin_url', 'public_phone', 'public_email'],
   location_details: ['address', 'public_display_name', 'public_phone', 'public_email'],
+  operating_hours: ['opening_hours', 'saturday_hours', 'availability_status'],
   services: ['selected_ids', 'removal_ids', 'suggestions'],
   team: ['members', 'removal_professional_ids'],
   media: ['assets', 'removal_media_ids'],
@@ -31,8 +40,8 @@ const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
 function bad(body, status = 400) { return { valid: false, status, body }; }
 function isPlainObject(value) { return !!value && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype; }
 
-function checkUnknown(section, payload) {
-  const allowed = SECTION_FIELDS[section];
+function checkUnknown(section, payload, allowedOverride = null) {
+  const allowed = allowedOverride || SECTION_FIELDS[section];
   if (!allowed) return bad({ error: 'Sectiunea nu este disponibila pentru editare' });
   if (!isPlainObject(payload)) return bad({ error: 'Payload invalid' });
   const keys = Object.keys(payload);
@@ -42,8 +51,8 @@ function checkUnknown(section, payload) {
   return { valid: true, keys };
 }
 
-function validateTextPayload(section, payload) {
-  const base = checkUnknown(section, payload);
+function validateTextPayload(section, payload, allowedOverride = null) {
+  const base = checkUnknown(section, payload, allowedOverride);
   if (!base.valid) return base;
   const clean = {};
   for (const key of base.keys) {
@@ -56,31 +65,56 @@ function validateTextPayload(section, payload) {
   return Object.keys(clean).length ? { valid: true, clean } : bad({ error: 'Payload gol' });
 }
 
-function validateServiceGroupObject(value, fieldName) {
+function validateOperatingHours(payload) {
+  const base = checkUnknown('operating_hours', payload);
+  if (!base.valid) return base;
+  const clean = {};
+  if ('opening_hours' in payload) {
+    const val = String(payload.opening_hours || '').trim();
+    if (val.length > MAX_HOURS_LEN) return bad({ error: 'Programul este prea lung' });
+    clean.opening_hours = val;
+  }
+  if ('saturday_hours' in payload) {
+    const val = String(payload.saturday_hours || '').trim();
+    if (val.length > MAX_HOURS_LEN) return bad({ error: 'Programul de sambata este prea lung' });
+    clean.saturday_hours = val;
+  }
+  if ('availability_status' in payload) {
+    if (!AVAILABILITY_STATUSES.includes(payload.availability_status)) return bad({ error: 'Status de disponibilitate invalid' });
+    clean.availability_status = payload.availability_status;
+  }
+  return Object.keys(clean).length ? { valid: true, clean } : bad({ error: 'Payload gol' });
+}
+
+function validateServiceGroupObject(value, fieldName, allowedGroups) {
   if (value === undefined) return { valid: true, clean: {} };
   if (!isPlainObject(value)) return bad({ error: `${fieldName} trebuie sa fie obiect` });
-  const unknownGroups = Object.keys(value).filter((group) => !Object.keys(CANONICAL_SERVICE_IDS).includes(group));
+  const allowed = allowedGroups || Object.keys(CANONICAL_SERVICE_IDS);
+  const unknownGroups = Object.keys(value).filter((group) => !allowed.includes(group));
   if (unknownGroups.length > 0) return bad({ error: 'Grup de servicii nepermis', fields: unknownGroups });
   const clean = {};
   for (const [group, ids] of Object.entries(value)) {
     if (!Array.isArray(ids)) return bad({ error: `${fieldName}.${group} trebuie sa fie lista` });
     const unique = [...new Set(ids.map((id) => String(id || '').trim()).filter(Boolean))];
-    const invalid = unique.filter((id) => !CANONICAL_SERVICE_IDS[group].includes(id));
+    const invalid = unique.filter((id) => !CANONICAL_SERVICE_IDS[group]?.includes(id));
     if (invalid.length > 0) return bad({ error: 'ID canonic invalid', fields: invalid });
     clean[group] = unique;
   }
   return { valid: true, clean };
 }
 
-function validateServices(payload) {
+function validateServices(payload, options = {}) {
   const base = checkUnknown('services', payload);
   if (!base.valid) return base;
-  const selected = validateServiceGroupObject(payload.selected_ids, 'selected_ids');
+  const allowedGroups = options.allowedGroups || null;
+  const allowSuggestions = options.allowSuggestions !== false;
+  const selected = validateServiceGroupObject(payload.selected_ids, 'selected_ids', allowedGroups);
   if (!selected.valid) return selected;
-  const removals = validateServiceGroupObject(payload.removal_ids, 'removal_ids');
+  const removals = validateServiceGroupObject(payload.removal_ids, 'removal_ids', allowedGroups);
   if (!removals.valid) return removals;
   let suggestions = [];
   if (payload.suggestions !== undefined) {
+    if (!allowSuggestions) return bad({ error: 'Sugestiile nu sunt permise in pregatirea revendicarii' });
     if (!Array.isArray(payload.suggestions)) return bad({ error: 'suggestions trebuie sa fie lista' });
     suggestions = payload.suggestions.map((s) => {
       if (!isPlainObject(s)) throw new Error('Sugestie invalida');
@@ -180,7 +214,14 @@ function validateArticle(payload) {
   } };
 }
 
-function validatePayload(section, payload, context) {
+function validatePayload(section, payload, context, access) {
+  if (access.mode === 'applicant_preparation') {
+    if (!CLAIM_PREP_SECTIONS.includes(section)) return bad({ error: 'Sectiunea nu este disponibila in pregatirea revendicarii' }, 403);
+    if (section === 'public_profile') return validateTextPayload(section, payload, CLAIM_PREP_PUBLIC_PROFILE_FIELDS);
+    if (section === 'operating_hours') return validateOperatingHours(payload);
+    if (section === 'services') return validateServices(payload, { allowedGroups: CLAIM_PREP_SERVICE_GROUPS, allowSuggestions: false });
+  }
+  if (section === 'operating_hours') return bad({ error: 'Programul se actualizeaza prin actiunea rapida dupa aprobarea revendicarii' }, 400);
   if (section === 'public_profile' || section === 'location_details') return validateTextPayload(section, payload);
   if (section === 'services') {
     try { return validateServices(payload); } catch (error) { return bad({ error: error.message }); }
@@ -204,6 +245,8 @@ function sanitizeSubmission(sub) {
     id: sub.id,
     organization_id: sub.organization_id || null,
     location_id: sub.location_id,
+    claim_request_id: sub.claim_request_id || '',
+    access_origin: sub.access_origin || 'provider_workspace',
     section: sub.section,
     item_key: sub.item_key || '',
     status: sub.status,
@@ -265,6 +308,53 @@ async function assertSubmittedReferences(svc, locationId, section, payload) {
   return { valid: true };
 }
 
+async function resolveAccess(svc, user, p) {
+  const requestedLocationId = String(p.location_id || '').trim();
+  if (requestedLocationId) {
+    const memberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, location_id: requestedLocationId, status: 'active' });
+    if (memberships.length > 0) {
+      const loc = await svc.entities.ProviderLocation.get(requestedLocationId).catch(() => null);
+      if (!loc) return bad({ error: 'Locatia nu a fost gasita' }, 404);
+      if (loc.profile_control_status === 'suspended') return bad({ error: 'Profilul este suspendat' }, 403);
+      const allMemberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' });
+      const permittedLocationIds = [...new Set(allMemberships.map((m) => m.location_id).filter(Boolean))];
+      return { valid: true, mode: 'provider_workspace', loc, location_id: requestedLocationId, claim: null, context: { permittedLocationIds } };
+    }
+  }
+
+  const claimId = String(p.claim_request_id || '').trim();
+  let claim = null;
+  if (claimId) claim = await svc.entities.ProviderClaimRequest.get(claimId).catch(() => null);
+  else if (requestedLocationId) {
+    const claims = await svc.entities.ProviderClaimRequest.filter({ user_id: user.id, location_id: requestedLocationId, status: { $in: ACTIVE_CLAIM_STATUSES } }, '-created_date', 5);
+    claim = claims[0] || null;
+  }
+  if (!claim || claim.user_id !== user.id) return bad({ error: 'Nu ai acces la aceasta locatie sau revendicare' }, 403);
+  if (!ACTIVE_CLAIM_STATUSES.includes(claim.status)) return bad({ error: 'Revendicarea nu permite pregatire in acest status' }, 403);
+  if (!claim.location_id) return bad({ error: 'Revendicarea nu are locatie asociata pentru pregatire' }, 400);
+  if (requestedLocationId && requestedLocationId !== claim.location_id) return bad({ error: 'Revendicarea nu apartine acestei locatii' }, 403);
+  const loc = await svc.entities.ProviderLocation.get(claim.location_id).catch(() => null);
+  if (!loc) return bad({ error: 'Locatia revendicata nu a fost gasita' }, 404);
+  if (loc.profile_control_status === 'suspended') return bad({ error: 'Profilul este suspendat' }, 403);
+  return { valid: true, mode: 'applicant_preparation', loc, location_id: claim.location_id, claim, context: { permittedLocationIds: [claim.location_id] } };
+}
+
+function activeSubmissionQuery(access, section, itemKey = '') {
+  if (access.mode === 'applicant_preparation') {
+    return {
+      location_id: access.location_id,
+      claim_request_id: access.claim.id,
+      access_origin: 'claim_preparation',
+      submitted_by_user_id: access.claim.user_id,
+      section,
+      status: { $in: ACTIVE_STATUSES },
+    };
+  }
+  const query = { location_id: access.location_id, section, status: { $in: ACTIVE_STATUSES } };
+  if (section === 'article') query.item_key = itemKey;
+  return query;
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -275,25 +365,28 @@ Deno.serve(async (req) => {
 
     const action = p.action;
     if (!['list_mine', 'create_draft', 'update_draft', 'submit', 'withdraw'].includes(action)) return Response.json({ error: 'Actiune invalida' }, { status: 400 });
-    if (!p.location_id) return Response.json({ error: 'location_id este obligatoriu' }, { status: 400 });
 
-    const currentMemberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, location_id: p.location_id, status: 'active' });
-    if (currentMemberships.length === 0) return Response.json({ error: 'Nu ai acces la aceasta locatie' }, { status: 403 });
-
-    const loc = await svc.entities.ProviderLocation.get(p.location_id).catch(() => null);
-    if (!loc) return Response.json({ error: 'Locatia nu a fost gasita' }, { status: 404 });
-    if (loc.profile_control_status === 'suspended') return Response.json({ error: 'Profilul este suspendat' }, { status: 403 });
-
-    const allMemberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' });
-    const permittedLocationIds = [...new Set(allMemberships.map((m) => m.location_id).filter(Boolean))];
-    const context = { permittedLocationIds };
+    const access = await resolveAccess(svc, user, p);
+    if (!access.valid) return Response.json(access.body, { status: access.status });
 
     if (action === 'list_mine') {
-      const ownSubs = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: p.location_id, submitted_by_user_id: user.id }, '-created_date', 50);
-      const otherActive = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: p.location_id, status: { $in: ACTIVE_STATUSES } }, '-created_date', 50);
+      if (access.mode === 'applicant_preparation') {
+        const ownSubs = await svc.entities.ProviderWorkspaceSubmission.filter({
+          location_id: access.location_id,
+          claim_request_id: access.claim.id,
+          access_origin: 'claim_preparation',
+          submitted_by_user_id: user.id,
+        }, '-created_date', 50);
+        return Response.json({ mode: access.mode, submissions: ownSubs.map(sanitizeSubmission), conflicts: [] });
+      }
+      const ownSubs = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: access.location_id, submitted_by_user_id: user.id }, '-created_date', 50);
+      const otherActive = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: access.location_id, status: { $in: ACTIVE_STATUSES } }, '-created_date', 50);
       return Response.json({
+        mode: access.mode,
         submissions: ownSubs.map(sanitizeSubmission),
-        conflicts: otherActive.filter((s) => s.submitted_by_user_id !== user.id && s.section !== 'article').map(safeConflict),
+        conflicts: otherActive
+          .filter((s) => s.submitted_by_user_id !== user.id && s.section !== 'article' && (s.access_origin || 'provider_workspace') === 'provider_workspace')
+          .map(safeConflict),
       });
     }
 
@@ -301,32 +394,39 @@ Deno.serve(async (req) => {
 
     if (action === 'create_draft') {
       if (!p.payload) return Response.json({ error: 'payload este obligatoriu' }, { status: 400 });
-      const result = validatePayload(p.section, p.payload, context);
+      const result = validatePayload(p.section, p.payload, access.context, access);
       if (!result.valid) return Response.json(result.body, { status: result.status });
-      const refCheck = await assertSubmittedReferences(svc, p.location_id, p.section, result.clean);
+      const refCheck = await assertSubmittedReferences(svc, access.location_id, p.section, result.clean);
       if (!refCheck.valid) return Response.json(refCheck.body, { status: refCheck.status });
-      const itemKey = p.section === 'article' ? normalizeItemKey(p) : '';
-      if (p.section === 'article' && !itemKey) return Response.json({ error: 'item_key invalid' }, { status: 400 });
+      const itemKey = (access.mode === 'provider_workspace' && p.section === 'article') ? normalizeItemKey(p) : '';
+      if (access.mode === 'provider_workspace' && p.section === 'article' && !itemKey) return Response.json({ error: 'item_key invalid' }, { status: 400 });
 
-      const activeQuery = { location_id: p.location_id, section: p.section, status: { $in: ACTIVE_STATUSES } };
-      if (p.section === 'article') activeQuery.item_key = itemKey;
-      const existing = await svc.entities.ProviderWorkspaceSubmission.filter(activeQuery, '-created_date', 10);
+      const existing = await svc.entities.ProviderWorkspaceSubmission.filter(activeSubmissionQuery(access, p.section, itemKey), '-created_date', 10);
       if (existing.length > 0) {
-        const active = existing[0];
-        if (active.submitted_by_user_id === user.id) return Response.json({ submission: sanitizeSubmission(active), resumed: true });
-        return Response.json(safeConflict(active), { status: 409 });
+        const own = existing.find((s) => s.submitted_by_user_id === user.id);
+        if (own) return Response.json({ submission: sanitizeSubmission(own), resumed: true });
+        const blocking = existing.find((s) => (s.access_origin || 'provider_workspace') === 'provider_workspace');
+        if (blocking) return Response.json(safeConflict(blocking), { status: 409 });
       }
 
       const sub = await svc.entities.ProviderWorkspaceSubmission.create({
-        organization_id: loc.organization_id || null,
-        location_id: p.location_id,
+        organization_id: access.loc.organization_id || null,
+        location_id: access.location_id,
+        claim_request_id: access.mode === 'applicant_preparation' ? access.claim.id : '',
+        access_origin: access.mode === 'applicant_preparation' ? 'claim_preparation' : 'provider_workspace',
         section: p.section,
         item_key: itemKey,
         payload_json: JSON.stringify(result.clean),
         status: 'draft',
         submitted_by_user_id: user.id,
       });
-      await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'create_draft', changed_fields: ['section', 'status', 'payload_json'], next: { section: p.section, status: 'draft' }, note: `Draft creat pentru sectiunea ${p.section}` });
+      await audit(svc, user, {
+        entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id,
+        action_type: access.mode === 'applicant_preparation' ? 'create_claim_preparation_draft' : 'create_draft',
+        changed_fields: ['section', 'status', 'payload_json', 'access_origin', 'claim_request_id'],
+        next: { section: p.section, status: 'draft', access_origin: sub.access_origin, claim_request_id: sub.claim_request_id || '' },
+        note: `Draft creat pentru sectiunea ${p.section}`,
+      });
       return Response.json({ submission: sanitizeSubmission(sub) });
     }
 
@@ -335,25 +435,38 @@ Deno.serve(async (req) => {
       if (!p.payload) return Response.json({ error: 'payload este obligatoriu' }, { status: 400 });
       const sub = await svc.entities.ProviderWorkspaceSubmission.get(p.submission_id).catch(() => null);
       if (!sub) return Response.json({ error: 'Draftul nu a fost gasit' }, { status: 404 });
-      if (sub.location_id !== p.location_id) return Response.json({ error: 'Draftul nu apartine acestei locatii' }, { status: 403 });
+      if (sub.location_id !== access.location_id) return Response.json({ error: 'Draftul nu apartine acestei locatii' }, { status: 403 });
       if (sub.section !== p.section) return Response.json({ error: 'Sectiunea draftului nu se potriveste' }, { status: 400 });
       if (sub.submitted_by_user_id !== user.id) return Response.json({ error: 'Nu poti modifica acest draft' }, { status: 403 });
+      if (access.mode === 'applicant_preparation' && (sub.access_origin !== 'claim_preparation' || sub.claim_request_id !== access.claim.id)) {
+        return Response.json({ error: 'Draftul nu apartine revendicarii tale active' }, { status: 403 });
+      }
       if (!['draft', 'needs_more_info'].includes(sub.status)) return Response.json({ error: 'Doar drafturile pot fi modificate' }, { status: 400 });
 
-      const result = validatePayload(p.section, p.payload, context);
+      const result = validatePayload(p.section, p.payload, access.context, access);
       if (!result.valid) return Response.json(result.body, { status: result.status });
-      const refCheck = await assertSubmittedReferences(svc, p.location_id, p.section, result.clean);
+      const refCheck = await assertSubmittedReferences(svc, access.location_id, p.section, result.clean);
       if (!refCheck.valid) return Response.json(refCheck.body, { status: refCheck.status });
       await svc.entities.ProviderWorkspaceSubmission.update(sub.id, { payload_json: JSON.stringify(result.clean), status: 'draft' });
-      await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'update_draft', changed_fields: ['payload_json', 'status'], previous: { status: sub.status }, note: `Draft actualizat pentru sectiunea ${p.section}` });
+      await audit(svc, user, {
+        entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id,
+        action_type: access.mode === 'applicant_preparation' ? 'update_claim_preparation_draft' : 'update_draft',
+        changed_fields: ['payload_json', 'status'],
+        previous: { status: sub.status }, note: `Draft actualizat pentru sectiunea ${p.section}`,
+      });
       return Response.json({ success: true });
     }
 
     if (action === 'submit') {
+      if (access.mode !== 'provider_workspace') {
+        return Response.json({ error: 'Drafturile de pregatire nu pot fi trimise spre publicare inainte de aprobarea revendicarii' }, { status: 403 });
+      }
       if (!p.submission_id) return Response.json({ error: 'submission_id este obligatoriu' }, { status: 400 });
       const sub = await svc.entities.ProviderWorkspaceSubmission.get(p.submission_id).catch(() => null);
       if (!sub) return Response.json({ error: 'Draftul nu a fost gasit' }, { status: 404 });
+      if (sub.location_id !== access.location_id) return Response.json({ error: 'Draftul nu apartine acestei locatii' }, { status: 403 });
       if (sub.submitted_by_user_id !== user.id) return Response.json({ error: 'Nu poti trimite acest draft' }, { status: 403 });
+      if (sub.section === 'operating_hours') return Response.json({ error: 'Programul se aplica prin update rapid, nu prin review admin' }, { status: 400 });
       if (!['draft', 'needs_more_info'].includes(sub.status)) return Response.json({ error: 'Draftul nu poate fi trimis' }, { status: 400 });
       const now = new Date().toISOString();
       await svc.entities.ProviderWorkspaceSubmission.update(sub.id, { status: 'pending_review', submitted_at: now });
@@ -365,7 +478,11 @@ Deno.serve(async (req) => {
       if (!p.submission_id) return Response.json({ error: 'submission_id este obligatoriu' }, { status: 400 });
       const sub = await svc.entities.ProviderWorkspaceSubmission.get(p.submission_id).catch(() => null);
       if (!sub) return Response.json({ error: 'Submission nu a fost gasit' }, { status: 404 });
+      if (sub.location_id !== access.location_id) return Response.json({ error: 'Submission nu apartine acestei locatii' }, { status: 403 });
       if (sub.submitted_by_user_id !== user.id) return Response.json({ error: 'Nu poti retrage aceasta submission' }, { status: 403 });
+      if (access.mode === 'applicant_preparation' && (sub.access_origin !== 'claim_preparation' || sub.claim_request_id !== access.claim.id)) {
+        return Response.json({ error: 'Draftul nu apartine revendicarii tale active' }, { status: 403 });
+      }
       if (!ACTIVE_STATUSES.includes(sub.status)) return Response.json({ error: 'Submission nu poate fi retrasa' }, { status: 400 });
       await svc.entities.ProviderWorkspaceSubmission.update(sub.id, { status: 'withdrawn' });
       await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'withdraw_submission', changed_fields: ['status'], previous: { status: sub.status }, next: { status: 'withdrawn' }, note: `Submission retrasa pentru sectiunea ${sub.section}` });
