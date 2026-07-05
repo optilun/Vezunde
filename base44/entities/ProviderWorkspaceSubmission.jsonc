@@ -8,11 +8,23 @@
     "location_id": {
       "type": "string"
     },
+    "claim_request_id": {
+      "type": "string"
+    },
+    "access_origin": {
+      "type": "string",
+      "enum": [
+        "provider_workspace",
+        "claim_preparation"
+      ],
+      "default": "provider_workspace"
+    },
     "section": {
       "type": "string",
       "enum": [
         "public_profile",
         "location_details",
+        "operating_hours",
         "services",
         "team",
         "media",
