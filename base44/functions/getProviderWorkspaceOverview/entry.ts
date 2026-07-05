@@ -69,6 +69,8 @@ Deno.serve(async (req) => {
 
     const completeness = computeCompleteness(loc);
 
+    const ownLatestReview = latestReview?.submitted_by_user_id === user.id ? latestReview : null;
+
     return Response.json({
       location: {
         id: loc.id,
@@ -88,15 +90,22 @@ Deno.serve(async (req) => {
         completed_count: completeness.completed_count,
         checklist: [...completeness.completed, ...completeness.missing],
       },
-      pending_submissions: pendingSubs.map((s) => ({
+      pending_submissions: pendingSubs.map((s) => s.submitted_by_user_id === user.id ? ({
         id: s.id,
         section: s.section,
         status: s.status,
         submitted_at: s.submitted_at || null,
+      }) : ({
+        conflict: true,
+        section: s.section,
+        status: s.status,
+        message: 'Exista deja o modificare in lucru pentru aceasta sectiune.',
       })),
-      latest_admin_note: latestReview?.admin_note || null,
-      latest_review_status: latestReview?.status || null,
-      latest_reviewed_at: latestReview?.reviewed_at || null,
+      ...(ownLatestReview ? {
+        latest_admin_note: ownLatestReview.admin_note || '',
+        latest_review_status: ownLatestReview.status,
+        latest_reviewed_at: ownLatestReview.reviewed_at || null,
+      } : {}),
       public_preview: {
         display_name: loc.public_display_name || loc.name,
         description: loc.public_description || loc.description || '',

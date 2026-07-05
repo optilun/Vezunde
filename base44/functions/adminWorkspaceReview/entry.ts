@@ -26,6 +26,34 @@ const SECTION_APPLY = {
   },
 };
 
+const MAX_FIELD_LEN = 2000;
+
+function validatePayload(section, payload) {
+  const fieldMap = SECTION_APPLY[section];
+  if (!fieldMap) return { valid: false, status: 400, body: { error: 'Sectiunea nu poate fi aplicata in acest modul' } };
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload) || Object.getPrototypeOf(payload) !== Object.prototype) {
+    return { valid: false, status: 400, body: { error: 'Payload invalid' } };
+  }
+  const allowed = Object.keys(fieldMap);
+  const keys = Object.keys(payload);
+  const unknown = keys.filter((key) => !allowed.includes(key));
+  if (unknown.length > 0) {
+    return { valid: false, status: 400, body: { error: 'Camp nepermis', fields: unknown } };
+  }
+  if (keys.length === 0) {
+    return { valid: false, status: 400, body: { error: 'Payload gol' } };
+  }
+  const clean = {};
+  for (const key of keys) {
+    const val = payload[key];
+    if (val === null || val === undefined) { clean[key] = ''; continue; }
+    if (typeof val !== 'string') return { valid: false, status: 400, body: { error: `${key} trebuie sa fie text` } };
+    if (val.length > MAX_FIELD_LEN) return { valid: false, status: 400, body: { error: `${key} depaseste lungimea maxima` } };
+    clean[key] = val.trim();
+  }
+  return { valid: true, clean };
+}
+
 // Legacy field mirrors kept in sync on apply for backward compatibility.
 const LEGACY_MIRRORS = {
   public_description: ['description'],
@@ -90,13 +118,15 @@ Deno.serve(async (req) => {
       // Apply approved fields to ProviderLocation (only for writable sections).
       const fieldMap = SECTION_APPLY[sub.section];
       if (fieldMap) {
-        let payload = {};
-        try { payload = JSON.parse(sub.payload_json || '{}'); } catch (_e) { payload = {}; }
+        let payload = null;
+        try { payload = JSON.parse(sub.payload_json || '{}'); } catch (_e) { payload = null; }
+        const validation = validatePayload(sub.section, payload);
+        if (!validation.valid) return Response.json(validation.body, { status: validation.status });
 
         const locUpdates = {};
         for (const [payloadKey, locField] of Object.entries(fieldMap)) {
-          if (payloadKey in payload) {
-            locUpdates[locField] = payload[payloadKey];
+          if (payloadKey in validation.clean) {
+            locUpdates[locField] = validation.clean[payloadKey];
             // Sync legacy mirrors for backward compatibility.
             if (LEGACY_MIRRORS[locField]) {
               for (const legacyField of LEGACY_MIRRORS[locField]) {

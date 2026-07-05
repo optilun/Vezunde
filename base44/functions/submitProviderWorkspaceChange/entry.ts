@@ -18,15 +18,30 @@ const MAX_FIELD_LEN = 2000;
 // Strict allowlist validation — unknown keys are silently stripped, never trusted.
 function validatePayload(section, payload) {
   const allowed = SECTION_FIELDS[section];
-  if (!allowed) return { valid: false, error: 'Sectiunea nu este disponibila pentru editare' };
+  if (!allowed) return { valid: false, status: 400, body: { error: 'Sectiunea nu este disponibila pentru editare' } };
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload) || Object.getPrototypeOf(payload) !== Object.prototype) {
+    return { valid: false, status: 400, body: { error: 'Payload invalid' } };
+  }
+
+  const keys = Object.keys(payload);
+  const unknown = keys.filter((key) => !allowed.includes(key));
+  if (unknown.length > 0) {
+    return { valid: false, status: 400, body: { error: 'Camp nepermis', fields: unknown } };
+  }
+  if (keys.length === 0) {
+    return { valid: false, status: 400, body: { error: 'Payload gol' } };
+  }
+
   const clean = {};
-  for (const key of Object.keys(payload || {})) {
-    if (!allowed.includes(key)) continue;
+  for (const key of keys) {
     const val = payload[key];
     if (val === null || val === undefined) { clean[key] = ''; continue; }
-    if (typeof val !== 'string') return { valid: false, error: `${key} trebuie sa fie text` };
-    if (val.length > MAX_FIELD_LEN) return { valid: false, error: `${key} depaseste lungimea maxima` };
+    if (typeof val !== 'string') return { valid: false, status: 400, body: { error: `${key} trebuie sa fie text` } };
+    if (val.length > MAX_FIELD_LEN) return { valid: false, status: 400, body: { error: `${key} depaseste lungimea maxima` } };
     clean[key] = val.trim();
+  }
+  if (Object.keys(clean).length === 0) {
+    return { valid: false, status: 400, body: { error: 'Payload gol' } };
   }
   return { valid: true, clean };
 }
@@ -45,6 +60,15 @@ function sanitizeSubmission(sub) {
     admin_note: showNote ? (sub.admin_note || '') : '',
     created_date: sub.created_date,
     updated_date: sub.updated_date,
+  };
+}
+
+function safeConflict(sub) {
+  return {
+    conflict: true,
+    section: sub.section,
+    status: sub.status,
+    message: 'Exista deja o modificare in lucru pentru aceasta sectiune.',
   };
 }
 
@@ -94,10 +118,18 @@ Deno.serve(async (req) => {
 
     // === LIST MINE ===
     if (action === 'list_mine') {
-      const subs = await svc.entities.ProviderWorkspaceSubmission.filter({
+      const ownSubs = await svc.entities.ProviderWorkspaceSubmission.filter({
         location_id: p.location_id,
+        submitted_by_user_id: user.id,
       }, '-created_date', 50);
-      return Response.json({ submissions: subs.map(sanitizeSubmission) });
+      const otherActive = await svc.entities.ProviderWorkspaceSubmission.filter({
+        location_id: p.location_id,
+        status: { $in: ['draft', 'pending_review', 'needs_more_info'] },
+      }, '-created_date', 50);
+      return Response.json({
+        submissions: ownSubs.map(sanitizeSubmission),
+        conflicts: otherActive.filter((s) => s.submitted_by_user_id !== user.id).map(safeConflict),
+      });
     }
 
     // All remaining actions require a valid writable section.
@@ -109,15 +141,20 @@ Deno.serve(async (req) => {
     if (action === 'create_draft') {
       if (!p.payload) return Response.json({ error: 'payload este obligatoriu' }, { status: 400 });
       const result = validatePayload(p.section, p.payload);
-      if (!result.valid) return Response.json({ error: result.error }, { status: 400 });
+      if (!result.valid) return Response.json(result.body, { status: result.status });
 
-      // One active draft per section per location per user.
+      // One active submission per location + section across all provider members.
       const existing = await svc.entities.ProviderWorkspaceSubmission.filter({
-        location_id: p.location_id, section: p.section,
-        submitted_by_user_id: user.id, status: 'draft',
-      });
+        location_id: p.location_id,
+        section: p.section,
+        status: { $in: ['draft', 'pending_review', 'needs_more_info'] },
+      }, '-created_date', 10);
       if (existing.length > 0) {
-        return Response.json({ error: 'Exista deja o ciorna pentru aceasta sectiune', submission_id: existing[0].id }, { status: 400 });
+        const active = existing[0];
+        if (active.submitted_by_user_id === user.id) {
+          return Response.json({ submission: sanitizeSubmission(active), resumed: true });
+        }
+        return Response.json(safeConflict(active), { status: 409 });
       }
 
       const sub = await svc.entities.ProviderWorkspaceSubmission.create({
@@ -153,7 +190,7 @@ Deno.serve(async (req) => {
       }
 
       const result = validatePayload(p.section, p.payload);
-      if (!result.valid) return Response.json({ error: result.error }, { status: 400 });
+      if (!result.valid) return Response.json(result.body, { status: result.status });
 
       await svc.entities.ProviderWorkspaceSubmission.update(sub.id, {
         payload_json: JSON.stringify(result.clean),
