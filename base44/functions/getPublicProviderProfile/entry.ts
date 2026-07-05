@@ -20,6 +20,10 @@ const NEED_LEVELS = {
 };
 
 const PUBLIC_CONF = ['publicly_listed', 'provider_confirmed', 'vezunde_verified'];
+const PATIENT_FACING_PROFILE_TYPES = [
+  'independent_optical_store', 'optical_chain', 'ophthalmology_clinic', 'ophthalmology_office',
+  'independent_ophthalmologist', 'independent_optometrist', 'independent_optician', 'optical_laboratory_b2c',
+];
 const STATUS_LABELS = {
   verified: 'Profil verificat de Vezunde',
   claimed: 'Profil revendicat',
@@ -63,7 +67,7 @@ Deno.serve(async (req) => {
     // never rendered publicly (same 404, no disclosure).
     if (!loc || loc.status !== 'publicata' || loc.active_status === 'inactiva' || pcs === 'suspended'
         || !loc.provider_profile_type
-        || ['optical_laboratory_b2b', 'future_b2b_distributor'].includes(loc.provider_profile_type)) {
+        || !PATIENT_FACING_PROFILE_TYPES.includes(loc.provider_profile_type)) {
       return Response.json({ error: 'Profilul nu a fost gasit' }, { status: 404 });
     }
 

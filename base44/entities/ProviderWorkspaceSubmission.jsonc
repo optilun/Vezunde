@@ -19,6 +19,9 @@
         "article"
       ]
     },
+    "item_key": {
+      "type": "string"
+    },
     "payload_json": {
       "type": "string"
     },

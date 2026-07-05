@@ -1,15 +1,14 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-// MODULE 3H.1C.1/1A/2 — Provider Workspace draft/submit/withdraw.
-// Provider-scoped submissions only. One active submission per location+section
-// across all users. All payloads are strict allowlists and never public until
-// admin approval.
+// MODULE 3H.1C.1/1A/2B — Provider Workspace draft/submit/withdraw.
+// Provider-scoped submissions only. Services/team/media remain one active batch
+// per location+section. Articles are item-level drafts. All payloads are strict
+// allowlists and never public until admin approval.
 
 const WRITABLE_SECTIONS = ['public_profile', 'location_details', 'services', 'team', 'media', 'article'];
 const ACTIVE_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
 const MAX_FIELD_LEN = 2000;
 const MAX_ARTICLE_BODY = 20000;
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 const SECTION_FIELDS = {
   public_profile: ['public_display_name', 'public_description', 'website_url', 'facebook_url', 'instagram_url', 'linkedin_url', 'public_phone', 'public_email'],
@@ -28,17 +27,9 @@ const CANONICAL_SERVICE_IDS = {
 };
 
 const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
-const MEDIA_TYPES = ['logo', 'cover', 'gallery', 'team_photo'];
-const IMAGE_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const BLOCKED_FILE_EXTENSIONS = ['.exe', '.js', '.msi', '.bat', '.cmd', '.sh', '.php', '.html', '.htm', '.svg', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.zip'];
 
-function bad(body, status = 400) {
-  return { valid: false, status, body };
-}
-
-function isPlainObject(value) {
-  return !!value && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
-}
+function bad(body, status = 400) { return { valid: false, status, body }; }
+function isPlainObject(value) { return !!value && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype; }
 
 function checkUnknown(section, payload) {
   const allowed = SECTION_FIELDS[section];
@@ -152,40 +143,23 @@ function validateMedia(payload) {
   const base = checkUnknown('media', payload);
   if (!base.valid) return base;
   const clean = { assets: [], removal_media_ids: [] };
-  if (payload.assets !== undefined) {
-    if (!Array.isArray(payload.assets)) return bad({ error: 'assets trebuie sa fie lista' });
-    for (const asset of payload.assets) {
-      if (!isPlainObject(asset)) return bad({ error: 'Asset media invalid' });
-      const unknown = Object.keys(asset).filter((k) => !['storage_reference', 'media_type', 'caption', 'alt_text', 'sort_order', 'file_name', 'content_type', 'size_bytes'].includes(k));
-      if (unknown.length > 0) return bad({ error: 'Camp nepermis', fields: unknown });
-      const storageReference = String(asset.storage_reference || '').trim();
-      const mediaType = String(asset.media_type || '').trim();
-      const fileName = String(asset.file_name || '').trim().toLowerCase();
-      const contentType = String(asset.content_type || '').trim().toLowerCase();
-      const sizeBytes = Number(asset.size_bytes || 0);
-      if (!storageReference || storageReference.length > 1000) return bad({ error: 'storage_reference invalid' });
-      if (!MEDIA_TYPES.includes(mediaType)) return bad({ error: 'media_type invalid' });
-      if (!IMAGE_CONTENT_TYPES.includes(contentType)) return bad({ error: 'Fisierul trebuie sa fie imagine' });
-      if (!Number.isFinite(sizeBytes) || sizeBytes <= 0 || sizeBytes > MAX_IMAGE_BYTES) return bad({ error: 'Dimensiune fisier invalida' });
-      if (BLOCKED_FILE_EXTENSIONS.some((ext) => fileName.endsWith(ext))) return bad({ error: 'Format fisier nepermis' });
-      clean.assets.push({
-        storage_reference: storageReference,
-        media_type: mediaType,
-        caption: String(asset.caption || '').trim().slice(0, 300),
-        alt_text: String(asset.alt_text || '').trim().slice(0, 300),
-        sort_order: Number.isFinite(Number(asset.sort_order)) ? Number(asset.sort_order) : 0,
-        file_name: fileName,
-        content_type: contentType,
-        size_bytes: sizeBytes,
-      });
-    }
-  }
+  if (payload.assets !== undefined) return bad({ error: 'Incarcarea media este momentan indisponibila in siguranta. Nu trimite storage_reference brut.' }, 503);
   if (payload.removal_media_ids !== undefined) {
     if (!Array.isArray(payload.removal_media_ids)) return bad({ error: 'removal_media_ids trebuie sa fie lista' });
     clean.removal_media_ids = [...new Set(payload.removal_media_ids.map((id) => String(id || '').trim()).filter(Boolean))];
   }
-  if (clean.assets.length === 0 && clean.removal_media_ids.length === 0) return bad({ error: 'Payload gol' });
+  if (clean.removal_media_ids.length === 0) return bad({ error: 'Payload gol' });
   return { valid: true, clean };
+}
+
+function normalizeArticleBody(value) {
+  const raw = String(value || '').replace(/\r\n?/g, '\n').trim();
+  if (!raw || raw.length > MAX_ARTICLE_BODY) return { error: 'Articolul este obligatoriu si trebuie sa respecte limita de lungime' };
+  if (/[<>]/.test(raw) || /<\/?[a-z][\s\S]*>/i.test(raw)) return { error: 'Articolul trebuie sa fie text simplu, fara HTML' };
+  if (/\[[^\]]+\]\([^\)]+\)/.test(raw)) return { error: 'Articolul trebuie sa fie text simplu, fara markup' };
+  if (/\b(?:javascript|data|vbscript|file):/i.test(raw)) return { error: 'Articolul contine un protocol nesigur' };
+  const body = raw.split('\n').map((line) => line.trimEnd()).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return { body };
 }
 
 function validateArticle(payload) {
@@ -193,14 +167,14 @@ function validateArticle(payload) {
   if (!base.valid) return base;
   const title = String(payload.title || '').trim();
   const excerpt = String(payload.excerpt || '').trim();
-  const body = String(payload.body || '').trim();
+  const normalized = normalizeArticleBody(payload.body);
   if (!title || title.length > 180) return bad({ error: 'Titlul este obligatoriu si trebuie sa fie scurt' });
-  if (!body || body.length > MAX_ARTICLE_BODY) return bad({ error: 'Articolul este obligatoriu si trebuie sa respecte limita de lungime' });
+  if (normalized.error) return bad({ error: normalized.error });
   if (excerpt.length > 500) return bad({ error: 'Rezumatul este prea lung' });
   return { valid: true, clean: {
     title,
     excerpt,
-    body,
+    body: normalized.body,
     cover_media_id: payload.cover_media_id ? String(payload.cover_media_id).trim() : '',
     author_professional_id: payload.author_professional_id ? String(payload.author_professional_id).trim() : '',
   } };
@@ -217,6 +191,13 @@ function validatePayload(section, payload, context) {
   return bad({ error: 'Sectiunea nu este disponibila pentru editare' });
 }
 
+function normalizeItemKey(p) {
+  const raw = p.item_key || (p.target_article_id ? `article:${p.target_article_id}` : '') || (p.draft_item_id ? `draft:${p.draft_item_id}` : '') || `new:${crypto.randomUUID()}`;
+  const key = String(raw).trim();
+  if (!/^[a-zA-Z0-9:_-]{1,120}$/.test(key)) return null;
+  return key;
+}
+
 function sanitizeSubmission(sub) {
   const showNote = ['needs_more_info', 'rejected'].includes(sub.status);
   return {
@@ -224,6 +205,7 @@ function sanitizeSubmission(sub) {
     organization_id: sub.organization_id || null,
     location_id: sub.location_id,
     section: sub.section,
+    item_key: sub.item_key || '',
     status: sub.status,
     payload_json: sub.payload_json || '{}',
     submitted_at: sub.submitted_at || null,
@@ -234,12 +216,7 @@ function sanitizeSubmission(sub) {
 }
 
 function safeConflict(sub) {
-  return {
-    conflict: true,
-    section: sub.section,
-    status: sub.status,
-    message: 'Exista deja o modificare in lucru pentru aceasta sectiune.',
-  };
+  return { conflict: true, section: sub.section, status: sub.status, message: 'Exista deja o modificare in lucru pentru aceasta sectiune.' };
 }
 
 async function audit(svc, user, rec) {
@@ -257,6 +234,37 @@ async function audit(svc, user, rec) {
   });
 }
 
+async function assertSubmittedReferences(svc, locationId, section, payload) {
+  if (section === 'team') {
+    for (const member of payload.members || []) {
+      if (!member.photo_media_id) continue;
+      const asset = await svc.entities.ProviderMediaAsset.get(member.photo_media_id).catch(() => null);
+      if (!asset || asset.location_id !== locationId || asset.status !== 'approved' || asset.media_type !== 'team_photo') {
+        return bad({ error: 'photo_media_id trebuie sa fie media aprobata team_photo din aceeasi locatie' });
+      }
+    }
+  }
+  if (section === 'media') {
+    for (const mediaId of payload.removal_media_ids || []) {
+      const asset = await svc.entities.ProviderMediaAsset.get(mediaId).catch(() => null);
+      if (!asset || asset.location_id !== locationId) return bad({ error: 'Media nu apartine acestei locatii' });
+    }
+  }
+  if (section === 'article') {
+    if (payload.cover_media_id) {
+      const asset = await svc.entities.ProviderMediaAsset.get(payload.cover_media_id).catch(() => null);
+      if (!asset || asset.location_id !== locationId || asset.status !== 'approved' || !['cover', 'gallery'].includes(asset.media_type)) {
+        return bad({ error: 'cover_media_id trebuie sa fie media aprobata din aceeasi locatie' });
+      }
+    }
+    if (payload.author_professional_id) {
+      const assignment = await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: payload.author_professional_id, location_id: locationId, active_status: 'activ' });
+      if (assignment.length === 0) return bad({ error: 'Autor profesional nealocat locatiei' });
+    }
+  }
+  return { valid: true };
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -266,9 +274,7 @@ Deno.serve(async (req) => {
     const p = await req.json().catch(() => ({}));
 
     const action = p.action;
-    if (!['list_mine', 'create_draft', 'update_draft', 'submit', 'withdraw'].includes(action)) {
-      return Response.json({ error: 'Actiune invalida' }, { status: 400 });
-    }
+    if (!['list_mine', 'create_draft', 'update_draft', 'submit', 'withdraw'].includes(action)) return Response.json({ error: 'Actiune invalida' }, { status: 400 });
     if (!p.location_id) return Response.json({ error: 'location_id este obligatoriu' }, { status: 400 });
 
     const currentMemberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, location_id: p.location_id, status: 'active' });
@@ -287,7 +293,7 @@ Deno.serve(async (req) => {
       const otherActive = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: p.location_id, status: { $in: ACTIVE_STATUSES } }, '-created_date', 50);
       return Response.json({
         submissions: ownSubs.map(sanitizeSubmission),
-        conflicts: otherActive.filter((s) => s.submitted_by_user_id !== user.id).map(safeConflict),
+        conflicts: otherActive.filter((s) => s.submitted_by_user_id !== user.id && s.section !== 'article').map(safeConflict),
       });
     }
 
@@ -297,8 +303,14 @@ Deno.serve(async (req) => {
       if (!p.payload) return Response.json({ error: 'payload este obligatoriu' }, { status: 400 });
       const result = validatePayload(p.section, p.payload, context);
       if (!result.valid) return Response.json(result.body, { status: result.status });
+      const refCheck = await assertSubmittedReferences(svc, p.location_id, p.section, result.clean);
+      if (!refCheck.valid) return Response.json(refCheck.body, { status: refCheck.status });
+      const itemKey = p.section === 'article' ? normalizeItemKey(p) : '';
+      if (p.section === 'article' && !itemKey) return Response.json({ error: 'item_key invalid' }, { status: 400 });
 
-      const existing = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: p.location_id, section: p.section, status: { $in: ACTIVE_STATUSES } }, '-created_date', 10);
+      const activeQuery = { location_id: p.location_id, section: p.section, status: { $in: ACTIVE_STATUSES } };
+      if (p.section === 'article') activeQuery.item_key = itemKey;
+      const existing = await svc.entities.ProviderWorkspaceSubmission.filter(activeQuery, '-created_date', 10);
       if (existing.length > 0) {
         const active = existing[0];
         if (active.submitted_by_user_id === user.id) return Response.json({ submission: sanitizeSubmission(active), resumed: true });
@@ -309,16 +321,12 @@ Deno.serve(async (req) => {
         organization_id: loc.organization_id || null,
         location_id: p.location_id,
         section: p.section,
+        item_key: itemKey,
         payload_json: JSON.stringify(result.clean),
         status: 'draft',
         submitted_by_user_id: user.id,
       });
-      await audit(svc, user, {
-        entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id,
-        action_type: 'create_draft', changed_fields: ['section', 'status', 'payload_json'],
-        next: { section: p.section, status: 'draft' },
-        note: `Draft creat pentru sectiunea ${p.section}`,
-      });
+      await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'create_draft', changed_fields: ['section', 'status', 'payload_json'], next: { section: p.section, status: 'draft' }, note: `Draft creat pentru sectiunea ${p.section}` });
       return Response.json({ submission: sanitizeSubmission(sub) });
     }
 
@@ -334,12 +342,10 @@ Deno.serve(async (req) => {
 
       const result = validatePayload(p.section, p.payload, context);
       if (!result.valid) return Response.json(result.body, { status: result.status });
+      const refCheck = await assertSubmittedReferences(svc, p.location_id, p.section, result.clean);
+      if (!refCheck.valid) return Response.json(refCheck.body, { status: refCheck.status });
       await svc.entities.ProviderWorkspaceSubmission.update(sub.id, { payload_json: JSON.stringify(result.clean), status: 'draft' });
-      await audit(svc, user, {
-        entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id,
-        action_type: 'update_draft', changed_fields: ['payload_json', 'status'],
-        previous: { status: sub.status }, note: `Draft actualizat pentru sectiunea ${p.section}`,
-      });
+      await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'update_draft', changed_fields: ['payload_json', 'status'], previous: { status: sub.status }, note: `Draft actualizat pentru sectiunea ${p.section}` });
       return Response.json({ success: true });
     }
 
@@ -351,11 +357,7 @@ Deno.serve(async (req) => {
       if (!['draft', 'needs_more_info'].includes(sub.status)) return Response.json({ error: 'Draftul nu poate fi trimis' }, { status: 400 });
       const now = new Date().toISOString();
       await svc.entities.ProviderWorkspaceSubmission.update(sub.id, { status: 'pending_review', submitted_at: now });
-      await audit(svc, user, {
-        entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id,
-        action_type: 'submit_for_review', changed_fields: ['status', 'submitted_at'],
-        previous: { status: sub.status }, next: { status: 'pending_review' }, note: `Submission trimisa pentru sectiunea ${sub.section}`,
-      });
+      await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'submit_for_review', changed_fields: ['status', 'submitted_at'], previous: { status: sub.status }, next: { status: 'pending_review' }, note: `Submission trimisa pentru sectiunea ${sub.section}` });
       return Response.json({ success: true });
     }
 
@@ -366,11 +368,7 @@ Deno.serve(async (req) => {
       if (sub.submitted_by_user_id !== user.id) return Response.json({ error: 'Nu poti retrage aceasta submission' }, { status: 403 });
       if (!ACTIVE_STATUSES.includes(sub.status)) return Response.json({ error: 'Submission nu poate fi retrasa' }, { status: 400 });
       await svc.entities.ProviderWorkspaceSubmission.update(sub.id, { status: 'withdrawn' });
-      await audit(svc, user, {
-        entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id,
-        action_type: 'withdraw_submission', changed_fields: ['status'],
-        previous: { status: sub.status }, next: { status: 'withdrawn' }, note: `Submission retrasa pentru sectiunea ${sub.section}`,
-      });
+      await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'withdraw_submission', changed_fields: ['status'], previous: { status: sub.status }, next: { status: 'withdrawn' }, note: `Submission retrasa pentru sectiunea ${sub.section}` });
       return Response.json({ success: true });
     }
 

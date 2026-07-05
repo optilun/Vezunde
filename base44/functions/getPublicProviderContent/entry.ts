@@ -1,9 +1,17 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-// MODULE 3H.1C.2 — Public approved content read.
-// Returns only approved/published services, team, media and articles. Drafts,
-// rejected items, storage references under review, admin notes and submission
-// metadata are never returned.
+// MODULE 3H.1C.2B — Public approved content read.
+// Reuses getPublicProviderProfile as the canonical public eligibility gate and
+// service visibility source. Never returns drafts, raw storage keys, admin notes,
+// owner ids, review metadata or private contact data.
+
+async function safeSignedMediaUrl(svc, storageReference) {
+  const ref = String(storageReference || '').trim();
+  if (!ref) return '';
+  const signed = await svc.integrations.Core.CreateFileSignedUrl({ file_uri: ref, expires_in: 300 }).catch(() => null);
+  const url = signed?.signed_url || '';
+  return typeof url === 'string' && url.startsWith('https://') ? url : '';
+}
 
 Deno.serve(async (req) => {
   try {
@@ -12,52 +20,71 @@ Deno.serve(async (req) => {
     const p = await req.json().catch(() => ({}));
     if (!p.location_id) return Response.json({ error: 'location_id este obligatoriu' }, { status: 400 });
 
-    const loc = await svc.entities.ProviderLocation.get(p.location_id).catch(() => null);
-    if (!loc || loc.status === 'suspendata' || loc.profile_control_status === 'suspended') {
-      return Response.json({ services: [], team: [], media: [], articles: [] });
-    }
+    // Canonical public eligibility + service filtering comes from the existing
+    // public profile endpoint. Failure returns empty content without disclosing why.
+    const profileRes = await base44.functions.invoke('getPublicProviderProfile', { location_id: p.location_id }).catch(() => null);
+    const publicProfile = profileRes?.data?.profile || null;
+    if (!publicProfile?.id) return Response.json({ services: [], specialties: [], team: [], media: [], articles: [] });
 
-    const services = await svc.entities.LocationService.filter({ location_id: p.location_id, is_active: true }, 'service_key', 200);
-    const specializations = await svc.entities.LocationSpecialization.filter({ location_id: p.location_id, is_active: true }, 'specialization_key', 100);
-    const assignments = await svc.entities.ProfessionalLocationAssignment.filter({ location_id: p.location_id, active_status: 'activ', public_status: 'public' }, 'created_date', 100);
-    const media = await svc.entities.ProviderMediaAsset.filter({ location_id: p.location_id, status: 'approved' }, 'sort_order', 100);
-    const articles = await svc.entities.ProviderArticle.filter({ location_id: p.location_id, status: 'approved' }, '-published_at', 50);
+    const locationId = publicProfile.id;
+    const [assignments, mediaAssets, articles] = await Promise.all([
+      svc.entities.ProfessionalLocationAssignment.filter({ location_id: locationId, active_status: 'activ', public_status: 'public' }, 'created_date', 100),
+      svc.entities.ProviderMediaAsset.filter({ location_id: locationId, status: 'approved' }, 'sort_order', 100),
+      svc.entities.ProviderArticle.filter({ location_id: locationId, status: 'approved' }, '-published_at', 50),
+    ]);
+
+    const mediaById = {};
+    const publicMedia = [];
+    for (const asset of mediaAssets) {
+      const publicUrl = await safeSignedMediaUrl(svc, asset.storage_reference);
+      if (!publicUrl) continue;
+      const safe = {
+        id: asset.id,
+        url: publicUrl,
+        media_type: asset.media_type,
+        caption: asset.caption || '',
+        alt_text: asset.alt_text || '',
+        sort_order: asset.sort_order || 0,
+      };
+      mediaById[asset.id] = safe;
+      publicMedia.push(safe);
+    }
 
     const team = [];
     for (const assignment of assignments) {
       const prof = await svc.entities.ProfessionalProfile.get(assignment.professional_id).catch(() => null);
-      if (prof && prof.is_public !== false && prof.public_visibility_status !== 'rejected' && prof.public_visibility_status !== 'archived') {
-        team.push({
-          id: prof.id,
-          full_name: prof.public_display_name || prof.full_name,
-          professional_type: prof.professional_type || assignment.professional_type,
-          public_title: prof.role || '',
-          short_bio: prof.professional_bio || prof.bio || '',
-          profile_photo_url: prof.profile_photo_url || '',
-        });
-      }
+      if (!prof || prof.is_public === false || prof.public_visibility_status === 'rejected' || prof.public_visibility_status === 'archived') continue;
+      const photo = prof.profile_photo_url && mediaById[prof.profile_photo_url]?.media_type === 'team_photo'
+        ? mediaById[prof.profile_photo_url].url
+        : '';
+      team.push({
+        id: prof.id,
+        full_name: prof.public_display_name || prof.full_name,
+        professional_type: prof.professional_type || assignment.professional_type,
+        public_title: prof.role || '',
+        short_bio: prof.professional_bio || prof.bio || '',
+        profile_photo_url: photo,
+      });
     }
 
-    return Response.json({
-      services: services.map((s) => ({ service_key: s.service_key, service_need_level: s.service_need_level || 'general' })),
-      specialties: specializations.map((s) => ({ specialization_key: s.specialization_key })),
-      team,
-      media: media.map((m) => ({
-        id: m.id,
-        storage_reference: m.storage_reference,
-        media_type: m.media_type,
-        caption: m.caption || '',
-        alt_text: m.alt_text || '',
-        sort_order: m.sort_order || 0,
-      })),
-      articles: articles.filter((a) => !!a.published_at).map((a) => ({
+    const publicArticles = articles
+      .filter((a) => !!a.published_at)
+      .map((a) => ({
         id: a.id,
         title: a.title,
         slug: a.slug,
         excerpt: a.excerpt || '',
-        cover_media_id: a.cover_media_id || null,
+        body: a.body || '',
+        cover_media_url: a.cover_media_id && mediaById[a.cover_media_id] ? mediaById[a.cover_media_id].url : '',
         published_at: a.published_at,
-      })),
+      }));
+
+    return Response.json({
+      services: (publicProfile.services || []).map((service_key) => ({ service_key })),
+      specialties: [],
+      team,
+      media: publicMedia,
+      articles: publicArticles,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

@@ -1,13 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-// MODULE 3H.1C.1/1A/2 — Admin review for ProviderWorkspaceSubmission.
+// MODULE 3H.1C.1/1A/2B — Admin review for ProviderWorkspaceSubmission.
 // Admin-only. Every approval revalidates stored payloads and applies only
-// allowlisted fields. No trust, verification, matching, SIRUTA or visibility
-// status is modified by provider-submitted content.
+// allowlisted fields. No trust, verification, matching, SIRUTA, claim or
+// visibility status is modified by provider-submitted content.
 
 const MAX_FIELD_LEN = 2000;
 const MAX_ARTICLE_BODY = 20000;
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 const SECTION_APPLY = {
   public_profile: {
@@ -45,13 +44,11 @@ const CANONICAL_SERVICE_IDS = {
 
 const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
 const ROLE_BY_TYPE = { ophthalmologist: 'medic_oftalmolog', optometrist: 'optometrist', optician: 'optician' };
-const MEDIA_TYPES = ['logo', 'cover', 'gallery', 'team_photo'];
-const IMAGE_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const BLOCKED_FILE_EXTENSIONS = ['.exe', '.js', '.msi', '.bat', '.cmd', '.sh', '.php', '.html', '.htm', '.svg', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.zip'];
 const LEGACY_MIRRORS = { public_description: ['description'], website_url: ['website'], public_phone: ['phone_public'] };
 
 function bad(body, status = 400) { return { valid: false, status, body }; }
 function isPlainObject(value) { return !!value && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype; }
+function normalizePersonName(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
 
 function checkUnknown(section, payload) {
   const allowed = SECTION_FIELDS[section];
@@ -162,32 +159,23 @@ function validateTeam(payload) {
 function validateMedia(payload) {
   const base = checkUnknown('media', payload);
   if (!base.valid) return base;
+  if (payload.assets !== undefined) return bad({ error: 'Incarcarea media este momentan indisponibila in siguranta. Nu se accepta storage_reference brut.' }, 503);
   const clean = { assets: [], removal_media_ids: [] };
-  if (payload.assets !== undefined) {
-    if (!Array.isArray(payload.assets)) return bad({ error: 'assets trebuie sa fie lista' });
-    for (const asset of payload.assets) {
-      if (!isPlainObject(asset)) return bad({ error: 'Asset media invalid' });
-      const unknown = Object.keys(asset).filter((k) => !['storage_reference', 'media_type', 'caption', 'alt_text', 'sort_order', 'file_name', 'content_type', 'size_bytes'].includes(k));
-      if (unknown.length > 0) return bad({ error: 'Camp nepermis', fields: unknown });
-      const storageReference = String(asset.storage_reference || '').trim();
-      const mediaType = String(asset.media_type || '').trim();
-      const fileName = String(asset.file_name || '').trim().toLowerCase();
-      const contentType = String(asset.content_type || '').trim().toLowerCase();
-      const sizeBytes = Number(asset.size_bytes || 0);
-      if (!storageReference || storageReference.length > 1000) return bad({ error: 'storage_reference invalid' });
-      if (!MEDIA_TYPES.includes(mediaType)) return bad({ error: 'media_type invalid' });
-      if (!IMAGE_CONTENT_TYPES.includes(contentType)) return bad({ error: 'Fisierul trebuie sa fie imagine' });
-      if (!Number.isFinite(sizeBytes) || sizeBytes <= 0 || sizeBytes > MAX_IMAGE_BYTES) return bad({ error: 'Dimensiune fisier invalida' });
-      if (BLOCKED_FILE_EXTENSIONS.some((ext) => fileName.endsWith(ext))) return bad({ error: 'Format fisier nepermis' });
-      clean.assets.push({ storage_reference: storageReference, media_type: mediaType, caption: String(asset.caption || '').trim().slice(0, 300), alt_text: String(asset.alt_text || '').trim().slice(0, 300), sort_order: Number.isFinite(Number(asset.sort_order)) ? Number(asset.sort_order) : 0 });
-    }
-  }
   if (payload.removal_media_ids !== undefined) {
     if (!Array.isArray(payload.removal_media_ids)) return bad({ error: 'removal_media_ids trebuie sa fie lista' });
     clean.removal_media_ids = [...new Set(payload.removal_media_ids.map((id) => String(id || '').trim()).filter(Boolean))];
   }
-  if (clean.assets.length === 0 && clean.removal_media_ids.length === 0) return bad({ error: 'Payload gol' });
+  if (clean.removal_media_ids.length === 0) return bad({ error: 'Payload gol' });
   return { valid: true, clean };
+}
+
+function normalizeArticleBody(value) {
+  const raw = String(value || '').replace(/\r\n?/g, '\n').trim();
+  if (!raw || raw.length > MAX_ARTICLE_BODY) return { error: 'Articolul este obligatoriu si trebuie sa respecte limita de lungime' };
+  if (/[<>]/.test(raw) || /<\/?[a-z][\s\S]*>/i.test(raw)) return { error: 'Articolul trebuie sa fie text simplu, fara HTML' };
+  if (/\[[^\]]+\]\([^\)]+\)/.test(raw)) return { error: 'Articolul trebuie sa fie text simplu, fara markup' };
+  if (/\b(?:javascript|data|vbscript|file):/i.test(raw)) return { error: 'Articolul contine un protocol nesigur' };
+  return { body: raw.split('\n').map((line) => line.trimEnd()).join('\n').replace(/\n{3,}/g, '\n\n').trim() };
 }
 
 function validateArticle(payload) {
@@ -195,11 +183,11 @@ function validateArticle(payload) {
   if (!base.valid) return base;
   const title = String(payload.title || '').trim();
   const excerpt = String(payload.excerpt || '').trim();
-  const body = String(payload.body || '').trim();
+  const normalized = normalizeArticleBody(payload.body);
   if (!title || title.length > 180) return bad({ error: 'Titlul este obligatoriu si trebuie sa fie scurt' });
-  if (!body || body.length > MAX_ARTICLE_BODY) return bad({ error: 'Articolul este obligatoriu si trebuie sa respecte limita de lungime' });
+  if (normalized.error) return bad({ error: normalized.error });
   if (excerpt.length > 500) return bad({ error: 'Rezumatul este prea lung' });
-  return { valid: true, clean: { title, excerpt, body, cover_media_id: payload.cover_media_id ? String(payload.cover_media_id).trim() : '', author_professional_id: payload.author_professional_id ? String(payload.author_professional_id).trim() : '' } };
+  return { valid: true, clean: { title, excerpt, body: normalized.body, cover_media_id: payload.cover_media_id ? String(payload.cover_media_id).trim() : '', author_professional_id: payload.author_professional_id ? String(payload.author_professional_id).trim() : '' } };
 }
 
 function validatePayload(section, payload) {
@@ -221,11 +209,11 @@ function slugify(value) {
   return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'articol';
 }
 
-async function uniqueSlug(svc, base) {
+async function uniqueSlug(svc, base, currentId = '') {
   let slug = base;
   for (let i = 2; i < 100; i++) {
     const rows = await svc.entities.ProviderArticle.filter({ slug });
-    if (rows.length === 0) return slug;
+    if (rows.length === 0 || (rows.length === 1 && rows[0].id === currentId)) return slug;
     slug = `${base}-${i}`;
   }
   return `${base}-${Date.now()}`;
@@ -246,6 +234,11 @@ async function audit(svc, user, rec) {
   });
 }
 
+async function assertPublicEligible(base44, locationId) {
+  const res = await base44.functions.invoke('getPublicProviderProfile', { location_id: locationId }).catch(() => null);
+  if (!res?.data?.profile?.id) throw new Error('Locatia nu este eligibila pentru continut public');
+}
+
 async function applyProviderLocationFields(svc, user, sub, validation) {
   const fieldMap = SECTION_APPLY[sub.section];
   if (!fieldMap) return;
@@ -253,9 +246,7 @@ async function applyProviderLocationFields(svc, user, sub, validation) {
   for (const [payloadKey, locField] of Object.entries(fieldMap)) {
     if (payloadKey in validation.clean) {
       locUpdates[locField] = validation.clean[payloadKey];
-      if (LEGACY_MIRRORS[locField]) {
-        for (const legacyField of LEGACY_MIRRORS[locField]) locUpdates[legacyField] = validation.clean[payloadKey];
-      }
+      if (LEGACY_MIRRORS[locField]) for (const legacyField of LEGACY_MIRRORS[locField]) locUpdates[legacyField] = validation.clean[payloadKey];
     }
   }
   if (Object.keys(locUpdates).length === 0) return;
@@ -308,21 +299,54 @@ async function assertLocationsInScope(svc, rootLoc, locationIds) {
   }
 }
 
+async function professionalAlreadyInScope(svc, rootLoc, professionalId) {
+  const assignments = await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: professionalId, active_status: 'activ' }, null, 100);
+  for (const assignment of assignments) {
+    const loc = await svc.entities.ProviderLocation.get(assignment.location_id).catch(() => null);
+    if (!loc) continue;
+    if (rootLoc.organization_id && loc.organization_id === rootLoc.organization_id) return true;
+    if (!rootLoc.organization_id && loc.id === rootLoc.id) return true;
+  }
+  return false;
+}
+
+async function assertTeamPhoto(svc, locationId, mediaId) {
+  if (!mediaId) return;
+  const asset = await svc.entities.ProviderMediaAsset.get(mediaId).catch(() => null);
+  if (!asset || asset.location_id !== locationId || asset.status !== 'approved' || asset.media_type !== 'team_photo') throw new Error('photo_media_id trebuie sa fie media aprobata team_photo din aceeasi locatie');
+}
+
+async function assertNoTeamDuplicate(svc, member, profileId) {
+  for (const locationId of member.assigned_location_ids) {
+    const assignments = await svc.entities.ProfessionalLocationAssignment.filter({ location_id: locationId, active_status: 'activ' }, null, 100);
+    for (const assignment of assignments) {
+      if (profileId && assignment.professional_id === profileId) continue;
+      if (assignment.professional_type !== member.professional_type) continue;
+      const profile = await svc.entities.ProfessionalProfile.get(assignment.professional_id).catch(() => null);
+      if (profile && normalizePersonName(profile.full_name) === normalizePersonName(member.full_name)) {
+        throw new Error('Exista deja un profesionist similar in aceasta locatie. Verifica manual inainte de aprobare.');
+      }
+    }
+  }
+}
+
 async function applyTeam(svc, user, sub, payload) {
   const rootLoc = await svc.entities.ProviderLocation.get(sub.location_id).catch(() => null);
   if (!rootLoc) throw new Error('Locatia nu a fost gasita');
   for (const member of payload.members || []) {
     await assertLocationsInScope(svc, rootLoc, member.assigned_location_ids);
+    await assertTeamPhoto(svc, sub.location_id, member.photo_media_id);
     let profile = member.professional_id ? await svc.entities.ProfessionalProfile.get(member.professional_id).catch(() => null) : null;
+    if (member.professional_id && (!profile || !(await professionalAlreadyInScope(svc, rootLoc, member.professional_id)))) throw new Error('ProfessionalProfile nu apartine scopului permis');
+    await assertNoTeamDuplicate(svc, member, profile?.id || '');
     const profileData = {
       full_name: member.full_name,
       professional_type: member.professional_type,
       role: ROLE_BY_TYPE[member.professional_type],
       public_display_name: member.full_name,
       professional_bio: member.short_bio,
-      profile_photo_url: member.photo_media_id,
+      profile_photo_url: member.photo_media_id || '',
       is_public: member.visible_on_public_profile,
-      public_visibility_status: 'approved',
     };
     if (profile) profile = await svc.entities.ProfessionalProfile.update(profile.id, profileData);
     else profile = await svc.entities.ProfessionalProfile.create(profileData);
@@ -335,6 +359,7 @@ async function applyTeam(svc, user, sub, payload) {
     }
   }
   for (const professionalId of payload.removal_professional_ids || []) {
+    if (!(await professionalAlreadyInScope(svc, rootLoc, professionalId))) throw new Error('ProfessionalProfile de eliminat nu apartine scopului permis');
     const assignments = await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: professionalId, location_id: sub.location_id });
     for (const assignment of assignments) await svc.entities.ProfessionalLocationAssignment.update(assignment.id, { active_status: 'inactiv', public_status: 'privat' });
   }
@@ -342,30 +367,37 @@ async function applyTeam(svc, user, sub, payload) {
 }
 
 async function applyMedia(svc, user, sub, payload) {
-  const loc = await svc.entities.ProviderLocation.get(sub.location_id).catch(() => null);
-  for (const asset of payload.assets || []) {
-    await svc.entities.ProviderMediaAsset.create({ organization_id: loc?.organization_id || null, location_id: sub.location_id, uploaded_by_user_id: sub.submitted_by_user_id, storage_reference: asset.storage_reference, media_type: asset.media_type, caption: asset.caption, alt_text: asset.alt_text, sort_order: asset.sort_order, status: 'approved', reviewed_by_user_id: user.id, reviewed_at: new Date().toISOString() });
-  }
   for (const mediaId of payload.removal_media_ids || []) {
     const asset = await svc.entities.ProviderMediaAsset.get(mediaId).catch(() => null);
-    if (asset && asset.location_id === sub.location_id) await svc.entities.ProviderMediaAsset.update(asset.id, { status: 'withdrawn', reviewed_by_user_id: user.id, reviewed_at: new Date().toISOString() });
+    if (!asset || asset.location_id !== sub.location_id) throw new Error('Media nu apartine acestei locatii');
+    await svc.entities.ProviderMediaAsset.update(asset.id, { status: 'withdrawn', reviewed_by_user_id: user.id, reviewed_at: new Date().toISOString() });
   }
-  await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'apply_media_submission', changed_fields: ['media'], note: 'Media aprobata; doar asseturile approved devin publice.' });
+  await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'apply_media_submission', changed_fields: ['media'], note: 'Media revalidata; uploadul brut este dezactivat pana exista metadate server-side sigure.' });
 }
 
-async function applyArticle(svc, user, sub, payload) {
+async function assertArticleReferences(svc, sub, payload) {
   if (payload.cover_media_id) {
     const cover = await svc.entities.ProviderMediaAsset.get(payload.cover_media_id).catch(() => null);
-    if (!cover || cover.location_id !== sub.location_id || cover.status !== 'approved') throw new Error('Cover media invalid sau neaprobat');
+    if (!cover || cover.location_id !== sub.location_id || cover.status !== 'approved' || !['cover', 'gallery'].includes(cover.media_type)) throw new Error('Cover media invalid sau neaprobat');
   }
   if (payload.author_professional_id) {
     const assignment = await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: payload.author_professional_id, location_id: sub.location_id, active_status: 'activ' });
     if (assignment.length === 0) throw new Error('Autor profesional nealocat locatiei');
   }
+}
+
+async function applyArticle(svc, user, sub, payload) {
+  await assertArticleReferences(svc, sub, payload);
   const loc = await svc.entities.ProviderLocation.get(sub.location_id).catch(() => null);
-  const slug = await uniqueSlug(svc, slugify(payload.title));
-  await svc.entities.ProviderArticle.create({ organization_id: loc?.organization_id || null, location_id: sub.location_id, author_professional_id: payload.author_professional_id || null, submitted_by_user_id: sub.submitted_by_user_id, title: payload.title, slug, excerpt: payload.excerpt, body: payload.body, cover_media_id: payload.cover_media_id || null, status: 'approved', published_at: new Date().toISOString(), reviewed_by_user_id: user.id, reviewed_at: new Date().toISOString() });
-  await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'apply_article_submission', changed_fields: ['article'], next: { slug }, note: 'Articol publicat doar dupa aprobare admin.' });
+  const now = new Date().toISOString();
+  const targetArticleId = String(sub.item_key || '').startsWith('article:') ? String(sub.item_key).slice('article:'.length) : '';
+  const existing = targetArticleId ? await svc.entities.ProviderArticle.get(targetArticleId).catch(() => null) : null;
+  if (targetArticleId && (!existing || existing.location_id !== sub.location_id)) throw new Error('Articol tinta invalid sau in afara locatiei');
+  const slug = existing?.slug || await uniqueSlug(svc, slugify(payload.title), existing?.id || '');
+  const articleData = { organization_id: loc?.organization_id || null, location_id: sub.location_id, author_professional_id: payload.author_professional_id || null, submitted_by_user_id: sub.submitted_by_user_id, title: payload.title, slug, excerpt: payload.excerpt, body: payload.body, cover_media_id: payload.cover_media_id || null, status: 'approved', published_at: existing?.published_at || now, reviewed_by_user_id: user.id, reviewed_at: now };
+  if (existing) await svc.entities.ProviderArticle.update(existing.id, articleData);
+  else await svc.entities.ProviderArticle.create(articleData);
+  await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'apply_article_submission', changed_fields: ['article'], next: { slug }, note: 'Articol publicat doar dupa aprobare admin ca text simplu.' });
 }
 
 Deno.serve(async (req) => {
@@ -409,9 +441,9 @@ Deno.serve(async (req) => {
       const now = new Date().toISOString();
       if (sub.section === 'public_profile' || sub.section === 'location_details') await applyProviderLocationFields(svc, user, sub, validation);
       else if (sub.section === 'services') await applyServices(svc, user, sub, validation.clean);
-      else if (sub.section === 'team') await applyTeam(svc, user, sub, validation.clean);
-      else if (sub.section === 'media') await applyMedia(svc, user, sub, validation.clean);
-      else if (sub.section === 'article') await applyArticle(svc, user, sub, validation.clean);
+      else if (sub.section === 'team') { await assertPublicEligible(base44, sub.location_id); await applyTeam(svc, user, sub, validation.clean); }
+      else if (sub.section === 'media') { await assertPublicEligible(base44, sub.location_id); await applyMedia(svc, user, sub, validation.clean); }
+      else if (sub.section === 'article') { await assertPublicEligible(base44, sub.location_id); await applyArticle(svc, user, sub, validation.clean); }
       else return Response.json({ error: 'Sectiune necunoscuta' }, { status: 400 });
 
       await svc.entities.ProviderWorkspaceSubmission.update(sub.id, { status: 'approved', reviewed_by_user_id: user.id, reviewed_at: now, admin_note: note });
