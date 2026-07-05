@@ -1,30 +1,37 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
-import DirOpsDashboard from "@/components/admin/directory/DirOpsDashboard";
+import { useAuth } from "@/lib/AuthContext";
+import AdminAppShell from "@/components/admin/shell/AdminAppShell";
+import AdminDashboardHome from "@/components/admin/dashboard/AdminDashboardHome";
+import AdminProfilesSection from "@/components/admin/directory/AdminProfilesSection";
+import AdminSettingsPlaceholder from "@/components/admin/AdminSettingsPlaceholder";
+import AdminPageHeader from "@/components/admin/ui/AdminPageHeader";
 import DirOpsAddLocation from "@/components/admin/directory/DirOpsAddLocation";
-import DirOpsProfiles from "@/components/admin/directory/DirOpsProfiles";
 import DirOpsServices from "@/components/admin/directory/DirOpsServices";
-import DirOpsMigrationQueue from "@/components/admin/directory/DirOpsMigrationQueue";
 import DirOpsClaims from "@/components/admin/directory/DirOpsClaims";
 import DirOpsAudit from "@/components/admin/directory/DirOpsAudit";
 import DirResearch from "@/components/admin/directory/DirResearch";
 import GeoContractChecks from "@/components/admin/directory/GeoContractChecks";
+import AICopilot from "@/components/admin/directory/research/AICopilot";
+import GeoImport from "@/components/admin/directory/research/GeoImport";
+import { ADMIN_NAV_LABELS } from "@/lib/adminNavConfig";
 
-const TABS = [
-  { key: "dashboard", label: "Panou" },
-  { key: "research", label: "Research director" },
-  { key: "adauga", label: "Adauga organizatie/locatie" },
-  { key: "profiluri", label: "Profiluri directory" },
-  { key: "servicii", label: "Servicii" },
-  { key: "migrare", label: "Review migrare" },
-  { key: "revendicari", label: "Revendicari" },
-  { key: "audit", label: "Istoric audit" },
-  { key: "contract_geo", label: "Contract geografic" },
-];
+// UI-1: same tab keys as before — no routes, permissions or data logic
+// changed. Only the shell (sidebar) and per-section headers are new.
+const SIMPLE_HEADERS = {
+  adauga: "Adauga o organizatie si o locatie noua in director, cu provenienta obligatorie.",
+  profiluri: "Gestioneaza statusul de incredere al profilurilor din director.",
+  servicii: "Gestioneaza serviciile confirmate pentru fiecare locatie.",
+  revendicari: "Analizeaza cererile de revendicare a profilurilor.",
+  geografie: "Sursa canonica de geografie Vezunde (import SIRUTA).",
+  audit: "Istoricul actiunilor administrative inregistrate.",
+  contract_geo: "Verificari de regresie pentru contractul geografic — instrument intern.",
+};
 
 export default function AdminDirectoryOps() {
   const [user, setUser] = useState(undefined);
   const [tab, setTab] = useState("dashboard");
+  const { logout } = useAuth();
 
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => setUser(null));
@@ -40,32 +47,43 @@ export default function AdminDirectoryOps() {
     );
   }
 
+  const simpleTabsWithHeader = ["adauga", "servicii", "revendicari", "geografie", "audit", "contract_geo"];
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10">
-      <h1 className="font-heading text-2xl font-bold">Operatiuni director</h1>
-      <p className="text-muted-foreground text-sm mt-1">Modul intern de administrare a datelor de director. Toate actiunile sunt inregistrate in audit.</p>
-      <div className="flex flex-wrap gap-2 mt-6 border-b border-border pb-3">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${tab === t.key ? "bg-foreground text-background" : "bg-secondary text-foreground hover:bg-accent"}`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-      <div className="mt-6">
-        {tab === "dashboard" && <DirOpsDashboard onNavigate={setTab} />}
-        {tab === "research" && <DirResearch onNavigate={setTab} />}
-        {tab === "adauga" && <DirOpsAddLocation />}
-        {tab === "profiluri" && <DirOpsProfiles />}
-        {tab === "servicii" && <DirOpsServices />}
-        {tab === "migrare" && <DirOpsMigrationQueue />}
-        {tab === "revendicari" && <DirOpsClaims />}
-        {tab === "audit" && <DirOpsAudit />}
-        {tab === "contract_geo" && <GeoContractChecks />}
-      </div>
-    </div>
+    <AdminAppShell activeKey={tab} onNavigate={setTab} user={user} onLogout={() => logout(true)}>
+      {tab === "dashboard" && <AdminDashboardHome onNavigate={setTab} />}
+      {tab === "research" && (
+        <div>
+          <AdminPageHeader title="Research director" subtitle="Modul intern de research pentru colectarea si validarea datelor de director." />
+          <div className="mt-6"><DirResearch onNavigate={setTab} /></div>
+        </div>
+      )}
+      {tab === "ai" && (
+        <div>
+          <AdminPageHeader title="AI Copilot" subtitle="Genereaza doar drafturi de research, cu dovezi verificabile — nicio scriere automata in director." />
+          <div className="mt-6"><AICopilot onNavigate={setTab} /></div>
+        </div>
+      )}
+      {tab === "profiluri" && (
+        <div>
+          <AdminPageHeader title="Profiluri director" subtitle={SIMPLE_HEADERS.profiluri} />
+          <div className="mt-6"><AdminProfilesSection /></div>
+        </div>
+      )}
+      {simpleTabsWithHeader.includes(tab) && (
+        <div>
+          <AdminPageHeader title={ADMIN_NAV_LABELS[tab]} subtitle={SIMPLE_HEADERS[tab]} />
+          <div className="mt-6">
+            {tab === "adauga" && <DirOpsAddLocation />}
+            {tab === "servicii" && <DirOpsServices />}
+            {tab === "revendicari" && <DirOpsClaims />}
+            {tab === "geografie" && <GeoImport />}
+            {tab === "audit" && <DirOpsAudit />}
+            {tab === "contract_geo" && <GeoContractChecks />}
+          </div>
+        </div>
+      )}
+      {tab === "setari" && <AdminSettingsPlaceholder />}
+    </AdminAppShell>
   );
 }

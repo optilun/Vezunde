@@ -25,12 +25,12 @@ export default function DirResearch({ onNavigate }) {
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2 mb-5">
+      <div className="inline-flex flex-wrap gap-1 bg-secondary rounded-lg p-1 mb-5">
         {VIEWS.map((v) => (
           <button
             key={v.key}
             onClick={() => setView(v.key)}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${view === v.key ? "bg-accent text-accent-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${view === v.key ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             {v.label}
           </button>
