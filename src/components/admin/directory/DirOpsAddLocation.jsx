@@ -4,6 +4,7 @@ import { PROVIDER_TYPES_3C } from "@/lib/directoryOpsCatalog";
 import { PROVIDER_PROFILE_TYPES } from "@/lib/profileFoundationCatalog";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
 import DirOpsIdentityCandidates from "@/components/admin/directory/DirOpsIdentityCandidates";
+import AdminCard from "@/components/admin/ui/AdminCard";
 
 const input = "w-full border border-input rounded-md px-3 py-2 text-sm bg-card";
 const label = "block text-xs font-semibold text-muted-foreground mt-3 mb-1";
@@ -76,101 +77,121 @@ export default function DirOpsAddLocation() {
   const requiredMissing = !f.name || !f.provider_type || !f.provider_profile_type || !f.locality_siruta_code || !f.address || !f.source_url || !f.source_checked_at || !f.org_name;
 
   return (
-    <div className="max-w-2xl">
-      <h2 className="font-heading font-bold">Organizatie</h2>
-      <label className={label}>Nume organizatie *</label>
-      <input className={input} value={f.org_name} onChange={set("org_name")} />
-      <div className="grid grid-cols-2 gap-3">
-        <div><label className={label}>Denumire legala</label><input className={input} value={f.legal_name} onChange={set("legal_name")} /></div>
-        <div><label className={label}>Website organizatie</label><input className={input} value={f.org_website} onChange={set("org_website")} /></div>
-      </div>
-
-      <h2 className="font-heading font-bold mt-8">Locatie</h2>
-      <label className={label}>Nume locatie *</label>
-      <input className={input} value={f.name} onChange={set("name")} />
-      <label className={label}>Tip furnizor *</label>
-      <select className={input} value={f.provider_type} onChange={set("provider_type")}>
-        <option value="">Alege...</option>
-        {PROVIDER_TYPES_3C.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
-      </select>
-      <label className={label}>Tip profil furnizor *</label>
-      <select className={input} value={f.provider_profile_type} onChange={set("provider_profile_type")}>
-        <option value="">Alege...</option>
-        {PROVIDER_PROFILE_TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}{t.is_b2b ? " — B2B, invizibil pentru pacienti" : ""}</option>)}
-      </select>
-      <label className={label}>Localitate (geografie canonica) *</label>
-      <LocalityAutocomplete
-        value={f.locality_siruta_code ? { display_label: `${f.city}${f.county ? ", " + f.county : ""}` } : null}
-        onSelect={(loc) => setF({ ...f, locality_siruta_code: loc?.siruta_code || "", city: loc?.name || "", county: loc?.county_name || "" })}
-      />
-      <div className="grid grid-cols-2 gap-3">
-        <div><label className={label}>Oras (oglinda)</label><input className={input} value={f.city} readOnly /></div>
-        <div><label className={label}>Judet (oglinda)</label><input className={input} value={f.county} readOnly /></div>
-      </div>
-      <label className={label}>Adresa *</label>
-      <input className={input} value={f.address} onChange={set("address")} />
-      <div className="grid grid-cols-2 gap-3">
-        <div><label className={label}>Telefon public</label><input className={input} value={f.phone_public} onChange={set("phone_public")} /></div>
-        <div><label className={label}>Email public</label><input className={input} value={f.public_email} onChange={set("public_email")} /></div>
-      </div>
-      <label className={label}>Website locatie</label>
-      <input className={input} value={f.website} onChange={set("website")} />
-      <label className={label}>Program (text)</label>
-      <input className={input} value={f.opening_hours} onChange={set("opening_hours")} />
-      <label className={label}>Descriere</label>
-      <textarea className={input} rows={2} value={f.description} onChange={set("description")} />
-
-      <h2 className="font-heading font-bold mt-8">Provenienta (obligatoriu)</h2>
-      <label className={label}>Sursa URL *</label>
-      <input className={input} value={f.source_url} onChange={set("source_url")} placeholder="https://..." />
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={label}>Tip sursa *</label>
-          <select className={input} value={f.source_type} onChange={set("source_type")}>
-            <option value="site_oficial">Site oficial</option>
-            <option value="registru_public">Registru public</option>
-            <option value="director_public">Director public</option>
-            <option value="alta_sursa_publica">Alta sursa publica</option>
-          </select>
+    <div className="max-w-3xl space-y-5">
+      <AdminCard className="p-5">
+        <h2 className="font-heading font-bold text-sm">Organizatie</h2>
+        <label className={label}>Nume organizatie *</label>
+        <input className={input} value={f.org_name} onChange={set("org_name")} />
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className={label}>Denumire legala</label><input className={input} value={f.legal_name} onChange={set("legal_name")} /></div>
+          <div><label className={label}>Website organizatie</label><input className={input} value={f.org_website} onChange={set("org_website")} /></div>
         </div>
-        <div><label className={label}>Verificat la data *</label><input type="date" className={input} value={f.source_checked_at} onChange={set("source_checked_at")} /></div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={label}>Incredere date *</label>
-          <select className={input} value={f.data_confidence} onChange={set("data_confidence")}>
-            <option value="low">Scazuta</option><option value="medium">Medie</option><option value="high">Ridicata</option>
-          </select>
-        </div>
-        <div><label className={label}>Nume sursa</label><input className={input} value={f.source_name} onChange={set("source_name")} /></div>
-      </div>
-      <label className={label}>Note sursa</label>
-      <textarea className={input} rows={2} value={f.source_notes} onChange={set("source_notes")} />
+      </AdminCard>
 
-      <label className="flex items-center gap-2 mt-4 text-sm">
-        <input type="checkbox" checked={f.mark_active} onChange={set("mark_active")} />
-        Marcheaza locatia ca activa (altfel ramane inactiva)
-      </label>
+      <AdminCard className="p-5">
+        <h2 className="font-heading font-bold text-sm">Locatie</h2>
+        <label className={label}>Nume locatie *</label>
+        <input className={input} value={f.name} onChange={set("name")} />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={label}>Tip furnizor *</label>
+            <select className={input} value={f.provider_type} onChange={set("provider_type")}>
+              <option value="">Alege...</option>
+              {PROVIDER_TYPES_3C.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={label}>Tip profil furnizor *</label>
+            <select className={input} value={f.provider_profile_type} onChange={set("provider_profile_type")}>
+              <option value="">Alege...</option>
+              {PROVIDER_PROFILE_TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}{t.is_b2b ? " — B2B, invizibil pentru pacienti" : ""}</option>)}
+            </select>
+          </div>
+        </div>
+        <label className={label}>Localitate (geografie canonica) *</label>
+        <LocalityAutocomplete
+          value={f.locality_siruta_code ? { display_label: `${f.city}${f.county ? ", " + f.county : ""}` } : null}
+          onSelect={(loc) => setF({ ...f, locality_siruta_code: loc?.siruta_code || "", city: loc?.name || "", county: loc?.county_name || "" })}
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className={label}>Oras (oglinda)</label><input className={input} value={f.city} readOnly /></div>
+          <div><label className={label}>Judet (oglinda)</label><input className={input} value={f.county} readOnly /></div>
+        </div>
+        <label className={label}>Adresa *</label>
+        <input className={input} value={f.address} onChange={set("address")} />
+      </AdminCard>
+
+      <AdminCard className="p-5">
+        <h2 className="font-heading font-bold text-sm">Date publice si provenienta</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className={label}>Telefon public</label><input className={input} value={f.phone_public} onChange={set("phone_public")} /></div>
+          <div><label className={label}>Email public</label><input className={input} value={f.public_email} onChange={set("public_email")} /></div>
+        </div>
+        <label className={label}>Website locatie</label>
+        <input className={input} value={f.website} onChange={set("website")} />
+        <label className={label}>Program (text)</label>
+        <input className={input} value={f.opening_hours} onChange={set("opening_hours")} />
+        <label className={label}>Descriere</label>
+        <textarea className={input} rows={2} value={f.description} onChange={set("description")} />
+
+        <div className="border-t border-border mt-5 pt-4">
+          <h3 className="text-xs font-semibold text-muted-foreground">Provenienta (obligatoriu)</h3>
+          <label className={label}>Sursa URL *</label>
+          <input className={input} value={f.source_url} onChange={set("source_url")} placeholder="https://..." />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={label}>Tip sursa *</label>
+              <select className={input} value={f.source_type} onChange={set("source_type")}>
+                <option value="site_oficial">Site oficial</option>
+                <option value="registru_public">Registru public</option>
+                <option value="director_public">Director public</option>
+                <option value="alta_sursa_publica">Alta sursa publica</option>
+              </select>
+            </div>
+            <div><label className={label}>Verificat la data *</label><input type="date" className={input} value={f.source_checked_at} onChange={set("source_checked_at")} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={label}>Incredere date *</label>
+              <select className={input} value={f.data_confidence} onChange={set("data_confidence")}>
+                <option value="low">Scazuta</option><option value="medium">Medie</option><option value="high">Ridicata</option>
+              </select>
+            </div>
+            <div><label className={label}>Nume sursa</label><input className={input} value={f.source_name} onChange={set("source_name")} /></div>
+          </div>
+          <label className={label}>Note sursa</label>
+          <textarea className={input} rows={2} value={f.source_notes} onChange={set("source_notes")} />
+        </div>
+
+        <label className="flex items-center gap-2 mt-4 text-sm">
+          <input type="checkbox" checked={f.mark_active} onChange={set("mark_active")} />
+          Marcheaza locatia ca activa (altfel ramane inactiva)
+        </label>
+      </AdminCard>
 
       {identityCheck && (
-        <DirOpsIdentityCandidates
-          check={identityCheck}
-          reason={overrideReason}
-          setReason={setOverrideReason}
-          saving={saving}
-          onContinue={(force) => submit(force)}
-          onCancel={() => { setIdentityCheck(null); setOverrideReason(""); }}
-        />
+        <AdminCard className="p-5">
+          <DirOpsIdentityCandidates
+            check={identityCheck}
+            reason={overrideReason}
+            setReason={setOverrideReason}
+            saving={saving}
+            onContinue={(force) => submit(force)}
+            onCancel={() => { setIdentityCheck(null); setOverrideReason(""); }}
+          />
+        </AdminCard>
       )}
 
-      {message && <p className={`mt-4 text-sm ${message.ok ? "text-green-700" : "text-destructive"}`}>{message.text}</p>}
-
-      {!identityCheck && (
-        <button onClick={() => submit(false)} disabled={saving || requiredMissing} className="mt-6 px-5 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40">
-          {saving ? "Se salveaza..." : "Creeaza profil directory"}
-        </button>
-      )}
-      {requiredMissing && <p className="text-xs text-muted-foreground mt-2">Completeaza campurile obligatorii, inclusiv sursa URL si data verificarii sursei.</p>}
+      <AdminCard className="p-5">
+        <h2 className="font-heading font-bold text-sm mb-3">Revizuire si actiuni</h2>
+        {message && <p className={`text-sm mb-3 ${message.ok ? "text-green-700" : "text-destructive"}`}>{message.text}</p>}
+        {!identityCheck && (
+          <button onClick={() => submit(false)} disabled={saving || requiredMissing} className="px-5 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40">
+            {saving ? "Se salveaza..." : "Creeaza profil directory"}
+          </button>
+        )}
+        {requiredMissing && <p className="text-xs text-muted-foreground mt-2">Completeaza campurile obligatorii, inclusiv sursa URL si data verificarii sursei.</p>}
+      </AdminCard>
     </div>
   );
 }

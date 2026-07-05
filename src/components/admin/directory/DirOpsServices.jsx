@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { SERVICE_CATALOG_3C, CONFIRMATION_LABELS } from "@/lib/directoryOpsCatalog";
 import DirOpsServiceAdd from "@/components/admin/directory/DirOpsServiceAdd";
 import DirOpsServiceRow from "@/components/admin/directory/DirOpsServiceRow";
+import AdminCard from "@/components/admin/ui/AdminCard";
 
 export default function DirOpsServices() {
   const [locations, setLocations] = useState([]);
@@ -22,26 +23,34 @@ export default function DirOpsServices() {
   const location = locations.find((l) => l.id === locationId);
 
   return (
-    <div className="max-w-3xl">
-      <label className="block text-xs font-semibold text-muted-foreground mb-1">Alege locatia</label>
-      <select className="w-full border border-input rounded-md px-3 py-2 text-sm bg-card" value={locationId} onChange={(e) => setLocationId(e.target.value)}>
-        <option value="">Alege...</option>
-        {locations.map((l) => <option key={l.id} value={l.id}>{l.name} — {l.city} ({l.profile_control_status || "directory"})</option>)}
-      </select>
+    <div className="max-w-3xl space-y-5">
+      <AdminCard className="p-5">
+        <label className="block text-xs font-semibold text-muted-foreground mb-1">Alege locatia</label>
+        <select className="w-full border border-input rounded-md px-3 py-2 text-sm bg-card" value={locationId} onChange={(e) => setLocationId(e.target.value)}>
+          <option value="">Alege...</option>
+          {locations.map((l) => <option key={l.id} value={l.id}>{l.name} — {l.city} ({l.profile_control_status || "directory"})</option>)}
+        </select>
+      </AdminCard>
 
       {location && (
         <>
-          <h3 className="font-heading font-bold text-sm mt-6">Servicii existente</h3>
-          <div className="space-y-2 mt-2">
-            {services === null && <p className="text-muted-foreground text-sm">Se incarca...</p>}
-            {services && services.length === 0 && <p className="text-muted-foreground text-sm">Niciun serviciu inregistrat.</p>}
-            {services && services.map((s) => (
-              <DirOpsServiceRow key={s.id} service={s} location={location} onChanged={() => loadServices(locationId)} />
-            ))}
-          </div>
+          <AdminCard className="p-5">
+            <h3 className="font-heading font-bold text-sm">Servicii existente</h3>
+            <div className="space-y-2 mt-3">
+              {services === null && <p className="text-muted-foreground text-sm">Se incarca...</p>}
+              {services && services.length === 0 && <p className="text-muted-foreground text-sm">Niciun serviciu inregistrat.</p>}
+              {services && services.map((s) => (
+                <DirOpsServiceRow key={s.id} service={s} location={location} onChanged={() => loadServices(locationId)} />
+              ))}
+            </div>
+          </AdminCard>
 
-          <h3 className="font-heading font-bold text-sm mt-8">Adauga serviciu (doar din catalogul aprobat)</h3>
-          <DirOpsServiceAdd location={location} onAdded={() => loadServices(locationId)} />
+          <AdminCard className="p-5">
+            <h3 className="font-heading font-bold text-sm">Adauga serviciu (doar din catalogul aprobat)</h3>
+            <div className="mt-3">
+              <DirOpsServiceAdd location={location} onAdded={() => loadServices(locationId)} />
+            </div>
+          </AdminCard>
         </>
       )}
     </div>

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import AdminCard from "@/components/admin/ui/AdminCard";
 
 // MODULE 3F.2.3 — Geography Contract regression checks (admin-only, read-only).
 // Exercises ONLY rejection/empty paths — it NEVER creates provider, claim,
@@ -99,17 +100,20 @@ export default function GeoContractChecks() {
   const passed = results?.filter((r) => r.pass).length || 0;
 
   return (
-    <div className="max-w-2xl">
-      <h2 className="font-heading font-bold">Contract geografic — verificari de regresie</h2>
-      <p className="text-xs text-muted-foreground mt-1">
-        Ruleaza doar cai de respingere / rezultate goale — nu creeaza niciun fel de inregistrari. Detalii: GEOGRAPHY_CONTRACT.md.
-      </p>
-      <button onClick={runAll} disabled={running} className="mt-4 px-5 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50">
-        {running ? "Se ruleaza..." : "Ruleaza verificarile"}
-      </button>
-      {running && <Loader2 className="mt-4 w-5 h-5 animate-spin text-muted-foreground" />}
+    <div className="max-w-2xl space-y-5">
+      <AdminCard className="p-5">
+        <h2 className="font-heading font-bold text-sm">Contract geografic — verificari de regresie</h2>
+        <p className="text-xs text-muted-foreground mt-1">
+          Ruleaza doar cai de respingere / rezultate goale — nu creeaza niciun fel de inregistrari. Detalii: GEOGRAPHY_CONTRACT.md.
+        </p>
+        <button onClick={runAll} disabled={running} className="mt-4 px-5 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50">
+          {running ? "Se ruleaza..." : "Ruleaza verificarile"}
+        </button>
+        {running && <Loader2 className="mt-4 w-5 h-5 animate-spin text-muted-foreground" />}
+      </AdminCard>
+
       {results && (
-        <div className="mt-5">
+        <AdminCard className="p-5">
           <p className={`text-sm font-semibold ${passed === results.length ? "text-green-700" : "text-destructive"}`}>
             {passed}/{results.length} verificari trecute
           </p>
@@ -121,7 +125,7 @@ export default function GeoContractChecks() {
               </li>
             ))}
           </ul>
-        </div>
+        </AdminCard>
       )}
     </div>
   );

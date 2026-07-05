@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
+import { ListChecks } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PCS_LABELS, CONFIRMATION_LABELS } from "@/lib/directoryOpsCatalog";
 import DirOpsActionNote from "@/components/admin/directory/DirOpsActionNote";
+import AdminCard from "@/components/admin/ui/AdminCard";
+import EmptyState from "@/components/admin/ui/EmptyState";
 
 export default function DirOpsMigrationQueue() {
   const [items, setItems] = useState(null);
@@ -31,13 +34,15 @@ export default function DirOpsMigrationQueue() {
     load();
   };
 
-  if (!items) return <p className="text-muted-foreground text-sm">Se incarca...</p>;
-  if (items.length === 0) return <p className="text-muted-foreground text-sm">Nicio inregistrare in coada de review migrare.</p>;
-
   return (
-    <div className="space-y-3">
-      {items.map((item) => (
-        <div key={`${item.kind}-${item.id}`} className="bg-card border border-border rounded-lg p-4">
+    <AdminCard className="p-5">
+      {!items && <p className="text-muted-foreground text-sm">Se incarca...</p>}
+      {items && items.length === 0 && (
+        <EmptyState icon={ListChecks} title="Nicio inregistrare in coada de review migrare." subtitle="Elementele care necesita confirmare dupa migrare vor aparea aici." />
+      )}
+      <div className="space-y-3">
+      {items?.map((item) => (
+        <div key={`${item.kind}-${item.id}`} className="bg-secondary/50 border border-border rounded-xl p-4">
           <div className="flex flex-wrap items-start gap-3">
             <div className="flex-1 min-w-[240px]">
               <div className="text-xs font-semibold uppercase text-muted-foreground">{item.kind === "location" ? "Locatie" : "Serviciu"}</div>
@@ -74,9 +79,10 @@ export default function DirOpsMigrationQueue() {
           </div>
         </div>
       ))}
+      </div>
       {action && (
         <DirOpsActionNote title="Decizie review migrare — nota obligatorie" onConfirm={run} onCancel={() => setAction(null)} />
       )}
-    </div>
+    </AdminCard>
   );
 }
