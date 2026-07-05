@@ -25,6 +25,8 @@ const MAX_URL_LEN = 500;
 const MAX_CONTACT_LEN = 200;
 const MAX_HOURS_LEN = 500;
 const LEGACY_MIRRORS = { public_description: ['description'], website_url: ['website'], public_phone: ['phone_public'] };
+const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
+function normalizeMemberRole(role) { if (role === 'owner') return 'organization_owner'; if (role === 'staff') return 'location_staff'; return MEMBER_ROLES.includes(role) ? role : ''; }
 
 function reject(error, status = 400) {
   return Response.json({ error }, { status });
@@ -141,7 +143,7 @@ Deno.serve(async (req) => {
     if (!locationId) return reject('location_id este obligatoriu');
 
     const memberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, location_id: locationId, status: 'active' });
-    if (memberships.length === 0) return reject('Nu ai acces la aceasta locatie', 403);
+    if (!memberships.some((m) => normalizeMemberRole(m.role))) return reject('Nu ai acces la aceasta locatie', 403);
 
     const loc = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
     if (!loc) return reject('Locatia nu a fost gasita', 404);

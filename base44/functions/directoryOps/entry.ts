@@ -394,8 +394,8 @@ Deno.serve(async (req) => {
           activeMembership = await svc.entities.ProviderMembership.create({
             user_id: claim.user_id,
             location_id: loc.id,
-            organization_id: loc.organization_id || claim.organization_id || '',
-            role: 'owner',
+            organization_id: loc.organization_id || claim.organization_id || null,
+            role: 'organization_owner',
             status: 'active',
           });
         }

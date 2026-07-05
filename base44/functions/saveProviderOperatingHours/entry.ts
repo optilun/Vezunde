@@ -7,6 +7,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const AVAILABILITY_STATUSES = ['astazi', 'urmatoarele_zile', 'saptamana_aceasta', 'doar_programare', 'necunoscuta'];
 const MAX_HOURS_LEN = 500;
+const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
+function normalizeMemberRole(role) { if (role === 'owner') return 'organization_owner'; if (role === 'staff') return 'location_staff'; return MEMBER_ROLES.includes(role) ? role : ''; }
 
 async function audit(svc, user, rec) {
   await svc.entities.DirectoryAuditRecord.create({
@@ -37,7 +39,7 @@ Deno.serve(async (req) => {
     const memberships = await svc.entities.ProviderMembership.filter({
       user_id: user.id, location_id: p.location_id, status: 'active',
     });
-    if (memberships.length === 0) {
+    if (!memberships.some((m) => normalizeMemberRole(m.role))) {
       return Response.json({ error: 'Nu ai acces la aceasta locatie' }, { status: 403 });
     }
 

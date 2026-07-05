@@ -6,6 +6,8 @@ const DIRECT_FIELDS = ['opening_hours', 'saturday_hours', 'availability_status']
 // Module 3F.2.2: city/county are NOT provider-editable fields. Geography changes
 // are staged ONLY as a canonical locality_siruta_code (validated below).
 const STAGED_FIELDS = ['name', 'address', 'phone_public', 'public_email', 'website', 'description', 'provider_type'];
+const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
+function normalizeMemberRole(role) { if (role === 'owner') return 'organization_owner'; if (role === 'staff') return 'location_staff'; return MEMBER_ROLES.includes(role) ? role : ''; }
 
 Deno.serve(async (req) => {
   try {
@@ -37,7 +39,7 @@ Deno.serve(async (req) => {
       const memberships = await svc.entities.ProviderMembership.filter({
         user_id: user.id, location_id: p.location_id, status: 'active',
       });
-      if (memberships.length === 0) {
+      if (!memberships.some((m) => normalizeMemberRole(m.role))) {
         return Response.json({ error: 'Nu ai acces la aceasta locatie' }, { status: 403 });
       }
     }

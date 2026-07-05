@@ -28,6 +28,8 @@ const SPECIALIZED_EQUIPMENT = [
   'excimer_laser', 'femtosecond_laser', 'corneal_crosslinking_system',
 ];
 const OFFERING_TYPES = ['frames', 'ophthalmic_lenses', 'contact_lenses', 'sunglasses', 'care_products', 'medical_devices'];
+const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
+function normalizeMemberRole(role) { if (role === 'owner') return 'organization_owner'; if (role === 'staff') return 'location_staff'; return MEMBER_ROLES.includes(role) ? role : ''; }
 
 // Public-safe service mirror (functions cannot share local imports — same rule as
 // matchProviders / getPublicProviderProfile).
@@ -147,7 +149,7 @@ Deno.serve(async (req) => {
 
     const myLocationIds = async () => {
       const ms = await svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' }, null, 100);
-      return ms.filter((m) => m.location_id).map((m) => m.location_id);
+      return ms.filter((m) => m.location_id && normalizeMemberRole(m.role)).map((m) => m.location_id);
     };
     const canAccessLocation = async (locationId) => {
       if (isAdmin) return true;
@@ -175,7 +177,7 @@ Deno.serve(async (req) => {
       if (entityType === 'organization') {
         if (!isAdmin) {
           const ms = await svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' }, null, 100);
-          if (!ms.some((m) => m.organization_id === entityId)) return Response.json({ error: 'Acces interzis' }, { status: 403 });
+          if (!ms.some((m) => normalizeMemberRole(m.role) && m.organization_id === entityId)) return Response.json({ error: 'Acces interzis' }, { status: 403 });
         }
         const org = entityId ? await svc.entities.ProviderOrganization.get(entityId).catch(() => null) : null;
         const linked = org ? await svc.entities.ProviderLocation.filter({ organization_id: org.id }, null, 1) : [];

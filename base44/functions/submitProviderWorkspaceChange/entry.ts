@@ -17,6 +17,8 @@ const MAX_HOURS_LEN = 500;
 const CLAIM_PREP_PUBLIC_PROFILE_FIELDS = ['public_description', 'website_url', 'facebook_url', 'instagram_url', 'linkedin_url', 'public_phone', 'public_email'];
 const CLAIM_PREP_SERVICE_GROUPS = ['patient_services', 'technical_activities'];
 const AVAILABILITY_STATUSES = ['astazi', 'urmatoarele_zile', 'saptamana_aceasta', 'doar_programare', 'necunoscuta'];
+const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
+function normalizeMemberRole(role) { if (role === 'owner') return 'organization_owner'; if (role === 'staff') return 'location_staff'; return MEMBER_ROLES.includes(role) ? role : ''; }
 
 const SECTION_FIELDS = {
   public_profile: ['public_display_name', 'public_description', 'website_url', 'facebook_url', 'instagram_url', 'linkedin_url', 'public_phone', 'public_email'],
@@ -320,12 +322,12 @@ async function resolveAccess(svc, user, p) {
   const requestedLocationId = String(p.location_id || '').trim();
   if (requestedLocationId) {
     const memberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, location_id: requestedLocationId, status: 'active' });
-    if (memberships.length > 0) {
+    if (memberships.some((m) => normalizeMemberRole(m.role))) {
       const loc = await svc.entities.ProviderLocation.get(requestedLocationId).catch(() => null);
       if (!loc) return bad({ error: 'Locatia nu a fost gasita' }, 404);
       if (loc.profile_control_status === 'suspended') return bad({ error: 'Profilul este suspendat' }, 403);
       const allMemberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' });
-      const permittedLocationIds = [...new Set(allMemberships.map((m) => m.location_id).filter(Boolean))];
+      const permittedLocationIds = [...new Set(allMemberships.filter((m) => normalizeMemberRole(m.role)).map((m) => m.location_id).filter(Boolean))];
       return { valid: true, mode: 'provider_workspace', loc, location_id: requestedLocationId, claim: null, context: { permittedLocationIds } };
     }
   }

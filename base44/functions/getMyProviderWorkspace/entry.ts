@@ -10,6 +10,64 @@ const PROVIDER_ALLOWED_SECTIONS = ['public_profile', 'location_details', 'servic
 const CLAIM_PREP_ALLOWED_SECTIONS = ['public_profile', 'operating_hours', 'services'];
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
 const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
+const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
+
+function normalizeMemberRole(role) {
+  if (role === 'owner') return 'organization_owner';
+  if (role === 'staff') return 'location_staff';
+  return MEMBER_ROLES.includes(role) ? role : '';
+}
+
+function highestRole(roles) {
+  if (roles.includes('organization_owner')) return 'organization_owner';
+  if (roles.includes('location_manager')) return 'location_manager';
+  if (roles.includes('location_staff')) return 'location_staff';
+  return '';
+}
+
+function memberLocationIds(memberships, predicate) {
+  return [...new Set(memberships.filter(predicate).map((m) => m.location_id).filter(Boolean))];
+}
+
+function invitationLocIds(inv) {
+  return Array.isArray(inv.invited_location_ids) ? inv.invited_location_ids.filter(Boolean) : [];
+}
+
+async function getMemberSummary(svc, memberships, locationIds) {
+  const roleByLocation = {};
+  for (const locId of locationIds) roleByLocation[locId] = highestRole(memberships.filter((m) => m.location_id === locId).map((m) => normalizeMemberRole(m.role)));
+  const manageableLocationIds = [...new Set([
+    ...memberLocationIds(memberships, (m) => normalizeMemberRole(m.role) === 'organization_owner'),
+    ...memberLocationIds(memberships, (m) => normalizeMemberRole(m.role) === 'location_manager'),
+  ])];
+  const visibleLocationIds = manageableLocationIds.length ? manageableLocationIds : locationIds;
+  const activeById = new Map();
+  const perLocation = {};
+  for (const locId of visibleLocationIds) {
+    const rows = await svc.entities.ProviderMembership.filter({ location_id: locId, status: 'active' }, '-created_date', 200);
+    const valid = rows.filter((m) => normalizeMemberRole(m.role));
+    perLocation[locId] = [...new Set(valid.map((m) => m.user_id))].length;
+    for (const m of valid) activeById.set(m.id, m);
+  }
+  const activeRows = [...activeById.values()];
+  const pendingInvitations = await svc.entities.ProviderMemberInvitation.filter({ status: 'pending' }, '-created_date', 200).catch(() => []);
+  const pendingInvitationCount = pendingInvitations.filter((inv) => invitationLocIds(inv).some((id) => visibleLocationIds.includes(id))).length;
+  return {
+    current_user_role: highestRole(Object.values(roleByLocation)),
+    current_user_role_by_location: roleByLocation,
+    assigned_location_ids: locationIds,
+    can_manage_members: manageableLocationIds.length > 0,
+    active_member_count: [...new Set(activeRows.map((m) => m.user_id))].length,
+    pending_invitation_count: pendingInvitationCount,
+    counters: {
+      active_members_total: [...new Set(activeRows.map((m) => m.user_id))].length,
+      active_members_per_location: perLocation,
+      organization_owners_count: [...new Set(activeRows.filter((m) => normalizeMemberRole(m.role) === 'organization_owner').map((m) => m.user_id))].length,
+      location_managers_count: [...new Set(activeRows.filter((m) => normalizeMemberRole(m.role) === 'location_manager').map((m) => m.user_id))].length,
+      location_staff_count: [...new Set(activeRows.filter((m) => normalizeMemberRole(m.role) === 'location_staff').map((m) => m.user_id))].length,
+    },
+  };
+}
 
 const CLAIM_STATUS_MESSAGES = {
   in_asteptare: 'Solicitarea este in verificare. Poti pregati datele profilului intre timp.',
@@ -217,9 +275,10 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Autentificare necesara' }, { status: 401 });
     const svc = base44.asServiceRole;
 
-    const memberships = await svc.entities.ProviderMembership.filter({
+    const rawMemberships = await svc.entities.ProviderMembership.filter({
       user_id: user.id, status: 'active',
     });
+    const memberships = rawMemberships.filter((m) => normalizeMemberRole(m.role) && m.location_id);
 
     if (memberships.length === 0) {
       return Response.json(await getApplicantPreparationWorkspace(svc, user));
@@ -262,7 +321,7 @@ Deno.serve(async (req) => {
         const org = m.organization_id ? orgMap.get(m.organization_id) : null;
         return {
           membership_id: m.id,
-          role: m.role,
+          role: normalizeMemberRole(m.role),
           organization_id: m.organization_id || null,
           organization_name: org?.name || null,
           location_id: m.location_id,
@@ -274,6 +333,7 @@ Deno.serve(async (req) => {
           content_summary: contentSummaries.get(m.location_id),
         };
       });
+    const memberSummary = await getMemberSummary(svc, memberships, [...locMap.keys()]);
 
     return Response.json({
       mode: 'provider_workspace',
@@ -282,6 +342,12 @@ Deno.serve(async (req) => {
       organizations: [...orgMap.values()].map((o) => ({ id: o.id, name: o.name, organization_type: o.organization_type })),
       locations: [...locMap.values()].map((loc) => ({ ...sanitizeLocation(loc, loc.organization_id ? orgMap.get(loc.organization_id)?.name : null), content_summary: contentSummaries.get(loc.id) })),
       pending_review_count: pendingReviewCount,
+      member_summary: memberSummary,
+      current_user_role: memberSummary.current_user_role,
+      assigned_location_ids: memberSummary.assigned_location_ids,
+      can_manage_members: memberSummary.can_manage_members,
+      active_member_count: memberSummary.active_member_count,
+      pending_invitation_count: memberSummary.pending_invitation_count,
       allowed_sections: PROVIDER_ALLOWED_SECTIONS,
     });
   } catch (error) {

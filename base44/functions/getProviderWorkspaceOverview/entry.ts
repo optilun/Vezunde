@@ -8,6 +8,42 @@ const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
 const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
 const PROVIDER_ALLOWED_SECTIONS = ['public_profile', 'location_details', 'services', 'team', 'media', 'article'];
 const CLAIM_PREP_ALLOWED_SECTIONS = ['public_profile', 'operating_hours', 'services'];
+const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
+
+function normalizeMemberRole(role) {
+  if (role === 'owner') return 'organization_owner';
+  if (role === 'staff') return 'location_staff';
+  return MEMBER_ROLES.includes(role) ? role : '';
+}
+
+function highestRole(roles) {
+  if (roles.includes('organization_owner')) return 'organization_owner';
+  if (roles.includes('location_manager')) return 'location_manager';
+  if (roles.includes('location_staff')) return 'location_staff';
+  return '';
+}
+
+function invitationLocIds(inv) {
+  return Array.isArray(inv.invited_location_ids) ? inv.invited_location_ids.filter(Boolean) : [];
+}
+
+async function getMemberSummary(svc, userId, locationId) {
+  const ownMemberships = await svc.entities.ProviderMembership.filter({ user_id: userId, location_id: locationId, status: 'active' }, '-created_date', 20);
+  const currentRole = highestRole(ownMemberships.map((m) => normalizeMemberRole(m.role)));
+  const canManageMembers = ['organization_owner', 'location_manager'].includes(currentRole);
+  const activeRows = await svc.entities.ProviderMembership.filter({ location_id: locationId, status: 'active' }, '-created_date', 200);
+  const validRows = activeRows.filter((m) => normalizeMemberRole(m.role));
+  const pendingInvitations = await svc.entities.ProviderMemberInvitation.filter({ status: 'pending' }, '-created_date', 200).catch(() => []);
+  const pendingInvitationCount = pendingInvitations.filter((inv) => invitationLocIds(inv).includes(locationId)).length;
+  return {
+    current_user_role: currentRole,
+    assigned_locations: currentRole ? [locationId] : [],
+    can_manage_members: canManageMembers,
+    active_member_count: [...new Set(validRows.map((m) => m.user_id))].length,
+    pending_invitation_count: pendingInvitationCount,
+  };
+}
+
 const CLAIM_STATUS_MESSAGES = {
   in_asteptare: 'Solicitarea este in verificare. Poti pregati datele profilului intre timp.',
   needs_more_info: 'Avem nevoie de cateva completari pentru solicitarea ta.',
@@ -140,7 +176,7 @@ Deno.serve(async (req) => {
       const memberships = await svc.entities.ProviderMembership.filter({
         user_id: user.id, location_id: p.location_id, status: 'active',
       });
-      hasProviderAccess = memberships.length > 0;
+      hasProviderAccess = memberships.some((m) => normalizeMemberRole(m.role));
       if (!hasProviderAccess) {
         const claims = await svc.entities.ProviderClaimRequest.filter({
           user_id: user.id,
@@ -179,6 +215,7 @@ Deno.serve(async (req) => {
     const completeness = computeCompleteness(loc);
     const contentSummary = await getContentSummary(svc, p.location_id, user.id);
     const ownLatestReview = latestReview?.submitted_by_user_id === user.id ? latestReview : null;
+    const memberSummary = await getMemberSummary(svc, user.id, p.location_id);
 
     return Response.json({
       mode: 'provider_workspace',
@@ -201,6 +238,12 @@ Deno.serve(async (req) => {
         checklist: [...completeness.completed, ...completeness.missing],
       },
       content_summary: contentSummary,
+      member_summary: memberSummary,
+      current_user_role: memberSummary.current_user_role,
+      assigned_locations: memberSummary.assigned_locations,
+      can_manage_members: memberSummary.can_manage_members,
+      active_member_count: memberSummary.active_member_count,
+      pending_invitation_count: memberSummary.pending_invitation_count,
       pending_submissions: pendingSubs.map((s) => s.submitted_by_user_id === user.id ? ({
         id: s.id,
         section: s.section,
