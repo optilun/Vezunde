@@ -59,8 +59,10 @@ Deno.serve(async (req) => {
     const pcs = loc ? (loc.profile_control_status || 'directory') : null;
     // Suspended, unpublished or inactive profiles are never rendered publicly —
     // same 404 in all cases, no state disclosure.
-    // Module 3H.1A: B2B profiles are never rendered publicly (same 404, no disclosure).
+    // Module 3H.1A.1: fail closed — missing classification or B2B profile types are
+    // never rendered publicly (same 404, no disclosure).
     if (!loc || loc.status !== 'publicata' || loc.active_status === 'inactiva' || pcs === 'suspended'
+        || !loc.provider_profile_type
         || ['optical_laboratory_b2b', 'future_b2b_distributor'].includes(loc.provider_profile_type)) {
       return Response.json({ error: 'Profilul nu a fost gasit' }, { status: 404 });
     }

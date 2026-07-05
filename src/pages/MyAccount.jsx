@@ -15,20 +15,20 @@ export default function MyAccount() {
   const { logout } = useAuth();
 
   const load = async (u) => {
-    const [claimList, memberships] = await Promise.all([
+    // Module 3H.1A.1: direct public entity reads are closed — location data comes
+    // only through the provider workspace whitelist function.
+    const [claimList, memberships, ws] = await Promise.all([
       base44.entities.ProviderClaimRequest.filter({ user_id: u.id }, "-created_date", 50),
       base44.entities.ProviderMembership.filter({ user_id: u.id, status: "active" }, null, 50),
+      base44.functions.invoke("profileFoundationOps", { action: "get_my_workspace" }).catch(() => ({ data: { locations: [] } })),
     ]);
-    const withLoc = await Promise.all(
-      memberships
-        .filter((m) => m.location_id)
-        .map(async (m) => ({
-          membership: m,
-          location: await base44.entities.ProviderLocation.get(m.location_id).catch(() => null),
-        }))
-    );
+    const locById = {};
+    for (const l of ws.data?.locations || []) locById[l.id] = l;
+    const withLoc = memberships
+      .filter((m) => m.location_id && locById[m.location_id])
+      .map((m) => ({ membership: m, location: locById[m.location_id] }));
     setClaims(claimList);
-    setItems(withLoc.filter((x) => x.location));
+    setItems(withLoc);
     setLoading(false);
   };
 

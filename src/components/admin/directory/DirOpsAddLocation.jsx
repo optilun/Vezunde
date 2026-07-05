@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES_3C, PCS_LABELS } from "@/lib/directoryOpsCatalog";
+import { PROVIDER_PROFILE_TYPES } from "@/lib/profileFoundationCatalog";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
 
 const input = "w-full border border-input rounded-md px-3 py-2 text-sm bg-card";
@@ -8,7 +9,7 @@ const label = "block text-xs font-semibold text-muted-foreground mt-3 mb-1";
 
 const EMPTY = {
   org_name: "", legal_name: "", org_website: "",
-  name: "", provider_type: "", city: "", county: "", locality_siruta_code: "", address: "",
+  name: "", provider_type: "", provider_profile_type: "", city: "", county: "", locality_siruta_code: "", address: "",
   phone_public: "", public_email: "", website: "", description: "", opening_hours: "",
   source_url: "", source_type: "site_oficial", source_name: "", source_checked_at: "", data_confidence: "medium", source_notes: "",
   mark_active: false,
@@ -45,7 +46,7 @@ export default function DirOpsAddLocation() {
         mark_active: f.mark_active,
         organization: { name: f.org_name, legal_name: f.legal_name, website: f.org_website },
         location: {
-          name: f.name, provider_type: f.provider_type, city: f.city, county: f.county,
+          name: f.name, provider_type: f.provider_type, provider_profile_type: f.provider_profile_type, city: f.city, county: f.county,
           locality_siruta_code: f.locality_siruta_code, address: f.address,
           phone_public: f.phone_public, public_email: f.public_email, website: f.website,
           description: f.description, opening_hours: f.opening_hours,
@@ -67,7 +68,7 @@ export default function DirOpsAddLocation() {
   };
 
   // Module 3F.2.2: the canonical locality selection (SIRUTA) is the required geographic field.
-  const requiredMissing = !f.name || !f.provider_type || !f.locality_siruta_code || !f.address || !f.source_url || !f.source_checked_at || !f.org_name;
+  const requiredMissing = !f.name || !f.provider_type || !f.provider_profile_type || !f.locality_siruta_code || !f.address || !f.source_url || !f.source_checked_at || !f.org_name;
 
   return (
     <div className="max-w-2xl">
@@ -86,6 +87,11 @@ export default function DirOpsAddLocation() {
       <select className={input} value={f.provider_type} onChange={set("provider_type")}>
         <option value="">Alege...</option>
         {PROVIDER_TYPES_3C.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+      </select>
+      <label className={label}>Tip profil furnizor *</label>
+      <select className={input} value={f.provider_profile_type} onChange={set("provider_profile_type")}>
+        <option value="">Alege...</option>
+        {PROVIDER_PROFILE_TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}{t.is_b2b ? " — B2B, invizibil pentru pacienti" : ""}</option>)}
       </select>
       <label className={label}>Localitate (geografie canonica) *</label>
       <LocalityAutocomplete

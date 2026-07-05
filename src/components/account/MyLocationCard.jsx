@@ -39,7 +39,7 @@ export default function MyLocationCard({ location, membership, onSaved }) {
           <div className="font-semibold">{location.name}</div>
           <div className="text-xs text-muted-foreground mt-0.5">
             {location.city} · {VERIFICATION_STATE_LABELS[location.verification_state || "unclaimed"]} · rol: {membership.role === "owner" ? "proprietar" : "membru"}
-            {location.pending_changes && <span className="ml-2 text-primary">Modificari in analiza</span>}
+            {location.has_pending_changes && <span className="ml-2 text-primary">Modificari in analiza</span>}
           </div>
         </div>
         {!suspended && (

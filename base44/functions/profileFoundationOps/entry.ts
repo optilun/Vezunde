@@ -66,7 +66,7 @@ const PROVIDER_LOCATION_FIELDS = [
   'gallery_urls', 'description', 'public_description', 'opening_hours', 'opening_hours_json',
   'saturday_hours', 'request_intake_status', 'public_visibility_status', 'accepts_patients_directly',
   'profile_completeness', 'profile_updated_at', 'status', 'active_status', 'profile_control_status',
-  'availability_status', 'availability_updated_at',
+  'availability_status', 'availability_updated_at', 'verification_state',
 ];
 const PROVIDER_EQUIPMENT_FIELDS = [
   'id', 'location_id', 'equipment_category_key', 'equipment_label', 'manufacturer', 'model',
@@ -83,6 +83,8 @@ function pick(obj, fields) {
   return out;
 }
 function str(v, max) { return String(v ?? '').trim().slice(0, max); }
+// Module 3H.1A.1: normalization for duplicate detection (never used for classification).
+function normVal(v) { return String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' '); }
 function isValidUrl(v) {
   try { const u = new URL(v); return u.protocol === 'https:' || u.protocol === 'http:'; } catch { return false; }
 }
@@ -195,7 +197,7 @@ Deno.serve(async (req) => {
       const locIds = await myLocationIds();
       const locations = (await Promise.all(locIds.map((id) => svc.entities.ProviderLocation.get(id).catch(() => null))))
         .filter(Boolean)
-        .map((l) => pick(l, PROVIDER_LOCATION_FIELDS));
+        .map((l) => ({ ...pick(l, PROVIDER_LOCATION_FIELDS), has_pending_changes: !!l.pending_changes }));
       const equipmentLists = await Promise.all(locIds.map((id) => svc.entities.LocationEquipment.filter({ location_id: id }, null, 100)));
       const brandLists = await Promise.all(locIds.map((id) => svc.entities.ProductBrandOffering.filter({ location_id: id }, null, 100)));
       return Response.json({
@@ -213,6 +215,20 @@ Deno.serve(async (req) => {
       if (!loc) return Response.json({ error: 'Locatia nu exista' }, { status: 404 });
       const key = String(payload.equipment_category_key || '').trim();
       if (!EQUIPMENT_KEYS.includes(key)) return Response.json({ error: 'Categorie de echipament invalida' }, { status: 400 });
+      // PART 7 (3H.1A.1): duplicate protection — same category (+ manufacturer/model
+      // where supplied) on an active or pending item never creates a second proposal.
+      const existingEq = await svc.entities.LocationEquipment.filter({ location_id: locationId, equipment_category_key: key }, null, 100);
+      const newMan = normVal(payload.manufacturer);
+      const newModel = normVal(payload.model);
+      const dupEq = existingEq.find((e) => {
+        if (e.is_active === false || ['rejected', 'archived'].includes(e.evidence_status)) return false;
+        if (newMan && normVal(e.manufacturer) !== newMan) return false;
+        if (newModel && normVal(e.model) !== newModel) return false;
+        return true;
+      });
+      if (dupEq) {
+        return Response.json({ duplicate: true, error: 'Exista deja o propunere activa sau in verificare pentru acest echipament la aceasta locatie' }, { status: 409 });
+      }
       const record = await svc.entities.LocationEquipment.create({
         location_id: locationId,
         equipment_category_key: key,
@@ -241,6 +257,17 @@ Deno.serve(async (req) => {
       if (!OFFERING_TYPES.includes(offeringType)) return Response.json({ error: 'Tip de oferta invalid' }, { status: 400 });
       const brandName = str(payload.brand_name, 200);
       if (!brandName) return Response.json({ error: 'brand_name este obligatoriu' }, { status: 400 });
+      // PART 7 (3H.1A.1): duplicate protection — same offering_type + normalized
+      // brand_name on an active or pending item never creates a second proposal.
+      const existingBr = await svc.entities.ProductBrandOffering.filter({ location_id: locationId, offering_type: offeringType }, null, 100);
+      const dupBr = existingBr.find((b) =>
+        b.is_active !== false
+        && !['rejected', 'archived'].includes(b.evidence_status)
+        && normVal(b.brand_name) === normVal(brandName)
+      );
+      if (dupBr) {
+        return Response.json({ duplicate: true, error: 'Exista deja o propunere activa sau in verificare pentru acest brand la aceasta locatie' }, { status: 409 });
+      }
       const record = await svc.entities.ProductBrandOffering.create({
         location_id: locationId,
         offering_type: offeringType,
@@ -265,9 +292,19 @@ Deno.serve(async (req) => {
       const recordType = payload.record_type;
       const recordId = String(payload.record_id || '').trim();
       const decision = payload.decision;
+      const reason = str(payload.reason ?? payload.note, 1000);
       if (!['equipment', 'brand'].includes(recordType)) return Response.json({ error: 'record_type invalid' }, { status: 400 });
       if (!['approved', 'rejected', 'needs_more_info', 'archived'].includes(decision)) {
         return Response.json({ error: 'decision invalida' }, { status: 400 });
+      }
+      // PART 5 (3H.1A.1): decision reason is recorded consistently; non-approval always requires one.
+      if (decision !== 'approved' && !reason) {
+        return Response.json({ error: 'Decizia necesita un motiv (reason)' }, { status: 400 });
+      }
+      // PART 5 (3H.1A.1): confirmation_level may change ONLY on approval — rejected,
+      // needs_more_info or archived items can never receive elevated confirmation.
+      if (payload.confirmation_level && decision !== 'approved') {
+        return Response.json({ error: 'confirmation_level poate fi setat doar cand decizia este approved' }, { status: 400 });
       }
       const entity = recordType === 'equipment' ? svc.entities.LocationEquipment : svc.entities.ProductBrandOffering;
       const record = await entity.get(recordId).catch(() => null);
@@ -285,7 +322,16 @@ Deno.serve(async (req) => {
         }
         update.confirmation_level = payload.confirmation_level;
       }
-      if (recordType === 'equipment' && payload.note !== undefined) update.evidence_note = str(payload.note, 1000);
+      if (recordType === 'equipment' && reason) update.evidence_note = reason;
+      // PART 5 (3H.1A.1): non-approved items are forced non-public and never keep
+      // elevated confirmation after rejection.
+      if (decision !== 'approved') {
+        if (recordType === 'equipment') update.visibility_status = 'internal';
+        else update.public_visibility_status = decision;
+        if (decision === 'rejected' && ['provider_confirmed', 'vezunde_verified'].includes(record.confirmation_level)) {
+          update.confirmation_level = 'declared';
+        }
+      }
 
       if (payload.make_public === true) {
         if (decision !== 'approved') return Response.json({ error: 'Doar inregistrarile aprobate pot deveni publice' }, { status: 400 });
@@ -295,6 +341,11 @@ Deno.serve(async (req) => {
           }
           update.visibility_status = 'public';
         } else {
+          // PART 7 (3H.1A.1): medical_devices stays internal in v1 — never a
+          // patient-facing brand offering and never a B2B visibility path.
+          if (record.offering_type === 'medical_devices') {
+            return Response.json({ error: 'Ofertele de tip medical_devices raman interne si nu pot deveni publice' }, { status: 400 });
+          }
           if (B2B_PROFILE_TYPES.includes(loc?.provider_profile_type)) {
             return Response.json({ error: 'Locatiile B2B nu pot avea oferte publice pentru pacienti' }, { status: 400 });
           }
@@ -305,7 +356,7 @@ Deno.serve(async (req) => {
       await entity.update(recordId, update);
       await svc.entities.AuditLog.create({
         event_type: 'profile_foundation_review',
-        message: `${recordType} ${recordId} (locatie ${record.location_id}): ${decision}${payload.make_public === true ? ' + public' : ''} de ${user.email}`,
+        message: `${recordType} ${recordId} (locatie ${record.location_id}): ${decision}${payload.make_public === true ? ' + public' : ''} de ${user.email}${reason ? ` — motiv: ${reason}` : ''}`,
       });
       return Response.json({ ok: true });
     }
@@ -328,17 +379,37 @@ Deno.serve(async (req) => {
       const record = await entityMap[entityType].get(entityId).catch(() => null);
       if (!record) return Response.json({ error: 'Inregistrarea nu exista' }, { status: 404 });
       const links = payload.links || {};
+      const reason = str(payload.reason, 500);
       const update = {};
+      const previous = {};
       for (const field of allowedFields[entityType]) {
         if (links[field] === undefined) continue;
         const value = String(links[field] || '').trim();
         if (value && !isValidUrl(value)) return Response.json({ error: `URL invalid pentru ${field}` }, { status: 400 });
+        if ((record[field] || '') === value) continue; // unchanged — no write, no audit noise
         update[field] = value;
+        previous[field] = record[field] || '';
       }
-      if (Object.keys(update).length === 0) return Response.json({ error: 'Niciun camp de actualizat' }, { status: 400 });
+      const changedFields = Object.keys(update);
+      if (changedFields.length === 0) return Response.json({ error: 'Niciun camp modificat' }, { status: 400 });
       update.profile_updated_at = new Date().toISOString();
       await entityMap[entityType].update(entityId, update);
-      return Response.json({ ok: true, updated_fields: Object.keys(update) });
+      // PART 4 (3H.1A.1): every public-link change is audited via the existing
+      // DirectoryAuditRecord conventions — actor, timestamp, object, before/after, reason.
+      const auditEntityType = { location: 'ProviderLocation', organization: 'ProviderOrganization', professional: 'ProfessionalProfile' }[entityType];
+      await svc.entities.DirectoryAuditRecord.create({
+        entity_type: auditEntityType,
+        entity_id: entityId,
+        action_type: 'set_public_links',
+        changed_fields: changedFields,
+        previous_values: JSON.stringify(previous),
+        new_values: JSON.stringify(Object.fromEntries(changedFields.map((f) => [f, update[f]]))),
+        admin_user_id: user.id,
+        admin_email: user.email,
+        note: reason,
+        performed_at: new Date().toISOString(),
+      });
+      return Response.json({ ok: true, updated_fields: changedFields });
     }
 
     return Response.json({ error: 'Actiune necunoscuta' }, { status: 400 });

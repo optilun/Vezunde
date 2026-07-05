@@ -10,7 +10,11 @@ Deno.serve(async (req) => {
       { status: 'publicata', profile_control_status: 'verified' }, '-updated_date', 20
     );
     const publicList = locations
-      .filter((l) => l.active_status !== 'inactiva')
+      // Module 3H.1A.1: fail closed — missing classification or B2B profile types
+      // never appear in the public showcase.
+      .filter((l) => l.active_status !== 'inactiva'
+        && !!l.provider_profile_type
+        && !['optical_laboratory_b2b', 'future_b2b_distributor'].includes(l.provider_profile_type))
       .slice(0, 5)
       .map((l) => ({
         id: l.id,

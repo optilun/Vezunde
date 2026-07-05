@@ -51,6 +51,10 @@ const FACILITY_REASONS = {
 // Module 3H.1A: B2B profile classifications never enter patient discovery/matching.
 const B2B_PROFILE_TYPES = ['optical_laboratory_b2b', 'future_b2b_distributor'];
 
+// Module 3H.1A.1: canonical professional taxonomy — legacy Romanian keys are
+// normalized read-only at matching time; stored data and rules are unchanged.
+const ROLE_CANONICAL = { medic_oftalmolog: 'ophthalmologist', ophthalmologist: 'ophthalmologist', optometrist: 'optometrist', optician: 'optician' };
+
 const OPHTHALMO_TYPES = ['clinica_oftalmologica', 'cabinet_oftalmologic'];
 const OPTICAL_TYPES = ['optica_medicala', 'laborator_optic', 'cabinet_optometric'];
 const REPAIR_FACILITIES = ['atelier_service_propriu', 'reparatii_pe_loc', 'laborator_optic_propriu', 'laborator_partener', 'montaj_lentile_in_locatie'];
@@ -179,7 +183,9 @@ Deno.serve(async (req) => {
     const intent = payload.intent || null;
     const serviceKeys = Array.isArray(payload.service_keys) ? payload.service_keys : [];
     const providerTypes = Array.isArray(payload.provider_types) ? payload.provider_types : [];
-    const requiredRoles = Array.isArray(payload.required_professional_types) ? payload.required_professional_types : [];
+    const requiredRoles = Array.isArray(payload.required_professional_types)
+      ? payload.required_professional_types.map((r) => ROLE_CANONICAL[r] || r)
+      : [];
     // Module 3F.2.1: locality_siruta_code is the PRIMARY geographic matching key
     // (canonical GeographicLocality). city is kept ONLY as a temporary compatibility
     // fallback for old requests that genuinely lack a siruta code, and as a display mirror.
@@ -217,7 +223,7 @@ Deno.serve(async (req) => {
     const roleMap = {};
     for (const a of assigns) {
       if (!roleMap[a.location_id]) roleMap[a.location_id] = [];
-      roleMap[a.location_id].push(a.professional_type);
+      roleMap[a.location_id].push(ROLE_CANONICAL[a.professional_type] || a.professional_type);
     }
     const facMap = {};
     for (const f of facilities) {
@@ -235,8 +241,9 @@ Deno.serve(async (req) => {
     const excludedList = [];
     for (const loc of locations) {
       if (loc.active_status === 'inactiva') continue;
-      // Module 3H.1A: B2B laboratories/distributors are hard-excluded from patient matching.
-      if (B2B_PROFILE_TYPES.includes(loc.provider_profile_type)) continue;
+      // Module 3H.1A.1: fail closed — locations with missing classification or B2B
+      // profile types never enter patient matching.
+      if (!loc.provider_profile_type || B2B_PROFILE_TYPES.includes(loc.provider_profile_type)) continue;
       if (providerTypes.length > 0 && !providerTypes.includes(loc.provider_type)) continue;
 
       const locRows = svcRowMap[loc.id] || [];
@@ -247,7 +254,7 @@ Deno.serve(async (req) => {
 
       // Intent-based hard constraints
       if (intent === 'simptome_oftalmologice' || intent === 'investigatii') {
-        if (!OPHTHALMO_TYPES.includes(loc.provider_type) && !roles.includes('medic_oftalmolog')) continue;
+        if (!OPHTHALMO_TYPES.includes(loc.provider_type) && !roles.includes('ophthalmologist')) continue;
       }
       if (intent === 'reparatii_ochelari') {
         if (!OPTICAL_TYPES.includes(loc.provider_type)) continue;

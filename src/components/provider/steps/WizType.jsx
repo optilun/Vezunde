@@ -1,6 +1,7 @@
 import React from "react";
 import ChoiceCard from "@/components/intake/ChoiceCard";
 import { ONBOARDING_PROVIDER_TYPES } from "@/lib/providerTaxonomy";
+import { PROVIDER_TYPE_TO_PROFILE_TYPE } from "@/lib/profileFoundationCatalog";
 
 export default function WizType({ data, update, next }) {
   return (
@@ -11,7 +12,9 @@ export default function WizType({ data, update, next }) {
           label={label}
           selected={data.location.provider_type === key}
           onClick={() => {
-            update({ location: { ...data.location, provider_type: key } });
+            // Module 3H.1A.1: provider_profile_type is mandatory — set from the
+            // approved enum mapping, never from free text.
+            update({ location: { ...data.location, provider_type: key, provider_profile_type: PROVIDER_TYPE_TO_PROFILE_TYPE[key] } });
             next();
           }}
         />

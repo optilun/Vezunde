@@ -17,6 +17,18 @@ export const PROVIDER_PROFILE_TYPES = [
 // B2B profiles are classified only — they NEVER enter patient search or matching.
 export const B2B_PROFILE_TYPES = ["optical_laboratory_b2b", "future_b2b_distributor"];
 
+// Module 3H.1A.1: deterministic enum-to-enum default used ONLY to pre-select a
+// profile type from the legacy provider_type choice — never derived from free text.
+export const PROVIDER_TYPE_TO_PROFILE_TYPE = {
+  optica_medicala: "independent_optical_store",
+  clinica_oftalmologica: "ophthalmology_clinic",
+  cabinet_oftalmologic: "ophthalmology_office",
+  cabinet_optometric: "independent_optometrist",
+  laborator_optic: "optical_laboratory_b2c",
+  optometrist_independent: "independent_optometrist",
+  medic_oftalmolog_independent: "independent_ophthalmologist",
+};
+
 // Shared cross-role field-state contract.
 export const FIELD_STATES = ["draft", "pending_review", "approved", "rejected", "needs_more_info", "archived"];
 export const FIELD_STATE_LABELS = {
