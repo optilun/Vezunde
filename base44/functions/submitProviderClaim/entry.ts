@@ -25,6 +25,9 @@ Deno.serve(async (req) => {
     let locationId = p.location_id || null;
     let organizationId = null;
     let businessName = '';
+    // Module 3H.1B.1: identity-gate context, stored ONLY in the pending claim payload.
+    let identityNote = '';
+    let identityBlocking = 'none';
 
     if (p.mode === 'claim') {
       if (!locationId) return Response.json({ error: 'Locatia este obligatorie' }, { status: 400 });
@@ -65,6 +68,40 @@ Deno.serve(async (req) => {
       const geo = geoRows[0];
       if (!geo) {
         return Response.json({ error: 'Localitatea selectata nu este valida' }, { status: 400 });
+      }
+      // Module 3H.1B.1: deterministic, read-only identity gate BEFORE any new
+      // ProviderLocation is created. No merges, no changes to existing locations.
+      const idResRaw = await base44.functions.invoke('findProviderIdentityCandidates', {
+        context: 'provider_new_location',
+        candidate: {
+          organization_name: (p.organization && p.organization.name) || '',
+          location_name: l.name,
+          provider_profile_type: l.provider_profile_type,
+          locality_siruta_code: geo.siruta_code,
+          address: l.address || '',
+          phone_public: l.phone_public || '',
+          public_email: l.public_email || '',
+          website: l.website || '',
+        },
+        limit: 10,
+      });
+      const identity = (idResRaw && idResRaw.data) ? idResRaw.data : (idResRaw || {});
+      if (identity.error) return Response.json({ error: 'Verificarea duplicatelor a esuat' }, { status: 500 });
+      identityNote = String(p.identity_difference_note || '').trim();
+      identityBlocking = identity.blocking_level || 'none';
+      // Strong duplicate: never created silently — only after explicit
+      // "Este o locatie diferita" declaration + explanation (min 15 chars).
+      if (identityBlocking === 'strong_duplicate_review_required' && !(p.declared_distinct === true && identityNote.length >= 15)) {
+        return Response.json({
+          identity_check: {
+            ...identity,
+            message: 'Am gasit un profil foarte asemanator. Verifica daca este deja locatia ta.',
+          },
+        });
+      }
+      // Possible duplicate: continue only with a short explanation (min 15 chars).
+      if (identityBlocking === 'warning' && identityNote.length < 15) {
+        return Response.json({ identity_check: identity });
       }
       if (p.organization && p.organization.name) {
         const org = await svc.entities.ProviderOrganization.create({
@@ -202,7 +239,11 @@ Deno.serve(async (req) => {
       email: c.email,
       phone: c.phone || '',
       representation_confirmed: true,
-      submitted_payload: JSON.stringify({ mode: p.mode, location_id: locationId, contact: c }),
+      submitted_payload: JSON.stringify({
+        mode: p.mode, location_id: locationId, contact: c,
+        // Review-only context (never public): provider's identity-difference note.
+        ...(identityNote ? { identity_difference_note: identityNote, identity_blocking_level: identityBlocking } : {}),
+      }),
       status: 'in_asteptare',
     };
     if (organizationId) claimData.organization_id = organizationId;

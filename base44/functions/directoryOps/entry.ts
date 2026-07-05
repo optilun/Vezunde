@@ -114,34 +114,32 @@ Deno.serve(async (req) => {
       if (loc.county && norm(loc.county) !== norm(geo.county_name || '')) return bad('Judetul trimis nu corespunde localitatii canonice selectate');
       if (loc.county_name && norm(loc.county_name) !== norm(geo.county_name || '')) return bad('Judetul trimis nu corespunde localitatii canonice selectate');
 
-      // Module 3F duplicate detection: normalized org/location name, city, address,
-      // website domain and public phone. Never auto-merges and never blocks —
-      // the admin must explicitly confirm via force_create.
-      if (!p.force_create) {
-        const [allLocs, allOrgs] = await Promise.all([
-          svc.entities.ProviderLocation.list(null, 500),
-          svc.entities.ProviderOrganization.list(null, 500),
-        ]);
-        const orgNames = {};
-        for (const o of allOrgs) orgNames[o.id] = o.name || '';
-        const domainOf = (u) => { try { return new URL(String(u)).hostname.replace(/^www\./, ''); } catch { return ''; } };
-        const digits = (s) => String(s || '').replace(/\D/g, '');
-        const nameToks = tokens(loc.name);
-        const orgToks = tokens(org.name || '');
-        const newDomain = domainOf(loc.website || org.website || '');
-        const newPhone = digits(loc.phone_public);
-        const duplicates = [];
-        for (const l of allLocs) {
-          const reasons = [];
-          const sameCity = norm(l.city) === norm(geo.name);
-          if (sameCity && tokens(l.name).some((t) => nameToks.includes(t))) reasons.push('nume asemanator in acelasi oras');
-          if (sameCity && l.address && norm(l.address) === norm(loc.address)) reasons.push('aceeasi adresa');
-          if (newDomain && domainOf(l.website) === newDomain) reasons.push('acelasi domeniu website');
-          if (newPhone.length >= 6 && digits(l.phone_public) === newPhone) reasons.push('acelasi telefon public');
-          if (sameCity && orgToks.length > 0 && tokens(orgNames[l.organization_id] || '').some((t) => orgToks.includes(t))) reasons.push('organizatie asemanatoare in acelasi oras');
-          if (reasons.length > 0) duplicates.push({ id: l.id, name: l.name, city: l.city, address: l.address || '', provider_type: l.provider_type, profile_control_status: l.profile_control_status || 'directory', match_reasons: reasons });
-        }
-        if (duplicates.length > 0) return Response.json({ duplicates: duplicates.slice(0, 10) });
+      // Module 3H.1B.1: deterministic, read-only identity gate (shared function).
+      // Never auto-merges and never alters existing locations.
+      const idResRaw = await base44.functions.invoke('findProviderIdentityCandidates', {
+        context: 'admin_create',
+        candidate: {
+          organization_name: org.name || '',
+          location_name: loc.name,
+          provider_profile_type: loc.provider_profile_type,
+          locality_siruta_code: geo.siruta_code,
+          address: loc.address,
+          phone_public: loc.phone_public || '',
+          public_email: loc.public_email || '',
+          website: loc.website || org.website || '',
+        },
+        limit: 10,
+      });
+      const identity = (idResRaw && idResRaw.data) ? idResRaw.data : (idResRaw || {});
+      if (identity.error) return bad('Verificarea duplicatelor a esuat: ' + identity.error);
+      const overrideReason = String(p.duplicate_override_reason || '').trim();
+      // warning: admin may continue only with an override reason (min 15 chars).
+      if (identity.blocking_level === 'warning' && overrideReason.length < 15) {
+        return Response.json({ identity_check: identity });
+      }
+      // strong duplicate: normal create is blocked — explicit override + reason required.
+      if (identity.blocking_level === 'strong_duplicate_review_required' && (p.force_distinct !== true || overrideReason.length < 15)) {
+        return Response.json({ identity_check: identity });
       }
 
       let organizationId = p.organization_id || null;
@@ -193,7 +191,17 @@ Deno.serve(async (req) => {
         collected_by: user.email,
       });
       // No automatic services, availability or verification are created.
-      await audit(svc, user, { entity_type: 'ProviderLocation', entity_id: newLoc.id, action_type: 'create_directory_location', changed_fields: ['name', 'provider_type', 'locality_siruta_code', 'city', 'county', 'address', 'source_url'], next: { name: loc.name, locality_siruta_code: geo.siruta_code, city: geo.name, source_url: prov.source_url }, note: p.note || '' });
+      await audit(svc, user, { entity_type: 'ProviderLocation', entity_id: newLoc.id, action_type: 'create_directory_location', changed_fields: ['name', 'provider_type', 'locality_siruta_code', 'city', 'county', 'address', 'source_url'], next: { name: loc.name, locality_siruta_code: geo.siruta_code, city: geo.name, source_url: prov.source_url }, note: p.note || overrideReason || '' });
+      // Module 3H.1B.1: strong-duplicate override gets its own explicit audit record.
+      if (identity.blocking_level === 'strong_duplicate_review_required') {
+        await audit(svc, user, {
+          entity_type: 'ProviderLocation', entity_id: newLoc.id,
+          action_type: 'duplicate_override_create',
+          changed_fields: ['duplicate_override_reason'],
+          next: { blocking_level: identity.blocking_level, candidate_location_ids: (identity.candidates || []).map((c) => c.location_id) },
+          note: overrideReason,
+        });
+      }
       return Response.json({ location: newLoc, organization_id: organizationId });
     }
 

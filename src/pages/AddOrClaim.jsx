@@ -17,6 +17,7 @@ export default function AddOrClaim() {
           prefill={draft}
           onDone={() => setStage("done")}
           onExit={() => { setDraft(null); setStage("search"); }}
+          onClaimExisting={(loc) => { setSelected(loc); setDraft(null); setStage("claim"); }}
         />
       </div>
     );

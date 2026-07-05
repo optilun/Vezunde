@@ -10,6 +10,7 @@ import WizFacilities from "@/components/provider/steps/WizFacilities";
 import WizTeam from "@/components/provider/steps/WizTeam";
 import WizSchedule from "@/components/provider/steps/WizSchedule";
 import WizIdentity from "@/components/provider/steps/WizIdentity";
+import IdentityDuplicatePanel from "@/components/provider/IdentityDuplicatePanel";
 
 const STEPS = [
   { key: "org", title: "Organizatie si locatie", subtitle: "Cum se numeste organizatia si aceasta locatie?", Comp: WizOrg },
@@ -34,7 +35,7 @@ const INITIAL = {
   contact: { contact_name: "", role: "", email: "", phone: "", representation_confirmed: false },
 };
 
-export default function NewLocationWizard({ onDone, onExit, prefill }) {
+export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExisting }) {
   const [data, setData] = useState(() =>
     prefill
       ? {
@@ -57,12 +58,14 @@ export default function NewLocationWizard({ onDone, onExit, prefill }) {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  // Module 3H.1B.1: identity gate result returned by the backend before creation.
+  const [identityCheck, setIdentityCheck] = useState(null);
 
   const update = (patch) => setData((d) => ({ ...d, ...patch }));
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
   const back = () => (step === 0 ? onExit() : setStep((s) => s - 1));
 
-  const submit = async () => {
+  const submit = async (identityExtra = {}) => {
     const authed = await base44.auth.isAuthenticated();
     if (!authed) {
       base44.auth.redirectToLogin(window.location.href);
@@ -82,12 +85,32 @@ export default function NewLocationWizard({ onDone, onExit, prefill }) {
         schedule: data.schedule,
         contact: data.contact,
         representation_confirmed: data.contact.representation_confirmed,
+        ...identityExtra,
       })
       .catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
     setSubmitting(false);
+    if (res.data?.identity_check) { setIdentityCheck(res.data.identity_check); return; }
     if (res.data?.error) setError(res.data.error);
     else onDone();
   };
+
+  if (identityCheck) {
+    const strong = identityCheck.blocking_level === "strong_duplicate_review_required";
+    return (
+      <WizardShell step={STEPS.length} total={STEPS.length} title="Verificare identitate" subtitle="Am gasit profiluri asemanatoare in Vezunde." onBack={() => setIdentityCheck(null)}>
+        <IdentityDuplicatePanel
+          check={identityCheck}
+          submitting={submitting}
+          onClaim={(c) => onClaimExisting && onClaimExisting({ id: c.location_id, name: c.name, city: c.locality_name, county: c.county_name, address: c.address })}
+          onContinueDistinct={(note) => {
+            setIdentityCheck(null);
+            submit(strong ? { declared_distinct: true, identity_difference_note: note } : { identity_difference_note: note });
+          }}
+          onCancel={() => setIdentityCheck(null)}
+        />
+      </WizardShell>
+    );
+  }
 
   const { title, subtitle, Comp } = STEPS[step];
   return (
@@ -97,7 +120,7 @@ export default function NewLocationWizard({ onDone, onExit, prefill }) {
           Date preluate de pe Google Maps. Verifica si corecteaza inainte de trimitere.
         </p>
       ) : null}
-      <Comp data={data} update={update} next={next} onSubmit={submit} submitting={submitting} error={error} />
+      <Comp data={data} update={update} next={next} onSubmit={() => submit()} submitting={submitting} error={error} />
     </WizardShell>
   );
 }

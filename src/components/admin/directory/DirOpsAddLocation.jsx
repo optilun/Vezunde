@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { PROVIDER_TYPES_3C, PCS_LABELS } from "@/lib/directoryOpsCatalog";
+import { PROVIDER_TYPES_3C } from "@/lib/directoryOpsCatalog";
 import { PROVIDER_PROFILE_TYPES } from "@/lib/profileFoundationCatalog";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
+import DirOpsIdentityCandidates from "@/components/admin/directory/DirOpsIdentityCandidates";
 
 const input = "w-full border border-input rounded-md px-3 py-2 text-sm bg-card";
 const label = "block text-xs font-semibold text-muted-foreground mt-3 mb-1";
@@ -31,18 +32,21 @@ function initialForm() {
 
 export default function DirOpsAddLocation() {
   const [f, setF] = useState(initialForm);
-  const [duplicates, setDuplicates] = useState(null);
+  // Module 3H.1B.1: identity gate state — candidates + explicit override reason.
+  const [identityCheck, setIdentityCheck] = useState(null);
+  const [overrideReason, setOverrideReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value });
 
-  const submit = async (forceCreate) => {
+  const submit = async (forceDistinct) => {
     setSaving(true);
     setMessage(null);
     try {
       const res = await base44.functions.invoke("directoryOps", {
         action: "create_location",
-        force_create: forceCreate === true,
+        force_distinct: forceDistinct === true,
+        duplicate_override_reason: overrideReason,
         mark_active: f.mark_active,
         organization: { name: f.org_name, legal_name: f.legal_name, website: f.org_website },
         location: {
@@ -57,8 +61,9 @@ export default function DirOpsAddLocation() {
           data_confidence: f.data_confidence, source_notes: f.source_notes,
         },
       });
-      if (res.data.duplicates) { setDuplicates(res.data.duplicates); setSaving(false); return; }
-      setDuplicates(null);
+      if (res.data.identity_check) { setIdentityCheck(res.data.identity_check); setSaving(false); return; }
+      setIdentityCheck(null);
+      setOverrideReason("");
       setF(EMPTY);
       setMessage({ ok: true, text: "Locatia a fost creata ca profil directory (fara servicii automate)." });
     } catch (err) {
@@ -147,27 +152,20 @@ export default function DirOpsAddLocation() {
         Marcheaza locatia ca activa (altfel ramane inactiva)
       </label>
 
-      {duplicates && (
-        <div className="mt-6 border border-destructive/40 bg-destructive/5 rounded-lg p-4">
-          <p className="font-semibold text-sm">Posibile duplicate gasite — verifica inainte de creare:</p>
-          <ul className="mt-2 space-y-1 text-sm">
-            {duplicates.map((d) => (
-              <li key={d.id} className="text-muted-foreground">
-                {d.name} — {d.city}, {d.address} ({PCS_LABELS[d.profile_control_status] || d.profile_control_status})
-                {d.match_reasons?.length > 0 && <span className="block text-xs">Motiv: {d.match_reasons.join(", ")}</span>}
-              </li>
-            ))}
-          </ul>
-          <div className="flex gap-3 mt-3">
-            <button onClick={() => submit(true)} disabled={saving} className="px-4 py-2 rounded-md bg-destructive text-destructive-foreground text-sm font-semibold">Creeaza oricum</button>
-            <button onClick={() => setDuplicates(null)} className="px-4 py-2 rounded-md bg-secondary text-sm">Anuleaza</button>
-          </div>
-        </div>
+      {identityCheck && (
+        <DirOpsIdentityCandidates
+          check={identityCheck}
+          reason={overrideReason}
+          setReason={setOverrideReason}
+          saving={saving}
+          onContinue={(force) => submit(force)}
+          onCancel={() => { setIdentityCheck(null); setOverrideReason(""); }}
+        />
       )}
 
       {message && <p className={`mt-4 text-sm ${message.ok ? "text-green-700" : "text-destructive"}`}>{message.text}</p>}
 
-      {!duplicates && (
+      {!identityCheck && (
         <button onClick={() => submit(false)} disabled={saving || requiredMissing} className="mt-6 px-5 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-40">
           {saving ? "Se salveaza..." : "Creeaza profil directory"}
         </button>
