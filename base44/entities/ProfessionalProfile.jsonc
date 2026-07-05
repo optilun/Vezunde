@@ -13,6 +13,14 @@
         "optician"
       ]
     },
+    "professional_type": {
+      "type": "string",
+      "enum": [
+        "ophthalmologist",
+        "optometrist",
+        "optician"
+      ]
+    },
     "specializations": {
       "type": "array",
       "items": {
@@ -21,6 +29,57 @@
     },
     "bio": {
       "type": "string"
+    },
+    "professional_bio": {
+      "type": "string"
+    },
+    "public_display_name": {
+      "type": "string"
+    },
+    "profile_photo_url": {
+      "type": "string"
+    },
+    "public_website_url": {
+      "type": "string"
+    },
+    "linkedin_url": {
+      "type": "string"
+    },
+    "facebook_url": {
+      "type": "string"
+    },
+    "instagram_url": {
+      "type": "string"
+    },
+    "public_phone": {
+      "type": "string"
+    },
+    "public_email": {
+      "type": "string"
+    },
+    "accepts_independent_requests": {
+      "type": "boolean",
+      "default": false
+    },
+    "public_visibility_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "pending_review",
+        "approved",
+        "rejected",
+        "needs_more_info",
+        "archived"
+      ],
+      "default": "draft"
+    },
+    "profile_completeness": {
+      "type": "number",
+      "default": 0
+    },
+    "profile_updated_at": {
+      "type": "string",
+      "format": "date-time"
     },
     "is_public": {
       "type": "boolean",

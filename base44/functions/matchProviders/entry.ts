@@ -48,6 +48,9 @@ const FACILITY_REASONS = {
   montaj_lentile_in_locatie: 'Monteaza lentile in locatie',
 };
 
+// Module 3H.1A: B2B profile classifications never enter patient discovery/matching.
+const B2B_PROFILE_TYPES = ['optical_laboratory_b2b', 'future_b2b_distributor'];
+
 const OPHTHALMO_TYPES = ['clinica_oftalmologica', 'cabinet_oftalmologic'];
 const OPTICAL_TYPES = ['optica_medicala', 'laborator_optic', 'cabinet_optometric'];
 const REPAIR_FACILITIES = ['atelier_service_propriu', 'reparatii_pe_loc', 'laborator_optic_propriu', 'laborator_partener', 'montaj_lentile_in_locatie'];
@@ -232,6 +235,8 @@ Deno.serve(async (req) => {
     const excludedList = [];
     for (const loc of locations) {
       if (loc.active_status === 'inactiva') continue;
+      // Module 3H.1A: B2B laboratories/distributors are hard-excluded from patient matching.
+      if (B2B_PROFILE_TYPES.includes(loc.provider_profile_type)) continue;
       if (providerTypes.length > 0 && !providerTypes.includes(loc.provider_type)) continue;
 
       const locRows = svcRowMap[loc.id] || [];

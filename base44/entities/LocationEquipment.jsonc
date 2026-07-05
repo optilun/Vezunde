@@ -1,0 +1,123 @@
+{
+  "name": "LocationEquipment",
+  "type": "object",
+  "properties": {
+    "location_id": {
+      "type": "string"
+    },
+    "equipment_category_key": {
+      "type": "string",
+      "enum": [
+        "autorefractometer",
+        "keratometer",
+        "lensmeter",
+        "phoropter",
+        "visual_acuity_chart",
+        "slit_lamp",
+        "tonometer",
+        "corneal_topographer",
+        "contact_lens_trial_set",
+        "oct",
+        "visual_field_analyzer",
+        "fundus_camera",
+        "pachymeter",
+        "biometer",
+        "ophthalmic_ultrasound",
+        "operating_microscope",
+        "phacoemulsification_system",
+        "vitrectomy_system",
+        "yag_laser",
+        "excimer_laser",
+        "femtosecond_laser",
+        "corneal_crosslinking_system",
+        "tracer",
+        "blocker",
+        "edger",
+        "groover",
+        "drill",
+        "generator",
+        "polisher",
+        "coater",
+        "ultrasonic_cleaner"
+      ]
+    },
+    "equipment_label": {
+      "type": "string"
+    },
+    "manufacturer": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "declared_use": {
+      "type": "string"
+    },
+    "visibility_status": {
+      "type": "string",
+      "enum": [
+        "internal",
+        "public"
+      ],
+      "default": "internal"
+    },
+    "confirmation_level": {
+      "type": "string",
+      "enum": [
+        "declared",
+        "provider_confirmed",
+        "vezunde_verified"
+      ],
+      "default": "declared"
+    },
+    "evidence_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "pending_review",
+        "approved",
+        "rejected",
+        "needs_more_info",
+        "archived"
+      ],
+      "default": "draft"
+    },
+    "evidence_note": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "added_by": {
+      "type": "string"
+    },
+    "added_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reviewed_by": {
+      "type": "string"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "location_id",
+    "equipment_category_key"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

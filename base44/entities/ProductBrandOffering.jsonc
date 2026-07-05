@@ -1,0 +1,97 @@
+{
+  "name": "ProductBrandOffering",
+  "type": "object",
+  "properties": {
+    "location_id": {
+      "type": "string"
+    },
+    "offering_type": {
+      "type": "string",
+      "enum": [
+        "frames",
+        "ophthalmic_lenses",
+        "contact_lenses",
+        "sunglasses",
+        "care_products",
+        "medical_devices"
+      ]
+    },
+    "brand_name": {
+      "type": "string"
+    },
+    "brand_type": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "public_visibility_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "pending_review",
+        "approved",
+        "rejected",
+        "needs_more_info",
+        "archived"
+      ],
+      "default": "draft"
+    },
+    "confirmation_level": {
+      "type": "string",
+      "enum": [
+        "declared",
+        "provider_confirmed",
+        "vezunde_verified"
+      ],
+      "default": "declared"
+    },
+    "evidence_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "pending_review",
+        "approved",
+        "rejected",
+        "needs_more_info",
+        "archived"
+      ],
+      "default": "draft"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "added_by": {
+      "type": "string"
+    },
+    "added_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reviewed_by": {
+      "type": "string"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "location_id",
+    "offering_type",
+    "brand_name"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

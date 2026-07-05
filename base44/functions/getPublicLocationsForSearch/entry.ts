@@ -10,7 +10,10 @@ Deno.serve(async (req) => {
     const locations = await svc.entities.ProviderLocation.filter({ status: 'publicata' }, null, 500);
     const cities = [...new Set(
       locations
-        .filter((l) => l.active_status !== 'inactiva' && (l.profile_control_status || 'directory') !== 'suspended')
+        .filter((l) => l.active_status !== 'inactiva'
+          && (l.profile_control_status || 'directory') !== 'suspended'
+          // Module 3H.1A: B2B profiles never appear in patient search coverage.
+          && !['optical_laboratory_b2b', 'future_b2b_distributor'].includes(l.provider_profile_type))
         .map((l) => l.city)
         .filter(Boolean)
     )].sort();

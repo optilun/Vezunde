@@ -11,6 +11,71 @@
     "website": {
       "type": "string"
     },
+    "organization_type": {
+      "type": "string",
+      "enum": [
+        "independent_optical_store",
+        "optical_chain",
+        "ophthalmology_clinic",
+        "ophthalmology_office",
+        "independent_ophthalmologist",
+        "independent_optometrist",
+        "independent_optician",
+        "optical_laboratory_b2c",
+        "optical_laboratory_b2b",
+        "future_b2b_distributor"
+      ]
+    },
+    "public_display_name": {
+      "type": "string"
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "cover_image_url": {
+      "type": "string"
+    },
+    "public_description": {
+      "type": "string"
+    },
+    "website_url": {
+      "type": "string"
+    },
+    "public_phone": {
+      "type": "string"
+    },
+    "public_email": {
+      "type": "string"
+    },
+    "facebook_url": {
+      "type": "string"
+    },
+    "instagram_url": {
+      "type": "string"
+    },
+    "linkedin_url": {
+      "type": "string"
+    },
+    "profile_completeness": {
+      "type": "number",
+      "default": 0
+    },
+    "public_visibility_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "pending_review",
+        "approved",
+        "rejected",
+        "needs_more_info",
+        "archived"
+      ],
+      "default": "draft"
+    },
+    "profile_updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "status": {
       "type": "string",
       "enum": [
