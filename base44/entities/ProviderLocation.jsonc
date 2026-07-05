@@ -607,11 +607,17 @@
   "required": [
     "name",
     "provider_type",
+    "provider_profile_type",
     "city",
     "locality_siruta_code",
     "county_name"
   ],
   "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
     "write": {
       "user_condition": {
         "role": "admin"
