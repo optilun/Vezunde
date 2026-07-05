@@ -87,6 +87,22 @@
 /* UI-1 color update: neutral override for authenticated admin & provider
    workspaces only. Scoping the CSS variables here (instead of editing :root)
    keeps the public site's warm brick/orange brand accent untouched. */
+/* Auth pages (Login/Register/ForgotPassword/ResetPassword) — scoped neutral
+   charcoal palette override, replacing the brick/orange brand accent used
+   elsewhere. Colors only; no layout or behavior changes. */
+.auth-neutral {
+  --background: 45 22% 96%;
+  --foreground: 0 0% 9%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 9%;
+  --primary: 0 0% 10%;
+  --primary-foreground: 0 0% 100%;
+  --border: 43 13% 90%;
+  --input: 43 13% 90%;
+  --ring: 0 0% 10%;
+  --muted-foreground: 0 0% 40%;
+}
+
 .workspace-neutral {
   --background: 45 22% 96%;
   --card: 0 0% 100%;
