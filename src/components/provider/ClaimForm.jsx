@@ -5,8 +5,20 @@ import ContactIdentityFields from "@/components/provider/ContactIdentityFields";
 import ContinueButton from "@/components/intake/ContinueButton";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
 
+// Module 3H.1B.2: temporary session state so a login redirect doesn't lose the form.
+const CONTACT_RESUME_KEY = "pending_claim_contact";
+
 export default function ClaimForm({ location, onDone, onBack }) {
-  const [contact, setContact] = useState({ contact_name: "", role: "", email: "", phone: "", representation_confirmed: false });
+  const [contact, setContact] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem(CONTACT_RESUME_KEY);
+      if (raw) {
+        sessionStorage.removeItem(CONTACT_RESUME_KEY);
+        return { contact_name: "", role: "", email: "", phone: "", representation_confirmed: false, ...JSON.parse(raw) };
+      }
+    } catch { /* ignore corrupt state */ }
+    return { contact_name: "", role: "", email: "", phone: "", representation_confirmed: false };
+  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [reviewing, setReviewing] = useState(false);
@@ -14,6 +26,9 @@ export default function ClaimForm({ location, onDone, onBack }) {
   const submit = async () => {
     const authed = await base44.auth.isAuthenticated();
     if (!authed) {
+      // Save minimal session state (location + form values), then resume post-login.
+      sessionStorage.setItem("pending_claim_location", JSON.stringify(location));
+      sessionStorage.setItem(CONTACT_RESUME_KEY, JSON.stringify(contact));
       base44.auth.redirectToLogin(window.location.href);
       return;
     }

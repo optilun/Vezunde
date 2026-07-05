@@ -10,8 +10,18 @@ import WizardShell from "@/components/intake/WizardShell";
 // same phase-stepper visual language as NewLocationWizard's internal steps.
 const PHASES = ["Gaseste profilul", "Confirma relatia", "Trimite"];
 
+// Module 3H.1B.2: explicit cancellation clears all temporary resume state.
+const clearResumeState = () => {
+  sessionStorage.removeItem("pending_new_location_wizard");
+  sessionStorage.removeItem("pending_claim_contact");
+  sessionStorage.removeItem("pending_claim_location");
+};
+
 export default function AddOrClaim() {
-  const [stage, setStage] = useState("search"); // search | claim | wizard | done
+  // Resume the new-location wizard after a login redirect.
+  const [stage, setStage] = useState(() =>
+    sessionStorage.getItem("pending_new_location_wizard") ? "wizard" : "search"
+  ); // search | claim | wizard | done
   const [selected, setSelected] = useState(null);
   const [draft, setDraft] = useState(null);
 
@@ -21,7 +31,7 @@ export default function AddOrClaim() {
         <NewLocationWizard
           prefill={draft}
           onDone={() => setStage("done")}
-          onExit={() => { setDraft(null); setStage("search"); }}
+          onExit={() => { clearResumeState(); setDraft(null); setStage("search"); }}
           onClaimExisting={(loc) => { setSelected(loc); setDraft(null); setStage("claim"); }}
         />
       </div>

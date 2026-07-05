@@ -28,6 +28,9 @@ Deno.serve(async (req) => {
     // Module 3H.1B.1: identity-gate context, stored ONLY in the pending claim payload.
     let identityNote = '';
     let identityBlocking = 'none';
+    // Module 3H.1B.2: admin-only Identity Gate snapshot, persisted with every
+    // new-location submission that reaches review.
+    let identitySnapshot = '';
 
     if (p.mode === 'claim') {
       if (!locationId) return Response.json({ error: 'Locatia este obligatorie' }, { status: 400 });
@@ -89,9 +92,69 @@ Deno.serve(async (req) => {
       if (identity.error) return Response.json({ error: 'Verificarea duplicatelor a esuat' }, { status: 500 });
       identityNote = String(p.identity_difference_note || '').trim();
       identityBlocking = identity.blocking_level || 'none';
-      // Strong duplicate: never created silently — only after explicit
-      // "Este o locatie diferita" declaration + explanation (min 15 chars).
-      if (identityBlocking === 'strong_duplicate_review_required' && !(p.declared_distinct === true && identityNote.length >= 15)) {
+      identitySnapshot = JSON.stringify({
+        blocking_level: identityBlocking,
+        source_flow: 'provider_new_location_wizard',
+        identity_difference_note: identityNote,
+        candidates: (identity.candidates || []).map((cd) => ({
+          location_id: cd.location_id,
+          name: cd.name,
+          locality_name: cd.locality_name,
+          county_name: cd.county_name,
+          address: cd.address,
+          severity: cd.severity,
+          score: cd.score,
+          matched_fields: cd.matched_fields,
+          recommended_action: cd.recommended_action,
+        })),
+      });
+      // Module 3H.1B.2: a strong duplicate NEVER creates ProviderOrganization,
+      // ProviderLocation or any linked record — declared_distinct cannot bypass.
+      // Only two provider actions exist: claim the existing profile, or escalate
+      // to an admin-only duplicate review (no location is created).
+      if (identityBlocking === 'strong_duplicate_review_required') {
+        if (p.escalate_duplicate_review === true) {
+          if (identityNote.length < 15) {
+            return Response.json({ error: 'Explica pe scurt de ce este o locatie diferita (minim 15 caractere)' }, { status: 400 });
+          }
+          const reviewClaim = await svc.entities.ProviderClaimRequest.create({
+            user_id: user.id,
+            mode: 'new_location_duplicate_review',
+            business_name: l.name,
+            contact_name: c.contact_name,
+            role: c.role || '',
+            email: c.email,
+            phone: c.phone || '',
+            representation_confirmed: true,
+            // Provider-visible payload: ONLY the provider's own proposal + note.
+            submitted_payload: JSON.stringify({
+              mode: 'new_location_duplicate_review',
+              proposed_location: {
+                name: l.name,
+                provider_type: l.provider_type,
+                provider_profile_type: l.provider_profile_type,
+                locality_siruta_code: geo.siruta_code,
+                locality_name: geo.name,
+                county_name: geo.county_name || '',
+                address: l.address || '',
+                phone_public: l.phone_public || '',
+                public_email: l.public_email || '',
+                website: l.website || '',
+                description: l.description || '',
+              },
+              organization_name: (p.organization && p.organization.name) || '',
+              services: Array.isArray(p.services) ? p.services : [],
+              specializations: Array.isArray(p.specializations) ? p.specializations : [],
+              facilities: Array.isArray(p.facilities) ? p.facilities : [],
+              schedule: p.schedule || {},
+              contact: c,
+              identity_difference_note: identityNote,
+            }),
+            identity_check_snapshot: identitySnapshot,
+            status: 'in_asteptare',
+          });
+          return Response.json({ claim_request_id: reviewClaim.id, duplicate_review: true });
+        }
         return Response.json({
           identity_check: {
             ...identity,
@@ -247,6 +310,8 @@ Deno.serve(async (req) => {
       status: 'in_asteptare',
     };
     if (organizationId) claimData.organization_id = organizationId;
+    // Module 3H.1B.2: admin-only Identity Gate context for review (never provider-visible).
+    if (identitySnapshot) claimData.identity_check_snapshot = identitySnapshot;
     const claim = await svc.entities.ProviderClaimRequest.create(claimData);
 
     return Response.json({ claim_request_id: claim.id, location_id: locationId });

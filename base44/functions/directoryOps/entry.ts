@@ -362,6 +362,10 @@ Deno.serve(async (req) => {
       const claim = await svc.entities.ProviderClaimRequest.get(p.claim_id).catch(() => null);
       if (!claim) return bad('Revendicarea nu exista');
       if (claim.status !== 'in_asteptare') return bad('Revendicarea nu este in asteptare');
+      // Module 3H.1B.2: duplicate-review requests can never be approved into a
+      // location — a genuinely distinct location goes through the canonical
+      // "Adauga locatie" admin flow only.
+      if (claim.mode === 'new_location_duplicate_review') return bad('Cerere de clarificare duplicat — nu poate fi aprobata direct. Creeaza locatia doar prin fluxul canonic "Adauga locatie".');
       if (!claim.location_id) return bad('Revendicarea nu are locatie asociata');
       const loc = await svc.entities.ProviderLocation.get(claim.location_id).catch(() => null);
       if (!loc) return bad('Locatia revendicata nu exista');

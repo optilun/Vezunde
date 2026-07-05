@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import DirOpsActionNote from "@/components/admin/directory/DirOpsActionNote";
+import AdminClaimIdentityContext from "@/components/admin/AdminClaimIdentityContext";
 
 export default function DirOpsClaims() {
   const [claims, setClaims] = useState(null);
@@ -34,21 +35,34 @@ export default function DirOpsClaims() {
     <div className="space-y-2">
       {claims.map((c) => {
         const loc = locations[c.location_id];
+        // Module 3H.1B.2: duplicate-review requests have no location and are never approvable here.
+        const isDuplicateReview = c.mode === "new_location_duplicate_review";
+        const modeLabel = isDuplicateReview ? "locatie noua — verificare duplicat" : c.mode || "claim";
         return (
-          <div key={c.id} className="bg-card border border-border rounded-lg p-4 flex flex-wrap items-center gap-3">
-            <div className="flex-1 min-w-[240px]">
-              <div className="font-semibold text-sm">{c.business_name || loc?.name || "Fara nume"}</div>
-              <div className="text-xs text-muted-foreground">
-                {loc ? `${loc.name}, ${loc.city}` : "locatie noua / necunoscuta"} · {c.contact_name} · {c.email}{c.phone ? ` · ${c.phone}` : ""}
+          <div key={c.id} className="bg-card border border-border rounded-lg p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex-1 min-w-[240px]">
+                <div className="font-semibold text-sm">{c.business_name || loc?.name || "Fara nume"}</div>
+                <div className="text-xs text-muted-foreground">
+                  {loc ? `${loc.name}, ${loc.city}` : isDuplicateReview ? "propunere de locatie (necreata)" : "locatie noua / necunoscuta"} · {c.contact_name} · {c.email}{c.phone ? ` · ${c.phone}` : ""}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">Mod: {modeLabel} · Reprezentare confirmata: {c.representation_confirmed ? "da" : "nu"}{c.review_notes ? ` · Nota: ${c.review_notes}` : ""}</div>
               </div>
-              <div className="text-xs text-muted-foreground mt-1">Mod: {c.mode || "claim"} · Reprezentare confirmata: {c.representation_confirmed ? "da" : "nu"}{c.review_notes ? ` · Nota: ${c.review_notes}` : ""}</div>
+              <span className={`text-xs font-semibold px-2 py-1 rounded-full ${c.status === "aprobata" ? "bg-green-100 text-green-800" : c.status === "respinsa" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}`}>{c.status}</span>
+              {c.status === "in_asteptare" && (
+                <div className="flex gap-2">
+                  {!isDuplicateReview && (
+                    <button onClick={() => setAction({ claimId: c.id, type: "approve" })} className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-semibold">Aproba</button>
+                  )}
+                  <button onClick={() => setAction({ claimId: c.id, type: "reject" })} className="text-xs px-3 py-1.5 rounded-md bg-secondary text-destructive">Respinge</button>
+                </div>
+              )}
             </div>
-            <span className={`text-xs font-semibold px-2 py-1 rounded-full ${c.status === "aprobata" ? "bg-green-100 text-green-800" : c.status === "respinsa" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}`}>{c.status}</span>
-            {c.status === "in_asteptare" && (
-              <div className="flex gap-2">
-                <button onClick={() => setAction({ claimId: c.id, type: "approve" })} className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-semibold">Aproba</button>
-                <button onClick={() => setAction({ claimId: c.id, type: "reject" })} className="text-xs px-3 py-1.5 rounded-md bg-secondary text-destructive">Respinge</button>
-              </div>
+            <AdminClaimIdentityContext claim={c} />
+            {isDuplicateReview && c.status === "in_asteptare" && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Nicio locatie nu a fost creata. Daca este cu adevarat distincta, creeaz-o doar prin fluxul canonic „Adauga locatie", apoi inchide cererea cu o nota.
+              </p>
             )}
           </div>
         );

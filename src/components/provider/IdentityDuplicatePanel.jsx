@@ -44,8 +44,13 @@ export default function IdentityDuplicatePanel({ check, submitting, onClaim, onC
             Explica pe scurt de ce este o locatie diferita (minim 15 caractere) *
           </label>
           <textarea className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
+          {strong && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Cererea va fi analizata manual de echipa Vezunde. Profilul nu va fi creat sau publicat pana la clarificare.
+            </p>
+          )}
           <button type="button" disabled={!noteOk || submitting} onClick={() => onContinueDistinct(note.trim())} className="mt-3 px-5 py-2.5 rounded-full border border-border bg-card text-sm font-semibold disabled:opacity-40">
-            {submitting ? "Se trimite..." : strong ? "Este o locatie diferita — trimite oricum" : "Continua — este o locatie diferita"}
+            {submitting ? "Se trimite..." : strong ? "Trimite spre clarificare" : "Continua — este o locatie diferita"}
           </button>
         </div>
       )}

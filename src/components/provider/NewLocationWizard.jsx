@@ -39,9 +39,21 @@ const INITIAL = {
   contact: { contact_name: "", role: "", email: "", phone: "", representation_confirmed: false },
 };
 
+// Module 3H.1B.2: minimum temporary session state to resume the wizard after login.
+export const WIZARD_RESUME_KEY = "pending_new_location_wizard";
+const readResume = () => {
+  try {
+    const raw = sessionStorage.getItem(WIZARD_RESUME_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+};
+
 export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExisting }) {
+  const [resume] = useState(readResume);
   const [data, setData] = useState(() =>
-    prefill
+    resume?.data
+      ? { ...INITIAL, ...resume.data }
+      : prefill
       ? {
           ...INITIAL,
           location: {
@@ -59,7 +71,9 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
         }
       : INITIAL
   );
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(() =>
+    resume?.data ? Math.min(Number(resume.step) || 0, STEPS.length - 1) : 0
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   // Module 3H.1B.1: identity gate result returned by the backend before creation.
@@ -69,9 +83,23 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
   const back = () => (step === 0 ? onExit() : setStep((s) => s - 1));
 
+  // After login: consume the resume state; re-run a pending submit automatically.
+  React.useEffect(() => {
+    if (!resume) return;
+    sessionStorage.removeItem(WIZARD_RESUME_KEY);
+    if (resume.pendingSubmit) {
+      base44.auth.isAuthenticated().then((ok) => {
+        if (ok) submit(resume.identityExtra || {});
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const submit = async (identityExtra = {}) => {
     const authed = await base44.auth.isAuthenticated();
     if (!authed) {
+      // Save only in-session wizard state (no permanent drafts), then resume post-login.
+      sessionStorage.setItem(WIZARD_RESUME_KEY, JSON.stringify({ data, step, pendingSubmit: true, identityExtra }));
       base44.auth.redirectToLogin(window.location.href);
       return;
     }
@@ -108,7 +136,9 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
           onClaim={(c) => onClaimExisting && onClaimExisting({ id: c.location_id, name: c.name, city: c.locality_name, county: c.county_name, address: c.address })}
           onContinueDistinct={(note) => {
             setIdentityCheck(null);
-            submit(strong ? { declared_distinct: true, identity_difference_note: note } : { identity_difference_note: note });
+            // Module 3H.1B.2: strong duplicates can only be escalated for admin
+            // clarification — they never create a location, even when declared distinct.
+            submit(strong ? { escalate_duplicate_review: true, identity_difference_note: note } : { identity_difference_note: note });
           }}
           onCancel={() => setIdentityCheck(null)}
         />

@@ -12,6 +12,8 @@ const STATUS_LABELS = {
   verified: 'Verificat de Vezunde',
 };
 const MAX_RESULTS = 10;
+// Module 3H.1B.2: B2B-only profiles and unclassified locations are never claim-discoverable.
+const EXCLUDED_PROFILE_TYPES = ['optical_laboratory_b2b', 'future_b2b_distributor'];
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 Deno.serve(async (req) => {
@@ -31,6 +33,10 @@ Deno.serve(async (req) => {
 
     const publicList = locations
       .filter((l) => l.active_status !== 'inactiva' && (l.profile_control_status || 'directory') !== 'suspended')
+      .filter((l) => {
+        const t = String(l.provider_profile_type || '').trim();
+        return t !== '' && !EXCLUDED_PROFILE_TYPES.includes(t);
+      })
       .filter((l) => {
         const orgName = (l.organization_id && orgNames[l.organization_id]) || '';
         return [l.name, l.city, l.address, orgName].some((f) => norm(f).includes(q));

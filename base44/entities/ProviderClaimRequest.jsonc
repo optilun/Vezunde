@@ -15,7 +15,8 @@
       "type": "string",
       "enum": [
         "claim",
-        "new_location"
+        "new_location",
+        "new_location_duplicate_review"
       ]
     },
     "business_name": {
@@ -39,6 +40,21 @@
     },
     "submitted_payload": {
       "type": "string"
+    },
+    "identity_check_snapshot": {
+      "type": "string",
+      "rls": {
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
     },
     "status": {
       "type": "string",
