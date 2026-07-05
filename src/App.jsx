@@ -59,16 +59,17 @@ const AuthenticatedApp = () => {
         <Route path="/revendica-profil" element={<Navigate to="/adauga-sau-revendica" replace />} />
         <Route path="/inscriere" element={<Navigate to="/adauga-sau-revendica" replace />} />
         <Route path="/adauga-sau-revendica" element={<AddOrClaim />} />
-        <Route element={<RequireAuth />}>
-          <Route path="/contul-meu" element={<MyAccount />} />
-          <Route path="/dupa-login" element={<PostLogin />} />
-        </Route>
-        <Route element={<RequireAdmin />}>
-          <Route path="/admin/verificari" element={<AdminVerifications />} />
-          <Route path="/admin/operatiuni" element={<AdminDirectoryOps />} />
-        </Route>
         <Route path="/confidentialitate" element={<Privacy />} />
         <Route path="/termeni" element={<Terms />} />
+      </Route>
+      {/* UI-1.1: authenticated admin/provider routes use the internal shell only — no public navbar */}
+      <Route element={<RequireAuth />}>
+        <Route path="/contul-meu" element={<MyAccount />} />
+        <Route path="/dupa-login" element={<PostLogin />} />
+      </Route>
+      <Route element={<RequireAdmin />}>
+        <Route path="/admin/verificari" element={<AdminVerifications />} />
+        <Route path="/admin/operatiuni" element={<AdminDirectoryOps />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

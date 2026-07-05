@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { isAdmin } from "@/lib/access";
 import ClaimStatusRow from "@/components/account/ClaimStatusRow";
 import MyLocationCard from "@/components/account/MyLocationCard";
+import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
 
 export default function MyAccount() {
   const [user, setUser] = useState(null);
   const [claims, setClaims] = useState([]);
   const [items, setItems] = useState([]); // { membership, location }
   const [loading, setLoading] = useState(true);
+  const { logout } = useAuth();
 
   const load = async (u) => {
     const [claimList, memberships] = await Promise.all([
@@ -40,8 +43,10 @@ export default function MyAccount() {
     return <div className="min-h-[60vh] flex items-center justify-center text-muted-foreground text-sm">Se incarca...</div>;
   }
 
+  const publicProfileUrl = items.length > 0 ? `/furnizor/${items[0].location.id}` : null;
+
   return (
-    <div className="max-w-xl mx-auto px-5 py-10 sm:py-14 workspace-neutral">
+    <ProviderAppShell user={user} onLogout={() => logout(true)} publicProfileUrl={publicProfileUrl}>
       <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight">Contul meu</h1>
       <p className="mt-2 text-muted-foreground text-sm">Cererile si locatiile tale in Vezunde.</p>
       <p className="mt-3 inline-block rounded-full bg-secondary px-3 py-1 text-xs font-semibold">
@@ -80,6 +85,6 @@ export default function MyAccount() {
           Adauga sau revendica alta locatie
         </Link>
       </div>
-    </div>
+    </ProviderAppShell>
   );
 }

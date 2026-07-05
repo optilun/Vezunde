@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import AdminClaimCard from "@/components/admin/AdminClaimCard";
 import AdminLocationRow from "@/components/admin/AdminLocationRow";
 import AdminPendingChanges from "@/components/admin/AdminPendingChanges";
+import AdminAppShell from "@/components/admin/shell/AdminAppShell";
 
 export default function AdminVerifications() {
   const [user, setUser] = useState(null);
+  const navigate = useNavigate();
+  const { logout } = useAuth();
   const [denied, setDenied] = useState(false);
   const [claims, setClaims] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -65,7 +70,7 @@ export default function AdminVerifications() {
   const pendingChanges = locations.filter((l) => l.pending_changes);
 
   return (
-    <div className="max-w-2xl mx-auto px-5 py-10 sm:py-14 workspace-neutral">
+    <AdminAppShell activeKey="revendicari" onNavigate={() => navigate("/admin/operatiuni")} user={user} onLogout={() => logout(true)}>
       <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight">Verificari</h1>
       <p className="mt-2 text-muted-foreground text-sm">Cereri de revendicare, locatii si modificari de profil.</p>
       {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
@@ -116,6 +121,6 @@ export default function AdminVerifications() {
           />
         ))}
       </div>
-    </div>
+    </AdminAppShell>
   );
 }

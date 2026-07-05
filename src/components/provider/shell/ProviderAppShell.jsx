@@ -2,26 +2,24 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Menu, ExternalLink } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import AdminSidebarContent from "./AdminSidebarContent";
-import { ADMIN_NAV_LABELS } from "@/lib/adminNavConfig";
+import ProviderSidebarContent from "./ProviderSidebarContent";
+import { PROVIDER_NAV_LABELS } from "@/lib/providerNavConfig";
 
-// UI-1 / UI-1.1: reusable admin app shell — fixed sidebar on desktop, drawer
-// on mobile, plus a compact internal utility top bar (no public navbar).
-export default function AdminAppShell({ activeKey, onNavigate, user, onLogout, children }) {
+// UI-1.1 PART 2: internal shell for authenticated provider/specialist account
+// pages — sidebar + compact utility top bar, no public navbar.
+export default function ProviderAppShell({ activeKey = "overview", user, onLogout, publicProfileUrl, children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  const navigate = (key) => { onNavigate(key); setMobileOpen(false); };
-  const initials = (user?.full_name || "A").trim().charAt(0).toUpperCase();
+  const initials = (user?.full_name || "U").trim().charAt(0).toUpperCase();
 
   return (
     <div className="min-h-screen bg-background flex workspace-neutral">
       <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:border-r lg:border-border lg:bg-card">
-        <AdminSidebarContent activeKey={activeKey} onNavigate={navigate} user={user} onLogout={onLogout} />
+        <ProviderSidebarContent activeKey={activeKey} onNavigate={() => {}} user={user} onLogout={onLogout} />
       </aside>
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-72 p-0 gap-0 [&>button]:z-10">
-          <AdminSidebarContent activeKey={activeKey} onNavigate={navigate} user={user} onLogout={onLogout} />
+          <ProviderSidebarContent activeKey={activeKey} onNavigate={() => setMobileOpen(false)} user={user} onLogout={onLogout} />
         </SheetContent>
       </Sheet>
 
@@ -32,20 +30,22 @@ export default function AdminAppShell({ activeKey, onNavigate, user, onLogout, c
               <Menu className="w-5 h-5" />
             </button>
             <span className="text-xs sm:text-sm text-muted-foreground truncate">
-              Administrare <span className="mx-1 text-border">/</span>
-              <span className="text-foreground font-medium">{ADMIN_NAV_LABELS[activeKey] || "Panou general"}</span>
+              Contul meu <span className="mx-1 text-border">/</span>
+              <span className="text-foreground font-medium">{PROVIDER_NAV_LABELS[activeKey] || "Prezentare generala"}</span>
             </span>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <Link to="/" className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Vezi site-ul <ExternalLink className="w-3.5 h-3.5" />
-            </Link>
+            {publicProfileUrl && (
+              <Link to={publicProfileUrl} className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Vezi profilul public <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
+            )}
             <div className="w-7 h-7 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-xs font-semibold shrink-0" title={user?.full_name || ""}>
               {initials}
             </div>
           </div>
         </div>
-        <main className="max-w-6xl mx-auto px-5 sm:px-8 py-8">
+        <main className="max-w-3xl mx-auto px-5 sm:px-8 py-8">
           {children}
         </main>
       </div>
