@@ -25,6 +25,27 @@ function computeCompleteness(loc) {
   };
 }
 
+async function getContentSummary(svc, locationId) {
+  const activeStatuses = ['draft', 'pending_review', 'needs_more_info'];
+  const submissions = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: locationId, status: { $in: activeStatuses } }, '-created_date', 50);
+  const services = await svc.entities.LocationService.filter({ location_id: locationId, is_active: true });
+  const specialties = await svc.entities.LocationSpecialization.filter({ location_id: locationId, is_active: true });
+  const team = await svc.entities.ProfessionalLocationAssignment.filter({ location_id: locationId, active_status: 'activ', public_status: 'public' });
+  const media = await svc.entities.ProviderMediaAsset.filter({ location_id: locationId, status: 'approved' });
+  const articles = await svc.entities.ProviderArticle.filter({ location_id: locationId, status: 'approved' });
+  const pendingCount = (section) => submissions.filter((s) => s.section === section).length;
+  return {
+    approved_service_count: services.length + specialties.length,
+    pending_service_review_count: pendingCount('services'),
+    approved_public_team_count: team.length,
+    pending_team_review_count: pendingCount('team'),
+    approved_media_count: media.length,
+    pending_media_review_count: pendingCount('media'),
+    approved_published_article_count: articles.filter((a) => !!a.published_at).length,
+    pending_article_review_count: pendingCount('article'),
+  };
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -68,6 +89,7 @@ Deno.serve(async (req) => {
     const latestReview = reviewedSubs[0] || null;
 
     const completeness = computeCompleteness(loc);
+    const contentSummary = await getContentSummary(svc, p.location_id);
 
     const ownLatestReview = latestReview?.submitted_by_user_id === user.id ? latestReview : null;
 
@@ -90,6 +112,7 @@ Deno.serve(async (req) => {
         completed_count: completeness.completed_count,
         checklist: [...completeness.completed, ...completeness.missing],
       },
+      content_summary: contentSummary,
       pending_submissions: pendingSubs.map((s) => s.submitted_by_user_id === user.id ? ({
         id: s.id,
         section: s.section,
@@ -121,7 +144,7 @@ Deno.serve(async (req) => {
         opening_hours: loc.opening_hours || '',
         saturday_hours: loc.saturday_hours || '',
       },
-      allowed_sections: ['public_profile', 'location_details', 'operating_hours'],
+      allowed_sections: ['public_profile', 'location_details', 'operating_hours', 'services', 'team', 'media', 'article'],
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

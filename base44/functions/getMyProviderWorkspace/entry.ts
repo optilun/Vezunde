@@ -5,7 +5,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 // ProviderMembership). No internal trust, audit or source-provenance fields
 // leak. A patient-only account gets an empty workspace — no provider data.
 
-const ALLOWED_SECTIONS = ['public_profile', 'location_details', 'operating_hours'];
+const ALLOWED_SECTIONS = ['public_profile', 'location_details', 'operating_hours', 'services', 'team', 'media', 'article'];
 
 // MODULE 3H.1C.1 Part 5 — deterministic V1 completeness checklist.
 function computeCompleteness(loc) {
@@ -26,6 +26,27 @@ function computeCompleteness(loc) {
     completed_count: completed.length,
     completed: completed.map((i) => ({ key: i.key, label: i.label })),
     missing: missing.map((i) => ({ key: i.key, label: i.label })),
+  };
+}
+
+async function getContentSummary(svc, locationId) {
+  const activeStatuses = ['draft', 'pending_review', 'needs_more_info'];
+  const submissions = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: locationId, status: { $in: activeStatuses } }, '-created_date', 50);
+  const services = await svc.entities.LocationService.filter({ location_id: locationId, is_active: true });
+  const specialties = await svc.entities.LocationSpecialization.filter({ location_id: locationId, is_active: true });
+  const team = await svc.entities.ProfessionalLocationAssignment.filter({ location_id: locationId, active_status: 'activ', public_status: 'public' });
+  const media = await svc.entities.ProviderMediaAsset.filter({ location_id: locationId, status: 'approved' });
+  const articles = await svc.entities.ProviderArticle.filter({ location_id: locationId, status: 'approved' });
+  const pendingCount = (section) => submissions.filter((s) => s.section === section).length;
+  return {
+    approved_service_count: services.length + specialties.length,
+    pending_service_review_count: pendingCount('services'),
+    approved_public_team_count: team.length,
+    pending_team_review_count: pendingCount('team'),
+    approved_media_count: media.length,
+    pending_media_review_count: pendingCount('media'),
+    approved_published_article_count: articles.filter((a) => !!a.published_at).length,
+    pending_article_review_count: pendingCount('article'),
   };
 }
 
@@ -108,6 +129,11 @@ Deno.serve(async (req) => {
       pendingReviewCount += subs.length;
     }
 
+    const contentSummaries = new Map();
+    for (const locId of locMap.keys()) {
+      contentSummaries.set(locId, await getContentSummary(svc, locId));
+    }
+
     const membershipData = memberships
       .filter((m) => locMap.has(m.location_id))
       .map((m) => {
@@ -124,6 +150,7 @@ Deno.serve(async (req) => {
           profile_control_status: loc.profile_control_status || 'directory',
           claim_verification_status: loc.claim_verification_status || 'none',
           profile_completeness: computeCompleteness(loc).percentage,
+          content_summary: contentSummaries.get(m.location_id),
         };
       });
 
@@ -131,7 +158,7 @@ Deno.serve(async (req) => {
       user: { id: user.id, full_name: user.full_name, email: user.email, role: user.role },
       memberships: membershipData,
       organizations: [...orgMap.values()].map((o) => ({ id: o.id, name: o.name, organization_type: o.organization_type })),
-      locations: [...locMap.values()].map((loc) => sanitizeLocation(loc, loc.organization_id ? orgMap.get(loc.organization_id)?.name : null)),
+      locations: [...locMap.values()].map((loc) => ({ ...sanitizeLocation(loc, loc.organization_id ? orgMap.get(loc.organization_id)?.name : null), content_summary: contentSummaries.get(loc.id) })),
       pending_review_count: pendingReviewCount,
       allowed_sections: ALLOWED_SECTIONS,
     });
