@@ -49,7 +49,7 @@ export default function SpecialistsHero() {
           Administreaza cum apari pe ViaSee.
         </h1>
         <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed">
-          Revendica sau adauga o locatie. Daca lucrezi independent, ca medic oftalmolog sau optometrist, poti crea un profil profesional.
+          Revendica sau adauga o locatie. Daca lucrezi independent ca medic oftalmolog sau optometrist, iti poti crea un profil profesional.
         </p>
 
         <div className="mt-7 max-w-xl mx-auto lg:mx-0">
@@ -114,7 +114,7 @@ export default function SpecialistsHero() {
               Adauga o locatie noua
             </button>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground text-center sm:text-left">Locatia este analizata inainte de publicare.</p>
+          <p className="mt-2 text-xs text-muted-foreground text-center sm:text-left">Noua locatie este analizata inainte de publicare.</p>
 
           {/* Subtle, secondary route for independent professionals — not a competing primary CTA */}
           <div className="mt-4 pt-4 border-t border-border/60 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
@@ -126,7 +126,7 @@ export default function SpecialistsHero() {
               onClick={() => navigate("/adauga-sau-revendica")}
               className="text-xs font-medium text-foreground underline underline-offset-4 hover:opacity-70 transition-opacity"
             >
-              Creeaza profil profesional
+              Creeaza profil profesional →
             </button>
           </div>
         </div>

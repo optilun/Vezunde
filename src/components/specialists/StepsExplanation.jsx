@@ -3,7 +3,7 @@ import { Search, UserCheck, Settings } from "lucide-react";
 
 const STEPS = [
   { icon: Search, label: "Gasesti sau adaugi locatia", text: "Cauti un profil existent sau adaugi o locatie noua." },
-  { icon: UserCheck, label: "Trimiti cateva informatii despre tine", text: "Ne spui cine esti si ce legatura ai cu locatia sau cu activitatea profesionala." },
+  { icon: UserCheck, label: "Trimiti cateva informatii despre tine", text: "Ne spui cine esti si cum esti legat de locatie sau de activitatea profesionala." },
   { icon: Settings, label: "Te faci cunoscut prin profilul tau", text: "Dupa aprobare, completezi informatiile care ii ajuta pe pacienti sa inteleaga ce faci si unde te pot gasi." },
 ];
 
@@ -11,7 +11,7 @@ const STEPS = [
 // line links the step markers to read left-to-right as a single process.
 export default function StepsExplanation() {
   return (
-    <section id="cum-functioneaza" className="max-w-4xl mx-auto px-5 pt-6 pb-8 sm:pt-8 sm:pb-10 border-t border-border/60">
+    <section id="cum-functioneaza" className="max-w-4xl mx-auto px-5 pt-6 pb-4 sm:pt-8 sm:pb-6 border-t border-border/60">
       <div className="relative grid sm:grid-cols-3 gap-6 sm:gap-6">
         <div aria-hidden className="hidden sm:block absolute top-5 left-[16.5%] right-[16.5%] h-px bg-border" />
         {STEPS.map((s, i) => {
