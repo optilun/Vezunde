@@ -2,7 +2,6 @@ import React from "react";
 import SpecialistsHeader from "@/components/specialists/SpecialistsHeader";
 import SpecialistsHero from "@/components/specialists/SpecialistsHero";
 import StepsExplanation from "@/components/specialists/StepsExplanation";
-import TrustNote from "@/components/specialists/TrustNote";
 import SpecialistsFAQ from "@/components/specialists/SpecialistsFAQ";
 import SpecialistsFooter from "@/components/specialists/SpecialistsFooter";
 
@@ -15,7 +14,6 @@ export default function ForSpecialists() {
       <main className="flex-1">
         <SpecialistsHero />
         <StepsExplanation />
-        <TrustNote />
         <SpecialistsFAQ />
       </main>
       <SpecialistsFooter />
