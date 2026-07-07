@@ -9,12 +9,14 @@ import { PROVIDER_TYPES } from "@/lib/vezunde";
 // with a decorative illustration integrated into the right column.
 export default function SpecialistsHero() {
   const navigate = useNavigate();
+  const [mode, setMode] = useState("location"); // "location" | "professional"
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const reqRef = useRef(0);
 
   useEffect(() => {
+    if (mode !== "location") { setResults([]); setLoading(false); return; }
     const q = query.trim();
     if (q.length < 2) { setResults([]); setLoading(false); return; }
     const reqId = ++reqRef.current;
@@ -26,9 +28,9 @@ export default function SpecialistsHero() {
       setResults(res.data?.locations || []);
     }, 300);
     return () => clearTimeout(t);
-  }, [query]);
+  }, [query, mode]);
 
-  const searched = query.trim().length >= 2;
+  const searched = mode === "location" && query.trim().length >= 2;
 
   return (
     <section className="max-w-6xl mx-auto px-5 pt-10 sm:pt-16 pb-16 sm:pb-24 grid lg:grid-cols-[46%_54%] gap-10 lg:gap-6 items-center relative">
@@ -49,17 +51,37 @@ export default function SpecialistsHero() {
           Gestioneaza modul in care apare locatia ta pe ViaSee.
         </h1>
         <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed">
-          Revendica profilul unei optici, clinici, cabinet sau al unei locatii unde oferi servicii.
+          Revendica o locatie existenta sau creeaza un profil profesional daca lucrezi independent. Dupa aprobare, poti propune actualizari pentru informatiile publice.
         </p>
 
         <div className="mt-7 max-w-xl mx-auto lg:mx-0">
-          <div className="relative flex flex-col sm:flex-row gap-2.5">
+          <p className="text-sm font-heading font-bold">Ce vrei sa administrezi?</p>
+          <div className="mt-3 grid sm:grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={() => setMode("location")}
+              className={`text-left px-4 py-3 rounded-xl border transition-colors ${mode === "location" ? "border-foreground bg-foreground text-background" : "border-border bg-card hover:border-foreground/40"}`}
+            >
+              <div className="text-sm font-heading font-bold">O locatie</div>
+              <div className={`mt-0.5 text-xs ${mode === "location" ? "text-background/80" : "text-muted-foreground"}`}>Optica, clinica, cabinet sau punct de lucru</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("professional")}
+              className={`text-left px-4 py-3 rounded-xl border transition-colors ${mode === "professional" ? "border-foreground bg-foreground text-background" : "border-border bg-card hover:border-foreground/40"}`}
+            >
+              <div className="text-sm font-heading font-bold">Profilul meu profesional</div>
+              <div className={`mt-0.5 text-xs ${mode === "professional" ? "text-background/80" : "text-muted-foreground"}`}>Optometrist sau medic oftalmolog independent</div>
+            </button>
+          </div>
+
+          <div className="relative flex flex-col sm:flex-row gap-2.5 mt-4">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Cauta dupa nume, localitate sau adresa"
+                placeholder={mode === "location" ? "Cauta dupa nume, localitate sau adresa" : "Cauta profilul tau profesional"}
                 className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-sm outline-none focus:ring-2 focus:ring-[#EEF2F3] transition-shadow"
               />
               {loading && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
@@ -72,9 +94,6 @@ export default function SpecialistsHero() {
               Cauta
             </button>
           </div>
-          <p className="mt-2.5 text-xs text-muted-foreground text-center sm:text-left">
-            Exemple: Optica Vision, Cluj-Napoca sau Clinica Oftalmologica Nova, Timisoara
-          </p>
 
           {/* Real results only — nothing rendered before an actual search */}
           {searched && (
@@ -104,20 +123,23 @@ export default function SpecialistsHero() {
             </div>
           )}
 
-          {/* Immediate secondary route — provider onboarding for a new location */}
+          {/* Immediate secondary route — new location, or a new professional profile */}
           <div className="mt-5 pt-5 border-t border-border flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-4">
             <span className="text-sm text-muted-foreground flex items-center gap-1.5 justify-center sm:justify-start">
-              <MapPinPlus className="w-4 h-4 shrink-0" /> Nu gasesti locatia?
+              <MapPinPlus className="w-4 h-4 shrink-0" />
+              {mode === "location" ? "Nu gasesti locatia?" : "Nu ai inca profil?"}
             </span>
             <button
               type="button"
               onClick={() => navigate("/adauga-sau-revendica")}
               className="px-5 py-2.5 rounded-full border border-border bg-card text-sm font-medium hover:border-foreground/40 transition-colors"
             >
-              Adauga o locatie noua
+              {mode === "location" ? "Adauga o locatie noua" : "Creeaza profil profesional"}
             </button>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground text-center sm:text-left">Locatia este analizata inainte de publicare.</p>
+          <p className="mt-2 text-xs text-muted-foreground text-center sm:text-left">
+            {mode === "location" ? "Locatia este analizata inainte de publicare." : "Profilul este analizat inainte de publicare."}
+          </p>
         </div>
       </div>
     </section>
