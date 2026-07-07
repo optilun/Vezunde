@@ -49,7 +49,7 @@ export default function SpecialistsHero() {
           Administreaza cum apari pe ViaSee.
         </h1>
         <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed">
-          Revendica sau adauga o locatie. Daca esti optometrist sau medic oftalmolog independent, poti crea un profil profesional.
+          Revendica sau adauga o locatie. Daca lucrezi independent, ca medic oftalmolog sau optometrist, poti crea un profil profesional.
         </p>
 
         <div className="mt-7 max-w-xl mx-auto lg:mx-0">
@@ -119,7 +119,7 @@ export default function SpecialistsHero() {
           {/* Subtle, secondary route for independent professionals — not a competing primary CTA */}
           <div className="mt-4 pt-4 border-t border-border/60 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
             <span className="text-xs text-muted-foreground text-center sm:text-left">
-              Esti optometrist sau medic oftalmolog independent?
+              Lucrezi independent ca medic oftalmolog sau optometrist?
             </span>
             <button
               type="button"
