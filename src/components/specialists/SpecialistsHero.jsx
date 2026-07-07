@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Search, MapPin, Loader2, MapPinPlus } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
-import SpecialistsHeroIllustration from "@/components/specialists/SpecialistsHeroIllustration";
 
 // Hero is the single primary-action surface: heading + real location search
 // (results only render after an actual search) + the add-location alternative,
@@ -32,9 +31,18 @@ export default function SpecialistsHero() {
   const searched = query.trim().length >= 2;
 
   return (
-    <section className="max-w-6xl mx-auto px-5 pt-10 sm:pt-16 pb-12 sm:pb-16 grid lg:grid-cols-[54%_46%] gap-10 lg:gap-8 items-center relative">
-      {/* Abstract editorial brand illustration — part of the background, not a framed graphic */}
-      <SpecialistsHeroIllustration className="order-first lg:order-last w-full max-w-md mx-auto lg:max-w-none lg:absolute lg:right-[-8%] lg:top-1/2 lg:-translate-y-1/2 lg:w-[60%]" />
+    <section className="max-w-6xl mx-auto px-5 pt-10 sm:pt-16 pb-16 sm:pb-24 grid lg:grid-cols-[54%_46%] gap-10 lg:gap-8 items-center relative">
+      {/* Quiet background illustration, confined to the right column — no frame */}
+      <img
+        src="https://media.base44.com/images/public/6a48cb9d04fa7f999d8a8054/efc418513_generated_image.png"
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none select-none order-first lg:order-last w-full max-w-sm mx-auto lg:max-w-none lg:absolute lg:right-0 lg:top-1/2 lg:-translate-y-1/2 lg:w-[42%] opacity-90"
+        style={{
+          maskImage: "radial-gradient(ellipse 60% 60% at 55% 50%, black 50%, transparent 92%)",
+          WebkitMaskImage: "radial-gradient(ellipse 60% 60% at 55% 50%, black 50%, transparent 92%)",
+        }}
+      />
 
       <div className="relative z-10 text-center lg:text-left">
         <h1 className="font-heading font-extrabold tracking-[-0.03em] leading-[1.1] text-3xl sm:text-5xl">

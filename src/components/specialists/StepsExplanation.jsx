@@ -11,7 +11,7 @@ const STEPS = [
 // line links the step markers to read left-to-right as a single process.
 export default function StepsExplanation() {
   return (
-    <section id="cum-functioneaza" className="max-w-4xl mx-auto px-5 py-8 sm:py-10">
+    <section id="cum-functioneaza" className="max-w-4xl mx-auto px-5 pt-6 pb-8 sm:pt-8 sm:pb-10 border-t border-border/60">
       <div className="relative grid sm:grid-cols-3 gap-6 sm:gap-6">
         <div aria-hidden className="hidden sm:block absolute top-5 left-[16.5%] right-[16.5%] h-px bg-border" />
         {STEPS.map((s, i) => {
