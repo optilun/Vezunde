@@ -1,8 +1,6 @@
 import React from "react";
 import SpecialistsHeader from "@/components/specialists/SpecialistsHeader";
 import SpecialistsHero from "@/components/specialists/SpecialistsHero";
-import LocationSearchModule from "@/components/specialists/LocationSearchModule";
-import NotFoundBlock from "@/components/specialists/NotFoundBlock";
 import StepsExplanation from "@/components/specialists/StepsExplanation";
 import TrustNote from "@/components/specialists/TrustNote";
 import SpecialistsFAQ from "@/components/specialists/SpecialistsFAQ";
@@ -16,8 +14,6 @@ export default function ForSpecialists() {
       <SpecialistsHeader />
       <main className="flex-1">
         <SpecialistsHero />
-        <LocationSearchModule />
-        <NotFoundBlock />
         <StepsExplanation />
         <TrustNote />
         <SpecialistsFAQ />
