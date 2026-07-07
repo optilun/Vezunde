@@ -24,7 +24,7 @@ export default function StepsExplanation() {
               <div className="mt-4 w-9 h-9 rounded-xl bg-secondary flex items-center justify-center mx-auto">
                 <Icon className="w-4.5 h-4.5 text-foreground" />
               </div>
-              <h3 className="mt-3 font-heading font-bold">{s.label}</h3>
+              <h3 className="mt-3 font-heading font-bold min-h-[48px] flex items-center justify-center max-w-[200px] mx-auto">{s.label}</h3>
               <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed max-w-[220px] mx-auto">{s.text}</p>
             </div>
           );
