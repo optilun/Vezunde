@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { SERVICES, PROVIDER_TYPES } from "@/lib/vezunde";
 import ProviderCard from "@/components/ProviderCard";
+import DirectoryResultCard from "@/components/results/DirectoryResultCard";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
 
 const SELECT = "bg-card border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary/50 transition-colors";
@@ -17,8 +18,23 @@ export default function Search() {
   // code, and never saved as canonical geography. New flows must pass locality_siruta_code.
   const [locality, setLocality] = useState(urlParams.get("oras") ? { name: urlParams.get("oras"), display_label: urlParams.get("oras") } : null);
 
+  const isDirectoryBrowse = !service && !!locality;
+
   useEffect(() => {
     setResults(null);
+    if (isDirectoryBrowse) {
+      // Locality-only search (no service/need selected): general directory
+      // browse, never matchProviders — these results are never a "match".
+      base44.functions.invoke("browseDirectoryProviders", {
+        locality_siruta_code: locality?.siruta_code || "",
+        city: locality?.name || "",
+        provider_types: type ? [type] : [],
+        limit: 50,
+      }).then((res) => {
+        setResults(res.data.results || []);
+      });
+      return;
+    }
     base44.functions.invoke("matchProviders", {
       service_keys: service ? [service] : [],
       provider_types: type ? [type] : [],
@@ -29,7 +45,7 @@ export default function Search() {
     }).then((res) => {
       setResults(res.data.results || []);
     });
-  }, [service, type, locality]);
+  }, [service, type, locality, isDirectoryBrowse]);
 
   return (
     <div className="max-w-6xl mx-auto px-5 pt-12">
@@ -46,28 +62,47 @@ export default function Search() {
         </select>
         <LocalityAutocomplete value={locality} onSelect={setLocality} placeholder="Toata Romania — cauta o localitate" className="w-64" />
       </div>
-      <div className="mt-8 grid sm:grid-cols-2 gap-4 pb-8">
-        {results === null && <p className="text-sm text-muted-foreground">Se incarca...</p>}
-        {results?.length === 0 && (
-          <div className="sm:col-span-2 bg-card border border-border rounded-2xl p-10 text-center">
-            {locality ? (
-              <>
-                <p className="font-heading font-bold">Nu avem inca profiluri relevante in aceasta localitate.</p>
-                <p className="mt-2 text-sm text-muted-foreground">Poti extinde cautarea in judet sau poti verifica din nou mai tarziu.</p>
-              </>
-            ) : (
-              <>
-                <p className="font-heading font-bold">Nu am gasit profiluri care sa corespunda cautarii tale.</p>
-                <p className="mt-2 text-sm text-muted-foreground">Incearca o alta localitate sau o formulare mai generala.</p>
-              </>
+      {isDirectoryBrowse ? (
+        <div className="mt-8 pb-8">
+          <h2 className="font-heading text-lg font-bold">Locatii in {locality?.name}</h2>
+          <div className="mt-4 grid sm:grid-cols-2 gap-4">
+            {results === null && <p className="text-sm text-muted-foreground">Se incarca...</p>}
+            {results?.length === 0 && (
+              <div className="sm:col-span-2 bg-card border border-border rounded-2xl p-10 text-center">
+                <p className="font-heading font-bold">Nu avem inca profiluri in aceasta localitate.</p>
+                <p className="mt-2 text-sm text-muted-foreground">Poti verifica din nou mai tarziu.</p>
+                <Link to="/cerere" className="mt-5 inline-block bg-primary text-primary-foreground rounded-full px-6 py-3 text-sm font-medium hover:opacity-90 transition-opacity">Trimite o cerere</Link>
+              </div>
             )}
-            <Link to="/cerere" className="mt-5 inline-block bg-primary text-primary-foreground rounded-full px-6 py-3 text-sm font-medium hover:opacity-90 transition-opacity">Trimite o cerere</Link>
+            {results?.map((loc) => (
+              <DirectoryResultCard key={loc.id} location={loc} />
+            ))}
           </div>
-        )}
-        {results?.map((loc) => (
-          <ProviderCard key={loc.id} location={loc} />
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="mt-8 grid sm:grid-cols-2 gap-4 pb-8">
+          {results === null && <p className="text-sm text-muted-foreground">Se incarca...</p>}
+          {results?.length === 0 && (
+            <div className="sm:col-span-2 bg-card border border-border rounded-2xl p-10 text-center">
+              {locality ? (
+                <>
+                  <p className="font-heading font-bold">Nu exista momentan locatii cu servicii confirmate pentru aceasta nevoie in localitate.</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Poti extinde cautarea in judet sau poti verifica din nou mai tarziu.</p>
+                </>
+              ) : (
+                <>
+                  <p className="font-heading font-bold">Nu am gasit profiluri care sa corespunda cautarii tale.</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Incearca o alta localitate sau o formulare mai generala.</p>
+                </>
+              )}
+              <Link to="/cerere" className="mt-5 inline-block bg-primary text-primary-foreground rounded-full px-6 py-3 text-sm font-medium hover:opacity-90 transition-opacity">Trimite o cerere</Link>
+            </div>
+          )}
+          {results?.map((loc) => (
+            <ProviderCard key={loc.id} location={loc} />
+          ))}
+        </div>
+      )}
       <p className="pb-10 text-xs text-muted-foreground">Vezunde nu ofera diagnostic medical.</p>
     </div>
   );
