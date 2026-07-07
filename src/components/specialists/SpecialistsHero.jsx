@@ -34,7 +34,7 @@ export default function SpecialistsHero() {
     <section className="max-w-6xl mx-auto px-5 pt-10 sm:pt-16 pb-16 sm:pb-24 grid lg:grid-cols-[46%_54%] gap-10 lg:gap-6 items-center relative">
       {/* Large background illustration, close to the text column — no frame */}
       <img
-        src="https://media.base44.com/images/public/6a48cb9d04fa7f999d8a8054/82d2097c7_generated_image.png"
+        src="https://media.base44.com/images/public/6a48cb9d04fa7f999d8a8054/8bc17e08f_generated_image.png"
         alt=""
         aria-hidden="true"
         className="pointer-events-none select-none order-first lg:order-last w-full max-w-md mx-auto lg:max-w-none lg:absolute lg:right-[-4%] lg:top-1/2 lg:-translate-y-1/2 lg:w-[64%] opacity-90"
@@ -49,7 +49,7 @@ export default function SpecialistsHero() {
           Administreaza cum apari pe ViaSee.
         </h1>
         <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed">
-          Revendica sau adauga o locatie. Daca lucrezi independent, ca medic oftalmolog sau optometrist, iti poti crea un profil profesional.
+          Revendica sau adauga o locatie. Daca lucrezi independent, ca medic oftalmolog sau optometrist, poti crea un profil profesional.
         </p>
 
         <div className="mt-7 max-w-xl mx-auto lg:mx-0">
@@ -126,7 +126,7 @@ export default function SpecialistsHero() {
               onClick={() => navigate("/adauga-sau-revendica")}
               className="text-xs font-medium text-foreground underline underline-offset-4 hover:opacity-70 transition-opacity"
             >
-              Creeaza profil profesional →
+              Creeaza profil profesional
             </button>
           </div>
         </div>

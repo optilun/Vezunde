@@ -15,6 +15,10 @@ const FAQ_ITEMS = [
     a: "Da. O organizatie poate avea mai multe locatii, iar un profesionist poate fi asociat cu mai multe locatii in acelasi timp.",
   },
   {
+    q: "Ce se intampla daca informatiile profilului sunt gresite?",
+    a: "Poti propune actualizari dupa ce revendicarea este aprobata. Anumite modificari pot necesita o noua analiza inainte de a deveni publice.",
+  },
+  {
     q: "De ce anumite modificari necesita analiza?",
     a: "Analiza informatiilor publice ajuta la mentinerea acuratetei si increderii pacientilor care folosesc platforma.",
   },
