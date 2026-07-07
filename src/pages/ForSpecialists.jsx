@@ -17,7 +17,7 @@ export default function ForSpecialists() {
           Fii gasit pentru ceea ce stii sa faci.
         </h1>
         <p className="mt-5 text-lg text-muted-foreground">
-          Vezunde conecteaza pacientii cu opticieni, optometristi si medici oftalmologi pe baza nevoii descrise — nu pe baza marimii afacerii. Furnizorii mici si independenti au aceeasi sansa ca lanturile mari.
+          ViaSee conecteaza pacientii cu opticieni, optometristi si medici oftalmologi pe baza nevoii descrise — nu pe baza marimii afacerii. Furnizorii mici si independenti au aceeasi sansa ca lanturile mari.
         </p>
         <Link to="/revendica-profil" className="mt-8 inline-flex items-center gap-2 bg-primary text-primary-foreground rounded-full px-7 py-3.5 font-medium hover:opacity-90 transition-opacity">
           Revendica-ti profilul <ArrowRight className="w-4 h-4" />
@@ -38,7 +38,7 @@ export default function ForSpecialists() {
         })}
       </div>
       <div className="mt-12 bg-secondary rounded-2xl p-7 text-sm text-muted-foreground max-w-3xl">
-        <span className="font-medium text-foreground">Nota:</span> Vezunde este o platforma de potrivire, nu de licitatii. Nu exista promovare platita, comparatii de pret sau clasamente dupa dimensiunea companiei.
+        <span className="font-medium text-foreground">Nota:</span> ViaSee este o platforma de potrivire, nu de licitatii. Nu exista promovare platita, comparatii de pret sau clasamente dupa dimensiunea companiei.
       </div>
     </div>
   );

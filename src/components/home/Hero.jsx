@@ -118,7 +118,7 @@ export default function Hero() {
           className="mt-5 text-base sm:text-lg max-w-xl"
           style={{ color: "#6B675F" }}
         >
-          Descrie simplu ce te preocupa, iar Vezunde te ajuta sa gasesti unde poti merge.
+          Descrie simplu ce te preocupa, iar ViaSee te ajuta sa gasesti unde poti merge.
         </motion.p>
 
         {/* Conversational input card */}
@@ -198,7 +198,7 @@ export default function Hero() {
           className="mt-6 text-xs"
           style={{ color: "#A5A099" }}
         >
-          Vezunde nu ofera diagnostic medical.
+          ViaSee nu ofera diagnostic medical.
         </motion.p>
         </>
         )}

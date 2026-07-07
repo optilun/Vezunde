@@ -22,7 +22,7 @@ export default function ProviderSidebarContent({ navItems, activeKey, onNavigate
       <div className="px-4 pt-5 pb-4">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg text-white flex items-center justify-center text-sm font-bold bg-foreground shrink-0">V</div>
-          <span className="font-heading text-lg font-bold tracking-tight truncate">{title || "vezunde"}</span>
+          <span className="font-heading text-lg font-bold tracking-tight truncate">{title || "ViaSee"}</span>
         </div>
         <p className="text-[11px] text-muted-foreground mt-1 pl-9 truncate">{subtitle || "Contul meu"}</p>
       </div>
@@ -39,7 +39,7 @@ export default function ProviderSidebarContent({ navItems, activeKey, onNavigate
             <UserIcon className="w-4 h-4 shrink-0" /> <span className="truncate">{modeSwitch.label}</span>
           </button>
         )}
-        <a href="mailto:contact@vezunde.ro" className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">
+        <a href="mailto:contact@viasee.ro" className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">
           <HelpCircle className="w-4 h-4 shrink-0" /> Ajutor
         </a>
       </div>
