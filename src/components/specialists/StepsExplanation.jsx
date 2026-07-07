@@ -3,8 +3,8 @@ import { Search, UserCheck, Settings } from "lucide-react";
 
 const STEPS = [
   { icon: Search, label: "Gasesti sau adaugi locatia", text: "Cauti un profil existent sau adaugi o locatie noua." },
-  { icon: UserCheck, label: "Confirmi relatia", text: "Spui ce relatie ai cu locatia si trimiti informatiile necesare." },
-  { icon: Settings, label: "Iti gestionezi profilul", text: "Dupa aprobare, poti propune actualizari pentru datele publice." },
+  { icon: UserCheck, label: "Trimiti cateva informatii despre tine", text: "Ne spui cine esti si ce legatura ai cu locatia sau cu activitatea profesionala." },
+  { icon: Settings, label: "Te faci cunoscut prin profilul tau", text: "Dupa aprobare, completezi informatiile care ii ajuta pe pacienti sa inteleaga ce faci si unde te pot gasi." },
 ];
 
 // A connected onboarding journey rather than three isolated cards — a thin
