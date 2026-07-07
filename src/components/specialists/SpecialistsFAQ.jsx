@@ -26,7 +26,7 @@ const FAQ_ITEMS = [
 
 export default function SpecialistsFAQ() {
   return (
-    <section className="max-w-3xl mx-auto px-5 py-14 sm:py-20">
+    <section className="max-w-3xl mx-auto px-5 py-10 sm:py-14">
       <h2 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight text-center">Intrebari frecvente</h2>
       <div className="mt-8 bg-card border border-border rounded-2xl px-5 sm:px-7">
         <Accordion type="single" collapsible>
