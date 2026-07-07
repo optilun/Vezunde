@@ -21,11 +21,14 @@ export default function LocationSearchModule() {
   return (
     <section id="cauta-locatia" className="max-w-3xl mx-auto px-5 py-10 sm:py-14">
       <div className="bg-card border border-border rounded-[2rem] p-6 sm:p-10 shadow-[0_18px_55px_rgba(20,20,20,0.06)]">
-        <h2 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight text-center">
-          Gaseste locatia pe care vrei sa o administrezi
-        </h2>
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1">
+          <h2 className="font-heading text-2xl sm:text-3xl font-bold tracking-tight">
+            Gaseste locatia pe care vrei sa o administrezi
+          </h2>
+          <span className="text-xs text-muted-foreground shrink-0">Dupa nume, localitate sau adresa</span>
+        </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 flex flex-col sm:flex-row gap-3">
+        <form onSubmit={handleSubmit} className="mt-6 flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
@@ -43,12 +46,12 @@ export default function LocationSearchModule() {
             Cauta
           </button>
         </form>
-        <p className="mt-3 text-xs text-muted-foreground text-center">
+        <p className="mt-3 text-xs text-muted-foreground">
           Exemple: Optica Vision, Cluj-Napoca sau Clinica Oftalmologica Nova, Timisoara
         </p>
 
         {/* Illustrative result card anatomy — factual fields only, not real results */}
-        <p className="mt-8 text-xs font-medium uppercase tracking-wide text-muted-foreground text-center">Exemplu de rezultat</p>
+        <p className="mt-8 text-xs font-medium uppercase tracking-wide text-muted-foreground">Exemplu de rezultat</p>
         <div className="mt-4 grid sm:grid-cols-2 gap-3">
           {EXAMPLES.map((ex) => (
             <div key={ex.name} className="bg-background border border-border rounded-2xl p-5">

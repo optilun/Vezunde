@@ -23,12 +23,12 @@ export default function SpecialistsHero() {
           Cauta locatia ta
         </button>
       </div>
-      <div className="order-first lg:order-last">
+      <div className="order-first lg:order-last relative">
         <img
-          src="https://media.base44.com/images/public/6a48cb9d04fa7f999d8a8054/5b0cc5ce2_generated_image.png"
+          src="https://media.base44.com/images/public/6a48cb9d04fa7f999d8a8054/efb2b57d5_generated_image.png"
           alt=""
           aria-hidden="true"
-          className="w-full max-w-md mx-auto lg:max-w-none rounded-3xl"
+          className="w-full max-w-md mx-auto lg:max-w-none lg:scale-125"
         />
       </div>
     </section>
