@@ -58,13 +58,13 @@ const AuthenticatedApp = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/pentru-specialisti" element={<ForSpecialists />} />
       {/* Add your page Route elements here */}
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
         <Route path="/cauta" element={<Search />} />
         <Route path="/furnizor/:id" element={<ProviderProfile />} />
         <Route path="/cerere" element={<RequestFlow />} />
-        <Route path="/pentru-specialisti" element={<ForSpecialists />} />
         <Route path="/revendica-profil" element={<Navigate to="/adauga-sau-revendica" replace />} />
         <Route path="/inscriere" element={<Navigate to="/adauga-sau-revendica" replace />} />
         <Route path="/adauga-sau-revendica" element={<AddOrClaim />} />
