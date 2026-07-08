@@ -14,6 +14,7 @@ const ROUTINE_FIELDS = [
   'facebook_url',
   'instagram_url',
   'linkedin_url',
+  'photo_url',
   'opening_hours',
   'saturday_hours',
   'availability_status',
@@ -87,7 +88,7 @@ function cleanPayload(p) {
     if (cleaned.error) return cleaned;
     updates.public_email = cleaned.value;
   }
-  for (const field of ['website_url', 'facebook_url', 'instagram_url', 'linkedin_url']) {
+  for (const field of ['website_url', 'facebook_url', 'instagram_url', 'linkedin_url', 'photo_url']) {
     if (field in p) {
       const cleaned = cleanUrl(p[field], field);
       if (cleaned.error) return cleaned;
