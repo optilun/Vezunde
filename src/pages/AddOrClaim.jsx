@@ -16,11 +16,26 @@ const STAGE_COPY = {
   review: { title: "Revizuieste solicitarea", subtitle: "Verifica datele inainte de trimitere." },
 };
 
+const PENDING_NEW_LOCATION_KEY = "pending_new_location_wizard";
+const PENDING_CLAIM_CONTACT_KEY = "pending_claim_contact";
+const PENDING_CLAIM_LOCATION_KEY = "pending_claim_location";
+const PENDING_CLAIM_STEP_KEY = "pending_claim_step";
+
+const readSessionJson = (key) => {
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
 // Module 3H.1B.2: explicit cancellation clears all temporary resume state.
 const clearResumeState = () => {
-  sessionStorage.removeItem("pending_new_location_wizard");
-  sessionStorage.removeItem("pending_claim_contact");
-  sessionStorage.removeItem("pending_claim_location");
+  sessionStorage.removeItem(PENDING_NEW_LOCATION_KEY);
+  sessionStorage.removeItem(PENDING_CLAIM_CONTACT_KEY);
+  sessionStorage.removeItem(PENDING_CLAIM_LOCATION_KEY);
+  sessionStorage.removeItem(PENDING_CLAIM_STEP_KEY);
 };
 
 export default function AddOrClaim() {
@@ -29,22 +44,33 @@ export default function AddOrClaim() {
   const { state: navState } = useLocation();
   const preselectedLocation = navState?.selectedLocation || null;
 
+  // Resume an existing-profile claim after a login redirect. The claim form saves
+  // the selected location + contact payload before redirecting to Base44 Auth.
+  const [resumedClaimLocation] = useState(() => readSessionJson(PENDING_CLAIM_LOCATION_KEY));
+  const [resumedClaimContact] = useState(() => readSessionJson(PENDING_CLAIM_CONTACT_KEY));
+  const [resumedClaimStep] = useState(() => sessionStorage.getItem(PENDING_CLAIM_STEP_KEY));
+  const initialSelectedLocation = preselectedLocation || resumedClaimLocation || null;
+
   // Resume the new-location wizard after a login redirect.
   const [stage, setStage] = useState(() => {
-    if (sessionStorage.getItem("pending_new_location_wizard")) return "wizard";
+    if (sessionStorage.getItem(PENDING_NEW_LOCATION_KEY)) return "wizard";
+    if (resumedClaimLocation) return "claim";
     if (preselectedLocation) return "confirm";
     return "search";
   }); // search | confirm | claim | wizard | done
-  const [selected, setSelected] = useState(preselectedLocation);
+  const [selected, setSelected] = useState(initialSelectedLocation);
   const [draft, setDraft] = useState(null);
-  const [claimStep, setClaimStep] = useState("relation");
+  const [claimStep, setClaimStep] = useState(() => {
+    if (resumedClaimLocation && resumedClaimContact) return resumedClaimStep || "review";
+    return "relation";
+  });
 
   if (stage === "wizard") {
     return (
       <div className="workspace-neutral">
         <NewLocationWizard
           prefill={draft}
-          onDone={() => setStage("done")}
+          onDone={() => { clearResumeState(); setStage("done"); }}
           onExit={() => { clearResumeState(); setDraft(null); setStage("search"); }}
           onClaimExisting={(loc) => { setSelected(loc); setDraft(null); setClaimStep("relation"); setStage("claim"); }}
         />
@@ -75,7 +101,7 @@ export default function AddOrClaim() {
           <SelectedLocationCard
             location={selected}
             onContinue={() => { setClaimStep("relation"); setStage("claim"); }}
-            onChangeLocation={() => { setSelected(null); setStage("search"); }}
+            onChangeLocation={() => { clearResumeState(); setSelected(null); setStage("search"); }}
           />
         </WizardShell>
       ) : stage === "claim" && selected ? (
@@ -94,7 +120,7 @@ export default function AddOrClaim() {
             location={selected}
             step={claimStep}
             onStepChange={setClaimStep}
-            onDone={() => setStage("done")}
+            onDone={() => { clearResumeState(); setStage("done"); }}
           />
         </WizardShell>
       ) : (
@@ -105,8 +131,8 @@ export default function AddOrClaim() {
           subtitle="Verificam mai intai daca profilul exista deja."
         >
           <ProviderSearch
-            onClaim={(loc) => { setSelected(loc); setClaimStep("relation"); setStage("claim"); }}
-            onNew={(d) => { setDraft(d && d.place_id ? d : null); setStage("wizard"); }}
+            onClaim={(loc) => { clearResumeState(); setSelected(loc); setClaimStep("relation"); setStage("claim"); }}
+            onNew={(d) => { clearResumeState(); setDraft(d && d.place_id ? d : null); setStage("wizard"); }}
           />
         </WizardShell>
       )}
