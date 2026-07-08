@@ -1,15 +1,53 @@
 import React from "react";
+import { Building2, MapPin, ShieldCheck } from "lucide-react";
 import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
+import { getProfileAudience, PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
 
 const SECTION_LABELS = { public_profile: "Profil public", location_details: "Date locatie", services: "Servicii", team: "Echipa", media: "Fotografii", article: "Articol" };
 
 export default function ProviderOverview({ overview, onNavigate }) {
   const { completion, content_summary, pending_submissions = [], public_preview, latest_admin_note, latest_review_status } = overview;
   const ownSubmissions = pending_submissions.filter((s) => s.id);
+  const location = overview.location || {};
+  const profileTypeLabel = PROVIDER_PROFILE_TYPES[location.provider_profile_type] || "Tip profil nesetat";
+  const providerTypeLabel = PROVIDER_TYPES[location.provider_type] || location.provider_type || "Tip furnizor nesetat";
+  const audienceLabel = getProfileAudience(location.provider_profile_type);
 
   return (
     <div className="space-y-6">
-      <h1 className="font-heading text-2xl font-extrabold tracking-tight">{overview.location.public_display_name || overview.location.name}</h1>
+      <div>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span>{location.organization_name || "Workspace furnizor"}</span>
+          <span>·</span>
+          <span>{audienceLabel}</span>
+        </div>
+        <h1 className="mt-1 font-heading text-2xl font-extrabold tracking-tight">{location.public_display_name || location.name}</h1>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <div className="font-semibold text-sm mb-2">Tip profil</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground text-background px-3 py-1 text-xs font-semibold">
+                <Building2 className="w-3.5 h-3.5" /> {profileTypeLabel}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground">
+                <ShieldCheck className="w-3.5 h-3.5" /> {audienceLabel}
+              </span>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+              Clasificare interna: {providerTypeLabel}. Aceasta stabileste unde apare profilul si ce module sunt relevante pentru el.
+            </p>
+          </div>
+          <div className="text-xs text-muted-foreground sm:text-right">
+            <div className="inline-flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5" /> {location.city || location.locality_name || "Localitate nesetata"}{location.county ? `, ${location.county}` : ""}
+            </div>
+            {location.address && <div className="mt-1 max-w-xs">{location.address}</div>}
+          </div>
+        </div>
+      </div>
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="rounded-xl border border-border bg-card p-4">
