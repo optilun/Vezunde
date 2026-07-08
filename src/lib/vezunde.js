@@ -42,9 +42,35 @@ export const PROVIDER_TYPES = {
 
 export const PROFESSIONAL_TYPES = {
   medic_oftalmolog: "Medic oftalmolog",
+  ophthalmologist: "Medic oftalmolog",
   optometrist: "Optometrist",
   optician: "Optician",
 };
+
+export const PROFESSIONAL_AFFILIATION_STATUS = {
+  location_added: "Adaugat de locatie",
+  professional_confirmed: "Confirmat de specialist",
+  vezunde_verified: "Verificat de Vezunde",
+};
+
+export const PATIENT_FACING_PROFILE_TYPES = [
+  "independent_optical_store",
+  "optical_chain",
+  "ophthalmology_clinic",
+  "ophthalmology_office",
+];
+
+export const PROFESSIONAL_ONLY_PROFILE_TYPES = [
+  "independent_ophthalmologist",
+  "independent_optometrist",
+  "independent_optician",
+];
+
+export const B2B_ONLY_PROFILE_TYPES = [
+  "optical_laboratory_b2c",
+  "optical_laboratory_b2b",
+  "future_b2b_distributor",
+];
 
 export const CITIES = ["Bucuresti", "Cluj-Napoca", "Timisoara", "Iasi", "Brasov", "Constanta"];
 
