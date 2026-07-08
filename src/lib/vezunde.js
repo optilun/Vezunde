@@ -40,6 +40,19 @@ export const PROVIDER_TYPES = {
   medic_oftalmolog_independent: "Medic oftalmolog independent",
 };
 
+export const PROVIDER_PROFILE_TYPES = {
+  independent_optical_store: "Optica independenta",
+  optical_chain: "Lant de optici",
+  ophthalmology_clinic: "Clinica oftalmologica",
+  ophthalmology_office: "Cabinet oftalmologic",
+  independent_ophthalmologist: "Medic oftalmolog independent",
+  independent_optometrist: "Optometrist independent",
+  independent_optician: "Optician independent",
+  optical_laboratory_b2c: "Laborator optic B2C",
+  optical_laboratory_b2b: "Laborator optic B2B",
+  future_b2b_distributor: "Furnizor / partener B2B",
+};
+
 export const PROFESSIONAL_TYPES = {
   medic_oftalmolog: "Medic oftalmolog",
   ophthalmologist: "Medic oftalmolog",
@@ -71,6 +84,13 @@ export const B2B_ONLY_PROFILE_TYPES = [
   "optical_laboratory_b2b",
   "future_b2b_distributor",
 ];
+
+export function getProfileAudience(profileType) {
+  if (PATIENT_FACING_PROFILE_TYPES.includes(profileType)) return "Director pacienti";
+  if (PROFESSIONAL_ONLY_PROFILE_TYPES.includes(profileType)) return "Profil profesional";
+  if (B2B_ONLY_PROFILE_TYPES.includes(profileType)) return "Parteneri B2B";
+  return "Profil neclasificat";
+}
 
 export const CITIES = ["Bucuresti", "Cluj-Napoca", "Timisoara", "Iasi", "Brasov", "Constanta"];
 
