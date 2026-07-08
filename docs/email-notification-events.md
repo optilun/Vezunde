@@ -35,6 +35,9 @@ Pentru fiecare actiune noua se noteaza minimum:
 | `provider_workspace_draft_approved` | Admin aproba modificari profil | furnizor | Anunt ca modificarile au fost aprobate/publicate | medie |
 | `provider_workspace_draft_rejected` | Admin respinge modificari profil | furnizor | Anunt respingere + motiv | medie |
 | `provider_workspace_draft_needs_more_info` | Admin cere completari pe draft | furnizor | Cere informatii suplimentare | medie |
+| `provider_logo_submitted_for_review` | Furnizor incarca logo/imagine profil | admin Vezunde | Notificare ca exista un logo de verificat | medie |
+| `provider_logo_approved` | Admin aproba logo/imagine profil | furnizor | Anunt ca logo-ul este public | medie |
+| `provider_logo_rejected` | Admin respinge logo/imagine profil | furnizor | Anunt respingere + motiv | medie |
 
 ## Membri, invitatii si specialisti
 
