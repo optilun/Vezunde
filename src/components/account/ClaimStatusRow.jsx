@@ -7,6 +7,22 @@ const STATUS = {
   respinsa: { label: "Respinsa", cls: "bg-destructive/10 text-destructive" },
 };
 
+const parsePayload = (raw) => {
+  try {
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+const claimTypeLabel = (claim) => {
+  const payload = parsePayload(claim.submitted_payload);
+  if (payload.request_type === "access_request_existing_claimed_profile") return "Cerere acces profil administrat";
+  if (claim.mode === "new_location_duplicate_review") return "Verificare locatie similara";
+  if (claim.mode === "new_location") return "Locatie noua";
+  return "Revendicare profil";
+};
+
 export default function ClaimStatusRow({ claim }) {
   const s = STATUS[claim.status] || STATUS.in_asteptare;
   return (
@@ -14,8 +30,11 @@ export default function ClaimStatusRow({ claim }) {
       <div>
         <div className="font-semibold text-sm">{claim.business_name || "Locatie"}</div>
         <div className="text-xs text-muted-foreground mt-0.5">
-          {claim.mode === "new_location" ? "Locatie noua" : "Revendicare profil"} · trimisa {new Date(claim.created_date).toLocaleDateString("ro-RO")}
+          {claimTypeLabel(claim)} · trimisa {new Date(claim.created_date).toLocaleDateString("ro-RO")}
         </div>
+        {claim.status === "needs_more_info" && claim.review_notes && (
+          <div className="text-xs text-amber-700 mt-1">Completare necesara: {claim.review_notes}</div>
+        )}
         {claim.status === "respinsa" && claim.review_notes && (
           <div className="text-xs text-destructive mt-1">Motiv: {claim.review_notes}</div>
         )}
