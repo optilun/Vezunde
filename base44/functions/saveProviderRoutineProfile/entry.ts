@@ -20,7 +20,7 @@ const ROUTINE_FIELDS = [
 ];
 const INPUT_FIELDS = ['location_id', ...ROUTINE_FIELDS];
 const AVAILABILITY_STATUSES = ['astazi', 'urmatoarele_zile', 'saptamana_aceasta', 'doar_programare', 'necunoscuta'];
-const MAX_DESCRIPTION_LEN = 2000;
+const MAX_DESCRIPTION_LEN = 700;
 const MAX_URL_LEN = 500;
 const MAX_CONTACT_LEN = 200;
 const MAX_HOURS_LEN = 500;
