@@ -14,6 +14,8 @@ const QUICK_FIELDS = [
   ["instagram_url", "Instagram", "Link catre profilul oficial."],
   ["linkedin_url", "LinkedIn", "Optional, util mai ales pentru B2B."],
 ];
+const DESCRIPTION_MAX_LENGTH = 700;
+const DESCRIPTION_WARN_AT = 600;
 const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const LOGO_MAX_BYTES = 4 * 1024 * 1024;
 const LOGO_MAX_DATA_URL_LENGTH = 800000;
@@ -158,6 +160,8 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
     instagram_url: pv.instagram || "",
     linkedin_url: pv.linkedin || "",
   });
+  const descriptionCount = quick.public_description.length;
+  const descriptionNearLimit = descriptionCount >= DESCRIPTION_WARN_AT;
   const [logoPreview, setLogoPreview] = useState(pendingLogoUrl || pv.photo_url || "");
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoMsg, setLogoMsg] = useState(hasPendingLogo ? "Logo in curs de verificare. Il vei vedea public dupa aprobarea admin." : "");
@@ -170,7 +174,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
 
   useEffect(() => {
     setQuick({
-      public_description: pv.description || "",
+      public_description: String(pv.description || "").slice(0, DESCRIPTION_MAX_LENGTH),
       public_phone: pv.phone || "",
       public_email: pv.email || "",
       website_url: pv.website || "",
@@ -296,8 +300,20 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
               <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-background px-3 py-1 text-[11px] font-semibold text-muted-foreground"><ImagePlus className="h-3.5 w-3.5" /> Publicare dupa aprobare admin</div>
             </div>
 
-            <Field label="Descriere organizatie" hint="Prezentare generala a brandului: ce oferiti, cui va adresati si ce va diferentiaza.">
-              <textarea className={inputCls} rows={8} value={quick.public_description} onChange={(e) => setQuick({ ...quick, public_description: e.target.value })} />
+            <Field label="Descriere organizatie">
+              <textarea
+                className={inputCls}
+                rows={8}
+                maxLength={DESCRIPTION_MAX_LENGTH}
+                value={quick.public_description}
+                onChange={(e) => setQuick({ ...quick, public_description: e.target.value.slice(0, DESCRIPTION_MAX_LENGTH) })}
+              />
+              <div className="mt-1.5 flex items-start justify-between gap-3 text-[11px] leading-relaxed text-muted-foreground">
+                <p>Prezentare generala a brandului: ce oferiti, cui va adresati si ce va diferentiaza.</p>
+                <span className={`shrink-0 font-semibold ${descriptionNearLimit ? "text-amber-700" : "text-muted-foreground"}`}>
+                  {descriptionCount}/{DESCRIPTION_MAX_LENGTH}
+                </span>
+              </div>
             </Field>
 
             <div className="grid gap-4 md:grid-cols-2">
