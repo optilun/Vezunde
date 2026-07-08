@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Module 3F.2.2: city/county are compatibility mirrors — never applied from staged
 // free text. Geography changes are applied only via a validated locality_siruta_code.
-const STAGED_FIELDS = ['name', 'address', 'phone_public', 'public_email', 'website', 'description', 'provider_type'];
+const STAGED_FIELDS = ['name', 'address', 'phone_public', 'public_email', 'website', 'description', 'provider_type', 'photo_url'];
 
 // Module 3E.2: known service keys (same catalog as matchProviders — backend
 // functions cannot share local imports). Any other key is 'unknown'.
