@@ -6,10 +6,10 @@ Vezunde separa clar patru zone:
 
 1. Director pacienti
 2. Workspace furnizori
-3. Marketplace B2B
+3. Marketplace B2B / Parteneri
 4. Joburi si colaborari profesionale
 
-Directorul pacientilor afiseaza locatii, nu specialisti independenti fara locatie verificata.
+Directorul pacientilor afiseaza locatii, nu specialisti independenti fara locatie verificata si nu furnizori B2B.
 
 ## Director pacienti
 
@@ -58,6 +58,31 @@ El poate avea:
 
 Daca lucreaza intr-o optica sau clinica, apare prin acea locatie.
 
+## Furnizor / partener B2B
+
+Un furnizor B2B nu intra in cautarea pacientilor.
+
+El poate avea:
+
+- profil de partener;
+- categorii de servicii/produse;
+- pagina in modulul `Parteneri`;
+- listare gratuita sau platita;
+- contact profesional;
+- promovare catre optici, clinici si cabinete.
+
+Tipuri initiale:
+
+- `future_b2b_distributor` pentru furnizori, distribuitori, servicii, aparatura, training, software;
+- `optical_laboratory_b2b` pentru laboratoare care lucreaza cu optici/clinici.
+
+Monetizarea viitoare se poate face prin:
+
+- abonament lunar/anual pentru listare;
+- promovare in categorie;
+- pachet premium cu lead-uri/contacte;
+- badge verificat/partener recomandat, doar dupa reguli clare.
+
 ## Afiliere specialist la locatie
 
 Afilierea se separa de profilul profesional:
@@ -87,6 +112,8 @@ Flux recomandat:
 
 Locatia poate propune/adauga un specialist in echipa, dar nu poate crea singura un profil profesional complet verificat in numele specialistului.
 
+Furnizorii B2B pot fi inscrisi si verificati, dar nu trebuie sa fie returnati de `matchProviders`, `browseDirectoryProviders` sau `getPublicProviderProfile` pentru pacienti.
+
 ## Email events de adaugat cand instalam mail
 
 - `professional_affiliation_invited`
@@ -94,3 +121,8 @@ Locatia poate propune/adauga un specialist in echipa, dar nu poate crea singura 
 - `professional_affiliation_removed`
 - `professional_profile_claimed`
 - `professional_profile_verified`
+- `b2b_supplier_profile_submitted`
+- `b2b_supplier_profile_approved`
+- `b2b_supplier_profile_rejected`
+- `b2b_supplier_listing_started`
+- `b2b_supplier_listing_payment_failed`
