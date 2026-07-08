@@ -64,6 +64,7 @@ Deno.serve(async (req) => {
         public_title: prof.role || '',
         short_bio: prof.professional_bio || prof.bio || '',
         profile_photo_url: photo,
+        affiliation_status: assignment.affiliation_status || 'location_added',
       });
     }
 
