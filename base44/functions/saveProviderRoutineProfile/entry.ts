@@ -4,7 +4,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 // Immediate, audited provider-scoped updates after approved claim + active
 // membership. This function never changes trust, verification, matching,
 // visibility, ranking, locality, address, provider type, organization identity,
-// claim state or membership.
+// claim state, membership or media/logo approval state.
 
 const ROUTINE_FIELDS = [
   'public_description',
@@ -14,7 +14,6 @@ const ROUTINE_FIELDS = [
   'facebook_url',
   'instagram_url',
   'linkedin_url',
-  'photo_url',
   'opening_hours',
   'saturday_hours',
   'availability_status',
@@ -88,7 +87,7 @@ function cleanPayload(p) {
     if (cleaned.error) return cleaned;
     updates.public_email = cleaned.value;
   }
-  for (const field of ['website_url', 'facebook_url', 'instagram_url', 'linkedin_url', 'photo_url']) {
+  for (const field of ['website_url', 'facebook_url', 'instagram_url', 'linkedin_url']) {
     if (field in p) {
       const cleaned = cleanUrl(p[field], field);
       if (cleaned.error) return cleaned;
