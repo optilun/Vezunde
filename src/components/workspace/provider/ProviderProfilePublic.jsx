@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Building2, ExternalLink, Globe2, ImagePlus, Mail, MapPin, Phone, Save, ShieldCheck, Store } from "lucide-react";
+import { Building2, ExternalLink, Globe2, ImagePlus, Loader2, Mail, MapPin, Phone, Save, ShieldCheck, Store, Upload } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { SUBMISSION_STATUS_LABELS, PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 import { buildGoogleMapsUrl } from "@/lib/maps";
@@ -14,6 +14,8 @@ const QUICK_FIELDS = [
   ["instagram_url", "Instagram", "text", "Link catre profilul oficial."],
   ["linkedin_url", "LinkedIn", "text", "Optional, util mai ales pentru B2B."],
 ];
+const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const LOGO_MAX_BYTES = 2 * 1024 * 1024;
 
 function initials(name = "") {
   return String(name || "V")
@@ -23,6 +25,38 @@ function initials(name = "") {
     .slice(0, 2)
     .join("")
     .toUpperCase() || "V";
+}
+
+async function uploadBase44File(file) {
+  const uploaders = [
+    base44?.integrations?.Core?.UploadFile,
+    base44?.integrations?.UploadFile,
+    base44?.files?.upload,
+    base44?.storage?.upload,
+  ].filter(Boolean);
+  if (uploaders.length === 0) {
+    throw new Error("Uploadul direct nu este disponibil in clientul Base44 curent.");
+  }
+  let lastError = null;
+  for (const uploader of uploaders) {
+    try {
+      const res = await uploader({ file });
+      const data = res?.data || res || {};
+      const url = data.file_url || data.url || data.public_url || data.signed_url || data.file_uri || data.storage_reference;
+      if (url) return String(url);
+    } catch (error) {
+      lastError = error;
+    }
+    try {
+      const res = await uploader(file);
+      const data = res?.data || res || {};
+      const url = data.file_url || data.url || data.public_url || data.signed_url || data.file_uri || data.storage_reference;
+      if (url) return String(url);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw new Error(lastError?.message || "Nu am putut incarca fisierul.");
 }
 
 function Field({ label, hint, children }) {
@@ -124,8 +158,10 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
     facebook_url: pv.facebook || "",
     instagram_url: pv.instagram || "",
     linkedin_url: pv.linkedin || "",
-    photo_url: pv.photo_url || "",
   });
+  const [logoPreview, setLogoPreview] = useState(pv.photo_url || "");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoMsg, setLogoMsg] = useState("");
   const [savingQuick, setSavingQuick] = useState(false);
   const [quickMsg, setQuickMsg] = useState("");
 
@@ -143,8 +179,8 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
       facebook_url: pv.facebook || "",
       instagram_url: pv.instagram || "",
       linkedin_url: pv.linkedin || "",
-      photo_url: pv.photo_url || "",
     });
+    setLogoPreview(pv.photo_url || "");
     setReviewValues({ public_display_name: orgName || "" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locationId]);
@@ -168,6 +204,35 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
     if (res.data?.error) { setQuickMsg(res.data.error); return; }
     setQuickMsg("Informatiile publice ale organizatiei au fost salvate.");
     onRefresh();
+  };
+
+  const uploadLogo = async (file) => {
+    setLogoMsg("");
+    if (!file) return;
+    if (!LOGO_TYPES.includes(file.type)) {
+      setLogoMsg("Format acceptat: PNG, JPG sau WEBP.");
+      return;
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      setLogoMsg("Logo-ul trebuie sa aiba maximum 2MB.");
+      return;
+    }
+    setUploadingLogo(true);
+    const localPreview = URL.createObjectURL(file);
+    setLogoPreview(localPreview);
+    try {
+      const uploadedUrl = await uploadBase44File(file);
+      const res = await base44.functions.invoke("submitProviderLogoForReview", { location_id: locationId, photo_url: uploadedUrl }).catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
+      if (res.data?.error) throw new Error(res.data.error);
+      setLogoMsg("Logo trimis spre aprobare. Va aparea public dupa review admin.");
+      onRefresh();
+    } catch (error) {
+      setLogoPreview(pv.photo_url || "");
+      setLogoMsg(error.message || "Nu am putut incarca logo-ul.");
+    } finally {
+      setUploadingLogo(false);
+      URL.revokeObjectURL(localPreview);
+    }
   };
 
   const saveReview = async () => {
@@ -210,7 +275,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
           <div className="absolute right-0 top-0 h-28 w-28 rounded-bl-full bg-amber-100/60" />
           <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex gap-4">
-              <BrandLogo name={orgName} photoUrl={quick.photo_url} />
+              <BrandLogo name={orgName} photoUrl={logoPreview} />
               <div>
                 <div className="text-xs font-medium text-muted-foreground">Previzualizare organizatie</div>
                 <h2 className="mt-1 font-heading text-3xl font-extrabold tracking-tight">{orgName}</h2>
@@ -267,19 +332,21 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
         <div className="grid gap-4 lg:grid-cols-[1fr_1.8fr]">
           <div className="rounded-2xl border border-border bg-secondary/40 p-4">
             <div className="flex items-center gap-3">
-              <BrandLogo name={orgName} photoUrl={quick.photo_url} />
+              <BrandLogo name={orgName} photoUrl={logoPreview} />
               <div>
                 <div className="text-sm font-semibold">Logo / imagine profil</div>
-                <p className="mt-1 text-xs text-muted-foreground">Momentan se salveaza prin URL de imagine. Upload-ul direct il conectam cand activam modulul media securizat.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Alege un logo. Imaginea merge la aprobare inainte sa fie publica.</p>
               </div>
             </div>
-            <div className="mt-4">
-              <Field label="URL logo / imagine profil" hint="Exemplu: https://site.ro/logo.png">
-                <input className={inputCls} value={quick.photo_url} onChange={(e) => setQuick({ ...quick, photo_url: e.target.value })} />
-              </Field>
-            </div>
+            <label className="mt-4 flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-background px-4 py-5 text-center hover:bg-secondary/60">
+              {uploadingLogo ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
+              <span className="mt-2 text-sm font-semibold">Alege logo</span>
+              <span className="mt-1 text-[11px] text-muted-foreground">PNG, JPG sau WEBP · max. 2MB</span>
+              <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploadingLogo} onChange={(e) => uploadLogo(e.target.files?.[0])} />
+            </label>
+            {logoMsg && <p className="mt-3 text-xs text-muted-foreground">{logoMsg}</p>}
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-background px-3 py-1 text-[11px] font-semibold text-muted-foreground">
-              <ImagePlus className="h-3.5 w-3.5" /> Upload direct: etapa urmatoare
+              <ImagePlus className="h-3.5 w-3.5" /> Publicare dupa aprobare admin
             </div>
           </div>
           <Field label="Descriere organizatie" hint="Prezentare generala a brandului: ce oferiti, cui va adresati si ce va diferentiaza.">
