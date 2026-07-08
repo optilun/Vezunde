@@ -156,6 +156,7 @@ async function applicantOverview(svc, user, loc, claim) {
       address: loc.address || '',
       city: loc.city || loc.locality_name || '',
       county: loc.county || loc.county_name || '',
+      photo_url: loc.photo_url || '',
     },
   };
 }
@@ -274,6 +275,7 @@ Deno.serve(async (req) => {
         facebook: loc.facebook_url || '',
         instagram: loc.instagram_url || '',
         linkedin: loc.linkedin_url || '',
+        photo_url: loc.photo_url || '',
         opening_hours: loc.opening_hours || '',
         saturday_hours: loc.saturday_hours || '',
       },
