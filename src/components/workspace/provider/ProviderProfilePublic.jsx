@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { SUBMISSION_STATUS_LABELS, PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 import { buildGoogleMapsUrl } from "@/lib/maps";
 import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
+import SocialBrandIcon from "@/components/common/SocialBrandIcon";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none focus:border-foreground/50 transition-colors";
 const QUICK_FIELDS = [
@@ -20,9 +21,9 @@ const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const LOGO_MAX_BYTES = 4 * 1024 * 1024;
 const LOGO_MAX_DATA_URL_LENGTH = 800000;
 const SOCIAL_ITEMS = [
-  { key: "facebook_url", label: "Facebook", short: "f" },
-  { key: "instagram_url", label: "Instagram", short: "IG" },
-  { key: "linkedin_url", label: "LinkedIn", short: "in" },
+  { key: "facebook_url", label: "Facebook", platform: "facebook" },
+  { key: "instagram_url", label: "Instagram", platform: "instagram" },
+  { key: "linkedin_url", label: "LinkedIn", platform: "linkedin" },
 ];
 
 function initials(name = "") {
@@ -120,7 +121,9 @@ function SocialPill({ item, url }) {
       className="inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-foreground shadow-sm hover:bg-white"
       title={displayUrl(url)}
     >
-      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-[10px] font-black text-background">{item.short}</span>
+      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-background">
+        <SocialBrandIcon platform={item.platform} className="h-3.5 w-3.5" />
+      </span>
       {item.label}
     </a>
   );
