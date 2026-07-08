@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Building2, ExternalLink, Globe2, ImagePlus, Loader2, Mail, MapPin, Phone, Save, ShieldCheck, Store, Upload } from "lucide-react";
+import { Building2, ExternalLink, Globe2, ImagePlus, Loader2, Mail, MapPin, Phone, Plus, Save, ShieldCheck, Store } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { SUBMISSION_STATUS_LABELS, PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 import { buildGoogleMapsUrl } from "@/lib/maps";
@@ -196,6 +196,16 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
     }
   };
 
+  const logoInput = (
+    <input
+      type="file"
+      accept="image/png,image/jpeg,image/webp"
+      className="hidden"
+      disabled={uploadingLogo}
+      onChange={(e) => { uploadLogo(e.target.files?.[0]); e.target.value = ""; }}
+    />
+  );
+
   const saveReview = async () => {
     setSavingReview(true); setReviewMsg("");
     const action = reviewDraft && reviewDraft.status !== "pending_review" ? "update_draft" : "create_draft";
@@ -261,15 +271,25 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
 
       <div className="rounded-[24px] border border-border bg-card p-5 shadow-sm space-y-5">
         <div><div className="font-semibold text-sm">Informatii publice generale</div><p className="text-xs text-muted-foreground mt-1">Acestea sunt date de brand/organizatie. Datele specifice unei locatii se editeaza separat.</p></div>
-        <div className="grid gap-4 lg:grid-cols-[1fr_1.8fr]">
-          <div className="rounded-2xl border border-border bg-secondary/40 p-4">
-            <div className="flex items-center gap-3"><BrandLogo name={orgName} photoUrl={logoPreview} pending={hasPendingLogo} /><div><div className="text-sm font-semibold">Logo / imagine profil</div><p className="mt-1 text-xs text-muted-foreground">Alege un logo. Imaginea merge la aprobare inainte sa fie publica.</p></div></div>
-            <label className="mt-4 flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-background px-4 py-5 text-center hover:bg-secondary/60">
-              {uploadingLogo ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
-              <span className="mt-2 text-sm font-semibold">Alege logo</span>
-              <span className="mt-1 text-[11px] text-muted-foreground">PNG, JPG sau WEBP · optimizat automat</span>
-              <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploadingLogo} onChange={(e) => { uploadLogo(e.target.files?.[0]); e.target.value = ""; }} />
-            </label>
+        <div className="grid gap-4 lg:grid-cols-[0.9fr_1.9fr]">
+          <div className="rounded-2xl border border-border bg-secondary/35 p-4">
+            <div className="flex items-center gap-3">
+              <label className="relative block cursor-pointer shrink-0" title={logoPreview ? "Schimba logo" : "Adauga logo"}>
+                <BrandLogo name={orgName} photoUrl={logoPreview} pending={hasPendingLogo} />
+                <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-card bg-foreground text-background shadow-sm">
+                  {uploadingLogo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-4 w-4" />}
+                </span>
+                {logoInput}
+              </label>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold">Logo / imagine profil</div>
+                <p className="mt-1 text-xs text-muted-foreground">Logo-ul merge la aprobare inainte sa fie public.</p>
+                <label className="mt-2 inline-block cursor-pointer text-xs font-semibold underline underline-offset-4">
+                  {logoPreview ? "Schimba logo" : "Adauga logo"}
+                  {logoInput}
+                </label>
+              </div>
+            </div>
             {logoMsg && <p className={`mt-3 text-xs ${hasPendingLogo || logoMsg.includes("curs") ? "text-amber-700" : "text-muted-foreground"}`}>{logoMsg}</p>}
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-background px-3 py-1 text-[11px] font-semibold text-muted-foreground"><ImagePlus className="h-3.5 w-3.5" /> Publicare dupa aprobare admin</div>
           </div>
