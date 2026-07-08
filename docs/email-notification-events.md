@@ -36,13 +36,18 @@ Pentru fiecare actiune noua se noteaza minimum:
 | `provider_workspace_draft_rejected` | Admin respinge modificari profil | furnizor | Anunt respingere + motiv | medie |
 | `provider_workspace_draft_needs_more_info` | Admin cere completari pe draft | furnizor | Cere informatii suplimentare | medie |
 
-## Membri si invitatii
+## Membri, invitatii si specialisti
 
 | Event key | Cand se declanseaza | Catre cine | Scop | Prioritate |
 |---|---|---|---|---|
 | `provider_member_invited` | Owner/manager invita membru | invitat | Invitatie sa accepte accesul la locatie | mare |
 | `provider_member_access_granted` | Cerere acces aprobata / membru activat | solicitant | Confirmare ca are acces | mare |
 | `provider_member_access_granted_owner_notice` | Cerere acces aprobata pentru profil deja administrat | owner existent | Informare ca un membru nou a fost adaugat | medie |
+| `professional_affiliation_invited` | Locatia adauga specialist cu email in echipa | specialist | Invita specialistul sa confirme afilierea prin cont | mare |
+| `professional_affiliation_confirmed` | Specialistul confirma afilierea | locatie + specialist | Confirmare ca afilierea este activa/confirmata | medie |
+| `professional_affiliation_removed` | Locatia sau specialistul retrage afilierea | locatie + specialist | Anunt ca afilierea nu mai este activa | medie |
+| `professional_profile_claimed` | Specialistul revendica profilul profesional | specialist | Confirmare cerere profil profesional | medie |
+| `professional_profile_verified` | Admin verifica profilul profesional | specialist | Confirmare profil profesional verificat | medie |
 
 ## Auth si billing
 
