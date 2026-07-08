@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { CheckCircle2 } from "lucide-react";
 import ProviderSearch from "@/components/provider/ProviderSearch";
 import ClaimForm from "@/components/provider/ClaimForm";
 import NewLocationWizard from "@/components/provider/NewLocationWizard";
 import WizardShell from "@/components/intake/WizardShell";
+import SelectedLocationCard from "@/components/provider/SelectedLocationCard";
 
 // Module 3H.1B.3.UI: short claim flow — max 4 screens before submit.
 const PHASES = ["Gaseste profilul", "Confirma relatia", "Date de contact", "Revizuire"];
@@ -23,11 +24,18 @@ const clearResumeState = () => {
 };
 
 export default function AddOrClaim() {
+  // A location selected on the "Pentru specialisti" hero search is passed
+  // via navigation state — skip the search step and confirm it instead.
+  const { state: navState } = useLocation();
+  const preselectedLocation = navState?.selectedLocation || null;
+
   // Resume the new-location wizard after a login redirect.
-  const [stage, setStage] = useState(() =>
-    sessionStorage.getItem("pending_new_location_wizard") ? "wizard" : "search"
-  ); // search | claim | wizard | done
-  const [selected, setSelected] = useState(null);
+  const [stage, setStage] = useState(() => {
+    if (sessionStorage.getItem("pending_new_location_wizard")) return "wizard";
+    if (preselectedLocation) return "confirm";
+    return "search";
+  }); // search | confirm | claim | wizard | done
+  const [selected, setSelected] = useState(preselectedLocation);
   const [draft, setDraft] = useState(null);
   const [claimStep, setClaimStep] = useState("relation");
 
@@ -57,6 +65,19 @@ export default function AddOrClaim() {
             <Link to="/" className="underline underline-offset-4 text-muted-foreground">Inapoi acasa</Link>
           </div>
         </div>
+      ) : stage === "confirm" && selected ? (
+        <WizardShell
+          phases={PHASES}
+          phaseStep={1}
+          title="Locatie selectata"
+          subtitle="Confirma ca aceasta este locatia pentru care vrei sa faci solicitarea."
+        >
+          <SelectedLocationCard
+            location={selected}
+            onContinue={() => { setClaimStep("relation"); setStage("claim"); }}
+            onChangeLocation={() => { setSelected(null); setStage("search"); }}
+          />
+        </WizardShell>
       ) : stage === "claim" && selected ? (
         <WizardShell
           phases={PHASES}
@@ -64,7 +85,7 @@ export default function AddOrClaim() {
           title={STAGE_COPY[claimStep].title}
           subtitle={STAGE_COPY[claimStep].subtitle}
           onBack={() => {
-            if (claimStep === "relation") setStage("search");
+            if (claimStep === "relation") setStage(preselectedLocation ? "confirm" : "search");
             else if (claimStep === "contact") setClaimStep("relation");
             else setClaimStep("contact");
           }}

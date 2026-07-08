@@ -88,7 +88,7 @@ export default function SpecialistsHero() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => navigate("/adauga-sau-revendica")}
+                    onClick={() => navigate("/adauga-sau-revendica", { state: { selectedLocation: loc } })}
                     className="shrink-0 px-3.5 py-2 rounded-full text-xs font-medium bg-foreground text-background hover:opacity-90 transition-opacity"
                   >
                     Revendica aceasta locatie
