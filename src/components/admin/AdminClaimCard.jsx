@@ -15,16 +15,21 @@ export default function AdminClaimCard({ claim, onDecision, busy }) {
   // Module 3H.1B.2: duplicate-review requests have no location — never approvable here.
   const isDuplicateReview = claim.mode === "new_location_duplicate_review";
   const isAccessRequest = payload.request_type === "access_request_existing_claimed_profile";
+  const isB2BSupplier = payload.request_type === "new_b2b_supplier_profile" || claim.claim_subject_type === "b2b_supplier";
   const badgeClass = isDuplicateReview
     ? "bg-red-100 text-red-800 font-semibold"
     : isAccessRequest
       ? "bg-amber-100 text-amber-800 font-semibold"
-      : "bg-secondary";
+      : isB2BSupplier
+        ? "bg-blue-100 text-blue-800 font-semibold"
+        : "bg-secondary";
   const badgeText = isDuplicateReview
     ? "Locatie noua — verificare duplicat"
     : isAccessRequest
       ? "Cerere acces"
-      : claim.mode === "new_location" ? "Locatie noua" : "Revendicare";
+      : isB2BSupplier
+        ? "Furnizor B2B"
+        : claim.mode === "new_location" ? "Locatie noua" : "Revendicare";
 
   return (
     <div className="rounded-xl border border-border bg-card p-4">
@@ -44,6 +49,11 @@ export default function AdminClaimCard({ claim, onDecision, busy }) {
       {isAccessRequest && (
         <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
           Profilul pare deja revendicat sau administrat. Aprobarea va adauga solicitantul cu rol limitat de staff locatie, nu ca owner. Verifica manual relatia inainte de aprobare.
+        </p>
+      )}
+      {isB2BSupplier && (
+        <p className="mt-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-900">
+          Acest profil este pentru modulul Parteneri B2B si nu va intra in cautarea pacientilor. Dupa aprobare poate fi folosit pentru listari profesionale/platite.
         </p>
       )}
       {isDuplicateReview && (
