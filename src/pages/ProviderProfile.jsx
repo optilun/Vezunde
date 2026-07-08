@@ -7,6 +7,32 @@ import { buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/l
 import TrustBadge from "@/components/results/TrustBadge";
 import ServiceChip from "@/components/results/ServiceChip";
 
+const SOCIAL_LINKS = [
+  { key: "facebook", label: "Facebook", short: "f" },
+  { key: "instagram", label: "Instagram", short: "IG" },
+  { key: "linkedin", label: "LinkedIn", short: "in" },
+];
+
+function compactUrl(url) {
+  return String(url || "").replace(/^https?:\/\//i, "").replace(/\/$/, "");
+}
+
+function SocialPublicLink({ item, url }) {
+  if (!url) return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-semibold hover:bg-secondary"
+      title={compactUrl(url)}
+    >
+      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-[10px] font-black text-background">{item.short}</span>
+      {item.label}
+    </a>
+  );
+}
+
 // Module 3E: public profile renders ONLY the whitelisted payload returned by
 // getPublicProviderProfile — never raw ProviderLocation / LocationService reads.
 export default function ProviderProfile() {
@@ -29,7 +55,8 @@ export default function ProviderProfile() {
   const status = profile.profile_control_status;
   const mapUrl = buildGoogleMapsUrl(profile);
   const embedUrl = buildGoogleMapsEmbedUrl(profile);
-  const websiteLabel = profile.website ? String(profile.website).replace(/^https?:\/\//i, "").replace(/\/$/, "") : "";
+  const websiteLabel = profile.website ? compactUrl(profile.website) : "";
+  const socialLinks = SOCIAL_LINKS.filter((item) => profile[item.key]);
 
   return (
     <div className="max-w-4xl mx-auto px-5 pt-12 pb-8">
@@ -121,6 +148,11 @@ export default function ProviderProfile() {
               <a href={profile.website} target="_blank" rel="noreferrer" className="mt-3 flex items-center gap-2 text-primary font-medium break-all">
                 <Globe2 className="w-4 h-4 shrink-0" /> {websiteLabel}
               </a>
+            )}
+            {socialLinks.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {socialLinks.map((item) => <SocialPublicLink key={item.key} item={item} url={profile[item.key]} />)}
+              </div>
             )}
             {profile.availability_label && (
               <p className="mt-3 text-xs text-muted-foreground">{profile.availability_label} · publicat de furnizor</p>
