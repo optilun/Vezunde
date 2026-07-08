@@ -25,10 +25,16 @@ const clearClaimResumeState = () => {
   sessionStorage.removeItem(STEP_RESUME_KEY);
 };
 
+const persistClaimResumeState = (location, contact, step = "review") => {
+  if (location) sessionStorage.setItem(LOCATION_RESUME_KEY, JSON.stringify(location));
+  sessionStorage.setItem(CONTACT_RESUME_KEY, JSON.stringify({ ...DEFAULT_CONTACT, ...contact }));
+  sessionStorage.setItem(STEP_RESUME_KEY, step);
+};
+
 // Module 3H.1B.3.UI: short claim flow — orchestrates 3 sub-steps (relation,
 // contact, review) using the existing submitProviderClaim action, unchanged.
 export default function ClaimForm({ location, step, onStepChange, onDone }) {
-  const [contact, setContact] = useState(() => {
+  const [contact, setContactState] = useState(() => {
     try {
       const raw = sessionStorage.getItem(CONTACT_RESUME_KEY);
       if (raw) return { ...DEFAULT_CONTACT, ...JSON.parse(raw) };
@@ -38,12 +44,31 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  const setContact = (nextContact) => {
+    const normalizedContact = { ...DEFAULT_CONTACT, ...nextContact };
+    setContactState(normalizedContact);
+    persistClaimResumeState(location, normalizedContact, step || "relation");
+  };
+
+  const goToStep = (nextStep) => {
+    persistClaimResumeState(location, contact, nextStep);
+    onStepChange(nextStep);
+  };
+
   const submit = async () => {
+    persistClaimResumeState(location, contact, "review");
+    if (!contact.claimant_relationship || !contact.representation_confirmed) {
+      setError("Confirma relatia cu locatia inainte de trimitere.");
+      onStepChange("relation");
+      return;
+    }
+    if (!String(contact.contact_name || "").trim() || !String(contact.email || "").trim()) {
+      setError("Completeaza numele si emailul inainte de trimitere.");
+      onStepChange("contact");
+      return;
+    }
     const authed = await base44.auth.isAuthenticated();
     if (!authed) {
-      sessionStorage.setItem(LOCATION_RESUME_KEY, JSON.stringify(location));
-      sessionStorage.setItem(CONTACT_RESUME_KEY, JSON.stringify(contact));
-      sessionStorage.setItem(STEP_RESUME_KEY, "review");
       base44.auth.redirectToLogin(window.location.href);
       return;
     }
@@ -83,7 +108,7 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
         locationCard={locationCard}
         contact={contact}
         onChange={setContact}
-        onContinue={() => onStepChange("review")}
+        onContinue={() => goToStep("review")}
       />
     );
   }
@@ -105,7 +130,7 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
       locationCard={locationCard}
       contact={contact}
       onChange={setContact}
-      onContinue={() => onStepChange("contact")}
+      onContinue={() => goToStep("contact")}
     />
   );
 }
