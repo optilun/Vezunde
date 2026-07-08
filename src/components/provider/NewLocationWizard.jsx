@@ -7,7 +7,7 @@ import WizProfessionalBasics from "@/components/provider/steps/WizProfessionalBa
 import WizReviewShort from "@/components/provider/steps/WizReviewShort";
 import IdentityDuplicatePanel from "@/components/provider/IdentityDuplicatePanel";
 
-// Module 3H.1B.3.UI: routes to the org or professional basics screen based on
+// Module 3H.1B.3.UI: routes to the org/B2B or professional basics screen based on
 // the subject type chosen on the first step.
 function WizDetails(props) {
   return props.data.claimSubjectType === "independent_professional"
@@ -17,8 +17,8 @@ function WizDetails(props) {
 
 // Module 3H.1B.3.UI: short new-location flow — 3 screens before submit.
 const STEPS = [
-  { key: "subject", title: "Cum vrei sa apara pe Vezunde?", subtitle: "Alege optiunea care descrie cel mai bine activitatea ta.", Comp: WizSubjectType },
-  { key: "details", title: "Datele de baza ale locatiei", subtitle: "Aceste date sunt suficiente pentru trimiterea cererii.", Comp: WizDetails },
+  { key: "subject", title: "Cum vrei sa apari pe Vezunde?", subtitle: "Alege optiunea care descrie cel mai bine activitatea ta.", Comp: WizSubjectType },
+  { key: "details", title: "Datele de baza", subtitle: "Aceste date sunt suficiente pentru trimiterea cererii.", Comp: WizDetails },
   { key: "review", title: "Revizuieste solicitarea", subtitle: "Verifica datele inainte de trimitere.", Comp: WizReviewShort },
 ];
 
@@ -94,7 +94,7 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
       base44.auth.redirectToLogin(window.location.href);
       return;
     }
-    const isOrg = data.claimSubjectType === "organization";
+    const isProfessional = data.claimSubjectType === "independent_professional";
     setSubmitting(true);
     setError("");
     const res = await base44.functions
@@ -102,11 +102,11 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
         mode: "new_location",
         claim_subject_type: data.claimSubjectType,
         claimant_relationship: data.contact.claimant_relationship,
-        organization: isOrg ? data.organization : undefined,
-        professional: !isOrg ? data.professional : undefined,
+        organization: !isProfessional ? data.organization : undefined,
+        professional: isProfessional ? data.professional : undefined,
         // Independent professionals may leave the location name blank in the
         // UI — default it silently to satisfy the existing required field.
-        location: { ...data.location, name: data.location.name || (!isOrg ? data.professional.full_name : data.location.name) },
+        location: { ...data.location, name: data.location.name || (isProfessional ? data.professional.full_name : data.location.name) },
         contact: data.contact,
         representation_confirmed: data.contact.representation_confirmed,
         ...identityExtra,
