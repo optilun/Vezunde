@@ -1,4 +1,4 @@
-import { LayoutDashboard, FileText, Bookmark, User, Settings, Building2, Wrench, Users, Clock, Image, Newspaper, Shield } from "lucide-react";
+import { LayoutDashboard, FileText, Bookmark, User, Settings, Building2, Image, Newspaper, Shield } from "lucide-react";
 
 export const PERSONAL_NAV = [
   { key: "overview", label: "Prezentare generala", icon: LayoutDashboard },
@@ -11,8 +11,6 @@ export const PERSONAL_NAV = [
 export const APPLICANT_NAV = [
   { key: "overview", label: "Prezentare generala", icon: LayoutDashboard },
   { key: "profile", label: "Profil public", icon: Building2 },
-  { key: "hours", label: "Program", icon: Clock },
-  { key: "services", label: "Servicii", icon: Wrench },
   { key: "status", label: "Status solicitare", icon: FileText },
 ];
 
@@ -21,9 +19,6 @@ export function getProviderNav({ canManageMembers }) {
     { key: "overview", label: "Prezentare generala", icon: LayoutDashboard },
     { key: "profile", label: "Profil public", icon: Building2 },
     { key: "locations", label: "Locatii", icon: Building2 },
-    { key: "services", label: "Servicii si activitati", icon: Wrench },
-    { key: "team", label: "Echipa", icon: Users },
-    { key: "hours", label: "Program", icon: Clock },
     { key: "media", label: "Fotografii", icon: Image },
     { key: "articles", label: "Articole", icon: Newspaper },
   ];
