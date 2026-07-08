@@ -55,7 +55,7 @@ export default function ProviderAppShell({ navItems, activeKey, onNavigate, user
             </div>
           </div>
         </div>
-        <main className="max-w-5xl mx-auto px-5 sm:px-8 py-8">
+        <main className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 py-8">
           {children}
         </main>
       </div>
