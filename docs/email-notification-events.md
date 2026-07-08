@@ -2,6 +2,19 @@
 
 Acest document marcheaza evenimentele unde trebuie conectate notificari email mai tarziu. Pentru MVP-ul curent, fluxurile raman functionale fara email automat.
 
+## Regula de lucru pentru dezvoltare
+
+Cand implementam sau modificam un flux si apare o actiune care ar trebui sa trimita email mai tarziu, actiunea trebuie adaugata aici imediat, chiar daca integrarea de email nu este inca instalata.
+
+Pentru fiecare actiune noua se noteaza minimum:
+
+- `event_key` stabil;
+- momentul declansarii;
+- destinatarul;
+- scopul emailului;
+- prioritatea;
+- datele minime necesare pentru template.
+
 ## Claim si acces furnizor
 
 | Event key | Cand se declanseaza | Catre cine | Scop | Prioritate |
