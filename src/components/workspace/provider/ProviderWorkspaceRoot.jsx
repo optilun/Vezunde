@@ -63,7 +63,7 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
         <>
           {section === "overview" && <ProviderOverview overview={overview} onNavigate={navigate} />}
           {section === "profile" && <ProviderProfilePublic locationId={selectedLocationId} overview={overview} workspace={workspace} onNavigate={navigate} onSelectLocation={setSelectedLocationId} onRefresh={() => loadOverview(selectedLocationId)} />}
-          {section === "locations" && <ProviderLocations workspace={workspace} selectedLocationId={selectedLocationId} onSelect={setSelectedLocationId} />}
+          {section === "locations" && <ProviderLocations workspace={workspace} selectedLocationId={selectedLocationId} onSelect={setSelectedLocationId} onNavigate={navigate} onRefresh={() => loadOverview(selectedLocationId)} />}
           {section === "services" && <ProviderServices locationId={selectedLocationId} overview={overview} onRefresh={() => loadOverview(selectedLocationId)} />}
           {section === "team" && <ProviderTeam locationId={selectedLocationId} />}
           {section === "hours" && <ProviderHours locationId={selectedLocationId} onRefresh={() => loadOverview(selectedLocationId)} />}
