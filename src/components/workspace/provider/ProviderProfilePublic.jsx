@@ -395,15 +395,20 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
           </div>
 
           <div className="rounded-[24px] border border-border bg-card p-5 shadow-sm space-y-4">
-            <div>
-              <div className="font-semibold text-sm">Nume public organizatie — necesita review</div>
-              <p className="text-xs text-muted-foreground mt-1">Schimbarea numelui public poate afecta identificarea brandului si este verificata inainte de publicare.</p>
-              {reviewDraft && <span className="inline-block mt-2 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-secondary">{SUBMISSION_STATUS_LABELS[reviewDraft.status] || reviewDraft.status}</span>}
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="font-semibold text-sm">Nume public</div>
+                  <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">Necesita review</span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">Schimbarea numelui este verificata inainte de publicare.</p>
+              </div>
+              {reviewDraft && <span className="inline-block text-[11px] font-semibold px-2.5 py-1 rounded-full bg-secondary">{SUBMISSION_STATUS_LABELS[reviewDraft.status] || reviewDraft.status}</span>}
             </div>
             <Field label="Nume public afisat" hint="Exemplu: Lunera Optic">
               <input className={inputCls} value={reviewValues.public_display_name || ""} onChange={(e) => setReviewValues({ ...reviewValues, public_display_name: e.target.value })} disabled={reviewDraft?.status === "pending_review"} />
             </Field>
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">Adresa si harta nu se modifica aici. Pentru fiecare punct de lucru foloseste modulul Locatii.</div>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">Adresa si harta se gestioneaza din modulul Locatii.</div>
             <div className="flex flex-wrap gap-2">
               <button disabled={savingReview || reviewDraft?.status === "pending_review"} onClick={saveReview} className="rounded-full border border-border px-5 py-2.5 text-sm font-semibold disabled:opacity-50 hover:bg-secondary">Salveaza draft</button>
               {reviewDraft && reviewDraft.status !== "pending_review" && <button disabled={savingReview} onClick={submitReview} className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50">Trimite spre review</button>}
