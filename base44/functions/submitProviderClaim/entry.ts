@@ -13,6 +13,8 @@ const PROFILE_TYPES = ['independent_optical_store', 'optical_chain', 'ophthalmol
 const RELATIONSHIPS = ['owner', 'organization_representative', 'location_manager', 'authorized_staff'];
 const SUBJECT_TYPES = ['organization', 'independent_professional'];
 const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
+const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
+const CONTROLLED_PROFILE_STATUSES = ['claimed', 'verified'];
 
 Deno.serve(async (req) => {
   try {
@@ -55,18 +57,51 @@ Deno.serve(async (req) => {
       }
       organizationId = loc.organization_id || null;
       businessName = loc.name;
-      const existing = await svc.entities.ProviderClaimRequest.filter({
-        location_id: locationId, user_id: user.id, status: 'in_asteptare',
-      });
-      if (existing.length > 0) {
-        return Response.json({ error: 'Ai deja o cerere in asteptare pentru aceasta locatie' }, { status: 400 });
+
+      // Safety gate 1: the same user cannot submit repeated active claims for the same location.
+      const previousUserClaims = await svc.entities.ProviderClaimRequest
+        .filter({ location_id: locationId, user_id: user.id }, '-created_date', 20)
+        .catch(() => []);
+      const activeOwnClaim = previousUserClaims.find((claim) => ACTIVE_CLAIM_STATUSES.includes(claim.status));
+      if (activeOwnClaim) {
+        return Response.json({ error: 'Ai deja o solicitare pentru aceasta locatie. O poti urmari din contul tau.' }, { status: 400 });
       }
-      await svc.entities.ProviderLocation.update(locationId, { claim_verification_status: 'pending' });
+      const approvedOwnClaim = previousUserClaims.find((claim) => claim.status === 'aprobata');
+      if (approvedOwnClaim) {
+        return Response.json({ error: 'Ai deja o revendicare aprobata pentru aceasta locatie.' }, { status: 400 });
+      }
+
+      // Safety gate 2: if the user already has active membership, do not create a duplicate claim.
+      const activeMemberships = await svc.entities.ProviderMembership
+        .filter({ location_id: locationId, status: 'active' }, '-created_date', 50)
+        .catch(() => []);
+      const ownMembership = activeMemberships.find((membership) => membership.user_id === user.id);
+      if (ownMembership) {
+        return Response.json({ error: 'Ai deja acces la administrarea acestei locatii.' }, { status: 400 });
+      }
+
+      // Safety gate 3: already controlled profiles become access requests for admin review.
+      // The ProviderClaimRequest schema keeps mode="claim" for compatibility, while the
+      // admin-only submitted_payload marks request_type="access_request_existing_claimed_profile".
+      const isControlledBySomeoneElse =
+        activeMemberships.length > 0 ||
+        CONTROLLED_PROFILE_STATUSES.includes(loc.profile_control_status || '') ||
+        loc.claim_verification_status === 'approved';
+      const requestType = isControlledBySomeoneElse
+        ? 'access_request_existing_claimed_profile'
+        : 'claim_existing_directory_profile';
+
+      // Only free directory profiles move to pending. Already-claimed profiles stay approved/claimed.
+      if (!isControlledBySomeoneElse) {
+        await svc.entities.ProviderLocation.update(locationId, { claim_verification_status: 'pending' });
+      }
       // Existing-profile claim payload: relation + private contact ONLY.
       submittedPayload = JSON.stringify({
         mode: 'claim',
+        request_type: requestType,
         location_id: locationId,
         claimant_relationship: claimantRelationship,
+        existing_active_membership_count: activeMemberships.length,
         contact: { contact_name: c.contact_name, email: c.email, phone: c.phone || '' },
       });
     } else if (p.mode === 'new_location') {
