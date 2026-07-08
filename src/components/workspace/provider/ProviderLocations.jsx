@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { ArrowRight, Building2, Clock, ExternalLink, Mail, MapPin, Phone, Plus, Save, ShieldCheck, Store, Wrench, Users } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { ArrowRight, Building2, CheckCircle2, Clock, ExternalLink, Mail, MapPin, Phone, Plus, Save, Search, ShieldCheck, Store, Users, Wrench } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { PROFILE_CONTROL_LABELS, SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
@@ -7,39 +7,32 @@ import { buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/l
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none focus:border-foreground/50 transition-colors";
 
-function LocationCard({ loc, membership, active, onSelect }) {
+function LocationRow({ loc, membership, active, onSelect }) {
   const statusLabel = PROFILE_CONTROL_LABELS[loc.profile_control_status] || loc.profile_control_status || "-";
   const activeStatus = loc.active_status === "inactiva" ? "Inactiva" : "Activa";
   return (
     <button
       type="button"
       onClick={() => onSelect(loc.id)}
-      className={`w-full rounded-2xl border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm ${active ? "border-foreground shadow-sm" : "border-border"}`}
+      className={`w-full rounded-2xl border bg-card p-3.5 text-left transition-all hover:shadow-sm ${active ? "border-foreground shadow-sm" : "border-border hover:border-foreground/30"}`}
     >
       <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-secondary text-foreground">
-          <MapPin className="h-5 w-5" />
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary text-foreground">
+          <MapPin className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <div className="truncate text-sm font-bold">{loc.public_display_name || loc.name}</div>
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${activeStatus === "Activa" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{activeStatus}</span>
+            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${activeStatus === "Activa" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{activeStatus}</span>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">{loc.locality_name || loc.city || "Localitate lipsa"} · {statusLabel}</p>
-          {loc.address && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{loc.address}</p>}
+          <p className="mt-1 truncate text-xs text-muted-foreground">{loc.locality_name || loc.city || "Localitate lipsa"} · {statusLabel}</p>
+          {loc.address && <p className="mt-1 truncate text-xs text-muted-foreground">{loc.address}</p>}
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-        <div className="rounded-xl bg-secondary/70 px-3 py-2">
-          <div className="text-muted-foreground">Completitudine</div>
-          <div className="font-bold">{membership?.profile_completeness ?? 0}%</div>
-        </div>
-        <div className="rounded-xl bg-secondary/70 px-3 py-2">
-          <div className="text-muted-foreground">Status</div>
-          <div className="font-bold">{statusLabel}</div>
-        </div>
+      <div className="mt-3 flex items-center justify-between gap-3 text-xs">
+        <span className="text-muted-foreground">Completitudine <b className="text-foreground">{membership?.profile_completeness ?? 0}%</b></span>
+        <span className="font-semibold text-foreground">{active ? "Selectata" : "Selecteaza"}</span>
       </div>
-      <div className="mt-3 text-xs font-semibold text-foreground">{active ? "Locatie selectata" : "Selecteaza locatia"}</div>
     </button>
   );
 }
@@ -48,19 +41,23 @@ function DetailItem({ icon: Icon, label, value }) {
   return (
     <div className="rounded-2xl border border-border bg-secondary/45 px-4 py-3">
       <div className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground"><Icon className="h-3.5 w-3.5" /> {label}</div>
-      <div className="mt-1 text-sm font-bold break-words">{value || "Lipseste"}</div>
+      <div className="mt-1 line-clamp-2 text-sm font-bold break-words">{value || "Lipseste"}</div>
     </div>
   );
 }
 
-function ActionCard({ icon: Icon, title, text, onClick }) {
+function ConfigureCard({ icon: Icon, title, text, onClick }) {
   return (
-    <button type="button" onClick={onClick} className="rounded-2xl border border-border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm">
+    <button type="button" onClick={onClick} className="rounded-2xl border border-border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:shadow-sm">
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary"><Icon className="h-4 w-4" /></div>
-        <div>
-          <div className="text-sm font-bold">{title}</div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-sm font-bold">{title}</div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+          </div>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{text}</p>
+          <div className="mt-3 text-xs font-bold underline underline-offset-4">Configureaza</div>
         </div>
       </div>
     </button>
@@ -72,12 +69,26 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
   const membershipByLocation = Object.fromEntries((workspace.memberships || []).map((m) => [m.location_id, m]));
   const selectedLocation = locById[selectedLocationId] || (workspace.locations || [])[0] || null;
   const selectedMembership = selectedLocation ? membershipByLocation[selectedLocation.id] : null;
-  const mapUrl = selectedLocation ? buildGoogleMapsUrl(selectedLocation) : "";
-  const embedUrl = selectedLocation ? buildGoogleMapsEmbedUrl(selectedLocation) : "";
   const [draft, setDraft] = useState(null);
   const [values, setValues] = useState({ public_display_name: "", address: "", public_phone: "", public_email: "" });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+
+  const previewLocation = useMemo(() => {
+    if (!selectedLocation) return null;
+    return {
+      ...selectedLocation,
+      public_display_name: values.public_display_name || selectedLocation.public_display_name || selectedLocation.name,
+      name: values.public_display_name || selectedLocation.name,
+      address: values.address || selectedLocation.address,
+      public_phone: values.public_phone || selectedLocation.public_phone,
+      phone_public: values.public_phone || selectedLocation.phone_public,
+      public_email: values.public_email || selectedLocation.public_email,
+    };
+  }, [selectedLocation, values]);
+
+  const mapUrl = previewLocation ? buildGoogleMapsUrl(previewLocation) : "";
+  const embedUrl = previewLocation ? buildGoogleMapsEmbedUrl(previewLocation) : "";
 
   const loadDraft = async () => {
     if (!selectedLocation?.id) return;
@@ -147,6 +158,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
   const locationCount = workspace.locations?.length || 0;
   const hasMultipleLocations = locationCount > 1;
   const pendingReview = draft?.status === "pending_review";
+  const hasDraftChanges = !!draft;
 
   return (
     <div className="space-y-6">
@@ -154,7 +166,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
         <div>
           <h1 className="font-heading text-2xl font-extrabold tracking-tight">Locatii</h1>
           <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-            Gestioneaza punctele de lucru ale organizatiei. Serviciile, programul si echipa se configureaza separat pentru fiecare locatie selectata.
+            Gestioneaza punctele de lucru ale organizatiei. Serviciile, programul si echipa se configureaza separat pentru fiecare locatie.
           </p>
         </div>
         <Link to="/adauga-sau-revendica" className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background hover:opacity-90">
@@ -162,19 +174,19 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
         </Link>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)] xl:items-start">
-        <div className="space-y-4">
+      <div className="grid gap-6 xl:grid-cols-[330px_minmax(0,1fr)] xl:items-start">
+        <aside className="space-y-4 xl:sticky xl:top-6">
           <div className="rounded-[24px] border border-border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-bold">Puncte de lucru</div>
-                <p className="mt-1 text-xs text-muted-foreground">{locationCount} {locationCount === 1 ? "locatie administrata" : "locatii administrate"}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{locationCount} {locationCount === 1 ? "locatie" : "locatii"}</p>
               </div>
               <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{hasMultipleLocations ? "Multi-locatie" : "O locatie"}</span>
             </div>
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 max-h-[520px] space-y-2 overflow-y-auto pr-1">
               {(workspace.locations || []).map((loc) => (
-                <LocationCard key={loc.id} loc={loc} membership={membershipByLocation[loc.id]} active={loc.id === selectedLocation?.id} onSelect={onSelect} />
+                <LocationRow key={loc.id} loc={loc} membership={membershipByLocation[loc.id]} active={loc.id === selectedLocation?.id} onSelect={onSelect} />
               ))}
             </div>
           </div>
@@ -183,9 +195,9 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-card"><Building2 className="h-4 w-4" /></div>
               <div>
-                <div className="text-sm font-bold">Adaugi un magazin sau cabinet nou?</div>
+                <div className="text-sm font-bold">Locatie noua</div>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  Trimiti o cerere de locatie noua. Dupa aprobare, apare aici si poti seta serviciile, programul si echipa separat.
+                  Dupa aprobare, noua locatie apare aici si are propriile servicii, program si echipa.
                 </p>
                 <Link to="/adauga-sau-revendica" className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold underline underline-offset-4">
                   Cere adaugarea unei locatii <ArrowRight className="h-3.5 w-3.5" />
@@ -193,67 +205,101 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
               </div>
             </div>
           </div>
-        </div>
+        </aside>
 
         <div className="space-y-5">
-          {selectedLocation && (
+          {selectedLocation && previewLocation && (
             <>
-              <div className="rounded-[28px] border border-border bg-card p-5 shadow-sm">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="font-heading text-xl font-extrabold tracking-tight">{selectedLocation.public_display_name || selectedLocation.name}</h2>
-                      <span className="rounded-full bg-green-100 px-2.5 py-1 text-[11px] font-bold text-green-800">{PROFILE_CONTROL_LABELS[selectedLocation.profile_control_status] || selectedLocation.profile_control_status}</span>
+              <section className="overflow-hidden rounded-[28px] border border-border bg-card shadow-sm">
+                <div className="grid lg:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.25fr)]">
+                  <div className="p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h2 className="font-heading text-xl font-extrabold tracking-tight">{selectedLocation.public_display_name || selectedLocation.name}</h2>
+                          <span className="rounded-full bg-green-100 px-2.5 py-1 text-[11px] font-bold text-green-800">{PROFILE_CONTROL_LABELS[selectedLocation.profile_control_status] || selectedLocation.profile_control_status}</span>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">{selectedLocation.locality_name || selectedLocation.city} {selectedLocation.county_name ? `· ${selectedLocation.county_name}` : ""}</p>
+                      </div>
+                      {hasDraftChanges && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-800">Draft in lucru</span>}
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">{selectedLocation.locality_name || selectedLocation.city} {selectedLocation.county_name ? `· ${selectedLocation.county_name}` : ""}</p>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <DetailItem icon={MapPin} label="Adresa publicata" value={selectedLocation.address} />
+                      <DetailItem icon={Phone} label="Telefon locatie" value={selectedLocation.public_phone || selectedLocation.phone_public} />
+                      <DetailItem icon={Mail} label="Email locatie" value={selectedLocation.public_email} />
+                      <DetailItem icon={ShieldCheck} label="Completitudine" value={`${selectedMembership?.profile_completeness ?? 0}%`} />
+                    </div>
+
+                    <div className="mt-4 rounded-2xl border border-border bg-secondary/35 p-4">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 text-green-700" />
+                        <div>
+                          <div className="text-sm font-bold">Locatia selectata</div>
+                          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                            Tot ce configurezi mai jos se aplica doar acestei locatii: servicii, program, echipa si modificari de adresa/contact.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  {mapUrl && (
-                    <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary">
-                      Google Maps <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  )}
-                </div>
 
-                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  <DetailItem icon={MapPin} label="Adresa" value={selectedLocation.address} />
-                  <DetailItem icon={Phone} label="Telefon locatie" value={selectedLocation.public_phone || selectedLocation.phone_public} />
-                  <DetailItem icon={Mail} label="Email locatie" value={selectedLocation.public_email} />
-                  <DetailItem icon={ShieldCheck} label="Completitudine" value={`${selectedMembership?.profile_completeness ?? 0}%`} />
-                </div>
-
-                <div className="mt-5 overflow-hidden rounded-2xl border border-border bg-secondary h-80">
-                  {hasMapLocation(selectedLocation) && embedUrl ? (
-                    <iframe
-                      title={`Harta ${selectedLocation.public_display_name || selectedLocation.name}`}
-                      src={embedUrl}
-                      className="h-full w-full border-0"
-                      loading="lazy"
-                      referrerPolicy="no-referrer-when-downgrade"
-                    />
-                  ) : (
-                    <div className="flex h-full flex-col items-center justify-center text-center">
-                      <MapPin className="h-7 w-7 text-muted-foreground" />
-                      <p className="mt-2 text-sm font-medium">Harta nu poate fi afisata inca</p>
-                      <p className="mt-1 text-xs text-muted-foreground">Adauga adresa locatiei ca sa putem genera linkul de harta.</p>
+                  <div className="border-t border-border bg-secondary/30 p-4 lg:border-l lg:border-t-0">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-bold">Harta locatiei</div>
+                        <p className="mt-1 text-xs text-muted-foreground">Preview generat din adresa scrisa. Publicarea se face dupa review.</p>
+                      </div>
+                      {mapUrl && (
+                        <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-background">
+                          Verifica in Maps <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      )}
                     </div>
-                  )}
+                    <div className="overflow-hidden rounded-2xl border border-border bg-secondary h-80">
+                      {hasMapLocation(previewLocation) && embedUrl ? (
+                        <iframe
+                          title={`Harta ${previewLocation.public_display_name || previewLocation.name}`}
+                          src={embedUrl}
+                          className="h-full w-full border-0"
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                        />
+                      ) : (
+                        <div className="flex h-full flex-col items-center justify-center text-center">
+                          <MapPin className="h-7 w-7 text-muted-foreground" />
+                          <p className="mt-2 text-sm font-medium">Harta nu poate fi afisata inca</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Completeaza adresa locatiei pentru preview.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </section>
 
-              <div className="grid gap-3 md:grid-cols-3">
-                <ActionCard icon={Wrench} title="Servicii locatie" text="Serviciile se aleg pentru locatia selectata, nu pentru toata organizatia." onClick={() => onNavigate && onNavigate("services")} />
-                <ActionCard icon={Clock} title="Program locatie" text="Programul se gestioneaza separat pentru fiecare punct de lucru." onClick={() => onNavigate && onNavigate("hours")} />
-                <ActionCard icon={Users} title="Echipa locatie" text="Specialistii pot fi asociati cu una sau mai multe locatii." onClick={() => onNavigate && onNavigate("team")} />
-              </div>
+              <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
+                <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-bold">Configureaza locatia</div>
+                    <p className="mt-1 text-xs text-muted-foreground">Aceste module sunt separate pentru fiecare punct de lucru.</p>
+                  </div>
+                  <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{selectedLocation.public_display_name || selectedLocation.name}</span>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <ConfigureCard icon={Wrench} title="Servicii" text="Alege serviciile disponibile in aceasta locatie." onClick={() => onNavigate && onNavigate("services")} />
+                  <ConfigureCard icon={Clock} title="Program" text="Seteaza programul acestei locatii." onClick={() => onNavigate && onNavigate("hours")} />
+                  <ConfigureCard icon={Users} title="Echipa" text="Asociaza specialistii cu aceasta locatie." onClick={() => onNavigate && onNavigate("team")} />
+                </div>
+              </section>
 
-              <div className="rounded-[24px] border border-border bg-card p-5 shadow-sm space-y-4">
+              <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm space-y-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="text-sm font-bold">Modificari locatie</div>
                       <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">Necesita review</span>
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">Numele locatiei, adresa si contactul public sunt verificate inainte de publicare.</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Editeaza datele locatiei si verifica pe harta inainte sa trimiti spre aprobare.</p>
                   </div>
                   {draft && <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}
                 </div>
@@ -264,8 +310,12 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                     <input className={`${inputCls} mt-1.5`} value={values.public_display_name} disabled={pendingReview} onChange={(e) => setValues({ ...values, public_display_name: e.target.value })} />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-muted-foreground">Adresa</label>
-                    <input className={`${inputCls} mt-1.5`} value={values.address} disabled={pendingReview} onChange={(e) => setValues({ ...values, address: e.target.value })} />
+                    <label className="text-xs font-semibold text-muted-foreground">Adresa pentru harta</label>
+                    <div className="mt-1.5 flex gap-2">
+                      <input className={inputCls} value={values.address} disabled={pendingReview} onChange={(e) => setValues({ ...values, address: e.target.value })} placeholder="Strada, numar, localitate" />
+                      {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center justify-center rounded-xl border border-border px-3 text-xs font-bold hover:bg-secondary"><Search className="h-4 w-4" /></a>}
+                    </div>
+                    <p className="mt-1.5 text-[11px] text-muted-foreground">Harta se actualizeaza dupa adresa introdusa.</p>
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-muted-foreground">Telefon public locatie</label>
@@ -278,14 +328,14 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                 </div>
 
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
-                  Schimbarile trimise aici nu se publica direct. Ele apar in panoul de administrare pentru verificare.
+                  Schimbarile nu se publica direct. Dupa trimitere, apar in panoul de administrare pentru verificare.
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <button disabled={saving || pendingReview} onClick={saveDraft} className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><Save className="h-4 w-4" /> Salveaza draft</button>
                   {draft && draft.status !== "pending_review" && <button disabled={saving} onClick={submitDraft} className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50">Trimite spre review</button>}
                   {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
                 </div>
-              </div>
+              </section>
             </>
           )}
         </div>
