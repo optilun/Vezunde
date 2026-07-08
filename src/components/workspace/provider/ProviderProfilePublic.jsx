@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Building2, ExternalLink, Globe2, Mail, MapPin, Phone, Save, ShieldCheck, Sparkles, Store } from "lucide-react";
+import { Building2, ExternalLink, Globe2, ImagePlus, Mail, MapPin, Phone, Save, ShieldCheck, Store } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { SUBMISSION_STATUS_LABELS, PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 import { buildGoogleMapsUrl } from "@/lib/maps";
@@ -7,7 +7,6 @@ import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none focus:border-foreground/50 transition-colors";
 const QUICK_FIELDS = [
-  ["public_description", "Descriere organizatie", "textarea", "Prezentare generala a brandului: ce oferiti, cui va adresati si ce va diferentiaza."],
   ["public_phone", "Telefon general", "text", "Telefon general al organizatiei. Telefoanele pe fiecare punct de lucru se gestioneaza in Locatii."],
   ["public_email", "Email general", "text", "Email general al organizatiei sau brandului."],
   ["website_url", "Website", "text", "Exemplu: https://site.ro"],
@@ -43,6 +42,21 @@ function MetricCard({ icon: Icon, label, value, muted }) {
         <Icon className="h-3.5 w-3.5" /> {label}
       </div>
       <div className={`mt-1 text-sm font-bold ${muted ? "text-muted-foreground" : "text-foreground"}`}>{value}</div>
+    </div>
+  );
+}
+
+function BrandLogo({ name, photoUrl }) {
+  if (photoUrl) {
+    return (
+      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-3xl border border-white/70 bg-white shadow-sm">
+        <img src={photoUrl} alt={`Logo ${name}`} className="h-full w-full object-contain p-2" />
+      </div>
+    );
+  }
+  return (
+    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-foreground font-heading text-lg font-black text-background shadow-sm">
+      {initials(name)}
     </div>
   );
 }
@@ -110,6 +124,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
     facebook_url: pv.facebook || "",
     instagram_url: pv.instagram || "",
     linkedin_url: pv.linkedin || "",
+    photo_url: pv.photo_url || "",
   });
   const [savingQuick, setSavingQuick] = useState(false);
   const [quickMsg, setQuickMsg] = useState("");
@@ -128,6 +143,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
       facebook_url: pv.facebook || "",
       instagram_url: pv.instagram || "",
       linkedin_url: pv.linkedin || "",
+      photo_url: pv.photo_url || "",
     });
     setReviewValues({ public_display_name: orgName || "" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -185,10 +201,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
   return (
     <div className="space-y-7">
       <div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-[11px] font-semibold text-muted-foreground">
-          <Sparkles className="h-3.5 w-3.5" /> Profil de brand
-        </div>
-        <h1 className="mt-3 font-heading text-2xl font-extrabold tracking-tight">Profil public organizatie</h1>
+        <h1 className="font-heading text-2xl font-extrabold tracking-tight">Profil public organizatie</h1>
         <p className="mt-1 text-xs text-muted-foreground">Controleaza informatiile generale ale brandului si modul in care sunt prezentate locatiile tale.</p>
       </div>
 
@@ -197,9 +210,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
           <div className="absolute right-0 top-0 h-28 w-28 rounded-bl-full bg-amber-100/60" />
           <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-foreground font-heading text-lg font-black text-background shadow-sm">
-                {initials(orgName)}
-              </div>
+              <BrandLogo name={orgName} photoUrl={quick.photo_url} />
               <div>
                 <div className="text-xs font-medium text-muted-foreground">Previzualizare organizatie</div>
                 <h2 className="mt-1 font-heading text-3xl font-extrabold tracking-tight">{orgName}</h2>
@@ -253,11 +264,30 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
           <div className="font-semibold text-sm">Informatii publice generale</div>
           <p className="text-xs text-muted-foreground mt-1">Acestea sunt date de brand/organizatie. Datele specifice unei locatii se editeaza separat.</p>
         </div>
-        <Field label="Descriere organizatie" hint="Prezentare generala a brandului: ce oferiti, cui va adresati si ce va diferentiaza.">
-          <textarea className={inputCls} rows={4} value={quick.public_description} onChange={(e) => setQuick({ ...quick, public_description: e.target.value })} />
-        </Field>
+        <div className="grid gap-4 lg:grid-cols-[1fr_1.8fr]">
+          <div className="rounded-2xl border border-border bg-secondary/40 p-4">
+            <div className="flex items-center gap-3">
+              <BrandLogo name={orgName} photoUrl={quick.photo_url} />
+              <div>
+                <div className="text-sm font-semibold">Logo / imagine profil</div>
+                <p className="mt-1 text-xs text-muted-foreground">Momentan se salveaza prin URL de imagine. Upload-ul direct il conectam cand activam modulul media securizat.</p>
+              </div>
+            </div>
+            <div className="mt-4">
+              <Field label="URL logo / imagine profil" hint="Exemplu: https://site.ro/logo.png">
+                <input className={inputCls} value={quick.photo_url} onChange={(e) => setQuick({ ...quick, photo_url: e.target.value })} />
+              </Field>
+            </div>
+            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-background px-3 py-1 text-[11px] font-semibold text-muted-foreground">
+              <ImagePlus className="h-3.5 w-3.5" /> Upload direct: etapa urmatoare
+            </div>
+          </div>
+          <Field label="Descriere organizatie" hint="Prezentare generala a brandului: ce oferiti, cui va adresati si ce va diferentiaza.">
+            <textarea className={inputCls} rows={7} value={quick.public_description} onChange={(e) => setQuick({ ...quick, public_description: e.target.value })} />
+          </Field>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          {QUICK_FIELDS.filter(([key]) => key !== "public_description").map(([key, label, type, hint]) => (
+          {QUICK_FIELDS.map(([key, label, type, hint]) => (
             <Field key={key} label={label} hint={hint}>
               <input className={inputCls} value={quick[key]} onChange={(e) => setQuick({ ...quick, [key]: e.target.value })} />
             </Field>
