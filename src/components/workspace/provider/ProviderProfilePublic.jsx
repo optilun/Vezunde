@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Building2, ExternalLink, MapPin, Save, ShieldCheck } from "lucide-react";
+import { Building2, ExternalLink, Globe2, Mail, MapPin, Phone, Save, ShieldCheck, Sparkles, Store } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { SUBMISSION_STATUS_LABELS, PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 import { buildGoogleMapsUrl } from "@/lib/maps";
 import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
 
-const inputCls = "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground/50";
+const inputCls = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none focus:border-foreground/50 transition-colors";
 const QUICK_FIELDS = [
   ["public_description", "Descriere organizatie", "textarea", "Prezentare generala a brandului: ce oferiti, cui va adresati si ce va diferentiaza."],
   ["public_phone", "Telefon general", "text", "Telefon general al organizatiei. Telefoanele pe fiecare punct de lucru se gestioneaza in Locatii."],
@@ -16,54 +16,80 @@ const QUICK_FIELDS = [
   ["linkedin_url", "LinkedIn", "text", "Optional, util mai ales pentru B2B."],
 ];
 
+function initials(name = "") {
+  return String(name || "V")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "V";
+}
+
 function Field({ label, hint, children }) {
   return (
     <div>
-      <label className="text-xs font-medium text-muted-foreground">{label}</label>
-      <div className="mt-1">{children}</div>
-      {hint && <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>}
+      <label className="text-xs font-semibold text-muted-foreground">{label}</label>
+      <div className="mt-1.5">{children}</div>
+      {hint && <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">{hint}</p>}
     </div>
   );
 }
 
-function PublicStatusItem({ label, value, empty = "Nepublicat" }) {
-  const hasValue = Boolean(String(value || "").trim());
+function MetricCard({ icon: Icon, label, value, muted }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-border/70 px-3 py-2">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className={`text-xs font-semibold ${hasValue ? "text-foreground" : "text-muted-foreground"}`}>{hasValue ? value : empty}</span>
+    <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-3 shadow-sm backdrop-blur-sm">
+      <div className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" /> {label}
+      </div>
+      <div className={`mt-1 text-sm font-bold ${muted ? "text-muted-foreground" : "text-foreground"}`}>{value}</div>
     </div>
   );
 }
 
 function LocationSummaryCard({ loc, active, onManage }) {
   const mapUrl = buildGoogleMapsUrl(loc);
+  const isInactive = loc.active_status === "inactiva";
+  const statusLabel = PROFILE_CONTROL_LABELS[loc.profile_control_status] || loc.profile_control_status || "-";
   return (
-    <div className={`rounded-xl border bg-card p-4 ${active ? "border-foreground" : "border-border"}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="font-semibold text-sm">{loc.public_display_name || loc.name}</div>
-          <p className="mt-1 text-xs text-muted-foreground">
+    <div className={`group rounded-2xl border bg-card p-4 transition-all hover:-translate-y-0.5 hover:shadow-sm ${active ? "border-foreground shadow-sm" : "border-border"}`}>
+      <div className="flex items-start gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-secondary text-foreground">
+          <MapPin className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="truncate text-sm font-bold">{loc.public_display_name || loc.name}</div>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isInactive ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}>
+              {isInactive ? "Inactiva" : "Activa"}
+            </span>
+          </div>
+          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
             {[loc.address, loc.locality_name || loc.city, loc.county_name || loc.county].filter(Boolean).join(", ") || "Adresa nepublicata"}
           </p>
         </div>
-        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${loc.active_status === "inactiva" ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}>
-          {loc.active_status === "inactiva" ? "Inactiva" : "Activa"}
-        </span>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-        <div className="rounded-lg bg-secondary/70 px-3 py-2">
-          <div className="text-muted-foreground">Telefon</div>
-          <div className="font-semibold truncate">{loc.public_phone || loc.phone_public || "Lipseste"}</div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+        <div className="rounded-xl bg-secondary/70 px-3 py-2.5">
+          <div className="flex items-center gap-1.5 text-muted-foreground"><Phone className="h-3 w-3" /> Telefon</div>
+          <div className="mt-0.5 truncate font-bold">{loc.public_phone || loc.phone_public || "Lipseste"}</div>
         </div>
-        <div className="rounded-lg bg-secondary/70 px-3 py-2">
-          <div className="text-muted-foreground">Status</div>
-          <div className="font-semibold truncate">{PROFILE_CONTROL_LABELS[loc.profile_control_status] || loc.profile_control_status || "-"}</div>
+        <div className="rounded-xl bg-secondary/70 px-3 py-2.5">
+          <div className="flex items-center gap-1.5 text-muted-foreground"><ShieldCheck className="h-3 w-3" /> Status</div>
+          <div className="mt-0.5 truncate font-bold">{statusLabel}</div>
         </div>
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
-        <button onClick={onManage} className="font-semibold underline underline-offset-4">Gestioneaza locatia</button>
-        {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground">Google Maps <ExternalLink className="w-3 h-3" /></a>}
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3 text-xs">
+        <button onClick={onManage} className="rounded-full bg-foreground px-3 py-1.5 font-semibold text-background transition-opacity hover:opacity-90">
+          Gestioneaza locatia
+        </button>
+        {mapUrl && (
+          <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-muted-foreground hover:text-foreground">
+            Google Maps <ExternalLink className="w-3 h-3" />
+          </a>
+        )}
       </div>
     </div>
   );
@@ -75,6 +101,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
   const locations = workspace?.locations || [];
   const orgName = loc.organization_name || pv.display_name || loc.public_display_name || loc.name;
   const locationCount = locations.length || 1;
+  const profileTypeLabel = PROVIDER_PROFILE_TYPES[loc.provider_profile_type] || PROVIDER_TYPES[loc.provider_type] || "Profil";
   const [quick, setQuick] = useState({
     public_description: pv.description || "",
     public_phone: pv.phone || "",
@@ -88,9 +115,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
   const [quickMsg, setQuickMsg] = useState("");
 
   const [reviewDraft, setReviewDraft] = useState(null);
-  const [reviewValues, setReviewValues] = useState({
-    public_display_name: orgName || "",
-  });
+  const [reviewValues, setReviewValues] = useState({ public_display_name: orgName || "" });
   const [savingReview, setSavingReview] = useState(false);
   const [reviewMsg, setReviewMsg] = useState("");
 
@@ -158,51 +183,64 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       <div>
-        <h1 className="font-heading text-2xl font-extrabold tracking-tight">Profil public organizatie</h1>
+        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-[11px] font-semibold text-muted-foreground">
+          <Sparkles className="h-3.5 w-3.5" /> Profil de brand
+        </div>
+        <h1 className="mt-3 font-heading text-2xl font-extrabold tracking-tight">Profil public organizatie</h1>
         <p className="mt-1 text-xs text-muted-foreground">Controleaza informatiile generale ale brandului si modul in care sunt prezentate locatiile tale.</p>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
-        <div className="bg-gradient-to-br from-secondary via-background to-amber-50 p-5 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div>
-              <div className="text-xs text-muted-foreground">Previzualizare organizatie</div>
-              <h2 className="mt-1 font-heading text-2xl font-bold">{orgName}</h2>
-              <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-                {quick.public_description || "Adauga o descriere generala pentru organizatie. Descrierea locatiei, programul si serviciile se gestioneaza pe fiecare punct de lucru."}
-              </p>
+      <div className="overflow-hidden rounded-[28px] border border-border bg-card shadow-sm">
+        <div className="relative p-5 sm:p-7" style={{ background: "linear-gradient(135deg, #fffaf2 0%, #ffffff 44%, #f4f1ea 100%)" }}>
+          <div className="absolute right-0 top-0 h-28 w-28 rounded-bl-full bg-amber-100/60" />
+          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex gap-4">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-foreground font-heading text-lg font-black text-background shadow-sm">
+                {initials(orgName)}
+              </div>
+              <div>
+                <div className="text-xs font-medium text-muted-foreground">Previzualizare organizatie</div>
+                <h2 className="mt-1 font-heading text-3xl font-extrabold tracking-tight">{orgName}</h2>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-foreground shadow-sm">{profileTypeLabel}</span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-800 shadow-sm">
+                    <ShieldCheck className="h-3.5 w-3.5" /> {loc.profile_control_status === "verified" ? "Verificat" : "Activ"}
+                  </span>
+                </div>
+                <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                  {quick.public_description || "Adauga o descriere generala pentru organizatie. Descrierea locatiei, programul si serviciile se gestioneaza pe fiecare punct de lucru."}
+                </p>
+              </div>
             </div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 text-green-800 px-3 py-1 text-xs font-semibold shrink-0">
-              <ShieldCheck className="w-3.5 h-3.5" /> {loc.profile_control_status === "verified" ? "Verificat" : "Activ"}
-            </span>
           </div>
-          <div className="mt-5 grid sm:grid-cols-4 gap-2">
-            <PublicStatusItem label="Tip" value={PROVIDER_PROFILE_TYPES[loc.provider_profile_type] || PROVIDER_TYPES[loc.provider_type]} />
-            <PublicStatusItem label="Locatii" value={`${locationCount} ${locationCount === 1 ? "locatie" : "locatii"}`} />
-            <PublicStatusItem label="Telefon general" value={quick.public_phone} empty="Lipseste" />
-            <PublicStatusItem label="Website" value={quick.website_url} empty="Nepublicat" />
+
+          <div className="relative mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <MetricCard icon={Store} label="Locatii" value={`${locationCount} ${locationCount === 1 ? "locatie" : "locatii"}`} />
+            <MetricCard icon={Phone} label="Telefon general" value={quick.public_phone || "Lipseste"} muted={!quick.public_phone} />
+            <MetricCard icon={Mail} label="Email general" value={quick.public_email || "Lipseste"} muted={!quick.public_email} />
+            <MetricCard icon={Globe2} label="Website" value={quick.website_url || "Nepublicat"} muted={!quick.website_url} />
           </div>
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+      <div className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="font-semibold text-sm">Locatii publice ale organizatiei</div>
-            <p className="text-xs text-muted-foreground mt-1">Aici apar pe scurt punctele de lucru. Adresa, harta, programul, serviciile si echipa se gestioneaza din modulul Locatii si modulele locatiei selectate.</p>
+            <div className="flex items-center gap-2 font-semibold text-sm"><Building2 className="h-4 w-4" /> Locatii publice ale organizatiei</div>
+            <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Aici apar pe scurt punctele de lucru. Adresa, harta, programul, serviciile si echipa se gestioneaza din modulul Locatii si modulele locatiei selectate.</p>
           </div>
-          <button onClick={() => onNavigate && onNavigate("locations")} className="text-xs font-semibold underline underline-offset-4 shrink-0">Vezi toate locatiile</button>
+          <button onClick={() => onNavigate && onNavigate("locations")} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary shrink-0">Vezi toate locatiile</button>
         </div>
         {locations.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border bg-secondary/50 p-6 text-center">
+          <div className="mt-4 rounded-2xl border border-dashed border-border bg-secondary/50 p-6 text-center">
             <Building2 className="w-6 h-6 mx-auto text-muted-foreground" />
             <p className="mt-2 text-sm font-medium">Nu exista locatii in workspace</p>
             <p className="mt-1 text-xs text-muted-foreground">Locatiile aprobate vor aparea aici.</p>
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 gap-3">
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
             {locations.map((l) => (
               <LocationSummaryCard key={l.id} loc={l} active={l.id === locationId} onManage={() => manageLocation(l.id)} />
             ))}
@@ -210,29 +248,30 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
         )}
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+      <div className="rounded-[24px] border border-border bg-card p-5 shadow-sm space-y-5">
         <div>
           <div className="font-semibold text-sm">Informatii publice generale</div>
           <p className="text-xs text-muted-foreground mt-1">Acestea sunt date de brand/organizatie. Datele specifice unei locatii se editeaza separat.</p>
         </div>
-        {QUICK_FIELDS.map(([key, label, type, hint]) => (
-          <Field key={key} label={label} hint={hint}>
-            {type === "textarea" ? (
-              <textarea className={inputCls} rows={4} value={quick[key]} onChange={(e) => setQuick({ ...quick, [key]: e.target.value })} />
-            ) : (
+        <Field label="Descriere organizatie" hint="Prezentare generala a brandului: ce oferiti, cui va adresati si ce va diferentiaza.">
+          <textarea className={inputCls} rows={4} value={quick.public_description} onChange={(e) => setQuick({ ...quick, public_description: e.target.value })} />
+        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {QUICK_FIELDS.filter(([key]) => key !== "public_description").map(([key, label, type, hint]) => (
+            <Field key={key} label={label} hint={hint}>
               <input className={inputCls} value={quick[key]} onChange={(e) => setQuick({ ...quick, [key]: e.target.value })} />
-            )}
-          </Field>
-        ))}
+            </Field>
+          ))}
+        </div>
         <div className="flex items-center gap-3 pt-1">
-          <button disabled={savingQuick} onClick={saveQuick} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "#171717" }}>
+          <button disabled={savingQuick} onClick={saveQuick} className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50">
             <Save className="w-4 h-4" /> Salveaza informatiile
           </button>
           {quickMsg && <p className="text-xs text-muted-foreground">{quickMsg}</p>}
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+      <div className="rounded-[24px] border border-border bg-card p-5 shadow-sm space-y-4">
         <div>
           <div className="font-semibold text-sm">Nume public organizatie — necesita review</div>
           <p className="text-xs text-muted-foreground mt-1">Schimbarea numelui public poate afecta identificarea brandului si este verificata inainte de publicare.</p>
@@ -241,15 +280,15 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
         <Field label="Nume public afisat" hint="Exemplu: Lunera Optic">
           <input className={inputCls} value={reviewValues.public_display_name || ""} onChange={(e) => setReviewValues({ ...reviewValues, public_display_name: e.target.value })} disabled={reviewDraft?.status === "pending_review"} />
         </Field>
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
           Adresa si harta nu se modifica aici. Pentru fiecare punct de lucru foloseste modulul Locatii.
         </div>
         <div className="flex flex-wrap gap-2">
-          <button disabled={savingReview || reviewDraft?.status === "pending_review"} onClick={saveReview} className="px-5 py-2.5 rounded-full text-sm font-semibold border border-border disabled:opacity-50">
+          <button disabled={savingReview || reviewDraft?.status === "pending_review"} onClick={saveReview} className="rounded-full border border-border px-5 py-2.5 text-sm font-semibold disabled:opacity-50 hover:bg-secondary">
             Salveaza draft
           </button>
           {reviewDraft && reviewDraft.status !== "pending_review" && (
-            <button disabled={savingReview} onClick={submitReview} className="px-5 py-2.5 rounded-full text-sm font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "#171717" }}>
+            <button disabled={savingReview} onClick={submitReview} className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50">
               Trimite spre review
             </button>
           )}
