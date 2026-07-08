@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { MapPin, Phone, Clock, ArrowRight, ExternalLink } from "lucide-react";
+import { Globe2, MapPin, Phone, Clock, ArrowRight, ExternalLink } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES, PROFESSIONAL_AFFILIATION_STATUS, PROFESSIONAL_TYPES, SERVICES } from "@/lib/vezunde";
 import { buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/lib/maps";
@@ -29,6 +29,7 @@ export default function ProviderProfile() {
   const status = profile.profile_control_status;
   const mapUrl = buildGoogleMapsUrl(profile);
   const embedUrl = buildGoogleMapsEmbedUrl(profile);
+  const websiteLabel = profile.website ? String(profile.website).replace(/^https?:\/\//i, "").replace(/\/$/, "") : "";
 
   return (
     <div className="max-w-4xl mx-auto px-5 pt-12 pb-8">
@@ -115,6 +116,11 @@ export default function ProviderProfile() {
               </a>
             ) : (
               <p className="mt-3 text-sm text-muted-foreground">Telefon indisponibil.</p>
+            )}
+            {profile.website && (
+              <a href={profile.website} target="_blank" rel="noreferrer" className="mt-3 flex items-center gap-2 text-primary font-medium break-all">
+                <Globe2 className="w-4 h-4 shrink-0" /> {websiteLabel}
+              </a>
             )}
             {profile.availability_label && (
               <p className="mt-3 text-xs text-muted-foreground">{profile.availability_label} · publicat de furnizor</p>
