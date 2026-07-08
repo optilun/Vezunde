@@ -6,7 +6,11 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 // LocationService as an eligibility filter, does not score, does not rank,
 // does not return Top 3 or medical recommendations.
 
-const B2B_PROFILE_TYPES = ['optical_laboratory_b2b', 'future_b2b_distributor'];
+// Patient directory browse = only real patient-facing units/locations.
+// Independent professionals and laboratories are handled in professional/B2B areas.
+const PATIENT_FACING_PROFILE_TYPES = [
+  'independent_optical_store', 'optical_chain', 'ophthalmology_clinic', 'ophthalmology_office',
+];
 
 Deno.serve(async (req) => {
   try {
@@ -39,7 +43,7 @@ Deno.serve(async (req) => {
       if (loc.public_visibility_status !== 'approved') continue;
       if (loc.profile_control_status !== 'verified') continue;
       if (loc.active_status === 'inactiva') continue;
-      if (!loc.provider_profile_type || B2B_PROFILE_TYPES.includes(loc.provider_profile_type)) continue;
+      if (!loc.provider_profile_type || !PATIENT_FACING_PROFILE_TYPES.includes(loc.provider_profile_type)) continue;
       if (providerTypes.length > 0 && !providerTypes.includes(loc.provider_type)) continue;
 
       if (sirutaCode) {
