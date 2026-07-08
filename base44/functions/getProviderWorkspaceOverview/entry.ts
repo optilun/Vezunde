@@ -27,6 +27,10 @@ function invitationLocIds(inv) {
   return Array.isArray(inv.invited_location_ids) ? inv.invited_location_ids.filter(Boolean) : [];
 }
 
+function parsePendingChanges(raw) {
+  try { return raw ? JSON.parse(raw) : {}; } catch (_e) { return {}; }
+}
+
 async function getMemberSummary(svc, userId, locationId) {
   const ownMemberships = await svc.entities.ProviderMembership.filter({ user_id: userId, location_id: locationId, status: 'active' }, '-created_date', 20);
   const currentRole = highestRole(ownMemberships.map((m) => normalizeMemberRole(m.role)));
@@ -217,6 +221,9 @@ Deno.serve(async (req) => {
     const contentSummary = await getContentSummary(svc, p.location_id, user.id);
     const ownLatestReview = latestReview?.submitted_by_user_id === user.id ? latestReview : null;
     const memberSummary = await getMemberSummary(svc, user.id, p.location_id);
+    const pendingChanges = parsePendingChanges(loc.pending_changes);
+    const pendingFields = pendingChanges.fields || {};
+    const pendingLogoUrl = typeof pendingFields.photo_url === 'string' ? pendingFields.photo_url : '';
 
     return Response.json({
       mode: 'provider_workspace',
@@ -245,6 +252,12 @@ Deno.serve(async (req) => {
       can_manage_members: memberSummary.can_manage_members,
       active_member_count: memberSummary.active_member_count,
       pending_invitation_count: memberSummary.pending_invitation_count,
+      pending_profile_changes: {
+        has_pending_changes: !!loc.pending_changes,
+        has_pending_logo: !!pendingLogoUrl,
+        pending_logo_url: pendingLogoUrl,
+        media_review: pendingChanges.media_review || {},
+      },
       pending_submissions: pendingSubs.map((s) => s.submitted_by_user_id === user.id ? ({
         id: s.id,
         section: s.section,
