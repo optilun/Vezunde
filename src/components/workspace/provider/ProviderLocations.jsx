@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Building2, CheckCircle2, Clock, ExternalLink, Mail, MapPin, Phone, Plus, Save, Search, ShieldCheck, Store, Users, Wrench } from "lucide-react";
+import { ArrowRight, Building2, CheckCircle2, Clock, ExternalLink, Mail, MapPin, Phone, Plus, Save, Search, ShieldCheck, Users, Wrench, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { PROFILE_CONTROL_LABELS, SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 import { buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/lib/maps";
+import ProviderServices from "./ProviderServices";
+import ProviderHours from "./ProviderHours";
+import ProviderTeam from "./ProviderTeam";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none focus:border-foreground/50 transition-colors";
 
@@ -64,7 +67,29 @@ function ConfigureCard({ icon: Icon, title, text, onClick }) {
   );
 }
 
-export default function ProviderLocations({ workspace, selectedLocationId, onSelect, onNavigate, onRefresh }) {
+function LocationConfigModal({ open, title, locationName, onClose, children }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4 py-6 backdrop-blur-sm">
+      <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-border bg-background shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-5 py-4">
+          <div>
+            <div className="text-xs font-medium text-muted-foreground">{locationName}</div>
+            <h2 className="font-heading text-xl font-extrabold tracking-tight">{title}</h2>
+          </div>
+          <button onClick={onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary" aria-label="Inchide">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="overflow-y-auto p-5">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function ProviderLocations({ workspace, selectedLocationId, onSelect, overview, onRefresh }) {
   const locById = Object.fromEntries((workspace.locations || []).map((l) => [l.id, l]));
   const membershipByLocation = Object.fromEntries((workspace.memberships || []).map((m) => [m.location_id, m]));
   const selectedLocation = locById[selectedLocationId] || (workspace.locations || [])[0] || null;
@@ -73,6 +98,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
   const [values, setValues] = useState({ public_display_name: "", address: "", public_phone: "", public_email: "" });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  const [activeModal, setActiveModal] = useState(null);
 
   const previewLocation = useMemo(() => {
     if (!selectedLocation) return null;
@@ -113,7 +139,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
     }
   };
 
-  useEffect(() => { loadDraft(); setMsg(""); }, [selectedLocation?.id]);
+  useEffect(() => { loadDraft(); setMsg(""); setActiveModal(null); }, [selectedLocation?.id]);
 
   const saveDraft = async () => {
     if (!selectedLocation?.id) return;
@@ -159,6 +185,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
   const hasMultipleLocations = locationCount > 1;
   const pendingReview = draft?.status === "pending_review";
   const hasDraftChanges = !!draft;
+  const selectedLocationName = selectedLocation?.public_display_name || selectedLocation?.name || "Locatie";
 
   return (
     <div className="space-y-6">
@@ -216,7 +243,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="font-heading text-xl font-extrabold tracking-tight">{selectedLocation.public_display_name || selectedLocation.name}</h2>
+                          <h2 className="font-heading text-xl font-extrabold tracking-tight">{selectedLocationName}</h2>
                           <span className="rounded-full bg-green-100 px-2.5 py-1 text-[11px] font-bold text-green-800">{PROFILE_CONTROL_LABELS[selectedLocation.profile_control_status] || selectedLocation.profile_control_status}</span>
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">{selectedLocation.locality_name || selectedLocation.city} {selectedLocation.county_name ? `· ${selectedLocation.county_name}` : ""}</p>
@@ -283,12 +310,12 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                     <div className="text-sm font-bold">Configureaza locatia</div>
                     <p className="mt-1 text-xs text-muted-foreground">Aceste module sunt separate pentru fiecare punct de lucru.</p>
                   </div>
-                  <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{selectedLocation.public_display_name || selectedLocation.name}</span>
+                  <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{selectedLocationName}</span>
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
-                  <ConfigureCard icon={Wrench} title="Servicii" text="Alege serviciile disponibile in aceasta locatie." onClick={() => onNavigate && onNavigate("services")} />
-                  <ConfigureCard icon={Clock} title="Program" text="Seteaza programul acestei locatii." onClick={() => onNavigate && onNavigate("hours")} />
-                  <ConfigureCard icon={Users} title="Echipa" text="Asociaza specialistii cu aceasta locatie." onClick={() => onNavigate && onNavigate("team")} />
+                  <ConfigureCard icon={Wrench} title="Servicii" text="Alege serviciile disponibile in aceasta locatie." onClick={() => setActiveModal("services")} />
+                  <ConfigureCard icon={Clock} title="Program" text="Seteaza programul acestei locatii." onClick={() => setActiveModal("hours")} />
+                  <ConfigureCard icon={Users} title="Echipa" text="Asociaza specialistii cu aceasta locatie." onClick={() => setActiveModal("team")} />
                 </div>
               </section>
 
@@ -336,6 +363,16 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                   {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
                 </div>
               </section>
+
+              <LocationConfigModal open={activeModal === "services"} title="Servicii locatie" locationName={selectedLocationName} onClose={() => setActiveModal(null)}>
+                <ProviderServices locationId={selectedLocation.id} overview={overview || { content_summary: { approved_service_count: 0 } }} onRefresh={onRefresh || (() => {})} />
+              </LocationConfigModal>
+              <LocationConfigModal open={activeModal === "hours"} title="Program locatie" locationName={selectedLocationName} onClose={() => setActiveModal(null)}>
+                <ProviderHours locationId={selectedLocation.id} onRefresh={onRefresh || (() => {})} />
+              </LocationConfigModal>
+              <LocationConfigModal open={activeModal === "team"} title="Echipa locatie" locationName={selectedLocationName} onClose={() => setActiveModal(null)}>
+                <ProviderTeam locationId={selectedLocation.id} />
+              </LocationConfigModal>
             </>
           )}
         </div>
