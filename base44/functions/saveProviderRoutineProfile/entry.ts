@@ -20,7 +20,7 @@ const ROUTINE_FIELDS = [
 ];
 const INPUT_FIELDS = ['location_id', ...ROUTINE_FIELDS];
 const AVAILABILITY_STATUSES = ['astazi', 'urmatoarele_zile', 'saptamana_aceasta', 'doar_programare', 'necunoscuta'];
-const MAX_DESCRIPTION_LEN = 700;
+const MAX_DESCRIPTION_LEN = 500;
 const MAX_URL_LEN = 500;
 const MAX_CONTACT_LEN = 200;
 const MAX_HOURS_LEN = 500;
@@ -40,14 +40,24 @@ function cleanPlainText(value, field, maxLen) {
   return { value: val };
 }
 
+function normalizeUrlInput(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (/\s/.test(raw)) return raw;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) return raw;
+  if (raw.startsWith('//')) return `https:${raw}`;
+  return `https://${raw}`;
+}
+
 function cleanUrl(value, field) {
-  const val = String(value || '').trim();
-  if (!val) return { value: '' };
-  if (val.length > MAX_URL_LEN) return { error: `${field} depaseste lungimea maxima` };
+  const normalized = normalizeUrlInput(value);
+  if (!normalized) return { value: '' };
+  if (normalized.length > MAX_URL_LEN) return { error: `${field} depaseste lungimea maxima` };
   let parsed;
-  try { parsed = new URL(val); } catch (_e) { return { error: `${field} trebuie sa fie URL valid` }; }
-  if (!['http:', 'https:'].includes(parsed.protocol)) return { error: `${field} trebuie sa foloseasca http sau https` };
-  if (/\b(?:javascript|data|vbscript|file):/i.test(val)) return { error: `${field} contine protocol nesigur` };
+  try { parsed = new URL(normalized); } catch (_e) { return { error: `${field} trebuie sa fie un site valid. Exemplu: optilun.com sau https://optilun.com` }; }
+  if (!['http:', 'https:'].includes(parsed.protocol)) return { error: `${field} trebuie sa fie un link web valid` };
+  if (/\b(?:javascript|data|vbscript|file):/i.test(normalized)) return { error: `${field} contine protocol nesigur` };
+  if (!parsed.hostname || !parsed.hostname.includes('.')) return { error: `${field} trebuie sa contina un domeniu valid` };
   return { value: parsed.toString() };
 }
 
