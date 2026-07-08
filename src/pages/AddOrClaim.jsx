@@ -30,6 +30,19 @@ const readSessionJson = (key) => {
   }
 };
 
+const isClaimContactComplete = (contact) => Boolean(
+  contact?.claimant_relationship &&
+  contact?.representation_confirmed &&
+  String(contact?.contact_name || "").trim() &&
+  String(contact?.email || "").trim()
+);
+
+const getResumeClaimStep = (contact, storedStep) => {
+  if (!contact?.claimant_relationship || !contact?.representation_confirmed) return "relation";
+  if (!String(contact?.contact_name || "").trim() || !String(contact?.email || "").trim()) return "contact";
+  return storedStep || "review";
+};
+
 // Module 3H.1B.2: explicit cancellation clears all temporary resume state.
 const clearResumeState = () => {
   sessionStorage.removeItem(PENDING_NEW_LOCATION_KEY);
@@ -61,7 +74,7 @@ export default function AddOrClaim() {
   const [selected, setSelected] = useState(initialSelectedLocation);
   const [draft, setDraft] = useState(null);
   const [claimStep, setClaimStep] = useState(() => {
-    if (resumedClaimLocation && resumedClaimContact) return resumedClaimStep || "review";
+    if (resumedClaimLocation) return getResumeClaimStep(resumedClaimContact, resumedClaimStep);
     return "relation";
   });
 
