@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { ExternalLink, Globe2, MapPin, Phone, Save, ShieldCheck } from "lucide-react";
+import { Building2, ExternalLink, MapPin, Save, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
-import { buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/lib/maps";
+import { SUBMISSION_STATUS_LABELS, PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
+import { buildGoogleMapsUrl } from "@/lib/maps";
+import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
 
 const inputCls = "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground/50";
 const QUICK_FIELDS = [
-  ["public_description", "Descriere publica", "textarea", "Spune pe scurt ce oferi, cui te adresezi si ce te diferentiaza."],
-  ["public_phone", "Telefon public", "text", "Numar afisat pacientilor/clientilor pe profil."],
-  ["public_email", "Email public", "text", "Email public pentru contact."],
+  ["public_description", "Descriere organizatie", "textarea", "Prezentare generala a brandului: ce oferiti, cui va adresati si ce va diferentiaza."],
+  ["public_phone", "Telefon general", "text", "Telefon general al organizatiei. Telefoanele pe fiecare punct de lucru se gestioneaza in Locatii."],
+  ["public_email", "Email general", "text", "Email general al organizatiei sau brandului."],
   ["website_url", "Website", "text", "Exemplu: https://site.ro"],
   ["facebook_url", "Facebook", "text", "Link catre pagina oficiala."],
   ["instagram_url", "Instagram", "text", "Link catre profilul oficial."],
@@ -35,19 +36,45 @@ function PublicStatusItem({ label, value, empty = "Nepublicat" }) {
   );
 }
 
-export default function ProviderProfilePublic({ locationId, overview, onRefresh }) {
+function LocationSummaryCard({ loc, active, onManage }) {
+  const mapUrl = buildGoogleMapsUrl(loc);
+  return (
+    <div className={`rounded-xl border bg-card p-4 ${active ? "border-foreground" : "border-border"}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="font-semibold text-sm">{loc.public_display_name || loc.name}</div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {[loc.address, loc.locality_name || loc.city, loc.county_name || loc.county].filter(Boolean).join(", ") || "Adresa nepublicata"}
+          </p>
+        </div>
+        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${loc.active_status === "inactiva" ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}>
+          {loc.active_status === "inactiva" ? "Inactiva" : "Activa"}
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+        <div className="rounded-lg bg-secondary/70 px-3 py-2">
+          <div className="text-muted-foreground">Telefon</div>
+          <div className="font-semibold truncate">{loc.public_phone || loc.phone_public || "Lipseste"}</div>
+        </div>
+        <div className="rounded-lg bg-secondary/70 px-3 py-2">
+          <div className="text-muted-foreground">Status</div>
+          <div className="font-semibold truncate">{PROFILE_CONTROL_LABELS[loc.profile_control_status] || loc.profile_control_status || "-"}</div>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
+        <button onClick={onManage} className="font-semibold underline underline-offset-4">Gestioneaza locatia</button>
+        {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground">Google Maps <ExternalLink className="w-3 h-3" /></a>}
+      </div>
+    </div>
+  );
+}
+
+export default function ProviderProfilePublic({ locationId, overview, workspace, onNavigate, onSelectLocation, onRefresh }) {
   const pv = overview.public_preview || {};
   const loc = overview.location || {};
-  const mapLocation = {
-    name: pv.display_name || loc.name,
-    address: pv.address,
-    city: pv.city || loc.city,
-    county: pv.county || loc.county,
-    locality_name: pv.city || loc.locality_name,
-    county_name: pv.county || loc.county_name,
-  };
-  const mapsUrl = buildGoogleMapsUrl(mapLocation);
-  const embedUrl = buildGoogleMapsEmbedUrl(mapLocation);
+  const locations = workspace?.locations || [];
+  const orgName = loc.organization_name || pv.display_name || loc.public_display_name || loc.name;
+  const locationCount = locations.length || 1;
   const [quick, setQuick] = useState({
     public_description: pv.description || "",
     public_phone: pv.phone || "",
@@ -62,8 +89,7 @@ export default function ProviderProfilePublic({ locationId, overview, onRefresh 
 
   const [reviewDraft, setReviewDraft] = useState(null);
   const [reviewValues, setReviewValues] = useState({
-    public_display_name: loc.public_display_name || pv.display_name || loc.name || "",
-    address: pv.address || "",
+    public_display_name: orgName || "",
   });
   const [savingReview, setSavingReview] = useState(false);
   const [reviewMsg, setReviewMsg] = useState("");
@@ -78,10 +104,7 @@ export default function ProviderProfilePublic({ locationId, overview, onRefresh 
       instagram_url: pv.instagram || "",
       linkedin_url: pv.linkedin || "",
     });
-    setReviewValues({
-      public_display_name: loc.public_display_name || pv.display_name || loc.name || "",
-      address: pv.address || "",
-    });
+    setReviewValues({ public_display_name: orgName || "" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locationId]);
 
@@ -91,12 +114,7 @@ export default function ProviderProfilePublic({ locationId, overview, onRefresh 
     setReviewDraft(own || null);
     if (own) {
       const payload = JSON.parse(own.payload_json || "{}");
-      setReviewValues({
-        public_display_name: payload.public_display_name ?? (loc.public_display_name || pv.display_name || loc.name || ""),
-        address: payload.address ?? (pv.address || ""),
-        public_phone: payload.public_phone ?? "",
-        public_email: payload.public_email ?? "",
-      });
+      setReviewValues({ public_display_name: payload.public_display_name ?? (orgName || "") });
     }
   };
 
@@ -107,17 +125,14 @@ export default function ProviderProfilePublic({ locationId, overview, onRefresh 
     const res = await base44.functions.invoke("saveProviderRoutineProfile", { location_id: locationId, ...quick }).catch((e) => ({ data: { error: e.message } }));
     setSavingQuick(false);
     if (res.data?.error) { setQuickMsg(res.data.error); return; }
-    setQuickMsg("Modificarile rapide au fost salvate.");
+    setQuickMsg("Informatiile publice ale organizatiei au fost salvate.");
     onRefresh();
   };
 
   const saveReview = async () => {
     setSavingReview(true); setReviewMsg("");
     const action = reviewDraft && reviewDraft.status !== "pending_review" ? "update_draft" : "create_draft";
-    const payload = {
-      public_display_name: reviewValues.public_display_name || "",
-      address: reviewValues.address || "",
-    };
+    const payload = { public_display_name: reviewValues.public_display_name || "" };
     const res = await base44.functions.invoke("submitProviderWorkspaceChange", {
       action, submission_id: reviewDraft?.id, location_id: locationId, section: "location_details", payload,
     }).catch((e) => ({ data: { error: e.message } }));
@@ -137,62 +152,68 @@ export default function ProviderProfilePublic({ locationId, overview, onRefresh 
     loadOwnDraft();
   };
 
+  const manageLocation = (id) => {
+    if (id && onSelectLocation) onSelectLocation(id);
+    if (onNavigate) onNavigate("locations");
+  };
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-2xl font-extrabold tracking-tight">Profil public</h1>
-        <p className="mt-1 text-xs text-muted-foreground">Controleaza informatiile care apar pe pagina publica a locatiei.</p>
+        <h1 className="font-heading text-2xl font-extrabold tracking-tight">Profil public organizatie</h1>
+        <p className="mt-1 text-xs text-muted-foreground">Controleaza informatiile generale ale brandului si modul in care sunt prezentate locatiile tale.</p>
       </div>
 
-      <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-4">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-start justify-between gap-4">
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="bg-gradient-to-br from-secondary via-background to-amber-50 p-5 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
-              <div className="text-xs text-muted-foreground">Previzualizare profil</div>
-              <h2 className="mt-1 font-heading text-xl font-bold">{pv.display_name || loc.public_display_name || loc.name}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{pv.address ? `${pv.address}, ${pv.city || ""}` : (pv.city || "Adresa nepublicata")}</p>
+              <div className="text-xs text-muted-foreground">Previzualizare organizatie</div>
+              <h2 className="mt-1 font-heading text-2xl font-bold">{orgName}</h2>
+              <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
+                {quick.public_description || "Adauga o descriere generala pentru organizatie. Descrierea locatiei, programul si serviciile se gestioneaza pe fiecare punct de lucru."}
+              </p>
             </div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 text-green-800 px-3 py-1 text-xs font-semibold shrink-0">
               <ShieldCheck className="w-3.5 h-3.5" /> {loc.profile_control_status === "verified" ? "Verificat" : "Activ"}
             </span>
           </div>
-          <div className="mt-4 grid sm:grid-cols-2 gap-2">
-            <PublicStatusItem label="Telefon" value={pv.phone} empty="Lipseste" />
-            <PublicStatusItem label="Email" value={pv.email} empty="Lipseste" />
-            <PublicStatusItem label="Website" value={pv.website} empty="Nepublicat" />
-            <PublicStatusItem label="Program" value={pv.opening_hours} empty="Nepublicat" />
+          <div className="mt-5 grid sm:grid-cols-4 gap-2">
+            <PublicStatusItem label="Tip" value={PROVIDER_PROFILE_TYPES[loc.provider_profile_type] || PROVIDER_TYPES[loc.provider_type]} />
+            <PublicStatusItem label="Locatii" value={`${locationCount} ${locationCount === 1 ? "locatie" : "locatii"}`} />
+            <PublicStatusItem label="Telefon general" value={quick.public_phone} empty="Lipseste" />
+            <PublicStatusItem label="Website" value={quick.website_url} empty="Nepublicat" />
           </div>
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="font-semibold text-sm">Locatie pe harta</div>
-              <p className="mt-1 text-xs text-muted-foreground">Generata din adresa publicata.</p>
-            </div>
-            {mapsUrl && (
-              <a href={mapsUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold underline underline-offset-4">
-                Deschide <ExternalLink className="w-3 h-3" />
-              </a>
-            )}
-          </div>
-          {hasMapLocation(mapLocation) && embedUrl ? (
-            <div className="mt-3 h-44 overflow-hidden rounded-xl border border-border bg-secondary">
-              <iframe title={`Harta ${pv.display_name || loc.name}`} src={embedUrl} className="w-full h-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-            </div>
-          ) : (
-            <div className="mt-3 rounded-xl border border-dashed border-border bg-secondary/50 p-5 text-center">
-              <MapPin className="w-5 h-5 mx-auto text-muted-foreground" />
-              <p className="mt-2 text-xs text-muted-foreground">Adauga adresa pentru afisarea hartii.</p>
-            </div>
-          )}
         </div>
       </div>
 
       <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="font-semibold text-sm">Locatii publice ale organizatiei</div>
+            <p className="text-xs text-muted-foreground mt-1">Aici apar pe scurt punctele de lucru. Adresa, harta, programul, serviciile si echipa se gestioneaza din modulul Locatii si modulele locatiei selectate.</p>
+          </div>
+          <button onClick={() => onNavigate && onNavigate("locations")} className="text-xs font-semibold underline underline-offset-4 shrink-0">Vezi toate locatiile</button>
+        </div>
+        {locations.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border bg-secondary/50 p-6 text-center">
+            <Building2 className="w-6 h-6 mx-auto text-muted-foreground" />
+            <p className="mt-2 text-sm font-medium">Nu exista locatii in workspace</p>
+            <p className="mt-1 text-xs text-muted-foreground">Locatiile aprobate vor aparea aici.</p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-3">
+            {locations.map((l) => (
+              <LocationSummaryCard key={l.id} loc={l} active={l.id === locationId} onManage={() => manageLocation(l.id)} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-4 space-y-4">
         <div>
-          <div className="font-semibold text-sm">Informatii publice rapide</div>
-          <p className="text-xs text-muted-foreground mt-1">Aceste informatii administrative se actualizeaza imediat dupa salvare.</p>
+          <div className="font-semibold text-sm">Informatii publice generale</div>
+          <p className="text-xs text-muted-foreground mt-1">Acestea sunt date de brand/organizatie. Datele specifice unei locatii se editeaza separat.</p>
         </div>
         {QUICK_FIELDS.map(([key, label, type, hint]) => (
           <Field key={key} label={label} hint={hint}>
@@ -213,20 +234,15 @@ export default function ProviderProfilePublic({ locationId, overview, onRefresh 
 
       <div className="rounded-xl border border-border bg-card p-4 space-y-4">
         <div>
-          <div className="font-semibold text-sm">Identitate si adresa — necesita review</div>
-          <p className="text-xs text-muted-foreground mt-1">Numele public si adresa pot afecta identificarea locatiei, harta si increderea profilului. De aceea sunt verificate inainte de publicare.</p>
+          <div className="font-semibold text-sm">Nume public organizatie — necesita review</div>
+          <p className="text-xs text-muted-foreground mt-1">Schimbarea numelui public poate afecta identificarea brandului si este verificata inainte de publicare.</p>
           {reviewDraft && <span className="inline-block mt-2 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-secondary">{SUBMISSION_STATUS_LABELS[reviewDraft.status] || reviewDraft.status}</span>}
         </div>
-        <div className="grid sm:grid-cols-2 gap-3">
-          <Field label="Nume public afisat" hint="Exemplu: Lunera Optic Store - Sibiu">
-            <input className={inputCls} value={reviewValues.public_display_name || ""} onChange={(e) => setReviewValues({ ...reviewValues, public_display_name: e.target.value })} disabled={reviewDraft?.status === "pending_review"} />
-          </Field>
-          <Field label="Adresa" hint="Adresa folosita si pentru harta.">
-            <input className={inputCls} value={reviewValues.address || ""} onChange={(e) => setReviewValues({ ...reviewValues, address: e.target.value })} disabled={reviewDraft?.status === "pending_review"} />
-          </Field>
-        </div>
+        <Field label="Nume public afisat" hint="Exemplu: Lunera Optic">
+          <input className={inputCls} value={reviewValues.public_display_name || ""} onChange={(e) => setReviewValues({ ...reviewValues, public_display_name: e.target.value })} disabled={reviewDraft?.status === "pending_review"} />
+        </Field>
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          Schimbarile de identitate nu se publica instant. Salveaza draftul, apoi trimite spre review.
+          Adresa si harta nu se modifica aici. Pentru fiecare punct de lucru foloseste modulul Locatii.
         </div>
         <div className="flex flex-wrap gap-2">
           <button disabled={savingReview || reviewDraft?.status === "pending_review"} onClick={saveReview} className="px-5 py-2.5 rounded-full text-sm font-semibold border border-border disabled:opacity-50">
