@@ -7,12 +7,12 @@ import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none focus:border-foreground/50 transition-colors";
 const QUICK_FIELDS = [
-  ["public_phone", "Telefon general", "Telefon general al organizatiei. Telefoanele pe fiecare punct de lucru se gestioneaza in Locatii.", ""],
-  ["public_email", "Email general", "Email general al organizatiei sau brandului.", "contact@firma.ro"],
-  ["website_url", "Website", "Poti scrie si fara https://. Exemplu: optilun.com", "optilun.com"],
-  ["facebook_url", "Facebook", "Lipeste linkul paginii Facebook. Nu este necesara conectare.", "facebook.com/luneraoptic"],
-  ["instagram_url", "Instagram", "Lipeste linkul profilului Instagram. Nu este necesara conectare.", "instagram.com/luneraoptic"],
-  ["linkedin_url", "LinkedIn", "Optional, util mai ales pentru B2B. Lipeste linkul paginii companiei.", "linkedin.com/company/luneraoptic"],
+  ["public_phone", "Telefon general", "Telefon general al organizatiei.", ""],
+  ["public_email", "Email general", "Email general pentru contact.", "contact@firma.ro"],
+  ["website_url", "Website", "Link website.", "opticata.ro"],
+  ["facebook_url", "Facebook", "Link pagina Facebook.", "facebook.com/opticata"],
+  ["instagram_url", "Instagram", "Link profil Instagram.", "instagram.com/opticata"],
+  ["linkedin_url", "LinkedIn", "Link pagina LinkedIn.", "linkedin.com/company/opticata"],
 ];
 const DESCRIPTION_MAX_LENGTH = 500;
 const DESCRIPTION_WARN_AT = 430;
