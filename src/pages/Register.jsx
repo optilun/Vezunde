@@ -11,6 +11,8 @@ import GoogleIcon from "@/components/GoogleIcon";
 import { toast } from "@/components/ui/use-toast";
 import { getPostLoginRedirect } from "@/lib/postLoginRedirect";
 
+const REGISTER_HELP = "Nu am putut crea contul cu acest email. Daca ai deja cont sau ai folosit Google prima data, mergi la conectare si foloseste aceeasi metoda.";
+
 export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,15 +26,15 @@ export default function Register() {
     e.preventDefault();
     setError("");
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError("Parolele nu coincid");
       return;
     }
     setLoading(true);
     try {
       await base44.auth.register({ email, password });
       setShowOtp(true);
-    } catch (err) {
-      setError(err.message || "Registration failed");
+    } catch (_err) {
+      setError(REGISTER_HELP);
     } finally {
       setLoading(false);
     }
@@ -48,7 +50,7 @@ export default function Register() {
       }
       window.location.href = getPostLoginRedirect();
     } catch (err) {
-      setError(err.message || "Invalid verification code");
+      setError(err.message || "Cod de verificare invalid");
     } finally {
       setLoading(false);
     }
@@ -59,11 +61,11 @@ export default function Register() {
     try {
       await base44.auth.resendOtp(email);
       toast({
-        title: "Code sent",
-        description: "Check your email for the new code.",
+        title: "Cod trimis",
+        description: "Verifica emailul pentru noul cod.",
       });
     } catch (err) {
-      setError(err.message || "Failed to resend code");
+      setError(err.message || "Nu am putut retrimite codul");
     }
   };
 
@@ -75,8 +77,8 @@ export default function Register() {
     return (
       <AuthLayout
         icon={Mail}
-        title="Verify your email"
-        subtitle={`We sent a code to ${email}`}
+        title="Verifica emailul"
+        subtitle={`Am trimis un cod la ${email}`}
       >
         {error && (
           <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
@@ -109,16 +111,16 @@ export default function Register() {
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Verifying...
+              Se verifica...
             </>
           ) : (
-            "Verify"
+            "Verifica"
           )}
         </Button>
         <p className="text-center text-sm text-muted-foreground mt-4">
-          Didn't receive the code?{" "}
+          Nu ai primit codul?{" "}
           <button onClick={handleResend} className="text-primary font-medium hover:underline">
-            Resend
+            Retrimite
           </button>
         </p>
       </AuthLayout>
@@ -128,37 +130,41 @@ export default function Register() {
   return (
     <AuthLayout
       icon={UserPlus}
-      title="Create your account"
-      subtitle="Sign up to get started"
+      title="Creeaza cont"
+      subtitle="Foloseste aceeasi adresa pentru acelasi profil Vezunde"
       footer={
         <>
-          Already have an account?{" "}
+          Ai deja cont?{" "}
           <Link to="/login" className="text-primary font-medium hover:underline">
-            Log in
+            Conecteaza-te
           </Link>
         </>
       }
     >
       <Button
         variant="outline"
-        className="w-full h-12 text-sm font-medium mb-6"
+        className="w-full h-12 text-sm font-medium mb-3"
         onClick={handleGoogle}
       >
         <GoogleIcon className="w-5 h-5 mr-2" />
-        Continue with Google
+        Continua cu Google
       </Button>
+
+      <p className="mb-6 text-xs text-muted-foreground text-center leading-relaxed">
+        Daca ai folosit Google cu acest email, continua cu Google pentru acelasi cont.
+      </p>
 
       <div className="relative mb-6">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-border" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-3 text-muted-foreground">or</span>
+          <span className="bg-card px-3 text-muted-foreground">sau</span>
         </div>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm leading-relaxed">
           {error}
         </div>
       )}
@@ -173,7 +179,7 @@ export default function Register() {
               type="email"
               autoComplete="email"
               autoFocus
-              placeholder="you@example.com"
+              placeholder="email@exemplu.ro"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="pl-10 h-12"
@@ -182,7 +188,7 @@ export default function Register() {
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">Parola</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
@@ -198,7 +204,7 @@ export default function Register() {
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirm">Confirm Password</Label>
+          <Label htmlFor="confirm">Confirma parola</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input
@@ -217,10 +223,10 @@ export default function Register() {
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Creating account...
+              Se creeaza contul...
             </>
           ) : (
-            "Create account"
+            "Creeaza cont"
           )}
         </Button>
       </form>
