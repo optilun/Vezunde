@@ -7,21 +7,46 @@ import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none focus:border-foreground/50 transition-colors";
 const QUICK_FIELDS = [
-  ["public_phone", "Telefon general", "Telefon general al organizatiei. Telefoanele pe fiecare punct de lucru se gestioneaza in Locatii."],
-  ["public_email", "Email general", "Email general al organizatiei sau brandului."],
-  ["website_url", "Website", "Exemplu: https://site.ro"],
-  ["facebook_url", "Facebook", "Link catre pagina oficiala."],
-  ["instagram_url", "Instagram", "Link catre profilul oficial."],
-  ["linkedin_url", "LinkedIn", "Optional, util mai ales pentru B2B."],
+  ["public_phone", "Telefon general", "Telefon general al organizatiei. Telefoanele pe fiecare punct de lucru se gestioneaza in Locatii.", ""],
+  ["public_email", "Email general", "Email general al organizatiei sau brandului.", "contact@firma.ro"],
+  ["website_url", "Website", "Poti scrie si fara https://. Exemplu: optilun.com", "optilun.com"],
+  ["facebook_url", "Facebook", "Lipeste linkul paginii Facebook. Nu este necesara conectare.", "facebook.com/luneraoptic"],
+  ["instagram_url", "Instagram", "Lipeste linkul profilului Instagram. Nu este necesara conectare.", "instagram.com/luneraoptic"],
+  ["linkedin_url", "LinkedIn", "Optional, util mai ales pentru B2B. Lipeste linkul paginii companiei.", "linkedin.com/company/luneraoptic"],
 ];
-const DESCRIPTION_MAX_LENGTH = 700;
-const DESCRIPTION_WARN_AT = 600;
+const DESCRIPTION_MAX_LENGTH = 500;
+const DESCRIPTION_WARN_AT = 430;
 const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const LOGO_MAX_BYTES = 4 * 1024 * 1024;
 const LOGO_MAX_DATA_URL_LENGTH = 800000;
+const SOCIAL_ITEMS = [
+  { key: "facebook_url", label: "Facebook", short: "f" },
+  { key: "instagram_url", label: "Instagram", short: "IG" },
+  { key: "linkedin_url", label: "LinkedIn", short: "in" },
+];
 
 function initials(name = "") {
   return String(name || "V").split(" ").filter(Boolean).map((part) => part[0]).slice(0, 2).join("").toUpperCase() || "V";
+}
+
+function normalizeClientUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw || /\s/.test(raw)) return "";
+  const withProtocol = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : raw.startsWith("//") ? `https:${raw}` : `https://${raw}`;
+  try {
+    const parsed = new URL(withProtocol);
+    if (!["http:", "https:"].includes(parsed.protocol)) return "";
+    if (!parsed.hostname || !parsed.hostname.includes(".")) return "";
+    return parsed.toString();
+  } catch (_e) {
+    return "";
+  }
+}
+
+function displayUrl(value) {
+  const safe = normalizeClientUrl(value);
+  if (!safe) return "";
+  return safe.replace(/^https?:\/\//i, "").replace(/\/$/, "");
 }
 
 function readImage(file) {
@@ -84,6 +109,33 @@ function PreviewMetric({ icon: Icon, label, value, muted }) {
   );
 }
 
+function SocialPill({ item, url }) {
+  const safeUrl = normalizeClientUrl(url);
+  if (!safeUrl) return null;
+  return (
+    <a
+      href={safeUrl}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-foreground shadow-sm hover:bg-white"
+      title={displayUrl(url)}
+    >
+      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-[10px] font-black text-background">{item.short}</span>
+      {item.label}
+    </a>
+  );
+}
+
+function SocialLinksPreview({ quick }) {
+  const visible = SOCIAL_ITEMS.filter((item) => normalizeClientUrl(quick[item.key]));
+  if (visible.length === 0) return null;
+  return (
+    <div className="relative mt-4 flex flex-wrap gap-2">
+      {visible.map((item) => <SocialPill key={item.key} item={item} url={quick[item.key]} />)}
+    </div>
+  );
+}
+
 function LocationSummaryCard({ loc, active, onManage }) {
   const mapUrl = buildGoogleMapsUrl(loc);
   const isInactive = loc.active_status === "inactiva";
@@ -134,8 +186,9 @@ function OrganizationPreview({ orgName, profileTypeLabel, loc, quick, logoPrevie
           <PreviewMetric icon={Store} label="Locatii" value={`${locationCount} ${locationCount === 1 ? "locatie" : "locatii"}`} />
           <PreviewMetric icon={Phone} label="Telefon" value={quick.public_phone || "Lipseste"} muted={!quick.public_phone} />
           <PreviewMetric icon={Mail} label="Email" value={quick.public_email || "Lipseste"} muted={!quick.public_email} />
-          <PreviewMetric icon={Globe2} label="Website" value={quick.website_url || "Nepublicat"} muted={!quick.website_url} />
+          <PreviewMetric icon={Globe2} label="Website" value={displayUrl(quick.website_url) || "Nepublicat"} muted={!quick.website_url} />
         </div>
+        <SocialLinksPreview quick={quick} />
       </div>
     </div>
   );
@@ -152,7 +205,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
   const locationCount = locations.length || 1;
   const profileTypeLabel = PROVIDER_PROFILE_TYPES[loc.provider_profile_type] || PROVIDER_TYPES[loc.provider_type] || "Profil";
   const [quick, setQuick] = useState({
-    public_description: pv.description || "",
+    public_description: String(pv.description || "").slice(0, DESCRIPTION_MAX_LENGTH),
     public_phone: pv.phone || "",
     public_email: pv.email || "",
     website_url: pv.website || "",
@@ -202,9 +255,19 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
 
   const saveQuick = async () => {
     setSavingQuick(true); setQuickMsg("");
-    const res = await base44.functions.invoke("saveProviderRoutineProfile", { location_id: locationId, ...quick }).catch((e) => ({ data: { error: e.message } }));
+    const res = await base44.functions.invoke("saveProviderRoutineProfile", { location_id: locationId, ...quick }).catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
     setSavingQuick(false);
     if (res.data?.error) { setQuickMsg(res.data.error); return; }
+    const normalized = res.data?.updates || {};
+    if (Object.keys(normalized).length > 0) {
+      setQuick((cur) => ({
+        ...cur,
+        website_url: normalized.website_url ?? cur.website_url,
+        facebook_url: normalized.facebook_url ?? cur.facebook_url,
+        instagram_url: normalized.instagram_url ?? cur.instagram_url,
+        linkedin_url: normalized.linkedin_url ?? cur.linkedin_url,
+      }));
+    }
     setQuickMsg("Informatiile publice ale organizatiei au fost salvate.");
     onRefresh();
   };
@@ -310,16 +373,14 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
               />
               <div className="mt-1.5 flex items-start justify-between gap-3 text-[11px] leading-relaxed text-muted-foreground">
                 <p>Prezentare generala a brandului: ce oferiti, cui va adresati si ce va diferentiaza.</p>
-                <span className={`shrink-0 font-semibold ${descriptionNearLimit ? "text-amber-700" : "text-muted-foreground"}`}>
-                  {descriptionCount}/{DESCRIPTION_MAX_LENGTH}
-                </span>
+                <span className={`shrink-0 font-semibold ${descriptionNearLimit ? "text-amber-700" : "text-muted-foreground"}`}>{descriptionCount}/{DESCRIPTION_MAX_LENGTH}</span>
               </div>
             </Field>
 
             <div className="grid gap-4 md:grid-cols-2">
-              {QUICK_FIELDS.map(([key, label, hint]) => (
+              {QUICK_FIELDS.map(([key, label, hint, placeholder]) => (
                 <Field key={key} label={label} hint={hint}>
-                  <input className={inputCls} value={quick[key]} onChange={(e) => setQuick({ ...quick, [key]: e.target.value })} />
+                  <input className={inputCls} placeholder={placeholder} value={quick[key]} onChange={(e) => setQuick({ ...quick, [key]: e.target.value })} />
                 </Field>
               ))}
             </div>
