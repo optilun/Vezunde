@@ -6,11 +6,12 @@ import { PROVIDER_TYPES, PROFESSIONAL_AFFILIATION_STATUS, PROFESSIONAL_TYPES, SE
 import { buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/lib/maps";
 import TrustBadge from "@/components/results/TrustBadge";
 import ServiceChip from "@/components/results/ServiceChip";
+import SocialBrandIcon from "@/components/common/SocialBrandIcon";
 
 const SOCIAL_LINKS = [
-  { key: "facebook", label: "Facebook", short: "f" },
-  { key: "instagram", label: "Instagram", short: "IG" },
-  { key: "linkedin", label: "LinkedIn", short: "in" },
+  { key: "facebook", label: "Facebook", platform: "facebook" },
+  { key: "instagram", label: "Instagram", platform: "instagram" },
+  { key: "linkedin", label: "LinkedIn", platform: "linkedin" },
 ];
 
 function compactUrl(url) {
@@ -27,7 +28,9 @@ function SocialPublicLink({ item, url }) {
       className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-semibold hover:bg-secondary"
       title={compactUrl(url)}
     >
-      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-[10px] font-black text-background">{item.short}</span>
+      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-background">
+        <SocialBrandIcon platform={item.platform} className="h-3.5 w-3.5" />
+      </span>
       {item.label}
     </a>
   );
