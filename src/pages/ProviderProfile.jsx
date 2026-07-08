@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { MapPin, Phone, Clock, ArrowRight } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { PROVIDER_TYPES, PROFESSIONAL_TYPES, SERVICES } from "@/lib/vezunde";
+import { PROVIDER_TYPES, PROFESSIONAL_AFFILIATION_STATUS, PROFESSIONAL_TYPES, SERVICES } from "@/lib/vezunde";
 import TrustBadge from "@/components/results/TrustBadge";
 import ServiceChip from "@/components/results/ServiceChip";
 
@@ -74,19 +74,31 @@ export default function ProviderProfile() {
           {profile.team.length > 0 && (
             <div className="bg-card border border-border rounded-2xl p-6">
               <h2 className="font-heading font-bold">Echipa</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Specialistii sunt afisati ca membri ai acestei locatii.</p>
               <div className="mt-4 space-y-4">
-                {profile.team.map((pro, i) => (
-                  <div key={i} className="flex gap-4">
-                    <div className="w-10 h-10 rounded-full bg-accent text-primary flex items-center justify-center font-heading font-bold shrink-0">
-                      {pro.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                {profile.team.map((pro, i) => {
+                  const affiliation = pro.affiliation_status || "location_added";
+                  const showBadge = affiliation !== "location_added";
+                  return (
+                    <div key={i} className="flex gap-4">
+                      <div className="w-10 h-10 rounded-full bg-accent text-primary flex items-center justify-center font-heading font-bold shrink-0">
+                        {pro.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                      </div>
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="font-medium text-sm">{pro.full_name}</div>
+                          {showBadge && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-800">
+                              {PROFESSIONAL_AFFILIATION_STATUS[affiliation] || affiliation}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-primary">{PROFESSIONAL_TYPES[pro.professional_type]}</div>
+                        {pro.bio && <p className="mt-1 text-xs text-muted-foreground">{pro.bio}</p>}
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-medium text-sm">{pro.full_name}</div>
-                      <div className="text-xs text-primary">{PROFESSIONAL_TYPES[pro.professional_type]}</div>
-                      {pro.bio && <p className="mt-1 text-xs text-muted-foreground">{pro.bio}</p>}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
