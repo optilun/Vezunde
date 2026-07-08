@@ -1,10 +1,14 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-// Provider logo change request. Upload/storage is done client-side through the
-// Base44 file integration; this function only stages the resulting image URL for
-// admin review. Nothing becomes public until reviewProfileChanges approves it.
+// Provider logo change request. MVP stores a compressed image data URL in
+// pending_changes for manual admin review. Nothing becomes public until
+// reviewProfileChanges approves it. Later this can be replaced with real file
+// storage without changing the review flow.
 
 const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
+const MAX_DATA_URL_LENGTH = 850000;
+const DATA_URL_RE = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
+
 function normalizeMemberRole(role) {
   if (role === 'owner') return 'organization_owner';
   if (role === 'staff') return 'location_staff';
@@ -15,14 +19,21 @@ function reject(error, status = 400) {
   return Response.json({ error }, { status });
 }
 
-function cleanImageUrl(value) {
+function cleanImageValue(value) {
   const val = String(value || '').trim();
   if (!val) return { error: 'Imaginea lipseste' };
+
+  if (val.startsWith('data:')) {
+    if (val.length > MAX_DATA_URL_LENGTH) return { error: 'Logo-ul este prea mare. Incarca o imagine mai mica.' };
+    if (!DATA_URL_RE.test(val)) return { error: 'Format logo invalid. Sunt acceptate PNG, JPG sau WEBP.' };
+    return { value: val };
+  }
+
   if (val.length > 1200) return { error: 'URL-ul imaginii este prea lung' };
   let parsed;
   try { parsed = new URL(val); } catch (_e) { return { error: 'Imagine invalida' }; }
   if (!['https:', 'http:'].includes(parsed.protocol)) return { error: 'Imaginea trebuie sa fie incarcata printr-un URL sigur' };
-  if (/\b(?:javascript|data|vbscript|file):/i.test(val)) return { error: 'Imaginea contine protocol nesigur' };
+  if (/\b(?:javascript|vbscript|file):/i.test(val)) return { error: 'Imaginea contine protocol nesigur' };
   return { value: parsed.toString() };
 }
 
@@ -44,7 +55,7 @@ Deno.serve(async (req) => {
     if ((loc.profile_control_status || '') === 'suspended' || loc.status === 'suspendata') return reject('Profilul este suspendat', 403);
     if (loc.claim_verification_status !== 'approved') return reject('Logo-ul poate fi trimis dupa aprobarea revendicarii', 403);
 
-    const cleaned = cleanImageUrl(p.photo_url);
+    const cleaned = cleanImageValue(p.photo_url);
     if (cleaned.error) return reject(cleaned.error);
 
     let pending = {};
@@ -57,6 +68,7 @@ Deno.serve(async (req) => {
         ...(pending.media_review || {}),
         logo_submitted_by_user_id: user.id,
         logo_submitted_at: new Date().toISOString(),
+        logo_status: 'pending_review',
       },
     };
 
@@ -74,7 +86,7 @@ Deno.serve(async (req) => {
       performed_at: new Date().toISOString(),
     });
 
-    return Response.json({ success: true, pending_changes: nextPending });
+    return Response.json({ success: true, pending_logo_review: true });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
