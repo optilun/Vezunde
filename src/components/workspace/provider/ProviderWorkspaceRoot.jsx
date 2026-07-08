@@ -8,9 +8,6 @@ import LocationSwitcher from "./LocationSwitcher";
 import ProviderOverview from "./ProviderOverview";
 import ProviderProfilePublic from "./ProviderProfilePublic";
 import ProviderLocations from "./ProviderLocations";
-import ProviderServices from "./ProviderServices";
-import ProviderTeam from "./ProviderTeam";
-import ProviderHours from "./ProviderHours";
 import ProviderMedia from "./ProviderMedia";
 import ProviderArticles from "./ProviderArticles";
 import ProviderAccess from "./ProviderAccess";
@@ -38,11 +35,12 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
   const navItems = getProviderNav({ canManageMembers: workspace.can_manage_members });
   const statusLabel = overview?.location?.profile_control_status ? (PROFILE_CONTROL_LABELS[overview.location.profile_control_status] || overview.location.profile_control_status) : "";
   const statusGreen = ["verified", "claimed"].includes(overview?.location?.profile_control_status);
+  const safeSection = ["services", "team", "hours"].includes(section) ? "locations" : section;
 
   return (
     <ProviderAppShell
       navItems={navItems}
-      activeKey={section}
+      activeKey={safeSection}
       onNavigate={navigate}
       user={user}
       onLogout={onLogout}
@@ -61,16 +59,13 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
         <p className="text-sm text-muted-foreground">Se incarca...</p>
       ) : (
         <>
-          {section === "overview" && <ProviderOverview overview={overview} onNavigate={navigate} />}
-          {section === "profile" && <ProviderProfilePublic locationId={selectedLocationId} overview={overview} workspace={workspace} onNavigate={navigate} onSelectLocation={setSelectedLocationId} onRefresh={() => loadOverview(selectedLocationId)} />}
-          {section === "locations" && <ProviderLocations workspace={workspace} selectedLocationId={selectedLocationId} onSelect={setSelectedLocationId} onNavigate={navigate} onRefresh={() => loadOverview(selectedLocationId)} />}
-          {section === "services" && <ProviderServices locationId={selectedLocationId} overview={overview} onRefresh={() => loadOverview(selectedLocationId)} />}
-          {section === "team" && <ProviderTeam locationId={selectedLocationId} />}
-          {section === "hours" && <ProviderHours locationId={selectedLocationId} onRefresh={() => loadOverview(selectedLocationId)} />}
-          {section === "media" && <ProviderMedia locationId={selectedLocationId} />}
-          {section === "articles" && <ProviderArticles locationId={selectedLocationId} />}
-          {section === "access" && workspace.can_manage_members && <ProviderAccess locations={workspace.locations} />}
-          {section === "settings" && <ProviderSettings />}
+          {safeSection === "overview" && <ProviderOverview overview={overview} onNavigate={navigate} />}
+          {safeSection === "profile" && <ProviderProfilePublic locationId={selectedLocationId} overview={overview} workspace={workspace} onNavigate={navigate} onSelectLocation={setSelectedLocationId} onRefresh={() => loadOverview(selectedLocationId)} />}
+          {safeSection === "locations" && <ProviderLocations workspace={workspace} selectedLocationId={selectedLocationId} onSelect={setSelectedLocationId} overview={overview} onRefresh={() => loadOverview(selectedLocationId)} />}
+          {safeSection === "media" && <ProviderMedia locationId={selectedLocationId} />}
+          {safeSection === "articles" && <ProviderArticles locationId={selectedLocationId} />}
+          {safeSection === "access" && workspace.can_manage_members && <ProviderAccess locations={workspace.locations} />}
+          {safeSection === "settings" && <ProviderSettings />}
         </>
       )}
     </ProviderAppShell>
