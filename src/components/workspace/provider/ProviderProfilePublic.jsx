@@ -7,12 +7,12 @@ import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none focus:border-foreground/50 transition-colors";
 const QUICK_FIELDS = [
-  ["public_phone", "Telefon general", "text", "Telefon general al organizatiei. Telefoanele pe fiecare punct de lucru se gestioneaza in Locatii."],
-  ["public_email", "Email general", "text", "Email general al organizatiei sau brandului."],
-  ["website_url", "Website", "text", "Exemplu: https://site.ro"],
-  ["facebook_url", "Facebook", "text", "Link catre pagina oficiala."],
-  ["instagram_url", "Instagram", "text", "Link catre profilul oficial."],
-  ["linkedin_url", "LinkedIn", "text", "Optional, util mai ales pentru B2B."],
+  ["public_phone", "Telefon general", "Telefon general al organizatiei. Telefoanele pe fiecare punct de lucru se gestioneaza in Locatii."],
+  ["public_email", "Email general", "Email general al organizatiei sau brandului."],
+  ["website_url", "Website", "Exemplu: https://site.ro"],
+  ["facebook_url", "Facebook", "Link catre pagina oficiala."],
+  ["instagram_url", "Instagram", "Link catre profilul oficial."],
+  ["linkedin_url", "LinkedIn", "Optional, util mai ales pentru B2B."],
 ];
 const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const LOGO_MAX_BYTES = 4 * 1024 * 1024;
@@ -59,18 +59,10 @@ function Field({ label, hint, children }) {
   );
 }
 
-function MetricCard({ icon: Icon, label, value, muted }) {
+function BrandLogo({ name, photoUrl, pending, small = false }) {
+  const sizeCls = small ? "h-14 w-14 rounded-2xl" : "h-16 w-16 rounded-3xl";
   return (
-    <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-3 shadow-sm backdrop-blur-sm">
-      <div className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground"><Icon className="h-3.5 w-3.5" /> {label}</div>
-      <div className={`mt-1 text-sm font-bold ${muted ? "text-muted-foreground" : "text-foreground"}`}>{value}</div>
-    </div>
-  );
-}
-
-function BrandLogo({ name, photoUrl, pending }) {
-  return (
-    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-3xl border border-white/70 bg-white shadow-sm">
+    <div className={`relative shrink-0 overflow-hidden border border-white/70 bg-white shadow-sm ${sizeCls}`}>
       {photoUrl ? (
         <img src={photoUrl} alt={`Logo ${name}`} className="h-full w-full object-contain p-2" />
       ) : (
@@ -81,14 +73,23 @@ function BrandLogo({ name, photoUrl, pending }) {
   );
 }
 
+function PreviewMetric({ icon: Icon, label, value, muted }) {
+  return (
+    <div className="rounded-2xl border border-white/70 bg-white/75 px-3 py-2.5 shadow-sm backdrop-blur-sm">
+      <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground"><Icon className="h-3 w-3" /> {label}</div>
+      <div className={`mt-1 truncate text-xs font-bold ${muted ? "text-muted-foreground" : "text-foreground"}`}>{value}</div>
+    </div>
+  );
+}
+
 function LocationSummaryCard({ loc, active, onManage }) {
   const mapUrl = buildGoogleMapsUrl(loc);
   const isInactive = loc.active_status === "inactiva";
   const statusLabel = PROFILE_CONTROL_LABELS[loc.profile_control_status] || loc.profile_control_status || "-";
   return (
-    <div className={`group rounded-2xl border bg-card p-4 transition-all hover:-translate-y-0.5 hover:shadow-sm ${active ? "border-foreground shadow-sm" : "border-border"}`}>
+    <div className={`rounded-2xl border bg-card p-3.5 transition-all hover:shadow-sm ${active ? "border-foreground shadow-sm" : "border-border"}`}>
       <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-secondary text-foreground"><MapPin className="h-5 w-5" /></div>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary text-foreground"><MapPin className="h-4 w-4" /></div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <div className="truncate text-sm font-bold">{loc.public_display_name || loc.name}</div>
@@ -97,13 +98,42 @@ function LocationSummaryCard({ loc, active, onManage }) {
           <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{[loc.address, loc.locality_name || loc.city, loc.county_name || loc.county].filter(Boolean).join(", ") || "Adresa nepublicata"}</p>
         </div>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-        <div className="rounded-xl bg-secondary/70 px-3 py-2.5"><div className="flex items-center gap-1.5 text-muted-foreground"><Phone className="h-3 w-3" /> Telefon</div><div className="mt-0.5 truncate font-bold">{loc.public_phone || loc.phone_public || "Lipseste"}</div></div>
-        <div className="rounded-xl bg-secondary/70 px-3 py-2.5"><div className="flex items-center gap-1.5 text-muted-foreground"><ShieldCheck className="h-3 w-3" /> Status</div><div className="mt-0.5 truncate font-bold">{statusLabel}</div></div>
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+        <div className="rounded-xl bg-secondary/70 px-3 py-2"><div className="text-muted-foreground">Telefon</div><div className="truncate font-bold">{loc.public_phone || loc.phone_public || "Lipseste"}</div></div>
+        <div className="rounded-xl bg-secondary/70 px-3 py-2"><div className="text-muted-foreground">Status</div><div className="truncate font-bold">{statusLabel}</div></div>
       </div>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3 text-xs">
-        <button onClick={onManage} className="rounded-full bg-foreground px-3 py-1.5 font-semibold text-background transition-opacity hover:opacity-90">Gestioneaza locatia</button>
-        {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-muted-foreground hover:text-foreground">Google Maps <ExternalLink className="w-3 h-3" /></a>}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3 text-xs">
+        <button onClick={onManage} className="rounded-full bg-foreground px-3 py-1.5 font-semibold text-background transition-opacity hover:opacity-90">Gestioneaza</button>
+        {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-muted-foreground hover:text-foreground">Maps <ExternalLink className="w-3 h-3" /></a>}
+      </div>
+    </div>
+  );
+}
+
+function OrganizationPreview({ orgName, profileTypeLabel, loc, quick, logoPreview, hasPendingLogo, locationCount }) {
+  return (
+    <div className="overflow-hidden rounded-[28px] border border-border bg-card shadow-sm">
+      <div className="relative p-5" style={{ background: "linear-gradient(135deg, #fffaf2 0%, #ffffff 46%, #f4f1ea 100%)" }}>
+        <div className="absolute right-0 top-0 h-24 w-24 rounded-bl-full bg-amber-100/60" />
+        <div className="relative flex gap-4">
+          <BrandLogo name={orgName} photoUrl={logoPreview} pending={hasPendingLogo} />
+          <div className="min-w-0">
+            <div className="text-xs font-medium text-muted-foreground">Previzualizare organizatie</div>
+            <h2 className="mt-1 truncate font-heading text-2xl font-extrabold tracking-tight">{orgName}</h2>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-foreground shadow-sm">{profileTypeLabel}</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-800 shadow-sm"><ShieldCheck className="h-3.5 w-3.5" /> {loc.profile_control_status === "verified" ? "Verificat" : "Activ"}</span>
+              {hasPendingLogo && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800 shadow-sm">Logo in review</span>}
+            </div>
+          </div>
+        </div>
+        <p className="relative mt-4 text-sm leading-relaxed text-muted-foreground line-clamp-4">{quick.public_description || "Adauga o descriere generala pentru organizatie. Descrierea locatiei, programul si serviciile se gestioneaza pe fiecare punct de lucru."}</p>
+        <div className="relative mt-5 grid grid-cols-2 gap-2">
+          <PreviewMetric icon={Store} label="Locatii" value={`${locationCount} ${locationCount === 1 ? "locatie" : "locatii"}`} />
+          <PreviewMetric icon={Phone} label="Telefon" value={quick.public_phone || "Lipseste"} muted={!quick.public_phone} />
+          <PreviewMetric icon={Mail} label="Email" value={quick.public_email || "Lipseste"} muted={!quick.public_email} />
+          <PreviewMetric icon={Globe2} label="Website" value={quick.website_url || "Nepublicat"} muted={!quick.website_url} />
+        </div>
       </div>
     </div>
   );
@@ -230,81 +260,110 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
   const manageLocation = (id) => { if (id && onSelectLocation) onSelectLocation(id); if (onNavigate) onNavigate("locations"); };
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-6">
       <div>
         <h1 className="font-heading text-2xl font-extrabold tracking-tight">Profil public organizatie</h1>
-        <p className="mt-1 text-xs text-muted-foreground">Controleaza informatiile generale ale brandului si modul in care sunt prezentate locatiile tale.</p>
+        <p className="mt-1 text-xs text-muted-foreground">Completeaza datele generale ale brandului si vezi previzualizarea in dreapta.</p>
       </div>
 
-      <div className="overflow-hidden rounded-[28px] border border-border bg-card shadow-sm">
-        <div className="relative p-5 sm:p-7" style={{ background: "linear-gradient(135deg, #fffaf2 0%, #ffffff 44%, #f4f1ea 100%)" }}>
-          <div className="absolute right-0 top-0 h-28 w-28 rounded-bl-full bg-amber-100/60" />
-          <div className="relative flex gap-4">
-            <BrandLogo name={orgName} photoUrl={logoPreview} pending={hasPendingLogo} />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_390px] xl:items-start">
+        <div className="space-y-5">
+          <div className="rounded-[24px] border border-border bg-card p-5 shadow-sm space-y-5">
             <div>
-              <div className="text-xs font-medium text-muted-foreground">Previzualizare organizatie</div>
-              <h2 className="mt-1 font-heading text-3xl font-extrabold tracking-tight">{orgName}</h2>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-foreground shadow-sm">{profileTypeLabel}</span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-800 shadow-sm"><ShieldCheck className="h-3.5 w-3.5" /> {loc.profile_control_status === "verified" ? "Verificat" : "Activ"}</span>
-                {hasPendingLogo && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800 shadow-sm">Logo in review</span>}
-              </div>
-              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">{quick.public_description || "Adauga o descriere generala pentru organizatie. Descrierea locatiei, programul si serviciile se gestioneaza pe fiecare punct de lucru."}</p>
+              <div className="font-semibold text-sm">Informatii publice generale</div>
+              <p className="text-xs text-muted-foreground mt-1">Acestea sunt date de brand/organizatie. Datele specifice unei locatii se editeaza separat.</p>
             </div>
-          </div>
-          <div className="relative mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <MetricCard icon={Store} label="Locatii" value={`${locationCount} ${locationCount === 1 ? "locatie" : "locatii"}`} />
-            <MetricCard icon={Phone} label="Telefon general" value={quick.public_phone || "Lipseste"} muted={!quick.public_phone} />
-            <MetricCard icon={Mail} label="Email general" value={quick.public_email || "Lipseste"} muted={!quick.public_email} />
-            <MetricCard icon={Globe2} label="Website" value={quick.website_url || "Nepublicat"} muted={!quick.website_url} />
-          </div>
-        </div>
-      </div>
 
-      <div className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
-        <div className="flex items-start justify-between gap-4">
-          <div><div className="flex items-center gap-2 font-semibold text-sm"><Building2 className="h-4 w-4" /> Locatii publice ale organizatiei</div><p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Aici apar pe scurt punctele de lucru. Adresa, harta, programul, serviciile si echipa se gestioneaza din modulul Locatii si modulele locatiei selectate.</p></div>
-          <button onClick={() => onNavigate && onNavigate("locations")} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary shrink-0">Vezi toate locatiile</button>
-        </div>
-        {locations.length === 0 ? <div className="mt-4 rounded-2xl border border-dashed border-border bg-secondary/50 p-6 text-center"><Building2 className="w-6 h-6 mx-auto text-muted-foreground" /><p className="mt-2 text-sm font-medium">Nu exista locatii in workspace</p><p className="mt-1 text-xs text-muted-foreground">Locatiile aprobate vor aparea aici.</p></div> : <div className="mt-4 grid gap-4 md:grid-cols-2">{locations.map((l) => <LocationSummaryCard key={l.id} loc={l} active={l.id === locationId} onManage={() => manageLocation(l.id)} />)}</div>}
-      </div>
-
-      <div className="rounded-[24px] border border-border bg-card p-5 shadow-sm space-y-5">
-        <div><div className="font-semibold text-sm">Informatii publice generale</div><p className="text-xs text-muted-foreground mt-1">Acestea sunt date de brand/organizatie. Datele specifice unei locatii se editeaza separat.</p></div>
-        <div className="grid gap-4 lg:grid-cols-[0.9fr_1.9fr]">
-          <div className="rounded-2xl border border-border bg-secondary/35 p-4">
-            <div className="flex items-center gap-3">
-              <label className="relative block cursor-pointer shrink-0" title={logoPreview ? "Schimba logo" : "Adauga logo"}>
-                <BrandLogo name={orgName} photoUrl={logoPreview} pending={hasPendingLogo} />
-                <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-card bg-foreground text-background shadow-sm">
-                  {uploadingLogo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-4 w-4" />}
-                </span>
-                {logoInput}
-              </label>
-              <div className="min-w-0">
-                <div className="text-sm font-semibold">Logo / imagine profil</div>
-                <p className="mt-1 text-xs text-muted-foreground">Logo-ul merge la aprobare inainte sa fie public.</p>
-                <label className="mt-2 inline-block cursor-pointer text-xs font-semibold underline underline-offset-4">
-                  {logoPreview ? "Schimba logo" : "Adauga logo"}
+            <div className="rounded-2xl border border-border bg-secondary/35 p-4">
+              <div className="flex items-center gap-3">
+                <label className="relative block cursor-pointer shrink-0" title={logoPreview ? "Schimba logo" : "Adauga logo"}>
+                  <BrandLogo name={orgName} photoUrl={logoPreview} pending={hasPendingLogo} small />
+                  <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-card bg-foreground text-background shadow-sm">
+                    {uploadingLogo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  </span>
                   {logoInput}
                 </label>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold">Logo / imagine profil</div>
+                  <p className="mt-1 text-xs text-muted-foreground">Logo-ul merge la aprobare inainte sa fie public.</p>
+                  <label className="mt-2 inline-block cursor-pointer text-xs font-semibold underline underline-offset-4">
+                    {logoPreview ? "Schimba logo" : "Adauga logo"}
+                    {logoInput}
+                  </label>
+                </div>
               </div>
+              {logoMsg && <p className={`mt-3 text-xs ${hasPendingLogo || logoMsg.includes("curs") ? "text-amber-700" : "text-muted-foreground"}`}>{logoMsg}</p>}
+              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-background px-3 py-1 text-[11px] font-semibold text-muted-foreground"><ImagePlus className="h-3.5 w-3.5" /> Publicare dupa aprobare admin</div>
             </div>
-            {logoMsg && <p className={`mt-3 text-xs ${hasPendingLogo || logoMsg.includes("curs") ? "text-amber-700" : "text-muted-foreground"}`}>{logoMsg}</p>}
-            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-background px-3 py-1 text-[11px] font-semibold text-muted-foreground"><ImagePlus className="h-3.5 w-3.5" /> Publicare dupa aprobare admin</div>
-          </div>
-          <Field label="Descriere organizatie" hint="Prezentare generala a brandului: ce oferiti, cui va adresati si ce va diferentiaza."><textarea className={inputCls} rows={7} value={quick.public_description} onChange={(e) => setQuick({ ...quick, public_description: e.target.value })} /></Field>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">{QUICK_FIELDS.map(([key, label, type, hint]) => <Field key={key} label={label} hint={hint}><input className={inputCls} value={quick[key]} onChange={(e) => setQuick({ ...quick, [key]: e.target.value })} /></Field>)}</div>
-        <div className="flex items-center gap-3 pt-1"><button disabled={savingQuick} onClick={saveQuick} className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50"><Save className="w-4 h-4" /> Salveaza informatiile</button>{quickMsg && <p className="text-xs text-muted-foreground">{quickMsg}</p>}</div>
-      </div>
 
-      <div className="rounded-[24px] border border-border bg-card p-5 shadow-sm space-y-4">
-        <div><div className="font-semibold text-sm">Nume public organizatie — necesita review</div><p className="text-xs text-muted-foreground mt-1">Schimbarea numelui public poate afecta identificarea brandului si este verificata inainte de publicare.</p>{reviewDraft && <span className="inline-block mt-2 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-secondary">{SUBMISSION_STATUS_LABELS[reviewDraft.status] || reviewDraft.status}</span>}</div>
-        <Field label="Nume public afisat" hint="Exemplu: Lunera Optic"><input className={inputCls} value={reviewValues.public_display_name || ""} onChange={(e) => setReviewValues({ ...reviewValues, public_display_name: e.target.value })} disabled={reviewDraft?.status === "pending_review"} /></Field>
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">Adresa si harta nu se modifica aici. Pentru fiecare punct de lucru foloseste modulul Locatii.</div>
-        <div className="flex flex-wrap gap-2"><button disabled={savingReview || reviewDraft?.status === "pending_review"} onClick={saveReview} className="rounded-full border border-border px-5 py-2.5 text-sm font-semibold disabled:opacity-50 hover:bg-secondary">Salveaza draft</button>{reviewDraft && reviewDraft.status !== "pending_review" && <button disabled={savingReview} onClick={submitReview} className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50">Trimite spre review</button>}</div>
-        {reviewMsg && <p className="text-xs text-muted-foreground">{reviewMsg}</p>}
+            <Field label="Descriere organizatie" hint="Prezentare generala a brandului: ce oferiti, cui va adresati si ce va diferentiaza.">
+              <textarea className={inputCls} rows={8} value={quick.public_description} onChange={(e) => setQuick({ ...quick, public_description: e.target.value })} />
+            </Field>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {QUICK_FIELDS.map(([key, label, hint]) => (
+                <Field key={key} label={label} hint={hint}>
+                  <input className={inputCls} value={quick[key]} onChange={(e) => setQuick({ ...quick, [key]: e.target.value })} />
+                </Field>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <button disabled={savingQuick} onClick={saveQuick} className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50"><Save className="w-4 h-4" /> Salveaza informatiile</button>
+              {quickMsg && <p className="text-xs text-muted-foreground">{quickMsg}</p>}
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-border bg-card p-5 shadow-sm space-y-4">
+            <div>
+              <div className="font-semibold text-sm">Nume public organizatie — necesita review</div>
+              <p className="text-xs text-muted-foreground mt-1">Schimbarea numelui public poate afecta identificarea brandului si este verificata inainte de publicare.</p>
+              {reviewDraft && <span className="inline-block mt-2 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-secondary">{SUBMISSION_STATUS_LABELS[reviewDraft.status] || reviewDraft.status}</span>}
+            </div>
+            <Field label="Nume public afisat" hint="Exemplu: Lunera Optic">
+              <input className={inputCls} value={reviewValues.public_display_name || ""} onChange={(e) => setReviewValues({ ...reviewValues, public_display_name: e.target.value })} disabled={reviewDraft?.status === "pending_review"} />
+            </Field>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">Adresa si harta nu se modifica aici. Pentru fiecare punct de lucru foloseste modulul Locatii.</div>
+            <div className="flex flex-wrap gap-2">
+              <button disabled={savingReview || reviewDraft?.status === "pending_review"} onClick={saveReview} className="rounded-full border border-border px-5 py-2.5 text-sm font-semibold disabled:opacity-50 hover:bg-secondary">Salveaza draft</button>
+              {reviewDraft && reviewDraft.status !== "pending_review" && <button disabled={savingReview} onClick={submitReview} className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50">Trimite spre review</button>}
+            </div>
+            {reviewMsg && <p className="text-xs text-muted-foreground">{reviewMsg}</p>}
+          </div>
+        </div>
+
+        <aside className="space-y-4 xl:sticky xl:top-6">
+          <OrganizationPreview
+            orgName={orgName}
+            profileTypeLabel={profileTypeLabel}
+            loc={loc}
+            quick={quick}
+            logoPreview={logoPreview}
+            hasPendingLogo={hasPendingLogo}
+            locationCount={locationCount}
+          />
+
+          <div className="rounded-[24px] border border-border bg-card p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 font-semibold text-sm"><Building2 className="h-4 w-4" /> Locatii</div>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Preview pentru punctele de lucru.</p>
+              </div>
+              <button onClick={() => onNavigate && onNavigate("locations")} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary shrink-0">Vezi</button>
+            </div>
+            {locations.length === 0 ? (
+              <div className="mt-4 rounded-2xl border border-dashed border-border bg-secondary/50 p-5 text-center">
+                <Building2 className="w-5 h-5 mx-auto text-muted-foreground" />
+                <p className="mt-2 text-sm font-medium">Nu exista locatii</p>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {locations.slice(0, 3).map((l) => <LocationSummaryCard key={l.id} loc={l} active={l.id === locationId} onManage={() => manageLocation(l.id)} />)}
+                {locations.length > 3 && <button onClick={() => onNavigate && onNavigate("locations")} className="w-full rounded-full border border-border px-3 py-2 text-xs font-semibold hover:bg-secondary">Vezi toate cele {locations.length} locatii</button>}
+              </div>
+            )}
+          </div>
+        </aside>
       </div>
     </div>
   );
