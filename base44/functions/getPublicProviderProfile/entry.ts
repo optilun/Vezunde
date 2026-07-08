@@ -20,9 +20,10 @@ const NEED_LEVELS = {
 };
 
 const PUBLIC_CONF = ['publicly_listed', 'provider_confirmed', 'vezunde_verified'];
+// Patient public profile = location/unit page only. Independent professionals and
+// laboratories stay out of the patient directory; they can appear through a unit team.
 const PATIENT_FACING_PROFILE_TYPES = [
   'independent_optical_store', 'optical_chain', 'ophthalmology_clinic', 'ophthalmology_office',
-  'independent_ophthalmologist', 'independent_optometrist', 'independent_optician', 'optical_laboratory_b2c',
 ];
 const STATUS_LABELS = {
   verified: 'Profil verificat de Vezunde',
@@ -63,8 +64,8 @@ Deno.serve(async (req) => {
     const pcs = loc ? (loc.profile_control_status || 'directory') : null;
     // Suspended, unpublished or inactive profiles are never rendered publicly —
     // same 404 in all cases, no state disclosure.
-    // Module 3H.1A.1: fail closed — missing classification or B2B profile types are
-    // never rendered publicly (same 404, no disclosure).
+    // Module 3H.1A.1: fail closed — missing classification, independent professional
+    // or B2B/B2C lab profile types are never rendered as patient-facing provider pages.
     if (!loc || loc.status !== 'publicata' || loc.active_status === 'inactiva' || pcs === 'suspended'
         || !loc.provider_profile_type
         || !PATIENT_FACING_PROFILE_TYPES.includes(loc.provider_profile_type)) {
@@ -90,7 +91,12 @@ Deno.serve(async (req) => {
       .map((a, i) => {
         const p = profiles[i];
         if (!p || p.is_public === false) return null;
-        return { full_name: p.full_name, professional_type: a.professional_type, bio: p.bio || null };
+        return {
+          full_name: p.full_name,
+          professional_type: a.professional_type,
+          bio: p.bio || null,
+          affiliation_status: a.affiliation_status || 'location_added',
+        };
       })
       .filter(Boolean);
 
