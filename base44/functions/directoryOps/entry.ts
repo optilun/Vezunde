@@ -47,6 +47,7 @@ const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g,
 const tokens = (s) => norm(s).split(' ').filter((t) => t.length > 2);
 
 function bad(msg) { return Response.json({ error: msg }, { status: 400 }); }
+function parseJSON(value) { try { return value ? JSON.parse(value) : {}; } catch (_e) { return {}; } }
 
 // matching_allowed is NEVER automatic beyond these strict rules.
 function computeMatchingAllowed(level, needLevel, loc) {
@@ -373,11 +374,14 @@ Deno.serve(async (req) => {
       // Module 3H.1A.1: a location cannot be approved/activated without profile classification.
       if (!loc.provider_profile_type) return bad('Locatia nu are provider_profile_type — clasifica profilul inainte de aprobare');
       const note = String(p.note || '').trim();
+      const submitted = parseJSON(claim.submitted_payload);
+      const isAccessRequest = submitted.request_type === 'access_request_existing_claimed_profile';
+      const memberRole = isAccessRequest ? 'location_staff' : 'organization_owner';
       const locUpdates = alreadyApproved ? {} : {
         claim_verification_status: 'approved',
         profile_control_status: loc.profile_control_status === 'verified' ? 'verified' : 'claimed',
         profile_control_status_updated_at: new Date().toISOString(),
-        profile_control_status_reason: note || 'Revendicare aprobata',
+        profile_control_status_reason: note || (isAccessRequest ? 'Cerere acces aprobata' : 'Revendicare aprobata'),
       };
       // New locations submitted via the public wizard go live once their claim is approved.
       if (!alreadyApproved && loc.status === 'in_verificare') locUpdates.status = 'publicata';
@@ -385,7 +389,9 @@ Deno.serve(async (req) => {
         await svc.entities.ProviderLocation.update(loc.id, locUpdates);
         await svc.entities.ProviderClaimRequest.update(claim.id, { status: 'aprobata', reviewed_at: new Date().toISOString(), review_notes: note });
       }
-      // Provider access is granted ONLY through this explicit ownership assignment.
+      // Provider access is granted ONLY through this explicit assignment.
+      // Normal first claims become organization_owner. Access requests to an already
+      // administered profile become location_staff by default to avoid silent ownership takeover.
       let activeMembership = null;
       if (claim.user_id) {
         const existing = await svc.entities.ProviderMembership.filter({ user_id: claim.user_id, location_id: loc.id, status: 'active' });
@@ -395,7 +401,7 @@ Deno.serve(async (req) => {
             user_id: claim.user_id,
             location_id: loc.id,
             organization_id: loc.organization_id || claim.organization_id || null,
-            role: 'organization_owner',
+            role: memberRole,
             status: 'active',
           });
         }
@@ -419,9 +425,9 @@ Deno.serve(async (req) => {
       }
       // Services are NOT auto-upgraded to provider_confirmed — individual review required.
       if (!alreadyApproved || promotedDraftCount > 0) {
-        await audit(svc, user, { entity_type: 'ProviderClaimRequest', entity_id: claim.id, action_type: 'approve_claim', changed_fields: alreadyApproved ? ['preparation_draft_promotion'] : ['status', 'claim_verification_status', 'profile_control_status', 'preparation_draft_promotion'], previous: { status: claim.status, profile_control_status: loc.profile_control_status }, next: { ...locUpdates, promoted_preparation_drafts: promotedDraftCount }, note });
+        await audit(svc, user, { entity_type: 'ProviderClaimRequest', entity_id: claim.id, action_type: isAccessRequest ? 'approve_access_request' : 'approve_claim', changed_fields: alreadyApproved ? ['preparation_draft_promotion'] : ['status', 'claim_verification_status', 'profile_control_status', 'membership_role', 'preparation_draft_promotion'], previous: { status: claim.status, profile_control_status: loc.profile_control_status }, next: { ...locUpdates, membership_role: memberRole, promoted_preparation_drafts: promotedDraftCount }, note });
       }
-      return Response.json({ success: true, promoted_preparation_drafts: promotedDraftCount, already_approved: alreadyApproved });
+      return Response.json({ success: true, promoted_preparation_drafts: promotedDraftCount, already_approved: alreadyApproved, membership_role: memberRole });
     }
 
     // ---------- CLAIM REJECTION (note required) ----------
