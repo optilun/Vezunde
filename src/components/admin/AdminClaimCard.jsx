@@ -43,7 +43,7 @@ export default function AdminClaimCard({ claim, onDecision, busy }) {
       <AdminClaimIdentityContext claim={claim} />
       {isAccessRequest && (
         <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          Profilul pare deja revendicat sau administrat. Aprobarea acestei cereri va adauga solicitantul ca membru cu acces la locatie; verifica manual relatia inainte de aprobare.
+          Profilul pare deja revendicat sau administrat. Aprobarea va adauga solicitantul cu rol limitat de staff locatie, nu ca owner. Verifica manual relatia inainte de aprobare.
         </p>
       )}
       {isDuplicateReview && (
