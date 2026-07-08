@@ -29,6 +29,7 @@ export default function Layout() {
           </Link>
           <nav className="flex items-center gap-2 text-sm">
             <Link to="/cauta" className="px-3.5 py-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors">Cauta</Link>
+            <Link to="/parteneri" className="px-3.5 py-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors hidden md:block">Parteneri</Link>
             <Link to="/pentru-specialisti" className="px-3.5 py-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors hidden sm:block">Pentru specialisti</Link>
             <HeaderAccountLink />
             <Link
@@ -56,6 +57,7 @@ export default function Layout() {
             <div className="font-medium mb-3">Platforma</div>
             <Link to="/cauta" className="block text-muted-foreground hover:text-foreground">Cauta furnizori</Link>
             <Link to="/cerere" className="block text-muted-foreground hover:text-foreground">Trimite o cerere</Link>
+            <Link to="/parteneri" className="block text-muted-foreground hover:text-foreground">Parteneri B2B</Link>
             <Link to="/pentru-specialisti" className="block text-muted-foreground hover:text-foreground">Pentru specialisti</Link>
             <Link to="/revendica-profil" className="block text-muted-foreground hover:text-foreground">Revendica un profil</Link>
           </div>
