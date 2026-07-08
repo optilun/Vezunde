@@ -44,6 +44,16 @@ Pentru fiecare actiune noua se noteaza minimum:
 | `provider_member_access_granted` | Cerere acces aprobata / membru activat | solicitant | Confirmare ca are acces | mare |
 | `provider_member_access_granted_owner_notice` | Cerere acces aprobata pentru profil deja administrat | owner existent | Informare ca un membru nou a fost adaugat | medie |
 
+## Auth si billing
+
+| Event key | Cand se declanseaza | Catre cine | Scop | Prioritate |
+|---|---|---|---|---|
+| `auth_password_setup_requested` | Utilizatorul cere setare/recuperare parola pentru cont existent | utilizator | Permite acces prin email fara cont duplicat | medie |
+| `billing_subscription_started` | Abonament activat pentru organizatie/locatie | billing owner | Confirmare plata si activare | mare |
+| `billing_subscription_failed_payment` | Plata recurenta esueaza | billing owner | Cere actualizarea metodei de plata | mare |
+| `billing_subscription_cancelled` | Abonament anulat | billing owner | Confirmare anulare si efecte | mare |
+| `billing_owner_changed` | Persoana responsabila de plata se schimba | vechiul si noul billing owner | Confirmare schimbare responsabil plata | medie |
+
 ## Reguli de siguranta
 
 - Emailurile nu trebuie sa contina informatii sensibile inutile.
