@@ -13,6 +13,7 @@ import Search from './pages/Search';
 import ProviderProfile from './pages/ProviderProfile';
 import RequestFlow from './pages/RequestFlow';
 import ForSpecialists from './pages/ForSpecialists';
+import Partners from './pages/Partners';
 import AddOrClaim from './pages/AddOrClaim';
 import MyAccount from './pages/MyAccount';
 import AdminVerifications from './pages/AdminVerifications';
@@ -63,6 +64,7 @@ const AuthenticatedApp = () => {
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
         <Route path="/cauta" element={<Search />} />
+        <Route path="/parteneri" element={<Partners />} />
         <Route path="/furnizor/:id" element={<ProviderProfile />} />
         <Route path="/cerere" element={<RequestFlow />} />
         <Route path="/revendica-profil" element={<Navigate to="/adauga-sau-revendica" replace />} />
