@@ -48,8 +48,12 @@ const FACILITY_REASONS = {
   montaj_lentile_in_locatie: 'Monteaza lentile in locatie',
 };
 
-// Module 3H.1A: B2B profile classifications never enter patient discovery/matching.
-const B2B_PROFILE_TYPES = ['optical_laboratory_b2b', 'future_b2b_distributor'];
+// Patient matching = only real patient-facing units/locations. Independent
+// professionals and laboratories belong to professional/B2B areas and may appear
+// only through a unit team, not as standalone patient recommendations.
+const PATIENT_FACING_PROFILE_TYPES = [
+  'independent_optical_store', 'optical_chain', 'ophthalmology_clinic', 'ophthalmology_office',
+];
 
 // Module 3H.1A.1: canonical professional taxonomy — legacy Romanian keys are
 // normalized read-only at matching time; stored data and rules are unchanged.
@@ -197,7 +201,7 @@ Deno.serve(async (req) => {
     // Module 3B: alias expansion is read-only and NEVER applied to specialized medical requests.
     const expandedServiceKeys = needLevel === 'specialized_medical'
       ? serviceKeys
-      : [...new Set(serviceKeys.flatMap((k) => (SERVICE_ALIASES[k] ? [k, SERVICE_ALIASES[k]] : [k])))];
+      : [...new Set(serviceKeys.flatMap((k) => (SERVICE_ALIASES[k] ? [k, SERVICE_ALIASES[k]] : [k])))]
 
     const [locations, services, specs, assigns, facilities] = await Promise.all([
       svc.entities.ProviderLocation.filter({ status: 'publicata' }, null, 500),
@@ -241,9 +245,9 @@ Deno.serve(async (req) => {
     const excludedList = [];
     for (const loc of locations) {
       if (loc.active_status === 'inactiva') continue;
-      // Module 3H.1A.1: fail closed — locations with missing classification or B2B
-      // profile types never enter patient matching.
-      if (!loc.provider_profile_type || B2B_PROFILE_TYPES.includes(loc.provider_profile_type)) continue;
+      // Patient matching is location/unit-only. Independent professional and lab
+      // profiles do not enter patient recommendations.
+      if (!loc.provider_profile_type || !PATIENT_FACING_PROFILE_TYPES.includes(loc.provider_profile_type)) continue;
       if (providerTypes.length > 0 && !providerTypes.includes(loc.provider_type)) continue;
 
       const locRows = svcRowMap[loc.id] || [];
