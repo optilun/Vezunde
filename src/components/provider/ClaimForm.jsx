@@ -8,6 +8,22 @@ import ClaimReviewStep from "@/components/provider/ClaimReviewStep";
 
 // Module 3H.1B.2: temporary session state so a login redirect doesn't lose the form.
 const CONTACT_RESUME_KEY = "pending_claim_contact";
+const LOCATION_RESUME_KEY = "pending_claim_location";
+const STEP_RESUME_KEY = "pending_claim_step";
+
+const DEFAULT_CONTACT = {
+  contact_name: "",
+  claimant_relationship: "",
+  email: "",
+  phone: "",
+  representation_confirmed: false,
+};
+
+const clearClaimResumeState = () => {
+  sessionStorage.removeItem(CONTACT_RESUME_KEY);
+  sessionStorage.removeItem(LOCATION_RESUME_KEY);
+  sessionStorage.removeItem(STEP_RESUME_KEY);
+};
 
 // Module 3H.1B.3.UI: short claim flow — orchestrates 3 sub-steps (relation,
 // contact, review) using the existing submitProviderClaim action, unchanged.
@@ -15,12 +31,9 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
   const [contact, setContact] = useState(() => {
     try {
       const raw = sessionStorage.getItem(CONTACT_RESUME_KEY);
-      if (raw) {
-        sessionStorage.removeItem(CONTACT_RESUME_KEY);
-        return { contact_name: "", claimant_relationship: "", email: "", phone: "", representation_confirmed: false, ...JSON.parse(raw) };
-      }
+      if (raw) return { ...DEFAULT_CONTACT, ...JSON.parse(raw) };
     } catch { /* ignore corrupt state */ }
-    return { contact_name: "", claimant_relationship: "", email: "", phone: "", representation_confirmed: false };
+    return DEFAULT_CONTACT;
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -28,8 +41,9 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
   const submit = async () => {
     const authed = await base44.auth.isAuthenticated();
     if (!authed) {
-      sessionStorage.setItem("pending_claim_location", JSON.stringify(location));
+      sessionStorage.setItem(LOCATION_RESUME_KEY, JSON.stringify(location));
       sessionStorage.setItem(CONTACT_RESUME_KEY, JSON.stringify(contact));
+      sessionStorage.setItem(STEP_RESUME_KEY, "review");
       base44.auth.redirectToLogin(window.location.href);
       return;
     }
@@ -46,7 +60,10 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
       .catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
     setSubmitting(false);
     if (res.data?.error) setError(res.data.error);
-    else onDone();
+    else {
+      clearClaimResumeState();
+      onDone();
+    }
   };
 
   const locationCard = (
