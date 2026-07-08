@@ -52,6 +52,21 @@ function isPublicSafeService(s, pcs) {
   return true;
 }
 
+function publicUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  if (/\s/.test(raw)) return null;
+  const normalized = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : raw.startsWith('//') ? `https:${raw}` : `https://${raw}`;
+  try {
+    const parsed = new URL(normalized);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+    if (!parsed.hostname || !parsed.hostname.includes('.')) return null;
+    return parsed.toString();
+  } catch (_e) {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -120,7 +135,10 @@ Deno.serve(async (req) => {
         address: loc.address || null,
         phone_public: loc.phone_public || null,
         public_email: loc.public_email || null,
-        website: loc.website || null,
+        website: publicUrl(loc.website_url || loc.website),
+        facebook: publicUrl(loc.facebook_url),
+        instagram: publicUrl(loc.instagram_url),
+        linkedin: publicUrl(loc.linkedin_url),
         description: loc.description || null,
         photo_url: loc.photo_url || null,
         opening_hours: loc.opening_hours || null,
