@@ -49,6 +49,17 @@ Pentru fiecare actiune noua se noteaza minimum:
 | `professional_profile_claimed` | Specialistul revendica profilul profesional | specialist | Confirmare cerere profil profesional | medie |
 | `professional_profile_verified` | Admin verifica profilul profesional | specialist | Confirmare profil profesional verificat | medie |
 
+## Parteneri B2B si listari platite
+
+| Event key | Cand se declanseaza | Catre cine | Scop | Prioritate |
+|---|---|---|---|---|
+| `b2b_supplier_profile_submitted` | Furnizorul B2B trimite profilul spre verificare | solicitant | Confirmare primire cerere furnizor | mare |
+| `b2b_supplier_profile_approved` | Admin aproba profilul de furnizor B2B | solicitant | Confirmare acces/listare partener | mare |
+| `b2b_supplier_profile_rejected` | Admin respinge profilul de furnizor B2B | solicitant | Anunt respingere + motiv | mare |
+| `b2b_supplier_listing_started` | Listarea platita este activata | billing owner | Confirmare listare/abonament | mare |
+| `b2b_supplier_listing_payment_failed` | Plata listarii esueaza | billing owner | Cere actualizarea metodei de plata | mare |
+| `b2b_supplier_listing_cancelled` | Listarea platita este anulata | billing owner | Confirmare anulare listare | medie |
+
 ## Auth si billing
 
 | Event key | Cand se declanseaza | Catre cine | Scop | Prioritate |
