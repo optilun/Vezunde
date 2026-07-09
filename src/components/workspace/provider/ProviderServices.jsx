@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { ChevronDown, Plus, Save, Send, X } from "lucide-react";
+import { base44 } from "@/api/base44Client";
+import { SERVICE_GROUPS } from "@/lib/canonicalServiceCatalog";
 import {
   CLIENT_NEED_SECTIONS,
   getSectionSelectedCount,
@@ -143,7 +146,6 @@ function NeedSectionCard({ section, selected, customByGroup, pendingReview, onTo
 
       {section.note && <p className="mt-3 rounded-2xl bg-secondary/45 px-3 py-2 text-xs leading-relaxed text-muted-foreground">{section.note}</p>}
 
-
       {isOpen && (
         <div className="mt-4">
           <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Detalii care ajuta recomandarea</div>
@@ -189,7 +191,7 @@ function NeedSectionCard({ section, selected, customByGroup, pendingReview, onTo
                 {customItems.map((item) => (
                   <span key={`${item.group}-${item.label}-${item.indexInGroup}`} className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-white px-3 py-1.5 text-xs font-medium text-amber-900">
                     {item.label}
-                    {!pendingReview && <button type="button" onClick={() => onRemoveCustom(item.group, item.indexInGroup)} className="rounded-full p-0.5 hover:bg-amber-100" aria-label="Sterge particularitatea"><X className="h-3 w-3" /></button>}
+                    {!pendingReview && <button type="button" onClick={() => onRemoveCustom(item.group, item.indexInGroup)} className="rounded-full p-0.5 hover:bg-amber-100" aria-label="Sterge serviciul"><X className="h-3 w-3" /></button>}
                   </span>
                 ))}
               </div>
