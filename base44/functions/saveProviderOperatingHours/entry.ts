@@ -8,6 +8,37 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 const AVAILABILITY_STATUSES = ['astazi', 'urmatoarele_zile', 'saptamana_aceasta', 'doar_programare', 'necunoscuta'];
 const MAX_HOURS_LEN = 500;
 
+const LEGACY_PROVIDER_ROLE_MAP = { owner: 'organization_owner', staff: 'location_staff' };
+const LEGACY_PROVIDER_STATUS_MAP = { revoked: 'inactive' };
+function normalizeProviderMembership(membership) {
+  if (!membership) return null;
+  const role = LEGACY_PROVIDER_ROLE_MAP[membership.role] || membership.role;
+  const status = LEGACY_PROVIDER_STATUS_MAP[membership.status] || membership.status;
+  return { ...membership, role, status };
+}
+function activeProviderMemberships(rows) {
+  return (rows || []).map(normalizeProviderMembership).filter((m) => m.status === 'active' && !!m.role);
+}
+async function getActiveProviderMemberships(svc, userId, options = {}) {
+  const query = { user_id: userId, status: 'active' };
+  if (options.locationId) query.location_id = options.locationId;
+  const rows = await svc.entities.ProviderMembership.filter(query, null, options.limit || 100);
+  return activeProviderMemberships(rows);
+}
+async function getActiveProviderLocationMemberships(svc, userId, locationId) {
+  if (!userId || !locationId) return [];
+  return getActiveProviderMemberships(svc, userId, { locationId, limit: 10 });
+}
+async function hasProviderLocationAccess(svc, user, locationId) {
+  if (!user || !locationId) return false;
+  if (user.role === 'admin') return true;
+  const memberships = await getActiveProviderLocationMemberships(svc, user.id, locationId);
+  return memberships.length > 0;
+}
+function getExplicitProviderLocationIds(memberships) {
+  return [...new Set((memberships || []).filter((m) => m.status === 'active' && !!m.role).map((m) => m.location_id).filter(Boolean))];
+}
+
 async function audit(svc, user, rec) {
   await svc.entities.DirectoryAuditRecord.create({
     entity_type: rec.entity_type,
@@ -33,11 +64,8 @@ Deno.serve(async (req) => {
 
     if (!p.location_id) return Response.json({ error: 'location_id este obligatoriu' }, { status: 400 });
 
-    // Verify active membership.
-    const memberships = await svc.entities.ProviderMembership.filter({
-      user_id: user.id, location_id: p.location_id, status: 'active',
-    });
-    if (memberships.length === 0) {
+    // Verify active location membership.
+    if (!(await hasProviderLocationAccess(svc, user, p.location_id))) {
       return Response.json({ error: 'Nu ai acces la aceasta locatie' }, { status: 403 });
     }
 

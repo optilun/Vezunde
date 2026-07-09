@@ -89,6 +89,37 @@ function isValidUrl(v) {
   try { const u = new URL(v); return u.protocol === 'https:' || u.protocol === 'http:'; } catch { return false; }
 }
 
+const LEGACY_PROVIDER_ROLE_MAP = { owner: 'organization_owner', staff: 'location_staff' };
+const LEGACY_PROVIDER_STATUS_MAP = { revoked: 'inactive' };
+function normalizeProviderMembership(membership) {
+  if (!membership) return null;
+  const role = LEGACY_PROVIDER_ROLE_MAP[membership.role] || membership.role;
+  const status = LEGACY_PROVIDER_STATUS_MAP[membership.status] || membership.status;
+  return { ...membership, role, status };
+}
+function activeProviderMemberships(rows) {
+  return (rows || []).map(normalizeProviderMembership).filter((m) => m.status === 'active' && !!m.role);
+}
+async function getActiveProviderMemberships(svc, userId, options = {}) {
+  const query = { user_id: userId, status: 'active' };
+  if (options.locationId) query.location_id = options.locationId;
+  const rows = await svc.entities.ProviderMembership.filter(query, null, options.limit || 100);
+  return activeProviderMemberships(rows);
+}
+async function getActiveProviderLocationMemberships(svc, userId, locationId) {
+  if (!userId || !locationId) return [];
+  return getActiveProviderMemberships(svc, userId, { locationId, limit: 10 });
+}
+async function hasProviderLocationAccess(svc, user, locationId) {
+  if (!user || !locationId) return false;
+  if (user.role === 'admin') return true;
+  const memberships = await getActiveProviderLocationMemberships(svc, user.id, locationId);
+  return memberships.length > 0;
+}
+function getExplicitProviderLocationIds(memberships) {
+  return [...new Set((memberships || []).filter((m) => m.status === 'active' && !!m.role).map((m) => m.location_id).filter(Boolean))];
+}
+
 // ===== PART 6: deterministic profile completeness (no AI, never a ranking factor) =====
 function summarize(items) {
   const missing = items.filter((i) => !i.ok);
@@ -146,8 +177,8 @@ Deno.serve(async (req) => {
     const action = payload.action;
 
     const myLocationIds = async () => {
-      const ms = await svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' }, null, 100);
-      return ms.filter((m) => m.location_id).map((m) => m.location_id);
+      const ms = await getActiveProviderMemberships(svc, user.id);
+      return getExplicitProviderLocationIds(ms);
     };
     const canAccessLocation = async (locationId) => {
       if (isAdmin) return true;
@@ -174,7 +205,7 @@ Deno.serve(async (req) => {
       }
       if (entityType === 'organization') {
         if (!isAdmin) {
-          const ms = await svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' }, null, 100);
+          const ms = await getActiveProviderMemberships(svc, user.id);
           if (!ms.some((m) => m.organization_id === entityId)) return Response.json({ error: 'Acces interzis' }, { status: 403 });
         }
         const org = entityId ? await svc.entities.ProviderOrganization.get(entityId).catch(() => null) : null;

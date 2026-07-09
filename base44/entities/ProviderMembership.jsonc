@@ -14,22 +14,25 @@
     "role": {
       "type": "string",
       "enum": [
-        "owner",
-        "staff"
+        "organization_owner",
+        "location_manager",
+        "location_staff"
       ]
     },
     "status": {
       "type": "string",
       "enum": [
         "active",
-        "revoked"
+        "inactive"
       ],
       "default": "active"
     }
   },
   "required": [
     "user_id",
-    "role"
+    "location_id",
+    "role",
+    "status"
   ],
   "rls": {
     "read": {

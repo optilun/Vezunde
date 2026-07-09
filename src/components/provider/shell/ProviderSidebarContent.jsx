@@ -1,15 +1,14 @@
 import React from "react";
 import { LogOut } from "lucide-react";
-import { PROVIDER_NAV_PRIMARY } from "@/lib/providerNavConfig";
+import { PROVIDER_NAV_PRIMARY, PROVIDER_NAV_SECONDARY } from "@/lib/providerNavConfig";
 
 function NavButton({ item, active, onClick }) {
   const Icon = item.icon;
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-        active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-      }`}
+      className={("w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors " +
+        (active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"))}
     >
       <Icon className="w-4 h-4 shrink-0" />
       <span className="truncate">{item.label}</span>
@@ -25,7 +24,7 @@ export default function ProviderSidebarContent({ activeKey, onNavigate, user, on
           <div className="w-7 h-7 rounded-lg text-white flex items-center justify-center text-sm font-bold bg-foreground">V</div>
           <span className="font-heading text-lg font-bold tracking-tight">vezunde</span>
         </div>
-        <p className="text-[11px] text-muted-foreground mt-1 pl-9">Contul meu</p>
+        <p className="text-[11px] text-muted-foreground mt-1 pl-9">Workspace furnizor</p>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 space-y-0.5">
@@ -33,6 +32,12 @@ export default function ProviderSidebarContent({ activeKey, onNavigate, user, on
           <NavButton key={item.key} item={item} active={activeKey === item.key} onClick={() => onNavigate(item.key)} />
         ))}
       </nav>
+
+      <div className="px-3 py-3 border-t border-border space-y-0.5">
+        {PROVIDER_NAV_SECONDARY.map((item) => (
+          <NavButton key={item.key} item={item} active={activeKey === item.key} onClick={() => onNavigate(item.key)} />
+        ))}
+      </div>
 
       <div className="px-4 py-4 border-t border-border">
         <div className="min-w-0">

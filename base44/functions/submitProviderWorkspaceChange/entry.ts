@@ -5,7 +5,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 // private claim-preparation workspace only: no publication, no membership, no
 // submit-for-review before claim approval.
 
-const PROVIDER_WORKSPACE_SECTIONS = ['public_profile', 'location_details', 'services', 'team', 'media', 'article'];
+const PROVIDER_WORKSPACE_SECTIONS = ['organization_profile', 'public_profile', 'location_details', 'services', 'team', 'media', 'article'];
 const CLAIM_PREP_SECTIONS = ['public_profile', 'operating_hours', 'services'];
 const WRITABLE_SECTIONS = [...new Set([...PROVIDER_WORKSPACE_SECTIONS, ...CLAIM_PREP_SECTIONS])];
 const ACTIVE_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
@@ -13,17 +13,21 @@ const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
 const MAX_FIELD_LEN = 2000;
 const MAX_ARTICLE_BODY = 20000;
 const MAX_HOURS_LEN = 500;
+const MAX_ORG_DESCRIPTION = 500;
+const MAX_URL_LEN = 500;
+const B2B_PROFILE_TYPES = ['optical_laboratory_b2b', 'future_b2b_distributor'];
 
 const CLAIM_PREP_PUBLIC_PROFILE_FIELDS = ['public_description', 'website_url', 'facebook_url', 'instagram_url', 'linkedin_url', 'public_phone', 'public_email'];
 const CLAIM_PREP_SERVICE_GROUPS = ['patient_services', 'technical_activities'];
 const AVAILABILITY_STATUSES = ['astazi', 'urmatoarele_zile', 'saptamana_aceasta', 'doar_programare', 'necunoscuta'];
 
 const SECTION_FIELDS = {
+  organization_profile: ['public_name', 'logo_url', 'description', 'general_phone', 'general_email', 'website_url', 'facebook_url', 'instagram_url', 'linkedin_url'],
   public_profile: ['public_display_name', 'public_description', 'website_url', 'facebook_url', 'instagram_url', 'linkedin_url', 'public_phone', 'public_email'],
-  location_details: ['address', 'public_display_name', 'public_phone', 'public_email'],
+  location_details: ['address', 'public_display_name', 'public_phone', 'public_email', 'lat', 'lng', 'place_id'],
   operating_hours: ['opening_hours', 'saturday_hours', 'availability_status'],
   services: ['selected_ids', 'removal_ids', 'suggestions'],
-  team: ['members', 'removal_professional_ids'],
+  team: ['members', 'removal_professional_ids', 'invitations'],
   media: ['assets', 'removal_media_ids'],
   article: ['title', 'excerpt', 'body', 'cover_media_id', 'author_professional_id'],
 };
@@ -36,9 +40,75 @@ const CANONICAL_SERVICE_IDS = {
 };
 
 const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
+const SPECIALIST_INVITE_ROLES = ['ophthalmologist', 'optometrist', 'optician', 'contact_lens_specialist', 'optical_workshop_specialist', 'other_relevant_specialist'];
+
+const LEGACY_PROVIDER_ROLE_MAP = { owner: 'organization_owner', staff: 'location_staff' };
+const LEGACY_PROVIDER_STATUS_MAP = { revoked: 'inactive' };
+function normalizeProviderMembership(membership) {
+  if (!membership) return null;
+  const role = LEGACY_PROVIDER_ROLE_MAP[membership.role] || membership.role;
+  const status = LEGACY_PROVIDER_STATUS_MAP[membership.status] || membership.status;
+  return { ...membership, role, status };
+}
+function activeProviderMemberships(rows) {
+  return (rows || []).map(normalizeProviderMembership).filter((m) => m.status === 'active' && !!m.role);
+}
+async function getActiveProviderMemberships(svc, userId, options = {}) {
+  const query = { user_id: userId, status: 'active' };
+  if (options.locationId) query.location_id = options.locationId;
+  const rows = await svc.entities.ProviderMembership.filter(query, null, options.limit || 100);
+  return activeProviderMemberships(rows);
+}
+async function getActiveProviderLocationMemberships(svc, userId, locationId) {
+  if (!userId || !locationId) return [];
+  return getActiveProviderMemberships(svc, userId, { locationId, limit: 10 });
+}
+async function hasProviderLocationAccess(svc, user, locationId) {
+  if (!user || !locationId) return false;
+  if (user.role === 'admin') return true;
+  const memberships = await getActiveProviderLocationMemberships(svc, user.id, locationId);
+  return memberships.length > 0;
+}
+function getExplicitProviderLocationIds(memberships) {
+  return [...new Set((memberships || []).filter((m) => m.status === 'active' && !!m.role).map((m) => m.location_id).filter(Boolean))];
+}
 
 function bad(body, status = 400) { return { valid: false, status, body }; }
 function isPlainObject(value) { return !!value && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype; }
+function cleanPlainText(value, field, maxLen) {
+  const val = String(value || '').replace(/\r\n?/g, '\n').trim();
+  if (val.length > maxLen) return { error: field + ' depaseste lungimea maxima' };
+  if (/[<>]/.test(val) || /<\/?[a-z][\s\S]*>/i.test(val)) return { error: field + ' trebuie sa fie text simplu, fara HTML' };
+  return { value: val };
+}
+function cleanUrl(value, field) {
+  const raw = String(value || '').trim();
+  if (!raw) return { value: '' };
+  if (raw.length > MAX_URL_LEN) return { error: field + ' depaseste lungimea maxima' };
+  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : 'https://' + raw;
+  let parsed;
+  try { parsed = new URL(withScheme); } catch (_e) { return { error: field + ' trebuie sa fie URL valid' }; }
+  if (!['http:', 'https:'].includes(parsed.protocol)) return { error: field + ' trebuie sa foloseasca http sau https' };
+  return { value: parsed.toString() };
+}
+function cleanEmail(value, field = 'email') {
+  const val = String(value || '').trim();
+  if (!val) return { value: '' };
+  if (val.length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return { error: field + ' invalid' };
+  return { value: val };
+}
+function cleanPhone(value, field = 'telefon') {
+  const val = String(value || '').trim();
+  if (!val) return { value: '' };
+  if (!/^[0-9+().\-\s]{6,80}$/.test(val)) return { error: field + ' invalid' };
+  return { value: val };
+}
+function cleanNumber(value, field, min, max) {
+  if (value === '' || value === null || value === undefined) return { value: null };
+  const num = typeof value === 'number' ? value : Number(String(value).trim());
+  if (!Number.isFinite(num) || num < min || num > max) return { error: field + ' este invalid' };
+  return { value: num };
+}
 
 function checkUnknown(section, payload, allowedOverride = null) {
   const allowed = allowedOverride || SECTION_FIELDS[section];
@@ -62,6 +132,35 @@ function validateTextPayload(section, payload, allowedOverride = null) {
     if (val.length > MAX_FIELD_LEN) return bad({ error: `${key} depaseste lungimea maxima` });
     clean[key] = val.trim();
   }
+  return Object.keys(clean).length ? { valid: true, clean } : bad({ error: 'Payload gol' });
+}
+
+function validateOrganizationProfile(payload) {
+  const base = checkUnknown('organization_profile', payload);
+  if (!base.valid) return base;
+  const clean = {};
+  if ('public_name' in payload) { const v = cleanPlainText(payload.public_name, 'public_name', 160); if (v.error) return bad({ error: v.error }); clean.public_name = v.value; }
+  if ('logo_url' in payload) { const v = cleanUrl(payload.logo_url, 'logo_url'); if (v.error) return bad({ error: v.error }); clean.logo_url = v.value; }
+  if ('description' in payload) { const v = cleanPlainText(payload.description, 'description', MAX_ORG_DESCRIPTION); if (v.error) return bad({ error: v.error }); clean.description = v.value; }
+  if ('general_phone' in payload) { const v = cleanPhone(payload.general_phone, 'general_phone'); if (v.error) return bad({ error: v.error }); clean.general_phone = v.value; }
+  if ('general_email' in payload) { const v = cleanEmail(payload.general_email, 'general_email'); if (v.error) return bad({ error: v.error }); clean.general_email = v.value; }
+  for (const key of ['website_url', 'facebook_url', 'instagram_url', 'linkedin_url']) {
+    if (key in payload) { const v = cleanUrl(payload[key], key); if (v.error) return bad({ error: v.error }); clean[key] = v.value; }
+  }
+  return Object.keys(clean).length ? { valid: true, clean } : bad({ error: 'Payload gol' });
+}
+
+function validateLocationDetails(payload) {
+  const base = checkUnknown('location_details', payload);
+  if (!base.valid) return base;
+  const clean = {};
+  for (const key of ['address', 'public_display_name', 'place_id']) {
+    if (key in payload) { const v = cleanPlainText(payload[key], key, key === 'place_id' ? 300 : MAX_FIELD_LEN); if (v.error) return bad({ error: v.error }); clean[key] = v.value; }
+  }
+  if ('public_phone' in payload) { const v = cleanPhone(payload.public_phone, 'public_phone'); if (v.error) return bad({ error: v.error }); clean.public_phone = v.value; }
+  if ('public_email' in payload) { const v = cleanEmail(payload.public_email, 'public_email'); if (v.error) return bad({ error: v.error }); clean.public_email = v.value; }
+  if ('lat' in payload) { const v = cleanNumber(payload.lat, 'lat', -90, 90); if (v.error) return bad({ error: v.error }); clean.lat = v.value; }
+  if ('lng' in payload) { const v = cleanNumber(payload.lng, 'lng', -180, 180); if (v.error) return bad({ error: v.error }); clean.lng = v.value; }
   return Object.keys(clean).length ? { valid: true, clean } : bad({ error: 'Payload gol' });
 }
 
@@ -138,7 +237,7 @@ function validateServices(payload, options = {}) {
 function validateTeam(payload, context) {
   const base = checkUnknown('team', payload);
   if (!base.valid) return base;
-  const clean = { members: [], removal_professional_ids: [] };
+  const clean = { members: [], removal_professional_ids: [], invitations: [] };
   if (payload.members !== undefined) {
     if (!Array.isArray(payload.members)) return bad({ error: 'members trebuie sa fie lista' });
     for (const member of payload.members) {
@@ -169,7 +268,20 @@ function validateTeam(payload, context) {
     if (!Array.isArray(payload.removal_professional_ids)) return bad({ error: 'removal_professional_ids trebuie sa fie lista' });
     clean.removal_professional_ids = [...new Set(payload.removal_professional_ids.map((id) => String(id || '').trim()).filter(Boolean))];
   }
-  if (clean.members.length === 0 && clean.removal_professional_ids.length === 0) return bad({ error: 'Payload gol' });
+  if (payload.invitations !== undefined) {
+    if (!Array.isArray(payload.invitations)) return bad({ error: 'invitations trebuie sa fie lista' });
+    for (const invite of payload.invitations) {
+      if (!isPlainObject(invite)) return bad({ error: 'Invitatie invalida' });
+      const unknown = Object.keys(invite).filter((k) => !['email', 'professional_role', 'note'].includes(k));
+      if (unknown.length > 0) return bad({ error: 'Camp nepermis in invitatie', fields: unknown });
+      const email = cleanEmail(invite.email, 'email');
+      if (email.error || !email.value) return bad({ error: email.error || 'Emailul specialistului este obligatoriu' });
+      const role = String(invite.professional_role || '').trim();
+      if (!SPECIALIST_INVITE_ROLES.includes(role)) return bad({ error: 'Rol profesional invalid' });
+      clean.invitations.push({ email: email.value, professional_role: role, note: String(invite.note || '').trim().slice(0, 500) });
+    }
+  }
+  if (clean.members.length === 0 && clean.removal_professional_ids.length === 0 && clean.invitations.length === 0) return bad({ error: 'Payload gol' });
   return { valid: true, clean };
 }
 
@@ -222,8 +334,14 @@ function validatePayload(section, payload, context, access) {
     if (section === 'services') return validateServices(payload, { allowedGroups: CLAIM_PREP_SERVICE_GROUPS, allowSuggestions: false });
   }
   if (section === 'operating_hours') return bad({ error: 'Programul se actualizeaza prin actiunea rapida dupa aprobarea revendicarii' }, 400);
-  if (section === 'public_profile' || section === 'location_details') return validateTextPayload(section, payload);
+  if (section === 'organization_profile') {
+    if (!access.loc.organization_id) return bad({ error: 'Locatia nu este legata de o organizatie' }, 400);
+    return validateOrganizationProfile(payload);
+  }
+  if (section === 'location_details') return validateLocationDetails(payload);
+  if (section === 'public_profile') return validateTextPayload(section, payload);
   if (section === 'services') {
+    if (B2B_PROFILE_TYPES.includes(access.loc.provider_profile_type)) return bad({ error: 'Profilurile B2B nu pot propune servicii patient-facing' }, 403);
     try { return validateServices(payload); } catch (error) { return bad({ error: error.message }); }
   }
   if (section === 'team') return validateTeam(payload, context);
@@ -311,13 +429,13 @@ async function assertSubmittedReferences(svc, locationId, section, payload) {
 async function resolveAccess(svc, user, p) {
   const requestedLocationId = String(p.location_id || '').trim();
   if (requestedLocationId) {
-    const memberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, location_id: requestedLocationId, status: 'active' });
+    const memberships = await getActiveProviderLocationMemberships(svc, user.id, requestedLocationId);
     if (memberships.length > 0) {
       const loc = await svc.entities.ProviderLocation.get(requestedLocationId).catch(() => null);
       if (!loc) return bad({ error: 'Locatia nu a fost gasita' }, 404);
       if (loc.profile_control_status === 'suspended') return bad({ error: 'Profilul este suspendat' }, 403);
-      const allMemberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' });
-      const permittedLocationIds = [...new Set(allMemberships.map((m) => m.location_id).filter(Boolean))];
+      const allMemberships = await getActiveProviderMemberships(svc, user.id);
+      const permittedLocationIds = getExplicitProviderLocationIds(allMemberships);
       return { valid: true, mode: 'provider_workspace', loc, location_id: requestedLocationId, claim: null, context: { permittedLocationIds } };
     }
   }
@@ -349,6 +467,9 @@ function activeSubmissionQuery(access, section, itemKey = '') {
       section,
       status: { $in: ACTIVE_STATUSES },
     };
+  }
+  if (section === 'organization_profile' && access.loc.organization_id) {
+    return { organization_id: access.loc.organization_id, section, status: { $in: ACTIVE_STATUSES } };
   }
   const query = { location_id: access.location_id, section, status: { $in: ACTIVE_STATUSES } };
   if (section === 'article') query.item_key = itemKey;
@@ -435,7 +556,7 @@ Deno.serve(async (req) => {
       if (!p.payload) return Response.json({ error: 'payload este obligatoriu' }, { status: 400 });
       const sub = await svc.entities.ProviderWorkspaceSubmission.get(p.submission_id).catch(() => null);
       if (!sub) return Response.json({ error: 'Draftul nu a fost gasit' }, { status: 404 });
-      if (sub.location_id !== access.location_id) return Response.json({ error: 'Draftul nu apartine acestei locatii' }, { status: 403 });
+      if (sub.location_id !== access.location_id && !(sub.section === 'organization_profile' && sub.organization_id && sub.organization_id === access.loc.organization_id)) return Response.json({ error: 'Draftul nu apartine acestei locatii' }, { status: 403 });
       if (sub.section !== p.section) return Response.json({ error: 'Sectiunea draftului nu se potriveste' }, { status: 400 });
       if (sub.submitted_by_user_id !== user.id) return Response.json({ error: 'Nu poti modifica acest draft' }, { status: 403 });
       if (access.mode === 'applicant_preparation' && (sub.access_origin !== 'claim_preparation' || sub.claim_request_id !== access.claim.id)) {
@@ -464,7 +585,7 @@ Deno.serve(async (req) => {
       if (!p.submission_id) return Response.json({ error: 'submission_id este obligatoriu' }, { status: 400 });
       const sub = await svc.entities.ProviderWorkspaceSubmission.get(p.submission_id).catch(() => null);
       if (!sub) return Response.json({ error: 'Draftul nu a fost gasit' }, { status: 404 });
-      if (sub.location_id !== access.location_id) return Response.json({ error: 'Draftul nu apartine acestei locatii' }, { status: 403 });
+      if (sub.location_id !== access.location_id && !(sub.section === 'organization_profile' && sub.organization_id && sub.organization_id === access.loc.organization_id)) return Response.json({ error: 'Draftul nu apartine acestei locatii' }, { status: 403 });
       if (sub.submitted_by_user_id !== user.id) return Response.json({ error: 'Nu poti trimite acest draft' }, { status: 403 });
       if (sub.section === 'operating_hours') return Response.json({ error: 'Programul se aplica prin update rapid, nu prin review admin' }, { status: 400 });
       if (!['draft', 'needs_more_info'].includes(sub.status)) return Response.json({ error: 'Draftul nu poate fi trimis' }, { status: 400 });
@@ -478,7 +599,7 @@ Deno.serve(async (req) => {
       if (!p.submission_id) return Response.json({ error: 'submission_id este obligatoriu' }, { status: 400 });
       const sub = await svc.entities.ProviderWorkspaceSubmission.get(p.submission_id).catch(() => null);
       if (!sub) return Response.json({ error: 'Submission nu a fost gasit' }, { status: 404 });
-      if (sub.location_id !== access.location_id) return Response.json({ error: 'Submission nu apartine acestei locatii' }, { status: 403 });
+      if (sub.location_id !== access.location_id && !(sub.section === 'organization_profile' && sub.organization_id && sub.organization_id === access.loc.organization_id)) return Response.json({ error: 'Submission nu apartine acestei locatii' }, { status: 403 });
       if (sub.submitted_by_user_id !== user.id) return Response.json({ error: 'Nu poti retrage aceasta submission' }, { status: 403 });
       if (access.mode === 'applicant_preparation' && (sub.access_origin !== 'claim_preparation' || sub.claim_request_id !== access.claim.id)) {
         return Response.json({ error: 'Draftul nu apartine revendicarii tale active' }, { status: 403 });

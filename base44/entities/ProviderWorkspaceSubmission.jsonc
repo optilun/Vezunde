@@ -22,6 +22,7 @@
     "section": {
       "type": "string",
       "enum": [
+        "organization_profile",
         "public_profile",
         "location_details",
         "operating_hours",

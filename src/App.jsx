@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -26,6 +26,11 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+
+const RedirectToAddOrClaim = () => {
+  const location = useLocation();
+  return <Navigate to={"/adauga-sau-revendica" + location.search} replace state={location.state} />;
+};
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -65,8 +70,8 @@ const AuthenticatedApp = () => {
         <Route path="/furnizor/:id" element={<ProviderProfile />} />
         <Route path="/cerere" element={<RequestFlow />} />
         <Route path="/pentru-specialisti" element={<ForSpecialists />} />
-        <Route path="/revendica-profil" element={<Navigate to="/adauga-sau-revendica" replace />} />
-        <Route path="/inscriere" element={<Navigate to="/adauga-sau-revendica" replace />} />
+        <Route path="/revendica-profil" element={<RedirectToAddOrClaim />} />
+        <Route path="/inscriere" element={<RedirectToAddOrClaim />} />
         <Route path="/adauga-sau-revendica" element={<AddOrClaim />} />
         <Route path="/confidentialitate" element={<Privacy />} />
         <Route path="/termeni" element={<Terms />} />

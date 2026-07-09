@@ -2,89 +2,114 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { isAdmin } from "@/lib/access";
-import ClaimStatusRow from "@/components/account/ClaimStatusRow";
-import MyLocationCard from "@/components/account/MyLocationCard";
 import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
+import ProviderOverview from "@/components/provider/workspace/ProviderOverview";
+import OrganizationProfilePanel from "@/components/provider/workspace/OrganizationProfilePanel";
+import LocationsWorkspace from "@/components/provider/workspace/LocationsWorkspace";
+import { PROVIDER_NAV_KEYS } from "@/lib/providerWorkspaceCatalog";
+
+function ClaimOrEmptyState({ workspace }) {
+  const latest = workspace?.latest_claim_status || workspace?.claim || null;
+  const location = workspace?.location_summary || null;
+  return (
+    <div className="max-w-3xl">
+      <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight">Contul meu</h1>
+      <p className="mt-2 text-sm text-muted-foreground">Workspace-ul furnizorului devine disponibil dupa aprobarea unei revendicari.</p>
+      <section className="mt-6 rounded-lg border border-border bg-card p-5 shadow-sm">
+        <h2 className="font-semibold">Status furnizor</h2>
+        {latest ? (
+          <div className="mt-3 space-y-2 text-sm">
+            <p><span className="text-muted-foreground">Status:</span> <span className="font-medium">{latest.status}</span></p>
+            {latest.status_message && <p className="text-muted-foreground">{latest.status_message}</p>}
+            {location?.name && <p className="text-muted-foreground">Locatie: {location.name}</p>}
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-muted-foreground">Nu ai inca o revendicare activa.</p>
+        )}
+        <div className="mt-5">
+          <Link to="/adauga-sau-revendica" className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90">
+            Adauga sau revendica locatie
+          </Link>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function AccessPlaceholder() {
+  return (
+    <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+      <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight">Acces si utilizatori</h1>
+      <p className="mt-2 text-sm text-muted-foreground">Aceasta zona va gestiona owneri, manageri de locatie si membri de echipa. Specialistii publici se gestioneaza separat in Locatii.</p>
+      <p className="mt-4 text-sm text-muted-foreground">Pentru MVP, accesul este controlat prin ProviderMembership si review admin.</p>
+    </section>
+  );
+}
+
+function SettingsPlaceholder() {
+  return (
+    <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+      <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight">Setari</h1>
+      <p className="mt-2 text-sm text-muted-foreground">Setarile comerciale, notificari avansate, plati si integrari nu fac parte din acest MVP.</p>
+    </section>
+  );
+}
 
 export default function MyAccount() {
   const [user, setUser] = useState(null);
-  const [claims, setClaims] = useState([]);
-  const [items, setItems] = useState([]); // { membership, location }
+  const [workspace, setWorkspace] = useState(null);
+  const [activeKey, setActiveKey] = useState(PROVIDER_NAV_KEYS.overview);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const { logout } = useAuth();
 
-  const load = async (u) => {
-    // Module 3H.1A.1: direct public entity reads are closed — location data comes
-    // only through the provider workspace whitelist function.
-    const [claimList, memberships, ws] = await Promise.all([
-      base44.entities.ProviderClaimRequest.filter({ user_id: u.id }, "-created_date", 50),
-      base44.entities.ProviderMembership.filter({ user_id: u.id, status: "active" }, null, 50),
-      base44.functions.invoke("profileFoundationOps", { action: "get_my_workspace" }).catch(() => ({ data: { locations: [] } })),
-    ]);
-    const locById = {};
-    for (const l of ws.data?.locations || []) locById[l.id] = l;
-    const withLoc = memberships
-      .filter((m) => m.location_id && locById[m.location_id])
-      .map((m) => ({ membership: m, location: locById[m.location_id] }));
-    setClaims(claimList);
-    setItems(withLoc);
-    setLoading(false);
+  const loadWorkspace = async () => {
+    setError("");
+    const res = await base44.functions.invoke("getMyProviderWorkspace", {});
+    setWorkspace(res.data || res);
   };
 
   useEffect(() => {
+    let mounted = true;
     base44.auth
       .me()
-      .then((u) => { setUser(u); load(u); })
+      .then(async (u) => {
+        if (!mounted) return;
+        setUser(u);
+        try {
+          await loadWorkspace();
+        } catch (err) {
+          setError(err?.response?.data?.error || err?.message || "Nu am putut incarca workspace-ul.");
+        } finally {
+          if (mounted) setLoading(false);
+        }
+      })
       .catch(() => base44.auth.redirectToLogin(window.location.href));
+    return () => { mounted = false; };
   }, []);
 
   if (!user || loading) {
     return <div className="min-h-[60vh] flex items-center justify-center text-muted-foreground text-sm">Se incarca...</div>;
   }
 
-  const publicProfileUrl = items.length > 0 ? `/furnizor/${items[0].location.id}` : null;
+  const locations = workspace?.locations || [];
+  const publicProfileUrl = locations.length > 0 ? "/furnizor/" + locations[0].id : null;
+  const mode = workspace?.mode || "none";
 
   return (
-    <ProviderAppShell user={user} onLogout={() => logout(true)} publicProfileUrl={publicProfileUrl}>
-      <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight">Contul meu</h1>
-      <p className="mt-2 text-muted-foreground text-sm">Cererile si locatiile tale in Vezunde.</p>
-      <p className="mt-3 inline-block rounded-full bg-secondary px-3 py-1 text-xs font-semibold">
-        {isAdmin(user)
-          ? "Administrator"
-          : items.length > 0
-            ? "Furnizor activ"
-            : claims.some((c) => c.status === "in_asteptare")
-              ? "Cerere de furnizor in asteptare"
-              : "Cont utilizator"}
-      </p>
-
-      <h2 className="mt-8 text-sm font-bold uppercase tracking-wide text-muted-foreground">Cererile mele</h2>
-      <div className="mt-3 space-y-3">
-        {claims.length === 0 && <p className="text-sm text-muted-foreground">Nu ai nicio cerere trimisa.</p>}
-        {claims.map((c) => <ClaimStatusRow key={c.id} claim={c} />)}
-      </div>
-
-      <h2 className="mt-10 text-sm font-bold uppercase tracking-wide text-muted-foreground">Locatiile mele</h2>
-      <div className="mt-3 space-y-3">
-        {items.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            Nu ai inca locatii active. Dupa aprobarea unei cereri, locatia va aparea aici.
-          </p>
-        )}
-        {items.map(({ membership, location }) => (
-          <MyLocationCard key={membership.id} location={location} membership={membership} onSaved={() => load(user)} />
-        ))}
-      </div>
-
-      <div className="mt-8">
-        <Link
-          to="/adauga-sau-revendica"
-          className="inline-block px-6 py-3 rounded-full border border-border bg-card text-sm font-semibold hover:border-foreground/40 transition-colors"
-        >
-          Adauga sau revendica alta locatie
-        </Link>
-      </div>
+    <ProviderAppShell activeKey={activeKey} onNavigate={setActiveKey} user={user} onLogout={() => logout(true)} publicProfileUrl={publicProfileUrl}>
+      {error && <div className="mb-5 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">{error}</div>}
+      {mode !== "provider_workspace" ? (
+        <ClaimOrEmptyState workspace={workspace} />
+      ) : (
+        <>
+          {activeKey === PROVIDER_NAV_KEYS.overview && <ProviderOverview workspace={workspace} onNavigate={setActiveKey} />}
+          {activeKey === PROVIDER_NAV_KEYS.organization && <OrganizationProfilePanel workspace={workspace} onSaved={loadWorkspace} />}
+          {activeKey === PROVIDER_NAV_KEYS.locations && <LocationsWorkspace workspace={workspace} onSaved={loadWorkspace} />}
+          {activeKey === PROVIDER_NAV_KEYS.access && <AccessPlaceholder />}
+          {activeKey === PROVIDER_NAV_KEYS.settings && <SettingsPlaceholder />}
+        </>
+      )}
     </ProviderAppShell>
   );
 }

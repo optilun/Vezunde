@@ -6,8 +6,39 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
 const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
-const PROVIDER_ALLOWED_SECTIONS = ['public_profile', 'location_details', 'services', 'team', 'media', 'article'];
+const PROVIDER_ALLOWED_SECTIONS = ['organization_profile', 'location_details', 'services', 'team'];
 const CLAIM_PREP_ALLOWED_SECTIONS = ['public_profile', 'operating_hours', 'services'];
+const LEGACY_PROVIDER_ROLE_MAP = { owner: 'organization_owner', staff: 'location_staff' };
+const LEGACY_PROVIDER_STATUS_MAP = { revoked: 'inactive' };
+function normalizeProviderMembership(membership) {
+  if (!membership) return null;
+  const role = LEGACY_PROVIDER_ROLE_MAP[membership.role] || membership.role;
+  const status = LEGACY_PROVIDER_STATUS_MAP[membership.status] || membership.status;
+  return { ...membership, role, status };
+}
+function activeProviderMemberships(rows) {
+  return (rows || []).map(normalizeProviderMembership).filter((m) => m.status === 'active' && !!m.role);
+}
+async function getActiveProviderMemberships(svc, userId, options = {}) {
+  const query = { user_id: userId, status: 'active' };
+  if (options.locationId) query.location_id = options.locationId;
+  const rows = await svc.entities.ProviderMembership.filter(query, null, options.limit || 100);
+  return activeProviderMemberships(rows);
+}
+async function getActiveProviderLocationMemberships(svc, userId, locationId) {
+  if (!userId || !locationId) return [];
+  return getActiveProviderMemberships(svc, userId, { locationId, limit: 10 });
+}
+async function hasProviderLocationAccess(svc, user, locationId) {
+  if (!user || !locationId) return false;
+  if (user.role === 'admin') return true;
+  const memberships = await getActiveProviderLocationMemberships(svc, user.id, locationId);
+  return memberships.length > 0;
+}
+function getExplicitProviderLocationIds(memberships) {
+  return [...new Set((memberships || []).filter((m) => m.status === 'active' && !!m.role).map((m) => m.location_id).filter(Boolean))];
+}
+
 const CLAIM_STATUS_MESSAGES = {
   in_asteptare: 'Solicitarea este in verificare. Poti pregati datele profilului intre timp.',
   needs_more_info: 'Avem nevoie de cateva completari pentru solicitarea ta.',
@@ -46,6 +77,8 @@ async function getContentSummary(svc, locationId) {
   const pendingCount = (section) => submissions.filter((s) => s.section === section).length;
   return {
     approved_service_count: services.length + specialties.length,
+    approved_service_keys: services.map((s) => s.service_key).filter(Boolean),
+    approved_specialization_keys: specialties.map((s) => s.specialization_key).filter(Boolean),
     pending_service_review_count: pendingCount('services'),
     approved_public_team_count: team.length,
     pending_team_review_count: pendingCount('team'),
@@ -135,10 +168,7 @@ Deno.serve(async (req) => {
     let hasProviderAccess = user.role === 'admin';
     let activeClaim = null;
     if (!hasProviderAccess) {
-      const memberships = await svc.entities.ProviderMembership.filter({
-        user_id: user.id, location_id: p.location_id, status: 'active',
-      });
-      hasProviderAccess = memberships.length > 0;
+      hasProviderAccess = await hasProviderLocationAccess(svc, user, p.location_id);
       if (!hasProviderAccess) {
         const claims = await svc.entities.ProviderClaimRequest.filter({
           user_id: user.id,

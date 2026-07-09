@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { AVAILABILITY_OPTIONS, VERIFICATION_STATE_LABELS } from "@/lib/providerTaxonomy";
+import { getProviderMembershipRoleLabel } from "@/lib/providerMembership";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
 
 const inputCls = "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none";
@@ -38,7 +39,7 @@ export default function MyLocationCard({ location, membership, onSaved }) {
         <div>
           <div className="font-semibold">{location.name}</div>
           <div className="text-xs text-muted-foreground mt-0.5">
-            {location.city} · {VERIFICATION_STATE_LABELS[location.verification_state || "unclaimed"]} · rol: {membership.role === "owner" ? "proprietar" : "membru"}
+            {location.city} · {VERIFICATION_STATE_LABELS[location.verification_state || "unclaimed"]} · rol: {getProviderMembershipRoleLabel(membership.role)}
             {location.has_pending_changes && <span className="ml-2 text-primary">Modificari in analiza</span>}
           </div>
         </div>

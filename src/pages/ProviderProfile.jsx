@@ -64,7 +64,16 @@ export default function ProviderProfile() {
                 Informatiile acestui profil provin din surse publice si pot fi actualizate de furnizor prin revendicarea profilului.
               </p>
               <Link
-                to="/adauga-sau-revendica"
+                to={"/adauga-sau-revendica?location_id=" + encodeURIComponent(profile.id)}
+                state={{
+                  selectedLocation: {
+                    id: profile.id,
+                    name: profile.name,
+                    provider_type: profile.provider_type,
+                    city: profile.city,
+                    address: profile.address,
+                  },
+                }}
                 className="mt-3 inline-block text-sm font-semibold underline underline-offset-4"
               >
                 Aceasta este locatia ta? Revendica profilul

@@ -48,6 +48,24 @@ const tokens = (s) => norm(s).split(' ').filter((t) => t.length > 2);
 
 function bad(msg) { return Response.json({ error: msg }, { status: 400 }); }
 
+async function getActiveProviderLocationMemberships(svc, userId, locationId) {
+  if (!userId || !locationId) return [];
+  const rows = await svc.entities.ProviderMembership.filter({ user_id: userId, location_id: locationId, status: 'active' }, null, 10);
+  return activeProviderMemberships(rows);
+}
+const LEGACY_PROVIDER_ROLE_MAP = { owner: 'organization_owner', staff: 'location_staff' };
+const LEGACY_PROVIDER_STATUS_MAP = { revoked: 'inactive' };
+function normalizeProviderMembership(membership) {
+  if (!membership) return null;
+  const role = LEGACY_PROVIDER_ROLE_MAP[membership.role] || membership.role;
+  const status = LEGACY_PROVIDER_STATUS_MAP[membership.status] || membership.status;
+  return { ...membership, role, status };
+}
+function activeProviderMemberships(rows) {
+  return (rows || []).map(normalizeProviderMembership).filter((m) => m.status === 'active' && !!m.role);
+}
+
+
 // matching_allowed is NEVER automatic beyond these strict rules.
 function computeMatchingAllowed(level, needLevel, loc) {
   if (!loc || loc.active_status === 'inactiva' || loc.profile_control_status === 'suspended') return false;
@@ -384,13 +402,13 @@ Deno.serve(async (req) => {
       await svc.entities.ProviderClaimRequest.update(claim.id, { status: 'aprobata', reviewed_at: new Date().toISOString(), review_notes: note });
       // Provider access is granted ONLY through this explicit ownership assignment.
       if (claim.user_id) {
-        const existing = await svc.entities.ProviderMembership.filter({ user_id: claim.user_id, location_id: loc.id, status: 'active' });
+        const existing = await getActiveProviderLocationMemberships(svc, claim.user_id, loc.id);
         if (existing.length === 0) {
           await svc.entities.ProviderMembership.create({
             user_id: claim.user_id,
             location_id: loc.id,
             organization_id: loc.organization_id || claim.organization_id || '',
-            role: 'owner',
+            role: 'organization_owner',
             status: 'active',
           });
         }

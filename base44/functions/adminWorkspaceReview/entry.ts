@@ -7,8 +7,22 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const MAX_FIELD_LEN = 2000;
 const MAX_ARTICLE_BODY = 20000;
+const MAX_ORG_DESCRIPTION = 500;
+const MAX_URL_LEN = 500;
+const B2B_PROFILE_TYPES = ['optical_laboratory_b2b', 'future_b2b_distributor'];
 
 const SECTION_APPLY = {
+  organization_profile: {
+    public_name: 'public_display_name',
+    logo_url: 'logo_url',
+    description: 'public_description',
+    general_phone: 'public_phone',
+    general_email: 'public_email',
+    website_url: 'website_url',
+    facebook_url: 'facebook_url',
+    instagram_url: 'instagram_url',
+    linkedin_url: 'linkedin_url',
+  },
   public_profile: {
     public_display_name: 'public_display_name',
     public_description: 'public_description',
@@ -24,13 +38,16 @@ const SECTION_APPLY = {
     public_display_name: 'public_display_name',
     public_phone: 'public_phone',
     public_email: 'public_email',
+    lat: 'lat',
+    lng: 'lng',
+    place_id: 'place_id',
   },
 };
 
 const SECTION_FIELDS = {
   ...Object.fromEntries(Object.entries(SECTION_APPLY).map(([k, v]) => [k, Object.keys(v)])),
   services: ['selected_ids', 'removal_ids', 'suggestions'],
-  team: ['members', 'removal_professional_ids'],
+  team: ['members', 'removal_professional_ids', 'invitations'],
   media: ['assets', 'removal_media_ids'],
   article: ['title', 'excerpt', 'body', 'cover_media_id', 'author_professional_id'],
 };
@@ -43,12 +60,47 @@ const CANONICAL_SERVICE_IDS = {
 };
 
 const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
+const SPECIALIST_INVITE_ROLES = ['ophthalmologist', 'optometrist', 'optician', 'contact_lens_specialist', 'optical_workshop_specialist', 'other_relevant_specialist'];
 const ROLE_BY_TYPE = { ophthalmologist: 'medic_oftalmolog', optometrist: 'optometrist', optician: 'optician' };
 const LEGACY_MIRRORS = { public_description: ['description'], website_url: ['website'], public_phone: ['phone_public'] };
 
 function bad(body, status = 400) { return { valid: false, status, body }; }
 function isPlainObject(value) { return !!value && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype; }
 function normalizePersonName(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+function cleanPlainText(value, field, maxLen) {
+  const val = String(value || '').replace(/\r\n?/g, '\n').trim();
+  if (val.length > maxLen) return { error: field + ' depaseste lungimea maxima' };
+  if (/[<>]/.test(val) || /<\/?[a-z][\s\S]*>/i.test(val)) return { error: field + ' trebuie sa fie text simplu, fara HTML' };
+  return { value: val };
+}
+function cleanUrl(value, field) {
+  const raw = String(value || '').trim();
+  if (!raw) return { value: '' };
+  if (raw.length > MAX_URL_LEN) return { error: field + ' depaseste lungimea maxima' };
+  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : 'https://' + raw;
+  let parsed;
+  try { parsed = new URL(withScheme); } catch (_e) { return { error: field + ' trebuie sa fie URL valid' }; }
+  if (!['http:', 'https:'].includes(parsed.protocol)) return { error: field + ' trebuie sa foloseasca http sau https' };
+  return { value: parsed.toString() };
+}
+function cleanEmail(value, field = 'email') {
+  const val = String(value || '').trim();
+  if (!val) return { value: '' };
+  if (val.length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return { error: field + ' invalid' };
+  return { value: val };
+}
+function cleanPhone(value, field = 'telefon') {
+  const val = String(value || '').trim();
+  if (!val) return { value: '' };
+  if (!/^[0-9+().\-\s]{6,80}$/.test(val)) return { error: field + ' invalid' };
+  return { value: val };
+}
+function cleanNumber(value, field, min, max) {
+  if (value === '' || value === null || value === undefined) return { value: null };
+  const num = typeof value === 'number' ? value : Number(String(value).trim());
+  if (!Number.isFinite(num) || num < min || num > max) return { error: field + ' este invalid' };
+  return { value: num };
+}
 
 function checkUnknown(section, payload) {
   const allowed = SECTION_FIELDS[section];
@@ -72,6 +124,35 @@ function validateTextPayload(section, payload) {
     if (val.length > MAX_FIELD_LEN) return bad({ error: `${key} depaseste lungimea maxima` });
     clean[key] = val.trim();
   }
+  return Object.keys(clean).length ? { valid: true, clean } : bad({ error: 'Payload gol' });
+}
+
+function validateOrganizationProfile(payload) {
+  const base = checkUnknown('organization_profile', payload);
+  if (!base.valid) return base;
+  const clean = {};
+  if ('public_name' in payload) { const v = cleanPlainText(payload.public_name, 'public_name', 160); if (v.error) return bad({ error: v.error }); clean.public_name = v.value; }
+  if ('logo_url' in payload) { const v = cleanUrl(payload.logo_url, 'logo_url'); if (v.error) return bad({ error: v.error }); clean.logo_url = v.value; }
+  if ('description' in payload) { const v = cleanPlainText(payload.description, 'description', MAX_ORG_DESCRIPTION); if (v.error) return bad({ error: v.error }); clean.description = v.value; }
+  if ('general_phone' in payload) { const v = cleanPhone(payload.general_phone, 'general_phone'); if (v.error) return bad({ error: v.error }); clean.general_phone = v.value; }
+  if ('general_email' in payload) { const v = cleanEmail(payload.general_email, 'general_email'); if (v.error) return bad({ error: v.error }); clean.general_email = v.value; }
+  for (const key of ['website_url', 'facebook_url', 'instagram_url', 'linkedin_url']) {
+    if (key in payload) { const v = cleanUrl(payload[key], key); if (v.error) return bad({ error: v.error }); clean[key] = v.value; }
+  }
+  return Object.keys(clean).length ? { valid: true, clean } : bad({ error: 'Payload gol' });
+}
+
+function validateLocationDetails(payload) {
+  const base = checkUnknown('location_details', payload);
+  if (!base.valid) return base;
+  const clean = {};
+  for (const key of ['address', 'public_display_name', 'place_id']) {
+    if (key in payload) { const v = cleanPlainText(payload[key], key, key === 'place_id' ? 300 : MAX_FIELD_LEN); if (v.error) return bad({ error: v.error }); clean[key] = v.value; }
+  }
+  if ('public_phone' in payload) { const v = cleanPhone(payload.public_phone, 'public_phone'); if (v.error) return bad({ error: v.error }); clean.public_phone = v.value; }
+  if ('public_email' in payload) { const v = cleanEmail(payload.public_email, 'public_email'); if (v.error) return bad({ error: v.error }); clean.public_email = v.value; }
+  if ('lat' in payload) { const v = cleanNumber(payload.lat, 'lat', -90, 90); if (v.error) return bad({ error: v.error }); clean.lat = v.value; }
+  if ('lng' in payload) { const v = cleanNumber(payload.lng, 'lng', -180, 180); if (v.error) return bad({ error: v.error }); clean.lng = v.value; }
   return Object.keys(clean).length ? { valid: true, clean } : bad({ error: 'Payload gol' });
 }
 
@@ -123,7 +204,7 @@ function validateServices(payload) {
 function validateTeam(payload) {
   const base = checkUnknown('team', payload);
   if (!base.valid) return base;
-  const clean = { members: [], removal_professional_ids: [] };
+  const clean = { members: [], removal_professional_ids: [], invitations: [] };
   if (payload.members !== undefined) {
     if (!Array.isArray(payload.members)) return bad({ error: 'members trebuie sa fie lista' });
     for (const member of payload.members) {
@@ -152,7 +233,20 @@ function validateTeam(payload) {
     if (!Array.isArray(payload.removal_professional_ids)) return bad({ error: 'removal_professional_ids trebuie sa fie lista' });
     clean.removal_professional_ids = [...new Set(payload.removal_professional_ids.map((id) => String(id || '').trim()).filter(Boolean))];
   }
-  if (clean.members.length === 0 && clean.removal_professional_ids.length === 0) return bad({ error: 'Payload gol' });
+  if (payload.invitations !== undefined) {
+    if (!Array.isArray(payload.invitations)) return bad({ error: 'invitations trebuie sa fie lista' });
+    for (const invite of payload.invitations) {
+      if (!isPlainObject(invite)) return bad({ error: 'Invitatie invalida' });
+      const unknown = Object.keys(invite).filter((k) => !['email', 'professional_role', 'note'].includes(k));
+      if (unknown.length > 0) return bad({ error: 'Camp nepermis in invitatie', fields: unknown });
+      const email = cleanEmail(invite.email, 'email');
+      if (email.error || !email.value) return bad({ error: email.error || 'Emailul specialistului este obligatoriu' });
+      const role = String(invite.professional_role || '').trim();
+      if (!SPECIALIST_INVITE_ROLES.includes(role)) return bad({ error: 'Rol profesional invalid' });
+      clean.invitations.push({ email: email.value, professional_role: role, note: String(invite.note || '').trim().slice(0, 500) });
+    }
+  }
+  if (clean.members.length === 0 && clean.removal_professional_ids.length === 0 && clean.invitations.length === 0) return bad({ error: 'Payload gol' });
   return { valid: true, clean };
 }
 
@@ -191,7 +285,9 @@ function validateArticle(payload) {
 }
 
 function validatePayload(section, payload) {
-  if (section === 'public_profile' || section === 'location_details') return validateTextPayload(section, payload);
+  if (section === 'organization_profile') return validateOrganizationProfile(payload);
+  if (section === 'location_details') return validateLocationDetails(payload);
+  if (section === 'public_profile') return validateTextPayload(section, payload);
   if (section === 'services') return validateServices(payload);
   if (section === 'team') return validateTeam(payload);
   if (section === 'media') return validateMedia(payload);
@@ -239,6 +335,24 @@ async function assertPublicEligible(base44, locationId) {
   if (!res?.data?.profile?.id) throw new Error('Locatia nu este eligibila pentru continut public');
 }
 
+async function applyOrganizationFields(svc, user, sub, validation) {
+  const orgId = sub.organization_id || '';
+  if (!orgId) throw new Error('Submission-ul nu are organizatie asociata');
+  const org = await svc.entities.ProviderOrganization.get(orgId).catch(() => null);
+  if (!org) throw new Error('Organizatia nu a fost gasita');
+  const fieldMap = SECTION_APPLY.organization_profile;
+  const updates = {};
+  for (const [payloadKey, orgField] of Object.entries(fieldMap)) {
+    if (payloadKey in validation.clean) updates[orgField] = validation.clean[payloadKey];
+  }
+  if (Object.keys(updates).length === 0) return;
+  updates.profile_updated_at = new Date().toISOString();
+  const prev = {};
+  for (const k of Object.keys(updates)) prev[k] = org[k];
+  await svc.entities.ProviderOrganization.update(org.id, updates);
+  await audit(svc, user, { entity_type: 'ProviderOrganization', entity_id: org.id, action_type: 'apply_workspace_organization_profile', changed_fields: Object.keys(updates), previous: prev, next: updates, note: 'Aplicat din submission ' + sub.id + ' (organization_profile)' });
+}
+
 async function applyProviderLocationFields(svc, user, sub, validation) {
   const fieldMap = SECTION_APPLY[sub.section];
   if (!fieldMap) return;
@@ -259,6 +373,8 @@ async function applyProviderLocationFields(svc, user, sub, validation) {
 }
 
 async function applyServices(svc, user, sub, payload) {
+  const loc = await svc.entities.ProviderLocation.get(sub.location_id).catch(() => null);
+  if (B2B_PROFILE_TYPES.includes(loc?.provider_profile_type)) throw new Error('Profilurile B2B nu pot avea servicii patient-facing');
   for (const [group, ids] of Object.entries(payload.selected_ids || {})) {
     for (const serviceKey of ids) {
       if (group === 'specialties') {
@@ -439,7 +555,8 @@ Deno.serve(async (req) => {
 
       const note = String(p.note || '').trim();
       const now = new Date().toISOString();
-      if (sub.section === 'public_profile' || sub.section === 'location_details') await applyProviderLocationFields(svc, user, sub, validation);
+      if (sub.section === 'organization_profile') await applyOrganizationFields(svc, user, sub, validation);
+      else if (sub.section === 'public_profile' || sub.section === 'location_details') await applyProviderLocationFields(svc, user, sub, validation);
       else if (sub.section === 'services') await applyServices(svc, user, sub, validation.clean);
       else if (sub.section === 'team') { await assertPublicEligible(base44, sub.location_id); await applyTeam(svc, user, sub, validation.clean); }
       else if (sub.section === 'media') { await assertPublicEligible(base44, sub.location_id); await applyMedia(svc, user, sub, validation.clean); }

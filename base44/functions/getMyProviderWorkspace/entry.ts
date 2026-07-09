@@ -6,10 +6,41 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 // - applicant_preparation: own pending claim + private preparation drafts only
 // - provider_workspace: active ProviderMembership access
 
-const PROVIDER_ALLOWED_SECTIONS = ['public_profile', 'location_details', 'services', 'team', 'media', 'article'];
+const PROVIDER_ALLOWED_SECTIONS = ['organization_profile', 'location_details', 'services', 'team'];
 const CLAIM_PREP_ALLOWED_SECTIONS = ['public_profile', 'operating_hours', 'services'];
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
 const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
+
+const LEGACY_PROVIDER_ROLE_MAP = { owner: 'organization_owner', staff: 'location_staff' };
+const LEGACY_PROVIDER_STATUS_MAP = { revoked: 'inactive' };
+function normalizeProviderMembership(membership) {
+  if (!membership) return null;
+  const role = LEGACY_PROVIDER_ROLE_MAP[membership.role] || membership.role;
+  const status = LEGACY_PROVIDER_STATUS_MAP[membership.status] || membership.status;
+  return { ...membership, role, status };
+}
+function activeProviderMemberships(rows) {
+  return (rows || []).map(normalizeProviderMembership).filter((m) => m.status === 'active' && !!m.role);
+}
+async function getActiveProviderMemberships(svc, userId, options = {}) {
+  const query = { user_id: userId, status: 'active' };
+  if (options.locationId) query.location_id = options.locationId;
+  const rows = await svc.entities.ProviderMembership.filter(query, null, options.limit || 100);
+  return activeProviderMemberships(rows);
+}
+async function getActiveProviderLocationMemberships(svc, userId, locationId) {
+  if (!userId || !locationId) return [];
+  return getActiveProviderMemberships(svc, userId, { locationId, limit: 10 });
+}
+async function hasProviderLocationAccess(svc, user, locationId) {
+  if (!user || !locationId) return false;
+  if (user.role === 'admin') return true;
+  const memberships = await getActiveProviderLocationMemberships(svc, user.id, locationId);
+  return memberships.length > 0;
+}
+function getExplicitProviderLocationIds(memberships) {
+  return [...new Set((memberships || []).filter((m) => m.status === 'active' && !!m.role).map((m) => m.location_id).filter(Boolean))];
+}
 
 const CLAIM_STATUS_MESSAGES = {
   in_asteptare: 'Solicitarea este in verificare. Poti pregati datele profilului intre timp.',
@@ -23,6 +54,17 @@ function parseJSON(value) {
 }
 
 // MODULE 3H.1C.1 Part 5 — deterministic V1 completeness checklist.
+function computeOrganizationCompleteness(org) {
+  const items = [
+    { key: 'public_name', label: 'Numele public al organizatiei', done: !!(org?.public_display_name || org?.name) },
+    { key: 'description', label: 'Descriere organizatie', done: !!String(org?.public_description || '').trim() },
+    { key: 'contact', label: 'Telefon sau email general', done: !!(String(org?.public_phone || '').trim() || String(org?.public_email || '').trim()) },
+    { key: 'website', label: 'Website sau social media', done: !!(String(org?.website_url || org?.website || '').trim() || String(org?.facebook_url || '').trim() || String(org?.instagram_url || '').trim() || String(org?.linkedin_url || '').trim()) },
+  ];
+  const completed = items.filter((i) => i.done);
+  return { percentage: Math.round((completed.length / items.length) * 100), total_items: items.length, completed_count: completed.length, missing: items.filter((i) => !i.done).map((i) => ({ key: i.key, label: i.label })) };
+}
+
 function computeCompleteness(loc) {
   const items = [
     { key: 'identity', label: 'Identitatea locatiei', done: !!(loc.name && loc.provider_type && loc.provider_profile_type) },
@@ -54,6 +96,8 @@ async function getContentSummary(svc, locationId) {
   const pendingCount = (section) => submissions.filter((s) => s.section === section).length;
   return {
     approved_service_count: services.length + specialties.length,
+    approved_service_keys: services.map((s) => s.service_key).filter(Boolean),
+    approved_specialization_keys: specialties.map((s) => s.specialization_key).filter(Boolean),
     pending_service_review_count: pendingCount('services'),
     approved_public_team_count: team.length,
     pending_team_review_count: pendingCount('team'),
@@ -81,6 +125,9 @@ function sanitizeLocation(loc, orgName) {
     locality_name: loc.locality_name || '',
     locality_siruta_code: loc.locality_siruta_code || '',
     address: loc.address || '',
+    lat: typeof loc.lat === 'number' ? loc.lat : null,
+    lng: typeof loc.lng === 'number' ? loc.lng : null,
+    place_id: loc.place_id || '',
     phone_public: loc.phone_public || loc.public_phone || '',
     public_email: loc.public_email || '',
     website: loc.website_url || loc.website || '',
@@ -90,10 +137,32 @@ function sanitizeLocation(loc, orgName) {
     opening_hours: loc.opening_hours || '',
     saturday_hours: loc.saturday_hours || '',
     availability_status: loc.availability_status || 'necunoscuta',
+    request_intake_status: loc.request_intake_status || 'inactive',
+    opening_hours_json: loc.opening_hours_json || '',
     status: loc.status || 'draft',
     profile_control_status: loc.profile_control_status || 'directory',
     claim_verification_status: loc.claim_verification_status || 'none',
     profile_completeness: computeCompleteness(loc),
+  };
+}
+
+function sanitizeOrganization(org) {
+  return {
+    id: org.id,
+    name: org.name || '',
+    organization_type: org.organization_type || '',
+    public_display_name: org.public_display_name || org.name || '',
+    logo_url: org.logo_url || '',
+    public_description: org.public_description || '',
+    public_phone: org.public_phone || '',
+    public_email: org.public_email || '',
+    website_url: org.website_url || org.website || '',
+    facebook_url: org.facebook_url || '',
+    instagram_url: org.instagram_url || '',
+    linkedin_url: org.linkedin_url || '',
+    public_visibility_status: org.public_visibility_status || 'draft',
+    status: org.status || 'activa',
+    profile_completeness: computeOrganizationCompleteness(org),
   };
 }
 
@@ -215,9 +284,7 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Autentificare necesara' }, { status: 401 });
     const svc = base44.asServiceRole;
 
-    const memberships = await svc.entities.ProviderMembership.filter({
-      user_id: user.id, status: 'active',
-    });
+    const memberships = await getActiveProviderMemberships(svc, user.id);
 
     if (memberships.length === 0) {
       return Response.json(await getApplicantPreparationWorkspace(svc, user));
@@ -231,8 +298,9 @@ Deno.serve(async (req) => {
         const loc = await svc.entities.ProviderLocation.get(m.location_id).catch(() => null);
         if (loc) locMap.set(loc.id, loc);
       }
-      if (m.organization_id && !orgMap.has(m.organization_id)) {
-        const org = await svc.entities.ProviderOrganization.get(m.organization_id).catch(() => null);
+      const orgId = m.organization_id || locMap.get(m.location_id)?.organization_id || '';
+      if (orgId && !orgMap.has(orgId)) {
+        const org = await svc.entities.ProviderOrganization.get(orgId).catch(() => null);
         if (org) orgMap.set(org.id, org);
       }
     }
@@ -276,7 +344,7 @@ Deno.serve(async (req) => {
       mode: 'provider_workspace',
       user: { id: user.id, full_name: user.full_name, email: user.email, role: user.role },
       memberships: membershipData,
-      organizations: [...orgMap.values()].map((o) => ({ id: o.id, name: o.name, organization_type: o.organization_type })),
+      organizations: [...orgMap.values()].map(sanitizeOrganization),
       locations: [...locMap.values()].map((loc) => ({ ...sanitizeLocation(loc, loc.organization_id ? orgMap.get(loc.organization_id)?.name : null), content_summary: contentSummaries.get(loc.id) })),
       pending_review_count: pendingReviewCount,
       allowed_sections: PROVIDER_ALLOWED_SECTIONS,

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Search, Sparkles, PlusCircle, Building2, Wrench, UserCheck, MapPin, History, ShieldCheck, Settings } from "lucide-react";
+import { LayoutDashboard, Search, Sparkles, PlusCircle, Building2, Wrench, UserCheck, MapPin, History, ShieldCheck, Settings, ClipboardCheck } from "lucide-react";
 
 // UI-1: shared nav config for the admin app shell. Keys map 1:1 to the
 // existing tab keys already used by AdminDirectoryOps — no routes changed.
@@ -10,6 +10,7 @@ export const ADMIN_NAV_PRIMARY = [
   { key: "profiluri", label: "Profiluri director", icon: Building2 },
   { key: "servicii", label: "Servicii", icon: Wrench },
   { key: "revendicari", label: "Revendicari", icon: UserCheck },
+  { key: "workspace_review", label: "Review workspace", icon: ClipboardCheck },
   { key: "geografie", label: "Geografie", icon: MapPin },
   { key: "audit", label: "Istoric audit", icon: History },
 ];

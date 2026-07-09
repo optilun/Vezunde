@@ -1,11 +1,42 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-// Owners/staff can update opening hours + availability directly.
+// Active provider members can update opening hours + availability directly.
 // Everything else is staged in pending_changes for admin review.
 const DIRECT_FIELDS = ['opening_hours', 'saturday_hours', 'availability_status'];
 // Module 3F.2.2: city/county are NOT provider-editable fields. Geography changes
 // are staged ONLY as a canonical locality_siruta_code (validated below).
 const STAGED_FIELDS = ['name', 'address', 'phone_public', 'public_email', 'website', 'description', 'provider_type'];
+
+const LEGACY_PROVIDER_ROLE_MAP = { owner: 'organization_owner', staff: 'location_staff' };
+const LEGACY_PROVIDER_STATUS_MAP = { revoked: 'inactive' };
+function normalizeProviderMembership(membership) {
+  if (!membership) return null;
+  const role = LEGACY_PROVIDER_ROLE_MAP[membership.role] || membership.role;
+  const status = LEGACY_PROVIDER_STATUS_MAP[membership.status] || membership.status;
+  return { ...membership, role, status };
+}
+function activeProviderMemberships(rows) {
+  return (rows || []).map(normalizeProviderMembership).filter((m) => m.status === 'active' && !!m.role);
+}
+async function getActiveProviderMemberships(svc, userId, options = {}) {
+  const query = { user_id: userId, status: 'active' };
+  if (options.locationId) query.location_id = options.locationId;
+  const rows = await svc.entities.ProviderMembership.filter(query, null, options.limit || 100);
+  return activeProviderMemberships(rows);
+}
+async function getActiveProviderLocationMemberships(svc, userId, locationId) {
+  if (!userId || !locationId) return [];
+  return getActiveProviderMemberships(svc, userId, { locationId, limit: 10 });
+}
+async function hasProviderLocationAccess(svc, user, locationId) {
+  if (!user || !locationId) return false;
+  if (user.role === 'admin') return true;
+  const memberships = await getActiveProviderLocationMemberships(svc, user.id, locationId);
+  return memberships.length > 0;
+}
+function getExplicitProviderLocationIds(memberships) {
+  return [...new Set((memberships || []).filter((m) => m.status === 'active' && !!m.role).map((m) => m.location_id).filter(Boolean))];
+}
 
 Deno.serve(async (req) => {
   try {
@@ -34,10 +65,7 @@ Deno.serve(async (req) => {
     }
 
     if (user.role !== 'admin') {
-      const memberships = await svc.entities.ProviderMembership.filter({
-        user_id: user.id, location_id: p.location_id, status: 'active',
-      });
-      if (memberships.length === 0) {
+      if (!(await hasProviderLocationAccess(svc, user, p.location_id))) {
         return Response.json({ error: 'Nu ai acces la aceasta locatie' }, { status: 403 });
       }
     }

@@ -12,6 +12,7 @@ import DirOpsClaims from "@/components/admin/directory/DirOpsClaims";
 import DirOpsAudit from "@/components/admin/directory/DirOpsAudit";
 import DirResearch from "@/components/admin/directory/DirResearch";
 import GeoContractChecks from "@/components/admin/directory/GeoContractChecks";
+import AdminWorkspaceSubmissions from "@/components/admin/directory/AdminWorkspaceSubmissions";
 import AICopilot from "@/components/admin/directory/research/AICopilot";
 import GeoImport from "@/components/admin/directory/research/GeoImport";
 import { ADMIN_NAV_LABELS } from "@/lib/adminNavConfig";
@@ -23,6 +24,7 @@ const SIMPLE_HEADERS = {
   profiluri: "Gestioneaza statusul de incredere al profilurilor din director.",
   servicii: "Gestioneaza serviciile confirmate pentru fiecare locatie.",
   revendicari: "Analizeaza cererile de revendicare a profilurilor.",
+  workspace_review: "Analizeaza modificarile trimise de furnizori pentru profil, locatii, servicii si specialisti.",
   geografie: "Sursa canonica de geografie Vezunde (import SIRUTA).",
   audit: "Istoricul actiunilor administrative inregistrate.",
   contract_geo: "Verificari de regresie pentru contractul geografic — instrument intern.",
@@ -47,7 +49,7 @@ export default function AdminDirectoryOps() {
     );
   }
 
-  const simpleTabsWithHeader = ["adauga", "servicii", "revendicari", "geografie", "audit", "contract_geo"];
+  const simpleTabsWithHeader = ["adauga", "servicii", "revendicari", "workspace_review", "geografie", "audit", "contract_geo"];
 
   return (
     <AdminAppShell activeKey={tab} onNavigate={setTab} user={user} onLogout={() => logout(true)}>
@@ -77,6 +79,7 @@ export default function AdminDirectoryOps() {
             {tab === "adauga" && <DirOpsAddLocation />}
             {tab === "servicii" && <DirOpsServices />}
             {tab === "revendicari" && <DirOpsClaims />}
+            {tab === "workspace_review" && <AdminWorkspaceSubmissions />}
             {tab === "geografie" && <GeoImport />}
             {tab === "audit" && <DirOpsAudit />}
             {tab === "contract_geo" && <GeoContractChecks />}

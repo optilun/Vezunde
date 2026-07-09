@@ -7,24 +7,50 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 // claim state or membership.
 
 const ROUTINE_FIELDS = [
-  'public_description',
-  'public_phone',
-  'public_email',
-  'website_url',
-  'facebook_url',
-  'instagram_url',
-  'linkedin_url',
+  'opening_hours_json',
   'opening_hours',
   'saturday_hours',
   'availability_status',
+  'request_intake_status',
 ];
 const INPUT_FIELDS = ['location_id', ...ROUTINE_FIELDS];
 const AVAILABILITY_STATUSES = ['astazi', 'urmatoarele_zile', 'saptamana_aceasta', 'doar_programare', 'necunoscuta'];
-const MAX_DESCRIPTION_LEN = 2000;
+const REQUEST_INTAKE_STATUSES = ['inactive', 'active', 'paused'];
+const MAX_HOURS_LEN = 500;
+const MAX_SCHEDULE_JSON_LEN = 8000;
 const MAX_URL_LEN = 500;
 const MAX_CONTACT_LEN = 200;
-const MAX_HOURS_LEN = 500;
-const LEGACY_MIRRORS = { public_description: ['description'], website_url: ['website'], public_phone: ['phone_public'] };
+
+const LEGACY_PROVIDER_ROLE_MAP = { owner: 'organization_owner', staff: 'location_staff' };
+const LEGACY_PROVIDER_STATUS_MAP = { revoked: 'inactive' };
+function normalizeProviderMembership(membership) {
+  if (!membership) return null;
+  const role = LEGACY_PROVIDER_ROLE_MAP[membership.role] || membership.role;
+  const status = LEGACY_PROVIDER_STATUS_MAP[membership.status] || membership.status;
+  return { ...membership, role, status };
+}
+function activeProviderMemberships(rows) {
+  return (rows || []).map(normalizeProviderMembership).filter((m) => m.status === 'active' && !!m.role);
+}
+async function getActiveProviderMemberships(svc, userId, options = {}) {
+  const query = { user_id: userId, status: 'active' };
+  if (options.locationId) query.location_id = options.locationId;
+  const rows = await svc.entities.ProviderMembership.filter(query, null, options.limit || 100);
+  return activeProviderMemberships(rows);
+}
+async function getActiveProviderLocationMemberships(svc, userId, locationId) {
+  if (!userId || !locationId) return [];
+  return getActiveProviderMemberships(svc, userId, { locationId, limit: 10 });
+}
+async function hasProviderLocationAccess(svc, user, locationId) {
+  if (!user || !locationId) return false;
+  if (user.role === 'admin') return true;
+  const memberships = await getActiveProviderLocationMemberships(svc, user.id, locationId);
+  return memberships.length > 0;
+}
+function getExplicitProviderLocationIds(memberships) {
+  return [...new Set((memberships || []).filter((m) => m.status === 'active' && !!m.role).map((m) => m.location_id).filter(Boolean))];
+}
 
 function reject(error, status = 400) {
   return Response.json({ error }, { status });
@@ -70,27 +96,13 @@ function cleanPayload(p) {
   if (unknown.length > 0) return { error: 'Camp nepermis', fields: unknown };
   const updates = {};
 
-  if ('public_description' in p) {
-    const cleaned = cleanPlainText(p.public_description, 'public_description', MAX_DESCRIPTION_LEN);
-    if (cleaned.error) return cleaned;
-    updates.public_description = cleaned.value;
-  }
-  if ('public_phone' in p) {
-    const cleaned = cleanPhone(p.public_phone);
-    if (cleaned.error) return cleaned;
-    updates.public_phone = cleaned.value;
-  }
-  if ('public_email' in p) {
-    const cleaned = cleanEmail(p.public_email);
-    if (cleaned.error) return cleaned;
-    updates.public_email = cleaned.value;
-  }
-  for (const field of ['website_url', 'facebook_url', 'instagram_url', 'linkedin_url']) {
-    if (field in p) {
-      const cleaned = cleanUrl(p[field], field);
-      if (cleaned.error) return cleaned;
-      updates[field] = cleaned.value;
+  if ('opening_hours_json' in p) {
+    const val = String(p.opening_hours_json || '').trim();
+    if (val.length > MAX_SCHEDULE_JSON_LEN) return { error: 'Programul structurat este prea lung' };
+    if (val) {
+      try { JSON.parse(val); } catch (_e) { return { error: 'opening_hours_json trebuie sa fie JSON valid' }; }
     }
+    updates.opening_hours_json = val;
   }
   for (const field of ['opening_hours', 'saturday_hours']) {
     if (field in p) {
@@ -104,12 +116,11 @@ function cleanPayload(p) {
     updates.availability_status = p.availability_status;
     updates.availability_updated_at = new Date().toISOString();
   }
-
-  for (const [field, mirrors] of Object.entries(LEGACY_MIRRORS)) {
-    if (field in updates) {
-      for (const mirror of mirrors) updates[mirror] = updates[field];
-    }
+  if ('request_intake_status' in p) {
+    if (!REQUEST_INTAKE_STATUSES.includes(p.request_intake_status)) return { error: 'Mod acces pacient invalid' };
+    updates.request_intake_status = p.request_intake_status;
   }
+
   if (Object.keys(updates).length === 0) return { error: 'Nicio modificare de aplicat' };
   return { updates };
 }
@@ -140,8 +151,7 @@ Deno.serve(async (req) => {
     const locationId = String(p.location_id || '').trim();
     if (!locationId) return reject('location_id este obligatoriu');
 
-    const memberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, location_id: locationId, status: 'active' });
-    if (memberships.length === 0) return reject('Nu ai acces la aceasta locatie', 403);
+    if (!(await hasProviderLocationAccess(svc, user, locationId))) return reject('Nu ai acces la aceasta locatie', 403);
 
     const loc = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
     if (!loc) return reject('Locatia nu a fost gasita', 404);
