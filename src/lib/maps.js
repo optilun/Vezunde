@@ -1,5 +1,9 @@
+function hasCoordinates(location = {}) {
+  return Number.isFinite(Number(location.lat)) && Number.isFinite(Number(location.lng));
+}
+
 export function buildLocationQuery(location = {}) {
-  if (location.lat && location.lng) return `${location.lat},${location.lng}`;
+  if (hasCoordinates(location)) return `${Number(location.lat)},${Number(location.lng)}`;
   return [
     location.address,
     location.city || location.locality_name,
@@ -20,9 +24,9 @@ export function buildGoogleMapsUrl(location = {}) {
 export function buildGoogleMapsEmbedUrl(location = {}) {
   const query = buildLocationQuery(location);
   if (!query) return "";
-  return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=16&output=embed`;
+  return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=17&output=embed`;
 }
 
 export function hasMapLocation(location = {}) {
-  return Boolean((location.lat && location.lng) || location.place_id || location.address);
+  return Boolean(hasCoordinates(location) || location.place_id || location.address);
 }
