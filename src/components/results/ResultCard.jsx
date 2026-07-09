@@ -26,7 +26,6 @@ export default function ResultCard({ location, variant = "neutral" }) {
   const serviceSummaries = summarizePublicServices(matchedServices);
   const shown = serviceSummaries.slice(0, 3);
   const extra = Math.max(0, serviceSummaries.length - shown.length);
-  const reasons = (location.match_reasons || []).slice(0, 2);
   const hasDistance = Number.isFinite(Number(location.distance_km));
 
   return (
@@ -64,10 +63,6 @@ export default function ResultCard({ location, variant = "neutral" }) {
 
       {location.routing_reason && (
         <p className="mt-3 rounded-2xl bg-secondary/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">{location.routing_reason}</p>
-      )}
-
-      {reasons.length > 0 && (
-        <p className="mt-3 text-sm text-muted-foreground">{reasons.join(" · ")}</p>
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">
