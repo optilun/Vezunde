@@ -7,30 +7,30 @@
 
 @layer base {
   :root {
-    --background: 45 44% 96%;
+    --background: 45 22% 96%;
     --foreground: 0 0% 7%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 7%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 7%;
-    --primary: 18 60% 42%;
+    --primary: 0 0% 9%;
     --primary-foreground: 0 0% 98%;
-    --secondary: 45 30% 92%;
-    --secondary-foreground: 0 0% 7%;
-    --muted: 45 30% 92%;
-    --muted-foreground: 43 3% 41%;
-    --accent: 20 50% 93%;
-    --accent-foreground: 18 60% 30%;
+    --secondary: 45 15% 95%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 45 15% 95%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 45 13% 94%;
+    --accent-foreground: 0 0% 9%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 40 21% 86%;
-    --input: 40 21% 86%;
-    --ring: 18 60% 42%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    --border: 43 13% 90%;
+    --input: 43 13% 90%;
+    --ring: 0 0% 9%;
+    --chart-1: 0 0% 18%;
+    --chart-2: 148 33% 35%;
+    --chart-3: 215 18% 31%;
+    --chart-4: 45 22% 70%;
+    --chart-5: 0 0% 52%;
     --radius: 0.5rem;
     --font-heading: 'Manrope', ui-sans-serif, system-ui, sans-serif;
     --font-body: 'Manrope', ui-sans-serif, system-ui, sans-serif;
@@ -84,12 +84,8 @@
 
 
 
-/* UI-1 color update: neutral override for authenticated admin & provider
-   workspaces only. Scoping the CSS variables here (instead of editing :root)
-   keeps the public site's warm brick/orange brand accent untouched. */
-/* Auth pages (Login/Register/ForgotPassword/ResetPassword) — scoped neutral
-   charcoal palette override, replacing the brick/orange brand accent used
-   elsewhere. Colors only; no layout or behavior changes. */
+/* Auth pages (Login/Register/ForgotPassword/ResetPassword) and authenticated
+   workspaces use the same neutral charcoal palette. */
 .auth-neutral {
   --background: 45 22% 96%;
   --foreground: 0 0% 9%;
