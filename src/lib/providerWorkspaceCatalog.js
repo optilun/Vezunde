@@ -21,11 +21,13 @@ export const REQUEST_INTAKE_STATUS_LABELS = {
   paused: "Pauzat temporar",
 };
 
+// Campul tehnic ramane availability_status pentru compatibilitate cu schema.
+// In produs reprezinta modul de primire clienti/pacienti, nu disponibilitate dinamica pe zile.
 export const AVAILABILITY_OPTIONS = {
-  necunoscuta: "Disponibilitate nepublicata",
-  astazi: "Disponibil astazi",
-  urmatoarele_zile: "Disponibil in urmatoarele zile",
-  saptamana_aceasta: "Disponibil saptamana aceasta",
+  necunoscuta: "Nu afisa aceasta informatie",
+  astazi: "Primeste clienti fara programare",
+  urmatoarele_zile: "Primeste clienti si cu programare",
+  saptamana_aceasta: "Walk-in pentru optica, programare pentru consultatii",
   doar_programare: "Doar cu programare",
 };
 
