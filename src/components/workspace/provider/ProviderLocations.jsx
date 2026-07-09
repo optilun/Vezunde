@@ -10,6 +10,27 @@ import ProviderTeam from "./ProviderTeam";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none focus:border-foreground/50 transition-colors";
 
+function cleanNumber(value) {
+  const raw = String(value ?? "").trim().replace(",", ".");
+  if (!raw) return "";
+  const n = Number(raw);
+  return Number.isFinite(n) ? String(n) : raw;
+}
+
+function numericOrEmpty(value) {
+  const raw = cleanNumber(value);
+  if (!raw) return "";
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : "";
+}
+
+function formatCoords(loc = {}) {
+  const lat = Number(loc.lat);
+  const lng = Number(loc.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "Din adresa";
+  return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+}
+
 function LocationRow({ loc, membership, active, onSelect }) {
   const statusLabel = PROFILE_CONTROL_LABELS[loc.profile_control_status] || loc.profile_control_status || "-";
   const activeStatus = loc.active_status === "inactiva" ? "Inactiva" : "Activa";
@@ -95,13 +116,15 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
   const selectedLocation = locById[selectedLocationId] || (workspace.locations || [])[0] || null;
   const selectedMembership = selectedLocation ? membershipByLocation[selectedLocation.id] : null;
   const [draft, setDraft] = useState(null);
-  const [values, setValues] = useState({ public_display_name: "", address: "", public_phone: "", public_email: "" });
+  const [values, setValues] = useState({ public_display_name: "", address: "", public_phone: "", public_email: "", lat: "", lng: "", place_id: "" });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [activeModal, setActiveModal] = useState(null);
 
   const previewLocation = useMemo(() => {
     if (!selectedLocation) return null;
+    const lat = numericOrEmpty(values.lat);
+    const lng = numericOrEmpty(values.lng);
     return {
       ...selectedLocation,
       public_display_name: values.public_display_name || selectedLocation.public_display_name || selectedLocation.name,
@@ -110,11 +133,15 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
       public_phone: values.public_phone || selectedLocation.public_phone,
       phone_public: values.public_phone || selectedLocation.phone_public,
       public_email: values.public_email || selectedLocation.public_email,
+      lat: lat !== "" ? lat : selectedLocation.lat,
+      lng: lng !== "" ? lng : selectedLocation.lng,
+      place_id: values.place_id || selectedLocation.place_id,
     };
   }, [selectedLocation, values]);
 
   const mapUrl = previewLocation ? buildGoogleMapsUrl(previewLocation) : "";
   const embedUrl = previewLocation ? buildGoogleMapsEmbedUrl(previewLocation) : "";
+  const hasExactPin = Number.isFinite(Number(previewLocation?.lat)) && Number.isFinite(Number(previewLocation?.lng));
 
   const loadDraft = async () => {
     if (!selectedLocation?.id) return;
@@ -128,6 +155,9 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
         address: payload.address ?? (selectedLocation.address || ""),
         public_phone: payload.public_phone ?? (selectedLocation.public_phone || selectedLocation.phone_public || ""),
         public_email: payload.public_email ?? (selectedLocation.public_email || ""),
+        lat: payload.lat ?? (selectedLocation.lat ?? ""),
+        lng: payload.lng ?? (selectedLocation.lng ?? ""),
+        place_id: payload.place_id ?? (selectedLocation.place_id || ""),
       });
     } else {
       setValues({
@@ -135,6 +165,9 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
         address: selectedLocation.address || "",
         public_phone: selectedLocation.public_phone || selectedLocation.phone_public || "",
         public_email: selectedLocation.public_email || "",
+        lat: selectedLocation.lat ?? "",
+        lng: selectedLocation.lng ?? "",
+        place_id: selectedLocation.place_id || "",
       });
     }
   };
@@ -145,11 +178,16 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
     if (!selectedLocation?.id) return;
     setSaving(true); setMsg("");
     const action = draft && draft.status !== "pending_review" ? "update_draft" : "create_draft";
+    const lat = numericOrEmpty(values.lat);
+    const lng = numericOrEmpty(values.lng);
     const payload = {
       public_display_name: values.public_display_name || "",
       address: values.address || "",
       public_phone: values.public_phone || "",
       public_email: values.public_email || "",
+      lat: lat === "" ? "" : lat,
+      lng: lng === "" ? "" : lng,
+      place_id: values.place_id || "",
     };
     const res = await base44.functions.invoke("submitProviderWorkspaceChange", {
       action,
@@ -255,7 +293,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                       <DetailItem icon={MapPin} label="Adresa publicata" value={selectedLocation.address} />
                       <DetailItem icon={Phone} label="Telefon locatie" value={selectedLocation.public_phone || selectedLocation.phone_public} />
                       <DetailItem icon={Mail} label="Email locatie" value={selectedLocation.public_email} />
-                      <DetailItem icon={ShieldCheck} label="Completitudine" value={`${selectedMembership?.profile_completeness ?? 0}%`} />
+                      <DetailItem icon={ShieldCheck} label="Pin harta" value={formatCoords(previewLocation)} />
                     </div>
 
                     <div className="mt-4 rounded-2xl border border-border bg-secondary/35 p-4">
@@ -274,8 +312,8 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                   <div className="border-t border-border bg-secondary/30 p-4 lg:border-l lg:border-t-0">
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <div className="text-sm font-bold">Harta locatiei</div>
-                        <p className="mt-1 text-xs text-muted-foreground">Preview generat din adresa scrisa. Publicarea se face dupa review.</p>
+                        <div className="flex items-center gap-2 text-sm font-bold">Harta locatiei {hasExactPin && <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-800">pin exact</span>}</div>
+                        <p className="mt-1 text-xs text-muted-foreground">Folosește coordonatele dacă există, altfel adresa scrisă.</p>
                       </div>
                       {mapUrl && (
                         <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-background">
@@ -296,7 +334,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                         <div className="flex h-full flex-col items-center justify-center text-center">
                           <MapPin className="h-7 w-7 text-muted-foreground" />
                           <p className="mt-2 text-sm font-medium">Harta nu poate fi afisata inca</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Completeaza adresa locatiei pentru preview.</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Completeaza adresa sau coordonatele locatiei pentru preview.</p>
                         </div>
                       )}
                     </div>
@@ -326,7 +364,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                       <div className="text-sm font-bold">Modificari locatie</div>
                       <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">Necesita review</span>
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">Editeaza datele locatiei si verifica pe harta inainte sa trimiti spre aprobare.</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Editeaza datele locatiei si verifica pinul pe harta inainte sa trimiti spre aprobare.</p>
                   </div>
                   {draft && <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}
                 </div>
@@ -342,7 +380,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                       <input className={inputCls} value={values.address} disabled={pendingReview} onChange={(e) => setValues({ ...values, address: e.target.value })} placeholder="Strada, numar, localitate" />
                       {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center justify-center rounded-xl border border-border px-3 text-xs font-bold hover:bg-secondary"><Search className="h-4 w-4" /></a>}
                     </div>
-                    <p className="mt-1.5 text-[11px] text-muted-foreground">Harta se actualizeaza dupa adresa introdusa.</p>
+                    <p className="mt-1.5 text-[11px] text-muted-foreground">Harta se actualizeaza dupa adresa introdusa, daca nu exista coordonate.</p>
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-muted-foreground">Telefon public locatie</label>
@@ -352,6 +390,31 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                     <label className="text-xs font-semibold text-muted-foreground">Email public locatie</label>
                     <input className={`${inputCls} mt-1.5`} value={values.public_email} disabled={pendingReview} onChange={(e) => setValues({ ...values, public_email: e.target.value })} />
                   </div>
+                </div>
+
+                <div className="rounded-2xl border border-border bg-secondary/35 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-bold">Pin exact pe harta</div>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Pentru precizie, copiaza coordonatele din Google Maps. Exemplu: 45.793140, 24.151920.</p>
+                    </div>
+                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${hasExactPin ? "bg-green-100 text-green-800" : "bg-background text-muted-foreground"}`}>{hasExactPin ? "Coordonate active" : "Optional"}</span>
+                  </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground">Latitudine</label>
+                      <input className={`${inputCls} mt-1.5`} value={values.lat} disabled={pendingReview} onChange={(e) => setValues({ ...values, lat: cleanNumber(e.target.value) })} placeholder="45.793140" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground">Longitudine</label>
+                      <input className={`${inputCls} mt-1.5`} value={values.lng} disabled={pendingReview} onChange={(e) => setValues({ ...values, lng: cleanNumber(e.target.value) })} placeholder="24.151920" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-muted-foreground">Google Place ID</label>
+                      <input className={`${inputCls} mt-1.5`} value={values.place_id} disabled={pendingReview} onChange={(e) => setValues({ ...values, place_id: e.target.value })} placeholder="optional" />
+                    </div>
+                  </div>
+                  <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Place ID este optional. Pentru MVP sunt suficiente coordonatele latitudine/longitudine.</p>
                 </div>
 
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
