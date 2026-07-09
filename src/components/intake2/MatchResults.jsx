@@ -2,9 +2,28 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import MatchResultCard from "./MatchResultCard";
 
+function RoutingNotice({ meta }) {
+  if (!meta?.routing_mode) return null;
+  if (meta.routing_mode === "perimeter") {
+    return (
+      <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-xs leading-relaxed text-green-900">
+        Am cautat locatii aflate in perimetrul locatiei tale curente. Distanța este aproximativă și se calculează după coordonatele disponibile public pentru fiecare locație.
+      </div>
+    );
+  }
+  if (meta.routing_mode === "locality") {
+    return (
+      <div className="mt-4 rounded-2xl border border-border bg-secondary/40 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
+        Am cautat dupa localitatea selectata: {meta.client_address_text || "localitate selectata"}.
+      </div>
+    );
+  }
+  return null;
+}
+
 // Module 3E: sections are driven STRICTLY by result_bucket from the backend.
 // Top 3 = result_bucket === "top3" only — never a positional slice.
-export default function MatchResults({ results }) {
+export default function MatchResults({ results, meta }) {
   const [showMore, setShowMore] = useState(false);
   const list = results || [];
   const top3 = list.filter((r) => r.result_bucket === "top3");
@@ -15,10 +34,11 @@ export default function MatchResults({ results }) {
   if (top3.length === 0 && moreCount === 0) {
     return (
       <div>
-        <h2 className="font-heading text-xl font-bold tracking-tight">Nu avem inca profiluri relevante in aceasta localitate.</h2>
+        <h2 className="font-heading text-xl font-bold tracking-tight">Nu avem inca profiluri relevante in zona ta.</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Poti extinde cautarea in judet sau poti verifica din nou mai tarziu.
+          Daca ai folosit locatia curenta, poti incerca si cautarea manuala dupa localitate sau cautarea nationala.
         </p>
+        <RoutingNotice meta={meta} />
         <Link to="/cauta" className="mt-4 inline-block text-sm font-semibold underline underline-offset-4">
           Exploreaza toti furnizorii
         </Link>
@@ -34,8 +54,9 @@ export default function MatchResults({ results }) {
         <>
           <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight">Cele mai potrivite optiuni</h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Selectate pe baza serviciilor confirmate si a potrivirii cu nevoia ta.
+            Selectate pe baza serviciilor confirmate, verificarii profilului si distantei fata de tine.
           </p>
+          <RoutingNotice meta={meta} />
           <div className="mt-5 space-y-3">
             {top3.map((loc) => <MatchResultCard key={loc.id} location={loc} />)}
           </div>
@@ -48,6 +69,7 @@ export default function MatchResults({ results }) {
               Poti vedea mai jos cateva profiluri din director.
             </p>
           )}
+          <RoutingNotice meta={meta} />
         </>
       )}
 
@@ -83,7 +105,7 @@ export default function MatchResults({ results }) {
       )}
 
       <p className="mt-6 text-xs text-muted-foreground/80">
-        Ordinea reflecta doar potrivirea serviciilor, echipa, dotarile, locatia si verificarea profilului. Vezunde nu ofera diagnostic medical.
+        Ordinea reflecta potrivirea serviciilor, verificarea profilului, locatia si modul de primire publicat de furnizor. Vezunde nu ofera diagnostic medical.
       </p>
     </div>
   );
