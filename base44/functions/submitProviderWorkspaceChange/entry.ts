@@ -13,17 +13,26 @@ const MAX_ARTICLE_BODY = 20000;
 const MAX_HOURS_LEN = 500;
 
 const CLAIM_PREP_PUBLIC_PROFILE_FIELDS = ['public_description', 'website_url', 'facebook_url', 'instagram_url', 'linkedin_url', 'public_phone', 'public_email'];
-const CLAIM_PREP_SERVICE_GROUPS = ['patient_services', 'technical_activities'];
+const CLAIM_PREP_SERVICE_GROUPS = ['optical_retail', 'lenses_and_measurements', 'optometry', 'contact_lenses', 'technical_activities', 'patient_services'];
 const AVAILABILITY_STATUSES = ['astazi', 'urmatoarele_zile', 'saptamana_aceasta', 'doar_programare', 'necunoscuta'];
 const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
 const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
 const SPECIALIST_INVITE_ROLES = ['ophthalmologist', 'optometrist', 'optician', 'contact_lens_specialist', 'optical_workshop_specialist', 'other_specialist', 'other_relevant_specialist'];
 
-function normalizeMemberRole(role) {
-  if (role === 'owner') return 'organization_owner';
-  if (role === 'staff') return 'location_staff';
-  return MEMBER_ROLES.includes(role) ? role : '';
-}
+const SERVICE_IDS = {
+  optical_retail: ['eyeglasses', 'frames', 'prescription_lenses', 'sunglasses', 'prescription_sunglasses', 'children_frames', 'sports_glasses', 'safety_glasses', 'accessories'],
+  lenses_and_measurements: ['single_vision_lenses', 'progressive_lenses', 'office_lenses', 'reading_lenses', 'thin_lenses', 'photochromic_lenses', 'polarized_lenses', 'blue_light_lenses', 'prism_lenses', 'pd_measurement', 'digital_centering'],
+  optometry: ['optometry_consultation', 'visual_acuity_test', 'refraction', 'autorefractometry', 'binocular_vision', 'dry_eye_screening', 'color_vision_test', 'occupational_vision'],
+  contact_lenses: ['contact_lenses', 'contact_lens_consultation', 'contact_lens_fitting', 'contact_lens_trial', 'toric_contact_lenses', 'multifocal_contact_lenses', 'rgp_lenses', 'scleral_lenses', 'contact_lens_followup'],
+  ophthalmology_consults: ['ophthalmology_consultation', 'complete_eye_exam', 'prescription_check', 'eye_pressure_check', 'fundus_exam', 'anterior_segment_exam', 'followup_consultation', 'second_opinion'],
+  investigations: ['oct', 'visual_field_analyzer', 'fundus_camera', 'pachymeter', 'biometer', 'corneal_topography', 'keratometry', 'tonometry', 'gonioscopy', 'ultrasound', 'specular_microscopy', 'angiography'],
+  specialties: ['retina_consultation', 'glaucoma_consultation', 'cataract_consultation', 'cornea_consultation', 'pediatric_ophthalmology', 'strabismus', 'neuro_ophthalmology', 'uveitis', 'myopia_management', 'dry_eye_management', 'diabetic_retinopathy', 'macular_degeneration', 'emergency_ophthalmology'],
+  procedures_surgery: ['cataract_surgery', 'refractive_surgery', 'laser_procedures', 'yag_laser', 'retinal_laser', 'intravitreal_injections', 'eyelid_surgery', 'chalazion_treatment', 'minor_eye_procedures'],
+  children_and_prevention: ['children_eye_exam', 'pediatric_refraction', 'amblyopia_screening', 'strabismus_screening', 'school_screening', 'myopia_control_children', 'vision_therapy'],
+  technical_activities: ['eyeglasses_adjustment', 'eyeglasses_repair', 'lens_fitting', 'frame_repair', 'screw_replacement', 'lens_replacement', 'frame_cleaning', 'workshop_orders'],
+  // Legacy buckets kept only for old drafts / claim-prep compatibility.
+  patient_services: ['eyeglasses', 'frames', 'prescription_lenses', 'contact_lenses', 'optometry_consultation', 'ophthalmology_consultation'],
+};
 
 const SECTION_FIELDS = {
   public_profile: ['public_display_name', 'public_description', 'website_url', 'facebook_url', 'instagram_url', 'linkedin_url', 'public_phone', 'public_email'],
@@ -35,16 +44,14 @@ const SECTION_FIELDS = {
   article: ['title', 'excerpt', 'body', 'cover_media_id', 'author_professional_id'],
 };
 
-const CANONICAL_SERVICE_IDS = {
-  patient_services: ['eyeglasses', 'frames', 'prescription_lenses', 'contact_lenses', 'optometry_consultation', 'ophthalmology_consultation'],
-  investigations: ['oct', 'visual_field_analyzer', 'fundus_camera', 'pachymeter', 'biometer', 'corneal_topography'],
-  specialties: ['retina_consultation', 'glaucoma_consultation', 'cataract_surgery', 'refractive_surgery', 'pediatric_ophthalmology', 'myopia_management', 'emergency_ophthalmology'],
-  technical_activities: ['eyeglasses_adjustment', 'eyeglasses_repair', 'lens_fitting'],
-};
-
 function bad(body, status = 400) { return { valid: false, status, body }; }
 function isPlainObject(value) { return !!value && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype; }
 function cleanString(value) { return String(value || '').trim(); }
+function normalizeMemberRole(role) {
+  if (role === 'owner') return 'organization_owner';
+  if (role === 'staff') return 'location_staff';
+  return MEMBER_ROLES.includes(role) ? role : '';
+}
 
 function checkUnknown(section, payload, allowedOverride = null) {
   const allowed = allowedOverride || SECTION_FIELDS[section];
@@ -122,16 +129,16 @@ function validateOperatingHours(payload) {
 function validateServiceGroupObject(value, fieldName, allowedGroups) {
   if (value === undefined) return { valid: true, clean: {} };
   if (!isPlainObject(value)) return bad({ error: `${fieldName} trebuie sa fie obiect` });
-  const allowed = allowedGroups || Object.keys(CANONICAL_SERVICE_IDS);
+  const allowed = allowedGroups || Object.keys(SERVICE_IDS);
   const unknownGroups = Object.keys(value).filter((group) => !allowed.includes(group));
   if (unknownGroups.length > 0) return bad({ error: 'Grup de servicii nepermis', fields: unknownGroups });
   const clean = {};
   for (const [group, ids] of Object.entries(value)) {
     if (!Array.isArray(ids)) return bad({ error: `${fieldName}.${group} trebuie sa fie lista` });
-    const unique = [...new Set(ids.map((id) => String(id || '').trim()).filter(Boolean))];
-    const invalid = unique.filter((id) => !CANONICAL_SERVICE_IDS[group]?.includes(id));
+    const unique = [...new Set(ids.map((id) => cleanString(id)).filter(Boolean))];
+    const invalid = unique.filter((id) => !SERVICE_IDS[group]?.includes(id));
     if (invalid.length > 0) return bad({ error: 'ID canonic invalid', fields: invalid });
-    clean[group] = unique;
+    if (unique.length > 0) clean[group] = unique;
   }
   return { valid: true, clean };
 }
@@ -142,10 +149,10 @@ function normalizeSuggestions(payload, allowSuggestions) {
   const suggestions = [];
   for (const s of raw) {
     if (!isPlainObject(s)) return bad({ error: 'Sugestie invalida' });
-    const group = cleanString(s.group || 'patient_services');
+    const group = cleanString(s.group || 'optical_retail');
     const label = cleanString(s.label);
     const note = cleanString(s.note);
-    if (!Object.keys(CANONICAL_SERVICE_IDS).includes(group)) return bad({ error: 'Grup de sugestie invalid' });
+    if (!Object.keys(SERVICE_IDS).includes(group)) return bad({ error: 'Grup de sugestie invalid' });
     if (!label || label.length > 120) return bad({ error: 'Sugestia trebuie sa aiba un nume scurt' });
     if (note.length > 500) return bad({ error: 'Nota sugestiei este prea lunga' });
     suggestions.push({ group, label, note });
@@ -156,13 +163,11 @@ function normalizeSuggestions(payload, allowSuggestions) {
 function validateServices(payload, options = {}) {
   const base = checkUnknown('services', payload);
   if (!base.valid) return base;
-  const allowedGroups = options.allowedGroups || null;
-  const allowSuggestions = options.allowSuggestions !== false;
-  const selected = validateServiceGroupObject(payload.selected_ids, 'selected_ids', allowedGroups);
+  const selected = validateServiceGroupObject(payload.selected_ids, 'selected_ids', options.allowedGroups || null);
   if (!selected.valid) return selected;
-  const removals = validateServiceGroupObject(payload.removal_ids, 'removal_ids', allowedGroups);
+  const removals = validateServiceGroupObject(payload.removal_ids, 'removal_ids', options.allowedGroups || null);
   if (!removals.valid) return removals;
-  const suggestions = normalizeSuggestions(payload, allowSuggestions);
+  const suggestions = normalizeSuggestions(payload, options.allowSuggestions !== false);
   if (!suggestions.valid) return suggestions;
   const hasSelected = Object.values(selected.clean).some((arr) => arr.length > 0);
   const hasRemoved = Object.values(removals.clean).some((arr) => arr.length > 0);
