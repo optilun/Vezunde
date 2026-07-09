@@ -25,11 +25,12 @@ export default function AdminDashboardHome({ onNavigate }) {
       base44.entities.AIResearchDraft.list("-created_date", 200),
       base44.entities.ResearchSource.list("-created_date", 200),
       base44.entities.DirectoryAuditRecord.list("-created_date", 15),
-    ]).then(([locations, services, claims, drafts, sources, audit]) => setData({ locations, services, claims, drafts, sources, audit }));
+      base44.entities.ProviderWorkspaceSubmission.filter({ status: "pending_review" }, "-submitted_at", 200).catch(() => []),
+    ]).then(([locations, services, claims, drafts, sources, audit, workspaceSubmissions]) => setData({ locations, services, claims, drafts, sources, audit, workspaceSubmissions }));
   }, []);
 
   if (!data) return <p className="text-sm text-muted-foreground">Se incarca...</p>;
-  const { locations, services, claims, drafts, sources, audit } = data;
+  const { locations, services, claims, drafts, sources, audit, workspaceSubmissions } = data;
 
   const stats = {
     published: locations.filter((l) => l.status === "publicata").length,
@@ -62,6 +63,7 @@ export default function AdminDashboardHome({ onNavigate }) {
   };
 
   const actionItems = [
+    { label: "Modificari workspace in review", count: workspaceSubmissions.length, tab: "workspace_reviews" },
     { label: "Revendicari noi", count: claims.length, tab: "revendicari" },
     { label: "Profile incomplete", count: stats.incompleteProfiles, tab: "profiluri" },
     { label: "Servicii care necesita confirmare", count: stats.unconfirmedServices, tab: "servicii" },
