@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Building2, CheckCircle2, Clock, ExternalLink, Mail, MapPin, Phone, Plus, Save, Search, ShieldCheck, Users, Wrench, X } from "lucide-react";
+import { ArrowRight, Building2, CheckCircle2, ChevronDown, Clock, ExternalLink, Mail, MapPin, Phone, Plus, Save, ShieldCheck, Users, Wrench, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { PROFILE_CONTROL_LABELS, SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
@@ -22,6 +22,24 @@ function numericOrEmpty(value) {
   if (!raw) return "";
   const n = Number(raw);
   return Number.isFinite(n) ? n : "";
+}
+
+function getCoordinateValidation(values = {}) {
+  const rawLat = String(values.lat ?? "").trim();
+  const rawLng = String(values.lng ?? "").trim();
+  const lat = numericOrEmpty(values.lat);
+  const lng = numericOrEmpty(values.lng);
+  const issues = [];
+
+  if ((rawLat && !rawLng) || (!rawLat && rawLng)) {
+    issues.push("Completeaza si latitudinea, si longitudinea pentru a folosi pinul exact.");
+  }
+  if (rawLat && lat === "") issues.push("Latitudinea trebuie sa fie un numar valid.");
+  if (rawLng && lng === "") issues.push("Longitudinea trebuie sa fie un numar valid.");
+  if (lat !== "" && (lat < -90 || lat > 90)) issues.push("Latitudinea trebuie sa fie intre -90 si 90.");
+  if (lng !== "" && (lng < -180 || lng > 180)) issues.push("Longitudinea trebuie sa fie intre -180 si 180.");
+
+  return { issues, lat, lng };
 }
 
 function formatCoords(loc = {}) {
@@ -117,9 +135,12 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
   const selectedMembership = selectedLocation ? membershipByLocation[selectedLocation.id] : null;
   const [draft, setDraft] = useState(null);
   const [values, setValues] = useState({ public_display_name: "", address: "", public_phone: "", public_email: "", lat: "", lng: "", place_id: "" });
+  const [showAdvancedMap, setShowAdvancedMap] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [activeModal, setActiveModal] = useState(null);
+
+  const coordinateValidation = useMemo(() => getCoordinateValidation(values), [values]);
 
   const previewLocation = useMemo(() => {
     if (!selectedLocation) return null;
@@ -142,6 +163,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
   const mapUrl = previewLocation ? buildGoogleMapsUrl(previewLocation) : "";
   const embedUrl = previewLocation ? buildGoogleMapsEmbedUrl(previewLocation) : "";
   const hasExactPin = Number.isFinite(Number(previewLocation?.lat)) && Number.isFinite(Number(previewLocation?.lng));
+  const hasCoordinateIssues = coordinateValidation.issues.length > 0;
 
   const loadDraft = async () => {
     if (!selectedLocation?.id) return;
@@ -172,10 +194,11 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
     }
   };
 
-  useEffect(() => { loadDraft(); setMsg(""); setActiveModal(null); }, [selectedLocation?.id]);
+  useEffect(() => { loadDraft(); setMsg(""); setActiveModal(null); setShowAdvancedMap(false); }, [selectedLocation?.id]);
 
   const saveDraft = async () => {
     if (!selectedLocation?.id) return;
+    if (hasCoordinateIssues) { setMsg(coordinateValidation.issues[0]); return; }
     setSaving(true); setMsg("");
     const action = draft && draft.status !== "pending_review" ? "update_draft" : "create_draft";
     const lat = numericOrEmpty(values.lat);
@@ -205,6 +228,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
 
   const submitDraft = async () => {
     if (!draft || !selectedLocation?.id) return;
+    if (hasCoordinateIssues) { setMsg(coordinateValidation.issues[0]); return; }
     setSaving(true); setMsg("");
     const res = await base44.functions.invoke("submitProviderWorkspaceChange", {
       action: "submit",
@@ -313,7 +337,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <div className="flex items-center gap-2 text-sm font-bold">Harta locatiei {hasExactPin && <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-800">pin exact</span>}</div>
-                        <p className="mt-1 text-xs text-muted-foreground">Folosește coordonatele dacă există, altfel adresa scrisă.</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Foloseste coordonatele daca exista, altfel adresa scrisa.</p>
                       </div>
                       {mapUrl && (
                         <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-background">
@@ -353,7 +377,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                 <div className="grid gap-3 md:grid-cols-3">
                   <ConfigureCard icon={Wrench} title="Servicii" text="Alege serviciile disponibile in aceasta locatie." onClick={() => setActiveModal("services")} />
                   <ConfigureCard icon={Clock} title="Program" text="Seteaza programul acestei locatii." onClick={() => setActiveModal("hours")} />
-                  <ConfigureCard icon={Users} title="Echipa" text="Asociaza specialistii cu aceasta locatie." onClick={() => setActiveModal("team")} />
+                  <ConfigureCard icon={Users} title="Specialisti" text="Invita specialistii care apar public pe aceasta locatie." onClick={() => setActiveModal("team")} />
                 </div>
               </section>
 
@@ -378,9 +402,9 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                     <label className="text-xs font-semibold text-muted-foreground">Adresa pentru harta</label>
                     <div className="mt-1.5 flex gap-2">
                       <input className={inputCls} value={values.address} disabled={pendingReview} onChange={(e) => setValues({ ...values, address: e.target.value })} placeholder="Strada, numar, localitate" />
-                      {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center justify-center rounded-xl border border-border px-3 text-xs font-bold hover:bg-secondary"><Search className="h-4 w-4" /></a>}
+                      {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border px-3 text-xs font-bold hover:bg-secondary"><ExternalLink className="h-3.5 w-3.5" /> Maps</a>}
                     </div>
-                    <p className="mt-1.5 text-[11px] text-muted-foreground">Harta se actualizeaza dupa adresa introdusa, daca nu exista coordonate.</p>
+                    <p className="mt-1.5 text-[11px] text-muted-foreground">Harta foloseste coordonatele daca exista. Fara coordonate, foloseste adresa.</p>
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-muted-foreground">Telefon public locatie</label>
@@ -398,9 +422,9 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                       <div className="text-sm font-bold">Pin exact pe harta</div>
                       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Pentru precizie, copiaza coordonatele din Google Maps. Exemplu: 45.793140, 24.151920.</p>
                     </div>
-                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${hasExactPin ? "bg-green-100 text-green-800" : "bg-background text-muted-foreground"}`}>{hasExactPin ? "Coordonate active" : "Optional"}</span>
+                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${hasExactPin ? "bg-green-100 text-green-800" : "bg-background text-muted-foreground"}`}>{hasExactPin ? "Pin exact activ" : "Optional"}</span>
                   </div>
-                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
                     <div>
                       <label className="text-xs font-semibold text-muted-foreground">Latitudine</label>
                       <input className={`${inputCls} mt-1.5`} value={values.lat} disabled={pendingReview} onChange={(e) => setValues({ ...values, lat: cleanNumber(e.target.value) })} placeholder="45.793140" />
@@ -409,12 +433,22 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                       <label className="text-xs font-semibold text-muted-foreground">Longitudine</label>
                       <input className={`${inputCls} mt-1.5`} value={values.lng} disabled={pendingReview} onChange={(e) => setValues({ ...values, lng: cleanNumber(e.target.value) })} placeholder="24.151920" />
                     </div>
-                    <div>
-                      <label className="text-xs font-semibold text-muted-foreground">Google Place ID</label>
-                      <input className={`${inputCls} mt-1.5`} value={values.place_id} disabled={pendingReview} onChange={(e) => setValues({ ...values, place_id: e.target.value })} placeholder="optional" />
-                    </div>
                   </div>
-                  <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Place ID este optional. Pentru MVP sunt suficiente coordonatele latitudine/longitudine.</p>
+                  {hasCoordinateIssues && (
+                    <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-800">
+                      {coordinateValidation.issues[0]}
+                    </div>
+                  )}
+                  <button type="button" onClick={() => setShowAdvancedMap((v) => !v)} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold underline underline-offset-4">
+                    Optiuni avansate <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdvancedMap ? "rotate-180" : ""}`} />
+                  </button>
+                  {showAdvancedMap && (
+                    <div className="mt-3 rounded-2xl border border-border bg-card p-3">
+                      <label className="text-xs font-semibold text-muted-foreground">Google Place ID, optional</label>
+                      <input className={`${inputCls} mt-1.5`} value={values.place_id} disabled={pendingReview} onChange={(e) => setValues({ ...values, place_id: e.target.value })} placeholder="optional" />
+                      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Pentru MVP sunt suficiente coordonatele latitudine/longitudine. Place ID poate fi completat mai tarziu.</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
@@ -422,7 +456,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <button disabled={saving || pendingReview} onClick={saveDraft} className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><Save className="h-4 w-4" /> Salveaza draft</button>
-                  {draft && draft.status !== "pending_review" && <button disabled={saving} onClick={submitDraft} className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50">Trimite spre review</button>}
+                  {draft && draft.status !== "pending_review" && <button disabled={saving || hasCoordinateIssues} onClick={submitDraft} className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50">Trimite spre review</button>}
                   {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
                 </div>
               </section>
@@ -431,9 +465,9 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                 <ProviderServices locationId={selectedLocation.id} location={selectedLocation} overview={overview || { content_summary: { approved_service_count: 0 } }} onRefresh={onRefresh || (() => {})} />
               </LocationConfigModal>
               <LocationConfigModal open={activeModal === "hours"} title="Program locatie" locationName={selectedLocationName} onClose={() => setActiveModal(null)}>
-                <ProviderHours locationId={selectedLocation.id} onRefresh={onRefresh || (() => {})} />
+                <ProviderHours locationId={selectedLocation.id} location={selectedLocation} onRefresh={onRefresh || (() => {})} />
               </LocationConfigModal>
-              <LocationConfigModal open={activeModal === "team"} title="Echipa locatie" locationName={selectedLocationName} onClose={() => setActiveModal(null)}>
+              <LocationConfigModal open={activeModal === "team"} title="Specialisti locatie" locationName={selectedLocationName} onClose={() => setActiveModal(null)}>
                 <ProviderTeam locationId={selectedLocation.id} />
               </LocationConfigModal>
             </>
