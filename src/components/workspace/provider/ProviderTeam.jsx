@@ -17,7 +17,7 @@ const PUBLIC_SPECIALIST_TYPES = {
 
 const INVITE_STATUS_LABELS = {
   pending_invite: "In draft",
-  email_sent: "Invitatie trimisa",
+  pending_review: "In review",
   accepted: "Confirmat",
 };
 
@@ -29,10 +29,28 @@ function roleLabel(key) {
   return PUBLIC_SPECIALIST_TYPES[key] || PROFESSIONAL_TYPES[key] || key;
 }
 
+function normalizeInvitations(payload = {}) {
+  if (Array.isArray(payload.invitations)) {
+    return payload.invitations.map((i) => ({
+      email: String(i.email || "").trim().toLowerCase(),
+      professional_role: i.professional_role || i.professional_type || "optometrist",
+      invite_status: i.invite_status || "pending_invite",
+    })).filter((i) => i.email);
+  }
+  if (Array.isArray(payload.members)) {
+    return payload.members.map((m) => ({
+      email: String(m.invite_email || m.email || "").trim().toLowerCase(),
+      professional_role: m.professional_type || m.professional_role || "optometrist",
+      invite_status: m.invite_status || "pending_invite",
+    })).filter((i) => i.email);
+  }
+  return [];
+}
+
 export default function ProviderTeam({ locationId }) {
   const [publicTeam, setPublicTeam] = useState([]);
   const [draft, setDraft] = useState(null);
-  const [members, setMembers] = useState([]);
+  const [invitations, setInvitations] = useState([]);
   const [form, setForm] = useState({ invite_email: "", professional_type: "ophthalmologist" });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
@@ -46,7 +64,7 @@ export default function ProviderTeam({ locationId }) {
     const own = (mineRes.data?.submissions || []).find((s) => s.section === "team" && ["draft", "needs_more_info", "pending_review"].includes(s.status));
     setDraft(own || null);
     const payload = own ? JSON.parse(own.payload_json || "{}") : {};
-    setMembers(Array.isArray(payload.members) ? payload.members : []);
+    setInvitations(normalizeInvitations(payload));
   };
 
   useEffect(() => { load(); }, [locationId]);
@@ -54,20 +72,13 @@ export default function ProviderTeam({ locationId }) {
   const addInvite = () => {
     const email = form.invite_email.trim().toLowerCase();
     if (!isValidEmail(email)) { setMsg("Introdu un email valid."); return; }
-    if (members.some((m) => String(m.invite_email || "").toLowerCase() === email)) { setMsg("Acest email este deja in draft."); return; }
-    setMembers([
-      ...members,
+    if (invitations.some((m) => String(m.email || "").toLowerCase() === email)) { setMsg("Acest email este deja in draft."); return; }
+    setInvitations([
+      ...invitations,
       {
-        invite_email: email,
-        professional_type: form.professional_type,
-        full_name: "",
-        public_title: "",
-        short_bio: "",
-        assigned_location_ids: [locationId],
-        visible_on_public_profile: false,
+        email,
+        professional_role: form.professional_type,
         invite_status: "pending_invite",
-        affiliation_status: "location_added",
-        invitation_required: true,
       },
     ]);
     setForm({ invite_email: "", professional_type: "ophthalmologist" });
@@ -75,7 +86,7 @@ export default function ProviderTeam({ locationId }) {
   };
 
   const save = async () => {
-    if (members.length === 0) { setMsg("Adauga cel putin un specialist."); return; }
+    if (invitations.length === 0) { setMsg("Adauga cel putin un specialist."); return; }
     setSaving(true); setMsg("");
     const action = draft && draft.status !== "pending_review" ? "update_draft" : "create_draft";
     const res = await base44.functions.invoke("submitProviderWorkspaceChange", {
@@ -83,11 +94,7 @@ export default function ProviderTeam({ locationId }) {
       submission_id: draft?.id,
       location_id: locationId,
       section: "team",
-      payload: {
-        invite_flow: true,
-        invitation_channel: "email",
-        members,
-      },
+      payload: { invitations },
     }).catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
     setSaving(false);
     if (res.data?.error) { setMsg(res.data.error); return; }
@@ -101,7 +108,7 @@ export default function ProviderTeam({ locationId }) {
     const res = await base44.functions.invoke("submitProviderWorkspaceChange", { action: "submit", submission_id: draft.id, location_id: locationId, section: "team" }).catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
     setSaving(false);
     if (res.data?.error) { setMsg(res.data.error); return; }
-    setMsg("Invitatiile au fost trimise spre procesare. Specialistii apar public dupa confirmare.");
+    setMsg("Invitatiile au fost trimise spre review. Specialistii apar public doar dupa confirmare.");
     load();
   };
 
@@ -143,20 +150,20 @@ export default function ProviderTeam({ locationId }) {
           </div>
         )}
 
-        {members.length > 0 && (
+        {invitations.length > 0 && (
           <div className="mt-4 border-t border-border pt-4">
             <div className="mb-2 text-sm font-bold">Invitatii pregatite</div>
             <ul className="space-y-2">
-              {members.map((m, i) => (
-                <li key={`${m.invite_email}-${i}`} className="rounded-2xl border border-border/70 px-3 py-2 text-xs flex items-center justify-between gap-3">
+              {invitations.map((m, i) => (
+                <li key={`${m.email}-${i}`} className="rounded-2xl border border-border/70 px-3 py-2 text-xs flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-bold">{roleLabel(m.professional_type)}</div>
-                    <div className="break-all text-muted-foreground">{m.invite_email}</div>
+                    <div className="font-bold">{roleLabel(m.professional_role)}</div>
+                    <div className="break-all text-muted-foreground">{m.email}</div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{INVITE_STATUS_LABELS[m.invite_status] || "In draft"}</span>
                     {!pendingReview && (
-                      <button onClick={() => setMembers(members.filter((_, idx) => idx !== i))} className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1.5 text-xs font-semibold text-destructive hover:bg-secondary"><Trash2 className="h-3.5 w-3.5" /> Sterge</button>
+                      <button onClick={() => setInvitations(invitations.filter((_, idx) => idx !== i))} className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1.5 text-xs font-semibold text-destructive hover:bg-secondary"><Trash2 className="h-3.5 w-3.5" /> Sterge</button>
                     )}
                   </div>
                 </li>
