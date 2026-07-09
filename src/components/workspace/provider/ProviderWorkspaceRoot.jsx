@@ -8,8 +8,6 @@ import LocationSwitcher from "./LocationSwitcher";
 import ProviderOverview from "./ProviderOverview";
 import ProviderProfilePublic from "./ProviderProfilePublic";
 import ProviderLocations from "./ProviderLocations";
-import ProviderMedia from "./ProviderMedia";
-import ProviderArticles from "./ProviderArticles";
 import ProviderAccess from "./ProviderAccess";
 import ProviderSettings from "./ProviderSettings";
 
@@ -33,9 +31,11 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
   useEffect(() => { loadOverview(selectedLocationId); }, [selectedLocationId]);
 
   const navItems = getProviderNav({ canManageMembers: workspace.can_manage_members });
+  const allowedSections = ["overview", "profile", "locations", "access", "settings"];
+  const normalizedSection = ["services", "team", "hours"].includes(section) ? "locations" : section;
+  const safeSection = allowedSections.includes(normalizedSection) ? normalizedSection : "overview";
   const statusLabel = overview?.location?.profile_control_status ? (PROFILE_CONTROL_LABELS[overview.location.profile_control_status] || overview.location.profile_control_status) : "";
   const statusGreen = ["verified", "claimed"].includes(overview?.location?.profile_control_status);
-  const safeSection = ["services", "team", "hours"].includes(section) ? "locations" : section;
 
   return (
     <ProviderAppShell
@@ -62,8 +62,6 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
           {safeSection === "overview" && <ProviderOverview overview={overview} onNavigate={navigate} />}
           {safeSection === "profile" && <ProviderProfilePublic locationId={selectedLocationId} overview={overview} workspace={workspace} onNavigate={navigate} onSelectLocation={setSelectedLocationId} onRefresh={() => loadOverview(selectedLocationId)} />}
           {safeSection === "locations" && <ProviderLocations workspace={workspace} selectedLocationId={selectedLocationId} onSelect={setSelectedLocationId} overview={overview} onRefresh={() => loadOverview(selectedLocationId)} />}
-          {safeSection === "media" && <ProviderMedia locationId={selectedLocationId} />}
-          {safeSection === "articles" && <ProviderArticles locationId={selectedLocationId} />}
           {safeSection === "access" && workspace.can_manage_members && <ProviderAccess locations={workspace.locations} />}
           {safeSection === "settings" && <ProviderSettings />}
         </>
