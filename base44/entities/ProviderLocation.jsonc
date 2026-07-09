@@ -71,6 +71,11 @@
     "place_id": {
       "type": "string"
     },
+    "service_radius_km": {
+      "type": "number",
+      "default": 15,
+      "description": "Perimetrul implicit de deservire pentru cereri/matching. Daca lipseste, matchProviders foloseste o valoare implicita dupa tipul locatiei."
+    },
     "phone_public": {
       "type": "string"
     },
