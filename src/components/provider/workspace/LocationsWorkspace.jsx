@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { CalendarDays, CheckCircle2, MapPin, Save, Stethoscope, UserPlus } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronDown, MapPin, Save, Send, Stethoscope, UserPlus } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,8 @@ const LOCATION_TABS = [
   { key: "schedule", label: "Program", icon: CalendarDays },
   { key: "team", label: "Specialisti", icon: UserPlus },
 ];
+
+const ACTIVE_SUBMISSION_STATUSES = ["draft", "needs_more_info", "pending_review"];
 
 function Panel({ children, className = "" }) {
   return <section className={"rounded-lg border border-border bg-card p-5 shadow-sm " + className}>{children}</section>;
@@ -95,123 +97,202 @@ function mapUrl(details) {
   return "https://www.openstreetmap.org/export/embed.html?bbox=" + encodeURIComponent(bbox) + "&layer=mapnik&marker=" + encodeURIComponent(lat + "," + lng);
 }
 
+function tabButtonClass(active) {
+  return "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors " + (active ? "bg-foreground text-background" : "bg-secondary text-foreground hover:bg-secondary/80");
+}
+
 function TabButton({ tab, active, onClick }) {
   const Icon = tab.icon;
   return (
-    <button onClick={onClick} className={("inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors " + (active ? "bg-foreground text-background" : "bg-secondary text-foreground hover:bg-secondary/80"))}>
+    <button onClick={onClick} className={tabButtonClass(active)}>
       <Icon className="w-4 h-4" /> {tab.label}
     </button>
   );
 }
 
+function buildLocationDetailsPayload(form) {
+  const lat = String(form.lat || "").trim();
+  const lng = String(form.lng || "").trim();
+  if ((lat && !lng) || (!lat && lng)) {
+    return { error: "Completeaza atat latitudinea, cat si longitudinea, sau lasa ambele goale." };
+  }
+  const payload = {
+    public_display_name: form.public_display_name,
+    address: form.address,
+    public_phone: form.public_phone,
+    public_email: form.public_email,
+    place_id: form.place_id,
+  };
+  if (lat && lng) {
+    const nLat = Number(lat);
+    const nLng = Number(lng);
+    if (!Number.isFinite(nLat) || nLat < -90 || nLat > 90 || !Number.isFinite(nLng) || nLng < -180 || nLng > 180) {
+      return { error: "Coordonatele pinului sunt invalide." };
+    }
+    payload.lat = nLat;
+    payload.lng = nLng;
+  }
+  return { payload };
+}
+
+function extractSubmission(response) {
+  return response?.data?.submission || response?.submission || null;
+}
+
 function DetailsTab({ location, onSaved }) {
   const [form, setForm] = useState({});
+  const [draft, setDraft] = useState(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  const loadDraft = async () => {
+    if (!location?.id) return;
+    const res = await base44.functions.invoke("submitProviderWorkspaceChange", {
+      action: "list_mine",
+      location_id: location.id,
+    }).catch(() => ({ data: { submissions: [] } }));
+    const submissions = res?.data?.submissions || res?.submissions || [];
+    const activeDraft = submissions.find((s) => s.section === "location_details" && ACTIVE_SUBMISSION_STATUSES.includes(s.status)) || null;
+    setDraft(activeDraft);
+    if (activeDraft) {
+      let payload = {};
+      try { payload = JSON.parse(activeDraft.payload_json || "{}"); } catch (_e) { payload = {}; }
+      setForm({
+        public_display_name: payload.public_display_name ?? (location?.public_display_name || location?.name || ""),
+        address: payload.address ?? (location?.address || ""),
+        public_phone: payload.public_phone ?? (location?.public_phone || location?.phone_public || ""),
+        public_email: payload.public_email ?? (location?.public_email || ""),
+        lat: payload.lat ?? (location?.lat ?? ""),
+        lng: payload.lng ?? (location?.lng ?? ""),
+        place_id: payload.place_id ?? (location?.place_id || ""),
+      });
+    } else {
+      setForm({
+        public_display_name: location?.public_display_name || location?.name || "",
+        address: location?.address || "",
+        public_phone: location?.public_phone || location?.phone_public || "",
+        public_email: location?.public_email || "",
+        lat: location?.lat ?? "",
+        lng: location?.lng ?? "",
+        place_id: location?.place_id || "",
+      });
+    }
+  };
+
   useEffect(() => {
-    setForm({
-      public_display_name: location?.public_display_name || location?.name || "",
-      address: location?.address || "",
-      public_phone: location?.phone_public || "",
-      public_email: location?.public_email || "",
-      lat: location?.lat ?? "",
-      lng: location?.lng ?? "",
-      place_id: location?.place_id || "",
-    });
+    loadDraft();
     setMessage("");
     setError("");
+    setShowAdvanced(false);
   }, [location?.id]);
 
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
   const url = mapUrl(form);
+  const pendingReview = draft?.status === "pending_review";
 
-  const submit = async () => {
+  const saveDraft = async () => {
     setError("");
     setMessage("");
-    const lat = String(form.lat || "").trim();
-    const lng = String(form.lng || "").trim();
-    if ((lat && !lng) || (!lat && lng)) {
-      setError("Completeaza atat latitudinea, cat si longitudinea, sau lasa ambele goale.");
-      return;
-    }
-    const payload = {
-      public_display_name: form.public_display_name,
-      address: form.address,
-      public_phone: form.public_phone,
-      public_email: form.public_email,
-      place_id: form.place_id,
-    };
-    if (lat && lng) {
-      const nLat = Number(lat);
-      const nLng = Number(lng);
-      if (!Number.isFinite(nLat) || nLat < -90 || nLat > 90 || !Number.isFinite(nLng) || nLng < -180 || nLng > 180) {
-        setError("Coordonatele pinului sunt invalide.");
-        return;
-      }
-      payload.lat = nLat;
-      payload.lng = nLng;
-    }
+    const built = buildLocationDetailsPayload(form);
+    if (built.error) { setError(built.error); return; }
     setSaving(true);
     try {
-      const create = await base44.functions.invoke("submitProviderWorkspaceChange", {
-        action: "create_draft",
+      const action = draft && draft.status !== "pending_review" ? "update_draft" : "create_draft";
+      const res = await base44.functions.invoke("submitProviderWorkspaceChange", {
+        action,
+        submission_id: draft?.id,
         location_id: location.id,
         section: "location_details",
-        payload,
+        payload: built.payload,
       });
-      const submission = create.data?.submission;
-      if (!submission?.id) throw new Error("Draftul nu a fost creat.");
+      const submission = extractSubmission(res);
+      if (submission) setDraft(submission);
+      setMessage("Draft salvat. Trimite-l spre review cand este pregatit.");
+      if (onSaved) await onSaved();
+      await loadDraft();
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || "Nu am putut salva draftul.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const submitDraft = async () => {
+    if (!draft?.id || pendingReview) return;
+    setError("");
+    setMessage("");
+    const built = buildLocationDetailsPayload(form);
+    if (built.error) { setError(built.error); return; }
+    setSubmitting(true);
+    try {
       await base44.functions.invoke("submitProviderWorkspaceChange", {
         action: "submit",
         location_id: location.id,
         section: "location_details",
-        submission_id: submission.id,
+        submission_id: draft.id,
       });
       setMessage("Detaliile locatiei au fost trimise spre review.");
       if (onSaved) await onSaved();
+      await loadDraft();
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Nu am putut trimite modificarile.");
     } finally {
-      setSaving(false);
+      setSubmitting(false);
     }
   };
 
   return (
     <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-5">
       <Panel>
-        <h2 className="font-semibold">Detalii publice locatie</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Numele public, adresa, pinul si contactele locatiei necesita review admin.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">Detalii publice locatie</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Numele public, adresa, pinul si contactele locatiei necesita review admin.</p>
+          </div>
+          {draft && <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">{draft.status}</span>}
+        </div>
         <div className="mt-5 grid sm:grid-cols-2 gap-4">
           <Field label="Nume public locatie">
-            <Input value={form.public_display_name || ""} onChange={(e) => update("public_display_name", e.target.value)} />
+            <Input value={form.public_display_name || ""} disabled={pendingReview} onChange={(e) => update("public_display_name", e.target.value)} />
           </Field>
           <Field label="Telefon public locatie">
-            <Input value={form.public_phone || ""} onChange={(e) => update("public_phone", e.target.value)} placeholder="+40..." />
+            <Input value={form.public_phone || ""} disabled={pendingReview} onChange={(e) => update("public_phone", e.target.value)} placeholder="+40..." />
           </Field>
           <Field label="Email public locatie">
-            <Input value={form.public_email || ""} onChange={(e) => update("public_email", e.target.value)} placeholder="sibiu@..." />
-          </Field>
-          <Field label="ID pin / loc extern" hint="Optional. Nu este folosit in matching.">
-            <Input value={form.place_id || ""} onChange={(e) => update("place_id", e.target.value)} />
+            <Input value={form.public_email || ""} disabled={pendingReview} onChange={(e) => update("public_email", e.target.value)} placeholder="sibiu@..." />
           </Field>
           <div className="sm:col-span-2">
             <Field label="Adresa publica">
-              <Textarea value={form.address || ""} onChange={(e) => update("address", e.target.value)} rows={3} />
+              <Textarea value={form.address || ""} disabled={pendingReview} onChange={(e) => update("address", e.target.value)} rows={3} />
             </Field>
           </div>
           <Field label="Latitudine pin">
-            <Input value={form.lat} onChange={(e) => update("lat", e.target.value)} placeholder="45.79" />
+            <Input value={form.lat ?? ""} disabled={pendingReview} onChange={(e) => update("lat", e.target.value)} placeholder="45.79" />
           </Field>
           <Field label="Longitudine pin">
-            <Input value={form.lng} onChange={(e) => update("lng", e.target.value)} placeholder="24.15" />
+            <Input value={form.lng ?? ""} disabled={pendingReview} onChange={(e) => update("lng", e.target.value)} placeholder="24.15" />
           </Field>
         </div>
+
+        <button type="button" onClick={() => setShowAdvanced((v) => !v)} className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold underline underline-offset-4">
+          Optiuni avansate <ChevronDown className={"h-4 w-4 transition-transform " + (showAdvanced ? "rotate-180" : "")} />
+        </button>
+        {showAdvanced && (
+          <div className="mt-3 rounded-lg border border-border bg-secondary/40 p-3">
+            <Field label="Google Place ID" hint="Optional. Pentru MVP sunt suficiente coordonatele latitudine/longitudine.">
+              <Input value={form.place_id || ""} disabled={pendingReview} onChange={(e) => update("place_id", e.target.value)} placeholder="optional" />
+            </Field>
+          </div>
+        )}
+
         {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
         {message && <p className="mt-4 text-sm text-emerald-700">{message}</p>}
-        <div className="mt-5 flex justify-end">
-          <Button onClick={submit} disabled={saving}><Save className="w-4 h-4" /> {saving ? "Se trimite..." : "Trimite spre review"}</Button>
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <Button variant="outline" onClick={saveDraft} disabled={saving || submitting || pendingReview}><Save className="w-4 h-4" /> {saving ? "Se salveaza..." : "Salveaza draft"}</Button>
+          {draft && !pendingReview && <Button onClick={submitDraft} disabled={saving || submitting}><Send className="w-4 h-4" /> {submitting ? "Se trimite..." : "Trimite spre review"}</Button>}
         </div>
       </Panel>
       <Panel>
@@ -277,7 +358,7 @@ function ServicesTab({ location, onSaved }) {
         section: "services",
         payload: { selected_ids: selected, removal_ids: removal, suggestions: [] },
       });
-      const submission = create.data?.submission;
+      const submission = extractSubmission(create);
       if (!submission?.id) throw new Error("Draftul nu a fost creat.");
       await base44.functions.invoke("submitProviderWorkspaceChange", {
         action: "submit",
@@ -394,7 +475,7 @@ function ScheduleTab({ location, onSaved }) {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <h2 className="font-semibold">Program si acces pacienti</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Programul si modul de primire a cererilor se actualizeaza imediat. Nu modifica adresa sau statutul de incredere.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Programul si modul de primire se actualizeaza imediat. Nu modifica adresa sau datele de contact.</p>
         </div>
         <Button onClick={submit} disabled={saving}><Save className="w-4 h-4" /> {saving ? "Se salveaza..." : "Salveaza program"}</Button>
       </div>
@@ -416,7 +497,7 @@ function ScheduleTab({ location, onSaved }) {
           })}
         </div>
         <div className="space-y-4">
-          <Field label="Disponibilitate">
+          <Field label="Mod de primire clienti si pacienti">
             <select value={availability} onChange={(e) => setAvailability(e.target.value)} className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm">
               {Object.entries(AVAILABILITY_OPTIONS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
             </select>
@@ -462,7 +543,6 @@ function ScheduleTab({ location, onSaved }) {
 function TeamTab({ location, onSaved }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("optometrist");
-  const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -472,15 +552,16 @@ function TeamTab({ location, onSaved }) {
   const submit = async () => {
     setError("");
     setMessage("");
+    if (!email.trim()) { setError("Emailul specialistului este obligatoriu."); return; }
     setSaving(true);
     try {
       const create = await base44.functions.invoke("submitProviderWorkspaceChange", {
         action: "create_draft",
         location_id: location.id,
         section: "team",
-        payload: { invitations: [{ email, professional_role: role, note }] },
+        payload: { invitations: [{ email, professional_role: role }] },
       });
-      const submission = create.data?.submission;
+      const submission = extractSubmission(create);
       if (!submission?.id) throw new Error("Draftul nu a fost creat.");
       await base44.functions.invoke("submitProviderWorkspaceChange", {
         action: "submit",
@@ -489,8 +570,7 @@ function TeamTab({ location, onSaved }) {
         submission_id: submission.id,
       });
       setEmail("");
-      setNote("");
-      setMessage("Invitatia specialistului a fost trimisa spre review.");
+      setMessage("Invitatia a fost trimisa spre review. Specialistul apare public doar dupa confirmare.");
       if (onSaved) await onSaved();
     } catch (err) {
       setError(err?.response?.data?.error || err?.message || "Nu am putut trimite invitatia.");
@@ -504,33 +584,26 @@ function TeamTab({ location, onSaved }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="font-semibold">Specialisti publici</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Invita doar profesionisti care vor aparea pe profilul public. Managerii si operatorii merg in Acces si utilizatori.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Invita profesionistii care pot aparea pe profil. Managerii si operatorii merg in Acces si utilizatori.</p>
         </div>
         <div className="text-right text-xs text-muted-foreground">
           <p>{approvedCount} publici</p>
           <p>{pendingCount} in review</p>
         </div>
       </div>
-      <div className="mt-5 grid sm:grid-cols-2 gap-4">
+      <div className="mt-5 grid sm:grid-cols-[minmax(0,1fr)_260px_auto] gap-4 sm:items-end">
         <Field label="Email specialist">
           <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="specialist@..." />
         </Field>
-        <Field label="Rol public">
+        <Field label="Functie">
           <select value={role} onChange={(e) => setRole(e.target.value)} className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm">
             {Object.entries(SPECIALIST_INVITE_ROLES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
         </Field>
-        <div className="sm:col-span-2">
-          <Field label="Nota pentru review" hint="Optional. Nu devine publica.">
-            <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Ex: lucreaza in aceasta locatie din luna mai." />
-          </Field>
-        </div>
+        <Button onClick={submit} disabled={saving || !email.trim()}><UserPlus className="w-4 h-4" /> {saving ? "Se trimite..." : "Trimite invitatia"}</Button>
       </div>
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
       {message && <p className="mt-4 text-sm text-emerald-700">{message}</p>}
-      <div className="mt-5 flex justify-end">
-        <Button onClick={submit} disabled={saving || !email.trim()}><UserPlus className="w-4 h-4" /> {saving ? "Se trimite..." : "Propune specialist"}</Button>
-      </div>
     </Panel>
   );
 }
@@ -568,7 +641,7 @@ export default function LocationsWorkspace({ workspace, onSaved }) {
           <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Locatii</p>
           <div className="space-y-2">
             {locations.map((location) => (
-              <button key={location.id} onClick={() => setSelectedLocationId(location.id)} className={("w-full text-left rounded-lg border p-3 transition-colors " + (selectedLocation?.id === location.id ? "border-foreground bg-secondary" : "border-border hover:bg-secondary"))}>
+              <button key={location.id} onClick={() => setSelectedLocationId(location.id)} className={"w-full text-left rounded-lg border p-3 transition-colors " + (selectedLocation?.id === location.id ? "border-foreground bg-secondary" : "border-border hover:bg-secondary")}>
                 <p className="text-sm font-semibold truncate">{locationTitle(location)}</p>
                 <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{locationSubtitle(location) || "Fara adresa publica"}</p>
                 {location.claim_verification_status === "approved" && <p className="mt-2 inline-flex items-center gap-1 text-[11px] text-emerald-700"><CheckCircle2 className="w-3 h-3" /> Claim aprobat</p>}
