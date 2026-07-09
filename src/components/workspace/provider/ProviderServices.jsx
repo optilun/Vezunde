@@ -6,26 +6,6 @@ import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground/40";
 
-const BACKEND_SERVICE_GROUPS = {
-  patient_services: new Set(["eyeglasses", "frames", "prescription_lenses", "contact_lenses", "optometry_consultation", "ophthalmology_consultation"]),
-  investigations: new Set(["oct", "visual_field_analyzer", "fundus_camera", "pachymeter", "biometer", "corneal_topography"]),
-  specialties: new Set(["retina_consultation", "glaucoma_consultation", "cataract_surgery", "refractive_surgery", "pediatric_ophthalmology", "myopia_management", "emergency_ophthalmology"]),
-  technical_activities: new Set(["eyeglasses_adjustment", "eyeglasses_repair", "lens_fitting"]),
-};
-
-const BACKEND_GROUP_BY_UI_GROUP = {
-  optical_retail: "patient_services",
-  lenses_and_measurements: "patient_services",
-  optometry: "patient_services",
-  contact_lenses: "patient_services",
-  ophthalmology_consults: "patient_services",
-  investigations: "investigations",
-  specialties: "specialties",
-  procedures_surgery: "specialties",
-  children_and_prevention: "specialties",
-  technical_activities: "technical_activities",
-};
-
 function safeParse(raw) {
   try { return JSON.parse(raw || "{}") || {}; } catch { return {}; }
 }
@@ -38,53 +18,41 @@ function countSelected(selected) {
   return Object.values(selected || {}).reduce((sum, list) => sum + (Array.isArray(list) ? list.length : 0), 0);
 }
 
-function labelForService(group, id) {
-  return SERVICE_GROUPS[group]?.ids?.[id] || id;
-}
-
 function normalizeSuggestions(payload = {}) {
   if (Array.isArray(payload.suggestions)) return payload.suggestions;
-  if (Array.isArray(payload.custom_requests)) {
-    return payload.custom_requests.map((item) => ({
-      group: BACKEND_GROUP_BY_UI_GROUP[item.group] || "patient_services",
-      label: item.label || "",
-      note: item.note || "",
-    })).filter((item) => item.label);
-  }
+  if (Array.isArray(payload.custom_requests)) return payload.custom_requests;
   return [];
 }
 
 function makeSuggestion(group, label) {
-  return { group: BACKEND_GROUP_BY_UI_GROUP[group] || "patient_services", label, note: "Propus din workspace furnizor" };
+  return { group, label, note: "Propus din workspace furnizor" };
 }
 
-function buildBackendPayload(selected, customRequests) {
-  const selectedIds = { patient_services: [], investigations: [], specialties: [], technical_activities: [] };
-  const suggestions = [...customRequests];
-
-  Object.entries(selected || {}).forEach(([uiGroup, ids]) => {
-    const backendGroup = BACKEND_GROUP_BY_UI_GROUP[uiGroup] || "patient_services";
-    const allowed = BACKEND_SERVICE_GROUPS[backendGroup] || new Set();
-    (ids || []).forEach((id) => {
-      if (allowed.has(id)) selectedIds[backendGroup].push(id);
-      else suggestions.push({ group: backendGroup, label: labelForService(uiGroup, id), note: `Serviciu din catalog extins: ${id}` });
-    });
+function normalizeSelectedPayload(selected = {}) {
+  const result = {};
+  Object.entries(selected).forEach(([group, ids]) => {
+    if (!SERVICE_GROUPS[group]) return;
+    const allowedIds = new Set(Object.keys(SERVICE_GROUPS[group].ids || {}));
+    const cleanIds = [...new Set((ids || []).filter((id) => allowedIds.has(id)))];
+    if (cleanIds.length > 0) result[group] = cleanIds;
   });
+  return result;
+}
 
-  const uniqueSelected = Object.fromEntries(Object.entries(selectedIds).map(([group, ids]) => [group, [...new Set(ids)]]));
-  const uniqueSuggestions = [];
+function buildPayload(selected, customRequests) {
+  const selectedIds = normalizeSelectedPayload(selected);
+  const suggestions = [];
   const seen = new Set();
-  for (const suggestion of suggestions) {
-    const group = suggestion.group || "patient_services";
-    const label = normalizeText(suggestion.label);
+  for (const item of customRequests || []) {
+    const group = SERVICE_GROUPS[item.group] ? item.group : "optical_retail";
+    const label = normalizeText(item.label);
     if (!label) continue;
     const key = `${group}:${label.toLowerCase()}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    uniqueSuggestions.push({ group, label, note: suggestion.note || "" });
+    suggestions.push({ group, label, note: item.note || "" });
   }
-
-  return { selected_ids: uniqueSelected, removal_ids: {}, suggestions: uniqueSuggestions };
+  return { selected_ids: selectedIds, removal_ids: {}, suggestions };
 }
 
 function GroupCard({ groupKey, def, selectedIds, customItems, pendingReview, onToggle, onAddCustom, onRemoveCustom, compact = false }) {
@@ -151,7 +119,13 @@ function GroupCard({ groupKey, def, selectedIds, customItems, pendingReview, onT
 }
 
 function GroupList({ groups, selected, customByGroup, pendingReview, onToggle, onAddCustom, onRemoveCustom, compact }) {
-  return <div className="space-y-3">{groups.map((group) => <GroupCard key={group} groupKey={group} def={SERVICE_GROUPS[group]} selectedIds={selected[group] || []} customItems={customByGroup[BACKEND_GROUP_BY_UI_GROUP[group] || group] || customByGroup[group] || []} pendingReview={pendingReview} onToggle={onToggle} onAddCustom={onAddCustom} onRemoveCustom={onRemoveCustom} compact={compact} />)}</div>;
+  return (
+    <div className="space-y-3">
+      {groups.map((group) => (
+        <GroupCard key={group} groupKey={group} def={SERVICE_GROUPS[group]} selectedIds={selected[group] || []} customItems={customByGroup[group] || []} pendingReview={pendingReview} onToggle={onToggle} onAddCustom={onAddCustom} onRemoveCustom={onRemoveCustom} compact={compact} />
+      ))}
+    </div>
+  );
 }
 
 export default function ProviderServices({ locationId, location, overview, onRefresh }) {
@@ -175,7 +149,7 @@ export default function ProviderServices({ locationId, location, overview, onRef
   const customByGroup = useMemo(() => {
     const map = {};
     for (const item of customRequests) {
-      const group = item.group || "patient_services";
+      const group = SERVICE_GROUPS[item.group] ? item.group : "optical_retail";
       map[group] = map[group] || [];
       map[group].push(item);
     }
@@ -211,10 +185,10 @@ export default function ProviderServices({ locationId, location, overview, onRef
 
   const removeCustom = (group, indexInGroup) => {
     if (pendingReview) return;
-    const backendGroup = BACKEND_GROUP_BY_UI_GROUP[group] || group;
     let seen = -1;
     setCustomRequests(customRequests.filter((item) => {
-      if (item.group !== backendGroup) return true;
+      const itemGroup = SERVICE_GROUPS[item.group] ? item.group : "optical_retail";
+      if (itemGroup !== group) return true;
       seen += 1;
       return seen !== indexInGroup;
     }));
@@ -223,7 +197,7 @@ export default function ProviderServices({ locationId, location, overview, onRef
   const save = async () => {
     setSaving(true); setMsg("");
     const action = draft && draft.status !== "pending_review" ? "update_draft" : "create_draft";
-    const payload = buildBackendPayload(selected, customRequests);
+    const payload = buildPayload(selected, customRequests);
     const res = await base44.functions.invoke("submitProviderWorkspaceChange", { action, submission_id: draft?.id, location_id: locationId, section: "services", payload }).catch((e) => ({ data: { error: e.response?.data?.error || e.message, fields: e.response?.data?.fields || [] } }));
     setSaving(false);
     if (res.data?.error) { setMsg(res.data.fields?.length ? `${res.data.error}: ${res.data.fields.join(", ")}` : res.data.error); return; }
