@@ -188,7 +188,7 @@ export default function ProviderServices({ locationId, location, overview, onRef
     const own = (res.data?.submissions || []).find((s) => s.section === "services" && ["draft", "needs_more_info", "pending_review"].includes(s.status));
     const payload = safeParse(own?.payload_json);
     setDraft(own || null);
-    setSelected(payload.ui_selected_ids || payload.selected_ids || {});
+    setSelected(payload.selected_ids || {});
     setCustomRequests(normalizeSuggestions(payload));
   };
 
@@ -223,7 +223,7 @@ export default function ProviderServices({ locationId, location, overview, onRef
   const save = async () => {
     setSaving(true); setMsg("");
     const action = draft && draft.status !== "pending_review" ? "update_draft" : "create_draft";
-    const payload = { ...buildBackendPayload(selected, customRequests), ui_selected_ids: selected };
+    const payload = buildBackendPayload(selected, customRequests);
     const res = await base44.functions.invoke("submitProviderWorkspaceChange", { action, submission_id: draft?.id, location_id: locationId, section: "services", payload }).catch((e) => ({ data: { error: e.response?.data?.error || e.message, fields: e.response?.data?.fields || [] } }));
     setSaving(false);
     if (res.data?.error) { setMsg(res.data.fields?.length ? `${res.data.error}: ${res.data.fields.join(", ")}` : res.data.error); return; }
