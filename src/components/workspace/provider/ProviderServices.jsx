@@ -2,98 +2,16 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Plus, Save, Send, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { SERVICE_GROUPS } from "@/lib/canonicalServiceCatalog";
+import {
+  ADVANCED_CLIENT_NEED_KEYS,
+  CLIENT_NEED_BY_KEY,
+  CLIENT_NEED_SECTIONS,
+  getSectionSelectedCount,
+  PRIMARY_CLIENT_NEED_KEYS,
+} from "@/lib/servicePresentation";
 import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground/40";
-
-const ESSENTIAL_GROUPS = [
-  {
-    key: "optical_retail",
-    title: "Produse optice",
-    subtitle: "Ce poate cumpara clientul din locatie.",
-  },
-  {
-    key: "lenses_and_measurements",
-    title: "Lentile si personalizare",
-    subtitle: "Lentile, masuratori si personalizare pentru ochelari.",
-  },
-  {
-    key: "optometry",
-    title: "Servicii optice si optometrice",
-    subtitle: "Servicii uzuale pentru evaluarea si corectia vederii.",
-  },
-  {
-    key: "technical_activities",
-    title: "Atelier / laborator optic",
-    subtitle: "Montaj, reglaje, reparatii si suport tehnic.",
-  },
-];
-
-const ADVANCED_GROUPS = [
-  {
-    key: "contact_lenses",
-    title: "Lentile de contact",
-    subtitle: "Recomandare, adaptare si monitorizare lentile de contact.",
-  },
-  {
-    key: "ophthalmology_consults",
-    title: "Cabinet oftalmologic",
-    subtitle: "Consultatii si verificari medicale realizate in locatie.",
-  },
-  {
-    key: "investigations",
-    title: "Investigatii si echipamente",
-    subtitle: "Aparatura si investigatii disponibile in cabinet/clinica.",
-  },
-  {
-    key: "specialties",
-    title: "Specializari medicale",
-    subtitle: "Arii medicale tratate sau urmarite de specialisti.",
-  },
-  {
-    key: "children_and_prevention",
-    title: "Copii si preventie",
-    subtitle: "Servicii dedicate copiilor, screening si preventie vizuala.",
-  },
-  {
-    key: "procedures_surgery",
-    title: "Proceduri si chirurgie",
-    subtitle: "Proceduri medicale, laser sau interventii disponibile.",
-  },
-];
-
-const CAPABILITY_CARDS = [
-  {
-    label: "Optica retail",
-    desc: "Produse, rame, lentile si accesorii.",
-    groups: ["optical_retail", "lenses_and_measurements"],
-  },
-  {
-    label: "Cabinet optometric",
-    desc: "Determinare dioptrii si servicii optometrice.",
-    groups: ["optometry"],
-  },
-  {
-    label: "Atelier optic",
-    desc: "Montaj, reglaje si reparatii.",
-    groups: ["technical_activities"],
-  },
-  {
-    label: "Lentile de contact",
-    desc: "Adaptare si control lentile de contact.",
-    groups: ["contact_lenses"],
-  },
-  {
-    label: "Cabinet oftalmologic",
-    desc: "Consultatii si investigatii medicale.",
-    groups: ["ophthalmology_consults", "investigations", "specialties"],
-  },
-  {
-    label: "Clinica / proceduri",
-    desc: "Specializari, copii, laser sau chirurgie.",
-    groups: ["children_and_prevention", "procedures_surgery"],
-  },
-];
 
 function safeParse(raw) {
   try { return JSON.parse(raw || "{}") || {}; } catch { return {}; }
@@ -105,10 +23,6 @@ function normalizeText(value) {
 
 function countSelected(selected) {
   return Object.values(selected || {}).reduce((sum, list) => sum + (Array.isArray(list) ? list.length : 0), 0);
-}
-
-function countGroups(selected, groups) {
-  return groups.reduce((sum, group) => sum + ((selected[group] || []).length), 0);
 }
 
 function normalizeSuggestions(payload = {}) {
@@ -148,39 +62,51 @@ function buildPayload(selected, customRequests) {
   return { selected_ids: selectedIds, removal_ids: {}, suggestions };
 }
 
-function SectionHeader({ title, description, badge }) {
-  return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h2 className="font-heading text-base font-bold tracking-tight">{title}</h2>
-        {description && <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>}
-      </div>
-      {badge && <span className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">{badge}</span>}
-    </div>
-  );
+function sectionDefaultGroup(section) {
+  return section?.items?.[0]?.group || "optical_retail";
 }
 
-function CapabilityOverview({ selected }) {
+function sectionGroups(section) {
+  return [...new Set((section?.items || []).map((item) => item.group))];
+}
+
+function customItemsForSection(customByGroup, section) {
+  return sectionGroups(section).flatMap((group) => (customByGroup[group] || []).map((item, index) => ({ ...item, group, indexInGroup: index })));
+}
+
+function NeedOverview({ selected, activeKey, onPick }) {
   return (
     <section className="rounded-3xl border border-border bg-card p-4 shadow-sm">
-      <SectionHeader
-        title="Configurare rapida locatie"
-        description="Alege serviciile dupa tipul real al punctului de lucru. Cardurile de mai jos te ajuta sa vezi rapid ce zone sunt completate."
-      />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-heading text-base font-bold tracking-tight">Ce pot face clientii in aceasta locatie?</h2>
+          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+            Bifeaza nevoile reale ale clientilor. Detaliile de sub fiecare card sunt folosite pentru recomandari bune, nu trebuie afisate toate public.
+          </p>
+        </div>
+        <span className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">matching inteligent</span>
+      </div>
+
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {CAPABILITY_CARDS.map((card) => {
-          const count = countGroups(selected, card.groups);
+        {CLIENT_NEED_SECTIONS.map((section) => {
+          const count = getSectionSelectedCount(selected, section);
           const active = count > 0;
+          const focused = activeKey === section.key;
           return (
-            <div key={card.label} className={`rounded-2xl border p-3 transition-colors ${active ? "border-foreground bg-foreground text-background" : "border-border bg-secondary/35"}`}>
+            <button
+              key={section.key}
+              type="button"
+              onClick={() => onPick(section.key)}
+              className={`rounded-2xl border p-3 text-left transition-colors ${focused ? "border-foreground bg-secondary" : active ? "border-foreground bg-foreground text-background" : "border-border bg-secondary/35 hover:border-foreground/30"}`}
+            >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="text-sm font-bold">{card.label}</div>
-                  <p className={`mt-1 text-xs leading-relaxed ${active ? "text-background/75" : "text-muted-foreground"}`}>{card.desc}</p>
+                  <div className="text-sm font-bold">{section.title}</div>
+                  <p className={`mt-1 text-xs leading-relaxed ${active && !focused ? "text-background/75" : "text-muted-foreground"}`}>Apare public ca: {section.publicLabel}</p>
                 </div>
-                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${active ? "bg-background text-foreground" : "bg-card text-muted-foreground"}`}>{count}</span>
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${active && !focused ? "bg-background text-foreground" : "bg-card text-muted-foreground"}`}>{count}</span>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -188,112 +114,126 @@ function CapabilityOverview({ selected }) {
   );
 }
 
-function GroupCard({ groupKey, title, subtitle, selectedIds, customItems, pendingReview, onToggle, onAddCustom, onRemoveCustom, compact = false }) {
+function NeedSectionCard({ section, selected, customByGroup, pendingReview, onToggle, onAddCustom, onRemoveCustom, defaultOpen = false, forceOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
   const [showCustom, setShowCustom] = useState(false);
   const [customLabel, setCustomLabel] = useState("");
-  const def = SERVICE_GROUPS[groupKey];
-  if (!def) return null;
+  const selectedCount = getSectionSelectedCount(selected, section);
+  const isOpen = forceOpen || open || selectedCount > 0;
+  const customItems = customItemsForSection(customByGroup, section);
 
   const submitCustom = () => {
     const label = normalizeText(customLabel);
     if (!label) return;
-    onAddCustom(groupKey, label);
+    onAddCustom(sectionDefaultGroup(section), label);
     setCustomLabel("");
     setShowCustom(false);
   };
 
   return (
-    <section className={`rounded-2xl border border-border bg-card shadow-sm ${compact ? "p-3" : "p-4"}`}>
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-start justify-between gap-3 text-left">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-bold">{title || def.label}</h3>
-            {selectedIds.length > 0 && <span className="rounded-full bg-foreground px-2 py-0.5 text-[10px] font-bold text-background">{selectedIds.length}</span>}
+            <h3 className="text-sm font-bold">{section.title}</h3>
+            {selectedCount > 0 && <span className="rounded-full bg-foreground px-2 py-0.5 text-[10px] font-bold text-background">{selectedCount}</span>}
           </div>
-          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">{subtitle || def.helper}</p>
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">{section.description}</p>
+          <div className="mt-2 inline-flex rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">Public: {section.publicLabel}</div>
         </div>
-        <button type="button" disabled={pendingReview} onClick={() => setShowCustom((v) => !v)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-secondary disabled:opacity-50">
-          <Plus className="h-3.5 w-3.5" /> Propune serviciu
-        </button>
-      </div>
+        <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold">
+          {isOpen ? "Ascunde" : "Detalii"}
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        </span>
+      </button>
 
-      {showCustom && (
-        <div className="mb-3 rounded-2xl border border-dashed border-border bg-secondary/35 p-3">
-          <label className="text-xs font-semibold text-muted-foreground">Serviciu care lipseste din lista</label>
-          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-            <input className={inputCls} value={customLabel} onChange={(e) => setCustomLabel(e.target.value)} placeholder="Ex: consult cornee, adaptare lentile sclerale, investigatie specifica..." onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitCustom(); } }} />
-            <button type="button" onClick={submitCustom} className="rounded-xl bg-foreground px-4 py-2 text-xs font-semibold text-background">Adauga in draft</button>
+      {section.note && <p className="mt-3 rounded-2xl bg-secondary/45 px-3 py-2 text-xs leading-relaxed text-muted-foreground">{section.note}</p>}
+      {section.specialistNote && <p className="mt-3 rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-950">{section.specialistNote}</p>}
+
+      {isOpen && (
+        <div className="mt-4">
+          <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Particularitati folosite pentru recomandare</div>
+          <div className="flex flex-wrap gap-2">
+            {section.items.map((item) => {
+              const label = SERVICE_GROUPS[item.group]?.ids?.[item.id] || item.id;
+              const active = (selected[item.group] || []).includes(item.id);
+              return (
+                <button
+                  key={`${item.group}:${item.id}`}
+                  type="button"
+                  disabled={pendingReview}
+                  onClick={() => onToggle(item.group, item.id)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${active ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground"}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Serviciile propuse manual sunt trimise la verificare inainte de publicare.</p>
-        </div>
-      )}
 
-      <div className="flex flex-wrap gap-2">
-        {Object.entries(def.ids).map(([id, label]) => {
-          const active = selectedIds.includes(id);
-          return (
-            <button key={id} type="button" disabled={pendingReview} onClick={() => onToggle(groupKey, id)} className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${active ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground"}`}>
-              {label}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button type="button" disabled={pendingReview} onClick={() => setShowCustom((v) => !v)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-secondary disabled:opacity-50">
+              <Plus className="h-3.5 w-3.5" /> Propune particularitate
             </button>
-          );
-        })}
-      </div>
-
-      {customItems.length > 0 && (
-        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-amber-900">Propuse manual</div>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {customItems.map((item, index) => (
-              <span key={`${item.label}-${index}`} className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-white px-3 py-1.5 text-xs font-medium text-amber-900">
-                {item.label}
-                {!pendingReview && <button type="button" onClick={() => onRemoveCustom(groupKey, index)} className="rounded-full p-0.5 hover:bg-amber-100" aria-label="Sterge serviciul"><X className="h-3 w-3" /></button>}
-              </span>
-            ))}
           </div>
+
+          {showCustom && (
+            <div className="mt-3 rounded-2xl border border-dashed border-border bg-secondary/35 p-3">
+              <label className="text-xs font-semibold text-muted-foreground">Particularitate care lipseste din lista</label>
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                <input className={inputCls} value={customLabel} onChange={(e) => setCustomLabel(e.target.value)} placeholder="Ex: lentile scleral, OCT macular, service rapid rame..." onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitCustom(); } }} />
+                <button type="button" onClick={submitCustom} className="rounded-xl bg-foreground px-4 py-2 text-xs font-semibold text-background">Adauga in draft</button>
+              </div>
+              <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Propunerile manuale sunt trimise la verificare inainte de publicare sau folosire in matching.</p>
+            </div>
+          )}
+
+          {customItems.length > 0 && (
+            <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-amber-900">Propuse manual</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {customItems.map((item) => (
+                  <span key={`${item.group}-${item.label}-${item.indexInGroup}`} className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-white px-3 py-1.5 text-xs font-medium text-amber-900">
+                    {item.label}
+                    {!pendingReview && <button type="button" onClick={() => onRemoveCustom(item.group, item.indexInGroup)} className="rounded-full p-0.5 hover:bg-amber-100" aria-label="Sterge particularitatea"><X className="h-3 w-3" /></button>}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </section>
   );
 }
 
-function GroupStack({ title, description, groups, selected, customByGroup, pendingReview, onToggle, onAddCustom, onRemoveCustom, initiallyOpen = true }) {
-  const [open, setOpen] = useState(initiallyOpen);
-  const selectedCount = countGroups(selected, groups.map((g) => g.key));
-
+function NeedColumn({ title, description, sectionKeys, selected, customByGroup, pendingReview, activeKey, onToggle, onAddCustom, onRemoveCustom, defaultOpenKeys = [] }) {
   return (
     <section className="rounded-3xl border border-border bg-background/70 p-3 shadow-sm">
-      <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-start justify-between gap-3 rounded-2xl px-2 py-2 text-left hover:bg-secondary/40">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-heading text-base font-bold tracking-tight">{title}</h2>
-            <span className="rounded-full bg-card px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{selectedCount} selectate</span>
-          </div>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
-        </div>
-        <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold">
-          {open ? "Ascunde" : "Afiseaza"}
-          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
-        </span>
-      </button>
-      {open && (
-        <div className="mt-3 space-y-3">
-          {groups.map((group) => (
-            <GroupCard
-              key={group.key}
-              groupKey={group.key}
-              title={group.title}
-              subtitle={group.subtitle}
-              selectedIds={selected[group.key] || []}
-              customItems={customByGroup[group.key] || []}
+      <div className="px-2 py-2">
+        <h2 className="font-heading text-base font-bold tracking-tight">{title}</h2>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
+      </div>
+      <div className="mt-2 space-y-3">
+        {sectionKeys.map((key) => {
+          const section = CLIENT_NEED_BY_KEY[key];
+          if (!section) return null;
+          return (
+            <NeedSectionCard
+              key={key}
+              section={section}
+              selected={selected}
+              customByGroup={customByGroup}
               pendingReview={pendingReview}
               onToggle={onToggle}
               onAddCustom={onAddCustom}
               onRemoveCustom={onRemoveCustom}
-              compact
+              defaultOpen={defaultOpenKeys.includes(key)}
+              forceOpen={activeKey === key}
             />
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -304,6 +244,7 @@ export default function ProviderServices({ locationId, location, overview }) {
   const [customRequests, setCustomRequests] = useState([]);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  const [activeNeedKey, setActiveNeedKey] = useState(PRIMARY_CLIENT_NEED_KEYS[0]);
 
   const approvedCount = overview?.content_summary?.approved_service_count ?? 0;
   const pendingReview = draft?.status === "pending_review";
@@ -382,45 +323,49 @@ export default function ProviderServices({ locationId, location, overview }) {
     <div className="space-y-4 pb-20">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-extrabold tracking-tight">Servicii disponibile in locatie</h1>
-          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Configureaza ce exista efectiv in aceasta locatie: produse, servicii pentru clienti, atelier, cabinet, investigatii si echipamente.</p>
+          <h1 className="font-heading text-2xl font-extrabold tracking-tight">Ce pot face clientii in aceasta locatie?</h1>
+          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+            Alege nevoile pe care locatia le poate rezolva. Particularitatile raman utile pentru recomandare si matching, iar public afisam doar categorii simple.
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {draft && <span className="rounded-full bg-secondary px-2.5 py-1 font-semibold">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}
           <span className="rounded-full border border-border bg-card px-2.5 py-1 font-semibold text-muted-foreground">{approvedCount} publicate</span>
-          <span className="rounded-full border border-border bg-card px-2.5 py-1 font-semibold text-muted-foreground">{selectedCount} selectate</span>
+          <span className="rounded-full border border-border bg-card px-2.5 py-1 font-semibold text-muted-foreground">{selectedCount} particularitati</span>
         </div>
       </div>
 
       {pendingReview && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">Exista o cerere trimisa spre review. Editarea este blocata pana la decizia adminului.</div>}
 
-      <CapabilityOverview selected={selected} />
+      <NeedOverview selected={selected} activeKey={activeNeedKey} onPick={setActiveNeedKey} />
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]">
-        <GroupStack
-          title="Esential pentru optica"
-          description="Produse si servicii pe care majoritatea opticilor le completeaza primele. Acestea vor fi cele mai vizibile in profil si in cautari."
-          groups={ESSENTIAL_GROUPS}
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
+        <NeedColumn
+          title="Nevoi uzuale in optica"
+          description="Acestea sunt cele mai importante pentru o optica: ochelari, determinare dioptrii, reparatii, lentile speciale, lentile de contact si copii."
+          sectionKeys={PRIMARY_CLIENT_NEED_KEYS}
           selected={selected}
           customByGroup={customByGroup}
           pendingReview={pendingReview}
+          activeKey={activeNeedKey}
           onToggle={toggle}
           onAddCustom={addCustom}
           onRemoveCustom={removeCustom}
-          initiallyOpen
+          defaultOpenKeys={["buy_glasses", "eye_test", "repairs_adjustments"]}
         />
 
-        <GroupStack
-          title="Avansat: cabinet, echipamente si specializari"
-          description="Completeaza doar ce exista real in locatie: cabinet, aparatura, lentile de contact, servicii medicale sau proceduri."
-          groups={ADVANCED_GROUPS}
+        <NeedColumn
+          title="Cabinet, specializari si investigatii"
+          description="Completeaza doar daca locatia are medic, cabinet, aparatura sau proceduri. Aceste date trebuie tratate mai atent la review."
+          sectionKeys={ADVANCED_CLIENT_NEED_KEYS}
           selected={selected}
           customByGroup={customByGroup}
           pendingReview={pendingReview}
+          activeKey={activeNeedKey}
           onToggle={toggle}
           onAddCustom={addCustom}
           onRemoveCustom={removeCustom}
-          initiallyOpen={false}
+          defaultOpenKeys={[]}
         />
       </div>
 
