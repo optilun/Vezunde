@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowRight, ChevronDown, Clock, ExternalLink, Globe2, MapPin, Phone } from "lucide-react";
+import { ArrowRight, Clock, ExternalLink, Globe2, MapPin, Phone } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES, PROFESSIONAL_AFFILIATION_STATUS, PROFESSIONAL_TYPES } from "@/lib/vezunde";
-import { SERVICE_GROUPS } from "@/lib/canonicalServiceCatalog";
 import { buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/lib/maps";
+import { summarizePublicServiceKeys } from "@/lib/servicePresentation";
 import TrustBadge from "@/components/results/TrustBadge";
 import ServiceChip from "@/components/results/ServiceChip";
 import SocialBrandIcon from "@/components/common/SocialBrandIcon";
@@ -15,44 +15,8 @@ const SOCIAL_LINKS = [
   { key: "linkedin", label: "LinkedIn", platform: "linkedin" },
 ];
 
-const SERVICE_LABELS = Object.values(SERVICE_GROUPS || {}).reduce((acc, group) => ({ ...acc, ...(group.ids || {}) }), {});
-const SERVICE_GROUP_BY_ID = Object.entries(SERVICE_GROUPS || {}).reduce((acc, [groupKey, group]) => {
-  Object.keys(group.ids || {}).forEach((id) => { if (!acc[id]) acc[id] = groupKey; });
-  return acc;
-}, {});
-
-const PUBLIC_GROUP_ORDER = [
-  "optical_retail",
-  "lenses_and_measurements",
-  "optometry",
-  "contact_lenses",
-  "technical_activities",
-  "ophthalmology_consults",
-  "investigations",
-  "specialties",
-  "children_and_prevention",
-  "procedures_surgery",
-  "other",
-];
-
-const COLLAPSED_SERVICE_LIMIT = 14;
-
 function compactUrl(url) {
   return String(url || "").replace(/^https?:\/\//i, "").replace(/\/$/, "");
-}
-
-function serviceLabel(id) {
-  return SERVICE_LABELS[id] || id;
-}
-
-function groupServices(ids = []) {
-  const map = {};
-  for (const id of ids) {
-    const groupKey = SERVICE_GROUP_BY_ID[id] || "other";
-    map[groupKey] = map[groupKey] || [];
-    if (!map[groupKey].includes(id)) map[groupKey].push(id);
-  }
-  return PUBLIC_GROUP_ORDER.filter((key) => map[key]?.length).map((key) => [key, map[key]]);
 }
 
 function locationSummary(profile) {
@@ -83,36 +47,27 @@ function ContactLine({ icon: Icon, label, children }) {
 }
 
 function ServicesCard({ services }) {
-  const [expanded, setExpanded] = useState(false);
-  const visibleServices = expanded ? services : services.slice(0, COLLAPSED_SERVICE_LIMIT);
-  const hiddenCount = Math.max(0, services.length - visibleServices.length);
-  const groupedServices = groupServices(visibleServices);
+  const publicSummaries = summarizePublicServiceKeys(services);
 
   return (
     <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="font-heading font-bold">Servicii</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Serviciile publicate pentru această locație.</p>
+          <h2 className="font-heading font-bold">Ce poți face aici</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Afișăm pe scurt nevoile acoperite. Particularitățile tehnice sunt folosite în spate pentru recomandări mai bune.
+          </p>
         </div>
-        <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">{services.length} publicate</span>
+        <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">{publicSummaries.length} zone</span>
       </div>
-      <div className="mt-4 space-y-4">
-        {groupedServices.map(([groupKey, ids]) => (
-          <div key={groupKey}>
-            <div className="mb-2 text-xs font-bold text-muted-foreground">{SERVICE_GROUPS[groupKey]?.label || "Alte servicii"}</div>
-            <div className="flex flex-wrap gap-2">
-              {ids.map((s) => <ServiceChip key={s} label={serviceLabel(s)} />)}
-            </div>
-          </div>
-        ))}
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {publicSummaries.map((item) => <ServiceChip key={item.key} label={item.label} />)}
       </div>
-      {services.length > COLLAPSED_SERVICE_LIMIT && (
-        <button type="button" onClick={() => setExpanded((value) => !value)} className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary">
-          {expanded ? "Ascunde serviciile" : `Vezi toate serviciile (+${hiddenCount})`}
-          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} />
-        </button>
-      )}
+
+      <p className="mt-4 rounded-2xl bg-secondary/45 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+        Exemplu: dacă locația are reglaj rame, reparații și montaj lentile, public afișăm „Reparații și reglaje”, iar detaliile ajută la alegerea rezultatului potrivit.
+      </p>
     </div>
   );
 }
@@ -128,6 +83,7 @@ export default function ProviderProfile() {
   }, [id]);
 
   const services = useMemo(() => profile?.services || [], [profile?.services]);
+  const publicServiceCount = summarizePublicServiceKeys(services).length;
 
   if (loading) return <div className="max-w-5xl mx-auto px-5 pt-20 text-sm text-muted-foreground">Se incarca...</div>;
   if (!profile) return <div className="max-w-5xl mx-auto px-5 pt-20 text-sm text-muted-foreground">Furnizorul nu a fost gasit.</div>;
@@ -149,7 +105,7 @@ export default function ProviderProfile() {
         </div>
         <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
           <span className="inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" />{locationSummary(profile)}</span>
-          {services.length > 0 && <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-foreground">{services.length} servicii publicate</span>}
+          {publicServiceCount > 0 && <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-foreground">{publicServiceCount} zone disponibile</span>}
         </div>
       </div>
 
