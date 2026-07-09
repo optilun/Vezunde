@@ -428,7 +428,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
               </section>
 
               <LocationConfigModal open={activeModal === "services"} title="Servicii locatie" locationName={selectedLocationName} onClose={() => setActiveModal(null)}>
-                <ProviderServices locationId={selectedLocation.id} overview={overview || { content_summary: { approved_service_count: 0 } }} onRefresh={onRefresh || (() => {})} />
+                <ProviderServices locationId={selectedLocation.id} location={selectedLocation} overview={overview || { content_summary: { approved_service_count: 0 } }} onRefresh={onRefresh || (() => {})} />
               </LocationConfigModal>
               <LocationConfigModal open={activeModal === "hours"} title="Program locatie" locationName={selectedLocationName} onClose={() => setActiveModal(null)}>
                 <ProviderHours locationId={selectedLocation.id} onRefresh={onRefresh || (() => {})} />
