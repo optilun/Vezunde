@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Plus, Save, Send, X } from "lucide-react";
+import { ChevronDown, Plus, Save, Send, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { SERVICE_GROUPS } from "@/lib/canonicalServiceCatalog";
+import { SERVICE_GROUPS, getServiceGroupLayout } from "@/lib/canonicalServiceCatalog";
 import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground/40";
@@ -18,7 +18,7 @@ function countSelected(selected) {
   return Object.values(selected || {}).reduce((sum, list) => sum + (Array.isArray(list) ? list.length : 0), 0);
 }
 
-function GroupCard({ groupKey, def, selectedIds, customItems, pendingReview, onToggle, onAddCustom, onRemoveCustom }) {
+function GroupCard({ groupKey, def, selectedIds, customItems, pendingReview, onToggle, onAddCustom, onRemoveCustom, compact = false }) {
   const [showCustom, setShowCustom] = useState(false);
   const [customLabel, setCustomLabel] = useState("");
 
@@ -31,7 +31,7 @@ function GroupCard({ groupKey, def, selectedIds, customItems, pendingReview, onT
   };
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <section className={`rounded-2xl border border-border bg-card ${compact ? "p-3" : "p-4"} shadow-sm`}>
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-bold">{def.label}</h3>
@@ -43,24 +43,24 @@ function GroupCard({ groupKey, def, selectedIds, customItems, pendingReview, onT
           onClick={() => setShowCustom((v) => !v)}
           className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-secondary disabled:opacity-50"
         >
-          <Plus className="h-3.5 w-3.5" /> Adauga serviciu
+          <Plus className="h-3.5 w-3.5" /> Propune serviciu
         </button>
       </div>
 
       {showCustom && (
         <div className="mb-3 rounded-2xl border border-dashed border-border bg-secondary/35 p-3">
-          <label className="text-xs font-semibold text-muted-foreground">Serviciu lipsa din lista</label>
+          <label className="text-xs font-semibold text-muted-foreground">Serviciu care lipseste din lista</label>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row">
             <input
               className={inputCls}
               value={customLabel}
               onChange={(e) => setCustomLabel(e.target.value)}
-              placeholder="Ex: adaptare lentile sclerale, consult cornee, service aparat..."
+              placeholder="Ex: consult cornee, adaptare lentile sclerale, investigatie specifica..."
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitCustom(); } }}
             />
-            <button type="button" onClick={submitCustom} className="rounded-xl bg-foreground px-4 py-2 text-xs font-semibold text-background">Adauga</button>
+            <button type="button" onClick={submitCustom} className="rounded-xl bg-foreground px-4 py-2 text-xs font-semibold text-background">Adauga in draft</button>
           </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Serviciile adaugate manual vor fi trimise la review. Dupa validare pot deveni optiuni standard in catalog.</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Serviciile propuse manual sunt trimise la verificare inainte de publicare.</p>
         </div>
       )}
 
@@ -83,7 +83,7 @@ function GroupCard({ groupKey, def, selectedIds, customItems, pendingReview, onT
 
       {customItems.length > 0 && (
         <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-amber-900">Adaugate manual</div>
+          <div className="text-[11px] font-bold uppercase tracking-wide text-amber-900">Propuse manual</div>
           <div className="mt-2 flex flex-wrap gap-2">
             {customItems.map((item, index) => (
               <span key={`${item.label}-${index}`} className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-white px-3 py-1.5 text-xs font-medium text-amber-900">
@@ -102,12 +102,40 @@ function GroupCard({ groupKey, def, selectedIds, customItems, pendingReview, onT
   );
 }
 
-export default function ProviderServices({ locationId, overview, onRefresh }) {
+function GroupList({ groups, selected, customByGroup, pendingReview, onToggle, onAddCustom, onRemoveCustom, compact }) {
+  return (
+    <div className="space-y-3">
+      {groups.map((group) => (
+        <GroupCard
+          key={group}
+          groupKey={group}
+          def={SERVICE_GROUPS[group]}
+          selectedIds={selected[group] || []}
+          customItems={customByGroup[group] || []}
+          pendingReview={pendingReview}
+          onToggle={onToggle}
+          onAddCustom={onAddCustom}
+          onRemoveCustom={onRemoveCustom}
+          compact={compact}
+        />
+      ))}
+    </div>
+  );
+}
+
+export default function ProviderServices({ locationId, location, overview, onRefresh }) {
   const [draft, setDraft] = useState(null);
   const [selected, setSelected] = useState({});
   const [customRequests, setCustomRequests] = useState([]);
+  const [showMore, setShowMore] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+
+  const profileType = location?.provider_profile_type || overview?.location?.provider_profile_type || "";
+  const providerType = location?.provider_type || overview?.location?.provider_type || "";
+  const layout = useMemo(() => getServiceGroupLayout(profileType, providerType), [profileType, providerType]);
+  const primaryGroups = layout.primary.filter((group) => SERVICE_GROUPS[group]);
+  const secondaryGroups = layout.secondary.filter((group) => SERVICE_GROUPS[group]);
 
   const approvedCount = overview?.content_summary?.approved_service_count ?? 0;
   const pendingReview = draft?.status === "pending_review";
@@ -133,7 +161,7 @@ export default function ProviderServices({ locationId, overview, onRefresh }) {
     setCustomRequests(Array.isArray(payload.custom_requests) ? payload.custom_requests : []);
   };
 
-  useEffect(() => { load(); }, [locationId]);
+  useEffect(() => { load(); setShowMore(false); }, [locationId]);
 
   const toggle = (group, id) => {
     if (pendingReview) return;
@@ -197,9 +225,9 @@ export default function ProviderServices({ locationId, overview, onRefresh }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-extrabold tracking-tight">Servicii si activitati</h1>
+          <h1 className="font-heading text-2xl font-extrabold tracking-tight">Servicii disponibile in locatie</h1>
           <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-            Alege serviciile disponibile in aceasta locatie. Serviciile medicale sau adaugate manual raman supuse verificarii inainte de publicare.
+            Selecteaza serviciile pe care clientii sau pacientii le pot accesa in acest punct de lucru. Lista principala este adaptata tipului de profil.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -215,19 +243,31 @@ export default function ProviderServices({ locationId, overview, onRefresh }) {
         </div>
       )}
 
-      {Object.entries(SERVICE_GROUPS).map(([group, def]) => (
-        <GroupCard
-          key={group}
-          groupKey={group}
-          def={def}
-          selectedIds={selected[group] || []}
-          customItems={customByGroup[group] || []}
-          pendingReview={pendingReview}
-          onToggle={toggle}
-          onAddCustom={addCustom}
-          onRemoveCustom={removeCustom}
-        />
-      ))}
+      <GroupList groups={primaryGroups} selected={selected} customByGroup={customByGroup} pendingReview={pendingReview} onToggle={toggle} onAddCustom={addCustom} onRemoveCustom={removeCustom} />
+
+      {secondaryGroups.length > 0 && (
+        <section className="rounded-2xl border border-border bg-card shadow-sm">
+          <button
+            type="button"
+            onClick={() => setShowMore((v) => !v)}
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+          >
+            <div>
+              <div className="text-sm font-bold">Alte servicii disponibile</div>
+              <p className="mt-1 text-xs text-muted-foreground">Categorii suplimentare. Deschide doar daca locatia ofera si aceste servicii.</p>
+            </div>
+            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold">
+              {showMore ? "Ascunde" : "Afiseaza"}
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showMore ? "rotate-180" : ""}`} />
+            </span>
+          </button>
+          {showMore && (
+            <div className="space-y-3 border-t border-border p-4">
+              <GroupList groups={secondaryGroups} selected={selected} customByGroup={customByGroup} pendingReview={pendingReview} onToggle={toggle} onAddCustom={addCustom} onRemoveCustom={removeCustom} compact />
+            </div>
+          )}
+        </section>
+      )}
 
       <div className="sticky bottom-0 -mx-1 rounded-2xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="flex flex-wrap items-center gap-2">
