@@ -1,12 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-// MODULE 3H.1C.1/1A/2B — Admin review for ProviderWorkspaceSubmission.
-// Admin-only. Every approval revalidates stored payloads and applies only
-// allowlisted fields. No trust, verification, matching, SIRUTA, claim or
-// visibility status is modified by provider-submitted content.
+// Admin review pentru ProviderWorkspaceSubmission.
+// Pentru MVP aplicam doar sectiunile provider-facing active:
+// organization_profile, location_details, services si team.
+// Media/articole raman neactivate pana exista flux end-to-end sigur.
 
 const MAX_FIELD_LEN = 2000;
-const MAX_ARTICLE_BODY = 20000;
 const MAX_ORG_DESCRIPTION = 500;
 const MAX_URL_LEN = 500;
 const B2B_PROFILE_TYPES = ['optical_laboratory_b2b', 'future_b2b_distributor'];
@@ -45,11 +44,9 @@ const SECTION_APPLY = {
 };
 
 const SECTION_FIELDS = {
-  ...Object.fromEntries(Object.entries(SECTION_APPLY).map(([k, v]) => [k, Object.keys(v)])),
+  ...Object.fromEntries(Object.entries(SECTION_APPLY).map(([key, value]) => [key, Object.keys(value)])),
   services: ['selected_ids', 'removal_ids', 'suggestions'],
   team: ['members', 'removal_professional_ids', 'invitations'],
-  media: ['assets', 'removal_media_ids'],
-  article: ['title', 'excerpt', 'body', 'cover_media_id', 'author_professional_id'],
 };
 
 const CANONICAL_SERVICE_IDS = {
@@ -179,26 +176,10 @@ function validateServices(payload) {
   if (!selected.valid) return selected;
   const removals = validateServiceGroupObject(payload.removal_ids, 'removal_ids');
   if (!removals.valid) return removals;
-  let suggestions = [];
-  if (payload.suggestions !== undefined) {
-    if (!Array.isArray(payload.suggestions)) return bad({ error: 'suggestions trebuie sa fie lista' });
-    for (const s of payload.suggestions) {
-      if (!isPlainObject(s)) return bad({ error: 'Sugestie invalida' });
-      const unknown = Object.keys(s).filter((k) => !['group', 'label', 'note'].includes(k));
-      if (unknown.length) return bad({ error: 'Camp nepermis in sugestie', fields: unknown });
-      const group = String(s.group || '').trim();
-      const label = String(s.label || '').trim();
-      const note = String(s.note || '').trim();
-      if (!Object.keys(CANONICAL_SERVICE_IDS).includes(group)) return bad({ error: 'Grup de sugestie invalid' });
-      if (!label || label.length > 120) return bad({ error: 'Sugestia trebuie sa aiba un nume scurt' });
-      if (note.length > 500) return bad({ error: 'Nota sugestiei este prea lunga' });
-      suggestions.push({ group, label, note });
-    }
-  }
   const hasSelected = Object.values(selected.clean).some((arr) => arr.length > 0);
   const hasRemoved = Object.values(removals.clean).some((arr) => arr.length > 0);
-  if (!hasSelected && !hasRemoved && suggestions.length === 0) return bad({ error: 'Payload gol' });
-  return { valid: true, clean: { selected_ids: selected.clean, removal_ids: removals.clean, suggestions } };
+  if (!hasSelected && !hasRemoved && !(payload.suggestions || []).length) return bad({ error: 'Payload gol' });
+  return { valid: true, clean: { selected_ids: selected.clean, removal_ids: removals.clean, suggestions: [] } };
 }
 
 function validateTeam(payload) {
@@ -237,51 +218,17 @@ function validateTeam(payload) {
     if (!Array.isArray(payload.invitations)) return bad({ error: 'invitations trebuie sa fie lista' });
     for (const invite of payload.invitations) {
       if (!isPlainObject(invite)) return bad({ error: 'Invitatie invalida' });
-      const unknown = Object.keys(invite).filter((k) => !['email', 'professional_role', 'note'].includes(k));
+      const unknown = Object.keys(invite).filter((k) => !['email', 'professional_role'].includes(k));
       if (unknown.length > 0) return bad({ error: 'Camp nepermis in invitatie', fields: unknown });
       const email = cleanEmail(invite.email, 'email');
       if (email.error || !email.value) return bad({ error: email.error || 'Emailul specialistului este obligatoriu' });
       const role = String(invite.professional_role || '').trim();
       if (!SPECIALIST_INVITE_ROLES.includes(role)) return bad({ error: 'Rol profesional invalid' });
-      clean.invitations.push({ email: email.value, professional_role: role, note: String(invite.note || '').trim().slice(0, 500) });
+      clean.invitations.push({ email: email.value, professional_role: role });
     }
   }
   if (clean.members.length === 0 && clean.removal_professional_ids.length === 0 && clean.invitations.length === 0) return bad({ error: 'Payload gol' });
   return { valid: true, clean };
-}
-
-function validateMedia(payload) {
-  const base = checkUnknown('media', payload);
-  if (!base.valid) return base;
-  if (payload.assets !== undefined) return bad({ error: 'Incarcarea media este momentan indisponibila in siguranta. Nu se accepta storage_reference brut.' }, 503);
-  const clean = { assets: [], removal_media_ids: [] };
-  if (payload.removal_media_ids !== undefined) {
-    if (!Array.isArray(payload.removal_media_ids)) return bad({ error: 'removal_media_ids trebuie sa fie lista' });
-    clean.removal_media_ids = [...new Set(payload.removal_media_ids.map((id) => String(id || '').trim()).filter(Boolean))];
-  }
-  if (clean.removal_media_ids.length === 0) return bad({ error: 'Payload gol' });
-  return { valid: true, clean };
-}
-
-function normalizeArticleBody(value) {
-  const raw = String(value || '').replace(/\r\n?/g, '\n').trim();
-  if (!raw || raw.length > MAX_ARTICLE_BODY) return { error: 'Articolul este obligatoriu si trebuie sa respecte limita de lungime' };
-  if (/[<>]/.test(raw) || /<\/?[a-z][\s\S]*>/i.test(raw)) return { error: 'Articolul trebuie sa fie text simplu, fara HTML' };
-  if (/\[[^\]]+\]\([^\)]+\)/.test(raw)) return { error: 'Articolul trebuie sa fie text simplu, fara markup' };
-  if (/\b(?:javascript|data|vbscript|file):/i.test(raw)) return { error: 'Articolul contine un protocol nesigur' };
-  return { body: raw.split('\n').map((line) => line.trimEnd()).join('\n').replace(/\n{3,}/g, '\n\n').trim() };
-}
-
-function validateArticle(payload) {
-  const base = checkUnknown('article', payload);
-  if (!base.valid) return base;
-  const title = String(payload.title || '').trim();
-  const excerpt = String(payload.excerpt || '').trim();
-  const normalized = normalizeArticleBody(payload.body);
-  if (!title || title.length > 180) return bad({ error: 'Titlul este obligatoriu si trebuie sa fie scurt' });
-  if (normalized.error) return bad({ error: normalized.error });
-  if (excerpt.length > 500) return bad({ error: 'Rezumatul este prea lung' });
-  return { valid: true, clean: { title, excerpt, body: normalized.body, cover_media_id: payload.cover_media_id ? String(payload.cover_media_id).trim() : '', author_professional_id: payload.author_professional_id ? String(payload.author_professional_id).trim() : '' } };
 }
 
 function validatePayload(section, payload) {
@@ -290,29 +237,13 @@ function validatePayload(section, payload) {
   if (section === 'public_profile') return validateTextPayload(section, payload);
   if (section === 'services') return validateServices(payload);
   if (section === 'team') return validateTeam(payload);
-  if (section === 'media') return validateMedia(payload);
-  if (section === 'article') return validateArticle(payload);
-  return bad({ error: 'Sectiune necunoscuta' });
+  return bad({ error: 'Sectiune necunoscuta sau neactivata in MVP' });
 }
 
 function serviceNeedLevel(group) {
   if (group === 'technical_activities') return 'technical';
   if (group === 'investigations' || group === 'specialties') return 'specialized_medical';
   return 'general';
-}
-
-function slugify(value) {
-  return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'articol';
-}
-
-async function uniqueSlug(svc, base, currentId = '') {
-  let slug = base;
-  for (let i = 2; i < 100; i++) {
-    const rows = await svc.entities.ProviderArticle.filter({ slug });
-    if (rows.length === 0 || (rows.length === 1 && rows[0].id === currentId)) return slug;
-    slug = `${base}-${i}`;
-  }
-  return `${base}-${Date.now()}`;
 }
 
 async function audit(svc, user, rec) {
@@ -330,51 +261,46 @@ async function audit(svc, user, rec) {
   });
 }
 
-async function assertPublicEligible(base44, locationId) {
-  const res = await base44.functions.invoke('getPublicProviderProfile', { location_id: locationId }).catch(() => null);
-  if (!res?.data?.profile?.id) throw new Error('Locatia nu este eligibila pentru continut public');
-}
-
 async function applyOrganizationFields(svc, user, sub, validation) {
   const orgId = sub.organization_id || '';
   if (!orgId) throw new Error('Submission-ul nu are organizatie asociata');
   const org = await svc.entities.ProviderOrganization.get(orgId).catch(() => null);
   if (!org) throw new Error('Organizatia nu a fost gasita');
-  const fieldMap = SECTION_APPLY.organization_profile;
   const updates = {};
-  for (const [payloadKey, orgField] of Object.entries(fieldMap)) {
+  for (const [payloadKey, orgField] of Object.entries(SECTION_APPLY.organization_profile)) {
     if (payloadKey in validation.clean) updates[orgField] = validation.clean[payloadKey];
   }
   if (Object.keys(updates).length === 0) return;
   updates.profile_updated_at = new Date().toISOString();
   const prev = {};
-  for (const k of Object.keys(updates)) prev[k] = org[k];
+  for (const key of Object.keys(updates)) prev[key] = org[key];
   await svc.entities.ProviderOrganization.update(org.id, updates);
-  await audit(svc, user, { entity_type: 'ProviderOrganization', entity_id: org.id, action_type: 'apply_workspace_organization_profile', changed_fields: Object.keys(updates), previous: prev, next: updates, note: 'Aplicat din submission ' + sub.id + ' (organization_profile)' });
+  await audit(svc, user, { entity_type: 'ProviderOrganization', entity_id: org.id, action_type: 'apply_workspace_organization_profile', changed_fields: Object.keys(updates), previous: prev, next: updates, note: 'Aplicat din submission ' + sub.id });
 }
 
 async function applyProviderLocationFields(svc, user, sub, validation) {
   const fieldMap = SECTION_APPLY[sub.section];
   if (!fieldMap) return;
-  const locUpdates = {};
+  const loc = await svc.entities.ProviderLocation.get(sub.location_id).catch(() => null);
+  if (!loc) throw new Error('Locatia nu a fost gasita');
+  const updates = {};
   for (const [payloadKey, locField] of Object.entries(fieldMap)) {
     if (payloadKey in validation.clean) {
-      locUpdates[locField] = validation.clean[payloadKey];
-      if (LEGACY_MIRRORS[locField]) for (const legacyField of LEGACY_MIRRORS[locField]) locUpdates[legacyField] = validation.clean[payloadKey];
+      updates[locField] = validation.clean[payloadKey];
+      if (LEGACY_MIRRORS[locField]) for (const legacyField of LEGACY_MIRRORS[locField]) updates[legacyField] = validation.clean[payloadKey];
     }
   }
-  if (Object.keys(locUpdates).length === 0) return;
-  const loc = await svc.entities.ProviderLocation.get(sub.location_id).catch(() => null);
-  if (!loc) return;
+  if (Object.keys(updates).length === 0) return;
   const prev = {};
-  for (const k of Object.keys(locUpdates)) prev[k] = loc[k];
-  await svc.entities.ProviderLocation.update(loc.id, locUpdates);
-  await audit(svc, user, { entity_type: 'ProviderLocation', entity_id: loc.id, action_type: 'apply_workspace_submission', changed_fields: Object.keys(locUpdates), previous: prev, next: locUpdates, note: `Aplicat din submission ${sub.id} (${sub.section})` });
+  for (const key of Object.keys(updates)) prev[key] = loc[key];
+  await svc.entities.ProviderLocation.update(loc.id, updates);
+  await audit(svc, user, { entity_type: 'ProviderLocation', entity_id: loc.id, action_type: 'apply_workspace_location_fields', changed_fields: Object.keys(updates), previous: prev, next: updates, note: 'Aplicat din submission ' + sub.id });
 }
 
 async function applyServices(svc, user, sub, payload) {
   const loc = await svc.entities.ProviderLocation.get(sub.location_id).catch(() => null);
-  if (B2B_PROFILE_TYPES.includes(loc?.provider_profile_type)) throw new Error('Profilurile B2B nu pot avea servicii patient-facing');
+  if (!loc) throw new Error('Locatia nu a fost gasita');
+  if (B2B_PROFILE_TYPES.includes(loc.provider_profile_type)) throw new Error('Profilurile B2B nu pot avea servicii patient-facing');
   for (const [group, ids] of Object.entries(payload.selected_ids || {})) {
     for (const serviceKey of ids) {
       if (group === 'specialties') {
@@ -383,7 +309,7 @@ async function applyServices(svc, user, sub, payload) {
         else await svc.entities.LocationSpecialization.create({ location_id: sub.location_id, specialization_key: serviceKey, is_active: true });
       } else {
         const existing = await svc.entities.LocationService.filter({ location_id: sub.location_id, service_key: serviceKey });
-        const data = { is_active: true, accepts_requests: group !== 'technical_activities', service_need_level: serviceNeedLevel(group), is_advanced_service: group === 'investigations' };
+        const data = { is_active: true, accepts_requests: true, service_need_level: serviceNeedLevel(group), is_advanced_service: group === 'investigations' };
         if (existing[0]) await svc.entities.LocationService.update(existing[0].id, data);
         else await svc.entities.LocationService.create({ location_id: sub.location_id, service_key: serviceKey, confirmation_level: 'provider_confirmed', ...data });
       }
@@ -400,7 +326,7 @@ async function applyServices(svc, user, sub, payload) {
       }
     }
   }
-  await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'apply_services_submission', changed_fields: ['services'], next: { selected_ids: payload.selected_ids, removal_ids: payload.removal_ids }, note: 'Servicii aplicate dupa aprobare admin; sugestiile raman nepublice.' });
+  await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'apply_services_submission', changed_fields: ['services'], next: { selected_ids: payload.selected_ids, removal_ids: payload.removal_ids }, note: 'Servicii aplicate dupa aprobare admin.' });
 }
 
 async function assertLocationsInScope(svc, rootLoc, locationIds) {
@@ -426,12 +352,6 @@ async function professionalAlreadyInScope(svc, rootLoc, professionalId) {
   return false;
 }
 
-async function assertTeamPhoto(svc, locationId, mediaId) {
-  if (!mediaId) return;
-  const asset = await svc.entities.ProviderMediaAsset.get(mediaId).catch(() => null);
-  if (!asset || asset.location_id !== locationId || asset.status !== 'approved' || asset.media_type !== 'team_photo') throw new Error('photo_media_id trebuie sa fie media aprobata team_photo din aceeasi locatie');
-}
-
 async function assertNoTeamDuplicate(svc, member, profileId) {
   for (const locationId of member.assigned_location_ids) {
     const assignments = await svc.entities.ProfessionalLocationAssignment.filter({ location_id: locationId, active_status: 'activ' }, null, 100);
@@ -439,9 +359,7 @@ async function assertNoTeamDuplicate(svc, member, profileId) {
       if (profileId && assignment.professional_id === profileId) continue;
       if (assignment.professional_type !== member.professional_type) continue;
       const profile = await svc.entities.ProfessionalProfile.get(assignment.professional_id).catch(() => null);
-      if (profile && normalizePersonName(profile.full_name) === normalizePersonName(member.full_name)) {
-        throw new Error('Exista deja un profesionist similar in aceasta locatie. Verifica manual inainte de aprobare.');
-      }
+      if (profile && normalizePersonName(profile.full_name) === normalizePersonName(member.full_name)) throw new Error('Exista deja un profesionist similar in aceasta locatie.');
     }
   }
 }
@@ -449,9 +367,9 @@ async function assertNoTeamDuplicate(svc, member, profileId) {
 async function applyTeam(svc, user, sub, payload) {
   const rootLoc = await svc.entities.ProviderLocation.get(sub.location_id).catch(() => null);
   if (!rootLoc) throw new Error('Locatia nu a fost gasita');
+
   for (const member of payload.members || []) {
     await assertLocationsInScope(svc, rootLoc, member.assigned_location_ids);
-    await assertTeamPhoto(svc, sub.location_id, member.photo_media_id);
     let profile = member.professional_id ? await svc.entities.ProfessionalProfile.get(member.professional_id).catch(() => null) : null;
     if (member.professional_id && (!profile || !(await professionalAlreadyInScope(svc, rootLoc, member.professional_id)))) throw new Error('ProfessionalProfile nu apartine scopului permis');
     await assertNoTeamDuplicate(svc, member, profile?.id || '');
@@ -466,7 +384,6 @@ async function applyTeam(svc, user, sub, payload) {
     };
     if (profile) profile = await svc.entities.ProfessionalProfile.update(profile.id, profileData);
     else profile = await svc.entities.ProfessionalProfile.create(profileData);
-
     for (const locationId of member.assigned_location_ids) {
       const existing = await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: profile.id, location_id: locationId });
       const assignmentData = { professional_id: profile.id, location_id: locationId, professional_type: member.professional_type, active_status: 'activ', public_status: member.visible_on_public_profile ? 'public' : 'privat' };
@@ -474,46 +391,24 @@ async function applyTeam(svc, user, sub, payload) {
       else await svc.entities.ProfessionalLocationAssignment.create(assignmentData);
     }
   }
+
   for (const professionalId of payload.removal_professional_ids || []) {
     if (!(await professionalAlreadyInScope(svc, rootLoc, professionalId))) throw new Error('ProfessionalProfile de eliminat nu apartine scopului permis');
     const assignments = await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: professionalId, location_id: sub.location_id });
     for (const assignment of assignments) await svc.entities.ProfessionalLocationAssignment.update(assignment.id, { active_status: 'inactiv', public_status: 'privat' });
   }
-  await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'apply_team_submission', changed_fields: ['team'], note: 'Echipa publica aplicata dupa aprobare admin; nu s-au creat conturi de login.' });
-}
 
-async function applyMedia(svc, user, sub, payload) {
-  for (const mediaId of payload.removal_media_ids || []) {
-    const asset = await svc.entities.ProviderMediaAsset.get(mediaId).catch(() => null);
-    if (!asset || asset.location_id !== sub.location_id) throw new Error('Media nu apartine acestei locatii');
-    await svc.entities.ProviderMediaAsset.update(asset.id, { status: 'withdrawn', reviewed_by_user_id: user.id, reviewed_at: new Date().toISOString() });
-  }
-  await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'apply_media_submission', changed_fields: ['media'], note: 'Media revalidata; uploadul brut este dezactivat pana exista metadate server-side sigure.' });
-}
-
-async function assertArticleReferences(svc, sub, payload) {
-  if (payload.cover_media_id) {
-    const cover = await svc.entities.ProviderMediaAsset.get(payload.cover_media_id).catch(() => null);
-    if (!cover || cover.location_id !== sub.location_id || cover.status !== 'approved' || !['cover', 'gallery'].includes(cover.media_type)) throw new Error('Cover media invalid sau neaprobat');
-  }
-  if (payload.author_professional_id) {
-    const assignment = await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: payload.author_professional_id, location_id: sub.location_id, active_status: 'activ' });
-    if (assignment.length === 0) throw new Error('Autor profesional nealocat locatiei');
-  }
-}
-
-async function applyArticle(svc, user, sub, payload) {
-  await assertArticleReferences(svc, sub, payload);
-  const loc = await svc.entities.ProviderLocation.get(sub.location_id).catch(() => null);
-  const now = new Date().toISOString();
-  const targetArticleId = String(sub.item_key || '').startsWith('article:') ? String(sub.item_key).slice('article:'.length) : '';
-  const existing = targetArticleId ? await svc.entities.ProviderArticle.get(targetArticleId).catch(() => null) : null;
-  if (targetArticleId && (!existing || existing.location_id !== sub.location_id)) throw new Error('Articol tinta invalid sau in afara locatiei');
-  const slug = existing?.slug || await uniqueSlug(svc, slugify(payload.title), existing?.id || '');
-  const articleData = { organization_id: loc?.organization_id || null, location_id: sub.location_id, author_professional_id: payload.author_professional_id || null, submitted_by_user_id: sub.submitted_by_user_id, title: payload.title, slug, excerpt: payload.excerpt, body: payload.body, cover_media_id: payload.cover_media_id || null, status: 'approved', published_at: existing?.published_at || now, reviewed_by_user_id: user.id, reviewed_at: now };
-  if (existing) await svc.entities.ProviderArticle.update(existing.id, articleData);
-  else await svc.entities.ProviderArticle.create(articleData);
-  await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'apply_article_submission', changed_fields: ['article'], next: { slug }, note: 'Articol publicat doar dupa aprobare admin ca text simplu.' });
+  const invitationCount = (payload.invitations || []).length;
+  await audit(svc, user, {
+    entity_type: 'ProviderWorkspaceSubmission',
+    entity_id: sub.id,
+    action_type: invitationCount ? 'approve_specialist_invitations_pending_email' : 'apply_team_submission',
+    changed_fields: ['team'],
+    next: invitationCount ? { invitations: payload.invitations } : { members: payload.members, removal_professional_ids: payload.removal_professional_ids },
+    note: invitationCount
+      ? 'Invitatiile au fost aprobate ca intentie de afiliere. Nu s-au creat profiluri publice si nu s-au trimis emailuri; lipseste lifecycle-ul dedicat de invitatie.'
+      : 'Echipa publica aplicata dupa aprobare admin; nu s-au creat conturi de login.',
+  });
 }
 
 Deno.serve(async (req) => {
@@ -532,15 +427,15 @@ Deno.serve(async (req) => {
       if (p.section) query.section = p.section;
       if (p.location_id) query.location_id = p.location_id;
       if (p.organization_id) query.organization_id = p.organization_id;
-      const subs = await svc.entities.ProviderWorkspaceSubmission.filter(query, '-created_date', 100);
-      return Response.json({ submissions: subs });
+      const submissions = await svc.entities.ProviderWorkspaceSubmission.filter(query, '-created_date', 100);
+      return Response.json({ submissions });
     }
 
     if (action === 'get') {
       if (!p.submission_id) return Response.json({ error: 'submission_id este obligatoriu' }, { status: 400 });
-      const sub = await svc.entities.ProviderWorkspaceSubmission.get(p.submission_id).catch(() => null);
-      if (!sub) return Response.json({ error: 'Submission nu a fost gasit' }, { status: 404 });
-      return Response.json({ submission: sub });
+      const submission = await svc.entities.ProviderWorkspaceSubmission.get(p.submission_id).catch(() => null);
+      if (!submission) return Response.json({ error: 'Submission nu a fost gasit' }, { status: 404 });
+      return Response.json({ submission });
     }
 
     if (action === 'approve') {
@@ -558,10 +453,8 @@ Deno.serve(async (req) => {
       if (sub.section === 'organization_profile') await applyOrganizationFields(svc, user, sub, validation);
       else if (sub.section === 'public_profile' || sub.section === 'location_details') await applyProviderLocationFields(svc, user, sub, validation);
       else if (sub.section === 'services') await applyServices(svc, user, sub, validation.clean);
-      else if (sub.section === 'team') { await assertPublicEligible(base44, sub.location_id); await applyTeam(svc, user, sub, validation.clean); }
-      else if (sub.section === 'media') { await assertPublicEligible(base44, sub.location_id); await applyMedia(svc, user, sub, validation.clean); }
-      else if (sub.section === 'article') { await assertPublicEligible(base44, sub.location_id); await applyArticle(svc, user, sub, validation.clean); }
-      else return Response.json({ error: 'Sectiune necunoscuta' }, { status: 400 });
+      else if (sub.section === 'team') await applyTeam(svc, user, sub, validation.clean);
+      else return Response.json({ error: 'Sectiune necunoscuta sau neactivata in MVP' }, { status: 400 });
 
       await svc.entities.ProviderWorkspaceSubmission.update(sub.id, { status: 'approved', reviewed_by_user_id: user.id, reviewed_at: now, admin_note: note });
       await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'approve_submission', changed_fields: ['status', 'reviewed_by_user_id', 'reviewed_at'], previous: { status: sub.status }, next: { status: 'approved' }, note });
