@@ -29,7 +29,16 @@ const initState = (initialIntent, initialMessage) => {
     }
   }
 
-  return { intent, answers, serviceKeys, city: "", scope: "", locality: null };
+  return {
+    intent,
+    answers,
+    serviceKeys,
+    city: "",
+    scope: "",
+    locality: null,
+    clientLocation: null,
+    clientAddressText: "",
+  };
 };
 
 export default function ConversationalCard({ initialMessage = "", initialIntent = null }) {
@@ -37,6 +46,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const [history, setHistory] = useState([]);
   const [phase, setPhase] = useState("questions"); // questions | submitting | results | error
   const [results, setResults] = useState(null);
+  const [matchMeta, setMatchMeta] = useState(null);
 
   const intentDef = state.intent ? INTENTS[state.intent] : null;
   const questions = intentDef ? intentDef.questions : [CATEGORY_QUESTION];
@@ -74,14 +84,21 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     setState((s) => ({ ...s, answers: [...s.answers, { question_key: question.key, answer_value: value }] }));
   };
 
-  const handleLocation = ({ scope, city, locality }) => {
+  const handleLocation = ({ scope, city, locality, clientLocation, clientAddressText }) => {
     pushHistory();
+    const answerValue = scope === "nearby"
+      ? "locatia_curenta"
+      : scope === "city"
+        ? city
+        : "oriunde_in_romania";
     setState((s) => ({
       ...s,
       scope,
       city: city || "",
       locality: locality || null,
-      answers: [...s.answers, { question_key: "locatie", answer_value: scope === "city" ? city : "oriunde_in_romania" }],
+      clientLocation: clientLocation || null,
+      clientAddressText: clientAddressText || "",
+      answers: [...s.answers, { question_key: "locatie", answer_value: answerValue }],
     }));
   };
 
@@ -97,20 +114,27 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     setPhase("submitting");
     (async () => {
       try {
-        // Module 3E: public search is read-only. Answers stay in client state only —
-        // no PatientRequest / PatientRequestAnswer / RequestMatch / SafetyFlag records
-        // are created. A request is created only later, by explicit user action + consent.
         const res = await base44.functions.invoke("matchProviders", {
           intent: state.intent,
           service_keys: state.serviceKeys,
           city: state.city,
-          // Module 3F.2: canonical locality reference — prepared for exact SIRUTA matching later.
           locality_siruta_code: state.locality?.siruta_code || "",
           county: state.locality?.county_name || "",
-          scope: state.scope === "national" ? "national" : "city",
+          scope: state.scope === "national" ? "national" : state.scope === "nearby" ? "nearby" : "city",
+          client_lat: state.clientLocation?.lat ?? null,
+          client_lng: state.clientLocation?.lng ?? null,
+          client_location_source: state.clientLocation?.source || "",
+          client_location_accuracy_m: state.clientLocation?.accuracy_m || null,
+          client_address_text: state.clientAddressText || "",
           limit: 20,
         });
         setResults(res.data.results || []);
+        setMatchMeta({
+          routing_mode: res.data.routing_mode || null,
+          coverage_status: res.data.coverage_status || null,
+          client_location_source: res.data.client_location_source || null,
+          client_address_text: res.data.client_address_text || state.clientAddressText || "",
+        });
         setPhase("results");
       } catch (e) {
         setPhase("error");
@@ -178,7 +202,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
 
       {phase === "submitting" && <SearchingTransition />}
 
-      {phase === "results" && <MatchResults results={results} />}
+      {phase === "results" && <MatchResults results={results} meta={matchMeta} />}
 
       {phase === "error" && (
         <div className="py-6">
