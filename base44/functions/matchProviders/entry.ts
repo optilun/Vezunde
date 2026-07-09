@@ -216,9 +216,7 @@ Deno.serve(async (req) => {
     const scope = payload.scope || (hasClientCoords ? 'nearby' : ((sirutaCode || city) ? 'city' : 'national'));
     const limit = Math.min(payload.limit || 20, 50);
     const needLevel = requestNeedLevel(serviceKeys, intent);
-    const expandedServiceKeys = needLevel === 'specialized_medical'
-      ? serviceKeys
-      : [...new Set(serviceKeys.flatMap((k) => (SERVICE_ALIASES[k] ? [k, SERVICE_ALIASES[k]] : [k])))]
+    const expandedServiceKeys = [...new Set(serviceKeys.flatMap((k) => [k, ...(SERVICE_ALIASES[k] || [])]))]
 
     const [locations, services, specs, assigns, facilities] = await Promise.all([
       svc.entities.ProviderLocation.filter({ status: 'publicata' }, null, 500),

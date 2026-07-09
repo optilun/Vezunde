@@ -21,11 +21,17 @@ const AVAILABILITY_LABELS = {
 
 const AVAILABILITY_STALE_DAYS = 30;
 
-function isPublicSafeService(s) {
+function isPublicSafeService(s, pcs) {
   if (s.is_active === false) return false;
   if (s.migration_review_required) return false;
   if (!PUBLIC_CONF.includes(s.confirmation_level)) return false;
+  const level = (s.is_advanced_service || s.service_need_level === 'specialized_medical') ? 'specialized_medical' : (NEED_LEVELS[s.service_key] || 'unknown');
+  if (level === 'specialized_medical' || level === 'unknown') return s.confirmation_level === 'vezunde_verified' && pcs === 'verified';
   return true;
+}
+
+function toPublicService(s) {
+  return { key: s.service_key, label: SERVICE_LABELS[s.service_key] || s.service_key };
 }
 
 function publicUrl(value) {
@@ -63,12 +69,9 @@ Deno.serve(async (req) => {
       svc.entities.ProfessionalLocationAssignment.filter({ location_id: loc.id, active_status: 'activ', public_status: 'public' }, null, 100),
     ]);
 
-    const publicServices = [...new Set(
-      services
-        .filter((s) => isPublicSafeService(s))
-        .map((s) => s.service_key)
-        .filter(Boolean)
-    )];
+    const publicServices = services
+      .filter((s) => isPublicSafeService(s, pcs))
+      .map(toPublicService);
 
     const profiles = await Promise.all(assigns.map((a) => svc.entities.ProfessionalProfile.get(a.professional_id).catch(() => null)));
     const team = assigns.map((a, i) => {
