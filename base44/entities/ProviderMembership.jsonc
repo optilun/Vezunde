@@ -16,21 +16,23 @@
       "enum": [
         "organization_owner",
         "location_manager",
-        "location_staff"
+        "location_staff",
+        "owner",
+        "staff"
       ]
     },
     "status": {
       "type": "string",
       "enum": [
         "active",
-        "inactive"
+        "inactive",
+        "revoked"
       ],
       "default": "active"
     }
   },
   "required": [
     "user_id",
-    "location_id",
     "role",
     "status"
   ],
