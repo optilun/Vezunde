@@ -1,54 +1,30 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-// Module 3E: single public read-only profile endpoint. Returns ONLY whitelisted
-// public data. Never exposes provenance, trust, audit, claim, migration,
-// membership or internal verification fields.
-
-// Canonical need-level catalog (mirrors matchProviders — functions cannot share local imports).
-const NEED_LEVELS = {
-  eyeglasses: 'general', frames: 'general', prescription_lenses: 'general', contact_lenses: 'general',
-  optometry_consultation: 'general', ophthalmology_consultation: 'general',
-  control_vedere_adulti: 'general', control_vedere_copii: 'general', consult_oftalmologic: 'general',
-  lentile_contact: 'general', lentile_progresive: 'general',
-  eyeglasses_adjustment: 'technical', eyeglasses_repair: 'technical', lens_fitting: 'technical',
-  reparatii_ochelari: 'technical', reglaj_rame: 'technical', montaj_lentile: 'technical',
-  oct: 'specialized_medical', retina_consultation: 'specialized_medical', glaucoma_consultation: 'specialized_medical',
-  cataract_surgery: 'specialized_medical', refractive_surgery: 'specialized_medical',
-  pediatric_ophthalmology: 'specialized_medical', myopia_management: 'specialized_medical', emergency_ophthalmology: 'specialized_medical',
-  retina: 'specialized_medical', glaucom: 'specialized_medical', cataracta: 'specialized_medical',
-  chirurgie_refractiva: 'specialized_medical', managementul_miopiei: 'specialized_medical',
-};
+// Public read-only provider profile endpoint.
+// Returns only whitelisted public data.
 
 const PUBLIC_CONF = ['publicly_listed', 'provider_confirmed', 'vezunde_verified'];
-// Patient public profile = location/unit page only. Independent professionals and
-// laboratories stay out of the patient directory; they can appear through a unit team.
-const PATIENT_FACING_PROFILE_TYPES = [
-  'independent_optical_store', 'optical_chain', 'ophthalmology_clinic', 'ophthalmology_office',
-];
+const PATIENT_FACING_PROFILE_TYPES = ['independent_optical_store', 'optical_chain', 'ophthalmology_clinic', 'ophthalmology_office'];
+
 const STATUS_LABELS = {
   verified: 'Profil verificat de Vezunde',
   claimed: 'Profil revendicat',
   directory: 'Profil din director',
 };
+
 const AVAILABILITY_LABELS = {
-  astazi: 'Disponibil astazi',
-  urmatoarele_zile: 'Disponibil in urmatoarele zile',
-  saptamana_aceasta: 'Disponibil saptamana aceasta',
+  astazi: 'Primeste clienti fara programare',
+  urmatoarele_zile: 'Primeste clienti si cu programare',
+  saptamana_aceasta: 'Walk-in pentru optica, programare pentru consultatii',
   doar_programare: 'Doar cu programare',
 };
+
 const AVAILABILITY_STALE_DAYS = 30;
 
-// Module 3E.1: shared public-safe service visibility rule (mirrored in matchProviders).
-function isPublicSafeService(s, pcs) {
+function isPublicSafeService(s) {
   if (s.is_active === false) return false;
   if (s.migration_review_required) return false;
   if (!PUBLIC_CONF.includes(s.confirmation_level)) return false;
-  const level = (s.is_advanced_service || s.service_need_level === 'specialized_medical')
-    ? 'specialized_medical'
-    : (NEED_LEVELS[s.service_key] || 'unknown');
-  if (level === 'specialized_medical' || level === 'unknown') {
-    return s.confirmation_level === 'vezunde_verified' && pcs === 'verified';
-  }
   return true;
 }
 
@@ -77,69 +53,60 @@ Deno.serve(async (req) => {
 
     const loc = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
     const pcs = loc ? (loc.profile_control_status || 'directory') : null;
-    // Suspended, unpublished or inactive profiles are never rendered publicly —
-    // same 404 in all cases, no state disclosure.
-    // Module 3H.1A.1: fail closed — missing classification, independent professional
-    // or B2B/B2C lab profile types are never rendered as patient-facing provider pages.
     if (!loc || loc.status !== 'publicata' || loc.active_status === 'inactiva' || pcs === 'suspended'
-        || !loc.provider_profile_type
-        || !PATIENT_FACING_PROFILE_TYPES.includes(loc.provider_profile_type)) {
+        || !loc.provider_profile_type || !PATIENT_FACING_PROFILE_TYPES.includes(loc.provider_profile_type)) {
       return Response.json({ error: 'Profilul nu a fost gasit' }, { status: 404 });
     }
 
     const [services, assigns] = await Promise.all([
-      svc.entities.LocationService.filter({ location_id: loc.id }, null, 200),
+      svc.entities.LocationService.filter({ location_id: loc.id }, null, 300),
       svc.entities.ProfessionalLocationAssignment.filter({ location_id: loc.id, active_status: 'activ', public_status: 'public' }, null, 100),
     ]);
 
-    // Public services: active, review-clean, confirmation_level publicly_listed /
-    // provider_confirmed / vezunde_verified. Specialized medical (and unknown /
-    // uncategorized) keys require vezunde_verified service + verified profile.
-    const publicServices = services
-      .filter((s) => isPublicSafeService(s, pcs))
-      .map((s) => s.service_key);
+    const publicServices = [...new Set(
+      services
+        .filter((s) => isPublicSafeService(s))
+        .map((s) => s.service_key)
+        .filter(Boolean)
+    )];
 
-    const profiles = await Promise.all(
-      assigns.map((a) => svc.entities.ProfessionalProfile.get(a.professional_id).catch(() => null))
-    );
-    const team = assigns
-      .map((a, i) => {
-        const p = profiles[i];
-        if (!p || p.is_public === false) return null;
-        return {
-          full_name: p.full_name,
-          professional_type: a.professional_type,
-          bio: p.bio || null,
-          affiliation_status: a.affiliation_status || 'location_added',
-        };
-      })
-      .filter(Boolean);
+    const profiles = await Promise.all(assigns.map((a) => svc.entities.ProfessionalProfile.get(a.professional_id).catch(() => null)));
+    const team = assigns.map((a, i) => {
+      const p = profiles[i];
+      if (!p || p.is_public === false) return null;
+      return {
+        full_name: p.full_name,
+        professional_type: a.professional_type,
+        bio: p.bio || null,
+        affiliation_status: a.affiliation_status || 'location_added',
+      };
+    }).filter(Boolean);
 
-    // Availability: only provider-published and fresh (explicitly public by design).
     let availabilityLabel = null;
     if (loc.availability_status && loc.availability_status !== 'necunoscuta' && loc.availability_updated_at) {
       const ageDays = (Date.now() - new Date(loc.availability_updated_at).getTime()) / 86400000;
-      if (ageDays >= 0 && ageDays <= AVAILABILITY_STALE_DAYS) {
-        availabilityLabel = AVAILABILITY_LABELS[loc.availability_status] || null;
-      }
+      if (ageDays >= 0 && ageDays <= AVAILABILITY_STALE_DAYS) availabilityLabel = AVAILABILITY_LABELS[loc.availability_status] || null;
     }
 
-    // STRICT public whitelist — nothing else leaves this function.
     return Response.json({
       profile: {
         id: loc.id,
-        name: loc.name,
+        name: loc.public_display_name || loc.name,
         provider_type: loc.provider_type,
+        provider_profile_type: loc.provider_profile_type,
         city: loc.city,
         county: loc.county || null,
         address: loc.address || null,
-        phone_public: loc.phone_public || null,
+        lat: loc.lat ?? null,
+        lng: loc.lng ?? null,
+        place_id: loc.place_id || null,
+        phone_public: loc.public_phone || loc.phone_public || null,
         public_email: loc.public_email || null,
         website: publicUrl(loc.website_url || loc.website),
         facebook: publicUrl(loc.facebook_url),
         instagram: publicUrl(loc.instagram_url),
         linkedin: publicUrl(loc.linkedin_url),
-        description: loc.description || null,
+        description: loc.public_description || loc.description || null,
         photo_url: loc.photo_url || null,
         opening_hours: loc.opening_hours || null,
         saturday_hours: loc.saturday_hours || null,
