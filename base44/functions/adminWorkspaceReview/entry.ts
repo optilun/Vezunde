@@ -28,19 +28,26 @@ const SECTION_APPLY = {
   },
 };
 
+const SERVICE_IDS = {
+  optical_retail: ['eyeglasses', 'frames', 'prescription_lenses', 'sunglasses', 'prescription_sunglasses', 'children_frames', 'sports_glasses', 'safety_glasses', 'accessories'],
+  lenses_and_measurements: ['single_vision_lenses', 'progressive_lenses', 'office_lenses', 'reading_lenses', 'thin_lenses', 'photochromic_lenses', 'polarized_lenses', 'blue_light_lenses', 'prism_lenses', 'pd_measurement', 'digital_centering'],
+  optometry: ['optometry_consultation', 'visual_acuity_test', 'refraction', 'autorefractometry', 'binocular_vision', 'dry_eye_screening', 'color_vision_test', 'occupational_vision'],
+  contact_lenses: ['contact_lenses', 'contact_lens_consultation', 'contact_lens_fitting', 'contact_lens_trial', 'toric_contact_lenses', 'multifocal_contact_lenses', 'rgp_lenses', 'scleral_lenses', 'contact_lens_followup'],
+  ophthalmology_consults: ['ophthalmology_consultation', 'complete_eye_exam', 'prescription_check', 'eye_pressure_check', 'fundus_exam', 'anterior_segment_exam', 'followup_consultation', 'second_opinion'],
+  investigations: ['oct', 'visual_field_analyzer', 'fundus_camera', 'pachymeter', 'biometer', 'corneal_topography', 'keratometry', 'tonometry', 'gonioscopy', 'ultrasound', 'specular_microscopy', 'angiography'],
+  specialties: ['retina_consultation', 'glaucoma_consultation', 'cataract_consultation', 'cornea_consultation', 'pediatric_ophthalmology', 'strabismus', 'neuro_ophthalmology', 'uveitis', 'myopia_management', 'dry_eye_management', 'diabetic_retinopathy', 'macular_degeneration', 'emergency_ophthalmology'],
+  procedures_surgery: ['cataract_surgery', 'refractive_surgery', 'laser_procedures', 'yag_laser', 'retinal_laser', 'intravitreal_injections', 'eyelid_surgery', 'chalazion_treatment', 'minor_eye_procedures'],
+  children_and_prevention: ['children_eye_exam', 'pediatric_refraction', 'amblyopia_screening', 'strabismus_screening', 'school_screening', 'myopia_control_children', 'vision_therapy'],
+  technical_activities: ['eyeglasses_adjustment', 'eyeglasses_repair', 'lens_fitting', 'frame_repair', 'screw_replacement', 'lens_replacement', 'frame_cleaning', 'workshop_orders'],
+  patient_services: ['eyeglasses', 'frames', 'prescription_lenses', 'contact_lenses', 'optometry_consultation', 'ophthalmology_consultation'],
+};
+
 const SECTION_FIELDS = {
   ...Object.fromEntries(Object.entries(SECTION_APPLY).map(([k, v]) => [k, Object.keys(v)])),
   services: ['selected_ids', 'removal_ids', 'suggestions', 'custom_requests'],
   team: ['members', 'removal_professional_ids', 'invitations', 'invite_flow', 'invitation_channel'],
   media: ['assets', 'removal_media_ids'],
   article: ['title', 'excerpt', 'body', 'cover_media_id', 'author_professional_id'],
-};
-
-const CANONICAL_SERVICE_IDS = {
-  patient_services: ['eyeglasses', 'frames', 'prescription_lenses', 'contact_lenses', 'optometry_consultation', 'ophthalmology_consultation'],
-  investigations: ['oct', 'visual_field_analyzer', 'fundus_camera', 'pachymeter', 'biometer', 'corneal_topography'],
-  specialties: ['retina_consultation', 'glaucoma_consultation', 'cataract_surgery', 'refractive_surgery', 'pediatric_ophthalmology', 'myopia_management', 'emergency_ophthalmology'],
-  technical_activities: ['eyeglasses_adjustment', 'eyeglasses_repair', 'lens_fitting'],
 };
 
 const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
@@ -108,15 +115,15 @@ function validateLocationDetails(payload) {
 function validateServiceGroupObject(value, fieldName) {
   if (value === undefined) return { valid: true, clean: {} };
   if (!isPlainObject(value)) return bad({ error: `${fieldName} trebuie sa fie obiect` });
-  const unknownGroups = Object.keys(value).filter((group) => !Object.keys(CANONICAL_SERVICE_IDS).includes(group));
+  const unknownGroups = Object.keys(value).filter((group) => !Object.keys(SERVICE_IDS).includes(group));
   if (unknownGroups.length > 0) return bad({ error: 'Grup de servicii nepermis', fields: unknownGroups });
   const clean = {};
   for (const [group, ids] of Object.entries(value)) {
     if (!Array.isArray(ids)) return bad({ error: `${fieldName}.${group} trebuie sa fie lista` });
     const unique = [...new Set(ids.map((id) => cleanString(id)).filter(Boolean))];
-    const invalid = unique.filter((id) => !CANONICAL_SERVICE_IDS[group].includes(id));
+    const invalid = unique.filter((id) => !SERVICE_IDS[group].includes(id));
     if (invalid.length > 0) return bad({ error: 'ID canonic invalid', fields: invalid });
-    clean[group] = unique;
+    if (unique.length > 0) clean[group] = unique;
   }
   return { valid: true, clean };
 }
@@ -126,10 +133,10 @@ function validateSuggestions(payload) {
   const suggestions = [];
   for (const s of raw) {
     if (!isPlainObject(s)) return bad({ error: 'Sugestie invalida' });
-    const group = cleanString(s.group || 'patient_services');
+    const group = cleanString(s.group || 'optical_retail');
     const label = cleanString(s.label);
     const note = cleanString(s.note);
-    if (!Object.keys(CANONICAL_SERVICE_IDS).includes(group)) return bad({ error: 'Grup de sugestie invalid' });
+    if (!Object.keys(SERVICE_IDS).includes(group)) return bad({ error: 'Grup de sugestie invalid' });
     if (!label || label.length > 120) return bad({ error: 'Sugestia trebuie sa aiba un nume scurt' });
     if (note.length > 500) return bad({ error: 'Nota sugestiei este prea lunga' });
     suggestions.push({ group, label, note });
@@ -248,23 +255,12 @@ function validatePayload(section, payload) {
 
 function serviceNeedLevel(group) {
   if (group === 'technical_activities') return 'technical';
-  if (group === 'investigations' || group === 'specialties') return 'specialized_medical';
+  if (['ophthalmology_consults', 'investigations', 'specialties', 'procedures_surgery', 'children_and_prevention'].includes(group)) return 'specialized_medical';
   return 'general';
 }
-
-function slugify(value) {
-  return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'articol';
-}
-
-async function uniqueSlug(svc, base, currentId = '') {
-  let slug = base;
-  for (let i = 2; i < 100; i++) {
-    const rows = await svc.entities.ProviderArticle.filter({ slug });
-    if (rows.length === 0 || (rows.length === 1 && rows[0].id === currentId)) return slug;
-    slug = `${base}-${i}`;
-  }
-  return `${base}-${Date.now()}`;
-}
+function serviceIsAdvanced(group) { return ['investigations', 'specialties', 'procedures_surgery'].includes(group); }
+function slugify(value) { return cleanString(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'articol'; }
+async function uniqueSlug(svc, base, currentId = '') { let slug = base; for (let i = 2; i < 100; i++) { const rows = await svc.entities.ProviderArticle.filter({ slug }); if (rows.length === 0 || (rows.length === 1 && rows[0].id === currentId)) return slug; slug = `${base}-${i}`; } return `${base}-${Date.now()}`; }
 
 async function audit(svc, user, rec) {
   await svc.entities.DirectoryAuditRecord.create({ entity_type: rec.entity_type, entity_id: rec.entity_id || '', action_type: rec.action_type, changed_fields: rec.changed_fields || [], previous_values: JSON.stringify(rec.previous || {}), new_values: JSON.stringify(rec.next || {}), admin_user_id: user.id, admin_email: user.email, note: rec.note || '', performed_at: new Date().toISOString() });
@@ -298,69 +294,33 @@ async function applyServices(svc, user, sub, payload) {
   for (const [group, ids] of Object.entries(payload.selected_ids || {})) {
     for (const serviceKey of ids) {
       if (group === 'specialties') {
-        const existing = await svc.entities.LocationSpecialization.filter({ location_id: sub.location_id, specialization_key: serviceKey });
-        if (existing[0]) await svc.entities.LocationSpecialization.update(existing[0].id, { is_active: true });
+        const existingSpec = await svc.entities.LocationSpecialization.filter({ location_id: sub.location_id, specialization_key: serviceKey });
+        if (existingSpec[0]) await svc.entities.LocationSpecialization.update(existingSpec[0].id, { is_active: true });
         else await svc.entities.LocationSpecialization.create({ location_id: sub.location_id, specialization_key: serviceKey, is_active: true });
-      } else {
-        const existing = await svc.entities.LocationService.filter({ location_id: sub.location_id, service_key: serviceKey });
-        const data = { is_active: true, accepts_requests: true, service_need_level: serviceNeedLevel(group), is_advanced_service: group === 'investigations' };
-        if (existing[0]) await svc.entities.LocationService.update(existing[0].id, data);
-        else await svc.entities.LocationService.create({ location_id: sub.location_id, service_key: serviceKey, confirmation_level: 'provider_confirmed', ...data });
       }
+      const existing = await svc.entities.LocationService.filter({ location_id: sub.location_id, service_key: serviceKey });
+      const data = { is_active: true, accepts_requests: true, service_need_level: serviceNeedLevel(group), is_advanced_service: serviceIsAdvanced(group), confirmation_level: 'provider_confirmed' };
+      if (existing[0]) await svc.entities.LocationService.update(existing[0].id, data);
+      else await svc.entities.LocationService.create({ location_id: sub.location_id, service_key: serviceKey, ...data });
     }
   }
   for (const [group, ids] of Object.entries(payload.removal_ids || {})) {
     for (const serviceKey of ids) {
       if (group === 'specialties') {
-        const existing = await svc.entities.LocationSpecialization.filter({ location_id: sub.location_id, specialization_key: serviceKey });
-        if (existing[0]) await svc.entities.LocationSpecialization.update(existing[0].id, { is_active: false });
-      } else {
-        const existing = await svc.entities.LocationService.filter({ location_id: sub.location_id, service_key: serviceKey });
-        if (existing[0]) await svc.entities.LocationService.update(existing[0].id, { is_active: false });
+        const existingSpec = await svc.entities.LocationSpecialization.filter({ location_id: sub.location_id, specialization_key: serviceKey });
+        if (existingSpec[0]) await svc.entities.LocationSpecialization.update(existingSpec[0].id, { is_active: false });
       }
+      const existing = await svc.entities.LocationService.filter({ location_id: sub.location_id, service_key: serviceKey });
+      if (existing[0]) await svc.entities.LocationService.update(existing[0].id, { is_active: false });
     }
   }
   await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'apply_services_submission', changed_fields: ['services'], next: { selected_ids: payload.selected_ids, removal_ids: payload.removal_ids, suggestions: payload.suggestions }, note: 'Servicii aplicate dupa aprobare admin; sugestiile raman nepublice.' });
 }
 
-async function assertLocationsInScope(svc, rootLoc, locationIds) {
-  for (const id of locationIds) {
-    const target = await svc.entities.ProviderLocation.get(id).catch(() => null);
-    if (!target) throw new Error('Locatie atribuita inexistenta');
-    if (rootLoc.organization_id) {
-      if (target.organization_id !== rootLoc.organization_id) throw new Error('Membru alocat in afara organizatiei permise');
-    } else if (target.id !== rootLoc.id) throw new Error('Membru alocat in afara locatiei independente');
-  }
-}
-
-async function professionalAlreadyInScope(svc, rootLoc, professionalId) {
-  const assignments = await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: professionalId, active_status: 'activ' }, null, 100);
-  for (const assignment of assignments) {
-    const loc = await svc.entities.ProviderLocation.get(assignment.location_id).catch(() => null);
-    if (!loc) continue;
-    if (rootLoc.organization_id && loc.organization_id === rootLoc.organization_id) return true;
-    if (!rootLoc.organization_id && loc.id === rootLoc.id) return true;
-  }
-  return false;
-}
-
-async function assertTeamPhoto(svc, locationId, mediaId) {
-  if (!mediaId) return;
-  const asset = await svc.entities.ProviderMediaAsset.get(mediaId).catch(() => null);
-  if (!asset || asset.location_id !== locationId || asset.status !== 'approved' || asset.media_type !== 'team_photo') throw new Error('photo_media_id trebuie sa fie media aprobata team_photo din aceeasi locatie');
-}
-
-async function assertNoTeamDuplicate(svc, member, profileId) {
-  for (const locationId of member.assigned_location_ids) {
-    const assignments = await svc.entities.ProfessionalLocationAssignment.filter({ location_id: locationId, active_status: 'activ' }, null, 100);
-    for (const assignment of assignments) {
-      if (profileId && assignment.professional_id === profileId) continue;
-      if (assignment.professional_type !== member.professional_type) continue;
-      const profile = await svc.entities.ProfessionalProfile.get(assignment.professional_id).catch(() => null);
-      if (profile && normalizePersonName(profile.full_name) === normalizePersonName(member.full_name)) throw new Error('Exista deja un profesionist similar in aceasta locatie. Verifica manual inainte de aprobare.');
-    }
-  }
-}
+async function assertLocationsInScope(svc, rootLoc, locationIds) { for (const id of locationIds) { const target = await svc.entities.ProviderLocation.get(id).catch(() => null); if (!target) throw new Error('Locatie atribuita inexistenta'); if (rootLoc.organization_id) { if (target.organization_id !== rootLoc.organization_id) throw new Error('Membru alocat in afara organizatiei permise'); } else if (target.id !== rootLoc.id) throw new Error('Membru alocat in afara locatiei independente'); } }
+async function professionalAlreadyInScope(svc, rootLoc, professionalId) { const assignments = await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: professionalId, active_status: 'activ' }, null, 100); for (const assignment of assignments) { const loc = await svc.entities.ProviderLocation.get(assignment.location_id).catch(() => null); if (!loc) continue; if (rootLoc.organization_id && loc.organization_id === rootLoc.organization_id) return true; if (!rootLoc.organization_id && loc.id === rootLoc.id) return true; } return false; }
+async function assertTeamPhoto(svc, locationId, mediaId) { if (!mediaId) return; const asset = await svc.entities.ProviderMediaAsset.get(mediaId).catch(() => null); if (!asset || asset.location_id !== locationId || asset.status !== 'approved' || asset.media_type !== 'team_photo') throw new Error('photo_media_id trebuie sa fie media aprobata team_photo din aceeasi locatie'); }
+async function assertNoTeamDuplicate(svc, member, profileId) { for (const locationId of member.assigned_location_ids) { const assignments = await svc.entities.ProfessionalLocationAssignment.filter({ location_id: locationId, active_status: 'activ' }, null, 100); for (const assignment of assignments) { if (profileId && assignment.professional_id === profileId) continue; if (assignment.professional_type !== member.professional_type) continue; const profile = await svc.entities.ProfessionalProfile.get(assignment.professional_id).catch(() => null); if (profile && normalizePersonName(profile.full_name) === normalizePersonName(member.full_name)) throw new Error('Exista deja un profesionist similar in aceasta locatie. Verifica manual inainte de aprobare.'); } } }
 
 async function applyTeam(svc, user, sub, payload) {
   const rootLoc = await svc.entities.ProviderLocation.get(sub.location_id).catch(() => null);
@@ -390,39 +350,9 @@ async function applyTeam(svc, user, sub, payload) {
   await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: invitationCount ? 'approve_specialist_invitations_pending_email' : 'apply_team_submission', changed_fields: ['team'], next: invitationCount ? { invitations: payload.invitations } : { members: payload.members, removal_professional_ids: payload.removal_professional_ids }, note: invitationCount ? 'Invitatiile au fost aprobate ca intentie. Nu s-au creat profiluri publice si nu s-au trimis emailuri pana nu exista lifecycle dedicat.' : 'Echipa publica aplicata dupa aprobare admin; nu s-au creat conturi de login.' });
 }
 
-async function applyMedia(svc, user, sub, payload) {
-  for (const mediaId of payload.removal_media_ids || []) {
-    const asset = await svc.entities.ProviderMediaAsset.get(mediaId).catch(() => null);
-    if (!asset || asset.location_id !== sub.location_id) throw new Error('Media nu apartine acestei locatii');
-    await svc.entities.ProviderMediaAsset.update(asset.id, { status: 'withdrawn', reviewed_by_user_id: user.id, reviewed_at: new Date().toISOString() });
-  }
-  await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'apply_media_submission', changed_fields: ['media'], note: 'Media revalidata; uploadul brut este dezactivat pana exista metadate server-side sigure.' });
-}
-
-async function assertArticleReferences(svc, sub, payload) {
-  if (payload.cover_media_id) {
-    const cover = await svc.entities.ProviderMediaAsset.get(payload.cover_media_id).catch(() => null);
-    if (!cover || cover.location_id !== sub.location_id || cover.status !== 'approved' || !['cover', 'gallery'].includes(cover.media_type)) throw new Error('Cover media invalid sau neaprobat');
-  }
-  if (payload.author_professional_id) {
-    const assignment = await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: payload.author_professional_id, location_id: sub.location_id, active_status: 'activ' });
-    if (assignment.length === 0) throw new Error('Autor profesional nealocat locatiei');
-  }
-}
-
-async function applyArticle(svc, user, sub, payload) {
-  await assertArticleReferences(svc, sub, payload);
-  const loc = await svc.entities.ProviderLocation.get(sub.location_id).catch(() => null);
-  const now = new Date().toISOString();
-  const targetArticleId = String(sub.item_key || '').startsWith('article:') ? String(sub.item_key).slice('article:'.length) : '';
-  const existing = targetArticleId ? await svc.entities.ProviderArticle.get(targetArticleId).catch(() => null) : null;
-  if (targetArticleId && (!existing || existing.location_id !== sub.location_id)) throw new Error('Articol tinta invalid sau in afara locatiei');
-  const slug = existing?.slug || await uniqueSlug(svc, slugify(payload.title), existing?.id || '');
-  const articleData = { organization_id: loc?.organization_id || null, location_id: sub.location_id, author_professional_id: payload.author_professional_id || null, submitted_by_user_id: sub.submitted_by_user_id, title: payload.title, slug, excerpt: payload.excerpt, body: payload.body, cover_media_id: payload.cover_media_id || null, status: 'approved', published_at: existing?.published_at || now, reviewed_by_user_id: user.id, reviewed_at: now };
-  if (existing) await svc.entities.ProviderArticle.update(existing.id, articleData);
-  else await svc.entities.ProviderArticle.create(articleData);
-  await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'apply_article_submission', changed_fields: ['article'], next: { slug }, note: 'Articol publicat doar dupa aprobare admin ca text simplu.' });
-}
+async function applyMedia(svc, user, sub, payload) { for (const mediaId of payload.removal_media_ids || []) { const asset = await svc.entities.ProviderMediaAsset.get(mediaId).catch(() => null); if (!asset || asset.location_id !== sub.location_id) throw new Error('Media nu apartine acestei locatii'); await svc.entities.ProviderMediaAsset.update(asset.id, { status: 'withdrawn', reviewed_by_user_id: user.id, reviewed_at: new Date().toISOString() }); } await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'apply_media_submission', changed_fields: ['media'], note: 'Media revalidata; uploadul brut este dezactivat pana exista metadate server-side sigure.' }); }
+async function assertArticleReferences(svc, sub, payload) { if (payload.cover_media_id) { const cover = await svc.entities.ProviderMediaAsset.get(payload.cover_media_id).catch(() => null); if (!cover || cover.location_id !== sub.location_id || cover.status !== 'approved' || !['cover', 'gallery'].includes(cover.media_type)) throw new Error('Cover media invalid sau neaprobat'); } if (payload.author_professional_id) { const assignment = await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: payload.author_professional_id, location_id: sub.location_id, active_status: 'activ' }); if (assignment.length === 0) throw new Error('Autor profesional nealocat locatiei'); } }
+async function applyArticle(svc, user, sub, payload) { await assertArticleReferences(svc, sub, payload); const loc = await svc.entities.ProviderLocation.get(sub.location_id).catch(() => null); const now = new Date().toISOString(); const targetArticleId = String(sub.item_key || '').startsWith('article:') ? String(sub.item_key).slice('article:'.length) : ''; const existing = targetArticleId ? await svc.entities.ProviderArticle.get(targetArticleId).catch(() => null) : null; if (targetArticleId && (!existing || existing.location_id !== sub.location_id)) throw new Error('Articol tinta invalid sau in afara locatiei'); const slug = existing?.slug || await uniqueSlug(svc, slugify(payload.title), existing?.id || ''); const articleData = { organization_id: loc?.organization_id || null, location_id: sub.location_id, author_professional_id: payload.author_professional_id || null, submitted_by_user_id: sub.submitted_by_user_id, title: payload.title, slug, excerpt: payload.excerpt, body: payload.body, cover_media_id: payload.cover_media_id || null, status: 'approved', published_at: existing?.published_at || now, reviewed_by_user_id: user.id, reviewed_at: now }; if (existing) await svc.entities.ProviderArticle.update(existing.id, articleData); else await svc.entities.ProviderArticle.create(articleData); await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'apply_article_submission', changed_fields: ['article'], next: { slug }, note: 'Articol publicat doar dupa aprobare admin ca text simplu.' }); }
 
 Deno.serve(async (req) => {
   try {
