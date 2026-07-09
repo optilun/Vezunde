@@ -259,6 +259,20 @@ function serviceNeedLevel(group) {
   return 'general';
 }
 function serviceIsAdvanced(group) { return ['investigations', 'specialties', 'procedures_surgery'].includes(group); }
+function serviceApplyData(group, existing = {}) {
+  const previousConfirmation = cleanString(existing?.confirmation_level);
+  const confirmationLevel = previousConfirmation === 'vezunde_verified' ? 'vezunde_verified' : 'provider_confirmed';
+  const needLevel = serviceNeedLevel(group);
+  const advanced = serviceIsAdvanced(group) || needLevel === 'specialized_medical';
+  return {
+    is_active: true,
+    accepts_requests: true,
+    service_need_level: needLevel,
+    is_advanced_service: advanced,
+    confirmation_level: confirmationLevel,
+    matching_allowed: !advanced || confirmationLevel === 'vezunde_verified',
+  };
+}
 function slugify(value) { return cleanString(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'articol'; }
 async function uniqueSlug(svc, base, currentId = '') { let slug = base; for (let i = 2; i < 100; i++) { const rows = await svc.entities.ProviderArticle.filter({ slug }); if (rows.length === 0 || (rows.length === 1 && rows[0].id === currentId)) return slug; slug = `${base}-${i}`; } return `${base}-${Date.now()}`; }
 
@@ -314,6 +328,42 @@ async function applyServices(svc, user, sub, payload) {
     }
   }
   await audit(svc, user, { entity_type: 'ProviderWorkspaceSubmission', entity_id: sub.id, action_type: 'apply_services_submission', changed_fields: ['services'], next: { selected_ids: payload.selected_ids, removal_ids: payload.removal_ids, suggestions: payload.suggestions }, note: 'Servicii aplicate dupa aprobare admin. Serviciile generale si tehnice intra in matching; medicalul avansat ramane blocat pana la verificare Vezunde.' });
+}
+
+async function assertLocationsInScope(svc, rootLoc, locationIds) {
+  for (const id of locationIds) {
+    const target = await svc.entities.ProviderLocation.get(id).catch(() => null);
+    if (!target) throw new Error('Locatie atribuita inexistenta');
+    if (rootLoc.organization_id) {
+      if (target.organization_id !== rootLoc.organization_id) throw new Error('Membru alocat in afara organizatiei permise');
+    } else if (target.id !== rootLoc.id) throw new Error('Membru alocat in afara locatiei independente');
+  }
+}
+async function professionalAlreadyInScope(svc, rootLoc, professionalId) {
+  const assignments = await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: professionalId, active_status: 'activ' }, null, 100);
+  for (const assignment of assignments) {
+    const loc = await svc.entities.ProviderLocation.get(assignment.location_id).catch(() => null);
+    if (!loc) continue;
+    if (rootLoc.organization_id && loc.organization_id === rootLoc.organization_id) return true;
+    if (!rootLoc.organization_id && loc.id === rootLoc.id) return true;
+  }
+  return false;
+}
+async function assertTeamPhoto(svc, locationId, mediaId) {
+  if (!mediaId) return;
+  const asset = await svc.entities.ProviderMediaAsset.get(mediaId).catch(() => null);
+  if (!asset || asset.location_id !== locationId || asset.status !== 'approved' || asset.media_type !== 'team_photo') throw new Error('photo_media_id trebuie sa fie media aprobata team_photo din aceeasi locatie');
+}
+async function assertNoTeamDuplicate(svc, member, profileId) {
+  for (const locationId of member.assigned_location_ids) {
+    const assignments = await svc.entities.ProfessionalLocationAssignment.filter({ location_id: locationId, active_status: 'activ' }, null, 100);
+    for (const assignment of assignments) {
+      if (profileId && assignment.professional_id === profileId) continue;
+      if (assignment.professional_type !== member.professional_type) continue;
+      const profile = await svc.entities.ProfessionalProfile.get(assignment.professional_id).catch(() => null);
+      if (profile && normalizePersonName(profile.full_name) === normalizePersonName(member.full_name)) throw new Error('Exista deja un profesionist similar in aceasta locatie. Verifica manual inainte de aprobare.');
+    }
+  }
 }
 
 async function applyTeam(svc, user, sub, payload) {
