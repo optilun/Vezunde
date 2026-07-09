@@ -153,19 +153,6 @@ export const SERVICE_GROUPS = {
       workshop_orders: "Comenzi atelier optic",
     },
   },
-  b2b_services: {
-    label: "B2B si laborator",
-    helper: "Servicii pentru laboratoare, furnizori sau colaborari profesionale.",
-    ids: {
-      optical_laboratory: "Laborator optic",
-      lens_edging_b2b: "Montaj lentile B2B",
-      wholesale_frames: "Distributie rame",
-      wholesale_lenses: "Distributie lentile",
-      equipment_supplier: "Echipamente optica / oftalmologie",
-      service_equipment: "Service echipamente",
-      professional_training: "Training profesional",
-    },
-  },
 };
 
 export const CLAIM_PREP_SERVICE_GROUPS = ["optical_retail", "lenses_and_measurements", "optometry", "contact_lenses", "technical_activities"];
