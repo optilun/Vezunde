@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Clock, MapPin, Phone, Route } from "lucide-react";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
+import { summarizePublicServices } from "@/lib/servicePresentation";
 import TrustBadge from "@/components/results/TrustBadge";
 import ServiceChip from "@/components/results/ServiceChip";
 
@@ -21,8 +22,10 @@ const VARIANT_STYLES = {
 
 export default function ResultCard({ location, variant = "neutral" }) {
   const allServices = location.public_services || [];
-  const shown = (location.matched_public_services?.length ? location.matched_public_services : allServices).slice(0, 3);
-  const extra = allServices.length - shown.length;
+  const matchedServices = location.matched_public_services?.length ? location.matched_public_services : allServices;
+  const serviceSummaries = summarizePublicServices(matchedServices);
+  const shown = serviceSummaries.slice(0, 3);
+  const extra = Math.max(0, serviceSummaries.length - shown.length);
   const reasons = (location.match_reasons || []).slice(0, 2);
   const hasDistance = Number.isFinite(Number(location.distance_km));
 
@@ -55,7 +58,7 @@ export default function ResultCard({ location, variant = "neutral" }) {
       {shown.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {shown.map((s) => <ServiceChip key={s.key} label={s.label} />)}
-          {extra > 0 && <span className="text-xs text-muted-foreground px-1 py-1">+{extra} servicii</span>}
+          {extra > 0 && <span className="text-xs text-muted-foreground px-1 py-1">+{extra} zone</span>}
         </div>
       )}
 
