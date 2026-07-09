@@ -41,9 +41,9 @@ export const TEAM_ROLES = {
 };
 
 export const AVAILABILITY_OPTIONS = {
-  astazi: "Disponibil astazi",
-  urmatoarele_zile: "Disponibil in urmatoarele zile",
-  saptamana_aceasta: "Disponibil saptamana aceasta",
+  astazi: "Poate primi programari astazi",
+  urmatoarele_zile: "Poate primi programari in urmatoarele zile",
+  saptamana_aceasta: "Poate primi programari saptamana aceasta",
   doar_programare: "Doar cu programare",
 };
 
