@@ -1,108 +1,59 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-// MODULE 3H.1C.3 — Fast-path provider routine updates.
-// Immediate, audited provider-scoped updates after approved claim + active
-// membership. This function never changes trust, verification, matching,
-// visibility, ranking, locality, address, provider type, organization identity,
-// claim state, membership or media/logo approval state.
+// Fast-path provider routine updates.
+// Only operational schedule/access-mode fields are allowed here.
+// Public identity/contact/description/website/social changes must go through ProviderWorkspaceSubmission review.
 
 const ROUTINE_FIELDS = [
-  'public_description',
-  'public_phone',
-  'public_email',
-  'website_url',
-  'facebook_url',
-  'instagram_url',
-  'linkedin_url',
+  'opening_hours_json',
   'opening_hours',
   'saturday_hours',
   'availability_status',
+  'availability_updated_at',
+  'request_intake_status',
 ];
 const INPUT_FIELDS = ['location_id', ...ROUTINE_FIELDS];
 const AVAILABILITY_STATUSES = ['astazi', 'urmatoarele_zile', 'saptamana_aceasta', 'doar_programare', 'necunoscuta'];
-const MAX_DESCRIPTION_LEN = 500;
-const MAX_URL_LEN = 500;
-const MAX_CONTACT_LEN = 200;
+const REQUEST_INTAKE_STATUSES = ['inactive', 'active', 'paused'];
 const MAX_HOURS_LEN = 500;
-const LEGACY_MIRRORS = { public_description: ['description'], website_url: ['website'], public_phone: ['phone_public'] };
+const MAX_JSON_LEN = 12000;
 const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
-function normalizeMemberRole(role) { if (role === 'owner') return 'organization_owner'; if (role === 'staff') return 'location_staff'; return MEMBER_ROLES.includes(role) ? role : ''; }
 
-function reject(error, status = 400) {
-  return Response.json({ error }, { status });
+function normalizeMemberRole(role) {
+  if (role === 'owner') return 'organization_owner';
+  if (role === 'staff') return 'location_staff';
+  return MEMBER_ROLES.includes(role) ? role : '';
+}
+
+function reject(error, status = 400, fields = []) {
+  return Response.json({ error, fields }, { status });
 }
 
 function cleanPlainText(value, field, maxLen) {
   const val = String(value || '').replace(/\r\n?/g, '\n').trim();
   if (val.length > maxLen) return { error: `${field} depaseste lungimea maxima` };
   if (/[<>]/.test(val) || /<\/?[a-z][\s\S]*>/i.test(val)) return { error: `${field} trebuie sa fie text simplu, fara HTML` };
-  if (/\b(?:script|iframe|embed|object)\b/i.test(val)) return { error: `${field} contine continut nesigur` };
   return { value: val };
 }
 
-function normalizeUrlInput(value) {
+function cleanJsonString(value) {
   const raw = String(value || '').trim();
-  if (!raw) return '';
-  if (/\s/.test(raw)) return raw;
-  if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) return raw;
-  if (raw.startsWith('//')) return `https:${raw}`;
-  return `https://${raw}`;
-}
-
-function cleanUrl(value, field) {
-  const normalized = normalizeUrlInput(value);
-  if (!normalized) return { value: '' };
-  if (normalized.length > MAX_URL_LEN) return { error: `${field} depaseste lungimea maxima` };
-  let parsed;
-  try { parsed = new URL(normalized); } catch (_e) { return { error: `${field} trebuie sa fie un site valid. Exemplu: optilun.com sau https://optilun.com` }; }
-  if (!['http:', 'https:'].includes(parsed.protocol)) return { error: `${field} trebuie sa fie un link web valid` };
-  if (/\b(?:javascript|data|vbscript|file):/i.test(normalized)) return { error: `${field} contine protocol nesigur` };
-  if (!parsed.hostname || !parsed.hostname.includes('.')) return { error: `${field} trebuie sa contina un domeniu valid` };
-  return { value: parsed.toString() };
-}
-
-function cleanEmail(value) {
-  const val = String(value || '').trim();
-  if (!val) return { value: '' };
-  if (val.length > MAX_CONTACT_LEN) return { error: 'Emailul public este prea lung' };
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return { error: 'Email public invalid' };
-  return { value: val };
-}
-
-function cleanPhone(value) {
-  const val = String(value || '').trim();
-  if (val.length > 80) return { error: 'Telefonul public este prea lung' };
-  if (val && !/^[0-9+().\-\s]{6,80}$/.test(val)) return { error: 'Telefon public invalid' };
-  return { value: val };
+  if (!raw) return { value: '' };
+  if (raw.length > MAX_JSON_LEN) return { error: 'opening_hours_json este prea lung' };
+  try { JSON.parse(raw); } catch (_e) { return { error: 'opening_hours_json trebuie sa fie JSON valid' }; }
+  return { value: raw };
 }
 
 function cleanPayload(p) {
-  const keys = Object.keys(p).filter((k) => k !== 'action');
-  const unknown = keys.filter((k) => !INPUT_FIELDS.includes(k));
-  if (unknown.length > 0) return { error: 'Camp nepermis', fields: unknown };
-  const updates = {};
+  const keys = Object.keys(p).filter((key) => key !== 'action');
+  const unknown = keys.filter((key) => !INPUT_FIELDS.includes(key));
+  if (unknown.length > 0) return { error: 'Camp nepermis in update rapid. Datele publice trebuie trimise spre review.', fields: unknown };
 
-  if ('public_description' in p) {
-    const cleaned = cleanPlainText(p.public_description, 'public_description', MAX_DESCRIPTION_LEN);
+  const updates = {};
+  if ('opening_hours_json' in p) {
+    const cleaned = cleanJsonString(p.opening_hours_json);
     if (cleaned.error) return cleaned;
-    updates.public_description = cleaned.value;
-  }
-  if ('public_phone' in p) {
-    const cleaned = cleanPhone(p.public_phone);
-    if (cleaned.error) return cleaned;
-    updates.public_phone = cleaned.value;
-  }
-  if ('public_email' in p) {
-    const cleaned = cleanEmail(p.public_email);
-    if (cleaned.error) return cleaned;
-    updates.public_email = cleaned.value;
-  }
-  for (const field of ['website_url', 'facebook_url', 'instagram_url', 'linkedin_url']) {
-    if (field in p) {
-      const cleaned = cleanUrl(p[field], field);
-      if (cleaned.error) return cleaned;
-      updates[field] = cleaned.value;
-    }
+    updates.opening_hours_json = cleaned.value;
   }
   for (const field of ['opening_hours', 'saturday_hours']) {
     if (field in p) {
@@ -112,15 +63,16 @@ function cleanPayload(p) {
     }
   }
   if ('availability_status' in p) {
-    if (!AVAILABILITY_STATUSES.includes(p.availability_status)) return { error: 'Status de disponibilitate invalid' };
+    if (!AVAILABILITY_STATUSES.includes(p.availability_status)) return { error: 'Mod de primire invalid' };
     updates.availability_status = p.availability_status;
     updates.availability_updated_at = new Date().toISOString();
   }
-
-  for (const [field, mirrors] of Object.entries(LEGACY_MIRRORS)) {
-    if (field in updates) {
-      for (const mirror of mirrors) updates[mirror] = updates[field];
-    }
+  if ('availability_updated_at' in p && !updates.availability_updated_at) {
+    updates.availability_updated_at = new Date().toISOString();
+  }
+  if ('request_intake_status' in p) {
+    if (!REQUEST_INTAKE_STATUSES.includes(p.request_intake_status)) return { error: 'Status primire cereri invalid' };
+    updates.request_intake_status = p.request_intake_status;
   }
   if (Object.keys(updates).length === 0) return { error: 'Nicio modificare de aplicat' };
   return { updates };
@@ -153,17 +105,15 @@ Deno.serve(async (req) => {
     if (!locationId) return reject('location_id este obligatoriu');
 
     const memberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, location_id: locationId, status: 'active' });
-    if (!memberships.some((m) => normalizeMemberRole(m.role))) return reject('Nu ai acces la aceasta locatie', 403);
+    if (!memberships.some((membership) => normalizeMemberRole(membership.role))) return reject('Nu ai acces la aceasta locatie', 403);
 
     const loc = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
     if (!loc) return reject('Locatia nu a fost gasita', 404);
     if ((loc.profile_control_status || '') === 'suspended' || loc.status === 'suspendata') return reject('Profilul este suspendat', 403);
-    if (loc.claim_verification_status !== 'approved') {
-      return reject('Update-urile rapide sunt disponibile doar dupa aprobarea revendicarii', 403);
-    }
+    if (loc.claim_verification_status !== 'approved') return reject('Update-urile rapide sunt disponibile doar dupa aprobarea revendicarii', 403);
 
     const cleaned = cleanPayload(p);
-    if (cleaned.error) return Response.json({ error: cleaned.error, fields: cleaned.fields || [] }, { status: 400 });
+    if (cleaned.error) return reject(cleaned.error, 400, cleaned.fields || []);
     const updates = cleaned.updates;
 
     const previous = {};
@@ -172,15 +122,14 @@ Deno.serve(async (req) => {
     await audit(svc, user, {
       entity_type: 'ProviderLocation',
       entity_id: loc.id,
-      action_type: 'provider_fast_path_routine_update',
+      action_type: 'provider_fast_path_schedule_update',
       changed_fields: Object.keys(updates),
       previous,
       next: updates,
-      note: 'Update administrativ rapid aplicat de provider dupa revendicare aprobata',
+      note: 'Update rapid permis doar pentru program si mod de primire clienti/pacienti',
     });
 
-    const publicUpdates = Object.fromEntries(Object.entries(updates).filter(([key]) => ROUTINE_FIELDS.includes(key) || key === 'availability_updated_at'));
-    return Response.json({ success: true, updates: publicUpdates });
+    return Response.json({ success: true, updates });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
