@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/AuthContext";
 import AdminAppShell from "@/components/admin/shell/AdminAppShell";
 import AdminDashboardHome from "@/components/admin/dashboard/AdminDashboardHome";
 import AdminProfilesSection from "@/components/admin/directory/AdminProfilesSection";
+import AdminWorkspaceSubmissionsReview from "@/components/admin/directory/AdminWorkspaceSubmissionsReview";
 import AdminSettingsPlaceholder from "@/components/admin/AdminSettingsPlaceholder";
 import AdminPageHeader from "@/components/admin/ui/AdminPageHeader";
 import DirOpsAddLocation from "@/components/admin/directory/DirOpsAddLocation";
@@ -21,6 +22,7 @@ import { ADMIN_NAV_LABELS } from "@/lib/adminNavConfig";
 const SIMPLE_HEADERS = {
   adauga: "Adauga o organizatie si o locatie noua in director, cu provenienta obligatorie.",
   profiluri: "Gestioneaza statusul de incredere al profilurilor din director.",
+  workspace_reviews: "Analizeaza modificarile trimise de furnizori din workspace inainte de publicare.",
   servicii: "Gestioneaza serviciile confirmate pentru fiecare locatie.",
   revendicari: "Analizeaza cererile de revendicare a profilurilor.",
   geografie: "Sursa canonica de geografie Vezunde (import SIRUTA).",
@@ -47,7 +49,7 @@ export default function AdminDirectoryOps() {
     );
   }
 
-  const simpleTabsWithHeader = ["adauga", "servicii", "revendicari", "geografie", "audit", "contract_geo"];
+  const simpleTabsWithHeader = ["adauga", "workspace_reviews", "servicii", "revendicari", "geografie", "audit", "contract_geo"];
 
   return (
     <AdminAppShell activeKey={tab} onNavigate={setTab} user={user} onLogout={() => logout(true)}>
@@ -75,6 +77,7 @@ export default function AdminDirectoryOps() {
           <AdminPageHeader title={ADMIN_NAV_LABELS[tab]} subtitle={SIMPLE_HEADERS[tab]} />
           <div className="mt-6">
             {tab === "adauga" && <DirOpsAddLocation />}
+            {tab === "workspace_reviews" && <AdminWorkspaceSubmissionsReview />}
             {tab === "servicii" && <DirOpsServices />}
             {tab === "revendicari" && <DirOpsClaims />}
             {tab === "geografie" && <GeoImport />}
