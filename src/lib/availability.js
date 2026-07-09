@@ -1,8 +1,8 @@
 // Availability is shown ONLY when explicitly published by the provider and not stale.
 export const AVAILABILITY_LABELS = {
-  astazi: "Disponibil astazi",
-  urmatoarele_zile: "Disponibil in urmatoarele zile",
-  saptamana_aceasta: "Disponibil saptamana aceasta",
+  astazi: "Primeste clienti fara programare",
+  urmatoarele_zile: "Primeste clienti si cu programare",
+  saptamana_aceasta: "Walk-in pentru optica, programare pentru consultatii",
   doar_programare: "Doar cu programare",
 };
 

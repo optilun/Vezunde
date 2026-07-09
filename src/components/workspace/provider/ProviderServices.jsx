@@ -1,13 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Plus, Save, Send, X } from "lucide-react";
-import { base44 } from "@/api/base44Client";
-import { SERVICE_GROUPS } from "@/lib/canonicalServiceCatalog";
 import {
-  ADVANCED_CLIENT_NEED_KEYS,
-  CLIENT_NEED_BY_KEY,
   CLIENT_NEED_SECTIONS,
   getSectionSelectedCount,
-  PRIMARY_CLIENT_NEED_KEYS,
 } from "@/lib/servicePresentation";
 import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 
@@ -79,12 +73,12 @@ function NeedOverview({ selected, activeKey, onPick }) {
     <section className="rounded-3xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-heading text-base font-bold tracking-tight">Ce pot face clientii in aceasta locatie?</h2>
+          <h2 className="font-heading text-base font-bold tracking-tight">Ce se poate face in aceasta locatie?</h2>
           <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-            Bifeaza nevoile reale ale clientilor. Detaliile de sub fiecare card sunt folosite pentru recomandari bune, nu trebuie afisate toate public.
+            Alege pe rand zonele care se aplica. Detaliile ajuta recomandarea, iar clientul vede doar categorii simple.
           </p>
         </div>
-        <span className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">matching inteligent</span>
+        <span className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">recomandare mai buna</span>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -102,7 +96,7 @@ function NeedOverview({ selected, activeKey, onPick }) {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-sm font-bold">{section.title}</div>
-                  <p className={`mt-1 text-xs leading-relaxed ${active && !focused ? "text-background/75" : "text-muted-foreground"}`}>Apare public ca: {section.publicLabel}</p>
+                  <p className={`mt-1 text-xs leading-relaxed ${active && !focused ? "text-background/75" : "text-muted-foreground"}`}>Clientul vede: {section.publicLabel}</p>
                 </div>
                 <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${active && !focused ? "bg-background text-foreground" : "bg-card text-muted-foreground"}`}>{count}</span>
               </div>
@@ -139,7 +133,7 @@ function NeedSectionCard({ section, selected, customByGroup, pendingReview, onTo
             {selectedCount > 0 && <span className="rounded-full bg-foreground px-2 py-0.5 text-[10px] font-bold text-background">{selectedCount}</span>}
           </div>
           <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">{section.description}</p>
-          <div className="mt-2 inline-flex rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">Public: {section.publicLabel}</div>
+          <div className="mt-2 inline-flex rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">Clientul vede: {section.publicLabel}</div>
         </div>
         <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold">
           {isOpen ? "Ascunde" : "Detalii"}
@@ -148,11 +142,11 @@ function NeedSectionCard({ section, selected, customByGroup, pendingReview, onTo
       </button>
 
       {section.note && <p className="mt-3 rounded-2xl bg-secondary/45 px-3 py-2 text-xs leading-relaxed text-muted-foreground">{section.note}</p>}
-      {section.specialistNote && <p className="mt-3 rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-950">{section.specialistNote}</p>}
+
 
       {isOpen && (
         <div className="mt-4">
-          <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Particularitati folosite pentru recomandare</div>
+          <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Detalii care ajuta recomandarea</div>
           <div className="flex flex-wrap gap-2">
             {section.items.map((item) => {
               const label = SERVICE_GROUPS[item.group]?.ids?.[item.id] || item.id;
@@ -173,18 +167,18 @@ function NeedSectionCard({ section, selected, customByGroup, pendingReview, onTo
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button type="button" disabled={pendingReview} onClick={() => setShowCustom((v) => !v)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-secondary disabled:opacity-50">
-              <Plus className="h-3.5 w-3.5" /> Propune particularitate
+              <Plus className="h-3.5 w-3.5" /> Adauga alt serviciu
             </button>
           </div>
 
           {showCustom && (
             <div className="mt-3 rounded-2xl border border-dashed border-border bg-secondary/35 p-3">
-              <label className="text-xs font-semibold text-muted-foreground">Particularitate care lipseste din lista</label>
+              <label className="text-xs font-semibold text-muted-foreground">Alt serviciu care lipseste din lista</label>
               <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                <input className={inputCls} value={customLabel} onChange={(e) => setCustomLabel(e.target.value)} placeholder="Ex: lentile scleral, OCT macular, service rapid rame..." onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitCustom(); } }} />
+                <input className={inputCls} value={customLabel} onChange={(e) => setCustomLabel(e.target.value)} placeholder="Ex: service rapid rame, lentile speciale, consult pentru copii..." onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitCustom(); } }} />
                 <button type="button" onClick={submitCustom} className="rounded-xl bg-foreground px-4 py-2 text-xs font-semibold text-background">Adauga in draft</button>
               </div>
-              <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Propunerile manuale sunt trimise la verificare inainte de publicare sau folosire in matching.</p>
+              <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Serviciile adaugate manual sunt verificate inainte de publicare sau folosire in recomandari.</p>
             </div>
           )}
 
@@ -207,44 +201,13 @@ function NeedSectionCard({ section, selected, customByGroup, pendingReview, onTo
   );
 }
 
-function NeedColumn({ title, description, sectionKeys, selected, customByGroup, pendingReview, activeKey, onToggle, onAddCustom, onRemoveCustom, defaultOpenKeys = [] }) {
-  return (
-    <section className="rounded-3xl border border-border bg-background/70 p-3 shadow-sm">
-      <div className="px-2 py-2">
-        <h2 className="font-heading text-base font-bold tracking-tight">{title}</h2>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
-      </div>
-      <div className="mt-2 space-y-3">
-        {sectionKeys.map((key) => {
-          const section = CLIENT_NEED_BY_KEY[key];
-          if (!section) return null;
-          return (
-            <NeedSectionCard
-              key={key}
-              section={section}
-              selected={selected}
-              customByGroup={customByGroup}
-              pendingReview={pendingReview}
-              onToggle={onToggle}
-              onAddCustom={onAddCustom}
-              onRemoveCustom={onRemoveCustom}
-              defaultOpen={defaultOpenKeys.includes(key)}
-              forceOpen={activeKey === key}
-            />
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
 export default function ProviderServices({ locationId, location, overview }) {
   const [draft, setDraft] = useState(null);
   const [selected, setSelected] = useState({});
   const [customRequests, setCustomRequests] = useState([]);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
-  const [activeNeedKey, setActiveNeedKey] = useState(PRIMARY_CLIENT_NEED_KEYS[0]);
+  const [activeNeedKey, setActiveNeedKey] = useState(CLIENT_NEED_SECTIONS[0]?.key || "glasses_lenses");
 
   const approvedCount = overview?.content_summary?.approved_service_count ?? 0;
   const pendingReview = draft?.status === "pending_review";
@@ -260,10 +223,14 @@ export default function ProviderServices({ locationId, location, overview }) {
     return map;
   }, [customRequests]);
 
+  const activeSection = CLIENT_NEED_SECTIONS.find((section) => section.key === activeNeedKey) || CLIENT_NEED_SECTIONS[0];
+
   const load = async () => {
     if (!locationId) return;
     const res = await base44.functions.invoke("submitProviderWorkspaceChange", { action: "list_mine", location_id: locationId }).catch(() => ({ data: { submissions: [] } }));
-    const own = (res.data?.submissions || []).find((s) => s.section === "services" && ["draft", "needs_more_info", "pending_review"].includes(s.status));
+    const serviceSubmissions = (res.data?.submissions || []).filter((s) => s.section === "services" && ["draft", "needs_more_info", "pending_review"].includes(s.status));
+    const pending = serviceSubmissions.find((s) => s.status === "pending_review");
+    const own = pending || serviceSubmissions.find((s) => ["draft", "needs_more_info"].includes(s.status));
     const payload = safeParse(own?.payload_json);
     setDraft(own || null);
     setSelected(payload.selected_ids || {});
@@ -323,15 +290,15 @@ export default function ProviderServices({ locationId, location, overview }) {
     <div className="space-y-4 pb-20">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-extrabold tracking-tight">Ce pot face clientii in aceasta locatie?</h1>
+          <h1 className="font-heading text-2xl font-extrabold tracking-tight">Ce se poate face in aceasta locatie?</h1>
           <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-            Alege nevoile pe care locatia le poate rezolva. Particularitatile raman utile pentru recomandare si matching, iar public afisam doar categorii simple.
+            Selecteaza o zona, apoi bifeaza doar detaliile care se aplica. Pe profilul public afisam simplu; detaliile ajuta recomandarea.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {draft && <span className="rounded-full bg-secondary px-2.5 py-1 font-semibold">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}
           <span className="rounded-full border border-border bg-card px-2.5 py-1 font-semibold text-muted-foreground">{approvedCount} publicate</span>
-          <span className="rounded-full border border-border bg-card px-2.5 py-1 font-semibold text-muted-foreground">{selectedCount} particularitati</span>
+          <span className="rounded-full border border-border bg-card px-2.5 py-1 font-semibold text-muted-foreground">{selectedCount} detalii selectate</span>
         </div>
       </div>
 
@@ -339,35 +306,18 @@ export default function ProviderServices({ locationId, location, overview }) {
 
       <NeedOverview selected={selected} activeKey={activeNeedKey} onPick={setActiveNeedKey} />
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
-        <NeedColumn
-          title="Nevoi uzuale in optica"
-          description="Acestea sunt cele mai importante pentru o optica: ochelari, determinare dioptrii, reparatii, lentile speciale, lentile de contact si copii."
-          sectionKeys={PRIMARY_CLIENT_NEED_KEYS}
+      {activeSection && (
+        <NeedSectionCard
+          section={activeSection}
           selected={selected}
           customByGroup={customByGroup}
           pendingReview={pendingReview}
-          activeKey={activeNeedKey}
           onToggle={toggle}
           onAddCustom={addCustom}
           onRemoveCustom={removeCustom}
-          defaultOpenKeys={["buy_glasses", "eye_test", "repairs_adjustments"]}
+          forceOpen
         />
-
-        <NeedColumn
-          title="Cabinet, specializari si investigatii"
-          description="Completeaza doar daca locatia are medic, cabinet, aparatura sau proceduri. Aceste date trebuie tratate mai atent la review."
-          sectionKeys={ADVANCED_CLIENT_NEED_KEYS}
-          selected={selected}
-          customByGroup={customByGroup}
-          pendingReview={pendingReview}
-          activeKey={activeNeedKey}
-          onToggle={toggle}
-          onAddCustom={addCustom}
-          onRemoveCustom={removeCustom}
-          defaultOpenKeys={[]}
-        />
-      </div>
+      )}
 
       <div className="sticky bottom-0 -mx-1 rounded-2xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="flex flex-wrap items-center gap-2">
