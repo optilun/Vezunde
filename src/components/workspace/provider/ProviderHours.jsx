@@ -42,10 +42,56 @@ function initialState(location = {}) {
   };
 }
 
+function normalizeTime(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const digits = raw.replace(/[^0-9]/g, "");
+  let hh = "";
+  let mm = "";
+
+  if (/^\d{1,2}:\d{1,2}$/.test(raw)) {
+    const parts = raw.split(":");
+    hh = parts[0];
+    mm = parts[1];
+  } else if (digits.length === 1 || digits.length === 2) {
+    hh = digits;
+    mm = "00";
+  } else if (digits.length === 3) {
+    hh = digits.slice(0, 1);
+    mm = digits.slice(1);
+  } else if (digits.length >= 4) {
+    hh = digits.slice(0, 2);
+    mm = digits.slice(2, 4);
+  } else {
+    return raw;
+  }
+
+  const h = Number(hh);
+  const m = Number(mm);
+  if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || h > 23 || m < 0 || m > 59) return raw;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function TimeField({ value, disabled, onChange, placeholder = "09:00" }) {
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      maxLength={5}
+      disabled={disabled}
+      className={`${inputCls} font-mono tabular-nums disabled:opacity-50`}
+      value={value || ""}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value.replace(/[^0-9:]/g, "").slice(0, 5))}
+      onBlur={(e) => onChange(normalizeTime(e.target.value))}
+    />
+  );
+}
+
 function formatDay(day) {
   if (!day?.open) return "Inchis";
   if (!day.from || !day.to) return "Program necompletat";
-  return `${day.from} - ${day.to}`;
+  return `${normalizeTime(day.from)} - ${normalizeTime(day.to)}`;
 }
 
 function formatWeeklyText(weekly) {
@@ -88,11 +134,11 @@ function ExceptionRow({ item, index, onChange, onRemove }) {
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="text-[11px] font-semibold text-muted-foreground">De la ora</label>
-            <input type="time" disabled={closed} className={`${inputCls} mt-1 disabled:opacity-50`} value={item.from || ""} onChange={(e) => onChange(index, { ...item, from: e.target.value })} />
+            <div className="mt-1"><TimeField disabled={closed} value={item.from || ""} onChange={(value) => onChange(index, { ...item, from: value })} /></div>
           </div>
           <div>
             <label className="text-[11px] font-semibold text-muted-foreground">Pana la</label>
-            <input type="time" disabled={closed} className={`${inputCls} mt-1 disabled:opacity-50`} value={item.to || ""} onChange={(e) => onChange(index, { ...item, to: e.target.value })} />
+            <div className="mt-1"><TimeField disabled={closed} value={item.to || ""} onChange={(value) => onChange(index, { ...item, to: value })} placeholder="18:00" /></div>
           </div>
         </div>
         <button type="button" onClick={() => onRemove(index)} className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 hover:bg-secondary">
@@ -151,18 +197,24 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
 
   const save = async () => {
     setSaving(true); setMsg("");
-    const opening_hours_json = JSON.stringify({ weekly: state.weekly, exceptions: state.exceptions });
+    const normalizedWeekly = Object.fromEntries(DAYS.map(([key]) => {
+      const day = state.weekly[key];
+      return [key, day.open ? { ...day, from: normalizeTime(day.from), to: normalizeTime(day.to) } : { open: false, from: "", to: "" }];
+    }));
+    const normalizedExceptions = state.exceptions.map((item) => item.type === "closed" ? { ...item, from: "", to: "" } : { ...item, from: normalizeTime(item.from), to: normalizeTime(item.to) });
+    const opening_hours_json = JSON.stringify({ weekly: normalizedWeekly, exceptions: normalizedExceptions });
     const payload = {
       location_id: locationId,
       opening_hours_json,
-      opening_hours: weeklyText,
-      saturday_hours: formatSaturdayText(state.weekly),
+      opening_hours: formatWeeklyText(normalizedWeekly),
+      saturday_hours: formatSaturdayText(normalizedWeekly),
       availability_status: state.availability_status,
       availability_updated_at: new Date().toISOString(),
     };
     const res = await base44.functions.invoke("saveProviderRoutineProfile", payload).catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
     setSaving(false);
     if (res.data?.error) { setMsg(res.data.error); return; }
+    setState((cur) => ({ ...cur, weekly: normalizedWeekly, exceptions: normalizedExceptions }));
     setMsg("Programul a fost salvat. Programul special se aplica doar pe intervalul setat, apoi revine la programul normal.");
     onRefresh && onRefresh();
   };
@@ -185,10 +237,10 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-sm font-bold">Program saptamanal</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Completeaza intervalul de lucru pentru fiecare zi.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Completeaza intervalul de lucru pentru fiecare zi. Formatul orei este 24h: 09:00, 18:00.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => applyPreset("standard")} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary">L-V 09-18, S 09-14</button>
+            <button type="button" onClick={() => applyPreset("standard")} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary">L-V 09:00-18:00, S 09:00-14:00</button>
             <button type="button" onClick={() => applyPreset("copy_monday")} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary">Copiaza luni</button>
             <button type="button" onClick={() => applyPreset("weekend_closed")} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary">Weekend inchis</button>
           </div>
@@ -204,8 +256,8 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
                   <option value="open">Deschis</option>
                   <option value="closed">Inchis</option>
                 </select>
-                <input type="time" disabled={!day.open} className={`${inputCls} disabled:opacity-50`} value={day.from || ""} onChange={(e) => updateDay(key, { from: e.target.value })} />
-                <input type="time" disabled={!day.open} className={`${inputCls} disabled:opacity-50`} value={day.to || ""} onChange={(e) => updateDay(key, { to: e.target.value })} />
+                <TimeField disabled={!day.open} value={day.from || ""} onChange={(value) => updateDay(key, { from: value })} />
+                <TimeField disabled={!day.open} value={day.to || ""} onChange={(value) => updateDay(key, { to: value })} placeholder="18:00" />
               </div>
             );
           })}
@@ -249,7 +301,7 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
           <div className="rounded-2xl bg-secondary/45 px-4 py-3">
             <div className="text-[11px] font-semibold text-muted-foreground">Urmatoarea exceptie</div>
             <p className="mt-1 text-sm font-semibold leading-relaxed">
-              {upcoming ? `${upcoming.start_date} - ${upcoming.end_date}: ${upcoming.type === "closed" ? "Inchis" : `${upcoming.from || "--:--"} - ${upcoming.to || "--:--"}`} ${upcoming.public_note ? `· ${upcoming.public_note}` : ""}` : "Nu exista exceptii viitoare"}
+              {upcoming ? `${upcoming.start_date} - ${upcoming.end_date}: ${upcoming.type === "closed" ? "Inchis" : `${normalizeTime(upcoming.from) || "--:--"} - ${normalizeTime(upcoming.to) || "--:--"}`} ${upcoming.public_note ? `· ${upcoming.public_note}` : ""}` : "Nu exista exceptii viitoare"}
             </p>
           </div>
         </div>
