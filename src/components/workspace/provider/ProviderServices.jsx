@@ -128,7 +128,7 @@ function GroupList({ groups, selected, customByGroup, pendingReview, onToggle, o
   );
 }
 
-export default function ProviderServices({ locationId, location, overview, onRefresh }) {
+export default function ProviderServices({ locationId, location, overview }) {
   const [draft, setDraft] = useState(null);
   const [selected, setSelected] = useState({});
   const [customRequests, setCustomRequests] = useState([]);
@@ -201,9 +201,8 @@ export default function ProviderServices({ locationId, location, overview, onRef
     const res = await base44.functions.invoke("submitProviderWorkspaceChange", { action, submission_id: draft?.id, location_id: locationId, section: "services", payload }).catch((e) => ({ data: { error: e.response?.data?.error || e.message, fields: e.response?.data?.fields || [] } }));
     setSaving(false);
     if (res.data?.error) { setMsg(res.data.fields?.length ? `${res.data.error}: ${res.data.fields.join(", ")}` : res.data.error); return; }
-    setMsg("Draft salvat. Trimite-l spre review cand este pregatit.");
-    load();
-    onRefresh && onRefresh();
+    setMsg("Draft salvat. Poti trimite acum spre review, fara sa inchizi fereastra.");
+    await load();
   };
 
   const submit = async () => {
@@ -212,9 +211,8 @@ export default function ProviderServices({ locationId, location, overview, onRef
     const res = await base44.functions.invoke("submitProviderWorkspaceChange", { action: "submit", submission_id: draft.id, location_id: locationId, section: "services" }).catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
     setSaving(false);
     if (res.data?.error) { setMsg(res.data.error); return; }
-    setMsg("Serviciile au fost trimise spre review.");
-    load();
-    onRefresh && onRefresh();
+    setMsg("Serviciile au fost trimise spre review. Fereastra poate ramane deschisa pentru verificare.");
+    await load();
   };
 
   return (
