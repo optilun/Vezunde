@@ -18,6 +18,22 @@ function countSelected(selected) {
   return Object.values(selected || {}).reduce((sum, list) => sum + (Array.isArray(list) ? list.length : 0), 0);
 }
 
+function normalizeSuggestions(payload = {}) {
+  if (Array.isArray(payload.suggestions)) return payload.suggestions;
+  if (Array.isArray(payload.custom_requests)) {
+    return payload.custom_requests.map((item) => ({
+      group: item.group || "patient_services",
+      label: item.label || "",
+      note: item.note || "",
+    })).filter((item) => item.label);
+  }
+  return [];
+}
+
+function makeSuggestion(group, label) {
+  return { group, label, note: "Propus din workspace furnizor" };
+}
+
 function GroupCard({ groupKey, def, selectedIds, customItems, pendingReview, onToggle, onAddCustom, onRemoveCustom, compact = false }) {
   const [showCustom, setShowCustom] = useState(false);
   const [customLabel, setCustomLabel] = useState("");
@@ -144,7 +160,7 @@ export default function ProviderServices({ locationId, location, overview, onRef
   const customByGroup = useMemo(() => {
     const map = {};
     for (const item of customRequests) {
-      const group = item.group || "other";
+      const group = item.group || "patient_services";
       map[group] = map[group] || [];
       map[group].push(item);
     }
@@ -158,7 +174,7 @@ export default function ProviderServices({ locationId, location, overview, onRef
     const payload = safeParse(own?.payload_json);
     setDraft(own || null);
     setSelected(payload.selected_ids || {});
-    setCustomRequests(Array.isArray(payload.custom_requests) ? payload.custom_requests : []);
+    setCustomRequests(normalizeSuggestions(payload));
   };
 
   useEffect(() => { load(); setShowMore(false); }, [locationId]);
@@ -174,7 +190,7 @@ export default function ProviderServices({ locationId, location, overview, onRef
     if (pendingReview) return;
     const exists = customRequests.some((item) => item.group === group && item.label.toLowerCase() === label.toLowerCase());
     if (exists) return;
-    setCustomRequests([...customRequests, { group, label, status: "requested" }]);
+    setCustomRequests([...customRequests, makeSuggestion(group, label)]);
   };
 
   const removeCustom = (group, indexInGroup) => {
@@ -190,16 +206,16 @@ export default function ProviderServices({ locationId, location, overview, onRef
   const save = async () => {
     setSaving(true); setMsg("");
     const action = draft && draft.status !== "pending_review" ? "update_draft" : "create_draft";
-    const payload = { selected_ids: selected, custom_requests: customRequests };
+    const payload = { selected_ids: selected, removal_ids: {}, suggestions: customRequests };
     const res = await base44.functions.invoke("submitProviderWorkspaceChange", {
       action,
       submission_id: draft?.id,
       location_id: locationId,
       section: "services",
       payload,
-    }).catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
+    }).catch((e) => ({ data: { error: e.response?.data?.error || e.message, fields: e.response?.data?.fields || [] } }));
     setSaving(false);
-    if (res.data?.error) { setMsg(res.data.error); return; }
+    if (res.data?.error) { setMsg(res.data.fields?.length ? `${res.data.error}: ${res.data.fields.join(", ")}` : res.data.error); return; }
     setMsg("Draft salvat. Trimite-l spre review cand este pregatit.");
     load();
     onRefresh && onRefresh();
@@ -247,11 +263,7 @@ export default function ProviderServices({ locationId, location, overview, onRef
 
       {secondaryGroups.length > 0 && (
         <section className="rounded-2xl border border-border bg-card shadow-sm">
-          <button
-            type="button"
-            onClick={() => setShowMore((v) => !v)}
-            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-          >
+          <button type="button" onClick={() => setShowMore((v) => !v)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
             <div>
               <div className="text-sm font-bold">Alte servicii disponibile</div>
               <p className="mt-1 text-xs text-muted-foreground">Categorii suplimentare. Deschide doar daca locatia ofera si aceste servicii.</p>
