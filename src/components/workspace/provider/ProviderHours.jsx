@@ -25,12 +25,12 @@ const DEFAULT_WEEKLY = {
   sunday: { open: false, from: "", to: "" },
 };
 
-const AVAILABILITY_HELP = {
-  necunoscuta: "Nu afiseaza pe profil un mesaj despre cat de repede poate primi locatia programari. Recomandat ca setare implicita pana exista un flux real de programari.",
-  astazi: "Afiseaza un semnal public ca locatia poate primi solicitari sau programari chiar astazi. Foloseste doar daca informatia este reala si actualizata.",
-  urmatoarele_zile: "Afiseaza ca locatia poate primi programari in urmatoarele zile. Util pentru locatii cu disponibilitate apropiata, dar nu neaparat in aceeasi zi.",
-  saptamana_aceasta: "Afiseaza ca locatia poate primi programari in cursul saptamanii. Este o optiune mai prudenta decat disponibil astazi.",
-  doar_programare: "Afiseaza ca vizitele se fac doar cu programare. Nu promite un termen, ci clarifica regula de acces.",
+const ACCESS_MODE_HELP = {
+  necunoscuta: "Nu se afiseaza public o regula despre accesul in locatie. Recomandat daca nu vrei sa promiti walk-in sau programari pana nu este clar fluxul intern.",
+  astazi: "Pot veni clienti direct in locatie, fara programare prealabila. Potrivit mai ales pentru optici, reglaje, rame, accesorii sau informatii generale.",
+  urmatoarele_zile: "Locatia accepta si clienti fara programare, dar poate gestiona si programari. Potrivit pentru locatii mixte, cu optica si servicii de consultatie.",
+  saptamana_aceasta: "Clientii pot veni direct pentru servicii de optica, dar consultatiile sau serviciile medicale necesita programare. Potrivit pentru optici cu cabinet optometric sau oftalmologic.",
+  doar_programare: "Vizitele se fac doar cu programare. Potrivit pentru cabinete, clinici sau servicii care necesita specialist si timp rezervat.",
 };
 
 function safeParse(raw) {
@@ -168,7 +168,7 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
 
   const upcoming = useMemo(() => nextException(state.exceptions), [state.exceptions]);
   const weeklyText = useMemo(() => formatWeeklyText(state.weekly), [state.weekly]);
-  const availabilityHelp = AVAILABILITY_HELP[state.availability_status] || AVAILABILITY_HELP.necunoscuta;
+  const accessModeHelp = ACCESS_MODE_HELP[state.availability_status] || ACCESS_MODE_HELP.necunoscuta;
 
   const updateDay = (key, patch) => {
     setState((cur) => ({ ...cur, weekly: { ...cur.weekly, [key]: { ...cur.weekly[key], ...patch } } }));
@@ -224,7 +224,7 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
     setSaving(false);
     if (res.data?.error) { setMsg(res.data.error); return; }
     setState((cur) => ({ ...cur, weekly: normalizedWeekly, exceptions: normalizedExceptions }));
-    setMsg("Programul a fost salvat. Programul special se aplica doar pe intervalul setat, apoi revine la programul normal.");
+    setMsg("Programul si modul de primire au fost salvate.");
     onRefresh && onRefresh();
   };
 
@@ -317,20 +317,20 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
         <div className="mt-4 rounded-2xl border border-border bg-secondary/30 p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <label className="text-sm font-bold">Disponibilitate pentru programari</label>
+              <label className="text-sm font-bold">Mod de primire clienti si pacienti</label>
               <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
-                Acest camp nu modifica programul de lucru. El controleaza doar mesajul public despre cat de repede poate primi locatia solicitari sau programari.
+                Stabileste cum poate ajunge un client sau pacient la aceasta locatie. Informatia se afiseaza public langa program si nu modifica orele de lucru.
               </p>
             </div>
             <span className="rounded-full bg-card px-3 py-1 text-[11px] font-semibold text-muted-foreground">Optional</span>
           </div>
-          <select className={`${inputCls} mt-3 max-w-md`} value={state.availability_status} onChange={(e) => setState({ ...state, availability_status: e.target.value })}>
-            <option value="necunoscuta">Nu afisa disponibilitatea</option>
+          <select className={`${inputCls} mt-3 max-w-lg`} value={state.availability_status} onChange={(e) => setState({ ...state, availability_status: e.target.value })}>
+            <option value="necunoscuta">Nu afisa aceasta informatie</option>
             {Object.entries(AVAILABILITY_OPTIONS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
           <div className="mt-3 flex items-start gap-2 rounded-2xl border border-border bg-card px-3 py-2 text-xs leading-relaxed text-muted-foreground">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>{availabilityHelp}</span>
+            <span>{accessModeHelp}</span>
           </div>
         </div>
       </section>
