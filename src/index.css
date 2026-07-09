@@ -118,6 +118,13 @@
   --input: 43 13% 90%;
 }
 
+/* Softer selected cards in provider/admin workspace. Keeps the selected state visible
+   without the harsh black outline from border-foreground. */
+.workspace-neutral .border-foreground.shadow-sm {
+  border-color: hsl(var(--border)) !important;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 0 0 1px rgb(0 0 0 / 0.025) !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
