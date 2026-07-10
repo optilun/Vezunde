@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   getCanonicalServiceDefinition,
+  isServiceMatchingEligible,
   normalizeServiceKey,
 } from '../../../shared/canonicalServiceRegistry.js';
 
@@ -10,6 +11,12 @@ import {
 // Module 3F.2.2: city/county are compatibility mirrors — never applied from staged
 // free text. Geography changes are applied only via a validated locality_siruta_code.
 const STAGED_FIELDS = ['name', 'address', 'phone_public', 'public_email', 'website', 'description', 'provider_type', 'photo_url'];
+
+function cleanServiceKeys(value) {
+  return [...new Set((Array.isArray(value) ? value : [])
+    .map((key) => String(key || '').trim())
+    .filter(Boolean))];
+}
 
 Deno.serve(async (req) => {
   try {
@@ -37,9 +44,8 @@ Deno.serve(async (req) => {
       for (const k of STAGED_FIELDS) {
         if (fields[k] !== undefined) upd[k] = fields[k];
       }
-      // Module 3F.2.2: staged locality change — all geographic mirror fields are
-      // derived ONLY from GeographicLocality. Legacy staged free-text city/county
-      // (if present in old pending payloads) are never applied.
+
+      // Validate every dependency before the first write, preventing partial approval.
       if (fields.locality_siruta_code !== undefined) {
         const code = String(fields.locality_siruta_code || '').trim();
         const geoRows = await svc.entities.GeographicLocality.filter({ siruta_code: code, is_active: true });
@@ -54,16 +60,13 @@ Deno.serve(async (req) => {
         upd.city = geo.name;
         upd.county = geo.county_name || '';
       }
-      await svc.entities.ProviderLocation.update(loc.id, upd);
 
+      let servicePlan = null;
       if (Array.isArray(changes.services)) {
-        // NEVER bulk delete/recreate services — that would destroy trust/evidence
-        // metadata. Existing legacy/unknown rows may be preserved by exact key, but
-        // this legacy path cannot create a new non-canonical row.
         const existing = await svc.entities.LocationService.filter({ location_id: loc.id }, null, 500);
         const byKey = {};
         for (const service of existing) byKey[String(service.service_key || '').trim()] = service;
-        const wantedKeys = [...new Set(changes.services.map((key) => String(key || '').trim()).filter(Boolean))];
+        const wantedKeys = cleanServiceKeys(changes.services);
         const invalidNewKeys = wantedKeys.filter((key) => !byKey[key] && normalizeServiceKey(key).status !== 'canonical');
         if (invalidNewKeys.length > 0) {
           return Response.json({
@@ -71,16 +74,23 @@ Deno.serve(async (req) => {
             fields: invalidNewKeys,
           }, { status: 400 });
         }
+        servicePlan = { existing, byKey, wantedKeys, wanted: new Set(wantedKeys) };
+      }
 
-        const wanted = new Set(wantedKeys);
-        for (const serviceKey of wantedKeys) {
-          const current = byKey[serviceKey];
+      await svc.entities.ProviderLocation.update(loc.id, upd);
+
+      if (servicePlan) {
+        // NEVER bulk delete/recreate services — that would destroy trust/evidence
+        // metadata. Existing legacy/unknown rows may be preserved by exact key, but
+        // this legacy path cannot create a new non-canonical row.
+        for (const serviceKey of servicePlan.wantedKeys) {
+          const current = servicePlan.byKey[serviceKey];
           if (current) {
             if (current.is_active === false) {
               await svc.entities.LocationService.update(current.id, {
                 is_active: true,
-                // Existing trust data is preserved; matching is never enabled here.
-                matching_allowed: current.matching_allowed === true,
+                accepts_requests: current.accepts_requests !== false,
+                matching_allowed: isServiceMatchingEligible({ ...current, is_active: true }, loc),
               });
             }
             continue;
@@ -104,8 +114,8 @@ Deno.serve(async (req) => {
 
         // Removal requests: soft-deactivate (auditable), never hard-delete rows that
         // may carry verification/evidence history.
-        for (const service of existing) {
-          if (!wanted.has(service.service_key) && service.is_active !== false) {
+        for (const service of servicePlan.existing) {
+          if (!servicePlan.wanted.has(service.service_key) && service.is_active !== false) {
             await svc.entities.LocationService.update(service.id, {
               is_active: false,
               accepts_requests: false,
@@ -114,6 +124,7 @@ Deno.serve(async (req) => {
           }
         }
       }
+
       if (Array.isArray(changes.specializations)) {
         await svc.entities.LocationSpecialization.deleteMany({ location_id: loc.id });
         if (changes.specializations.length > 0) {
