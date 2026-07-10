@@ -1,10 +1,10 @@
 export const CLIENT_NEED_SECTIONS = [
   {
     key: "glasses_lenses",
-    title: "Ochelari si lentile",
-    publicLabel: "Ochelari si lentile",
-    description: "Produse si solutii optice disponibile in locatie.",
-    note: "Pentru multe optici, rame si lentile sunt standard. Detaliile ajuta recomandarea sa aleaga mai bine intre locatii.",
+    title: "Ochelari și lentile",
+    publicLabel: "Ochelari și lentile",
+    description: "Produse și soluții optice disponibile în această locație.",
+    note: "Selectează doar produsele și opțiunile disponibile aici. Detaliile ajută Vezunde să recomande locația potrivită.",
     items: [
       { group: "optical_retail", id: "eyeglasses" },
       { group: "optical_retail", id: "frames" },
@@ -30,7 +30,7 @@ export const CLIENT_NEED_SECTIONS = [
     key: "eye_test",
     title: "Control vedere / dioptrii",
     publicLabel: "Control vedere",
-    description: "Evaluari optometrice si masuratori pentru recomandarea corectiei vizuale.",
+    description: "Evaluări optometrice și măsurători pentru corecția vizuală.",
     items: [
       { group: "optometry", id: "refraction" },
       { group: "optometry", id: "optometry_consultation" },
@@ -44,9 +44,9 @@ export const CLIENT_NEED_SECTIONS = [
   },
   {
     key: "repairs",
-    title: "Reglaje si reparatii",
-    publicLabel: "Reparatii si reglaje",
-    description: "Servicii de atelier pentru rame, lentile si mici interventii rapide la ochelari.",
+    title: "Reglaje și reparații",
+    publicLabel: "Reparații și reglaje",
+    description: "Servicii de atelier pentru rame, lentile și ajustarea ochelarilor.",
     items: [
       { group: "technical_activities", id: "eyeglasses_adjustment" },
       { group: "technical_activities", id: "eyeglasses_repair" },
@@ -62,7 +62,7 @@ export const CLIENT_NEED_SECTIONS = [
     key: "contact_lenses",
     title: "Lentile de contact",
     publicLabel: "Lentile de contact",
-    description: "Consult, adaptare, proba si monitorizare pentru lentile de contact.",
+    description: "Consult, adaptare, probă și monitorizare pentru lentile de contact.",
     items: [
       { group: "contact_lenses", id: "contact_lenses" },
       { group: "contact_lenses", id: "contact_lens_consultation" },
@@ -79,7 +79,7 @@ export const CLIENT_NEED_SECTIONS = [
     key: "children",
     title: "Copii",
     publicLabel: "Servicii pentru copii",
-    description: "Produse, evaluari si monitorizare pentru copii.",
+    description: "Produse, evaluări și monitorizare pentru copii.",
     items: [
       { group: "optical_retail", id: "children_frames" },
       { group: "children_and_prevention", id: "children_eye_exam" },
@@ -93,9 +93,10 @@ export const CLIENT_NEED_SECTIONS = [
   },
   {
     key: "medical",
-    title: "Cabinet medical / investigatii",
-    publicLabel: "Consultatii si investigatii",
-    description: "Pentru locatii cu medic, cabinet, aparatura, specializari sau proceduri oftalmologice.",
+    title: "Cabinet medical / investigații",
+    publicLabel: "Consultații și investigații",
+    description: "Pentru locații cu medic, cabinet, aparatură sau servicii oftalmologice specializate.",
+    note: "Serviciile medicale sunt verificate înainte de a fi folosite în recomandări.",
     items: [
       { group: "ophthalmology_consults", id: "ophthalmology_consultation" },
       { group: "ophthalmology_consults", id: "complete_eye_exam" },
