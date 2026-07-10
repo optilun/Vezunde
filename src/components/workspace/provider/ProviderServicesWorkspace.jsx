@@ -3,18 +3,13 @@ import {
   AlertTriangle,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
-  CircleDot,
-  FlaskConical,
-  Glasses,
-  ListFilter,
   Plus,
   Save,
   Search,
   Send,
   ShieldCheck,
-  Sparkles,
-  Stethoscope,
   X,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -25,14 +20,7 @@ import {
 } from "@/lib/providerServiceWorkspaceSections";
 import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 
-const inputCls = "w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none transition focus:border-foreground/40 focus:ring-2 focus:ring-foreground/5";
-
-const AREA_ICONS = {
-  optical: Glasses,
-  clinical: Stethoscope,
-  specialties: CircleDot,
-  procedures: FlaskConical,
-};
+const inputCls = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-foreground/40 focus:ring-2 focus:ring-foreground/5";
 
 const PROFILE_TYPE_LABELS = {
   independent_optical_store: "optică medicală",
@@ -198,13 +186,10 @@ function buildSectionModels(layout, selected) {
       return false;
     });
     const primaryItems = items.filter((item) => primaryGroups.has(item.group));
-    const optionalItems = items.filter((item) => !primaryGroups.has(item.group));
     const selectedCount = sectionSelectedCount(selected, { ...section, items });
     return {
       ...section,
       items,
-      primaryItems,
-      optionalItems,
       selectedCount,
       isPrimary: primaryItems.length > 0,
       recommended: primaryItems.length > 0 || selectedCount > 0,
@@ -213,70 +198,62 @@ function buildSectionModels(layout, selected) {
 }
 
 function prerequisiteTone(prerequisite) {
-  if (!prerequisite) return "neutral";
-  if (prerequisite.status === "available") return "available";
+  if (!prerequisite || prerequisite.status === "available") return "available";
   if (prerequisite.eligible) return "review";
   return "blocked";
 }
 
 function prerequisiteDescription(prerequisite) {
-  if (!prerequisite) return "Disponibil pentru configurare.";
-  if (prerequisite.status === "available") return "Poate fi activat pentru această locație.";
-  if (prerequisite.eligible) return "Cerințele sunt îndeplinite; serviciul va fi verificat înainte de publicare.";
+  if (!prerequisite || prerequisite.status === "available") return "Disponibil pentru această locație.";
+  if (prerequisite.eligible) return "Cerințele sunt îndeplinite. Va fi verificat înainte de publicare.";
   return prerequisite.blockers?.[0]?.message || prerequisite.status_label || "Există cerințe neîndeplinite.";
 }
 
-function ServiceStatus({ prerequisite, compact = false }) {
+function ServiceStatus({ prerequisite }) {
   const tone = prerequisiteTone(prerequisite);
   const labels = {
     available: "Disponibil",
-    review: prerequisite?.status_label || "Pregătit pentru verificare",
+    review: prerequisite?.status_label || "Necesită verificare",
     blocked: prerequisite?.status_label || "Cerințe lipsă",
-    neutral: "Disponibil",
   };
   const classes = {
-    available: "border-green-200 bg-green-50 text-green-800",
+    available: "border-border bg-secondary/55 text-muted-foreground",
     review: "border-blue-200 bg-blue-50 text-blue-800",
     blocked: "border-amber-200 bg-amber-50 text-amber-900",
-    neutral: "border-border bg-secondary text-muted-foreground",
   };
   const Icon = tone === "blocked" ? AlertTriangle : tone === "review" ? ShieldCheck : CheckCircle2;
+
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border font-semibold ${compact ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-1 text-[11px]"} ${classes[tone]}`}>
+    <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${classes[tone]}`}>
       <Icon className="h-3 w-3" /> {labels[tone]}
     </span>
   );
 }
 
-function ServiceTile({ item, selected, prerequisite, disabled, onToggle }) {
+function ServiceRow({ item, selected, prerequisite, disabled, onToggle }) {
   const active = isSelected(selected, item);
   const incompatible = prerequisite?.status === "incompatible_profile";
-  const blocked = prerequisite?.eligible === false;
+
   return (
     <button
       type="button"
       disabled={disabled || incompatible}
       onClick={() => onToggle(item.group, item.id)}
-      className={`group flex min-h-[138px] flex-col rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-55 ${active ? "border-foreground bg-foreground text-background shadow-sm" : "border-border bg-card hover:border-foreground/30 hover:shadow-sm"}`}
+      className={`flex w-full items-start gap-3 rounded-2xl border px-4 py-3.5 text-left transition disabled:cursor-not-allowed disabled:opacity-55 ${active ? "border-foreground/25 bg-secondary/65 shadow-sm" : "border-border bg-card hover:border-foreground/20 hover:bg-secondary/25"}`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${active ? "border-background/40 bg-background text-foreground" : "border-border bg-secondary text-muted-foreground"}`}>
-          {active ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-        </span>
-        <ServiceStatus prerequisite={prerequisite} compact />
-      </div>
-      <div className="mt-3 text-sm font-bold leading-snug">{serviceLabel(item)}</div>
-      <div className={`mt-1 text-[11px] font-semibold ${active ? "text-background/65" : "text-muted-foreground"}`}>
-        {SERVICE_GROUPS[item.group]?.label || item.group}
-      </div>
-      <p className={`mt-auto pt-3 text-[11px] leading-relaxed ${active ? "text-background/70" : blocked ? "text-amber-800" : "text-muted-foreground"}`}>
-        {prerequisiteDescription(prerequisite)}
-      </p>
+      <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${active ? "border-foreground bg-foreground text-background" : "border-border bg-background text-muted-foreground"}`}>
+        {active && <Check className="h-3.5 w-3.5" />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-bold leading-snug text-foreground">{serviceLabel(item)}</span>
+        <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">{prerequisiteDescription(prerequisite)}</span>
+      </span>
+      <ServiceStatus prerequisite={prerequisite} />
     </button>
   );
 }
 
-function CategoryRail({ sections, selected, activeKey, onPick }) {
+function CategorySelector({ sections, selected, activeKey, onPick }) {
   const byArea = Object.fromEntries(PROVIDER_SERVICE_AREAS.map((area) => [area.key, []]));
   sections.forEach((section) => {
     byArea[section.area] = byArea[section.area] || [];
@@ -284,22 +261,19 @@ function CategoryRail({ sections, selected, activeKey, onPick }) {
   });
 
   return (
-    <aside className="rounded-3xl border border-border bg-card p-3 shadow-sm lg:sticky lg:top-4 lg:self-start">
-      <div className="px-2 pb-3 pt-1">
-        <div className="text-sm font-bold">Categorii și specializări</div>
+    <aside className="rounded-[24px] border border-border bg-card p-4 shadow-sm xl:sticky xl:top-4 xl:self-start">
+      <div className="mb-4">
+        <h2 className="text-sm font-bold">Categorii</h2>
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Alege o categorie pentru a configura serviciile locației.</p>
       </div>
       <div className="space-y-4">
         {PROVIDER_SERVICE_AREAS.map((area) => {
           const areaSections = byArea[area.key] || [];
           if (areaSections.length === 0) return null;
-          const AreaIcon = AREA_ICONS[area.key] || ListFilter;
           return (
             <div key={area.key}>
-              <div className="flex items-center gap-2 px-2 pb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                <AreaIcon className="h-3.5 w-3.5" /> {area.label}
-              </div>
-              <div className="space-y-1.5">
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{area.label}</div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-1">
                 {areaSections.map((section) => {
                   const count = sectionSelectedCount(selected, section);
                   const active = activeKey === section.key;
@@ -308,16 +282,15 @@ function CategoryRail({ sections, selected, activeKey, onPick }) {
                       key={section.key}
                       type="button"
                       onClick={() => onPick(section.key)}
-                      className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition ${active ? "border-foreground bg-foreground text-background" : "border-transparent bg-secondary/40 hover:border-border hover:bg-secondary"}`}
+                      className={`flex min-h-[58px] w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition ${active ? "border-foreground/25 bg-secondary/75 shadow-sm" : "border-border/70 bg-background hover:border-foreground/20 hover:bg-secondary/30"}`}
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-xs font-bold">{section.title}</div>
-                        <div className={`mt-0.5 text-[10px] ${active ? "text-background/65" : "text-muted-foreground"}`}>
-                          {section.isPrimary ? "Recomandat pentru locație" : "Categorie suplimentară"}
-                        </div>
-                      </div>
-                      {count > 0 && <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${active ? "bg-background text-foreground" : "bg-card text-foreground"}`}>{count}</span>}
-                      <ChevronRight className={`h-3.5 w-3.5 shrink-0 ${active ? "text-background/70" : "text-muted-foreground"}`} />
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${active ? "bg-foreground" : "bg-border"}`} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-xs font-bold leading-snug">{section.title}</span>
+                        <span className="mt-0.5 block text-[10px] text-muted-foreground">{section.isPrimary ? "Recomandat pentru locație" : "Categorie suplimentară"}</span>
+                      </span>
+                      {count > 0 && <span className="rounded-full bg-card px-2 py-0.5 text-[10px] font-bold text-foreground">{count}</span>}
+                      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     </button>
                   );
                 })}
@@ -344,10 +317,10 @@ function CustomServiceBox({ section, pendingReview, customItems, onAddCustom, on
   };
 
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-secondary/25 p-4">
+    <div className="rounded-2xl border border-dashed border-border bg-secondary/20 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-xs font-bold">Serviciu care nu apare în listă</div>
+          <div className="text-xs font-bold">Nu găsești serviciul?</div>
           <p className="mt-1 text-[11px] text-muted-foreground">Îl poți propune manual. Va fi verificat înainte de publicare.</p>
         </div>
         <button type="button" disabled={pendingReview} onClick={() => setOpen((value) => !value)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-secondary disabled:opacity-50">
@@ -369,7 +342,7 @@ function CustomServiceBox({ section, pendingReview, customItems, onAddCustom, on
               }
             }}
           />
-          <button type="button" onClick={submit} className="rounded-2xl bg-foreground px-4 py-2.5 text-xs font-semibold text-background">Adaugă în draft</button>
+          <button type="button" onClick={submit} className="rounded-xl bg-foreground px-4 py-2.5 text-xs font-semibold text-background">Adaugă în draft</button>
         </div>
       )}
 
@@ -394,17 +367,16 @@ function CustomServiceBox({ section, pendingReview, customItems, onAddCustom, on
 function SectionDetail({ section, selected, prerequisitesByKey, customItems, pendingReview, onToggle, onAddCustom, onRemoveCustom }) {
   if (!section) return null;
   return (
-    <section className="rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5">
+    <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-heading text-lg font-extrabold tracking-tight">{section.title}</h2>
-            {!section.isPrimary && <span className="rounded-full border border-border bg-secondary px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">Suplimentar pentru acest profil</span>}
+            <h2 className="font-heading text-lg font-bold tracking-tight">{section.title}</h2>
+            {!section.isPrimary && <span className="rounded-full border border-border bg-secondary px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">Suplimentar</span>}
           </div>
-          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">{section.description}</p>
-          <div className="mt-2 inline-flex rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">Pe profilul public: {section.publicLabel}</div>
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">{section.description}</p>
         </div>
-        <span className="rounded-full border border-border bg-background px-3 py-1 text-xs font-bold">{section.selectedCount} selectate</span>
+        <span className="rounded-full border border-border bg-secondary/45 px-3 py-1 text-xs font-semibold">{section.selectedCount} selectate</span>
       </div>
 
       {section.note && (
@@ -413,9 +385,9 @@ function SectionDetail({ section, selected, prerequisitesByKey, customItems, pen
         </div>
       )}
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-4 space-y-2">
         {section.items.map((item) => (
-          <ServiceTile
+          <ServiceRow
             key={`${item.group}:${item.id}`}
             item={item}
             selected={selected}
@@ -426,7 +398,7 @@ function SectionDetail({ section, selected, prerequisitesByKey, customItems, pen
         ))}
       </div>
 
-      <div className="mt-5">
+      <div className="mt-4">
         <CustomServiceBox
           section={section}
           pendingReview={pendingReview}
@@ -441,20 +413,20 @@ function SectionDetail({ section, selected, prerequisitesByKey, customItems, pen
 
 function SearchResults({ query, rows, selected, prerequisitesByKey, pendingReview, onToggle }) {
   return (
-    <section className="rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5">
+    <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="font-heading text-lg font-extrabold">Rezultate pentru „{query}”</h2>
+          <h2 className="font-heading text-lg font-bold">Rezultate pentru „{query}”</h2>
           <p className="mt-1 text-xs text-muted-foreground">Căutarea include toate categoriile compatibile cu locația.</p>
         </div>
-        <span className="rounded-full border border-border bg-background px-3 py-1 text-xs font-bold">{rows.length} rezultate</span>
+        <span className="rounded-full border border-border bg-secondary/45 px-3 py-1 text-xs font-semibold">{rows.length} rezultate</span>
       </div>
       {rows.length > 0 ? (
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-4 space-y-2">
           {rows.map(({ section, item }) => (
             <div key={`${section.key}:${item.group}:${item.id}`}>
               <div className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{section.title}</div>
-              <ServiceTile
+              <ServiceRow
                 item={item}
                 selected={selected}
                 prerequisite={prerequisitesByKey[item.id]}
@@ -465,7 +437,7 @@ function SearchResults({ query, rows, selected, prerequisitesByKey, pendingRevie
           ))}
         </div>
       ) : (
-        <div className="mt-5 rounded-2xl border border-dashed border-border bg-secondary/25 px-4 py-8 text-center text-sm text-muted-foreground">Nu am găsit servicii pentru această căutare.</div>
+        <div className="mt-4 rounded-2xl border border-dashed border-border bg-secondary/20 px-4 py-8 text-center text-sm text-muted-foreground">Nu am găsit servicii pentru această căutare.</div>
       )}
     </section>
   );
@@ -480,59 +452,55 @@ function SummaryPanel({
   selectedSections,
   evidenceSummary,
   profileLabel,
+  showResources,
 }) {
   return (
     <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
-      <section className="rounded-3xl border border-border bg-card p-4 shadow-sm">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4" />
-          <h2 className="text-sm font-bold">Rezumat configurare</h2>
+      <section className="rounded-[24px] border border-border bg-card p-4 shadow-sm">
+        <h2 className="text-sm font-bold">Rezumat</h2>
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Configurare pentru {profileLabel}.</p>
+        <div className="mt-4 space-y-2.5 text-xs">
+          <div className="flex items-center justify-between rounded-xl bg-secondary/40 px-3 py-2.5"><span className="text-muted-foreground">Servicii selectate</span><strong>{selectedCount}</strong></div>
+          <div className="flex items-center justify-between rounded-xl bg-secondary/40 px-3 py-2.5"><span className="text-muted-foreground">Active acum</span><strong>{approvedCount}</strong></div>
+          <div className="flex items-center justify-between rounded-xl bg-secondary/40 px-3 py-2.5"><span className="text-muted-foreground">Categorii publice</span><strong>{selectedSections.length}</strong></div>
         </div>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Servicii configurate pentru {profileLabel}.</p>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <div className="rounded-2xl bg-secondary/55 p-3">
-            <div className="text-xl font-extrabold">{selectedCount}</div>
-            <div className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Selectate</div>
-          </div>
-          <div className="rounded-2xl bg-secondary/55 p-3">
-            <div className="text-xl font-extrabold">{approvedCount}</div>
-            <div className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Active acum</div>
-          </div>
-          <div className={`rounded-2xl p-3 ${blockedSelectedCount > 0 ? "bg-amber-50 text-amber-900" : "bg-green-50 text-green-800"}`}>
-            <div className="text-xl font-extrabold">{blockedSelectedCount}</div>
-            <div className="mt-1 text-[10px] font-semibold uppercase tracking-wide">Cerințe lipsă</div>
-          </div>
-          <div className="rounded-2xl bg-blue-50 p-3 text-blue-900">
-            <div className="text-xl font-extrabold">{readyForReviewCount}</div>
-            <div className="mt-1 text-[10px] font-semibold uppercase tracking-wide">De verificat</div>
-          </div>
-        </div>
-        {removalCount > 0 && <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">{removalCount} servicii vor fi eliminate după aprobare.</div>}
       </section>
 
-      <section className="rounded-3xl border border-border bg-card p-4 shadow-sm">
-        <div className="text-sm font-bold">Previzualizare profil public</div>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Categoriile selectate vor fi grupate simplu pentru pacienți.</p>
+      {(blockedSelectedCount > 0 || readyForReviewCount > 0 || removalCount > 0) && (
+        <section className="rounded-[24px] border border-border bg-card p-4 shadow-sm">
+          <h2 className="text-sm font-bold">Necesită atenție</h2>
+          <div className="mt-3 space-y-2 text-xs">
+            {blockedSelectedCount > 0 && <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-900"><span>Cerințe lipsă</span><strong>{blockedSelectedCount}</strong></div>}
+            {readyForReviewCount > 0 && <div className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-blue-900"><span>Necesită verificare</span><strong>{readyForReviewCount}</strong></div>}
+            {removalCount > 0 && <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/35 px-3 py-2.5"><span>De eliminat</span><strong>{removalCount}</strong></div>}
+          </div>
+        </section>
+      )}
+
+      <section className="rounded-[24px] border border-border bg-card p-4 shadow-sm">
+        <h2 className="text-sm font-bold">Cum va apărea public</h2>
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Pacienții vor vedea categorii simple, nu lista tehnică completă.</p>
         <div className="mt-3 space-y-2">
           {selectedSections.length > 0 ? selectedSections.map((section) => (
-            <div key={section.key} className="flex items-center justify-between gap-3 rounded-2xl bg-secondary/45 px-3 py-2.5">
+            <div key={section.key} className="flex items-center justify-between gap-3 rounded-xl bg-secondary/35 px-3 py-2.5">
               <span className="text-xs font-semibold">{section.publicLabel}</span>
               <span className="rounded-full bg-card px-2 py-0.5 text-[10px] font-bold">{section.selectedCount}</span>
             </div>
-          )) : <div className="rounded-2xl border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">Nu ai selectat încă servicii.</div>}
+          )) : <div className="rounded-xl border border-dashed border-border px-3 py-5 text-center text-xs text-muted-foreground">Nu ai selectat încă servicii.</div>}
         </div>
       </section>
 
-      <section className="rounded-3xl border border-border bg-card p-4 shadow-sm">
-        <div className="text-sm font-bold">Resurse asociate locației</div>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Aceste date sunt folosite pentru validarea serviciilor.</p>
-        <div className="mt-3 space-y-2 text-xs">
-          <div className="flex items-center justify-between"><span className="text-muted-foreground">Specialiști activi</span><strong>{evidenceSummary.active_assignment_count || 0}</strong></div>
-          <div className="flex items-center justify-between"><span className="text-muted-foreground">Profiluri profesionale</span><strong>{evidenceSummary.professional_profile_count || 0}</strong></div>
-          <div className="flex items-center justify-between"><span className="text-muted-foreground">Echipamente active</span><strong>{evidenceSummary.equipment_count || 0}</strong></div>
-          <div className="flex items-center justify-between"><span className="text-muted-foreground">Facilități declarate</span><strong>{evidenceSummary.facility_count || 0}</strong></div>
-        </div>
-      </section>
+      {showResources && (
+        <section className="rounded-[24px] border border-border bg-card p-4 shadow-sm">
+          <h2 className="text-sm font-bold">Resurse asociate</h2>
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Sunt folosite doar pentru validarea serviciilor care au cerințe.</p>
+          <div className="mt-3 space-y-2 text-xs">
+            <div className="flex items-center justify-between"><span className="text-muted-foreground">Specialiști activi</span><strong>{evidenceSummary.active_assignment_count || 0}</strong></div>
+            <div className="flex items-center justify-between"><span className="text-muted-foreground">Echipamente active</span><strong>{evidenceSummary.equipment_count || 0}</strong></div>
+            <div className="flex items-center justify-between"><span className="text-muted-foreground">Facilități declarate</span><strong>{evidenceSummary.facility_count || 0}</strong></div>
+          </div>
+        </section>
+      )}
     </aside>
   );
 }
@@ -540,7 +508,7 @@ function SummaryPanel({
 function LegacyServicesCard({ services, rawRemovalKeys, pendingReview, onToggleRemoval }) {
   if (!services.length) return null;
   return (
-    <section className="rounded-3xl border border-amber-200 bg-amber-50/70 p-4 shadow-sm sm:p-5">
+    <section className="rounded-[24px] border border-amber-200 bg-amber-50/70 p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold text-amber-950">Servicii existente care necesită migrare</h2>
@@ -548,7 +516,7 @@ function LegacyServicesCard({ services, rawRemovalKeys, pendingReview, onToggleR
         </div>
         <span className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-900">{services.length} de verificat</span>
       </div>
-      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+      <div className="mt-4 space-y-2">
         {services.map((service) => {
           const marked = rawRemovalKeys.includes(service.raw_key);
           const statusLabel = service.catalog_status === "legacy_mapped"
@@ -557,15 +525,15 @@ function LegacyServicesCard({ services, rawRemovalKeys, pendingReview, onToggleR
               ? "Cheie ambiguă"
               : "Cheie necunoscută";
           return (
-            <div key={`${service.id || service.raw_key}:${service.raw_key}`} className="rounded-2xl border border-amber-200 bg-white p-3">
-              <div className="text-xs font-bold">{service.label || service.raw_key}</div>
-              <div className="mt-1 break-all text-[10px] text-muted-foreground">{service.raw_key}</div>
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900">{statusLabel}</span>
-                <button type="button" disabled={pendingReview} onClick={() => onToggleRemoval(service.raw_key)} className={`rounded-full border px-3 py-1 text-[11px] font-semibold disabled:opacity-50 ${marked ? "border-red-200 bg-red-50 text-red-700" : "border-border bg-background hover:bg-secondary"}`}>
-                  {marked ? "Eliminare solicitată" : "Solicită eliminarea"}
-                </button>
+            <div key={`${service.id || service.raw_key}:${service.raw_key}`} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-white px-3 py-2.5">
+              <div className="min-w-0">
+                <div className="text-xs font-bold">{service.label || service.raw_key}</div>
+                <div className="mt-1 break-all text-[10px] text-muted-foreground">{service.raw_key}</div>
+                <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900">{statusLabel}</span>
               </div>
+              <button type="button" disabled={pendingReview} onClick={() => onToggleRemoval(service.raw_key)} className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50 ${marked ? "border-red-200 bg-red-50 text-red-700" : "border-border bg-background hover:bg-secondary"}`}>
+                {marked ? "Eliminare solicitată" : "Solicită eliminarea"}
+              </button>
             </div>
           );
         })}
@@ -643,6 +611,8 @@ export default function ProviderServicesWorkspace({ locationId, location, overvi
   const selectedSections = sectionModels
     .map((section) => ({ ...section, selectedCount: sectionSelectedCount(selected, section) }))
     .filter((section) => section.selectedCount > 0);
+  const showResources = selectedPrerequisiteRows.some((item) => item.status !== "available")
+    || Object.values(evidenceSummary || {}).some((value) => Number(value) > 0);
 
   const load = async () => {
     if (!locationId) return;
@@ -797,8 +767,8 @@ export default function ProviderServicesWorkspace({ locationId, location, overvi
   };
 
   return (
-    <div className="space-y-4 pb-24">
-      <section className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+    <div className="space-y-4 pb-20">
+      <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -806,14 +776,14 @@ export default function ProviderServicesWorkspace({ locationId, location, overvi
               {draft && <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}
             </div>
             <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-              Configurează serviciile pentru {profileLabel}. Lista este organizată pe activitate și specializare, iar cerințele medicale sunt verificate automat.
+              Selectează ce oferă această locație. Serviciile medicale sunt verificate separat înainte de publicare.
             </p>
           </div>
-          <span className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground">{location?.public_display_name || location?.name || "Locația selectată"}</span>
+          <span className="rounded-full border border-border bg-secondary/35 px-3 py-1.5 text-xs font-semibold text-muted-foreground">{location?.public_display_name || location?.name || "Locația selectată"}</span>
         </div>
 
         <div className="relative mt-4">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input className={`${inputCls} pl-10`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Caută un serviciu, o investigație sau o specializare" />
           {query && <button type="button" onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted-foreground hover:bg-secondary"><X className="h-4 w-4" /></button>}
         </div>
@@ -832,10 +802,10 @@ export default function ProviderServicesWorkspace({ locationId, location, overvi
         </div>
       )}
 
-      {loading && <div className="rounded-3xl border border-border bg-card px-5 py-8 text-sm text-muted-foreground">Se încarcă serviciile locației...</div>}
+      {loading && <div className="rounded-[24px] border border-border bg-card px-5 py-8 text-sm text-muted-foreground">Se încarcă serviciile locației...</div>}
 
       {!loading && loadError && (
-        <div className="rounded-3xl border border-amber-200 bg-amber-50 px-5 py-5 text-sm text-amber-950">
+        <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-5 text-sm text-amber-950">
           <p>{loadError}</p>
           <button type="button" onClick={load} className="mt-3 rounded-full border border-amber-300 bg-white px-4 py-2 text-xs font-semibold hover:bg-amber-100">Încearcă din nou</button>
         </div>
@@ -843,11 +813,11 @@ export default function ProviderServicesWorkspace({ locationId, location, overvi
 
       {!loading && servicesLoaded && (
         <>
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
             <div className="space-y-4">
               {!query && (
-                <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
-                  <CategoryRail sections={navigableSections} selected={selected} activeKey={activeSection?.key || ""} onPick={setActiveSectionKey} />
+                <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
+                  <CategorySelector sections={navigableSections} selected={selected} activeKey={activeSection?.key || ""} onPick={setActiveSectionKey} />
                   <SectionDetail
                     section={activeSection}
                     selected={selected}
@@ -865,7 +835,7 @@ export default function ProviderServicesWorkspace({ locationId, location, overvi
 
               {additionalSections.length > 0 && !query && (
                 <button type="button" onClick={toggleAdditional} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold shadow-sm hover:bg-secondary">
-                  <ListFilter className="h-3.5 w-3.5" />
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdditional ? "rotate-180" : ""}`} />
                   {showAdditional ? "Ascunde categoriile suplimentare" : `Vezi și ${additionalSections.length} categorii suplimentare`}
                 </button>
               )}
@@ -880,6 +850,7 @@ export default function ProviderServicesWorkspace({ locationId, location, overvi
               selectedSections={selectedSections}
               evidenceSummary={evidenceSummary}
               profileLabel={profileLabel}
+              showResources={showResources}
             />
           </div>
 
@@ -887,19 +858,24 @@ export default function ProviderServicesWorkspace({ locationId, location, overvi
         </>
       )}
 
-      <div className="sticky bottom-0 -mx-1 rounded-3xl border border-border bg-background/95 p-3 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-background/85">
-        <div className="flex flex-wrap items-center gap-2">
-          <button disabled={saving || pendingReview || !servicesLoaded || (!hasChanges && !draft)} onClick={save} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50">
-            <Save className="h-4 w-4" /> Salvează draftul
-          </button>
-          {draft && draft.status !== "pending_review" && (
-            <button disabled={saving || !servicesLoaded || blockedSelectedCount > 0} onClick={submit} className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50">
-              <Send className="h-4 w-4" /> Trimite spre verificare
+      <div className="sticky bottom-0 z-20 -mx-1 rounded-[22px] border border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/90">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-xs text-muted-foreground">
+            <strong className="text-foreground">{selectedCount}</strong> servicii selectate
+            {blockedSelectedCount > 0 && <span className="ml-2 text-amber-800">· {blockedSelectedCount} cu cerințe lipsă</span>}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button disabled={saving || pendingReview || !servicesLoaded || (!hasChanges && !draft)} onClick={save} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50">
+              <Save className="h-4 w-4" /> Salvează draftul
             </button>
-          )}
-          {blockedSelectedCount > 0 && draft && draft.status !== "pending_review" && <span className="text-xs font-medium text-amber-800">Completează cerințele lipsă înainte de trimitere.</span>}
-          {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
+            {draft && draft.status !== "pending_review" && (
+              <button disabled={saving || !servicesLoaded || blockedSelectedCount > 0} onClick={submit} className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-50">
+                <Send className="h-4 w-4" /> Trimite spre verificare
+              </button>
+            )}
+          </div>
         </div>
+        {msg && <p className="mt-2 text-xs text-muted-foreground">{msg}</p>}
       </div>
     </div>
   );
