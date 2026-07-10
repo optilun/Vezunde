@@ -10,6 +10,12 @@ import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground/40";
 
+const SERVICE_GROUP_BY_KEY = Object.fromEntries(
+  Object.entries(SERVICE_GROUPS).flatMap(([group, config]) => (
+    Object.keys(config.ids || {}).map((serviceKey) => [serviceKey, group])
+  )),
+);
+
 function safeParse(raw) {
   try { return JSON.parse(raw || "{}") || {}; } catch { return {}; }
 }
@@ -34,17 +40,62 @@ function makeSuggestion(group, label) {
 
 function normalizeSelectedPayload(selected = {}) {
   const result = {};
-  Object.entries(selected).forEach(([group, ids]) => {
+  Object.keys(selected).sort().forEach((group) => {
+    const ids = selected[group];
     if (!SERVICE_GROUPS[group]) return;
     const allowedIds = new Set(Object.keys(SERVICE_GROUPS[group].ids || {}));
-    const cleanIds = [...new Set((ids || []).filter((id) => allowedIds.has(id)))];
+    const cleanIds = [...new Set((ids || []).filter((id) => allowedIds.has(id)))].sort();
     if (cleanIds.length > 0) result[group] = cleanIds;
   });
   return result;
 }
 
-function buildPayload(selected, customRequests) {
+function groupServiceKeys(serviceKeys = []) {
+  const grouped = {};
+  for (const serviceKey of serviceKeys) {
+    const group = SERVICE_GROUP_BY_KEY[serviceKey];
+    if (!group) continue;
+    grouped[group] = grouped[group] || [];
+    if (!grouped[group].includes(serviceKey)) grouped[group].push(serviceKey);
+  }
+  return normalizeSelectedPayload(grouped);
+}
+
+function applyDraftToApproved(approvedSelected, payload = {}) {
+  const next = {};
+  const approved = normalizeSelectedPayload(approvedSelected);
+  const additions = normalizeSelectedPayload(payload.selected_ids || {});
+  const removals = normalizeSelectedPayload(payload.removal_ids || {});
+
+  for (const [group, ids] of Object.entries(approved)) next[group] = [...ids];
+  for (const [group, ids] of Object.entries(additions)) {
+    next[group] = [...new Set([...(next[group] || []), ...ids])];
+  }
+  for (const [group, ids] of Object.entries(removals)) {
+    const removed = new Set(ids);
+    next[group] = (next[group] || []).filter((id) => !removed.has(id));
+  }
+
+  return normalizeSelectedPayload(next);
+}
+
+function buildRemovalPayload(approvedSelected, selected) {
+  const approved = normalizeSelectedPayload(approvedSelected);
+  const desired = normalizeSelectedPayload(selected);
+  const removals = {};
+
+  for (const [group, ids] of Object.entries(approved)) {
+    const desiredIds = new Set(desired[group] || []);
+    const removedIds = ids.filter((id) => !desiredIds.has(id));
+    if (removedIds.length > 0) removals[group] = removedIds;
+  }
+
+  return removals;
+}
+
+function buildPayload(selected, approvedSelected, customRequests) {
   const selectedIds = normalizeSelectedPayload(selected);
+  const removalIds = buildRemovalPayload(approvedSelected, selected);
   const suggestions = [];
   const seen = new Set();
   for (const item of customRequests || []) {
@@ -56,7 +107,7 @@ function buildPayload(selected, customRequests) {
     seen.add(key);
     suggestions.push({ group, label, note: item.note || "" });
   }
-  return { selected_ids: selectedIds, removal_ids: {}, suggestions };
+  return { selected_ids: selectedIds, removal_ids: removalIds, suggestions };
 }
 
 function sectionDefaultGroup(section) {
@@ -205,15 +256,19 @@ function NeedSectionCard({ section, selected, customByGroup, pendingReview, onTo
 
 export default function ProviderServices({ locationId, location, overview }) {
   const [draft, setDraft] = useState(null);
+  const [approvedSelected, setApprovedSelected] = useState({});
   const [selected, setSelected] = useState({});
   const [customRequests, setCustomRequests] = useState([]);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [activeNeedKey, setActiveNeedKey] = useState(CLIENT_NEED_SECTIONS[0]?.key || "glasses_lenses");
 
-  const approvedCount = overview?.content_summary?.approved_service_count ?? 0;
+  const approvedCount = overview?.content_summary?.approved_service_count ?? countSelected(approvedSelected);
   const pendingReview = draft?.status === "pending_review";
   const selectedCount = countSelected(selected) + customRequests.length;
+  const removalCount = countSelected(buildRemovalPayload(approvedSelected, selected));
+  const hasSelectionChanges = JSON.stringify(normalizeSelectedPayload(selected)) !== JSON.stringify(normalizeSelectedPayload(approvedSelected));
+  const hasChanges = hasSelectionChanges || customRequests.length > 0;
 
   const customByGroup = useMemo(() => {
     const map = {};
@@ -229,13 +284,18 @@ export default function ProviderServices({ locationId, location, overview }) {
 
   const load = async () => {
     if (!locationId) return;
-    const res = await base44.functions.invoke("submitProviderWorkspaceChange", { action: "list_mine", location_id: locationId }).catch(() => ({ data: { submissions: [] } }));
-    const serviceSubmissions = (res.data?.submissions || []).filter((s) => s.section === "services" && ["draft", "needs_more_info", "pending_review"].includes(s.status));
+    const [submissionRes, serviceRes] = await Promise.all([
+      base44.functions.invoke("submitProviderWorkspaceChange", { action: "list_mine", location_id: locationId }).catch(() => ({ data: { submissions: [] } })),
+      base44.functions.invoke("getProviderLocationServices", { location_id: locationId }).catch(() => ({ data: { service_keys: [] } })),
+    ]);
+    const approved = groupServiceKeys(serviceRes.data?.service_keys || []);
+    const serviceSubmissions = (submissionRes.data?.submissions || []).filter((s) => s.section === "services" && ["draft", "needs_more_info", "pending_review"].includes(s.status));
     const pending = serviceSubmissions.find((s) => s.status === "pending_review");
     const own = pending || serviceSubmissions.find((s) => ["draft", "needs_more_info"].includes(s.status));
     const payload = safeParse(own?.payload_json);
     setDraft(own || null);
-    setSelected(payload.selected_ids || {});
+    setApprovedSelected(approved);
+    setSelected(own ? applyDraftToApproved(approved, payload) : approved);
     setCustomRequests(normalizeSuggestions(payload));
   };
 
@@ -270,7 +330,7 @@ export default function ProviderServices({ locationId, location, overview }) {
   const save = async () => {
     setSaving(true); setMsg("");
     const action = draft && draft.status !== "pending_review" ? "update_draft" : "create_draft";
-    const payload = buildPayload(selected, customRequests);
+    const payload = buildPayload(selected, approvedSelected, customRequests);
     const res = await base44.functions.invoke("submitProviderWorkspaceChange", { action, submission_id: draft?.id, location_id: locationId, section: "services", payload }).catch((e) => ({ data: { error: e.response?.data?.error || e.message, fields: e.response?.data?.fields || [] } }));
     setSaving(false);
     if (res.data?.error) { setMsg(res.data.fields?.length ? `${res.data.error}: ${res.data.fields.join(", ")}` : res.data.error); return; }
@@ -301,6 +361,7 @@ export default function ProviderServices({ locationId, location, overview }) {
           {draft && <span className="rounded-full bg-secondary px-2.5 py-1 font-semibold">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}
           <span className="rounded-full border border-border bg-card px-2.5 py-1 font-semibold text-muted-foreground">{approvedCount} publicate</span>
           <span className="rounded-full border border-border bg-card px-2.5 py-1 font-semibold text-muted-foreground">{selectedCount} detalii selectate</span>
+          {removalCount > 0 && <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-semibold text-amber-900">{removalCount} de eliminat</span>}
         </div>
       </div>
 
@@ -323,7 +384,7 @@ export default function ProviderServices({ locationId, location, overview }) {
 
       <div className="sticky bottom-0 -mx-1 rounded-2xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="flex flex-wrap items-center gap-2">
-          <button disabled={saving || pendingReview} onClick={save} className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><Save className="h-4 w-4" /> Salveaza draft</button>
+          <button disabled={saving || pendingReview || (!hasChanges && !draft)} onClick={save} className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><Save className="h-4 w-4" /> Salveaza draft</button>
           {draft && draft.status !== "pending_review" && <button disabled={saving} onClick={submit} className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50"><Send className="h-4 w-4" /> Trimite spre review</button>}
           {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
         </div>
