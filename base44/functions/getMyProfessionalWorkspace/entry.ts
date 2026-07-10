@@ -4,6 +4,15 @@ function cleanString(value) {
   return String(value || '').trim();
 }
 
+function parsePendingProfile(profile) {
+  try {
+    const parsed = JSON.parse(String(profile.pending_profile_json || '{}'));
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+  } catch (_error) {
+    return null;
+  }
+}
+
 function sanitizeProfile(profile) {
   if (!profile) return null;
   return {
@@ -24,6 +33,10 @@ function sanitizeProfile(profile) {
     accepts_independent_requests: profile.accepts_independent_requests === true,
     verification_status: profile.verification_status || 'unverified',
     public_visibility_status: profile.public_visibility_status || 'draft',
+    profile_review_status: profile.profile_review_status || profile.public_visibility_status || 'draft',
+    pending_profile: parsePendingProfile(profile),
+    review_note: profile.review_note || '',
+    submitted_at: profile.submitted_at || null,
     profile_completeness: Number(profile.profile_completeness || 0),
     is_public: profile.is_public === true,
   };
