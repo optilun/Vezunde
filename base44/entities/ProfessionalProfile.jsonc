@@ -2,6 +2,9 @@
   "name": "ProfessionalProfile",
   "type": "object",
   "properties": {
+    "user_id": {
+      "type": "string"
+    },
     "full_name": {
       "type": "string"
     },
@@ -61,6 +64,23 @@
       "type": "boolean",
       "default": false
     },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "unverified",
+        "pending_review",
+        "verified",
+        "rejected"
+      ],
+      "default": "unverified"
+    },
+    "verified_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verified_by_user_id": {
+      "type": "string"
+    },
     "public_visibility_status": {
       "type": "string",
       "enum": [
@@ -83,7 +103,7 @@
     },
     "is_public": {
       "type": "boolean",
-      "default": true
+      "default": false
     }
   },
   "required": [
