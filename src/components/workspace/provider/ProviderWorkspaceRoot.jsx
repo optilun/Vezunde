@@ -36,6 +36,8 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
   const safeSection = allowedSections.includes(normalizedSection) ? normalizedSection : "overview";
   const statusLabel = overview?.location?.profile_control_status ? (PROFILE_CONTROL_LABELS[overview.location.profile_control_status] || overview.location.profile_control_status) : "";
   const statusGreen = ["verified", "claimed"].includes(overview?.location?.profile_control_status);
+  const activeLocationCount = (workspace.locations || []).filter((location) => location.active_status !== "inactiva" && location.status !== "suspendata").length;
+  const multiLocation = activeLocationCount >= 2;
 
   return (
     <ProviderAppShell
@@ -48,8 +50,11 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
       subtitle="Workspace furnizor"
       publicProfileUrl={selectedLocationId ? `/furnizor/${selectedLocationId}` : null}
       modeSwitch={{ label: "Cont personal", onClick: onSwitchPersonal }}
-      statusBadge={statusLabel ? (
-        <span className={`hidden sm:inline-flex text-[11px] font-semibold px-2 py-0.5 rounded-full ${statusGreen ? "bg-green-100 text-green-800" : "bg-secondary text-foreground"}`}>{statusLabel}</span>
+      statusBadge={(statusLabel || multiLocation) ? (
+        <span className="hidden items-center gap-1.5 sm:inline-flex">
+          {statusLabel && <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${statusGreen ? "bg-green-100 text-green-800" : "bg-secondary text-foreground"}`}>{statusLabel}</span>}
+          {multiLocation && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-foreground">Organizație cu {activeLocationCount} locații</span>}
+        </span>
       ) : null}
     >
       {workspace.memberships?.length > 1 && (
