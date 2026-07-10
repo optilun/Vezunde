@@ -68,43 +68,95 @@ const OPTICAL_TYPES = ['optica_medicala', 'laborator_optic', 'cabinet_optometric
 const REPAIR_FACILITIES = ['atelier_service_propriu', 'reparatii_pe_loc', 'laborator_optic_propriu', 'laborator_partener', 'montaj_lentile_in_locatie'];
 const FACILITY_INTENTS = ['reparatii_ochelari', 'ochelari_lentile', 'lentile_contact'];
 
-const SERVICE_NEED_LEVELS = {
-  eyeglasses: 'general', frames: 'general', prescription_lenses: 'general', contact_lenses: 'general',
-  optometry_consultation: 'general', ophthalmology_consultation: 'general',
-  control_vedere_adulti: 'general', control_vedere_copii: 'general', consult_oftalmologic: 'general',
-  lentile_contact: 'general', lentile_progresive: 'general',
-  eyeglasses_adjustment: 'technical', eyeglasses_repair: 'technical', lens_fitting: 'technical',
-  reparatii_ochelari: 'technical', reglaj_rame: 'technical', montaj_lentile: 'technical',
-  oct: 'specialized_medical', retina_consultation: 'specialized_medical', glaucoma_consultation: 'specialized_medical',
-  cataract_surgery: 'specialized_medical', refractive_surgery: 'specialized_medical',
-  pediatric_ophthalmology: 'specialized_medical', myopia_management: 'specialized_medical', emergency_ophthalmology: 'specialized_medical',
-  retina: 'specialized_medical', glaucom: 'specialized_medical', cataracta: 'specialized_medical',
-  chirurgie_refractiva: 'specialized_medical', managementul_miopiei: 'specialized_medical',
-};
+const GENERAL_SERVICE_KEYS = [
+  'eyeglasses', 'frames', 'prescription_lenses', 'sunglasses', 'prescription_sunglasses', 'children_frames',
+  'sports_glasses', 'safety_glasses', 'accessories', 'single_vision_lenses', 'progressive_lenses', 'office_lenses',
+  'reading_lenses', 'thin_lenses', 'photochromic_lenses', 'polarized_lenses', 'blue_light_lenses', 'prism_lenses',
+  'pd_measurement', 'digital_centering', 'optometry_consultation', 'visual_acuity_test', 'refraction',
+  'autorefractometry', 'binocular_vision', 'dry_eye_screening', 'color_vision_test', 'occupational_vision',
+  'contact_lenses', 'contact_lens_consultation', 'contact_lens_fitting', 'contact_lens_trial',
+  'toric_contact_lenses', 'multifocal_contact_lenses', 'rgp_lenses', 'scleral_lenses', 'contact_lens_followup',
+  // Legacy request/service keys.
+  'control_vedere_adulti', 'eye_exam', 'lentile_contact', 'lentile_progresive',
+];
+const TECHNICAL_SERVICE_KEYS = [
+  'eyeglasses_adjustment', 'eyeglasses_repair', 'lens_fitting', 'frame_repair', 'screw_replacement',
+  'lens_replacement', 'frame_cleaning', 'workshop_orders',
+  // Legacy request/service keys.
+  'reparatii_ochelari', 'reglaj_rame', 'montaj_lentile',
+];
+const SPECIALIZED_MEDICAL_SERVICE_KEYS = [
+  // Canonical ophthalmology consultations.
+  'ophthalmology_consultation', 'complete_eye_exam', 'prescription_check', 'eye_pressure_check', 'fundus_exam',
+  'anterior_segment_exam', 'followup_consultation', 'second_opinion',
+  // Canonical investigations.
+  'oct', 'visual_field_analyzer', 'fundus_camera', 'pachymeter', 'biometer', 'corneal_topography', 'keratometry',
+  'tonometry', 'gonioscopy', 'ultrasound', 'specular_microscopy', 'angiography',
+  // Canonical specialties.
+  'retina_consultation', 'glaucoma_consultation', 'cataract_consultation', 'cornea_consultation',
+  'pediatric_ophthalmology', 'strabismus', 'neuro_ophthalmology', 'uveitis', 'myopia_management',
+  'dry_eye_management', 'diabetic_retinopathy', 'macular_degeneration', 'emergency_ophthalmology',
+  // Canonical procedures and surgery.
+  'cataract_surgery', 'refractive_surgery', 'laser_procedures', 'yag_laser', 'retinal_laser',
+  'intravitreal_injections', 'eyelid_surgery', 'chalazion_treatment', 'minor_eye_procedures',
+  // Canonical services for children and prevention.
+  'children_eye_exam', 'pediatric_refraction', 'amblyopia_screening', 'strabismus_screening', 'school_screening',
+  'myopia_control_children', 'vision_therapy',
+  // Legacy request/service keys.
+  'control_vedere_copii', 'children', 'consult_oftalmologic', 'ophthalmology', 'camp_vizual', 'tonometrie',
+  'fund_de_ochi', 'topografie_corneana', 'ochi_uscat', 'dry_eye', 'managementul_miopiei',
+  'retina', 'glaucom', 'cataracta', 'chirurgie_refractiva',
+];
+const SERVICE_NEED_LEVELS = Object.fromEntries([
+  ...GENERAL_SERVICE_KEYS.map((key) => [key, 'general']),
+  ...TECHNICAL_SERVICE_KEYS.map((key) => [key, 'technical']),
+  ...SPECIALIZED_MEDICAL_SERVICE_KEYS.map((key) => [key, 'specialized_medical']),
+]);
 const NEED_ORDER = { general: 0, technical: 1, specialized_medical: 2 };
 
-const SERVICE_ALIAS_PAIRS = [
+const SERVICE_ALIAS_GROUPS = [
   ['contact_lenses', 'lentile_contact'],
-  ['ophthalmology_consultation', 'consult_oftalmologic'],
+  ['eye_exam', 'control_vedere_adulti', 'optometry_consultation'],
+  ['children', 'control_vedere_copii', 'children_eye_exam'],
+  ['ophthalmology', 'consult_oftalmologic', 'ophthalmology_consultation'],
+  ['dry_eye', 'ochi_uscat', 'dry_eye_management'],
+  ['myopia_management', 'managementul_miopiei'],
   ['prescription_lenses', 'lentile_progresive'],
   ['eyeglasses_adjustment', 'reglaj_rame'],
   ['eyeglasses_repair', 'reparatii_ochelari'],
+  ['lens_fitting', 'montaj_lentile'],
+  ['camp_vizual', 'visual_field_analyzer'],
+  ['tonometrie', 'tonometry'],
+  ['fund_de_ochi', 'fundus_exam'],
+  ['topografie_corneana', 'corneal_topography'],
 ];
 const SERVICE_ALIASES = {};
-for (const [a, b] of SERVICE_ALIAS_PAIRS) { SERVICE_ALIASES[a] = b; SERVICE_ALIASES[b] = a; }
+for (const group of SERVICE_ALIAS_GROUPS) {
+  for (const key of group) SERVICE_ALIASES[key] = group.filter((alias) => alias !== key);
+}
 const DIRECTORY_OK_CONF = ['publicly_listed', 'provider_confirmed', 'vezunde_verified'];
 
 function needLevelOf(key) {
   return SERVICE_NEED_LEVELS[key] || 'unknown';
 }
 
+function serviceNeedLevelOfRow(service) {
+  const canonicalLevel = needLevelOf(service.service_key);
+  if (canonicalLevel === 'unknown') return 'unknown';
+  if (service.is_advanced_service || service.service_need_level === 'specialized_medical') return 'specialized_medical';
+  if (service.service_need_level === 'technical' && canonicalLevel === 'general') return 'technical';
+  return canonicalLevel;
+}
+
+function expandServiceKeys(serviceKeys) {
+  return [...new Set(serviceKeys.flatMap((key) => [key, ...(SERVICE_ALIASES[key] || [])]))];
+}
+
 function isPublicSafeService(s, pcs) {
   if (s.is_active === false) return false;
   if (s.migration_review_required) return false;
   if (!DIRECTORY_OK_CONF.includes(s.confirmation_level)) return false;
-  const level = (s.is_advanced_service || s.service_need_level === 'specialized_medical')
-    ? 'specialized_medical'
-    : needLevelOf(s.service_key);
+  const level = serviceNeedLevelOfRow(s);
   if (level === 'specialized_medical' || level === 'unknown') {
     return s.confirmation_level === 'vezunde_verified' && pcs === 'verified';
   }
@@ -119,7 +171,8 @@ function requestNeedLevel(serviceKeys, intent) {
   let level = intent === 'reparatii_ochelari' ? 'technical' : 'general';
   for (const k of serviceKeys) {
     const l = needLevelOf(k);
-    if (l === 'unknown') continue;
+    // Unknown request keys are treated as medical until explicitly classified.
+    if (l === 'unknown') return 'specialized_medical';
     if (NEED_ORDER[l] > NEED_ORDER[level]) level = l;
   }
   return level;
@@ -137,8 +190,13 @@ function evaluateEligibility(loc, matchedRows, needLevel) {
   if (matchedRows.length === 0) {
     reasons.push('service_not_present');
   } else {
-    const okConf = needLevel === 'specialized_medical' ? ['vezunde_verified'] : ['provider_confirmed', 'vezunde_verified'];
-    const qualifying = matchedRows.filter((s) => s.matching_allowed === true && okConf.includes(s.confirmation_level) && !s.migration_review_required && needLevelOf(s.service_key) !== 'unknown');
+    const qualifying = matchedRows.filter((s) => {
+      if (s.matching_allowed !== true || s.migration_review_required) return false;
+      const rowLevel = serviceNeedLevelOfRow(s);
+      if (rowLevel === 'unknown') return false;
+      if (rowLevel === 'specialized_medical') return pcs === 'verified' && s.confirmation_level === 'vezunde_verified';
+      return ['provider_confirmed', 'vezunde_verified'].includes(s.confirmation_level);
+    });
     if (qualifying.length === 0) {
       if (!matchedRows.some((s) => s.matching_allowed === true)) reasons.push('matching_not_allowed');
       reasons.push(needLevel === 'specialized_medical' ? 'service_not_vezunde_verified' : 'service_not_confirmed');
@@ -146,6 +204,27 @@ function evaluateEligibility(loc, matchedRows, needLevel) {
     if (reasons.length === 0) return { eligible: true, reasons: [], pcs, qualifying };
   }
   return { eligible: false, reasons, pcs, qualifying: [] };
+}
+
+function classifyMatchBucket(elig, matchedRows, needLevel) {
+  if (elig.eligible) return 'eligible';
+  if (needLevel === 'specialized_medical' || elig.pcs === 'suspended') return 'excluded';
+  if (matchedRows.length === 0) return 'excluded';
+
+  // Advanced and unclassified services must never fall back to directory results.
+  const directorySafeRows = matchedRows.filter((service) => {
+    const rowLevel = serviceNeedLevelOfRow(service);
+    return rowLevel === 'general' || rowLevel === 'technical';
+  });
+  if (directorySafeRows.length === 0) return 'excluded';
+
+  const directoryQualifies = needLevel === 'general' && directorySafeRows.some((service) => (
+    service.matching_allowed === true
+    && DIRECTORY_OK_CONF.includes(service.confirmation_level)
+    && !service.migration_review_required
+  ));
+  if (elig.pcs === 'directory' && !directoryQualifies) return 'excluded';
+  return 'extended_directory';
 }
 
 function hasCoordinates(value) {
@@ -216,7 +295,7 @@ Deno.serve(async (req) => {
     const scope = payload.scope || (hasClientCoords ? 'nearby' : ((sirutaCode || city) ? 'city' : 'national'));
     const limit = Math.min(payload.limit || 20, 50);
     const needLevel = requestNeedLevel(serviceKeys, intent);
-    const expandedServiceKeys = [...new Set(serviceKeys.flatMap((k) => [k, ...(SERVICE_ALIASES[k] || [])]))]
+    const expandedServiceKeys = expandServiceKeys(serviceKeys);
 
     const [locations, services, specs, assigns, facilities] = await Promise.all([
       svc.entities.ProviderLocation.filter({ status: 'publicata' }, null, 500),
@@ -308,17 +387,8 @@ Deno.serve(async (req) => {
       const elig = evaluateEligibility(loc, matchedRows, needLevel);
       let bucket;
       let directoryMatchType = null;
-      if (elig.eligible) bucket = 'eligible';
-      else if (needLevel === 'specialized_medical') bucket = 'excluded';
-      else if (elig.pcs === 'suspended') bucket = 'excluded';
-      else if (matchedRows.length > 0) {
-        const directoryQualifies = needLevel === 'general' && matchedRows.some((s) => s.matching_allowed === true && DIRECTORY_OK_CONF.includes(s.confirmation_level) && needLevelOf(s.service_key) !== 'unknown');
-        if (elig.pcs === 'directory' && !directoryQualifies) bucket = 'excluded';
-        else {
-          bucket = 'extended_directory';
-          if (serviceKeys.length > 0) directoryMatchType = 'service_alias_match';
-        }
-      } else bucket = 'excluded';
+      bucket = classifyMatchBucket(elig, matchedRows, needLevel);
+      if (bucket === 'extended_directory' && serviceKeys.length > 0) directoryMatchType = 'service_alias_match';
 
       const pcsForDisplay = loc.profile_control_status || 'directory';
       const safeMatchedRows = matchedRows.filter((s) => isPublicSafeService(s, pcsForDisplay));
