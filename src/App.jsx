@@ -15,6 +15,7 @@ import RequestFlow from './pages/RequestFlow';
 import ForSpecialists from './pages/ForSpecialists';
 import Partners from './pages/Partners';
 import AddOrClaim from './pages/AddOrClaim';
+import AcceptProfessionalInvitation from './pages/AcceptProfessionalInvitation';
 import MyAccount from './pages/MyAccount';
 import AdminVerifications from './pages/AdminVerifications';
 import AdminDirectoryOps from './pages/AdminDirectoryOps';
@@ -60,6 +61,7 @@ const AuthenticatedApp = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/pentru-specialisti" element={<ForSpecialists />} />
+      <Route path="/accept-professional-invitation" element={<AcceptProfessionalInvitation />} />
       {/* Add your page Route elements here */}
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
