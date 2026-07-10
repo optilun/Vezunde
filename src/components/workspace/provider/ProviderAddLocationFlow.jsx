@@ -21,23 +21,37 @@ const EMPTY_SEARCH = { name: "", city: "", address: "", phone: "" };
 
 function CandidateCard({ item, onOpenExisting, onContinueNew }) {
   const sameOrganization = item.relation === "same_organization";
-  const strong = item.confidence === "high";
+  const reasons = Array.isArray(item.reasons) ? item.reasons : [];
+  const exactPhone = reasons.includes("telefon identic");
+  const exactAddress = reasons.includes("aceeași adresă");
+  const strong = item.confidence === "high" || exactPhone || exactAddress;
+  const recommendationLabel = sameOrganization
+    ? "Deja în organizația ta"
+    : exactPhone
+      ? "Telefon confirmat"
+      : strong
+        ? "Recomandare principală"
+        : "Posibil profil existent";
+
   return (
     <div className={`rounded-2xl border bg-card p-4 ${strong ? "border-foreground/30 shadow-sm" : "border-border"}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-sm font-bold">{item.name}</h3>
-            <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${sameOrganization ? "bg-green-50 text-green-800 ring-1 ring-green-200" : "bg-amber-50 text-amber-800 ring-1 ring-amber-200"}`}>
-              {sameOrganization ? "Deja în organizația ta" : strong ? "Recomandare principală" : "Posibil profil existent"}
+            <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${sameOrganization ? "bg-green-50 text-green-800 ring-1 ring-green-200" : strong ? "bg-amber-50 text-amber-800 ring-1 ring-amber-200" : "bg-secondary text-foreground"}`}>
+              {recommendationLabel}
             </span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{item.address || "Adresă necompletată"}{item.city ? ` · ${item.city}` : ""}</p>
           {item.phone && <p className="mt-1 text-xs text-muted-foreground">{item.phone}</p>}
-          {Array.isArray(item.reasons) && item.reasons.length > 0 && (
+          {reasons.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
-              {item.reasons.map((reason) => <span key={reason} className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">{reason}</span>)}
+              {reasons.map((reason) => <span key={reason} className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">{reason}</span>)}
             </div>
+          )}
+          {exactPhone && !sameOrganization && (
+            <p className="mt-3 text-xs font-semibold text-foreground">Telefonul se potrivește exact, chiar dacă numele este scris diferit.</p>
           )}
         </div>
         <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold">{item.score}% potrivire</span>
@@ -166,7 +180,7 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
       {step === "search" && (
         <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
           <h2 className="font-heading text-lg font-bold">Este posibil ca locația să existe deja</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Completează datele pe care le cunoști. Sistemul compară numele, adresa, localitatea și telefonul și îți arată maximum trei recomandări.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Completează datele pe care le cunoști. Fiecare informație este verificată separat, iar un telefon identic poate confirma locația chiar dacă numele este scris greșit.</p>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <div><label className="text-xs font-semibold text-muted-foreground">Numele locației</label><input value={searchData.name} onChange={(e) => setSearchData({ ...searchData, name: e.target.value })} className={`${input} mt-1.5`} placeholder="Ex: Lunera Optic Giroc" /></div>
             <div><label className="text-xs font-semibold text-muted-foreground">Localitate</label><input value={searchData.city} onChange={(e) => setSearchData({ ...searchData, city: e.target.value })} className={`${input} mt-1.5`} placeholder="Ex: Giroc" /></div>
