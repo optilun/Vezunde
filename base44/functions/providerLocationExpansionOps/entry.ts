@@ -12,11 +12,33 @@ function text(value: unknown, max = 500) {
 }
 
 function normalize(value: unknown) {
-  return text(value, 500).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  return text(value, 500)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\b(strada|str|nr|numarul|bl|bloc|sc|scara|et|etaj|ap|apartament)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function digits(value: unknown) {
-  return String(value || '').replace(/\D/g, '');
+  const raw = String(value || '').replace(/\D/g, '');
+  if (raw.length === 11 && raw.startsWith('40')) return `0${raw.slice(2)}`;
+  if (raw.length === 10 && raw.startsWith('0')) return raw;
+  return raw;
+}
+
+function tokens(value: unknown) {
+  return [...new Set(normalize(value).split(' ').filter((item) => item.length > 1))];
+}
+
+function tokenSimilarity(a: unknown, b: unknown) {
+  const left = tokens(a);
+  const right = tokens(b);
+  if (!left.length || !right.length) return 0;
+  const common = left.filter((item) => right.includes(item)).length;
+  return common / Math.max(left.length, right.length);
 }
 
 function role(value: unknown) {
@@ -69,31 +91,85 @@ async function providerContext(svc: any, user: any, anchorLocationId: string) {
   return { membership, anchor, organization, organizationId };
 }
 
-function candidateScore(query: string, location: any) {
-  const q = normalize(query);
-  if (!q) return 0;
-  const name = normalize(location.public_display_name || location.name);
-  const address = normalize(location.address);
-  const city = normalize(location.locality_name || location.city);
-  const phone = digits(location.public_phone || location.phone_public);
-  const qPhone = digits(query);
-  let score = 0;
-  if (name === q) score += 65;
-  else if (name.includes(q) || q.includes(name)) score += 38;
-  if (address && (address.includes(q) || q.includes(address))) score += 45;
-  if (city && q.includes(city)) score += 18;
-  if (qPhone.length >= 7 && phone === qPhone) score += 75;
-  return Math.min(score, 100);
+type SearchInput = { name?: unknown; city?: unknown; address?: unknown; phone?: unknown };
+
+function normalizeSearch(raw: unknown) {
+  const input = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as SearchInput : {};
+  return {
+    name: text(input.name, 180),
+    city: text(input.city, 120),
+    address: text(input.address, 500),
+    phone: text(input.phone, 80),
+  };
 }
 
-async function searchCandidates(svc: any, context: any, query: string) {
-  const all = await svc.entities.ProviderLocation.list('-created_date', 1000);
+function scoreCandidate(search: ReturnType<typeof normalizeSearch>, location: any) {
+  const reasons: string[] = [];
+  let score = 0;
+  const locationName = location.public_display_name || location.name || '';
+  const locationAddress = location.address || '';
+  const locationCity = location.locality_name || location.city || '';
+  const locationPhone = location.public_phone || location.phone_public || '';
+
+  if (search.phone && digits(search.phone).length >= 7 && digits(search.phone) === digits(locationPhone)) {
+    score += 55;
+    reasons.push('telefon identic');
+  }
+
+  if (search.address) {
+    const exactAddress = normalize(search.address) === normalize(locationAddress);
+    const addressSimilarity = tokenSimilarity(search.address, locationAddress);
+    if (exactAddress) {
+      score += 42;
+      reasons.push('aceeași adresă');
+    } else if (addressSimilarity >= 0.75) {
+      score += 30;
+      reasons.push('adresă foarte similară');
+    } else if (addressSimilarity >= 0.45) {
+      score += 18;
+      reasons.push('adresă similară');
+    }
+  }
+
+  if (search.name) {
+    const exactName = normalize(search.name) === normalize(locationName);
+    const nameSimilarity = tokenSimilarity(search.name, locationName);
+    if (exactName) {
+      score += 34;
+      reasons.push('nume identic');
+    } else if (nameSimilarity >= 0.75) {
+      score += 26;
+      reasons.push('nume foarte similar');
+    } else if (nameSimilarity >= 0.45) {
+      score += 14;
+      reasons.push('nume similar');
+    }
+  }
+
+  if (search.city && normalize(search.city) === normalize(locationCity)) {
+    score += 16;
+    reasons.push('aceeași localitate');
+  }
+
+  if (search.city && search.address && normalize(search.city) !== normalize(locationCity)) score -= 10;
+
+  const finalScore = Math.max(0, Math.min(100, score));
+  return {
+    score: finalScore,
+    reasons,
+    confidence: finalScore >= 72 ? 'high' : finalScore >= 46 ? 'medium' : 'low',
+  };
+}
+
+async function searchCandidates(svc: any, context: any, rawSearch: unknown) {
+  const search = normalizeSearch(rawSearch);
+  const all = await svc.entities.ProviderLocation.list('-created_date', 1500);
   return all
-    .map((location: any) => ({ location, score: candidateScore(query, location) }))
-    .filter((item: any) => item.score >= 28)
+    .map((location: any) => ({ location, ...scoreCandidate(search, location) }))
+    .filter((item: any) => item.score >= 32)
     .sort((a: any, b: any) => b.score - a.score)
-    .slice(0, 8)
-    .map(({ location, score }: any) => ({
+    .slice(0, 3)
+    .map(({ location, score, reasons, confidence }: any) => ({
       id: location.id,
       name: location.public_display_name || location.name || 'Locatie',
       address: location.address || '',
@@ -102,6 +178,8 @@ async function searchCandidates(svc: any, context: any, query: string) {
       organization_id: location.organization_id || '',
       relation: location.organization_id === context.organizationId ? 'same_organization' : 'directory_candidate',
       score,
+      reasons,
+      confidence,
     }));
 }
 
@@ -126,9 +204,10 @@ async function providerGet(svc: any, user: any, payload: Record<string, unknown>
 async function providerSearch(svc: any, user: any, payload: Record<string, unknown>) {
   const context = await providerContext(svc, user, text(payload.anchor_location_id, 120));
   if (context.error) return res({ error: context.error }, context.status);
-  const query = text(payload.query, 300);
-  if (query.length < 3) return res({ candidates: [] });
-  return res({ candidates: await searchCandidates(svc, context, query) });
+  const search = normalizeSearch(payload.search);
+  const hasEnough = normalize(search.name).length >= 2 || normalize(search.address).length >= 4 || digits(search.phone).length >= 7;
+  if (!hasEnough) return res({ candidates: [] });
+  return res({ candidates: await searchCandidates(svc, context, search) });
 }
 
 async function providerSave(svc: any, user: any, payload: Record<string, unknown>) {
@@ -136,7 +215,12 @@ async function providerSave(svc: any, user: any, payload: Record<string, unknown
   if (context.error) return res({ error: context.error }, context.status);
   const checked = validateLocation(payload.location);
   if (checked.error) return res({ error: checked.error, fields: checked.fields || [] }, 400);
-  const duplicateCandidates = await searchCandidates(svc, context, `${checked.value.public_display_name} ${checked.value.address} ${checked.value.city} ${checked.value.public_phone}`);
+  const duplicateCandidates = await searchCandidates(svc, context, {
+    name: checked.value.public_display_name,
+    address: checked.value.address,
+    city: checked.value.city,
+    phone: checked.value.public_phone,
+  });
   const payloadValue = { kind: 'new_location_for_existing_organization', location: checked.value, duplicate_candidates: duplicateCandidates };
   const existing = (await svc.entities.ProviderWorkspaceSubmission.filter({
     location_id: context.anchor.id,
