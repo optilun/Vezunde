@@ -5,6 +5,7 @@ import AdminAppShell from "@/components/admin/shell/AdminAppShell";
 import AdminDashboardHome from "@/components/admin/dashboard/AdminDashboardHome";
 import AdminProfilesSection from "@/components/admin/directory/AdminProfilesSection";
 import AdminWorkspaceSubmissionsReview from "@/components/admin/directory/AdminWorkspaceSubmissionsReview";
+import AdminNewLocationReview from "@/components/admin/directory/AdminNewLocationReview";
 import AdminProfessionalProfileReview from "@/components/admin/directory/AdminProfessionalProfileReview";
 import AdminLocationPhotoReview from "@/components/admin/directory/AdminLocationPhotoReview";
 import AdminSettingsPlaceholder from "@/components/admin/AdminSettingsPlaceholder";
@@ -19,12 +20,10 @@ import AICopilot from "@/components/admin/directory/research/AICopilot";
 import GeoImport from "@/components/admin/directory/research/GeoImport";
 import { ADMIN_NAV_LABELS } from "@/lib/adminNavConfig";
 
-// UI-1: same tab keys as before — no routes, permissions or data logic
-// changed. Only the shell (sidebar) and per-section headers are new.
 const SIMPLE_HEADERS = {
   adauga: "Adaugă o organizație și o locație nouă în director, cu proveniență obligatorie.",
   profiluri: "Gestionează statusul de încredere al profilurilor din director.",
-  workspace_reviews: "Analizează modificările trimise de furnizori din workspace înainte de publicare.",
+  workspace_reviews: "Analizează modificările și locațiile noi trimise de furnizori înainte de publicare.",
   specialist_reviews: "Verifică profilurile profesionale trimise de specialiști înainte de publicare.",
   fotografii: "Verifică fotografia principală trimisă pentru fiecare locație înainte de publicare.",
   servicii: "Gestionează serviciile confirmate pentru fiecare locație.",
@@ -81,7 +80,7 @@ export default function AdminDirectoryOps() {
           <AdminPageHeader title={ADMIN_NAV_LABELS[tab]} subtitle={SIMPLE_HEADERS[tab]} />
           <div className="mt-6">
             {tab === "adauga" && <DirOpsAddLocation />}
-            {tab === "workspace_reviews" && <AdminWorkspaceSubmissionsReview />}
+            {tab === "workspace_reviews" && <div className="space-y-6"><AdminNewLocationReview /><AdminWorkspaceSubmissionsReview /></div>}
             {tab === "specialist_reviews" && <AdminProfessionalProfileReview />}
             {tab === "fotografii" && <AdminLocationPhotoReview />}
             {tab === "servicii" && <DirOpsServices />}
