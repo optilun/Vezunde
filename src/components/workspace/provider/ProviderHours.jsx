@@ -123,7 +123,7 @@ function ExceptionRow({ item, index, onChange, onRemove }) {
   const closed = item.type === "closed";
   return (
     <div className="rounded-2xl border border-border bg-card p-3">
-      <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_1fr_auto] md:items-end">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_auto] xl:items-end">
         <div>
           <label className="text-[11px] font-semibold text-muted-foreground">Tip</label>
           <select className={`${inputCls} mt-1`} value={item.type || "closed"} onChange={(e) => onChange(index, { ...item, type: e.target.value })}>
@@ -237,105 +237,108 @@ export default function ProviderHours({ locationId, location = {}, onRefresh }) 
             Seteaza programul normal al locatiei si eventualele exceptii pentru sarbatori, inventar, concediu sau evenimente temporare.
           </p>
         </div>
-        <div className="rounded-2xl border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground">
+        <div className="rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground">
           Se publica imediat
         </div>
       </div>
 
-      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-bold">Program saptamanal</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Completeaza intervalul de lucru pentru fiecare zi. Formatul orei este 24h: 09:00, 18:00.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => applyPreset("standard")} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary">L-V 09:00-18:00, S 09:00-14:00</button>
-            <button type="button" onClick={() => applyPreset("copy_monday")} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary">Copiaza luni</button>
-            <button type="button" onClick={() => applyPreset("weekend_closed")} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary">Weekend inchis</button>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          {DAYS.map(([key, label]) => {
-            const day = state.weekly[key];
-            return (
-              <div key={key} className="grid gap-2 rounded-2xl border border-border bg-secondary/30 p-3 md:grid-cols-[120px_120px_1fr_1fr] md:items-center">
-                <div className="text-sm font-bold">{label}</div>
-                <select className={inputCls} value={day.open ? "open" : "closed"} onChange={(e) => updateDay(key, e.target.value === "open" ? { open: true, from: day.from || "09:00", to: day.to || "18:00" } : { open: false, from: "", to: "" })}>
-                  <option value="open">Deschis</option>
-                  <option value="closed">Inchis</option>
-                </select>
-                <TimeField disabled={!day.open} value={day.from || ""} onChange={(value) => updateDay(key, { from: value })} />
-                <TimeField disabled={!day.open} value={day.to || ""} onChange={(value) => updateDay(key, { to: value })} placeholder="18:00" />
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-bold">Program special</h2>
-            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
-              Adauga perioade temporare pentru sarbatori, concedii, inventar sau evenimente. Dupa data de final, profilul revine automat la programul saptamanal.
-            </p>
-          </div>
-          <button type="button" onClick={addException} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-secondary">
-            <Plus className="h-3.5 w-3.5" /> Adauga exceptie
-          </button>
-        </div>
-
-        <div className="space-y-3">
-          {state.exceptions.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border bg-secondary/30 px-4 py-5 text-center text-xs text-muted-foreground">
-              Nu exista program special setat.
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)] xl:items-start">
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold">Program saptamanal</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Completeaza intervalul de lucru pentru fiecare zi. Formatul orei este 24h: 09:00, 18:00.</p>
             </div>
-          ) : state.exceptions.map((item, index) => (
-            <ExceptionRow key={index} item={item} index={index} onChange={updateException} onRemove={removeException} />
-          ))}
-        </div>
-      </section>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => applyPreset("standard")} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary">L-V 09:00-18:00, S 09:00-14:00</button>
+              <button type="button" onClick={() => applyPreset("copy_monday")} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary">Copiaza luni</button>
+              <button type="button" onClick={() => applyPreset("weekend_closed")} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary">Weekend inchis</button>
+            </div>
+          </div>
 
-      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <div className="mb-3 flex items-center gap-2">
-          <CalendarDays className="h-4 w-4" />
-          <h2 className="text-sm font-bold">Preview public</h2>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="rounded-2xl bg-secondary/45 px-4 py-3">
-            <div className="text-[11px] font-semibold text-muted-foreground">Program afisat</div>
-            <p className="mt-1 text-sm font-semibold leading-relaxed">{weeklyText}</p>
+          <div className="space-y-2">
+            {DAYS.map(([key, label]) => {
+              const day = state.weekly[key];
+              return (
+                <div key={key} className="grid gap-2 rounded-2xl border border-border bg-secondary/30 p-3 md:grid-cols-[108px_112px_1fr_1fr] md:items-center">
+                  <div className="text-sm font-bold">{label}</div>
+                  <select className={inputCls} value={day.open ? "open" : "closed"} onChange={(e) => updateDay(key, e.target.value === "open" ? { open: true, from: day.from || "09:00", to: day.to || "18:00" } : { open: false, from: "", to: "" })}>
+                    <option value="open">Deschis</option>
+                    <option value="closed">Inchis</option>
+                  </select>
+                  <TimeField disabled={!day.open} value={day.from || ""} onChange={(value) => updateDay(key, { from: value })} />
+                  <TimeField disabled={!day.open} value={day.to || ""} onChange={(value) => updateDay(key, { to: value })} placeholder="18:00" />
+                </div>
+              );
+            })}
           </div>
-          <div className="rounded-2xl bg-secondary/45 px-4 py-3">
-            <div className="text-[11px] font-semibold text-muted-foreground">Urmatoarea exceptie</div>
-            <p className="mt-1 text-sm font-semibold leading-relaxed">
-              {upcoming ? `${upcoming.start_date} - ${upcoming.end_date}: ${upcoming.type === "closed" ? "Inchis" : `${normalizeTime(upcoming.from) || "--:--"} - ${normalizeTime(upcoming.to) || "--:--"}`} ${upcoming.public_note ? `· ${upcoming.public_note}` : ""}` : "Nu exista exceptii viitoare"}
-            </p>
+        </section>
+
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm xl:sticky xl:top-0">
+          <div className="mb-3 flex items-center gap-2">
+            <CalendarDays className="h-4 w-4" />
+            <h2 className="text-sm font-bold">Preview public</h2>
           </div>
-        </div>
-        <div className="mt-4 rounded-2xl border border-border bg-secondary/30 p-4">
+          <div className="space-y-3">
+            <div className="rounded-2xl bg-secondary/45 px-4 py-3">
+              <div className="text-[11px] font-semibold text-muted-foreground">Program afisat</div>
+              <p className="mt-1 text-sm font-semibold leading-relaxed">{weeklyText}</p>
+            </div>
+            <div className="rounded-2xl bg-secondary/45 px-4 py-3">
+              <div className="text-[11px] font-semibold text-muted-foreground">Urmatoarea exceptie</div>
+              <p className="mt-1 text-sm font-semibold leading-relaxed">
+                {upcoming ? `${upcoming.start_date} - ${upcoming.end_date}: ${upcoming.type === "closed" ? "Inchis" : `${normalizeTime(upcoming.from) || "--:--"} - ${normalizeTime(upcoming.to) || "--:--"}`} ${upcoming.public_note ? `· ${upcoming.public_note}` : ""}` : "Nu exista exceptii viitoare"}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold">Program special</h2>
+              <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
+                Adauga perioade temporare pentru sarbatori, concedii, inventar sau evenimente. Dupa data de final, profilul revine automat la programul saptamanal.
+              </p>
+            </div>
+            <button type="button" onClick={addException} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-secondary">
+              <Plus className="h-3.5 w-3.5" /> Adauga exceptie
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {state.exceptions.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border bg-secondary/30 px-4 py-6 text-center text-xs text-muted-foreground">
+                Nu exista program special setat.
+              </div>
+            ) : state.exceptions.map((item, index) => (
+              <ExceptionRow key={index} item={item} index={index} onChange={updateException} onRemove={removeException} />
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <label className="text-sm font-bold">Mod de primire clienti si pacienti</label>
-              <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
+              <h2 className="text-sm font-bold">Mod de primire clienti si pacienti</h2>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                 Stabileste cum poate ajunge un client sau pacient la aceasta locatie. Informatia se afiseaza public langa program si nu modifica orele de lucru.
               </p>
             </div>
-            <span className="rounded-full bg-card px-3 py-1 text-[11px] font-semibold text-muted-foreground">Optional</span>
+            <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold text-muted-foreground">Optional</span>
           </div>
-          <select className={`${inputCls} mt-3 max-w-lg`} value={state.availability_status} onChange={(e) => setState({ ...state, availability_status: e.target.value })}>
+          <select className={`${inputCls} mt-4`} value={state.availability_status} onChange={(e) => setState({ ...state, availability_status: e.target.value })}>
             <option value="necunoscuta">Nu afisa aceasta informatie</option>
             {Object.entries(AVAILABILITY_OPTIONS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
-          <div className="mt-3 flex items-start gap-2 rounded-2xl border border-border bg-card px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+          <div className="mt-3 flex items-start gap-2 rounded-2xl border border-border bg-secondary/30 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>{accessModeHelp}</span>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
-      <div className="sticky bottom-0 -mx-1 rounded-2xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="sticky bottom-0 z-10 -mx-1 rounded-2xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="flex flex-wrap items-center gap-2">
           <button disabled={saving} onClick={save} className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50">
             <Save className="h-4 w-4" /> Salveaza programul
