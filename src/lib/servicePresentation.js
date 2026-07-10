@@ -12,6 +12,8 @@ export const CLIENT_NEED_SECTIONS = [
       { group: "optical_retail", id: "sunglasses" },
       { group: "optical_retail", id: "prescription_sunglasses" },
       { group: "optical_retail", id: "children_frames" },
+      { group: "optical_retail", id: "sports_glasses" },
+      { group: "optical_retail", id: "safety_glasses" },
       { group: "optical_retail", id: "accessories" },
       { group: "lenses_and_measurements", id: "single_vision_lenses" },
       { group: "lenses_and_measurements", id: "progressive_lenses" },
