@@ -5,6 +5,7 @@
   },
   "include": [
     "shared/canonicalServiceRegistry.js",
+    "shared/servicePrerequisiteEngine.js",
     "src/lib/canonicalServiceCatalog.js",
     "src/lib/directoryOpsCatalog.js",
     "src/lib/servicePresentation.js",
