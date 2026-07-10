@@ -15,17 +15,22 @@ import { isServicePubliclyEligible } from '../../../shared/canonicalServiceRegis
 const B2B_PROFILE_TYPES = ['optical_laboratory_b2b', 'future_b2b_distributor'];
 const FIELD_STATES = ['draft', 'pending_review', 'approved', 'rejected', 'needs_more_info', 'archived'];
 const EQUIPMENT_KEYS = [
-  'autorefractometer', 'keratometer', 'lensmeter', 'phoropter', 'visual_acuity_chart', 'pupillometer', 'digital_centering_system',
-  'slit_lamp', 'tonometer', 'corneal_topographer', 'contact_lens_trial_set', 'gonioscope', 'specular_microscope', 'retinal_angiography_system',
-  'oct', 'visual_field_analyzer', 'fundus_camera', 'pachymeter', 'biometer', 'ophthalmic_ultrasound', 'gonioscope', 'specular_microscope', 'retinal_angiography_system',
-  'operating_microscope', 'phacoemulsification_system', 'vitrectomy_system', 'yag_laser', 'retinal_laser', 'intravitreal_injection_setup', 'minor_procedure_set', 'retinal_laser', 'intravitreal_injection_setup', 'minor_procedure_set',
+  'autorefractometer', 'keratometer', 'lensmeter', 'phoropter', 'visual_acuity_chart',
+  'pupillometer', 'digital_centering_system',
+  'slit_lamp', 'tonometer', 'corneal_topographer', 'contact_lens_trial_set',
+  'gonioscope', 'specular_microscope', 'retinal_angiography_system',
+  'oct', 'visual_field_analyzer', 'fundus_camera', 'pachymeter', 'biometer', 'ophthalmic_ultrasound',
+  'operating_microscope', 'phacoemulsification_system', 'vitrectomy_system', 'yag_laser',
+  'retinal_laser', 'intravitreal_injection_setup', 'minor_procedure_set',
   'excimer_laser', 'femtosecond_laser', 'corneal_crosslinking_system',
   'tracer', 'blocker', 'edger', 'groover', 'drill', 'generator', 'polisher', 'coater', 'ultrasonic_cleaner',
 ];
 // Specialized medical/surgical equipment may be public ONLY on a verified profile.
 const SPECIALIZED_EQUIPMENT = [
   'oct', 'visual_field_analyzer', 'fundus_camera', 'pachymeter', 'biometer', 'ophthalmic_ultrasound',
+  'gonioscope', 'specular_microscope', 'retinal_angiography_system',
   'operating_microscope', 'phacoemulsification_system', 'vitrectomy_system', 'yag_laser',
+  'retinal_laser', 'intravitreal_injection_setup', 'minor_procedure_set',
   'excimer_laser', 'femtosecond_laser', 'corneal_crosslinking_system',
 ];
 const OFFERING_TYPES = ['frames', 'ophthalmic_lenses', 'contact_lenses', 'sunglasses', 'care_products', 'medical_devices'];
