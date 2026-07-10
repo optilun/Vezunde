@@ -1,0 +1,54 @@
+name: Service Registry Foundation
+
+on:
+  push:
+    branches:
+      - chatgpt/services-registry-stage-1
+    paths:
+      - "shared/canonicalServiceRegistry.js"
+      - "src/lib/canonicalServiceCatalog.js"
+      - "src/lib/directoryOpsCatalog.js"
+      - "src/lib/servicePresentation.js"
+      - "src/components/workspace/provider/ProviderServices.jsx"
+      - "base44/functions/**"
+      - "scripts/verify-service-registry.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/service-registry-stage-1.yml"
+  pull_request:
+    paths:
+      - "shared/canonicalServiceRegistry.js"
+      - "src/lib/canonicalServiceCatalog.js"
+      - "src/lib/directoryOpsCatalog.js"
+      - "src/lib/servicePresentation.js"
+      - "src/components/workspace/provider/ProviderServices.jsx"
+      - "base44/functions/**"
+      - "scripts/verify-service-registry.mjs"
+      - "package.json"
+      - "package-lock.json"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify service registry 94/94
+        run: npm run test:services
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
