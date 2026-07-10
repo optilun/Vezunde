@@ -1,0 +1,91 @@
+{
+  "name": "ProfessionalInvitation",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": ["string", "null"]
+    },
+    "location_id": {
+      "type": "string"
+    },
+    "invited_email_normalized": {
+      "type": "string"
+    },
+    "professional_type": {
+      "type": "string",
+      "enum": [
+        "ophthalmologist",
+        "optometrist",
+        "optician"
+      ]
+    },
+    "invited_by_user_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "accepted",
+        "expired",
+        "revoked"
+      ],
+      "default": "pending"
+    },
+    "secure_token_hash": {
+      "type": "string"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "accepted_by_user_id": {
+      "type": "string"
+    },
+    "accepted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "professional_id": {
+      "type": "string"
+    },
+    "revoked_by_user_id": {
+      "type": "string"
+    },
+    "revoked_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "location_id",
+    "invited_email_normalized",
+    "professional_type",
+    "invited_by_user_id",
+    "status",
+    "secure_token_hash",
+    "expires_at"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
