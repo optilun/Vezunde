@@ -295,7 +295,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                         </div>
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                           <span>{selectedLocation.locality_name || selectedLocation.city}{selectedLocation.county_name ? ` · ${selectedLocation.county_name}` : ""}</span>
-                          <InfoHint>Tot ce configurezi aici se aplică doar acestei locații: servicii, program, specialiști și modificările de adresă/contact.</InfoHint>
+                          <InfoHint>Modificările făcute aici se aplică doar acestei locații. Aici gestionezi serviciile, programul, specialiștii și datele de contact ale punctului de lucru.</InfoHint>
                         </div>
                       </div>
                       {hasDraftChanges && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-800">Draft în lucru</span>}
