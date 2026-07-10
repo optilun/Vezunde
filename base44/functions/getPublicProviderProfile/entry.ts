@@ -166,6 +166,13 @@ function publicUrl(value) {
   }
 }
 
+function publicImage(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  if (raw.length <= 800000 && /^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(raw)) return raw;
+  return publicUrl(raw);
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -190,15 +197,23 @@ Deno.serve(async (req) => {
       .filter((s) => isPublicSafeService(s, pcs))
       .map(toPublicService);
 
-    const profiles = await Promise.all(assigns.map((a) => svc.entities.ProfessionalProfile.get(a.professional_id).catch(() => null)));
-    const team = assigns.map((a, i) => {
-      const p = profiles[i];
-      if (!p || p.is_public === false) return null;
+    const profiles = await Promise.all(assigns.map((assignment) => svc.entities.ProfessionalProfile.get(assignment.professional_id).catch(() => null)));
+    const team = assigns.map((assignment, index) => {
+      const profile = profiles[index];
+      if (!profile) return null;
+      if (profile.is_public !== true) return null;
+      if (profile.verification_status !== 'verified') return null;
+      if (profile.public_visibility_status !== 'approved') return null;
+      const displayName = profile.public_display_name || profile.full_name;
+      if (!displayName) return null;
       return {
-        full_name: p.full_name,
-        professional_type: a.professional_type,
-        bio: p.bio || null,
-        affiliation_status: a.affiliation_status || 'location_added',
+        id: profile.id,
+        full_name: displayName,
+        professional_type: profile.professional_type || assignment.professional_type,
+        bio: profile.professional_bio || profile.bio || null,
+        profile_photo_url: publicImage(profile.profile_photo_url),
+        specializations: Array.isArray(profile.specializations) ? profile.specializations.slice(0, 6) : [],
+        verified: true,
       };
     }).filter(Boolean);
 
