@@ -46,10 +46,8 @@ async function evaluateSubmission(svc, submission) {
     const result = evaluateServicePrerequisites(key, context);
     const definition = result.definition || getCanonicalServiceDefinition(key);
     const blockers = [...result.blockers];
-    if (
-      definition?.requires_review
-      && context.location.profile_control_status !== 'verified'
-    ) {
+
+    if (definition?.requires_review && context.location.profile_control_status !== 'verified') {
       blockers.unshift({
         code: 'location_not_verified',
         message: 'Locatia trebuie verificata de Vezunde inaintea aprobarii unui serviciu medical.',
@@ -57,10 +55,12 @@ async function evaluateSubmission(svc, submission) {
         actual: context.location.profile_control_status || 'directory',
       });
     }
+
     const eligible = blockers.length === 0;
     const status = blockers.some((blocker) => blocker.code === 'location_not_verified')
       ? 'requires_verified_location'
       : result.status;
+
     return {
       service_key: key,
       label: definition?.label || key,
@@ -69,12 +69,10 @@ async function evaluateSubmission(svc, submission) {
       requires_review: definition?.requires_review === true,
       eligible,
       status,
-      status_label: status === 'requires_verified_location'
-        ? 'Necesita locatie verificata'
-        : servicePrerequisiteStatusLabel(status),
+      status_label: servicePrerequisiteStatusLabel(status),
       blockers,
       evidence: result.evidence,
-      required_professional_types: definition?.required_professional_types || [],
+      required_professional_types: result.definition?.required_professional_types || [],
       required_equipment_types: result.definition?.required_equipment_types || [],
       equipment_requirement_mode: result.definition?.equipment_requirement_mode || 'all',
       required_infrastructure_types: result.definition?.required_infrastructure_types || [],
@@ -97,6 +95,14 @@ async function evaluateSubmission(svc, submission) {
   };
 }
 
+function reviewPayload(evaluation) {
+  return {
+    approval_allowed: evaluation.approval_allowed,
+    summary: evaluation.summary,
+    services: evaluation.evaluations,
+  };
+}
+
 async function delegate(base44, action, payload) {
   const result = await base44.functions.invoke('adminWorkspaceReview', {
     action,
@@ -108,6 +114,21 @@ async function delegate(base44, action, payload) {
     note: payload.note || '',
   });
   return result?.data || result || {};
+}
+
+async function writeAudit(svc, user, submission, actionType, next, note) {
+  await svc.entities.DirectoryAuditRecord.create({
+    entity_type: 'ProviderWorkspaceSubmission',
+    entity_id: submission.id,
+    action_type: actionType,
+    changed_fields: ['confirmation_level', 'matching_allowed'],
+    previous_values: '{}',
+    new_values: JSON.stringify(next || {}),
+    admin_user_id: user.id,
+    admin_email: user.email,
+    note: note || '',
+    performed_at: new Date().toISOString(),
+  });
 }
 
 async function promoteVerifiedServices(svc, user, submission, evaluation) {
@@ -128,25 +149,18 @@ async function promoteVerifiedServices(svc, user, submission, evaluation) {
     }
   }
 
-  if (promoted.length > 0) {
-    await svc.entities.DirectoryAuditRecord.create({
-      entity_type: 'ProviderWorkspaceSubmission',
-      entity_id: submission.id,
-      action_type: 'verify_service_prerequisites',
-      changed_fields: ['confirmation_level', 'matching_allowed'],
-      previous_values: '{}',
-      new_values: JSON.stringify({
-        services: [...new Set(promoted)],
-        prerequisite_summary: evaluation.summary,
-      }),
-      admin_user_id: user.id,
-      admin_email: user.email,
-      note: 'Servicii medicale verificate numai dupa validarea specialistului, echipamentului si infrastructurii.',
-      performed_at: new Date().toISOString(),
-    });
+  const uniquePromoted = [...new Set(promoted)];
+  if (uniquePromoted.length > 0) {
+    await writeAudit(
+      svc,
+      user,
+      submission,
+      'verify_service_prerequisites',
+      { services: uniquePromoted, prerequisite_summary: evaluation.summary },
+      'Servicii medicale verificate numai dupa validarea specialistului, echipamentului si infrastructurii.',
+    );
   }
-
-  return [...new Set(promoted)];
+  return uniquePromoted;
 }
 
 Deno.serve(async (req) => {
@@ -175,14 +189,7 @@ Deno.serve(async (req) => {
         return Response.json({ ...delegated, prerequisite_review: null });
       }
       const evaluation = await evaluateSubmission(svc, submission);
-      return Response.json({
-        submission,
-        prerequisite_review: {
-          approval_allowed: evaluation.approval_allowed,
-          summary: evaluation.summary,
-          services: evaluation.evaluations,
-        },
-      });
+      return Response.json({ submission, prerequisite_review: reviewPayload(evaluation) });
     }
 
     if (action === 'approve') {
@@ -192,30 +199,46 @@ Deno.serve(async (req) => {
       if (submission.status !== 'pending_review') {
         return Response.json({ error: 'Submission nu este in asteptare' }, { status: 400 });
       }
-      const evaluation = await evaluateSubmission(svc, submission);
-      if (!evaluation.approval_allowed) {
+
+      const preApprovalEvaluation = await evaluateSubmission(svc, submission);
+      if (!preApprovalEvaluation.approval_allowed) {
         return Response.json({
           error: 'Serviciile nu pot fi aprobate deoarece exista cerinte neindeplinite.',
           code: 'SERVICE_PREREQUISITES_NOT_MET',
-          prerequisite_review: {
-            approval_allowed: false,
-            summary: evaluation.summary,
-            services: evaluation.evaluations,
-          },
+          prerequisite_review: reviewPayload(preApprovalEvaluation),
         }, { status: 409 });
       }
 
       const delegated = await delegate(base44, 'approve', payload);
       if (delegated.error) return Response.json(delegated, { status: 400 });
-      const promoted_services = await promoteVerifiedServices(svc, user, submission, evaluation);
+
+      // Re-read every dependency after the underlying approval. This closes the window
+      // in which a specialist, equipment item or infrastructure proof could change
+      // between validation and promotion. Public/matching stay fail-closed regardless.
+      const postApprovalEvaluation = await evaluateSubmission(svc, submission);
+      if (!postApprovalEvaluation.approval_allowed) {
+        await writeAudit(
+          svc,
+          user,
+          submission,
+          'service_prerequisite_revalidation_failed',
+          { prerequisite_review: reviewPayload(postApprovalEvaluation) },
+          'Submissionul a fost aplicat, dar serviciile medicale nu au fost promovate deoarece cerintele s-au schimbat in timpul aprobarii.',
+        );
+        return Response.json({
+          success: true,
+          promoted_services: [],
+          warning: 'Modificarile au fost aplicate, dar serviciile medicale au ramas nepublice deoarece cerintele s-au schimbat. Reia verificarea.',
+          code: 'SERVICE_PREREQUISITES_CHANGED_DURING_APPROVAL',
+          prerequisite_review: reviewPayload(postApprovalEvaluation),
+        });
+      }
+
+      const promotedServices = await promoteVerifiedServices(svc, user, submission, postApprovalEvaluation);
       return Response.json({
         success: true,
-        promoted_services,
-        prerequisite_review: {
-          approval_allowed: true,
-          summary: evaluation.summary,
-          services: evaluation.evaluations,
-        },
+        promoted_services: promotedServices,
+        prerequisite_review: reviewPayload(postApprovalEvaluation),
       });
     }
 
