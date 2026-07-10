@@ -1,23 +1,28 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Activity,
   AlertTriangle,
+  Baby,
   Check,
   CheckCircle2,
   ChevronDown,
-  ChevronRight,
+  Circle,
+  Crosshair,
+  Eye,
+  Glasses,
   Plus,
   Save,
   Search,
   Send,
   ShieldCheck,
+  Sparkles,
+  Stethoscope,
+  Wrench,
   X,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { getServiceGroupLayout, SERVICE_GROUPS } from "@/lib/canonicalServiceCatalog";
-import {
-  PROVIDER_SERVICE_AREAS,
-  PROVIDER_SERVICE_SECTIONS,
-} from "@/lib/providerServiceWorkspaceSections";
+import { PROVIDER_SERVICE_SECTIONS } from "@/lib/providerServiceWorkspaceSections";
 import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-foreground/40 focus:ring-2 focus:ring-foreground/5";
@@ -43,6 +48,26 @@ const PROVIDER_TYPE_LABELS = {
   laborator_optic: "laborator optic",
   optometrist_independent: "optometrist independent",
   medic_oftalmolog_independent: "medic oftalmolog",
+};
+
+const SECTION_ICON_BY_KEY = {
+  optical_products: Glasses,
+  lenses_measurements: Crosshair,
+  optometry: Eye,
+  contact_lenses: Circle,
+  optical_workshop: Wrench,
+  general_ophthalmology: Stethoscope,
+  investigations: Activity,
+  retina_macula: Eye,
+  glaucoma: Eye,
+  cataract_refractive: Sparkles,
+  cornea_surface: Circle,
+  pediatric_strabismus: Baby,
+  neuro_inflammation: Activity,
+  emergency_ophthalmology: AlertTriangle,
+  cataract_refractive_procedures: Sparkles,
+  retina_procedures: Activity,
+  oculoplastics_minor: Wrench,
 };
 
 const SERVICE_GROUP_BY_KEY = Object.fromEntries(
@@ -212,12 +237,12 @@ function prerequisiteDescription(prerequisite) {
 function ServiceStatus({ prerequisite }) {
   const tone = prerequisiteTone(prerequisite);
   const labels = {
-    available: "Disponibil",
+    available: "Disponibil public",
     review: prerequisite?.status_label || "Necesită verificare",
     blocked: prerequisite?.status_label || "Cerințe lipsă",
   };
   const classes = {
-    available: "border-border bg-secondary/55 text-muted-foreground",
+    available: "border-green-200 bg-green-50 text-green-800",
     review: "border-blue-200 bg-blue-50 text-blue-800",
     blocked: "border-amber-200 bg-amber-50 text-amber-900",
   };
@@ -239,67 +264,15 @@ function ServiceRow({ item, selected, prerequisite, disabled, onToggle }) {
       type="button"
       disabled={disabled || incompatible}
       onClick={() => onToggle(item.group, item.id)}
-      className={`flex w-full items-start gap-3 rounded-2xl border px-4 py-3.5 text-left transition disabled:cursor-not-allowed disabled:opacity-55 ${active ? "border-foreground/25 bg-secondary/65 shadow-sm" : "border-border bg-card hover:border-foreground/20 hover:bg-secondary/25"}`}
+      className={`grid w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-3 border-b border-border/70 px-4 py-3.5 text-left transition last:border-b-0 disabled:cursor-not-allowed disabled:opacity-55 sm:grid-cols-[auto_minmax(150px,0.7fr)_minmax(200px,1fr)_auto] sm:items-center ${active ? "bg-secondary/35" : "bg-card hover:bg-secondary/20"}`}
     >
-      <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${active ? "border-foreground bg-foreground text-background" : "border-border bg-background text-muted-foreground"}`}>
+      <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border sm:mt-0 ${active ? "border-foreground bg-foreground text-background" : "border-border bg-background text-muted-foreground"}`}>
         {active && <Check className="h-3.5 w-3.5" />}
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-bold leading-snug text-foreground">{serviceLabel(item)}</span>
-        <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">{prerequisiteDescription(prerequisite)}</span>
-      </span>
-      <ServiceStatus prerequisite={prerequisite} />
+      <span className="min-w-0 text-sm font-bold leading-snug text-foreground">{serviceLabel(item)}</span>
+      <span className="col-start-2 text-[11px] leading-relaxed text-muted-foreground sm:col-start-auto">{prerequisiteDescription(prerequisite)}</span>
+      <span className="col-start-2 justify-self-start sm:col-start-auto sm:justify-self-end"><ServiceStatus prerequisite={prerequisite} /></span>
     </button>
-  );
-}
-
-function CategorySelector({ sections, selected, activeKey, onPick }) {
-  const byArea = Object.fromEntries(PROVIDER_SERVICE_AREAS.map((area) => [area.key, []]));
-  sections.forEach((section) => {
-    byArea[section.area] = byArea[section.area] || [];
-    byArea[section.area].push(section);
-  });
-
-  return (
-    <aside className="rounded-[24px] border border-border bg-card p-4 shadow-sm xl:sticky xl:top-4 xl:self-start">
-      <div className="mb-4">
-        <h2 className="text-sm font-bold">Categorii</h2>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Alege o categorie pentru a configura serviciile locației.</p>
-      </div>
-      <div className="space-y-4">
-        {PROVIDER_SERVICE_AREAS.map((area) => {
-          const areaSections = byArea[area.key] || [];
-          if (areaSections.length === 0) return null;
-          return (
-            <div key={area.key}>
-              <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{area.label}</div>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-1">
-                {areaSections.map((section) => {
-                  const count = sectionSelectedCount(selected, section);
-                  const active = activeKey === section.key;
-                  return (
-                    <button
-                      key={section.key}
-                      type="button"
-                      onClick={() => onPick(section.key)}
-                      className={`flex min-h-[58px] w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition ${active ? "border-foreground/25 bg-secondary/75 shadow-sm" : "border-border/70 bg-background hover:border-foreground/20 hover:bg-secondary/30"}`}
-                    >
-                      <span className={`h-2 w-2 shrink-0 rounded-full ${active ? "bg-foreground" : "bg-border"}`} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-xs font-bold leading-snug">{section.title}</span>
-                        <span className="mt-0.5 block text-[10px] text-muted-foreground">{section.isPrimary ? "Recomandat pentru locație" : "Categorie suplimentară"}</span>
-                      </span>
-                      {count > 0 && <span className="rounded-full bg-card px-2 py-0.5 text-[10px] font-bold text-foreground">{count}</span>}
-                      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </aside>
   );
 }
 
@@ -317,7 +290,7 @@ function CustomServiceBox({ section, pendingReview, customItems, onAddCustom, on
   };
 
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-secondary/20 p-4">
+    <div className="border-t border-border/70 bg-secondary/15 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-xs font-bold">Nu găsești serviciul?</div>
@@ -364,68 +337,73 @@ function CustomServiceBox({ section, pendingReview, customItems, onAddCustom, on
   );
 }
 
-function SectionDetail({ section, selected, prerequisitesByKey, customItems, pendingReview, onToggle, onAddCustom, onRemoveCustom }) {
-  if (!section) return null;
-  return (
-    <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-heading text-lg font-bold tracking-tight">{section.title}</h2>
-            {!section.isPrimary && <span className="rounded-full border border-border bg-secondary px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">Suplimentar</span>}
-          </div>
-          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">{section.description}</p>
-        </div>
-        <span className="rounded-full border border-border bg-secondary/45 px-3 py-1 text-xs font-semibold">{section.selectedCount} selectate</span>
-      </div>
+function AccordionSection({ section, open, selected, prerequisitesByKey, customItems, pendingReview, onOpen, onToggle, onAddCustom, onRemoveCustom }) {
+  const Icon = SECTION_ICON_BY_KEY[section.key] || CheckCircle2;
 
-      {section.note && (
-        <div className="mt-4 flex gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2.5 text-xs leading-relaxed text-blue-900">
-          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" /> {section.note}
+  return (
+    <section className={`overflow-hidden rounded-[22px] border bg-card transition ${open ? "border-foreground/20 shadow-sm" : "border-border"}`}>
+      <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-secondary/20 sm:px-5">
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${open ? "border-foreground/15 bg-secondary/60 text-foreground" : "border-border bg-background text-muted-foreground"}`}>
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold sm:text-base">{section.title}</span>
+          <span className="mt-0.5 block text-[11px] text-muted-foreground">{section.selectedCount} selectate din {section.items.length}</span>
+        </span>
+        {!section.isPrimary && <span className="hidden rounded-full border border-border bg-secondary/40 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground sm:inline-flex">Suplimentar</span>}
+        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="border-t border-border/70">
+          <div className="bg-secondary/10 px-4 py-3 sm:px-5">
+            <p className="text-xs leading-relaxed text-muted-foreground">{section.description}</p>
+            {section.note && (
+              <div className="mt-3 flex gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2.5 text-xs leading-relaxed text-blue-900">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" /> {section.note}
+              </div>
+            )}
+          </div>
+          <div className="border-t border-border/60">
+            {section.items.map((item) => (
+              <ServiceRow
+                key={`${item.group}:${item.id}`}
+                item={item}
+                selected={selected}
+                prerequisite={prerequisitesByKey[item.id]}
+                disabled={pendingReview}
+                onToggle={onToggle}
+              />
+            ))}
+          </div>
+          <CustomServiceBox
+            section={section}
+            pendingReview={pendingReview}
+            customItems={customItems}
+            onAddCustom={onAddCustom}
+            onRemoveCustom={onRemoveCustom}
+          />
         </div>
       )}
-
-      <div className="mt-4 space-y-2">
-        {section.items.map((item) => (
-          <ServiceRow
-            key={`${item.group}:${item.id}`}
-            item={item}
-            selected={selected}
-            prerequisite={prerequisitesByKey[item.id]}
-            disabled={pendingReview}
-            onToggle={onToggle}
-          />
-        ))}
-      </div>
-
-      <div className="mt-4">
-        <CustomServiceBox
-          section={section}
-          pendingReview={pendingReview}
-          customItems={customItems}
-          onAddCustom={onAddCustom}
-          onRemoveCustom={onRemoveCustom}
-        />
-      </div>
     </section>
   );
 }
 
 function SearchResults({ query, rows, selected, prerequisitesByKey, pendingReview, onToggle }) {
   return (
-    <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <section className="overflow-hidden rounded-[22px] border border-border bg-card shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 px-4 py-4 sm:px-5">
         <div>
-          <h2 className="font-heading text-lg font-bold">Rezultate pentru „{query}”</h2>
+          <h2 className="font-heading text-base font-bold">Rezultate pentru „{query}”</h2>
           <p className="mt-1 text-xs text-muted-foreground">Căutarea include toate categoriile compatibile cu locația.</p>
         </div>
         <span className="rounded-full border border-border bg-secondary/45 px-3 py-1 text-xs font-semibold">{rows.length} rezultate</span>
       </div>
       {rows.length > 0 ? (
-        <div className="mt-4 space-y-2">
+        <div>
           {rows.map(({ section, item }) => (
             <div key={`${section.key}:${item.group}:${item.id}`}>
-              <div className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{section.title}</div>
+              <div className="border-b border-border/60 bg-secondary/10 px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground sm:px-5">{section.title}</div>
               <ServiceRow
                 item={item}
                 selected={selected}
@@ -437,107 +415,124 @@ function SearchResults({ query, rows, selected, prerequisitesByKey, pendingRevie
           ))}
         </div>
       ) : (
-        <div className="mt-4 rounded-2xl border border-dashed border-border bg-secondary/20 px-4 py-8 text-center text-sm text-muted-foreground">Nu am găsit servicii pentru această căutare.</div>
+        <div className="px-4 py-10 text-center text-sm text-muted-foreground">Nu am găsit servicii pentru această căutare.</div>
       )}
     </section>
   );
 }
 
-function SummaryPanel({
-  approvedCount,
-  selectedCount,
-  removalCount,
-  blockedSelectedCount,
-  readyForReviewCount,
-  selectedSections,
-  evidenceSummary,
-  profileLabel,
-  showResources,
-}) {
+function SummaryPills({ selectedCount, categoryCount, blockedCount, reviewCount }) {
+  const items = [
+    { label: "selectate", value: selectedCount, icon: CheckCircle2, className: "border-border bg-card text-foreground" },
+    { label: "categorii publice", value: categoryCount, icon: Eye, className: "border-border bg-card text-foreground" },
+    { label: "cerințe lipsă", value: blockedCount, icon: AlertTriangle, className: blockedCount > 0 ? "border-amber-200 bg-amber-50 text-amber-900" : "border-green-200 bg-green-50 text-green-800" },
+    { label: "de verificat", value: reviewCount, icon: ShieldCheck, className: reviewCount > 0 ? "border-blue-200 bg-blue-50 text-blue-900" : "border-border bg-card text-muted-foreground" },
+  ];
+
   return (
-    <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
-      <section className="rounded-[24px] border border-border bg-card p-4 shadow-sm">
-        <h2 className="text-sm font-bold">Rezumat</h2>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Configurare pentru {profileLabel}.</p>
-        <div className="mt-4 space-y-2.5 text-xs">
-          <div className="flex items-center justify-between rounded-xl bg-secondary/40 px-3 py-2.5"><span className="text-muted-foreground">Servicii selectate</span><strong>{selectedCount}</strong></div>
-          <div className="flex items-center justify-between rounded-xl bg-secondary/40 px-3 py-2.5"><span className="text-muted-foreground">Active acum</span><strong>{approvedCount}</strong></div>
-          <div className="flex items-center justify-between rounded-xl bg-secondary/40 px-3 py-2.5"><span className="text-muted-foreground">Categorii publice</span><strong>{selectedSections.length}</strong></div>
-        </div>
-      </section>
-
-      {(blockedSelectedCount > 0 || readyForReviewCount > 0 || removalCount > 0) && (
-        <section className="rounded-[24px] border border-border bg-card p-4 shadow-sm">
-          <h2 className="text-sm font-bold">Necesită atenție</h2>
-          <div className="mt-3 space-y-2 text-xs">
-            {blockedSelectedCount > 0 && <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-900"><span>Cerințe lipsă</span><strong>{blockedSelectedCount}</strong></div>}
-            {readyForReviewCount > 0 && <div className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-blue-900"><span>Necesită verificare</span><strong>{readyForReviewCount}</strong></div>}
-            {removalCount > 0 && <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/35 px-3 py-2.5"><span>De eliminat</span><strong>{removalCount}</strong></div>}
+    <div className="flex flex-wrap gap-2">
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <div key={item.label} className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold ${item.className}`}>
+            <Icon className="h-3.5 w-3.5" />
+            <strong>{item.value}</strong> {item.label}
           </div>
-        </section>
-      )}
-
-      <section className="rounded-[24px] border border-border bg-card p-4 shadow-sm">
-        <h2 className="text-sm font-bold">Cum va apărea public</h2>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Pacienții vor vedea categorii simple, nu lista tehnică completă.</p>
-        <div className="mt-3 space-y-2">
-          {selectedSections.length > 0 ? selectedSections.map((section) => (
-            <div key={section.key} className="flex items-center justify-between gap-3 rounded-xl bg-secondary/35 px-3 py-2.5">
-              <span className="text-xs font-semibold">{section.publicLabel}</span>
-              <span className="rounded-full bg-card px-2 py-0.5 text-[10px] font-bold">{section.selectedCount}</span>
-            </div>
-          )) : <div className="rounded-xl border border-dashed border-border px-3 py-5 text-center text-xs text-muted-foreground">Nu ai selectat încă servicii.</div>}
-        </div>
-      </section>
-
-      {showResources && (
-        <section className="rounded-[24px] border border-border bg-card p-4 shadow-sm">
-          <h2 className="text-sm font-bold">Resurse asociate</h2>
-          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Sunt folosite doar pentru validarea serviciilor care au cerințe.</p>
-          <div className="mt-3 space-y-2 text-xs">
-            <div className="flex items-center justify-between"><span className="text-muted-foreground">Specialiști activi</span><strong>{evidenceSummary.active_assignment_count || 0}</strong></div>
-            <div className="flex items-center justify-between"><span className="text-muted-foreground">Echipamente active</span><strong>{evidenceSummary.equipment_count || 0}</strong></div>
-            <div className="flex items-center justify-between"><span className="text-muted-foreground">Facilități declarate</span><strong>{evidenceSummary.facility_count || 0}</strong></div>
-          </div>
-        </section>
-      )}
-    </aside>
+        );
+      })}
+    </div>
   );
 }
 
-function LegacyServicesCard({ services, rawRemovalKeys, pendingReview, onToggleRemoval }) {
-  if (!services.length) return null;
+function PublicPreview({ selectedSections }) {
   return (
-    <section className="rounded-[24px] border border-amber-200 bg-amber-50/70 p-4 shadow-sm">
+    <section className="rounded-[22px] border border-border bg-card p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-bold text-amber-950">Servicii existente care necesită migrare</h2>
-          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-amber-900/80">Cheile vechi sau ambigue rămân vizibile pentru a nu pierde date, dar nu intră automat în profil ori matching.</p>
+          <div className="flex items-center gap-2">
+            <Eye className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-bold">Cum va apărea public</h2>
+          </div>
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Pacienții vor vedea aceste categorii simple, nu lista tehnică completă.</p>
         </div>
-        <span className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-900">{services.length} de verificat</span>
       </div>
-      <div className="mt-4 space-y-2">
-        {services.map((service) => {
-          const marked = rawRemovalKeys.includes(service.raw_key);
-          const statusLabel = service.catalog_status === "legacy_mapped"
-            ? "Cheie veche mapabilă"
-            : service.catalog_status === "legacy_ambiguous"
-              ? "Cheie ambiguă"
-              : "Cheie necunoscută";
-          return (
-            <div key={`${service.id || service.raw_key}:${service.raw_key}`} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-white px-3 py-2.5">
-              <div className="min-w-0">
-                <div className="text-xs font-bold">{service.label || service.raw_key}</div>
-                <div className="mt-1 break-all text-[10px] text-muted-foreground">{service.raw_key}</div>
-                <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900">{statusLabel}</span>
+      {selectedSections.length > 0 ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {selectedSections.map((section) => {
+            const Icon = SECTION_ICON_BY_KEY[section.key] || CheckCircle2;
+            return (
+              <div key={section.key} className="inline-flex items-center gap-2 rounded-xl border border-border bg-secondary/25 px-3 py-2.5">
+                <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs font-semibold">{section.publicLabel}</span>
+                <span className="rounded-full bg-card px-2 py-0.5 text-[10px] font-bold">{section.selectedCount}</span>
               </div>
-              <button type="button" disabled={pendingReview} onClick={() => onToggleRemoval(service.raw_key)} className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50 ${marked ? "border-red-200 bg-red-50 text-red-700" : "border-border bg-background hover:bg-secondary"}`}>
-                {marked ? "Eliminare solicitată" : "Solicită eliminarea"}
-              </button>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+      ) : (
+        <div className="mt-4 rounded-xl border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">Nu ai selectat încă servicii.</div>
+      )}
+    </section>
+  );
+}
+
+function ResourcesCard({ evidenceSummary }) {
+  return (
+    <section className="rounded-[22px] border border-border bg-card p-4 shadow-sm sm:p-5">
+      <div className="flex items-center gap-2">
+        <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+        <h2 className="text-sm font-bold">Resurse folosite pentru validare</h2>
       </div>
+      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Apar numai pentru serviciile care necesită specialist, echipament sau infrastructură.</p>
+      <div className="mt-4 grid gap-2 text-xs sm:grid-cols-3">
+        <div className="flex items-center justify-between rounded-xl bg-secondary/30 px-3 py-2.5"><span className="text-muted-foreground">Specialiști activi</span><strong>{evidenceSummary.active_assignment_count || 0}</strong></div>
+        <div className="flex items-center justify-between rounded-xl bg-secondary/30 px-3 py-2.5"><span className="text-muted-foreground">Echipamente active</span><strong>{evidenceSummary.equipment_count || 0}</strong></div>
+        <div className="flex items-center justify-between rounded-xl bg-secondary/30 px-3 py-2.5"><span className="text-muted-foreground">Facilități declarate</span><strong>{evidenceSummary.facility_count || 0}</strong></div>
+      </div>
+    </section>
+  );
+}
+
+function LegacyServicesAccordion({ services, rawRemovalKeys, pendingReview, onToggleRemoval }) {
+  const [open, setOpen] = useState(false);
+  if (!services.length) return null;
+
+  return (
+    <section className="overflow-hidden rounded-[22px] border border-amber-200 bg-amber-50/60">
+      <button type="button" onClick={() => setOpen((value) => !value)} className="flex w-full items-center gap-3 px-4 py-4 text-left sm:px-5">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-200 bg-white text-amber-900"><AlertTriangle className="h-4 w-4" /></span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold text-amber-950">Servicii existente care necesită migrare</span>
+          <span className="mt-0.5 block text-[11px] text-amber-900/75">{services.length} chei vechi, ambigue sau necunoscute</span>
+        </span>
+        <ChevronDown className={`h-4 w-4 text-amber-900 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="space-y-2 border-t border-amber-200 p-4 sm:p-5">
+          <p className="text-xs leading-relaxed text-amber-900/80">Datele rămân vizibile pentru a nu fi pierdute, dar nu intră automat în profil ori matching.</p>
+          {services.map((service) => {
+            const marked = rawRemovalKeys.includes(service.raw_key);
+            const statusLabel = service.catalog_status === "legacy_mapped"
+              ? "Cheie veche mapabilă"
+              : service.catalog_status === "legacy_ambiguous"
+                ? "Cheie ambiguă"
+                : "Cheie necunoscută";
+            return (
+              <div key={`${service.id || service.raw_key}:${service.raw_key}`} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-white px-3 py-2.5">
+                <div className="min-w-0">
+                  <div className="text-xs font-bold">{service.label || service.raw_key}</div>
+                  <div className="mt-1 break-all text-[10px] text-muted-foreground">{service.raw_key}</div>
+                  <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900">{statusLabel}</span>
+                </div>
+                <button type="button" disabled={pendingReview} onClick={() => onToggleRemoval(service.raw_key)} className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50 ${marked ? "border-red-200 bg-red-50 text-red-700" : "border-border bg-background hover:bg-secondary"}`}>
+                  {marked ? "Eliminare solicitată" : "Solicită eliminarea"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
@@ -557,7 +552,7 @@ export default function ProviderServicesWorkspace({ locationId, location, overvi
   const [loadError, setLoadError] = useState("");
   const [msg, setMsg] = useState("");
   const [showAdditional, setShowAdditional] = useState(false);
-  const [activeSectionKey, setActiveSectionKey] = useState("");
+  const [openSectionKey, setOpenSectionKey] = useState("");
   const [query, setQuery] = useState("");
 
   const profileLabel = getProfileLabel(location);
@@ -568,8 +563,7 @@ export default function ProviderServicesWorkspace({ locationId, location, overvi
   const sectionModels = useMemo(() => buildSectionModels(layout, selected), [layout, selected]);
   const recommendedSections = sectionModels.filter((section) => section.recommended);
   const additionalSections = sectionModels.filter((section) => !section.recommended);
-  const navigableSections = showAdditional ? sectionModels : recommendedSections;
-  const activeSection = navigableSections.find((section) => section.key === activeSectionKey) || navigableSections[0] || null;
+  const visibleSections = showAdditional ? sectionModels : recommendedSections;
 
   const customByGroup = useMemo(() => {
     const map = {};
@@ -581,11 +575,10 @@ export default function ProviderServicesWorkspace({ locationId, location, overvi
     return map;
   }, [customRequests]);
 
-  const customItemsForActiveSection = useMemo(() => {
-    if (!activeSection) return [];
-    const groups = [...new Set(activeSection.items.map((item) => item.group))];
+  const customItemsForSection = (section) => {
+    const groups = [...new Set((section?.items || []).map((item) => item.group))];
     return groups.flatMap((group) => (customByGroup[group] || []).map((item, indexInGroup) => ({ ...item, group, indexInGroup })));
-  }, [activeSection, customByGroup]);
+  };
 
   const searchRows = useMemo(() => {
     const needle = searchText(query);
@@ -672,23 +665,23 @@ export default function ProviderServicesWorkspace({ locationId, location, overvi
   useEffect(() => {
     setMsg("");
     setShowAdditional(false);
-    setActiveSectionKey("");
+    setOpenSectionKey("");
     setQuery("");
     load();
   }, [locationId]);
 
-  const sectionSignature = navigableSections.map((section) => section.key).join("|");
+  const sectionSignature = visibleSections.map((section) => section.key).join("|");
   useEffect(() => {
-    if (!navigableSections.some((section) => section.key === activeSectionKey)) {
-      setActiveSectionKey(navigableSections[0]?.key || "");
+    if (!visibleSections.some((section) => section.key === openSectionKey)) {
+      setOpenSectionKey(visibleSections[0]?.key || "");
     }
-  }, [sectionSignature, activeSectionKey]);
+  }, [sectionSignature, openSectionKey]);
 
   const toggleAdditional = () => {
     const next = !showAdditional;
     setShowAdditional(next);
-    if (!next && additionalSections.some((section) => section.key === activeSectionKey)) {
-      setActiveSectionKey(recommendedSections[0]?.key || "");
+    if (!next && additionalSections.some((section) => section.key === openSectionKey)) {
+      setOpenSectionKey(recommendedSections[0]?.key || "");
     }
   };
 
@@ -768,18 +761,21 @@ export default function ProviderServicesWorkspace({ locationId, location, overvi
 
   return (
     <div className="space-y-4 pb-20">
-      <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
+      <section className="rounded-[24px] border border-border bg-card p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-heading text-2xl font-extrabold tracking-tight">Serviciile locației</h1>
+              <p className="text-sm font-semibold text-foreground">Configurează serviciile pentru {profileLabel}.</p>
               {draft && <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}
             </div>
-            <p className="mt-2 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-              Selectează ce oferă această locație. Serviciile medicale sunt verificate separat înainte de publicare.
-            </p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Selectează ce oferă această locație. Serviciile medicale sunt verificate separat înainte de publicare.</p>
           </div>
-          <span className="rounded-full border border-border bg-secondary/35 px-3 py-1.5 text-xs font-semibold text-muted-foreground">{location?.public_display_name || location?.name || "Locația selectată"}</span>
+          <SummaryPills
+            selectedCount={selectedCount}
+            categoryCount={selectedSections.length}
+            blockedCount={blockedSelectedCount}
+            reviewCount={readyForReviewCount}
+          />
         </div>
 
         <div className="relative mt-4">
@@ -813,56 +809,47 @@ export default function ProviderServicesWorkspace({ locationId, location, overvi
 
       {!loading && servicesLoaded && (
         <>
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
-            <div className="space-y-4">
-              {!query && (
-                <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
-                  <CategorySelector sections={navigableSections} selected={selected} activeKey={activeSection?.key || ""} onPick={setActiveSectionKey} />
-                  <SectionDetail
-                    section={activeSection}
-                    selected={selected}
-                    prerequisitesByKey={prerequisitesByKey}
-                    customItems={customItemsForActiveSection}
-                    pendingReview={pendingReview}
-                    onToggle={toggle}
-                    onAddCustom={addCustom}
-                    onRemoveCustom={removeCustom}
-                  />
-                </div>
-              )}
+          {query ? (
+            <SearchResults query={query} rows={searchRows} selected={selected} prerequisitesByKey={prerequisitesByKey} pendingReview={pendingReview} onToggle={toggle} />
+          ) : (
+            <div className="space-y-3">
+              {visibleSections.map((section) => (
+                <AccordionSection
+                  key={section.key}
+                  section={section}
+                  open={openSectionKey === section.key}
+                  selected={selected}
+                  prerequisitesByKey={prerequisitesByKey}
+                  customItems={customItemsForSection(section)}
+                  pendingReview={pendingReview}
+                  onOpen={() => setOpenSectionKey((current) => current === section.key ? "" : section.key)}
+                  onToggle={toggle}
+                  onAddCustom={addCustom}
+                  onRemoveCustom={removeCustom}
+                />
+              ))}
 
-              {query && <SearchResults query={query} rows={searchRows} selected={selected} prerequisitesByKey={prerequisitesByKey} pendingReview={pendingReview} onToggle={toggle} />}
-
-              {additionalSections.length > 0 && !query && (
+              {additionalSections.length > 0 && (
                 <button type="button" onClick={toggleAdditional} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold shadow-sm hover:bg-secondary">
                   <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdditional ? "rotate-180" : ""}`} />
                   {showAdditional ? "Ascunde categoriile suplimentare" : `Vezi și ${additionalSections.length} categorii suplimentare`}
                 </button>
               )}
             </div>
+          )}
 
-            <SummaryPanel
-              approvedCount={approvedCount}
-              selectedCount={selectedCount}
-              removalCount={removalCount}
-              blockedSelectedCount={blockedSelectedCount}
-              readyForReviewCount={readyForReviewCount}
-              selectedSections={selectedSections}
-              evidenceSummary={evidenceSummary}
-              profileLabel={profileLabel}
-              showResources={showResources}
-            />
-          </div>
-
-          <LegacyServicesCard services={legacyServices} rawRemovalKeys={rawRemovalKeys} pendingReview={pendingReview} onToggleRemoval={toggleRawRemoval} />
+          <PublicPreview selectedSections={selectedSections} />
+          {showResources && <ResourcesCard evidenceSummary={evidenceSummary} />}
+          <LegacyServicesAccordion services={legacyServices} rawRemovalKeys={rawRemovalKeys} pendingReview={pendingReview} onToggleRemoval={toggleRawRemoval} />
         </>
       )}
 
       <div className="sticky bottom-0 z-20 -mx-1 rounded-[22px] border border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/90">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-xs text-muted-foreground">
-            <strong className="text-foreground">{selectedCount}</strong> servicii selectate
-            {blockedSelectedCount > 0 && <span className="ml-2 text-amber-800">· {blockedSelectedCount} cu cerințe lipsă</span>}
+          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <span><strong className="text-foreground">{selectedCount}</strong> servicii selectate</span>
+            <span><strong className={blockedSelectedCount > 0 ? "text-amber-800" : "text-green-700"}>{blockedSelectedCount}</strong> cerințe lipsă</span>
+            {readyForReviewCount > 0 && <span><strong className="text-blue-800">{readyForReviewCount}</strong> de verificat</span>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button disabled={saving || pendingReview || !servicesLoaded || (!hasChanges && !draft)} onClick={save} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50">
