@@ -33,7 +33,7 @@ export default function ProviderAppShell({ navItems, activeKey, onNavigate, user
       </Sheet>
 
       <div className="flex-1 lg:pl-64 min-w-0">
-        <div className="sticky top-0 z-10 bg-card/95 backdrop-blur border-b border-border px-4 sm:px-6 h-12 flex items-center justify-between gap-3">
+        <div className="relative z-10 bg-card/95 backdrop-blur border-b border-border px-4 sm:px-6 h-12 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
             <button onClick={() => setMobileOpen(true)} className="lg:hidden p-1.5 -ml-1.5 rounded-lg hover:bg-secondary shrink-0" aria-label="Deschide meniul">
               <Menu className="w-5 h-5" />
