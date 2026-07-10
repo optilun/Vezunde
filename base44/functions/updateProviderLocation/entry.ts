@@ -1,13 +1,23 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { normalizeServiceKey } from '../../../shared/canonicalServiceRegistry.js';
 
+// Legacy profile update endpoint.
 // Owners/staff can update opening hours + availability directly.
 // Everything else is staged in pending_changes for admin review.
+// Service writes are retained only for backward compatibility; new non-canonical
+// keys are rejected and existing legacy/unknown rows are preserved by exact key.
 const DIRECT_FIELDS = ['opening_hours', 'saturday_hours', 'availability_status'];
 // Module 3F.2.2: city/county are NOT provider-editable fields. Geography changes
 // are staged ONLY as a canonical locality_siruta_code (validated below).
 const STAGED_FIELDS = ['name', 'address', 'phone_public', 'public_email', 'website', 'description', 'provider_type'];
 const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
 function normalizeMemberRole(role) { if (role === 'owner') return 'organization_owner'; if (role === 'staff') return 'location_staff'; return MEMBER_ROLES.includes(role) ? role : ''; }
+
+function cleanServiceKeys(value) {
+  return [...new Set((Array.isArray(value) ? value : [])
+    .map((key) => String(key || '').trim())
+    .filter(Boolean))];
+}
 
 Deno.serve(async (req) => {
   try {
@@ -50,6 +60,22 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Profilul este suspendat si nu poate fi modificat' }, { status: 403 });
     }
 
+    let stagedServices = null;
+    if (Array.isArray(staged.services)) {
+      stagedServices = cleanServiceKeys(staged.services);
+      const existingRows = await svc.entities.LocationService.filter({ location_id: loc.id }, null, 500);
+      const existingRawKeys = new Set(existingRows.map((row) => String(row.service_key || '').trim()).filter(Boolean));
+      const invalidNewKeys = stagedServices.filter((key) => (
+        normalizeServiceKey(key).status !== 'canonical' && !existingRawKeys.has(key)
+      ));
+      if (invalidNewKeys.length > 0) {
+        return Response.json({
+          error: 'Fluxul vechi nu poate introduce servicii legacy, ambigue sau necunoscute noi. Foloseste configuratorul Servicii.',
+          fields: invalidNewKeys,
+        }, { status: 400 });
+      }
+    }
+
     const upd = {};
     const direct = p.direct || {};
     for (const k of DIRECT_FIELDS) {
@@ -73,7 +99,7 @@ Deno.serve(async (req) => {
         if (stagedSiruta) fields.locality_siruta_code = stagedSiruta;
       }
       const next = { fields };
-      if (Array.isArray(staged.services)) next.services = staged.services;
+      if (Array.isArray(staged.services)) next.services = stagedServices;
       else if (prev.services) next.services = prev.services;
       if (Array.isArray(staged.specializations)) next.specializations = staged.specializations;
       else if (prev.specializations) next.specializations = prev.specializations;

@@ -1,25 +1,26 @@
+import {
+  CANONICAL_SERVICE_REGISTRY,
+  LEGACY_SERVICE_ALIASES,
+} from "./canonicalServiceCatalog";
+
+const CANONICAL_SERVICE_LABELS = Object.fromEntries(
+  Object.entries(CANONICAL_SERVICE_REGISTRY).map(([key, definition]) => [key, definition.label]),
+);
+
+const LEGACY_SERVICE_LABELS = Object.fromEntries(
+  Object.entries(LEGACY_SERVICE_ALIASES).map(([legacyKey, canonicalKey]) => [
+    legacyKey,
+    CANONICAL_SERVICE_REGISTRY[canonicalKey]?.label || legacyKey,
+  ]),
+);
+
+// Compatibility export: canonical labels are authoritative; deterministic legacy
+// aliases remain readable until existing intake flows are migrated.
 export const SERVICES = {
-  control_vedere_adulti: "Control vedere adulti",
-  control_vedere_copii: "Control vedere copii",
-  consult_oftalmologic: "Consult oftalmologic",
-  managementul_miopiei: "Managementul miopiei",
+  ...CANONICAL_SERVICE_LABELS,
+  ...LEGACY_SERVICE_LABELS,
+  // Ambiguous legacy keys stay display-only and are never normalized automatically.
   ochi_uscat: "Ochi uscat",
-  lentile_contact: "Lentile de contact",
-  lentile_progresive: "Lentile progresive",
-  reparatii_ochelari: "Reparatii ochelari",
-  reglaj_rame: "Reglaj rame",
-  montaj_lentile: "Montaj lentile",
-  glaucom: "Glaucom",
-  cataracta: "Cataracta",
-  retina: "Retina",
-  chirurgie_refractiva: "Chirurgie refractiva",
-  oct: "OCT",
-  camp_vizual: "Camp vizual",
-  tonometrie: "Tonometrie",
-  fund_de_ochi: "Fund de ochi",
-  topografie_corneana: "Topografie corneana",
-  pahimetrie: "Pahimetrie",
-  biometrie: "Biometrie",
 };
 
 export const FACILITIES = {
@@ -94,10 +95,11 @@ export function getProfileAudience(profileType) {
 
 export const CITIES = ["Bucuresti", "Cluj-Napoca", "Timisoara", "Iasi", "Brasov", "Constanta"];
 
+// Existing intake categories keep their legacy keys for backward compatibility.
+// matchProviders normalizes deterministic aliases through the canonical registry.
 export const CATEGORIES = [
   { key: "control_vedere", label: "Control vedere", services: ["control_vedere_adulti", "control_vedere_copii"] },
   { key: "consult_oftalmologic", label: "Consult oftalmologic", services: ["consult_oftalmologic"] },
-  // Modul 3E.1: nevoia legata de copii ramane neutra — nu implica managementul miopiei.
   { key: "copii_miopie", label: "Control vedere copii", services: ["control_vedere_copii"] },
   { key: "lentile_ochelari", label: "Lentile si ochelari", services: ["lentile_contact", "lentile_progresive", "montaj_lentile"] },
   { key: "reparatii", label: "Reparatii ochelari", services: ["reparatii_ochelari", "reglaj_rame", "montaj_lentile"] },
@@ -115,15 +117,15 @@ const KEYWORD_MAP = [
 
 export function detectCategory(text) {
   if (!text) return null;
-  const t = text.toLowerCase();
+  const normalized = text.toLowerCase();
   for (const entry of KEYWORD_MAP) {
-    if (entry.keywords.some((k) => t.includes(k))) return entry.category;
+    if (entry.keywords.some((keyword) => normalized.includes(keyword))) return entry.category;
   }
   return null;
 }
 
 export function getCategory(key) {
-  return CATEGORIES.find((c) => c.key === key) || null;
+  return CATEGORIES.find((category) => category.key === key) || null;
 }
 
 // Matching-ul real se face in functia backend matchProviders,

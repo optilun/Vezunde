@@ -1,62 +1,60 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import {
+  CANONICAL_SERVICE_KEY_SET,
+  PROFILE_TYPES,
+  getCanonicalServiceDefinition,
+  normalizeServiceKey,
+} from '../../../shared/canonicalServiceRegistry.js';
 
-// MODULE 3C - Directory Data Operations (admin-only writes).
-// Every write happens ONLY through an explicit admin action + audit record.
-// Legacy is_verified / is_claimed / verification_state are never used as source of truth.
+// Directory Data Operations (admin-only writes).
+// Every write happens only through an explicit admin action and an audit record.
+// Legacy verification fields are never used as source of truth.
 
-// Approved canonical service catalog. No free-text keys allowed.
-const CATALOG = {
-  eyeglasses: 'general',
-  frames: 'general',
-  prescription_lenses: 'general',
-  contact_lenses: 'general',
-  optometry_consultation: 'general',
-  ophthalmology_consultation: 'general',
-  eyeglasses_adjustment: 'technical',
-  eyeglasses_repair: 'technical',
-  lens_fitting: 'technical',
-  oct: 'specialized_medical',
-  retina_consultation: 'specialized_medical',
-  glaucoma_consultation: 'specialized_medical',
-  cataract_surgery: 'specialized_medical',
-  refractive_surgery: 'specialized_medical',
-  pediatric_ophthalmology: 'specialized_medical',
-  myopia_management: 'specialized_medical',
-  emergency_ophthalmology: 'specialized_medical',
-};
+const PROVIDER_TYPES = [
+  'optica_medicala',
+  'clinica_oftalmologica',
+  'cabinet_oftalmologic',
+  'cabinet_optometric',
+  'laborator_optic',
+  'optometrist_independent',
+  'medic_oftalmolog_independent',
+];
 
-// Module 3E.1: legacy keys already stored in the directory, recognized for
-// classification only (never addable as new services). Any other key is 'unknown'
-// and requires explicit manual catalog classification before public use.
-const LEGACY_LEVELS = {
-  control_vedere_adulti: 'general', control_vedere_copii: 'general', consult_oftalmologic: 'general',
-  lentile_contact: 'general', lentile_progresive: 'general',
-  reparatii_ochelari: 'technical', reglaj_rame: 'technical', montaj_lentile: 'technical',
-  retina: 'specialized_medical', glaucom: 'specialized_medical', cataracta: 'specialized_medical',
-  chirurgie_refractiva: 'specialized_medical', managementul_miopiei: 'specialized_medical',
-};
-function classifyKey(key) { return CATALOG[key] || LEGACY_LEVELS[key] || 'unknown'; }
+const norm = (s) => String(s || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .replace(/[^a-z0-9 ]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
 
-const PROVIDER_TYPES = ['optica_medicala', 'clinica_oftalmologica', 'cabinet_oftalmologic', 'cabinet_optometric', 'laborator_optic', 'optometrist_independent', 'medic_oftalmolog_independent'];
+function bad(msg) {
+  return Response.json({ error: msg }, { status: 400 });
+}
 
-// Module 3H.1A.1: mandatory provider profile classification — approved enum only,
-// never derived from free text.
-const PROFILE_TYPES = ['independent_optical_store', 'optical_chain', 'ophthalmology_clinic', 'ophthalmology_office', 'independent_ophthalmologist', 'independent_optometrist', 'independent_optician', 'optical_laboratory_b2c', 'optical_laboratory_b2b', 'future_b2b_distributor'];
+function parseJSON(value) {
+  try {
+    return value ? JSON.parse(value) : {};
+  } catch (_error) {
+    return {};
+  }
+}
 
-const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-const tokens = (s) => norm(s).split(' ').filter((t) => t.length > 2);
+function classifyKey(rawKey) {
+  const normalized = normalizeServiceKey(rawKey);
+  return normalized.definition?.service_need_level || 'unknown';
+}
 
-function bad(msg) { return Response.json({ error: msg }, { status: 400 }); }
-function parseJSON(value) { try { return value ? JSON.parse(value) : {}; } catch (_e) { return {}; } }
-
-// matching_allowed is NEVER automatic beyond these strict rules.
-function computeMatchingAllowed(level, needLevel, loc) {
+function computeMatchingAllowed(level, rawKey, loc) {
   if (!loc || loc.active_status === 'inactiva' || loc.profile_control_status === 'suspended') return false;
-  if (needLevel === 'unknown') return false; // unclassified keys are never matchable
-  if (needLevel === 'specialized_medical') {
+  const normalized = normalizeServiceKey(rawKey);
+  const definition = normalized.definition;
+  if (!definition) return false;
+  if (definition.requires_review || definition.service_need_level === 'specialized_medical') {
     return level === 'vezunde_verified' && loc.profile_control_status === 'verified';
   }
-  return ['publicly_listed', 'provider_confirmed', 'vezunde_verified'].includes(level);
+  return definition.matching_allowed_when_provider_confirmed
+    && ['publicly_listed', 'provider_confirmed', 'vezunde_verified'].includes(level);
 }
 
 async function audit(svc, user, rec) {
@@ -79,24 +77,38 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Neautentificat' }, { status: 401 });
-    if (user.role !== 'admin') return Response.json({ error: 'Acces interzis: doar administratori Vezunde' }, { status: 403 });
+    if (user.role !== 'admin') {
+      return Response.json({ error: 'Acces interzis: doar administratori Vezunde' }, { status: 403 });
+    }
+
     const svc = base44.asServiceRole;
     const p = await req.json().catch(() => ({}));
     const action = p.action;
+
+    if (action === 'catalog') {
+      return Response.json({
+        services: [...CANONICAL_SERVICE_KEY_SET].map((key) => getCanonicalServiceDefinition(key)),
+        count: CANONICAL_SERVICE_KEY_SET.size,
+      });
+    }
 
     // ---------- CREATE ORGANIZATION + LOCATION ----------
     if (action === 'create_location') {
       const org = p.organization || {};
       const loc = p.location || {};
       const prov = p.provenance || {};
+
       if (!loc.name || !norm(loc.name)) return bad('Numele locatiei este obligatoriu');
       if (!PROVIDER_TYPES.includes(loc.provider_type)) return bad('Tip de furnizor invalid');
-      // Module 3H.1A.1: provider_profile_type is mandatory (enum-only).
-      if (!PROFILE_TYPES.includes(loc.provider_profile_type)) return bad('provider_profile_type lipseste sau este invalid');
+      if (!PROFILE_TYPES.includes(loc.provider_profile_type)) {
+        return bad('provider_profile_type lipseste sau este invalid');
+      }
+
       const orgType = org.organization_type || loc.provider_profile_type;
-      if (!p.organization_id && !PROFILE_TYPES.includes(orgType)) return bad('organization_type lipseste sau este invalid');
-      // Module 3F.2.2: canonical locality (SIRUTA) is MANDATORY. Free-text city/county
-      // are never accepted as geographic truth — mirrors are derived server-side below.
+      if (!p.organization_id && !PROFILE_TYPES.includes(orgType)) {
+        return bad('organization_type lipseste sau este invalid');
+      }
+
       const sirutaCode = String(loc.locality_siruta_code || '').trim();
       if (!sirutaCode) return bad('Selectarea localitatii canonice (SIRUTA) este obligatorie');
       if (!loc.address) return bad('Adresa este obligatorie');
@@ -106,17 +118,19 @@ Deno.serve(async (req) => {
       if (!['low', 'medium', 'high'].includes(prov.data_confidence)) return bad('data_confidence invalid');
       if (!p.organization_id && (!org.name || !norm(org.name))) return bad('Numele organizatiei este obligatoriu');
 
-      // Module 3F.2.2: load + validate the canonical locality server-side.
       const geoRows = await svc.entities.GeographicLocality.filter({ siruta_code: sirutaCode, is_active: true });
       const geo = geoRows[0];
       if (!geo) return bad('Localitatea selectata nu exista sau nu este activa');
-      // Reject manually submitted city/county that conflict with canonical geography.
-      if (loc.city && norm(loc.city) !== norm(geo.name)) return bad('Orasul trimis nu corespunde localitatii canonice selectate');
-      if (loc.county && norm(loc.county) !== norm(geo.county_name || '')) return bad('Judetul trimis nu corespunde localitatii canonice selectate');
-      if (loc.county_name && norm(loc.county_name) !== norm(geo.county_name || '')) return bad('Judetul trimis nu corespunde localitatii canonice selectate');
+      if (loc.city && norm(loc.city) !== norm(geo.name)) {
+        return bad('Orasul trimis nu corespunde localitatii canonice selectate');
+      }
+      if (loc.county && norm(loc.county) !== norm(geo.county_name || '')) {
+        return bad('Judetul trimis nu corespunde localitatii canonice selectate');
+      }
+      if (loc.county_name && norm(loc.county_name) !== norm(geo.county_name || '')) {
+        return bad('Judetul trimis nu corespunde localitatii canonice selectate');
+      }
 
-      // Module 3H.1B.1: deterministic, read-only identity gate (shared function).
-      // Never auto-merges and never alters existing locations.
       const idResRaw = await base44.functions.invoke('findProviderIdentityCandidates', {
         context: 'admin_create',
         candidate: {
@@ -131,26 +145,38 @@ Deno.serve(async (req) => {
         },
         limit: 10,
       });
-      const identity = (idResRaw && idResRaw.data) ? idResRaw.data : (idResRaw || {});
-      if (identity.error) return bad('Verificarea duplicatelor a esuat: ' + identity.error);
+      const identity = idResRaw?.data || idResRaw || {};
+      if (identity.error) return bad(`Verificarea duplicatelor a esuat: ${identity.error}`);
+
       const overrideReason = String(p.duplicate_override_reason || '').trim();
-      // warning: admin may continue only with an override reason (min 15 chars).
       if (identity.blocking_level === 'warning' && overrideReason.length < 15) {
         return Response.json({ identity_check: identity });
       }
-      // strong duplicate: normal create is blocked — explicit override + reason required.
-      if (identity.blocking_level === 'strong_duplicate_review_required' && (p.force_distinct !== true || overrideReason.length < 15)) {
+      if (
+        identity.blocking_level === 'strong_duplicate_review_required'
+        && (p.force_distinct !== true || overrideReason.length < 15)
+      ) {
         return Response.json({ identity_check: identity });
       }
 
       let organizationId = p.organization_id || null;
       if (!organizationId) {
         const newOrg = await svc.entities.ProviderOrganization.create({
-          name: org.name, legal_name: org.legal_name || '', website: org.website || '', status: 'activa',
+          name: org.name,
+          legal_name: org.legal_name || '',
+          website: org.website || '',
+          status: 'activa',
           organization_type: orgType,
         });
         organizationId = newOrg.id;
-        await audit(svc, user, { entity_type: 'ProviderOrganization', entity_id: newOrg.id, action_type: 'create_organization', changed_fields: ['name', 'legal_name', 'website'], next: { name: org.name }, note: p.note || '' });
+        await audit(svc, user, {
+          entity_type: 'ProviderOrganization',
+          entity_id: newOrg.id,
+          action_type: 'create_organization',
+          changed_fields: ['name', 'legal_name', 'website'],
+          next: { name: org.name },
+          note: p.note || '',
+        });
       }
 
       const newLoc = await svc.entities.ProviderLocation.create({
@@ -158,14 +184,12 @@ Deno.serve(async (req) => {
         name: loc.name,
         provider_type: loc.provider_type,
         provider_profile_type: loc.provider_profile_type,
-        // Canonical geography — derived ONLY from GeographicLocality:
         locality_siruta_code: geo.siruta_code,
         locality_name: geo.name,
         county_code: geo.county_code || '',
         county_name: geo.county_name || '',
         uat_code: geo.uat_code || '',
         uat_name: geo.uat_name || '',
-        // Compatibility mirrors ONLY — never geographic truth:
         city: geo.name,
         county: geo.county_name || '',
         address: loc.address,
@@ -191,96 +215,158 @@ Deno.serve(async (req) => {
         collected_at: new Date().toISOString(),
         collected_by: user.email,
       });
-      // No automatic services, availability or verification are created.
-      await audit(svc, user, { entity_type: 'ProviderLocation', entity_id: newLoc.id, action_type: 'create_directory_location', changed_fields: ['name', 'provider_type', 'locality_siruta_code', 'city', 'county', 'address', 'source_url'], next: { name: loc.name, locality_siruta_code: geo.siruta_code, city: geo.name, source_url: prov.source_url }, note: p.note || overrideReason || '' });
-      // Module 3H.1B.1: strong-duplicate override gets its own explicit audit record.
+
+      await audit(svc, user, {
+        entity_type: 'ProviderLocation',
+        entity_id: newLoc.id,
+        action_type: 'create_directory_location',
+        changed_fields: ['name', 'provider_type', 'locality_siruta_code', 'city', 'county', 'address', 'source_url'],
+        next: { name: loc.name, locality_siruta_code: geo.siruta_code, city: geo.name, source_url: prov.source_url },
+        note: p.note || overrideReason || '',
+      });
+
       if (identity.blocking_level === 'strong_duplicate_review_required') {
         await audit(svc, user, {
-          entity_type: 'ProviderLocation', entity_id: newLoc.id,
+          entity_type: 'ProviderLocation',
+          entity_id: newLoc.id,
           action_type: 'duplicate_override_create',
           changed_fields: ['duplicate_override_reason'],
-          next: { blocking_level: identity.blocking_level, candidate_location_ids: (identity.candidates || []).map((c) => c.location_id) },
+          next: {
+            blocking_level: identity.blocking_level,
+            candidate_location_ids: (identity.candidates || []).map((c) => c.location_id),
+          },
           note: overrideReason,
         });
       }
+
       return Response.json({ location: newLoc, organization_id: organizationId });
     }
 
-    // ---------- ADD SERVICE (catalog only) ----------
+    // ---------- ADD SERVICE (canonical catalog only) ----------
     if (action === 'add_service') {
-      const needLevel = CATALOG[p.service_key];
-      if (!needLevel) return bad('Serviciu in afara catalogului aprobat');
+      const normalized = normalizeServiceKey(p.service_key);
+      if (normalized.status !== 'canonical' || !normalized.definition) {
+        return bad('Serviciu in afara catalogului canonic aprobat');
+      }
       if (!p.location_id) return bad('location_id lipseste');
       if (!p.service_source_url) return bad('service_source_url este obligatoriu');
       if (!p.service_confirmed_at) return bad('service_confirmed_at este obligatoriu');
+
       const loc = await svc.entities.ProviderLocation.get(p.location_id).catch(() => null);
       if (!loc) return bad('Locatia nu exista');
-      const existing = await svc.entities.LocationService.filter({ location_id: p.location_id, service_key: p.service_key });
+      const existing = await svc.entities.LocationService.filter({
+        location_id: p.location_id,
+        service_key: normalized.canonicalKey,
+      });
       if (existing.length > 0) return bad('Serviciul exista deja pentru aceasta locatie');
 
-      // publicly_listed is allowed only with explicit source; specialized services
-      // may record public listing but are NEVER matching_allowed without verification.
       const level = p.set_publicly_listed === true ? 'publicly_listed' : 'not_confirmed';
-      const matchingAllowed = level === 'publicly_listed' ? computeMatchingAllowed(level, needLevel, loc) : false;
+      const matchingAllowed = level === 'publicly_listed'
+        ? computeMatchingAllowed(level, normalized.canonicalKey, loc)
+        : false;
+      const definition = normalized.definition;
+
       const row = await svc.entities.LocationService.create({
         location_id: p.location_id,
-        service_key: p.service_key,
-        service_need_level: needLevel,
+        service_key: normalized.canonicalKey,
+        service_need_level: definition.service_need_level,
         confirmation_level: level,
         matching_allowed: matchingAllowed,
-        is_advanced_service: needLevel === 'specialized_medical',
+        is_advanced_service: definition.requires_review || definition.service_need_level === 'specialized_medical',
         service_source_url: p.service_source_url,
         service_confirmed_at: p.service_confirmed_at,
         notes: p.notes || '',
         migration_review_required: false,
         is_active: true,
       });
-      await audit(svc, user, { entity_type: 'LocationService', entity_id: row.id, action_type: 'add_service', changed_fields: ['service_key', 'confirmation_level', 'matching_allowed'], next: { service_key: p.service_key, confirmation_level: level, matching_allowed: matchingAllowed }, note: p.notes || '' });
-      return Response.json({ service: row });
+
+      await audit(svc, user, {
+        entity_type: 'LocationService',
+        entity_id: row.id,
+        action_type: 'add_service',
+        changed_fields: ['service_key', 'confirmation_level', 'matching_allowed'],
+        next: {
+          service_key: normalized.canonicalKey,
+          confirmation_level: level,
+          matching_allowed: matchingAllowed,
+        },
+        note: p.notes || '',
+      });
+      return Response.json({ service: row, definition });
     }
 
-    // ---------- SET SERVICE CONFIRMATION LEVEL (per record, never bulk) ----------
+    // ---------- SET SERVICE CONFIRMATION LEVEL ----------
     if (action === 'set_service_confirmation') {
-      const s = await svc.entities.LocationService.get(p.service_id).catch(() => null);
-      if (!s) return bad('Serviciul nu exista');
-      const loc = await svc.entities.ProviderLocation.get(s.location_id).catch(() => null);
+      const service = await svc.entities.LocationService.get(p.service_id).catch(() => null);
+      if (!service) return bad('Serviciul nu exista');
+      const loc = await svc.entities.ProviderLocation.get(service.location_id).catch(() => null);
       if (!loc) return bad('Locatia nu exista');
+
       const level = p.level;
-      // Module 3E.1: unknown keys are never defaulted to general — they require
-      // explicit catalog classification before any public listing or matching.
-      const needLevel = classifyKey(s.service_key);
+      const normalized = normalizeServiceKey(service.service_key);
+      const definition = normalized.definition;
       const note = String(p.note || '').trim();
 
-      if (!['not_confirmed', 'publicly_listed', 'provider_confirmed', 'vezunde_verified'].includes(level)) return bad('Nivel invalid');
-      if (needLevel === 'unknown' && level !== 'not_confirmed') {
+      if (!['not_confirmed', 'publicly_listed', 'provider_confirmed', 'vezunde_verified'].includes(level)) {
+        return bad('Nivel invalid');
+      }
+      if (!definition && level !== 'not_confirmed') {
         return bad('Serviciu neclasificat in catalog — necesita clasificare manuala inainte de publicare');
       }
-      const updates = { confirmation_level: level };
+
+      const updates = {
+        confirmation_level: level,
+        service_need_level: definition?.service_need_level || 'unknown',
+      };
+
       if (level === 'publicly_listed') {
-        const srcUrl = p.service_source_url || s.service_source_url;
-        const confAt = p.service_confirmed_at || s.service_confirmed_at;
+        const srcUrl = p.service_source_url || service.service_source_url;
+        const confirmedAt = p.service_confirmed_at || service.service_confirmed_at;
         if (!srcUrl) return bad('publicly_listed necesita service_source_url');
-        if (!confAt) return bad('publicly_listed necesita service_confirmed_at');
+        if (!confirmedAt) return bad('publicly_listed necesita service_confirmed_at');
         updates.service_source_url = srcUrl;
-        updates.service_confirmed_at = confAt;
+        updates.service_confirmed_at = confirmedAt;
       }
+
       if (level === 'provider_confirmed') {
         if (!note) return bad('provider_confirmed necesita o nota de audit');
-        const claims = await svc.entities.ProviderClaimRequest.filter({ location_id: s.location_id, status: 'aprobata' });
+        const claims = await svc.entities.ProviderClaimRequest.filter({
+          location_id: service.location_id,
+          status: 'aprobata',
+        });
         if (claims.length === 0) return bad('provider_confirmed necesita o revendicare aprobata pentru locatie');
         updates.service_confirmed_at = p.service_confirmed_at || new Date().toISOString();
       }
+
       if (level === 'vezunde_verified') {
-        if ((loc.profile_control_status || 'directory') !== 'verified') return bad('vezunde_verified necesita profil cu status verified');
+        if ((loc.profile_control_status || 'directory') !== 'verified') {
+          return bad('vezunde_verified necesita profil cu status verified');
+        }
         if (!note) return bad('vezunde_verified necesita o nota de verificare');
         updates.service_verified_at = new Date().toISOString();
         updates.service_verified_by = user.email;
       }
-      updates.matching_allowed = level === 'not_confirmed' ? false : computeMatchingAllowed(level, needLevel, loc);
+
+      updates.matching_allowed = definition
+        ? computeMatchingAllowed(level, normalized.canonicalKey || service.service_key, loc)
+        : false;
       if (level === 'not_confirmed') updates.matching_allowed = false;
-      await svc.entities.LocationService.update(s.id, updates);
-      await audit(svc, user, { entity_type: 'LocationService', entity_id: s.id, action_type: 'set_service_confirmation', changed_fields: Object.keys(updates), previous: { confirmation_level: s.confirmation_level, matching_allowed: s.matching_allowed }, next: updates, note });
-      return Response.json({ success: true, updates });
+
+      await svc.entities.LocationService.update(service.id, updates);
+      await audit(svc, user, {
+        entity_type: 'LocationService',
+        entity_id: service.id,
+        action_type: 'set_service_confirmation',
+        changed_fields: Object.keys(updates),
+        previous: {
+          confirmation_level: service.confirmation_level,
+          matching_allowed: service.matching_allowed,
+          service_need_level: service.service_need_level,
+        },
+        next: updates,
+        note,
+      });
+      return Response.json({ success: true, updates, catalog_status: normalized.status, definition });
     }
 
     // ---------- MIGRATION REVIEW: LOCATION ----------
@@ -290,6 +376,7 @@ Deno.serve(async (req) => {
       const decision = p.decision;
       const note = String(p.note || '').trim();
       if (!note) return bad('Rezolvarea unui flag de review necesita o nota');
+
       const updates = {};
       if (decision === 'keep_directory') {
         updates.migration_review_required = false;
@@ -301,44 +388,81 @@ Deno.serve(async (req) => {
         updates.profile_control_status_reason = note;
       } else if (decision === 'resolve_flag') {
         updates.migration_review_required = false;
-      } else return bad('Decizie invalida');
+      } else {
+        return bad('Decizie invalida');
+      }
+
       await svc.entities.ProviderLocation.update(loc.id, updates);
-      await audit(svc, user, { entity_type: 'ProviderLocation', entity_id: loc.id, action_type: `migration_review_${decision}`, changed_fields: Object.keys(updates), previous: { migration_review_required: loc.migration_review_required, profile_control_status: loc.profile_control_status }, next: updates, note });
+      await audit(svc, user, {
+        entity_type: 'ProviderLocation',
+        entity_id: loc.id,
+        action_type: `migration_review_${decision}`,
+        changed_fields: Object.keys(updates),
+        previous: {
+          migration_review_required: loc.migration_review_required,
+          profile_control_status: loc.profile_control_status,
+        },
+        next: updates,
+        note,
+      });
       return Response.json({ success: true });
     }
 
     // ---------- MIGRATION REVIEW: SERVICE ----------
     if (action === 'resolve_service_review') {
-      const s = await svc.entities.LocationService.get(p.service_id).catch(() => null);
-      if (!s) return bad('Serviciul nu exista');
+      const service = await svc.entities.LocationService.get(p.service_id).catch(() => null);
+      if (!service) return bad('Serviciul nu exista');
       const note = String(p.note || '').trim();
       if (!note) return bad('Rezolvarea unui flag de review necesita o nota');
+
       const decision = p.decision;
       const updates = { migration_review_required: false };
       if (decision === 'keep_not_confirmed') {
         updates.confirmation_level = 'not_confirmed';
         updates.matching_allowed = false;
-      } else if (decision !== 'resolve_flag') return bad('Decizie invalida');
-      await svc.entities.LocationService.update(s.id, updates);
-      await audit(svc, user, { entity_type: 'LocationService', entity_id: s.id, action_type: `migration_review_${decision}`, changed_fields: Object.keys(updates), previous: { migration_review_required: s.migration_review_required, confirmation_level: s.confirmation_level }, next: updates, note });
+      } else if (decision !== 'resolve_flag') {
+        return bad('Decizie invalida');
+      }
+
+      await svc.entities.LocationService.update(service.id, updates);
+      await audit(svc, user, {
+        entity_type: 'LocationService',
+        entity_id: service.id,
+        action_type: `migration_review_${decision}`,
+        changed_fields: Object.keys(updates),
+        previous: {
+          migration_review_required: service.migration_review_required,
+          confirmation_level: service.confirmation_level,
+        },
+        next: updates,
+        note,
+      });
       return Response.json({ success: true });
     }
 
-    // ---------- PROFILE VERIFICATION (explicit, per record) ----------
+    // ---------- PROFILE VERIFICATION ----------
     if (action === 'verify_profile') {
       const loc = await svc.entities.ProviderLocation.get(p.location_id).catch(() => null);
       if (!loc) return bad('Locatia nu exista');
       const note = String(p.note || '').trim();
       if (!note) return bad('Verificarea profilului necesita o nota');
+
       const updates = {
         profile_control_status: 'verified',
         profile_control_status_updated_at: new Date().toISOString(),
         profile_control_status_reason: note,
         last_verified_at: new Date().toISOString(),
       };
-      // Services are NOT auto-verified — each must be reviewed individually.
       await svc.entities.ProviderLocation.update(loc.id, updates);
-      await audit(svc, user, { entity_type: 'ProviderLocation', entity_id: loc.id, action_type: 'verify_profile', changed_fields: Object.keys(updates), previous: { profile_control_status: loc.profile_control_status }, next: { profile_control_status: 'verified' }, note });
+      await audit(svc, user, {
+        entity_type: 'ProviderLocation',
+        entity_id: loc.id,
+        action_type: 'verify_profile',
+        changed_fields: Object.keys(updates),
+        previous: { profile_control_status: loc.profile_control_status },
+        next: { profile_control_status: 'verified' },
+        note,
+      });
       return Response.json({ success: true });
     }
 
@@ -348,31 +472,44 @@ Deno.serve(async (req) => {
       if (!loc) return bad('Locatia nu exista');
       const note = String(p.note || '').trim();
       if (!note) return bad('Suspendarea necesita o nota');
+
       const updates = {
         profile_control_status: 'suspended',
         profile_control_status_updated_at: new Date().toISOString(),
         profile_control_status_reason: note,
       };
       await svc.entities.ProviderLocation.update(loc.id, updates);
-      await audit(svc, user, { entity_type: 'ProviderLocation', entity_id: loc.id, action_type: 'suspend_profile', changed_fields: Object.keys(updates), previous: { profile_control_status: loc.profile_control_status }, next: { profile_control_status: 'suspended' }, note });
+      await audit(svc, user, {
+        entity_type: 'ProviderLocation',
+        entity_id: loc.id,
+        action_type: 'suspend_profile',
+        changed_fields: Object.keys(updates),
+        previous: { profile_control_status: loc.profile_control_status },
+        next: { profile_control_status: 'suspended' },
+        note,
+      });
       return Response.json({ success: true });
     }
 
-    // ---------- CLAIM APPROVAL (3C: no auto service upgrade) ----------
+    // ---------- CLAIM APPROVAL ----------
     if (action === 'approve_claim') {
       const claim = await svc.entities.ProviderClaimRequest.get(p.claim_id).catch(() => null);
       if (!claim) return bad('Revendicarea nu exista');
       const alreadyApproved = claim.status === 'aprobata';
-      if (!['in_asteptare', 'aprobata'].includes(claim.status)) return bad('Revendicarea nu este in asteptare sau aprobata');
-      // Module 3H.1B.2: duplicate-review requests can never be approved into a
-      // location — a genuinely distinct location goes through the canonical
-      // "Adauga locatie" admin flow only.
-      if (claim.mode === 'new_location_duplicate_review') return bad('Cerere de clarificare duplicat — nu poate fi aprobata direct. Creeaza locatia doar prin fluxul canonic "Adauga locatie".');
+      if (!['in_asteptare', 'aprobata'].includes(claim.status)) {
+        return bad('Revendicarea nu este in asteptare sau aprobata');
+      }
+      if (claim.mode === 'new_location_duplicate_review') {
+        return bad('Cerere de clarificare duplicat — nu poate fi aprobata direct. Creeaza locatia doar prin fluxul canonic "Adauga locatie".');
+      }
       if (!claim.location_id) return bad('Revendicarea nu are locatie asociata');
+
       const loc = await svc.entities.ProviderLocation.get(claim.location_id).catch(() => null);
       if (!loc) return bad('Locatia revendicata nu exista');
-      // Module 3H.1A.1: a location cannot be approved/activated without profile classification.
-      if (!loc.provider_profile_type) return bad('Locatia nu are provider_profile_type — clasifica profilul inainte de aprobare');
+      if (!loc.provider_profile_type) {
+        return bad('Locatia nu are provider_profile_type — clasifica profilul inainte de aprobare');
+      }
+
       const note = String(p.note || '').trim();
       const submitted = parseJSON(claim.submitted_payload);
       const isAccessRequest = submitted.request_type === 'access_request_existing_claimed_profile';
@@ -383,18 +520,24 @@ Deno.serve(async (req) => {
         profile_control_status_updated_at: new Date().toISOString(),
         profile_control_status_reason: note || (isAccessRequest ? 'Cerere acces aprobata' : 'Revendicare aprobata'),
       };
-      // New locations submitted via the public wizard go live once their claim is approved.
       if (!alreadyApproved && loc.status === 'in_verificare') locUpdates.status = 'publicata';
+
       if (!alreadyApproved) {
         await svc.entities.ProviderLocation.update(loc.id, locUpdates);
-        await svc.entities.ProviderClaimRequest.update(claim.id, { status: 'aprobata', reviewed_at: new Date().toISOString(), review_notes: note });
+        await svc.entities.ProviderClaimRequest.update(claim.id, {
+          status: 'aprobata',
+          reviewed_at: new Date().toISOString(),
+          review_notes: note,
+        });
       }
-      // Provider access is granted ONLY through this explicit assignment.
-      // Normal first claims become organization_owner. Access requests to an already
-      // administered profile become location_staff by default to avoid silent ownership takeover.
+
       let activeMembership = null;
       if (claim.user_id) {
-        const existing = await svc.entities.ProviderMembership.filter({ user_id: claim.user_id, location_id: loc.id, status: 'active' });
+        const existing = await svc.entities.ProviderMembership.filter({
+          user_id: claim.user_id,
+          location_id: loc.id,
+          status: 'active',
+        });
         activeMembership = existing[0] || null;
         if (!activeMembership && !alreadyApproved) {
           activeMembership = await svc.entities.ProviderMembership.create({
@@ -406,8 +549,7 @@ Deno.serve(async (req) => {
           });
         }
       }
-      // Module 3H.1C.3A: promote only this claimant's unlocked preparation drafts.
-      // Idempotent: already-promoted drafts no longer match access_origin=claim_preparation.
+
       let promotedDraftCount = 0;
       if (activeMembership && claim.user_id) {
         const prepDrafts = await svc.entities.ProviderWorkspaceSubmission.filter({
@@ -419,32 +561,60 @@ Deno.serve(async (req) => {
         }, '-created_date', 100);
         for (const draft of prepDrafts) {
           if (draft.preparation_locked_at) continue;
-          await svc.entities.ProviderWorkspaceSubmission.update(draft.id, { access_origin: 'provider_workspace' });
+          await svc.entities.ProviderWorkspaceSubmission.update(draft.id, {
+            access_origin: 'provider_workspace',
+          });
           promotedDraftCount += 1;
         }
       }
-      // Services are NOT auto-upgraded to provider_confirmed — individual review required.
+
       if (!alreadyApproved || promotedDraftCount > 0) {
-        await audit(svc, user, { entity_type: 'ProviderClaimRequest', entity_id: claim.id, action_type: isAccessRequest ? 'approve_access_request' : 'approve_claim', changed_fields: alreadyApproved ? ['preparation_draft_promotion'] : ['status', 'claim_verification_status', 'profile_control_status', 'membership_role', 'preparation_draft_promotion'], previous: { status: claim.status, profile_control_status: loc.profile_control_status }, next: { ...locUpdates, membership_role: memberRole, promoted_preparation_drafts: promotedDraftCount }, note });
+        await audit(svc, user, {
+          entity_type: 'ProviderClaimRequest',
+          entity_id: claim.id,
+          action_type: isAccessRequest ? 'approve_access_request' : 'approve_claim',
+          changed_fields: alreadyApproved
+            ? ['preparation_draft_promotion']
+            : ['status', 'claim_verification_status', 'profile_control_status', 'membership_role', 'preparation_draft_promotion'],
+          previous: { status: claim.status, profile_control_status: loc.profile_control_status },
+          next: {
+            ...locUpdates,
+            membership_role: memberRole,
+            promoted_preparation_drafts: promotedDraftCount,
+          },
+          note,
+        });
       }
-      return Response.json({ success: true, promoted_preparation_drafts: promotedDraftCount, already_approved: alreadyApproved, membership_role: memberRole });
+
+      return Response.json({
+        success: true,
+        promoted_preparation_drafts: promotedDraftCount,
+        already_approved: alreadyApproved,
+        membership_role: memberRole,
+      });
     }
 
-    // ---------- CLAIM REJECTION (note required) ----------
+    // ---------- CLAIM REJECTION ----------
     if (action === 'reject_claim') {
       const claim = await svc.entities.ProviderClaimRequest.get(p.claim_id).catch(() => null);
       if (!claim) return bad('Revendicarea nu exista');
       if (claim.status !== 'in_asteptare') return bad('Revendicarea nu este in asteptare');
       const note = String(p.note || '').trim();
       if (!note) return bad('Respingerea unei revendicari necesita o nota');
+
       const rejectedAt = new Date().toISOString();
-      await svc.entities.ProviderClaimRequest.update(claim.id, { status: 'respinsa', reviewed_at: rejectedAt, review_notes: note });
+      await svc.entities.ProviderClaimRequest.update(claim.id, {
+        status: 'respinsa',
+        reviewed_at: rejectedAt,
+        review_notes: note,
+      });
       if (claim.location_id) {
         const loc = await svc.entities.ProviderLocation.get(claim.location_id).catch(() => null);
-        if (loc) await svc.entities.ProviderLocation.update(loc.id, { claim_verification_status: 'rejected' });
+        if (loc) {
+          await svc.entities.ProviderLocation.update(loc.id, { claim_verification_status: 'rejected' });
+        }
       }
-      // Module 3H.1C.3A: rejected-claim preparation drafts remain admin-auditable
-      // but are explicitly locked and hidden from applicant/provider workspaces.
+
       const prepDrafts = await svc.entities.ProviderWorkspaceSubmission.filter({
         claim_request_id: claim.id,
         access_origin: 'claim_preparation',
@@ -458,7 +628,16 @@ Deno.serve(async (req) => {
         });
         lockedDraftCount += 1;
       }
-      await audit(svc, user, { entity_type: 'ProviderClaimRequest', entity_id: claim.id, action_type: 'reject_claim', changed_fields: ['status', 'preparation_draft_lock'], previous: { status: claim.status }, next: { status: 'respinsa', locked_preparation_drafts: lockedDraftCount }, note });
+
+      await audit(svc, user, {
+        entity_type: 'ProviderClaimRequest',
+        entity_id: claim.id,
+        action_type: 'reject_claim',
+        changed_fields: ['status', 'preparation_draft_lock'],
+        previous: { status: claim.status },
+        next: { status: 'respinsa', locked_preparation_drafts: lockedDraftCount },
+        note,
+      });
       return Response.json({ success: true, locked_preparation_drafts: lockedDraftCount });
     }
 

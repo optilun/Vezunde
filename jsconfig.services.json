@@ -1,0 +1,19 @@
+{
+  "extends": "./jsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "shared/canonicalServiceRegistry.js",
+    "src/lib/canonicalServiceCatalog.js",
+    "src/lib/directoryOpsCatalog.js",
+    "src/lib/servicePresentation.js",
+    "src/lib/vezunde.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/vite-plugins",
+    "src/components/ui"
+  ]
+}

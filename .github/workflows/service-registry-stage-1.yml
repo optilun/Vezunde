@@ -1,0 +1,110 @@
+name: Service Registry Foundation
+
+on:
+  push:
+    branches:
+      - chatgpt/services-registry-stage-1
+    paths:
+      - "shared/canonicalServiceRegistry.js"
+      - "src/lib/canonicalServiceCatalog.js"
+      - "src/lib/directoryOpsCatalog.js"
+      - "src/lib/servicePresentation.js"
+      - "src/lib/vezunde.js"
+      - "src/components/workspace/provider/ProviderServices.jsx"
+      - "base44/functions/**"
+      - "scripts/verify-service-registry.mjs"
+      - "scripts/audit-service-registry-data.mjs"
+      - "jsconfig.services.json"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/service-registry-stage-1.yml"
+  pull_request:
+    paths:
+      - "shared/canonicalServiceRegistry.js"
+      - "src/lib/canonicalServiceCatalog.js"
+      - "src/lib/directoryOpsCatalog.js"
+      - "src/lib/servicePresentation.js"
+      - "src/lib/vezunde.js"
+      - "src/components/workspace/provider/ProviderServices.jsx"
+      - "base44/functions/**"
+      - "scripts/verify-service-registry.mjs"
+      - "scripts/audit-service-registry-data.mjs"
+      - "jsconfig.services.json"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/service-registry-stage-1.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify service registry 94/94
+        run: npm run test:services
+      - name: Typecheck service-registry scope
+        id: targeted_typecheck
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck:services 2>&1 | tee typecheck-services.log
+      - name: Lint service-registry scope
+        id: targeted_lint
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run lint:services 2>&1 | tee lint-services.log
+      - name: Repository typecheck diagnostic
+        id: repository_typecheck
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck 2>&1 | tee typecheck.log
+      - name: Repository lint diagnostic
+        id: repository_lint
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run lint 2>&1 | tee lint.log
+      - name: Build
+        id: build
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee build.log
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: service-registry-ci-logs
+          path: |
+            typecheck-services.log
+            lint-services.log
+            typecheck.log
+            lint.log
+            build.log
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Enforce stage verification result
+        if: always()
+        shell: bash
+        run: |
+          test "${{ steps.targeted_typecheck.outcome }}" = "success"
+          test "${{ steps.targeted_lint.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"

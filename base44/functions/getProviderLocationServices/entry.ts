@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { normalizeServiceKey } from '../../../shared/canonicalServiceRegistry.js';
 
 const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
 
@@ -28,7 +29,6 @@ Deno.serve(async (req) => {
       location_id: locationId,
       status: 'active',
     });
-
     if (!memberships.some((membership) => normalizeMemberRole(membership.role))) {
       return Response.json({ error: 'Nu ai acces la aceasta locatie' }, { status: 403 });
     }
@@ -45,9 +45,36 @@ Deno.serve(async (req) => {
       500,
     );
 
+    const existingServices = services.map((service) => {
+      const rawKey = cleanString(service.service_key);
+      const normalized = normalizeServiceKey(rawKey);
+      return {
+        id: service.id,
+        raw_key: rawKey,
+        canonical_key: normalized.canonicalKey,
+        catalog_status: normalized.status,
+        label: normalized.definition?.label || cleanString(service.label) || rawKey,
+        group: normalized.definition?.group || null,
+        confirmation_level: service.confirmation_level || 'not_confirmed',
+        service_need_level: normalized.definition?.service_need_level || service.service_need_level || 'unknown',
+        matching_allowed: service.matching_allowed === true,
+        migration_review_required: service.migration_review_required === true,
+      };
+    });
+
+    // Only rows already stored with canonical keys populate the canonical selector.
+    // Legacy mappings stay visible separately and are never converted implicitly.
+    const serviceKeys = [...new Set(existingServices
+      .filter((service) => service.catalog_status === 'canonical')
+      .map((service) => service.canonical_key)
+      .filter(Boolean))];
+    const legacyOrUnknown = existingServices.filter((service) => service.catalog_status !== 'canonical');
+
     return Response.json({
       location_id: locationId,
-      service_keys: [...new Set(services.map((service) => cleanString(service.service_key)).filter(Boolean))],
+      service_keys: serviceKeys,
+      existing_services: existingServices,
+      legacy_or_unknown_services: legacyOrUnknown,
     });
   } catch (error) {
     return Response.json({ error: error?.message || 'Eroare neasteptata' }, { status: 500 });

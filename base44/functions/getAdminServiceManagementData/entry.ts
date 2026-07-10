@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { normalizeServiceKey } from '../../../shared/canonicalServiceRegistry.js';
 
 function cleanString(value) {
   return String(value || '').trim();
@@ -19,15 +20,26 @@ function sanitizeLocation(location) {
 }
 
 function sanitizeService(service) {
+  const normalized = normalizeServiceKey(service.service_key);
+  const definition = normalized.definition;
   return {
     id: service.id,
     location_id: service.location_id,
     service_key: service.service_key || '',
+    canonical_key: normalized.canonicalKey,
+    catalog_status: normalized.status,
+    canonical_label: definition?.label || null,
+    canonical_group: definition?.group || null,
+    kind: definition?.kind || null,
+    requires_review: definition?.requires_review ?? true,
+    requires_verified_specialist: definition?.requires_verified_specialist ?? true,
+    requires_equipment: definition?.requires_equipment ?? true,
+    requires_infrastructure: definition?.requires_infrastructure ?? true,
     accepts_requests: service.accepts_requests !== false,
     is_active: service.is_active !== false,
     notes: service.notes || '',
     confirmation_level: service.confirmation_level || 'not_confirmed',
-    service_need_level: service.service_need_level || 'unknown',
+    service_need_level: definition?.service_need_level || service.service_need_level || 'unknown',
     is_advanced_service: service.is_advanced_service === true,
     matching_allowed: service.matching_allowed === true,
     migration_review_required: service.migration_review_required === true,

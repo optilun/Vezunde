@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { isServicePubliclyEligible } from '../../../shared/canonicalServiceRegistry.js';
 
 // MODULE 3H.1A — Provider Profile Foundation operations.
 // Cross-role contract:
@@ -31,33 +32,9 @@ const OFFERING_TYPES = ['frames', 'ophthalmic_lenses', 'contact_lenses', 'sungla
 const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
 function normalizeMemberRole(role) { if (role === 'owner') return 'organization_owner'; if (role === 'staff') return 'location_staff'; return MEMBER_ROLES.includes(role) ? role : ''; }
 
-// Public-safe service mirror (functions cannot share local imports — same rule as
-// matchProviders / getPublicProviderProfile).
-const NEED_LEVELS = {
-  eyeglasses: 'general', frames: 'general', prescription_lenses: 'general', contact_lenses: 'general',
-  optometry_consultation: 'general', ophthalmology_consultation: 'general',
-  control_vedere_adulti: 'general', control_vedere_copii: 'general', consult_oftalmologic: 'general',
-  lentile_contact: 'general', lentile_progresive: 'general',
-  eyeglasses_adjustment: 'technical', eyeglasses_repair: 'technical', lens_fitting: 'technical',
-  reparatii_ochelari: 'technical', reglaj_rame: 'technical', montaj_lentile: 'technical',
-  oct: 'specialized_medical', retina_consultation: 'specialized_medical', glaucoma_consultation: 'specialized_medical',
-  cataract_surgery: 'specialized_medical', refractive_surgery: 'specialized_medical',
-  pediatric_ophthalmology: 'specialized_medical', myopia_management: 'specialized_medical', emergency_ophthalmology: 'specialized_medical',
-  retina: 'specialized_medical', glaucom: 'specialized_medical', cataracta: 'specialized_medical',
-  chirurgie_refractiva: 'specialized_medical', managementul_miopiei: 'specialized_medical',
-};
-const PUBLIC_CONF = ['publicly_listed', 'provider_confirmed', 'vezunde_verified'];
-function isPublicSafeService(s, pcs) {
-  if (s.is_active === false) return false;
-  if (s.migration_review_required) return false;
-  if (!PUBLIC_CONF.includes(s.confirmation_level)) return false;
-  const level = (s.is_advanced_service || s.service_need_level === 'specialized_medical')
-    ? 'specialized_medical'
-    : (NEED_LEVELS[s.service_key] || 'unknown');
-  if (level === 'specialized_medical' || level === 'unknown') {
-    return s.confirmation_level === 'vezunde_verified' && pcs === 'verified';
-  }
-  return true;
+function isPublicSafeService(service, location) {
+  if (service?.migration_review_required) return false;
+  return isServicePubliclyEligible(service, location);
 }
 
 // Provider-visible field whitelists — internal review/provenance data never leaves.
@@ -170,7 +147,7 @@ Deno.serve(async (req) => {
         let safeCount = 0;
         if (loc) {
           const services = await svc.entities.LocationService.filter({ location_id: loc.id }, null, 200);
-          safeCount = services.filter((s) => isPublicSafeService(s, loc.profile_control_status || 'directory')).length;
+          safeCount = services.filter((service) => isPublicSafeService(service, loc)).length;
         }
         return Response.json({ exists: !!loc, ...locationCompleteness(loc, safeCount) });
       }

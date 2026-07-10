@@ -1,54 +1,52 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import {
+  getCanonicalServiceDefinition,
+  isServiceMatchingEligible,
+  normalizeServiceKey,
+} from '../../../shared/canonicalServiceRegistry.js';
 
 const APPLY_CONFIRMATION = 'APPLY_MATCHING_BACKFILL';
-const MATCHING_CONFIRMATIONS = ['provider_confirmed', 'vezunde_verified'];
-const SERVICE_LEVELS = ['general', 'technical', 'specialized_medical', 'unknown'];
 
 function cleanString(value) {
   return String(value || '').trim();
 }
 
-function normalizeServiceLevel(service) {
-  if (service?.is_advanced_service || service?.service_need_level === 'specialized_medical') {
-    return 'specialized_medical';
-  }
-  const level = cleanString(service?.service_need_level);
-  return SERVICE_LEVELS.includes(level) ? level : 'unknown';
-}
-
 function proposedMatchingState(service, location) {
-  const level = normalizeServiceLevel(service);
+  const normalized = normalizeServiceKey(service?.service_key);
+  const definition = normalized.definition;
+  const level = definition?.service_need_level || 'unknown';
 
   if (service?.is_active === false) {
-    return { proposed: false, level, reason: 'Serviciul este inactiv.' };
+    return { proposed: false, level, catalog_status: normalized.status, reason: 'Serviciul este inactiv.' };
   }
   if (service?.migration_review_required === true) {
-    return { proposed: false, level, reason: 'Serviciul necesita verificarea migrarii.' };
+    return { proposed: false, level, catalog_status: normalized.status, reason: 'Serviciul necesita verificarea migrarii.' };
   }
-  if (level === 'unknown') {
-    return { proposed: false, level, reason: 'Serviciul nu are o clasificare sigura.' };
+  if (!definition) {
+    return { proposed: false, level: 'unknown', catalog_status: normalized.status, reason: 'Serviciul nu are o clasificare canonica sigura.' };
   }
 
-  if (level === 'specialized_medical') {
+  const proposed = isServiceMatchingEligible(service, location);
+  if (definition.requires_review || level === 'specialized_medical') {
     if (location?.profile_control_status !== 'verified') {
-      return { proposed: false, level, reason: 'Locatia nu este verificata Vezunde pentru servicii medicale.' };
+      return { proposed: false, level, catalog_status: normalized.status, reason: 'Locatia nu este verificata Vezunde pentru servicii medicale.' };
     }
     if (service?.confirmation_level !== 'vezunde_verified') {
-      return { proposed: false, level, reason: 'Serviciul medical nu este verificat individual de Vezunde.' };
+      return { proposed: false, level, catalog_status: normalized.status, reason: 'Serviciul medical nu este verificat individual de Vezunde.' };
     }
-    return { proposed: true, level, reason: 'Serviciu medical verificat la o locatie verificata.' };
+    return { proposed, level, catalog_status: normalized.status, reason: 'Serviciu medical verificat la o locatie verificata.' };
   }
 
-  if (!MATCHING_CONFIRMATIONS.includes(service?.confirmation_level)) {
-    return { proposed: false, level, reason: 'Serviciul nu este confirmat de furnizor sau de Vezunde.' };
+  if (!proposed) {
+    return { proposed: false, level, catalog_status: normalized.status, reason: 'Serviciul nu indeplineste regula canonica de publicare si matching.' };
   }
-
   return {
     proposed: true,
     level,
+    catalog_status: normalized.status,
     reason: level === 'technical'
-      ? 'Serviciu tehnic activ si confirmat.'
-      : 'Serviciu general activ si confirmat.',
+      ? 'Serviciu tehnic activ si confirmat conform registrului canonic.'
+      : 'Serviciu general activ si confirmat conform registrului canonic.',
   };
 }
 
@@ -91,10 +89,14 @@ Deno.serve(async (req) => {
     const rows = services.map((service) => {
       const decision = proposedMatchingState(service, location);
       const previous = service.matching_allowed === true;
+      const definition = getCanonicalServiceDefinition(service.service_key);
       return {
         id: service.id,
         location_id: locationId,
         service_key: cleanString(service.service_key),
+        canonical_key: normalizeServiceKey(service.service_key).canonicalKey,
+        canonical_label: definition?.label || null,
+        catalog_status: decision.catalog_status,
         service_need_level: decision.level,
         confirmation_level: cleanString(service.confirmation_level) || 'not_confirmed',
         location_profile_control_status: cleanString(location.profile_control_status) || 'directory',
@@ -112,6 +114,7 @@ Deno.serve(async (req) => {
       enable_count: changes.filter((row) => row.matching_allowed_proposed).length,
       disable_count: changes.filter((row) => !row.matching_allowed_proposed).length,
       unchanged_count: rows.length - changes.length,
+      unknown_or_ambiguous_count: rows.filter((row) => !['canonical', 'legacy_mapped'].includes(row.catalog_status)).length,
     };
 
     if (action === 'dry_run') {

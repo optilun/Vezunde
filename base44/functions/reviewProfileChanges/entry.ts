@@ -1,24 +1,22 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import {
+  getCanonicalServiceDefinition,
+  isServiceMatchingEligible,
+  normalizeServiceKey,
+} from '../../../shared/canonicalServiceRegistry.js';
 
+// Legacy profile review endpoint retained for compatibility with pending_changes.
+// New service configuration must use ProviderWorkspaceSubmission. This endpoint
+// preserves exact existing legacy keys but never creates a new non-canonical key.
 // Module 3F.2.2: city/county are compatibility mirrors — never applied from staged
 // free text. Geography changes are applied only via a validated locality_siruta_code.
 const STAGED_FIELDS = ['name', 'address', 'phone_public', 'public_email', 'website', 'description', 'provider_type', 'photo_url'];
 
-// Module 3E.2: known service keys (same catalog as matchProviders — backend
-// functions cannot share local imports). Any other key is 'unknown'.
-const KNOWN_LEVELS = {
-  eyeglasses: 'general', frames: 'general', prescription_lenses: 'general', contact_lenses: 'general',
-  optometry_consultation: 'general', ophthalmology_consultation: 'general',
-  control_vedere_adulti: 'general', control_vedere_copii: 'general', consult_oftalmologic: 'general',
-  lentile_contact: 'general', lentile_progresive: 'general',
-  eyeglasses_adjustment: 'technical', eyeglasses_repair: 'technical', lens_fitting: 'technical',
-  reparatii_ochelari: 'technical', reglaj_rame: 'technical', montaj_lentile: 'technical',
-  oct: 'specialized_medical', retina_consultation: 'specialized_medical', glaucoma_consultation: 'specialized_medical',
-  cataract_surgery: 'specialized_medical', refractive_surgery: 'specialized_medical',
-  pediatric_ophthalmology: 'specialized_medical', myopia_management: 'specialized_medical', emergency_ophthalmology: 'specialized_medical',
-  retina: 'specialized_medical', glaucom: 'specialized_medical', cataracta: 'specialized_medical',
-  chirurgie_refractiva: 'specialized_medical', managementul_miopiei: 'specialized_medical',
-};
+function cleanServiceKeys(value) {
+  return [...new Set((Array.isArray(value) ? value : [])
+    .map((key) => String(key || '').trim())
+    .filter(Boolean))];
+}
 
 Deno.serve(async (req) => {
   try {
@@ -46,9 +44,8 @@ Deno.serve(async (req) => {
       for (const k of STAGED_FIELDS) {
         if (fields[k] !== undefined) upd[k] = fields[k];
       }
-      // Module 3F.2.2: staged locality change — all geographic mirror fields are
-      // derived ONLY from GeographicLocality. Legacy staged free-text city/county
-      // (if present in old pending payloads) are never applied.
+
+      // Validate every dependency before the first write, preventing partial approval.
       if (fields.locality_siruta_code !== undefined) {
         const code = String(fields.locality_siruta_code || '').trim();
         const geoRows = await svc.entities.GeographicLocality.filter({ siruta_code: code, is_active: true });
@@ -63,43 +60,71 @@ Deno.serve(async (req) => {
         upd.city = geo.name;
         upd.county = geo.county_name || '';
       }
-      await svc.entities.ProviderLocation.update(loc.id, upd);
 
+      let servicePlan = null;
       if (Array.isArray(changes.services)) {
-        // Module 3E.2: NEVER bulk delete/recreate services — that would destroy
-        // trust/evidence metadata. Diff instead: reactivate/create requested keys,
-        // soft-deactivate removed ones. Existing rows keep confirmation_level,
-        // matching_allowed, need level, sources, verification and review flags.
         const existing = await svc.entities.LocationService.filter({ location_id: loc.id }, null, 500);
         const byKey = {};
-        for (const s of existing) byKey[s.service_key] = s;
-        const wanted = new Set(changes.services);
-        for (const k of changes.services) {
-          const cur = byKey[k];
-          if (cur) {
-            if (cur.is_active === false) await svc.entities.LocationService.update(cur.id, { is_active: true });
-          } else {
-            const known = Object.prototype.hasOwnProperty.call(KNOWN_LEVELS, k);
-            // New provider-submitted services always start unconfirmed and unmatched;
-            // unknown keys stay 'unknown' and are flagged for manual classification.
-            await svc.entities.LocationService.create({
-              location_id: loc.id, service_key: k, is_active: true, accepts_requests: true,
-              service_need_level: known ? KNOWN_LEVELS[k] : 'unknown',
-              is_advanced_service: known && KNOWN_LEVELS[k] === 'specialized_medical',
-              confirmation_level: 'not_confirmed',
+        for (const service of existing) byKey[String(service.service_key || '').trim()] = service;
+        const wantedKeys = cleanServiceKeys(changes.services);
+        const invalidNewKeys = wantedKeys.filter((key) => !byKey[key] && normalizeServiceKey(key).status !== 'canonical');
+        if (invalidNewKeys.length > 0) {
+          return Response.json({
+            error: 'Modificarile legacy contin servicii noi necanonice. Reclasifica-le manual inainte de aprobare.',
+            fields: invalidNewKeys,
+          }, { status: 400 });
+        }
+        servicePlan = { existing, byKey, wantedKeys, wanted: new Set(wantedKeys) };
+      }
+
+      await svc.entities.ProviderLocation.update(loc.id, upd);
+
+      if (servicePlan) {
+        // NEVER bulk delete/recreate services — that would destroy trust/evidence
+        // metadata. Existing legacy/unknown rows may be preserved by exact key, but
+        // this legacy path cannot create a new non-canonical row.
+        for (const serviceKey of servicePlan.wantedKeys) {
+          const current = servicePlan.byKey[serviceKey];
+          if (current) {
+            if (current.is_active === false) {
+              await svc.entities.LocationService.update(current.id, {
+                is_active: true,
+                accepts_requests: current.accepts_requests !== false,
+                matching_allowed: isServiceMatchingEligible({ ...current, is_active: true }, loc),
+              });
+            }
+            continue;
+          }
+
+          const definition = getCanonicalServiceDefinition(serviceKey);
+          if (!definition) throw new Error(`Serviciu canonic necunoscut: ${serviceKey}`);
+          // New provider-submitted services always start unconfirmed and unmatched.
+          await svc.entities.LocationService.create({
+            location_id: loc.id,
+            service_key: serviceKey,
+            is_active: true,
+            accepts_requests: true,
+            service_need_level: definition.service_need_level,
+            is_advanced_service: definition.requires_review || definition.service_need_level === 'specialized_medical',
+            confirmation_level: 'not_confirmed',
+            matching_allowed: false,
+            migration_review_required: false,
+          });
+        }
+
+        // Removal requests: soft-deactivate (auditable), never hard-delete rows that
+        // may carry verification/evidence history.
+        for (const service of servicePlan.existing) {
+          if (!servicePlan.wanted.has(service.service_key) && service.is_active !== false) {
+            await svc.entities.LocationService.update(service.id, {
+              is_active: false,
+              accepts_requests: false,
               matching_allowed: false,
-              migration_review_required: !known,
             });
           }
         }
-        // Removal requests: soft-deactivate (auditable), never hard-delete
-        // rows that may carry verification/evidence history.
-        for (const s of existing) {
-          if (!wanted.has(s.service_key) && s.is_active !== false) {
-            await svc.entities.LocationService.update(s.id, { is_active: false });
-          }
-        }
       }
+
       if (Array.isArray(changes.specializations)) {
         await svc.entities.LocationSpecialization.deleteMany({ location_id: loc.id });
         if (changes.specializations.length > 0) {

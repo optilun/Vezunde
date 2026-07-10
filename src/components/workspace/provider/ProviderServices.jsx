@@ -2,10 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Plus, Save, Send, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { getServiceGroupLayout, SERVICE_GROUPS } from "@/lib/canonicalServiceCatalog";
-import {
-  CLIENT_NEED_SECTIONS,
-  getSectionSelectedCount,
-} from "@/lib/servicePresentation";
+import { CLIENT_NEED_SECTIONS, getSectionSelectedCount } from "@/lib/servicePresentation";
 import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground/40";
@@ -98,7 +95,6 @@ function applyDraftToApproved(approvedSelected, payload = {}) {
     const removed = new Set(ids);
     next[group] = (next[group] || []).filter((id) => !removed.has(id));
   }
-
   return normalizeSelectedPayload(next);
 }
 
@@ -106,17 +102,15 @@ function buildRemovalPayload(approvedSelected, selected) {
   const approved = normalizeSelectedPayload(approvedSelected);
   const desired = normalizeSelectedPayload(selected);
   const removals = {};
-
   for (const [group, ids] of Object.entries(approved)) {
     const desiredIds = new Set(desired[group] || []);
     const removedIds = ids.filter((id) => !desiredIds.has(id));
     if (removedIds.length > 0) removals[group] = removedIds;
   }
-
   return removals;
 }
 
-function buildPayload(selected, approvedSelected, customRequests) {
+function buildPayload(selected, approvedSelected, customRequests, rawRemovalKeys) {
   const selectedIds = normalizeSelectedPayload(selected);
   const removalIds = buildRemovalPayload(approvedSelected, selected);
   const suggestions = [];
@@ -132,7 +126,12 @@ function buildPayload(selected, approvedSelected, customRequests) {
     suggestions.push({ group, label, note: item.note || "" });
   }
 
-  return { selected_ids: selectedIds, removal_ids: removalIds, suggestions };
+  return {
+    selected_ids: selectedIds,
+    removal_ids: removalIds,
+    raw_removal_keys: [...new Set((rawRemovalKeys || []).map(normalizeText).filter(Boolean))],
+    suggestions,
+  };
 }
 
 function sectionDefaultGroup(section) {
@@ -181,22 +180,19 @@ function buildSectionModels(layout, selected) {
     const primaryItems = items.filter((item) => primaryGroups.has(item.group));
     const optionalItems = items.filter((item) => !primaryGroups.has(item.group));
     const selectedCount = getSectionSelectedCount(selected, { ...section, items });
-    const recommended = primaryItems.length > 0 || selectedCount > 0;
-
     return {
       ...section,
       items,
       primaryItems,
       optionalItems,
       selectedCount,
-      recommended,
+      recommended: primaryItems.length > 0 || selectedCount > 0,
     };
   }).filter((section) => section.items.length > 0);
 }
 
 function NeedOverview({ recommendedSections, additionalSections, selected, activeKey, showAdditional, onToggleAdditional, onPick, profileLabel }) {
   const sections = showAdditional ? [...recommendedSections, ...additionalSections] : recommendedSections;
-
   return (
     <section className="rounded-3xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -217,7 +213,6 @@ function NeedOverview({ recommendedSections, additionalSections, selected, activ
           const active = count > 0;
           const focused = activeKey === section.key;
           const additional = !section.recommended;
-
           return (
             <button
               key={section.key}
@@ -241,11 +236,7 @@ function NeedOverview({ recommendedSections, additionalSections, selected, activ
       </div>
 
       {additionalSections.length > 0 && (
-        <button
-          type="button"
-          onClick={onToggleAdditional}
-          className="mt-4 inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold hover:bg-secondary"
-        >
+        <button type="button" onClick={onToggleAdditional} className="mt-4 inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold hover:bg-secondary">
           {showAdditional ? "Ascunde serviciile suplimentare" : "Vezi și alte servicii"}
           <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdditional ? "rotate-180" : ""}`} />
         </button>
@@ -257,7 +248,6 @@ function NeedOverview({ recommendedSections, additionalSections, selected, activ
 function ServiceGroupBlock({ group, items, selected, pendingReview, onToggle }) {
   const config = SERVICE_GROUPS[group];
   if (!config || items.length === 0) return null;
-
   return (
     <div className="border-t border-border pt-4 first:border-t-0 first:pt-0">
       <div className="text-xs font-bold text-foreground">{config.label}</div>
@@ -323,11 +313,7 @@ function NeedSectionCard({ section, selected, customByGroup, pendingReview, onTo
         ))}
 
         {optionalGroups.length > 0 && section.primaryItems.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setShowOptional((value) => !value)}
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-secondary"
-          >
+          <button type="button" onClick={() => setShowOptional((value) => !value)} className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-secondary">
             {showOptional ? "Ascunde opțiunile suplimentare" : "Vezi opțiunile suplimentare"}
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showOptional ? "rotate-180" : ""}`} />
           </button>
@@ -338,12 +324,7 @@ function NeedSectionCard({ section, selected, customByGroup, pendingReview, onTo
         ))}
 
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
-          <button
-            type="button"
-            disabled={pendingReview}
-            onClick={() => setShowCustom((value) => !value)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-secondary disabled:opacity-50"
-          >
+          <button type="button" disabled={pendingReview} onClick={() => setShowCustom((value) => !value)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-secondary disabled:opacity-50">
             <Plus className="h-3.5 w-3.5" /> Nu găsești serviciul?
           </button>
         </div>
@@ -392,11 +373,60 @@ function NeedSectionCard({ section, selected, customByGroup, pendingReview, onTo
   );
 }
 
+function LegacyServicesCard({ services, rawRemovalKeys, pendingReview, onToggleRemoval }) {
+  if (!services.length) return null;
+  return (
+    <section className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-bold text-amber-950">Servicii existente de migrat</h2>
+          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-amber-900/80">
+            Aceste servicii folosesc chei vechi, ambigue sau necunoscute. Rămân vizibile pentru a nu pierde date, dar nu sunt activate automat în profil sau matching.
+          </p>
+        </div>
+        <span className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-900">{services.length} de verificat</span>
+      </div>
+      <div className="mt-4 space-y-2">
+        {services.map((service) => {
+          const marked = rawRemovalKeys.includes(service.raw_key);
+          const statusLabel = service.catalog_status === "legacy_mapped"
+            ? "Cheie veche mapabilă"
+            : service.catalog_status === "legacy_ambiguous"
+              ? "Cheie ambiguă"
+              : "Cheie necunoscută";
+          return (
+            <div key={`${service.id || service.raw_key}:${service.raw_key}`} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-white px-3 py-2.5">
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-foreground">{service.label || service.raw_key}</div>
+                <div className="mt-0.5 break-all text-[11px] text-muted-foreground">Cheie: {service.raw_key}</div>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900">{statusLabel}</span>
+                  <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">{service.confirmation_level || "not_confirmed"}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={pendingReview}
+                onClick={() => onToggleRemoval(service.raw_key)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold disabled:opacity-50 ${marked ? "border-red-200 bg-red-50 text-red-700" : "border-border bg-background hover:bg-secondary"}`}
+              >
+                {marked ? "Eliminare solicitată" : "Solicită eliminarea"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export default function ProviderServices({ locationId, location, overview }) {
   const [draft, setDraft] = useState(null);
   const [approvedSelected, setApprovedSelected] = useState({});
   const [selected, setSelected] = useState({});
   const [customRequests, setCustomRequests] = useState([]);
+  const [legacyServices, setLegacyServices] = useState([]);
+  const [rawRemovalKeys, setRawRemovalKeys] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [servicesLoaded, setServicesLoaded] = useState(false);
@@ -420,9 +450,11 @@ export default function ProviderServices({ locationId, location, overview }) {
   const approvedCount = servicesLoaded ? approvedLoadedCount : (overview?.content_summary?.approved_service_count ?? 0);
   const pendingReview = draft?.status === "pending_review";
   const selectedCount = countSelected(selected) + customRequests.length;
-  const removalCount = countSelected(buildRemovalPayload(approvedSelected, selected));
+  const removalCount = countSelected(buildRemovalPayload(approvedSelected, selected)) + rawRemovalKeys.length;
   const hasSelectionChanges = JSON.stringify(normalizeSelectedPayload(selected)) !== JSON.stringify(normalizeSelectedPayload(approvedSelected));
-  const hasChanges = hasSelectionChanges || customRequests.length > 0;
+  const draftRawRemovalKeys = Array.isArray(safeParse(draft?.payload_json).raw_removal_keys) ? safeParse(draft?.payload_json).raw_removal_keys : [];
+  const hasRawRemovalChanges = JSON.stringify([...rawRemovalKeys].sort()) !== JSON.stringify([...draftRawRemovalKeys].sort());
+  const hasChanges = hasSelectionChanges || customRequests.length > 0 || hasRawRemovalChanges || rawRemovalKeys.length > 0;
 
   const customByGroup = useMemo(() => {
     const map = {};
@@ -460,6 +492,8 @@ export default function ProviderServices({ locationId, location, overview }) {
       setApprovedSelected({});
       setSelected({});
       setCustomRequests([]);
+      setLegacyServices([]);
+      setRawRemovalKeys([]);
       setLoadError("Nu am putut încărca serviciile actuale. Editarea rămâne blocată pentru a evita pierderea selecțiilor existente.");
       setLoading(false);
       return;
@@ -477,6 +511,8 @@ export default function ProviderServices({ locationId, location, overview }) {
     setApprovedSelected(approved);
     setSelected(own ? applyDraftToApproved(approved, payload) : approved);
     setCustomRequests(normalizeSuggestions(payload));
+    setLegacyServices(Array.isArray(serviceResult.data.legacy_or_unknown_services) ? serviceResult.data.legacy_or_unknown_services : []);
+    setRawRemovalKeys(Array.isArray(payload.raw_removal_keys) ? payload.raw_removal_keys : []);
     setServicesLoaded(true);
     setLoading(false);
   };
@@ -532,12 +568,19 @@ export default function ProviderServices({ locationId, location, overview }) {
     }));
   };
 
+  const toggleRawRemoval = (rawKey) => {
+    if (pendingReview || !servicesLoaded) return;
+    setRawRemovalKeys((current) => current.includes(rawKey)
+      ? current.filter((key) => key !== rawKey)
+      : [...current, rawKey]);
+  };
+
   const save = async () => {
     if (!servicesLoaded || pendingReview || (!hasChanges && !draft)) return;
     setSaving(true);
     setMsg("");
     const action = draft && draft.status !== "pending_review" ? "update_draft" : "create_draft";
-    const payload = buildPayload(selected, approvedSelected, customRequests);
+    const payload = buildPayload(selected, approvedSelected, customRequests, rawRemovalKeys);
     const response = await base44.functions.invoke("submitProviderWorkspaceChange", {
       action,
       submission_id: draft?.id,
@@ -579,12 +622,12 @@ export default function ProviderServices({ locationId, location, overview }) {
         <div>
           <h1 className="font-heading text-2xl font-extrabold tracking-tight">Serviciile locației</h1>
           <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-            Selectează ce pot solicita clienții la această locație. Profilul public rămâne simplu, iar detaliile ajută recomandările Vezunde.
+            Selectează ce pot solicita clienții la această locație. Serviciile medicale și cheile vechi rămân blocate până la verificarea corespunzătoare.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {draft && <span className="rounded-full bg-secondary px-2.5 py-1 font-semibold">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}
-          <span className="rounded-full border border-border bg-card px-2.5 py-1 font-semibold text-muted-foreground">{approvedCount} publicate</span>
+          <span className="rounded-full border border-border bg-card px-2.5 py-1 font-semibold text-muted-foreground">{approvedCount} active salvate</span>
           <span className="rounded-full border border-border bg-card px-2.5 py-1 font-semibold text-muted-foreground">{selectedCount} selectate</span>
           {removalCount > 0 && <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-semibold text-amber-900">{removalCount} de eliminat</span>}
         </div>
@@ -596,9 +639,7 @@ export default function ProviderServices({ locationId, location, overview }) {
         </div>
       )}
 
-      {loading && (
-        <div className="rounded-2xl border border-border bg-card px-4 py-5 text-sm text-muted-foreground">Se încarcă serviciile locației...</div>
-      )}
+      {loading && <div className="rounded-2xl border border-border bg-card px-4 py-5 text-sm text-muted-foreground">Se încarcă serviciile locației...</div>}
 
       {!loading && loadError && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950">
@@ -620,6 +661,13 @@ export default function ProviderServices({ locationId, location, overview }) {
             profileLabel={profileLabel}
           />
 
+          <LegacyServicesCard
+            services={legacyServices}
+            rawRemovalKeys={rawRemovalKeys}
+            pendingReview={pendingReview}
+            onToggleRemoval={toggleRawRemoval}
+          />
+
           {activeSection && (
             <NeedSectionCard
               key={`${locationId}:${activeSection.key}`}
@@ -637,11 +685,7 @@ export default function ProviderServices({ locationId, location, overview }) {
 
       <div className="sticky bottom-0 -mx-1 rounded-2xl border border-border bg-background/95 p-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            disabled={saving || pendingReview || !servicesLoaded || (!hasChanges && !draft)}
-            onClick={save}
-            className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"
-          >
+          <button disabled={saving || pendingReview || !servicesLoaded || (!hasChanges && !draft)} onClick={save} className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50">
             <Save className="h-4 w-4" /> Salvează draftul
           </button>
           {draft && draft.status !== "pending_review" && (

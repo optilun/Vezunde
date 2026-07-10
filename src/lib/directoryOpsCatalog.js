@@ -1,29 +1,32 @@
-// Catalogul canonic de servicii aprobat pentru Modulul 3C (fara chei libere).
-export const SERVICE_CATALOG_3C = {
-  general: [
-    { key: "eyeglasses", label: "Ochelari" },
-    { key: "frames", label: "Rame" },
-    { key: "prescription_lenses", label: "Lentile cu prescriptie" },
-    { key: "contact_lenses", label: "Lentile de contact" },
-    { key: "optometry_consultation", label: "Consult optometric" },
-    { key: "ophthalmology_consultation", label: "Consult oftalmologic" },
-  ],
-  technical: [
-    { key: "eyeglasses_adjustment", label: "Reglaj ochelari" },
-    { key: "eyeglasses_repair", label: "Reparatii ochelari" },
-    { key: "lens_fitting", label: "Montaj lentile" },
-  ],
-  specialized_medical: [
-    { key: "oct", label: "OCT" },
-    { key: "retina_consultation", label: "Consult retina" },
-    { key: "glaucoma_consultation", label: "Consult glaucom" },
-    { key: "cataract_surgery", label: "Chirurgie cataracta" },
-    { key: "refractive_surgery", label: "Chirurgie refractiva" },
-    { key: "pediatric_ophthalmology", label: "Oftalmologie pediatrica" },
-    { key: "myopia_management", label: "Managementul miopiei" },
-    { key: "emergency_ophthalmology", label: "Urgente oftalmologice" },
-  ],
+import {
+  CANONICAL_SERVICE_KEYS,
+  CANONICAL_SERVICE_REGISTRY,
+  classifyServiceNeedLevel,
+  getCanonicalServiceDefinition,
+  normalizeServiceKey,
+} from "./canonicalServiceCatalog";
+
+const buckets = {
+  general: [],
+  technical: [],
+  specialized_medical: [],
 };
+
+for (const key of CANONICAL_SERVICE_KEYS) {
+  const definition = CANONICAL_SERVICE_REGISTRY[key];
+  const level = classifyServiceNeedLevel(key);
+  const bucket = buckets[level] || buckets.specialized_medical;
+  bucket.push({ key, label: definition.label });
+}
+
+// Kept for the existing admin UI, now generated from all 94 canonical keys.
+export const SERVICE_CATALOG_3C = buckets;
+
+export const SERVICE_CATALOG_META = Object.fromEntries(
+  CANONICAL_SERVICE_KEYS.map((key) => [key, getCanonicalServiceDefinition(key)]),
+);
+
+export { getCanonicalServiceDefinition, normalizeServiceKey };
 
 export const PROVIDER_TYPES_3C = [
   { key: "optica_medicala", label: "Optica medicala" },
