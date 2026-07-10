@@ -15,7 +15,6 @@ import {
   ShieldCheck,
   Sparkles,
   Stethoscope,
-  Wrench,
   X,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
