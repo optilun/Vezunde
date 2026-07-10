@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Check, Copy, Trash2, UserPlus } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Check, Copy, Trash2, UserPlus, Users, Send, Eye } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-foreground/40";
@@ -34,6 +34,10 @@ function assignmentStatus(item) {
   return { label: "Privat", className: "bg-secondary text-muted-foreground" };
 }
 
+function EmptyCard({ children }) {
+  return <p className="rounded-2xl border border-dashed border-border bg-secondary/30 px-4 py-5 text-center text-xs text-muted-foreground">{children}</p>;
+}
+
 export default function ProviderTeam({ locationId }) {
   const [publicTeam, setPublicTeam] = useState([]);
   const [assignments, setAssignments] = useState([]);
@@ -43,6 +47,9 @@ export default function ProviderTeam({ locationId }) {
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+
+  const activeAssignments = useMemo(() => assignments.filter((item) => item.active_status === "activ"), [assignments]);
+  const pendingInvitations = useMemo(() => invitations.filter((item) => item.status === "pending"), [invitations]);
 
   const load = async () => {
     if (!locationId) return;
@@ -146,123 +153,117 @@ export default function ProviderTeam({ locationId }) {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="font-heading text-2xl font-extrabold tracking-tight">Specialiști locație</h1>
-        <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-          Invită medicii oftalmologi, optometriștii și opticienii asociați acestei locații. Invitația nu le acordă acces administrativ și nu publică automat profilul.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-heading text-2xl font-extrabold tracking-tight">Specialiști locație</h1>
+          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+            Invită medicii oftalmologi, optometriștii și opticienii asociați acestei locații. Invitația nu le acordă acces administrativ și nu publică automat profilul.
+          </p>
+        </div>
+        <span className="rounded-2xl border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground">Separat de Acces și utilizatori</span>
       </div>
 
-      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-bold">Invită un specialist</h2>
-            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
-              Specialistul acceptă cu propriul cont. Asocierea rămâne privată până când profilul profesional este completat și aprobat de Vezunde.
-            </p>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] xl:items-start">
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="mb-4 flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary"><UserPlus className="h-4 w-4" /></div>
+            <div>
+              <h2 className="text-sm font-bold">Invită un specialist</h2>
+              <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">Specialistul acceptă cu propriul cont. Asocierea rămâne privată până când profilul profesional este completat și aprobat de Vezunde.</p>
+            </div>
           </div>
-          <span className="rounded-full border border-border bg-secondary/45 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">Separat de Acces și utilizatori</span>
-        </div>
 
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1.2fr)_minmax(220px,0.8fr)_auto] md:items-end">
-          <div>
-            <label className="text-xs font-semibold text-muted-foreground">Email specialist</label>
-            <input className={`${inputCls} mt-1.5`} placeholder="nume@email.ro" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+          <div className="grid gap-3 md:grid-cols-2">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground">Email specialist</label>
+              <input className={`${inputCls} mt-1.5`} placeholder="nume@email.ro" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground">Tip profesional</label>
+              <select className={`${inputCls} mt-1.5`} value={form.professional_type} onChange={(event) => setForm({ ...form, professional_type: event.target.value })}>
+                {Object.entries(PROFESSIONAL_TYPES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="text-xs font-semibold text-muted-foreground">Tip profesional</label>
-            <select className={`${inputCls} mt-1.5`} value={form.professional_type} onChange={(event) => setForm({ ...form, professional_type: event.target.value })}>
-              {Object.entries(PROFESSIONAL_TYPES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-            </select>
-          </div>
-          <button disabled={saving} onClick={createInvitation} className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-foreground px-4 text-xs font-semibold text-background hover:opacity-90 disabled:opacity-50">
-            <UserPlus className="h-4 w-4" /> Creează invitația
+
+          <button disabled={saving} onClick={createInvitation} className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-full bg-foreground px-5 text-xs font-semibold text-background hover:opacity-90 disabled:opacity-50">
+            <Send className="h-4 w-4" /> Creează invitația
           </button>
-        </div>
 
-        {newLink && (
-          <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-3">
-            <div className="text-xs font-bold text-green-900">Linkul este afișat o singură dată</div>
-            <p className="mt-1 break-all text-xs leading-relaxed text-green-900/80">{newLink}</p>
-            <button type="button" onClick={copyLink} className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-green-300 bg-white px-3 py-1.5 text-xs font-semibold text-green-900">
-              {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-              {copied ? "Copiat" : "Copiază linkul"}
-            </button>
+          {newLink && (
+            <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-3">
+              <div className="text-xs font-bold text-green-900">Linkul este afișat o singură dată</div>
+              <p className="mt-1 break-all text-xs leading-relaxed text-green-900/80">{newLink}</p>
+              <button type="button" onClick={copyLink} className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-green-300 bg-white px-3 py-1.5 text-xs font-semibold text-green-900">
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? "Copiat" : "Copiază linkul"}
+              </button>
+            </div>
+          )}
+          {msg && <p className="mt-3 text-xs text-muted-foreground">{msg}</p>}
+        </section>
+
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="mb-4 flex items-center gap-2"><Eye className="h-4 w-4" /><h2 className="text-sm font-bold">Rezumat specialiști</h2></div>
+          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+            <div className="rounded-2xl bg-secondary/45 p-4"><div className="text-[11px] font-semibold text-muted-foreground">Asociați activ</div><div className="mt-1 text-2xl font-extrabold">{activeAssignments.length}</div></div>
+            <div className="rounded-2xl bg-secondary/45 p-4"><div className="text-[11px] font-semibold text-muted-foreground">Vizibili public</div><div className="mt-1 text-2xl font-extrabold">{publicTeam.length}</div></div>
+            <div className="rounded-2xl bg-secondary/45 p-4"><div className="text-[11px] font-semibold text-muted-foreground">Invitații în așteptare</div><div className="mt-1 text-2xl font-extrabold">{pendingInvitations.length}</div></div>
           </div>
-        )}
+          <p className="mt-4 rounded-2xl border border-border bg-secondary/25 p-3 text-xs leading-relaxed text-muted-foreground">Profilul specialistului devine public doar după completare și aprobarea Vezunde. Asocierea cu locația nu acordă acces administrativ.</p>
+        </section>
+      </div>
 
-        {msg && <p className="mt-3 text-xs text-muted-foreground">{msg}</p>}
-      </section>
-
-      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-bold">Specialiști asociați</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Poți elimina asocierea cu locația, dar nu poți modifica identitatea profesională a specialistului.</p>
+      <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="text-sm font-bold">Specialiști asociați</h2><p className="mt-1 text-xs text-muted-foreground">Poți elimina asocierea cu locația, dar nu poți modifica identitatea profesională a specialistului.</p></div>
+            <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{activeAssignments.length} activi · {publicTeam.length} publici</span>
           </div>
-          <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{assignments.filter((item) => item.active_status === "activ").length} activi · {publicTeam.length} publici</span>
-        </div>
 
-        {assignments.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-border bg-secondary/30 px-4 py-4 text-center text-xs text-muted-foreground">Nu există specialiști asociați acestei locații.</p>
-        ) : (
-          <ul className="space-y-2">
-            {assignments.map((assignment) => {
-              const status = assignmentStatus(assignment);
-              return (
-                <li key={assignment.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border px-3 py-2.5 text-xs">
-                  <div>
-                    <div className="font-bold">{assignment.full_name}</div>
-                    <div className="mt-0.5 text-muted-foreground">{roleLabel(assignment.professional_type)}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${status.className}`}>{status.label}</span>
-                    {assignment.active_status === "activ" && (
-                      <button disabled={saving} onClick={() => deactivateAssignment(assignment.professional_id)} className="inline-flex items-center gap-1 rounded-full border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">
-                        <Trash2 className="h-3.5 w-3.5" /> Elimină
-                      </button>
+          {assignments.length === 0 ? <EmptyCard>Nu există specialiști asociați acestei locații.</EmptyCard> : (
+            <ul className="space-y-2">
+              {assignments.map((assignment) => {
+                const status = assignmentStatus(assignment);
+                return (
+                  <li key={assignment.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border px-3 py-3 text-xs">
+                    <div><div className="font-bold">{assignment.full_name}</div><div className="mt-0.5 text-muted-foreground">{roleLabel(assignment.professional_type)}</div></div>
+                    <div className="flex items-center gap-2">
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${status.className}`}>{status.label}</span>
+                      {assignment.active_status === "activ" && (
+                        <button disabled={saving} onClick={() => deactivateAssignment(assignment.professional_id)} className="inline-flex items-center gap-1 rounded-full border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> Elimină</button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="text-sm font-bold">Invitații profesionale</h2><p className="mt-1 text-xs text-muted-foreground">Invitațiile expiră automat și pot fi revocate înainte de acceptare.</p></div>
+            <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{invitations.length} total</span>
+          </div>
+
+          {invitations.length === 0 ? <EmptyCard>Nu există invitații pentru această locație.</EmptyCard> : (
+            <ul className="space-y-2">
+              {invitations.map((invitation) => (
+                <li key={invitation.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/70 px-3 py-3 text-xs">
+                  <div className="min-w-0"><div className="font-bold">{roleLabel(invitation.professional_type)}</div><div className="break-all text-muted-foreground">{invitation.invited_email_masked}</div>{invitation.expires_at && invitation.status === "pending" && <div className="mt-0.5 text-[11px] text-muted-foreground">Expiră la {formatDate(invitation.expires_at)}</div>}</div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{INVITE_STATUS_LABELS[invitation.status] || invitation.status}</span>
+                    {invitation.status === "pending" && (
+                      <button disabled={saving} onClick={() => revokeInvitation(invitation.id)} className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1.5 text-xs font-semibold text-destructive hover:bg-secondary disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> Revocă</button>
                     )}
                   </div>
                 </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
-      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-bold">Invitații profesionale</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Invitațiile expiră automat și pot fi revocate înainte de acceptare.</p>
-          </div>
-          <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{invitations.length} total</span>
-        </div>
-
-        {invitations.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-border bg-secondary/30 px-4 py-4 text-center text-xs text-muted-foreground">Nu există invitații pentru această locație.</p>
-        ) : (
-          <ul className="space-y-2">
-            {invitations.map((invitation) => (
-              <li key={invitation.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/70 px-3 py-2.5 text-xs">
-                <div className="min-w-0">
-                  <div className="font-bold">{roleLabel(invitation.professional_type)}</div>
-                  <div className="break-all text-muted-foreground">{invitation.invited_email_masked}</div>
-                  {invitation.expires_at && invitation.status === "pending" && <div className="mt-0.5 text-[11px] text-muted-foreground">Expiră la {formatDate(invitation.expires_at)}</div>}
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{INVITE_STATUS_LABELS[invitation.status] || invitation.status}</span>
-                  {invitation.status === "pending" && (
-                    <button disabled={saving} onClick={() => revokeInvitation(invitation.id)} className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1.5 text-xs font-semibold text-destructive hover:bg-secondary disabled:opacity-50">
-                      <Trash2 className="h-3.5 w-3.5" /> Revocă
-                    </button>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
