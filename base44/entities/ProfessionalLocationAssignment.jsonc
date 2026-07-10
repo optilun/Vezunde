@@ -16,6 +16,13 @@
         "optician"
       ]
     },
+    "source_invitation_id": {
+      "type": "string"
+    },
+    "confirmed_by_professional_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "active_status": {
       "type": "string",
       "enum": [
@@ -30,7 +37,7 @@
         "public",
         "privat"
       ],
-      "default": "public"
+      "default": "privat"
     }
   },
   "required": [
