@@ -73,14 +73,8 @@ for (const ambiguousKey of AMBIGUOUS_LEGACY_SERVICE_KEYS) {
 }
 assert.equal(normalizeServiceKey("serviciu_complet_necunoscut").status, "unknown");
 
-const verifiedLocation = {
-  active_status: "activa",
-  profile_control_status: "verified",
-};
-const claimedLocation = {
-  active_status: "activa",
-  profile_control_status: "claimed",
-};
+const verifiedLocation = { active_status: "activa", profile_control_status: "verified" };
+const claimedLocation = { active_status: "activa", profile_control_status: "claimed" };
 const productService = {
   service_key: "eyeglasses",
   is_active: true,
@@ -93,10 +87,7 @@ const medicalProviderConfirmed = {
   confirmation_level: "provider_confirmed",
   matching_allowed: true,
 };
-const medicalVerified = {
-  ...medicalProviderConfirmed,
-  confirmation_level: "vezunde_verified",
-};
+const medicalVerified = { ...medicalProviderConfirmed, confirmation_level: "vezunde_verified" };
 const unknownService = {
   service_key: "serviciu_complet_necunoscut",
   is_active: true,
@@ -123,13 +114,23 @@ const consumers = {
   adminReview: "base44/functions/adminWorkspaceReview/entry.ts",
   submit: "base44/functions/submitProviderWorkspaceChange/entry.ts",
   publicProfile: "base44/functions/getPublicProviderProfile/entry.ts",
+  browseDirectory: "base44/functions/browseDirectoryProviders/entry.ts",
   matching: "base44/functions/matchProviders/entry.ts",
   providerRead: "base44/functions/getProviderLocationServices/entry.ts",
+  adminServiceManagement: "base44/functions/getAdminServiceManagementData/entry.ts",
+  matchingBackfill: "base44/functions/backfillLocationServiceMatching/entry.ts",
 };
 for (const [name, relativePath] of Object.entries(consumers)) {
   const source = await readFile(sourcePath(relativePath), "utf8");
   assert.match(source, /shared\/canonicalServiceRegistry\.js/, `${name} nu importa registrul comun`);
 }
+
+const submitSource = await readFile(sourcePath(consumers.submit), "utf8");
+assert.match(submitSource, /\.\.\.getCanonicalServiceGroupIds\(\)/, "Adaptorul submit trebuie sa derive un obiect nou din registru");
+assert.doesNotMatch(submitSource, /Object\.freeze\s*\(/, "Adaptorul submit nu trebuie sa extinda un obiect inghetat");
+
+const providerReadSource = await readFile(sourcePath(consumers.providerRead), "utf8");
+assert.match(providerReadSource, /catalog_status === 'canonical'/, "Citirea providerului nu trebuie sa remapeze implicit cheile legacy");
 
 const directoryCatalogSource = await readFile(sourcePath("src/lib/directoryOpsCatalog.js"), "utf8");
 assert.match(directoryCatalogSource, /CANONICAL_SERVICE_KEYS/, "Catalogul admin trebuie generat din toate cheile canonice");
