@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Plus, Save, Send, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, Plus, Save, Send, ShieldCheck, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { getServiceGroupLayout, SERVICE_GROUPS } from "@/lib/canonicalServiceCatalog";
 import { CLIENT_NEED_SECTIONS, getSectionSelectedCount } from "@/lib/servicePresentation";
@@ -245,7 +245,18 @@ function NeedOverview({ recommendedSections, additionalSections, selected, activ
   );
 }
 
-function ServiceGroupBlock({ group, items, selected, pendingReview, onToggle }) {
+function PrerequisiteBadge({ prerequisite }) {
+  if (!prerequisite || prerequisite.status === "available") return null;
+  const ready = prerequisite.eligible === true;
+  const Icon = ready ? CheckCircle2 : AlertTriangle;
+  return (
+    <span className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${ready ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-900"}`}>
+      <Icon className="h-3 w-3" /> {prerequisite.status_label || prerequisite.status}
+    </span>
+  );
+}
+
+function ServiceGroupBlock({ group, items, selected, prerequisitesByKey, pendingReview, onToggle }) {
   const config = SERVICE_GROUPS[group];
   if (!config || items.length === 0) return null;
   return (
@@ -256,15 +267,20 @@ function ServiceGroupBlock({ group, items, selected, pendingReview, onToggle }) 
         {items.map((item) => {
           const label = config.ids?.[item.id] || item.id;
           const active = (selected[item.group] || []).includes(item.id);
+          const prerequisite = prerequisitesByKey[item.id] || null;
+          const incompatible = prerequisite?.status === "incompatible_profile";
           return (
             <button
               key={itemKey(item)}
               type="button"
-              disabled={pendingReview}
+              disabled={pendingReview || incompatible}
               onClick={() => onToggle(item.group, item.id)}
               className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${active ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground"}`}
             >
-              {label}
+              <span className="flex flex-col items-start">
+                <span>{label}</span>
+                <PrerequisiteBadge prerequisite={prerequisite} />
+              </span>
             </button>
           );
         })}
@@ -273,7 +289,7 @@ function ServiceGroupBlock({ group, items, selected, pendingReview, onToggle }) 
   );
 }
 
-function NeedSectionCard({ section, selected, customByGroup, pendingReview, onToggle, onAddCustom, onRemoveCustom }) {
+function NeedSectionCard({ section, selected, customByGroup, prerequisitesByKey, pendingReview, onToggle, onAddCustom, onRemoveCustom }) {
   const optionalSelected = section.optionalItems.some((item) => (selected[item.group] || []).includes(item.id));
   const [showOptional, setShowOptional] = useState(section.primaryItems.length === 0 || optionalSelected);
   const [showCustom, setShowCustom] = useState(false);
@@ -309,7 +325,7 @@ function NeedSectionCard({ section, selected, customByGroup, pendingReview, onTo
 
       <div className="mt-4 space-y-4">
         {primaryGroups.map(({ group, items }) => (
-          <ServiceGroupBlock key={group} group={group} items={items} selected={selected} pendingReview={pendingReview} onToggle={onToggle} />
+          <ServiceGroupBlock key={group} group={group} items={items} selected={selected} prerequisitesByKey={prerequisitesByKey} pendingReview={pendingReview} onToggle={onToggle} />
         ))}
 
         {optionalGroups.length > 0 && section.primaryItems.length > 0 && (
@@ -320,7 +336,7 @@ function NeedSectionCard({ section, selected, customByGroup, pendingReview, onTo
         )}
 
         {showOptional && optionalGroups.map(({ group, items }) => (
-          <ServiceGroupBlock key={group} group={group} items={items} selected={selected} pendingReview={pendingReview} onToggle={onToggle} />
+          <ServiceGroupBlock key={group} group={group} items={items} selected={selected} prerequisitesByKey={prerequisitesByKey} pendingReview={pendingReview} onToggle={onToggle} />
         ))}
 
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
@@ -426,6 +442,7 @@ export default function ProviderServices({ locationId, location, overview }) {
   const [selected, setSelected] = useState({});
   const [customRequests, setCustomRequests] = useState([]);
   const [legacyServices, setLegacyServices] = useState([]);
+  const [prerequisitesByKey, setPrerequisitesByKey] = useState({});
   const [rawRemovalKeys, setRawRemovalKeys] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -455,6 +472,11 @@ export default function ProviderServices({ locationId, location, overview }) {
   const draftRawRemovalKeys = Array.isArray(safeParse(draft?.payload_json).raw_removal_keys) ? safeParse(draft?.payload_json).raw_removal_keys : [];
   const hasRawRemovalChanges = JSON.stringify([...rawRemovalKeys].sort()) !== JSON.stringify([...draftRawRemovalKeys].sort());
   const hasChanges = hasSelectionChanges || customRequests.length > 0 || hasRawRemovalChanges || rawRemovalKeys.length > 0;
+  const selectedPrerequisiteRows = Object.values(selected || {}).flat()
+    .map((key) => prerequisitesByKey[key])
+    .filter(Boolean);
+  const blockedSelectedCount = selectedPrerequisiteRows.filter((item) => item.eligible === false).length;
+  const readyForReviewCount = selectedPrerequisiteRows.filter((item) => item.eligible === true && item.status === "ready_for_review").length;
 
   const customByGroup = useMemo(() => {
     const map = {};
@@ -493,6 +515,7 @@ export default function ProviderServices({ locationId, location, overview }) {
       setSelected({});
       setCustomRequests([]);
       setLegacyServices([]);
+      setPrerequisitesByKey({});
       setRawRemovalKeys([]);
       setLoadError("Nu am putut încărca serviciile actuale. Editarea rămâne blocată pentru a evita pierderea selecțiilor existente.");
       setLoading(false);
@@ -512,6 +535,7 @@ export default function ProviderServices({ locationId, location, overview }) {
     setSelected(own ? applyDraftToApproved(approved, payload) : approved);
     setCustomRequests(normalizeSuggestions(payload));
     setLegacyServices(Array.isArray(serviceResult.data.legacy_or_unknown_services) ? serviceResult.data.legacy_or_unknown_services : []);
+    setPrerequisitesByKey(serviceResult.data.prerequisites_by_key || {});
     setRawRemovalKeys(Array.isArray(payload.raw_removal_keys) ? payload.raw_removal_keys : []);
     setServicesLoaded(true);
     setLoading(false);
@@ -630,12 +654,20 @@ export default function ProviderServices({ locationId, location, overview }) {
           <span className="rounded-full border border-border bg-card px-2.5 py-1 font-semibold text-muted-foreground">{approvedCount} active salvate</span>
           <span className="rounded-full border border-border bg-card px-2.5 py-1 font-semibold text-muted-foreground">{selectedCount} selectate</span>
           {removalCount > 0 && <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-semibold text-amber-900">{removalCount} de eliminat</span>}
+          {readyForReviewCount > 0 && <span className="inline-flex items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2.5 py-1 font-semibold text-green-800"><ShieldCheck className="h-3 w-3" />{readyForReviewCount} pregătite pentru verificare</span>}
+          {blockedSelectedCount > 0 && <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-semibold text-amber-900"><AlertTriangle className="h-3 w-3" />{blockedSelectedCount} cu cerințe lipsă</span>}
         </div>
       </div>
 
       {pendingReview && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
           Serviciile sunt în verificare. Editarea este blocată până la decizia administratorului.
+        </div>
+      )}
+
+      {!pendingReview && blockedSelectedCount > 0 && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
+          Unele servicii selectate necesită încă specialist, echipament sau infrastructură verificată. Le poți păstra în draft, dar nu vor putea fi aprobate ori publicate până la completarea cerințelor.
         </div>
       )}
 
@@ -674,6 +706,7 @@ export default function ProviderServices({ locationId, location, overview }) {
               section={activeSection}
               selected={selected}
               customByGroup={customByGroup}
+              prerequisitesByKey={prerequisitesByKey}
               pendingReview={pendingReview}
               onToggle={toggle}
               onAddCustom={addCustom}

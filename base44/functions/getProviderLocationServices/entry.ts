@@ -1,5 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { normalizeServiceKey } from '../../../shared/canonicalServiceRegistry.js';
+import {
+  CANONICAL_SERVICE_KEYS,
+  normalizeServiceKey,
+} from '../../../shared/canonicalServiceRegistry.js';
+import {
+  evaluateServicePrerequisites,
+  servicePrerequisiteStatusLabel,
+} from '../../../shared/servicePrerequisiteEngine.js';
 
 const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
 
@@ -39,15 +46,51 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Profilul este suspendat' }, { status: 403 });
     }
 
-    const services = await svc.entities.LocationService.filter(
-      { location_id: locationId, is_active: true },
-      'service_key',
-      500,
-    );
+    const [services, assignments, equipment, facilities] = await Promise.all([
+      svc.entities.LocationService.filter(
+        { location_id: locationId, is_active: true },
+        'service_key',
+        500,
+      ),
+      svc.entities.ProfessionalLocationAssignment.filter({
+        location_id: locationId,
+        active_status: 'activ',
+      }, null, 200),
+      svc.entities.LocationEquipment.filter({ location_id: locationId }, null, 300).catch(() => []),
+      svc.entities.LocationFacility.filter({ location_id: locationId }, null, 300).catch(() => []),
+    ]);
+
+    const professionalIds = [...new Set(assignments.map((assignment) => assignment.professional_id).filter(Boolean))];
+    const professionals = (await Promise.all(
+      professionalIds.map((id) => svc.entities.ProfessionalProfile.get(id).catch(() => null)),
+    )).filter(Boolean);
+
+    const prerequisiteContext = {
+      location,
+      assignments,
+      professionals,
+      equipment,
+      facilities,
+    };
+
+    const prerequisitesByKey = Object.fromEntries(CANONICAL_SERVICE_KEYS.map((key) => {
+      const evaluation = evaluateServicePrerequisites(key, prerequisiteContext);
+      return [key, {
+        eligible: evaluation.eligible,
+        status: evaluation.status,
+        status_label: servicePrerequisiteStatusLabel(evaluation.status),
+        blockers: evaluation.blockers,
+        required_professional_types: evaluation.definition?.required_professional_types || [],
+        required_equipment_types: evaluation.definition?.required_equipment_types || [],
+        equipment_requirement_mode: evaluation.definition?.equipment_requirement_mode || 'all',
+        required_infrastructure_types: evaluation.definition?.required_infrastructure_types || [],
+      }];
+    }));
 
     const existingServices = services.map((service) => {
       const rawKey = cleanString(service.service_key);
       const normalized = normalizeServiceKey(rawKey);
+      const evaluation = evaluateServicePrerequisites(rawKey, prerequisiteContext);
       return {
         id: service.id,
         raw_key: rawKey,
@@ -59,6 +102,11 @@ Deno.serve(async (req) => {
         service_need_level: normalized.definition?.service_need_level || service.service_need_level || 'unknown',
         matching_allowed: service.matching_allowed === true,
         migration_review_required: service.migration_review_required === true,
+        prerequisite_eligible: evaluation.eligible,
+        prerequisite_status: evaluation.status,
+        prerequisite_status_label: servicePrerequisiteStatusLabel(evaluation.status),
+        prerequisite_blockers: evaluation.blockers,
+        prerequisite_evidence: evaluation.evidence,
       };
     });
 
@@ -75,6 +123,13 @@ Deno.serve(async (req) => {
       service_keys: serviceKeys,
       existing_services: existingServices,
       legacy_or_unknown_services: legacyOrUnknown,
+      prerequisites_by_key: prerequisitesByKey,
+      prerequisite_evidence_summary: {
+        active_assignment_count: assignments.length,
+        professional_profile_count: professionals.length,
+        equipment_count: equipment.filter((item) => item.is_active !== false).length,
+        facility_count: facilities.filter((item) => item.is_active !== false).length,
+      },
     });
   } catch (error) {
     return Response.json({ error: error?.message || 'Eroare neasteptata' }, { status: 500 });
