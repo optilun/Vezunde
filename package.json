@@ -9,6 +9,8 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
+    "test:services": "node scripts/verify-service-registry.mjs",
+    "audit:services": "node scripts/audit-service-registry-data.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
