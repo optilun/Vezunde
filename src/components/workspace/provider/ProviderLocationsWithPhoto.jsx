@@ -22,7 +22,7 @@ export default function ProviderLocationsWithPhoto(props) {
       const grid = configureSection?.querySelector(".grid.gap-3");
       if (grid) {
         grid.classList.remove("md:grid-cols-3");
-        grid.classList.add("md:grid-cols-2", "xl:grid-cols-4");
+        grid.classList.add("md:grid-cols-2", "xl:grid-cols-4", "vezunde-location-modules");
         setPortalTarget(grid);
       }
     };
@@ -35,20 +35,43 @@ export default function ProviderLocationsWithPhoto(props) {
 
   return (
     <div ref={containerRef}>
+      <style>{`
+        .vezunde-location-modules > button {
+          height: 100%;
+        }
+        .vezunde-location-modules > button > div {
+          display: grid;
+          grid-template-columns: 40px minmax(0, 1fr);
+          align-items: start;
+          gap: 12px;
+        }
+        .vezunde-location-modules > button > div > div:first-child {
+          align-self: start;
+          margin-top: 0;
+        }
+        .vezunde-location-modules > button > div > div:last-child {
+          min-width: 0;
+        }
+        .vezunde-location-modules > button > div > div:last-child > div:first-child {
+          min-height: 40px;
+          align-items: center;
+        }
+      `}</style>
+
       <ProviderLocations {...props} />
 
       {portalTarget && selectedLocation && createPortal(
         <button
           type="button"
           onClick={() => setPhotoOpen(true)}
-          className="rounded-2xl border border-border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:shadow-sm"
+          className="h-full rounded-2xl border border-border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:shadow-sm"
         >
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary">
+          <div className="grid grid-cols-[40px_minmax(0,1fr)] items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center self-start rounded-2xl bg-secondary">
               <Image className="h-4 w-4" />
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex min-h-10 items-center justify-between gap-2">
                 <div className="text-sm font-bold">Fotografie</div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </div>
