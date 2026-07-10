@@ -1,199 +1,216 @@
 import React, { useEffect, useState } from "react";
-import { Send, Trash2, UserPlus } from "lucide-react";
+import { Check, Copy, Trash2, UserPlus } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
-import { PROFESSIONAL_TYPES } from "@/lib/vezunde";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-foreground/40";
 
-const PUBLIC_SPECIALIST_TYPES = {
+const PROFESSIONAL_TYPES = {
   ophthalmologist: "Medic oftalmolog",
   optometrist: "Optometrist",
-  optician: "Optician / specialist optica",
-  contact_lens_specialist: "Specialist lentile de contact",
-  optical_workshop_specialist: "Specialist atelier optic",
-  other_specialist: "Alt specialist relevant",
+  optician: "Optician",
 };
 
 const INVITE_STATUS_LABELS = {
-  pending_invite: "In draft",
-  pending_review: "In review",
-  accepted: "Confirmat",
+  pending: "În așteptare",
+  accepted: "Acceptată",
+  expired: "Expirată",
+  revoked: "Revocată",
 };
 
-function isValidEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
-}
-
 function roleLabel(key) {
-  return PUBLIC_SPECIALIST_TYPES[key] || PROFESSIONAL_TYPES[key] || key;
+  return PROFESSIONAL_TYPES[key] || key;
 }
 
-function normalizeInvitations(payload = {}) {
-  if (Array.isArray(payload.invitations)) {
-    return payload.invitations.map((i) => ({
-      email: String(i.email || "").trim().toLowerCase(),
-      professional_role: i.professional_role || i.professional_type || "optometrist",
-      invite_status: i.invite_status || "pending_invite",
-    })).filter((i) => i.email);
-  }
-  if (Array.isArray(payload.members)) {
-    return payload.members.map((m) => ({
-      email: String(m.invite_email || m.email || "").trim().toLowerCase(),
-      professional_role: m.professional_type || m.professional_role || "optometrist",
-      invite_status: m.invite_status || "pending_invite",
-    })).filter((i) => i.email);
-  }
-  return [];
+function formatDate(value) {
+  if (!value) return "";
+  try { return new Date(value).toLocaleDateString("ro-RO"); } catch { return ""; }
 }
 
 export default function ProviderTeam({ locationId }) {
   const [publicTeam, setPublicTeam] = useState([]);
-  const [draft, setDraft] = useState(null);
   const [invitations, setInvitations] = useState([]);
-  const [form, setForm] = useState({ invite_email: "", professional_type: "ophthalmologist" });
+  const [form, setForm] = useState({ email: "", professional_type: "optometrist" });
+  const [newLink, setNewLink] = useState("");
+  const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
   const load = async () => {
-    const [publicRes, mineRes] = await Promise.all([
+    if (!locationId) return;
+    const [publicRes, inviteRes] = await Promise.all([
       base44.functions.invoke("getPublicProviderContent", { location_id: locationId }).catch(() => ({ data: { team: [] } })),
-      base44.functions.invoke("submitProviderWorkspaceChange", { action: "list_mine", location_id: locationId }).catch(() => ({ data: { submissions: [] } })),
+      base44.functions.invoke("professionalInvitationOps", { action: "list", location_id: locationId }).catch((error) => ({ data: { invitations: [], error: error.response?.data?.error || error.message } })),
     ]);
     setPublicTeam(publicRes.data?.team || []);
-    const own = (mineRes.data?.submissions || []).find((s) => s.section === "team" && ["draft", "needs_more_info", "pending_review"].includes(s.status));
-    setDraft(own || null);
-    const payload = own ? JSON.parse(own.payload_json || "{}") : {};
-    setInvitations(normalizeInvitations(payload));
+    setInvitations(inviteRes.data?.invitations || []);
+    if (inviteRes.data?.error) setMsg(inviteRes.data.error);
   };
 
-  useEffect(() => { load(); }, [locationId]);
+  useEffect(() => {
+    setNewLink("");
+    setCopied(false);
+    setMsg("");
+    load();
+  }, [locationId]);
 
-  const addInvite = () => {
-    const email = form.invite_email.trim().toLowerCase();
-    if (!isValidEmail(email)) { setMsg("Introdu un email valid."); return; }
-    if (invitations.some((m) => String(m.email || "").toLowerCase() === email)) { setMsg("Acest email este deja in draft."); return; }
-    setInvitations([
-      ...invitations,
-      {
-        email,
-        professional_role: form.professional_type,
-        invite_status: "pending_invite",
-      },
-    ]);
-    setForm({ invite_email: "", professional_type: "ophthalmologist" });
-    setMsg("Invitatia a fost adaugata in draft.");
-  };
+  const createInvitation = async () => {
+    const email = form.email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setMsg("Introdu un email valid.");
+      return;
+    }
 
-  const save = async () => {
-    if (invitations.length === 0) { setMsg("Adauga cel putin un specialist."); return; }
-    setSaving(true); setMsg("");
-    const action = draft && draft.status !== "pending_review" ? "update_draft" : "create_draft";
-    const res = await base44.functions.invoke("submitProviderWorkspaceChange", {
-      action,
-      submission_id: draft?.id,
+    setSaving(true);
+    setMsg("");
+    setNewLink("");
+    setCopied(false);
+
+    const response = await base44.functions.invoke("professionalInvitationOps", {
+      action: "create",
       location_id: locationId,
-      section: "team",
-      payload: { invitations },
-    }).catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
+      invited_email: email,
+      professional_type: form.professional_type,
+      invitation_base_url: window.location.origin,
+    }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+
     setSaving(false);
-    if (res.data?.error) { setMsg(res.data.error); return; }
-    setMsg("Draft salvat.");
-    load();
+    if (response.data?.error) {
+      setMsg(response.data.error);
+      return;
+    }
+
+    setForm({ email: "", professional_type: "optometrist" });
+    setNewLink(response.data?.invitation_link || "");
+    setMsg(response.data?.email_sent ? "Invitația a fost trimisă." : "Invitația a fost creată. Trimite specialistului linkul afișat mai jos.");
+    await load();
   };
 
-  const submit = async () => {
-    if (!draft) return;
-    setSaving(true); setMsg("");
-    const res = await base44.functions.invoke("submitProviderWorkspaceChange", { action: "submit", submission_id: draft.id, location_id: locationId, section: "team" }).catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
+  const revokeInvitation = async (invitationId) => {
+    const confirmed = window.confirm("Revoci această invitație?");
+    if (!confirmed) return;
+
+    setSaving(true);
+    setMsg("");
+    const response = await base44.functions.invoke("professionalInvitationOps", {
+      action: "revoke",
+      invitation_id: invitationId,
+    }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
     setSaving(false);
-    if (res.data?.error) { setMsg(res.data.error); return; }
-    setMsg("Invitatiile au fost trimise spre review. Specialistii apar public doar dupa confirmare.");
-    load();
+
+    if (response.data?.error) {
+      setMsg(response.data.error);
+      return;
+    }
+    setMsg("Invitația a fost revocată.");
+    await load();
   };
 
-  const pendingReview = draft?.status === "pending_review";
+  const copyLink = async () => {
+    if (!newLink) return;
+    await navigator.clipboard.writeText(newLink);
+    setCopied(true);
+  };
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="font-heading text-2xl font-extrabold tracking-tight">Specialisti locatie</h1>
-        <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
-          Invita specialistii care pot aparea public pe profil. Managerii si operatorii se adauga separat in Acces si utilizatori.
+        <h1 className="font-heading text-2xl font-extrabold tracking-tight">Specialiști locație</h1>
+        <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
+          Invită medicii oftalmologi, optometriștii și opticienii asociați acestei locații. Invitația nu le acordă acces administrativ și nu publică automat profilul.
         </p>
       </div>
 
       <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-sm font-bold">Invita specialist</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Completezi emailul si functia. Restul detaliilor le completeaza specialistul dupa acceptare.</p>
+            <h2 className="text-sm font-bold">Invită un specialist</h2>
+            <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
+              Specialistul acceptă cu propriul cont. Asocierea rămâne privată până când profilul profesional este completat și aprobat de Vezunde.
+            </p>
           </div>
-          {draft && <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}
+          <span className="rounded-full border border-border bg-secondary/45 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">Separat de Acces și utilizatori</span>
         </div>
 
-        {!pendingReview && (
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1.2fr)_minmax(220px,0.8fr)_auto] md:items-end">
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground">Email specialist</label>
-              <input className={`${inputCls} mt-1.5`} placeholder="nume@email.ro" value={form.invite_email} onChange={(e) => setForm({ ...form, invite_email: e.target.value })} />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground">Functie</label>
-              <select className={`${inputCls} mt-1.5`} value={form.professional_type} onChange={(e) => setForm({ ...form, professional_type: e.target.value })}>
-                {Object.entries(PUBLIC_SPECIALIST_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </div>
-            <button onClick={addInvite} className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-foreground px-4 text-xs font-semibold text-background hover:opacity-90">
-              <UserPlus className="h-4 w-4" /> Adauga
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1.2fr)_minmax(220px,0.8fr)_auto] md:items-end">
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground">Email specialist</label>
+            <input className={`${inputCls} mt-1.5`} placeholder="nume@email.ro" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground">Tip profesional</label>
+            <select className={`${inputCls} mt-1.5`} value={form.professional_type} onChange={(event) => setForm({ ...form, professional_type: event.target.value })}>
+              {Object.entries(PROFESSIONAL_TYPES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            </select>
+          </div>
+          <button disabled={saving} onClick={createInvitation} className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-foreground px-4 text-xs font-semibold text-background hover:opacity-90 disabled:opacity-50">
+            <UserPlus className="h-4 w-4" /> Creează invitația
+          </button>
+        </div>
+
+        {newLink && (
+          <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-3">
+            <div className="text-xs font-bold text-green-900">Linkul este afișat o singură dată</div>
+            <p className="mt-1 break-all text-xs leading-relaxed text-green-900/80">{newLink}</p>
+            <button type="button" onClick={copyLink} className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-green-300 bg-white px-3 py-1.5 text-xs font-semibold text-green-900">
+              {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied ? "Copiat" : "Copiază linkul"}
             </button>
           </div>
         )}
 
-        {invitations.length > 0 && (
-          <div className="mt-4 border-t border-border pt-4">
-            <div className="mb-2 text-sm font-bold">Invitatii pregatite</div>
-            <ul className="space-y-2">
-              {invitations.map((m, i) => (
-                <li key={`${m.email}-${i}`} className="rounded-2xl border border-border/70 px-3 py-2 text-xs flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="font-bold">{roleLabel(m.professional_role)}</div>
-                    <div className="break-all text-muted-foreground">{m.email}</div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{INVITE_STATUS_LABELS[m.invite_status] || "In draft"}</span>
-                    {!pendingReview && (
-                      <button onClick={() => setInvitations(invitations.filter((_, idx) => idx !== i))} className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1.5 text-xs font-semibold text-destructive hover:bg-secondary"><Trash2 className="h-3.5 w-3.5" /> Sterge</button>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
-          <button disabled={saving || pendingReview} onClick={save} className="rounded-full border border-border px-5 py-2.5 text-sm font-semibold disabled:opacity-50">Salveaza draft</button>
-          {draft && draft.status !== "pending_review" && (
-            <button disabled={saving} onClick={submit} className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50"><Send className="h-4 w-4" /> Trimite invitatiile</button>
-          )}
-        </div>
         {msg && <p className="mt-3 text-xs text-muted-foreground">{msg}</p>}
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-bold">Specialisti confirmati</h2>
+          <div>
+            <h2 className="text-sm font-bold">Invitații profesionale</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Invitațiile expiră automat și pot fi revocate înainte de acceptare.</p>
+          </div>
+          <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{invitations.length} total</span>
+        </div>
+
+        {invitations.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-border bg-secondary/30 px-4 py-4 text-center text-xs text-muted-foreground">Nu există invitații pentru această locație.</p>
+        ) : (
+          <ul className="space-y-2">
+            {invitations.map((invitation) => (
+              <li key={invitation.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/70 px-3 py-2.5 text-xs">
+                <div className="min-w-0">
+                  <div className="font-bold">{roleLabel(invitation.professional_type)}</div>
+                  <div className="break-all text-muted-foreground">{invitation.invited_email_masked}</div>
+                  {invitation.expires_at && invitation.status === "pending" && <div className="mt-0.5 text-[11px] text-muted-foreground">Expiră la {formatDate(invitation.expires_at)}</div>}
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{INVITE_STATUS_LABELS[invitation.status] || invitation.status}</span>
+                  {invitation.status === "pending" && (
+                    <button disabled={saving} onClick={() => revokeInvitation(invitation.id)} className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1.5 text-xs font-semibold text-destructive hover:bg-secondary disabled:opacity-50">
+                      <Trash2 className="h-3.5 w-3.5" /> Revocă
+                    </button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold">Specialiști publicați</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Aici apar doar profilurile aprobate și asociate public acestei locații.</p>
+          </div>
           <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{publicTeam.length} publici</span>
         </div>
         {publicTeam.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-border bg-secondary/30 px-4 py-4 text-center text-xs text-muted-foreground">Niciun specialist confirmat momentan.</p>
+          <p className="rounded-2xl border border-dashed border-border bg-secondary/30 px-4 py-4 text-center text-xs text-muted-foreground">Niciun specialist publicat momentan.</p>
         ) : (
           <ul className="space-y-2">
-            {publicTeam.map((m) => (
-              <li key={m.id} className="rounded-2xl border border-border px-3 py-2 text-xs flex flex-wrap items-center justify-between gap-2">
-                <span className="font-semibold">{m.full_name} · {roleLabel(m.professional_type)}</span>
-                <span className="text-muted-foreground">{m.public_title}</span>
+            {publicTeam.map((member) => (
+              <li key={member.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border px-3 py-2 text-xs">
+                <span className="font-semibold">{member.full_name} · {roleLabel(member.professional_type)}</span>
+                <span className="text-muted-foreground">{member.public_title}</span>
               </li>
             ))}
           </ul>
