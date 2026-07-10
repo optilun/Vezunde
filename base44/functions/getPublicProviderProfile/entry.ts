@@ -3,6 +3,7 @@ import {
   isServicePubliclyEligible,
   normalizeServiceKey,
 } from '../../../shared/canonicalServiceRegistry.js';
+import { evaluateServicePrerequisites } from '../../../shared/servicePrerequisiteEngine.js';
 
 // Public read-only provider profile endpoint. Returns only whitelisted data.
 
@@ -28,9 +29,10 @@ const AVAILABILITY_LABELS = {
 
 const AVAILABILITY_STALE_DAYS = 30;
 
-function isPublicSafeService(service, location) {
+function isPublicSafeService(service, location, prerequisiteContext) {
   if (service?.migration_review_required) return false;
-  return isServicePubliclyEligible(service, location);
+  if (!isServicePubliclyEligible(service, location)) return false;
+  return evaluateServicePrerequisites(service?.service_key || service?.key, prerequisiteContext).eligible;
 }
 
 function toPublicService(service) {
@@ -90,26 +92,37 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Profilul nu a fost gasit' }, { status: 404 });
     }
 
-    const [services, assignments] = await Promise.all([
+    const [services, assignments, equipment, facilities] = await Promise.all([
       svc.entities.LocationService.filter({ location_id: loc.id }, null, 300),
       svc.entities.ProfessionalLocationAssignment.filter({
         location_id: loc.id,
         active_status: 'activ',
-        public_status: 'public',
       }, null, 100),
+      svc.entities.LocationEquipment.filter({ location_id: loc.id }, null, 300).catch(() => []),
+      svc.entities.LocationFacility.filter({ location_id: loc.id }, null, 300).catch(() => []),
     ]);
-
-    const publicServices = services
-      .filter((service) => isPublicSafeService(service, loc))
-      .map(toPublicService)
-      .filter(Boolean);
 
     const profiles = await Promise.all(
       assignments.map((assignment) => svc.entities.ProfessionalProfile.get(assignment.professional_id).catch(() => null)),
     );
+
+    const prerequisiteContext = {
+      location: loc,
+      assignments,
+      professionals: profiles.filter(Boolean),
+      equipment,
+      facilities,
+    };
+
+    const publicServices = services
+      .filter((service) => isPublicSafeService(service, loc, prerequisiteContext))
+      .map(toPublicService)
+      .filter(Boolean);
+
     const team = assignments.map((assignment, index) => {
       const profile = profiles[index];
       if (!profile) return null;
+      if (assignment.public_status !== 'public') return null;
       if (profile.is_public !== true) return null;
       if (profile.verification_status !== 'verified') return null;
       if (profile.public_visibility_status !== 'approved') return null;
