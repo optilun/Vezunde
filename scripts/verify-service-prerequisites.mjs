@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import {
   evaluateServicePrerequisites,
   getServicePrerequisiteDefinition,
@@ -30,14 +31,12 @@ const optometrist = {
   verification_status: 'verified',
 };
 
-const assignments = [
-  {
-    professional_id: ophthalmologist.id,
-    professional_type: 'ophthalmologist',
-    active_status: 'activ',
-    affiliation_status: 'vezunde_verified',
-  },
-];
+const assignments = [{
+  professional_id: ophthalmologist.id,
+  professional_type: 'ophthalmologist',
+  active_status: 'activ',
+  affiliation_status: 'vezunde_verified',
+}];
 
 const verifiedEquipment = (key) => ({
   equipment_category_key: key,
@@ -115,12 +114,12 @@ const incompatibleSurgery = evaluateServicePrerequisites('cataract_surgery', {
 assert.equal(incompatibleSurgery.eligible, false);
 assert.equal(incompatibleSurgery.status, 'incompatible_profile');
 
-const retailProduct = evaluateServicePrerequisites('eyeglasses', {
-  location: opticalLocation,
-});
+const retailProduct = evaluateServicePrerequisites('eyeglasses', { location: opticalLocation });
 assert.equal(retailProduct.eligible, true);
 assert.equal(retailProduct.status, 'available');
 
+const optometryDefinition = getServicePrerequisiteDefinition('optometry_consultation');
+assert.ok(optometryDefinition.required_equipment_types.length > 0, 'Optometria trebuie sa aiba cerinte de echipament executabile');
 const optometryWithOptometrist = evaluateServicePrerequisites('optometry_consultation', {
   location: opticalLocation,
   assignments: [{
@@ -161,4 +160,41 @@ assert.equal(dynamicRevalidation.eligible, false, 'Dezactivarea echipamentului t
 assert.equal(getServicePrerequisiteDefinition('camp_vizual')?.key, 'visual_field_analyzer');
 assert.equal(evaluateServicePrerequisites('serviciu_necunoscut', baseContext).status, 'unknown_service');
 
-console.log('Service prerequisite engine: PASS');
+const source = async (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), 'utf8');
+const consumerPaths = [
+  'base44/functions/getProviderLocationServices/entry.ts',
+  'base44/functions/getPublicProviderProfile/entry.ts',
+  'base44/functions/browseDirectoryProviders/entry.ts',
+  'base44/functions/matchProviders/entry.ts',
+  'base44/functions/adminServicePrerequisiteReview/entry.ts',
+];
+for (const relativePath of consumerPaths) {
+  assert.match(await source(relativePath), /servicePrerequisiteEngine\.js/, `${relativePath} trebuie sa foloseasca motorul comun`);
+}
+
+const adminUiSource = await source('src/components/admin/directory/AdminWorkspaceSubmissionsReview.jsx');
+assert.match(adminUiSource, /adminServicePrerequisiteReview/, 'Admin UI trebuie sa foloseasca review-ul cu prerechizite');
+assert.match(adminUiSource, /approvalBlocked/, 'Butonul de aprobare trebuie blocat cand lipsesc cerinte');
+
+const providerUiSource = await source('src/components/workspace/provider/ProviderServices.jsx');
+assert.match(providerUiSource, /prerequisitesByKey/, 'Provider UI trebuie sa afiseze statusurile prerechizitelor');
+assert.match(providerUiSource, /blockedSelectedCount/, 'Provider UI trebuie sa semnalizeze selectiile blocate');
+
+const foundationSource = await source('base44/functions/profileFoundationOps/entry.ts');
+const equipmentBlock = foundationSource.match(/const EQUIPMENT_KEYS = \[([\s\S]*?)\n\];/)?.[1] || '';
+const equipmentKeys = [...equipmentBlock.matchAll(/'([^']+)'/g)].map((match) => match[1]);
+assert.equal(equipmentKeys.length, new Set(equipmentKeys).size, 'EQUIPMENT_KEYS nu poate contine duplicate');
+for (const requiredKey of [
+  'pupillometer',
+  'digital_centering_system',
+  'gonioscope',
+  'specular_microscope',
+  'retinal_angiography_system',
+  'retinal_laser',
+  'intravitreal_injection_setup',
+  'minor_procedure_set',
+]) {
+  assert.ok(equipmentKeys.includes(requiredKey), `Lipseste echipamentul canonic ${requiredKey}`);
+}
+
+console.log('Service prerequisite engine and consumers: PASS');
