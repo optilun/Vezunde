@@ -11,7 +11,7 @@
     "lint:services": "eslint shared/canonicalServiceRegistry.js src/lib/canonicalServiceCatalog.js src/lib/directoryOpsCatalog.js src/lib/servicePresentation.js src/lib/vezunde.js src/components/workspace/provider/ProviderServices.jsx base44/functions/directoryOps/entry.ts base44/functions/submitProviderWorkspaceChange/entry.ts base44/functions/adminWorkspaceReview/entry.ts base44/functions/getProviderLocationServices/entry.ts base44/functions/getPublicProviderProfile/entry.ts base44/functions/browseDirectoryProviders/entry.ts base44/functions/matchProviders/entry.ts base44/functions/getAdminServiceManagementData/entry.ts base44/functions/backfillLocationServiceMatching/entry.ts base44/functions/profileFoundationOps/entry.ts base44/functions/updateProviderLocation/entry.ts base44/functions/reviewProfileChanges/entry.ts --quiet",
     "typecheck": "tsc -p ./jsconfig.json",
     "typecheck:services": "tsc -p ./jsconfig.services.json",
-    "test:services": "node scripts/verify-service-registry.mjs",
+    "test:services": "node scripts/verify-service-registry.mjs && node scripts/verify-service-legacy-flows.mjs",
     "audit:services": "node scripts/audit-service-registry-data.mjs",
     "preview": "vite preview"
   },
