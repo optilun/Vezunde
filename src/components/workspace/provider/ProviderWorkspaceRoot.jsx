@@ -7,7 +7,7 @@ import { PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 import LocationSwitcher from "./LocationSwitcher";
 import ProviderOverview from "./ProviderOverview";
 import ProviderProfilePublic from "./ProviderProfilePublic";
-import ProviderLocations from "./ProviderLocations";
+import ProviderLocationsWithPhoto from "./ProviderLocationsWithPhoto";
 import ProviderAccess from "./ProviderAccess";
 import ProviderSettings from "./ProviderSettings";
 
@@ -61,7 +61,7 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
         <>
           {safeSection === "overview" && <ProviderOverview overview={overview} onNavigate={navigate} />}
           {safeSection === "profile" && <ProviderProfilePublic locationId={selectedLocationId} overview={overview} workspace={workspace} onNavigate={navigate} onSelectLocation={setSelectedLocationId} onRefresh={() => loadOverview(selectedLocationId)} />}
-          {safeSection === "locations" && <ProviderLocations workspace={workspace} selectedLocationId={selectedLocationId} onSelect={setSelectedLocationId} overview={overview} onRefresh={() => loadOverview(selectedLocationId)} />}
+          {safeSection === "locations" && <ProviderLocationsWithPhoto workspace={workspace} selectedLocationId={selectedLocationId} onSelect={setSelectedLocationId} overview={overview} onRefresh={() => loadOverview(selectedLocationId)} />}
           {safeSection === "access" && workspace.can_manage_members && <ProviderAccess locations={workspace.locations} />}
           {safeSection === "settings" && <ProviderSettings />}
         </>
