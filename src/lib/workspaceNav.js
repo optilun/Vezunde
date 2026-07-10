@@ -1,4 +1,4 @@
-import { LayoutDashboard, FileText, Bookmark, User, Settings, Building2, Shield } from "lucide-react";
+import { LayoutDashboard, FileText, Bookmark, User, Settings, Building2, Shield, Image } from "lucide-react";
 
 export const PERSONAL_NAV = [
   { key: "overview", label: "Prezentare generala", icon: LayoutDashboard },
@@ -20,6 +20,7 @@ export function getProviderNav({ canManageMembers }) {
     { key: "profile", label: "Profil public", icon: Building2 },
     { key: "locations", label: "Locatii", icon: Building2 },
   ];
+  if (canManageMembers) nav.push({ key: "photos", label: "Fotografii", icon: Image });
   if (canManageMembers) nav.push({ key: "access", label: "Acces si utilizatori", icon: Shield });
   nav.push({ key: "settings", label: "Setari", icon: Settings });
   return nav;
