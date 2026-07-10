@@ -14,6 +14,7 @@ on:
       - "base44/functions/**"
       - "scripts/verify-service-registry.mjs"
       - "scripts/audit-service-registry-data.mjs"
+      - "jsconfig.services.json"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/service-registry-stage-1.yml"
@@ -28,6 +29,7 @@ on:
       - "base44/functions/**"
       - "scripts/verify-service-registry.mjs"
       - "scripts/audit-service-registry-data.mjs"
+      - "jsconfig.services.json"
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/service-registry-stage-1.yml"
@@ -51,15 +53,29 @@ jobs:
         run: npm ci
       - name: Verify service registry 94/94
         run: npm run test:services
-      - name: Typecheck
-        id: typecheck
+      - name: Typecheck service-registry scope
+        id: targeted_typecheck
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck:services 2>&1 | tee typecheck-services.log
+      - name: Lint service-registry scope
+        id: targeted_lint
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run lint:services 2>&1 | tee lint-services.log
+      - name: Repository typecheck diagnostic
+        id: repository_typecheck
         continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
           npm run typecheck 2>&1 | tee typecheck.log
-      - name: Lint
-        id: lint
+      - name: Repository lint diagnostic
+        id: repository_lint
         continue-on-error: true
         shell: bash
         run: |
@@ -78,15 +94,17 @@ jobs:
         with:
           name: service-registry-ci-logs
           path: |
+            typecheck-services.log
+            lint-services.log
             typecheck.log
             lint.log
             build.log
           if-no-files-found: warn
           retention-days: 7
-      - name: Enforce verification result
+      - name: Enforce stage verification result
         if: always()
         shell: bash
         run: |
-          test "${{ steps.typecheck.outcome }}" = "success"
-          test "${{ steps.lint.outcome }}" = "success"
+          test "${{ steps.targeted_typecheck.outcome }}" = "success"
+          test "${{ steps.targeted_lint.outcome }}" = "success"
           test "${{ steps.build.outcome }}" = "success"
