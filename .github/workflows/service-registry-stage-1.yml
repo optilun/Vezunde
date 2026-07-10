@@ -5,14 +5,17 @@ on:
     branches:
       - chatgpt/services-registry-stage-1
       - chatgpt/services-prerequisites-stage-2
+      - chatgpt/services-workspace-stage-3
     paths:
       - "shared/canonicalServiceRegistry.js"
       - "shared/servicePrerequisiteEngine.js"
       - "src/lib/canonicalServiceCatalog.js"
       - "src/lib/directoryOpsCatalog.js"
       - "src/lib/servicePresentation.js"
+      - "src/lib/providerServiceWorkspaceSections.js"
       - "src/lib/vezunde.js"
       - "src/components/workspace/provider/ProviderServices.jsx"
+      - "src/components/workspace/provider/ProviderServicesWorkspace.jsx"
       - "src/components/admin/directory/AdminWorkspaceSubmissionsReview.jsx"
       - "base44/functions/**"
       - "scripts/verify-service-registry.mjs"
@@ -30,8 +33,10 @@ on:
       - "src/lib/canonicalServiceCatalog.js"
       - "src/lib/directoryOpsCatalog.js"
       - "src/lib/servicePresentation.js"
+      - "src/lib/providerServiceWorkspaceSections.js"
       - "src/lib/vezunde.js"
       - "src/components/workspace/provider/ProviderServices.jsx"
+      - "src/components/workspace/provider/ProviderServicesWorkspace.jsx"
       - "src/components/admin/directory/AdminWorkspaceSubmissionsReview.jsx"
       - "base44/functions/**"
       - "scripts/verify-service-registry.mjs"

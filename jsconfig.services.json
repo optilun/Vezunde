@@ -9,6 +9,7 @@
     "src/lib/canonicalServiceCatalog.js",
     "src/lib/directoryOpsCatalog.js",
     "src/lib/servicePresentation.js",
+    "src/lib/providerServiceWorkspaceSections.js",
     "src/lib/vezunde.js"
   ],
   "exclude": [

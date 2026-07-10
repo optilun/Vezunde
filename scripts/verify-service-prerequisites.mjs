@@ -176,9 +176,23 @@ const adminUiSource = await source('src/components/admin/directory/AdminWorkspac
 assert.match(adminUiSource, /adminServicePrerequisiteReview/, 'Admin UI trebuie sa foloseasca review-ul cu prerechizite');
 assert.match(adminUiSource, /approvalBlocked/, 'Butonul de aprobare trebuie blocat cand lipsesc cerinte');
 
-const providerUiSource = await source('src/components/workspace/provider/ProviderServices.jsx');
+const providerUiSource = await source('src/components/workspace/provider/ProviderServicesWorkspace.jsx');
 assert.match(providerUiSource, /prerequisitesByKey/, 'Provider UI trebuie sa afiseze statusurile prerechizitelor');
 assert.match(providerUiSource, /blockedSelectedCount/, 'Provider UI trebuie sa semnalizeze selectiile blocate');
+assert.match(providerUiSource, /PROVIDER_SERVICE_SECTIONS/, 'Provider UI trebuie sa foloseasca structura dedicata pe specializari');
+
+const workspaceSectionsSource = await source('src/lib/providerServiceWorkspaceSections.js');
+for (const sectionKey of [
+  'optical_products',
+  'general_ophthalmology',
+  'investigations',
+  'retina_macula',
+  'glaucoma',
+  'pediatric_strabismus',
+  'cataract_refractive_procedures',
+]) {
+  assert.match(workspaceSectionsSource, new RegExp(`key: ["']${sectionKey}["']`), `Lipseste sectiunea workspace ${sectionKey}`);
+}
 
 const foundationSource = await source('base44/functions/profileFoundationOps/entry.ts');
 const equipmentBlock = foundationSource.match(/const EQUIPMENT_KEYS = \[([\s\S]*?)\n\];/)?.[1] || '';
