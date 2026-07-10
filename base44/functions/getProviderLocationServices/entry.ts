@@ -62,7 +62,10 @@ Deno.serve(async (req) => {
       };
     });
 
+    // Only rows already stored with canonical keys populate the canonical selector.
+    // Legacy mappings stay visible separately and are never converted implicitly.
     const serviceKeys = [...new Set(existingServices
+      .filter((service) => service.catalog_status === 'canonical')
       .map((service) => service.canonical_key)
       .filter(Boolean))];
     const legacyOrUnknown = existingServices.filter((service) => service.catalog_status !== 'canonical');
