@@ -56,6 +56,7 @@ export default function MyAccount() {
         user={user}
         workspace={professionalWorkspace}
         onLogout={onLogout}
+        onRefresh={load}
         onSwitchPersonal={() => setViewOverride("personal")}
       />
     );
