@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowRight, Clock, ExternalLink, Globe2, MapPin, Phone } from "lucide-react";
+import { ArrowRight, BadgeCheck, Clock, ExternalLink, Globe2, MapPin, Phone } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { PROVIDER_TYPES, PROFESSIONAL_AFFILIATION_STATUS, PROFESSIONAL_TYPES } from "@/lib/vezunde";
+import { PROVIDER_TYPES, PROFESSIONAL_TYPES } from "@/lib/vezunde";
 import { buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/lib/maps";
 import { summarizePublicServiceKeys } from "@/lib/servicePresentation";
 import TrustBadge from "@/components/results/TrustBadge";
@@ -15,16 +15,45 @@ const SOCIAL_LINKS = [
   { key: "linkedin", label: "LinkedIn", platform: "linkedin" },
 ];
 
+const SPECIALIZATION_LABELS = {
+  general_ophthalmology: "Oftalmologie generală",
+  pediatric_ophthalmology: "Oftalmologie pediatrică",
+  glaucoma: "Glaucom",
+  retina: "Retină",
+  cornea: "Cornee",
+  cataract: "Cataractă",
+  refractive_surgery: "Chirurgie refractivă",
+  dry_eye: "Ochi uscat",
+  myopia_management: "Managementul miopiei",
+  refraction: "Refracție și dioptrii",
+  contact_lenses: "Lentile de contact",
+  pediatric_optometry: "Optometrie pediatrică",
+  binocular_vision: "Vedere binoculară",
+  low_vision: "Vedere slabă",
+  occupational_vision: "Vedere ocupațională",
+  frame_consulting: "Consiliere rame",
+  ophthalmic_lenses: "Lentile oftalmice",
+  progressive_lenses: "Lentile progresive",
+  lens_fitting: "Montaj lentile",
+  adjustments_repairs: "Reglaje și reparații",
+  children_eyewear: "Ochelari pentru copii",
+  protective_eyewear: "Ochelari de protecție",
+};
+
 function compactUrl(url) {
   return String(url || "").replace(/^https?:\/\//i, "").replace(/\/$/, "");
 }
 
 function locationSummary(profile) {
-  return [profile.city, profile.county].filter(Boolean).join(", ") || profile.city || "Romania";
+  return [profile.city, profile.county].filter(Boolean).join(", ") || profile.city || "România";
 }
 
 function fullAddress(profile) {
   return [profile.address, profile.city, profile.county].filter(Boolean).join(", ");
+}
+
+function initials(value) {
+  return String(value || "S").split(" ").filter(Boolean).map((part) => part[0]).slice(0, 2).join("").toUpperCase();
 }
 
 function SocialPublicLink({ item, url }) {
@@ -72,6 +101,49 @@ function ServicesCard({ services }) {
   );
 }
 
+function TeamCard({ team }) {
+  return (
+    <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-heading font-bold">Echipa acestei locații</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Sunt afișați doar specialiștii verificați de Vezunde și asociați public cu această locație.</p>
+        </div>
+        <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">{team.length} {team.length === 1 ? "specialist" : "specialiști"}</span>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        {team.map((professional) => (
+          <article key={professional.id} className="rounded-2xl border border-border bg-secondary/20 p-4">
+            <div className="flex items-start gap-3">
+              {professional.profile_photo_url ? (
+                <img src={professional.profile_photo_url} alt={`Fotografie ${professional.full_name}`} className="h-14 w-14 shrink-0 rounded-2xl border border-border object-cover" />
+              ) : (
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-border bg-card font-heading font-bold">{initials(professional.full_name)}</div>
+              )}
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <h3 className="text-sm font-bold">{professional.full_name}</h3>
+                  {professional.verified && <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800"><BadgeCheck className="h-3 w-3" /> Verificat</span>}
+                </div>
+                <div className="mt-1 text-xs font-semibold text-primary">{PROFESSIONAL_TYPES[professional.professional_type] || professional.professional_type}</div>
+              </div>
+            </div>
+
+            {(professional.specializations || []).length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {professional.specializations.slice(0, 4).map((key) => <span key={key} className="rounded-full border border-border bg-card px-2 py-1 text-[10px] font-medium text-muted-foreground">{SPECIALIZATION_LABELS[key] || key}</span>)}
+              </div>
+            )}
+
+            {professional.bio && <p className="mt-3 line-clamp-4 text-xs leading-relaxed text-muted-foreground">{professional.bio}</p>}
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function ProviderProfile() {
   const { id } = useParams();
   const [profile, setProfile] = useState(null);
@@ -85,8 +157,8 @@ export default function ProviderProfile() {
   const services = useMemo(() => profile?.services || [], [profile?.services]);
   const publicServiceCount = summarizePublicServiceKeys(services).length;
 
-  if (loading) return <div className="max-w-5xl mx-auto px-5 pt-20 text-sm text-muted-foreground">Se incarca...</div>;
-  if (!profile) return <div className="max-w-5xl mx-auto px-5 pt-20 text-sm text-muted-foreground">Furnizorul nu a fost gasit.</div>;
+  if (loading) return <div className="max-w-5xl mx-auto px-5 pt-20 text-sm text-muted-foreground">Se încarcă...</div>;
+  if (!profile) return <div className="max-w-5xl mx-auto px-5 pt-20 text-sm text-muted-foreground">Furnizorul nu a fost găsit.</div>;
 
   const status = profile.profile_control_status;
   const mapUrl = buildGoogleMapsUrl(profile);
@@ -94,6 +166,7 @@ export default function ProviderProfile() {
   const websiteLabel = profile.website ? compactUrl(profile.website) : "";
   const socialLinks = SOCIAL_LINKS.filter((item) => profile[item.key]);
   const addressLabel = fullAddress(profile);
+  const team = profile.team || [];
 
   return (
     <div className="mx-auto max-w-5xl px-5 pb-10 pt-12">
@@ -119,44 +192,19 @@ export default function ProviderProfile() {
           )}
 
           {services.length > 0 && <ServicesCard services={services} />}
+          {team.length > 0 && <TeamCard team={team} />}
 
           {status === "directory" && (
             <div className="rounded-3xl border border-dashed border-border/80 bg-secondary/40 p-6">
-              <p className="text-sm text-muted-foreground">Informatiile acestui profil provin din surse publice si pot fi actualizate de furnizor prin revendicarea profilului.</p>
-              <Link to="/adauga-sau-revendica" className="mt-3 inline-block text-sm font-semibold underline underline-offset-4">Aceasta este locatia ta? Revendica profilul</Link>
-            </div>
-          )}
-
-          {profile.team.length > 0 && (
-            <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-              <h2 className="font-heading font-bold">Specialisti</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Specialistii sunt afisati ca membri ai acestei locatii.</p>
-              <div className="mt-4 space-y-4">
-                {profile.team.map((pro, i) => {
-                  const affiliation = pro.affiliation_status || "location_added";
-                  const showBadge = affiliation !== "location_added";
-                  return (
-                    <div key={i} className="flex gap-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent font-heading font-bold text-primary">{pro.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("")}</div>
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="text-sm font-medium">{pro.full_name}</div>
-                          {showBadge && <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800">{PROFESSIONAL_AFFILIATION_STATUS[affiliation] || affiliation}</span>}
-                        </div>
-                        <div className="text-xs text-primary">{PROFESSIONAL_TYPES[pro.professional_type]}</div>
-                        {pro.bio && <p className="mt-1 text-xs text-muted-foreground">{pro.bio}</p>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <p className="text-sm text-muted-foreground">Informațiile acestui profil provin din surse publice și pot fi actualizate de furnizor prin revendicarea profilului.</p>
+              <Link to="/adauga-sau-revendica" className="mt-3 inline-block text-sm font-semibold underline underline-offset-4">Aceasta este locația ta? Revendică profilul</Link>
             </div>
           )}
         </main>
 
         <aside className="space-y-5 lg:sticky lg:top-6">
           <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
-            <h2 className="font-heading font-bold text-sm">Date si contact</h2>
+            <h2 className="font-heading font-bold text-sm">Date și contact</h2>
             <div className="mt-4 space-y-3">
               {profile.phone_public ? (
                 <ContactLine icon={Phone} label="Telefon">
@@ -172,7 +220,7 @@ export default function ProviderProfile() {
               )}
               <ContactLine icon={Clock} label="Program">
                 {profile.opening_hours ? <span>{profile.opening_hours}</span> : <span className="text-muted-foreground">Program nepublicat</span>}
-                {profile.saturday_hours && !String(profile.opening_hours || "").includes(profile.saturday_hours) && <div className="mt-1 text-xs text-muted-foreground">Sambata: {profile.saturday_hours}</div>}
+                {profile.saturday_hours && !String(profile.opening_hours || "").includes(profile.saturday_hours) && <div className="mt-1 text-xs text-muted-foreground">Sâmbătă: {profile.saturday_hours}</div>}
               </ContactLine>
             </div>
             {socialLinks.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{socialLinks.map((item) => <SocialPublicLink key={item.key} item={item} url={profile[item.key]} />)}</div>}
@@ -183,8 +231,8 @@ export default function ProviderProfile() {
             <div className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="font-heading font-bold text-sm">Harta si adresa</h2>
-                  {addressLabel ? <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{addressLabel}</p> : <p className="mt-2 text-sm text-muted-foreground">Adresa completa nu este publicata.</p>}
+                  <h2 className="font-heading font-bold text-sm">Hartă și adresă</h2>
+                  {addressLabel ? <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{addressLabel}</p> : <p className="mt-2 text-sm text-muted-foreground">Adresa completă nu este publicată.</p>}
                 </div>
                 {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary">Maps <ExternalLink className="h-3 w-3" /></a>}
               </div>
@@ -194,13 +242,13 @@ export default function ProviderProfile() {
                 <iframe title={`Harta ${profile.name}`} src={embedUrl} className="h-full w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
               </div>
             ) : (
-              <div className="border-t border-border bg-secondary/40 p-5 text-sm text-muted-foreground">Harta va fi afisata dupa publicarea adresei sau a pinului verificat.</div>
+              <div className="border-t border-border bg-secondary/40 p-5 text-sm text-muted-foreground">Harta va fi afișată după publicarea adresei sau a pinului verificat.</div>
             )}
           </div>
 
           <div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
             <Link to={`/cerere?furnizor=${profile.id}`} className="flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 font-medium text-primary-foreground transition-opacity hover:opacity-90">Trimite o cerere <ArrowRight className="h-4 w-4" /></Link>
-            <p className="mt-3 px-1 text-xs leading-relaxed text-muted-foreground">Datele tale de contact nu sunt transmise automat furnizorului. Poti oricand suna direct.</p>
+            <p className="mt-3 px-1 text-xs leading-relaxed text-muted-foreground">Datele tale de contact nu sunt transmise automat furnizorului. Poți oricând suna direct.</p>
           </div>
         </aside>
       </div>
