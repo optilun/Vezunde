@@ -6,6 +6,7 @@ import AdminDashboardHome from "@/components/admin/dashboard/AdminDashboardHome"
 import AdminProfilesSection from "@/components/admin/directory/AdminProfilesSection";
 import AdminWorkspaceSubmissionsReview from "@/components/admin/directory/AdminWorkspaceSubmissionsReview";
 import AdminProfessionalProfileReview from "@/components/admin/directory/AdminProfessionalProfileReview";
+import AdminLocationPhotoReview from "@/components/admin/directory/AdminLocationPhotoReview";
 import AdminSettingsPlaceholder from "@/components/admin/AdminSettingsPlaceholder";
 import AdminPageHeader from "@/components/admin/ui/AdminPageHeader";
 import DirOpsAddLocation from "@/components/admin/directory/DirOpsAddLocation";
@@ -25,6 +26,7 @@ const SIMPLE_HEADERS = {
   profiluri: "Gestionează statusul de încredere al profilurilor din director.",
   workspace_reviews: "Analizează modificările trimise de furnizori din workspace înainte de publicare.",
   specialist_reviews: "Verifică profilurile profesionale trimise de specialiști înainte de publicare.",
+  fotografii: "Verifică fotografia principală trimisă pentru fiecare locație înainte de publicare.",
   servicii: "Gestionează serviciile confirmate pentru fiecare locație.",
   revendicari: "Analizează cererile de revendicare a profilurilor.",
   geografie: "Sursa canonică de geografie Vezunde (import SIRUTA).",
@@ -51,7 +53,7 @@ export default function AdminDirectoryOps() {
     );
   }
 
-  const simpleTabsWithHeader = ["adauga", "workspace_reviews", "specialist_reviews", "servicii", "revendicari", "geografie", "audit", "contract_geo"];
+  const simpleTabsWithHeader = ["adauga", "workspace_reviews", "specialist_reviews", "fotografii", "servicii", "revendicari", "geografie", "audit", "contract_geo"];
 
   return (
     <AdminAppShell activeKey={tab} onNavigate={setTab} user={user} onLogout={() => logout(true)}>
@@ -81,6 +83,7 @@ export default function AdminDirectoryOps() {
             {tab === "adauga" && <DirOpsAddLocation />}
             {tab === "workspace_reviews" && <AdminWorkspaceSubmissionsReview />}
             {tab === "specialist_reviews" && <AdminProfessionalProfileReview />}
+            {tab === "fotografii" && <AdminLocationPhotoReview />}
             {tab === "servicii" && <DirOpsServices />}
             {tab === "revendicari" && <DirOpsClaims />}
             {tab === "geografie" && <GeoImport />}
