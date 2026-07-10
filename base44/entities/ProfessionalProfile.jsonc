@@ -93,6 +93,34 @@
       ],
       "default": "draft"
     },
+    "profile_review_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "pending_review",
+        "approved",
+        "rejected",
+        "needs_more_info"
+      ],
+      "default": "draft"
+    },
+    "pending_profile_json": {
+      "type": "string"
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reviewed_by_user_id": {
+      "type": "string"
+    },
+    "review_note": {
+      "type": "string"
+    },
     "profile_completeness": {
       "type": "number",
       "default": 0
