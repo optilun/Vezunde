@@ -10,9 +10,7 @@
     "src/lib/directoryOpsCatalog.js",
     "src/lib/servicePresentation.js",
     "src/lib/providerServiceWorkspaceSections.js",
-    "src/lib/vezunde.js",
-    "src/components/workspace/provider/ProviderServices.jsx",
-    "src/components/workspace/provider/ProviderServicesWorkspace.jsx"
+    "src/lib/vezunde.js"
   ],
   "exclude": [
     "node_modules",
