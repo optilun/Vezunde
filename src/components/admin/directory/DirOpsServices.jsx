@@ -17,23 +17,43 @@ export default function DirOpsServices() {
   const [locations, setLocations] = useState([]);
   const [locationId, setLocationId] = useState("");
   const [services, setServices] = useState(null);
+  const [dataMessage, setDataMessage] = useState("");
   const [backfillReport, setBackfillReport] = useState(null);
   const [backfillBusy, setBackfillBusy] = useState(false);
   const [backfillMessage, setBackfillMessage] = useState("");
 
-  useEffect(() => {
-    base44.entities.ProviderLocation.list("name", 300).then(setLocations);
-  }, []);
+  const loadAdminData = async (selectedLocationId = "") => {
+    setDataMessage("");
+    const response = await base44.functions.invoke("getAdminServiceManagementData", {
+      location_id: selectedLocationId,
+    }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
 
-  const loadServices = (id) =>
-    base44.entities.LocationService.filter({ location_id: id }, null, 500).then(setServices);
+    if (response.data?.error) {
+      setDataMessage(response.data.error);
+      if (!selectedLocationId) setLocations([]);
+      setServices(selectedLocationId ? [] : null);
+      return;
+    }
+
+    setLocations(response.data?.locations || []);
+    setServices(selectedLocationId ? (response.data?.services || []) : null);
+  };
+
+  useEffect(() => {
+    loadAdminData();
+  }, []);
 
   useEffect(() => {
     setBackfillReport(null);
     setBackfillMessage("");
-    if (locationId) loadServices(locationId);
+    if (locationId) loadAdminData(locationId);
     else setServices(null);
   }, [locationId]);
+
+  const loadServices = async (id) => {
+    if (!id) return;
+    await loadAdminData(id);
+  };
 
   const runDryRun = async () => {
     if (!locationId) return;
@@ -95,10 +115,18 @@ export default function DirOpsServices() {
           <option value="">Alege...</option>
           {locations.map((item) => (
             <option key={item.id} value={item.id}>
-              {item.name} — {item.city} ({item.profile_control_status || "directory"})
+              {item.public_display_name || item.name} — {item.city || "fără localitate"} ({item.profile_control_status || "directory"})
             </option>
           ))}
         </select>
+        {locations.length === 0 && !dataMessage && (
+          <p className="mt-2 text-xs text-muted-foreground">Nu există locații disponibile în mediul de date curent.</p>
+        )}
+        {dataMessage && (
+          <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+            {dataMessage}
+          </div>
+        )}
       </AdminCard>
 
       {location && (
