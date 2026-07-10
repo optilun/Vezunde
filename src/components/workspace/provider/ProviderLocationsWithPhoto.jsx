@@ -36,6 +36,9 @@ export default function ProviderLocationsWithPhoto(props) {
   return (
     <div ref={containerRef}>
       <style>{`
+        .vezunde-location-modules {
+          align-items: stretch;
+        }
         .vezunde-location-modules > button {
           height: 100%;
         }
@@ -44,6 +47,7 @@ export default function ProviderLocationsWithPhoto(props) {
           grid-template-columns: 40px minmax(0, 1fr);
           align-items: start;
           gap: 12px;
+          height: 100%;
         }
         .vezunde-location-modules > button > div > div:first-child {
           align-self: start;
@@ -51,10 +55,20 @@ export default function ProviderLocationsWithPhoto(props) {
         }
         .vezunde-location-modules > button > div > div:last-child {
           min-width: 0;
+          display: flex;
+          flex-direction: column;
+          height: 100%;
         }
         .vezunde-location-modules > button > div > div:last-child > div:first-child {
           min-height: 40px;
           align-items: center;
+        }
+        .vezunde-location-modules > button > div > div:last-child > p {
+          min-height: 64px;
+        }
+        .vezunde-location-modules > button > div > div:last-child > div:last-child {
+          margin-top: auto;
+          padding-top: 12px;
         }
       `}</style>
 
@@ -66,17 +80,17 @@ export default function ProviderLocationsWithPhoto(props) {
           onClick={() => setPhotoOpen(true)}
           className="h-full rounded-2xl border border-border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:shadow-sm"
         >
-          <div className="grid grid-cols-[40px_minmax(0,1fr)] items-start gap-3">
+          <div className="grid h-full grid-cols-[40px_minmax(0,1fr)] items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center self-start rounded-2xl bg-secondary">
               <Image className="h-4 w-4" />
             </div>
-            <div className="min-w-0">
+            <div className="flex h-full min-w-0 flex-col">
               <div className="flex min-h-10 items-center justify-between gap-2">
                 <div className="text-sm font-bold">Fotografie</div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </div>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Adaugă fotografia principală a acestei locații.</p>
-              <div className="mt-3 text-xs font-bold underline underline-offset-4">Configurează</div>
+              <p className="mt-1 min-h-16 text-xs leading-relaxed text-muted-foreground">Adaugă fotografia principală a acestei locații.</p>
+              <div className="mt-auto pt-3 text-xs font-bold underline underline-offset-4">Configurează</div>
             </div>
           </div>
         </button>,
