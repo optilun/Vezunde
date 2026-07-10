@@ -82,8 +82,6 @@
   }
 }
 
-
-
 /* Auth pages (Login/Register/ForgotPassword/ResetPassword) and authenticated
    workspaces use the same neutral charcoal palette. */
 .auth-neutral {
@@ -119,6 +117,27 @@
 .workspace-neutral .border-foreground.shadow-sm {
   border-color: hsl(var(--border)) !important;
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 0 0 1px rgb(0 0 0 / 0.025) !important;
+}
+
+/* Workspace info popovers: keep them visible and open into the available content area. */
+.workspace-neutral section:has(details[open]) {
+  overflow: visible !important;
+}
+
+.workspace-neutral details {
+  position: relative;
+}
+
+.workspace-neutral details[open] {
+  z-index: 60;
+}
+
+.workspace-neutral details > div {
+  left: 0 !important;
+  right: auto !important;
+  z-index: 70 !important;
+  width: min(18rem, calc(100vw - 2rem)) !important;
+  max-width: calc(100vw - 2rem);
 }
 
 @layer base {
