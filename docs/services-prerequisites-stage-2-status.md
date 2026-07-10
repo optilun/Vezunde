@@ -2,17 +2,23 @@
 
 Branch: `chatgpt/services-prerequisites-stage-2`
 
-Current status: implementation in progress.
+Current status: implementation complete, final CI and review pending.
 
 Completed:
 - shared prerequisite engine;
-- provider prerequisite read model;
+- executable specialist, equipment, infrastructure and profile rules;
+- provider prerequisite read model and workspace status display;
 - public profile fail-closed prerequisite enforcement;
-- prerequisite unit scenarios;
+- directory and matching prerequisite enforcement;
+- prerequisite-aware admin approval endpoint;
+- admin checklist and blocked approval state;
+- post-approval dependency revalidation;
+- expanded controlled equipment catalog;
+- prerequisite and source-parity tests;
 - CI wiring.
 
-Pending:
-- admin approval enforcement;
-- matching enforcement;
-- admin UI checklist;
-- final regression test and review.
+Pending before merge:
+- final successful workflow on the latest non-bot commit;
+- cleanup of one-time patch helper files;
+- final diff review;
+- no Base44 deploy in this stage.
