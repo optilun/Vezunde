@@ -119,6 +119,7 @@ const consumers = {
   providerRead: "base44/functions/getProviderLocationServices/entry.ts",
   adminServiceManagement: "base44/functions/getAdminServiceManagementData/entry.ts",
   matchingBackfill: "base44/functions/backfillLocationServiceMatching/entry.ts",
+  profileFoundation: "base44/functions/profileFoundationOps/entry.ts",
 };
 for (const [name, relativePath] of Object.entries(consumers)) {
   const source = await readFile(sourcePath(relativePath), "utf8");
