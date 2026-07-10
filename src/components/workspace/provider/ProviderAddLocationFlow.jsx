@@ -17,20 +17,28 @@ const EMPTY = {
   place_id: "",
 };
 
+const EMPTY_SEARCH = { name: "", city: "", address: "", phone: "" };
+
 function CandidateCard({ item, onOpenExisting, onContinueNew }) {
   const sameOrganization = item.relation === "same_organization";
+  const strong = item.confidence === "high";
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
+    <div className={`rounded-2xl border bg-card p-4 ${strong ? "border-foreground/30 shadow-sm" : "border-border"}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-sm font-bold">{item.name}</h3>
             <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${sameOrganization ? "bg-green-50 text-green-800 ring-1 ring-green-200" : "bg-amber-50 text-amber-800 ring-1 ring-amber-200"}`}>
-              {sameOrganization ? "Deja în organizația ta" : "Posibil profil existent"}
+              {sameOrganization ? "Deja în organizația ta" : strong ? "Recomandare principală" : "Posibil profil existent"}
             </span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{item.address || "Adresă necompletată"}{item.city ? ` · ${item.city}` : ""}</p>
           {item.phone && <p className="mt-1 text-xs text-muted-foreground">{item.phone}</p>}
+          {Array.isArray(item.reasons) && item.reasons.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {item.reasons.map((reason) => <span key={reason} className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">{reason}</span>)}
+            </div>
+          )}
         </div>
         <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold">{item.score}% potrivire</span>
       </div>
@@ -39,7 +47,7 @@ function CandidateCard({ item, onOpenExisting, onContinueNew }) {
           <button type="button" onClick={() => onOpenExisting(item.id)} className="rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background">Deschide locația</button>
         ) : (
           <>
-            <button type="button" disabled className="rounded-full border border-border px-4 py-2 text-xs font-semibold opacity-50">Solicită asocierea</button>
+            <button type="button" disabled className="rounded-full border border-border px-4 py-2 text-xs font-semibold opacity-50">Aceasta este locația mea</button>
             <button type="button" onClick={onContinueNew} className="rounded-full border border-border px-4 py-2 text-xs font-semibold hover:bg-secondary">Nu este aceasta</button>
           </>
         )}
@@ -50,7 +58,8 @@ function CandidateCard({ item, onOpenExisting, onContinueNew }) {
 
 export default function ProviderAddLocationFlow({ anchorLocationId, organizationName, onClose, onSelectLocation, onRefresh }) {
   const [step, setStep] = useState("search");
-  const [query, setQuery] = useState("");
+  const [searchData, setSearchData] = useState(EMPTY_SEARCH);
+  const [searched, setSearched] = useState(false);
   const [candidates, setCandidates] = useState([]);
   const [form, setForm] = useState(EMPTY);
   const [submission, setSubmission] = useState(null);
@@ -58,7 +67,7 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
   const [message, setMessage] = useState("");
 
   const pending = submission?.status === "pending_review";
-  const canSearch = query.trim().length >= 3;
+  const canSearch = searchData.name.trim().length >= 2 || searchData.address.trim().length >= 4 || searchData.phone.replace(/\D/g, "").length >= 7;
   const requiredComplete = useMemo(() => form.public_display_name && form.address && form.city && form.county, [form]);
 
   useEffect(() => {
@@ -79,9 +88,14 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
     if (!canSearch) return;
     setLoading(true);
     setMessage("");
-    const res = await base44.functions.invoke("providerLocationExpansionOps", { action: "search", anchor_location_id: anchorLocationId, query })
-      .catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    setSearched(false);
+    const res = await base44.functions.invoke("providerLocationExpansionOps", {
+      action: "search",
+      anchor_location_id: anchorLocationId,
+      search: searchData,
+    }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
     setLoading(false);
+    setSearched(true);
     if (res.data?.error) { setMessage(res.data.error); return; }
     setCandidates(res.data?.candidates || []);
   };
@@ -92,7 +106,13 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
   };
 
   const beginNew = () => {
-    setForm((current) => ({ ...current, public_display_name: current.public_display_name || query.trim() }));
+    setForm((current) => ({
+      ...current,
+      public_display_name: current.public_display_name || searchData.name.trim(),
+      address: current.address || searchData.address.trim(),
+      city: current.city || searchData.city.trim(),
+      public_phone: current.public_phone || searchData.phone.trim(),
+    }));
     setStep("form");
   };
 
@@ -145,16 +165,25 @@ export default function ProviderAddLocationFlow({ anchorLocationId, organization
 
       {step === "search" && (
         <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
-          <h2 className="font-heading text-lg font-bold">Verifică dacă locația există deja</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Caută după nume, adresă, localitate sau telefon. Evităm astfel profilele duplicate.</p>
-          <div className="mt-4 flex gap-2">
-            <div className="relative flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search()} className={`${input} pl-10`} placeholder="Ex: Lunera Optic Giroc, Str. Cupidon 40 sau telefon" /></div>
-            <button type="button" disabled={!canSearch || loading} onClick={search} className="rounded-xl bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-40">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Caută"}</button>
+          <h2 className="font-heading text-lg font-bold">Este posibil ca locația să existe deja</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Completează datele pe care le cunoști. Sistemul compară numele, adresa, localitatea și telefonul și îți arată maximum trei recomandări.</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div><label className="text-xs font-semibold text-muted-foreground">Numele locației</label><input value={searchData.name} onChange={(e) => setSearchData({ ...searchData, name: e.target.value })} className={`${input} mt-1.5`} placeholder="Ex: Lunera Optic Giroc" /></div>
+            <div><label className="text-xs font-semibold text-muted-foreground">Localitate</label><input value={searchData.city} onChange={(e) => setSearchData({ ...searchData, city: e.target.value })} className={`${input} mt-1.5`} placeholder="Ex: Giroc" /></div>
+            <div><label className="text-xs font-semibold text-muted-foreground">Adresă</label><input value={searchData.address} onChange={(e) => setSearchData({ ...searchData, address: e.target.value })} className={`${input} mt-1.5`} placeholder="Stradă și număr" /></div>
+            <div><label className="text-xs font-semibold text-muted-foreground">Telefon</label><input value={searchData.phone} onChange={(e) => setSearchData({ ...searchData, phone: e.target.value })} className={`${input} mt-1.5`} placeholder="Telefonul locației" /></div>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[11px] text-muted-foreground">Poți continua oricând cu adăugarea unei locații noi.</p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={beginNew} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold hover:bg-secondary"><Plus className="h-4 w-4" /> Adaugă locație nouă</button>
+              <button type="button" disabled={!canSearch || loading} onClick={search} className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-40">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Verifică în director</button>
+            </div>
           </div>
 
-          {candidates.length > 0 && <div className="mt-5 space-y-3">{candidates.map((item) => <CandidateCard key={item.id} item={item} onOpenExisting={openExisting} onContinueNew={beginNew} />)}</div>}
-          {candidates.length === 0 && query && !loading && <div className="mt-5 rounded-2xl border border-dashed border-border bg-secondary/25 p-5 text-center"><MapPin className="mx-auto h-6 w-6 text-muted-foreground" /><p className="mt-2 text-sm font-semibold">Nu am găsit o locație existentă</p><p className="mt-1 text-xs text-muted-foreground">Poți continua cu adăugarea unei locații noi în organizația ta.</p></div>}
-          <div className="mt-5 flex justify-end"><button type="button" onClick={beginNew} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold hover:bg-secondary"><Plus className="h-4 w-4" /> Adaugă locație nouă</button></div>
+          {candidates.length > 0 && <div className="mt-5 space-y-3"><div className="text-sm font-bold">Este aceasta locația ta?</div>{candidates.map((item) => <CandidateCard key={item.id} item={item} onOpenExisting={openExisting} onContinueNew={beginNew} />)}</div>}
+          {searched && candidates.length === 0 && !loading && <div className="mt-5 rounded-2xl border border-dashed border-border bg-secondary/25 p-5 text-center"><MapPin className="mx-auto h-6 w-6 text-muted-foreground" /><p className="mt-2 text-sm font-semibold">Nu am găsit o potrivire relevantă</p><p className="mt-1 text-xs text-muted-foreground">Poți adăuga în continuare locația nouă. Verificarea finală va fi făcută și de administrator.</p><button type="button" onClick={beginNew} className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background"><Plus className="h-4 w-4" /> Continuă cu locația nouă</button></div>}
+          {message && <p className="mt-4 text-xs text-destructive">{message}</p>}
         </section>
       )}
 
