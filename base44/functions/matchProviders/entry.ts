@@ -5,6 +5,7 @@ import {
   isServicePubliclyEligible,
   normalizeServiceKey,
 } from '../../../shared/canonicalServiceRegistry.js';
+import { evaluateServicePrerequisites } from '../../../shared/servicePrerequisiteEngine.js';
 
 // Safety rules remain disabled until reviewed by a qualified ophthalmologist.
 const SAFETY_RULES = [
@@ -96,9 +97,16 @@ function rowMatchesRequest(service, request) {
   return Boolean(normalized.canonicalKey && request.canonicalKeys.includes(normalized.canonicalKey));
 }
 
-function isPublicSafeService(service, location) {
+function isPublicSafeService(service, location, prerequisiteContext) {
   if (service?.migration_review_required) return false;
-  return isServicePubliclyEligible(service, location);
+  if (!isServicePubliclyEligible(service, location)) return false;
+  return evaluateServicePrerequisites(service?.service_key, prerequisiteContext).eligible;
+}
+
+function isMatchingSafeService(service, location, prerequisiteContext) {
+  if (service?.migration_review_required || service?.matching_allowed !== true) return false;
+  if (!isServiceMatchingEligible(service, location)) return false;
+  return evaluateServicePrerequisites(service?.service_key, prerequisiteContext).eligible;
 }
 
 function toPublicService(service) {
@@ -118,7 +126,7 @@ function requestNeedLevel(rawKeys, intent) {
   return level;
 }
 
-function evaluateEligibility(loc, matchedRows, needLevel) {
+function evaluateEligibility(loc, matchedRows, needLevel, prerequisiteContext) {
   const pcs = loc.profile_control_status || 'directory';
   if (pcs === 'suspended') return { eligible: false, reasons: ['profile_suspended'], pcs, qualifying: [] };
 
@@ -132,13 +140,13 @@ function evaluateEligibility(loc, matchedRows, needLevel) {
   if (matchedRows.length === 0) {
     reasons.push('service_not_present');
   } else {
-    const qualifying = matchedRows.filter((service) => (
-      service.matching_allowed === true
-      && !service.migration_review_required
-      && isServiceMatchingEligible(service, loc)
-    ));
+    const qualifying = matchedRows.filter((service) => isMatchingSafeService(service, loc, prerequisiteContext));
     if (qualifying.length === 0) {
       if (!matchedRows.some((service) => service.matching_allowed === true)) reasons.push('matching_not_allowed');
+      const prerequisiteBlocked = matchedRows.some((service) => (
+        !evaluateServicePrerequisites(service.service_key, prerequisiteContext).eligible
+      ));
+      if (prerequisiteBlocked) reasons.push('service_prerequisites_not_met');
       reasons.push(needLevel === 'specialized_medical' ? 'service_not_vezunde_verified' : 'service_not_confirmed');
     }
     if (reasons.length === 0) return { eligible: true, reasons: [], pcs, qualifying };
@@ -147,21 +155,22 @@ function evaluateEligibility(loc, matchedRows, needLevel) {
   return { eligible: false, reasons, pcs, qualifying: [] };
 }
 
-function classifyMatchBucket(eligibility, matchedRows, needLevel, loc) {
+function classifyMatchBucket(eligibility, matchedRows, needLevel, loc, prerequisiteContext) {
   if (eligibility.eligible) return 'eligible';
   if (needLevel === 'specialized_medical' || eligibility.pcs === 'suspended') return 'excluded';
   if (matchedRows.length === 0) return 'excluded';
 
   const directorySafeRows = matchedRows.filter((service) => {
     const level = serviceNeedLevelOfRow(service);
-    return level === 'general' || level === 'technical';
+    return (level === 'general' || level === 'technical')
+      && evaluateServicePrerequisites(service.service_key, prerequisiteContext).eligible;
   });
   if (directorySafeRows.length === 0) return 'excluded';
 
   const directoryQualifies = needLevel === 'general' && directorySafeRows.some((service) => (
     service.matching_allowed === true
     && !service.migration_review_required
-    && isServicePubliclyEligible(service, loc)
+    && isPublicSafeService(service, loc, prerequisiteContext)
   ));
   if (eligibility.pcs === 'directory' && !directoryQualifies) return 'excluded';
   return 'extended_directory';
@@ -236,13 +245,20 @@ Deno.serve(async (req) => {
     const limit = Math.min(payload.limit || 20, 50);
     const needLevel = requestNeedLevel(serviceKeys, intent);
 
-    const [locations, services, specializations, assignments, facilities] = await Promise.all([
+    const [locations, services, specializations, assignments, facilities, equipment] = await Promise.all([
       svc.entities.ProviderLocation.filter({ status: 'publicata' }, null, 500),
       svc.entities.LocationService.list(null, 2000),
       svc.entities.LocationSpecialization.list(null, 2000),
       svc.entities.ProfessionalLocationAssignment.filter({ active_status: 'activ' }, null, 2000),
       svc.entities.LocationFacility.list(null, 2000),
+      svc.entities.LocationEquipment.list(null, 2000).catch(() => []),
     ]);
+
+    const professionalIds = [...new Set(assignments.map((assignment) => assignment.professional_id).filter(Boolean))];
+    const professionals = (await Promise.all(
+      professionalIds.map((id) => svc.entities.ProfessionalProfile.get(id).catch(() => null)),
+    )).filter(Boolean);
+    const professionalsById = Object.fromEntries(professionals.map((profile) => [profile.id, profile]));
 
     const serviceRowsByLocation = {};
     for (const service of services) {
@@ -258,8 +274,11 @@ Deno.serve(async (req) => {
       specializationsByLocation[specialization.location_id].push(specialization.specialization_key);
     }
 
+    const assignmentsByLocation = {};
     const rolesByLocation = {};
     for (const assignment of assignments) {
+      if (!assignmentsByLocation[assignment.location_id]) assignmentsByLocation[assignment.location_id] = [];
+      assignmentsByLocation[assignment.location_id].push(assignment);
       if (!rolesByLocation[assignment.location_id]) rolesByLocation[assignment.location_id] = [];
       rolesByLocation[assignment.location_id].push(ROLE_CANONICAL[assignment.professional_type] || assignment.professional_type);
     }
@@ -268,7 +287,14 @@ Deno.serve(async (req) => {
     for (const facility of facilities) {
       if (facility.is_active === false) continue;
       if (!facilitiesByLocation[facility.location_id]) facilitiesByLocation[facility.location_id] = [];
-      facilitiesByLocation[facility.location_id].push(facility.facility_key);
+      facilitiesByLocation[facility.location_id].push(facility);
+    }
+
+    const equipmentByLocation = {};
+    for (const item of equipment) {
+      if (item.is_active === false) continue;
+      if (!equipmentByLocation[item.location_id]) equipmentByLocation[item.location_id] = [];
+      equipmentByLocation[item.location_id].push(item);
     }
 
     const now = Date.now();
@@ -283,6 +309,17 @@ Deno.serve(async (req) => {
       const locRows = serviceRowsByLocation[loc.id] || [];
       const roles = rolesByLocation[loc.id] || [];
       const locFacilities = facilitiesByLocation[loc.id] || [];
+      const locAssignments = assignmentsByLocation[loc.id] || [];
+      const locProfessionalIds = new Set(locAssignments.map((assignment) => assignment.professional_id).filter(Boolean));
+      const locProfessionals = [...locProfessionalIds].map((id) => professionalsById[id]).filter(Boolean);
+      const prerequisiteContext = {
+        location: loc,
+        assignments: locAssignments,
+        professionals: locProfessionals,
+        equipment: equipmentByLocation[loc.id] || [],
+        facilities: locFacilities,
+      };
+
       const matchedRows = serviceKeys.length > 0
         ? locRows.filter((service) => rowMatchesRequest(service, requestKeys))
         : locRows;
@@ -293,7 +330,7 @@ Deno.serve(async (req) => {
       }
       if (intent === 'reparatii_ochelari') {
         if (!OPTICAL_TYPES.includes(loc.provider_type)) continue;
-        const hasRepairFacility = locFacilities.some((key) => REPAIR_FACILITIES.includes(key));
+        const hasRepairFacility = locFacilities.some((facility) => REPAIR_FACILITIES.includes(facility.facility_key));
         if (matched.length === 0 && !hasRepairFacility) continue;
       } else if (serviceKeys.length > 0 && matchedRows.length === 0) {
         continue;
@@ -323,7 +360,7 @@ Deno.serve(async (req) => {
         return normalized.canonicalKey && requestKeys.canonicalKeys.includes(normalized.canonicalKey);
       });
       const relevantFacilities = FACILITY_INTENTS.includes(intent)
-        ? locFacilities.filter((key) => REPAIR_FACILITIES.includes(key))
+        ? locFacilities.map((facility) => facility.facility_key).filter((key) => REPAIR_FACILITIES.includes(key))
         : [];
 
       let availabilityLabel = null;
@@ -334,14 +371,14 @@ Deno.serve(async (req) => {
         }
       }
 
-      const eligibility = evaluateEligibility(loc, matchedRows, needLevel);
-      const bucket = classifyMatchBucket(eligibility, matchedRows, needLevel, loc);
+      const eligibility = evaluateEligibility(loc, matchedRows, needLevel, prerequisiteContext);
+      const bucket = classifyMatchBucket(eligibility, matchedRows, needLevel, loc, prerequisiteContext);
       const directoryMatchType = bucket === 'extended_directory' && serviceKeys.length > 0
         ? 'service_alias_match'
         : null;
 
-      const safeMatchedRows = matchedRows.filter((service) => isPublicSafeService(service, loc));
-      const safeLocRows = locRows.filter((service) => isPublicSafeService(service, loc));
+      const safeMatchedRows = matchedRows.filter((service) => isPublicSafeService(service, loc, prerequisiteContext));
+      const safeLocRows = locRows.filter((service) => isPublicSafeService(service, loc, prerequisiteContext));
       let score = matched.length * 3 + specMatched.length * 2 + Math.min(relevantFacilities.length, 2);
       const reasons = safeMatchedRows.slice(0, 2).map((service) => serviceReason(service.service_key));
       for (const facilityKey of relevantFacilities.slice(0, 1)) {
