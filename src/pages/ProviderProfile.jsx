@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowRight, BadgeCheck, Clock, ExternalLink, Globe2, MapPin, Phone } from "lucide-react";
+import { ArrowRight, BadgeCheck, ChevronDown, Clock, ExternalLink, Globe2, Mail, MapPin, Phone } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES, PROFESSIONAL_TYPES } from "@/lib/vezunde";
 import { buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/lib/maps";
-import { summarizePublicServiceKeys } from "@/lib/servicePresentation";
+import { CLIENT_NEED_BY_KEY, summarizePublicServices } from "@/lib/servicePresentation";
 import TrustBadge from "@/components/results/TrustBadge";
-import ServiceChip from "@/components/results/ServiceChip";
 import SocialBrandIcon from "@/components/common/SocialBrandIcon";
 
 const SOCIAL_LINKS = [
@@ -56,6 +55,39 @@ function initials(value) {
   return String(value || "S").split(" ").filter(Boolean).map((part) => part[0]).slice(0, 2).join("").toUpperCase();
 }
 
+function uniqueValues(values = []) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function readableServiceSummary(labels = []) {
+  const items = uniqueValues(labels);
+  if (items.length === 0) return "Vezi serviciile disponibile în această categorie.";
+  if (items.length === 1) return `Include ${items[0]}.`;
+  if (items.length === 2) return `Include ${items[0]} și ${items[1]}.`;
+  if (items.length === 3) return `Include ${items[0]}, ${items[1]} și ${items[2]}.`;
+  return `Include ${items[0]}, ${items[1]} și încă ${items.length - 2} servicii.`;
+}
+
+function programRows(openingHours, saturdayHours) {
+  const rows = String(openingHours || "")
+    .split(/;|\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (saturdayHours && !rows.some((row) => row.toLowerCase().includes("sâmb") || row.toLowerCase().includes("samb"))) {
+    rows.push(`Sâmbătă: ${saturdayHours}`);
+  }
+
+  return rows.map((row) => {
+    const separatorIndex = row.indexOf(":");
+    if (separatorIndex < 0) return { label: row, value: "" };
+    return {
+      label: row.slice(0, separatorIndex).trim(),
+      value: row.slice(separatorIndex + 1).trim(),
+    };
+  });
+}
+
 function SocialPublicLink({ item, url }) {
   if (!url) return null;
   return (
@@ -66,38 +98,99 @@ function SocialPublicLink({ item, url }) {
   );
 }
 
-function ContactLine({ icon: Icon, label, children }) {
+function ContactRow({ icon: Icon, label, children }) {
   return (
-    <div className="rounded-2xl border border-border/70 bg-secondary/25 px-3 py-3">
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground"><Icon className="h-3.5 w-3.5" /> {label}</div>
-      <div className="mt-1 text-sm font-medium text-foreground">{children}</div>
+    <div className="flex gap-3 border-b border-border/70 py-3.5 first:pt-0 last:border-b-0 last:pb-0">
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-[11px] font-semibold text-muted-foreground">{label}</div>
+        <div className="mt-1 break-words text-sm font-medium text-foreground">{children}</div>
+      </div>
     </div>
   );
 }
 
 function ServicesCard({ services }) {
-  const publicSummaries = summarizePublicServiceKeys(services);
+  const summaries = summarizePublicServices(services).filter((item) => item.key !== "other");
+  if (summaries.length === 0) return null;
+
+  const serviceByKey = new Map(services.map((service) => [service.key, service]));
+  const groups = summaries.map((summary) => {
+    const section = CLIENT_NEED_BY_KEY[summary.key];
+    const selectedServices = summary.matchedIds
+      .map((key) => serviceByKey.get(key))
+      .filter(Boolean);
+    return {
+      ...summary,
+      section,
+      selectedServices,
+    };
+  }).filter((group) => group.section && group.selectedServices.length > 0);
+
+  if (groups.length === 0) return null;
+
+  const uniqueServiceCount = new Set(groups.flatMap((group) => group.selectedServices.map((service) => service.key))).size;
+  const categoryLabel = groups.length === 1 ? "categorie" : "categorii";
+  const serviceLabel = uniqueServiceCount === 1 ? "serviciu" : "servicii";
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
+    <section className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-heading font-bold">Ce poți face aici</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Afișăm pe scurt nevoile acoperite. Particularitățile tehnice sunt folosite în spate pentru recomandări mai bune.
+          <h2 className="font-heading font-bold">Servicii disponibile</h2>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Vezi principalele produse și servicii disponibile în această locație.
           </p>
         </div>
-        <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">{publicSummaries.length} zone</span>
+        <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+          {groups.length} {categoryLabel}
+        </span>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {publicSummaries.map((item) => <ServiceChip key={item.key} label={item.label} />)}
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        {groups.map((group) => (
+          <article key={group.key} className="rounded-2xl border border-border bg-secondary/20 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <h3 className="text-sm font-bold">{group.label}</h3>
+              {group.key === "medical" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-800">
+                  <BadgeCheck className="h-3 w-3" /> Verificate
+                </span>
+              )}
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              {readableServiceSummary(group.selectedServices.map((service) => service.label))}
+            </p>
+          </article>
+        ))}
       </div>
 
-      <p className="mt-4 rounded-2xl bg-secondary/45 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-        Exemplu: dacă locația are reglaj rame, reparații și montaj lentile, public afișăm „Reparații și reglaje”, iar detaliile ajută la alegerea rezultatului potrivit.
-      </p>
-    </div>
+      <details className="group mt-4 rounded-2xl border border-border bg-background">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+          <span>Vezi toate cele {uniqueServiceCount} {serviceLabel}</span>
+          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="border-t border-border px-4 py-4">
+          <div className="space-y-5">
+            {groups.map((group) => (
+              <div key={group.key}>
+                <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{group.label}</h3>
+                <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+                  {group.selectedServices.map((service) => (
+                    <li key={`${group.key}-${service.key}`} className="flex items-start gap-2 text-sm text-foreground">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/55" />
+                      <span>{service.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </details>
+    </section>
   );
 }
 
@@ -155,7 +248,7 @@ export default function ProviderProfile() {
   }, [id]);
 
   const services = useMemo(() => profile?.services || [], [profile?.services]);
-  const publicServiceCount = summarizePublicServiceKeys(services).length;
+  const publicServiceCount = summarizePublicServices(services).filter((item) => item.key !== "other").length;
 
   if (loading) return <div className="max-w-5xl mx-auto px-5 pt-20 text-sm text-muted-foreground">Se încarcă...</div>;
   if (!profile) return <div className="max-w-5xl mx-auto px-5 pt-20 text-sm text-muted-foreground">Furnizorul nu a fost găsit.</div>;
@@ -167,6 +260,8 @@ export default function ProviderProfile() {
   const socialLinks = SOCIAL_LINKS.filter((item) => profile[item.key]);
   const addressLabel = fullAddress(profile);
   const team = profile.team || [];
+  const hours = programRows(profile.opening_hours, profile.saturday_hours);
+  const categoryLabel = publicServiceCount === 1 ? "categorie de servicii" : "categorii de servicii";
 
   return (
     <div className="mx-auto max-w-5xl px-5 pb-10 pt-12">
@@ -178,8 +273,22 @@ export default function ProviderProfile() {
         </div>
         <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
           <span className="inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" />{locationSummary(profile)}</span>
-          {publicServiceCount > 0 && <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-foreground">{publicServiceCount} zone disponibile</span>}
+          {publicServiceCount > 0 && <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-foreground">{publicServiceCount} {categoryLabel}</span>}
         </div>
+        {(profile.phone_public || mapUrl) && (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {profile.phone_public && (
+              <a href={`tel:${profile.phone_public.replace(/\s/g, "")}`} className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background transition-opacity hover:opacity-90">
+                <Phone className="h-3.5 w-3.5" /> Sună locația
+              </a>
+            )}
+            {mapUrl && (
+              <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold hover:bg-secondary">
+                <MapPin className="h-3.5 w-3.5" /> Vezi traseul
+              </a>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
@@ -187,7 +296,7 @@ export default function ProviderProfile() {
           {profile.description && (
             <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
               <h2 className="font-heading font-bold">Despre</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{profile.description}</p>
+              <p className="mt-2 text-[15px] leading-7 text-foreground/75">{profile.description}</p>
             </div>
           )}
 
@@ -205,23 +314,34 @@ export default function ProviderProfile() {
         <aside className="space-y-5 lg:sticky lg:top-6">
           <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
             <h2 className="font-heading font-bold text-sm">Date și contact</h2>
-            <div className="mt-4 space-y-3">
-              {profile.phone_public ? (
-                <ContactLine icon={Phone} label="Telefon">
+            <div className="mt-4">
+              {profile.phone_public && (
+                <ContactRow icon={Phone} label="Telefon">
                   <a href={`tel:${profile.phone_public.replace(/\s/g, "")}`} className="text-primary hover:underline">{profile.phone_public}</a>
-                </ContactLine>
-              ) : (
-                <ContactLine icon={Phone} label="Telefon"><span className="text-muted-foreground">Indisponibil</span></ContactLine>
+                </ContactRow>
+              )}
+              {profile.public_email && (
+                <ContactRow icon={Mail} label="Email">
+                  <a href={`mailto:${profile.public_email}`} className="break-all text-primary hover:underline">{profile.public_email}</a>
+                </ContactRow>
               )}
               {profile.website && (
-                <ContactLine icon={Globe2} label="Website">
+                <ContactRow icon={Globe2} label="Website">
                   <a href={profile.website} target="_blank" rel="noreferrer" className="break-all text-primary hover:underline">{websiteLabel}</a>
-                </ContactLine>
+                </ContactRow>
               )}
-              <ContactLine icon={Clock} label="Program">
-                {profile.opening_hours ? <span>{profile.opening_hours}</span> : <span className="text-muted-foreground">Program nepublicat</span>}
-                {profile.saturday_hours && !String(profile.opening_hours || "").includes(profile.saturday_hours) && <div className="mt-1 text-xs text-muted-foreground">Sâmbătă: {profile.saturday_hours}</div>}
-              </ContactLine>
+              <ContactRow icon={Clock} label="Program">
+                {hours.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {hours.map((row, index) => (
+                      <div key={`${row.label}-${index}`} className="flex items-start justify-between gap-3 text-xs">
+                        <span className="text-muted-foreground">{row.label}</span>
+                        <span className="text-right font-semibold text-foreground">{row.value || "—"}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : <span className="text-muted-foreground">Program nepublicat</span>}
+              </ContactRow>
             </div>
             {socialLinks.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{socialLinks.map((item) => <SocialPublicLink key={item.key} item={item} url={profile[item.key]} />)}</div>}
             {profile.availability_label && <p className="mt-4 rounded-2xl bg-secondary px-3 py-2 text-xs leading-relaxed text-muted-foreground">{profile.availability_label} · publicat de furnizor</p>}
@@ -234,7 +354,7 @@ export default function ProviderProfile() {
                   <h2 className="font-heading font-bold text-sm">Hartă și adresă</h2>
                   {addressLabel ? <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{addressLabel}</p> : <p className="mt-2 text-sm text-muted-foreground">Adresa completă nu este publicată.</p>}
                 </div>
-                {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary">Maps <ExternalLink className="h-3 w-3" /></a>}
+                {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary">Deschide în Maps <ExternalLink className="h-3 w-3" /></a>}
               </div>
             </div>
             {hasMapLocation(profile) && embedUrl ? (
@@ -248,7 +368,7 @@ export default function ProviderProfile() {
 
           <div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
             <Link to={`/cerere?furnizor=${profile.id}`} className="flex items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-4 font-medium text-primary-foreground transition-opacity hover:opacity-90">Trimite o cerere <ArrowRight className="h-4 w-4" /></Link>
-            <p className="mt-3 px-1 text-xs leading-relaxed text-muted-foreground">Datele tale de contact nu sunt transmise automat furnizorului. Poți oricând suna direct.</p>
+            <p className="mt-3 px-1 text-xs leading-relaxed text-muted-foreground">Descrie pe scurt ce cauți. Vezunde te ajută să verifici dacă această locație este potrivită.</p>
           </div>
         </aside>
       </div>
