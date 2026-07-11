@@ -27,7 +27,10 @@ function clean(value) {
 }
 
 function active(row) {
-  return Boolean(row) && row.is_active !== false && row.active_status !== 'inactiv';
+  const status = clean(row?.active_status).toLowerCase();
+  return Boolean(row)
+    && row.is_active !== false
+    && !['inactiv', 'inactiva', 'inactive'].includes(status);
 }
 
 function hasCoordinates(value) {
