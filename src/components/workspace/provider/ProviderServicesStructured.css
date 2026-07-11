@@ -1,0 +1,59 @@
+.provider-services-polish > div > section:first-child input[placeholder^="Caută"] {
+  min-height: 44px;
+  background: var(--services-background);
+  border-color: var(--services-border);
+  box-shadow: none;
+}
+
+.provider-services-polish > div > section:first-child input[placeholder^="Caută"]:focus {
+  background: var(--services-card);
+  border-color: hsl(var(--foreground) / 0.24);
+  box-shadow: 0 0 0 3px hsl(var(--foreground) / 0.045);
+}
+
+/* The structured row has three cells: selector, content and semantic status. */
+.provider-services-polish button.grid {
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  column-gap: 0.75rem;
+}
+
+.provider-services-polish button.grid > span:nth-child(2) {
+  min-width: 0;
+}
+
+.provider-services-polish button.grid > span:nth-child(3) {
+  color: inherit;
+  line-height: inherit;
+  justify-self: end;
+}
+
+/* Internal taxonomy remains in code, but the provider sees Romanian titles and descriptions only. */
+.provider-services-polish [class~="space-y-3"] > section
+  > div[class*="border-t"]
+  > div[class*="border-t"]
+  > div:first-child
+  > span[class*="rounded-full"] {
+  display: none;
+}
+
+/* Functional-unit cards remain calm and use the same neutral surfaces as Program and Specialists. */
+.provider-services-polish section button.min-h-\[112px\] {
+  box-shadow: none;
+}
+
+.provider-services-polish section button.min-h-\[112px\]:hover:not(:disabled) {
+  border-color: hsl(var(--foreground) / 0.14);
+}
+
+@media (max-width: 639px) {
+  .provider-services-polish button.grid {
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    align-items: start;
+  }
+
+  .provider-services-polish button.grid > span:nth-child(3) {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: 0.25rem;
+  }
+}

@@ -10,6 +10,7 @@
     "src/lib/directoryOpsCatalog.js",
     "src/lib/servicePresentation.js",
     "src/lib/providerServiceWorkspaceSections.js",
+    "src/lib/providerLocationFunctionalUnits.js",
     "src/lib/vezunde.js"
   ],
   "exclude": [
