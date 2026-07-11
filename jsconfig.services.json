@@ -5,12 +5,16 @@
   },
   "include": [
     "shared/canonicalServiceRegistry.js",
+    "shared/locationOperationalRegistry.js",
+    "shared/serviceOperationalTaxonomy.js",
+    "shared/serviceConfigurationPayload.js",
     "shared/servicePrerequisiteEngine.js",
     "src/lib/canonicalServiceCatalog.js",
     "src/lib/directoryOpsCatalog.js",
     "src/lib/servicePresentation.js",
     "src/lib/providerServiceWorkspaceSections.js",
     "src/lib/providerLocationFunctionalUnits.js",
+    "src/lib/serviceOperationalTaxonomy.js",
     "src/lib/vezunde.js"
   ],
   "exclude": [

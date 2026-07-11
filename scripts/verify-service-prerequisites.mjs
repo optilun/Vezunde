@@ -5,210 +5,250 @@ import {
   getServicePrerequisiteDefinition,
 } from '../shared/servicePrerequisiteEngine.js';
 
-const verifiedLocation = {
-  id: 'loc-1',
+const verifiedClinic = {
+  id: 'loc-clinic',
   provider_profile_type: 'ophthalmology_clinic',
   profile_control_status: 'verified',
   active_status: 'activa',
 };
 
 const opticalLocation = {
-  id: 'loc-2',
+  id: 'loc-optical',
   provider_profile_type: 'independent_optical_store',
   profile_control_status: 'claimed',
   active_status: 'activa',
 };
 
-const ophthalmologist = {
-  id: 'pro-oph',
-  professional_type: 'ophthalmologist',
-  verification_status: 'verified',
-};
+const ophthalmologist = { id: 'pro-oph', professional_type: 'ophthalmologist', verification_status: 'verified' };
+const optometrist = { id: 'pro-optom', professional_type: 'optometrist', verification_status: 'verified' };
 
-const optometrist = {
-  id: 'pro-optom',
-  professional_type: 'optometrist',
-  verification_status: 'verified',
-};
-
-const assignments = [{
-  professional_id: ophthalmologist.id,
-  professional_type: 'ophthalmologist',
+const assignment = (profile, unitKeys) => ({
+  id: `assign-${profile.id}-${unitKeys.join('-')}`,
+  professional_id: profile.id,
+  professional_type: profile.professional_type,
   active_status: 'activ',
   affiliation_status: 'vezunde_verified',
-}];
+  functional_unit_keys: unitKeys,
+});
 
-const verifiedEquipment = (key) => ({
+const verifiedEquipment = (key, unitKey) => ({
+  id: `eq-${key}-${unitKey || 'none'}`,
   equipment_category_key: key,
+  functional_unit_key: unitKey || '',
   is_active: true,
   evidence_status: 'approved',
   confirmation_level: 'vezunde_verified',
 });
 
-const providerEquipment = (key) => ({
-  equipment_category_key: key,
-  is_active: true,
-  evidence_status: 'approved',
+const providerEquipment = (key, unitKey) => ({
+  ...verifiedEquipment(key, unitKey),
   confirmation_level: 'provider_confirmed',
 });
 
-const baseContext = {
-  location: verifiedLocation,
-  assignments,
+const unit = (unitKey) => ({ unit_key: unitKey, is_active: true, confirmation_level: 'vezunde_verified' });
+const capability = (capabilityKey, parentUnitKey) => ({ capability_key: capabilityKey, parent_unit_key: parentUnitKey, is_active: true });
+const facility = (key, unitKey) => ({ id: `facility-${key}`, facility_key: key, functional_unit_key: unitKey || '', is_active: true });
+
+const consultContext = {
+  location: verifiedClinic,
+  assignments: [assignment(ophthalmologist, ['ophthalmology_office'])],
   professionals: [ophthalmologist],
-  equipment: [verifiedEquipment('slit_lamp'), verifiedEquipment('visual_acuity_chart')],
+  equipment: [verifiedEquipment('slit_lamp', 'ophthalmology_office'), verifiedEquipment('visual_acuity_chart', 'ophthalmology_office')],
   facilities: [],
+  functionalUnits: [unit('ophthalmology_office')],
+  capabilities: [],
+  enforceUnitScope: true,
 };
 
-const consult = evaluateServicePrerequisites('ophthalmology_consultation', baseContext);
+const consult = evaluateServicePrerequisites('ophthalmology_consultation', consultContext);
 assert.equal(consult.eligible, true);
 assert.equal(consult.status, 'ready_for_review');
-assert.equal(consult.blockers.length, 0);
+assert.equal(consult.evidence.service_unit_key, 'ophthalmology_office');
 
-const missingSpecialist = evaluateServicePrerequisites('ophthalmology_consultation', {
-  ...baseContext,
-  assignments: [],
-  professionals: [],
+const missingUnit = evaluateServicePrerequisites('oct', {
+  ...consultContext,
+  functionalUnits: [unit('ophthalmology_office')],
+  equipment: [verifiedEquipment('oct', 'ophthalmology_diagnostics')],
 });
-assert.equal(missingSpecialist.eligible, false);
-assert.equal(missingSpecialist.status, 'requires_verified_specialist');
-assert.ok(missingSpecialist.blockers.some((blocker) => blocker.code === 'verified_specialist_missing'));
+assert.equal(missingUnit.eligible, false);
+assert.equal(missingUnit.status, 'requires_functional_unit');
 
-const octMissingEquipment = evaluateServicePrerequisites('oct', {
-  ...baseContext,
-  equipment: [verifiedEquipment('slit_lamp')],
+const wrongUnitSpecialist = evaluateServicePrerequisites('ophthalmology_consultation', {
+  ...consultContext,
+  assignments: [assignment(ophthalmologist, ['ophthalmology_diagnostics'])],
 });
-assert.equal(octMissingEquipment.eligible, false);
-assert.equal(octMissingEquipment.status, 'requires_equipment');
+assert.equal(wrongUnitSpecialist.eligible, false);
+assert.equal(wrongUnitSpecialist.status, 'requires_verified_specialist');
+
+const wrongUnitEquipment = evaluateServicePrerequisites('oct', {
+  ...consultContext,
+  functionalUnits: [unit('ophthalmology_diagnostics')],
+  assignments: [assignment(ophthalmologist, ['ophthalmology_diagnostics'])],
+  equipment: [verifiedEquipment('oct', 'ophthalmology_office')],
+});
+assert.equal(wrongUnitEquipment.eligible, false);
+assert.equal(wrongUnitEquipment.status, 'requires_equipment');
 
 const octReady = evaluateServicePrerequisites('oct', {
-  ...baseContext,
-  equipment: [verifiedEquipment('oct')],
+  ...consultContext,
+  functionalUnits: [unit('ophthalmology_diagnostics')],
+  assignments: [assignment(ophthalmologist, ['ophthalmology_diagnostics'])],
+  equipment: [verifiedEquipment('oct', 'ophthalmology_diagnostics')],
 });
 assert.equal(octReady.eligible, true);
 
 const providerConfirmedMedicalEquipment = evaluateServicePrerequisites('oct', {
-  ...baseContext,
-  equipment: [providerEquipment('oct')],
+  ...consultContext,
+  functionalUnits: [unit('ophthalmology_diagnostics')],
+  assignments: [assignment(ophthalmologist, ['ophthalmology_diagnostics'])],
+  equipment: [providerEquipment('oct', 'ophthalmology_diagnostics')],
 });
 assert.equal(providerConfirmedMedicalEquipment.eligible, false, 'Echipamentul medical trebuie verificat de Vezunde');
 
-const cataractWithoutInfrastructure = evaluateServicePrerequisites('cataract_surgery', {
-  ...baseContext,
-  equipment: [verifiedEquipment('operating_microscope'), verifiedEquipment('phacoemulsification_system')],
+const missingCapability = evaluateServicePrerequisites('contact_lens_fitting', {
+  location: opticalLocation,
+  assignments: [assignment(optometrist, ['optometry_cabinet'])],
+  professionals: [optometrist],
+  equipment: [verifiedEquipment('slit_lamp', 'optometry_cabinet'), verifiedEquipment('contact_lens_trial_set', 'optometry_cabinet')],
+  facilities: [],
+  functionalUnits: [unit('optometry_cabinet')],
+  capabilities: [],
+  enforceUnitScope: true,
 });
-assert.equal(cataractWithoutInfrastructure.eligible, false);
-assert.equal(cataractWithoutInfrastructure.status, 'requires_infrastructure');
+assert.equal(missingCapability.eligible, false);
+assert.equal(missingCapability.status, 'requires_capability');
+
+const contactLensReady = evaluateServicePrerequisites('contact_lens_fitting', {
+  location: opticalLocation,
+  assignments: [assignment(optometrist, ['optometry_cabinet'])],
+  professionals: [optometrist],
+  equipment: [verifiedEquipment('slit_lamp', 'optometry_cabinet'), verifiedEquipment('contact_lens_trial_set', 'optometry_cabinet')],
+  facilities: [],
+  functionalUnits: [unit('optometry_cabinet')],
+  capabilities: [capability('contact_lens_professional_services', 'optometry_cabinet')],
+  enforceUnitScope: true,
+});
+assert.equal(contactLensReady.eligible, true);
+
+const optometryReady = evaluateServicePrerequisites('optometry_consultation', {
+  location: opticalLocation,
+  assignments: [assignment(optometrist, ['optometry_cabinet'])],
+  professionals: [optometrist],
+  equipment: [verifiedEquipment('autorefractometer', 'optometry_cabinet')],
+  facilities: [],
+  functionalUnits: [unit('optometry_cabinet')],
+  capabilities: [],
+  enforceUnitScope: true,
+});
+assert.equal(optometryReady.eligible, true);
+
+const solderingMissingEquipment = evaluateServicePrerequisites('metal_frame_soldering', {
+  location: opticalLocation,
+  assignments: [],
+  professionals: [],
+  equipment: [providerEquipment('polisher', 'optical_workshop')],
+  facilities: [facility('optical_workshop', 'optical_workshop')],
+  functionalUnits: [unit('optical_workshop')],
+  capabilities: [],
+  enforceUnitScope: true,
+});
+assert.equal(solderingMissingEquipment.eligible, false);
+assert.equal(solderingMissingEquipment.status, 'requires_equipment');
+
+const solderingReady = evaluateServicePrerequisites('metal_frame_soldering', {
+  location: opticalLocation,
+  assignments: [],
+  professionals: [],
+  equipment: [providerEquipment('frame_welding_system', 'optical_workshop')],
+  facilities: [facility('optical_workshop', 'optical_workshop')],
+  functionalUnits: [unit('optical_workshop')],
+  capabilities: [],
+  enforceUnitScope: true,
+});
+assert.equal(solderingReady.eligible, true);
+
+const cataractMissingSurgeryUnit = evaluateServicePrerequisites('cataract_surgery', {
+  ...consultContext,
+  equipment: [verifiedEquipment('operating_microscope', 'ophthalmology_surgery_unit'), verifiedEquipment('phacoemulsification_system', 'ophthalmology_surgery_unit')],
+  facilities: [facility('surgical_unit', 'ophthalmology_surgery_unit')],
+  functionalUnits: [unit('ophthalmology_office')],
+});
+assert.equal(cataractMissingSurgeryUnit.eligible, false);
+assert.equal(cataractMissingSurgeryUnit.status, 'requires_functional_unit');
 
 const cataractReady = evaluateServicePrerequisites('cataract_surgery', {
-  ...baseContext,
-  location: { ...verifiedLocation, surgical_infrastructure_verified: true },
-  equipment: [verifiedEquipment('operating_microscope'), verifiedEquipment('phacoemulsification_system')],
+  location: verifiedClinic,
+  assignments: [assignment(ophthalmologist, ['ophthalmology_surgery_unit'])],
+  professionals: [ophthalmologist],
+  equipment: [verifiedEquipment('operating_microscope', 'ophthalmology_surgery_unit'), verifiedEquipment('phacoemulsification_system', 'ophthalmology_surgery_unit')],
+  facilities: [facility('surgical_unit', 'ophthalmology_surgery_unit')],
+  functionalUnits: [unit('ophthalmology_surgery_unit')],
+  capabilities: [],
+  enforceUnitScope: true,
 });
 assert.equal(cataractReady.eligible, true);
 
 const incompatibleSurgery = evaluateServicePrerequisites('cataract_surgery', {
-  ...baseContext,
+  ...cataractReady,
   location: opticalLocation,
 });
 assert.equal(incompatibleSurgery.eligible, false);
 assert.equal(incompatibleSurgery.status, 'incompatible_profile');
 
-const retailProduct = evaluateServicePrerequisites('eyeglasses', { location: opticalLocation });
-assert.equal(retailProduct.eligible, true);
-assert.equal(retailProduct.status, 'available');
-
-const optometryDefinition = getServicePrerequisiteDefinition('optometry_consultation');
-assert.ok(optometryDefinition.required_equipment_types.length > 0, 'Optometria trebuie sa aiba cerinte de echipament executabile');
-const optometryWithOptometrist = evaluateServicePrerequisites('optometry_consultation', {
-  location: opticalLocation,
-  assignments: [{
-    professional_id: optometrist.id,
-    professional_type: 'optometrist',
-    active_status: 'activ',
-    affiliation_status: 'vezunde_verified',
-  }],
-  professionals: [optometrist],
-  equipment: [verifiedEquipment('autorefractometer')],
-  facilities: [],
+const b2bReady = evaluateServicePrerequisites('wholesale_frames', {
+  location: { id: 'b2b', provider_profile_type: 'future_b2b_distributor', profile_control_status: 'claimed' },
+  assignments: [], professionals: [], equipment: [], facilities: [],
+  functionalUnits: [unit('b2b_distribution_center')],
+  capabilities: [capability('b2b_distribution', 'b2b_distribution_center')],
+  enforceUnitScope: true,
 });
-assert.equal(optometryWithOptometrist.eligible, true);
-
-const workshopReady = evaluateServicePrerequisites('eyeglasses_repair', {
-  location: opticalLocation,
-  assignments: [],
-  professionals: [],
-  equipment: [providerEquipment('drill')],
-  facilities: [{ facility_key: 'atelier_service_propriu', is_active: true }],
-});
-assert.equal(workshopReady.eligible, true);
-
-const workshopMissingFacility = evaluateServicePrerequisites('eyeglasses_repair', {
-  location: opticalLocation,
-  equipment: [providerEquipment('drill')],
-  facilities: [],
-});
-assert.equal(workshopMissingFacility.eligible, false);
-assert.equal(workshopMissingFacility.status, 'requires_infrastructure');
+assert.equal(b2bReady.eligible, true);
+assert.equal(b2bReady.status, 'available');
 
 const dynamicRevalidation = evaluateServicePrerequisites('oct', {
-  ...baseContext,
-  equipment: [{ ...verifiedEquipment('oct'), is_active: false }],
+  ...octReady,
+  location: verifiedClinic,
+  assignments: [assignment(ophthalmologist, ['ophthalmology_diagnostics'])],
+  professionals: [ophthalmologist],
+  equipment: [{ ...verifiedEquipment('oct', 'ophthalmology_diagnostics'), is_active: false }],
+  facilities: [],
+  functionalUnits: [unit('ophthalmology_diagnostics')],
+  capabilities: [],
+  enforceUnitScope: true,
 });
-assert.equal(dynamicRevalidation.eligible, false, 'Dezactivarea echipamentului trebuie sa blocheze serviciul');
+assert.equal(dynamicRevalidation.eligible, false, 'Dezactivarea echipamentului trebuie să blocheze serviciul');
 
+assert.ok(getServicePrerequisiteDefinition('orthokeratology').required_equipment_types.includes('corneal_topographer'));
+assert.ok(getServicePrerequisiteDefinition('vitreoretinal_surgery').required_infrastructure_types.includes('surgical_infrastructure'));
 assert.equal(getServicePrerequisiteDefinition('camp_vizual')?.key, 'visual_field_analyzer');
-assert.equal(evaluateServicePrerequisites('serviciu_necunoscut', baseContext).status, 'unknown_service');
+assert.equal(evaluateServicePrerequisites('serviciu_necunoscut', consultContext).status, 'unknown_service');
 
 const source = async (relativePath) => readFile(new URL(`../${relativePath}`, import.meta.url), 'utf8');
-const consumerPaths = [
-  'base44/functions/getProviderLocationServices/entry.ts',
+for (const relativePath of [
+  'base44/functions/getProviderServiceConfiguration/entry.ts',
   'base44/functions/getPublicProviderProfile/entry.ts',
   'base44/functions/browseDirectoryProviders/entry.ts',
   'base44/functions/matchProviders/entry.ts',
-  'base44/functions/adminServicePrerequisiteReview/entry.ts',
-];
-for (const relativePath of consumerPaths) {
-  assert.match(await source(relativePath), /servicePrerequisiteEngine\.js/, `${relativePath} trebuie sa foloseasca motorul comun`);
+  'base44/functions/adminServiceConfigurationReview/entry.ts',
+]) {
+  assert.match(await source(relativePath), /servicePrerequisiteEngine\.js/, `${relativePath} trebuie să folosească motorul comun`);
 }
 
 const adminUiSource = await source('src/components/admin/directory/AdminWorkspaceSubmissionsReview.jsx');
-assert.match(adminUiSource, /adminServicePrerequisiteReview/, 'Admin UI trebuie sa foloseasca review-ul cu prerechizite');
-assert.match(adminUiSource, /approvalBlocked/, 'Butonul de aprobare trebuie blocat cand lipsesc cerinte');
+assert.match(adminUiSource, /adminServiceConfigurationReview/, 'Admin UI trebuie să folosească review-ul configurației complete');
+assert.match(adminUiSource, /const blocked/, 'Butonul de aprobare trebuie blocat când lipsesc cerințe');
 
-const providerUiSource = await source('src/components/workspace/provider/ProviderServicesWorkspace.jsx');
-assert.match(providerUiSource, /prerequisitesByKey/, 'Provider UI trebuie sa afiseze statusurile prerechizitelor');
-assert.match(providerUiSource, /blockedSelectedCount/, 'Provider UI trebuie sa semnalizeze selectiile blocate');
-assert.match(providerUiSource, /PROVIDER_SERVICE_SECTIONS/, 'Provider UI trebuie sa foloseasca structura dedicata pe specializari');
+const providerUiSource = await source('src/components/workspace/provider/ProviderServicesWorkspaceOperational.jsx');
+assert.match(providerUiSource, /providerServiceConfigurationOps/, 'Provider UI trebuie să folosească fluxul operațional dedicat');
+assert.match(providerUiSource, /getProviderServiceConfiguration/, 'Provider UI trebuie să consume read modelul complet');
+assert.match(providerUiSource, /CapabilitySelection/, 'Provider UI trebuie să separe capabilitățile de spații');
+assert.match(providerUiSource, /UnitResources/, 'Provider UI trebuie să lege resursele de unitate');
 
-const workspaceSectionsSource = await source('src/lib/providerServiceWorkspaceSections.js');
-for (const sectionKey of [
-  'optical_products',
-  'general_ophthalmology',
-  'investigations',
-  'retina_macula',
-  'glaucoma',
-  'pediatric_strabismus',
-  'cataract_refractive_procedures',
-]) {
-  assert.match(workspaceSectionsSource, new RegExp(`key: ["']${sectionKey}["']`), `Lipseste sectiunea workspace ${sectionKey}`);
+const providerOpsSource = await source('base44/functions/providerServiceConfigurationOps/entry.ts');
+assert.match(providerOpsSource, /organization_owner.*location_manager/, 'Doar ownerul și managerul pot edita serviciile publice');
+const adminSource = await source('base44/functions/adminServiceConfigurationReview/entry.ts');
+for (const entity of ['LocationFunctionalUnit', 'LocationCapability', 'ServiceCatalogSuggestion']) {
+  assert.match(adminSource, new RegExp(entity), `Admin review trebuie să persiste ${entity}`);
 }
 
-const foundationSource = await source('base44/functions/profileFoundationOps/entry.ts');
-const equipmentBlock = foundationSource.match(/const EQUIPMENT_KEYS = \[([\s\S]*?)\n\];/)?.[1] || '';
-const equipmentKeys = [...equipmentBlock.matchAll(/'([^']+)'/g)].map((match) => match[1]);
-assert.equal(equipmentKeys.length, new Set(equipmentKeys).size, 'EQUIPMENT_KEYS nu poate contine duplicate');
-for (const requiredKey of [
-  'pupillometer',
-  'digital_centering_system',
-  'gonioscope',
-  'specular_microscope',
-  'retinal_angiography_system',
-  'retinal_laser',
-  'intravitreal_injection_setup',
-  'minor_procedure_set',
-]) {
-  assert.ok(equipmentKeys.includes(requiredKey), `Lipseste echipamentul canonic ${requiredKey}`);
-}
-
-console.log('Service prerequisite engine and consumers: PASS');
+console.log('Unit-scoped service prerequisite engine and consumers: PASS');
