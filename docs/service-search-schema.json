@@ -1,0 +1,273 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vezunde.ro/schemas/service-catalog-v2.json",
+  "title": "Vezunde canonical service catalog with semantic search metadata",
+  "type": "object",
+  "required": [
+    "catalog_version",
+    "service_definitions",
+    "location_configuration",
+    "semantic_search"
+  ],
+  "properties": {
+    "catalog_version": {
+      "const": 2
+    },
+    "service_definitions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "group",
+          "kind",
+          "patient_facing",
+          "service_need_level",
+          "requires_review",
+          "search_keywords"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          },
+          "label": {
+            "type": "string"
+          },
+          "group": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "product",
+              "service",
+              "investigation",
+              "specialty",
+              "procedure",
+              "surgery",
+              "technical_activity",
+              "b2b_service",
+              "b2b_product"
+            ]
+          },
+          "patient_facing": {
+            "type": "boolean"
+          },
+          "b2b_only": {
+            "type": "boolean"
+          },
+          "service_need_level": {
+            "enum": [
+              "general",
+              "technical",
+              "specialized_medical"
+            ]
+          },
+          "requires_review": {
+            "type": "boolean"
+          },
+          "requires_verified_specialist": {
+            "type": "boolean"
+          },
+          "required_professional_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "required_equipment_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "required_infrastructure_types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "search_keywords": {
+            "type": "array",
+            "minItems": 2,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 2
+            }
+          }
+        }
+      }
+    },
+    "location_configuration": {
+      "type": "object",
+      "required": [
+        "selected_ids",
+        "functional_units",
+        "service_unit_map"
+      ],
+      "properties": {
+        "selected_ids": {
+          "type": "object",
+          "description": "Canonical service keys selected by the provider, grouped by catalog group."
+        },
+        "functional_units": {
+          "type": "array"
+        },
+        "capabilities": {
+          "type": "array"
+        },
+        "service_unit_map": {
+          "type": "object"
+        },
+        "resource_links": {
+          "type": "object"
+        },
+        "business_attributes": {
+          "description": "Stored through selected_ids.business_attributes so the current submission/review lifecycle remains atomic.",
+          "type": "array",
+          "items": {
+            "enum": [
+              "cas_reimbursed_services",
+              "onsite_eye_testing_b2b"
+            ]
+          }
+        }
+      }
+    },
+    "semantic_search": {
+      "type": "object",
+      "required": [
+        "input_fields",
+        "resolver",
+        "output"
+      ],
+      "properties": {
+        "input_fields": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "search_text",
+              "query",
+              "free_text",
+              "search_query"
+            ]
+          }
+        },
+        "resolver": {
+          "const": "deterministic_keyword_and_intent_scoring"
+        },
+        "output": {
+          "type": "object",
+          "properties": {
+            "normalized_query": {
+              "type": "string"
+            },
+            "service_keys": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "matches": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "service_key",
+                  "score",
+                  "matched_keywords"
+                ],
+                "properties": {
+                  "service_key": {
+                    "type": "string"
+                  },
+                  "score": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "matched_keywords": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "catalog_version": 2,
+      "service_definitions": {
+        "dry_eye_management": {
+          "key": "dry_eye_management",
+          "label": "Managementul ochiului uscat",
+          "group": "specialties",
+          "kind": "specialty",
+          "patient_facing": true,
+          "service_need_level": "specialized_medical",
+          "requires_review": true,
+          "search_keywords": [
+            "ochi uscați",
+            "mă ustură ochii",
+            "roșeață",
+            "nisip în ochi"
+          ]
+        }
+      },
+      "location_configuration": {
+        "selected_ids": {
+          "business_attributes": [
+            "cas_reimbursed_services"
+          ],
+          "specialties": [
+            "dry_eye_management"
+          ]
+        },
+        "functional_units": [
+          {
+            "unit_key": "ophthalmology_office"
+          }
+        ],
+        "service_unit_map": {
+          "cas_reimbursed_services": "ophthalmology_office",
+          "dry_eye_management": "ophthalmology_office"
+        },
+        "business_attributes": [
+          "cas_reimbursed_services"
+        ]
+      },
+      "semantic_search": {
+        "input_fields": [
+          "search_text",
+          "query",
+          "free_text",
+          "search_query"
+        ],
+        "resolver": "deterministic_keyword_and_intent_scoring",
+        "output": {
+          "normalized_query": "ma ustura ochii",
+          "service_keys": [
+            "dry_eye_management",
+            "dry_eye_screening",
+            "pachymeter"
+          ],
+          "matches": []
+        }
+      }
+    }
+  ]
+}
