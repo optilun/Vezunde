@@ -169,7 +169,7 @@ assert.match(providerOpsSource, /serviceConfigurationPayload\.js/, "Fluxul provi
 assert.match(providerOpsSource, /Serviciile publice pot fi modificate numai de owner sau manager/, "Stafful trebuie blocat explicit");
 
 const providerReadSource = await readFile(sourcePath("base44/functions/getProviderServiceConfiguration/entry.ts"), "utf8");
-assert.match(providerReadSource, /catalog_status === 'canonical'/, "Citirea providerului nu trebuie să remapeze implicit cheile legacy");
+assert.match(providerReadSource, /normalized\.status === 'canonical'/, "Citirea providerului trebuie să filtreze explicit doar cheile canonice fără remapare implicită");
 assert.match(providerReadSource, /LocationFunctionalUnit/, "Read modelul trebuie să încarce unitățile persistente");
 
 console.log(`Canonical keys: ${canonicalKeys.length}`);
