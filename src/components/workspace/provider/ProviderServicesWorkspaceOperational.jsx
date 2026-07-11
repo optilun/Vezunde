@@ -109,6 +109,23 @@ function normalizedSearch(value) {
 function safeParse(raw) {
   try { return JSON.parse(raw || "{}") || {}; } catch { return {}; }
 }
+function backendFunctionMissing(error) {
+  const message = String(error?.message || error?.error || error || "").toLowerCase();
+  const status = Number(error?.status || error?.response?.status || 0);
+  return status === 404 || /not found|not deployed|backend function|404/.test(message);
+}
+
+function legacyServiceRows(serviceKeys = []) {
+  return [...new Set(serviceKeys || [])]
+    .filter((serviceKey) => !SERVICE_GROUP_BY_KEY[serviceKey])
+    .map((serviceKey) => ({
+      id: `legacy:${serviceKey}`,
+      raw_key: serviceKey,
+      label: serviceKey,
+      catalog_status: "legacy_or_unknown",
+      is_active: true,
+    }));
+}
 
 function serviceLabel(item) {
   return SERVICE_GROUPS[item.group]?.ids?.[item.id] || item.id;
@@ -198,10 +215,10 @@ function resolveSectionUnit(section, selected, serviceUnitMap, activeUnits) {
   return mapped || defaultUnitForSection(section, activeUnits);
 }
 
-function sectionsForProfile(layout, selected) {
+function sectionsForProfile(layout, selected, sourceSections = PROVIDER_SERVICE_SECTIONS) {
   const allowed = new Set([...(layout.primary || []), ...(layout.secondary || [])]);
   const hidden = new Set(layout.hidden || []);
-  return PROVIDER_SERVICE_SECTIONS.map((section) => ({
+  return sourceSections.map((section) => ({
     ...section,
     items: section.items.filter((item) => allowed.has(item.group) || (hidden.has(item.group) && isSelected(selected, item))),
   })).filter((section) => section.items.length > 0);
@@ -272,7 +289,8 @@ function StatusBadge({ prerequisite, locallyBlocked }) {
 function ServiceRow({ item, selected, prerequisite, unitKey, capabilityActive, disabled, onToggle }) {
   const active = isSelected(selected, item);
   const context = getServiceOperationalContext(item.id);
-  const locallyBlocked = active && (!unitKey || (context?.capabilityKey && !capabilityActive));
+  const requiresUnit = context?.sectionKey !== "business_attributes";
+  const locallyBlocked = active && requiresUnit && (!unitKey || (context?.capabilityKey && !capabilityActive));
   const detail = active && prerequisite?.eligible === false
     ? prerequisite.blockers?.[0]?.message
     : "";
@@ -523,6 +541,25 @@ function UnitAccordion({ unitKey, sections, selected, serviceUnitMap, capabiliti
   );
 }
 
+function GlobalServiceSections({ sections, selected, prerequisites, disabled, onToggleService }) {
+  if (sections.length === 0) return null;
+  return (
+    <section className="overflow-hidden rounded-[22px] border border-border bg-card shadow-sm">
+      <div className="border-b border-border bg-secondary/10 px-4 py-4 sm:px-5">
+        <h2 className="text-sm font-bold">Opțiuni generale ale locației</h2>
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Acestea se aplică întregii locații și nu sunt asociate unui cabinet sau spațiu fizic.</p>
+      </div>
+      {sections.map((section) => (
+        <div key={section.key} className="border-b border-border/60 last:border-b-0">
+          <div className="bg-card px-4 py-3 sm:px-5"><h3 className="text-xs font-bold">{section.title}</h3><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{section.description}</p></div>
+          <div className="border-t border-border/50">
+            {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} prerequisite={prerequisites[item.id]} unitKey="" capabilityActive disabled={disabled} onToggle={onToggleService} />)}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
 function PublicPreview({ sections, selected, b2b }) {
   if (b2b) {
     return <section className="rounded-[22px] border border-border bg-card p-4 shadow-sm sm:p-5"><div className="flex items-center gap-2"><PackageOpen className="h-4 w-4 text-muted-foreground" /><h2 className="text-sm font-bold">Ofertă profesională B2B</h2></div><p className="mt-1 text-[11px] text-muted-foreground">Această ofertă nu este inclusă în filtrele pentru pacienți. Va fi prezentată într-un canal B2B separat.</p></section>;
@@ -550,6 +587,8 @@ function LegacyServices({ services, rawRemovalKeys, disabled, onToggle }) {
 
 export default function ProviderServicesWorkspaceOperational({ locationId, location }) {
   const [config, setConfig] = useState(null);
+  const [remoteCatalog, setRemoteCatalog] = useState(null);
+  const [persistenceMode, setPersistenceMode] = useState("v2");
   const [draft, setDraft] = useState(null);
   const [approvedSelected, setApprovedSelected] = useState({});
   const [selected, setSelected] = useState({});
@@ -567,9 +606,11 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const serviceLayout = useMemo(() => getServiceGroupLayout(location?.provider_profile_type, location?.provider_type), [location?.provider_profile_type, location?.provider_type]);
+  const serviceLayout = useMemo(() => remoteCatalog?.group_layout || getServiceGroupLayout(location?.provider_profile_type, location?.provider_type), [location?.provider_profile_type, location?.provider_type, remoteCatalog]);
   const operationalLayout = useMemo(() => getFunctionalUnitLayout(location?.provider_profile_type, location?.provider_type), [location?.provider_profile_type, location?.provider_type]);
-  const profileSections = useMemo(() => sectionsForProfile(serviceLayout, selected), [serviceLayout, selected]);
+  const profileSections = useMemo(() => sectionsForProfile(serviceLayout, selected, remoteCatalog?.provider_sections?.length ? remoteCatalog.provider_sections : PROVIDER_SERVICE_SECTIONS), [serviceLayout, selected, remoteCatalog]);
+  const globalSections = useMemo(() => profileSections.filter((section) => section.key === "business_attributes"), [profileSections]);
+  const unitSections = useMemo(() => profileSections.filter((section) => section.key !== "business_attributes"), [profileSections]);
   const primaryUnits = operationalLayout.primaryUnits || operationalLayout.primary || [];
   const optionalUnits = operationalLayout.optionalUnits || operationalLayout.optional || [];
   const selectableUnits = [...new Set([...primaryUnits, ...optionalUnits])];
@@ -579,7 +620,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
 
   const sectionsByUnit = useMemo(() => {
     const map = {};
-    for (const section of profileSections) {
+    for (const section of unitSections) {
       const unitKey = resolveSectionUnit(section, selected, serviceUnitMap, activeUnits);
       if (!unitKey || !activeUnits.includes(unitKey)) continue;
       map[unitKey] = map[unitKey] || [];
@@ -591,7 +632,9 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
   const selectedByUnit = useMemo(() => {
     const result = {};
     for (const serviceKey of selectedServiceKeys(selected)) {
-      const unitKey = serviceUnitMap[serviceKey] || getServiceOperationalContext(serviceKey)?.unitKey;
+      const context = getServiceOperationalContext(serviceKey);
+      if (context?.sectionKey === "business_attributes") continue;
+      const unitKey = serviceUnitMap[serviceKey] || context?.unitKey;
       if (unitKey) result[unitKey] = (result[unitKey] || 0) + 1;
     }
     return result;
@@ -621,6 +664,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     const selectedKeys = selectedServiceKeys(normalizedSelected);
     const completeServiceMap = Object.fromEntries(selectedKeys.map((serviceKey) => {
       const context = getServiceOperationalContext(serviceKey);
+      if (context?.sectionKey === "business_attributes") return [serviceKey, ""];
       const current = serviceUnitMap[serviceKey];
       const fallback = [context?.unitKey, ...(context?.fallbackUnitKeys || [])].find((unitKey) => activeUnits.includes(unitKey));
       return [serviceKey, current && activeUnits.includes(current) ? current : fallback || ""];
@@ -643,18 +687,68 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     setLoading(true);
     setError("");
     setMessage("");
-    const [configResponse, submissionResponse] = await Promise.all([
-      base44.functions.invoke("getProviderServiceConfiguration", { location_id: locationId }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } })),
-      base44.functions.invoke("providerServiceConfigurationOps", { action: "list_mine", location_id: locationId }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } })),
+
+    const invoke = (name, payload) => base44.functions.invoke(name, payload)
+      .catch((requestError) => ({
+        data: {
+          error: requestError.response?.data?.error || requestError.message,
+          status: requestError.response?.status || 0,
+        },
+      }));
+
+    const [catalogResponse, configResponse, submissionResponse] = await Promise.all([
+      invoke("getServiceSearchCatalog", {
+        profile_type: location?.provider_profile_type || "",
+        provider_type: location?.provider_type || "",
+      }),
+      invoke("getProviderServiceConfiguration", { location_id: locationId }),
+      invoke("providerServiceConfigurationOps", { action: "list_mine", location_id: locationId }),
     ]);
-    if (configResponse.data?.error || submissionResponse.data?.error) {
+
+    if (!catalogResponse.data?.error && catalogResponse.data?.catalog_version === 2) {
+      setRemoteCatalog(catalogResponse.data);
+    } else {
+      setRemoteCatalog(null);
+    }
+
+    let nextConfig;
+    let submissions;
+    let compatibility = false;
+    if (!configResponse.data?.error && !submissionResponse.data?.error) {
+      nextConfig = configResponse.data || {};
+      submissions = submissionResponse.data?.submissions || [];
+    } else if (backendFunctionMissing(configResponse.data) || backendFunctionMissing(submissionResponse.data)) {
+      const [legacyServices, legacySubmissions] = await Promise.all([
+        invoke("getProviderLocationServices", { location_id: locationId }),
+        invoke("submitProviderWorkspaceChange", { action: "list_mine", location_id: locationId }),
+      ]);
+      if (legacyServices.data?.error || legacySubmissions.data?.error) {
+        setError(legacyServices.data?.error || legacySubmissions.data?.error || "Nu am putut încărca configurația.");
+        setLoading(false);
+        return;
+      }
+      const serviceKeys = legacyServices.data?.service_keys || [];
+      nextConfig = {
+        service_keys: serviceKeys,
+        legacy_or_unknown_services: legacyServiceRows(serviceKeys),
+        functional_units: [],
+        capabilities: [],
+        service_unit_map: {},
+        prerequisites_by_key: {},
+        can_edit_services: true,
+      };
+      submissions = legacySubmissions.data?.submissions || [];
+      compatibility = true;
+      setMessage("Catalogul semantic V2 este disponibil local. Asocierea avansată a spațiilor și resurselor se salvează după publicarea endpointurilor V2.");
+    } else {
       setError(configResponse.data?.error || submissionResponse.data?.error || "Nu am putut încărca configurația.");
       setLoading(false);
       return;
     }
-    const nextConfig = configResponse.data || {};
+
+    setPersistenceMode(compatibility ? "legacy" : "v2");
     const approved = groupServiceKeys(nextConfig.service_keys || []);
-    const activeSubmissions = (submissionResponse.data?.submissions || []).filter((submission) => submission.section === "services" && ["draft", "needs_more_info", "pending_review"].includes(submission.status));
+    const activeSubmissions = submissions.filter((submission) => submission.section === "services" && ["draft", "needs_more_info", "pending_review"].includes(submission.status));
     const ownDraft = activeSubmissions.find((submission) => submission.status === "pending_review") || activeSubmissions.find((submission) => ["draft", "needs_more_info"].includes(submission.status)) || null;
     const payload = safeParse(ownDraft?.payload_json);
     const desired = ownDraft ? applyDraft(approved, payload) : approved;
@@ -729,7 +823,13 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
       setServiceUnitMap((map) => { const next = { ...map }; delete next[item.id]; return next; });
     } else {
       current.add(item.id);
-      setServiceUnitMap((map) => ({ ...map, [item.id]: unitKey }));
+      const context = getServiceOperationalContext(item.id);
+      setServiceUnitMap((map) => {
+        const next = { ...map };
+        if (context?.sectionKey === "business_attributes") delete next[item.id];
+        else next[item.id] = unitKey;
+        return next;
+      });
     }
     setSelected((value) => ({ ...value, [item.group]: [...current] }));
   };
@@ -782,19 +882,33 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     setSaving(true);
     setMessage("");
     setError("");
-    const response = await base44.functions.invoke("providerServiceConfigurationOps", {
-      action: draft && draft.status !== "pending_review" ? "update_draft" : "create_draft",
-      submission_id: draft?.id,
-      location_id: locationId,
-      section: "services",
-      payload: buildPayload(),
-    }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, fields: requestError.response?.data?.fields || [] } }));
+    const payload = buildPayload();
+    const response = persistenceMode === "v2"
+      ? await base44.functions.invoke("providerServiceConfigurationOps", {
+        action: draft && draft.status !== "pending_review" ? "update_draft" : "create_draft",
+        submission_id: draft?.id,
+        location_id: locationId,
+        section: "services",
+        payload,
+      }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, fields: requestError.response?.data?.fields || [] } }))
+      : await base44.functions.invoke("submitProviderWorkspaceChange", {
+        action: draft && draft.status !== "pending_review" ? "update_draft" : "create_draft",
+        submission_id: draft?.id,
+        location_id: locationId,
+        section: "services",
+        payload: {
+          selected_ids: payload.selected_ids,
+          removal_ids: payload.removal_ids,
+          raw_removal_keys: payload.raw_removal_keys,
+          suggestions: payload.suggestions,
+        },
+      }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, fields: requestError.response?.data?.fields || [] } }));
     setSaving(false);
     if (response.data?.error) {
       setError(response.data.fields?.length ? `${response.data.error}: ${response.data.fields.join(", ")}` : response.data.error);
       return;
     }
-    setMessage("Draftul complet a fost salvat.");
+    setMessage(persistenceMode === "v2" ? "Draftul complet a fost salvat." : "Draftul a fost salvat prin fluxul compatibil." );
     await load();
   };
 
@@ -803,7 +917,9 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     setSaving(true);
     setMessage("");
     setError("");
-    const response = await base44.functions.invoke("providerServiceConfigurationOps", { action: "submit", submission_id: draft.id, location_id: locationId, section: "services" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }));
+    const response = persistenceMode === "v2"
+      ? await base44.functions.invoke("providerServiceConfigurationOps", { action: "submit", submission_id: draft.id, location_id: locationId, section: "services" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }))
+      : await base44.functions.invoke("submitProviderWorkspaceChange", { action: "submit", submission_id: draft.id, location_id: locationId, section: "services" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }));
     setSaving(false);
     if (response.data?.error) { setError(response.data.error); return; }
     setMessage("Configurația a fost trimisă spre verificare.");
@@ -823,6 +939,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
         <div className="relative mt-4"><Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input className={`${inputClass} pl-10`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Caută: control vedere, schimb șurub, OCT, oftalmolog copii..." />{query && <button type="button" onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted-foreground hover:bg-secondary"><X className="h-4 w-4" /></button>}</div>
       </section>
 
+      {persistenceMode === "legacy" && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">Catalogul V2 este disponibil local. Draftul de servicii folosește fluxul compatibil până când endpointurile de configurare sunt publicate.</div>}
       {pendingReview && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">Configurația este în verificare. Editarea este blocată până la decizia administratorului.</div>}
       {config?.can_edit_services === false && !pendingReview && <div className="rounded-2xl border border-border bg-secondary/30 px-4 py-3 text-xs text-muted-foreground">Ai acces de vizualizare. Modificarea serviciilor publice este disponibilă ownerului și managerului locației.</div>}
       {error && config && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">{error}</div>}
@@ -830,11 +947,12 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
       {!query && <UnitSelection units={selectableUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={!editable} onToggle={toggleUnit} />}
       {!query && <CapabilitySelection capabilityKeys={selectableCapabilities} capabilities={capabilities} activeUnits={activeUnits} primaryCapabilities={primaryCapabilities} disabled={!editable} onToggle={toggleCapability} />}
       {!query && <CareSettingSelector options={operationalLayout.careSettings || []} value={careSetting} disabled={!editable} onChange={setCareSetting} />}
+      {!query && <GlobalServiceSections sections={globalSections} selected={selected} prerequisites={config?.prerequisites_by_key || {}} disabled={!editable} onToggleService={toggleService} />}
 
       {query ? (
         <section className="overflow-hidden rounded-[22px] border border-border bg-card shadow-sm">
           <div className="border-b border-border px-4 py-4 sm:px-5"><h2 className="text-sm font-bold">Rezultate pentru „{query}”</h2><p className="mt-1 text-[11px] text-muted-foreground">Căutarea recunoaște și formulări uzuale folosite de pacienții din România.</p></div>
-          {searchResults.length > 0 ? searchResults.map(({ section, item }) => { const unitKey = resolveSectionUnit(section, selected, serviceUnitMap, activeUnits); const capabilityActive = !section.capabilityKey || capabilities.some((capability) => capability.capability_key === section.capabilityKey && capability.parent_unit_key === unitKey); return <div key={`${section.key}:${item.id}`}><div className="border-b border-border/60 bg-secondary/10 px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{getFunctionalUnitDefinition(unitKey)?.shortTitle || "Spațiu neconfigurat"} · {section.title}</div><ServiceRow item={item} selected={selected} prerequisite={config?.prerequisites_by_key?.[item.id]} unitKey={unitKey} capabilityActive={capabilityActive} disabled={!editable || !activeUnits.includes(unitKey)} onToggle={toggleService} /></div>; }) : <div className="px-4 py-10 text-center text-sm text-muted-foreground">Nu am găsit opțiuni pentru această căutare.</div>}
+          {searchResults.length > 0 ? searchResults.map(({ section, item }) => { const isLocationWide = section.key === "business_attributes"; const unitKey = isLocationWide ? "" : resolveSectionUnit(section, selected, serviceUnitMap, activeUnits); const capabilityActive = !section.capabilityKey || capabilities.some((capability) => capability.capability_key === section.capabilityKey && capability.parent_unit_key === unitKey); return <div key={`${section.key}:${item.id}`}><div className="border-b border-border/60 bg-secondary/10 px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{isLocationWide ? "Valabil la nivelul locației" : getFunctionalUnitDefinition(unitKey)?.shortTitle || "Spațiu neconfigurat"} · {section.title}</div><ServiceRow item={item} selected={selected} prerequisite={config?.prerequisites_by_key?.[item.id]} unitKey={unitKey} capabilityActive={capabilityActive} disabled={!editable || (!isLocationWide && !activeUnits.includes(unitKey))} onToggle={toggleService} /></div>; }) : <div className="px-4 py-10 text-center text-sm text-muted-foreground">Nu am găsit opțiuni pentru această căutare.</div>}
         </section>
       ) : (
         <div className="space-y-3">

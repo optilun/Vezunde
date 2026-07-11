@@ -4,7 +4,7 @@ import {
   isServiceMatchingEligible,
   isServicePubliclyEligible,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistry.js';
+} from '../../../shared/canonicalServiceRegistryExtended.js';
 import { evaluateServicePrerequisites } from '../../../shared/servicePrerequisiteEngine.js';
 
 // Safety rules remain disabled until reviewed by a qualified ophthalmologist.

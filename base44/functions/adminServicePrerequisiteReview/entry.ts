@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { getCanonicalServiceDefinition } from '../../../shared/canonicalServiceRegistry.js';
+import { getCanonicalServiceDefinition } from '../../../shared/canonicalServiceRegistryExtended.js';
 import {
   evaluateServicePrerequisites,
   servicePrerequisiteStatusLabel,

@@ -14,8 +14,8 @@ const reviewSource = await readFile(
   "utf8",
 );
 
-assert.match(updateSource, /shared\/canonicalServiceRegistry\.js/, "Fluxul legacy de update trebuie sa importe registrul canonic");
-assert.match(reviewSource, /shared\/canonicalServiceRegistry\.js/, "Fluxul legacy de review trebuie sa importe registrul canonic");
+assert.match(updateSource, /shared\/canonicalServiceRegistryExtended\.js/, "Fluxul legacy de update trebuie sa importe registrul semantic V2");
+assert.match(reviewSource, /shared\/canonicalServiceRegistryExtended\.js/, "Fluxul legacy de review trebuie sa importe registrul semantic V2");
 assert.match(updateSource, /invalidNewKeys/, "Fluxul legacy de update trebuie sa blocheze cheile necanonice noi");
 assert.match(reviewSource, /invalidNewKeys/, "Fluxul legacy de review trebuie sa revalideze cheile necanonice noi");
 assert.match(reviewSource, /isServiceMatchingEligible/, "Reactivarea legacy trebuie sa ramana fail-closed pentru matching");

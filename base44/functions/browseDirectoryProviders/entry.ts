@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   isServicePubliclyEligible,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistry.js';
+} from '../../../shared/canonicalServiceRegistryExtended.js';
 import { evaluateServicePrerequisites } from '../../../shared/servicePrerequisiteEngine.js';
 
 // Read-only locality browse. It does not score or match by service.

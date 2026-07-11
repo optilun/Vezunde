@@ -3,7 +3,7 @@ import {
   getCanonicalServiceDefinition,
   isServiceMatchingEligible,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistry.js';
+} from '../../../shared/canonicalServiceRegistryExtended.js';
 
 const APPLY_CONFIRMATION = 'APPLY_MATCHING_BACKFILL';
 

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { validateServiceConfigurationPayload } from '../shared/serviceConfigurationPayload.js';
+import { validateServiceConfigurationPayload } from '../shared/serviceConfigurationPayloadExtended.js';
 
 const validPayload = {
   selected_ids: {

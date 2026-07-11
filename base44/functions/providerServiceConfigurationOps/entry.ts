@@ -4,7 +4,7 @@ import {
   profileAllowsCapability,
   profileAllowsFunctionalUnit,
 } from '../../../shared/locationOperationalRegistry.js';
-import { validateServiceConfigurationPayload } from '../../../shared/serviceConfigurationPayload.js';
+import { validateServiceConfigurationPayload } from '../../../shared/serviceConfigurationPayloadExtended.js';
 
 const ACTIVE_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];

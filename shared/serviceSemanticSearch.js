@@ -207,6 +207,23 @@ export function resolveServiceSearchQuery(rawQuery, options = {}) {
   };
 }
 
+export function getServiceSearchSuggestions(rawQuery, options = {}) {
+  const limit = Math.max(1, Math.min(Number(options.limit) || 6, 12));
+  const resolution = resolveServiceSearchQuery(rawQuery, {
+    ...options,
+    limit: Math.max(limit * 2, Number(options.limit) || 0),
+  });
+  return resolution.matches.slice(0, limit).map((match) => {
+    const definition = getCanonicalServiceDefinition(match.service_key);
+    return {
+      label: definition?.label || match.service_key,
+      service_key: match.service_key,
+      category: definition?.group || "other",
+      matched_keyword: match.matched_keywords?.[0] || "",
+      score: match.score,
+    };
+  });
+}
 export function resolveServiceSearchKeys(rawQuery, options = {}) {
   return resolveServiceSearchQuery(rawQuery, options).service_keys;
 }

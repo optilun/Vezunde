@@ -1,4 +1,4 @@
-import { getProviderServiceSections } from "../../shared/serviceOperationalTaxonomy.js";
+import { getProviderServiceSections } from "../../shared/serviceOperationalTaxonomyExtended.js";
 
 export const PROVIDER_SERVICE_AREAS = [
   { key: "products", label: "Produse optice" },
