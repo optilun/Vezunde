@@ -106,7 +106,7 @@ function ConfigureCard({ icon: Icon, title, text, onClick }) {
   );
 }
 
-export default function ProviderLocations({ workspace, selectedLocationId, onSelect, overview, onRefresh, onOpenModule }) {
+export default function ProviderLocations({ workspace, selectedLocationId, onSelect, onRefresh, onOpenModule }) {
   const locById = Object.fromEntries((workspace.locations || []).map((l) => [l.id, l]));
   const membershipByLocation = Object.fromEntries((workspace.memberships || []).map((m) => [m.location_id, m]));
   const selectedLocation = locById[selectedLocationId] || (workspace.locations || [])[0] || null;
