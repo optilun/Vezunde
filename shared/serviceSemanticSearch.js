@@ -2,7 +2,7 @@ import {
   CANONICAL_SERVICE_KEYS,
   getCanonicalServiceDefinition,
   getServiceSearchKeywords,
-} from './canonicalServiceRegistry.js';
+} from './canonicalServiceRegistryExtended.js';
 
 export const SEMANTIC_INTENT_RULES = [
   {
