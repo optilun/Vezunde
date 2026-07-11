@@ -32,8 +32,8 @@ export const SERVICE_GROUPS = {
     },
   },
   lenses_and_measurements: {
-    label: "Lentile și măsurători personalizate",
-    helper: "Servicii legate de alegerea, măsurarea și personalizarea lentilelor pentru ochelari.",
+    label: "Lentile oftalmice și măsurători",
+    helper: "Produse, opțiuni și măsurători pentru alegerea și montajul lentilelor.",
     ids: {
       single_vision_lenses: "Lentile monofocale",
       progressive_lenses: "Lentile progresive",
@@ -64,17 +64,23 @@ export const SERVICE_GROUPS = {
   },
   contact_lenses: {
     label: "Lentile de contact",
-    helper: "Servicii pentru recomandarea, adaptarea și monitorizarea purtării lentilelor de contact.",
+    helper: "Produse și servicii pentru recomandarea, adaptarea și monitorizarea purtării lentilelor de contact.",
     ids: {
       contact_lenses: "Lentile de contact",
-      contact_lens_consultation: "Consult pentru lentile de contact",
-      contact_lens_fitting: "Adaptare lentile de contact",
-      contact_lens_trial: "Probă lentile de contact",
       toric_contact_lenses: "Lentile de contact torice",
       multifocal_contact_lenses: "Lentile de contact multifocale",
       rgp_lenses: "Lentile rigide gaz-permeabile",
       scleral_lenses: "Lentile sclerale",
+      contact_lens_solutions: "Soluții pentru lentile de contact",
+      contact_lens_accessories: "Accesorii pentru lentile de contact",
+      contact_lens_consultation: "Consult pentru lentile de contact",
+      contact_lens_fitting: "Adaptare lentile de contact",
+      contact_lens_trial: "Probă lentile de contact",
       contact_lens_followup: "Control pentru lentile de contact",
+      contact_lens_insertion_training: "Instruire pentru aplicarea și îndepărtarea lentilelor",
+      specialty_contact_lens_fitting: "Adaptare lentile de contact speciale",
+      orthokeratology: "Ortokeratologie",
+      myopia_control_contact_lenses: "Controlul miopiei prin lentile de contact",
     },
   },
   ophthalmology_consults: {
@@ -92,7 +98,7 @@ export const SERVICE_GROUPS = {
     },
   },
   investigations: {
-    label: "Investigații și aparatură oftalmologică",
+    label: "Investigații oftalmologice",
     helper: "Investigații disponibile în locație, în funcție de dotări și personalul autorizat.",
     ids: {
       oct: "OCT",
@@ -107,13 +113,16 @@ export const SERVICE_GROUPS = {
       ultrasound: "Ecografie oculară",
       specular_microscopy: "Microscopie speculară",
       angiography: "Angiografie retiniană",
+      electroretinography: "Electroretinografie",
+      visual_evoked_potentials: "Potențiale evocate vizuale",
     },
   },
   specialties: {
     label: "Arii medicale specializate",
-    helper: "Zone de expertiză medicală sau servicii specializate disponibile în această locație.",
+    helper: "Zone de expertiză medicală disponibile în această locație.",
     ids: {
       retina_consultation: "Retină",
+      vitreoretinal_consultation: "Retină și vitros",
       glaucoma_consultation: "Glaucom",
       cataract_consultation: "Cataractă",
       cornea_consultation: "Cornee",
@@ -125,7 +134,12 @@ export const SERVICE_GROUPS = {
       dry_eye_management: "Managementul ochiului uscat",
       diabetic_retinopathy: "Retinopatie diabetică",
       macular_degeneration: "Degenerescență maculară",
+      oculoplastics_consultation: "Oculoplastică și afecțiuni ale pleoapelor",
+      lacrimal_system_consultation: "Afecțiuni ale căilor lacrimale",
       emergency_ophthalmology: "Urgențe oftalmologice",
+      ocular_trauma: "Traumatisme oculare",
+      low_vision_rehabilitation: "Vedere slabă și reabilitare vizuală",
+      ocular_oncology: "Oncologie oculară",
     },
   },
   procedures_surgery: {
@@ -141,6 +155,11 @@ export const SERVICE_GROUPS = {
       eyelid_surgery: "Chirurgia pleoapelor",
       chalazion_treatment: "Tratamentul șalazionului",
       minor_eye_procedures: "Proceduri oftalmologice minore",
+      vitreoretinal_surgery: "Chirurgie vitreoretiniană",
+      corneal_crosslinking: "Cross-linking cornean",
+      lacrimal_procedures: "Proceduri ale căilor lacrimale",
+      oculoplastic_procedures: "Proceduri oculoplastice",
+      foreign_body_removal: "Îndepărtarea corpilor străini oculari",
     },
   },
   children_and_prevention: {
@@ -158,70 +177,108 @@ export const SERVICE_GROUPS = {
   },
   technical_activities: {
     label: "Atelier optic și activități tehnice",
-    helper: "Servicii tehnice pentru ochelari și lentile, realizate în magazin sau atelier.",
+    helper: "Servicii tehnice pentru ochelari și lentile, realizate în magazin, atelier sau laborator.",
     ids: {
       eyeglasses_adjustment: "Reglaj ochelari",
+      frame_straightening: "Îndreptarea ramei",
+      temple_adjustment: "Reglarea brațelor ramei",
+      bridge_adjustment: "Reglarea punții ramei",
+      hinge_adjustment: "Reglarea balamalelor",
+      screw_replacement: "Înlocuire sau strângere șuruburi",
+      nose_pad_replacement: "Înlocuire pernițe nazale",
+      temple_tip_replacement: "Înlocuire terminale brațe",
       eyeglasses_repair: "Reparații ochelari",
-      lens_fitting: "Montaj lentile",
       frame_repair: "Reparații rame",
-      screw_replacement: "Înlocuire șuruburi sau pernițe",
+      temple_replacement: "Înlocuire brațe rame",
+      hinge_repair: "Reparare balamale",
+      acetate_frame_repair: "Reparații rame din acetat",
+      metal_frame_soldering: "Lipire sau sudare rame metalice",
+      frame_polishing: "Lustruire rame",
+      lens_fitting: "Montaj lentile",
       lens_replacement: "Înlocuire lentile în rama existentă",
+      client_frame_lens_mounting: "Montaj lentile în rama clientului",
+      rimless_drilling: "Găurire pentru rame fără contur",
+      semi_rimless_grooving: "Șanțuire pentru rame cu fir",
+      optical_quality_check: "Verificarea centrării și control final",
       frame_cleaning: "Curățare ochelari",
+      ultrasonic_cleaning: "Curățare cu ultrasunete",
       workshop_orders: "Comenzi pentru atelier optic",
     },
   },
+  b2b_capabilities: {
+    label: "Produse și servicii B2B",
+    helper: "Ofertă pentru optici, cabinete, clinici, laboratoare și alți parteneri profesionali.",
+    ids: {
+      wholesale_frames: "Distribuție B2B de rame",
+      wholesale_ophthalmic_lenses: "Distribuție B2B de lentile oftalmice",
+      wholesale_contact_lenses: "Distribuție B2B de lentile de contact",
+      ophthalmic_equipment_distribution: "Distribuție de echipamente pentru optică și oftalmologie",
+      consumables_distribution: "Distribuție de consumabile și accesorii profesionale",
+      b2b_lens_processing: "Prelucrare lentile pentru parteneri",
+      b2b_frame_lens_mounting: "Montaj rame și lentile pentru parteneri",
+      b2b_private_label: "Servicii private label / marcă proprie",
+      b2b_logistics_delivery: "Logistică și livrare B2B",
+      b2b_technical_support: "Suport tehnic și comercial B2B",
+    },
+  },
 };
+
+const ALL_PATIENT_GROUPS = [
+  "optical_retail", "lenses_and_measurements", "optometry", "contact_lenses",
+  "ophthalmology_consults", "investigations", "specialties", "procedures_surgery",
+  "children_and_prevention", "technical_activities",
+];
 
 export const SERVICE_GROUP_LAYOUTS = {
   independent_optical_store: {
     primary: ["optical_retail", "lenses_and_measurements", "optometry", "contact_lenses", "technical_activities"],
     secondary: ["ophthalmology_consults", "investigations", "specialties", "children_and_prevention"],
-    hidden: ["procedures_surgery"],
+    hidden: ["procedures_surgery", "b2b_capabilities"],
   },
   optical_chain: {
     primary: ["optical_retail", "lenses_and_measurements", "optometry", "contact_lenses", "technical_activities"],
     secondary: ["ophthalmology_consults", "investigations", "specialties", "children_and_prevention"],
-    hidden: ["procedures_surgery"],
+    hidden: ["procedures_surgery", "b2b_capabilities"],
   },
   ophthalmology_clinic: {
     primary: ["ophthalmology_consults", "investigations", "specialties", "procedures_surgery", "children_and_prevention"],
     secondary: ["optometry", "contact_lenses", "lenses_and_measurements", "optical_retail", "technical_activities"],
-    hidden: [],
+    hidden: ["b2b_capabilities"],
   },
   ophthalmology_office: {
-    primary: ["ophthalmology_consults", "investigations", "specialties", "children_and_prevention"],
-    secondary: ["procedures_surgery", "optometry", "contact_lenses", "lenses_and_measurements", "optical_retail"],
-    hidden: ["technical_activities"],
+    primary: ["ophthalmology_consults", "specialties", "children_and_prevention"],
+    secondary: ["investigations", "procedures_surgery", "optometry", "contact_lenses", "lenses_and_measurements", "optical_retail"],
+    hidden: ["technical_activities", "b2b_capabilities"],
   },
   independent_ophthalmologist: {
-    primary: ["ophthalmology_consults", "investigations", "specialties", "children_and_prevention"],
-    secondary: ["procedures_surgery", "contact_lenses", "optometry"],
-    hidden: ["optical_retail", "lenses_and_measurements", "technical_activities"],
+    primary: ["ophthalmology_consults", "specialties", "children_and_prevention"],
+    secondary: ["investigations", "procedures_surgery", "contact_lenses", "optometry"],
+    hidden: ["optical_retail", "lenses_and_measurements", "technical_activities", "b2b_capabilities"],
   },
   independent_optometrist: {
-    primary: ["optometry", "contact_lenses", "lenses_and_measurements", "children_and_prevention"],
-    secondary: ["optical_retail", "technical_activities", "investigations", "specialties"],
-    hidden: ["ophthalmology_consults", "procedures_surgery"],
+    primary: ["optometry", "lenses_and_measurements", "children_and_prevention"],
+    secondary: ["contact_lenses", "optical_retail", "technical_activities", "investigations", "specialties"],
+    hidden: ["ophthalmology_consults", "procedures_surgery", "b2b_capabilities"],
   },
   independent_optician: {
     primary: ["optical_retail", "lenses_and_measurements", "technical_activities"],
-    secondary: ["contact_lenses", "optometry"],
-    hidden: ["ophthalmology_consults", "investigations", "specialties", "procedures_surgery", "children_and_prevention"],
+    secondary: ["contact_lenses"],
+    hidden: ["optometry", "ophthalmology_consults", "investigations", "specialties", "procedures_surgery", "children_and_prevention", "b2b_capabilities"],
   },
   optical_laboratory_b2c: {
     primary: ["lenses_and_measurements", "technical_activities"],
     secondary: ["optical_retail"],
-    hidden: ["optometry", "contact_lenses", "ophthalmology_consults", "investigations", "specialties", "procedures_surgery", "children_and_prevention"],
+    hidden: ["optometry", "contact_lenses", "ophthalmology_consults", "investigations", "specialties", "procedures_surgery", "children_and_prevention", "b2b_capabilities"],
   },
   optical_laboratory_b2b: {
-    primary: ["lenses_and_measurements", "technical_activities"],
+    primary: ["b2b_capabilities", "lenses_and_measurements", "technical_activities"],
     secondary: [],
     hidden: ["optical_retail", "optometry", "contact_lenses", "ophthalmology_consults", "investigations", "specialties", "procedures_surgery", "children_and_prevention"],
   },
   future_b2b_distributor: {
-    primary: ["optical_retail"],
-    secondary: ["lenses_and_measurements"],
-    hidden: ["optometry", "contact_lenses", "ophthalmology_consults", "investigations", "specialties", "procedures_surgery", "children_and_prevention", "technical_activities"],
+    primary: ["b2b_capabilities"],
+    secondary: [],
+    hidden: [...ALL_PATIENT_GROUPS],
   },
 };
 
@@ -253,6 +310,10 @@ export const LEGACY_SERVICE_ALIASES = {
   tonometrie: "tonometry",
   fund_de_ochi: "fundus_exam",
   topografie_corneana: "corneal_topography",
+  indreptare_rame: "frame_straightening",
+  schimb_suruburi: "screw_replacement",
+  schimb_pernite: "nose_pad_replacement",
+  sudura_rame: "metal_frame_soldering",
 };
 
 export const AMBIGUOUS_LEGACY_SERVICE_KEYS = [
@@ -264,16 +325,17 @@ export const AMBIGUOUS_LEGACY_SERVICE_KEYS = [
 ];
 
 const GROUP_POLICY = {
-  optical_retail: { kind: "product", need: "general", review: false, specialist: false, equipment: false, infrastructure: false, professionalTypes: [] },
-  lenses_and_measurements: { kind: "product", need: "general", review: false, specialist: false, equipment: false, infrastructure: false, professionalTypes: [] },
-  optometry: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["optometrist", "ophthalmologist"] },
-  contact_lenses: { kind: "product", need: "general", review: false, specialist: false, equipment: false, infrastructure: false, professionalTypes: [] },
-  ophthalmology_consults: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["ophthalmologist"] },
-  investigations: { kind: "investigation", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["ophthalmologist"] },
-  specialties: { kind: "specialty", need: "specialized_medical", review: true, specialist: true, equipment: false, infrastructure: false, professionalTypes: ["ophthalmologist"] },
-  procedures_surgery: { kind: "procedure", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: true, professionalTypes: ["ophthalmologist"] },
-  children_and_prevention: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["optometrist", "ophthalmologist"] },
-  technical_activities: { kind: "technical_activity", need: "technical", review: false, specialist: false, equipment: true, infrastructure: false, professionalTypes: ["optician"] },
+  optical_retail: { kind: "product", need: "general", review: false, specialist: false, equipment: false, infrastructure: false, professionalTypes: [], patientFacing: true, b2bOnly: false },
+  lenses_and_measurements: { kind: "product", need: "general", review: false, specialist: false, equipment: false, infrastructure: false, professionalTypes: [], patientFacing: true, b2bOnly: false },
+  optometry: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["optometrist", "ophthalmologist"], patientFacing: true, b2bOnly: false },
+  contact_lenses: { kind: "product", need: "general", review: false, specialist: false, equipment: false, infrastructure: false, professionalTypes: [], patientFacing: true, b2bOnly: false },
+  ophthalmology_consults: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["ophthalmologist"], patientFacing: true, b2bOnly: false },
+  investigations: { kind: "investigation", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["ophthalmologist"], patientFacing: true, b2bOnly: false },
+  specialties: { kind: "specialty", need: "specialized_medical", review: true, specialist: true, equipment: false, infrastructure: false, professionalTypes: ["ophthalmologist"], patientFacing: true, b2bOnly: false },
+  procedures_surgery: { kind: "procedure", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: true, professionalTypes: ["ophthalmologist"], patientFacing: true, b2bOnly: false },
+  children_and_prevention: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["optometrist", "ophthalmologist"], patientFacing: true, b2bOnly: false },
+  technical_activities: { kind: "technical_activity", need: "technical", review: false, specialist: false, equipment: false, infrastructure: false, professionalTypes: ["optician"], patientFacing: true, b2bOnly: false },
+  b2b_capabilities: { kind: "b2b_service", need: "technical", review: false, specialist: false, equipment: false, infrastructure: false, professionalTypes: [], patientFacing: false, b2bOnly: true },
 };
 
 const SERVICE_OVERRIDES = {
@@ -283,13 +345,43 @@ const SERVICE_OVERRIDES = {
   contact_lens_fitting: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: true, professionalTypes: ["optometrist", "ophthalmologist"] },
   contact_lens_trial: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: true, professionalTypes: ["optometrist", "ophthalmologist"] },
   contact_lens_followup: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: true, professionalTypes: ["optometrist", "ophthalmologist"] },
+  contact_lens_insertion_training: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: false, professionalTypes: ["optometrist", "ophthalmologist"] },
+  specialty_contact_lens_fitting: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: true, professionalTypes: ["optometrist", "ophthalmologist"] },
+  orthokeratology: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: true, professionalTypes: ["optometrist", "ophthalmologist"] },
+  myopia_control_contact_lenses: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: true, professionalTypes: ["optometrist", "ophthalmologist"] },
+  low_vision_rehabilitation: { professionalTypes: ["optometrist", "ophthalmologist"] },
   cataract_surgery: { kind: "surgery" },
   refractive_surgery: { kind: "surgery" },
   eyelid_surgery: { kind: "surgery" },
+  vitreoretinal_surgery: { kind: "surgery" },
+  eyeglasses_repair: { equipment: true, infrastructure: true },
+  frame_repair: { equipment: true, infrastructure: true },
+  hinge_repair: { equipment: true, infrastructure: true },
+  acetate_frame_repair: { equipment: true, infrastructure: true },
+  metal_frame_soldering: { equipment: true, infrastructure: true },
+  frame_polishing: { equipment: true, infrastructure: true },
+  lens_fitting: { equipment: true, infrastructure: true },
+  lens_replacement: { equipment: true, infrastructure: true },
+  client_frame_lens_mounting: { equipment: true, infrastructure: true },
+  rimless_drilling: { equipment: true, infrastructure: true },
+  semi_rimless_grooving: { equipment: true, infrastructure: true },
+  optical_quality_check: { equipment: true, infrastructure: true },
+  ultrasonic_cleaning: { equipment: true, infrastructure: true },
+  b2b_lens_processing: { equipment: true, infrastructure: true },
+  b2b_frame_lens_mounting: { equipment: true, infrastructure: true },
 };
 
 const REQUIRED_EQUIPMENT = {
+  pd_measurement: ["pupillometer", "digital_centering_system"],
+  digital_centering: ["digital_centering_system"],
   autorefractometry: ["autorefractometer"],
+  contact_lens_consultation: ["slit_lamp", "contact_lens_trial_set"],
+  contact_lens_fitting: ["slit_lamp", "contact_lens_trial_set"],
+  contact_lens_trial: ["slit_lamp", "contact_lens_trial_set"],
+  contact_lens_followup: ["slit_lamp"],
+  specialty_contact_lens_fitting: ["slit_lamp", "contact_lens_trial_set", "corneal_topographer"],
+  orthokeratology: ["slit_lamp", "contact_lens_trial_set", "corneal_topographer"],
+  myopia_control_contact_lenses: ["slit_lamp", "contact_lens_trial_set"],
   oct: ["oct"],
   visual_field_analyzer: ["visual_field_analyzer"],
   fundus_camera: ["fundus_camera"],
@@ -299,9 +391,65 @@ const REQUIRED_EQUIPMENT = {
   keratometry: ["keratometer"],
   tonometry: ["tonometer"],
   gonioscopy: ["gonioscope"],
-  ultrasound: ["ocular_ultrasound"],
+  ultrasound: ["ophthalmic_ultrasound"],
   specular_microscopy: ["specular_microscope"],
-  angiography: ["retinal_angiography"],
+  angiography: ["retinal_angiography_system"],
+  electroretinography: ["electroretinography_system"],
+  visual_evoked_potentials: ["visual_electrophysiology_system"],
+  cataract_surgery: ["operating_microscope", "phacoemulsification_system"],
+  refractive_surgery: ["excimer_laser", "femtosecond_laser"],
+  vitreoretinal_surgery: ["operating_microscope", "vitrectomy_system"],
+  corneal_crosslinking: ["corneal_crosslinking_system"],
+  lacrimal_procedures: ["minor_procedure_set"],
+  oculoplastic_procedures: ["minor_procedure_set"],
+  foreign_body_removal: ["slit_lamp", "minor_procedure_set"],
+  eyeglasses_repair: ["drill", "groover", "polisher"],
+  frame_repair: ["drill", "groover", "polisher"],
+  hinge_repair: ["drill", "frame_welding_system"],
+  acetate_frame_repair: ["frame_heater", "polisher"],
+  metal_frame_soldering: ["frame_welding_system"],
+  frame_polishing: ["polisher"],
+  lens_fitting: ["tracer", "blocker", "edger"],
+  lens_replacement: ["tracer", "blocker", "edger"],
+  client_frame_lens_mounting: ["tracer", "blocker", "edger"],
+  rimless_drilling: ["drill"],
+  semi_rimless_grooving: ["groover"],
+  optical_quality_check: ["lensmeter"],
+  ultrasonic_cleaning: ["ultrasonic_cleaner"],
+  b2b_lens_processing: ["tracer", "blocker", "edger"],
+  b2b_frame_lens_mounting: ["tracer", "blocker", "edger"],
+};
+
+const REQUIRED_INFRASTRUCTURE = {
+  cataract_surgery: ["surgical_infrastructure"],
+  refractive_surgery: ["surgical_infrastructure"],
+  vitreoretinal_surgery: ["surgical_infrastructure"],
+  eyelid_surgery: ["surgical_infrastructure"],
+  laser_procedures: ["clinical_procedure_infrastructure"],
+  yag_laser: ["clinical_procedure_infrastructure"],
+  retinal_laser: ["clinical_procedure_infrastructure"],
+  intravitreal_injections: ["clinical_procedure_infrastructure"],
+  chalazion_treatment: ["clinical_procedure_infrastructure"],
+  minor_eye_procedures: ["clinical_procedure_infrastructure"],
+  corneal_crosslinking: ["clinical_procedure_infrastructure"],
+  lacrimal_procedures: ["clinical_procedure_infrastructure"],
+  oculoplastic_procedures: ["clinical_procedure_infrastructure"],
+  foreign_body_removal: ["clinical_procedure_infrastructure"],
+  eyeglasses_repair: ["optical_workshop_infrastructure"],
+  frame_repair: ["optical_workshop_infrastructure"],
+  hinge_repair: ["optical_workshop_infrastructure"],
+  acetate_frame_repair: ["optical_workshop_infrastructure"],
+  metal_frame_soldering: ["optical_workshop_infrastructure"],
+  frame_polishing: ["optical_workshop_infrastructure"],
+  lens_fitting: ["optical_workshop_infrastructure"],
+  lens_replacement: ["optical_workshop_infrastructure"],
+  client_frame_lens_mounting: ["optical_workshop_infrastructure"],
+  rimless_drilling: ["optical_workshop_infrastructure"],
+  semi_rimless_grooving: ["optical_workshop_infrastructure"],
+  optical_quality_check: ["optical_workshop_infrastructure"],
+  ultrasonic_cleaning: ["optical_workshop_infrastructure"],
+  b2b_lens_processing: ["optical_laboratory_infrastructure"],
+  b2b_frame_lens_mounting: ["optical_laboratory_infrastructure"],
 };
 
 function profilesForGroup(group) {
@@ -330,14 +478,14 @@ function buildRegistry() {
       const override = SERVICE_OVERRIDES[key] || {};
       const policy = { ...base, ...override };
       const aliases = aliasesForKey(key);
-      const publicImmediately = !policy.review && policy.need !== "specialized_medical";
+      const publicImmediately = policy.patientFacing !== false && !policy.review && policy.need !== "specialized_medical";
       registry[key] = {
         key,
         label,
         group,
         kind: policy.kind,
-        patient_facing: true,
-        b2b_only: false,
+        patient_facing: policy.patientFacing !== false,
+        b2b_only: policy.b2bOnly === true,
         service_need_level: policy.need,
         default_confirmation_level: publicImmediately ? "provider_confirmed" : "vezunde_verified",
         requires_review: Boolean(policy.review),
@@ -345,7 +493,8 @@ function buildRegistry() {
         required_professional_types: [...(policy.professionalTypes || [])],
         requires_equipment: Boolean(policy.equipment),
         required_equipment_types: [...(REQUIRED_EQUIPMENT[key] || [])],
-        requires_infrastructure: Boolean(policy.infrastructure),
+        requires_infrastructure: Boolean(policy.infrastructure) || Boolean(REQUIRED_INFRASTRUCTURE[key]?.length),
+        required_infrastructure_types: [...(REQUIRED_INFRASTRUCTURE[key] || [])],
         public_immediately: publicImmediately,
         matching_allowed_when_provider_confirmed: publicImmediately,
         applicable_profile_types: [...profileRules.applicable],
@@ -358,8 +507,6 @@ function buildRegistry() {
   return registry;
 }
 
-// Intentionally not frozen: adapters may derive local maps without mutating this object.
-// Consumers should use returned copies from the helper functions below.
 export const CANONICAL_SERVICE_REGISTRY = buildRegistry();
 export const CANONICAL_SERVICE_KEYS = Object.keys(CANONICAL_SERVICE_REGISTRY);
 export const CANONICAL_SERVICE_KEY_SET = new Set(CANONICAL_SERVICE_KEYS);
@@ -370,7 +517,16 @@ export function getCanonicalServiceDefinition(rawKey) {
   const canonicalKey = CANONICAL_SERVICE_KEY_SET.has(key) ? key : LEGACY_SERVICE_ALIASES[key];
   if (!canonicalKey) return null;
   const definition = CANONICAL_SERVICE_REGISTRY[canonicalKey];
-  return definition ? { ...definition, aliases: [...definition.aliases], legacy_keys: [...definition.legacy_keys], required_professional_types: [...definition.required_professional_types], required_equipment_types: [...definition.required_equipment_types], applicable_profile_types: [...definition.applicable_profile_types], hidden_for_profile_types: [...definition.hidden_for_profile_types] } : null;
+  return definition ? {
+    ...definition,
+    aliases: [...definition.aliases],
+    legacy_keys: [...definition.legacy_keys],
+    required_professional_types: [...definition.required_professional_types],
+    required_equipment_types: [...definition.required_equipment_types],
+    required_infrastructure_types: [...definition.required_infrastructure_types],
+    applicable_profile_types: [...definition.applicable_profile_types],
+    hidden_for_profile_types: [...definition.hidden_for_profile_types],
+  } : null;
 }
 
 export function normalizeServiceKey(rawKey) {
@@ -414,7 +570,7 @@ export function isServicePubliclyEligible(service, location) {
   if (!service || service.is_active === false || service.active === false) return false;
   if (!location || location.active_status === "inactiva" || location.profile_control_status === "suspended") return false;
   const normalized = normalizeServiceKey(service.service_key || service.key);
-  if (!normalized.definition) return false;
+  if (!normalized.definition || normalized.definition.patient_facing === false) return false;
   const level = service.confirmation_level || "not_confirmed";
   if (normalized.definition.requires_review || normalized.definition.service_need_level === "specialized_medical") {
     return level === "vezunde_verified" && location.profile_control_status === "verified";
