@@ -1,12 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowRight, CheckCircle2, ChevronDown, Clock, ExternalLink, Info, Mail, MapPin, Phone, Plus, Save, Users, Wrench, X } from "lucide-react";
+import { ArrowRight, CheckCircle2, ChevronDown, Clock, ExternalLink, Info, Mail, MapPin, Phone, Plus, Save, Users, Wrench } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { PROFILE_CONTROL_LABELS, SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 import { buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/lib/maps";
-import ProviderServices from "./ProviderServices";
-import ProviderHours from "./ProviderHours";
-import ProviderTeam from "./ProviderTeam";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none focus:border-foreground/50 transition-colors";
 
@@ -109,27 +106,7 @@ function ConfigureCard({ icon: Icon, title, text, onClick }) {
   );
 }
 
-function LocationConfigModal({ open, title, locationName, onClose, children }) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4 py-6 backdrop-blur-sm">
-      <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] border border-border bg-background shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-5 py-4">
-          <div>
-            <div className="text-xs font-medium text-muted-foreground">{locationName}</div>
-            <h2 className="font-heading text-xl font-extrabold tracking-tight">{title}</h2>
-          </div>
-          <button onClick={onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary" aria-label="Închide">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="overflow-y-auto p-5">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-export default function ProviderLocations({ workspace, selectedLocationId, onSelect, overview, onRefresh }) {
+export default function ProviderLocations({ workspace, selectedLocationId, onSelect, overview, onRefresh, onOpenModule }) {
   const locById = Object.fromEntries((workspace.locations || []).map((l) => [l.id, l]));
   const membershipByLocation = Object.fromEntries((workspace.memberships || []).map((m) => [m.location_id, m]));
   const selectedLocation = locById[selectedLocationId] || (workspace.locations || [])[0] || null;
@@ -139,7 +116,6 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
   const [showAdvancedMap, setShowAdvancedMap] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
-  const [activeModal, setActiveModal] = useState(null);
 
   const coordinateValidation = useMemo(() => getCoordinateValidation(values), [values]);
 
@@ -195,7 +171,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
     }
   };
 
-  useEffect(() => { loadDraft(); setMsg(""); setActiveModal(null); setShowAdvancedMap(false); }, [selectedLocation?.id]);
+  useEffect(() => { loadDraft(); setMsg(""); setShowAdvancedMap(false); }, [selectedLocation?.id]);
 
   const saveDraft = async () => {
     if (!selectedLocation?.id) return;
@@ -348,9 +324,9 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                   <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{selectedLocationName}</span>
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
-                  <ConfigureCard icon={Wrench} title="Servicii" text="Alege serviciile disponibile în această locație." onClick={() => setActiveModal("services")} />
-                  <ConfigureCard icon={Clock} title="Program" text="Setează programul acestei locații." onClick={() => setActiveModal("hours")} />
-                  <ConfigureCard icon={Users} title="Specialiști" text="Invită specialiștii care apar public pe această locație." onClick={() => setActiveModal("team")} />
+                  <ConfigureCard icon={Wrench} title="Servicii" text="Alege serviciile disponibile în această locație." onClick={() => onOpenModule?.("servicii", selectedLocation.id)} />
+                  <ConfigureCard icon={Clock} title="Program" text="Setează programul acestei locații." onClick={() => onOpenModule?.("program", selectedLocation.id)} />
+                  <ConfigureCard icon={Users} title="Specialiști" text="Invită specialiștii care apar public pe această locație." onClick={() => onOpenModule?.("specialisti", selectedLocation.id)} />
                 </div>
               </section>
 
@@ -428,15 +404,6 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                 </div>
               </section>
 
-              <LocationConfigModal open={activeModal === "services"} title="Servicii locație" locationName={selectedLocationName} onClose={() => setActiveModal(null)}>
-                <ProviderServices locationId={selectedLocation.id} location={selectedLocation} overview={overview || { content_summary: { approved_service_count: 0 } }} onRefresh={onRefresh || (() => {})} />
-              </LocationConfigModal>
-              <LocationConfigModal open={activeModal === "hours"} title="Program locație" locationName={selectedLocationName} onClose={() => setActiveModal(null)}>
-                <ProviderHours locationId={selectedLocation.id} location={selectedLocation} onRefresh={onRefresh || (() => {})} />
-              </LocationConfigModal>
-              <LocationConfigModal open={activeModal === "team"} title="Specialiști locație" locationName={selectedLocationName} onClose={() => setActiveModal(null)}>
-                <ProviderTeam locationId={selectedLocation.id} />
-              </LocationConfigModal>
             </>
           )}
         </div>
