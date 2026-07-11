@@ -3,11 +3,11 @@ import {
   CANONICAL_SERVICE_KEYS,
   getCanonicalServiceDefinition,
   getServiceSearchKeywords,
-} from '../shared/canonicalServiceRegistry.js';
+} from '../shared/canonicalServiceRegistryExtended.js';
 import {
   getServiceOperationalContext,
   validateOperationalTaxonomy,
-} from '../shared/serviceOperationalTaxonomy.js';
+} from '../shared/serviceOperationalTaxonomyExtended.js';
 import {
   normalizeSemanticText,
   resolveServiceSearchQuery,
