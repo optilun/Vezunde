@@ -47,7 +47,7 @@ export const SEMANTIC_INTENT_RULES = [
       ['children_eye_exam', 1],
       ['pediatric_ophthalmology', 0.98],
       ['pediatric_refraction', 0.9],
-      ['vision_therapy', 0.82],
+      ['vision_therapy', 1],
     ],
   },
   {
@@ -165,7 +165,7 @@ export function resolveServiceSearchQuery(rawQuery, options = {}) {
       addMatch(
         matches,
         serviceKey,
-        Math.min(1, matchedPhrase.score * weight + 0.08),
+        Math.min(1, matchedPhrase.score * Number(weight) + 0.08),
         `intent:${rule.key}`,
         matchedPhrase.phrase,
       );
