@@ -8,7 +8,7 @@
 }
 
 .provider-services-polish .lucide {
-  stroke-width: 1.7;
+  stroke-width: 1.55;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -19,7 +19,7 @@
 .provider-services-polish [class~="space-y-3"] > section {
   background: var(--services-card);
   border-color: var(--services-border);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.03);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.025);
 }
 
 .provider-services-polish > div > section:first-child,
@@ -43,8 +43,8 @@
 
 .provider-services-polish > div > section:first-child input[placeholder^="Caută un serviciu"]:focus {
   background: var(--services-card);
-  border-color: hsl(var(--foreground) / 0.3);
-  box-shadow: 0 0 0 3px hsl(var(--foreground) / 0.05);
+  border-color: hsl(var(--foreground) / 0.24);
+  box-shadow: 0 0 0 3px hsl(var(--foreground) / 0.045);
 }
 
 .provider-services-polish > div > section:first-child [class*="rounded-full"][class*="px-3"][class*="py-2"] {
@@ -55,64 +55,57 @@
 /* Accordion shells */
 .provider-services-polish [class~="space-y-3"] {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.625rem;
 }
 
 .provider-services-polish [class~="space-y-3"] > section {
   overflow: hidden;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
 }
 
 .provider-services-polish [class~="space-y-3"] > section:hover {
-  border-color: hsl(var(--foreground) / 0.16);
+  border-color: hsl(var(--foreground) / 0.13);
 }
 
 .provider-services-polish [class~="space-y-3"] > section[class*="shadow-sm"] {
   border-color: hsl(var(--foreground) / 0.14);
-  box-shadow: 0 4px 14px rgb(0 0 0 / 0.045);
+  box-shadow: 0 3px 10px rgb(0 0 0 / 0.035);
 }
 
 .provider-services-polish [class~="space-y-3"] > section > button:first-child {
-  min-height: 70px;
-  padding: 0.875rem 1rem;
+  min-height: 64px;
+  padding: 0.75rem 1rem;
   background: var(--services-card);
 }
 
 .provider-services-polish [class~="space-y-3"] > section > button:first-child:hover {
-  background: hsl(var(--secondary) / 0.28);
+  background: hsl(var(--secondary) / 0.2);
 }
 
-/* Premium monochrome category icon tile, aligned with Specialists. */
+/* Simple premium category icon tile, matching Program and Specialists. */
 .provider-services-polish [class~="space-y-3"] > section > button:first-child > span:first-child {
-  position: relative;
-  width: 40px;
-  height: 40px;
-  border-radius: 1rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 0.75rem;
   border: 1px solid var(--services-border);
   color: var(--services-foreground);
-  background: var(--services-secondary);
-  box-shadow: inset 0 0 0 1px hsl(var(--background) / 0.65);
+  background: hsl(var(--secondary) / 0.28);
+  box-shadow: none;
 }
 
 .provider-services-polish [class~="space-y-3"] > section > button:first-child > span:first-child::after {
-  content: "";
-  position: absolute;
-  right: 5px;
-  bottom: 5px;
-  width: 4px;
-  height: 4px;
-  border-radius: 999px;
-  background: hsl(var(--foreground) / 0.18);
+  display: none;
 }
 
 .provider-services-polish [class~="space-y-3"] > section[class*="shadow-sm"] > button:first-child > span:first-child {
-  background: hsl(var(--secondary) / 0.72);
-  border-color: hsl(var(--foreground) / 0.14);
+  background: hsl(var(--secondary) / 0.46);
+  border-color: hsl(var(--foreground) / 0.13);
 }
 
 .provider-services-polish [class~="space-y-3"] > section > button:first-child > span:first-child .lucide {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
+  color: currentColor;
 }
 
 .provider-services-polish [class~="space-y-3"] > section > button:first-child > span:nth-child(2) > span:first-child {
@@ -126,38 +119,38 @@
 }
 
 .provider-services-polish [class~="space-y-3"] > section > button:first-child > .lucide:last-child {
-  width: 32px;
-  height: 32px;
-  padding: 8px;
+  width: 28px;
+  height: 28px;
+  padding: 7px;
   border-radius: 999px;
   color: var(--services-muted);
-  transition: background-color 160ms ease, transform 160ms ease;
+  transition: background-color 150ms ease, transform 150ms ease;
 }
 
 .provider-services-polish [class~="space-y-3"] > section > button:first-child:hover > .lucide:last-child {
-  background: var(--services-secondary);
+  background: hsl(var(--secondary) / 0.35);
 }
 
 /* Open section description */
 .provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:first-child {
-  background: hsl(var(--secondary) / 0.22);
+  background: hsl(var(--secondary) / 0.18);
 }
 
 /* Service rows */
 .provider-services-polish button.grid {
-  min-height: 62px;
-  padding-top: 0.75rem;
-  padding-bottom: 0.75rem;
+  min-height: 60px;
+  padding-top: 0.7rem;
+  padding-bottom: 0.7rem;
   border-color: var(--services-border);
   transition: background-color 150ms ease;
 }
 
 .provider-services-polish button.grid:hover:not(:disabled) {
-  background: hsl(var(--secondary) / 0.26);
+  background: hsl(var(--secondary) / 0.22);
 }
 
 .provider-services-polish button.grid[class*="bg-secondary/35"] {
-  background: hsl(var(--secondary) / 0.42);
+  background: hsl(var(--secondary) / 0.34);
 }
 
 .provider-services-polish button.grid > span:first-child {
@@ -194,7 +187,7 @@
 /* Secondary actions and preview stay neutral; semantic status colors remain untouched. */
 .provider-services-polish [class~="space-y-3"] > button,
 .provider-services-polish section[class*="rounded-[22px]"] [class*="inline-flex"][class*="rounded-xl"] {
-  background: hsl(var(--secondary) / 0.32);
+  background: hsl(var(--secondary) / 0.28);
   border-color: var(--services-border);
   box-shadow: none;
 }
@@ -229,14 +222,14 @@
 
 @media (max-width: 639px) {
   .provider-services-polish [class~="space-y-3"] > section > button:first-child {
-    min-height: 66px;
-    padding: 0.75rem;
+    min-height: 62px;
+    padding: 0.7rem 0.75rem;
   }
 
   .provider-services-polish [class~="space-y-3"] > section > button:first-child > span:first-child {
-    width: 38px;
-    height: 38px;
-    border-radius: 0.875rem;
+    width: 34px;
+    height: 34px;
+    border-radius: 0.7rem;
   }
 
   .provider-services-polish button.grid {
