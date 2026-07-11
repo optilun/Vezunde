@@ -1,0 +1,32 @@
+export {
+  AMBIGUOUS_LEGACY_SERVICE_KEYS,
+  CANONICAL_SERVICE_KEYS,
+  CANONICAL_SERVICE_KEY_SET,
+  CANONICAL_SERVICE_REGISTRY,
+  CLAIM_PREP_SERVICE_GROUPS,
+  LEGACY_PROVIDER_TYPE_LAYOUTS,
+  LEGACY_SERVICE_ALIASES,
+  PROFILE_TYPES,
+  SERVICE_GROUP_LAYOUTS,
+  SERVICE_GROUPS,
+  classifyServiceNeedLevel,
+  getCanonicalServiceDefinition,
+  getCanonicalServiceGroupIds,
+  getServiceGroupLayout,
+  getServiceSearchKeywords,
+  isServiceMatchingEligible,
+  isServicePubliclyEligible,
+  normalizeServiceKey,
+} from '../../shared/canonicalServiceRegistryExtended.js';
+
+export {
+  CURATED_SERVICE_SEARCH_SYNONYMS,
+  PROVIDER_SERVICE_SECTIONS,
+  PUBLIC_NEED_SECTIONS,
+  SERVICE_OPERATIONAL_CONTEXT,
+  getProviderServiceSections,
+  getPublicNeedSections,
+  getServiceOperationalContext,
+  getServiceSearchTerms,
+  validateOperationalTaxonomy,
+} from '../../shared/serviceOperationalTaxonomyExtended.js';
