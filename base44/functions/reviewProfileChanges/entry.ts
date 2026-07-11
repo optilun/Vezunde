@@ -3,7 +3,7 @@ import {
   getCanonicalServiceDefinition,
   isServiceMatchingEligible,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistry.js';
+} from '../../../shared/canonicalServiceRegistryExtended.js';
 
 // Legacy profile review endpoint retained for compatibility with pending_changes.
 // New service configuration must use ProviderWorkspaceSubmission. This endpoint

@@ -16,4 +16,4 @@ export {
   isServiceMatchingEligible,
   isServicePubliclyEligible,
   normalizeServiceKey,
-} from "../../shared/canonicalServiceRegistry.js";
+} from "../../shared/canonicalServiceRegistryExtended.js";

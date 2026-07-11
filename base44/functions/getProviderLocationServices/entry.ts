@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   CANONICAL_SERVICE_KEYS,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistry.js';
+} from '../../../shared/canonicalServiceRegistryExtended.js';
 import {
   evaluateServicePrerequisites,
   servicePrerequisiteStatusLabel,

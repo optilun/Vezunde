@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { ArrowLeft } from "lucide-react";
+import { matchProvidersWithSemanticFallback } from "@/lib/providerSemanticSearch";
 import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill } from "@/lib/intentRegistry";
 import QuestionChoice from "./QuestionChoice";
 import QuestionText from "./QuestionText";
@@ -114,7 +114,8 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     setPhase("submitting");
     (async () => {
       try {
-        const res = await base44.functions.invoke("matchProviders", {
+        const res = await matchProvidersWithSemanticFallback({
+          search_text: initialMessage,
           intent: state.intent,
           service_keys: state.serviceKeys,
           city: state.city,

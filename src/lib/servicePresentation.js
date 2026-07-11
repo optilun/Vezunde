@@ -1,8 +1,8 @@
-import { getCanonicalServiceDefinition } from "../../shared/canonicalServiceRegistry.js";
+import { getCanonicalServiceDefinition } from "../../shared/canonicalServiceRegistryExtended.js";
 import {
   getProviderServiceSections,
   getPublicNeedSections,
-} from "../../shared/serviceOperationalTaxonomy.js";
+} from "../../shared/serviceOperationalTaxonomyExtended.js";
 
 const providerSections = getProviderServiceSections();
 const publicDefinitions = getPublicNeedSections();

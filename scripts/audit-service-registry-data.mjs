@@ -5,7 +5,7 @@ import {
   LEGACY_SERVICE_ALIASES,
   getCanonicalServiceDefinition,
   normalizeServiceKey,
-} from "../shared/canonicalServiceRegistry.js";
+} from "../shared/canonicalServiceRegistryExtended.js";
 
 const inputPath = process.argv[2];
 if (!inputPath) {

@@ -3,7 +3,7 @@ import {
   CLAIM_PREP_SERVICE_GROUPS as CANONICAL_CLAIM_PREP_SERVICE_GROUPS,
   getCanonicalServiceGroupIds,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistry.js';
+} from '../../../shared/canonicalServiceRegistryExtended.js';
 
 // Provider Workspace draft/submit/withdraw.
 // Public changes go through ProviderWorkspaceSubmission. Program remains fast-path.

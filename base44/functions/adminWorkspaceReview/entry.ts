@@ -3,7 +3,7 @@ import {
   getCanonicalServiceDefinition,
   getCanonicalServiceGroupIds,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistry.js';
+} from '../../../shared/canonicalServiceRegistryExtended.js';
 
 // Admin review for ProviderWorkspaceSubmission.
 // Approval applies validated payloads. Rejection / more info only update review status.

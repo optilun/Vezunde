@@ -3,13 +3,17 @@ import {
   CANONICAL_SERVICE_KEYS,
   getCanonicalServiceDefinition,
   getServiceSearchKeywords,
+  isServiceMatchingEligible,
 } from '../shared/canonicalServiceRegistryExtended.js';
 import {
+  getProviderServiceSections,
   getServiceOperationalContext,
+  getServiceSearchTerms,
   validateOperationalTaxonomy,
 } from '../shared/serviceOperationalTaxonomyExtended.js';
 import { validateServiceConfigurationPayload } from '../shared/serviceConfigurationPayloadExtended.js';
 import {
+  getServiceSearchSuggestions,
   normalizeSemanticText,
   resolveServiceSearchQuery,
 } from '../shared/serviceSemanticSearch.js';
@@ -79,8 +83,6 @@ const extendedPayload = validateServiceConfigurationPayload({
     { capability_key: 'pediatric_eye_care', parent_unit_key: 'optometry_cabinet' },
   ],
   service_unit_map: {
-    cas_reimbursed_services: 'optical_store',
-    onsite_eye_testing_b2b: 'optometry_cabinet',
     computer_screen_glasses: 'optical_store',
     myopia_control_spectacle_lenses: 'optometry_cabinet',
     vision_therapy: 'optometry_cabinet',
@@ -90,6 +92,9 @@ const extendedPayload = validateServiceConfigurationPayload({
   care_setting: 'mixed',
 });
 assert.equal(extendedPayload.valid, true, extendedPayload.error || JSON.stringify(extendedPayload.fields));
+assert.equal(Object.hasOwn(extendedPayload.clean.service_unit_map, 'cas_reimbursed_services'), false, 'Atributul CAS are scope=location, nu unitate fizică');
+assert.equal(Object.hasOwn(extendedPayload.clean.service_unit_map, 'onsite_eye_testing_b2b'), false, 'Testarea externă are scope=location, nu unitate fizică');
+
 assert.deepEqual(
   extendedPayload.clean.selected_ids.business_attributes,
   ['cas_reimbursed_services', 'onsite_eye_testing_b2b'],
@@ -129,6 +134,31 @@ assert.ok(myopia.includes('myopia_control_spectacle_lenses'));
 const endothelial = keys('microscopie endotelială');
 assert.equal(endothelial[0], 'specular_microscopy');
 
+const dryEyeMatches = resolveServiceSearchQuery('mă ustură ochii, am ochi uscați și roșeață').matches;
+assert.ok(dryEyeMatches.find((match) => match.service_key === 'dry_eye_management')?.score > dryEyeMatches.find((match) => match.service_key === 'pachymeter')?.score, 'Pahimetria trebuie să rămână o sugestie secundară pentru ochi uscat');
+
+const suggestions = getServiceSearchSuggestions('lentile', { limit: 6 });
+assert.ok(suggestions.length > 0);
+assert.ok(suggestions.every((suggestion) => suggestion.label && suggestion.service_key && suggestion.category && Number.isFinite(suggestion.score)));
+assert.ok(suggestions.some((suggestion) => suggestion.service_key === 'orthokeratology'));
+
+const allOperationalText = JSON.stringify(getProviderServiceSections());
+assert.ok(allOperationalText.includes('orbitei'));
+assert.ok(!allOperationalText.includes('orbiței'));
+assert.ok(!allOperationalText.includes('orbij'));
+assert.ok(getServiceSearchTerms('specular_microscopy').map(normalizeSemanticText).includes('microscopie endoteliala'));
+
+const b2bOnly = keys('distributie rame pentru parteneri b2b');
+assert.ok(!b2bOnly.includes('wholesale_frames'), 'Capabilitățile B2B-only nu trebuie rezolvate pentru căutarea pacienților');
+
+assert.equal(
+  isServiceMatchingEligible(
+    { service_key: 'emergency_ophthalmology', confirmation_level: 'provider_confirmed', matching_allowed: true },
+    { profile_control_status: 'verified' },
+  ),
+  false,
+  'Un serviciu medical provider_confirmed nu este eligibil pentru matching',
+);
 const unknown = resolveServiceSearchQuery('serviciu complet inventat zzzzz');
 assert.equal(unknown.matches.length, 0);
 

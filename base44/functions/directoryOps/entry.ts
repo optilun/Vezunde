@@ -4,7 +4,7 @@ import {
   PROFILE_TYPES,
   getCanonicalServiceDefinition,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistry.js';
+} from '../../../shared/canonicalServiceRegistryExtended.js';
 
 // Directory Data Operations (admin-only writes).
 // Every write happens only through an explicit admin action and an audit record.

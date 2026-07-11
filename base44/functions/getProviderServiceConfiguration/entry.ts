@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   CANONICAL_SERVICE_KEYS,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistry.js';
+} from '../../../shared/canonicalServiceRegistryExtended.js';
 import {
   evaluateServicePrerequisites,
   servicePrerequisiteStatusLabel,
@@ -12,7 +12,7 @@ import {
 } from '../../../shared/locationOperationalRegistry.js';
 import {
   getServiceOperationalContext,
-} from '../../../shared/serviceOperationalTaxonomy.js';
+} from '../../../shared/serviceOperationalTaxonomyExtended.js';
 
 const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
 

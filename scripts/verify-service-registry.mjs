@@ -13,7 +13,7 @@ import {
   isServiceMatchingEligible,
   isServicePubliclyEligible,
   normalizeServiceKey,
-} from "../shared/canonicalServiceRegistry.js";
+} from "../shared/canonicalServiceRegistryExtended.js";
 import {
   CAPABILITY_KEYS,
   FUNCTIONAL_UNIT_KEYS,
@@ -24,7 +24,7 @@ import {
 import {
   PROVIDER_SERVICE_SECTIONS,
   validateOperationalTaxonomy,
-} from "../shared/serviceOperationalTaxonomy.js";
+} from "../shared/serviceOperationalTaxonomyExtended.js";
 import { CLIENT_NEED_SECTIONS } from "../src/lib/servicePresentation.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -158,19 +158,30 @@ const consumers = {
   providerRead: "base44/functions/getProviderServiceConfiguration/entry.ts",
   adminServiceConfiguration: "base44/functions/adminServiceConfigurationReview/entry.ts",
   matchingBackfill: "base44/functions/backfillLocationServiceMatching/entry.ts",
+  legacyWorkspaceSubmit: "base44/functions/submitProviderWorkspaceChange/entry.ts",
+  adminWorkspaceReview: "base44/functions/adminWorkspaceReview/entry.ts",
+  profileFoundation: "base44/functions/profileFoundationOps/entry.ts",
 };
 for (const [name, relativePath] of Object.entries(consumers)) {
   const source = await readFile(sourcePath(relativePath), "utf8");
-  assert.match(source, /shared\/canonicalServiceRegistry\.js/, `${name} nu importă registrul comun`);
+  assert.match(source, /shared\/canonicalServiceRegistryExtended\.js/, `${name} nu importă registrul semantic V2`);
 }
 
 const providerOpsSource = await readFile(sourcePath("base44/functions/providerServiceConfigurationOps/entry.ts"), "utf8");
-assert.match(providerOpsSource, /serviceConfigurationPayload\.js/, "Fluxul provider trebuie să folosească validatorul comun");
+assert.match(providerOpsSource, /serviceConfigurationPayloadExtended\.js/, "Fluxul provider trebuie să folosească validatorul semantic V2");
 assert.match(providerOpsSource, /Serviciile publice pot fi modificate numai de owner sau manager/, "Stafful trebuie blocat explicit");
 
 const providerReadSource = await readFile(sourcePath("base44/functions/getProviderServiceConfiguration/entry.ts"), "utf8");
 assert.match(providerReadSource, /normalized\.status === 'canonical'/, "Citirea providerului trebuie să filtreze explicit doar cheile canonice fără remapare implicită");
 assert.match(providerReadSource, /LocationFunctionalUnit/, "Read modelul trebuie să încarce unitățile persistente");
+
+const operationalWorkspaceSource = await readFile(sourcePath("src/components/workspace/provider/ProviderServicesWorkspaceOperational.jsx"), "utf8");
+assert.match(operationalWorkspaceSource, /getServiceSearchCatalog/, "Configuratorul trebuie să prefere catalogul V2 remote când este disponibil");
+assert.match(operationalWorkspaceSource, /sectionKey === "business_attributes"/, "Configuratorul trebuie să separe opțiunile globale de unitățile fizice");
+assert.match(operationalWorkspaceSource, /submitProviderWorkspaceChange/, "Fallback-ul de persistență legacy trebuie să rămână controlat");
+const runtimeSource = await readFile(sourcePath("src/components/workspace/provider/ProviderServicesWorkspaceRuntime.jsx"), "utf8");
+assert.match(runtimeSource, /ProviderServicesWorkspaceOperational/, "Runtime-ul trebuie să păstreze configuratorul operațional V2");
+assert.doesNotMatch(runtimeSource, /ProviderServicesWorkspaceStructured/, "Lipsa endpointului V2 nu trebuie să ascundă catalogul semantic");
 
 console.log(`Canonical keys: ${canonicalKeys.length}`);
 console.log(`Patient-facing keys: ${patientFacingKeys.length}`);

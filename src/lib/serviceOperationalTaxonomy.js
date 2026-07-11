@@ -8,4 +8,4 @@ export {
   getServiceOperationalContext,
   getServiceSearchTerms,
   validateOperationalTaxonomy,
-} from "../../shared/serviceOperationalTaxonomy.js";
+} from "../../shared/serviceOperationalTaxonomyExtended.js";
