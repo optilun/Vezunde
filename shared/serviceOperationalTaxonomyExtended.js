@@ -212,7 +212,7 @@ function applyTaxonomyExtensions() {
       capabilityKey: section.capabilityKey || null,
       publicNeedKey: section.publicNeedKey || null,
       kind: section.kind,
-      scope: section.scope || 'unit',
+      scope: section.key === 'business_attributes' ? 'location' : 'unit',
     }])),
   ));
 }
