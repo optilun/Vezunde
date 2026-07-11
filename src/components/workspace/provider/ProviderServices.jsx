@@ -1,11 +1,11 @@
 import React from "react";
-import ProviderServicesWorkspace from "./ProviderServicesWorkspace";
+import ProviderServicesWorkspaceStructured from "./ProviderServicesWorkspaceStructured";
 import "./ProviderServicesPolish.css";
 
 export default function ProviderServices(props) {
   return (
     <div className="provider-services-polish">
-      <ProviderServicesWorkspace {...props} />
+      <ProviderServicesWorkspaceStructured {...props} />
     </div>
   );
 }
