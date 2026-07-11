@@ -14,6 +14,7 @@
     "shared/serviceConfigurationPayloadExtended.js",
     "shared/servicePrerequisiteEngine.js",
     "src/lib/canonicalServiceCatalog.js",
+    "src/lib/serviceCatalogV2.js",
     "src/lib/directoryOpsCatalog.js",
     "src/lib/servicePresentation.js",
     "src/lib/providerServiceWorkspaceSections.js",
