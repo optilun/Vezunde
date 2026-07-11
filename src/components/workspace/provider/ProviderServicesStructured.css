@@ -27,6 +27,15 @@
   justify-self: end;
 }
 
+/* Internal taxonomy remains in code, but the provider sees Romanian titles and descriptions only. */
+.provider-services-polish [class~="space-y-3"] > section
+  > div[class*="border-t"]
+  > div[class*="border-t"]
+  > div:first-child
+  > span[class*="rounded-full"] {
+  display: none;
+}
+
 /* Functional-unit cards remain calm and use the same neutral surfaces as Program and Specialists. */
 .provider-services-polish section button.min-h-\[112px\] {
   box-shadow: none;
