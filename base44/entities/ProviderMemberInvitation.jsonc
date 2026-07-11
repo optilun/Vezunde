@@ -3,10 +3,7 @@
   "type": "object",
   "properties": {
     "organization_id": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "type": "string"
     },
     "invited_location_ids": {
       "type": "array",

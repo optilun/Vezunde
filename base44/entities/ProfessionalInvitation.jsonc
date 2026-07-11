@@ -3,7 +3,7 @@
   "type": "object",
   "properties": {
     "organization_id": {
-      "type": ["string", "null"]
+      "type": "string"
     },
     "location_id": {
       "type": "string"
