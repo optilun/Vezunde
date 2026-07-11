@@ -15,6 +15,12 @@ import {
   normalizeServiceKey,
 } from "../shared/canonicalServiceRegistry.js";
 import { CLIENT_NEED_SECTIONS } from "../src/lib/servicePresentation.js";
+import { PROVIDER_SERVICE_SECTIONS } from "../src/lib/providerServiceWorkspaceSections.js";
+import {
+  FUNCTIONAL_UNIT_KEYS,
+  FUNCTIONAL_UNIT_PROFILE_LAYOUTS,
+  LOCATION_FUNCTIONAL_UNITS,
+} from "../src/lib/providerLocationFunctionalUnits.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const expectedCount = 94;
@@ -57,6 +63,32 @@ assert.equal(presentationKeys.size, expectedCount, "Presentation trebuie sa acop
 assert.deepEqual(sorted(presentationKeys), sorted(canonicalKeys), "Presentation si registrul trebuie sa fie in paritate");
 assert.ok(presentationKeys.has("sports_glasses"), "sports_glasses lipseste din presentation");
 assert.ok(presentationKeys.has("safety_glasses"), "safety_glasses lipseste din presentation");
+
+const workspaceKeys = PROVIDER_SERVICE_SECTIONS.flatMap((section) => section.items.map((item) => item.id));
+assert.equal(workspaceKeys.length, expectedCount, "Workspace-ul structurat trebuie sa contina exact 94 de intrari");
+assert.equal(new Set(workspaceKeys).size, expectedCount, "O cheie canonica nu poate aparea in doua sectiuni de workspace");
+assert.deepEqual(sorted(workspaceKeys), sorted(canonicalKeys), "Workspace-ul structurat trebuie sa acopere toate cheile canonice");
+
+const functionalUnitKeySet = new Set(FUNCTIONAL_UNIT_KEYS);
+assert.equal(functionalUnitKeySet.size, FUNCTIONAL_UNIT_KEYS.length, "Cheile unitatilor functionale trebuie sa fie unice");
+for (const unitKey of FUNCTIONAL_UNIT_KEYS) {
+  assert.ok(LOCATION_FUNCTIONAL_UNITS[unitKey], `Lipseste definitia unitatii functionale ${unitKey}`);
+}
+for (const section of PROVIDER_SERVICE_SECTIONS) {
+  assert.ok(functionalUnitKeySet.has(section.unitKey), `Unitate functionala invalida pentru sectiunea ${section.key}`);
+  if (section.unitKeyForLaboratory) {
+    assert.ok(functionalUnitKeySet.has(section.unitKeyForLaboratory), `Unitate de laborator invalida pentru sectiunea ${section.key}`);
+  }
+  assert.ok(section.kind, `Lipseste kind pentru sectiunea ${section.key}`);
+  assert.ok(section.publicLabel, `Lipseste publicLabel pentru sectiunea ${section.key}`);
+}
+for (const [profileType, layout] of Object.entries(FUNCTIONAL_UNIT_PROFILE_LAYOUTS)) {
+  const allUnits = [...(layout.primary || []), ...(layout.optional || [])];
+  assert.equal(new Set(allUnits).size, allUnits.length, `Unitati duplicate in layoutul ${profileType}`);
+  for (const unitKey of allUnits) {
+    assert.ok(functionalUnitKeySet.has(unitKey), `Unitate invalida ${unitKey} in layoutul ${profileType}`);
+  }
+}
 
 const seenAliases = new Set();
 for (const [legacyKey, canonicalKey] of Object.entries(LEGACY_SERVICE_ALIASES)) {
@@ -140,6 +172,8 @@ console.log(`Canonical keys: ${canonicalKeys.length}`);
 console.log(`directoryOps recognized: ${canonicalKeys.length}`);
 console.log(`admin review recognized: ${canonicalKeys.length}`);
 console.log(`presentation recognized: ${presentationKeys.size}`);
+console.log(`workspace functional-unit coverage: ${workspaceKeys.length}`);
+console.log(`functional units: ${FUNCTIONAL_UNIT_KEYS.length}`);
 console.log(`public profile classified: ${canonicalKeys.length}`);
 console.log(`matching classified: ${canonicalKeys.length}`);
 console.log(`legacy aliases: ${Object.keys(LEGACY_SERVICE_ALIASES).length}`);
