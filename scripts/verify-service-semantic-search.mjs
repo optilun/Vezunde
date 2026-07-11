@@ -8,6 +8,7 @@ import {
   getServiceOperationalContext,
   validateOperationalTaxonomy,
 } from '../shared/serviceOperationalTaxonomyExtended.js';
+import { validateServiceConfigurationPayload } from '../shared/serviceConfigurationPayloadExtended.js';
 import {
   normalizeSemanticText,
   resolveServiceSearchQuery,
@@ -58,6 +59,41 @@ assert.equal(taxonomy.valid, true, JSON.stringify(taxonomy));
 assert.equal(getServiceOperationalContext('emergency_ophthalmology').unitKey, 'ophthalmology_office');
 assert.equal(getServiceOperationalContext('cas_reimbursed_services').scope, 'location');
 assert.equal(getServiceOperationalContext('onsite_eye_testing_b2b').scope, 'location');
+
+const extendedPayload = validateServiceConfigurationPayload({
+  selected_ids: {
+    business_attributes: ['cas_reimbursed_services', 'onsite_eye_testing_b2b'],
+    optical_retail: ['computer_screen_glasses'],
+    children_and_prevention: ['myopia_control_spectacle_lenses', 'vision_therapy'],
+    contact_lenses: ['orthokeratology'],
+  },
+  removal_ids: {},
+  raw_removal_keys: [],
+  suggestions: [],
+  functional_units: [
+    { unit_key: 'optical_store', care_setting: 'retail_only' },
+    { unit_key: 'optometry_cabinet', care_setting: 'outpatient' },
+  ],
+  capabilities: [
+    { capability_key: 'contact_lens_professional_services', parent_unit_key: 'optometry_cabinet' },
+    { capability_key: 'pediatric_eye_care', parent_unit_key: 'optometry_cabinet' },
+  ],
+  service_unit_map: {
+    cas_reimbursed_services: 'optical_store',
+    onsite_eye_testing_b2b: 'optometry_cabinet',
+    computer_screen_glasses: 'optical_store',
+    myopia_control_spectacle_lenses: 'optometry_cabinet',
+    vision_therapy: 'optometry_cabinet',
+    orthokeratology: 'optometry_cabinet',
+  },
+  resource_links: { professionals: [], equipment: [], facilities: [] },
+  care_setting: 'mixed',
+});
+assert.equal(extendedPayload.valid, true, extendedPayload.error || JSON.stringify(extendedPayload.fields));
+assert.deepEqual(
+  extendedPayload.clean.selected_ids.business_attributes,
+  ['cas_reimbursed_services', 'onsite_eye_testing_b2b'],
+);
 
 const dryEye = keys('mă ustură ochii și am roșeață');
 assert.ok(dryEye.includes('dry_eye_management'));
