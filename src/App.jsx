@@ -77,7 +77,7 @@ const AuthenticatedApp = () => {
       </Route>
       {/* UI-1.1: authenticated admin/provider routes use the internal shell only — no public navbar */}
       <Route element={<RequireAuth />}>
-        <Route path="/contul-meu" element={<MyAccount />} />
+        <Route path="/contul-meu" element={<MyAccount />} />\n        <Route path="/contul-meu/locatii/:locationId/:locationModule" element={<MyAccount />} />
         <Route path="/dupa-login" element={<PostLogin />} />
       </Route>
       <Route element={<RequireAdmin />}>
