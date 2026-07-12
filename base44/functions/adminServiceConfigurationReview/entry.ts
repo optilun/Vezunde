@@ -43,6 +43,24 @@ async function restoreRemovalVisibility(svc, submission) {
   }
 }
 
+async function withLegacyRemovalDiffs(svc, locationId, payload) {
+  const next = { ...payload };
+  if (payload.removal_unit_keys === undefined) {
+    const existing = await svc.entities.LocationFunctionalUnit?.filter({ location_id: locationId }, null, 100).catch(() => []) || [];
+    const desired = new Set((payload.functional_units || []).map((item) => item.unit_key));
+    next.removal_unit_keys = existing.filter((item) => item.is_active !== false && !desired.has(item.unit_key)).map((item) => item.unit_key);
+  }
+  if (payload.removal_capabilities === undefined) {
+    const existing = await svc.entities.LocationCapability?.filter({ location_id: locationId }, null, 100).catch(() => []) || [];
+    const desired = new Set((payload.capabilities || []).map((item) => `${item.capability_key}:${item.parent_unit_key}`));
+    next.removal_capabilities = existing
+      .filter((item) => item.is_active !== false && !desired.has(`${item.capability_key}:${item.parent_unit_key}`))
+      .map((item) => ({ capability_key: item.capability_key, parent_unit_key: item.parent_unit_key }));
+  }
+  if (payload.resource_removals === undefined) next.resource_removals = { professionals: [], equipment: [], facilities: [] };
+  return next;
+}
+
 function selectedServiceKeys(payload) {
   return [...new Set(Object.values(payload?.selected_ids || {}).flat().map(clean).filter(Boolean))];
 }
@@ -525,7 +543,7 @@ Deno.serve(async (req) => {
     if (!submission) return Response.json({ error: 'Submissionul nu a fost găsit' }, { status: 404 });
     if (submission.section !== 'services') return Response.json(await delegate(base44, action, input));
 
-    const rawPayload = parsePayload(submission.payload_json);
+    const rawPayload = await withLegacyRemovalDiffs(svc, submission.location_id, parsePayload(submission.payload_json));
     const validation = validateServiceConfigurationPayload(rawPayload, {
       allowSuggestions: true,
       allowRawRemovals: true,
