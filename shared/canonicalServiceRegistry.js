@@ -568,6 +568,7 @@ export function classifyServiceNeedLevel(rawKey) {
 
 export function isServicePubliclyEligible(service, location) {
   if (!service || service.is_active === false || service.active === false) return false;
+  if (["removal_pending", "provider_suspended"].includes(service.provider_visibility_status)) return false;
   if (!location || location.active_status === "inactiva" || location.profile_control_status === "suspended") return false;
   const normalized = normalizeServiceKey(service.service_key || service.key);
   if (!normalized.definition || normalized.definition.patient_facing === false) return false;
