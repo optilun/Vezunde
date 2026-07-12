@@ -1,9 +1,9 @@
 name: Brand casing audit
 
 on:
-  push:
-    paths:
-      - '.github/workflows/brand-audit.yml'
+  pull_request:
+    branches:
+      - main
 
 jobs:
   audit:
