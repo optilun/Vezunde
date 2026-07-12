@@ -1,21 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, ImagePlus, Loader2, Store } from "lucide-react";
+import { CheckCircle2, ImagePlus, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const ACTIVE_SUBMISSION_STATUSES = ["draft", "pending_review", "needs_more_info"];
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
 const MAX_OPTIMIZED_BYTES = 2 * 1024 * 1024;
-
-function initials(name = "") {
-  return String(name || "V")
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase() || "V";
-}
 
 function readImage(file) {
   return new Promise((resolve, reject) => {
@@ -93,36 +83,12 @@ async function optimizeLocationPhoto(file, locationId) {
   throw new Error("Fotografia ramane prea mare dupa optimizare.");
 }
 
-function OrganizationLogo({ organization, fallbackPhoto, legacyCandidate }) {
-  const logoUrl = organization?.logo_url || (legacyCandidate ? fallbackPhoto : "");
-  const name = organization?.name || "Organizatie";
-  return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5">
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-white p-1.5 shadow-sm">
-        {logoUrl ? (
-          <img src={logoUrl} alt={`Logo ${name}`} className="h-full w-full object-contain" />
-        ) : (
-          <span className="text-sm font-black">{initials(name)}</span>
-        )}
-      </div>
-      <div className="min-w-0">
-        <div className="text-xs font-bold">Logo organizatie</div>
-        <div className="mt-0.5 truncate text-[11px] text-muted-foreground">{name}</div>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Se adauga din Profil public si apare langa numele organizatiei.</p>
-      </div>
-    </div>
-  );
-}
-
-export default function ProviderLocationPhotoCompact({ locationId, organization: organizationProp, onRefresh }) {
+export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) {
   const [currentPhoto, setCurrentPhoto] = useState("");
-  const [organization, setOrganization] = useState(organizationProp || null);
   const [submission, setSubmission] = useState(null);
   const [preview, setPreview] = useState("");
-  const [legacyLogoCandidate, setLegacyLogoCandidate] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [movingLogo, setMovingLogo] = useState(false);
   const [message, setMessage] = useState("");
 
   const load = async () => {
@@ -133,18 +99,16 @@ export default function ProviderLocationPhotoCompact({ locationId, organization:
       location_id: locationId,
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
     setLoading(false);
+
     if (response.data?.error) {
       setMessage(response.data.error);
       return;
     }
 
     const nextSubmission = response.data?.submission || null;
-    const nextOrganization = response.data?.organization || organizationProp || null;
     const hasActivePreview = ACTIVE_SUBMISSION_STATUSES.includes(nextSubmission?.status);
     setCurrentPhoto(response.data?.location?.current_photo_url || "");
-    setOrganization(nextOrganization);
     setSubmission(nextSubmission);
-    setLegacyLogoCandidate(response.data?.legacy_logo_candidate === true);
     setPreview(hasActivePreview
       ? (nextSubmission?.payload?.photo_url || nextSubmission?.payload?.photo_data_url || "")
       : "");
@@ -152,7 +116,6 @@ export default function ProviderLocationPhotoCompact({ locationId, organization:
 
   useEffect(() => {
     setMessage("");
-    setOrganization(organizationProp || null);
     load();
   }, [locationId]);
 
@@ -162,6 +125,7 @@ export default function ProviderLocationPhotoCompact({ locationId, organization:
   const choosePhoto = async (file) => {
     if (!file) return;
     setMessage("");
+
     if (!ACCEPTED_TYPES.includes(file.type)) {
       setMessage("Format acceptat: JPG, PNG sau WEBP.");
       return;
@@ -174,6 +138,7 @@ export default function ProviderLocationPhotoCompact({ locationId, organization:
     const previousPreview = preview;
     let localPreviewUrl = "";
     setSaving(true);
+
     try {
       setMessage("Fotografia se optimizeaza si se incarca...");
       const optimizedFile = await optimizeLocationPhoto(file, locationId);
@@ -218,74 +183,35 @@ export default function ProviderLocationPhotoCompact({ locationId, organization:
     }
   };
 
-  const moveCurrentPhotoToLogo = async () => {
-    setMovingLogo(true);
-    setMessage("");
-    try {
-      const response = await base44.functions.invoke("locationPhotoOps", {
-        action: "move_current_photo_to_organization_logo",
-        location_id: locationId,
-      });
-      if (response.data?.error) throw new Error(response.data.error);
-      setMessage("Imaginea a fost mutata la Logo organizatie. Acum poti adauga separat o fotografie reala a locatiei.");
-      await load();
-      await onRefresh?.();
-    } catch (error) {
-      setMessage(error.response?.data?.error || error.message || "Imaginea nu a putut fi mutata.");
-    } finally {
-      setMovingLogo(false);
-    }
-  };
-
   if (loading) {
-    return <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se incarca...</div>;
+    return (
+      <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se incarca...
+      </div>
+    );
   }
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <OrganizationLogo organization={organization} fallbackPhoto={currentPhoto} legacyCandidate={legacyLogoCandidate} />
-        <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-secondary"><Store className="h-5 w-5" /></div>
-          <div>
-            <div className="text-xs font-bold">Fotografie locatie</div>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Aici se adauga numai o fotografie reala din exteriorul sau interiorul punctului de lucru.</p>
-          </div>
-        </div>
-      </div>
-
-      {legacyLogoCandidate && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <div className="text-xs font-bold">Imaginea actuala pare sa fie logo-ul organizatiei</div>
-              <p className="mt-1 text-xs leading-relaxed text-amber-900">Este salvata momentan ca fotografie a locatiei. Mut-o la Profil public, iar apoi incarca aici o fotografie reala a magazinului, cabinetului sau clinicii.</p>
-              <button type="button" disabled={movingLogo || pending} onClick={moveCurrentPhotoToLogo} className="mt-3 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background disabled:opacity-50">
-                {movingLogo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
-                Muta la Logo organizatie
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div>
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <div>
-            <div className="text-sm font-bold">Fotografie principala a locatiei</div>
-            <p className="mt-0.5 text-xs text-muted-foreground">Se afiseaza separat de logo in pagina publica a locatiei.</p>
-          </div>
+        <div className="mb-2">
+          <div className="text-sm font-bold">Fotografie principala a locatiei</div>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+            Adauga o fotografie clara din exteriorul sau interiorul punctului de lucru. Logo-ul se gestioneaza separat din Profil public.
+          </p>
         </div>
+
         <div className="overflow-hidden rounded-[22px] border border-border bg-card">
-          <div className="aspect-[4/3] max-h-[360px] bg-secondary/35">
+          <div className="aspect-[4/3] max-h-[420px] bg-secondary/35">
             {shownPhoto ? (
               <img src={shownPhoto} alt="Fotografia locatiei" className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full flex-col items-center justify-center px-6 text-center">
                 <ImagePlus className="h-8 w-8 text-muted-foreground" />
-                <p className="mt-3 text-sm font-semibold">Adauga o fotografie din locatie</p>
-                <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">Foloseste o fotografie clara a exteriorului, interiorului sau spatiului de lucru. Nu incarca logo-ul aici.</p>
+                <p className="mt-3 text-sm font-semibold">Adauga fotografia locatiei</p>
+                <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
+                  Poate fi o imagine a fatadei, interiorului sau spatiului principal.
+                </p>
               </div>
             )}
           </div>
@@ -294,13 +220,14 @@ export default function ProviderLocationPhotoCompact({ locationId, organization:
 
       {pending ? (
         <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> Fotografia locatiei este in verificare. Fotografia publica actuala ramane neschimbata pana la aprobare.
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          Fotografia locatiei este in verificare. Fotografia publica actuala ramane neschimbata pana la aprobare.
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-3">
-          <label className={`inline-flex cursor-pointer items-center gap-2 rounded-full ${currentPhoto && !legacyLogoCandidate ? "border border-border bg-background text-foreground" : "bg-foreground text-background"} px-4 py-2.5 text-sm font-semibold hover:opacity-90 ${saving ? "pointer-events-none opacity-50" : ""}`}>
+          <label className={`inline-flex cursor-pointer items-center gap-2 rounded-full ${currentPhoto ? "border border-border bg-background text-foreground" : "bg-foreground text-background"} px-4 py-2.5 text-sm font-semibold hover:opacity-90 ${saving ? "pointer-events-none opacity-50" : ""}`}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-            {saving ? "Se incarca..." : currentPhoto && !legacyLogoCandidate ? "Schimba fotografia locatiei" : "Alege fotografia locatiei"}
+            {saving ? "Se incarca..." : currentPhoto ? "Schimba fotografia locatiei" : "Alege fotografia locatiei"}
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp"
@@ -312,13 +239,16 @@ export default function ProviderLocationPhotoCompact({ locationId, organization:
               }}
             />
           </label>
-          {currentPhoto && !legacyLogoCandidate && <span className="text-xs text-muted-foreground">Fotografie aprobata si publicata</span>}
+          {currentPhoto && <span className="text-xs text-muted-foreground">Fotografie aprobata si publicata</span>}
         </div>
       )}
 
       {submission?.admin_note && ["needs_more_info", "rejected"].includes(submission.status) && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900"><b>Mesaj Vezunde:</b> {submission.admin_note}</div>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+          <b>Mesaj Vezunde:</b> {submission.admin_note}
+        </div>
       )}
+
       {message && <p className="text-xs leading-relaxed text-muted-foreground">{message}</p>}
     </div>
   );
