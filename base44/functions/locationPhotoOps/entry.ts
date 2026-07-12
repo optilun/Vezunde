@@ -34,6 +34,16 @@ function safePhoto(value: unknown) {
   }
 }
 
+function looksLikeLogo(value: unknown) {
+  const raw = safePhoto(value);
+  if (!raw || raw.startsWith('data:')) return false;
+  try {
+    return /logo|sigla|brandmark/i.test(decodeURIComponent(new URL(raw).pathname));
+  } catch (_error) {
+    return /logo|sigla|brandmark/i.test(raw);
+  }
+}
+
 function validatePayload(raw: unknown) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { error: 'Payload invalid' };
   const payload = raw as Record<string, unknown>;
@@ -112,7 +122,7 @@ async function providerAccess(svc: any, user: any, locationId: string) {
   if (location.profile_control_status === 'suspended' || location.status === 'suspendata') {
     return { error: 'Locatia este suspendata', status: 403 };
   }
-  return { location };
+  return { location, memberships };
 }
 
 async function photoSubmissions(svc: any, locationId: string, statuses?: string[]) {
@@ -131,16 +141,100 @@ async function providerGet(svc: any, user: any, payload: Record<string, unknown>
   const access = await providerAccess(svc, user, locationId);
   if (access.error) return res({ error: access.error }, access.status);
 
-  const rows = await photoSubmissions(svc, locationId);
+  const [rows, organization] = await Promise.all([
+    photoSubmissions(svc, locationId),
+    access.location.organization_id
+      ? svc.entities.ProviderOrganization.get(access.location.organization_id).catch(() => null)
+      : Promise.resolve(null),
+  ]);
   const active = rows.find((row: any) => ACTIVE_STATUSES.includes(row.status)) || null;
   const latestReviewed = rows.find((row: any) => ['rejected', 'approved'].includes(row.status)) || null;
+  const currentPhoto = safePhoto(access.location.photo_url);
+  const organizationLogo = safePhoto(organization?.logo_url);
+  const legacyLogoCandidate = !!currentPhoto && (
+    currentPhoto === organizationLogo
+    || (!organizationLogo && looksLikeLogo(currentPhoto))
+  );
+
   return res({
     location: {
       id: access.location.id,
       name: access.location.public_display_name || access.location.name || 'Locatie',
-      current_photo_url: safePhoto(access.location.photo_url),
+      current_photo_url: currentPhoto,
     },
+    organization: organization ? {
+      id: organization.id,
+      name: organization.public_display_name || organization.name || 'Organizatie',
+      logo_url: organizationLogo,
+    } : null,
+    legacy_logo_candidate: legacyLogoCandidate,
     submission: safeSubmission(active || latestReviewed),
+  });
+}
+
+async function moveCurrentPhotoToOrganizationLogo(svc: any, user: any, payload: Record<string, unknown>) {
+  const locationId = text(payload.location_id);
+  const access = await providerAccess(svc, user, locationId);
+  if (access.error) return res({ error: access.error }, access.status);
+  if (!access.memberships.some((membership: any) => normalizeRole(membership.role) === 'organization_owner')) {
+    return res({ error: 'Doar ownerul organizatiei poate muta imaginea in logo' }, 403);
+  }
+
+  const organizationId = text(access.location.organization_id);
+  if (!organizationId) return res({ error: 'Locatia nu este asociata unei organizatii' }, 409);
+  const organization = await svc.entities.ProviderOrganization.get(organizationId).catch(() => null);
+  if (!organization) return res({ error: 'Organizatia nu a fost gasita' }, 404);
+
+  const activeRows = await photoSubmissions(svc, locationId, ACTIVE_STATUSES);
+  if (activeRows.length > 0) return res({ error: 'Finalizeaza mai intai cererea activa pentru fotografia locatiei' }, 409);
+
+  const currentPhoto = safePhoto(access.location.photo_url);
+  if (!currentPhoto) return res({ error: 'Locatia nu are o fotografie care poate fi mutata' }, 409);
+  const currentLogo = safePhoto(organization.logo_url);
+  if (currentLogo && currentLogo !== currentPhoto) {
+    return res({ error: 'Organizatia are deja un logo diferit. Schimba logo-ul din Profil public.' }, 409);
+  }
+
+  const now = new Date().toISOString();
+  const locationUpdate: Record<string, unknown> = { photo_url: '' };
+  if (safePhoto(access.location.profile_photo_url) === currentPhoto) locationUpdate.profile_photo_url = '';
+
+  await svc.entities.ProviderOrganization.update(organization.id, {
+    logo_url: currentPhoto,
+    profile_updated_at: now,
+  });
+  await svc.entities.ProviderLocation.update(access.location.id, locationUpdate);
+
+  await audit(svc, user, {
+    entity_type: 'ProviderOrganization',
+    entity_id: organization.id,
+    action_type: 'migrate_location_photo_to_organization_logo',
+    changed_fields: ['logo_url'],
+    previous: { logo_present: !!currentLogo },
+    next: { logo_present: true, source_location_id: access.location.id },
+    note: 'Imagine mutata explicit de owner din fotografia locatiei in logo-ul organizatiei.',
+  });
+  await audit(svc, user, {
+    entity_type: 'ProviderLocation',
+    entity_id: access.location.id,
+    action_type: 'clear_legacy_logo_from_location_photo',
+    changed_fields: Object.keys(locationUpdate),
+    previous: { photo_present: true },
+    next: { photo_present: false },
+    note: 'Logo-ul a fost separat de fotografia locatiei. Locatia asteapta o fotografie reala din exterior sau interior.',
+  });
+
+  return res({
+    success: true,
+    organization: {
+      id: organization.id,
+      name: organization.public_display_name || organization.name || 'Organizatie',
+      logo_url: currentPhoto,
+    },
+    location: {
+      id: access.location.id,
+      current_photo_url: '',
+    },
   });
 }
 
@@ -318,6 +412,7 @@ Deno.serve(async (req) => {
     const action = text(payload.action);
 
     if (action === 'get') return await providerGet(svc, user, payload);
+    if (action === 'move_current_photo_to_organization_logo') return await moveCurrentPhotoToOrganizationLogo(svc, user, payload);
     if (action === 'save_draft') return await providerSave(svc, user, payload);
     if (action === 'submit_review') return await providerSubmit(svc, user, payload);
     if (action === 'admin_list') return await adminList(svc, user);
