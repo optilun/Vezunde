@@ -2,19 +2,29 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
+import AccountSettings from "@/components/workspace/account/AccountSettings";
 import { getProviderNav } from "@/lib/workspaceNav";
 import { PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
+import { readAccountPreferences, rememberProviderLocation } from "@/lib/accountPreferences";
 import LocationSwitcher from "./LocationSwitcher";
 import ProviderOverview from "./ProviderOverview";
 import ProviderProfilePublic from "./ProviderProfilePublic";
 import ProviderLocationsWithPhoto from "./ProviderLocationsWithPhoto";
 import ProviderLocationModulePage from "./ProviderLocationModulePage";
 import ProviderAccess from "./ProviderAccess";
-import ProviderSettings from "./ProviderSettings";
 
 const LOCATION_MODULES = new Set(["servicii", "program", "specialisti"]);
 
-export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRefresh, onSwitchPersonal }) {
+export default function ProviderWorkspaceRoot({
+  user,
+  workspace,
+  onLogout,
+  onRefresh,
+  accountModes,
+  activeMode,
+  onSwitchMode,
+  modeSwitches,
+}) {
   const [params] = useSearchParams();
   const routerNavigate = useNavigate();
   const { locationId: routeLocationId, locationModule } = useParams();
@@ -23,9 +33,13 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
   const ownerSyncStarted = useRef(false);
 
   const locations = workspace.locations || [];
+  const preferences = readAccountPreferences(user?.id);
+  const rememberedLocationId = preferences.rememberLastLocation ? preferences.lastProviderLocationId : "";
   const initialLocationId = locations.some((location) => location.id === routeLocationId)
     ? routeLocationId
-    : workspace.memberships?.[0]?.location_id || locations[0]?.id || "";
+    : locations.some((location) => location.id === rememberedLocationId)
+      ? rememberedLocationId
+      : workspace.memberships?.[0]?.location_id || locations[0]?.id || "";
   const [selectedLocationId, setSelectedLocationId] = useState(initialLocationId);
   const [overview, setOverview] = useState(null);
   const [loadingOverview, setLoadingOverview] = useState(true);
@@ -62,6 +76,7 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
 
   useEffect(() => {
     loadOverview(selectedLocationId);
+    if (selectedLocationId) rememberProviderLocation(user?.id, selectedLocationId);
   }, [selectedLocationId]);
 
   const goToSection = (key) => {
@@ -70,6 +85,7 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
 
   const selectLocation = (locationId) => {
     setSelectedLocationId(locationId);
+    rememberProviderLocation(user?.id, locationId);
     if (activeLocationModule) routerNavigate(`/contul-meu/locatii/${locationId}/${activeLocationModule}`);
   };
 
@@ -114,7 +130,7 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
       title={organizationName}
       subtitle="Workspace furnizor"
       publicProfileUrl={selectedLocationId ? `/furnizor/${selectedLocationId}` : null}
-      modeSwitch={{ label: "Cont personal", onClick: onSwitchPersonal }}
+      modeSwitches={modeSwitches}
       statusBadge={(statusLabel || multiLocation) ? (
         <span className="hidden items-center gap-1.5 sm:inline-flex">
           {statusLabel && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusGreen ? "bg-green-100 text-green-800" : "bg-secondary text-foreground"}`}>{statusLabel}</span>}
@@ -152,7 +168,15 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
             />
           )}
           {safeSection === "access" && workspace.can_manage_members && <ProviderAccess locations={workspace.locations} />}
-          {safeSection === "settings" && <ProviderSettings />}
+          {safeSection === "settings" && (
+            <AccountSettings
+              user={user}
+              accountModes={accountModes}
+              activeMode={activeMode}
+              onSwitchMode={onSwitchMode}
+              onLogout={onLogout}
+            />
+          )}
         </>
       )}
     </ProviderAppShell>
