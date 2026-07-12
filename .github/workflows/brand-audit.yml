@@ -12,5 +12,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Find ViaSee references
         run: |
-          echo '--- ViaSee occurrences ---'
-          grep -RIn --exclude-dir=.git --exclude='package-lock.json' --exclude='*.map' 'ViaSee' . || true
+          grep -RIn --exclude-dir=.git --exclude='package-lock.json' --exclude='*.map' 'ViaSee' . > grep-results.txt || true
+          cat grep-results.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: brand-audit-results
+          path: grep-results.txt
