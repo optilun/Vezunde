@@ -60,6 +60,27 @@ function overlayResources(rows, links, type) {
   });
 }
 
+function overlayResourceRemovals(rows, removals, type) {
+  const byId = new Map((removals || []).map((removal) => [
+    type === 'professionals' ? removal.assignment_id : type === 'equipment' ? removal.equipment_id : removal.facility_id,
+    removal,
+  ]));
+  return (rows || []).map((row) => {
+    const removal = byId.get(row.id);
+    if (!removal) return row;
+    if (type === 'professionals') {
+      const removedUnits = new Set(removal.unit_keys || []);
+      return {
+        ...row,
+        functional_unit_keys: removedUnits.size > 0
+          ? (row.functional_unit_keys || []).filter((unitKey) => !removedUnits.has(unitKey))
+          : [],
+      };
+    }
+    return { ...row, functional_unit_key: '' };
+  });
+}
+
 async function loadContext(svc, locationId, payload = null, persisted = false) {
   const location = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
   if (!location) throw new Error('Locația nu a fost găsită');
@@ -72,13 +93,13 @@ async function loadContext(svc, locationId, payload = null, persisted = false) {
   ]);
 
   const assignments = payload
-    ? overlayResources(assignmentsRaw, payload.resource_links?.professionals, 'professionals')
+    ? overlayResources(overlayResourceRemovals(assignmentsRaw, payload.resource_removals?.professionals, 'professionals'), payload.resource_links?.professionals, 'professionals')
     : assignmentsRaw;
   const equipment = payload
-    ? overlayResources(equipmentRaw, payload.resource_links?.equipment, 'equipment')
+    ? overlayResources(overlayResourceRemovals(equipmentRaw, payload.resource_removals?.equipment, 'equipment'), payload.resource_links?.equipment, 'equipment')
     : equipmentRaw;
   const facilities = payload
-    ? overlayResources(facilitiesRaw, payload.resource_links?.facilities, 'facilities')
+    ? overlayResources(overlayResourceRemovals(facilitiesRaw, payload.resource_removals?.facilities, 'facilities'), payload.resource_links?.facilities, 'facilities')
     : facilitiesRaw;
 
   const professionalIds = [...new Set(assignments.map((item) => item.professional_id).filter(Boolean))];
@@ -175,6 +196,9 @@ function reviewPayload(payload, evaluation) {
       care_setting: payload.care_setting || 'not_applicable',
       service_unit_map: payload.service_unit_map || {},
       resource_links: payload.resource_links || { professionals: [], equipment: [], facilities: [] },
+      removal_unit_keys: payload.removal_unit_keys || [],
+      removal_capabilities: payload.removal_capabilities || [],
+      resource_removals: payload.resource_removals || { professionals: [], equipment: [], facilities: [] },
     },
   };
 }
