@@ -119,6 +119,29 @@
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 0 0 1px rgb(0 0 0 / 0.025) !important;
 }
 
+/* Provider organization danger zone: bright matte orange instead of alarm-red. */
+.workspace-neutral section.border-red-200 {
+  border-color: #fb923c !important;
+}
+
+.workspace-neutral section.border-red-200 > div.border-red-100 {
+  border-color: #fed7aa !important;
+  background-color: rgb(255 247 237 / 0.72) !important;
+}
+
+.workspace-neutral section.border-red-200 > div.border-red-100 h2.text-red-900 {
+  color: #c2410c !important;
+}
+
+.workspace-neutral section.border-red-200 button.border-red-300 {
+  border-color: #fb923c !important;
+  color: #c2410c !important;
+}
+
+.workspace-neutral section.border-red-200 button.border-red-300:hover {
+  background-color: #fff7ed !important;
+}
+
 /* Workspace info popovers: keep them visible and open into the available content area. */
 .workspace-neutral section:has(details[open]) {
   overflow: visible !important;
