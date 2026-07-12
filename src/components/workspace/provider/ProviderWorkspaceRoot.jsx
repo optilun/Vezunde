@@ -30,13 +30,16 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
   const [overview, setOverview] = useState(null);
   const [loadingOverview, setLoadingOverview] = useState(true);
 
-  const loadOverview = async (locationId) => {
+  const loadOverview = async (locationId, options = {}) => {
     if (!locationId) return;
-    setLoadingOverview(true);
+    const silent = options.silent === true;
+    if (!silent) setLoadingOverview(true);
     const response = await base44.functions.invoke("getProviderWorkspaceOverview", { location_id: locationId }).catch(() => ({ data: null }));
-    setOverview(response.data);
-    setLoadingOverview(false);
+    if (response.data) setOverview(response.data);
+    if (!silent) setLoadingOverview(false);
   };
+
+  const refreshOverviewInPlace = () => loadOverview(selectedLocationId, { silent: true });
 
   useEffect(() => {
     if (ownerSyncStarted.current || !workspace.can_manage_members) return;
@@ -127,7 +130,7 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
       ) : (
         <>
           {safeSection === "overview" && <ProviderOverview overview={overview} onNavigate={goToSection} />}
-          {safeSection === "profile" && <ProviderProfilePublic locationId={selectedLocationId} overview={overview} workspace={workspace} onNavigate={goToSection} onSelectLocation={selectLocation} onRefresh={() => loadOverview(selectedLocationId)} />}
+          {safeSection === "profile" && <ProviderProfilePublic locationId={selectedLocationId} overview={overview} workspace={workspace} onNavigate={goToSection} onSelectLocation={selectLocation} onRefresh={refreshOverviewInPlace} />}
           {safeSection === "locations" && activeLocationModule && (
             <ProviderLocationModulePage
               workspace={workspace}
@@ -135,7 +138,7 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
               moduleKey={activeLocationModule}
               overview={overview}
               onBack={closeLocationModule}
-              onRefresh={() => loadOverview(selectedLocationId)}
+              onRefresh={refreshOverviewInPlace}
             />
           )}
           {safeSection === "locations" && !activeLocationModule && (
@@ -144,7 +147,7 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
               selectedLocationId={selectedLocationId}
               onSelect={selectLocation}
               overview={overview}
-              onRefresh={() => loadOverview(selectedLocationId)}
+              onRefresh={refreshOverviewInPlace}
               onOpenModule={openLocationModule}
             />
           )}
