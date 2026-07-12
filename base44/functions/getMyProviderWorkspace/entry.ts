@@ -1,21 +1,15 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-// MODULE 3H.1C.1/3 — Provider Workspace read model.
-// Returns one explicit mode:
-// - none: no provider access and no active claim
-// - applicant_preparation: own pending claim + private preparation drafts only
-// - provider_workspace: active ProviderMembership access
-
 const PROVIDER_ALLOWED_SECTIONS = ['public_profile', 'location_details', 'services', 'team', 'media', 'article'];
 const CLAIM_PREP_ALLOWED_SECTIONS = ['public_profile', 'operating_hours', 'services'];
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
 const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
 const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
 
-function normalizeMemberRole(role) {
-  if (role === 'owner') return 'organization_owner';
-  if (role === 'staff') return 'location_staff';
-  return MEMBER_ROLES.includes(role) ? role : '';
+function normalizeMemberRole(value) {
+  if (value === 'owner') return 'organization_owner';
+  if (value === 'staff') return 'location_staff';
+  return MEMBER_ROLES.includes(value) ? value : '';
 }
 
 function highestRole(roles) {
@@ -25,49 +19,9 @@ function highestRole(roles) {
   return '';
 }
 
-function memberLocationIds(memberships, predicate) {
-  return [...new Set(memberships.filter(predicate).map((m) => m.location_id).filter(Boolean))];
-}
-
-function invitationLocIds(inv) {
-  return Array.isArray(inv.invited_location_ids) ? inv.invited_location_ids.filter(Boolean) : [];
-}
-
-async function getMemberSummary(svc, memberships, locationIds) {
-  const roleByLocation = {};
-  for (const locId of locationIds) roleByLocation[locId] = highestRole(memberships.filter((m) => m.location_id === locId).map((m) => normalizeMemberRole(m.role)));
-  const manageableLocationIds = [...new Set([
-    ...memberLocationIds(memberships, (m) => normalizeMemberRole(m.role) === 'organization_owner'),
-    ...memberLocationIds(memberships, (m) => normalizeMemberRole(m.role) === 'location_manager'),
-  ])];
-  const visibleLocationIds = manageableLocationIds.length ? manageableLocationIds : locationIds;
-  const activeById = new Map();
-  const perLocation = {};
-  for (const locId of visibleLocationIds) {
-    const rows = await svc.entities.ProviderMembership.filter({ location_id: locId, status: 'active' }, '-created_date', 200);
-    const valid = rows.filter((m) => normalizeMemberRole(m.role));
-    perLocation[locId] = [...new Set(valid.map((m) => m.user_id))].length;
-    for (const m of valid) activeById.set(m.id, m);
-  }
-  const activeRows = [...activeById.values()];
-  const pendingInvitations = await svc.entities.ProviderMemberInvitation.filter({ status: 'pending' }, '-created_date', 200).catch(() => []);
-  const pendingInvitationCount = pendingInvitations.filter((inv) => invitationLocIds(inv).some((id) => visibleLocationIds.includes(id))).length;
-  return {
-    current_user_role: highestRole(Object.values(roleByLocation)),
-    current_user_role_by_location: roleByLocation,
-    assigned_location_ids: locationIds,
-    can_manage_members: manageableLocationIds.length > 0,
-    active_member_count: [...new Set(activeRows.map((m) => m.user_id))].length,
-    pending_invitation_count: pendingInvitationCount,
-    counters: {
-      active_members_total: [...new Set(activeRows.map((m) => m.user_id))].length,
-      active_members_per_location: perLocation,
-      organization_owners_count: [...new Set(activeRows.filter((m) => normalizeMemberRole(m.role) === 'organization_owner').map((m) => m.user_id))].length,
-      location_managers_count: [...new Set(activeRows.filter((m) => normalizeMemberRole(m.role) === 'location_manager').map((m) => m.user_id))].length,
-      location_staff_count: [...new Set(activeRows.filter((m) => normalizeMemberRole(m.role) === 'location_staff').map((m) => m.user_id))].length,
-    },
-  };
-}
+function unique(values) { return [...new Set(values.filter(Boolean))]; }
+function invitationLocationIds(invitation) { return Array.isArray(invitation.invited_location_ids) ? invitation.invited_location_ids.filter(Boolean) : []; }
+function parseJSON(value) { try { return value ? JSON.parse(value) : null; } catch (_e) { return null; } }
 
 const CLAIM_STATUS_MESSAGES = {
   in_asteptare: 'Solicitarea este in verificare. Poti pregati datele profilului intre timp.',
@@ -76,41 +30,103 @@ const CLAIM_STATUS_MESSAGES = {
   respinsa: 'Revendicarea a fost respinsa.',
 };
 
-function parseJSON(value) {
-  try { return value ? JSON.parse(value) : null; } catch (_e) { return null; }
+function computeLocationCompleteness(location) {
+  const items = [
+    !!(location.name && location.provider_type && location.provider_profile_type),
+    !!location.locality_siruta_code,
+    !!String(location.address || '').trim(),
+    !!(String(location.phone_public || '').trim() || String(location.public_phone || '').trim() || String(location.public_email || '').trim()),
+    !!String(location.opening_hours || '').trim(),
+  ];
+  return Math.round((items.filter(Boolean).length / items.length) * 100);
 }
 
-// MODULE 3H.1C.1 Part 5 — deterministic V1 completeness checklist.
-function computeCompleteness(loc) {
+function computeOrganizationCompleteness(organization, locations) {
   const items = [
-    { key: 'identity', label: 'Identitatea locatiei', done: !!(loc.name && loc.provider_type && loc.provider_profile_type) },
-    { key: 'locality', label: 'Localitatea canonica', done: !!loc.locality_siruta_code },
-    { key: 'address', label: 'Adresa', done: !!String(loc.address || '').trim() },
-    { key: 'public_contact', label: 'Telefon sau email public', done: !!(String(loc.phone_public || '').trim() || String(loc.public_phone || '').trim() || String(loc.public_email || '').trim()) },
-    { key: 'description', label: 'Descriere publica', done: !!(String(loc.public_description || '').trim() || String(loc.description || '').trim()) },
-    { key: 'web_presence', label: 'Website sau social media', done: !!(String(loc.website_url || '').trim() || String(loc.website || '').trim() || String(loc.facebook_url || '').trim() || String(loc.instagram_url || '').trim() || String(loc.linkedin_url || '').trim()) },
-    { key: 'opening_hours', label: 'Program de functionare', done: !!String(loc.opening_hours || '').trim() },
+    !!String(organization?.public_display_name || organization?.name || '').trim(),
+    !!String(organization?.public_description || '').trim(),
+    !!(String(organization?.public_phone || '').trim() || String(organization?.public_email || '').trim()),
+    !!(String(organization?.website_url || organization?.website || '').trim() || String(organization?.facebook_url || '').trim() || String(organization?.instagram_url || '').trim() || String(organization?.linkedin_url || '').trim()),
+    !!String(organization?.logo_url || '').trim(),
+    locations.some((location) => location.active_status !== 'inactiva' && location.status !== 'suspendata'),
   ];
-  const completed = items.filter((i) => i.done);
-  const missing = items.filter((i) => !i.done);
+  return Math.round((items.filter(Boolean).length / items.length) * 100);
+}
+
+function sanitizeOrganization(organization, locations) {
   return {
-    percentage: Math.round((completed.length / items.length) * 100),
-    total_items: items.length,
-    completed_count: completed.length,
-    completed: completed.map((i) => ({ key: i.key, label: i.label })),
-    missing: missing.map((i) => ({ key: i.key, label: i.label })),
+    id: organization.id,
+    name: organization.name,
+    legal_name: organization.legal_name || '',
+    organization_type: organization.organization_type || '',
+    public_display_name: organization.public_display_name || '',
+    logo_url: organization.logo_url || '',
+    cover_image_url: organization.cover_image_url || '',
+    public_description: organization.public_description || '',
+    website_url: organization.website_url || organization.website || '',
+    public_phone: organization.public_phone || '',
+    public_email: organization.public_email || '',
+    facebook_url: organization.facebook_url || '',
+    instagram_url: organization.instagram_url || '',
+    linkedin_url: organization.linkedin_url || '',
+    public_visibility_status: organization.public_visibility_status || 'draft',
+    status: organization.status || 'activa',
+    profile_completeness: computeOrganizationCompleteness(organization, locations),
+  };
+}
+
+function sanitizeLocation(location, organizationName) {
+  return {
+    id: location.id,
+    organization_id: location.organization_id || null,
+    organization_name: organizationName || null,
+    name: location.name,
+    provider_type: location.provider_type,
+    provider_profile_type: location.provider_profile_type,
+    public_display_name: location.public_display_name || '',
+    public_description: location.public_description || location.description || '',
+    city: location.city || location.locality_name || '',
+    county: location.county || location.county_name || '',
+    locality_name: location.locality_name || location.city || '',
+    locality_siruta_code: location.locality_siruta_code || '',
+    county_name: location.county_name || location.county || '',
+    address: location.address || '',
+    lat: location.lat ?? null,
+    lng: location.lng ?? null,
+    place_id: location.place_id || '',
+    phone_public: location.phone_public || location.public_phone || '',
+    public_phone: location.public_phone || location.phone_public || '',
+    public_email: location.public_email || '',
+    website: location.website_url || location.website || '',
+    website_url: location.website_url || location.website || '',
+    facebook_url: location.facebook_url || '',
+    instagram_url: location.instagram_url || '',
+    linkedin_url: location.linkedin_url || '',
+    photo_url: location.photo_url || location.profile_photo_url || '',
+    profile_photo_url: location.profile_photo_url || location.photo_url || '',
+    gallery_urls: Array.isArray(location.gallery_urls) ? location.gallery_urls : [],
+    opening_hours: location.opening_hours || '',
+    saturday_hours: location.saturday_hours || '',
+    availability_status: location.availability_status || 'necunoscuta',
+    request_intake_status: location.request_intake_status || 'inactive',
+    status: location.status || 'draft',
+    active_status: location.active_status || 'activa',
+    public_visibility_status: location.public_visibility_status || 'draft',
+    profile_control_status: location.profile_control_status || 'directory',
+    claim_verification_status: location.claim_verification_status || 'none',
+    profile_completeness: computeLocationCompleteness(location),
   };
 }
 
 async function getContentSummary(svc, locationId, userId) {
   const rawSubmissions = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: locationId, access_origin: 'provider_workspace', status: { $in: ACTIVE_SUBMISSION_STATUSES } }, '-created_date', 50);
-  const submissions = rawSubmissions.filter((s) => !s.claim_request_id || s.submitted_by_user_id === userId);
+  const submissions = rawSubmissions.filter((submission) => !submission.claim_request_id || submission.submitted_by_user_id === userId);
   const services = await svc.entities.LocationService.filter({ location_id: locationId, is_active: true });
   const specialties = await svc.entities.LocationSpecialization.filter({ location_id: locationId, is_active: true });
   const team = await svc.entities.ProfessionalLocationAssignment.filter({ location_id: locationId, active_status: 'activ', public_status: 'public' });
   const media = await svc.entities.ProviderMediaAsset.filter({ location_id: locationId, status: 'approved' });
   const articles = await svc.entities.ProviderArticle.filter({ location_id: locationId, status: 'approved' });
-  const pendingCount = (section) => submissions.filter((s) => s.section === section).length;
+  const pendingCount = (section) => submissions.filter((submission) => submission.section === section).length;
   return {
     approved_service_count: services.length + specialties.length,
     pending_service_review_count: pendingCount('services'),
@@ -118,46 +134,43 @@ async function getContentSummary(svc, locationId, userId) {
     pending_team_review_count: pendingCount('team'),
     approved_media_count: media.length,
     pending_media_review_count: pendingCount('media'),
-    approved_published_article_count: articles.filter((a) => !!a.published_at).length,
+    approved_published_article_count: articles.filter((article) => !!article.published_at).length,
     pending_article_review_count: pendingCount('article'),
   };
 }
 
-// Provider-safe location view — no source provenance, research, migration,
-// trust-internals or pending_changes staging data.
-function sanitizeLocation(loc, orgName) {
+async function getMemberSummary(svc, memberships, locationIds) {
+  const roleByLocation = {};
+  for (const locationId of locationIds) roleByLocation[locationId] = highestRole(memberships.filter((membership) => membership.location_id === locationId).map((membership) => normalizeMemberRole(membership.role)));
+  const ownerLocationIds = unique(memberships.filter((membership) => normalizeMemberRole(membership.role) === 'organization_owner').map((membership) => membership.location_id));
+  const activeRowsById = new Map();
+  const perLocation = {};
+  for (const locationId of locationIds) {
+    const rows = await svc.entities.ProviderMembership.filter({ location_id: locationId, status: 'active' }, '-created_date', 500);
+    const valid = rows.filter((membership) => normalizeMemberRole(membership.role));
+    perLocation[locationId] = unique(valid.map((membership) => membership.user_id)).length;
+    for (const membership of valid) activeRowsById.set(membership.id, membership);
+  }
+  const activeRows = [...activeRowsById.values()];
+  const pendingInvitations = await svc.entities.ProviderMemberInvitation.filter({ status: 'pending' }, '-created_date', 500).catch(() => []);
   return {
-    id: loc.id,
-    organization_id: loc.organization_id || null,
-    organization_name: orgName || null,
-    name: loc.name,
-    provider_type: loc.provider_type,
-    provider_profile_type: loc.provider_profile_type,
-    public_display_name: loc.public_display_name || '',
-    public_description: loc.public_description || loc.description || '',
-    city: loc.city || loc.locality_name || '',
-    county: loc.county || loc.county_name || '',
-    locality_name: loc.locality_name || '',
-    locality_siruta_code: loc.locality_siruta_code || '',
-    address: loc.address || '',
-    phone_public: loc.phone_public || loc.public_phone || '',
-    public_email: loc.public_email || '',
-    website: loc.website_url || loc.website || '',
-    facebook_url: loc.facebook_url || '',
-    instagram_url: loc.instagram_url || '',
-    linkedin_url: loc.linkedin_url || '',
-    opening_hours: loc.opening_hours || '',
-    saturday_hours: loc.saturday_hours || '',
-    availability_status: loc.availability_status || 'necunoscuta',
-    status: loc.status || 'draft',
-    profile_control_status: loc.profile_control_status || 'directory',
-    claim_verification_status: loc.claim_verification_status || 'none',
-    profile_completeness: computeCompleteness(loc),
+    current_user_role: highestRole(Object.values(roleByLocation)),
+    current_user_role_by_location: roleByLocation,
+    assigned_location_ids: locationIds,
+    can_manage_members: ownerLocationIds.length > 0,
+    active_member_count: unique(activeRows.map((membership) => membership.user_id)).length,
+    pending_invitation_count: pendingInvitations.filter((invitation) => invitationLocationIds(invitation).some((id) => ownerLocationIds.includes(id))).length,
+    counters: {
+      active_members_total: unique(activeRows.map((membership) => membership.user_id)).length,
+      active_members_per_location: perLocation,
+      organization_owners_count: unique(activeRows.filter((membership) => normalizeMemberRole(membership.role) === 'organization_owner').map((membership) => membership.user_id)).length,
+      location_managers_count: unique(activeRows.filter((membership) => normalizeMemberRole(membership.role) === 'location_manager').map((membership) => membership.user_id)).length,
+      location_staff_count: unique(activeRows.filter((membership) => normalizeMemberRole(membership.role) === 'location_staff').map((membership) => membership.user_id)).length,
+    },
   };
 }
 
 function sanitizeClaim(claim) {
-  const showAdminNote = claim.status === 'needs_more_info';
   return {
     id: claim.id,
     status: claim.status,
@@ -173,99 +186,32 @@ function sanitizeClaim(claim) {
     created_date: claim.created_date || null,
     reviewed_at: claim.reviewed_at || null,
     status_message: CLAIM_STATUS_MESSAGES[claim.status] || '',
-    latest_admin_note: showAdminNote ? (claim.review_notes || '') : '',
+    latest_admin_note: claim.status === 'needs_more_info' ? (claim.review_notes || '') : '',
   };
 }
 
-function sanitizeClaimLocation(loc, claim) {
+function sanitizeClaimLocation(location, claim) {
   const submitted = parseJSON(claim.submitted_payload) || {};
   const proposed = submitted.proposed_location || {};
-  if (!loc) {
-    return {
-      id: claim.location_id || '',
-      name: proposed.name || claim.business_name || '',
-      provider_type: proposed.provider_type || '',
-      provider_profile_type: proposed.provider_profile_type || '',
-      locality_name: proposed.locality_name || '',
-      locality_siruta_code: proposed.locality_siruta_code || '',
-      county_name: proposed.county_name || '',
-      address: proposed.address || '',
-      status: 'in_verificare',
-    };
-  }
-  return {
-    id: loc.id,
-    name: loc.name,
-    provider_type: loc.provider_type || '',
-    provider_profile_type: loc.provider_profile_type || '',
-    public_display_name: loc.public_display_name || '',
-    locality_name: loc.locality_name || loc.city || '',
-    locality_siruta_code: loc.locality_siruta_code || '',
-    county_name: loc.county_name || loc.county || '',
-    address: loc.address || '',
-    status: loc.status || 'draft',
-    profile_control_status: loc.profile_control_status || 'directory',
-    claim_verification_status: loc.claim_verification_status || 'pending',
-  };
+  if (!location) return { id: claim.location_id || '', name: proposed.name || claim.business_name || '', provider_type: proposed.provider_type || '', provider_profile_type: proposed.provider_profile_type || '', locality_name: proposed.locality_name || '', locality_siruta_code: proposed.locality_siruta_code || '', county_name: proposed.county_name || '', address: proposed.address || '', status: 'in_verificare' };
+  return { id: location.id, name: location.name, provider_type: location.provider_type || '', provider_profile_type: location.provider_profile_type || '', public_display_name: location.public_display_name || '', locality_name: location.locality_name || location.city || '', locality_siruta_code: location.locality_siruta_code || '', county_name: location.county_name || location.county || '', address: location.address || '', status: location.status || 'draft', profile_control_status: location.profile_control_status || 'directory', claim_verification_status: location.claim_verification_status || 'pending' };
 }
 
-function sanitizePreparationDraft(sub) {
-  return {
-    id: sub.id,
-    location_id: sub.location_id,
-    claim_request_id: sub.claim_request_id || '',
-    access_origin: sub.access_origin || 'claim_preparation',
-    section: sub.section,
-    item_key: sub.item_key || '',
-    status: sub.status,
-    payload_json: sub.payload_json || '{}',
-    created_date: sub.created_date || null,
-    updated_date: sub.updated_date || null,
-  };
+function sanitizePreparationDraft(submission) {
+  return { id: submission.id, location_id: submission.location_id, claim_request_id: submission.claim_request_id || '', access_origin: submission.access_origin || 'claim_preparation', section: submission.section, item_key: submission.item_key || '', status: submission.status, payload_json: submission.payload_json || '{}', created_date: submission.created_date || null, updated_date: submission.updated_date || null };
 }
 
 async function getApplicantPreparationWorkspace(svc, user) {
   const claims = await svc.entities.ProviderClaimRequest.filter({ user_id: user.id }, '-created_date', 20);
-  const activeClaim = claims.find((c) => ACTIVE_CLAIM_STATUSES.includes(c.status));
+  const activeClaim = claims.find((claim) => ACTIVE_CLAIM_STATUSES.includes(claim.status));
   if (!activeClaim) {
     const latestClaim = claims[0] || null;
-    return {
-      mode: 'none',
-      user: { id: user.id, full_name: user.full_name, email: user.email, role: user.role },
-      memberships: [],
-      organizations: [],
-      locations: [],
-      pending_review_count: 0,
-      allowed_sections: [],
-      latest_claim_status: latestClaim ? {
-        id: latestClaim.id,
-        status: latestClaim.status,
-        status_message: CLAIM_STATUS_MESSAGES[latestClaim.status] || '',
-        reviewed_at: latestClaim.reviewed_at || null,
-      } : null,
-    };
+    return { mode: 'none', user: { id: user.id, full_name: user.full_name, email: user.email, role: user.role }, memberships: [], organizations: [], locations: [], pending_review_count: 0, allowed_sections: [], latest_claim_status: latestClaim ? { id: latestClaim.id, status: latestClaim.status, status_message: CLAIM_STATUS_MESSAGES[latestClaim.status] || '', reviewed_at: latestClaim.reviewed_at || null } : null };
   }
-
-  const loc = activeClaim.location_id ? await svc.entities.ProviderLocation.get(activeClaim.location_id).catch(() => null) : null;
-  const rawDrafts = await svc.entities.ProviderWorkspaceSubmission.filter({
-    claim_request_id: activeClaim.id,
-    submitted_by_user_id: user.id,
-    access_origin: 'claim_preparation',
-  }, '-created_date', 50);
-  const drafts = rawDrafts.filter((s) => !s.preparation_locked_at && s.preparation_lock_reason !== 'claim_rejected');
-
-  return {
-    mode: 'applicant_preparation',
-    user: { id: user.id, full_name: user.full_name, email: user.email, role: user.role },
-    memberships: [],
-    organizations: [],
-    locations: [],
-    pending_review_count: 0,
-    allowed_sections: CLAIM_PREP_ALLOWED_SECTIONS,
-    claim: sanitizeClaim(activeClaim),
-    location_summary: sanitizeClaimLocation(loc, activeClaim),
-    preparation_drafts: drafts.map(sanitizePreparationDraft),
-  };
+  const location = activeClaim.location_id ? await svc.entities.ProviderLocation.get(activeClaim.location_id).catch(() => null) : null;
+  const rawDrafts = await svc.entities.ProviderWorkspaceSubmission.filter({ claim_request_id: activeClaim.id, submitted_by_user_id: user.id, access_origin: 'claim_preparation' }, '-created_date', 50);
+  const drafts = rawDrafts.filter((submission) => !submission.preparation_locked_at && submission.preparation_lock_reason !== 'claim_rejected');
+  return { mode: 'applicant_preparation', user: { id: user.id, full_name: user.full_name, email: user.email, role: user.role }, memberships: [], organizations: [], locations: [], pending_review_count: 0, allowed_sections: CLAIM_PREP_ALLOWED_SECTIONS, claim: sanitizeClaim(activeClaim), location_summary: sanitizeClaimLocation(location, activeClaim), preparation_drafts: drafts.map(sanitizePreparationDraft) };
 }
 
 Deno.serve(async (req) => {
@@ -274,73 +220,49 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Autentificare necesara' }, { status: 401 });
     const svc = base44.asServiceRole;
+    const rawMemberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' }, '-created_date', 500);
+    const memberships = rawMemberships.filter((membership) => normalizeMemberRole(membership.role) && membership.location_id);
+    if (memberships.length === 0) return Response.json(await getApplicantPreparationWorkspace(svc, user));
 
-    const rawMemberships = await svc.entities.ProviderMembership.filter({
-      user_id: user.id, status: 'active',
-    });
-    const memberships = rawMemberships.filter((m) => normalizeMemberRole(m.role) && m.location_id);
-
-    if (memberships.length === 0) {
-      return Response.json(await getApplicantPreparationWorkspace(svc, user));
-    }
-
-    // Load locations + organizations individually (providers typically have 1-5).
-    const locMap = new Map();
-    const orgMap = new Map();
-    for (const m of memberships) {
-      if (m.location_id && !locMap.has(m.location_id)) {
-        const loc = await svc.entities.ProviderLocation.get(m.location_id).catch(() => null);
-        if (loc) locMap.set(loc.id, loc);
+    const locationMap = new Map();
+    const organizationMap = new Map();
+    for (const membership of memberships) {
+      if (!locationMap.has(membership.location_id)) {
+        const location = await svc.entities.ProviderLocation.get(membership.location_id).catch(() => null);
+        if (location) locationMap.set(location.id, location);
       }
-      if (m.organization_id && !orgMap.has(m.organization_id)) {
-        const org = await svc.entities.ProviderOrganization.get(m.organization_id).catch(() => null);
-        if (org) orgMap.set(org.id, org);
+      if (membership.organization_id && !organizationMap.has(membership.organization_id)) {
+        const organization = await svc.entities.ProviderOrganization.get(membership.organization_id).catch(() => null);
+        if (organization) organizationMap.set(organization.id, organization);
       }
     }
 
-    // Count pending submissions across all permitted locations.
     let pendingReviewCount = 0;
-    for (const locId of locMap.keys()) {
-      const subs = await svc.entities.ProviderWorkspaceSubmission.filter({
-        location_id: locId,
-        access_origin: 'provider_workspace',
-        status: { $in: ACTIVE_SUBMISSION_STATUSES },
-      });
-      pendingReviewCount += subs.filter((s) => !s.claim_request_id || s.submitted_by_user_id === user.id).length;
+    for (const locationId of locationMap.keys()) {
+      const submissions = await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: locationId, access_origin: 'provider_workspace', status: { $in: ACTIVE_SUBMISSION_STATUSES } });
+      pendingReviewCount += submissions.filter((submission) => !submission.claim_request_id || submission.submitted_by_user_id === user.id).length;
+    }
+    for (const organizationId of organizationMap.keys()) {
+      const submissions = await svc.entities.ProviderWorkspaceSubmission.filter({ organization_id: organizationId, section: 'public_profile', access_origin: 'provider_workspace', status: { $in: ACTIVE_SUBMISSION_STATUSES } });
+      pendingReviewCount += submissions.filter((submission) => submission.submitted_by_user_id === user.id && !submission.location_id).length;
     }
 
     const contentSummaries = new Map();
-    for (const locId of locMap.keys()) {
-      contentSummaries.set(locId, await getContentSummary(svc, locId, user.id));
-    }
-
-    const membershipData = memberships
-      .filter((m) => locMap.has(m.location_id))
-      .map((m) => {
-        const loc = locMap.get(m.location_id);
-        const org = m.organization_id ? orgMap.get(m.organization_id) : null;
-        return {
-          membership_id: m.id,
-          role: normalizeMemberRole(m.role),
-          organization_id: m.organization_id || null,
-          organization_name: org?.name || null,
-          location_id: m.location_id,
-          location_name: loc.name,
-          location_status: loc.status,
-          profile_control_status: loc.profile_control_status || 'directory',
-          claim_verification_status: loc.claim_verification_status || 'none',
-          profile_completeness: computeCompleteness(loc).percentage,
-          content_summary: contentSummaries.get(m.location_id),
-        };
-      });
-    const memberSummary = await getMemberSummary(svc, memberships, [...locMap.keys()]);
+    for (const locationId of locationMap.keys()) contentSummaries.set(locationId, await getContentSummary(svc, locationId, user.id));
+    const membershipData = memberships.filter((membership) => locationMap.has(membership.location_id)).map((membership) => {
+      const location = locationMap.get(membership.location_id);
+      const organization = membership.organization_id ? organizationMap.get(membership.organization_id) : null;
+      return { membership_id: membership.id, role: normalizeMemberRole(membership.role), organization_id: membership.organization_id || null, organization_name: organization?.public_display_name || organization?.name || null, location_id: membership.location_id, location_name: location.public_display_name || location.name, location_status: location.status, profile_control_status: location.profile_control_status || 'directory', claim_verification_status: location.claim_verification_status || 'none', profile_completeness: computeLocationCompleteness(location), content_summary: contentSummaries.get(membership.location_id) };
+    });
+    const memberSummary = await getMemberSummary(svc, memberships, [...locationMap.keys()]);
+    const organizations = [...organizationMap.values()].map((organization) => sanitizeOrganization(organization, [...locationMap.values()].filter((location) => location.organization_id === organization.id)));
 
     return Response.json({
       mode: 'provider_workspace',
       user: { id: user.id, full_name: user.full_name, email: user.email, role: user.role },
       memberships: membershipData,
-      organizations: [...orgMap.values()].map((o) => ({ id: o.id, name: o.name, organization_type: o.organization_type })),
-      locations: [...locMap.values()].map((loc) => ({ ...sanitizeLocation(loc, loc.organization_id ? orgMap.get(loc.organization_id)?.name : null), content_summary: contentSummaries.get(loc.id) })),
+      organizations,
+      locations: [...locationMap.values()].map((location) => ({ ...sanitizeLocation(location, location.organization_id ? (organizationMap.get(location.organization_id)?.public_display_name || organizationMap.get(location.organization_id)?.name) : null), content_summary: contentSummaries.get(location.id) })),
       pending_review_count: pendingReviewCount,
       member_summary: memberSummary,
       current_user_role: memberSummary.current_user_role,
