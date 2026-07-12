@@ -18,6 +18,31 @@ function parsePayload(raw) {
   try { return raw ? JSON.parse(raw) : {}; } catch (_error) { return {}; }
 }
 
+function restoredMatchingAllowed(row) {
+  const definition = getCanonicalServiceDefinition(row.service_key);
+  if (!definition || row.is_active === false) return false;
+  if (definition.requires_review || definition.service_need_level === 'specialized_medical') {
+    return row.confirmation_level === 'vezunde_verified';
+  }
+  return definition.matching_allowed_when_provider_confirmed === true;
+}
+
+async function restoreRemovalVisibility(svc, submission) {
+  const rows = await svc.entities.LocationService.filter({
+    location_id: submission.location_id,
+    removal_submission_id: submission.id,
+  }, null, 700).catch(() => []);
+  for (const row of rows) {
+    const definition = getCanonicalServiceDefinition(row.service_key);
+    await svc.entities.LocationService.update(row.id, {
+      provider_visibility_status: 'active',
+      removal_submission_id: '',
+      accepts_requests: row.is_active !== false && definition?.patient_facing !== false,
+      matching_allowed: restoredMatchingAllowed(row),
+    });
+  }
+}
+
 function selectedServiceKeys(payload) {
   return [...new Set(Object.values(payload?.selected_ids || {}).flat().map(clean).filter(Boolean))];
 }
@@ -308,6 +333,8 @@ function serviceApplyData(serviceKey, existing, payload, verified) {
     functional_unit_key: payload.service_unit_map?.[serviceKey] || context?.unitKey || '',
     capability_key: context?.capabilityKey || '',
     migration_review_required: false,
+    provider_visibility_status: 'active',
+    removal_submission_id: '',
   };
 }
 
@@ -333,7 +360,7 @@ async function applyServices(svc, submission, payload, verifiedKeys = new Set())
   for (const [group, ids] of Object.entries(payload.removal_ids || {})) {
     for (const serviceKey of ids) {
       const rows = await svc.entities.LocationService.filter({ location_id: submission.location_id, service_key: serviceKey });
-      for (const row of rows) await svc.entities.LocationService.update(row.id, { is_active: false, accepts_requests: false, matching_allowed: false });
+      for (const row of rows) await svc.entities.LocationService.update(row.id, { is_active: false, accepts_requests: false, matching_allowed: false, provider_visibility_status: 'active', removal_submission_id: '' });
       const definition = getCanonicalServiceDefinition(serviceKey);
       if (group === 'specialties' || definition?.group === 'specialties') await mirrorSpecialization(serviceKey, false);
     }
@@ -344,7 +371,7 @@ async function applyServices(svc, submission, payload, verifiedKeys = new Set())
     if (normalized.status === 'canonical') throw new Error('Cheia canonică trebuie eliminată prin removal_ids');
     const rows = await svc.entities.LocationService.filter({ location_id: submission.location_id, service_key: rawKey });
     if (rows.length === 0) throw new Error(`Serviciul legacy sau necunoscut nu există: ${rawKey}`);
-    for (const row of rows) await svc.entities.LocationService.update(row.id, { is_active: false, accepts_requests: false, matching_allowed: false });
+    for (const row of rows) await svc.entities.LocationService.update(row.id, { is_active: false, accepts_requests: false, matching_allowed: false, provider_visibility_status: 'active', removal_submission_id: '' });
   }
 }
 
@@ -480,7 +507,9 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'reject' || action === 'request_more_info') {
-      return Response.json(await delegate(base44, action, input));
+      const result = await delegate(base44, action, input);
+      if (action === 'reject') await restoreRemovalVisibility(svc, submission);
+      return Response.json(result);
     }
 
     return Response.json({ error: 'Acțiune necunoscută' }, { status: 400 });
