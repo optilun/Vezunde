@@ -20,7 +20,7 @@ const CONFIG = {
   },
 };
 
-export default function TrustBadge({ status, className = "" }) {
+export default function TrustBadge({ status, className = "", label }) {
   const cfg = CONFIG[status];
   if (!cfg) return null;
   const Icon = cfg.Icon;
@@ -29,7 +29,7 @@ export default function TrustBadge({ status, className = "" }) {
       className={`inline-flex items-center gap-1 text-xs font-medium rounded-full px-2.5 py-1 border shrink-0 ${cfg.className} ${className}`}
     >
       {Icon && <Icon className="w-3.5 h-3.5" />}
-      {cfg.label}
+      {label || cfg.label}
     </span>
   );
 }
