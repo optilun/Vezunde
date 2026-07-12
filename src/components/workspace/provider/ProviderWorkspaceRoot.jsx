@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
@@ -20,6 +20,7 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
   const { locationId: routeLocationId, locationModule } = useParams();
   const activeLocationModule = LOCATION_MODULES.has(locationModule) ? locationModule : null;
   const requestedSection = params.get("s") || "overview";
+  const ownerSyncStarted = useRef(false);
 
   const locations = workspace.locations || [];
   const initialLocationId = locations.some((location) => location.id === routeLocationId)
@@ -29,13 +30,21 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
   const [overview, setOverview] = useState(null);
   const [loadingOverview, setLoadingOverview] = useState(true);
 
-  const loadOverview = async (locId) => {
-    if (!locId) return;
+  const loadOverview = async (locationId) => {
+    if (!locationId) return;
     setLoadingOverview(true);
-    const res = await base44.functions.invoke("getProviderWorkspaceOverview", { location_id: locId }).catch(() => ({ data: null }));
-    setOverview(res.data);
+    const response = await base44.functions.invoke("getProviderWorkspaceOverview", { location_id: locationId }).catch(() => ({ data: null }));
+    setOverview(response.data);
     setLoadingOverview(false);
   };
+
+  useEffect(() => {
+    if (ownerSyncStarted.current || !workspace.can_manage_members) return;
+    ownerSyncStarted.current = true;
+    base44.functions.invoke("syncProviderOrganizationOwnerAccess", {})
+      .then((response) => { if (response.data?.changed) onRefresh?.(); })
+      .catch(() => null);
+  }, [workspace.can_manage_members, onRefresh]);
 
   useEffect(() => {
     const routeLocationExists = locations.some((location) => location.id === routeLocationId);
@@ -58,9 +67,7 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
 
   const selectLocation = (locationId) => {
     setSelectedLocationId(locationId);
-    if (activeLocationModule) {
-      routerNavigate(`/contul-meu/locatii/${locationId}/${activeLocationModule}`);
-    }
+    if (activeLocationModule) routerNavigate(`/contul-meu/locatii/${locationId}/${activeLocationModule}`);
   };
 
   const openLocationModule = (moduleKey, locationId = selectedLocationId) => {
@@ -81,10 +88,18 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
     : allowedSections.includes(normalizedSection)
       ? normalizedSection
       : "overview";
-  const statusLabel = overview?.location?.profile_control_status ? (PROFILE_CONTROL_LABELS[overview.location.profile_control_status] || overview.location.profile_control_status) : "";
-  const statusGreen = ["verified", "claimed"].includes(overview?.location?.profile_control_status);
+  const selectedStatus = overview?.location?.profile_control_status;
+  const statusLabel = selectedStatus ? (PROFILE_CONTROL_LABELS[selectedStatus] || selectedStatus) : "";
+  const statusGreen = ["verified", "claimed"].includes(selectedStatus);
   const activeLocationCount = locations.filter((location) => location.active_status !== "inactiva" && location.status !== "suspendata").length;
   const multiLocation = activeLocationCount >= 2;
+  const organizationName = overview?.organization?.public_display_name
+    || overview?.organization?.name
+    || workspace.organizations?.[0]?.public_display_name
+    || workspace.organizations?.[0]?.name
+    || overview?.location?.organization_name
+    || overview?.location?.name
+    || "Workspace furnizor";
 
   return (
     <ProviderAppShell
@@ -93,13 +108,13 @@ export default function ProviderWorkspaceRoot({ user, workspace, onLogout, onRef
       onNavigate={goToSection}
       user={user}
       onLogout={onLogout}
-      title={overview?.location?.organization_name || overview?.location?.name || "Workspace furnizor"}
+      title={organizationName}
       subtitle="Workspace furnizor"
       publicProfileUrl={selectedLocationId ? `/furnizor/${selectedLocationId}` : null}
       modeSwitch={{ label: "Cont personal", onClick: onSwitchPersonal }}
       statusBadge={(statusLabel || multiLocation) ? (
         <span className="hidden items-center gap-1.5 sm:inline-flex">
-          {statusLabel && <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${statusGreen ? "bg-green-100 text-green-800" : "bg-secondary text-foreground"}`}>{statusLabel}</span>}
+          {statusLabel && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusGreen ? "bg-green-100 text-green-800" : "bg-secondary text-foreground"}`}>{statusLabel}</span>}
           {multiLocation && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-foreground">Organizatie cu {activeLocationCount} locatii</span>}
         </span>
       ) : null}
