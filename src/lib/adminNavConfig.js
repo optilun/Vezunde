@@ -1,27 +1,38 @@
-import { LayoutDashboard, Search, Sparkles, PlusCircle, Building2, Wrench, UserCheck, MapPin, History, ShieldCheck, Settings, ClipboardCheck, Image } from "lucide-react";
+import {
+  LayoutDashboard,
+  Search,
+  PlusCircle,
+  Building2,
+  Wrench,
+  UserCheck,
+  MapPin,
+  History,
+  ShieldCheck,
+  ClipboardCheck,
+} from "lucide-react";
 
-// UI-1: shared nav config for the admin app shell. Keys map 1:1 to the
-// existing tab keys already used by AdminDirectoryOps — no routes changed.
 export const ADMIN_NAV_PRIMARY = [
   { key: "dashboard", label: "Panou general", icon: LayoutDashboard },
+  { key: "workspace_reviews", label: "Coada de verificare", icon: ClipboardCheck },
+  { key: "revendicari", label: "Revendicari", icon: UserCheck },
+  { key: "profiluri", label: "Profiluri si locatii", icon: Building2 },
+  { key: "servicii", label: "Catalog si eligibilitate", icon: Wrench },
   { key: "research", label: "Research director", icon: Search },
-  { key: "ai", label: "AI Copilot", icon: Sparkles },
-  { key: "adauga", label: "Adaugă locație", icon: PlusCircle },
-  { key: "profiluri", label: "Profiluri director", icon: Building2 },
-  { key: "workspace_reviews", label: "Modificări workspace", icon: ClipboardCheck },
-  { key: "specialist_reviews", label: "Review specialiști", icon: UserCheck },
-  { key: "fotografii", label: "Fotografii locații", icon: Image },
-  { key: "servicii", label: "Servicii", icon: Wrench },
-  { key: "revendicari", label: "Revendicări", icon: UserCheck },
+  { key: "adauga", label: "Adauga organizatie / locatie", icon: PlusCircle },
   { key: "geografie", label: "Geografie", icon: MapPin },
   { key: "audit", label: "Istoric audit", icon: History },
 ];
 
 export const ADMIN_NAV_SECONDARY = [
   { key: "contract_geo", label: "Contract geografic", icon: ShieldCheck, groupLabel: "Diagnostic intern" },
-  { key: "setari", label: "Setări", icon: Settings },
 ];
 
-export const ADMIN_NAV_LABELS = Object.fromEntries(
-  [...ADMIN_NAV_PRIMARY, ...ADMIN_NAV_SECONDARY].map((n) => [n.key, n.label])
-);
+export const ADMIN_NAV_LABELS = {
+  ...Object.fromEntries(
+    [...ADMIN_NAV_PRIMARY, ...ADMIN_NAV_SECONDARY].map((item) => [item.key, item.label]),
+  ),
+  ai: "Research director",
+  specialist_reviews: "Coada de verificare",
+  fotografii: "Coada de verificare",
+  setari: "Setari",
+};
