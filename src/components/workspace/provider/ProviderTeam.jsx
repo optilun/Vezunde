@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Check, Copy, Trash2, UserPlus, Users, Send, Eye } from "lucide-react";
+import { Check, Copy, Trash2, UserPlus, Send, Eye } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-foreground/40";
@@ -152,28 +152,109 @@ export default function ProviderTeam({ locationId }) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-heading text-2xl font-extrabold tracking-tight">Specialiști locație</h1>
-          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-            Invită medicii oftalmologi, optometriștii și opticienii asociați acestei locații. Invitația nu le acordă acces administrativ și nu publică automat profilul.
-          </p>
-        </div>
-        <span className="rounded-2xl border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground">Separat de Acces și utilizatori</span>
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
+      <div className="order-2 space-y-4 xl:order-1">
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold">Specialiști asociați</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Poți elimina asocierea cu locația, dar nu poți modifica identitatea profesională a specialistului.</p>
+            </div>
+            <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{activeAssignments.length} activi · {publicTeam.length} publici</span>
+          </div>
+
+          {assignments.length === 0 ? <EmptyCard>Nu există specialiști asociați acestei locații.</EmptyCard> : (
+            <ul className="space-y-2">
+              {assignments.map((assignment) => {
+                const status = assignmentStatus(assignment);
+                return (
+                  <li key={assignment.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border px-3 py-3 text-xs">
+                    <div>
+                      <div className="font-bold">{assignment.full_name}</div>
+                      <div className="mt-0.5 text-muted-foreground">{roleLabel(assignment.professional_type)}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${status.className}`}>{status.label}</span>
+                      {assignment.active_status === "activ" && (
+                        <button type="button" disabled={saving} onClick={() => deactivateAssignment(assignment.professional_id)} className="inline-flex items-center gap-1 rounded-full border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">
+                          <Trash2 className="h-3.5 w-3.5" /> Elimină
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold">Invitații profesionale</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Invitațiile expiră automat și pot fi revocate înainte de acceptare.</p>
+            </div>
+            <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{invitations.length} total</span>
+          </div>
+
+          {invitations.length === 0 ? <EmptyCard>Nu există invitații pentru această locație.</EmptyCard> : (
+            <ul className="space-y-2">
+              {invitations.map((invitation) => (
+                <li key={invitation.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/70 px-3 py-3 text-xs">
+                  <div className="min-w-0">
+                    <div className="font-bold">{roleLabel(invitation.professional_type)}</div>
+                    <div className="break-all text-muted-foreground">{invitation.invited_email_masked}</div>
+                    {invitation.expires_at && invitation.status === "pending" && <div className="mt-0.5 text-[11px] text-muted-foreground">Expiră la {formatDate(invitation.expires_at)}</div>}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{INVITE_STATUS_LABELS[invitation.status] || invitation.status}</span>
+                    {invitation.status === "pending" && (
+                      <button type="button" disabled={saving} onClick={() => revokeInvitation(invitation.id)} className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1.5 text-xs font-semibold text-destructive hover:bg-secondary disabled:opacity-50">
+                        <Trash2 className="h-3.5 w-3.5" /> Revocă
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] xl:items-start">
+      <aside className="order-1 space-y-4 xl:sticky xl:top-4 xl:order-2">
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="mb-3 flex items-center gap-2">
+            <Eye className="h-4 w-4" />
+            <h2 className="text-sm font-bold">Rezumat specialiști</h2>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-xl bg-secondary/45 p-3">
+              <div className="text-[10px] font-semibold leading-tight text-muted-foreground">Asociați activ</div>
+              <div className="mt-1 text-xl font-extrabold">{activeAssignments.length}</div>
+            </div>
+            <div className="rounded-xl bg-secondary/45 p-3">
+              <div className="text-[10px] font-semibold leading-tight text-muted-foreground">Vizibili public</div>
+              <div className="mt-1 text-xl font-extrabold">{publicTeam.length}</div>
+            </div>
+            <div className="rounded-xl bg-secondary/45 p-3">
+              <div className="text-[10px] font-semibold leading-tight text-muted-foreground">În așteptare</div>
+              <div className="mt-1 text-xl font-extrabold">{pendingInvitations.length}</div>
+            </div>
+          </div>
+        </section>
+
         <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="mb-4 flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary"><UserPlus className="h-4 w-4" /></div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary">
+              <UserPlus className="h-4 w-4" />
+            </div>
             <div>
               <h2 className="text-sm font-bold">Invită un specialist</h2>
-              <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">Specialistul acceptă cu propriul cont. Asocierea rămâne privată până când profilul profesional este completat și aprobat de Vezunde.</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Invită medicii oftalmologi, optometriștii și opticienii asociați acestei locații. Specialistul acceptă cu propriul cont. Asocierea rămâne privată până când profilul profesional este completat și aprobat de Vezunde.</p>
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-3">
             <div>
               <label className="text-xs font-semibold text-muted-foreground">Email specialist</label>
               <input className={`${inputCls} mt-1.5`} placeholder="nume@email.ro" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
@@ -186,7 +267,7 @@ export default function ProviderTeam({ locationId }) {
             </div>
           </div>
 
-          <button disabled={saving} onClick={createInvitation} className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-full bg-foreground px-5 text-xs font-semibold text-background hover:opacity-90 disabled:opacity-50">
+          <button type="button" disabled={saving} onClick={createInvitation} className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-xs font-semibold text-background hover:opacity-90 disabled:opacity-50">
             <Send className="h-4 w-4" /> Creează invitația
           </button>
 
@@ -200,70 +281,15 @@ export default function ProviderTeam({ locationId }) {
               </button>
             </div>
           )}
+
           {msg && <p className="mt-3 text-xs text-muted-foreground">{msg}</p>}
-        </section>
 
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <div className="mb-4 flex items-center gap-2"><Eye className="h-4 w-4" /><h2 className="text-sm font-bold">Rezumat specialiști</h2></div>
-          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-            <div className="rounded-2xl bg-secondary/45 p-4"><div className="text-[11px] font-semibold text-muted-foreground">Asociați activ</div><div className="mt-1 text-2xl font-extrabold">{activeAssignments.length}</div></div>
-            <div className="rounded-2xl bg-secondary/45 p-4"><div className="text-[11px] font-semibold text-muted-foreground">Vizibili public</div><div className="mt-1 text-2xl font-extrabold">{publicTeam.length}</div></div>
-            <div className="rounded-2xl bg-secondary/45 p-4"><div className="text-[11px] font-semibold text-muted-foreground">Invitații în așteptare</div><div className="mt-1 text-2xl font-extrabold">{pendingInvitations.length}</div></div>
+          <div className="mt-4 rounded-2xl border border-border bg-secondary/25 p-3">
+            <div className="text-[11px] font-bold text-foreground">Separat de Acces și utilizatori</div>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Invitația nu le acordă acces administrativ și nu publică automat profilul. Profilul specialistului devine public doar după completare și aprobarea Vezunde. Asocierea cu locația nu acordă acces administrativ.</p>
           </div>
-          <p className="mt-4 rounded-2xl border border-border bg-secondary/25 p-3 text-xs leading-relaxed text-muted-foreground">Profilul specialistului devine public doar după completare și aprobarea Vezunde. Asocierea cu locația nu acordă acces administrativ.</p>
         </section>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-2 xl:items-start">
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <div><h2 className="text-sm font-bold">Specialiști asociați</h2><p className="mt-1 text-xs text-muted-foreground">Poți elimina asocierea cu locația, dar nu poți modifica identitatea profesională a specialistului.</p></div>
-            <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{activeAssignments.length} activi · {publicTeam.length} publici</span>
-          </div>
-
-          {assignments.length === 0 ? <EmptyCard>Nu există specialiști asociați acestei locații.</EmptyCard> : (
-            <ul className="space-y-2">
-              {assignments.map((assignment) => {
-                const status = assignmentStatus(assignment);
-                return (
-                  <li key={assignment.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border px-3 py-3 text-xs">
-                    <div><div className="font-bold">{assignment.full_name}</div><div className="mt-0.5 text-muted-foreground">{roleLabel(assignment.professional_type)}</div></div>
-                    <div className="flex items-center gap-2">
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${status.className}`}>{status.label}</span>
-                      {assignment.active_status === "activ" && (
-                        <button disabled={saving} onClick={() => deactivateAssignment(assignment.professional_id)} className="inline-flex items-center gap-1 rounded-full border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> Elimină</button>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
-
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <div><h2 className="text-sm font-bold">Invitații profesionale</h2><p className="mt-1 text-xs text-muted-foreground">Invitațiile expiră automat și pot fi revocate înainte de acceptare.</p></div>
-            <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{invitations.length} total</span>
-          </div>
-
-          {invitations.length === 0 ? <EmptyCard>Nu există invitații pentru această locație.</EmptyCard> : (
-            <ul className="space-y-2">
-              {invitations.map((invitation) => (
-                <li key={invitation.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/70 px-3 py-3 text-xs">
-                  <div className="min-w-0"><div className="font-bold">{roleLabel(invitation.professional_type)}</div><div className="break-all text-muted-foreground">{invitation.invited_email_masked}</div>{invitation.expires_at && invitation.status === "pending" && <div className="mt-0.5 text-[11px] text-muted-foreground">Expiră la {formatDate(invitation.expires_at)}</div>}</div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{INVITE_STATUS_LABELS[invitation.status] || invitation.status}</span>
-                    {invitation.status === "pending" && (
-                      <button disabled={saving} onClick={() => revokeInvitation(invitation.id)} className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1.5 text-xs font-semibold text-destructive hover:bg-secondary disabled:opacity-50"><Trash2 className="h-3.5 w-3.5" /> Revocă</button>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
+      </aside>
     </div>
   );
 }
