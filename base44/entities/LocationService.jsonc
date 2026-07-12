@@ -64,6 +64,25 @@
     "migration_review_required": {
       "type": "boolean",
       "default": false
+    },
+    "provider_visibility_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "removal_pending",
+        "provider_suspended"
+      ],
+      "default": "active"
+    },
+    "removal_submission_id": {
+      "type": "string"
+    },
+    "provider_suspended_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "provider_suspended_by": {
+      "type": "string"
     }
   },
   "required": [
