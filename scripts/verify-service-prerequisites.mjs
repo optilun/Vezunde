@@ -5,6 +5,7 @@ import '../shared/serviceOperationalTaxonomyExtended.js';
 import {
   evaluateServicePrerequisites,
   getServicePrerequisiteDefinition,
+  SERVICE_PREREQUISITE_POLICY,
 } from '../shared/servicePrerequisiteEngine.js';
 
 const verifiedClinic = {
@@ -75,12 +76,16 @@ const missingUnit = evaluateServicePrerequisites('oct', {
 assert.equal(missingUnit.eligible, false);
 assert.equal(missingUnit.status, 'requires_functional_unit');
 
-const wrongUnitSpecialist = evaluateServicePrerequisites('ophthalmology_consultation', {
+assert.equal(SERVICE_PREREQUISITE_POLICY.enforce_verified_specialist, false, 'Politica MVP trebuie să permită configurarea fără profil individual de specialist');
+
+const consultWithoutSpecialist = evaluateServicePrerequisites('ophthalmology_consultation', {
   ...consultContext,
-  assignments: [assignment(ophthalmologist, ['ophthalmology_diagnostics'])],
+  assignments: [],
+  professionals: [],
 });
-assert.equal(wrongUnitSpecialist.eligible, false);
-assert.equal(wrongUnitSpecialist.status, 'requires_verified_specialist');
+assert.equal(consultWithoutSpecialist.eligible, true, 'Consultația poate fi configurată fără specialist individual în etapa MVP');
+assert.equal(consultWithoutSpecialist.status, 'ready_for_review');
+assert.equal(consultWithoutSpecialist.evidence.verified_specialist_enforced, false);
 
 const wrongUnitEquipment = evaluateServicePrerequisites('oct', {
   ...consultContext,
