@@ -44,12 +44,12 @@ const FIELD_LABELS = {
 };
 
 const PROFILE_STATUS_LABELS = {
-  approved: "Profil aprobat",
-  pending_review: "Profil in verificare",
-  needs_more_info: "Necesita completari",
-  rejected: "Profil respins",
-  archived: "Profil arhivat",
-  draft: "Profil nefinalizat",
+  approved: "Profil organizatie aprobat",
+  pending_review: "Profil organizatie in verificare",
+  needs_more_info: "Profil organizatie necesita completari",
+  rejected: "Profil organizatie respins",
+  archived: "Profil organizatie arhivat",
+  draft: "Profil organizatie nefinalizat",
 };
 
 function EmptyState({ icon: Icon, title, text }) {
@@ -72,6 +72,15 @@ function Metric({ icon: Icon, label, value, hint, muted = false }) {
       </div>
       <div className={`mt-1 text-lg font-extrabold ${muted ? "text-muted-foreground" : "text-foreground"}`}>{value}</div>
       {hint && <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+function ProgressBar({ value }) {
+  const safeValue = Math.max(0, Math.min(100, Number(value) || 0));
+  return (
+    <div className="h-2 overflow-hidden rounded-full bg-secondary">
+      <div className="h-full rounded-full bg-foreground transition-all" style={{ width: `${safeValue}%` }} />
     </div>
   );
 }
@@ -123,11 +132,36 @@ function ChangeRow({ submission }) {
   );
 }
 
+function LocationCompletionRow({ item, onNavigate }) {
+  const completion = item.completion || { percentage: 0, missing_count: 0 };
+  const verified = item.profile_control_status === "verified";
+  return (
+    <button type="button" onClick={() => onNavigate("locations")} className="w-full rounded-2xl border border-border bg-background/60 px-3.5 py-3 text-left hover:bg-secondary/30">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold">{item.name}</div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+            {item.locality_name && <span>{item.locality_name}</span>}
+            <span>{verified ? "Verificata" : "Neverificata"}</span>
+          </div>
+        </div>
+        <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold">{completion.percentage || 0}%</span>
+      </div>
+      <div className="mt-2"><ProgressBar value={completion.percentage} /></div>
+      {completion.missing_count > 0 && <p className="mt-2 text-[11px] text-muted-foreground">{completion.missing_count} {completion.missing_count === 1 ? "element lipsa" : "elemente lipsa"}</p>}
+    </button>
+  );
+}
+
 export default function ProviderOverview({ overview, onNavigate }) {
   const organization = overview.organization || {};
   const location = overview.location || {};
   const organizationSummary = overview.organization_summary || {};
-  const completion = overview.completion || { percentage: 0, checklist: [] };
+  const profileState = overview.organization_profile_state || {};
+  const completion = profileState.published_completion || overview.completion || { percentage: 0, checklist: [] };
+  const projectedCompletion = profileState.projected_completion || completion;
+  const activeProfileSubmission = profileState.active_submission || null;
+  const locationCompletionSummary = overview.location_completion_summary || { average_percentage: 0, complete_count: 0, active_count: 0, items: [] };
   const contentSummary = overview.content_summary || {};
   const pendingSubmissions = (overview.pending_submissions || []).filter((item) => item.id);
   const inReview = pendingSubmissions.filter((item) => item.status === "pending_review");
@@ -142,8 +176,9 @@ export default function ProviderOverview({ overview, onNavigate }) {
   const verifiedLocationCount = Number(organizationSummary.verified_location_count ?? 0);
   const profileStatus = organization.public_visibility_status || organizationSummary.public_profile_status || "draft";
   const checklist = completion.checklist || [];
-  const fallbackFields = overview.organization_profile_fallback_fields || [];
+  const fallbackFields = profileState.fallback_fields || overview.organization_profile_fallback_fields || [];
   const fallbackLabels = fallbackFields.map((key) => FIELD_LABELS[key] || key);
+  const fallbackLocationName = profileState.fallback_location_name || "locatia principala";
   const verificationStatus = organizationSummary.verification_status || "unverified";
   const verificationLabel = verificationStatus === "all_verified"
     ? `${verifiedLocationCount}/${activeLocationCount} ${activeLocationCount === 1 ? "locatie verificata" : "locatii verificate"}`
@@ -151,6 +186,7 @@ export default function ProviderOverview({ overview, onNavigate }) {
       ? `${verifiedLocationCount}/${activeLocationCount} locatii verificate`
       : "Locatii neverificate";
   const website = organization.website_url || "";
+  const projectedDiffers = activeProfileSubmission && projectedCompletion.percentage !== completion.percentage;
 
   return (
     <div className="space-y-5">
@@ -185,8 +221,8 @@ export default function ProviderOverview({ overview, onNavigate }) {
           <div className="mt-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
-              <div className="font-bold">Unele date sunt preluate temporar din locatia principala.</div>
-              <p className="mt-1">{fallbackLabels.join(", ")}. Salveaza-le in Profil public pentru ca datele organizatiei si cele ale locatiei sa ramana separate.</p>
+              <div className="font-bold">Datele exista in {fallbackLocationName}, dar nu sunt salvate in profilul organizatiei.</div>
+              <p className="mt-1">{fallbackLabels.join(", ")}. Intra in Profil public, preia datele in formular, salveaza draftul si trimite-l spre verificare.</p>
             </div>
           </div>
         )}
@@ -196,26 +232,53 @@ export default function ProviderOverview({ overview, onNavigate }) {
         <section className="rounded-[28px] border border-border bg-card p-5 shadow-sm sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="font-heading text-xl font-bold tracking-tight">Profilul organizatiei</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Doar datele salvate pe organizatie intra in acest scor.</p>
+              <h2 className="font-heading text-xl font-bold tracking-tight">Completarea profilului</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Organizatia si locatiile sunt monitorizate separat.</p>
             </div>
-            <span className="rounded-full border border-border bg-secondary px-3 py-1 text-xs font-bold">{completion.percentage || 0}% complet</span>
           </div>
-          <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-secondary">
-            <div className="h-full rounded-full bg-foreground transition-all" style={{ width: `${Math.max(0, Math.min(100, completion.percentage || 0))}%` }} />
-          </div>
-          <div className="mt-5 divide-y divide-border/70">
-            {checklist.map((item) => (
-              <div key={item.key} className="flex items-center gap-3 py-2.5">
-                {item.done || item.status === "complete" ? <CheckCircle2 className="h-4 w-4 shrink-0 text-green-700" /> : <Circle className="h-4 w-4 shrink-0 text-muted-foreground/60" />}
-                <span className={`text-sm ${item.done || item.status === "complete" ? "text-foreground" : "text-muted-foreground"}`}>{item.label}</span>
-                {!(item.done || item.status === "complete") && <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Lipseste</span>}
+
+          <div className="mt-5 rounded-2xl border border-border bg-background/60 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-bold">Profil organizatie</div>
+                <p className="mt-1 text-[11px] text-muted-foreground">Numai datele aprobate din ProviderOrganization.</p>
               </div>
-            ))}
+              <div className="text-right">
+                <span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold">{completion.percentage || 0}% publicat</span>
+                {projectedDiffers && <div className="mt-2 text-[11px] font-semibold text-blue-700">{projectedCompletion.percentage}% dupa aprobare</div>}
+              </div>
+            </div>
+            <div className="mt-3"><ProgressBar value={completion.percentage} /></div>
+            <div className="mt-4 divide-y divide-border/70">
+              {checklist.map((item) => (
+                <div key={item.key} className="flex items-center gap-3 py-2.5">
+                  {item.done || item.status === "complete" ? <CheckCircle2 className="h-4 w-4 shrink-0 text-green-700" /> : <Circle className="h-4 w-4 shrink-0 text-muted-foreground/60" />}
+                  <span className={`text-sm ${item.done || item.status === "complete" ? "text-foreground" : "text-muted-foreground"}`}>{item.label}</span>
+                  {!(item.done || item.status === "complete") && <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Lipseste</span>}
+                </div>
+              ))}
+            </div>
+            <button onClick={() => onNavigate("profile")} className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-border px-4 py-2.5 text-sm font-bold hover:bg-secondary">
+              Completeaza organizatia <ArrowRight className="h-4 w-4" />
+            </button>
           </div>
-          <button onClick={() => onNavigate("profile")} className="mt-5 inline-flex items-center gap-2 rounded-2xl border border-border px-4 py-2.5 text-sm font-bold hover:bg-secondary">
-            Completeaza profilul <ArrowRight className="h-4 w-4" />
-          </button>
+
+          <div className="mt-3 rounded-2xl border border-border bg-background/60 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-bold">Profiluri locatii</div>
+                <p className="mt-1 text-[11px] text-muted-foreground">Adresa, contactul local si programul fiecarei locatii.</p>
+              </div>
+              <span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold">{locationCompletionSummary.average_percentage || 0}% medie</span>
+            </div>
+            <div className="mt-3"><ProgressBar value={locationCompletionSummary.average_percentage} /></div>
+            <div className="mt-3 space-y-2">
+              {(locationCompletionSummary.items || []).map((item) => <LocationCompletionRow key={item.id} item={item} onNavigate={onNavigate} />)}
+            </div>
+            <button onClick={() => onNavigate("locations")} className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-border px-4 py-2.5 text-sm font-bold hover:bg-secondary">
+              Gestioneaza locatiile <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
         </section>
 
         <section className="rounded-[28px] border border-border bg-card p-5 shadow-sm sm:p-6">
