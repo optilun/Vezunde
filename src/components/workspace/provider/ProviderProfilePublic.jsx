@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   Globe2,
   ImagePlus,
   Loader2,
@@ -24,19 +25,32 @@ const LOGO_MAX_BYTES = 4 * 1024 * 1024;
 const LOGO_MAX_OPTIMIZED_BYTES = 1024 * 1024;
 const ACTIVE_PHOTO_STATUSES = ["draft", "pending_review", "needs_more_info"];
 
+const PROFILE_FIELDS = [
+  "public_display_name",
+  "public_description",
+  "public_phone",
+  "public_email",
+  "website_url",
+  "facebook_url",
+  "instagram_url",
+  "linkedin_url",
+];
+
+const FIELD_LABELS = {
+  public_display_name: "Nume public organizatie",
+  public_description: "Descriere organizatie",
+  public_phone: "Telefon general",
+  public_email: "Email general",
+  website_url: "Website",
+  facebook_url: "Facebook",
+  instagram_url: "Instagram",
+  linkedin_url: "LinkedIn",
+};
+
 const SOCIAL_ITEMS = [
   { key: "facebook_url", label: "Facebook", platform: "facebook" },
   { key: "instagram_url", label: "Instagram", platform: "instagram" },
   { key: "linkedin_url", label: "LinkedIn", platform: "linkedin" },
-];
-
-const REVIEW_FIELDS = [
-  ["public_phone", "Telefon general", "Telefon general al organizatiei.", "+40..."],
-  ["public_email", "Email general", "Email general pentru contact.", "contact@firma.ro"],
-  ["website_url", "Website", "Link catre site-ul organizatiei.", "opticata.ro"],
-  ["facebook_url", "Facebook", "Link catre pagina oficiala.", "facebook.com/opticata"],
-  ["instagram_url", "Instagram", "Link catre profilul oficial.", "instagram.com/opticata"],
-  ["linkedin_url", "LinkedIn", "Optional, util mai ales pentru B2B.", "linkedin.com/company/opticata"],
 ];
 
 function initials(name = "") {
@@ -127,14 +141,8 @@ async function makeSafeLogoFile(file, organizationId) {
     type = "image/jpeg";
     extension = "jpg";
   }
-  if (blob.size > LOGO_MAX_OPTIMIZED_BYTES) {
-    throw new Error("Logo-ul este prea mare dupa optimizare. Incearca o imagine mai simpla.");
-  }
-  return new File(
-    [blob],
-    `organization-${organizationId || "logo"}-${Date.now()}.${extension}`,
-    { type, lastModified: Date.now() },
-  );
+  if (blob.size > LOGO_MAX_OPTIMIZED_BYTES) throw new Error("Logo-ul este prea mare dupa optimizare. Incearca o imagine mai simpla.");
+  return new File([blob], `organization-${organizationId || "logo"}-${Date.now()}.${extension}`, { type, lastModified: Date.now() });
 }
 
 function Field({ label, hint, children }) {
@@ -151,13 +159,7 @@ function BrandLogo({ name, photoUrl, pending, small = false }) {
   const sizeClass = small ? "h-14 w-14 rounded-2xl" : "h-16 w-16 rounded-3xl";
   return (
     <div className={`relative shrink-0 overflow-hidden border border-white/70 bg-white shadow-sm ${sizeClass}`}>
-      {photoUrl ? (
-        <img src={photoUrl} alt={`Logo ${name}`} className="h-full w-full object-contain p-2" />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center bg-foreground font-heading text-lg font-black text-background">
-          {initials(name)}
-        </div>
-      )}
+      {photoUrl ? <img src={photoUrl} alt={`Logo ${name}`} className="h-full w-full object-contain p-2" /> : <div className="flex h-full w-full items-center justify-center bg-foreground font-heading text-lg font-black text-background">{initials(name)}</div>}
       {pending && <div className="absolute inset-x-0 bottom-0 bg-amber-500/90 py-0.5 text-center text-[9px] font-bold text-white">review</div>}
     </div>
   );
@@ -166,9 +168,7 @@ function BrandLogo({ name, photoUrl, pending, small = false }) {
 function PreviewMetric({ icon: Icon, label, value, muted }) {
   return (
     <div className="rounded-2xl border border-white/70 bg-white/75 px-3 py-2.5 shadow-sm backdrop-blur-sm">
-      <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
-        <Icon className="h-3 w-3" /> {label}
-      </div>
+      <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground"><Icon className="h-3 w-3" /> {label}</div>
       <div className={`mt-1 truncate text-xs font-bold ${muted ? "text-muted-foreground" : "text-foreground"}`}>{value}</div>
     </div>
   );
@@ -178,16 +178,8 @@ function SocialPill({ item, url }) {
   const safeUrl = normalizeClientUrl(url);
   if (!safeUrl) return null;
   return (
-    <a
-      href={safeUrl}
-      target="_blank"
-      rel="noreferrer"
-      className="inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-foreground shadow-sm hover:bg-white"
-      title={displayUrl(url)}
-    >
-      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-background">
-        <SocialBrandIcon platform={item.platform} className="h-3.5 w-3.5" />
-      </span>
+    <a href={safeUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-foreground shadow-sm hover:bg-white" title={displayUrl(url)}>
+      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-background"><SocialBrandIcon platform={item.platform} className="h-3.5 w-3.5" /></span>
       {item.label}
     </a>
   );
@@ -203,32 +195,24 @@ function OrganizationPreview({ organizationName, profileTypeLabel, verified, val
           <BrandLogo name={organizationName} photoUrl={logoPreview} pending={hasPendingLogo} />
           <div className="min-w-0">
             <div className="text-xs font-medium text-muted-foreground">Previzualizare organizatie</div>
-            <h2 className="mt-1 truncate font-heading text-2xl font-extrabold tracking-tight">
-              {values.public_display_name || organizationName}
-            </h2>
+            <h2 className="mt-1 truncate font-heading text-2xl font-extrabold tracking-tight">{values.public_display_name || organizationName}</h2>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold shadow-sm">{profileTypeLabel}</span>
               <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold shadow-sm ${verified ? "bg-green-100 text-green-800" : "bg-white/80 text-foreground"}`}>
-                <ShieldCheck className="h-3.5 w-3.5" /> {verified ? "Verificat" : "Activ"}
+                <ShieldCheck className="h-3.5 w-3.5" /> {verified ? "Locatie verificata" : "Activ"}
               </span>
               {hasPendingLogo && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800 shadow-sm">Logo in review</span>}
             </div>
           </div>
         </div>
-        <p className="relative mt-4 line-clamp-4 text-sm leading-relaxed text-muted-foreground">
-          {values.public_description || "Adauga o descriere generala pentru organizatie. Datele punctelor de lucru se gestioneaza separat."}
-        </p>
+        <p className="relative mt-4 line-clamp-4 text-sm leading-relaxed text-muted-foreground">{values.public_description || "Adauga o descriere generala pentru organizatie. Datele punctelor de lucru se gestioneaza separat."}</p>
         <div className="relative mt-5 grid grid-cols-2 gap-2">
           <PreviewMetric icon={Store} label="Locatii" value={`${locationCount} ${locationCount === 1 ? "locatie" : "locatii"}`} />
           <PreviewMetric icon={Phone} label="Telefon" value={values.public_phone || "Lipseste"} muted={!values.public_phone} />
           <PreviewMetric icon={Mail} label="Email" value={values.public_email || "Lipseste"} muted={!values.public_email} />
           <PreviewMetric icon={Globe2} label="Website" value={displayUrl(values.website_url) || "Nepublicat"} muted={!values.website_url} />
         </div>
-        {socialItems.length > 0 && (
-          <div className="relative mt-4 flex flex-wrap gap-2">
-            {socialItems.map((item) => <SocialPill key={item.key} item={item} url={values[item.key]} />)}
-          </div>
-        )}
+        {socialItems.length > 0 && <div className="relative mt-4 flex flex-wrap gap-2">{socialItems.map((item) => <SocialPill key={item.key} item={item} url={values[item.key]} />)}</div>}
       </div>
     </div>
   );
@@ -238,7 +222,6 @@ function LocationSummaryCard({ organizationName, logoPreview, location, location
   const [photoUrl, setPhotoUrl] = useState("");
   const [photoStatus, setPhotoStatus] = useState("");
   const [photoLoading, setPhotoLoading] = useState(true);
-
   const locationName = location?.public_display_name || location?.name || "Locatie";
   const locality = location?.locality_name || location?.city || "Localitate necompletata";
   const otherLocations = (locations || []).filter((item) => item.id && item.id !== location?.id);
@@ -246,7 +229,6 @@ function LocationSummaryCard({ organizationName, logoPreview, location, location
 
   useEffect(() => {
     let cancelled = false;
-
     async function loadPhoto() {
       if (!location?.id) {
         setPhotoUrl("");
@@ -254,38 +236,22 @@ function LocationSummaryCard({ organizationName, logoPreview, location, location
         setPhotoLoading(false);
         return;
       }
-
       setPhotoLoading(true);
-      const response = await base44.functions.invoke("locationPhotoOps", {
-        action: "get",
-        location_id: location.id,
-      }).catch(() => ({ data: {} }));
-
+      const response = await base44.functions.invoke("locationPhotoOps", { action: "get", location_id: location.id }).catch(() => ({ data: {} }));
       if (cancelled) return;
-
       const submission = response.data?.submission || null;
       const hasActivePreview = ACTIVE_PHOTO_STATUSES.includes(submission?.status);
-      const proposedPhoto = hasActivePreview
-        ? String(submission?.payload?.photo_url || submission?.payload?.photo_data_url || "")
-        : "";
-      const approvedPhoto = response.data?.legacy_logo_candidate === true
-        ? ""
-        : String(response.data?.location?.current_photo_url || "");
-
+      const proposedPhoto = hasActivePreview ? String(submission?.payload?.photo_url || submission?.payload?.photo_data_url || "") : "";
+      const approvedPhoto = response.data?.legacy_logo_candidate === true ? "" : String(response.data?.location?.current_photo_url || "");
       setPhotoUrl(proposedPhoto || approvedPhoto);
       setPhotoStatus(hasActivePreview ? submission.status : "");
       setPhotoLoading(false);
     }
-
     loadPhoto();
     return () => { cancelled = true; };
   }, [location?.id]);
 
-  const photoStatusLabel = {
-    draft: "Draft fotografie",
-    pending_review: "Fotografie in verificare",
-    needs_more_info: "Necesita completari",
-  }[photoStatus] || "";
+  const photoStatusLabel = { draft: "Draft fotografie", pending_review: "Fotografie in verificare", needs_more_info: "Necesita completari" }[photoStatus] || "";
 
   return (
     <section className="overflow-hidden rounded-[24px] border border-border bg-card shadow-sm">
@@ -293,121 +259,56 @@ function LocationSummaryCard({ organizationName, logoPreview, location, location
         <div className="flex min-w-0 items-center gap-3">
           <BrandLogo name={organizationName} photoUrl={logoPreview} small />
           <div className="min-w-0">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Punct de lucru</div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Logo organizatie + locatie</div>
             <div className="truncate text-sm font-bold">{locationName}</div>
-            <div className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5 shrink-0" /> {locality}
-            </div>
+            <div className="mt-0.5 truncate text-xs text-muted-foreground">{locality}</div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${inactive ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}>
-            {inactive ? "Inactiva" : "Activa"}
-          </span>
-          <button
-            type="button"
-            onClick={() => onManageLocation(location?.id)}
-            className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary"
-          >
-            Gestioneaza
-          </button>
+          <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${inactive ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}>{inactive ? "Inactiva" : "Activa"}</span>
+          <button type="button" onClick={() => onManageLocation(location?.id)} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary">Gestioneaza</button>
         </div>
       </div>
-
       <div className="relative aspect-video border-y border-border bg-secondary/35">
-        {photoLoading ? (
-          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se incarca fotografia...
-          </div>
-        ) : photoUrl ? (
-          <>
-            <img src={photoUrl} alt={`Fotografie ${locationName}`} className="h-full w-full object-cover" />
-            {photoStatusLabel && (
-              <span className="absolute bottom-3 left-3 rounded-full border border-amber-200 bg-amber-50/95 px-3 py-1 text-[10px] font-bold text-amber-900 shadow-sm backdrop-blur-sm">
-                {photoStatusLabel}
-              </span>
-            )}
-          </>
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center px-5 text-center text-muted-foreground">
-            <ImagePlus className="h-7 w-7" />
-            <p className="mt-2 text-xs font-semibold">Fotografia locatiei se adauga din Locatii</p>
-          </div>
-        )}
+        {photoLoading ? <div className="flex h-full items-center justify-center text-xs text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se incarca fotografia...</div> : photoUrl ? <><img src={photoUrl} alt={`Fotografie ${locationName}`} className="h-full w-full object-cover" />{photoStatusLabel && <span className="absolute bottom-3 left-3 rounded-full border border-amber-200 bg-amber-50/95 px-3 py-1 text-[10px] font-bold text-amber-900 shadow-sm backdrop-blur-sm">{photoStatusLabel}</span>}</> : <div className="flex h-full flex-col items-center justify-center px-5 text-center text-muted-foreground"><ImagePlus className="h-7 w-7" /><p className="mt-2 text-xs font-semibold">Fotografia locatiei se adauga din Locatii</p></div>}
       </div>
-
-      <div className="flex items-center justify-between gap-3 px-4 py-3 text-[11px] text-muted-foreground">
-        <span>{locations.length || 1} {locations.length === 1 ? "punct de lucru asociat" : "puncte de lucru asociate"}</span>
-        <span>Logo organizatie + fotografie locatie</span>
-      </div>
-
-      {otherLocations.length > 0 && (
-        <div className="border-t border-border">
-          {otherLocations.slice(0, 3).map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onManageLocation(item.id)}
-              className="flex w-full items-center gap-3 border-b border-border/70 px-4 py-3 text-left last:border-b-0 hover:bg-secondary/30"
-            >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-secondary"><MapPin className="h-3.5 w-3.5" /></div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-xs font-semibold">{item.public_display_name || item.name || "Locatie"}</div>
-                <div className="mt-0.5 truncate text-[10px] text-muted-foreground">{item.locality_name || item.city || "Localitate lipsa"}</div>
-              </div>
-            </button>
-          ))}
-          {otherLocations.length > 3 && (
-            <button type="button" onClick={onManageAll} className="w-full px-4 py-3 text-xs font-semibold hover:bg-secondary/30">
-              Vezi toate cele {locations.length} locatii
-            </button>
-          )}
-        </div>
-      )}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 text-[11px] text-muted-foreground"><span>{locations.length || 1} {locations.length === 1 ? "punct de lucru asociat" : "puncte de lucru asociate"}</span><span>Fotografie separata de logo</span></div>
+      {otherLocations.length > 0 && <div className="border-t border-border">{otherLocations.slice(0, 3).map((item) => <button key={item.id} type="button" onClick={() => onManageLocation(item.id)} className="flex w-full items-center gap-3 border-b border-border/70 px-4 py-3 text-left last:border-b-0 hover:bg-secondary/30"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-secondary"><MapPin className="h-3.5 w-3.5" /></div><div className="min-w-0 flex-1"><div className="truncate text-xs font-semibold">{item.public_display_name || item.name || "Locatie"}</div><div className="mt-0.5 truncate text-[10px] text-muted-foreground">{item.locality_name || item.city || "Localitate lipsa"}</div></div></button>)}{otherLocations.length > 3 && <button type="button" onClick={onManageAll} className="w-full px-4 py-3 text-xs font-semibold hover:bg-secondary/30">Vezi toate cele {locations.length} locatii</button>}</div>}
     </section>
   );
 }
 
-function initialValues(organization, publicPreview) {
+function canonicalValues(organization) {
   return {
-    public_display_name: organization.public_display_name || publicPreview.display_name || organization.name || "",
-    public_description: String(organization.public_description || publicPreview.description || "").slice(0, DESCRIPTION_MAX_LENGTH),
-    public_phone: organization.public_phone || publicPreview.phone || "",
-    public_email: organization.public_email || publicPreview.email || "",
-    website_url: organization.website_url || publicPreview.website || "",
-    facebook_url: organization.facebook_url || publicPreview.facebook || "",
-    instagram_url: organization.instagram_url || publicPreview.instagram || "",
-    linkedin_url: organization.linkedin_url || publicPreview.linkedin || "",
+    public_display_name: organization.public_display_name || "",
+    public_description: String(organization.public_description || "").slice(0, DESCRIPTION_MAX_LENGTH),
+    public_phone: organization.public_phone || "",
+    public_email: organization.public_email || "",
+    website_url: organization.website_url || organization.website || "",
+    facebook_url: organization.facebook_url || "",
+    instagram_url: organization.instagram_url || "",
+    linkedin_url: organization.linkedin_url || "",
   };
 }
 
 export default function ProviderProfilePublic({ locationId, overview, workspace, onNavigate, onSelectLocation, onRefresh }) {
   const organization = overview.organization || workspace?.organizations?.[0] || {};
-  const publicPreview = overview.public_preview || {};
   const overviewLocation = overview.location || {};
   const locations = workspace?.locations || overview.locations || [];
-  const location = locations.find((item) => item.id === locationId)
-    || (overviewLocation.id ? overviewLocation : null)
-    || locations[0]
-    || {};
+  const location = locations.find((item) => item.id === locationId) || (overviewLocation.id ? overviewLocation : null) || locations[0] || {};
   const organizationId = organization.id || location.organization_id || workspace?.organizations?.[0]?.id || "";
-  const organizationName = organization.public_display_name
-    || organization.name
-    || location.organization_name
-    || publicPreview.display_name
-    || location.name
-    || "Organizatie";
+  const organizationName = organization.public_display_name || organization.name || location.organization_name || location.name || "Organizatie";
   const locationCount = locations.length || 1;
-  const profileTypeLabel = PROVIDER_PROFILE_TYPES[organization.organization_type]
-    || PROVIDER_PROFILE_TYPES[location.provider_profile_type]
-    || PROVIDER_TYPES[location.provider_type]
-    || "Profil";
+  const profileTypeLabel = PROVIDER_PROFILE_TYPES[organization.organization_type] || PROVIDER_PROFILE_TYPES[location.provider_profile_type] || PROVIDER_TYPES[location.provider_type] || "Profil";
   const pendingProfile = overview.pending_profile_changes || {};
   const pendingLogoUrl = pendingProfile.pending_logo_url || "";
   const hasPendingLogo = !!pendingProfile.has_pending_logo;
   const canonicalLogo = organization.logo_url || "";
+  const profileState = overview.organization_profile_state || {};
+  const fallbackValues = profileState.fallback || overview.organization_profile_fallback_values || {};
+  const fallbackLocationName = profileState.fallback_location_name || location.public_display_name || location.name || "locatia principala";
+  const baseValues = useMemo(() => canonicalValues(organization), [organization]);
 
-  const baseValues = useMemo(() => initialValues(organization, publicPreview), [organization, publicPreview]);
   const [values, setValues] = useState(baseValues);
   const [logoPreview, setLogoPreview] = useState(pendingLogoUrl || canonicalLogo);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -418,22 +319,15 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
 
   const pendingReview = draft?.status === "pending_review";
   const descriptionCount = String(values.public_description || "").length;
+  const availableFallbackFields = PROFILE_FIELDS.filter((key) => !String(values[key] || "").trim() && String(fallbackValues[key] || "").trim());
 
   const loadDraft = async () => {
     if (!organizationId) return;
-    const response = await base44.functions.invoke("manageProviderOrganizationProfile", {
-      action: "list_mine",
-      organization_id: organizationId,
-      location_id: locationId,
-    }).catch(() => ({ data: { submissions: [] } }));
+    const response = await base44.functions.invoke("manageProviderOrganizationProfile", { action: "list_mine", organization_id: organizationId, location_id: locationId }).catch(() => ({ data: { submissions: [] } }));
     const active = (response.data?.submissions || []).find((submission) => ["draft", "needs_more_info", "pending_review"].includes(submission.status));
     setDraft(active || null);
     if (active) {
-      try {
-        setValues({ ...baseValues, ...JSON.parse(active.payload_json || "{}") });
-      } catch (_error) {
-        setValues(baseValues);
-      }
+      try { setValues({ ...baseValues, ...JSON.parse(active.payload_json || "{}") }); } catch (_error) { setValues(baseValues); }
     } else {
       setValues(baseValues);
     }
@@ -445,11 +339,18 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
     setLogoMessage(hasPendingLogo ? "Logo trimis separat spre verificare." : "");
   }, [baseValues, pendingLogoUrl, canonicalLogo, hasPendingLogo]);
 
-  useEffect(() => {
-    loadDraft();
-  }, [organizationId, locationId]);
+  useEffect(() => { loadDraft(); }, [organizationId, locationId]);
 
   const setField = (key, value) => setValues((current) => ({ ...current, [key]: value }));
+
+  const importFallback = () => {
+    setValues((current) => {
+      const next = { ...current };
+      for (const key of PROFILE_FIELDS) if (!String(next[key] || "").trim() && String(fallbackValues[key] || "").trim()) next[key] = fallbackValues[key];
+      return next;
+    });
+    setMessage(`Datele din ${fallbackLocationName} au fost preluate in formular, dar nu sunt inca salvate. Salveaza draftul si trimite-l spre review.`);
+  };
 
   const saveDraft = async () => {
     setSaving(true);
@@ -460,36 +361,23 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
       organization_id: organizationId,
       location_id: locationId,
       submission_id: draft?.id,
-      payload: {
-        ...values,
-        public_description: String(values.public_description || "").slice(0, DESCRIPTION_MAX_LENGTH),
-      },
+      payload: { ...values, public_description: String(values.public_description || "").slice(0, DESCRIPTION_MAX_LENGTH) },
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
     setSaving(false);
-    if (response.data?.error) {
-      setMessage(response.data.error);
-      return;
-    }
-    setMessage("Draft salvat. Trimite-l spre review cand este pregatit.");
+    if (response.data?.error) { setMessage(response.data.error); return; }
+    setMessage("Draft salvat. In acest moment apare in Prezentare generala la Necesita actiune, dar nu intra in admin pana nu il trimiti spre review.");
     await loadDraft();
+    await onRefresh?.();
   };
 
   const submitDraft = async () => {
     if (!draft) return;
     setSaving(true);
     setMessage("");
-    const response = await base44.functions.invoke("manageProviderOrganizationProfile", {
-      action: "submit",
-      organization_id: organizationId,
-      location_id: locationId,
-      submission_id: draft.id,
-    }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    const response = await base44.functions.invoke("manageProviderOrganizationProfile", { action: "submit", organization_id: organizationId, location_id: locationId, submission_id: draft.id }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
     setSaving(false);
-    if (response.data?.error) {
-      setMessage(response.data.error);
-      return;
-    }
-    setMessage("Profilul organizatiei a fost trimis spre review.");
+    if (response.data?.error) { setMessage(response.data.error); return; }
+    setMessage("Profilul organizatiei a fost trimis spre review. Acum apare si in admin la Modificari workspace.");
     await loadDraft();
     await onRefresh?.();
   };
@@ -497,15 +385,8 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
   const uploadLogo = async (file) => {
     setLogoMessage("");
     if (!file) return;
-    if (!LOGO_TYPES.includes(file.type)) {
-      setLogoMessage("Format acceptat: PNG, JPG sau WEBP.");
-      return;
-    }
-    if (file.size > LOGO_MAX_BYTES) {
-      setLogoMessage("Logo-ul trebuie sa aiba maximum 4MB inainte de optimizare.");
-      return;
-    }
-
+    if (!LOGO_TYPES.includes(file.type)) { setLogoMessage("Format acceptat: PNG, JPG sau WEBP."); return; }
+    if (file.size > LOGO_MAX_BYTES) { setLogoMessage("Logo-ul trebuie sa aiba maximum 4MB inainte de optimizare."); return; }
     setUploadingLogo(true);
     let localPreviewUrl = "";
     try {
@@ -515,11 +396,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
       const uploadResponse = await base44.integrations.Core.UploadFile({ file: optimizedFile });
       const logoUrl = String(uploadResponse?.file_url || "").trim();
       if (!logoUrl) throw new Error("Incarcarea logo-ului nu a returnat un URL valid.");
-      const response = await base44.functions.invoke("submitProviderLogoForReview", {
-        location_id: locationId,
-        organization_id: organizationId,
-        photo_url: logoUrl,
-      }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+      const response = await base44.functions.invoke("submitProviderLogoForReview", { location_id: locationId, organization_id: organizationId, photo_url: logoUrl }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
       if (response.data?.error) throw new Error(response.data.error);
       setLogoPreview(logoUrl);
       setLogoMessage("Logo trimis separat spre verificare. Va aparea langa numele organizatiei dupa aprobare.");
@@ -542,142 +419,79 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-2xl font-extrabold tracking-tight">Profil public organizatie</h1>
-        <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-          Date generale de brand. Logo-ul apare langa numele organizatiei. Fotografiile reale se gestioneaza separat pentru fiecare locatie.
-        </p>
+        <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Date generale de brand. Acestea sunt separate de adresa, programul, contactul local si fotografiile fiecarei locatii.</p>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_390px] xl:items-start">
         <div className="space-y-5">
+          {availableFallbackFields.length > 0 && !pendingReview && (
+            <section className="rounded-[24px] border border-amber-200 bg-amber-50 p-4 shadow-sm sm:p-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex min-w-0 items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-800" />
+                  <div>
+                    <h2 className="text-sm font-bold text-amber-950">Exista date in {fallbackLocationName}, dar nu sunt salvate pe organizatie</h2>
+                    <p className="mt-1 text-xs leading-relaxed text-amber-900">{availableFallbackFields.map((key) => FIELD_LABELS[key]).join(", ")}. Preluarea completeaza doar formularul. Datele ajung in admin numai dupa salvare si trimitere spre review.</p>
+                  </div>
+                </div>
+                <button type="button" onClick={importFallback} className="shrink-0 rounded-full bg-amber-950 px-4 py-2 text-xs font-semibold text-white hover:opacity-90">Preia datele in formular</button>
+              </div>
+            </section>
+          )}
+
           <section className="space-y-5 rounded-[24px] border border-border bg-card p-5 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h2 className="text-sm font-bold">Informatii publice generale</h2>
-                <p className="mt-1 text-xs text-muted-foreground">Modificarile actualizeaza ProviderOrganization numai dupa aprobarea Vezunde.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Campurile afisate sunt date organizationale aprobate sau continutul draftului activ. Datele locatiei nu sunt introduse automat.</p>
               </div>
-              {draft && (
-                <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">
-                  {SUBMISSION_STATUS_LABELS[draft.status] || draft.status}
-                </span>
-              )}
+              {draft && <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}
             </div>
 
             <div className="rounded-2xl border border-border bg-secondary/35 p-4">
               <div className="flex items-center gap-3">
                 <label className="relative block shrink-0 cursor-pointer" title={logoPreview ? "Schimba logo" : "Adauga logo"}>
                   <BrandLogo name={values.public_display_name || organizationName} photoUrl={logoPreview} pending={hasPendingLogo} small />
-                  <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-card bg-foreground text-background shadow-sm">
-                    {uploadingLogo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-4 w-4" />}
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="hidden"
-                    disabled={uploadingLogo}
-                    onChange={(event) => {
-                      uploadLogo(event.target.files?.[0]);
-                      event.target.value = "";
-                    }}
-                  />
+                  <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-card bg-foreground text-background shadow-sm">{uploadingLogo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-4 w-4" />}</span>
+                  <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploadingLogo} onChange={(event) => { uploadLogo(event.target.files?.[0]); event.target.value = ""; }} />
                 </label>
                 <div className="min-w-0">
                   <div className="text-sm font-semibold">Logo organizatie</div>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Acesta este afisat langa numele organizatiei. Nu este folosit ca fotografie a locatiei.</p>
-                  <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-background px-3 py-1 text-[11px] font-semibold text-muted-foreground">
-                    <ImagePlus className="h-3.5 w-3.5" /> Publicare dupa aprobare
-                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Este afisat langa numele organizatiei. Nu este folosit ca fotografie a locatiei.</p>
+                  <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-background px-3 py-1 text-[11px] font-semibold text-muted-foreground"><ImagePlus className="h-3.5 w-3.5" /> Publicare dupa aprobare</div>
                 </div>
               </div>
-              {logoMessage && (
-                <p className={`mt-3 text-xs ${hasPendingLogo || logoMessage.includes("verificare") ? "text-amber-700" : "text-muted-foreground"}`}>
-                  {logoMessage}
-                </p>
-              )}
+              {logoMessage && <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{logoMessage}</p>}
             </div>
 
-            <Field label="Nume public organizatie" hint="Exemplu: Lunera Optic">
-              <input
-                className={inputCls}
-                value={values.public_display_name || ""}
-                onChange={(event) => setField("public_display_name", event.target.value)}
-                disabled={pendingReview}
-              />
-            </Field>
-
-            <Field label="Descriere organizatie">
-              <textarea
-                className={inputCls}
-                rows={7}
-                maxLength={DESCRIPTION_MAX_LENGTH}
-                value={values.public_description || ""}
-                onChange={(event) => setField("public_description", event.target.value.slice(0, DESCRIPTION_MAX_LENGTH))}
-                disabled={pendingReview}
-              />
-              <div className="mt-1.5 flex items-start justify-between gap-3 text-[11px] leading-relaxed text-muted-foreground">
-                <p>Prezentare generala a brandului: ce oferiti, cui va adresati si ce va diferentiaza.</p>
-                <span className="shrink-0 font-semibold">{descriptionCount}/{DESCRIPTION_MAX_LENGTH}</span>
-              </div>
+            <Field label="Nume public organizatie" hint="Exemplu: Lunera Optic. Numele locatiei poate fi diferit."><input className={inputCls} value={values.public_display_name} disabled={pendingReview} onChange={(event) => setField("public_display_name", event.target.value)} /></Field>
+            <Field label="Descriere organizatie" hint="Prezentare generala a brandului: ce oferiti, cui va adresati si ce va diferentiaza.">
+              <textarea className={`${inputCls} min-h-36 resize-y`} value={values.public_description} maxLength={DESCRIPTION_MAX_LENGTH} disabled={pendingReview} onChange={(event) => setField("public_description", event.target.value)} />
+              <div className="mt-1 text-right text-[11px] text-muted-foreground">{descriptionCount}/{DESCRIPTION_MAX_LENGTH}</div>
             </Field>
 
             <div className="grid gap-4 md:grid-cols-2">
-              {REVIEW_FIELDS.map(([key, label, hint, placeholder]) => (
-                <Field key={key} label={label} hint={hint}>
-                  <input
-                    className={inputCls}
-                    placeholder={placeholder}
-                    value={values[key] || ""}
-                    onChange={(event) => setField(key, event.target.value)}
-                    disabled={pendingReview}
-                  />
-                </Field>
-              ))}
+              <Field label="Telefon general" hint="Telefon general al organizatiei."><input className={inputCls} value={values.public_phone} disabled={pendingReview} onChange={(event) => setField("public_phone", event.target.value)} /></Field>
+              <Field label="Email general" hint="Email general pentru contact."><input className={inputCls} value={values.public_email} disabled={pendingReview} onChange={(event) => setField("public_email", event.target.value)} /></Field>
+              <Field label="Website" hint="Link catre site-ul organizatiei."><input className={inputCls} value={values.website_url} disabled={pendingReview} onChange={(event) => setField("website_url", event.target.value)} /></Field>
+              <Field label="Facebook" hint="Link catre pagina oficiala."><input className={inputCls} value={values.facebook_url} disabled={pendingReview} onChange={(event) => setField("facebook_url", event.target.value)} /></Field>
+              <Field label="Instagram" hint="Link catre profilul oficial."><input className={inputCls} value={values.instagram_url} disabled={pendingReview} onChange={(event) => setField("instagram_url", event.target.value)} /></Field>
+              <Field label="LinkedIn" hint="Optional, util mai ales pentru B2B."><input className={inputCls} value={values.linkedin_url} disabled={pendingReview} onChange={(event) => setField("linkedin_url", event.target.value)} /></Field>
             </div>
 
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
-              Datele punctelor de lucru nu se editeaza aici. Foloseste pagina Locatii pentru adresa, harta, telefon local, program, servicii, fotografii si specialisti.
-            </div>
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs leading-relaxed text-blue-900">Adminul compara propunerea cu ProviderOrganization. Aprobarea actualizeaza numai profilul organizatiei si nu modifica datele locatiei.</div>
 
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <button
-                disabled={saving || pendingReview || !organizationId}
-                onClick={saveDraft}
-                className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"
-              >
-                <Save className="h-4 w-4" /> Salveaza draft
-              </button>
-              {draft && draft.status !== "pending_review" && (
-                <button
-                  disabled={saving}
-                  onClick={submitDraft}
-                  className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50"
-                >
-                  <Send className="h-4 w-4" /> Trimite spre review
-                </button>
-              )}
-              {message && <p className="text-xs text-muted-foreground">{message}</p>}
+            {message && <p className="rounded-2xl border border-border bg-secondary/35 px-4 py-3 text-xs leading-relaxed text-muted-foreground">{message}</p>}
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" disabled={saving || pendingReview} onClick={saveDraft} className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><Save className="h-4 w-4" /> Salveaza draft</button>
+              {draft && ["draft", "needs_more_info"].includes(draft.status) && <button type="button" disabled={saving} onClick={submitDraft} className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50"><Send className="h-4 w-4" /> Trimite spre review</button>}
             </div>
           </section>
         </div>
 
         <aside className="space-y-4 xl:sticky xl:top-6">
-          <OrganizationPreview
-            organizationName={organizationName}
-            profileTypeLabel={profileTypeLabel}
-            verified={location.profile_control_status === "verified"}
-            values={values}
-            logoPreview={logoPreview}
-            hasPendingLogo={hasPendingLogo}
-            locationCount={locationCount}
-          />
-
-          <LocationSummaryCard
-            organizationName={values.public_display_name || organizationName}
-            logoPreview={logoPreview}
-            location={location}
-            locations={locations.length ? locations : [location]}
-            onManageLocation={manageLocation}
-            onManageAll={() => onNavigate?.("locations")}
-          />
+          <OrganizationPreview organizationName={organizationName} profileTypeLabel={profileTypeLabel} verified={location.profile_control_status === "verified"} values={values} logoPreview={logoPreview} hasPendingLogo={hasPendingLogo} locationCount={locationCount} />
+          <LocationSummaryCard organizationName={values.public_display_name || organizationName} logoPreview={logoPreview} location={location} locations={locations} onManageLocation={manageLocation} onManageAll={() => onNavigate?.("locations")} />
         </aside>
       </div>
     </div>
