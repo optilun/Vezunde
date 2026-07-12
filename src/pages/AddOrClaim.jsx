@@ -29,6 +29,15 @@ const readSessionJson = (key) => {
   }
 };
 
+const persistClaimLocation = (location) => {
+  if (!location) return;
+  try {
+    sessionStorage.setItem(PENDING_CLAIM_LOCATION_KEY, JSON.stringify(location));
+  } catch {
+    // The current render remains usable; only cross-page resume is unavailable.
+  }
+};
+
 const getResumeClaimStep = (contact, storedStep) => {
   if (!contact?.claimant_relationship || !contact?.representation_confirmed) return "relation";
   if (!String(contact?.contact_name || "").trim() || !String(contact?.email || "").trim()) return "contact";
@@ -54,7 +63,11 @@ export default function AddOrClaim() {
   const [resumedClaimLocation] = useState(() => readSessionJson(PENDING_CLAIM_LOCATION_KEY));
   const [resumedClaimContact] = useState(() => readSessionJson(PENDING_CLAIM_CONTACT_KEY));
   const [resumedClaimStep] = useState(() => sessionStorage.getItem(PENDING_CLAIM_STEP_KEY));
-  const [selected, setSelected] = useState(preselectedLocation || resumedClaimLocation || null);
+  const [selected, setSelected] = useState(() => {
+    const initial = preselectedLocation || resumedClaimLocation || null;
+    if (initial) persistClaimLocation(initial);
+    return initial;
+  });
   const [draft, setDraft] = useState(initialNewLocationDraft);
   const [currentUser, setCurrentUser] = useState(null);
   const [result, setResult] = useState(null);
@@ -73,6 +86,7 @@ export default function AddOrClaim() {
 
   const chooseLocation = (location) => {
     clearClaimResumeState();
+    persistClaimLocation(location);
     setSelected(location);
     setClaimStep("relation");
     setStage("confirm");
@@ -84,6 +98,11 @@ export default function AddOrClaim() {
     setStage("wizard");
   };
 
+  const continueToAuthentication = () => {
+    persistClaimLocation(selected);
+    setStage("auth");
+  };
+
   if (stage === "wizard") {
     return (
       <div className="workspace-neutral">
@@ -91,7 +110,13 @@ export default function AddOrClaim() {
           prefill={draft}
           onDone={(response) => { clearAllResumeState(); setResult(response || {}); setStage("done"); }}
           onExit={() => { clearAllResumeState(); setDraft(null); setStage("search"); }}
-          onClaimExisting={(location) => { clearAllResumeState(); setSelected(location); setClaimStep("relation"); setStage("confirm"); }}
+          onClaimExisting={(location) => {
+            clearAllResumeState();
+            persistClaimLocation(location);
+            setSelected(location);
+            setClaimStep("relation");
+            setStage("confirm");
+          }}
         />
       </div>
     );
@@ -121,7 +146,7 @@ export default function AddOrClaim() {
         <WizardShell phases={CLAIM_PHASES} phaseStep={1} title="Confirma profilul selectat" subtitle="Verifica numele si adresa inainte de a continua.">
           <SelectedLocationCard
             location={selected}
-            onContinue={() => setStage("auth")}
+            onContinue={continueToAuthentication}
             onChangeLocation={() => { clearClaimResumeState(); setSelected(null); setStage("search"); }}
           />
         </WizardShell>
