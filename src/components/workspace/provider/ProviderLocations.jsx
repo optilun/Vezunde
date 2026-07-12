@@ -155,7 +155,14 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
 
   const mapUrl = previewLocation ? buildGoogleMapsUrl(previewLocation) : "";
   const embedUrl = previewLocation ? buildGoogleMapsEmbedUrl(previewLocation) : "";
-  const hasExactPin = Number.isFinite(Number(previewLocation?.lat)) && Number.isFinite(Number(previewLocation?.lng));
+  const hasExactPin = previewLocation?.lat !== null
+    && previewLocation?.lat !== undefined
+    && previewLocation?.lat !== ""
+    && previewLocation?.lng !== null
+    && previewLocation?.lng !== undefined
+    && previewLocation?.lng !== ""
+    && Number.isFinite(Number(previewLocation.lat))
+    && Number.isFinite(Number(previewLocation.lng));
   const locationCount = locations.length;
   const hasMultipleLocations = locationCount > 1;
   const selectedLocationName = previewLocation?.public_display_name || previewLocation?.name || "Locatie";
