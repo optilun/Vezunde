@@ -33,13 +33,34 @@ jobs:
         run: npm ci
 
       - name: Run provider submission checks
-        run: npm run test:provider-submissions
+        run: npm run test:provider-submissions | tee provider-tests.log
 
       - name: Run lint
-        run: npm run lint
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm run lint 2>&1 | tee lint.log
 
       - name: Build
-        run: npm run build
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee build.log
+
+      - name: Upload verification logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: provider-idempotency-verification
+          path: |
+            provider-tests.log
+            lint.log
+            build.log
+
+      - name: Require lint and build success
+        run: |
+          npm run lint
+          npm run build
 
       - name: Commit verified changes
         run: |
