@@ -33,8 +33,10 @@ const CLAIM_STATUS_MESSAGES = {
 
 function claimPreparationSections(claim) {
   if (!claim || claim.mode === 'new_location_duplicate_review') return [];
-  if (claim.claim_subject_type === 'independent_professional') return [];
-  if (claim.claim_subject_type === 'b2b_supplier') return B2B_CLAIM_PREP_ALLOWED_SECTIONS;
+  const submitted = parseJSON(claim.submitted_payload) || {};
+  const subjectType = submitted.claim_subject_type || claim.claim_subject_type || '';
+  if (subjectType === 'independent_professional') return [];
+  if (subjectType === 'b2b_supplier') return B2B_CLAIM_PREP_ALLOWED_SECTIONS;
   return CLAIM_PREP_ALLOWED_SECTIONS;
 }
 
@@ -184,12 +186,13 @@ function sanitizeClaim(claim) {
     id: claim.id,
     status: claim.status,
     mode: claim.mode || '',
-    request_type: claim.request_type || submitted.request_type || '',
-    claim_subject_type: claim.claim_subject_type || submitted.claim_subject_type || '',
-    claimant_relationship: claim.claimant_relationship || submitted.claimant_relationship || '',
-    requested_membership_role: claim.requested_membership_role || submitted.requested_membership_role || '',
-    verification_method: claim.verification_method || submitted.verification_method || '',
-    verification_status: claim.verification_status || '',
+    request_type: submitted.request_type || claim.request_type || '',
+    claim_subject_type: submitted.claim_subject_type || claim.claim_subject_type || '',
+    claimant_relationship: submitted.claimant_relationship || claim.claimant_relationship || '',
+    requested_membership_role: submitted.requested_membership_role || claim.requested_membership_role || '',
+    verification_method: submitted.verification_method || claim.verification_method || '',
+    verification_status: submitted.verification_status || claim.verification_status || '',
+    approved_membership_role: submitted.approved_membership_role || '',
     business_name: claim.business_name || '',
     contact_name: claim.contact_name || '',
     role: claim.role || '',
