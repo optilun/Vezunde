@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { CheckCircle2, ImagePlus, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
@@ -83,13 +83,14 @@ async function optimizeLocationPhoto(file, locationId) {
   throw new Error("Fotografia ramane prea mare dupa optimizare.");
 }
 
-export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) {
+export default function ProviderLocationPhotoCompact({ locationId }) {
   const [currentPhoto, setCurrentPhoto] = useState("");
   const [submission, setSubmission] = useState(null);
   const [preview, setPreview] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const legacyMigrationAttempted = useRef(false);
 
   const load = async () => {
     if (!locationId) return;
@@ -108,15 +109,24 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
     const nextSubmission = response.data?.submission || null;
     const hasActivePreview = ACTIVE_SUBMISSION_STATUSES.includes(nextSubmission?.status);
     const isLegacyOrganizationLogo = response.data?.legacy_logo_candidate === true;
+
     setCurrentPhoto(isLegacyOrganizationLogo ? "" : (response.data?.location?.current_photo_url || ""));
     setSubmission(nextSubmission);
     setPreview(hasActivePreview
       ? (nextSubmission?.payload?.photo_url || nextSubmission?.payload?.photo_data_url || "")
       : "");
+
+    if (isLegacyOrganizationLogo && !legacyMigrationAttempted.current) {
+      legacyMigrationAttempted.current = true;
+      base44.functions.invoke("preserveLegacyLocationLogo", {
+        location_id: locationId,
+      }).catch(() => null);
+    }
   };
 
   useEffect(() => {
     setMessage("");
+    legacyMigrationAttempted.current = false;
     load();
   }, [locationId]);
 
@@ -174,7 +184,6 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
       setPreview(photoUrl);
       setMessage("Fotografia locatiei a fost trimisa spre verificare.");
       await load();
-      await onRefresh?.();
     } catch (error) {
       setPreview(previousPreview);
       setMessage(error.response?.data?.error || error.message || "Fotografia nu a putut fi trimisa.");
