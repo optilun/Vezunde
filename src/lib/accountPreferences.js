@@ -18,11 +18,14 @@ function storageKey(userId) {
 
 function normalize(value = {}) {
   const legacyRememberLastLocation = value.rememberLastLocation !== false;
-  const providerLocationMode = PROVIDER_LOCATION_MODES.has(value.providerLocationMode)
+  let providerLocationMode = PROVIDER_LOCATION_MODES.has(value.providerLocationMode)
     ? value.providerLocationMode
     : legacyRememberLastLocation
       ? "last"
       : "fixed";
+
+  if (value.rememberLastLocation === true) providerLocationMode = "last";
+  if (value.rememberLastLocation === false) providerLocationMode = "fixed";
 
   return {
     startMode: START_MODES.has(value.startMode) ? value.startMode : DEFAULT_PREFERENCES.startMode,
