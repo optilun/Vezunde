@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     const action = clean(input.action || 'list');
 
     if (action === 'list') {
-      const query = { section: 'public_profile' };
+      const query: Record<string, unknown> = { section: 'public_profile' };
       if (input.status) query.status = input.status;
       if (input.organization_id) query.organization_id = input.organization_id;
       const rows = await svc.entities.ProviderWorkspaceSubmission.filter(query, '-created_date', 200);
