@@ -12,6 +12,7 @@ import Search from "./pages/Search";
 import ProviderProfile from "./pages/ProviderProfile";
 import RequestFlow from "./pages/RequestFlow";
 import ForSpecialists from "./pages/ForSpecialists";
+import ForOrganizations from "./pages/ForOrganizations";
 import Partners from "./pages/Partners";
 import AddOrClaim from "./pages/AddOrClaim";
 import AcceptProfessionalInvitation from "./pages/AcceptProfessionalInvitation";
@@ -39,9 +40,7 @@ const AuthenticatedApp = () => {
   }
 
   if (authError) {
-    if (authError.type === "user_not_registered") {
-      return <UserNotRegisteredError />;
-    }
+    if (authError.type === "user_not_registered") return <UserNotRegisteredError />;
     if (authError.type === "auth_required") {
       navigateToLogin();
       return null;
@@ -54,6 +53,7 @@ const AuthenticatedApp = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/pentru-organizatii" element={<ForOrganizations />} />
       <Route path="/pentru-specialisti" element={<ForSpecialists />} />
       <Route path="/accept-professional-invitation" element={<AcceptProfessionalInvitation />} />
 
@@ -64,7 +64,7 @@ const AuthenticatedApp = () => {
         <Route path="/furnizor/:id" element={<ProviderProfile />} />
         <Route path="/cerere" element={<RequestFlow />} />
         <Route path="/revendica-profil" element={<Navigate to="/adauga-sau-revendica" replace />} />
-        <Route path="/inscriere" element={<Navigate to="/adauga-sau-revendica" replace />} />
+        <Route path="/inscriere" element={<Navigate to="/pentru-organizatii" replace />} />
         <Route path="/adauga-sau-revendica" element={<AddOrClaim />} />
         <Route path="/confidentialitate" element={<Privacy />} />
         <Route path="/termeni" element={<Terms />} />
