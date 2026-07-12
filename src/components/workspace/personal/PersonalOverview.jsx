@@ -8,7 +8,7 @@ export default function PersonalOverview({ user, workspace, onNavigate }) {
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight">Salut, {user.full_name || "acolo"}</h1>
-        <p className="mt-2 text-muted-foreground text-sm">Contul tau personal Vezunde.</p>
+        <p className="mt-2 text-muted-foreground text-sm">Contul tau personal VIASEE.</p>
       </div>
 
       {latest && (
