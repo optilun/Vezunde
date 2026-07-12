@@ -25,7 +25,7 @@ export default function Layout() {
       >
         <div className="max-w-6xl mx-auto px-6 sm:px-8 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center" aria-label="VIASEE - Pagina principala">
-            <ViaseeBrand />
+            <ViaseeBrand symbolClassName="h-8 w-8" wordmarkClassName="h-[18px] w-auto" />
           </Link>
           <nav className="flex items-center gap-2 text-sm">
             <Link to="/cauta" className="px-3.5 py-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors">Cauta</Link>
