@@ -361,7 +361,7 @@ function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, c
     ? prerequisite.blockers?.[0]?.message
     : "";
   const detail = removalRequested
-    ? "Elementul rămâne în configurația aprobată până la soluționarea cererii."
+    ? "La trimiterea cererii, elementul este ascuns public până la soluționare."
     : blockerDetail || helperText;
   return (
     <button
@@ -856,7 +856,7 @@ function DependencyRemovalDialog({ request, onCancel, onConfirm }) {
           <div className="rounded-2xl bg-secondary/45 p-3 text-center"><div className="text-xl font-extrabold">{request.capabilityCount || 0}</div><div className="mt-1 text-[10px] font-semibold text-muted-foreground">Activități</div></div>
           <div className="rounded-2xl bg-secondary/45 p-3 text-center"><div className="text-xl font-extrabold">{request.resourceCount || 0}</div><div className="mt-1 text-[10px] font-semibold text-muted-foreground">Resurse</div></div>
         </div>
-        {approved && <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs leading-relaxed text-amber-900">Configurația aprobată nu este ștearsă imediat. Modificarea intră în draft și va fi aplicată definitiv după verificare.</p>}
+        {approved && <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs leading-relaxed text-amber-900">Configurația aprobată nu este ștearsă imediat. După trimiterea cererii, serviciile afectate sunt ascunse public până la soluționare.</p>}
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <button type="button" onClick={onCancel} className="rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary">Renunță</button>
           <button type="button" onClick={onConfirm} className="rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background">{approved ? "Solicită eliminarea tuturor" : "Elimină din draft"}</button>
