@@ -215,7 +215,9 @@ export function evaluateServicePrerequisites(rawKey, context = {}) {
   const blockers = [];
 
   const serviceKey = definition.key;
+  const serviceContext = getServiceOperationalContext(serviceKey);
   const serviceUnitKey = resolveUnitKey(serviceKey, context);
+  const prerequisiteUnitKey = serviceContext?.scope === 'location' ? '' : serviceUnitKey;
   const capabilityKey = resolveCapabilityKey(serviceKey, context);
   const hasPersistedUnits = functionalUnits.length > 0;
   const enforceUnitScope = context.enforceUnitScope === true || hasPersistedUnits;
@@ -232,8 +234,8 @@ export function evaluateServicePrerequisites(rawKey, context = {}) {
     });
   }
 
-  if (enforceUnitScope && serviceUnitKey && !activeUnitKeys.has(serviceUnitKey)) {
-    const fallbackUnits = getServiceOperationalContext(serviceKey)?.fallbackUnitKeys || [];
+  if (enforceUnitScope && prerequisiteUnitKey && !activeUnitKeys.has(prerequisiteUnitKey)) {
+    const fallbackUnits = serviceContext?.fallbackUnitKeys || [];
     const fallbackMatched = fallbackUnits.some((unitKey) => activeUnitKeys.has(unitKey));
     if (!fallbackMatched) {
       blockers.push({
@@ -254,7 +256,7 @@ export function evaluateServicePrerequisites(rawKey, context = {}) {
     });
   }
 
-  const professionalResult = verifiedProfessionalTypes(assignments, professionals, serviceUnitKey, enforceUnitScope);
+  const professionalResult = verifiedProfessionalTypes(assignments, professionals, prerequisiteUnitKey, enforceUnitScope);
   if (definition.requires_verified_specialist) {
     const required = definition.required_professional_types || [];
     const matched = required.some((type) => professionalResult.types.has(normalizeProfessionalType(type)));
@@ -271,7 +273,7 @@ export function evaluateServicePrerequisites(rawKey, context = {}) {
   }
 
   const medical = definition.requires_review || definition.service_need_level === 'specialized_medical';
-  const equipmentResult = verifiedEquipmentTypes(equipment, medical, serviceUnitKey, enforceUnitScope);
+  const equipmentResult = verifiedEquipmentTypes(equipment, medical, prerequisiteUnitKey, enforceUnitScope);
   if (definition.requires_equipment) {
     const required = definition.required_equipment_types || [];
     if (required.length === 0) {
@@ -298,7 +300,7 @@ export function evaluateServicePrerequisites(rawKey, context = {}) {
     }
   }
 
-  const facilityResult = activeFacilityTypes(facilities, serviceUnitKey, enforceUnitScope);
+  const facilityResult = activeFacilityTypes(facilities, prerequisiteUnitKey, enforceUnitScope);
   if (definition.requires_infrastructure) {
     const required = definition.required_infrastructure_types || [];
     const matched = required.length > 0
@@ -336,6 +338,8 @@ export function evaluateServicePrerequisites(rawKey, context = {}) {
       active_functional_unit_keys: [...activeUnitKeys],
       active_capability_keys: [...activeCapabilityKeys],
       service_unit_key: serviceUnitKey,
+      prerequisite_unit_key: prerequisiteUnitKey,
+      validation_scope: serviceContext?.scope || 'unit',
       capability_key: capabilityKey,
       unit_scope_enforced: enforceUnitScope,
       scoped_assignment_ids: professionalResult.scopedAssignments,
