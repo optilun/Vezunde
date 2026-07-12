@@ -478,11 +478,24 @@ function ResourceGroup({ title, emptyText, items, unitKey, type, disabled, links
 
 function UnitResources({ unitKey, config, disabled, links, onToggle }) {
   const [open, setOpen] = useState(false);
+  const professionalCount = (links.professionals || []).filter((item) => (item.unit_keys || []).includes(unitKey)).length;
+  const equipmentCount = (links.equipment || []).filter((item) => item.unit_key === unitKey).length;
+  const facilityCount = (links.facilities || []).filter((item) => item.unit_key === unitKey).length;
+  const resourceCount = professionalCount + equipmentCount + facilityCount;
   return (
     <div className="border-t border-border/60 bg-secondary/10">
       <button type="button" onClick={() => setOpen((value) => !value)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left sm:px-5">
-        <span className="flex items-center gap-2 text-xs font-bold"><Users className="h-4 w-4 text-muted-foreground" /> Specialiști și dotări asociate acestei unități</span>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition ${open ? "rotate-180" : ""}`} />
+        <span className="flex min-w-0 items-center gap-2">
+          <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="min-w-0">
+            <span className="block text-xs font-bold">Specialiști și dotări asociate acestei unități</span>
+            <span className="mt-0.5 block text-[10px] text-muted-foreground">{resourceCount > 0 ? `${professionalCount} specialiști · ${equipmentCount} echipamente · ${facilityCount} facilități` : "Nicio resursă asociată încă"}</span>
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center gap-2">
+          {resourceCount > 0 && <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold">{resourceCount} asociate</span>}
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition ${open ? "rotate-180" : ""}`} />
+        </span>
       </button>
       {open && (
         <div className="grid gap-3 border-t border-border/60 p-4 md:grid-cols-3 sm:p-5">
@@ -547,13 +560,16 @@ function UnitAccordion({ unitKey, sections, selected, serviceUnitMap, capabiliti
               <div key={section.key} className="border-t border-border/60 first:border-t-0">
                 <div className="flex flex-wrap items-start justify-between gap-3 bg-card px-4 py-3 sm:px-5">
                   <div className="min-w-0"><h3 className="text-xs font-bold">{section.title}</h3><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{section.description}</p></div>
-                  {availableParents.length > 1 && (
-                    <label className="text-[10px] font-semibold text-muted-foreground">Se realizează în
-                      <select disabled={disabled} value={activeUnit} onChange={(event) => onChangeSectionUnit(section, event.target.value)} className="ml-2 rounded-lg border border-border bg-background px-2 py-1.5 text-[11px] font-semibold text-foreground">
-                        {availableParents.map((key) => <option key={key} value={key}>{getFunctionalUnitDefinition(key)?.shortTitle || key}</option>)}
-                      </select>
-                    </label>
-                  )}
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold">{selectedCountForSection(selected, section)} din {section.items.length} selectate</span>
+                    {availableParents.length > 1 && (
+                      <label className="text-[10px] font-semibold text-muted-foreground">Se realizează în
+                        <select disabled={disabled} value={activeUnit} onChange={(event) => onChangeSectionUnit(section, event.target.value)} className="ml-2 rounded-lg border border-border bg-background px-2 py-1.5 text-[11px] font-semibold text-foreground">
+                          {availableParents.map((key) => <option key={key} value={key}>{getFunctionalUnitDefinition(key)?.shortTitle || key}</option>)}
+                        </select>
+                      </label>
+                    )}
+                  </div>
                 </div>
                 {section.note && <div className="mx-4 mb-3 flex gap-2 rounded-xl border border-border bg-secondary/25 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground sm:mx-5"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" /> {section.note}</div>}
                 {!capabilityActive && <div className="mx-4 mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900 sm:mx-5">Activează mai întâi capabilitatea „{getCapabilityDefinition(section.capabilityKey)?.title || section.capabilityKey}” pentru această unitate.</div>}
