@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const PROVIDER_ALLOWED_SECTIONS = ['public_profile', 'location_details', 'services', 'team', 'media', 'article'];
 const CLAIM_PREP_ALLOWED_SECTIONS = ['public_profile', 'operating_hours', 'services'];
+const B2B_CLAIM_PREP_ALLOWED_SECTIONS = ['public_profile'];
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
 const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
 const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
@@ -24,11 +25,18 @@ function invitationLocationIds(invitation) { return Array.isArray(invitation.inv
 function parseJSON(value) { try { return value ? JSON.parse(value) : null; } catch (_e) { return null; } }
 
 const CLAIM_STATUS_MESSAGES = {
-  in_asteptare: 'Solicitarea este in verificare. Poti pregati datele profilului intre timp.',
+  in_asteptare: 'Solicitarea este in verificare. Urmareste statusul din contul tau.',
   needs_more_info: 'Avem nevoie de cateva completari pentru solicitarea ta.',
-  aprobata: 'Revendicarea a fost aprobata. Workspace-ul furnizorului este disponibil.',
-  respinsa: 'Revendicarea a fost respinsa.',
+  aprobata: 'Solicitarea a fost aprobata. Spatiul corespunzator este disponibil in cont.',
+  respinsa: 'Solicitarea a fost respinsa.',
 };
+
+function claimPreparationSections(claim) {
+  if (!claim || claim.mode === 'new_location_duplicate_review') return [];
+  if (claim.claim_subject_type === 'independent_professional') return [];
+  if (claim.claim_subject_type === 'b2b_supplier') return B2B_CLAIM_PREP_ALLOWED_SECTIONS;
+  return CLAIM_PREP_ALLOWED_SECTIONS;
+}
 
 function computeLocationCompleteness(location) {
   const items = [
@@ -171,12 +179,17 @@ async function getMemberSummary(svc, memberships, locationIds) {
 }
 
 function sanitizeClaim(claim) {
+  const submitted = parseJSON(claim.submitted_payload) || {};
   return {
     id: claim.id,
     status: claim.status,
     mode: claim.mode || '',
-    claim_subject_type: claim.claim_subject_type || '',
-    claimant_relationship: claim.claimant_relationship || '',
+    request_type: claim.request_type || submitted.request_type || '',
+    claim_subject_type: claim.claim_subject_type || submitted.claim_subject_type || '',
+    claimant_relationship: claim.claimant_relationship || submitted.claimant_relationship || '',
+    requested_membership_role: claim.requested_membership_role || submitted.requested_membership_role || '',
+    verification_method: claim.verification_method || submitted.verification_method || '',
+    verification_status: claim.verification_status || '',
     business_name: claim.business_name || '',
     contact_name: claim.contact_name || '',
     role: claim.role || '',
@@ -208,10 +221,28 @@ async function getApplicantPreparationWorkspace(svc, user) {
     const latestClaim = claims[0] || null;
     return { mode: 'none', user: { id: user.id, full_name: user.full_name, email: user.email, role: user.role }, memberships: [], organizations: [], locations: [], pending_review_count: 0, allowed_sections: [], latest_claim_status: latestClaim ? { id: latestClaim.id, status: latestClaim.status, status_message: CLAIM_STATUS_MESSAGES[latestClaim.status] || '', reviewed_at: latestClaim.reviewed_at || null } : null };
   }
+  const allowedSections = claimPreparationSections(activeClaim);
   const location = activeClaim.location_id ? await svc.entities.ProviderLocation.get(activeClaim.location_id).catch(() => null) : null;
-  const rawDrafts = await svc.entities.ProviderWorkspaceSubmission.filter({ claim_request_id: activeClaim.id, submitted_by_user_id: user.id, access_origin: 'claim_preparation' }, '-created_date', 50);
-  const drafts = rawDrafts.filter((submission) => !submission.preparation_locked_at && submission.preparation_lock_reason !== 'claim_rejected');
-  return { mode: 'applicant_preparation', user: { id: user.id, full_name: user.full_name, email: user.email, role: user.role }, memberships: [], organizations: [], locations: [], pending_review_count: 0, allowed_sections: CLAIM_PREP_ALLOWED_SECTIONS, claim: sanitizeClaim(activeClaim), location_summary: sanitizeClaimLocation(location, activeClaim), preparation_drafts: drafts.map(sanitizePreparationDraft) };
+  const rawDrafts = activeClaim.location_id
+    ? await svc.entities.ProviderWorkspaceSubmission.filter({ claim_request_id: activeClaim.id, submitted_by_user_id: user.id, access_origin: 'claim_preparation' }, '-created_date', 50)
+    : [];
+  const drafts = rawDrafts.filter((submission) => (
+    !submission.preparation_locked_at
+    && submission.preparation_lock_reason !== 'claim_rejected'
+    && allowedSections.includes(submission.section)
+  ));
+  return {
+    mode: 'applicant_preparation',
+    user: { id: user.id, full_name: user.full_name, email: user.email, role: user.role },
+    memberships: [],
+    organizations: [],
+    locations: [],
+    pending_review_count: 0,
+    allowed_sections: allowedSections,
+    claim: sanitizeClaim(activeClaim),
+    location_summary: sanitizeClaimLocation(location, activeClaim),
+    preparation_drafts: drafts.map(sanitizePreparationDraft),
+  };
 }
 
 Deno.serve(async (req) => {
