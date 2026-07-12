@@ -343,67 +343,86 @@ function StatusBadge({ prerequisite, locallyBlocked }) {
   );
 }
 
-function ServiceRow({ item, selected, prerequisite, unitKey, capabilityActive, disabled, helperText = "", onToggle }) {
+function ChangeBadge({ draftAddition, removalRequested }) {
+  if (removalRequested) return <span className="inline-flex shrink-0 items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-900">Eliminare solicitată</span>;
+  if (draftAddition) return <span className="inline-flex shrink-0 items-center rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">Nou în draft</span>;
+  return null;
+}
+
+function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, capabilityActive, disabled, helperText = "", onToggle }) {
   const active = isSelected(selected, item);
+  const approved = isSelected(approvedSelected, item);
+  const removalRequested = approved && !active;
+  const draftAddition = active && !approved;
   const context = getServiceOperationalContext(item.id);
   const requiresUnit = context?.sectionKey !== "business_attributes";
   const locallyBlocked = active && requiresUnit && (!unitKey || (context?.capabilityKey && !capabilityActive));
   const blockerDetail = active && prerequisite?.eligible === false
     ? prerequisite.blockers?.[0]?.message
     : "";
-  const detail = blockerDetail || helperText;
+  const detail = removalRequested
+    ? "Elementul rămâne în configurația aprobată până la soluționarea cererii."
+    : blockerDetail || helperText;
   return (
     <button
       type="button"
       aria-pressed={active}
       disabled={disabled || prerequisite?.status === "incompatible_profile"}
       onClick={() => onToggle(item, unitKey)}
-      className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 px-4 py-3 text-left transition last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-55 ${active ? "bg-secondary/35" : "bg-card hover:bg-secondary/20"}`}
+      className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 px-4 py-3 text-left transition last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-55 ${removalRequested ? "bg-amber-50/70 hover:bg-amber-50" : active ? "bg-secondary/35" : "bg-card hover:bg-secondary/20"}`}
     >
-      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${active ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`}>
-        {active && <Check className="h-3.5 w-3.5" />}
+      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${removalRequested ? "border-amber-300 bg-amber-100 text-amber-900" : active ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`}>
+        {removalRequested ? <X className="h-3.5 w-3.5" /> : active && <Check className="h-3.5 w-3.5" />}
       </span>
       <span className="min-w-0">
         <span className="block text-sm font-semibold leading-snug text-foreground">{serviceLabel(item)}</span>
         {detail && <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">{detail}</span>}
       </span>
-      <StatusBadge prerequisite={prerequisite} locallyBlocked={locallyBlocked} />
+      <span className="flex flex-wrap items-center justify-end gap-1.5">
+        <ChangeBadge draftAddition={draftAddition} removalRequested={removalRequested} />
+        {!removalRequested && <StatusBadge prerequisite={prerequisite} locallyBlocked={locallyBlocked} />}
+      </span>
     </button>
   );
 }
 
-function SelectionCard({ active, title, description, helper, icon: Icon, disabled, onClick }) {
+function SelectionCard({ active, approved = false, title, description, helper, icon: Icon, disabled, onClick }) {
+  const removalRequested = approved && !active;
+  const draftAddition = active && !approved;
   return (
     <button
       type="button"
       aria-pressed={active}
       disabled={disabled}
       onClick={onClick}
-      className={`flex w-full items-start gap-3 rounded-2xl border p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-60 ${active ? "border-foreground/15 bg-secondary/45" : "border-border bg-card hover:bg-secondary/25"}`}
+      className={`flex w-full items-start gap-3 rounded-2xl border p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-60 ${removalRequested ? "border-amber-200 bg-amber-50/70 hover:bg-amber-50" : active ? "border-foreground/15 bg-secondary/45" : "border-border bg-card hover:bg-secondary/25"}`}
     >
-      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${active ? "bg-card text-foreground" : "bg-secondary/55 text-muted-foreground"}`}>
+      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${removalRequested ? "bg-amber-100 text-amber-900" : active ? "bg-card text-foreground" : "bg-secondary/55 text-muted-foreground"}`}>
         <Icon className="h-4 w-4" />
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-start justify-between gap-3">
           <span className="text-sm font-bold leading-snug text-foreground">{title}</span>
-          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${active ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`}>
-            {active && <Check className="h-3.5 w-3.5" />}
+          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${removalRequested ? "border-amber-300 bg-amber-100 text-amber-900" : active ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`}>
+            {removalRequested ? <X className="h-3.5 w-3.5" /> : active && <Check className="h-3.5 w-3.5" />}
           </span>
         </span>
         <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{description}</span>
-        {helper && <span className="mt-2 block text-[10px] font-semibold text-muted-foreground">{helper}</span>}
+        <span className="mt-2 flex flex-wrap items-center gap-2">
+          {helper && <span className="text-[10px] font-semibold text-muted-foreground">{helper}</span>}
+          <ChangeBadge draftAddition={draftAddition} removalRequested={removalRequested} />
+        </span>
       </span>
     </button>
   );
 }
 
-function UnitSelection({ units, activeUnits, selectedByUnit, primaryUnits, disabled, onToggle }) {
+function UnitSelection({ units, approvedUnits, activeUnits, selectedByUnit, primaryUnits, disabled, onToggle }) {
   const [showOptional, setShowOptional] = useState(false);
-  const hiddenUnits = units.filter((unitKey) => !primaryUnits.includes(unitKey) && !activeUnits.includes(unitKey));
+  const hiddenUnits = units.filter((unitKey) => !primaryUnits.includes(unitKey) && !activeUnits.includes(unitKey) && !approvedUnits.includes(unitKey));
   const visibleUnits = showOptional
     ? units
-    : units.filter((unitKey) => primaryUnits.includes(unitKey) || activeUnits.includes(unitKey));
+    : units.filter((unitKey) => primaryUnits.includes(unitKey) || activeUnits.includes(unitKey) || approvedUnits.includes(unitKey));
 
   return (
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -421,6 +440,7 @@ function UnitSelection({ units, activeUnits, selectedByUnit, primaryUnits, disab
             <SelectionCard
               key={unitKey}
               active={active}
+              approved={approvedUnits.includes(unitKey)}
               title={definition?.title || unitKey}
               description={definition?.description || ""}
               helper={count > 0 ? `${count} opțiuni asociate` : primaryUnits.includes(unitKey) ? "Recomandat pentru acest profil" : "Opțional"}
@@ -441,14 +461,15 @@ function UnitSelection({ units, activeUnits, selectedByUnit, primaryUnits, disab
   );
 }
 
-function CapabilitySelection({ capabilityKeys, capabilities, activeUnits, primaryCapabilities, disabled, onToggle }) {
+function CapabilitySelection({ capabilityKeys, approvedCapabilities, capabilities, activeUnits, primaryCapabilities, disabled, onToggle }) {
   const [showOptional, setShowOptional] = useState(false);
   if (capabilityKeys.length === 0) return null;
   const activeCapabilityKeys = new Set(capabilities.map((item) => item.capability_key));
-  const hiddenCapabilities = capabilityKeys.filter((key) => !primaryCapabilities.includes(key) && !activeCapabilityKeys.has(key));
+  const approvedCapabilityKeys = new Set(approvedCapabilities.map((item) => item.capability_key));
+  const hiddenCapabilities = capabilityKeys.filter((key) => !primaryCapabilities.includes(key) && !activeCapabilityKeys.has(key) && !approvedCapabilityKeys.has(key));
   const visibleCapabilities = showOptional
     ? capabilityKeys
-    : capabilityKeys.filter((key) => primaryCapabilities.includes(key) || activeCapabilityKeys.has(key));
+    : capabilityKeys.filter((key) => primaryCapabilities.includes(key) || activeCapabilityKeys.has(key) || approvedCapabilityKeys.has(key));
 
   return (
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -466,6 +487,7 @@ function CapabilitySelection({ capabilityKeys, capabilities, activeUnits, primar
             <SelectionCard
               key={capabilityKey}
               active={Boolean(activeRow)}
+              approved={approvedCapabilityKeys.has(capabilityKey)}
               title={definition?.title || capabilityKey}
               description={definition?.description || ""}
               helper={activeRow ? `Asociat: ${getFunctionalUnitDefinition(activeRow.parent_unit_key)?.shortTitle || activeRow.parent_unit_key}` : parentOptions.length === 0 ? "Selectează mai întâi un spațiu compatibil" : primaryCapabilities.includes(capabilityKey) ? "Recomandat pentru acest profil" : "Opțional"}
@@ -593,7 +615,7 @@ function CustomSuggestion({ unitKey, section, disabled, items, onAdd, onRemove }
   );
 }
 
-function UnitAccordion({ unitKey, sections, selected, serviceUnitMap, capabilities, prerequisites, config, resourceLinks, customSuggestions, open, disabled, onOpen, onToggleService, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion }) {
+function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceUnitMap, capabilities, prerequisites, config, resourceLinks, customSuggestions, open, disabled, onOpen, onToggleService, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion }) {
   const definition = getFunctionalUnitDefinition(unitKey);
   const Icon = UNIT_ICONS[unitKey] || Building2;
   const selectedCount = sections.reduce((sum, section) => sum + selectedCountForSection(selected, section), 0);
@@ -631,7 +653,7 @@ function UnitAccordion({ unitKey, sections, selected, serviceUnitMap, capabiliti
                 {section.note && <div className="mx-4 mb-3 flex gap-2 rounded-xl border border-border bg-secondary/25 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground sm:mx-5"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" /> {section.note}</div>}
                 {!capabilityActive && <div className="mx-4 mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900 sm:mx-5">Activează mai întâi capabilitatea „{getCapabilityDefinition(section.capabilityKey)?.title || section.capabilityKey}” pentru această unitate.</div>}
                 <div className="border-t border-border/50">
-                  {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} prerequisite={prerequisites[item.id]} unitKey={activeUnit} capabilityActive={capabilityActive} disabled={disabled || !capabilityActive} onToggle={onToggleService} />)}
+                  {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={prerequisites[item.id]} unitKey={activeUnit} capabilityActive={capabilityActive} disabled={disabled || !capabilityActive} onToggle={onToggleService} />)}
                 </div>
                 <CustomSuggestion unitKey={unitKey} section={section} disabled={disabled} items={suggestions} onAdd={onAddSuggestion} onRemove={onRemoveSuggestion} />
               </div>
@@ -644,7 +666,7 @@ function UnitAccordion({ unitKey, sections, selected, serviceUnitMap, capabiliti
   );
 }
 
-function GlobalServiceSections({ sections, selected, prerequisites, disabled, onToggleService }) {
+function GlobalServiceSections({ sections, selected, approvedSelected, prerequisites, disabled, onToggleService }) {
   if (sections.length === 0) return null;
   const helperText = {
     cas_reimbursed_services: "Bifează dacă locația oferă cel puțin un produs sau serviciu care poate fi decontat prin CAS. Detaliile și eligibilitatea se confirmă separat.",
@@ -660,7 +682,7 @@ function GlobalServiceSections({ sections, selected, prerequisites, disabled, on
         <div key={section.key} className="border-b border-border/60 last:border-b-0">
           <div className="bg-card px-4 py-3 sm:px-5"><h3 className="text-xs font-bold">{section.title}</h3><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{section.description}</p></div>
           <div className="border-t border-border/50">
-            {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} prerequisite={prerequisites[item.id]} unitKey="" capabilityActive disabled={disabled} helperText={helperText[item.id] || ""} onToggle={onToggleService} />)}
+            {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={prerequisites[item.id]} unitKey="" capabilityActive disabled={disabled} helperText={helperText[item.id] || ""} onToggle={onToggleService} />)}
           </div>
         </div>
       ))}
@@ -1211,21 +1233,21 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)] xl:items-start">
         <div className="space-y-4">
-          {!query && <UnitSelection units={selectableUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={!editable} onToggle={toggleUnit} />}
-          {!query && <CapabilitySelection capabilityKeys={selectableCapabilities} capabilities={capabilities} activeUnits={activeUnits} primaryCapabilities={primaryCapabilities} disabled={!editable} onToggle={toggleCapability} />}
+          {!query && <UnitSelection units={selectableUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={!editable} onToggle={toggleUnit} />}
+          {!query && <CapabilitySelection capabilityKeys={selectableCapabilities} approvedCapabilities={approvedCapabilities} capabilities={capabilities} activeUnits={activeUnits} primaryCapabilities={primaryCapabilities} disabled={!editable} onToggle={toggleCapability} />}
           {!query && <CareSettingSelector options={operationalLayout.careSettings || []} value={careSetting} disabled={!editable} onChange={setCareSetting} />}
-          {!query && <GlobalServiceSections sections={globalSections} selected={selected} prerequisites={config?.prerequisites_by_key || {}} disabled={!editable} onToggleService={toggleService} />}
+          {!query && <GlobalServiceSections sections={globalSections} selected={selected} approvedSelected={approvedSelected} prerequisites={config?.prerequisites_by_key || {}} disabled={!editable} onToggleService={toggleService} />}
 
           {!query && <ServiceCatalogIntro activeUnits={activeUnits} selectedCount={selectedCount} />}
 
           {query ? (
             <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
               <div className="border-b border-border px-4 py-4 sm:px-5"><h2 className="text-sm font-bold">Rezultate pentru „{query}”</h2><p className="mt-1 text-[11px] text-muted-foreground">Căutarea recunoaște și formulări uzuale folosite de pacienții din România.</p></div>
-              {searchResults.length > 0 ? searchResults.map(({ section, item }) => { const isLocationWide = section.key === "business_attributes"; const unitKey = isLocationWide ? "" : resolveSectionUnit(section, selected, serviceUnitMap, activeUnits); const capabilityActive = !section.capabilityKey || capabilities.some((capability) => capability.capability_key === section.capabilityKey && capability.parent_unit_key === unitKey); return <div key={`${section.key}:${item.id}`}><div className="border-b border-border/60 bg-secondary/10 px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{isLocationWide ? "Valabil la nivelul locației" : getFunctionalUnitDefinition(unitKey)?.shortTitle || "Spațiu neconfigurat"} · {section.title}</div><ServiceRow item={item} selected={selected} prerequisite={config?.prerequisites_by_key?.[item.id]} unitKey={unitKey} capabilityActive={capabilityActive} disabled={!editable || (!isLocationWide && !activeUnits.includes(unitKey))} onToggle={toggleService} /></div>; }) : <div className="px-4 py-10 text-center text-sm text-muted-foreground">Nu am găsit opțiuni pentru această căutare.</div>}
+              {searchResults.length > 0 ? searchResults.map(({ section, item }) => { const isLocationWide = section.key === "business_attributes"; const unitKey = isLocationWide ? "" : resolveSectionUnit(section, selected, serviceUnitMap, activeUnits); const capabilityActive = !section.capabilityKey || capabilities.some((capability) => capability.capability_key === section.capabilityKey && capability.parent_unit_key === unitKey); return <div key={`${section.key}:${item.id}`}><div className="border-b border-border/60 bg-secondary/10 px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{isLocationWide ? "Valabil la nivelul locației" : getFunctionalUnitDefinition(unitKey)?.shortTitle || "Spațiu neconfigurat"} · {section.title}</div><ServiceRow item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={config?.prerequisites_by_key?.[item.id]} unitKey={unitKey} capabilityActive={capabilityActive} disabled={!editable || (!isLocationWide && !activeUnits.includes(unitKey))} onToggle={toggleService} /></div>; }) : <div className="px-4 py-10 text-center text-sm text-muted-foreground">Nu am găsit opțiuni pentru această căutare.</div>}
             </section>
           ) : (
             <div className="space-y-3">
-              {visibleUnits.map((unitKey) => <UnitAccordion key={unitKey} unitKey={unitKey} sections={sectionsByUnit[unitKey] || []} selected={selected} serviceUnitMap={serviceUnitMap} capabilities={capabilities} prerequisites={config?.prerequisites_by_key || {}} config={{ ...config, activeUnits }} resourceLinks={resourceLinks} customSuggestions={suggestions} open={openUnit === unitKey} disabled={!editable} onOpen={() => setOpenUnit((current) => current === unitKey ? "" : unitKey)} onToggleService={toggleService} onChangeSectionUnit={changeSectionUnit} onToggleResource={toggleResource} onAddSuggestion={addSuggestion} onRemoveSuggestion={removeSuggestion} />)}
+              {visibleUnits.map((unitKey) => <UnitAccordion key={unitKey} unitKey={unitKey} sections={sectionsByUnit[unitKey] || []} selected={selected} approvedSelected={approvedSelected} serviceUnitMap={serviceUnitMap} capabilities={capabilities} prerequisites={config?.prerequisites_by_key || {}} config={{ ...config, activeUnits }} resourceLinks={resourceLinks} customSuggestions={suggestions} open={openUnit === unitKey} disabled={!editable} onOpen={() => setOpenUnit((current) => current === unitKey ? "" : unitKey)} onToggleService={toggleService} onChangeSectionUnit={changeSectionUnit} onToggleResource={toggleResource} onAddSuggestion={addSuggestion} onRemoveSuggestion={removeSuggestion} />)}
               {visibleUnits.length === 0 && <div className="rounded-2xl border border-dashed border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground">Selectează cel puțin un spațiu care există în locație.</div>}
             </div>
           )}
