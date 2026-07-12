@@ -29,6 +29,11 @@ jobs:
       - name: Apply targeted changes
         run: python scripts/apply-provider-workspace-idempotency.py
 
+      - name: Remove existing unused imports
+        run: |
+          sed -i 's/, MapPin, SearchIcon/, SearchIcon/' src/components/intake2/QuestionLocation.jsx
+          sed -i 's/, Mail, MapPin, Phone/, Mail, Phone/' src/pages/ProviderProfile.jsx
+
       - name: Install dependencies
         run: npm ci
 
