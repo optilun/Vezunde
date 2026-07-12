@@ -15,6 +15,7 @@ const subjectWizard = read('src/components/provider/NewLocationWizard.jsx');
 const providerSearch = read('src/components/provider/ProviderSearch.jsx');
 const searchBackend = read('base44/functions/getClaimableProviderLocations/entry.ts');
 const identityBackend = read('base44/functions/findProviderIdentityCandidates/entry.ts');
+const workspaceBackend = read('base44/functions/getMyProviderWorkspace/entry.ts');
 const submitBackend = read('base44/functions/submitProviderClaim/entry.ts');
 const reviewBackend = read('base44/functions/adminProviderClaimReview/entry.ts');
 const adminClaims = read('src/components/admin/directory/DirOpsClaims.jsx');
@@ -31,6 +32,7 @@ const checks = [
   [app.includes('path="/inscriere-specialist"'), 'professional onboarding has a dedicated route'],
   [app.includes('path="/inscriere-partener"'), 'B2B onboarding has a dedicated route'],
   [addOrClaim.includes('stage === "auth"'), 'existing-profile flow authenticates before private representation data'],
+  [addOrClaim.includes('persistClaimLocation(selected)'), 'selected claim profile is persisted before authentication'],
   [!addOrClaim.includes('redirectToLogin'), 'existing-profile flow does not redirect or submit from its form component'],
   [!organizationWizard.includes('pendingSubmit'), 'organization onboarding never auto-submits after login'],
   [!subjectWizard.includes('pendingSubmit'), 'professional and B2B onboarding never auto-submit after login'],
@@ -38,6 +40,9 @@ const checks = [
   [providerSearch.includes('loc.action_label'), 'search renders claim versus access labels from backend'],
   [searchBackend.includes("claim_action: controlled ? 'request_access' : 'claim'"), 'public search distinguishes controlled profiles'],
   [identityBackend.includes('provider_public_precheck'), 'new organization flow can run a safe duplicate precheck before login'],
+  [identityBackend.includes("l.status !== 'publicata'"), 'public duplicate precheck does not expose unpublished profiles'],
+  [workspaceBackend.includes("claim.claim_subject_type === 'independent_professional'"), 'professional applicants cannot edit unsupported location drafts'],
+  [workspaceBackend.includes('B2B_CLAIM_PREP_ALLOWED_SECTIONS'), 'B2B preparation is limited to the public profile'],
   [submitBackend.includes('ROLE_BY_RELATIONSHIP'), 'backend derives requested role from the declared relationship'],
   [submitBackend.includes('Rolul solicitat nu corespunde relatiei declarate'), 'backend rejects forged requested roles'],
   [submitBackend.includes('request_type: requestType'), 'request type is persisted structurally'],
