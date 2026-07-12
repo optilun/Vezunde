@@ -832,6 +832,34 @@ function ServicesSidebar({ activeUnits, capabilities, selectedCount, selectedByU
   );
 }
 
+function DependencyRemovalDialog({ request, onCancel, onConfirm }) {
+  if (!request) return null;
+  const approved = request.approved === true;
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/35 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onCancel(); }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="dependency-removal-title" className="w-full max-w-lg rounded-[24px] border border-border bg-card p-5 shadow-2xl">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-900"><AlertTriangle className="h-4 w-4" /></span>
+          <div>
+            <h2 id="dependency-removal-title" className="text-base font-bold">{approved ? "Solicită eliminarea cu dependențe" : "Elimină opțiunea din draft"}</h2>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">„{request.label}” are elemente asociate. Confirmarea le va marca împreună, astfel încât configurația să rămână coerentă.</p>
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="rounded-2xl bg-secondary/45 p-3 text-center"><div className="text-xl font-extrabold">{request.serviceCount || 0}</div><div className="mt-1 text-[10px] font-semibold text-muted-foreground">Servicii</div></div>
+          <div className="rounded-2xl bg-secondary/45 p-3 text-center"><div className="text-xl font-extrabold">{request.capabilityCount || 0}</div><div className="mt-1 text-[10px] font-semibold text-muted-foreground">Activități</div></div>
+          <div className="rounded-2xl bg-secondary/45 p-3 text-center"><div className="text-xl font-extrabold">{request.resourceCount || 0}</div><div className="mt-1 text-[10px] font-semibold text-muted-foreground">Resurse</div></div>
+        </div>
+        {approved && <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs leading-relaxed text-amber-900">Configurația aprobată nu este ștearsă imediat. Modificarea intră în draft și va fi aplicată definitiv după verificare.</p>}
+        <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <button type="button" onClick={onCancel} className="rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary">Renunță</button>
+          <button type="button" onClick={onConfirm} className="rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background">{approved ? "Solicită eliminarea tuturor" : "Elimină din draft"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LegacyServices({ services, rawRemovalKeys, disabled, onToggle }) {
   const [open, setOpen] = useState(false);
   if (!services.length) return null;
@@ -868,6 +896,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
   const [baselineSignature, setBaselineSignature] = useState(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [pendingRemoval, setPendingRemoval] = useState(null);
 
   const serviceLayout = useMemo(() => remoteCatalog?.group_layout || getServiceGroupLayout(location?.provider_profile_type, location?.provider_type), [location?.provider_profile_type, location?.provider_type, remoteCatalog]);
   const operationalLayout = useMemo(() => getFunctionalUnitLayout(location?.provider_profile_type, location?.provider_type), [location?.provider_profile_type, location?.provider_type]);
@@ -1072,39 +1101,92 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     load();
   }, [locationId]);
 
+  const servicesForUnit = (unitKey) => selectedServiceKeys(selected).filter((serviceKey) => {
+    const context = getServiceOperationalContext(serviceKey);
+    if (context?.sectionKey === "business_attributes") return false;
+    return (serviceUnitMap[serviceKey] || context?.unitKey || "") === unitKey;
+  });
+
+  const applyUnitRemoval = (unitKey) => {
+    const serviceKeys = new Set(servicesForUnit(unitKey));
+    setSelected((current) => Object.fromEntries(Object.entries(current).map(([group, ids]) => [group, (ids || []).filter((id) => !serviceKeys.has(id))])));
+    setServiceUnitMap((current) => Object.fromEntries(Object.entries(current).filter(([serviceKey, mappedUnit]) => mappedUnit !== unitKey && !serviceKeys.has(serviceKey))));
+    setCapabilities((current) => current.filter((item) => item.parent_unit_key !== unitKey));
+    setResourceLinks((current) => ({
+      professionals: current.professionals.map((item) => ({ ...item, unit_keys: (item.unit_keys || []).filter((key) => key !== unitKey) })).filter((item) => item.unit_keys.length > 0),
+      equipment: current.equipment.filter((item) => item.unit_key !== unitKey),
+      facilities: current.facilities.filter((item) => item.unit_key !== unitKey),
+    }));
+    setActiveUnits((current) => current.filter((key) => key !== unitKey));
+    if (openUnit === unitKey) setOpenUnit("");
+    setPendingRemoval(null);
+    setMessage(approvedUnits.includes(unitKey) ? "Spațiul și dependențele sale au fost marcate pentru eliminare." : "Spațiul și dependențele sale au fost eliminate din draft.");
+  };
+
   const toggleUnit = (unitKey) => {
     if (!editable) return;
     if (activeUnits.includes(unitKey)) {
-      const usedByServices = selectedServiceKeys(selected).some((serviceKey) => serviceUnitMap[serviceKey] === unitKey);
-      const usedByCapability = capabilities.some((item) => item.parent_unit_key === unitKey);
-      const usedByResources = resourceLinks.professionals.some((item) => item.unit_keys.includes(unitKey)) || resourceLinks.equipment.some((item) => item.unit_key === unitKey) || resourceLinks.facilities.some((item) => item.unit_key === unitKey);
-      if (usedByServices || usedByCapability || usedByResources) {
-        setMessage("Elimină mai întâi serviciile, capabilitățile și resursele asociate acestei unități.");
+      const serviceKeys = servicesForUnit(unitKey);
+      const capabilityCount = capabilities.filter((item) => item.parent_unit_key === unitKey).length;
+      const resourceCount = resourceLinks.professionals.filter((item) => (item.unit_keys || []).includes(unitKey)).length
+        + resourceLinks.equipment.filter((item) => item.unit_key === unitKey).length
+        + resourceLinks.facilities.filter((item) => item.unit_key === unitKey).length;
+      if (serviceKeys.length > 0 || capabilityCount > 0 || resourceCount > 0) {
+        setPendingRemoval({
+          type: "unit",
+          key: unitKey,
+          label: getFunctionalUnitDefinition(unitKey)?.title || unitKey,
+          approved: approvedUnits.includes(unitKey),
+          serviceCount: serviceKeys.length,
+          capabilityCount,
+          resourceCount,
+        });
         return;
       }
-      setActiveUnits((current) => current.filter((key) => key !== unitKey));
-      if (openUnit === unitKey) setOpenUnit("");
+      applyUnitRemoval(unitKey);
       return;
     }
     setActiveUnits((current) => [...current, unitKey]);
     setOpenUnit(unitKey);
   };
 
+  const applyCapabilityRemoval = (capabilityKey) => {
+    const serviceKeys = new Set(selectedServiceKeys(selected).filter((serviceKey) => getServiceOperationalContext(serviceKey)?.capabilityKey === capabilityKey));
+    setSelected((current) => Object.fromEntries(Object.entries(current).map(([group, ids]) => [group, (ids || []).filter((id) => !serviceKeys.has(id))])));
+    setServiceUnitMap((current) => Object.fromEntries(Object.entries(current).filter(([serviceKey]) => !serviceKeys.has(serviceKey))));
+    setCapabilities((current) => current.filter((item) => item.capability_key !== capabilityKey));
+    setPendingRemoval(null);
+    setMessage(approvedCapabilities.some((item) => item.capability_key === capabilityKey) ? "Activitatea și serviciile dependente au fost marcate pentru eliminare." : "Activitatea și serviciile dependente au fost eliminate din draft.");
+  };
+
   const toggleCapability = (capabilityKey, parentOptions) => {
     if (!editable) return;
     const existing = capabilities.find((item) => item.capability_key === capabilityKey);
     if (existing) {
-      const used = selectedServiceKeys(selected).some((serviceKey) => getServiceOperationalContext(serviceKey)?.capabilityKey === capabilityKey);
-      if (used) {
-        setMessage("Elimină mai întâi serviciile care folosesc această capabilitate.");
+      const dependentServices = selectedServiceKeys(selected).filter((serviceKey) => getServiceOperationalContext(serviceKey)?.capabilityKey === capabilityKey);
+      if (dependentServices.length > 0) {
+        setPendingRemoval({
+          type: "capability",
+          key: capabilityKey,
+          label: getCapabilityDefinition(capabilityKey)?.title || capabilityKey,
+          approved: approvedCapabilities.some((item) => item.capability_key === capabilityKey),
+          serviceCount: dependentServices.length,
+          capabilityCount: 1,
+          resourceCount: 0,
+        });
         return;
       }
-      setCapabilities((current) => current.filter((item) => item.capability_key !== capabilityKey));
+      applyCapabilityRemoval(capabilityKey);
       return;
     }
     const approvedRow = approvedCapabilities.find((item) => item.capability_key === capabilityKey && activeUnits.includes(item.parent_unit_key));
     const parent = approvedRow?.parent_unit_key || parentOptions[0];
     setCapabilities((current) => [...current, { capability_key: capabilityKey, parent_unit_key: parent, note: approvedRow?.note || "" }]);
+  };
+
+  const confirmDependencyRemoval = () => {
+    if (pendingRemoval?.type === "unit") applyUnitRemoval(pendingRemoval.key);
+    else if (pendingRemoval?.type === "capability") applyCapabilityRemoval(pendingRemoval.key);
   };
 
   const toggleService = (item, unitKey) => {
@@ -1292,6 +1374,8 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
           unitOrder={selectableUnits}
         />
       </div>
+
+      <DependencyRemovalDialog request={pendingRemoval} onCancel={() => setPendingRemoval(null)} onConfirm={confirmDependencyRemoval} />
 
       <div className="sticky bottom-0 z-20 -mx-1 rounded-[22px] border border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/90">
         <div className="flex flex-wrap items-center justify-between gap-3"><div className={`text-xs ${dirty ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{pendingReview ? "Draftul este în verificare" : dirty ? "Ai modificări nesalvate" : draft ? "Draft salvat" : "Nu există modificări nesalvate"}</div><div className="flex flex-wrap gap-2"><button type="button" disabled={saving || !editable || !dirty} onClick={save} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><Save className="h-4 w-4" /> Salvează draftul</button>{draft && draft.status !== "pending_review" && <button type="button" disabled={saving || !editable} onClick={submit} className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-50"><Send className="h-4 w-4" /> Trimite spre verificare</button>}{pendingReview && persistenceMode === "v2" && <button type="button" disabled={saving} onClick={withdraw} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><X className="h-4 w-4" /> Retrage cererea</button>}</div></div>
