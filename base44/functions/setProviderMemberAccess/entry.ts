@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
     for (const assignment of normalized) {
       const existing = currentByLocation.get(assignment.location_id);
       if (existing) {
-        const updates = {
+        const updates: Record<string, unknown> = {
           role: assignment.role,
           status: 'active',
           organization_id: organizationId,
