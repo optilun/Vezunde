@@ -107,7 +107,8 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
 
     const nextSubmission = response.data?.submission || null;
     const hasActivePreview = ACTIVE_SUBMISSION_STATUSES.includes(nextSubmission?.status);
-    setCurrentPhoto(response.data?.location?.current_photo_url || "");
+    const isLegacyOrganizationLogo = response.data?.legacy_logo_candidate === true;
+    setCurrentPhoto(isLegacyOrganizationLogo ? "" : (response.data?.location?.current_photo_url || ""));
     setSubmission(nextSubmission);
     setPreview(hasActivePreview
       ? (nextSubmission?.payload?.photo_url || nextSubmission?.payload?.photo_data_url || "")
