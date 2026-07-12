@@ -40,6 +40,51 @@ function professionalRole(professionalType) {
       : 'optician';
 }
 
+async function ensureMembership(svc, { userId, organizationId, locationId, role, now }) {
+  const rows = await svc.entities.ProviderMembership.filter({ user_id: userId, location_id: locationId }, '-created_date', 20).catch(() => []);
+  const existing = rows.find((row) => row.status === 'active') || rows[0] || null;
+  if (!existing) {
+    return svc.entities.ProviderMembership.create({
+      user_id: userId,
+      organization_id: organizationId || null,
+      location_id: locationId,
+      role,
+      status: 'active',
+    });
+  }
+  const updates = {
+    organization_id: organizationId || existing.organization_id || null,
+    role,
+    status: 'active',
+  };
+  if (existing.status !== 'active') {
+    updates.reactivated_by_user_id = userId;
+    updates.reactivated_at = now;
+  }
+  await svc.entities.ProviderMembership.update(existing.id, updates);
+  return { ...existing, ...updates };
+}
+
+async function ensureProfessionalAssignment(svc, { professionalId, locationId, professionalType, now }) {
+  const rows = await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: professionalId, location_id: locationId }, '-created_date', 20).catch(() => []);
+  const existing = rows[0] || null;
+  const values = {
+    professional_type: professionalType,
+    confirmed_by_professional_at: now,
+    active_status: 'activ',
+    public_status: 'privat',
+  };
+  if (!existing) {
+    return svc.entities.ProfessionalLocationAssignment.create({
+      professional_id: professionalId,
+      location_id: locationId,
+      ...values,
+    });
+  }
+  await svc.entities.ProfessionalLocationAssignment.update(existing.id, values);
+  return { ...existing, ...values };
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -58,7 +103,7 @@ Deno.serve(async (req) => {
 
     if (p.action === 'approve') {
       if (claim.mode === 'new_location_duplicate_review') return bad('Cererea de clarificare duplicat nu poate fi aprobata direct.');
-      if (claim.status !== 'in_asteptare' && claim.status !== 'needs_more_info') return bad('Solicitarea nu mai este in asteptare.');
+      if (!['in_asteptare', 'needs_more_info'].includes(claim.status)) return bad('Solicitarea nu mai este in asteptare.');
       if (!claim.location_id) return bad('Solicitarea nu are locatie asociata.');
 
       const location = await svc.entities.ProviderLocation.get(claim.location_id).catch(() => null);
@@ -91,10 +136,14 @@ Deno.serve(async (req) => {
         requested_membership_role: requestedRole,
       });
 
-      let membership = null;
+      let primaryMembership = null;
+      let membershipCount = 0;
       let professionalProfile = null;
+      let professionalAssignment = null;
+
       if (isProfessional) {
         const identity = submitted.professional_identity || {};
+        const professionalType = identity.professional_type;
         const existingProfiles = await svc.entities.ProfessionalProfile.filter({ user_id: claim.user_id }, '-created_date', 10).catch(() => []);
         professionalProfile = existingProfiles[0] || null;
         if (!professionalProfile) {
@@ -102,8 +151,8 @@ Deno.serve(async (req) => {
             user_id: claim.user_id,
             full_name: identity.full_name || claim.contact_name || claim.business_name,
             public_display_name: identity.full_name || claim.contact_name || claim.business_name,
-            professional_type: identity.professional_type,
-            role: professionalRole(identity.professional_type),
+            professional_type: professionalType,
+            role: professionalRole(professionalType),
             verification_status: 'unverified',
             public_visibility_status: 'draft',
             profile_review_status: 'draft',
@@ -111,25 +160,33 @@ Deno.serve(async (req) => {
             is_public: false,
           });
         }
+        professionalAssignment = await ensureProfessionalAssignment(svc, {
+          professionalId: professionalProfile.id,
+          locationId: location.id,
+          professionalType,
+          now,
+        });
       } else if (claim.user_id) {
-        const existing = await svc.entities.ProviderMembership.filter({ user_id: claim.user_id, location_id: location.id, status: 'active' }, '-created_date', 10).catch(() => []);
-        membership = existing[0] || null;
-        if (!membership) {
-          membership = await svc.entities.ProviderMembership.create({
-            user_id: claim.user_id,
-            location_id: location.id,
-            organization_id: location.organization_id || claim.organization_id || null,
+        const organizationId = location.organization_id || claim.organization_id || null;
+        const accessLocations = approvedRole === 'organization_owner' && organizationId
+          ? await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, '-created_date', 500).catch(() => [location])
+          : [location];
+        const uniqueLocations = [...new Map(accessLocations.filter(Boolean).map((row) => [row.id, row])).values()];
+        for (const accessLocation of uniqueLocations) {
+          const membership = await ensureMembership(svc, {
+            userId: claim.user_id,
+            organizationId,
+            locationId: accessLocation.id,
             role: approvedRole,
-            status: 'active',
+            now,
           });
-        } else if (membership.role !== approvedRole) {
-          await svc.entities.ProviderMembership.update(membership.id, { role: approvedRole });
-          membership = { ...membership, role: approvedRole };
+          membershipCount += 1;
+          if (accessLocation.id === location.id) primaryMembership = membership;
         }
       }
 
       let promotedDraftCount = 0;
-      if (membership && claim.user_id) {
+      if (primaryMembership && claim.user_id) {
         const drafts = await svc.entities.ProviderWorkspaceSubmission.filter({
           claim_request_id: claim.id,
           submitted_by_user_id: claim.user_id,
@@ -148,14 +205,16 @@ Deno.serve(async (req) => {
         entity_type: 'ProviderClaimRequest',
         entity_id: claim.id,
         action_type: requestType === 'access_request_existing_claimed_profile' ? 'approve_access_request' : 'approve_provider_onboarding',
-        changed_fields: ['status', 'verification_status', 'profile_control_status', isProfessional ? 'professional_profile' : 'membership_role'],
+        changed_fields: ['status', 'verification_status', 'profile_control_status', isProfessional ? 'professional_profile_assignment' : 'membership_role'],
         previous: { status: claim.status, profile_control_status: location.profile_control_status },
         next: {
           status: 'aprobata',
           request_type: requestType,
           requested_membership_role: requestedRole,
           approved_membership_role: isProfessional ? null : approvedRole,
+          membership_location_count: membershipCount,
           professional_profile_id: professionalProfile?.id || null,
+          professional_assignment_id: professionalAssignment?.id || null,
           location_status: locationUpdates.status || location.status,
           promoted_preparation_drafts: promotedDraftCount,
         },
@@ -167,13 +226,15 @@ Deno.serve(async (req) => {
         request_type: requestType,
         requested_membership_role: requestedRole,
         approved_membership_role: isProfessional ? null : approvedRole,
+        membership_location_count: membershipCount,
         professional_profile_id: professionalProfile?.id || null,
+        professional_assignment_id: professionalAssignment?.id || null,
         promoted_preparation_drafts: promotedDraftCount,
       });
     }
 
     if (p.action === 'reject') {
-      if (claim.status !== 'in_asteptare' && claim.status !== 'needs_more_info') return bad('Solicitarea nu mai este in asteptare.');
+      if (!['in_asteptare', 'needs_more_info'].includes(claim.status)) return bad('Solicitarea nu mai este in asteptare.');
       if (!note) return bad('Respingerea necesita o nota.');
       const now = new Date().toISOString();
       await svc.entities.ProviderClaimRequest.update(claim.id, {
