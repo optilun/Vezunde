@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { getCanonicalServiceDefinition } from '../../../shared/canonicalServiceRegistryExtended.js';
 import {
   getFunctionalUnitLayout,
   profileAllowsCapability,
@@ -12,6 +13,65 @@ const EDITOR_ROLES = ['organization_owner', 'location_manager'];
 
 function clean(value) {
   return String(value || '').trim();
+}
+
+function parsePayload(raw) {
+  try { return raw ? JSON.parse(raw) : {}; } catch (_error) { return {}; }
+}
+
+function removalServiceKeys(payload = {}) {
+  return [...new Set([
+    ...Object.values(payload.removal_ids || {}).flat(),
+    ...(payload.raw_removal_keys || []),
+  ].map(clean).filter(Boolean))];
+}
+
+function restoredMatchingAllowed(row) {
+  const definition = getCanonicalServiceDefinition(row.service_key);
+  if (!definition || row.is_active === false) return false;
+  if (definition.requires_review || definition.service_need_level === 'specialized_medical') {
+    return row.confirmation_level === 'vezunde_verified';
+  }
+  return definition.matching_allowed_when_provider_confirmed === true;
+}
+
+async function restoreRemovalVisibility(svc, locationId, submissionId) {
+  const rows = await svc.entities.LocationService.filter({
+    location_id: locationId,
+    removal_submission_id: submissionId,
+  }, null, 700).catch(() => []);
+  for (const row of rows) {
+    const definition = getCanonicalServiceDefinition(row.service_key);
+    await svc.entities.LocationService.update(row.id, {
+      provider_visibility_status: 'active',
+      removal_submission_id: '',
+      accepts_requests: row.is_active !== false && definition?.patient_facing !== false,
+      matching_allowed: restoredMatchingAllowed(row),
+    });
+  }
+}
+
+async function syncRemovalVisibility(svc, user, submission, payload) {
+  await restoreRemovalVisibility(svc, submission.location_id, submission.id);
+  const keys = removalServiceKeys(payload);
+  const now = new Date().toISOString();
+  for (const serviceKey of keys) {
+    const rows = await svc.entities.LocationService.filter({
+      location_id: submission.location_id,
+      service_key: serviceKey,
+    }, null, 20).catch(() => []);
+    for (const row of rows) {
+      if (row.is_active === false) continue;
+      await svc.entities.LocationService.update(row.id, {
+        provider_visibility_status: 'removal_pending',
+        removal_submission_id: submission.id,
+        provider_suspended_at: now,
+        provider_suspended_by: user.id,
+        accepts_requests: false,
+        matching_allowed: false,
+      });
+    }
+  }
 }
 
 function normalizeRole(role) {
@@ -307,6 +367,7 @@ Deno.serve(async (req) => {
       if (submission.submitted_by_user_id !== user.id) return Response.json({ error: 'Nu poți modifica acest draft' }, { status: 403 });
       if (!['draft', 'needs_more_info'].includes(submission.status)) return Response.json({ error: 'Doar drafturile pot fi modificate' }, { status: 400 });
       await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { payload_json: JSON.stringify(validation.clean), status: 'draft' });
+      if (submission.submitted_at) await syncRemovalVisibility(svc, user, submission, validation.clean);
       await audit(svc, user, {
         entity_type: 'ProviderWorkspaceSubmission', entity_id: submission.id,
         action_type: 'update_service_configuration_draft',
@@ -328,6 +389,7 @@ Deno.serve(async (req) => {
       if (!['draft', 'needs_more_info'].includes(submission.status)) return Response.json({ error: 'Draftul nu poate fi trimis' }, { status: 400 });
       const now = new Date().toISOString();
       await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'pending_review', submitted_at: now });
+      await syncRemovalVisibility(svc, user, submission, parsePayload(submission.payload_json));
       await audit(svc, user, {
         entity_type: 'ProviderWorkspaceSubmission', entity_id: submission.id,
         action_type: 'submit_service_configuration_for_review',
@@ -338,6 +400,7 @@ Deno.serve(async (req) => {
     }
 
     if (!ACTIVE_STATUSES.includes(submission.status)) return Response.json({ error: 'Submissionul nu poate fi retras' }, { status: 400 });
+    await restoreRemovalVisibility(svc, submission.location_id, submission.id);
     await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'withdrawn' });
     await audit(svc, user, {
       entity_type: 'ProviderWorkspaceSubmission', entity_id: submission.id,
