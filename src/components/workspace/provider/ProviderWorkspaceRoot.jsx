@@ -20,8 +20,6 @@ export default function ProviderWorkspaceRoot({
   workspace,
   onLogout,
   onRefresh,
-  accountModes,
-  activeMode,
   onSwitchMode,
   modeSwitches,
 }) {
@@ -138,7 +136,7 @@ export default function ProviderWorkspaceRoot({
         </span>
       ) : null}
     >
-      {workspace.memberships?.length > 1 && (
+      {workspace.memberships?.length > 1 && safeSection !== "settings" && (
         <LocationSwitcher memberships={workspace.memberships} selectedLocationId={selectedLocationId} onSelect={selectLocation} />
       )}
       {loadingOverview || !overview ? (
