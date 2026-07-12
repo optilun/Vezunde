@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Image as ImageIcon, MapPin, Phone } from "lucide-react";
 import TrustBadge from "@/components/results/TrustBadge";
@@ -18,24 +18,59 @@ function normalizedName(value) {
   return String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("ro-RO");
 }
 
+function versionedImageUrl(value, version, attempt) {
+  const raw = String(value || "").trim();
+  if (!raw || raw.startsWith("data:image/")) return raw;
+  try {
+    const url = new URL(raw);
+    if (version) url.searchParams.set("v", String(version));
+    if (attempt > 0) url.searchParams.set("retry", String(attempt));
+    return url.toString();
+  } catch (_error) {
+    return raw;
+  }
+}
+
 function HeroContent({ profile, status, serviceCount, mapUrl }) {
+  const [logoAttempt, setLogoAttempt] = useState(0);
   const [logoFailed, setLogoFailed] = useState(false);
   const organizationName = profile.organization_name || profile.name;
   const organizationDiffers = normalizedName(organizationName) !== normalizedName(profile.name);
   const providerLabel = PROVIDER_PROFILE_TYPES[profile.provider_profile_type]
     || PROVIDER_TYPES[profile.provider_type]
     || "Furnizor medical";
+  const logoSrc = useMemo(
+    () => versionedImageUrl(profile.organization_logo_url, profile.organization_logo_version, logoAttempt),
+    [profile.organization_logo_url, profile.organization_logo_version, logoAttempt],
+  );
+
+  useEffect(() => {
+    setLogoAttempt(0);
+    setLogoFailed(false);
+  }, [profile.organization_logo_url, profile.organization_logo_version]);
+
+  const handleLogoError = () => {
+    if (logoAttempt === 0 && logoSrc && !logoSrc.startsWith("data:image/")) {
+      setLogoAttempt(1);
+      return;
+    }
+    setLogoFailed(true);
+  };
 
   return (
     <div className="p-6 sm:p-7">
       <div className="flex items-start gap-4">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-white p-2 shadow-sm">
-          {profile.organization_logo_url && !logoFailed ? (
+          {logoSrc && !logoFailed ? (
             <img
-              src={profile.organization_logo_url}
+              key={logoSrc}
+              src={logoSrc}
               alt={`Logo ${organizationName}`}
               className="h-full w-full object-contain"
-              onError={() => setLogoFailed(true)}
+              loading="eager"
+              decoding="async"
+              referrerPolicy="no-referrer"
+              onError={handleLogoError}
             />
           ) : (
             <span className="font-heading text-sm font-black">{initials(organizationName)}</span>
