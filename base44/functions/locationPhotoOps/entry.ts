@@ -3,7 +3,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 const PROVIDER_ROLES = ['organization_owner', 'location_manager'];
 const ACTIVE_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
 const PHOTO_ITEM_KEY = 'location_photo';
-const MAX_DATA_URL_LENGTH = 900000;
+const MAX_URL_LENGTH = 4000;
+const MAX_LEGACY_DATA_URL_LENGTH = 900000;
 
 function res(body: Record<string, unknown>, status = 200) {
   return Response.json(body, { status });
@@ -21,27 +22,36 @@ function normalizeRole(value: unknown) {
 function safePhoto(value: unknown) {
   const raw = text(value);
   if (!raw) return '';
-  if (raw.length > MAX_DATA_URL_LENGTH) return '';
-  return /^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(raw) ? raw : '';
+  if (raw.length <= MAX_LEGACY_DATA_URL_LENGTH && /^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(raw)) return raw;
+  if (raw.length > MAX_URL_LENGTH || /\s/.test(raw)) return '';
+  try {
+    const parsed = new URL(raw);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return '';
+    if (!parsed.hostname || parsed.username || parsed.password) return '';
+    return parsed.toString();
+  } catch (_error) {
+    return '';
+  }
 }
 
 function validatePayload(raw: unknown) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { error: 'Payload invalid' };
   const payload = raw as Record<string, unknown>;
-  const allowed = ['kind', 'photo_data_url', 'remove_photo'];
+  const allowed = ['kind', 'photo_url', 'photo_data_url', 'remove_photo'];
   const unknown = Object.keys(payload).filter((key) => !allowed.includes(key));
   if (unknown.length) return { error: 'Campuri nepermise', fields: unknown };
   if (payload.kind && payload.kind !== PHOTO_ITEM_KEY) return { error: 'Tip media invalid' };
 
   const removePhoto = payload.remove_photo === true;
-  const photoDataUrl = safePhoto(payload.photo_data_url);
-  if (removePhoto && photoDataUrl) return { error: 'Alege fie inlocuirea, fie eliminarea fotografiei' };
-  if (!removePhoto && !photoDataUrl) return { error: 'Fotografia este obligatorie' };
+  const rawPhoto = text(payload.photo_url || payload.photo_data_url);
+  const photoUrl = safePhoto(rawPhoto);
+  if (removePhoto && rawPhoto) return { error: 'Alege fie inlocuirea, fie eliminarea fotografiei' };
+  if (!removePhoto && !photoUrl) return { error: 'Fotografia este obligatorie si trebuie incarcata prin UploadFile' };
 
   return {
     value: {
       kind: PHOTO_ITEM_KEY,
-      photo_data_url: removePhoto ? '' : photoDataUrl,
+      photo_url: removePhoto ? '' : photoUrl,
       remove_photo: removePhoto,
     },
   };
@@ -172,8 +182,8 @@ async function providerSave(svc: any, user: any, payload: Record<string, unknown
     entity_id: submission.id,
     action_type: active ? 'update_location_photo_draft' : 'create_location_photo_draft',
     changed_fields: ['payload_json', 'status'],
-    next: { status: 'draft', location_id: locationId, remove_photo: checked.value.remove_photo },
-    note: 'Draft pentru fotografia principala a locatiei. Fotografia publica existenta ramane neschimbata pana la aprobare.',
+    next: { status: 'draft', location_id: locationId, remove_photo: checked.value.remove_photo, storage: 'upload_file_url' },
+    note: 'Draft pentru fotografia principala a locatiei. Payloadul pastreaza doar URL-ul fisierului incarcat, nu continutul imaginii.',
   });
   return res({ success: true, submission: safeSubmission(submission) });
 }
@@ -232,7 +242,7 @@ async function adminList(svc: any, user: any) {
         city: location.locality_name || location.city || '',
         current_photo_url: safePhoto(location.photo_url),
       },
-      proposed_photo_url: parsed.photo_data_url,
+      proposed_photo_url: parsed.photo_url,
       remove_photo: parsed.remove_photo,
     });
   }
@@ -258,7 +268,7 @@ async function adminDecide(svc: any, user: any, payload: Record<string, unknown>
   const now = new Date().toISOString();
 
   if (action === 'approve') {
-    const nextPhoto = checked.value.remove_photo ? '' : checked.value.photo_data_url;
+    const nextPhoto = checked.value.remove_photo ? '' : checked.value.photo_url;
     const previousPhotoPresent = !!safePhoto(location.photo_url);
     await svc.entities.ProviderLocation.update(location.id, { photo_url: nextPhoto });
     await svc.entities.ProviderWorkspaceSubmission.update(submission.id, {
