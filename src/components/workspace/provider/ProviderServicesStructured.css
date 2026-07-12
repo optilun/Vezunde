@@ -11,6 +11,43 @@
   box-shadow: 0 0 0 3px hsl(var(--foreground) / 0.045);
 }
 
+/* The page title and the configuration summary form one continuous card. */
+.provider-location-services-page > .provider-location-module-header {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  background: linear-gradient(180deg, hsl(var(--card)), hsl(var(--secondary) / 0.08));
+  box-shadow: none;
+}
+
+.provider-location-services-page > .provider-location-module-header + div {
+  margin-top: 0 !important;
+}
+
+.provider-location-services-page
+  > .provider-location-module-header
+  + div
+  .provider-services-polish
+  > div
+  > section:first-child {
+  border-top: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.025);
+}
+
+.provider-location-services-page
+  > .provider-location-module-header
+  + div
+  .provider-services-polish
+  > div
+  > section:first-child::before {
+  content: "";
+  display: block;
+  height: 1px;
+  margin: -1rem 0 1rem;
+  background: hsl(var(--border));
+}
+
 /* Service choices keep three semantic cells inside each compact card. */
 .provider-services-polish button.grid {
   grid-template-columns: auto minmax(0, 1fr) auto !important;
@@ -275,6 +312,19 @@
 }
 
 @media (max-width: 639px) {
+  .provider-location-services-page > .provider-location-module-header {
+    padding-bottom: 1rem;
+  }
+
+  .provider-location-services-page
+    > .provider-location-module-header
+    + div
+    .provider-services-polish
+    > div
+    > section:first-child::before {
+    margin-top: -0.75rem;
+  }
+
   .provider-services-polish button.grid {
     grid-template-columns: auto minmax(0, 1fr) !important;
     align-items: start;
