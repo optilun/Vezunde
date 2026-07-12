@@ -79,6 +79,14 @@ export default function ProviderWorkspaceRoot({
     if (selectedLocationId) rememberProviderLocation(user?.id, selectedLocationId);
   }, [selectedLocationId]);
 
+  const canManageSettings = overview?.current_user_role === "organization_owner";
+
+  useEffect(() => {
+    if (!loadingOverview && overview && requestedSection === "settings" && !canManageSettings) {
+      routerNavigate("/contul-meu?s=overview", { replace: true });
+    }
+  }, [canManageSettings, loadingOverview, overview, requestedSection, routerNavigate]);
+
   const goToSection = (key) => {
     routerNavigate(`/contul-meu?s=${key}`);
   };
@@ -99,12 +107,17 @@ export default function ProviderWorkspaceRoot({
     routerNavigate("/contul-meu?s=locations");
   };
 
-  const canManageSettings = overview?.current_user_role === "organization_owner";
   const navItems = getProviderNav({
     canManageMembers: workspace.can_manage_members,
     canManageSettings,
   });
-  const allowedSections = ["overview", "profile", "locations", "access", ...(canManageSettings ? ["settings"] : [])];
+  const allowedSections = [
+    "overview",
+    "profile",
+    "locations",
+    ...(workspace.can_manage_members ? ["access"] : []),
+    ...(canManageSettings ? ["settings"] : []),
+  ];
   const normalizedSection = ["services", "team", "hours", "photos"].includes(requestedSection) ? "locations" : requestedSection;
   const safeSection = activeLocationModule
     ? "locations"
