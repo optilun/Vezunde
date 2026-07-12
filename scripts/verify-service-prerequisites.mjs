@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import '../shared/canonicalServiceRegistryExtended.js';
+import '../shared/serviceOperationalTaxonomyExtended.js';
 import {
   evaluateServicePrerequisites,
   getServicePrerequisiteDefinition,
@@ -204,6 +206,34 @@ const b2bReady = evaluateServicePrerequisites('wholesale_frames', {
 });
 assert.equal(b2bReady.eligible, true);
 assert.equal(b2bReady.status, 'available');
+
+const locationWideB2bReady = evaluateServicePrerequisites('onsite_eye_testing_b2b', {
+  location: opticalLocation,
+  assignments: [assignment(optometrist, ['optometry_cabinet'])],
+  professionals: [optometrist],
+  equipment: [],
+  facilities: [],
+  functionalUnits: [unit('optical_store'), unit('optometry_cabinet')],
+  capabilities: [],
+  enforceUnitScope: true,
+});
+assert.equal(locationWideB2bReady.eligible, true, 'Serviciul B2B la nivel de locație trebuie să accepte specialistul asociat unui cabinet compatibil');
+assert.equal(locationWideB2bReady.status, 'ready_for_review');
+assert.equal(locationWideB2bReady.evidence.validation_scope, 'location');
+assert.equal(locationWideB2bReady.evidence.prerequisite_unit_key, '');
+
+const casReadyForReview = evaluateServicePrerequisites('cas_reimbursed_services', {
+  location: opticalLocation,
+  assignments: [],
+  professionals: [],
+  equipment: [],
+  facilities: [],
+  functionalUnits: [unit('optical_store')],
+  capabilities: [],
+  enforceUnitScope: true,
+});
+assert.equal(casReadyForReview.eligible, true);
+assert.equal(casReadyForReview.status, 'ready_for_review', 'Disponibilitatea CAS trebuie verificată înainte de publicare');
 
 const dynamicRevalidation = evaluateServicePrerequisites('oct', {
   ...octReady,
