@@ -49,16 +49,18 @@ const clearAllResumeState = () => {
 export default function AddOrClaim() {
   const { state: navState } = useLocation();
   const preselectedLocation = navState?.selectedLocation || null;
+  const initialNewLocationDraft = navState?.newLocationPrefill || null;
+  const startNewFromNavigation = navState?.startNew === true;
   const [resumedClaimLocation] = useState(() => readSessionJson(PENDING_CLAIM_LOCATION_KEY));
   const [resumedClaimContact] = useState(() => readSessionJson(PENDING_CLAIM_CONTACT_KEY));
   const [resumedClaimStep] = useState(() => sessionStorage.getItem(PENDING_CLAIM_STEP_KEY));
   const [selected, setSelected] = useState(preselectedLocation || resumedClaimLocation || null);
-  const [draft, setDraft] = useState(null);
+  const [draft, setDraft] = useState(initialNewLocationDraft);
   const [currentUser, setCurrentUser] = useState(null);
   const [result, setResult] = useState(null);
   const [claimStep, setClaimStep] = useState(() => getResumeClaimStep(resumedClaimContact, resumedClaimStep));
   const [stage, setStage] = useState(() => {
-    if (sessionStorage.getItem(ORGANIZATION_ONBOARDING_RESUME_KEY)) return "wizard";
+    if (sessionStorage.getItem(ORGANIZATION_ONBOARDING_RESUME_KEY) || startNewFromNavigation) return "wizard";
     if (resumedClaimLocation || preselectedLocation) return "confirm";
     return "search";
   });
