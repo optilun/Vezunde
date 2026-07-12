@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import WizardShell from "@/components/intake/WizardShell";
 import OnboardingAuthGate from "@/components/provider/OnboardingAuthGate";
@@ -20,22 +20,33 @@ const INITIAL = {
   contact: { contact_name: "", claimant_relationship: "", email: "", phone: "", representation_confirmed: false, verification_method: "manual_review" },
 };
 
-function readResume() {
+function readResume(storageKey) {
   try {
-    const raw = sessionStorage.getItem(WIZARD_RESUME_KEY);
+    const raw = sessionStorage.getItem(storageKey);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
 
-function clearResume() {
-  sessionStorage.removeItem(WIZARD_RESUME_KEY);
+function saveResume(storageKey, data, stepKey) {
+  try {
+    sessionStorage.setItem(storageKey, JSON.stringify({ data, stepKey }));
+  } catch {
+    // The current render remains usable even when session storage is unavailable.
+  }
+}
+
+function clearResume(storageKey) {
+  sessionStorage.removeItem(storageKey);
 }
 
 function buildInitial(prefill, initialSubjectType) {
   const base = {
     ...INITIAL,
+    organization: { ...INITIAL.organization },
+    professional: { ...INITIAL.professional },
+    location: { ...INITIAL.location },
     claimSubjectType: initialSubjectType || "",
     contact: {
       ...INITIAL.contact,
@@ -62,8 +73,10 @@ function buildInitial(prefill, initialSubjectType) {
 }
 
 export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExisting, initialSubjectType = "" }) {
-  const [resume] = useState(readResume);
+  const resumeStorageKey = `${WIZARD_RESUME_KEY}.${initialSubjectType || "generic"}`;
+  const [resume] = useState(() => readResume(resumeStorageKey));
   const [data, setData] = useState(() => resume?.data || buildInitial(prefill, initialSubjectType));
+  const dataRef = useRef(data);
   const [stepKey, setStepKeyState] = useState(() => resume?.stepKey || (initialSubjectType ? "details" : "subject"));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -81,20 +94,20 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
     return list;
   }, [initialSubjectType]);
 
-  const persist = (nextData, nextStepKey) => {
-    sessionStorage.setItem(WIZARD_RESUME_KEY, JSON.stringify({ data: nextData, stepKey: nextStepKey }));
-  };
   const setStepKey = (next) => {
     setStepKeyState(next);
-    persist(data, next);
+    saveResume(resumeStorageKey, dataRef.current, next);
   };
+
   const update = (patch) => {
-    const next = { ...data, ...patch };
+    const current = dataRef.current;
+    const next = { ...current, ...patch };
     if (patch.claimSubjectType === "independent_professional" && !next.contact.claimant_relationship) {
       next.contact = { ...next.contact, claimant_relationship: "owner" };
     }
+    dataRef.current = next;
     setData(next);
-    persist(next, stepKey);
+    saveResume(resumeStorageKey, next, stepKey);
   };
 
   const currentIndex = Math.max(0, steps.findIndex((step) => step.key === stepKey));
@@ -107,7 +120,7 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
       return;
     }
     if (currentIndex <= 0) {
-      clearResume();
+      clearResume(resumeStorageKey);
       onExit?.();
       return;
     }
@@ -115,21 +128,21 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
   };
 
   const handleAuthenticated = useCallback((user) => {
-    setData((current) => {
-      const next = {
-        ...current,
-        contact: {
-          ...current.contact,
-          claimant_relationship: current.contact.claimant_relationship || (current.claimSubjectType === "independent_professional" ? "owner" : ""),
-          contact_name: current.contact.contact_name || user?.full_name || user?.name || "",
-          email: current.contact.email || user?.email || "",
-        },
-      };
-      persist(next, "representative");
-      return next;
-    });
+    const current = dataRef.current;
+    const next = {
+      ...current,
+      contact: {
+        ...current.contact,
+        claimant_relationship: current.contact.claimant_relationship || (current.claimSubjectType === "independent_professional" ? "owner" : ""),
+        contact_name: current.contact.contact_name || user?.full_name || user?.name || "",
+        email: current.contact.email || user?.email || "",
+      },
+    };
+    dataRef.current = next;
+    setData(next);
+    saveResume(resumeStorageKey, next, "representative");
     setStepKeyState("representative");
-  }, []);
+  }, [resumeStorageKey]);
 
   const submit = async (identityExtra = {}) => {
     const authed = await base44.auth.isAuthenticated();
@@ -137,21 +150,22 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
       setStepKey("auth");
       return;
     }
-    const isProfessional = data.claimSubjectType === "independent_professional";
-    const requestedRole = requestedRoleForRelationship(data.contact.claimant_relationship);
+    const current = dataRef.current;
+    const isProfessional = current.claimSubjectType === "independent_professional";
+    const requestedRole = requestedRoleForRelationship(current.contact.claimant_relationship);
     setSubmitting(true);
     setError("");
     const response = await base44.functions.invoke("submitProviderClaim", {
       mode: "new_location",
-      claim_subject_type: data.claimSubjectType,
-      claimant_relationship: data.contact.claimant_relationship,
+      claim_subject_type: current.claimSubjectType,
+      claimant_relationship: current.contact.claimant_relationship,
       requested_membership_role: requestedRole,
-      verification_method: data.contact.verification_method || "manual_review",
-      organization: !isProfessional ? data.organization : undefined,
-      professional: isProfessional ? data.professional : undefined,
-      location: { ...data.location, name: data.location.name || (isProfessional ? data.professional.full_name : data.location.name) },
-      contact: data.contact,
-      representation_confirmed: data.contact.representation_confirmed,
+      verification_method: current.contact.verification_method || "manual_review",
+      organization: !isProfessional ? current.organization : undefined,
+      professional: isProfessional ? current.professional : undefined,
+      location: { ...current.location, name: current.location.name || (isProfessional ? current.professional.full_name : current.location.name) },
+      contact: current.contact,
+      representation_confirmed: current.contact.representation_confirmed,
       ...identityExtra,
     }).catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
     setSubmitting(false);
@@ -163,7 +177,7 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
       setError(response.data.error);
       return;
     }
-    clearResume();
+    clearResume(resumeStorageKey);
     onDone?.(response.data);
   };
 
