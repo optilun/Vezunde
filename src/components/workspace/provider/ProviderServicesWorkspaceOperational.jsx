@@ -181,6 +181,28 @@ function countSelected(selected) {
   return Object.values(selected || {}).reduce((sum, ids) => sum + (ids?.length || 0), 0);
 }
 
+function configurationSignature(payload = {}) {
+  const sortRows = (rows, keys) => [...(rows || [])]
+    .map((row) => ({ ...row }))
+    .sort((a, b) => keys.map((key) => String(a?.[key] || "")).join(":").localeCompare(keys.map((key) => String(b?.[key] || "")).join(":")));
+  const serviceMap = Object.fromEntries(Object.entries(payload.service_unit_map || {}).sort(([a], [b]) => a.localeCompare(b)));
+  const links = payload.resource_links || {};
+  return JSON.stringify({
+    selected_ids: normalizeSelected(payload.selected_ids || {}),
+    raw_removal_keys: [...new Set(payload.raw_removal_keys || [])].sort(),
+    suggestions: sortRows(payload.suggestions || [], ["group", "label", "functional_unit_key", "capability_key"]),
+    functional_units: sortRows(payload.functional_units || [], ["unit_key", "care_setting"]),
+    capabilities: sortRows(payload.capabilities || [], ["capability_key", "parent_unit_key"]),
+    service_unit_map: serviceMap,
+    resource_links: {
+      professionals: sortRows((links.professionals || []).map((item) => ({ ...item, unit_keys: [...(item.unit_keys || [])].sort() })), ["assignment_id"]),
+      equipment: sortRows(links.equipment || [], ["equipment_id", "unit_key"]),
+      facilities: sortRows(links.facilities || [], ["facility_id", "unit_key"]),
+    },
+    care_setting: payload.care_setting || "",
+  });
+}
+
 function selectedServiceKeys(selected) {
   return [...new Set(Object.values(selected || {}).flat())];
 }
@@ -779,6 +801,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [baselineSignature, setBaselineSignature] = useState(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -858,9 +881,20 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     };
   };
 
+  const currentSignature = useMemo(
+    () => configurationSignature(buildPayload()),
+    [selected, approvedSelected, activeUnits, capabilities, serviceUnitMap, resourceLinks, careSetting, suggestions, rawRemovalKeys],
+  );
+  const dirty = baselineSignature !== null && currentSignature !== baselineSignature;
+
+  useEffect(() => {
+    if (!loading && baselineSignature === null) setBaselineSignature(currentSignature);
+  }, [loading, baselineSignature, currentSignature]);
+
   const load = async () => {
     if (!locationId) return;
     setLoading(true);
+    setBaselineSignature(null);
     setError("");
     setMessage("");
 
@@ -1061,7 +1095,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
   const toggleRawRemoval = (rawKey) => setRawRemovalKeys((current) => current.includes(rawKey) ? current.filter((key) => key !== rawKey) : [...current, rawKey]);
 
   const save = async () => {
-    if (!editable) return;
+    if (!editable || !dirty) return;
     setSaving(true);
     setMessage("");
     setError("");
@@ -1166,7 +1200,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
       </div>
 
       <div className="sticky bottom-0 z-20 -mx-1 rounded-[22px] border border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/90">
-        <div className="flex flex-wrap items-center justify-between gap-3"><div className="text-xs text-muted-foreground"><strong className="text-foreground">{selectedCount}</strong> opțiuni · <strong className="text-foreground">{activeUnits.length}</strong> spații · <strong className="text-foreground">{capabilities.length}</strong> capabilități</div><div className="flex flex-wrap gap-2"><button type="button" disabled={saving || !editable} onClick={save} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><Save className="h-4 w-4" /> Salvează draftul</button>{draft && draft.status !== "pending_review" && <button type="button" disabled={saving || !editable} onClick={submit} className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-50"><Send className="h-4 w-4" /> Trimite spre verificare</button>}</div></div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><div className={`text-xs ${dirty ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{pendingReview ? "Draftul este în verificare" : dirty ? "Ai modificări nesalvate" : draft ? "Draft salvat" : "Nu există modificări nesalvate"}</div><div className="flex flex-wrap gap-2"><button type="button" disabled={saving || !editable || !dirty} onClick={save} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><Save className="h-4 w-4" /> Salvează draftul</button>{draft && draft.status !== "pending_review" && <button type="button" disabled={saving || !editable} onClick={submit} className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-50"><Send className="h-4 w-4" /> Trimite spre verificare</button>}</div></div>
         {message && <p className="mt-2 text-xs text-muted-foreground">{message}</p>}
       </div>
     </div>
