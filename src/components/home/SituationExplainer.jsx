@@ -35,7 +35,7 @@ const SITUATIONS = [
   {
     situation: "Am un simptom care ma ingrijoreaza",
     specialist: "Medic oftalmolog",
-    detail: "Pentru simptome, doar un medic oftalmolog poate consulta, investiga si trata. ViaSee te ajuta sa gasesti unul potrivit, fara sa puna diagnostice.",
+    detail: "Pentru simptome, doar un medic oftalmolog poate consulta, investiga si trata. VIASEE te ajuta sa gasesti unul potrivit, fara sa puna diagnostice.",
     services: "Consult oftalmologic · OCT · Camp vizual · Tonometrie",
     to: "/cerere?categorie=consult_oftalmologic",
   },
