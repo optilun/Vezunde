@@ -172,13 +172,16 @@ async function writeAudit(svc, user, submission, actionType, changedFields, next
 async function upsertFunctionalUnits(svc, user, submission, payload) {
   const existing = await svc.entities.LocationFunctionalUnit.filter({ location_id: submission.location_id }, null, 100).catch(() => []);
   const desired = new Map((payload.functional_units || []).map((item) => [item.unit_key, item]));
+  const removals = new Set(payload.removal_unit_keys || []);
   const now = new Date().toISOString();
   for (const row of existing) {
-    const target = desired.get(row.unit_key);
-    if (!target) {
+    if (removals.has(row.unit_key)) {
       if (row.is_active !== false) await svc.entities.LocationFunctionalUnit.update(row.id, { is_active: false, status: 'inactive', reviewed_by: user.id, reviewed_at: now });
+      desired.delete(row.unit_key);
       continue;
     }
+    const target = desired.get(row.unit_key);
+    if (!target) continue;
     await svc.entities.LocationFunctionalUnit.update(row.id, {
       care_setting: target.care_setting,
       note: target.note || '',
@@ -191,6 +194,7 @@ async function upsertFunctionalUnits(svc, user, submission, payload) {
     desired.delete(row.unit_key);
   }
   for (const target of desired.values()) {
+    if (removals.has(target.unit_key)) continue;
     await svc.entities.LocationFunctionalUnit.create({
       location_id: submission.location_id,
       unit_key: target.unit_key,
@@ -209,14 +213,17 @@ async function upsertFunctionalUnits(svc, user, submission, payload) {
 async function upsertCapabilities(svc, user, submission, payload) {
   const existing = await svc.entities.LocationCapability.filter({ location_id: submission.location_id }, null, 100).catch(() => []);
   const desired = new Map((payload.capabilities || []).map((item) => [`${item.capability_key}:${item.parent_unit_key}`, item]));
+  const removals = new Set((payload.removal_capabilities || []).map((item) => `${item.capability_key}:${item.parent_unit_key}`));
   const now = new Date().toISOString();
   for (const row of existing) {
     const key = `${row.capability_key}:${row.parent_unit_key}`;
-    const target = desired.get(key);
-    if (!target) {
+    if (removals.has(key)) {
       if (row.is_active !== false) await svc.entities.LocationCapability.update(row.id, { is_active: false, status: 'inactive', reviewed_by: user.id, reviewed_at: now });
+      desired.delete(key);
       continue;
     }
+    const target = desired.get(key);
+    if (!target) continue;
     await svc.entities.LocationCapability.update(row.id, {
       note: target.note || '',
       is_active: true,
@@ -228,6 +235,8 @@ async function upsertCapabilities(svc, user, submission, payload) {
     desired.delete(key);
   }
   for (const target of desired.values()) {
+    const key = `${target.capability_key}:${target.parent_unit_key}`;
+    if (removals.has(key)) continue;
     await svc.entities.LocationCapability.create({
       location_id: submission.location_id,
       capability_key: target.capability_key,
@@ -244,6 +253,26 @@ async function upsertCapabilities(svc, user, submission, payload) {
 }
 
 async function applyResourceLinks(svc, submission, payload) {
+  for (const removal of payload.resource_removals?.professionals || []) {
+    const row = await svc.entities.ProfessionalLocationAssignment.get(removal.assignment_id).catch(() => null);
+    if (!row || row.location_id !== submission.location_id) throw new Error('Specialist invalid în eliminările de resurse.');
+    const removedUnits = new Set(removal.unit_keys || []);
+    const nextUnits = removedUnits.size > 0
+      ? (row.functional_unit_keys || []).filter((unitKey) => !removedUnits.has(unitKey))
+      : [];
+    await svc.entities.ProfessionalLocationAssignment.update(row.id, { functional_unit_keys: nextUnits });
+  }
+  for (const removal of payload.resource_removals?.equipment || []) {
+    const row = await svc.entities.LocationEquipment.get(removal.equipment_id).catch(() => null);
+    if (!row || row.location_id !== submission.location_id) throw new Error('Echipament invalid în eliminările de resurse.');
+    await svc.entities.LocationEquipment.update(row.id, { functional_unit_key: '' });
+  }
+  for (const removal of payload.resource_removals?.facilities || []) {
+    const row = await svc.entities.LocationFacility.get(removal.facility_id).catch(() => null);
+    if (!row || row.location_id !== submission.location_id) throw new Error('Facilitate invalidă în eliminările de resurse.');
+    await svc.entities.LocationFacility.update(row.id, { functional_unit_key: '' });
+  }
+
   for (const link of payload.resource_links?.professionals || []) {
     const row = await svc.entities.ProfessionalLocationAssignment.get(link.assignment_id).catch(() => null);
     if (!row || row.location_id !== submission.location_id) throw new Error('Specialist invalid în legăturile de resurse.');
@@ -433,7 +462,10 @@ Deno.serve(async (req) => {
           promoted_services: [...verifiedKeys],
           suggestion_ids: suggestionIds,
           functional_units: payload.functional_units,
+          removal_unit_keys: payload.removal_unit_keys,
           capabilities: payload.capabilities,
+          removal_capabilities: payload.removal_capabilities,
+          resource_removals: payload.resource_removals,
         },
         clean(input.note) || 'Configurația completă a serviciilor a fost aprobată și aplicată.',
       );
