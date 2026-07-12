@@ -508,13 +508,16 @@ function CapabilitySelection({ capabilityKeys, approvedCapabilities, capabilitie
   );
 }
 
-function CareSettingSelector({ options, value, disabled, onChange }) {
+function CareSettingSelector({ options, approvedValue, value, disabled, onChange }) {
   const visibleOptions = options.filter((key) => CARE_SETTINGS[key]);
   if (visibleOptions.length <= 1 || visibleOptions.every((key) => key === "not_applicable" || key === "retail_only")) return null;
   const hasVisibleSelection = visibleOptions.includes(value);
   return (
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-      <h2 className="text-sm font-bold">3. Modul în care funcționează locația</h2>
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="text-sm font-bold">3. Modul în care funcționează locația</h2>
+        {value !== approvedValue && <ChangeBadge draftAddition />}
+      </div>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Alege varianta care descrie cel mai bine activitatea acestei locații. Aceasta nu modifică tipul organizației.</p>
       {!hasVisibleSelection && <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">Alege o opțiune pentru a continua configurarea completă.</div>}
       <div className="mt-3 flex flex-wrap gap-2">
@@ -1099,8 +1102,9 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
       setCapabilities((current) => current.filter((item) => item.capability_key !== capabilityKey));
       return;
     }
-    const parent = parentOptions[0];
-    setCapabilities((current) => [...current, { capability_key: capabilityKey, parent_unit_key: parent, note: "" }]);
+    const approvedRow = approvedCapabilities.find((item) => item.capability_key === capabilityKey && activeUnits.includes(item.parent_unit_key));
+    const parent = approvedRow?.parent_unit_key || parentOptions[0];
+    setCapabilities((current) => [...current, { capability_key: capabilityKey, parent_unit_key: parent, note: approvedRow?.note || "" }]);
   };
 
   const toggleService = (item, unitKey) => {
@@ -1214,6 +1218,25 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     await load();
   };
 
+  const withdraw = async () => {
+    if (!draft || !pendingReview || persistenceMode !== "v2") return;
+    const confirmed = window.confirm("Retragi cererea din verificare? Configurația aprobată rămâne neschimbată.");
+    if (!confirmed) return;
+    setSaving(true);
+    setMessage("");
+    setError("");
+    const response = await base44.functions.invoke("providerServiceConfigurationOps", {
+      action: "withdraw",
+      submission_id: draft.id,
+      location_id: locationId,
+      section: "services",
+    }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }));
+    setSaving(false);
+    if (response.data?.error) { setError(response.data.error); return; }
+    setMessage("Cererea a fost retrasă.");
+    await load();
+  };
+
   if (loading) return <div className="rounded-[24px] border border-border bg-card px-5 py-8 text-sm text-muted-foreground">Se încarcă structura profesională a locației...</div>;
   if (error && !config) return <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-5 text-sm text-amber-950"><p>{error}</p><button type="button" onClick={load} className="mt-3 rounded-full border border-amber-300 bg-white px-4 py-2 text-xs font-semibold">Încearcă din nou</button></div>;
 
@@ -1235,7 +1258,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
         <div className="space-y-4">
           {!query && <UnitSelection units={selectableUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={!editable} onToggle={toggleUnit} />}
           {!query && <CapabilitySelection capabilityKeys={selectableCapabilities} approvedCapabilities={approvedCapabilities} capabilities={capabilities} activeUnits={activeUnits} primaryCapabilities={primaryCapabilities} disabled={!editable} onToggle={toggleCapability} />}
-          {!query && <CareSettingSelector options={operationalLayout.careSettings || []} value={careSetting} disabled={!editable} onChange={setCareSetting} />}
+          {!query && <CareSettingSelector options={operationalLayout.careSettings || []} approvedValue={approvedCareSetting} value={careSetting} disabled={!editable} onChange={setCareSetting} />}
           {!query && <GlobalServiceSections sections={globalSections} selected={selected} approvedSelected={approvedSelected} prerequisites={config?.prerequisites_by_key || {}} disabled={!editable} onToggleService={toggleService} />}
 
           {!query && <ServiceCatalogIntro activeUnits={activeUnits} selectedCount={selectedCount} />}
@@ -1271,7 +1294,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
       </div>
 
       <div className="sticky bottom-0 z-20 -mx-1 rounded-[22px] border border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/90">
-        <div className="flex flex-wrap items-center justify-between gap-3"><div className={`text-xs ${dirty ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{pendingReview ? "Draftul este în verificare" : dirty ? "Ai modificări nesalvate" : draft ? "Draft salvat" : "Nu există modificări nesalvate"}</div><div className="flex flex-wrap gap-2"><button type="button" disabled={saving || !editable || !dirty} onClick={save} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><Save className="h-4 w-4" /> Salvează draftul</button>{draft && draft.status !== "pending_review" && <button type="button" disabled={saving || !editable} onClick={submit} className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-50"><Send className="h-4 w-4" /> Trimite spre verificare</button>}</div></div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><div className={`text-xs ${dirty ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{pendingReview ? "Draftul este în verificare" : dirty ? "Ai modificări nesalvate" : draft ? "Draft salvat" : "Nu există modificări nesalvate"}</div><div className="flex flex-wrap gap-2"><button type="button" disabled={saving || !editable || !dirty} onClick={save} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><Save className="h-4 w-4" /> Salvează draftul</button>{draft && draft.status !== "pending_review" && <button type="button" disabled={saving || !editable} onClick={submit} className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-50"><Send className="h-4 w-4" /> Trimite spre verificare</button>}{pendingReview && persistenceMode === "v2" && <button type="button" disabled={saving} onClick={withdraw} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><X className="h-4 w-4" /> Retrage cererea</button>}</div></div>
         {message && <p className="mt-2 text-xs text-muted-foreground">{message}</p>}
       </div>
     </div>
