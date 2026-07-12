@@ -19,7 +19,7 @@ const NEW_KEYS = {
     group: 'business_attributes',
     kind: 'service',
     need: 'general',
-    review: false,
+    review: true,
     specialist: false,
     professionalTypes: [],
   },
