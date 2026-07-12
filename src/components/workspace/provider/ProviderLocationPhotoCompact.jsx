@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
-const MAX_DATA_URL_LENGTH = 900000;
+const MAX_OPTIMIZED_BYTES = 2 * 1024 * 1024;
 
 function readImage(file) {
   return new Promise((resolve, reject) => {
@@ -16,13 +16,25 @@ function readImage(file) {
     };
     image.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("Imaginea nu poate fi citită."));
+      reject(new Error("Imaginea nu poate fi citita."));
     };
     image.src = url;
   });
 }
 
-async function optimizeLocationPhoto(file) {
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error("Fotografia nu a putut fi optimizata."));
+        return;
+      }
+      resolve(blob);
+    }, type, quality);
+  });
+}
+
+async function optimizeLocationPhoto(file, locationId) {
   const image = await readImage(file);
   const ratio = 4 / 3;
   const sourceRatio = image.width / image.height;
@@ -45,15 +57,29 @@ async function optimizeLocationPhoto(file) {
   canvas.width = width;
   canvas.height = height;
   const context = canvas.getContext("2d");
+  if (!context) throw new Error("Fotografia nu a putut fi procesata.");
   context.fillStyle = "#ffffff";
   context.fillRect(0, 0, width, height);
   context.drawImage(image, sx, sy, sw, sh, 0, 0, width, height);
 
-  let dataUrl = canvas.toDataURL("image/webp", 0.82);
-  if (dataUrl.length > MAX_DATA_URL_LENGTH) dataUrl = canvas.toDataURL("image/jpeg", 0.72);
-  if (dataUrl.length > MAX_DATA_URL_LENGTH) dataUrl = canvas.toDataURL("image/jpeg", 0.6);
-  if (dataUrl.length > MAX_DATA_URL_LENGTH) throw new Error("Fotografia rămâne prea mare după optimizare.");
-  return dataUrl;
+  const attempts = [
+    { type: "image/webp", quality: 0.82, extension: "webp" },
+    { type: "image/jpeg", quality: 0.76, extension: "jpg" },
+    { type: "image/jpeg", quality: 0.62, extension: "jpg" },
+  ];
+
+  for (const attempt of attempts) {
+    const blob = await canvasToBlob(canvas, attempt.type, attempt.quality);
+    if (blob.size <= MAX_OPTIMIZED_BYTES) {
+      return new File(
+        [blob],
+        `location-${locationId}-${Date.now()}.${attempt.extension}`,
+        { type: attempt.type, lastModified: Date.now() },
+      );
+    }
+  }
+
+  throw new Error("Fotografia ramane prea mare dupa optimizare.");
 }
 
 export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) {
@@ -78,7 +104,11 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
     }
     setCurrentPhoto(response.data?.location?.current_photo_url || "");
     setSubmission(response.data?.submission || null);
-    setPreview(response.data?.submission?.payload?.photo_data_url || "");
+    setPreview(
+      response.data?.submission?.payload?.photo_url
+      || response.data?.submission?.payload?.photo_data_url
+      || "",
+    );
   };
 
   useEffect(() => {
@@ -97,46 +127,59 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
       return;
     }
     if (file.size > MAX_FILE_BYTES) {
-      setMessage("Fotografia trebuie să aibă maximum 4 MB.");
+      setMessage("Fotografia trebuie sa aiba maximum 4 MB.");
       return;
     }
 
+    const previousPreview = preview;
+    let localPreviewUrl = "";
     setSaving(true);
     try {
-      const photoDataUrl = await optimizeLocationPhoto(file);
-      setPreview(photoDataUrl);
+      setMessage("Fotografia se optimizeaza si se incarca...");
+      const optimizedFile = await optimizeLocationPhoto(file, locationId);
+      localPreviewUrl = URL.createObjectURL(optimizedFile);
+      setPreview(localPreviewUrl);
+
+      const uploadResponse = await base44.integrations.Core.UploadFile({ file: optimizedFile });
+      const photoUrl = String(uploadResponse?.file_url || "").trim();
+      if (!photoUrl) throw new Error("Incarcarea fotografiei nu a returnat un URL valid.");
 
       const saveResponse = await base44.functions.invoke("locationPhotoOps", {
         action: "save_draft",
         location_id: locationId,
         photo: {
           kind: "location_photo",
-          photo_data_url: photoDataUrl,
+          photo_url: photoUrl,
           remove_photo: false,
         },
       });
+      if (saveResponse.data?.error) throw new Error(saveResponse.data.error);
 
       const submissionId = saveResponse.data?.submission?.id;
       if (!submissionId) throw new Error("Draftul fotografiei nu a putut fi creat.");
 
-      await base44.functions.invoke("locationPhotoOps", {
+      const submitResponse = await base44.functions.invoke("locationPhotoOps", {
         action: "submit_review",
         location_id: locationId,
         submission_id: submissionId,
       });
+      if (submitResponse.data?.error) throw new Error(submitResponse.data.error);
 
-      setMessage("Fotografia a fost trimisă spre verificare.");
+      setPreview(photoUrl);
+      setMessage("Fotografia a fost trimisa spre verificare.");
       await load();
-      onRefresh && onRefresh();
+      await onRefresh?.();
     } catch (error) {
-      setMessage(error.response?.data?.error || error.message || "Fotografia nu a putut fi trimisă.");
+      setPreview(previousPreview);
+      setMessage(error.response?.data?.error || error.message || "Fotografia nu a putut fi trimisa.");
     } finally {
+      if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă...</div>;
+    return <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se incarca...</div>;
   }
 
   return (
@@ -144,12 +187,12 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
       <div className="overflow-hidden rounded-[22px] border border-border bg-card">
         <div className="aspect-[4/3] max-h-[360px] bg-secondary/35">
           {shownPhoto ? (
-            <img src={shownPhoto} alt="Fotografia locației" className="h-full w-full object-cover" />
+            <img src={shownPhoto} alt="Fotografia locatiei" className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full flex-col items-center justify-center px-6 text-center">
               <ImagePlus className="h-8 w-8 text-muted-foreground" />
-              <p className="mt-3 text-sm font-semibold">Adaugă fotografia principală a locației</p>
-              <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">Folosește o fotografie reală a exteriorului sau interiorului. Va apărea public numai după aprobare.</p>
+              <p className="mt-3 text-sm font-semibold">Adauga fotografia principala a locatiei</p>
+              <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">Foloseste o fotografie reala a exteriorului sau interiorului. Va aparea public numai dupa aprobare.</p>
             </div>
           )}
         </div>
@@ -157,13 +200,13 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
 
       {pending ? (
         <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> Fotografia este în verificare. Fotografia publică actuală rămâne neschimbată până la aprobare.
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> Fotografia este in verificare. Fotografia publica actuala ramane neschimbata pana la aprobare.
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-3">
           <label className={`inline-flex cursor-pointer items-center gap-2 rounded-full ${currentPhoto ? "border border-border bg-background text-foreground" : "bg-foreground text-background"} px-4 py-2.5 text-sm font-semibold hover:opacity-90 ${saving ? "pointer-events-none opacity-50" : ""}`}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-            {currentPhoto ? "Schimbă fotografia" : "Alege fotografia"}
+            {saving ? "Se incarca..." : currentPhoto ? "Schimba fotografia" : "Alege fotografia"}
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp"
@@ -175,7 +218,7 @@ export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) 
               }}
             />
           </label>
-          {currentPhoto && <span className="text-xs text-muted-foreground">Fotografie aprobată și publicată</span>}
+          {currentPhoto && <span className="text-xs text-muted-foreground">Fotografie aprobata si publicata</span>}
         </div>
       )}
 
