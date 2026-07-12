@@ -46,7 +46,7 @@ export default function SpecialistsHero() {
 
       <div className="relative z-10 text-center lg:text-left">
         <h1 className="font-heading font-extrabold tracking-[-0.03em] leading-[1.1] text-3xl sm:text-5xl">
-          Administreaza cum apari pe ViaSee.
+          Administreaza cum apari pe VIASEE.
         </h1>
         <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed">
           Revendica sau adauga o locatie. Daca lucrezi independent ca medic oftalmolog sau optometrist, iti poti crea un profil profesional.
