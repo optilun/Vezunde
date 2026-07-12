@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, Outlet } from "react-router-dom";
 import HeaderAccountLink from "@/components/HeaderAccountLink";
+import ViaseeBrand from "@/components/brand/ViaseeBrand";
 
 export default function Layout() {
   const [scrolled, setScrolled] = useState(false);
@@ -23,9 +24,8 @@ export default function Layout() {
         }}
       >
         <div className="max-w-6xl mx-auto px-6 sm:px-8 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg text-white flex items-center justify-center text-sm font-bold" style={{ backgroundColor: "#171717" }}>V</div>
-            <span className="font-heading text-lg font-bold tracking-tight">VIASEE</span>
+          <Link to="/" className="flex items-center" aria-label="VIASEE - Pagina principala">
+            <ViaseeBrand />
           </Link>
           <nav className="flex items-center gap-2 text-sm">
             <Link to="/cauta" className="px-3.5 py-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors">Cauta</Link>
@@ -50,8 +50,8 @@ export default function Layout() {
       <footer className="border-t border-border mt-16">
         <div className="max-w-6xl mx-auto px-5 py-12 grid gap-8 sm:grid-cols-3">
           <div>
-            <div className="font-heading font-bold text-lg">VIASEE</div>
-            <p className="mt-2 text-sm text-muted-foreground max-w-xs">Spune ce ai nevoie. Vezi unde poti merge. VIASEE nu ofera diagnostic medical.</p>
+            <ViaseeBrand symbolClassName="h-8 w-8" wordmarkClassName="h-4 w-auto" />
+            <p className="mt-3 text-sm text-muted-foreground max-w-xs">Spune ce ai nevoie. Vezi unde poti merge. VIASEE nu ofera diagnostic medical.</p>
           </div>
           <div className="text-sm space-y-2">
             <div className="font-medium mb-3">Platforma</div>

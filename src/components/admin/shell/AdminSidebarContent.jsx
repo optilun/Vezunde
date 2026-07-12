@@ -1,6 +1,7 @@
 import React from "react";
 import { LogOut } from "lucide-react";
 import { ADMIN_NAV_PRIMARY, ADMIN_NAV_SECONDARY } from "@/lib/adminNavConfig";
+import ViaseeBrand from "@/components/brand/ViaseeBrand";
 
 function NavButton({ item, active, onClick }) {
   const Icon = item.icon;
@@ -21,10 +22,7 @@ export default function AdminSidebarContent({ activeKey, onNavigate, user, onLog
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 pt-5 pb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg text-white flex items-center justify-center text-sm font-bold bg-foreground">V</div>
-          <span className="font-heading text-lg font-bold tracking-tight">VIASEE</span>
-        </div>
+        <ViaseeBrand />
         <p className="text-[11px] text-muted-foreground mt-1 pl-9">Administrare</p>
       </div>
 
