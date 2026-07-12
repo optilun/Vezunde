@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Building2,
   CheckCircle2,
+  ChevronDown,
   Circle,
   ClipboardList,
   Clock,
@@ -52,26 +53,14 @@ const PROFILE_STATUS_LABELS = {
   draft: "Profil organizatie nefinalizat",
 };
 
-function EmptyState({ icon: Icon, title, text }) {
+function EmptyState({ icon: Icon, title, text, compact = false }) {
   return (
-    <div className="flex min-h-[150px] flex-col items-center justify-center rounded-3xl bg-secondary/30 px-6 py-7 text-center">
-      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card shadow-sm">
-        <Icon className="h-5 w-5 text-muted-foreground" />
+    <div className={`flex flex-col items-center justify-center rounded-2xl bg-secondary/30 px-5 text-center ${compact ? "min-h-[104px] py-5" : "min-h-[140px] py-7"}`}>
+      <div className="mb-2.5 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card">
+        <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
       <div className="text-sm font-bold">{title}</div>
-      <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">{text}</p>
-    </div>
-  );
-}
-
-function Metric({ icon: Icon, label, value, hint, muted = false }) {
-  return (
-    <div className="rounded-2xl border border-border/70 bg-background/60 px-4 py-3">
-      <div className="flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
-        <Icon className="h-3.5 w-3.5" /> {label}
-      </div>
-      <div className={`mt-1 text-lg font-extrabold ${muted ? "text-muted-foreground" : "text-foreground"}`}>{value}</div>
-      {hint && <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{hint}</p>}
+      <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">{text}</p>
     </div>
   );
 }
@@ -79,15 +68,49 @@ function Metric({ icon: Icon, label, value, hint, muted = false }) {
 function ProgressBar({ value }) {
   const safeValue = Math.max(0, Math.min(100, Number(value) || 0));
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-secondary">
+    <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
       <div className="h-full rounded-full bg-foreground transition-all" style={{ width: `${safeValue}%` }} />
+    </div>
+  );
+}
+
+function SummaryRow({ icon: Icon, label, value, hint, muted = false }) {
+  return (
+    <div className="flex items-start gap-3 py-2.5">
+      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-secondary/70">
+        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-xs text-muted-foreground">{label}</div>
+        {hint && <div className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">{hint}</div>}
+      </div>
+      <div className={`max-w-[58%] break-words text-right text-sm font-bold ${muted ? "text-muted-foreground" : "text-foreground"}`}>{value}</div>
+    </div>
+  );
+}
+
+function CompletionSummary({ label, value, hint }) {
+  return (
+    <div className="rounded-2xl border border-border bg-background/60 px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-bold">{label}</div>
+          {hint && <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p>}
+        </div>
+        <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-bold">{value}%</span>
+      </div>
+      <div className="mt-3"><ProgressBar value={value} /></div>
     </div>
   );
 }
 
 function formatDate(value) {
   if (!value) return "";
-  try { return new Date(value).toLocaleDateString("ro-RO"); } catch (_error) { return ""; }
+  try {
+    return new Date(value).toLocaleDateString("ro-RO", { day: "2-digit", month: "long" });
+  } catch (_error) {
+    return "";
+  }
 }
 
 function activityDate(row) {
@@ -111,15 +134,25 @@ function groupRecentSubmissions(rows) {
       existing.count += 1;
       continue;
     }
-    groups.set(key, { ...row, count: 1, display_date: rawDate });
+    groups.set(key, { ...row, count: 1, display_date: rawDate, day_key: day });
   }
-  return [...groups.values()].slice(0, 6);
+  return [...groups.values()].slice(0, 8);
+}
+
+function groupActivitiesByDay(rows) {
+  const groups = new Map();
+  for (const row of rows) {
+    const key = row.day_key || "fara-data";
+    if (!groups.has(key)) groups.set(key, { key, label: formatDate(row.display_date) || "Data necunoscuta", items: [] });
+    groups.get(key).items.push(row);
+  }
+  return [...groups.values()];
 }
 
 function ChangeRow({ submission }) {
   const statusLabel = SUBMISSION_STATUS_LABELS[submission.status] || submission.status;
   return (
-    <li className="rounded-2xl border border-border bg-background/60 px-3 py-2.5 text-sm">
+    <li className="rounded-xl border border-border bg-background/60 px-3 py-2.5 text-sm">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="truncate font-medium">{activityLabel(submission)}</div>
@@ -132,23 +165,39 @@ function ChangeRow({ submission }) {
   );
 }
 
+function Checklist({ items }) {
+  return (
+    <div className="divide-y divide-border/70">
+      {items.map((item) => {
+        const complete = item.done || item.status === "complete";
+        return (
+          <div key={item.key} className="flex items-center gap-3 py-2.5">
+            {complete ? <CheckCircle2 className="h-4 w-4 shrink-0 text-green-700" /> : <Circle className="h-4 w-4 shrink-0 text-muted-foreground/60" />}
+            <span className={`text-sm ${complete ? "text-foreground" : "text-muted-foreground"}`}>{item.label}</span>
+            {!complete && <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Lipseste</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function LocationCompletionRow({ item, onNavigate }) {
   const completion = item.completion || { percentage: 0, missing_count: 0 };
   const verified = item.profile_control_status === "verified";
   return (
-    <button type="button" onClick={() => onNavigate("locations")} className="w-full rounded-2xl border border-border bg-background/60 px-3.5 py-3 text-left hover:bg-secondary/30">
-      <div className="flex items-start justify-between gap-3">
+    <button type="button" onClick={() => onNavigate("locations")} className="w-full border-b border-border/70 py-2.5 text-left last:border-b-0 hover:bg-secondary/20">
+      <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold">{item.name}</div>
           <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
             {item.locality_name && <span>{item.locality_name}</span>}
             <span>{verified ? "Verificata" : "Neverificata"}</span>
+            {completion.missing_count > 0 && <span>{completion.missing_count} {completion.missing_count === 1 ? "element lipsa" : "elemente lipsa"}</span>}
           </div>
         </div>
         <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold">{completion.percentage || 0}%</span>
       </div>
-      <div className="mt-2"><ProgressBar value={completion.percentage} /></div>
-      {completion.missing_count > 0 && <p className="mt-2 text-[11px] text-muted-foreground">{completion.missing_count} {completion.missing_count === 1 ? "element lipsa" : "elemente lipsa"}</p>}
     </button>
   );
 }
@@ -167,6 +216,7 @@ export default function ProviderOverview({ overview, onNavigate }) {
   const inReview = pendingSubmissions.filter((item) => item.status === "pending_review");
   const needsAction = pendingSubmissions.filter((item) => ["draft", "needs_more_info"].includes(item.status));
   const recentSubmissions = groupRecentSubmissions((overview.recent_submissions || []).filter((item) => item.id));
+  const recentGroups = groupActivitiesByDay(recentSubmissions);
   const organizationName = organization.public_display_name || organization.name || location.organization_name || "Organizatie";
   const organizationType = PROVIDER_PROFILE_TYPES[organization.organization_type]
     || PROVIDER_TYPES[location.provider_type]
@@ -176,6 +226,7 @@ export default function ProviderOverview({ overview, onNavigate }) {
   const verifiedLocationCount = Number(organizationSummary.verified_location_count ?? 0);
   const profileStatus = organization.public_visibility_status || organizationSummary.public_profile_status || "draft";
   const checklist = completion.checklist || [];
+  const missingChecklist = checklist.filter((item) => !(item.done || item.status === "complete"));
   const fallbackFields = profileState.fallback_fields || overview.organization_profile_fallback_fields || [];
   const fallbackLabels = fallbackFields.map((key) => FIELD_LABELS[key] || key);
   const fallbackLocationName = profileState.fallback_location_name || "locatia principala";
@@ -187,29 +238,24 @@ export default function ProviderOverview({ overview, onNavigate }) {
       : "Locatii neverificate";
   const website = organization.website_url || "";
   const projectedDiffers = activeProfileSubmission && projectedCompletion.percentage !== completion.percentage;
+  const everythingComplete = completion.percentage === 100 && Number(locationCompletionSummary.average_percentage || 0) === 100;
 
   return (
     <div className="space-y-5">
-      <section className="rounded-[28px] border border-border bg-card p-5 shadow-sm sm:p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+      <section className="rounded-[26px] border border-border bg-card px-5 py-4 shadow-sm sm:px-6 sm:py-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Prezentare generala</div>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <h1 className="font-heading text-3xl font-extrabold tracking-tight">{organizationName}</h1>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Prezentare generala</div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-3">
+              <h1 className="font-heading text-2xl font-extrabold tracking-tight sm:text-3xl">{organizationName}</h1>
               <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${verificationStatus === "all_verified" ? "bg-green-100 text-green-800" : verificationStatus === "partially_verified" ? "bg-amber-100 text-amber-800" : "bg-secondary text-muted-foreground"}`}>
                 <ShieldCheck className="h-3.5 w-3.5" /> {verificationLabel}
               </span>
             </div>
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 font-semibold text-foreground">
-                <Building2 className="h-3.5 w-3.5" /> {organizationType}
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 font-semibold text-foreground">
-                <Store className="h-3.5 w-3.5" /> {activeLocationCount} {activeLocationCount === 1 ? "locatie activa" : "locatii active"}
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 font-semibold text-foreground">
-                <Globe2 className="h-3.5 w-3.5" /> {PROFILE_STATUS_LABELS[profileStatus] || profileStatus}
-              </span>
+            <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 font-semibold text-foreground"><Building2 className="h-3.5 w-3.5" /> {organizationType}</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 font-semibold text-foreground"><Store className="h-3.5 w-3.5" /> {activeLocationCount} {activeLocationCount === 1 ? "locatie activa" : "locatii active"}</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 font-semibold text-foreground"><Globe2 className="h-3.5 w-3.5" /> {PROFILE_STATUS_LABELS[profileStatus] || profileStatus}</span>
             </div>
           </div>
           <button onClick={() => onNavigate("profile")} className="inline-flex w-fit items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background hover:opacity-90">
@@ -218,83 +264,75 @@ export default function ProviderOverview({ overview, onNavigate }) {
         </div>
 
         {fallbackLabels.length > 0 && (
-          <div className="mt-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
+          <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
               <div className="font-bold">Datele exista in {fallbackLocationName}, dar nu sunt salvate in profilul organizatiei.</div>
-              <p className="mt-1">{fallbackLabels.join(", ")}. Intra in Profil public, preia datele in formular, salveaza draftul si trimite-l spre verificare.</p>
+              <p className="mt-1">{fallbackLabels.join(", ")}. Preia-le din Profil public, apoi salveaza si trimite modificarile spre verificare.</p>
             </div>
           </div>
         )}
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <section className="rounded-[28px] border border-border bg-card p-5 shadow-sm sm:p-6">
-          <div className="flex items-start justify-between gap-4">
+      <div className="grid items-start gap-5 lg:grid-cols-2">
+        <section className="rounded-[26px] border border-border bg-card p-5 shadow-sm sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="font-heading text-xl font-bold tracking-tight">Completarea profilului</h2>
+              <h2 className="font-heading text-xl font-bold tracking-tight">Starea profilului</h2>
               <p className="mt-1 text-xs text-muted-foreground">Organizatia si locatiile sunt monitorizate separat.</p>
             </div>
+            {everythingComplete && <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-800">Profil complet</span>}
           </div>
 
-          <div className="mt-5 rounded-2xl border border-border bg-background/60 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-sm font-bold">Profil organizatie</div>
-                <p className="mt-1 text-[11px] text-muted-foreground">Numai datele aprobate din ProviderOrganization.</p>
-              </div>
-              <div className="text-right">
-                <span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold">{completion.percentage || 0}% publicat</span>
-                {projectedDiffers && <div className="mt-2 text-[11px] font-semibold text-blue-700">{projectedCompletion.percentage}% dupa aprobare</div>}
-              </div>
-            </div>
-            <div className="mt-3"><ProgressBar value={completion.percentage} /></div>
-            <div className="mt-4 divide-y divide-border/70">
-              {checklist.map((item) => (
-                <div key={item.key} className="flex items-center gap-3 py-2.5">
-                  {item.done || item.status === "complete" ? <CheckCircle2 className="h-4 w-4 shrink-0 text-green-700" /> : <Circle className="h-4 w-4 shrink-0 text-muted-foreground/60" />}
-                  <span className={`text-sm ${item.done || item.status === "complete" ? "text-foreground" : "text-muted-foreground"}`}>{item.label}</span>
-                  {!(item.done || item.status === "complete") && <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Lipseste</span>}
-                </div>
-              ))}
-            </div>
-            <button onClick={() => onNavigate("profile")} className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-border px-4 py-2.5 text-sm font-bold hover:bg-secondary">
-              Completeaza organizatia <ArrowRight className="h-4 w-4" />
-            </button>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <CompletionSummary label="Organizatie" value={completion.percentage || 0} hint={projectedDiffers ? `${projectedCompletion.percentage}% dupa aprobare` : "Date generale de brand"} />
+            <CompletionSummary label="Locatii" value={locationCompletionSummary.average_percentage || 0} hint={`${locationCompletionSummary.complete_count || 0}/${locationCompletionSummary.active_count || activeLocationCount} complete`} />
           </div>
 
-          <div className="mt-3 rounded-2xl border border-border bg-background/60 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-sm font-bold">Profiluri locatii</div>
-                <p className="mt-1 text-[11px] text-muted-foreground">Adresa, contactul local si programul fiecarei locatii.</p>
+          {everythingComplete ? (
+            <p className="mt-4 rounded-2xl bg-secondary/30 px-4 py-3 text-sm text-muted-foreground">Toate datele obligatorii ale organizatiei si locatiilor sunt completate.</p>
+          ) : (
+            <div className="mt-4 rounded-2xl border border-border bg-background/50 px-4 py-2">
+              <div className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">De completat</div>
+              {missingChecklist.length > 0 ? <Checklist items={missingChecklist} /> : <p className="py-3 text-sm text-muted-foreground">Organizatia este completa. Verifica locatiile care au elemente lipsa.</p>}
+            </div>
+          )}
+
+          <details className="group mt-4 rounded-2xl border border-border bg-background/45">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold [&::-webkit-details-marker]:hidden">
+              Vezi detaliile completarii
+              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="border-t border-border px-4 py-3">
+              <div className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Organizatie</div>
+              <Checklist items={checklist} />
+              <div className="mt-4 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Locatii</div>
+              <div className="mt-1">
+                {(locationCompletionSummary.items || []).map((item) => <LocationCompletionRow key={item.id} item={item} onNavigate={onNavigate} />)}
               </div>
-              <span className="rounded-full bg-secondary px-3 py-1 text-xs font-bold">{locationCompletionSummary.average_percentage || 0}% medie</span>
             </div>
-            <div className="mt-3"><ProgressBar value={locationCompletionSummary.average_percentage} /></div>
-            <div className="mt-3 space-y-2">
-              {(locationCompletionSummary.items || []).map((item) => <LocationCompletionRow key={item.id} item={item} onNavigate={onNavigate} />)}
-            </div>
-            <button onClick={() => onNavigate("locations")} className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-border px-4 py-2.5 text-sm font-bold hover:bg-secondary">
-              Gestioneaza locatiile <ArrowRight className="h-4 w-4" />
-            </button>
+          </details>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button onClick={() => onNavigate("profile")} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary">Editeaza organizatia <ArrowRight className="h-4 w-4" /></button>
+            <button onClick={() => onNavigate("locations")} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary">Gestioneaza locatiile <ArrowRight className="h-4 w-4" /></button>
           </div>
         </section>
 
-        <section className="rounded-[28px] border border-border bg-card p-5 shadow-sm sm:p-6">
+        <section className="rounded-[26px] border border-border bg-card p-5 shadow-sm sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="font-heading text-xl font-bold tracking-tight">Modificari si actiuni</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Separat intre cereri trimise si lucruri care necesita atentia ta.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Cereri trimise si lucruri care necesita atentia ta.</p>
             </div>
             <ClipboardList className="h-5 w-5 text-muted-foreground" />
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <div className="rounded-2xl bg-secondary/45 px-3 py-2.5"><div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">In verificare</div><div className="mt-1 text-lg font-extrabold">{inReview.length}</div></div>
-            <div className="rounded-2xl bg-secondary/45 px-3 py-2.5"><div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Necesita actiune</div><div className="mt-1 text-lg font-extrabold">{needsAction.length}</div></div>
+          <div className="mt-4 flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full bg-secondary px-3 py-1.5 font-semibold"><strong>{inReview.length}</strong> in verificare</span>
+            <span className="rounded-full bg-secondary px-3 py-1.5 font-semibold"><strong>{needsAction.length}</strong> necesita actiune</span>
           </div>
           {pendingSubmissions.length === 0 ? (
-            <div className="mt-4"><EmptyState icon={ClipboardList} title="Nu exista modificari active" text="Drafturile, completarile cerute si cererile trimise spre aprobare vor aparea aici." /></div>
+            <div className="mt-4"><EmptyState compact icon={ClipboardList} title="Nu exista modificari active" text="Drafturile si cererile trimise spre aprobare vor aparea aici." /></div>
           ) : (
             <ul className="mt-4 space-y-2">
               {[...needsAction, ...inReview].map((submission) => <ChangeRow key={submission.id} submission={submission} />)}
@@ -308,64 +346,76 @@ export default function ProviderOverview({ overview, onNavigate }) {
         </section>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <section className="rounded-[28px] border border-border bg-card p-5 shadow-sm sm:p-6">
+      <div className="grid items-start gap-5 lg:grid-cols-2">
+        <section className="rounded-[26px] border border-border bg-card p-5 shadow-sm sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="font-heading text-xl font-bold tracking-tight">Date si continut public</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Datele organizatiei sunt separate de continutul publicat pe locatii.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Rezumatul informatiilor publicate pentru organizatie si locatii.</p>
             </div>
             <Globe2 className="h-5 w-5 text-muted-foreground" />
           </div>
 
-          <div className="mt-5 flex items-center justify-between gap-3">
-            <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Organizatie</h3>
-            <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-bold">{PROFILE_STATUS_LABELS[profileStatus] || profileStatus}</span>
-          </div>
-          <div className="mt-2 grid gap-3 sm:grid-cols-2">
-            <Metric icon={Phone} label="Telefon general" value={organization.public_phone || "Lipseste"} muted={!organization.public_phone} />
-            <Metric icon={Mail} label="Email general" value={organization.public_email || "Lipseste"} muted={!organization.public_email} />
-            <Metric icon={Globe2} label="Website" value={website || "Lipseste"} muted={!website} />
-            <Metric icon={ImageIcon} label="Logo organizatie" value={organization.logo_url ? "Adaugat" : "Lipseste"} muted={!organization.logo_url} />
-          </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+            <div className="rounded-2xl border border-border bg-background/45 px-4 py-2">
+              <div className="flex items-center justify-between gap-3 border-b border-border/70 py-2">
+                <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Organizatie</h3>
+                <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-bold">{PROFILE_STATUS_LABELS[profileStatus] || profileStatus}</span>
+              </div>
+              <div className="divide-y divide-border/70">
+                <SummaryRow icon={Phone} label="Telefon general" value={organization.public_phone || "Lipseste"} muted={!organization.public_phone} />
+                <SummaryRow icon={Mail} label="Email general" value={organization.public_email || "Lipseste"} muted={!organization.public_email} />
+                <SummaryRow icon={Globe2} label="Website" value={website || "Lipseste"} muted={!website} />
+                <SummaryRow icon={ImageIcon} label="Logo" value={organization.logo_url ? "Adaugat" : "Lipseste"} muted={!organization.logo_url} />
+              </div>
+            </div>
 
-          <h3 className="mt-5 text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Locatii</h3>
-          <div className="mt-2 grid gap-3 sm:grid-cols-2">
-            <Metric icon={MapPin} label="Locatii active" value={`${activeLocationCount}/${locationCount}`} />
-            <Metric icon={Clock} label="Program completat" value={`${contentSummary.locations_with_opening_hours || 0}/${locationCount}`} />
-            <Metric icon={ShieldCheck} label="Servicii publicate" value={contentSummary.approved_service_count || 0} />
-            <Metric icon={Users} label="Specialisti publici" value={contentSummary.approved_public_team_count || 0} />
-            <Metric icon={ImageIcon} label="Fotografii locatie" value={`${contentSummary.locations_with_photo || 0}/${locationCount}`} hint={`${contentSummary.approved_media_count || 0} imagini aprobate in total`} />
-            <Metric icon={FileText} label="Articole publicate" value={contentSummary.approved_published_article_count || 0} />
+            <div className="rounded-2xl border border-border bg-background/45 px-4 py-2">
+              <div className="border-b border-border/70 py-2"><h3 className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Locatii</h3></div>
+              <div className="divide-y divide-border/70">
+                <SummaryRow icon={MapPin} label="Locatii active" value={`${activeLocationCount}/${locationCount}`} />
+                <SummaryRow icon={Clock} label="Program completat" value={`${contentSummary.locations_with_opening_hours || 0}/${locationCount}`} />
+                <SummaryRow icon={ShieldCheck} label="Servicii publicate" value={contentSummary.approved_service_count || 0} />
+                <SummaryRow icon={Users} label="Specialisti publici" value={contentSummary.approved_public_team_count || 0} />
+                <SummaryRow icon={ImageIcon} label="Fotografii" value={`${contentSummary.locations_with_photo || 0}/${locationCount}`} hint={`${contentSummary.approved_media_count || 0} imagini aprobate`} />
+                <SummaryRow icon={FileText} label="Articole" value={contentSummary.approved_published_article_count || 0} />
+              </div>
+            </div>
           </div>
         </section>
 
-        <section className="rounded-[28px] border border-border bg-card p-5 shadow-sm sm:p-6">
+        <section className="rounded-[26px] border border-border bg-card p-5 shadow-sm sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="font-heading text-xl font-bold tracking-tight">Activitate recenta</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Modificarile organizatiei, grupate pentru a evita intrarile repetitive.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Modificarile sunt grupate pe zi si tip.</p>
             </div>
             <Activity className="h-5 w-5 text-muted-foreground" />
           </div>
-          {recentSubmissions.length === 0 ? (
-            <div className="mt-5"><EmptyState icon={Activity} title="Nicio activitate recenta" text="Primele modificari ale organizatiei si locatiilor vor aparea aici." /></div>
+          {recentGroups.length === 0 ? (
+            <div className="mt-5"><EmptyState compact icon={Activity} title="Nicio activitate recenta" text="Primele modificari ale organizatiei si locatiilor vor aparea aici." /></div>
           ) : (
-            <ul className="mt-5 space-y-2.5">
-              {recentSubmissions.map((submission) => (
-                <li key={[submission.section, submission.item_key, submission.location_id, submission.status, submission.display_date].join(":")} className="rounded-2xl border border-border bg-background/60 px-3 py-2.5 text-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <span className="font-medium">{activityLabel(submission)}</span>
-                      {submission.count > 1 && <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold">{submission.count} actualizari</span>}
-                      {submission.location_name && <div className="mt-0.5 truncate text-[11px] text-muted-foreground">{submission.location_name}</div>}
-                    </div>
-                    <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-bold">{SUBMISSION_STATUS_LABELS[submission.status] || submission.status}</span>
+            <div className="mt-5 space-y-4">
+              {recentGroups.map((group) => (
+                <div key={group.key}>
+                  <div className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{group.label}</div>
+                  <div className="divide-y divide-border/70 rounded-2xl border border-border bg-background/45 px-3">
+                    {group.items.map((submission) => (
+                      <div key={[submission.section, submission.item_key, submission.location_id, submission.status, submission.display_date].join(":")} className="flex items-center justify-between gap-3 py-2.5">
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium">
+                            {activityLabel(submission)}
+                            {submission.count > 1 && <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold">{submission.count} actualizari</span>}
+                          </div>
+                          {submission.location_name && <div className="mt-0.5 truncate text-[11px] text-muted-foreground">{submission.location_name}</div>}
+                        </div>
+                        <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-bold">{SUBMISSION_STATUS_LABELS[submission.status] || submission.status}</span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="mt-1 text-xs text-muted-foreground">{formatDate(submission.display_date)}</div>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </section>
       </div>
