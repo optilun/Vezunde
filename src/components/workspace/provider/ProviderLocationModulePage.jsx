@@ -49,8 +49,8 @@ export default function ProviderLocationModulePage({
   const locationName = location.public_display_name || location.name || "Locatie";
 
   return (
-    <div className="space-y-6">
-      <header className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
+    <div className={`space-y-6 ${moduleKey === "servicii" ? "provider-location-services-page" : ""}`}>
+      <header className="provider-location-module-header rounded-[24px] border border-border bg-card p-5 shadow-sm">
         <button type="button" onClick={onBack} className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Inapoi la locatii
         </button>
