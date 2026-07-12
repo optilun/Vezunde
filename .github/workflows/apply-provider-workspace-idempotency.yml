@@ -7,6 +7,12 @@ on:
     paths:
       - scripts/apply-provider-workspace-idempotency.py
       - .github/workflows/apply-provider-workspace-idempotency.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/apply-provider-workspace-idempotency.py
+      - .github/workflows/apply-provider-workspace-idempotency.yml
 
 permissions:
   contents: write
