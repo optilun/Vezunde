@@ -3,13 +3,19 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 function res(body, status = 200) { return Response.json(body, { status }); }
 function clean(value) { return String(value ?? '').trim(); }
 
-function computeCompleteness(organization) {
+function computeCompleteness(organization, locations) {
   const items = [
-    !!clean(organization.public_display_name || organization.name),
+    !!clean(organization.public_display_name),
     !!clean(organization.public_description),
     !!(clean(organization.public_phone) || clean(organization.public_email)),
-    !!(clean(organization.website_url || organization.website) || clean(organization.facebook_url) || clean(organization.instagram_url) || clean(organization.linkedin_url)),
+    !!(
+      clean(organization.website_url || organization.website)
+      || clean(organization.facebook_url)
+      || clean(organization.instagram_url)
+      || clean(organization.linkedin_url)
+    ),
     !!clean(organization.logo_url),
+    locations.some((location) => location.active_status !== 'inactiva' && location.status !== 'suspendata'),
   ];
   return Math.round((items.filter(Boolean).length / items.length) * 100);
 }
@@ -29,11 +35,9 @@ Deno.serve(async (req) => {
 
     const organization = await svc.entities.ProviderOrganization.get(organizationId).catch(() => null);
     if (!organization) return res({ error: 'Organizatia nu a fost gasita' }, 404);
-    let sourceLocation = sourceLocationId ? await svc.entities.ProviderLocation.get(sourceLocationId).catch(() => null) : null;
-    if (!sourceLocation) {
-      const locations = await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, '-created_date', 50);
-      sourceLocation = locations.find((location) => location.profile_control_status === 'verified') || locations[0] || null;
-    }
+    const locations = await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, '-created_date', 500);
+    let sourceLocation = sourceLocationId ? locations.find((location) => location.id === sourceLocationId) || null : null;
+    if (!sourceLocation) sourceLocation = locations.find((location) => location.profile_control_status === 'verified') || locations[0] || null;
     if (!sourceLocation || sourceLocation.organization_id !== organizationId) return res({ error: 'Locatia sursa nu apartine organizatiei' }, 400);
 
     const candidates = {
@@ -45,22 +49,24 @@ Deno.serve(async (req) => {
       facebook_url: sourceLocation.facebook_url || '',
       instagram_url: sourceLocation.instagram_url || '',
       linkedin_url: sourceLocation.linkedin_url || '',
-      logo_url: sourceLocation.photo_url || sourceLocation.profile_photo_url || '',
     };
     const updates = {};
     for (const [key, value] of Object.entries(candidates)) {
       if (!clean(organization[key]) && clean(value)) updates[key] = clean(value);
     }
     const preview = { ...organization, ...updates };
-    updates.profile_completeness = computeCompleteness(preview);
+    updates.profile_completeness = computeCompleteness(preview, locations);
     if (Object.keys(updates).length > 1) {
       updates.profile_updated_at = new Date().toISOString();
       if (organization.public_visibility_status === 'draft' && sourceLocation.status === 'publicata') updates.public_visibility_status = 'approved';
     }
 
-    if (dryRun) return res({ dry_run: true, organization_id: organizationId, source_location_id: sourceLocation.id, updates });
+    const warnings = [];
+    if (!clean(organization.logo_url)) warnings.push('Logo-ul nu este migrat din fotografia locatiei. Se gestioneaza separat din Profil public.');
+
+    if (dryRun) return res({ dry_run: true, organization_id: organizationId, source_location_id: sourceLocation.id, updates, warnings });
     if (Object.keys(updates).length === 1 && Object.prototype.hasOwnProperty.call(updates, 'profile_completeness') && organization.profile_completeness === updates.profile_completeness) {
-      return res({ success: true, changed: false, updates: {} });
+      return res({ success: true, changed: false, updates: {}, warnings });
     }
 
     await svc.entities.ProviderOrganization.update(organizationId, updates);
@@ -73,10 +79,10 @@ Deno.serve(async (req) => {
       new_values: JSON.stringify(updates),
       admin_user_id: user.id,
       admin_email: user.email,
-      note: `Backfill controlat din locatia ${sourceLocation.id}`,
+      note: `Backfill controlat din locatia ${sourceLocation.id}. Fotografia locatiei nu a fost folosita ca logo.`,
       performed_at: new Date().toISOString(),
     });
-    return res({ success: true, changed: true, organization_id: organizationId, source_location_id: sourceLocation.id, updates });
+    return res({ success: true, changed: true, organization_id: organizationId, source_location_id: sourceLocation.id, updates, warnings });
   } catch (error) {
     return res({ error: error.message }, 500);
   }
