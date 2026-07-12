@@ -1,24 +1,39 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowRight, CheckCircle2, ChevronDown, Clock, ExternalLink, Info, Mail, MapPin, Phone, Plus, Save, Users, Wrench } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  ExternalLink,
+  Info,
+  Mail,
+  MapPin,
+  Pencil,
+  Phone,
+  Plus,
+  Save,
+  Users,
+  Wrench,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { PROFILE_CONTROL_LABELS, SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 import { buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/lib/maps";
+import { deriveProviderLocationState, deriveSubmissionState } from "@/lib/providerWorkspaceState";
 
-const inputCls = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none focus:border-foreground/50 transition-colors";
+const inputCls = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-foreground/50 disabled:cursor-not-allowed disabled:opacity-60";
 
 function cleanNumber(value) {
   const raw = String(value ?? "").trim().replace(",", ".");
   if (!raw) return "";
-  const n = Number(raw);
-  return Number.isFinite(n) ? String(n) : raw;
+  const number = Number(raw);
+  return Number.isFinite(number) ? String(number) : raw;
 }
 
 function numericOrEmpty(value) {
   const raw = cleanNumber(value);
   if (!raw) return "";
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : "";
+  const number = Number(raw);
+  return Number.isFinite(number) ? number : "";
 }
 
 function getCoordinateValidation(values = {}) {
@@ -27,40 +42,33 @@ function getCoordinateValidation(values = {}) {
   const lat = numericOrEmpty(values.lat);
   const lng = numericOrEmpty(values.lng);
   const issues = [];
-
-  if ((rawLat && !rawLng) || (!rawLat && rawLng)) issues.push("Completează și latitudinea, și longitudinea pentru a folosi pinul exact.");
-  if (rawLat && lat === "") issues.push("Latitudinea trebuie să fie un număr valid.");
-  if (rawLng && lng === "") issues.push("Longitudinea trebuie să fie un număr valid.");
-  if (lat !== "" && (lat < -90 || lat > 90)) issues.push("Latitudinea trebuie să fie între -90 și 90.");
-  if (lng !== "" && (lng < -180 || lng > 180)) issues.push("Longitudinea trebuie să fie între -180 și 180.");
-
+  if ((rawLat && !rawLng) || (!rawLat && rawLng)) issues.push("Completeaza si latitudinea, si longitudinea pentru a folosi pinul exact.");
+  if (rawLat && lat === "") issues.push("Latitudinea trebuie sa fie un numar valid.");
+  if (rawLng && lng === "") issues.push("Longitudinea trebuie sa fie un numar valid.");
+  if (lat !== "" && (lat < -90 || lat > 90)) issues.push("Latitudinea trebuie sa fie intre -90 si 90.");
+  if (lng !== "" && (lng < -180 || lng > 180)) issues.push("Longitudinea trebuie sa fie intre -180 si 180.");
   return { issues, lat, lng };
 }
 
-function LocationRow({ loc, membership, active, onSelect }) {
-  const activeStatus = loc.active_status === "inactiva" ? "Inactivă" : "Activă";
+function LocationRow({ location, active, onSelect }) {
+  const state = deriveProviderLocationState(location);
+  const completeness = Number.isFinite(Number(location.profile_completeness)) ? Number(location.profile_completeness) : 0;
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(loc.id)}
-      className={`w-full rounded-2xl border bg-card p-3.5 text-left transition-all hover:shadow-sm ${active ? "border-foreground shadow-sm" : "border-border hover:border-foreground/30"}`}
-    >
+    <button type="button" onClick={() => onSelect(location.id)} className={`w-full rounded-2xl border bg-card p-3.5 text-left transition-all hover:shadow-sm ${active ? "border-foreground shadow-sm" : "border-border hover:border-foreground/30"}`}>
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary text-foreground">
-          <MapPin className="h-4 w-4" />
-        </div>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary"><MapPin className="h-4 w-4" /></div>
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
-            <div className="truncate text-sm font-bold">{loc.public_display_name || loc.name}</div>
-            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${activeStatus === "Activă" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>{activeStatus}</span>
+            <div className="truncate text-sm font-bold">{location.public_display_name || location.name}</div>
+            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${state.activityClassName}`}>{state.activityLabel}</span>
           </div>
-          <p className="mt-1 truncate text-xs text-muted-foreground">{loc.locality_name || loc.city || "Localitate lipsă"}</p>
-          {loc.address && <p className="mt-1 truncate text-xs text-muted-foreground">{loc.address}</p>}
+          <p className="mt-1 truncate text-xs text-muted-foreground">{location.locality_name || location.city || "Localitate lipsa"}</p>
+          {location.address && <p className="mt-1 truncate text-xs text-muted-foreground">{location.address}</p>}
         </div>
       </div>
       <div className="mt-3 flex items-center justify-between gap-3 text-xs">
-        <span className="text-muted-foreground">Completitudine <b className="text-foreground">{membership?.profile_completeness ?? 0}%</b></span>
-        {active && <CheckCircle2 className="h-4 w-4 text-green-700" aria-label="Locație selectată" />}
+        <span className="text-muted-foreground">Completitudine <b className="text-foreground">{completeness}%</b></span>
+        {active && <CheckCircle2 className="h-4 w-4 text-green-700" aria-label="Locatie selectata" />}
       </div>
     </button>
   );
@@ -70,7 +78,7 @@ function DetailItem({ icon: Icon, label, value, className = "", valueClassName =
   return (
     <div className={`rounded-2xl border border-border bg-secondary/45 px-4 py-3 ${className}`}>
       <div className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground"><Icon className="h-3.5 w-3.5" /> {label}</div>
-      <div className={`mt-1 break-words text-sm font-bold leading-snug ${valueClassName}`}>{value || "Lipsește"}</div>
+      <div className={`mt-1 break-words text-sm font-bold leading-snug ${valueClassName}`}>{value || "Lipseste"}</div>
     </div>
   );
 }
@@ -78,12 +86,8 @@ function DetailItem({ icon: Icon, label, value, className = "", valueClassName =
 function InfoHint({ children }) {
   return (
     <details className="relative inline-block">
-      <summary className="flex h-7 w-7 cursor-pointer list-none items-center justify-center rounded-full border border-border bg-background text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
-        <Info className="h-3.5 w-3.5" />
-      </summary>
-      <div className="absolute right-0 z-20 mt-2 w-72 rounded-2xl border border-border bg-card p-3 text-xs leading-relaxed text-muted-foreground shadow-lg">
-        {children}
-      </div>
+      <summary className="flex h-7 w-7 cursor-pointer list-none items-center justify-center rounded-full border border-border bg-background text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden"><Info className="h-3.5 w-3.5" /></summary>
+      <div className="absolute right-0 z-20 mt-2 w-72 rounded-2xl border border-border bg-card p-3 text-xs leading-relaxed text-muted-foreground shadow-lg">{children}</div>
     </details>
   );
 }
@@ -94,30 +98,42 @@ function ConfigureCard({ icon: Icon, title, text, onClick }) {
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary"><Icon className="h-4 w-4" /></div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-sm font-bold">{title}</div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground" />
-          </div>
+          <div className="flex items-center justify-between gap-2"><div className="text-sm font-bold">{title}</div><ArrowRight className="h-4 w-4 text-muted-foreground" /></div>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{text}</p>
-          <div className="mt-3 text-xs font-bold underline underline-offset-4">Configurează</div>
+          <div className="mt-3 text-xs font-bold underline underline-offset-4">Configureaza</div>
         </div>
       </div>
     </button>
   );
 }
 
+function defaultValues(location) {
+  return {
+    public_display_name: location?.public_display_name || location?.name || "",
+    address: location?.address || "",
+    public_phone: location?.public_phone || location?.phone_public || "",
+    public_email: location?.public_email || "",
+    lat: location?.lat ?? "",
+    lng: location?.lng ?? "",
+    place_id: location?.place_id || "",
+  };
+}
+
 export default function ProviderLocations({ workspace, selectedLocationId, onSelect, onRefresh, onOpenModule }) {
-  const locById = Object.fromEntries((workspace.locations || []).map((l) => [l.id, l]));
-  const membershipByLocation = Object.fromEntries((workspace.memberships || []).map((m) => [m.location_id, m]));
-  const selectedLocation = locById[selectedLocationId] || (workspace.locations || [])[0] || null;
-  const selectedMembership = selectedLocation ? membershipByLocation[selectedLocation.id] : null;
+  const locations = workspace.locations || [];
+  const locationById = Object.fromEntries(locations.map((location) => [location.id, location]));
+  const selectedLocation = locationById[selectedLocationId] || locations[0] || null;
   const [draft, setDraft] = useState(null);
-  const [values, setValues] = useState({ public_display_name: "", address: "", public_phone: "", public_email: "", lat: "", lng: "", place_id: "" });
+  const [values, setValues] = useState(defaultValues(selectedLocation));
   const [showAdvancedMap, setShowAdvancedMap] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [message, setMessage] = useState("");
 
   const coordinateValidation = useMemo(() => getCoordinateValidation(values), [values]);
+  const draftState = deriveSubmissionState(draft);
+  const pendingReview = draftState?.pendingReview === true;
+  const hasCoordinateIssues = coordinateValidation.issues.length > 0;
 
   const previewLocation = useMemo(() => {
     if (!selectedLocation) return null;
@@ -127,56 +143,49 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
       ...selectedLocation,
       public_display_name: values.public_display_name || selectedLocation.public_display_name || selectedLocation.name,
       name: values.public_display_name || selectedLocation.name,
-      address: values.address || selectedLocation.address,
-      public_phone: values.public_phone || selectedLocation.public_phone,
-      phone_public: values.public_phone || selectedLocation.phone_public,
-      public_email: values.public_email || selectedLocation.public_email,
-      lat: lat !== "" ? lat : selectedLocation.lat,
-      lng: lng !== "" ? lng : selectedLocation.lng,
-      place_id: values.place_id || selectedLocation.place_id,
+      address: values.address,
+      public_phone: values.public_phone,
+      phone_public: values.public_phone,
+      public_email: values.public_email,
+      lat: lat !== "" ? lat : null,
+      lng: lng !== "" ? lng : null,
+      place_id: values.place_id || "",
     };
   }, [selectedLocation, values]);
 
   const mapUrl = previewLocation ? buildGoogleMapsUrl(previewLocation) : "";
   const embedUrl = previewLocation ? buildGoogleMapsEmbedUrl(previewLocation) : "";
   const hasExactPin = Number.isFinite(Number(previewLocation?.lat)) && Number.isFinite(Number(previewLocation?.lng));
-  const hasCoordinateIssues = coordinateValidation.issues.length > 0;
+  const locationCount = locations.length;
+  const hasMultipleLocations = locationCount > 1;
+  const selectedLocationName = previewLocation?.public_display_name || previewLocation?.name || "Locatie";
+  const selectedState = deriveProviderLocationState(selectedLocation || {});
 
   const loadDraft = async () => {
     if (!selectedLocation?.id) return;
-    const res = await base44.functions.invoke("submitProviderWorkspaceChange", { action: "list_mine", location_id: selectedLocation.id }).catch(() => ({ data: { submissions: [] } }));
-    const own = (res.data?.submissions || []).find((s) => s.section === "location_details" && ["draft", "needs_more_info", "pending_review"].includes(s.status));
+    const response = await base44.functions.invoke("submitProviderWorkspaceChange", { action: "list_mine", location_id: selectedLocation.id }).catch(() => ({ data: { submissions: [] } }));
+    const own = (response.data?.submissions || []).find((submission) => submission.section === "location_details" && ["draft", "needs_more_info", "pending_review"].includes(submission.status));
     setDraft(own || null);
     if (own) {
-      const payload = JSON.parse(own.payload_json || "{}");
-      setValues({
-        public_display_name: payload.public_display_name ?? (selectedLocation.public_display_name || selectedLocation.name || ""),
-        address: payload.address ?? (selectedLocation.address || ""),
-        public_phone: payload.public_phone ?? (selectedLocation.public_phone || selectedLocation.phone_public || ""),
-        public_email: payload.public_email ?? (selectedLocation.public_email || ""),
-        lat: payload.lat ?? (selectedLocation.lat ?? ""),
-        lng: payload.lng ?? (selectedLocation.lng ?? ""),
-        place_id: payload.place_id ?? (selectedLocation.place_id || ""),
-      });
-    } else {
-      setValues({
-        public_display_name: selectedLocation.public_display_name || selectedLocation.name || "",
-        address: selectedLocation.address || "",
-        public_phone: selectedLocation.public_phone || selectedLocation.phone_public || "",
-        public_email: selectedLocation.public_email || "",
-        lat: selectedLocation.lat ?? "",
-        lng: selectedLocation.lng ?? "",
-        place_id: selectedLocation.place_id || "",
-      });
-    }
+      try {
+        const payload = JSON.parse(own.payload_json || "{}");
+        setValues({ ...defaultValues(selectedLocation), ...payload });
+      } catch { setValues(defaultValues(selectedLocation)); }
+    } else setValues(defaultValues(selectedLocation));
   };
 
-  useEffect(() => { loadDraft(); setMsg(""); setShowAdvancedMap(false); }, [selectedLocation?.id]);
+  useEffect(() => {
+    loadDraft();
+    setMessage("");
+    setShowAdvancedMap(false);
+    setEditOpen(false);
+  }, [selectedLocation?.id]);
 
   const saveDraft = async () => {
     if (!selectedLocation?.id) return;
-    if (hasCoordinateIssues) { setMsg(coordinateValidation.issues[0]); return; }
-    setSaving(true); setMsg("");
+    if (hasCoordinateIssues) { setMessage(coordinateValidation.issues[0]); return; }
+    setSaving(true);
+    setMessage("");
     const action = draft && draft.status !== "pending_review" ? "update_draft" : "create_draft";
     const lat = numericOrEmpty(values.lat);
     const lng = numericOrEmpty(values.lng);
@@ -189,76 +198,68 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
       lng: lng === "" ? "" : lng,
       place_id: values.place_id || "",
     };
-    const res = await base44.functions.invoke("submitProviderWorkspaceChange", { action, submission_id: draft?.id, location_id: selectedLocation.id, section: "location_details", payload }).catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
+    const response = await base44.functions.invoke("submitProviderWorkspaceChange", { action, submission_id: draft?.id, location_id: selectedLocation.id, section: "location_details", payload }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
     setSaving(false);
-    if (res.data?.error) { setMsg(res.data.error); return; }
-    setMsg("Draft salvat. Trimite-l spre review când este pregătit.");
-    loadDraft();
-    onRefresh && onRefresh();
+    if (response.data?.error) { setMessage(response.data.error); return; }
+    setMessage("Draft salvat. Trimite-l spre review cand este pregatit.");
+    await loadDraft();
+    onRefresh?.();
   };
 
   const submitDraft = async () => {
     if (!draft || !selectedLocation?.id) return;
-    if (hasCoordinateIssues) { setMsg(coordinateValidation.issues[0]); return; }
-    setSaving(true); setMsg("");
-    const res = await base44.functions.invoke("submitProviderWorkspaceChange", { action: "submit", submission_id: draft.id, location_id: selectedLocation.id, section: "location_details" }).catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
+    if (hasCoordinateIssues) { setMessage(coordinateValidation.issues[0]); return; }
+    setSaving(true);
+    setMessage("");
+    const response = await base44.functions.invoke("submitProviderWorkspaceChange", { action: "submit", submission_id: draft.id, location_id: selectedLocation.id, section: "location_details" }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
     setSaving(false);
-    if (res.data?.error) { setMsg(res.data.error); return; }
-    setMsg("Modificarea locației a fost trimisă spre review.");
-    loadDraft();
-    onRefresh && onRefresh();
+    if (response.data?.error) { setMessage(response.data.error); return; }
+    setMessage("Modificarile locatiei au fost trimise spre review.");
+    await loadDraft();
+    onRefresh?.();
   };
 
-  const locationCount = workspace.locations?.length || 0;
-  const hasMultipleLocations = locationCount > 1;
-  const pendingReview = draft?.status === "pending_review";
-  const hasDraftChanges = !!draft;
-  const selectedLocationName = selectedLocation?.public_display_name || selectedLocation?.name || "Locație";
+  if (locationCount === 0) {
+    return (
+      <div className="space-y-5">
+        <div><h1 className="font-heading text-2xl font-extrabold tracking-tight">Locatii</h1><p className="mt-1 text-xs text-muted-foreground">Adauga primul punct de lucru al organizatiei.</p></div>
+        <section className="rounded-[24px] border border-dashed border-border bg-card p-8 text-center shadow-sm">
+          <MapPin className="mx-auto h-7 w-7 text-muted-foreground" />
+          <h2 className="mt-3 text-sm font-bold">Nu exista locatii</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Dupa aprobare, fiecare locatie va avea propriile servicii, program, specialisti si fotografii.</p>
+          <Link to="/adauga-sau-revendica" className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background"><Plus className="h-4 w-4" /> Adauga locatie</Link>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-heading text-2xl font-extrabold tracking-tight">Locații</h1>
-          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-            Gestionează fiecare punct de lucru. Serviciile, programul, echipa și datele publice se configurează pe locație.
-          </p>
+          <h1 className="font-heading text-2xl font-extrabold tracking-tight">Locatii</h1>
+          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Gestioneaza fiecare punct de lucru. Serviciile, programul, specialistii, fotografiile si datele publice sunt separate pe locatie.</p>
         </div>
-        <Link to="/adauga-sau-revendica" className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background hover:opacity-90">
-          <Plus className="h-4 w-4" /> Adaugă locație
-        </Link>
+        <Link to="/adauga-sau-revendica" className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background hover:opacity-90"><Plus className="h-4 w-4" /> Adauga locatie</Link>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[330px_minmax(0,1fr)] xl:items-start">
-        <aside className="space-y-4 xl:sticky xl:top-6">
-          <div className="rounded-[24px] border border-border bg-card p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-bold">Puncte de lucru</div>
-                <p className="mt-1 text-xs text-muted-foreground">{locationCount} {locationCount === 1 ? "locație" : "locații"}</p>
+      <div className={`grid gap-6 ${hasMultipleLocations ? "xl:grid-cols-[330px_minmax(0,1fr)] xl:items-start" : "grid-cols-1"}`}>
+        {hasMultipleLocations && (
+          <aside className="xl:sticky xl:top-6">
+            <div className="rounded-[24px] border border-border bg-card p-4 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div><div className="text-sm font-bold">Puncte de lucru</div><p className="mt-1 text-xs text-muted-foreground">{locationCount} locatii</p></div>
+                <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">Multi-locatie</span>
               </div>
-              {hasMultipleLocations && <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">Multi-locație</span>}
+              <div className="mt-4 max-h-[620px] space-y-2 overflow-y-auto pr-1">
+                {locations.map((location) => <LocationRow key={location.id} location={location} active={location.id === selectedLocation?.id} onSelect={onSelect} />)}
+              </div>
             </div>
-            <div className="mt-4 max-h-[520px] space-y-2 overflow-y-auto pr-1">
-              {(workspace.locations || []).map((loc) => (
-                <LocationRow key={loc.id} loc={loc} membership={membershipByLocation[loc.id]} active={loc.id === selectedLocation?.id} onSelect={onSelect} />
-              ))}
-            </div>
-          </div>
-
-          {locationCount === 0 && (
-            <div className="rounded-[24px] border border-dashed border-border bg-secondary/35 p-4">
-              <div className="text-sm font-bold">Adaugă prima locație</div>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">După aprobare, locația va avea propriile servicii, program și echipă.</p>
-              <Link to="/adauga-sau-revendica" className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold underline underline-offset-4">
-                Cere adăugarea unei locații <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          )}
-        </aside>
+          </aside>
+        )}
 
         <div className="space-y-5">
-          {selectedLocation && previewLocation && (
+          {previewLocation && (
             <>
               <section className="overflow-hidden rounded-[28px] border border-border bg-card shadow-sm">
                 <div className="grid lg:grid-cols-[minmax(0,0.95fr)_minmax(420px,1.25fr)]">
@@ -267,49 +268,36 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <h2 className="font-heading text-xl font-extrabold tracking-tight">{selectedLocationName}</h2>
-                          <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-700 ring-1 ring-inset ring-green-200">{PROFILE_CONTROL_LABELS[selectedLocation.profile_control_status] || selectedLocation.profile_control_status}</span>
+                          <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${selectedState.activityClassName}`}>{selectedState.activityLabel}</span>
+                          <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold">{selectedState.controlLabel}</span>
                         </div>
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <span>{selectedLocation.locality_name || selectedLocation.city}{selectedLocation.county_name ? ` · ${selectedLocation.county_name}` : ""}</span>
-                          <InfoHint>Modificările făcute aici se aplică doar acestei locații. Aici gestionezi serviciile, programul, specialiștii și datele de contact ale punctului de lucru.</InfoHint>
+                          <span>{selectedLocation.locality_name || selectedLocation.city}{selectedLocation.county_name || selectedLocation.county ? ` - ${selectedLocation.county_name || selectedLocation.county}` : ""}</span>
+                          <InfoHint>Tot ce configurezi aici se aplica doar acestei locatii.</InfoHint>
                         </div>
                       </div>
-                      {hasDraftChanges && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-800">Draft în lucru</span>}
+                      {draftState && <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${draftState.className}`}>{draftState.label}</span>}
                     </div>
 
+                    {draft && <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">Datele de mai jos sunt previzualizarea modificarilor din draft. Profilul public ramane neschimbat pana la aprobare.</div>}
+
                     <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1.7fr)_minmax(150px,0.8fr)]">
-                      <DetailItem icon={MapPin} label="Adresă" value={selectedLocation.address} />
-                      <DetailItem icon={Phone} label="Telefon" value={selectedLocation.public_phone || selectedLocation.phone_public} />
-                      <DetailItem className="sm:col-span-2" valueClassName="text-base" icon={Mail} label="Email public" value={selectedLocation.public_email} />
+                      <DetailItem icon={MapPin} label="Adresa" value={previewLocation.address} />
+                      <DetailItem icon={Phone} label="Telefon" value={previewLocation.public_phone || previewLocation.phone_public} />
+                      <DetailItem className="sm:col-span-2" valueClassName="text-base" icon={Mail} label="Email public" value={previewLocation.public_email} />
                     </div>
                   </div>
 
                   <div className="border-t border-border bg-secondary/30 p-5 lg:border-l lg:border-t-0 lg:p-6">
                     <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2 text-sm font-bold">
-                          Hartă și adresă
-                          {hasExactPin && <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-700 ring-1 ring-inset ring-green-200">pin exact</span>}
-                          <InfoHint>Harta folosește coordonatele dacă există. Dacă nu există coordonate, folosește adresa publicată a locației.</InfoHint>
-                        </div>
-                        <p className="mt-2 line-clamp-2 max-w-md text-xs leading-relaxed text-muted-foreground">{previewLocation.address || "Adresă nepublicată"}</p>
+                        <div className="flex flex-wrap items-center gap-2 text-sm font-bold">Harta si adresa {hasExactPin && <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-700 ring-1 ring-inset ring-green-200">pin exact</span>}<InfoHint>Harta foloseste coordonatele daca exista. In lipsa lor foloseste adresa.</InfoHint></div>
+                        <p className="mt-2 line-clamp-2 max-w-md text-xs leading-relaxed text-muted-foreground">{previewLocation.address || "Adresa nepublicata"}</p>
                       </div>
-                      {mapUrl && (
-                        <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-2 text-xs font-semibold hover:bg-background">
-                          Deschide în Google Maps <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
-                      )}
+                      {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-2 text-xs font-semibold hover:bg-background">Deschide in Google Maps <ExternalLink className="h-3.5 w-3.5" /></a>}
                     </div>
                     <div className="h-72 overflow-hidden rounded-[22px] border border-border bg-secondary lg:h-[300px]">
-                      {hasMapLocation(previewLocation) && embedUrl ? (
-                        <iframe title={`Harta ${previewLocation.public_display_name || previewLocation.name}`} src={embedUrl} className="h-full w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-                      ) : (
-                        <div className="flex h-full flex-col items-center justify-center text-center">
-                          <MapPin className="h-7 w-7 text-muted-foreground" />
-                          <p className="mt-2 text-sm font-medium">Harta nu poate fi afișată încă</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Completează adresa sau coordonatele locației pentru previzualizare.</p>
-                        </div>
-                      )}
+                      {hasMapLocation(previewLocation) && embedUrl ? <iframe title={`Harta ${selectedLocationName}`} src={embedUrl} className="h-full w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" /> : <div className="flex h-full flex-col items-center justify-center text-center"><MapPin className="h-7 w-7 text-muted-foreground" /><p className="mt-2 text-sm font-medium">Harta nu poate fi afisata</p><p className="mt-1 text-xs text-muted-foreground">Completeaza adresa sau coordonatele locatiei.</p></div>}
                     </div>
                   </div>
                 </div>
@@ -317,93 +305,57 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
 
               <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-bold">Configurează locația</div>
-                    <p className="mt-1 text-xs text-muted-foreground">Aceste module sunt separate pentru fiecare punct de lucru.</p>
-                  </div>
+                  <div><div className="text-sm font-bold">Configureaza locatia</div><p className="mt-1 text-xs text-muted-foreground">Module separate pentru acest punct de lucru.</p></div>
                   <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{selectedLocationName}</span>
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
-                  <ConfigureCard icon={Wrench} title="Servicii" text="Alege serviciile disponibile în această locație." onClick={() => onOpenModule?.("servicii", selectedLocation.id)} />
-                  <ConfigureCard icon={Clock} title="Program" text="Setează programul acestei locații." onClick={() => onOpenModule?.("program", selectedLocation.id)} />
-                  <ConfigureCard icon={Users} title="Specialiști" text="Invită specialiștii care apar public pe această locație." onClick={() => onOpenModule?.("specialisti", selectedLocation.id)} />
+                  <ConfigureCard icon={Wrench} title="Servicii" text="Alege serviciile disponibile in aceasta locatie." onClick={() => onOpenModule?.("servicii", selectedLocation.id)} />
+                  <ConfigureCard icon={Clock} title="Program" text="Seteaza programul acestei locatii." onClick={() => onOpenModule?.("program", selectedLocation.id)} />
+                  <ConfigureCard icon={Users} title="Specialisti" text="Invita specialistii asociati acestei locatii." onClick={() => onOpenModule?.("specialisti", selectedLocation.id)} />
                 </div>
               </section>
 
-              <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm space-y-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+              <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
+                    <div className="flex flex-wrap items-center gap-2"><h2 className="text-sm font-bold">Date publice ale locatiei</h2><span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">Necesita review</span></div>
+                    <p className="mt-1 text-xs text-muted-foreground">Nume public, adresa, telefon, email si pozitie pe harta.</p>
+                  </div>
+                  <button type="button" onClick={() => setEditOpen((current) => !current)} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-semibold hover:bg-secondary"><Pencil className="h-3.5 w-3.5" /> {editOpen ? "Inchide editarea" : "Editeaza datele"}</button>
+                </div>
+
+                {editOpen && (
+                  <div className="mt-5 space-y-4 border-t border-border pt-5">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div><label className="text-xs font-semibold text-muted-foreground">Nume public locatie</label><input className={`${inputCls} mt-1.5`} value={values.public_display_name} disabled={pendingReview} onChange={(event) => setValues({ ...values, public_display_name: event.target.value })} /></div>
+                      <div><label className="text-xs font-semibold text-muted-foreground">Adresa pentru harta</label><input className={`${inputCls} mt-1.5`} value={values.address} disabled={pendingReview} onChange={(event) => setValues({ ...values, address: event.target.value })} placeholder="Strada, numar, localitate" /></div>
+                      <div><label className="text-xs font-semibold text-muted-foreground">Telefon public locatie</label><input className={`${inputCls} mt-1.5`} value={values.public_phone} disabled={pendingReview} onChange={(event) => setValues({ ...values, public_phone: event.target.value })} /></div>
+                      <div><label className="text-xs font-semibold text-muted-foreground">Email public locatie</label><input className={`${inputCls} mt-1.5`} value={values.public_email} disabled={pendingReview} onChange={(event) => setValues({ ...values, public_email: event.target.value })} /></div>
+                    </div>
+
+                    <div className="rounded-2xl border border-border bg-secondary/35 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div><div className="text-sm font-bold">Pin exact pe harta</div><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Optional. Copiaza coordonatele din Google Maps pentru precizie.</p></div>
+                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${hasExactPin ? "bg-green-100 text-green-800" : "bg-background text-muted-foreground"}`}>{hasExactPin ? "Pin exact activ" : "Optional"}</span>
+                      </div>
+                      <div className="mt-4 grid gap-3 md:grid-cols-2">
+                        <div><label className="text-xs font-semibold text-muted-foreground">Latitudine</label><input className={`${inputCls} mt-1.5`} value={values.lat} disabled={pendingReview} onChange={(event) => setValues({ ...values, lat: cleanNumber(event.target.value) })} placeholder="45.793140" /></div>
+                        <div><label className="text-xs font-semibold text-muted-foreground">Longitudine</label><input className={`${inputCls} mt-1.5`} value={values.lng} disabled={pendingReview} onChange={(event) => setValues({ ...values, lng: cleanNumber(event.target.value) })} placeholder="24.151920" /></div>
+                      </div>
+                      {hasCoordinateIssues && <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-800">{coordinateValidation.issues[0]}</div>}
+                      <button type="button" onClick={() => setShowAdvancedMap((current) => !current)} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold underline underline-offset-4">Optiuni avansate <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdvancedMap ? "rotate-180" : ""}`} /></button>
+                      {showAdvancedMap && <div className="mt-3 rounded-2xl border border-border bg-card p-3"><label className="text-xs font-semibold text-muted-foreground">Google Place ID, optional</label><input className={`${inputCls} mt-1.5`} value={values.place_id} disabled={pendingReview} onChange={(event) => setValues({ ...values, place_id: event.target.value })} placeholder="optional" /></div>}
+                    </div>
+
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">Schimbarile nu se publica direct. Dupa trimitere, apar in panoul de administrare pentru verificare.</div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="text-sm font-bold">Modificări locație</div>
-                      <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">Necesită review</span>
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">Editează datele locației și verifică pinul pe hartă înainte să trimiți spre aprobare.</p>
-                  </div>
-                  {draft && <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="text-xs font-semibold text-muted-foreground">Nume public locație</label>
-                    <input className={`${inputCls} mt-1.5`} value={values.public_display_name} disabled={pendingReview} onChange={(e) => setValues({ ...values, public_display_name: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-muted-foreground">Adresă pentru hartă</label>
-                    <div className="mt-1.5 flex gap-2">
-                      <input className={inputCls} value={values.address} disabled={pendingReview} onChange={(e) => setValues({ ...values, address: e.target.value })} placeholder="Stradă, număr, localitate" />
-                      {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border px-3 text-xs font-bold hover:bg-secondary"><ExternalLink className="h-3.5 w-3.5" /> Maps</a>}
-                    </div>
-                    <p className="mt-1.5 text-[11px] text-muted-foreground">Harta folosește coordonatele dacă există. Fără coordonate, folosește adresa.</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-muted-foreground">Telefon public locație</label>
-                    <input className={`${inputCls} mt-1.5`} value={values.public_phone} disabled={pendingReview} onChange={(e) => setValues({ ...values, public_phone: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-muted-foreground">Email public locație</label>
-                    <input className={`${inputCls} mt-1.5`} value={values.public_email} disabled={pendingReview} onChange={(e) => setValues({ ...values, public_email: e.target.value })} />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-border bg-secondary/35 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-bold">Pin exact pe hartă</div>
-                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Opțional. Pentru precizie, copiază coordonatele din Google Maps.</p>
-                    </div>
-                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${hasExactPin ? "bg-green-100 text-green-800" : "bg-background text-muted-foreground"}`}>{hasExactPin ? "Pin exact activ" : "Opțional"}</span>
-                  </div>
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    <div>
-                      <label className="text-xs font-semibold text-muted-foreground">Latitudine</label>
-                      <input className={`${inputCls} mt-1.5`} value={values.lat} disabled={pendingReview} onChange={(e) => setValues({ ...values, lat: cleanNumber(e.target.value) })} placeholder="45.793140" />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-muted-foreground">Longitudine</label>
-                      <input className={`${inputCls} mt-1.5`} value={values.lng} disabled={pendingReview} onChange={(e) => setValues({ ...values, lng: cleanNumber(e.target.value) })} placeholder="24.151920" />
+                      <button disabled={saving || pendingReview} onClick={saveDraft} className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><Save className="h-4 w-4" /> Salveaza draft</button>
+                      {draftState?.editable && <button disabled={saving || hasCoordinateIssues} onClick={submitDraft} className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50">Trimite spre review</button>}
+                      {message && <p className="text-xs text-muted-foreground">{message}</p>}
                     </div>
                   </div>
-                  {hasCoordinateIssues && <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-800">{coordinateValidation.issues[0]}</div>}
-                  <button type="button" onClick={() => setShowAdvancedMap((v) => !v)} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold underline underline-offset-4">
-                    Opțiuni avansate <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdvancedMap ? "rotate-180" : ""}`} />
-                  </button>
-                  {showAdvancedMap && (
-                    <div className="mt-3 rounded-2xl border border-border bg-card p-3">
-                      <label className="text-xs font-semibold text-muted-foreground">Google Place ID, opțional</label>
-                      <input className={`${inputCls} mt-1.5`} value={values.place_id} disabled={pendingReview} onChange={(e) => setValues({ ...values, place_id: e.target.value })} placeholder="opțional" />
-                      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Pentru MVP sunt suficiente coordonatele latitudine/longitudine. Place ID poate fi completat mai târziu.</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">Schimbările nu se publică direct. După trimitere, apar în panoul de administrare pentru verificare.</div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button disabled={saving || pendingReview} onClick={saveDraft} className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><Save className="h-4 w-4" /> Salvează draft</button>
-                  {draft && draft.status !== "pending_review" && <button disabled={saving || hasCoordinateIssues} onClick={submitDraft} className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50">Trimite spre review</button>}
-                  {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
-                </div>
+                )}
               </section>
-
             </>
           )}
         </div>
