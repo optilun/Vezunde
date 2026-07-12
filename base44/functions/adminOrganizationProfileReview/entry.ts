@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { hasPublishedSectionChanges } from '../../../shared/providerWorkspaceSubmissionComparison.js';
 
+// Deployment revision: provider-location-noop-2026-07-12
 const FIELDS = ['public_display_name', 'public_description', 'public_phone', 'public_email', 'website_url', 'facebook_url', 'instagram_url', 'linkedin_url'];
 
 function res(body, status = 200) { return Response.json(body, { status }); }

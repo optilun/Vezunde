@@ -6,6 +6,7 @@ import {
 } from '../../../shared/canonicalServiceRegistryExtended.js';
 import { hasPublishedSectionChanges } from '../../../shared/providerWorkspaceSubmissionComparison.js';
 
+// Deployment revision: provider-location-noop-2026-07-12
 // Admin review for ProviderWorkspaceSubmission.
 // Approval applies validated payloads. Rejection / more info only update review status.
 

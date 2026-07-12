@@ -20,6 +20,7 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/lib/maps";
 import { deriveProviderLocationState, deriveSubmissionState } from "@/lib/providerWorkspaceState";
+import { hasPublishedSectionChanges } from "../../../../shared/providerWorkspaceSubmissionComparison.js";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-foreground/50 disabled:cursor-not-allowed disabled:opacity-60";
 
@@ -279,6 +280,11 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
       lng: lng === "" ? "" : lng,
       place_id: values.place_id || "",
     };
+    if (!hasPublishedSectionChanges("location_details", payload, selectedLocation)) {
+      setSaving(false);
+      setMessage("Nu exista modificari noi de salvat.");
+      return;
+    }
     const response = await base44.functions.invoke("submitProviderWorkspaceChange", { action, submission_id: draft?.id, location_id: selectedLocation.id, section: "location_details", payload }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
     setSaving(false);
     const data = response.data || {};
@@ -294,6 +300,19 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
   const submitDraft = async () => {
     if (!draft || !selectedLocation?.id) return;
     if (hasCoordinateIssues) { setMessage(coordinateValidation.issues[0]); return; }
+    let draftPayload = {};
+    try { draftPayload = JSON.parse(draft.payload_json || "{}"); } catch (_error) { draftPayload = {}; }
+    if (!hasPublishedSectionChanges("location_details", draftPayload, selectedLocation)) {
+      setSaving(true);
+      setMessage("");
+      const closeResponse = await base44.functions.invoke("submitProviderWorkspaceChange", { action: "withdraw", submission_id: draft.id, location_id: selectedLocation.id, section: "location_details" }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+      setSaving(false);
+      if (closeResponse.data?.error) { setMessage(closeResponse.data.error); return; }
+      setMessage("Nu exista modificari noi de trimis. Draftul a fost inchis.");
+      await loadDraft();
+      await onRefresh?.();
+      return;
+    }
     setSaving(true);
     setMessage("");
     const response = await base44.functions.invoke("submitProviderWorkspaceChange", { action: "submit", submission_id: draft.id, location_id: selectedLocation.id, section: "location_details" }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));

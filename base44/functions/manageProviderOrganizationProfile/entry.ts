@@ -4,6 +4,7 @@ import {
   sameSubmissionPayload,
 } from '../../../shared/providerWorkspaceSubmissionComparison.js';
 
+// Deployment revision: provider-location-noop-2026-07-12
 const ACTIVE_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
 const EDITABLE_STATUSES = ['draft', 'needs_more_info'];
 const FIELDS = ['public_display_name', 'public_description', 'public_phone', 'public_email', 'website_url', 'facebook_url', 'instagram_url', 'linkedin_url'];

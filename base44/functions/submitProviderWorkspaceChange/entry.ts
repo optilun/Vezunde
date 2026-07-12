@@ -9,6 +9,7 @@ import {
   sameSubmissionPayload,
 } from '../../../shared/providerWorkspaceSubmissionComparison.js';
 
+// Deployment revision: provider-location-noop-2026-07-12
 // Provider Workspace draft/submit/withdraw.
 // Public changes go through ProviderWorkspaceSubmission. Program remains fast-path.
 
