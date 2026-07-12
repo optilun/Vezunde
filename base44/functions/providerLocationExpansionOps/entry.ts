@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-const PROVIDER_ROLES = ['organization_owner', 'location_manager'];
+const PROVIDER_ROLES = ['organization_owner'];
 const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
 
 function res(body: Record<string, unknown>, status = 200) {
@@ -48,8 +48,8 @@ function role(value: unknown) {
 
 function safeNumber(value: unknown, min: number, max: number) {
   if (value === '' || value === null || value === undefined) return null;
-  const n = Number(String(value).replace(',', '.'));
-  return Number.isFinite(n) && n >= min && n <= max ? n : null;
+  const number = Number(String(value).replace(',', '.'));
+  return Number.isFinite(number) && number >= min && number <= max ? number : null;
 }
 
 function validateLocation(raw: unknown) {
@@ -82,7 +82,7 @@ async function providerContext(svc: any, user: any, anchorLocationId: string) {
   if (!anchorLocationId) return { error: 'Locatia curenta este obligatorie', status: 400 };
   const memberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, location_id: anchorLocationId, status: 'active' }, '-created_date', 20);
   const membership = memberships.find((item: any) => PROVIDER_ROLES.includes(role(item.role)));
-  if (!membership) return { error: 'Nu ai dreptul sa adaugi locatii pentru aceasta organizatie', status: 403 };
+  if (!membership) return { error: 'Doar ownerul organizatiei poate adauga locatii', status: 403 };
   const anchor = await svc.entities.ProviderLocation.get(anchorLocationId).catch(() => null);
   if (!anchor) return { error: 'Locatia curenta nu a fost gasita', status: 404 };
   const organizationId = anchor.organization_id || membership.organization_id || '';
@@ -115,50 +115,24 @@ function scoreCandidate(search: ReturnType<typeof normalizeSearch>, location: an
     score += 55;
     reasons.push('telefon identic');
   }
-
   if (search.address) {
     const exactAddress = normalize(search.address) === normalize(locationAddress);
-    const addressSimilarity = tokenSimilarity(search.address, locationAddress);
-    if (exactAddress) {
-      score += 42;
-      reasons.push('aceeași adresă');
-    } else if (addressSimilarity >= 0.75) {
-      score += 30;
-      reasons.push('adresă foarte similară');
-    } else if (addressSimilarity >= 0.45) {
-      score += 18;
-      reasons.push('adresă similară');
-    }
+    const similarity = tokenSimilarity(search.address, locationAddress);
+    if (exactAddress) { score += 42; reasons.push('aceeasi adresa'); }
+    else if (similarity >= 0.75) { score += 30; reasons.push('adresa foarte similara'); }
+    else if (similarity >= 0.45) { score += 18; reasons.push('adresa similara'); }
   }
-
   if (search.name) {
     const exactName = normalize(search.name) === normalize(locationName);
-    const nameSimilarity = tokenSimilarity(search.name, locationName);
-    if (exactName) {
-      score += 34;
-      reasons.push('nume identic');
-    } else if (nameSimilarity >= 0.75) {
-      score += 26;
-      reasons.push('nume foarte similar');
-    } else if (nameSimilarity >= 0.45) {
-      score += 14;
-      reasons.push('nume similar');
-    }
+    const similarity = tokenSimilarity(search.name, locationName);
+    if (exactName) { score += 34; reasons.push('nume identic'); }
+    else if (similarity >= 0.75) { score += 26; reasons.push('nume foarte similar'); }
+    else if (similarity >= 0.45) { score += 14; reasons.push('nume similar'); }
   }
-
-  if (search.city && normalize(search.city) === normalize(locationCity)) {
-    score += 16;
-    reasons.push('aceeași localitate');
-  }
-
+  if (search.city && normalize(search.city) === normalize(locationCity)) { score += 16; reasons.push('aceeasi localitate'); }
   if (search.city && search.address && normalize(search.city) !== normalize(locationCity)) score -= 10;
-
   const finalScore = Math.max(0, Math.min(100, score));
-  return {
-    score: finalScore,
-    reasons,
-    confidence: finalScore >= 72 ? 'high' : finalScore >= 46 ? 'medium' : 'low',
-  };
+  return { score: finalScore, reasons, confidence: finalScore >= 72 ? 'high' : finalScore >= 46 ? 'medium' : 'low' };
 }
 
 async function searchCandidates(svc: any, context: any, rawSearch: unknown) {
@@ -195,7 +169,7 @@ async function providerGet(svc: any, user: any, payload: Record<string, unknown>
   }, '-created_date', 20);
   const active = submissions.find((item: any) => ACTIVE_SUBMISSION_STATUSES.includes(item.status)) || null;
   return res({
-    organization: { id: context.organizationId, name: context.organization?.name || context.anchor.organization_name || 'Organizatia ta' },
+    organization: { id: context.organizationId, name: context.organization?.public_display_name || context.organization?.name || context.anchor.organization_name || 'Organizatia ta' },
     anchor_location_id: context.anchor.id,
     submission: active ? { id: active.id, status: active.status, admin_note: active.admin_note || '', payload: JSON.parse(active.payload_json || '{}') } : null,
   });
@@ -266,12 +240,28 @@ async function adminList(svc: any, user: any) {
     items.push({
       id: row.id,
       submitted_at: row.submitted_at || null,
-      organization: { id: row.organization_id || '', name: organization?.name || anchor?.organization_name || 'Organizatie' },
+      organization: { id: row.organization_id || '', name: organization?.public_display_name || organization?.name || anchor?.organization_name || 'Organizatie' },
       anchor_location: anchor ? { id: anchor.id, name: anchor.public_display_name || anchor.name || 'Locatie', provider_type: anchor.provider_type || '', provider_profile_type: anchor.provider_profile_type || '' } : null,
       payload: JSON.parse(row.payload_json || '{}'),
     });
   }
   return res({ submissions: items });
+}
+
+async function propagateOwners(svc: any, organizationId: string, locationId: string, actorId: string) {
+  const memberships = await svc.entities.ProviderMembership.filter({ organization_id: organizationId }, '-created_date', 1000);
+  const ownerUserIds = [...new Set(memberships.filter((membership: any) => role(membership.role) === 'organization_owner').map((membership: any) => membership.user_id))];
+  const created: string[] = [];
+  for (const ownerUserId of ownerUserIds) {
+    const existing = memberships.find((membership: any) => membership.user_id === ownerUserId && membership.location_id === locationId);
+    if (!existing) {
+      const row = await svc.entities.ProviderMembership.create({ user_id: ownerUserId, organization_id: organizationId, location_id: locationId, role: 'organization_owner', status: 'active' });
+      created.push(row.id);
+    } else if (existing.status !== 'active' || role(existing.role) !== 'organization_owner') {
+      await svc.entities.ProviderMembership.update(existing.id, { role: 'organization_owner', status: 'active', reactivated_by_user_id: actorId, reactivated_at: new Date().toISOString() });
+    }
+  }
+  return created;
 }
 
 async function adminDecide(svc: any, user: any, payload: Record<string, unknown>) {
@@ -292,8 +282,8 @@ async function adminDecide(svc: any, user: any, payload: Record<string, unknown>
   if (checked.error) return res({ error: checked.error }, 400);
   const anchor = await svc.entities.ProviderLocation.get(submission.location_id).catch(() => null);
   if (!anchor) return res({ error: 'Locatia de referinta nu exista' }, 404);
-  const existingSameOrg = await svc.entities.ProviderLocation.filter({ organization_id: submission.organization_id }, '-created_date', 200);
-  const duplicate = existingSameOrg.find((item: any) => normalize(item.address) === normalize(checked.value.address) && normalize(item.locality_name || item.city) === normalize(checked.value.city));
+  const existingSameOrganization = await svc.entities.ProviderLocation.filter({ organization_id: submission.organization_id }, '-created_date', 200);
+  const duplicate = existingSameOrganization.find((item: any) => normalize(item.address) === normalize(checked.value.address) && normalize(item.locality_name || item.city) === normalize(checked.value.city));
   if (duplicate) return res({ error: 'Exista deja o locatie a organizatiei la aceeasi adresa', duplicate_location_id: duplicate.id }, 409);
 
   const location = await svc.entities.ProviderLocation.create({
@@ -315,40 +305,45 @@ async function adminDecide(svc: any, user: any, payload: Record<string, unknown>
     provider_type: anchor.provider_type || '',
     provider_profile_type: anchor.provider_profile_type || '',
     profile_control_status: 'verified',
+    claim_verification_status: 'approved',
+    public_visibility_status: 'approved',
     active_status: 'activa',
-    status: 'activa',
+    status: 'publicata',
+    is_verified: true,
+    verification_state: 'verified',
   });
 
-  const sourceMemberships = await svc.entities.ProviderMembership.filter({ user_id: submission.submitted_by_user_id, location_id: anchor.id, status: 'active' }, '-created_date', 20);
-  const sourceMembership = sourceMemberships[0] || null;
-  if (sourceMembership) {
-    await svc.entities.ProviderMembership.create({
-      user_id: submission.submitted_by_user_id,
-      organization_id: submission.organization_id,
-      location_id: location.id,
-      role: sourceMembership.role,
-      status: 'active',
-    });
-  }
-
+  const ownerMembershipIds = await propagateOwners(svc, submission.organization_id, location.id, user.id);
   await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'approved', reviewed_by_user_id: user.id, reviewed_at: new Date().toISOString(), admin_note: note, applied_entity_id: location.id });
+  await svc.entities.DirectoryAuditRecord.create({
+    entity_type: 'ProviderLocation',
+    entity_id: location.id,
+    action_type: 'approve_new_organization_location',
+    changed_fields: ['organization_id', 'identity', 'address', 'status', 'owner_memberships'],
+    previous_values: '{}',
+    new_values: JSON.stringify({ organization_id: submission.organization_id, location_id: location.id, owner_membership_ids: ownerMembershipIds }),
+    admin_user_id: user.id,
+    admin_email: user.email,
+    note: note || 'Locatie noua aprobata pentru organizatie existenta',
+    performed_at: new Date().toISOString(),
+  });
   const activeLocations = await svc.entities.ProviderLocation.filter({ organization_id: submission.organization_id, active_status: 'activa' }, '-created_date', 500);
   return res({ success: true, location_id: location.id, location_structure: activeLocations.length >= 2 ? 'multi_location' : 'single_location', active_location_count: activeLocations.length });
 }
 
 Deno.serve(async (req) => {
   try {
-    const svc = createClientFromRequest(req);
-    const user = await svc.auth.me();
+    const client = createClientFromRequest(req);
+    const user = await client.auth.me();
     if (!user) return res({ error: 'Autentificare necesara' }, 401);
     const payload = await req.json().catch(() => ({}));
     const action = text(payload.action, 60);
-    if (action === 'get') return providerGet(svc, user, payload);
-    if (action === 'search') return providerSearch(svc, user, payload);
-    if (action === 'save_draft') return providerSave(svc, user, payload);
-    if (action === 'submit_review') return providerSubmit(svc, user, payload);
-    if (action === 'admin_list') return adminList(svc, user);
-    if (['approve', 'request_more_info', 'reject'].includes(action)) return adminDecide(svc, user, payload);
+    if (action === 'get') return providerGet(client, user, payload);
+    if (action === 'search') return providerSearch(client, user, payload);
+    if (action === 'save_draft') return providerSave(client, user, payload);
+    if (action === 'submit_review') return providerSubmit(client, user, payload);
+    if (action === 'admin_list') return adminList(client, user);
+    if (['approve', 'request_more_info', 'reject'].includes(action)) return adminDecide(client, user, payload);
     return res({ error: 'Actiune necunoscuta' }, 400);
   } catch (error) {
     return res({ error: error instanceof Error ? error.message : 'Eroare neasteptata' }, 500);
