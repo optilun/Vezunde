@@ -13,7 +13,7 @@ export default function SubjectOnboarding({ subjectType }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-body flex flex-col workspace-neutral">
-      <SpecialistsHeader />
+      <SpecialistsHeader showHowItWorks={false} />
       <main className="flex-1">
         {done ? (
           <div className="mx-auto max-w-xl px-5 py-16 text-center">
