@@ -51,6 +51,57 @@ function getCoordinateValidation(values = {}) {
   return { issues, lat, lng };
 }
 
+function deriveLocationDataStatus(activeSubmission, latestSubmission, locationState, location) {
+  const activeState = deriveSubmissionState(activeSubmission);
+  if (activeState) return activeState;
+
+  if (latestSubmission?.status === "approved") {
+    return {
+      label: "Date publice aprobate",
+      className: "border border-green-200 bg-green-50 text-green-800",
+      editable: false,
+      pendingReview: false,
+    };
+  }
+
+  if (latestSubmission?.status === "rejected") {
+    return {
+      label: "Ultima modificare respinsa",
+      className: "border border-red-200 bg-red-50 text-red-800",
+      editable: false,
+      pendingReview: false,
+    };
+  }
+
+  if (locationState.published) {
+    return {
+      label: "Date publice publicate",
+      className: "border border-green-200 bg-green-50 text-green-800",
+      editable: false,
+      pendingReview: false,
+    };
+  }
+
+  const hasIdentity = !!String(location?.public_display_name || location?.name || "").trim();
+  const hasAddress = !!String(location?.address || "").trim();
+  const hasContact = !!String(location?.public_phone || location?.phone_public || location?.public_email || "").trim();
+  if (hasIdentity && hasAddress && hasContact) {
+    return {
+      label: "Date publice completate",
+      className: "border border-border bg-secondary text-foreground",
+      editable: false,
+      pendingReview: false,
+    };
+  }
+
+  return {
+    label: "Date publice incomplete",
+    className: "border border-amber-200 bg-amber-50 text-amber-800",
+    editable: false,
+    pendingReview: false,
+  };
+}
+
 function LocationRow({ location, active, onSelect }) {
   const state = deriveProviderLocationState(location);
   const completeness = Number.isFinite(Number(location.profile_completeness)) ? Number(location.profile_completeness) : 0;
@@ -125,6 +176,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
   const locationById = Object.fromEntries(locations.map((location) => [location.id, location]));
   const selectedLocation = locationById[selectedLocationId] || locations[0] || null;
   const [draft, setDraft] = useState(null);
+  const [latestLocationSubmission, setLatestLocationSubmission] = useState(null);
   const [values, setValues] = useState(defaultValues(selectedLocation));
   const [showAdvancedMap, setShowAdvancedMap] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -168,12 +220,15 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
   const hasMultipleLocations = locationCount > 1;
   const selectedLocationName = previewLocation?.public_display_name || previewLocation?.name || "Locatie";
   const selectedState = deriveProviderLocationState(selectedLocation || {});
+  const locationDataState = deriveLocationDataStatus(draft, latestLocationSubmission, selectedState, selectedLocation);
 
   const loadDraft = async () => {
     if (!selectedLocation?.id) return;
     const response = await base44.functions.invoke("submitProviderWorkspaceChange", { action: "list_mine", location_id: selectedLocation.id }).catch(() => ({ data: { submissions: [] } }));
-    const own = (response.data?.submissions || []).find((submission) => submission.section === "location_details" && ["draft", "needs_more_info", "pending_review"].includes(submission.status));
+    const locationSubmissions = (response.data?.submissions || []).filter((submission) => submission.section === "location_details");
+    const own = locationSubmissions.find((submission) => ["draft", "needs_more_info", "pending_review"].includes(submission.status));
     setDraft(own || null);
+    setLatestLocationSubmission(locationSubmissions[0] || null);
     if (own) {
       try {
         const payload = JSON.parse(own.payload_json || "{}");
@@ -301,8 +356,8 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center justify-end gap-2">
-                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${draftState?.className || "border border-amber-200 bg-amber-50 text-amber-800"}`}>
-                          {draftState?.label || "Date publice · necesita review"}
+                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${locationDataState.className}`}>
+                          {locationDataState.label}
                         </span>
                         <button type="button" onClick={() => setEditOpen(true)} className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold hover:bg-secondary">
                           <Pencil className="h-3.5 w-3.5" /> Editeaza datele
@@ -358,8 +413,8 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                 <div className="text-xs font-medium text-muted-foreground">{selectedLocationName}</div>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   <h2 className="font-heading text-xl font-extrabold tracking-tight">Editeaza datele locatiei</h2>
-                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${draftState?.className || "border border-amber-200 bg-amber-50 text-amber-800"}`}>
-                    {draftState?.label || "Necesita review"}
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${locationDataState.className}`}>
+                    {locationDataState.label}
                   </span>
                 </div>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Numele public, adresa, contactul si pozitia pe harta sunt publicate numai dupa verificarea Vezunde.</p>
