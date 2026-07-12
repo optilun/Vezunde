@@ -364,8 +364,12 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
       payload: { ...values, public_description: String(values.public_description || "").slice(0, DESCRIPTION_MAX_LENGTH) },
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
     setSaving(false);
-    if (response.data?.error) { setMessage(response.data.error); return; }
-    setMessage("Draft salvat. In acest moment apare in Prezentare generala la Necesita actiune, dar nu intra in admin pana nu il trimiti spre review.");
+    const data = response.data || {};
+    if (data.error) { setMessage(data.error); return; }
+    if (data.no_changes) setMessage(data.message || "Nu exista modificari noi de salvat.");
+    else if (data.duplicate || data.already_pending) setMessage(data.message || "Aceasta modificare este deja in verificare.");
+    else if (data.resumed || data.unchanged) setMessage(data.message || "Draftul existent a fost incarcat.");
+    else setMessage("Draft salvat. In acest moment apare in Prezentare generala la Necesita actiune, dar nu intra in admin pana nu il trimiti spre review.");
     await loadDraft();
     await onRefresh?.();
   };
@@ -376,8 +380,11 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
     setMessage("");
     const response = await base44.functions.invoke("manageProviderOrganizationProfile", { action: "submit", organization_id: organizationId, location_id: locationId, submission_id: draft.id }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
     setSaving(false);
-    if (response.data?.error) { setMessage(response.data.error); return; }
-    setMessage("Profilul organizatiei a fost trimis spre review. Acum apare si in admin la Modificari workspace.");
+    const data = response.data || {};
+    if (data.error) { setMessage(data.error); return; }
+    if (data.no_changes) setMessage(data.message || "Nu exista modificari noi de trimis.");
+    else if (data.duplicate || data.already_pending) setMessage(data.message || "Aceasta modificare este deja in verificare.");
+    else setMessage("Profilul organizatiei a fost trimis spre review. Acum apare si in admin la Modificari workspace.");
     await loadDraft();
     await onRefresh?.();
   };

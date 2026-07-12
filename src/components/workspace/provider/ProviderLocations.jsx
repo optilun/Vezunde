@@ -281,9 +281,14 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
     };
     const response = await base44.functions.invoke("submitProviderWorkspaceChange", { action, submission_id: draft?.id, location_id: selectedLocation.id, section: "location_details", payload }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
     setSaving(false);
-    if (response.data?.error) { setMessage(response.data.error); return; }
-    setMessage("Draft salvat. Trimite-l spre review cand este pregatit.");
+    const data = response.data || {};
+    if (data.error) { setMessage(data.error); return; }
+    if (data.no_changes) setMessage(data.message || "Nu exista modificari noi de salvat.");
+    else if (data.duplicate || data.already_pending) setMessage(data.message || "Aceasta modificare este deja in verificare.");
+    else if (data.resumed || data.unchanged) setMessage(data.message || "Draftul existent a fost incarcat.");
+    else setMessage("Draft salvat. Trimite-l spre review cand este pregatit.");
     await loadDraft();
+    await onRefresh?.();
   };
 
   const submitDraft = async () => {
@@ -293,9 +298,13 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
     setMessage("");
     const response = await base44.functions.invoke("submitProviderWorkspaceChange", { action: "submit", submission_id: draft.id, location_id: selectedLocation.id, section: "location_details" }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
     setSaving(false);
-    if (response.data?.error) { setMessage(response.data.error); return; }
-    setMessage("Modificarile locatiei au fost trimise spre review.");
+    const data = response.data || {};
+    if (data.error) { setMessage(data.error); return; }
+    if (data.no_changes) setMessage(data.message || "Nu exista modificari noi de trimis.");
+    else if (data.duplicate || data.already_pending) setMessage(data.message || "Aceasta modificare este deja in verificare.");
+    else setMessage("Modificarile locatiei au fost trimise spre review.");
     await loadDraft();
+    await onRefresh?.();
   };
 
   if (locationCount === 0) {

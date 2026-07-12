@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { hasPublishedSectionChanges } from '../../../shared/providerWorkspaceSubmissionComparison.js';
 
 const FIELDS = ['public_display_name', 'public_description', 'public_phone', 'public_email', 'website_url', 'facebook_url', 'instagram_url', 'linkedin_url'];
 
@@ -93,6 +94,12 @@ Deno.serve(async (req) => {
     if (action === 'approve') {
       const validation = validatePayload(parsePayload(submission.payload_json));
       if (validation.error) return res(validation, 400);
+      if (!hasPublishedSectionChanges('public_profile', validation.values, organization)) {
+        return res({
+          error: 'Cererea nu contine modificari reale fata de profilul publicat.',
+          no_changes: true,
+        }, 409);
+      }
       const previous = Object.fromEntries(FIELDS.map((key) => [key, organization[key] || '']));
       const preview = { ...organization, ...validation.values };
       const normalizedStatus = organization.status === 'inactiva' ? 'inactiva' : 'activa';

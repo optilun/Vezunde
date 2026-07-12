@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowRight, BadgeCheck, ChevronDown, Clock, ExternalLink, Globe2, Mail, MapPin, Phone } from "lucide-react";
+import { ArrowRight, BadgeCheck, ChevronDown, Clock, ExternalLink, Globe2, Mail, Phone } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROFESSIONAL_TYPES } from "@/lib/vezunde";
 import { buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/lib/maps";

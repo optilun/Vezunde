@@ -4,6 +4,7 @@ import {
   getCanonicalServiceGroupIds,
   normalizeServiceKey,
 } from '../../../shared/canonicalServiceRegistryExtended.js';
+import { hasPublishedSectionChanges } from '../../../shared/providerWorkspaceSubmissionComparison.js';
 
 // Admin review for ProviderWorkspaceSubmission.
 // Approval applies validated payloads. Rejection / more info only update review status.
@@ -704,6 +705,15 @@ Deno.serve(async (req) => {
       try { parsedPayload = JSON.parse(submission.payload_json || '{}'); } catch (_error) { parsedPayload = null; }
       const validation = validatePayload(submission.section, parsedPayload);
       if (!validation.valid) return Response.json(validation.body, { status: validation.status });
+      if (submission.section === 'location_details') {
+        const currentLocation = await svc.entities.ProviderLocation.get(submission.location_id).catch(() => null);
+        if (currentLocation && !hasPublishedSectionChanges('location_details', validation.clean, currentLocation)) {
+          return Response.json({
+            error: 'Cererea nu contine modificari reale fata de datele publicate.',
+            no_changes: true,
+          }, { status: 409 });
+        }
+      }
       const note = cleanString(payload.note);
       const now = new Date().toISOString();
 
