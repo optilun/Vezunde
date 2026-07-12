@@ -4,17 +4,47 @@ import { Menu, ExternalLink } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import ProviderSidebarContent from "./ProviderSidebarContent";
 
-// Generalized internal app shell — used by personal account, applicant
-// preparation, and provider workspace areas. No public website navbar.
-export default function ProviderAppShell({ navItems, activeKey, onNavigate, user, onLogout, publicProfileUrl, title, subtitle, statusBadge, modeSwitch, children }) {
+// Generalized internal app shell — used by personal, applicant,
+// professional and provider workspace areas. No public website navbar.
+export default function ProviderAppShell({
+  navItems,
+  activeKey,
+  onNavigate,
+  user,
+  onLogout,
+  publicProfileUrl,
+  title,
+  subtitle,
+  statusBadge,
+  modeSwitch,
+  modeSwitches,
+  children,
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const initials = (user?.full_name || "U").trim().charAt(0).toUpperCase();
-  const activeLabel = navItems.find((n) => n.key === activeKey)?.label || navItems[0]?.label || "";
+  const activeLabel = navItems.find((item) => item.key === activeKey)?.label || navItems[0]?.label || "";
+  const mobileModeSwitches = modeSwitches?.map((item) => ({
+    ...item,
+    onClick: () => {
+      item.onClick?.();
+      setMobileOpen(false);
+    },
+  }));
 
   return (
     <div className="min-h-screen bg-background flex workspace-neutral">
       <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:border-r lg:border-border lg:bg-card">
-        <ProviderSidebarContent navItems={navItems} activeKey={activeKey} onNavigate={onNavigate} user={user} onLogout={onLogout} title={title} subtitle={subtitle} modeSwitch={modeSwitch} />
+        <ProviderSidebarContent
+          navItems={navItems}
+          activeKey={activeKey}
+          onNavigate={onNavigate}
+          user={user}
+          onLogout={onLogout}
+          title={title}
+          subtitle={subtitle}
+          modeSwitch={modeSwitch}
+          modeSwitches={modeSwitches}
+        />
       </aside>
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -22,12 +52,13 @@ export default function ProviderAppShell({ navItems, activeKey, onNavigate, user
           <ProviderSidebarContent
             navItems={navItems}
             activeKey={activeKey}
-            onNavigate={(k) => { onNavigate(k); setMobileOpen(false); }}
+            onNavigate={(key) => { onNavigate(key); setMobileOpen(false); }}
             user={user}
             onLogout={onLogout}
             title={title}
             subtitle={subtitle}
-            modeSwitch={modeSwitch}
+            modeSwitch={modeSwitch ? { ...modeSwitch, onClick: () => { modeSwitch.onClick?.(); setMobileOpen(false); } } : null}
+            modeSwitches={mobileModeSwitches}
           />
         </SheetContent>
       </Sheet>
