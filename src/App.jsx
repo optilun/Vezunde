@@ -13,6 +13,7 @@ import ProviderProfile from "./pages/ProviderProfile";
 import RequestFlow from "./pages/RequestFlow";
 import ForSpecialists from "./pages/ForSpecialists";
 import ForOrganizations from "./pages/ForOrganizations";
+import SubjectOnboarding from "./pages/SubjectOnboarding";
 import Partners from "./pages/Partners";
 import AddOrClaim from "./pages/AddOrClaim";
 import AcceptProfessionalInvitation from "./pages/AcceptProfessionalInvitation";
@@ -32,11 +33,7 @@ const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
   if (isLoadingPublicSettings || isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-slate-800" />
-      </div>
-    );
+    return <div className="fixed inset-0 flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-slate-800" /></div>;
   }
 
   if (authError) {
@@ -55,6 +52,8 @@ const AuthenticatedApp = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/pentru-organizatii" element={<ForOrganizations />} />
       <Route path="/pentru-specialisti" element={<ForSpecialists />} />
+      <Route path="/inscriere-specialist" element={<SubjectOnboarding subjectType="independent_professional" />} />
+      <Route path="/inscriere-partener" element={<SubjectOnboarding subjectType="b2b_supplier" />} />
       <Route path="/accept-professional-invitation" element={<AcceptProfessionalInvitation />} />
 
       <Route element={<Layout />}>
@@ -90,10 +89,7 @@ function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <ScrollToTop />
-          <AuthenticatedApp />
-        </Router>
+        <Router><ScrollToTop /><AuthenticatedApp /></Router>
         <Toaster />
       </QueryClientProvider>
     </AuthProvider>
