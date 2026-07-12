@@ -630,7 +630,7 @@ Deno.serve(async (req) => {
 
     if (action === 'reject' || action === 'request_more_info') {
       const result = await delegate(base44, action, input);
-      if (action === 'reject') await restoreRemovalVisibility(svc, submission);
+      if (action === 'reject' && !result?.error) await restoreRemovalVisibility(svc, submission);
       return Response.json(result);
     }
 
