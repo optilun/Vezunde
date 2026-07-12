@@ -55,6 +55,41 @@ function validatePayload(payload) {
   return { values };
 }
 
+function parsePayload(value) {
+  try {
+    const parsed = JSON.parse(value || '{}');
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch (_error) {
+    return {};
+  }
+}
+
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize).sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
+  return value ?? '';
+}
+
+function samePayload(left, right) {
+  return JSON.stringify(canonicalize(left || {})) === JSON.stringify(canonicalize(right || {}));
+}
+
+function hasPublishedChanges(organization, values) {
+  return Object.entries(values).some(([key, value]) => clean(value) !== clean(organization[key]));
+}
+
+function sortActive(rows) {
+  const priority = { pending_review: 3, needs_more_info: 2, draft: 1 };
+  return [...rows].sort((left, right) => {
+    const statusDiff = (priority[right.status] || 0) - (priority[left.status] || 0);
+    if (statusDiff !== 0) return statusDiff;
+    const leftTime = new Date(left.created_date || 0).getTime();
+    const rightTime = new Date(right.created_date || 0).getTime();
+    if (leftTime !== rightTime) return leftTime - rightTime;
+    return String(left.id).localeCompare(String(right.id));
+  });
+}
+
 async function resolveOwnerAccess(svc, user, organizationId, anchorLocationId) {
   const organization = await svc.entities.ProviderOrganization.get(organizationId).catch(() => null);
   if (!organization) return { error: 'Organizatia nu a fost gasita', status: 404 };
@@ -70,7 +105,7 @@ async function resolveOwnerAccess(svc, user, organizationId, anchorLocationId) {
   return { organization, anchorLocation };
 }
 
-async function audit(svc, user, submission, actionType, previous, next) {
+async function audit(svc, user, submission, actionType, previous, next, note = 'Profil general organizatie') {
   await svc.entities.DirectoryAuditRecord.create({
     entity_type: 'ProviderWorkspaceSubmission',
     entity_id: submission.id,
@@ -80,9 +115,35 @@ async function audit(svc, user, submission, actionType, previous, next) {
     new_values: JSON.stringify(next || {}),
     admin_user_id: user.id,
     admin_email: user.email,
-    note: 'Profil general organizatie',
+    note,
     performed_at: new Date().toISOString(),
   });
+}
+
+async function listActive(svc, organizationId) {
+  const rows = await svc.entities.ProviderWorkspaceSubmission.filter({
+    organization_id: organizationId,
+    section: 'public_profile',
+    access_origin: 'provider_workspace',
+    status: { $in: ACTIVE_STATUSES },
+  }, '-created_date', 50);
+  return sortActive(rows);
+}
+
+async function withdrawDuplicateDrafts(svc, user, rows, keeperId) {
+  for (const row of rows) {
+    if (row.id === keeperId || !ACTIVE_STATUSES.includes(row.status)) continue;
+    await svc.entities.ProviderWorkspaceSubmission.update(row.id, { status: 'withdrawn' });
+    await audit(
+      svc,
+      user,
+      row,
+      'withdraw_duplicate_organization_profile_draft',
+      { status: row.status },
+      { status: 'withdrawn' },
+      'Draft organizational duplicat inchis automat',
+    );
+  }
 }
 
 Deno.serve(async (req) => {
@@ -113,15 +174,31 @@ Deno.serve(async (req) => {
     if (action === 'create_draft') {
       const validation = validatePayload(input.payload);
       if (validation.error) return res(validation, 400);
-      const active = await svc.entities.ProviderWorkspaceSubmission.filter({
-        organization_id: organizationId,
-        section: 'public_profile',
-        access_origin: 'provider_workspace',
-        status: { $in: ACTIVE_STATUSES },
-      }, '-created_date', 20);
-      const own = active.find((submission) => submission.submitted_by_user_id === user.id);
-      if (own) return res({ submission: safeSubmission(own), resumed: true });
+      if (!hasPublishedChanges(access.organization, validation.values)) {
+        return res({ success: true, no_changes: true, message: 'Nu exista modificari noi de salvat.' });
+      }
+
+      const active = await listActive(svc, organizationId);
+      const ownRows = active.filter((submission) => submission.submitted_by_user_id === user.id);
+      const own = ownRows[0] || null;
+      if (own) {
+        await withdrawDuplicateDrafts(svc, user, ownRows.slice(1), own.id);
+        const identical = samePayload(parsePayload(own.payload_json), validation.values);
+        if (own.status === 'pending_review') {
+          if (identical) return res({ submission: safeSubmission(own), resumed: true, duplicate: true, message: 'Aceasta modificare este deja in verificare.' });
+          return res({ error: 'Exista deja o modificare trimisa spre verificare pentru profilul organizatiei.' }, 409);
+        }
+        if (identical) return res({ submission: safeSubmission(own), resumed: true, unchanged: true, message: 'Draftul existent contine deja aceste valori.' });
+        const updated = await svc.entities.ProviderWorkspaceSubmission.update(own.id, {
+          payload_json: JSON.stringify(validation.values),
+          status: 'draft',
+          admin_note: '',
+        });
+        await audit(svc, user, updated, 'update_organization_profile_draft', parsePayload(own.payload_json), validation.values);
+        return res({ submission: safeSubmission(updated), resumed: true, updated: true });
+      }
       if (active.length > 0) return res({ error: 'Exista deja o modificare activa pentru profilul organizatiei' }, 409);
+
       const submission = await svc.entities.ProviderWorkspaceSubmission.create({
         organization_id: organizationId,
         location_id: access.anchorLocation.id,
@@ -146,7 +223,21 @@ Deno.serve(async (req) => {
       if (!EDITABLE_STATUSES.includes(submission.status)) return res({ error: 'Doar drafturile editabile pot fi modificate' }, 400);
       const validation = validatePayload(input.payload);
       if (validation.error) return res(validation, 400);
-      const previous = JSON.parse(submission.payload_json || '{}');
+      const previous = parsePayload(submission.payload_json);
+      if (!hasPublishedChanges(access.organization, validation.values)) {
+        const updated = await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'withdrawn' });
+        await audit(svc, user, updated, 'discard_noop_organization_profile_draft', { status: submission.status, payload: previous }, { status: 'withdrawn' }, 'Draft organizational inchis deoarece nu continea modificari fata de profilul publicat');
+        return res({ success: true, no_changes: true, message: 'Nu exista modificari noi de salvat. Draftul a fost inchis.' });
+      }
+      if (submission.status === 'draft' && samePayload(previous, validation.values)) {
+        return res({ submission: safeSubmission(submission), unchanged: true, message: 'Draftul contine deja aceste valori.' });
+      }
+
+      const active = (await listActive(svc, organizationId)).filter((row) => row.id !== submission.id);
+      const blocking = active.find((row) => row.status === 'pending_review' || row.submitted_by_user_id !== user.id);
+      if (blocking) return res({ error: 'Exista deja o alta modificare activa pentru profilul organizatiei.' }, 409);
+      await withdrawDuplicateDrafts(svc, user, active, submission.id);
+
       const updated = await svc.entities.ProviderWorkspaceSubmission.update(submission.id, {
         payload_json: JSON.stringify(validation.values),
         status: 'draft',
@@ -157,7 +248,22 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'submit') {
+      if (submission.status === 'pending_review') {
+        return res({ submission: safeSubmission(submission), duplicate: true, message: 'Profilul organizatiei este deja in verificare.' });
+      }
       if (!EDITABLE_STATUSES.includes(submission.status)) return res({ error: 'Draftul nu poate fi trimis in acest status' }, 400);
+      const values = parsePayload(submission.payload_json);
+      if (!hasPublishedChanges(access.organization, values)) {
+        const updated = await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'withdrawn' });
+        await audit(svc, user, updated, 'discard_noop_organization_profile_submission', { status: submission.status }, { status: 'withdrawn' }, 'Trimitere organizationala inchisa deoarece datele sunt deja publicate');
+        return res({ success: true, no_changes: true, message: 'Datele sunt deja publicate. Nu a fost creata o cerere noua.' });
+      }
+
+      const active = (await listActive(svc, organizationId)).filter((row) => row.id !== submission.id);
+      const blocking = active.find((row) => row.status === 'pending_review' || row.submitted_by_user_id !== user.id);
+      if (blocking) return res({ error: 'Exista deja o alta modificare in verificare pentru profilul organizatiei.' }, 409);
+      await withdrawDuplicateDrafts(svc, user, active, submission.id);
+
       const updated = await svc.entities.ProviderWorkspaceSubmission.update(submission.id, {
         status: 'pending_review',
         submitted_at: new Date().toISOString(),
