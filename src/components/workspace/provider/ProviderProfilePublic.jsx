@@ -22,7 +22,7 @@ const inputCls = "w-full rounded-xl border border-border bg-background px-3.5 py
 const DESCRIPTION_MAX_LENGTH = 500;
 const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const LOGO_MAX_BYTES = 4 * 1024 * 1024;
-const LOGO_MAX_DATA_URL_LENGTH = 800000;
+const LOGO_MAX_OPTIMIZED_BYTES = 1024 * 1024;
 
 const SOCIAL_ITEMS = [
   { key: "facebook_url", label: "Facebook", platform: "facebook" },
@@ -71,7 +71,19 @@ function readImage(file) {
   });
 }
 
-async function makeSafeLogoDataUrl(file) {
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error("Logo-ul nu a putut fi optimizat."));
+        return;
+      }
+      resolve(blob);
+    }, type, quality);
+  });
+}
+
+async function makeSafeLogoFile(file, organizationId) {
   const image = await readImage(file);
   const canvas = document.createElement("canvas");
   const maxSide = 512;
@@ -79,13 +91,28 @@ async function makeSafeLogoDataUrl(file) {
   canvas.width = Math.max(1, Math.round(image.width * ratio));
   canvas.height = Math.max(1, Math.round(image.height * ratio));
   const context = canvas.getContext("2d");
-  context.fillStyle = "#ffffff";
-  context.fillRect(0, 0, canvas.width, canvas.height);
+  if (!context) throw new Error("Logo-ul nu a putut fi procesat.");
+  context.clearRect(0, 0, canvas.width, canvas.height);
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
-  let dataUrl = canvas.toDataURL("image/webp", 0.82);
-  if (dataUrl.length > LOGO_MAX_DATA_URL_LENGTH) dataUrl = canvas.toDataURL("image/jpeg", 0.72);
-  if (dataUrl.length > LOGO_MAX_DATA_URL_LENGTH) throw new Error("Logo-ul este prea mare dupa optimizare. Incearca o imagine mai simpla.");
-  return dataUrl;
+
+  let blob = await canvasToBlob(canvas, "image/webp", 0.86);
+  let type = "image/webp";
+  let extension = "webp";
+  if (blob.size > LOGO_MAX_OPTIMIZED_BYTES) {
+    const jpegCanvas = document.createElement("canvas");
+    jpegCanvas.width = canvas.width;
+    jpegCanvas.height = canvas.height;
+    const jpegContext = jpegCanvas.getContext("2d");
+    if (!jpegContext) throw new Error("Logo-ul nu a putut fi procesat.");
+    jpegContext.fillStyle = "#ffffff";
+    jpegContext.fillRect(0, 0, jpegCanvas.width, jpegCanvas.height);
+    jpegContext.drawImage(canvas, 0, 0);
+    blob = await canvasToBlob(jpegCanvas, "image/jpeg", 0.76);
+    type = "image/jpeg";
+    extension = "jpg";
+  }
+  if (blob.size > LOGO_MAX_OPTIMIZED_BYTES) throw new Error("Logo-ul este prea mare dupa optimizare. Incearca o imagine mai simpla.");
+  return new File([blob], `organization-${organizationId || "logo"}-${Date.now()}.${extension}`, { type, lastModified: Date.now() });
 }
 
 function Field({ label, hint, children }) {
@@ -159,6 +186,38 @@ function OrganizationPreview({ organizationName, profileTypeLabel, verified, val
   );
 }
 
+function LocationPublicPreview({ organizationName, logoPreview, location }) {
+  const locationName = location.public_display_name || location.name || "Locatie";
+  const locality = location.locality_name || location.city || "Localitate necompletata";
+  const locationPhoto = location.photo_url || location.profile_photo_url || "";
+  return (
+    <div className="overflow-hidden rounded-[24px] border border-border bg-card shadow-sm">
+      <div className="flex items-center gap-3 p-4">
+        <BrandLogo name={organizationName} photoUrl={logoPreview} small />
+        <div className="min-w-0">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Logo din Profil public</div>
+          <div className="truncate text-sm font-bold">{organizationName}</div>
+          <div className="mt-1 truncate text-xs text-muted-foreground">{locationName} · {locality}</div>
+        </div>
+      </div>
+      <div className="aspect-video border-t border-border bg-secondary/35">
+        {locationPhoto ? (
+          <img src={locationPhoto} alt={`Fotografie ${locationName}`} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center px-5 text-center text-muted-foreground">
+            <ImagePlus className="h-7 w-7" />
+            <p className="mt-2 text-xs font-semibold">Fotografia locatiei se adauga separat din Locatii</p>
+          </div>
+        )}
+      </div>
+      <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3 text-[11px] text-muted-foreground">
+        <span>Logo langa nume</span>
+        <span>Fotografie locatie separata</span>
+      </div>
+    </div>
+  );
+}
+
 function initialValues(organization, publicPreview) {
   return {
     public_display_name: organization.public_display_name || publicPreview.display_name || organization.name || "",
@@ -187,7 +246,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
   const pendingProfile = overview.pending_profile_changes || {};
   const pendingLogoUrl = pendingProfile.pending_logo_url || "";
   const hasPendingLogo = !!pendingProfile.has_pending_logo;
-  const canonicalLogo = organization.logo_url || publicPreview.photo_url || "";
+  const canonicalLogo = organization.logo_url || "";
 
   const baseValues = useMemo(() => initialValues(organization, publicPreview), [organization, publicPreview]);
   const [values, setValues] = useState(baseValues);
@@ -265,17 +324,24 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
     if (!LOGO_TYPES.includes(file.type)) { setLogoMessage("Format acceptat: PNG, JPG sau WEBP."); return; }
     if (file.size > LOGO_MAX_BYTES) { setLogoMessage("Logo-ul trebuie sa aiba maximum 4MB inainte de optimizare."); return; }
     setUploadingLogo(true);
+    let localPreviewUrl = "";
     try {
-      const dataUrl = await makeSafeLogoDataUrl(file);
-      setLogoPreview(dataUrl);
-      const response = await base44.functions.invoke("submitProviderLogoForReview", { location_id: locationId, organization_id: organizationId, photo_url: dataUrl }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+      const optimizedFile = await makeSafeLogoFile(file, organizationId);
+      localPreviewUrl = URL.createObjectURL(optimizedFile);
+      setLogoPreview(localPreviewUrl);
+      const uploadResponse = await base44.integrations.Core.UploadFile({ file: optimizedFile });
+      const logoUrl = String(uploadResponse?.file_url || "").trim();
+      if (!logoUrl) throw new Error("Incarcarea logo-ului nu a returnat un URL valid.");
+      const response = await base44.functions.invoke("submitProviderLogoForReview", { location_id: locationId, organization_id: organizationId, photo_url: logoUrl }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
       if (response.data?.error) throw new Error(response.data.error);
-      setLogoMessage("Logo trimis separat spre verificare. Nu este inclus in draftul formularului.");
+      setLogoPreview(logoUrl);
+      setLogoMessage("Logo trimis separat spre verificare. Va aparea langa numele organizatiei dupa aprobare.");
       await onRefresh?.();
     } catch (error) {
       setLogoPreview(pendingLogoUrl || canonicalLogo);
       setLogoMessage(error.message || "Nu am putut incarca logo-ul.");
     } finally {
+      if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
       setUploadingLogo(false);
     }
   };
@@ -289,7 +355,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-2xl font-extrabold tracking-tight">Profil public organizatie</h1>
-        <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Date generale de brand. Adresa, programul, serviciile, fotografiile si specialistii se gestioneaza separat pentru fiecare locatie.</p>
+        <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Date generale de brand. Logo-ul apare langa numele organizatiei. Fotografiile reale se gestioneaza separat pentru fiecare locatie.</p>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_390px] xl:items-start">
@@ -314,7 +380,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
                 </label>
                 <div className="min-w-0">
                   <div className="text-sm font-semibold">Logo organizatie</div>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Logo-ul are flux separat de verificare si nu este salvat impreuna cu formularul.</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Acesta este afisat langa numele organizatiei. Nu este folosit ca fotografie a locatiei.</p>
                   <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-background px-3 py-1 text-[11px] font-semibold text-muted-foreground"><ImagePlus className="h-3.5 w-3.5" /> Publicare dupa aprobare</div>
                 </div>
               </div>
@@ -360,6 +426,8 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
             hasPendingLogo={hasPendingLogo}
             locationCount={locationCount}
           />
+
+          <LocationPublicPreview organizationName={values.public_display_name || organizationName} logoPreview={logoPreview} location={location} />
 
           <section className="rounded-[24px] border border-border bg-card p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
