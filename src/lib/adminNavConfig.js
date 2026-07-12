@@ -9,6 +9,7 @@ import {
   History,
   ShieldCheck,
   ClipboardCheck,
+  DatabaseZap,
 } from "lucide-react";
 
 export const ADMIN_NAV_PRIMARY = [
@@ -24,7 +25,8 @@ export const ADMIN_NAV_PRIMARY = [
 ];
 
 export const ADMIN_NAV_SECONDARY = [
-  { key: "contract_geo", label: "Contract geografic", icon: ShieldCheck, groupLabel: "Diagnostic intern" },
+  { key: "data_integrity", label: "Integritate date", icon: DatabaseZap, groupLabel: "Sistem si diagnostic" },
+  { key: "contract_geo", label: "Contract geografic", icon: ShieldCheck },
 ];
 
 export const ADMIN_NAV_LABELS = {
