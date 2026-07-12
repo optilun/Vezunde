@@ -32,11 +32,13 @@ export default function ProviderWorkspaceRoot({
 
   const locations = workspace.locations || [];
   const preferences = readAccountPreferences(user?.id);
-  const rememberedLocationId = preferences.rememberLastLocation ? preferences.lastProviderLocationId : "";
+  const preferredProviderLocationId = preferences.providerLocationMode === "fixed"
+    ? preferences.fixedProviderLocationId
+    : preferences.lastProviderLocationId;
   const initialLocationId = locations.some((location) => location.id === routeLocationId)
     ? routeLocationId
-    : locations.some((location) => location.id === rememberedLocationId)
-      ? rememberedLocationId
+    : locations.some((location) => location.id === preferredProviderLocationId)
+      ? preferredProviderLocationId
       : workspace.memberships?.[0]?.location_id || locations[0]?.id || "";
   const [selectedLocationId, setSelectedLocationId] = useState(initialLocationId);
   const [overview, setOverview] = useState(null);
@@ -97,8 +99,12 @@ export default function ProviderWorkspaceRoot({
     routerNavigate("/contul-meu?s=locations");
   };
 
-  const navItems = getProviderNav({ canManageMembers: workspace.can_manage_members });
-  const allowedSections = ["overview", "profile", "locations", "access", "settings"];
+  const canManageSettings = overview?.current_user_role === "organization_owner";
+  const navItems = getProviderNav({
+    canManageMembers: workspace.can_manage_members,
+    canManageSettings,
+  });
+  const allowedSections = ["overview", "profile", "locations", "access", ...(canManageSettings ? ["settings"] : [])];
   const normalizedSection = ["services", "team", "hours", "photos"].includes(requestedSection) ? "locations" : requestedSection;
   const safeSection = activeLocationModule
     ? "locations"
@@ -166,7 +172,7 @@ export default function ProviderWorkspaceRoot({
             />
           )}
           {safeSection === "access" && workspace.can_manage_members && <ProviderAccess locations={workspace.locations} />}
-          {safeSection === "settings" && (
+          {safeSection === "settings" && canManageSettings && (
             <ProviderSettings
               user={user}
               workspace={workspace}
@@ -174,6 +180,7 @@ export default function ProviderWorkspaceRoot({
               selectedLocationId={selectedLocationId}
               onSelectLocation={selectLocation}
               onSwitchMode={onSwitchMode}
+              onNavigate={goToSection}
             />
           )}
         </>
