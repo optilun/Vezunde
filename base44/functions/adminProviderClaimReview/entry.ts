@@ -127,13 +127,19 @@ Deno.serve(async (req) => {
         locationUpdates.request_intake_status = 'inactive';
       }
 
+      const approvedPayload = JSON.stringify({
+        ...submitted,
+        request_type: requestType,
+        requested_membership_role: requestedRole,
+        approved_membership_role: isProfessional ? null : approvedRole,
+        verification_status: 'approved',
+      });
       await svc.entities.ProviderLocation.update(location.id, locationUpdates);
       await svc.entities.ProviderClaimRequest.update(claim.id, {
         status: 'aprobata',
-        verification_status: 'approved',
         reviewed_at: now,
         review_notes: note,
-        requested_membership_role: requestedRole,
+        submitted_payload: approvedPayload,
       });
 
       let primaryMembership = null;
@@ -237,11 +243,17 @@ Deno.serve(async (req) => {
       if (!['in_asteptare', 'needs_more_info'].includes(claim.status)) return bad('Solicitarea nu mai este in asteptare.');
       if (!note) return bad('Respingerea necesita o nota.');
       const now = new Date().toISOString();
+      const rejectedPayload = JSON.stringify({
+        ...submitted,
+        request_type: requestType,
+        requested_membership_role: requestedRole,
+        verification_status: 'rejected',
+      });
       await svc.entities.ProviderClaimRequest.update(claim.id, {
         status: 'respinsa',
-        verification_status: 'rejected',
         reviewed_at: now,
         review_notes: note,
+        submitted_payload: rejectedPayload,
       });
 
       let location = null;
