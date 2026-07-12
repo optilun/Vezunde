@@ -81,6 +81,80 @@ function overlayResourceRemovals(rows, removals, type) {
   });
 }
 
+async function loadApprovedPayload(svc, locationId) {
+  const location = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
+  if (!location) throw new Error('Locația nu a fost găsită');
+  const [services, units, capabilities, assignments, equipment, facilities] = await Promise.all([
+    svc.entities.LocationService.filter({ location_id: locationId }, null, 700),
+    svc.entities.LocationFunctionalUnit?.filter({ location_id: locationId }, null, 100).catch(() => []) || [],
+    svc.entities.LocationCapability?.filter({ location_id: locationId }, null, 100).catch(() => []) || [],
+    svc.entities.ProfessionalLocationAssignment.filter({ location_id: locationId, active_status: 'activ' }, null, 300),
+    svc.entities.LocationEquipment.filter({ location_id: locationId }, null, 500).catch(() => []),
+    svc.entities.LocationFacility.filter({ location_id: locationId }, null, 500).catch(() => []),
+  ]);
+
+  const selectedIds = {};
+  const serviceUnitMap = {};
+  for (const service of services.filter((row) => row.is_active !== false)) {
+    const definition = getCanonicalServiceDefinition(service.service_key);
+    if (!definition) continue;
+    selectedIds[definition.group] = selectedIds[definition.group] || [];
+    if (!selectedIds[definition.group].includes(definition.key)) selectedIds[definition.group].push(definition.key);
+    if (service.functional_unit_key) serviceUnitMap[definition.key] = service.functional_unit_key;
+  }
+
+  return {
+    selected_ids: selectedIds,
+    removal_ids: {},
+    raw_removal_keys: [],
+    suggestions: [],
+    functional_units: units.filter((row) => row.is_active !== false).map((row) => ({
+      unit_key: row.unit_key,
+      care_setting: row.care_setting || location.care_setting || 'not_applicable',
+      note: row.note || '',
+    })),
+    removal_unit_keys: [],
+    capabilities: capabilities.filter((row) => row.is_active !== false).map((row) => ({
+      capability_key: row.capability_key,
+      parent_unit_key: row.parent_unit_key,
+      note: row.note || '',
+    })),
+    removal_capabilities: [],
+    service_unit_map: serviceUnitMap,
+    resource_links: {
+      professionals: assignments.filter((row) => (row.functional_unit_keys || []).length > 0).map((row) => ({ assignment_id: row.id, unit_keys: row.functional_unit_keys || [] })),
+      equipment: equipment.filter((row) => row.is_active !== false && row.functional_unit_key).map((row) => ({ equipment_id: row.id, unit_key: row.functional_unit_key })),
+      facilities: facilities.filter((row) => row.is_active !== false && row.functional_unit_key).map((row) => ({ facility_id: row.id, unit_key: row.functional_unit_key })),
+    },
+    resource_removals: { professionals: [], equipment: [], facilities: [] },
+    care_setting: location.care_setting || 'not_applicable',
+  };
+}
+
+function blockerSignature(serviceKey, blocker) {
+  return JSON.stringify({
+    service_key: serviceKey,
+    code: blocker.code || '',
+    required: blocker.required || [],
+    actual: blocker.actual || [],
+  });
+}
+
+function allowPreExistingBlockers(evaluation, baselineEvaluation) {
+  const baselineSignatures = new Set(baselineEvaluation.evaluations.flatMap((item) => item.blockers.map((blocker) => blockerSignature(item.service_key, blocker))));
+  const newlyBlocked = evaluation.evaluations.filter((item) => item.blockers.some((blocker) => !baselineSignatures.has(blockerSignature(item.service_key, blocker))));
+  return {
+    ...evaluation,
+    approval_allowed: newlyBlocked.length === 0,
+    newly_blocked: newlyBlocked,
+    summary: {
+      ...evaluation.summary,
+      pre_existing_blocked_count: evaluation.blocked.length - newlyBlocked.length,
+      newly_blocked_count: newlyBlocked.length,
+    },
+  };
+}
+
 async function loadContext(svc, locationId, payload = null, persisted = false) {
   const location = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
   if (!location) throw new Error('Locația nu a fost găsită');
@@ -460,8 +534,13 @@ Deno.serve(async (req) => {
     if (!validation.valid) return Response.json({ error: validation.error, fields: validation.fields || [] }, { status: 400 });
     const payload = validation.clean;
 
-    const draftContext = await loadContext(svc, submission.location_id, payload, false);
-    const evaluation = evaluatePayload(payload, draftContext);
+    const [draftContext, approvedPayload] = await Promise.all([
+      loadContext(svc, submission.location_id, payload, false),
+      loadApprovedPayload(svc, submission.location_id),
+    ]);
+    const approvedContext = await loadContext(svc, submission.location_id, approvedPayload, false);
+    const baselineEvaluation = evaluatePayload(approvedPayload, approvedContext);
+    const evaluation = allowPreExistingBlockers(evaluatePayload(payload, draftContext), baselineEvaluation);
 
     if (action === 'get') {
       return Response.json({ submission, prerequisite_review: reviewPayload(payload, evaluation) });
@@ -474,6 +553,7 @@ Deno.serve(async (req) => {
           error: 'Configurația nu poate fi aprobată deoarece există cerințe neîndeplinite.',
           code: 'SERVICE_CONFIGURATION_REQUIREMENTS_NOT_MET',
           prerequisite_review: reviewPayload(payload, evaluation),
+          newly_blocked_services: evaluation.newly_blocked || [],
         }, { status: 409 });
       }
 
