@@ -4,6 +4,10 @@ import {
   getCanonicalServiceGroupIds,
   normalizeServiceKey,
 } from '../../../shared/canonicalServiceRegistryExtended.js';
+import {
+  hasPublishedSectionChanges,
+  sameSubmissionPayload,
+} from '../../../shared/providerWorkspaceSubmissionComparison.js';
 
 // Provider Workspace draft/submit/withdraw.
 // Public changes go through ProviderWorkspaceSubmission. Program remains fast-path.
@@ -375,32 +379,6 @@ function parsePayloadJson(value) {
   }
 }
 
-function canonicalize(value) {
-  if (Array.isArray(value)) {
-    return value.map(canonicalize).sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
-  }
-  if (isPlainObject(value)) {
-    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
-  }
-  if (value === undefined) return null;
-  return value;
-}
-
-function stableStringify(value) { return JSON.stringify(canonicalize(value)); }
-function samePayload(left, right) { return stableStringify(left || {}) === stableStringify(right || {}); }
-
-function sameScalar(left, right) {
-  const leftEmpty = left === null || left === undefined || left === '';
-  const rightEmpty = right === null || right === undefined || right === '';
-  if (leftEmpty || rightEmpty) return leftEmpty && rightEmpty;
-  if (typeof left === 'number' || typeof right === 'number') {
-    const a = Number(left);
-    const b = Number(right);
-    return Number.isFinite(a) && Number.isFinite(b) && a === b;
-  }
-  return cleanString(left) === cleanString(right);
-}
-
 function flattenServiceGroups(groups) {
   return [...new Set(Object.values(groups || {}).flatMap((items) => Array.isArray(items) ? items : []).map(cleanString).filter(Boolean))];
 }
@@ -482,20 +460,12 @@ async function hasPublishedChanges(svc, access, section, cleanPayload, itemKey =
     if (!access.loc.organization_id) return true;
     const organization = await svc.entities.ProviderOrganization.get(access.loc.organization_id).catch(() => null);
     if (!organization) return true;
-    return Object.entries(cleanPayload).some(([key, value]) => !sameScalar(value, organization[key]));
+    return hasPublishedSectionChanges('public_profile', cleanPayload, organization);
   }
 
   if (section === 'location_details') {
-    const current = {
-      address: access.loc.address || '',
-      public_display_name: access.loc.public_display_name || access.loc.name || '',
-      public_phone: access.loc.public_phone || access.loc.phone_public || '',
-      public_email: access.loc.public_email || '',
-      lat: access.loc.lat ?? null,
-      lng: access.loc.lng ?? null,
-      place_id: access.loc.place_id || '',
-    };
-    return Object.entries(cleanPayload).some(([key, value]) => !sameScalar(value, current[key]));
+    const currentLocation = await svc.entities.ProviderLocation.get(access.location_id).catch(() => access.loc);
+    return hasPublishedSectionChanges('location_details', cleanPayload, currentLocation || access.loc);
   }
 
   if (section === 'services') {
@@ -728,12 +698,12 @@ Deno.serve(async (req) => {
           await svc.entities.ProviderWorkspaceSubmission.update(duplicate.id, { status: 'withdrawn' });
         }
         if (own) {
-          const identical = samePayload(parsePayloadJson(own.payload_json), result.clean);
+          const identical = sameSubmissionPayload(payload.section, parsePayloadJson(own.payload_json), result.clean);
           if (own.status === 'pending_review') {
             if (identical) return Response.json({ submission: sanitizeSubmission(own), resumed: true, duplicate: true, message: 'Aceasta modificare este deja in verificare.' });
             return Response.json(safeConflict(own), { status: 409 });
           }
-          if (identical) return Response.json({ submission: sanitizeSubmission(own), resumed: true, unchanged: true });
+          if (identical) return Response.json({ submission: sanitizeSubmission(own), resumed: true, unchanged: true, message: 'Draftul existent a fost incarcat.' });
           await svc.entities.ProviderWorkspaceSubmission.update(own.id, { payload_json: JSON.stringify(result.clean), status: 'draft' });
           await audit(svc, user, {
             entity_type: 'ProviderWorkspaceSubmission',
@@ -773,8 +743,8 @@ Deno.serve(async (req) => {
       const keeper = activeAfterCreate[0] || submission;
       if (keeper.id !== submission.id) {
         await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'withdrawn' });
-        if (keeper.submitted_by_user_id === user.id && samePayload(parsePayloadJson(keeper.payload_json), result.clean)) {
-          return Response.json({ submission: sanitizeSubmission(keeper), resumed: true, duplicate: true });
+        if (keeper.submitted_by_user_id === user.id && sameSubmissionPayload(payload.section, parsePayloadJson(keeper.payload_json), result.clean)) {
+          return Response.json({ submission: sanitizeSubmission(keeper), resumed: true, duplicate: true, message: 'Draftul existent a fost incarcat.' });
         }
         return Response.json(safeConflict(keeper), { status: 409 });
       }
@@ -818,8 +788,8 @@ Deno.serve(async (req) => {
       if (!result.valid) return Response.json(result.body, { status: result.status });
       const referenceCheck = await assertSubmittedReferences(svc, access.location_id, payload.section, result.clean);
       if (!referenceCheck.valid) return Response.json(referenceCheck.body, { status: referenceCheck.status });
-      if (samePayload(parsePayloadJson(submission.payload_json), result.clean) && submission.status === 'draft') {
-        return Response.json({ success: true, unchanged: true, submission: sanitizeSubmission(submission) });
+      if (sameSubmissionPayload(payload.section, parsePayloadJson(submission.payload_json), result.clean) && submission.status === 'draft') {
+        return Response.json({ success: true, unchanged: true, submission: sanitizeSubmission(submission), message: 'Draftul existent a fost incarcat.' });
       }
       const hasChanges = await hasPublishedChanges(svc, access, payload.section, result.clean, submission.item_key || '');
       if (!hasChanges) return discardNoopSubmission(svc, user, submission, 'Nu exista modificari noi de salvat. Draftul a fost inchis.');
@@ -886,7 +856,7 @@ Deno.serve(async (req) => {
         20,
       )).filter((row) => row.id !== submission.id && row.status === 'pending_review');
       if (otherPending.length > 0) {
-        const duplicate = otherPending.find((row) => samePayload(parsePayloadJson(row.payload_json), validation.clean));
+        const duplicate = otherPending.find((row) => sameSubmissionPayload(submission.section, parsePayloadJson(row.payload_json), validation.clean));
         if (duplicate) {
           await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'withdrawn' });
           return Response.json({ success: true, duplicate: true, submission: sanitizeSubmission(duplicate), message: 'Aceasta modificare este deja in verificare.' });

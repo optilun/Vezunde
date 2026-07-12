@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { AlertCircle, Building2, Globe, Loader2, LocateFixed, MapPin, SearchIcon } from "lucide-react";
+import { AlertCircle, Building2, Globe, Loader2, LocateFixed, SearchIcon } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const OPTION_CLASS = "w-full flex items-center gap-3 text-left rounded-2xl border px-5 py-4 transition-all border-border bg-card hover:border-foreground/40";

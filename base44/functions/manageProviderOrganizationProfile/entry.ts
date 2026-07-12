@@ -1,4 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import {
+  hasPublishedSectionChanges,
+  sameSubmissionPayload,
+} from '../../../shared/providerWorkspaceSubmissionComparison.js';
 
 const ACTIVE_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
 const EDITABLE_STATUSES = ['draft', 'needs_more_info'];
@@ -62,20 +66,6 @@ function parsePayload(value) {
   } catch (_error) {
     return {};
   }
-}
-
-function canonicalize(value) {
-  if (Array.isArray(value)) return value.map(canonicalize).sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
-  if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
-  return value ?? '';
-}
-
-function samePayload(left, right) {
-  return JSON.stringify(canonicalize(left || {})) === JSON.stringify(canonicalize(right || {}));
-}
-
-function hasPublishedChanges(organization, values) {
-  return Object.entries(values).some(([key, value]) => clean(value) !== clean(organization[key]));
 }
 
 function sortActive(rows) {
@@ -174,7 +164,7 @@ Deno.serve(async (req) => {
     if (action === 'create_draft') {
       const validation = validatePayload(input.payload);
       if (validation.error) return res(validation, 400);
-      if (!hasPublishedChanges(access.organization, validation.values)) {
+      if (!hasPublishedSectionChanges('public_profile', validation.values, access.organization)) {
         return res({ success: true, no_changes: true, message: 'Nu exista modificari noi de salvat.' });
       }
 
@@ -183,12 +173,12 @@ Deno.serve(async (req) => {
       const own = ownRows[0] || null;
       if (own) {
         await withdrawDuplicateDrafts(svc, user, ownRows.slice(1), own.id);
-        const identical = samePayload(parsePayload(own.payload_json), validation.values);
+        const identical = sameSubmissionPayload('public_profile', parsePayload(own.payload_json), validation.values);
         if (own.status === 'pending_review') {
           if (identical) return res({ submission: safeSubmission(own), resumed: true, duplicate: true, message: 'Aceasta modificare este deja in verificare.' });
           return res({ error: 'Exista deja o modificare trimisa spre verificare pentru profilul organizatiei.' }, 409);
         }
-        if (identical) return res({ submission: safeSubmission(own), resumed: true, unchanged: true, message: 'Draftul existent contine deja aceste valori.' });
+        if (identical) return res({ submission: safeSubmission(own), resumed: true, unchanged: true, message: 'Draftul existent a fost incarcat.' });
         const updated = await svc.entities.ProviderWorkspaceSubmission.update(own.id, {
           payload_json: JSON.stringify(validation.values),
           status: 'draft',
@@ -209,6 +199,18 @@ Deno.serve(async (req) => {
         status: 'draft',
         submitted_by_user_id: user.id,
       });
+
+      // Re-read after create so two near-simultaneous requests converge on one active row.
+      const activeAfterCreate = await listActive(svc, organizationId);
+      const keeper = activeAfterCreate[0] || submission;
+      if (keeper.id !== submission.id) {
+        await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'withdrawn' });
+        if (keeper.submitted_by_user_id === user.id && sameSubmissionPayload('public_profile', parsePayload(keeper.payload_json), validation.values)) {
+          return res({ submission: safeSubmission(keeper), resumed: true, duplicate: true, message: keeper.status === 'pending_review' ? 'Aceasta modificare este deja in verificare.' : 'Draftul existent a fost incarcat.' });
+        }
+        return res({ error: 'Exista deja o alta modificare activa pentru profilul organizatiei.' }, 409);
+      }
+
       await audit(svc, user, submission, 'create_organization_profile_draft', {}, validation.values);
       return res({ submission: safeSubmission(submission) });
     }
@@ -224,13 +226,13 @@ Deno.serve(async (req) => {
       const validation = validatePayload(input.payload);
       if (validation.error) return res(validation, 400);
       const previous = parsePayload(submission.payload_json);
-      if (!hasPublishedChanges(access.organization, validation.values)) {
+      if (!hasPublishedSectionChanges('public_profile', validation.values, access.organization)) {
         const updated = await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'withdrawn' });
         await audit(svc, user, updated, 'discard_noop_organization_profile_draft', { status: submission.status, payload: previous }, { status: 'withdrawn' }, 'Draft organizational inchis deoarece nu continea modificari fata de profilul publicat');
         return res({ success: true, no_changes: true, message: 'Nu exista modificari noi de salvat. Draftul a fost inchis.' });
       }
-      if (submission.status === 'draft' && samePayload(previous, validation.values)) {
-        return res({ submission: safeSubmission(submission), unchanged: true, message: 'Draftul contine deja aceste valori.' });
+      if (submission.status === 'draft' && sameSubmissionPayload('public_profile', previous, validation.values)) {
+        return res({ submission: safeSubmission(submission), unchanged: true, message: 'Draftul existent a fost incarcat.' });
       }
 
       const active = (await listActive(svc, organizationId)).filter((row) => row.id !== submission.id);
@@ -249,7 +251,7 @@ Deno.serve(async (req) => {
 
     if (action === 'submit') {
       if (submission.status === 'pending_review') {
-        return res({ submission: safeSubmission(submission), duplicate: true, message: 'Profilul organizatiei este deja in verificare.' });
+        return res({ submission: safeSubmission(submission), duplicate: true, message: 'Aceasta modificare este deja in verificare.' });
       }
       if (!EDITABLE_STATUSES.includes(submission.status)) return res({ error: 'Draftul nu poate fi trimis in acest status' }, 400);
       const values = parsePayload(submission.payload_json);
