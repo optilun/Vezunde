@@ -531,7 +531,7 @@ function CareSettingSelector({ options, approvedValue, value, disabled, onChange
   );
 }
 
-function ResourceGroup({ title, emptyText, items, unitKey, type, disabled, links, onToggle }) {
+function ResourceGroup({ title, emptyText, items, unitKey, type, disabled, links, approvedLinks, onToggle }) {
   if (items.length === 0) return <div className="rounded-xl border border-dashed border-border px-3 py-4 text-[11px] text-muted-foreground"><strong className="text-foreground">{title}</strong><div className="mt-1">{emptyText}</div></div>;
   return (
     <div className="rounded-xl border border-border bg-card p-3">
@@ -542,14 +542,20 @@ function ResourceGroup({ title, emptyText, items, unitKey, type, disabled, links
           const assigned = type === "professionals"
             ? (links.professionals.find((link) => link.assignment_id === id)?.unit_keys || []).includes(unitKey)
             : links[type].some((link) => link[`${type === "equipment" ? "equipment" : "facility"}_id`] === id && link.unit_key === unitKey);
+          const approvedAssigned = type === "professionals"
+            ? (approvedLinks.professionals.find((link) => link.assignment_id === id)?.unit_keys || []).includes(unitKey)
+            : approvedLinks[type].some((link) => link[`${type === "equipment" ? "equipment" : "facility"}_id`] === id && link.unit_key === unitKey);
+          const removalRequested = approvedAssigned && !assigned;
+          const draftAddition = assigned && !approvedAssigned;
           const label = type === "professionals" ? `${item.full_name} · ${item.professional_type || "specialist"}`
             : type === "equipment" ? item.equipment_label
               : item.facility_key;
           return (
-            <button key={id} type="button" disabled={disabled} onClick={() => onToggle(type, id, unitKey)} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs hover:bg-secondary/40 disabled:opacity-60">
-              <span className={`flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded border ${assigned ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`}>{assigned && <Check className="h-3 w-3" />}</span>
+            <button key={id} type="button" disabled={disabled} onClick={() => onToggle(type, id, unitKey)} className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs disabled:opacity-60 ${removalRequested ? "bg-amber-50 hover:bg-amber-50" : "hover:bg-secondary/40"}`}>
+              <span className={`flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded border ${removalRequested ? "border-amber-300 bg-amber-100 text-amber-900" : assigned ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`}>{removalRequested ? <X className="h-3 w-3" /> : assigned && <Check className="h-3 w-3" />}</span>
               <span className="min-w-0 flex-1 truncate">{label}</span>
-              {item.verification_status && <span className="text-[10px] text-muted-foreground">{item.verification_status}</span>}
+              <ChangeBadge draftAddition={draftAddition} removalRequested={removalRequested} />
+              {item.verification_status && !removalRequested && !draftAddition && <span className="text-[10px] text-muted-foreground">{item.verification_status}</span>}
             </button>
           );
         })}
@@ -558,7 +564,7 @@ function ResourceGroup({ title, emptyText, items, unitKey, type, disabled, links
   );
 }
 
-function UnitResources({ unitKey, config, disabled, links, onToggle }) {
+function UnitResources({ unitKey, config, disabled, links, approvedLinks, onToggle }) {
   const [open, setOpen] = useState(false);
   const professionalCount = (links.professionals || []).filter((item) => (item.unit_keys || []).includes(unitKey)).length;
   const equipmentCount = (links.equipment || []).filter((item) => item.unit_key === unitKey).length;
@@ -581,9 +587,9 @@ function UnitResources({ unitKey, config, disabled, links, onToggle }) {
       </button>
       {open && (
         <div className="grid gap-3 border-t border-border/60 p-4 md:grid-cols-3 sm:p-5">
-          <ResourceGroup title="Specialiști" emptyText="Nu există specialiști activi asociați locației." items={config.assignments || []} unitKey={unitKey} type="professionals" disabled={disabled} links={links} onToggle={onToggle} />
-          <ResourceGroup title="Echipamente" emptyText="Nu există echipamente declarate." items={(config.equipment || []).filter((item) => item.is_active !== false)} unitKey={unitKey} type="equipment" disabled={disabled} links={links} onToggle={onToggle} />
-          <ResourceGroup title="Facilități" emptyText="Nu există facilități declarate." items={(config.facilities || []).filter((item) => item.is_active !== false)} unitKey={unitKey} type="facilities" disabled={disabled} links={links} onToggle={onToggle} />
+          <ResourceGroup title="Specialiști" emptyText="Nu există specialiști activi asociați locației." items={config.assignments || []} unitKey={unitKey} type="professionals" disabled={disabled} links={links} approvedLinks={approvedLinks} onToggle={onToggle} />
+          <ResourceGroup title="Echipamente" emptyText="Nu există echipamente declarate." items={(config.equipment || []).filter((item) => item.is_active !== false)} unitKey={unitKey} type="equipment" disabled={disabled} links={links} approvedLinks={approvedLinks} onToggle={onToggle} />
+          <ResourceGroup title="Facilități" emptyText="Nu există facilități declarate." items={(config.facilities || []).filter((item) => item.is_active !== false)} unitKey={unitKey} type="facilities" disabled={disabled} links={links} approvedLinks={approvedLinks} onToggle={onToggle} />
         </div>
       )}
     </div>
@@ -618,7 +624,7 @@ function CustomSuggestion({ unitKey, section, disabled, items, onAdd, onRemove }
   );
 }
 
-function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceUnitMap, capabilities, prerequisites, config, resourceLinks, customSuggestions, open, disabled, onOpen, onToggleService, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion }) {
+function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceUnitMap, capabilities, prerequisites, config, resourceLinks, approvedResourceLinks, customSuggestions, open, disabled, onOpen, onToggleService, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion }) {
   const definition = getFunctionalUnitDefinition(unitKey);
   const Icon = UNIT_ICONS[unitKey] || Building2;
   const selectedCount = sections.reduce((sum, section) => sum + selectedCountForSection(selected, section), 0);
@@ -662,7 +668,7 @@ function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceU
               </div>
             );
           })}
-          <UnitResources unitKey={unitKey} config={config} disabled={disabled} links={resourceLinks} onToggle={onToggleResource} />
+          <UnitResources unitKey={unitKey} config={config} disabled={disabled} links={resourceLinks} approvedLinks={approvedResourceLinks} onToggle={onToggleResource} />
         </div>
       )}
     </section>
@@ -1352,7 +1358,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
             </section>
           ) : (
             <div className="space-y-3">
-              {visibleUnits.map((unitKey) => <UnitAccordion key={unitKey} unitKey={unitKey} sections={sectionsByUnit[unitKey] || []} selected={selected} approvedSelected={approvedSelected} serviceUnitMap={serviceUnitMap} capabilities={capabilities} prerequisites={config?.prerequisites_by_key || {}} config={{ ...config, activeUnits }} resourceLinks={resourceLinks} customSuggestions={suggestions} open={openUnit === unitKey} disabled={!editable} onOpen={() => setOpenUnit((current) => current === unitKey ? "" : unitKey)} onToggleService={toggleService} onChangeSectionUnit={changeSectionUnit} onToggleResource={toggleResource} onAddSuggestion={addSuggestion} onRemoveSuggestion={removeSuggestion} />)}
+              {visibleUnits.map((unitKey) => <UnitAccordion key={unitKey} unitKey={unitKey} sections={sectionsByUnit[unitKey] || []} selected={selected} approvedSelected={approvedSelected} serviceUnitMap={serviceUnitMap} capabilities={capabilities} prerequisites={config?.prerequisites_by_key || {}} config={{ ...config, activeUnits }} resourceLinks={resourceLinks} approvedResourceLinks={approvedResourceLinks} customSuggestions={suggestions} open={openUnit === unitKey} disabled={!editable} onOpen={() => setOpenUnit((current) => current === unitKey ? "" : unitKey)} onToggleService={toggleService} onChangeSectionUnit={changeSectionUnit} onToggleResource={toggleResource} onAddSuggestion={addSuggestion} onRemoveSuggestion={removeSuggestion} />)}
               {visibleUnits.length === 0 && <div className="rounded-2xl border border-dashed border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground">Selectează cel puțin un spațiu care există în locație.</div>}
             </div>
           )}
