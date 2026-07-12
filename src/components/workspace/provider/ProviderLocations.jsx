@@ -14,6 +14,7 @@ import {
   Save,
   Users,
   Wrench,
+  X,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -177,8 +178,12 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
       try {
         const payload = JSON.parse(own.payload_json || "{}");
         setValues({ ...defaultValues(selectedLocation), ...payload });
-      } catch { setValues(defaultValues(selectedLocation)); }
-    } else setValues(defaultValues(selectedLocation));
+      } catch (_error) {
+        setValues(defaultValues(selectedLocation));
+      }
+    } else {
+      setValues(defaultValues(selectedLocation));
+    }
   };
 
   useEffect(() => {
@@ -187,6 +192,20 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
     setShowAdvancedMap(false);
     setEditOpen(false);
   }, [selectedLocation?.id]);
+
+  useEffect(() => {
+    if (!editOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setEditOpen(false);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [editOpen]);
 
   const saveDraft = async () => {
     if (!selectedLocation?.id) return;
@@ -210,7 +229,6 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
     if (response.data?.error) { setMessage(response.data.error); return; }
     setMessage("Draft salvat. Trimite-l spre review cand este pregatit.");
     await loadDraft();
-    onRefresh?.();
   };
 
   const submitDraft = async () => {
@@ -223,7 +241,6 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
     if (response.data?.error) { setMessage(response.data.error); return; }
     setMessage("Modificarile locatiei au fost trimise spre review.");
     await loadDraft();
-    onRefresh?.();
   };
 
   if (locationCount === 0) {
@@ -283,7 +300,14 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                           <InfoHint>Tot ce configurezi aici se aplica doar acestei locatii.</InfoHint>
                         </div>
                       </div>
-                      {draftState && <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${draftState.className}`}>{draftState.label}</span>}
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${draftState?.className || "border border-amber-200 bg-amber-50 text-amber-800"}`}>
+                          {draftState?.label || "Date publice · necesita review"}
+                        </span>
+                        <button type="button" onClick={() => setEditOpen(true)} className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold hover:bg-secondary">
+                          <Pencil className="h-3.5 w-3.5" /> Editeaza datele
+                        </button>
+                      </div>
                     </div>
 
                     {draft && <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">Datele de mai jos sunt previzualizarea modificarilor din draft. Profilul public ramane neschimbat pana la aprobare.</div>}
@@ -321,52 +345,92 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                   <ConfigureCard icon={Users} title="Specialisti" text="Invita specialistii asociati acestei locatii." onClick={() => onOpenModule?.("specialisti", selectedLocation.id)} />
                 </div>
               </section>
-
-              <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2"><h2 className="text-sm font-bold">Date publice ale locatiei</h2><span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-800">Necesita review</span></div>
-                    <p className="mt-1 text-xs text-muted-foreground">Nume public, adresa, telefon, email si pozitie pe harta.</p>
-                  </div>
-                  <button type="button" onClick={() => setEditOpen((current) => !current)} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-semibold hover:bg-secondary"><Pencil className="h-3.5 w-3.5" /> {editOpen ? "Inchide editarea" : "Editeaza datele"}</button>
-                </div>
-
-                {editOpen && (
-                  <div className="mt-5 space-y-4 border-t border-border pt-5">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div><label className="text-xs font-semibold text-muted-foreground">Nume public locatie</label><input className={`${inputCls} mt-1.5`} value={values.public_display_name} disabled={pendingReview} onChange={(event) => setValues({ ...values, public_display_name: event.target.value })} /></div>
-                      <div><label className="text-xs font-semibold text-muted-foreground">Adresa pentru harta</label><input className={`${inputCls} mt-1.5`} value={values.address} disabled={pendingReview} onChange={(event) => setValues({ ...values, address: event.target.value })} placeholder="Strada, numar, localitate" /></div>
-                      <div><label className="text-xs font-semibold text-muted-foreground">Telefon public locatie</label><input className={`${inputCls} mt-1.5`} value={values.public_phone} disabled={pendingReview} onChange={(event) => setValues({ ...values, public_phone: event.target.value })} /></div>
-                      <div><label className="text-xs font-semibold text-muted-foreground">Email public locatie</label><input className={`${inputCls} mt-1.5`} value={values.public_email} disabled={pendingReview} onChange={(event) => setValues({ ...values, public_email: event.target.value })} /></div>
-                    </div>
-
-                    <div className="rounded-2xl border border-border bg-secondary/35 p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div><div className="text-sm font-bold">Pin exact pe harta</div><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Optional. Copiaza coordonatele din Google Maps pentru precizie.</p></div>
-                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${hasExactPin ? "bg-green-100 text-green-800" : "bg-background text-muted-foreground"}`}>{hasExactPin ? "Pin exact activ" : "Optional"}</span>
-                      </div>
-                      <div className="mt-4 grid gap-3 md:grid-cols-2">
-                        <div><label className="text-xs font-semibold text-muted-foreground">Latitudine</label><input className={`${inputCls} mt-1.5`} value={values.lat} disabled={pendingReview} onChange={(event) => setValues({ ...values, lat: cleanNumber(event.target.value) })} placeholder="45.793140" /></div>
-                        <div><label className="text-xs font-semibold text-muted-foreground">Longitudine</label><input className={`${inputCls} mt-1.5`} value={values.lng} disabled={pendingReview} onChange={(event) => setValues({ ...values, lng: cleanNumber(event.target.value) })} placeholder="24.151920" /></div>
-                      </div>
-                      {hasCoordinateIssues && <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-800">{coordinateValidation.issues[0]}</div>}
-                      <button type="button" onClick={() => setShowAdvancedMap((current) => !current)} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold underline underline-offset-4">Optiuni avansate <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdvancedMap ? "rotate-180" : ""}`} /></button>
-                      {showAdvancedMap && <div className="mt-3 rounded-2xl border border-border bg-card p-3"><label className="text-xs font-semibold text-muted-foreground">Google Place ID, optional</label><input className={`${inputCls} mt-1.5`} value={values.place_id} disabled={pendingReview} onChange={(event) => setValues({ ...values, place_id: event.target.value })} placeholder="optional" /></div>}
-                    </div>
-
-                    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">Schimbarile nu se publica direct. Dupa trimitere, apar in panoul de administrare pentru verificare.</div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button disabled={saving || pendingReview} onClick={saveDraft} className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><Save className="h-4 w-4" /> Salveaza draft</button>
-                      {draftState?.editable && <button disabled={saving || hasCoordinateIssues} onClick={submitDraft} className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50">Trimite spre review</button>}
-                      {message && <p className="text-xs text-muted-foreground">{message}</p>}
-                    </div>
-                  </div>
-                )}
-              </section>
             </>
           )}
         </div>
       </div>
+
+      {editOpen && selectedLocation && (
+        <div className="fixed inset-0 z-[80] bg-black/35 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditOpen(false); }}>
+          <aside className="absolute inset-y-0 right-0 flex w-full max-w-3xl flex-col border-l border-border bg-background shadow-2xl" role="dialog" aria-modal="true" aria-label="Editeaza datele locatiei">
+            <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-5 py-4 sm:px-6">
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-muted-foreground">{selectedLocationName}</div>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <h2 className="font-heading text-xl font-extrabold tracking-tight">Editeaza datele locatiei</h2>
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${draftState?.className || "border border-amber-200 bg-amber-50 text-amber-800"}`}>
+                    {draftState?.label || "Necesita review"}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Numele public, adresa, contactul si pozitia pe harta sunt publicate numai dupa verificarea Vezunde.</p>
+              </div>
+              <button type="button" onClick={() => setEditOpen(false)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary" aria-label="Inchide"><X className="h-4 w-4" /></button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+              <div className="space-y-5">
+                {pendingReview && <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs leading-relaxed text-blue-900">Datele sunt deja in verificare. Poti consulta previzualizarea, dar nu le poti modifica pana la decizia Vezunde.</div>}
+
+                <section className="rounded-[22px] border border-border bg-card p-4 sm:p-5">
+                  <div className="mb-4">
+                    <h3 className="text-sm font-bold">Identitatea locatiei</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">Numele public si adresa principala a punctului de lucru.</p>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div><label className="text-xs font-semibold text-muted-foreground">Nume public locatie</label><input className={`${inputCls} mt-1.5`} value={values.public_display_name} disabled={pendingReview} onChange={(event) => setValues({ ...values, public_display_name: event.target.value })} /></div>
+                    <div><label className="text-xs font-semibold text-muted-foreground">Adresa pentru harta</label><input className={`${inputCls} mt-1.5`} value={values.address} disabled={pendingReview} onChange={(event) => setValues({ ...values, address: event.target.value })} placeholder="Strada, numar, localitate" /></div>
+                  </div>
+                </section>
+
+                <section className="rounded-[22px] border border-border bg-card p-4 sm:p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div><h3 className="text-sm font-bold">Pozitie pe harta</h3><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Coordonatele sunt optionale, dar ofera un pin mai precis.</p></div>
+                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${hasExactPin ? "bg-green-100 text-green-800" : "bg-secondary text-muted-foreground"}`}>{hasExactPin ? "Pin exact activ" : "Optional"}</span>
+                  </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <div><label className="text-xs font-semibold text-muted-foreground">Latitudine</label><input className={`${inputCls} mt-1.5`} value={values.lat} disabled={pendingReview} onChange={(event) => setValues({ ...values, lat: cleanNumber(event.target.value) })} placeholder="45.793140" /></div>
+                    <div><label className="text-xs font-semibold text-muted-foreground">Longitudine</label><input className={`${inputCls} mt-1.5`} value={values.lng} disabled={pendingReview} onChange={(event) => setValues({ ...values, lng: cleanNumber(event.target.value) })} placeholder="24.151920" /></div>
+                  </div>
+                  {hasCoordinateIssues && <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-800">{coordinateValidation.issues[0]}</div>}
+                  <button type="button" onClick={() => setShowAdvancedMap((current) => !current)} className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold underline underline-offset-4">Optiuni avansate <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdvancedMap ? "rotate-180" : ""}`} /></button>
+                  {showAdvancedMap && <div className="mt-3 rounded-2xl border border-border bg-secondary/30 p-3"><label className="text-xs font-semibold text-muted-foreground">Google Place ID, optional</label><input className={`${inputCls} mt-1.5`} value={values.place_id} disabled={pendingReview} onChange={(event) => setValues({ ...values, place_id: event.target.value })} placeholder="optional" /></div>}
+                </section>
+
+                <section className="rounded-[22px] border border-border bg-card p-4 sm:p-5">
+                  <div className="mb-4"><h3 className="text-sm font-bold">Contact public</h3><p className="mt-1 text-xs text-muted-foreground">Datele prin care clientii pot contacta direct aceasta locatie.</p></div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div><label className="text-xs font-semibold text-muted-foreground">Telefon public locatie</label><input className={`${inputCls} mt-1.5`} value={values.public_phone} disabled={pendingReview} onChange={(event) => setValues({ ...values, public_phone: event.target.value })} /></div>
+                    <div><label className="text-xs font-semibold text-muted-foreground">Email public locatie</label><input className={`${inputCls} mt-1.5`} value={values.public_email} disabled={pendingReview} onChange={(event) => setValues({ ...values, public_email: event.target.value })} /></div>
+                  </div>
+                </section>
+
+                <section className="overflow-hidden rounded-[22px] border border-border bg-card">
+                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
+                    <div><h3 className="text-sm font-bold">Previzualizare harta</h3><p className="mt-1 text-xs text-muted-foreground">Se actualizeaza pe baza datelor introduse.</p></div>
+                    {mapUrl && <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary">Google Maps <ExternalLink className="h-3.5 w-3.5" /></a>}
+                  </div>
+                  <div className="h-64 bg-secondary/30">
+                    {hasMapLocation(previewLocation) && embedUrl ? <iframe title={`Previzualizare harta ${selectedLocationName}`} src={embedUrl} className="h-full w-full border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade" /> : <div className="flex h-full flex-col items-center justify-center px-6 text-center"><MapPin className="h-7 w-7 text-muted-foreground" /><p className="mt-2 text-sm font-medium">Completeaza adresa sau coordonatele</p><p className="mt-1 text-xs text-muted-foreground">Previzualizarea va aparea aici.</p></div>}
+                  </div>
+                </section>
+
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">Schimbarile nu se publica direct. Dupa trimitere, apar in panoul de administrare pentru verificare.</div>
+              </div>
+            </div>
+
+            <div className="border-t border-border bg-card px-5 py-4 sm:px-6">
+              {message && <p className="mb-3 text-xs leading-relaxed text-muted-foreground">{message}</p>}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <button type="button" onClick={() => setEditOpen(false)} className="rounded-full border border-border px-4 py-2.5 text-sm font-semibold hover:bg-secondary">Inchide</button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button disabled={saving || pendingReview} onClick={saveDraft} className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><Save className="h-4 w-4" /> Salveaza draft</button>
+                  {draftState?.editable && <button disabled={saving || hasCoordinateIssues} onClick={submitDraft} className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50">Trimite spre review</button>}
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
     </div>
   );
 }
