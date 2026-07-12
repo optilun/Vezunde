@@ -7,6 +7,12 @@ on:
     paths:
       - scripts/apply-location-noop-client-guard.py
       - .github/workflows/apply-location-noop-client-guard.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/apply-location-noop-client-guard.py
+      - .github/workflows/apply-location-noop-client-guard.yml
 
 permissions:
   contents: write
