@@ -35,16 +35,32 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --silent
 
       - name: Provider onboarding regression checks
         run: npm run test:provider-onboarding
 
       - name: Typecheck
-        run: npm run typecheck
+        id: typecheck
+        continue-on-error: true
+        run: npm run typecheck > typecheck.log 2>&1 || { tail -n 100 typecheck.log; exit 1; }
 
       - name: Lint
-        run: npm run lint
+        id: lint
+        continue-on-error: true
+        run: npm run lint > lint.log 2>&1 || { tail -n 100 lint.log; exit 1; }
 
       - name: Build
-        run: npm run build
+        id: build
+        continue-on-error: true
+        run: npm run build > build.log 2>&1 || { tail -n 100 build.log; exit 1; }
+
+      - name: Enforce verification results
+        if: always()
+        run: |
+          echo "typecheck=${{ steps.typecheck.outcome }}"
+          echo "lint=${{ steps.lint.outcome }}"
+          echo "build=${{ steps.build.outcome }}"
+          test "${{ steps.typecheck.outcome }}" = "success"
+          test "${{ steps.lint.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"
