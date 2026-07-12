@@ -19,16 +19,20 @@ function highestRole(roles) {
   return '';
 }
 
-function invitationLocIds(inv) {
-  return Array.isArray(inv.invited_location_ids) ? inv.invited_location_ids.filter(Boolean) : [];
+function invitationLocIds(invitation) {
+  return Array.isArray(invitation.invited_location_ids) ? invitation.invited_location_ids.filter(Boolean) : [];
 }
 
 function clean(value) {
   return String(value ?? '').trim();
 }
 
-function parsePendingChanges(raw) {
+function parseJson(raw) {
   try { return raw ? JSON.parse(raw) : {}; } catch (_error) { return {}; }
+}
+
+function parsePendingChanges(raw) {
+  return parseJson(raw);
 }
 
 function checklistResult(items) {
@@ -37,6 +41,7 @@ function checklistResult(items) {
     percentage: items.length ? Math.round((completed.length / items.length) * 100) : 0,
     total_items: items.length,
     completed_count: completed.length,
+    missing_count: items.length - completed.length,
     checklist: items.map((item) => ({
       key: item.key,
       label: item.label,
@@ -46,31 +51,30 @@ function checklistResult(items) {
   };
 }
 
-function computeOrganizationCompleteness(org, locations) {
-  const hasContact = !!(clean(org?.public_phone) || clean(org?.public_email));
+function computeOrganizationCompleteness(organization) {
+  const hasContact = !!(clean(organization?.public_phone) || clean(organization?.public_email));
   const hasWeb = !!(
-    clean(org?.website_url || org?.website)
-    || clean(org?.facebook_url)
-    || clean(org?.instagram_url)
-    || clean(org?.linkedin_url)
+    clean(organization?.website_url || organization?.website)
+    || clean(organization?.facebook_url)
+    || clean(organization?.instagram_url)
+    || clean(organization?.linkedin_url)
   );
   return checklistResult([
-    { key: 'identity', label: 'Numele public al organizatiei', done: !!clean(org?.public_display_name) },
-    { key: 'description', label: 'Descrierea organizatiei', done: !!clean(org?.public_description) },
+    { key: 'identity', label: 'Numele public al organizatiei', done: !!clean(organization?.public_display_name) },
+    { key: 'description', label: 'Descrierea organizatiei', done: !!clean(organization?.public_description) },
     { key: 'public_contact', label: 'Telefon sau email general', done: hasContact },
     { key: 'web_presence', label: 'Website sau retele sociale', done: hasWeb },
-    { key: 'logo', label: 'Logo-ul organizatiei', done: !!clean(org?.logo_url) },
-    { key: 'locations', label: 'Cel putin o locatie activa', done: locations.some((loc) => loc.active_status !== 'inactiva' && loc.status !== 'suspendata') },
+    { key: 'logo', label: 'Logo-ul organizatiei', done: !!clean(organization?.logo_url) },
   ]);
 }
 
-function computeLocationCompleteness(loc) {
+function computeLocationCompleteness(location) {
   return checklistResult([
-    { key: 'identity', label: 'Identitatea locatiei', done: !!(clean(loc?.public_display_name || loc?.name) && loc?.provider_type && loc?.provider_profile_type) },
-    { key: 'locality', label: 'Localitatea canonica', done: !!clean(loc?.locality_siruta_code) },
-    { key: 'address', label: 'Adresa', done: !!clean(loc?.address) },
-    { key: 'public_contact', label: 'Telefon sau email public', done: !!(clean(loc?.phone_public || loc?.public_phone) || clean(loc?.public_email)) },
-    { key: 'opening_hours', label: 'Program de functionare', done: !!(clean(loc?.opening_hours) || clean(loc?.opening_hours_json)) },
+    { key: 'identity', label: 'Numele si tipul locatiei', done: !!(clean(location?.public_display_name || location?.name) && location?.provider_type && location?.provider_profile_type) },
+    { key: 'locality', label: 'Localitatea', done: !!clean(location?.locality_siruta_code) },
+    { key: 'address', label: 'Adresa', done: !!clean(location?.address) },
+    { key: 'public_contact', label: 'Telefon sau email public', done: !!(clean(location?.phone_public || location?.public_phone) || clean(location?.public_email)) },
+    { key: 'opening_hours', label: 'Programul de functionare', done: !!(clean(location?.opening_hours) || clean(location?.opening_hours_json)) },
   ]);
 }
 
@@ -103,9 +107,7 @@ async function getLocationContentSummary(svc, location, userId) {
   const media = await svc.entities.ProviderMediaAsset.filter({ location_id: locationId, status: 'approved' });
   const articles = await svc.entities.ProviderArticle.filter({ location_id: locationId, status: 'approved' });
   const pendingCount = (section) => submissions.filter((submission) => submission.section === section).length;
-  const approvedMediaReferences = new Set(
-    media.map((asset) => clean(asset.storage_reference)).filter(Boolean),
-  );
+  const approvedMediaReferences = new Set(media.map((asset) => clean(asset.storage_reference)).filter(Boolean));
   const primaryPhoto = clean(location.photo_url);
   if (primaryPhoto) approvedMediaReferences.add(primaryPhoto);
 
@@ -157,28 +159,28 @@ async function getAggregateContentSummary(svc, locations, userId) {
   });
 }
 
-function safeLocationSummary(loc) {
-  const completion = computeLocationCompleteness(loc);
+function safeLocationSummary(location) {
+  const completion = computeLocationCompleteness(location);
   return {
-    id: loc.id,
-    organization_id: loc.organization_id || null,
-    name: loc.name,
-    provider_type: loc.provider_type || '',
-    provider_profile_type: loc.provider_profile_type || '',
-    public_display_name: loc.public_display_name || '',
-    locality_name: loc.locality_name || loc.city || '',
-    locality_siruta_code: loc.locality_siruta_code || '',
-    county_name: loc.county_name || loc.county || '',
-    address: loc.address || '',
-    public_phone: loc.public_phone || loc.phone_public || '',
-    public_email: loc.public_email || '',
-    photo_url: loc.photo_url || '',
-    opening_hours: loc.opening_hours || '',
-    opening_hours_json: loc.opening_hours_json || '',
-    status: loc.status || 'draft',
-    active_status: loc.active_status || 'activa',
-    profile_control_status: loc.profile_control_status || 'directory',
-    claim_verification_status: loc.claim_verification_status || 'pending',
+    id: location.id,
+    organization_id: location.organization_id || null,
+    name: location.name,
+    provider_type: location.provider_type || '',
+    provider_profile_type: location.provider_profile_type || '',
+    public_display_name: location.public_display_name || '',
+    locality_name: location.locality_name || location.city || '',
+    locality_siruta_code: location.locality_siruta_code || '',
+    county_name: location.county_name || location.county || '',
+    address: location.address || '',
+    public_phone: location.public_phone || location.phone_public || '',
+    public_email: location.public_email || '',
+    photo_url: location.photo_url || '',
+    opening_hours: location.opening_hours || '',
+    opening_hours_json: location.opening_hours_json || '',
+    status: location.status || 'draft',
+    active_status: location.active_status || 'activa',
+    profile_control_status: location.profile_control_status || 'directory',
+    claim_verification_status: location.claim_verification_status || 'pending',
     profile_completeness: completion.percentage,
     profile_completion: completion,
   };
@@ -210,17 +212,17 @@ function dedupeSubmissions(rows) {
   return [...new Map(rows.filter(Boolean).map((submission) => [submission.id, submission])).values()];
 }
 
-function buildOrganizationProfileState(org, fallbackLocation) {
+function buildOrganizationProfileState(organization, fallbackLocation, activeSubmission = null) {
   const canonical = {
-    public_display_name: clean(org?.public_display_name),
-    public_description: clean(org?.public_description),
-    public_phone: clean(org?.public_phone),
-    public_email: clean(org?.public_email),
-    website_url: clean(org?.website_url || org?.website),
-    facebook_url: clean(org?.facebook_url),
-    instagram_url: clean(org?.instagram_url),
-    linkedin_url: clean(org?.linkedin_url),
-    logo_url: clean(org?.logo_url),
+    public_display_name: clean(organization?.public_display_name),
+    public_description: clean(organization?.public_description),
+    public_phone: clean(organization?.public_phone),
+    public_email: clean(organization?.public_email),
+    website_url: clean(organization?.website_url || organization?.website),
+    facebook_url: clean(organization?.facebook_url),
+    instagram_url: clean(organization?.instagram_url),
+    linkedin_url: clean(organization?.linkedin_url),
+    logo_url: clean(organization?.logo_url),
   };
   const fallback = {
     public_display_name: clean(fallbackLocation?.public_display_name || fallbackLocation?.name),
@@ -253,7 +255,43 @@ function buildOrganizationProfileState(org, fallbackLocation) {
     }
   }
 
-  return { canonical, fallback, effective, sources, fallbackFields, missingFields };
+  const publishedCompletion = computeOrganizationCompleteness(organization || {});
+  const draftPayload = activeSubmission?.section === 'public_profile' ? parseJson(activeSubmission.payload_json) : {};
+  const projectedOrganization = { ...(organization || {}), ...draftPayload };
+  const projectedCompletion = activeSubmission ? computeOrganizationCompleteness(projectedOrganization) : publishedCompletion;
+
+  return {
+    canonical,
+    fallback,
+    effective,
+    sources,
+    fallbackFields,
+    missingFields,
+    publishedCompletion,
+    projectedCompletion,
+    activeSubmission: activeSubmission ? sanitizeSubmission(activeSubmission) : null,
+  };
+}
+
+function buildLocationsCompletion(locations) {
+  const items = locations.map((location) => ({
+    id: location.id,
+    name: location.public_display_name || location.name || 'Locatie',
+    locality_name: location.locality_name || location.city || '',
+    active_status: location.active_status || 'activa',
+    profile_control_status: location.profile_control_status || 'directory',
+    completion: computeLocationCompleteness(location),
+  }));
+  const activeItems = items.filter((item) => item.active_status !== 'inactiva');
+  const average = activeItems.length
+    ? Math.round(activeItems.reduce((sum, item) => sum + item.completion.percentage, 0) / activeItems.length)
+    : 0;
+  return {
+    average_percentage: average,
+    complete_count: activeItems.filter((item) => item.completion.percentage === 100).length,
+    active_count: activeItems.length,
+    items,
+  };
 }
 
 const CLAIM_STATUS_MESSAGES = {
@@ -263,15 +301,15 @@ const CLAIM_STATUS_MESSAGES = {
   respinsa: 'Revendicarea a fost respinsa.',
 };
 
-async function applicantOverview(svc, user, loc, claim) {
+async function applicantOverview(svc, user, location, claim) {
   const rawDrafts = await svc.entities.ProviderWorkspaceSubmission.filter({
-    location_id: loc.id,
+    location_id: location.id,
     claim_request_id: claim.id,
     submitted_by_user_id: user.id,
     access_origin: 'claim_preparation',
   }, '-created_date', 50);
   const drafts = rawDrafts.filter((submission) => !submission.preparation_locked_at && submission.preparation_lock_reason !== 'claim_rejected');
-  const locationNames = { [loc.id]: loc.public_display_name || loc.name || 'Locatie' };
+  const locationNames = { [location.id]: location.public_display_name || location.name || 'Locatie' };
   return {
     mode: 'applicant_preparation',
     claim: {
@@ -286,17 +324,17 @@ async function applicantOverview(svc, user, loc, claim) {
       status_message: CLAIM_STATUS_MESSAGES[claim.status] || '',
       latest_admin_note: claim.status === 'needs_more_info' ? (claim.review_notes || '') : '',
     },
-    location: safeLocationSummary(loc),
+    location: safeLocationSummary(location),
     preparation_drafts: drafts.map((submission) => sanitizeSubmission(submission, locationNames)),
     pending_submissions: drafts.map((submission) => sanitizeSubmission(submission, locationNames)),
     recent_submissions: drafts.map((submission) => sanitizeSubmission(submission, locationNames)),
     allowed_sections: CLAIM_PREP_ALLOWED_SECTIONS,
     public_preview: {
-      display_name: loc.public_display_name || loc.name,
-      address: loc.address || '',
-      city: loc.city || loc.locality_name || '',
-      county: loc.county || loc.county_name || '',
-      photo_url: loc.photo_url || '',
+      display_name: location.public_display_name || location.name,
+      address: location.address || '',
+      city: location.city || location.locality_name || '',
+      county: location.county || location.county_name || '',
+      photo_url: location.photo_url || '',
     },
   };
 }
@@ -327,13 +365,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    const loc = await svc.entities.ProviderLocation.get(payload.location_id).catch(() => null);
-    if (!loc) return Response.json({ error: 'Locatia nu a fost gasita' }, { status: 404 });
-    if (!hasProviderAccess) return Response.json(await applicantOverview(svc, user, loc, activeClaim));
+    const location = await svc.entities.ProviderLocation.get(payload.location_id).catch(() => null);
+    if (!location) return Response.json({ error: 'Locatia nu a fost gasita' }, { status: 404 });
+    if (!hasProviderAccess) return Response.json(await applicantOverview(svc, user, location, activeClaim));
 
-    const org = loc.organization_id ? await svc.entities.ProviderOrganization.get(loc.organization_id).catch(() => null) : null;
+    const organization = location.organization_id
+      ? await svc.entities.ProviderOrganization.get(location.organization_id).catch(() => null)
+      : null;
+
     if (user.role === 'admin') {
-      ownMemberships = await svc.entities.ProviderMembership.filter({ location_id: loc.id, status: 'active' }, '-created_date', 20);
+      ownMemberships = await svc.entities.ProviderMembership.filter({ location_id: location.id, status: 'active' }, '-created_date', 20);
     } else {
       ownMemberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' }, '-created_date', 200);
     }
@@ -343,17 +384,17 @@ Deno.serve(async (req) => {
       if (!normalizeMemberRole(membership.role) || !membership.location_id) continue;
       const candidate = await svc.entities.ProviderLocation.get(membership.location_id).catch(() => null);
       if (!candidate) continue;
-      if (loc.organization_id ? candidate.organization_id === loc.organization_id : candidate.id === loc.id) permittedLocations.push(candidate);
+      if (location.organization_id ? candidate.organization_id === location.organization_id : candidate.id === location.id) permittedLocations.push(candidate);
     }
-    if (!permittedLocations.some((candidate) => candidate.id === loc.id)) permittedLocations.push(loc);
+    if (!permittedLocations.some((candidate) => candidate.id === location.id)) permittedLocations.push(location);
     const uniqueLocations = [...new Map(permittedLocations.map((candidate) => [candidate.id, candidate])).values()];
     const permittedLocationIds = uniqueLocations.map((candidate) => candidate.id);
     const locationNames = Object.fromEntries(uniqueLocations.map((candidate) => [candidate.id, candidate.public_display_name || candidate.name || 'Locatie']));
 
     const activeRows = [];
-    if (org) {
+    if (organization) {
       activeRows.push(...await svc.entities.ProviderWorkspaceSubmission.filter({
-        organization_id: org.id,
+        organization_id: organization.id,
         access_origin: 'provider_workspace',
         status: { $in: ACTIVE_SUBMISSION_STATUSES },
       }, '-updated_date', 200));
@@ -371,12 +412,8 @@ Deno.serve(async (req) => {
       .sort((a, b) => submissionTimestamp(b) - submissionTimestamp(a));
 
     const recentRows = [];
-    if (org) {
-      recentRows.push(...await svc.entities.ProviderWorkspaceSubmission.filter({ organization_id: org.id }, '-updated_date', 100));
-    }
-    for (const candidate of uniqueLocations) {
-      recentRows.push(...await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: candidate.id }, '-updated_date', 50));
-    }
+    if (organization) recentRows.push(...await svc.entities.ProviderWorkspaceSubmission.filter({ organization_id: organization.id }, '-updated_date', 100));
+    for (const candidate of uniqueLocations) recentRows.push(...await svc.entities.ProviderWorkspaceSubmission.filter({ location_id: candidate.id }, '-updated_date', 50));
     const recentSubs = dedupeSubmissions(recentRows)
       .filter((submission) => submission.access_origin === 'provider_workspace')
       .filter((submission) => submission.section === 'public_profile' || permittedLocationIds.includes(submission.location_id))
@@ -385,9 +422,9 @@ Deno.serve(async (req) => {
 
     const reviewedSubs = recentSubs.filter((submission) => ['needs_more_info', 'rejected', 'approved'].includes(submission.status));
     const latestReview = reviewedSubs[0] || null;
-    const completion = org ? computeOrganizationCompleteness(org, uniqueLocations) : computeLocationCompleteness(loc);
+    const activeOrganizationSubmission = pendingSubs.find((submission) => submission.section === 'public_profile' && submission.organization_id === organization?.id) || null;
     const contentSummary = await getAggregateContentSummary(svc, uniqueLocations, user.id);
-    const memberSummary = await getMemberSummary(svc, user.id, loc.id);
+    const memberSummary = await getMemberSummary(svc, user.id, location.id);
 
     let pendingLogoUrl = '';
     let pendingLogoLocationId = '';
@@ -405,22 +442,21 @@ Deno.serve(async (req) => {
     }
 
     const organizationPublic = {
-      id: org?.id || null,
-      name: org?.name || loc.name,
-      legal_name: org?.legal_name || '',
-      organization_type: org?.organization_type || loc.provider_profile_type || '',
-      public_display_name: org?.public_display_name || '',
-      public_description: org?.public_description || '',
-      public_phone: org?.public_phone || '',
-      public_email: org?.public_email || '',
-      website_url: org?.website_url || org?.website || '',
-      facebook_url: org?.facebook_url || '',
-      instagram_url: org?.instagram_url || '',
-      linkedin_url: org?.linkedin_url || '',
-      logo_url: org?.logo_url || '',
-      profile_completeness: completion.percentage,
-      public_visibility_status: org?.public_visibility_status || 'draft',
-      status: org?.status || 'activa',
+      id: organization?.id || null,
+      name: organization?.name || location.name,
+      legal_name: organization?.legal_name || '',
+      organization_type: organization?.organization_type || location.provider_profile_type || '',
+      public_display_name: organization?.public_display_name || '',
+      public_description: organization?.public_description || '',
+      public_phone: organization?.public_phone || '',
+      public_email: organization?.public_email || '',
+      website_url: organization?.website_url || organization?.website || '',
+      facebook_url: organization?.facebook_url || '',
+      instagram_url: organization?.instagram_url || '',
+      linkedin_url: organization?.linkedin_url || '',
+      logo_url: organization?.logo_url || '',
+      public_visibility_status: organization?.public_visibility_status || 'draft',
+      status: organization?.status || 'activa',
     };
 
     const activeLocations = uniqueLocations.filter((candidate) => candidate.active_status !== 'inactiva' && candidate.status !== 'suspendata');
@@ -430,27 +466,44 @@ Deno.serve(async (req) => {
       : verifiedLocationCount > 0
         ? 'partially_verified'
         : 'unverified';
-    const fallbackLocation = activeLocations[0] || uniqueLocations[0] || loc;
-    const organizationProfileState = buildOrganizationProfileState(org, fallbackLocation);
+    const fallbackLocation = activeLocations[0] || uniqueLocations[0] || location;
+    const organizationProfileState = buildOrganizationProfileState(organization, fallbackLocation, activeOrganizationSubmission);
+    const locationsCompletion = buildLocationsCompletion(uniqueLocations);
+    organizationPublic.profile_completeness = organizationProfileState.publishedCompletion.percentage;
 
     return Response.json({
       mode: 'provider_workspace',
       organization: organizationPublic,
+      organization_profile_state: {
+        canonical: organizationProfileState.canonical,
+        fallback: organizationProfileState.fallback,
+        effective: organizationProfileState.effective,
+        sources: organizationProfileState.sources,
+        fallback_fields: organizationProfileState.fallbackFields,
+        missing_fields: organizationProfileState.missingFields,
+        published_completion: organizationProfileState.publishedCompletion,
+        projected_completion: organizationProfileState.projectedCompletion,
+        active_submission: organizationProfileState.activeSubmission,
+        fallback_location_id: fallbackLocation?.id || null,
+        fallback_location_name: fallbackLocation?.public_display_name || fallbackLocation?.name || '',
+      },
       organization_profile_uses_location_fallback: organizationProfileState.fallbackFields.length > 0,
       organization_profile_sources: organizationProfileState.sources,
       organization_profile_fallback_fields: organizationProfileState.fallbackFields,
       organization_profile_missing_fields: organizationProfileState.missingFields,
+      organization_profile_fallback_values: organizationProfileState.fallback,
       organization_summary: {
         location_count: uniqueLocations.length,
         active_location_count: activeLocations.length,
         verified_location_count: verifiedLocationCount,
         verification_status: verificationStatus,
         public_profile_status: organizationPublic.public_visibility_status,
-        profile_completeness: completion.percentage,
+        profile_completeness: organizationProfileState.publishedCompletion.percentage,
       },
-      location: safeLocationSummary(loc),
+      location_completion_summary: locationsCompletion,
+      location: safeLocationSummary(location),
       locations: uniqueLocations.map(safeLocationSummary),
-      completion,
+      completion: organizationProfileState.publishedCompletion,
       content_summary: contentSummary,
       member_summary: memberSummary,
       current_user_role: memberSummary.current_user_role,
@@ -477,7 +530,7 @@ Deno.serve(async (req) => {
         latest_reviewed_at: latestReview.reviewed_at || null,
       } : {}),
       public_preview: {
-        display_name: organizationProfileState.effective.public_display_name || org?.name || loc.name,
+        display_name: organizationProfileState.effective.public_display_name || organization?.name || location.name,
         description: organizationProfileState.effective.public_description,
         phone: organizationProfileState.effective.public_phone,
         email: organizationProfileState.effective.public_email,
