@@ -11,7 +11,7 @@
   box-shadow: 0 0 0 3px hsl(var(--foreground) / 0.045);
 }
 
-/* The structured row has three cells: selector, content and semantic status. */
+/* Service choices keep three semantic cells inside each compact card. */
 .provider-services-polish button.grid {
   grid-template-columns: auto minmax(0, 1fr) auto !important;
   column-gap: 0.75rem;
@@ -27,7 +27,7 @@
   justify-self: end;
 }
 
-/* Functional units and capabilities are easier to compare in two balanced columns. */
+/* Physical spaces and capabilities are presented as balanced cards. */
 .provider-services-polish section > div[class~="mt-4"][class~="grid"]:has(> button[class*="min-h-[112px]"]) {
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
 }
@@ -35,6 +35,7 @@
 .provider-services-polish button[class*="min-h-[112px]"] {
   min-height: 126px;
   width: 100%;
+  box-shadow: none;
 }
 
 .provider-services-polish button[class*="min-h-[112px]"][class*="bg-secondary/40"] {
@@ -43,50 +44,138 @@
   box-shadow: inset 0 0 0 1px hsl(var(--foreground) / 0.035);
 }
 
+.provider-services-polish button[class*="min-h-[112px]"]:hover:not(:disabled) {
+  border-color: hsl(var(--foreground) / 0.16);
+  transform: translateY(-1px);
+}
+
 .provider-services-polish button[class*="min-h-[112px]"]:disabled {
   background: hsl(var(--secondary) / 0.12);
 }
 
-/* Keep the unit overview compact: two accordions per row, with the active one full width. */
+/* Closed functional units are compact cards; the selected unit opens full width. */
 .provider-services-polish [class~="space-y-3"] {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
+  gap: 0.875rem;
 }
 
 .provider-services-polish [class~="space-y-3"] > section[class*="shadow-sm"] {
   grid-column: 1 / -1;
 }
 
-/* Options inside an open unit are displayed in two columns on desktop. */
+/* The open unit becomes a premium two-column board of category cards. */
 .provider-services-polish [class~="space-y-3"]
   > section[class*="shadow-sm"]
-  > div[class*="border-t"]
-  > div[class*="border-t"]
-  > div[class*="border-border/50"] {
+  > div[class*="border-t"] {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  background: hsl(var(--secondary) / 0.12);
 }
 
 .provider-services-polish [class~="space-y-3"]
   > section[class*="shadow-sm"]
   > div[class*="border-t"]
+  > div:first-child {
+  grid-column: 1 / -1;
+  margin: -1rem -1rem 0;
+  border-bottom: 1px solid var(--services-border);
+  background: hsl(var(--secondary) / 0.2);
+}
+
+.provider-services-polish [class~="space-y-3"]
+  > section[class*="shadow-sm"]
   > div[class*="border-t"]
+  > div:has(> div[class*="border-border/50"]) {
+  overflow: hidden;
+  border: 1px solid var(--services-border);
+  border-radius: 1rem;
+  background: var(--services-card);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.035);
+}
+
+.provider-services-polish [class~="space-y-3"]
+  > section[class*="shadow-sm"]
+  > div[class*="border-t"]
+  > div:has(> div[class*="border-border/50"])
+  > div:first-child {
+  min-height: 76px;
+  padding: 1rem;
+  border-bottom: 1px solid var(--services-border);
+  background: var(--services-card);
+}
+
+/* Services are selectable tiles, not full-width table rows. */
+.provider-services-polish [class~="space-y-3"]
+  > section[class*="shadow-sm"]
+  > div[class*="border-t"]
+  > div:has(> div[class*="border-border/50"])
+  > div[class*="border-border/50"] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.625rem;
+  padding: 0.75rem;
+  border-top: 0;
+  background: hsl(var(--secondary) / 0.08);
+}
+
+.provider-services-polish [class~="space-y-3"]
+  > section[class*="shadow-sm"]
+  > div[class*="border-t"]
+  > div:has(> div[class*="border-border/50"])
   > div[class*="border-border/50"]
   > button.grid {
-  min-height: 58px;
-  border-bottom: 1px solid var(--services-border);
+  min-height: 68px;
+  padding: 0.75rem;
+  border: 1px solid var(--services-border);
+  border-radius: 0.8rem;
+  background: var(--services-card);
 }
 
 .provider-services-polish [class~="space-y-3"]
   > section[class*="shadow-sm"]
   > div[class*="border-t"]
-  > div[class*="border-t"]
+  > div:has(> div[class*="border-border/50"])
   > div[class*="border-border/50"]
-  > button.grid:nth-child(odd) {
-  border-right: 1px solid var(--services-border);
+  > button.grid:hover:not(:disabled) {
+  border-color: hsl(var(--foreground) / 0.16);
+  background: hsl(var(--secondary) / 0.22);
 }
 
-/* Location-wide options use the same compact two-column selection pattern. */
+.provider-services-polish [class~="space-y-3"]
+  > section[class*="shadow-sm"]
+  > div[class*="border-t"]
+  > div:has(> div[class*="border-border/50"])
+  > div[class*="border-border/50"]
+  > button.grid[class*="bg-secondary/35"] {
+  border-color: hsl(var(--foreground) / 0.22);
+  background: hsl(var(--secondary) / 0.42);
+}
+
+/* Manual proposals remain inside the related category card. */
+.provider-services-polish [class~="space-y-3"]
+  > section[class*="shadow-sm"]
+  > div[class*="border-t"]
+  > div:has(> div[class*="border-border/50"])
+  > div:last-child {
+  background: hsl(var(--secondary) / 0.14);
+}
+
+/* Resources span the full board below category cards. */
+.provider-services-polish [class~="space-y-3"]
+  > section[class*="shadow-sm"]
+  > div[class*="border-t"]
+  > div:not(:first-child):not(:has(> div[class*="border-border/50"])) {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  border: 1px solid var(--services-border);
+  border-radius: 1rem;
+  background: var(--services-card);
+}
+
+/* Location-wide choices use the same tile system. */
 .provider-services-polish
   > div
   > section[class*="overflow-hidden"]
@@ -94,6 +183,9 @@
   > div[class*="border-border/50"] {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: hsl(var(--secondary) / 0.08);
 }
 
 .provider-services-polish
@@ -101,11 +193,25 @@
   > section[class*="overflow-hidden"]
   > div[class*="border-b"]
   > div[class*="border-border/50"]
-  > button.grid:nth-child(odd) {
-  border-right: 1px solid var(--services-border);
+  > button.grid {
+  min-height: 72px;
+  padding: 0.85rem;
+  border: 1px solid var(--services-border);
+  border-radius: 0.875rem;
+  background: var(--services-card);
 }
 
-/* Care-setting choices read as one segmented control rather than unrelated tags. */
+.provider-services-polish
+  > div
+  > section[class*="overflow-hidden"]
+  > div[class*="border-b"]
+  > div[class*="border-border/50"]
+  > button.grid[class*="bg-secondary/35"] {
+  border-color: hsl(var(--foreground) / 0.22);
+  background: hsl(var(--secondary) / 0.42);
+}
+
+/* Care setting reads as one segmented control. */
 .provider-services-polish section:has(> div[class~="mt-3"] > button[class*="rounded-full"]) > div[class~="mt-3"] {
   display: inline-flex;
   max-width: 100%;
@@ -123,7 +229,7 @@
   border-radius: 0.65rem;
 }
 
-/* Internal taxonomy remains in code, but the provider sees Romanian titles and descriptions only. */
+/* Internal taxonomy stays hidden from providers. */
 .provider-services-polish [class~="space-y-3"] > section
   > div[class*="border-t"]
   > div[class*="border-t"]
@@ -132,13 +238,14 @@
   display: none;
 }
 
-/* Functional-unit cards remain calm and use the same neutral surfaces as Program and Specialists. */
-.provider-services-polish section button.min-h-\[112px\] {
-  box-shadow: none;
-}
-
-.provider-services-polish section button.min-h-\[112px\]:hover:not(:disabled) {
-  border-color: hsl(var(--foreground) / 0.14);
+@media (max-width: 1100px) {
+  .provider-services-polish [class~="space-y-3"]
+    > section[class*="shadow-sm"]
+    > div[class*="border-t"]
+    > div:has(> div[class*="border-border/50"])
+    > div[class*="border-border/50"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 899px) {
@@ -146,9 +253,7 @@
   .provider-services-polish [class~="space-y-3"],
   .provider-services-polish [class~="space-y-3"]
     > section[class*="shadow-sm"]
-    > div[class*="border-t"]
-    > div[class*="border-t"]
-    > div[class*="border-border/50"],
+    > div[class*="border-t"],
   .provider-services-polish
     > div
     > section[class*="overflow-hidden"]
@@ -160,16 +265,12 @@
   .provider-services-polish [class~="space-y-3"]
     > section[class*="shadow-sm"]
     > div[class*="border-t"]
+    > div:first-child,
+  .provider-services-polish [class~="space-y-3"]
+    > section[class*="shadow-sm"]
     > div[class*="border-t"]
-    > div[class*="border-border/50"]
-    > button.grid:nth-child(odd),
-  .provider-services-polish
-    > div
-    > section[class*="overflow-hidden"]
-    > div[class*="border-b"]
-    > div[class*="border-border/50"]
-    > button.grid:nth-child(odd) {
-    border-right: 0;
+    > div:not(:first-child):not(:has(> div[class*="border-border/50"])) {
+    grid-column: auto;
   }
 }
 
@@ -187,5 +288,18 @@
 
   .provider-services-polish button[class*="min-h-[112px]"] {
     min-height: 0;
+  }
+
+  .provider-services-polish [class~="space-y-3"]
+    > section[class*="shadow-sm"]
+    > div[class*="border-t"] {
+    padding: 0.75rem;
+  }
+
+  .provider-services-polish [class~="space-y-3"]
+    > section[class*="shadow-sm"]
+    > div[class*="border-t"]
+    > div:first-child {
+    margin: -0.75rem -0.75rem 0;
   }
 }
