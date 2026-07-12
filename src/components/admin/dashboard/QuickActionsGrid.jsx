@@ -1,22 +1,28 @@
 import React from "react";
-import { PlusCircle, Sparkles, UserCheck, Building2 } from "lucide-react";
+import { Building2, ClipboardCheck, Search, UserCheck } from "lucide-react";
 import AdminCard from "@/components/admin/ui/AdminCard";
 
-// UI-1 PART 3.F — 4 quick action cards, navigate to existing pages only.
 export default function QuickActionsGrid({ onNavigate }) {
   const actions = [
-    { icon: PlusCircle, label: "Adauga locatie", tab: "adauga" },
-    { icon: Sparkles, label: "Ruleaza research", tab: "ai" },
-    { icon: UserCheck, label: "Verifica revendicari", tab: "revendicari" },
-    { icon: Building2, label: "Vezi profiluri incomplete", tab: "profiluri" },
+    { icon: ClipboardCheck, label: "Deschide coada de verificare", tab: "workspace_reviews" },
+    { icon: Building2, label: "Adauga organizatie / locatie", tab: "adauga" },
+    { icon: Search, label: "Continua research-ul", tab: "research" },
+    { icon: UserCheck, label: "Verifica revendicarile", tab: "revendicari" },
   ];
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      {actions.map((a) => (
-        <AdminCard key={a.label} className="p-0">
-          <button onClick={() => onNavigate(a.tab)} className="w-full h-full flex flex-col items-start gap-2 p-4 text-left hover:bg-secondary transition-colors rounded-2xl">
-            <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center"><a.icon className="w-4 h-4 text-accent-foreground" /></div>
-            <span className="text-sm font-semibold">{a.label}</span>
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {actions.map((action) => (
+        <AdminCard key={action.label} className="p-0">
+          <button
+            type="button"
+            onClick={() => onNavigate(action.tab)}
+            className="flex h-full w-full flex-col items-start gap-2 rounded-2xl p-4 text-left transition-colors hover:bg-secondary"
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent">
+              <action.icon className="h-4 w-4 text-accent-foreground" />
+            </div>
+            <span className="text-sm font-semibold">{action.label}</span>
           </button>
         </AdminCard>
       ))}
