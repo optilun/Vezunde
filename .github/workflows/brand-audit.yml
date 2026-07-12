@@ -1,0 +1,16 @@
+name: Brand casing audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/brand-audit.yml'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find ViaSee references
+        run: |
+          echo '--- ViaSee occurrences ---'
+          grep -RIn --exclude-dir=.git --exclude='package-lock.json' --exclude='*.map' 'ViaSee' . || true
