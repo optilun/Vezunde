@@ -319,20 +319,21 @@ function SelectionCard({ active, title, description, helper, icon: Icon, disable
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`flex min-h-[112px] items-start gap-3 rounded-2xl border p-4 text-left transition disabled:opacity-60 ${active ? "border-foreground/20 bg-secondary/40" : "border-border bg-card hover:bg-secondary/20"}`}
+      className={`group relative flex min-h-[138px] items-start gap-4 overflow-hidden rounded-[20px] border p-5 text-left transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${active ? "border-foreground/25 bg-secondary/45 shadow-[0_8px_24px_rgba(15,23,42,0.05)]" : "border-border bg-card hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-[0_10px_28px_rgba(15,23,42,0.06)]"}`}
     >
-      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${active ? "border-foreground/15 bg-card text-foreground" : "border-border bg-background text-muted-foreground"}`}>
+      {active && <span className="absolute inset-y-0 left-0 w-1 bg-foreground" />}
+      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-colors ${active ? "border-foreground/15 bg-card text-foreground" : "border-border bg-background text-muted-foreground group-hover:text-foreground"}`}>
         <Icon className="h-4 w-4" />
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-start justify-between gap-2">
-          <span className="text-sm font-bold leading-snug">{title}</span>
+          <span className="pr-2 text-[15px] font-bold leading-snug text-foreground">{title}</span>
           <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${active ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`}>
             {active && <Check className="h-3.5 w-3.5" />}
           </span>
         </span>
-        <span className="mt-1.5 block text-[11px] leading-relaxed text-muted-foreground">{description}</span>
-        {helper && <span className="mt-2 block text-[10px] font-semibold text-muted-foreground">{helper}</span>}
+        <span className="mt-2 block text-xs leading-relaxed text-muted-foreground">{description}</span>
+        {helper && <span className={`mt-3 inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${active ? "bg-card text-foreground shadow-sm" : "bg-secondary/55 text-muted-foreground"}`}>{helper}</span>}
       </span>
     </button>
   );
@@ -340,12 +341,13 @@ function SelectionCard({ active, title, description, helper, icon: Icon, disable
 
 function UnitSelection({ units, activeUnits, selectedByUnit, primaryUnits, disabled, onToggle }) {
   return (
-    <section className="rounded-[22px] border border-border bg-card p-4 shadow-sm sm:p-5">
-      <div>
-        <h2 className="text-sm font-bold">1. Ce spații există în această locație?</h2>
+    <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm sm:p-6">
+      <div className="max-w-3xl">
+        <div className="mb-2 flex h-7 w-7 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background">1</div>
+        <h2 className="text-base font-bold">Ce spații există în această locație?</h2>
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Alege numai spațiile care există fizic. Cabinetul de optică, cabinetul optometric, atelierul și laboratorul sunt tratate separat.</p>
       </div>
-      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
         {units.map((unitKey) => {
           const definition = getFunctionalUnitDefinition(unitKey);
           const Icon = UNIT_ICONS[unitKey] || Building2;
@@ -372,12 +374,13 @@ function UnitSelection({ units, activeUnits, selectedByUnit, primaryUnits, disab
 function CapabilitySelection({ capabilityKeys, capabilities, activeUnits, primaryCapabilities, disabled, onToggle }) {
   if (capabilityKeys.length === 0) return null;
   return (
-    <section className="rounded-[22px] border border-border bg-card p-4 shadow-sm sm:p-5">
-      <div>
-        <h2 className="text-sm font-bold">2. Ce activități speciale sunt disponibile?</h2>
+    <section className="rounded-[24px] border border-border bg-card p-5 shadow-sm sm:p-6">
+      <div className="max-w-3xl">
+        <div className="mb-2 flex h-7 w-7 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background">2</div>
+        <h2 className="text-base font-bold">Ce activități speciale sunt disponibile?</h2>
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Acestea sunt capabilități, nu camere separate. Fiecare activitate este legată de un cabinet, magazin, atelier sau laborator selectat.</p>
       </div>
-      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
         {capabilityKeys.map((capabilityKey) => {
           const definition = getCapabilityDefinition(capabilityKey);
           const activeRow = capabilities.find((item) => item.capability_key === capabilityKey);
