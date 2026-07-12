@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Image as ImageIcon, MapPin, Phone } from "lucide-react";
+import { base44 } from "@/api/base44Client";
 import TrustBadge from "@/components/results/TrustBadge";
 import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
 
@@ -18,7 +19,7 @@ function normalizedName(value) {
   return String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("ro-RO");
 }
 
-function imageCandidate(value, version, attempt) {
+function versionedImageUrl(value, version, attempt) {
   const raw = String(value || "").trim();
   if (!raw || raw.startsWith("data:image/") || attempt === 0) return raw;
   try {
@@ -32,22 +33,45 @@ function imageCandidate(value, version, attempt) {
 }
 
 function HeroContent({ profile, status, serviceCount, mapUrl }) {
+  const [publicBrand, setPublicBrand] = useState(null);
   const [logoAttempt, setLogoAttempt] = useState(0);
   const [logoFailed, setLogoFailed] = useState(false);
-  const organizationName = profile.organization_name || profile.name;
+
+  useEffect(() => {
+    let cancelled = false;
+    setPublicBrand(null);
+    if (!profile.id) return () => { cancelled = true; };
+
+    base44.functions.invoke("getPublicOrganizationBrand", { location_id: profile.id })
+      .then((response) => {
+        if (!cancelled) setPublicBrand(response.data?.brand || {});
+      })
+      .catch(() => {
+        if (!cancelled) setPublicBrand({});
+      });
+
+    return () => { cancelled = true; };
+  }, [profile.id]);
+
+  const organizationName = publicBrand?.organization_name || profile.organization_name || profile.name;
   const organizationDiffers = normalizedName(organizationName) !== normalizedName(profile.name);
   const providerLabel = PROVIDER_PROFILE_TYPES[profile.provider_profile_type]
     || PROVIDER_TYPES[profile.provider_type]
     || "Furnizor medical";
+  const organizationLogo = publicBrand?.logo_data_url
+    || publicBrand?.logo_url
+    || profile.organization_logo_url
+    || "";
+  const organizationLogoVersion = publicBrand?.logo_version || profile.organization_logo_version || "";
   const logoSrc = useMemo(
-    () => imageCandidate(profile.organization_logo_url, profile.organization_logo_version, logoAttempt),
-    [profile.organization_logo_url, profile.organization_logo_version, logoAttempt],
+    () => versionedImageUrl(organizationLogo, organizationLogoVersion, logoAttempt),
+    [organizationLogo, organizationLogoVersion, logoAttempt],
   );
 
   useEffect(() => {
     setLogoAttempt(0);
     setLogoFailed(false);
-  }, [profile.organization_logo_url, profile.organization_logo_version]);
+  }, [organizationLogo, organizationLogoVersion]);
 
   const handleLogoError = () => {
     if (logoAttempt === 0 && logoSrc && !logoSrc.startsWith("data:image/")) {
@@ -69,7 +93,6 @@ function HeroContent({ profile, status, serviceCount, mapUrl }) {
               className="h-full w-full object-contain"
               loading="eager"
               decoding="async"
-              onLoad={() => setLogoFailed(false)}
               onError={handleLogoError}
             />
           ) : (
