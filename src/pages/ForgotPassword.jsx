@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Mail, ArrowLeft, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
-import { buildAuthRoute } from "@/lib/postLoginRedirect";
+import { buildAuthRoute, rememberPostAuthDestination } from "@/lib/postLoginRedirect";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -16,6 +16,7 @@ export default function ForgotPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    rememberPostAuthDestination();
     try {
       await base44.auth.resetPasswordRequest(email);
     } catch {
@@ -38,9 +39,10 @@ export default function ForgotPassword() {
       }
     >
       {sent ? (
-        <p className="text-sm text-foreground text-center leading-relaxed">
-          Daca exista un cont asociat acestei adrese, vei primi in scurt timp un link pentru resetarea parolei.
-        </p>
+        <div className="text-center">
+          <p className="text-sm text-foreground leading-relaxed">Daca exista un cont asociat acestei adrese, vei primi in scurt timp un link pentru resetarea parolei.</p>
+          <p className="mt-2 text-xs text-muted-foreground">Dupa resetare vei reveni la fluxul inceput pe acest dispozitiv.</p>
+        </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
