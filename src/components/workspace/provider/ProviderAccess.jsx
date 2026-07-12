@@ -57,7 +57,8 @@ function groupRoleLabel(group) {
 function accessSummary(group, allLocationIds, locationById) {
   const active = group.memberships.filter((membership) => membership.status === "active");
   const activeIds = [...new Set(active.map((membership) => membership.location_id).filter(Boolean))];
-  const ownerEverywhere = allLocationIds.length > 0 && allLocationIds.every((id) => active.some((membership) => membership.location_id === id && membership.role === "organization_owner"));
+  const ownerEverywhere = allLocationIds.length > 0
+    && allLocationIds.every((id) => active.some((membership) => membership.location_id === id && membership.role === "organization_owner"));
   if (ownerEverywhere) return { label: "Intreaga organizatie", locations: [] };
   if (activeIds.length === 0) return { label: "Fara acces activ", locations: [] };
   if (activeIds.length === allLocationIds.length && allLocationIds.length > 1) return { label: "Toate locatiile actuale", locations: [] };
@@ -86,7 +87,7 @@ function Drawer({ open, title, subtitle, onClose, children }) {
   );
 }
 
-function LocationAccessRow({ location, selected, role, disabled, onToggle, onRoleChange }) {
+function LocationAccessRow({ location, selected, role, disabled, showRole = true, onToggle, onRoleChange }) {
   return (
     <div className={`rounded-2xl border p-3.5 transition ${selected ? "border-foreground/20 bg-secondary/35" : "border-border bg-card"}`}>
       <div className="flex items-start gap-3">
@@ -98,16 +99,20 @@ function LocationAccessRow({ location, selected, role, disabled, onToggle, onRol
           <div className="mt-0.5 truncate text-[11px] text-muted-foreground">{location.locality_name || location.city || "Localitate lipsa"}</div>
         </div>
       </div>
-      {selected && (
+      {selected && showRole && (
         <div className="mt-3 border-t border-border/70 pt-3">
           <label className="text-[11px] font-semibold text-muted-foreground">Rol in aceasta locatie</label>
-          <select value={role} disabled={disabled} onChange={(event) => onRoleChange(event.target.value)} className={`${inputCls} mt-1.5 disabled:opacity-60`}>
+          <select value={role} disabled={disabled} onChange={(event) => onRoleChange?.(event.target.value)} className={`${inputCls} mt-1.5 disabled:opacity-60`}>
             {ROLE_ORDER.map((roleKey) => <option key={roleKey} value={roleKey}>{ROLE_LABELS[roleKey] || roleKey}</option>)}
           </select>
         </div>
       )}
     </div>
   );
+}
+
+function FieldLabel({ label, children }) {
+  return <div><label className="text-xs font-semibold text-muted-foreground">{label}</label><div className="mt-1.5">{children}</div></div>;
 }
 
 export default function ProviderAccess({ locations = [] }) {
@@ -187,7 +192,9 @@ export default function ProviderAccess({ locations = [] }) {
     if (form.role === "organization_owner") return;
     setForm((current) => ({
       ...current,
-      location_ids: current.location_ids.includes(id) ? current.location_ids.filter((locationId) => locationId !== id) : [...current.location_ids, id],
+      location_ids: current.location_ids.includes(id)
+        ? current.location_ids.filter((locationId) => locationId !== id)
+        : [...current.location_ids, id],
     }));
   };
 
@@ -227,10 +234,7 @@ export default function ProviderAccess({ locations = [] }) {
     const assignments = {};
     for (const location of locationOptions) {
       const membership = group.memberships.find((item) => item.location_id === location.id && item.status === "active");
-      assignments[location.id] = {
-        selected: !!membership,
-        role: membership?.role || "location_staff",
-      };
+      assignments[location.id] = { selected: !!membership, role: membership?.role || "location_staff" };
     }
     setMemberAssignments(assignments);
     setMemberOpen(group);
@@ -245,17 +249,24 @@ export default function ProviderAccess({ locations = [] }) {
   };
 
   const changeMemberRole = (locationId, role) => {
-    setMemberAssignments((current) => ({
-      ...current,
-      [locationId]: { ...(current[locationId] || { selected: true }), role },
-    }));
+    if (role === "organization_owner") {
+      setMemberAssignments(Object.fromEntries(locationOptions.map((location) => [location.id, { selected: true, role: "organization_owner" }])));
+      return;
+    }
+    setMemberAssignments((current) => {
+      const next = { ...current, [locationId]: { ...(current[locationId] || { selected: true }), role } };
+      for (const location of locationOptions) {
+        if (next[location.id]?.role === "organization_owner") next[location.id] = { ...next[location.id], role: "location_manager" };
+      }
+      return next;
+    });
   };
 
   const selectAllMemberLocations = () => {
     const allSelected = locationOptions.every((location) => memberAssignments[location.id]?.selected);
     setMemberAssignments((current) => Object.fromEntries(locationOptions.map((location) => [
       location.id,
-      { selected: !allSelected, role: current[location.id]?.role || "location_staff" },
+      { selected: !allSelected, role: current[location.id]?.role === "organization_owner" ? "location_manager" : (current[location.id]?.role || "location_staff") },
     ])));
   };
 
@@ -399,7 +410,8 @@ export default function ProviderAccess({ locations = [] }) {
               {form.role !== "organization_owner" && locationOptions.length > 1 && <button type="button" onClick={() => setForm((current) => ({ ...current, location_ids: current.location_ids.length === locationOptions.length ? [] : locationOptions.map((location) => location.id) }))} className="text-[11px] font-semibold underline underline-offset-4">{form.location_ids.length === locationOptions.length ? "Sterge selectia" : "Selecteaza toate"}</button>}
             </div>
             <div className="mt-3 space-y-2">
-              {locationOptions.map((location) => <LocationAccessRow key={location.id} location={location} selected={form.location_ids.includes(location.id)} role={form.role} disabled={form.role === "organization_owner"} onToggle={() => toggleInviteLocation(location.id)} onRoleChange={() => null} />)}
+              {locationOptions.map((location) => <LocationAccessRow key={location.id} location={location} selected={form.location_ids.includes(location.id)} role={form.role} disabled={form.role === "organization_owner"} showRole={false} onToggle={() => toggleInviteLocation(location.id)} />)}
+              {form.role === "organization_owner" && <p className="rounded-xl bg-secondary/40 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">Ownerul este asociat automat tuturor locatiilor actuale si viitoare ale organizatiei.</p>}
             </div>
           </div>
           {message && <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">{message}</div>}
@@ -415,15 +427,11 @@ export default function ProviderAccess({ locations = [] }) {
             <div className="flex items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Building2 className="h-4 w-4" /><h3 className="text-sm font-bold">Acces pe locatii</h3></div><p className="mt-1 text-xs text-muted-foreground">Locatiile nebifate nu vor mai fi accesibile.</p></div>{locationOptions.length > 1 && <button type="button" onClick={selectAllMemberLocations} className="text-[11px] font-semibold underline underline-offset-4">{locationOptions.every((location) => memberAssignments[location.id]?.selected) ? "Sterge selectia" : "Selecteaza toate"}</button>}</div>
             <div className="space-y-2">{locationOptions.map((location) => <LocationAccessRow key={location.id} location={location} selected={!!memberAssignments[location.id]?.selected} role={memberAssignments[location.id]?.role || "location_staff"} disabled={saving} onToggle={() => toggleMemberLocation(location.id)} onRoleChange={(role) => changeMemberRole(location.id, role)} />)}</div>
             {message && <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">{message}</div>}
-            <div className="rounded-2xl border border-border bg-secondary/25 p-3 text-xs leading-relaxed text-muted-foreground">Ownerii organizatiei primesc acces la toate locatiile actuale. Managerii si membrii primesc doar locatiile selectate si nu sunt adaugati automat la locatiile viitoare.</div>
+            <div className="rounded-2xl border border-border bg-secondary/25 p-3 text-xs leading-relaxed text-muted-foreground">Ownerii organizatiei primesc acces la toate locatiile actuale si viitoare. Managerii si membrii primesc doar locatiile selectate.</div>
             <button type="button" disabled={saving} onClick={saveMemberAccess} className="inline-flex h-11 w-full items-center justify-center rounded-full bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-50">{saving ? "Se salveaza..." : "Salveaza accesul"}</button>
           </div>
         )}
       </Drawer>
     </div>
   );
-}
-
-function FieldLabel({ label, children }) {
-  return <div><label className="text-xs font-semibold text-muted-foreground">{label}</label><div className="mt-1.5">{children}</div></div>;
 }
