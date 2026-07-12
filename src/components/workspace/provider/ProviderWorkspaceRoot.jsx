@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
-import AccountSettings from "@/components/workspace/account/AccountSettings";
 import { getProviderNav } from "@/lib/workspaceNav";
 import { PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 import { readAccountPreferences, rememberProviderLocation } from "@/lib/accountPreferences";
@@ -12,6 +11,7 @@ import ProviderProfilePublic from "./ProviderProfilePublic";
 import ProviderLocationsWithPhoto from "./ProviderLocationsWithPhoto";
 import ProviderLocationModulePage from "./ProviderLocationModulePage";
 import ProviderAccess from "./ProviderAccess";
+import ProviderSettings from "./ProviderSettings";
 
 const LOCATION_MODULES = new Set(["servicii", "program", "specialisti"]);
 
@@ -169,12 +169,13 @@ export default function ProviderWorkspaceRoot({
           )}
           {safeSection === "access" && workspace.can_manage_members && <ProviderAccess locations={workspace.locations} />}
           {safeSection === "settings" && (
-            <AccountSettings
+            <ProviderSettings
               user={user}
-              accountModes={accountModes}
-              activeMode={activeMode}
+              workspace={workspace}
+              overview={overview}
+              selectedLocationId={selectedLocationId}
+              onSelectLocation={selectLocation}
               onSwitchMode={onSwitchMode}
-              onLogout={onLogout}
             />
           )}
         </>
