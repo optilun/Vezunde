@@ -1,24 +1,38 @@
 import React from "react";
-import { CheckCircle2, ShieldQuestion, UserCheck, Wrench, Sparkles, AlertTriangle, MapPin, Activity } from "lucide-react";
+import {
+  Activity,
+  CheckCircle2,
+  ClipboardCheck,
+  MapPin,
+  Search,
+  ShieldQuestion,
+  UserCheck,
+  Wrench,
+} from "lucide-react";
 import KpiCard from "./KpiCard";
 
-// UI-1 PART 2: 8 KPI cards, all backed by real counts computed by the parent.
 export default function KpiGrid({ stats, onNavigate }) {
   const cards = [
     { icon: CheckCircle2, label: "Locatii publicate", value: stats.published, tab: "profiluri" },
-    { icon: ShieldQuestion, label: "Profiluri de verificat", value: stats.toVerify, tab: "profiluri" },
+    { icon: ClipboardCheck, label: "Coada de verificare", value: stats.reviewQueue, tab: "workspace_reviews" },
     { icon: UserCheck, label: "Revendicari in asteptare", value: stats.pendingClaims, tab: "revendicari" },
     { icon: Wrench, label: "Servicii neconfirmate", value: stats.unconfirmedServices, tab: "servicii" },
-    { icon: Sparkles, label: "Drafturi AI in review", value: stats.draftsInReview, tab: "ai" },
-    { icon: AlertTriangle, label: "Profiluri incomplete", value: stats.incompleteProfiles, tab: "profiluri" },
+    { icon: Search, label: "Drafturi research active", value: stats.activeResearchDrafts, tab: "research" },
+    { icon: ShieldQuestion, label: "Profiluri directory", value: stats.directoryProfiles, tab: "profiluri" },
     { icon: MapPin, label: "Acoperire judete", value: `${stats.countiesCovered}/${stats.totalCounties}`, tab: "geografie" },
-    { icon: Activity, label: "Activitati recente", value: stats.recentActivityCount, tab: "audit" },
+    { icon: Activity, label: "Actiuni in 7 zile", value: stats.recentAuditCount, tab: "audit" },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
-      {cards.map((c) => (
-        <KpiCard key={c.label} icon={c.icon} label={c.label} value={c.value} onClick={() => onNavigate(c.tab)} />
+    <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {cards.map((card) => (
+        <KpiCard
+          key={card.label}
+          icon={card.icon}
+          label={card.label}
+          value={card.value}
+          onClick={() => onNavigate(card.tab)}
+        />
       ))}
     </div>
   );
