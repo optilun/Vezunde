@@ -18,13 +18,13 @@ function normalizedName(value) {
   return String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("ro-RO");
 }
 
-function versionedImageUrl(value, version, attempt) {
+function imageCandidate(value, version, attempt) {
   const raw = String(value || "").trim();
-  if (!raw || raw.startsWith("data:image/")) return raw;
+  if (!raw || raw.startsWith("data:image/") || attempt === 0) return raw;
   try {
     const url = new URL(raw);
     if (version) url.searchParams.set("v", String(version));
-    if (attempt > 0) url.searchParams.set("retry", String(attempt));
+    url.searchParams.set("retry", String(attempt));
     return url.toString();
   } catch (_error) {
     return raw;
@@ -40,7 +40,7 @@ function HeroContent({ profile, status, serviceCount, mapUrl }) {
     || PROVIDER_TYPES[profile.provider_type]
     || "Furnizor medical";
   const logoSrc = useMemo(
-    () => versionedImageUrl(profile.organization_logo_url, profile.organization_logo_version, logoAttempt),
+    () => imageCandidate(profile.organization_logo_url, profile.organization_logo_version, logoAttempt),
     [profile.organization_logo_url, profile.organization_logo_version, logoAttempt],
   );
 
@@ -69,7 +69,7 @@ function HeroContent({ profile, status, serviceCount, mapUrl }) {
               className="h-full w-full object-contain"
               loading="eager"
               decoding="async"
-              referrerPolicy="no-referrer"
+              onLoad={() => setLogoFailed(false)}
               onError={handleLogoError}
             />
           ) : (
