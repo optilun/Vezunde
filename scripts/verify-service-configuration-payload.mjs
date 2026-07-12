@@ -33,6 +33,13 @@ const validPayload = {
     equipment: [{ equipment_id: 'eq-1', unit_key: 'optometry_cabinet' }],
     facilities: [{ facility_id: 'fac-1', unit_key: 'optical_workshop' }],
   },
+  removal_unit_keys: ['optical_store'],
+  removal_capabilities: [{ capability_key: 'contact_lens_sales', parent_unit_key: 'optical_store' }],
+  resource_removals: {
+    professionals: [{ assignment_id: 'assign-2', unit_keys: ['optical_store'] }],
+    equipment: [{ equipment_id: 'eq-2' }],
+    facilities: [{ facility_id: 'fac-2' }],
+  },
   care_setting: 'outpatient',
 };
 
@@ -42,6 +49,9 @@ assert.equal(valid.clean.functional_units.length, 2);
 assert.equal(valid.clean.capabilities.length, 1);
 assert.equal(valid.clean.service_unit_map.contact_lens_fitting, 'optometry_cabinet');
 assert.equal(valid.clean.resource_links.professionals[0].assignment_id, 'assign-1');
+assert.deepEqual(valid.clean.removal_unit_keys, ['optical_store']);
+assert.equal(valid.clean.removal_capabilities[0].capability_key, 'contact_lens_sales');
+assert.deepEqual(valid.clean.resource_removals.professionals[0].unit_keys, ['optical_store']);
 
 const duplicateUnits = validateServiceConfigurationPayload({
   ...validPayload,
@@ -91,6 +101,23 @@ const invalidResourceUnit = validateServiceConfigurationPayload({
 });
 assert.equal(invalidResourceUnit.valid, false);
 assert.match(invalidResourceUnit.error, /unități invalide/i);
+
+const invalidRemovalCapability = validateServiceConfigurationPayload({
+  ...validPayload,
+  removal_capabilities: [{ capability_key: 'contact_lens_professional_services', parent_unit_key: 'optical_workshop' }],
+});
+assert.equal(invalidRemovalCapability.valid, false);
+assert.match(invalidRemovalCapability.error, /invalidă|incompatibilă/i);
+
+const invalidRemovalResourceUnit = validateServiceConfigurationPayload({
+  ...validPayload,
+  resource_removals: {
+    ...validPayload.resource_removals,
+    professionals: [{ assignment_id: 'assign-2', unit_keys: ['unknown_unit'] }],
+  },
+});
+assert.equal(invalidRemovalResourceUnit.valid, false);
+assert.match(invalidRemovalResourceUnit.error, /invalidă/i);
 
 const b2bPayload = validateServiceConfigurationPayload({
   selected_ids: { b2b_capabilities: ['wholesale_frames'] },
