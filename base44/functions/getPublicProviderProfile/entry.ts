@@ -13,7 +13,7 @@ const PATIENT_FACING_PROFILE_TYPES = [
 ];
 
 const STATUS_LABELS = {
-  verified: 'Profil verificat de Vezunde',
+  verified: 'Locatie verificata',
   claimed: 'Profil revendicat',
   directory: 'Profil din director',
 };
@@ -36,7 +36,18 @@ function isPublicSafeService(service, location, prerequisiteContext) {
 function toPublicService(service) {
   const normalized = normalizeServiceKey(service?.service_key || service?.key);
   if (!normalized.definition || !normalized.canonicalKey) return null;
-  return { key: normalized.canonicalKey, label: normalized.definition.label };
+  return {
+    key: normalized.canonicalKey,
+    label: normalized.definition.label,
+    confirmation_level: service?.confirmation_level || 'not_confirmed',
+  };
+}
+
+function serviceConfirmationLevel(services = []) {
+  if (services.length === 0) return null;
+  if (services.every((service) => service.confirmation_level === 'vezunde_verified')) return 'vezunde_verified';
+  if (services.every((service) => ['provider_confirmed', 'vezunde_verified'].includes(service.confirmation_level))) return 'provider_confirmed';
+  return null;
 }
 
 function publicUrl(value) {
@@ -57,6 +68,15 @@ function publicImage(value) {
   if (!raw) return null;
   if (raw.length <= 800000 && /^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(raw)) return raw;
   return publicUrl(raw);
+}
+
+function normalizedCopy(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ro-RO');
+}
+
+function exactMapPosition(location) {
+  if (String(location?.place_id || '').trim()) return true;
+  return Number.isFinite(Number(location?.lat)) && Number.isFinite(Number(location?.lng));
 }
 
 Deno.serve(async (req) => {
@@ -116,13 +136,21 @@ Deno.serve(async (req) => {
     }
 
     const organizationName = organization?.public_display_name || organization?.name || null;
+    const organizationDescription = organization?.public_description || null;
+    const rawLocationDescription = location.public_description || location.description || null;
+    const locationDescription = rawLocationDescription && normalizedCopy(rawLocationDescription) !== normalizedCopy(organizationDescription)
+      ? rawLocationDescription
+      : null;
+    const mapPrecision = exactMapPosition(location) ? 'exact' : location.address ? 'approximate' : null;
+
     return Response.json({
       profile: {
         id: location.id,
         organization_id: organization?.id || null,
         organization_name: organizationName,
         organization_logo_url: publicImage(organization?.logo_url),
-        organization_description: organization?.public_description || null,
+        organization_description: organizationDescription,
+        location_description: locationDescription,
         name: location.public_display_name || location.name,
         provider_type: location.provider_type,
         provider_profile_type: location.provider_profile_type,
@@ -132,19 +160,22 @@ Deno.serve(async (req) => {
         lat: location.lat ?? null,
         lng: location.lng ?? null,
         place_id: location.place_id || null,
+        map_precision: mapPrecision,
         phone_public: location.public_phone || location.phone_public || null,
         public_email: location.public_email || null,
         website: publicUrl(organization?.website_url || organization?.website || location.website_url || location.website),
         facebook: publicUrl(organization?.facebook_url || location.facebook_url),
         instagram: publicUrl(organization?.instagram_url || location.instagram_url),
         linkedin: publicUrl(organization?.linkedin_url || location.linkedin_url),
-        description: location.public_description || location.description || organization?.public_description || null,
-        photo_url: publicImage(location.photo_url || location.profile_photo_url),
+        description: locationDescription || organizationDescription || rawLocationDescription,
+        photo_url: publicImage(location.photo_url),
         opening_hours: location.opening_hours || null,
         saturday_hours: location.saturday_hours || null,
+        opening_hours_json: location.opening_hours_json || null,
         profile_control_status: controlStatus,
         status_label: STATUS_LABELS[controlStatus] || STATUS_LABELS.directory,
         availability_label: availabilityLabel,
+        service_confirmation_level: serviceConfirmationLevel(publicServices),
         services: publicServices,
         team,
       },
