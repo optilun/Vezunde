@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { readAccountPreferences, rememberAccountMode } from "@/lib/accountPreferences";
@@ -15,6 +16,7 @@ const MODE_LABELS = {
 };
 
 export default function MyAccount() {
+  const [params, setParams] = useSearchParams();
   const [user, setUser] = useState(null);
   const [providerWorkspace, setProviderWorkspace] = useState(null);
   const [professionalWorkspace, setProfessionalWorkspace] = useState(null);
@@ -61,6 +63,18 @@ export default function MyAccount() {
 
   const switchMode = (mode) => {
     if (!availableModeKeys.has(mode)) return;
+    const settingsOpen = params.get("s") === "settings" || params.get("ps") === "settings";
+    if (settingsOpen && mode !== "applicant") {
+      const next = new URLSearchParams(params);
+      if (mode === "professional") {
+        next.delete("s");
+        next.set("ps", "settings");
+      } else {
+        next.delete("ps");
+        next.set("s", "settings");
+      }
+      setParams(next, { replace: true });
+    }
     setActiveMode(mode);
     rememberAccountMode(user.id, mode);
   };
