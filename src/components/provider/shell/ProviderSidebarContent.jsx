@@ -22,7 +22,7 @@ export default function ProviderSidebarContent({ navItems, activeKey, onNavigate
       <div className="px-4 pt-5 pb-4">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg text-white flex items-center justify-center text-sm font-bold bg-foreground shrink-0">V</div>
-          <span className="font-heading text-lg font-bold tracking-tight truncate">{title || "ViaSee"}</span>
+          <span className="font-heading text-lg font-bold tracking-tight truncate">{title || "VIASEE"}</span>
         </div>
         <p className="text-[11px] text-muted-foreground mt-1 pl-9 truncate">{subtitle || "Contul meu"}</p>
       </div>
