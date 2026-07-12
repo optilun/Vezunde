@@ -24,6 +24,7 @@
       "enum": [
         "public_profile",
         "location_details",
+        "location_create",
         "operating_hours",
         "services",
         "team",
@@ -55,6 +56,9 @@
     "submitted_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "applied_entity_id": {
+      "type": "string"
     },
     "preparation_locked_at": {
       "type": "string",
