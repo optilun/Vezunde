@@ -44,6 +44,10 @@ Deno.serve(async (req) => {
     const fields = changes.fields || {};
     const organizationLogo = changes.media_review?.target_type === 'organization_logo' && !!fields.photo_url;
     const organizationId = changes.media_review?.organization_id || changes.organization_id || location.organization_id || '';
+    const organization = organizationLogo
+      ? await svc.entities.ProviderOrganization.get(organizationId).catch(() => null)
+      : null;
+    if (organizationLogo && !organization) return Response.json({ error: 'Organizatia logo-ului nu a fost gasita' }, { status: 404 });
 
     if (input.decision === 'aproba') {
       const locationUpdates = { pending_changes: '' };
@@ -84,15 +88,10 @@ Deno.serve(async (req) => {
         servicePlan = { existing, byKey, wantedKeys, wanted: new Set(wantedKeys) };
       }
 
-      await svc.entities.ProviderLocation.update(location.id, locationUpdates);
-
       if (organizationLogo) {
-        const organization = organizationId ? await svc.entities.ProviderOrganization.get(organizationId).catch(() => null) : null;
-        if (!organization) return Response.json({ error: 'Organizatia logo-ului nu a fost gasita' }, { status: 404 });
         const organizationUpdates = {
           logo_url: fields.photo_url,
           profile_updated_at: now,
-          public_visibility_status: organization.public_visibility_status === 'draft' ? 'pending_review' : organization.public_visibility_status,
         };
         organizationUpdates.profile_completeness = organizationCompleteness({ ...organization, ...organizationUpdates });
         await svc.entities.ProviderOrganization.update(organization.id, organizationUpdates);
@@ -109,6 +108,8 @@ Deno.serve(async (req) => {
           performed_at: now,
         });
       }
+
+      await svc.entities.ProviderLocation.update(location.id, locationUpdates);
 
       if (servicePlan) {
         for (const serviceKey of servicePlan.wantedKeys) {
