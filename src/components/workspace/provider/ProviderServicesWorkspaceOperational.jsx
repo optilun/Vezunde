@@ -888,6 +888,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
   const [activeUnits, setActiveUnits] = useState([]);
   const [approvedCapabilities, setApprovedCapabilities] = useState([]);
   const [capabilities, setCapabilities] = useState([]);
+  const [approvedServiceUnitMap, setApprovedServiceUnitMap] = useState({});
   const [serviceUnitMap, setServiceUnitMap] = useState({});
   const [approvedResourceLinks, setApprovedResourceLinks] = useState({ professionals: [], equipment: [], facilities: [] });
   const [resourceLinks, setResourceLinks] = useState({ professionals: [], equipment: [], facilities: [] });
@@ -1083,6 +1084,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     setActiveUnits(initialUnits);
     setApprovedCapabilities(persistedCapabilities);
     setCapabilities(initialCapabilities);
+    setApprovedServiceUnitMap(nextConfig.service_unit_map || {});
     setServiceUnitMap(initialMap);
     setApprovedResourceLinks(approvedLinks);
     setResourceLinks(initialResourceLinks);
@@ -1112,6 +1114,69 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     if (context?.sectionKey === "business_attributes") return false;
     return (serviceUnitMap[serviceKey] || context?.unitKey || "") === unitKey;
   });
+
+  const restoreApprovedServices = (predicate) => {
+    const keys = selectedServiceKeys(approvedSelected).filter(predicate);
+    if (keys.length === 0) return;
+    setSelected((current) => {
+      const next = Object.fromEntries(Object.entries(current).map(([group, ids]) => [group, [...(ids || [])]]));
+      for (const serviceKey of keys) {
+        const group = SERVICE_GROUP_BY_KEY[serviceKey];
+        if (!group) continue;
+        next[group] = [...new Set([...(next[group] || []), serviceKey])];
+      }
+      return next;
+    });
+    setServiceUnitMap((current) => ({
+      ...current,
+      ...Object.fromEntries(keys.map((serviceKey) => [serviceKey, approvedServiceUnitMap[serviceKey]]).filter(([, unitKey]) => unitKey)),
+    }));
+  };
+
+  const restoreApprovedResourcesForUnit = (unitKey) => {
+    setResourceLinks((current) => {
+      const next = {
+        professionals: current.professionals.map((item) => ({ ...item, unit_keys: [...(item.unit_keys || [])] })),
+        equipment: [...current.equipment],
+        facilities: [...current.facilities],
+      };
+      for (const approved of approvedResourceLinks.professionals || []) {
+        if (!(approved.unit_keys || []).includes(unitKey)) continue;
+        const index = next.professionals.findIndex((item) => item.assignment_id === approved.assignment_id);
+        if (index >= 0) next.professionals[index] = { ...next.professionals[index], unit_keys: [...new Set([...(next.professionals[index].unit_keys || []), unitKey])] };
+        else next.professionals.push({ assignment_id: approved.assignment_id, unit_keys: [unitKey] });
+      }
+      for (const type of ["equipment", "facilities"]) {
+        const idField = type === "equipment" ? "equipment_id" : "facility_id";
+        for (const approved of approvedResourceLinks[type] || []) {
+          if (approved.unit_key !== unitKey) continue;
+          const index = next[type].findIndex((item) => item[idField] === approved[idField]);
+          if (index >= 0) next[type][index] = { ...approved };
+          else next[type].push({ ...approved });
+        }
+      }
+      return next;
+    });
+  };
+
+  const restoreApprovedUnit = (unitKey) => {
+    setActiveUnits((current) => [...new Set([...current, unitKey])]);
+    setCapabilities((current) => {
+      const restored = approvedCapabilities.filter((item) => item.parent_unit_key === unitKey);
+      const existing = new Set(current.map(capabilityIdentity));
+      return [...current, ...restored.filter((item) => !existing.has(capabilityIdentity(item)))];
+    });
+    restoreApprovedServices((serviceKey) => approvedServiceUnitMap[serviceKey] === unitKey);
+    restoreApprovedResourcesForUnit(unitKey);
+    setOpenUnit(unitKey);
+    setMessage("Solicitarea de eliminare a spațiului și a dependențelor aprobate a fost anulată.");
+  };
+
+  const restoreApprovedCapability = (capabilityKey, approvedRow) => {
+    setCapabilities((current) => [...current, { ...approvedRow }]);
+    restoreApprovedServices((serviceKey) => getServiceOperationalContext(serviceKey)?.capabilityKey === capabilityKey);
+    setMessage("Solicitarea de eliminare a activității și a serviciilor aprobate a fost anulată.");
+  };
 
   const applyUnitRemoval = (unitKey) => {
     const serviceKeys = new Set(servicesForUnit(unitKey));
@@ -1152,8 +1217,11 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
       applyUnitRemoval(unitKey);
       return;
     }
-    setActiveUnits((current) => [...current, unitKey]);
-    setOpenUnit(unitKey);
+    if (approvedUnits.includes(unitKey)) restoreApprovedUnit(unitKey);
+    else {
+      setActiveUnits((current) => [...current, unitKey]);
+      setOpenUnit(unitKey);
+    }
   };
 
   const applyCapabilityRemoval = (capabilityKey) => {
@@ -1186,8 +1254,11 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
       return;
     }
     const approvedRow = approvedCapabilities.find((item) => item.capability_key === capabilityKey && activeUnits.includes(item.parent_unit_key));
-    const parent = approvedRow?.parent_unit_key || parentOptions[0];
-    setCapabilities((current) => [...current, { capability_key: capabilityKey, parent_unit_key: parent, note: approvedRow?.note || "" }]);
+    if (approvedRow) restoreApprovedCapability(capabilityKey, approvedRow);
+    else {
+      const parent = parentOptions[0];
+      setCapabilities((current) => [...current, { capability_key: capabilityKey, parent_unit_key: parent, note: "" }]);
+    }
   };
 
   const confirmDependencyRemoval = () => {
