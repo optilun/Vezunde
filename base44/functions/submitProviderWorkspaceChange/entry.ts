@@ -358,10 +358,64 @@ function sanitizeSubmission(submission) {
 }
 
 function safeConflict(submission) {
-  return { conflict: true, section: submission.section, status: submission.status, message: 'Exista deja o modificare in lucru pentru aceasta sectiune.' };
+  const message = submission.status === 'pending_review'
+    ? 'Exista deja o modificare trimisa spre verificare pentru aceasta sectiune.'
+    : 'Exista deja o modificare in lucru pentru aceasta sectiune.';
+  return { conflict: true, section: submission.section, status: submission.status, message };
 }
 function isLockedPreparation(submission) { return !!submission.preparation_locked_at || submission.preparation_lock_reason === 'claim_rejected'; }
 function isPromotedPrivateDraft(submission) { return (submission.access_origin || 'provider_workspace') === 'provider_workspace' && !!submission.claim_request_id; }
+
+function parsePayloadJson(value) {
+  try {
+    const parsed = JSON.parse(value || '{}');
+    return isPlainObject(parsed) ? parsed : {};
+  } catch (_error) {
+    return {};
+  }
+}
+
+function canonicalize(value) {
+  if (Array.isArray(value)) {
+    return value.map(canonicalize).sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  }
+  if (isPlainObject(value)) {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]));
+  }
+  if (value === undefined) return null;
+  return value;
+}
+
+function stableStringify(value) { return JSON.stringify(canonicalize(value)); }
+function samePayload(left, right) { return stableStringify(left || {}) === stableStringify(right || {}); }
+
+function sameScalar(left, right) {
+  const leftEmpty = left === null || left === undefined || left === '';
+  const rightEmpty = right === null || right === undefined || right === '';
+  if (leftEmpty || rightEmpty) return leftEmpty && rightEmpty;
+  if (typeof left === 'number' || typeof right === 'number') {
+    const a = Number(left);
+    const b = Number(right);
+    return Number.isFinite(a) && Number.isFinite(b) && a === b;
+  }
+  return cleanString(left) === cleanString(right);
+}
+
+function flattenServiceGroups(groups) {
+  return [...new Set(Object.values(groups || {}).flatMap((items) => Array.isArray(items) ? items : []).map(cleanString).filter(Boolean))];
+}
+
+function sortActiveSubmissions(rows) {
+  const priority = { pending_review: 3, needs_more_info: 2, draft: 1 };
+  return [...rows].sort((left, right) => {
+    const statusDiff = (priority[right.status] || 0) - (priority[left.status] || 0);
+    if (statusDiff !== 0) return statusDiff;
+    const leftDate = new Date(left.created_date || 0).getTime();
+    const rightDate = new Date(right.created_date || 0).getTime();
+    if (leftDate !== rightDate) return leftDate - rightDate;
+    return String(left.id).localeCompare(String(right.id));
+  });
+}
 
 async function audit(svc, user, record) {
   await svc.entities.DirectoryAuditRecord.create({
@@ -419,6 +473,65 @@ async function assertSubmittedReferences(svc, locationId, section, payload) {
     }
   }
   return { valid: true };
+}
+
+async function hasPublishedChanges(svc, access, section, cleanPayload, itemKey = '') {
+  if (access.mode !== 'provider_workspace') return true;
+
+  if (section === 'public_profile') {
+    if (!access.loc.organization_id) return true;
+    const organization = await svc.entities.ProviderOrganization.get(access.loc.organization_id).catch(() => null);
+    if (!organization) return true;
+    return Object.entries(cleanPayload).some(([key, value]) => !sameScalar(value, organization[key]));
+  }
+
+  if (section === 'location_details') {
+    const current = {
+      address: access.loc.address || '',
+      public_display_name: access.loc.public_display_name || access.loc.name || '',
+      public_phone: access.loc.public_phone || access.loc.phone_public || '',
+      public_email: access.loc.public_email || '',
+      lat: access.loc.lat ?? null,
+      lng: access.loc.lng ?? null,
+      place_id: access.loc.place_id || '',
+    };
+    return Object.entries(cleanPayload).some(([key, value]) => !sameScalar(value, current[key]));
+  }
+
+  if (section === 'services') {
+    if ((cleanPayload.suggestions || []).length > 0) return true;
+    const rows = await svc.entities.LocationService.filter({ location_id: access.location_id }, '-created_date', 500);
+    const activeKeys = new Set(rows.filter((row) => row.is_active !== false && row.provider_visibility_status !== 'provider_suspended').map((row) => cleanString(row.service_key)).filter(Boolean));
+    const selectedKeys = flattenServiceGroups(cleanPayload.selected_ids);
+    const removalKeys = [...flattenServiceGroups(cleanPayload.removal_ids), ...(cleanPayload.raw_removal_keys || [])];
+    return selectedKeys.some((key) => !activeKeys.has(key)) || removalKeys.some((key) => activeKeys.has(key));
+  }
+
+  if (section === 'team') {
+    if ((cleanPayload.members || []).length > 0 || (cleanPayload.invitations || []).length > 0) return true;
+    const removals = new Set(cleanPayload.removal_professional_ids || []);
+    if (removals.size === 0) return false;
+    const assignments = await svc.entities.ProfessionalLocationAssignment.filter({ location_id: access.location_id, active_status: 'activ' }, '-created_date', 500);
+    return assignments.some((assignment) => removals.has(assignment.professional_id));
+  }
+
+  if (section === 'media') {
+    for (const mediaId of cleanPayload.removal_media_ids || []) {
+      const asset = await svc.entities.ProviderMediaAsset.get(mediaId).catch(() => null);
+      if (asset && !['withdrawn', 'rejected'].includes(asset.status)) return true;
+    }
+    return false;
+  }
+
+  if (section === 'article') {
+    if (!itemKey.startsWith('article:')) return true;
+    const articleId = itemKey.slice('article:'.length);
+    const article = await svc.entities.ProviderArticle.get(articleId).catch(() => null);
+    if (!article || article.location_id !== access.location_id) return true;
+    return Object.entries(cleanPayload).some(([key, value]) => !sameScalar(value, article[key]));
+  }
+
+  return true;
 }
 
 async function resolveAccess(svc, user, payload) {
@@ -491,13 +604,30 @@ function activeSubmissionQuery(access, section, itemKey = '') {
     };
   }
   const query = {
-    location_id: access.location_id,
     access_origin: 'provider_workspace',
     section,
     status: { $in: ACTIVE_STATUSES },
   };
+  if (section === 'public_profile' && access.loc.organization_id) query.organization_id = access.loc.organization_id;
+  else query.location_id = access.location_id;
   if (section === 'article') query.item_key = itemKey;
   return query;
+}
+
+async function discardNoopSubmission(svc, user, submission, message) {
+  if (ACTIVE_STATUSES.includes(submission.status)) {
+    await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'withdrawn' });
+    await audit(svc, user, {
+      entity_type: 'ProviderWorkspaceSubmission',
+      entity_id: submission.id,
+      action_type: 'discard_noop_submission',
+      changed_fields: ['status'],
+      previous: { status: submission.status },
+      next: { status: 'withdrawn' },
+      note: message,
+    });
+  }
+  return Response.json({ success: true, no_changes: true, message });
 }
 
 Deno.serve(async (req) => {
@@ -534,14 +664,26 @@ Deno.serve(async (req) => {
         submitted_by_user_id: user.id,
         access_origin: 'provider_workspace',
       }, '-created_date', 50);
+      const organizationSubs = access.loc.organization_id
+        ? await svc.entities.ProviderWorkspaceSubmission.filter({
+          organization_id: access.loc.organization_id,
+          submitted_by_user_id: user.id,
+          access_origin: 'provider_workspace',
+          section: 'public_profile',
+        }, '-created_date', 50)
+        : [];
+      const mergedOwn = [...ownSubs, ...organizationSubs].filter((submission, index, rows) => rows.findIndex((item) => item.id === submission.id) === index);
       const otherActive = await svc.entities.ProviderWorkspaceSubmission.filter({
-        location_id: access.location_id,
         access_origin: 'provider_workspace',
         status: { $in: ACTIVE_STATUSES },
+        $or: [
+          { location_id: access.location_id },
+          ...(access.loc.organization_id ? [{ organization_id: access.loc.organization_id, section: 'public_profile' }] : []),
+        ],
       }, '-created_date', 50);
       return Response.json({
         mode: access.mode,
-        submissions: ownSubs.map(sanitizeSubmission),
+        submissions: mergedOwn.map(sanitizeSubmission),
         conflicts: otherActive
           .filter((submission) => submission.submitted_by_user_id !== user.id && submission.section !== 'article' && !isPromotedPrivateDraft(submission))
           .map(safeConflict),
@@ -562,20 +704,48 @@ Deno.serve(async (req) => {
       if (access.mode === 'provider_workspace' && payload.section === 'article' && !itemKey) {
         return Response.json({ error: 'item_key invalid' }, { status: 400 });
       }
-      const existing = await svc.entities.ProviderWorkspaceSubmission.filter(
+
+      const hasChanges = await hasPublishedChanges(svc, access, payload.section, result.clean, itemKey);
+      if (!hasChanges) {
+        return Response.json({ success: true, no_changes: true, message: 'Nu exista modificari noi de salvat.' });
+      }
+
+      const existing = sortActiveSubmissions(await svc.entities.ProviderWorkspaceSubmission.filter(
         activeSubmissionQuery(access, payload.section, itemKey),
         '-created_date',
-        10,
-      );
+        20,
+      ));
       if (existing.length > 0) {
-        const own = existing.find((submission) => {
+        const ownRows = existing.filter((submission) => {
           if (submission.submitted_by_user_id !== user.id || isLockedPreparation(submission)) return false;
           if (access.mode === 'applicant_preparation') {
             return submission.access_origin === 'claim_preparation' && submission.claim_request_id === access.claim.id;
           }
           return (submission.access_origin || 'provider_workspace') === 'provider_workspace';
         });
-        if (own) return Response.json({ submission: sanitizeSubmission(own), resumed: true });
+        const own = ownRows[0] || null;
+        for (const duplicate of ownRows.slice(1)) {
+          await svc.entities.ProviderWorkspaceSubmission.update(duplicate.id, { status: 'withdrawn' });
+        }
+        if (own) {
+          const identical = samePayload(parsePayloadJson(own.payload_json), result.clean);
+          if (own.status === 'pending_review') {
+            if (identical) return Response.json({ submission: sanitizeSubmission(own), resumed: true, duplicate: true, message: 'Aceasta modificare este deja in verificare.' });
+            return Response.json(safeConflict(own), { status: 409 });
+          }
+          if (identical) return Response.json({ submission: sanitizeSubmission(own), resumed: true, unchanged: true });
+          await svc.entities.ProviderWorkspaceSubmission.update(own.id, { payload_json: JSON.stringify(result.clean), status: 'draft' });
+          await audit(svc, user, {
+            entity_type: 'ProviderWorkspaceSubmission',
+            entity_id: own.id,
+            action_type: access.mode === 'applicant_preparation' ? 'update_claim_preparation_draft' : 'update_draft',
+            changed_fields: ['payload_json', 'status'],
+            previous: { status: own.status },
+            next: { status: 'draft' },
+            note: `Draft existent actualizat pentru sectiunea ${payload.section}`,
+          });
+          return Response.json({ submission: sanitizeSubmission({ ...own, payload_json: JSON.stringify(result.clean), status: 'draft' }), resumed: true, updated: true });
+        }
         const blocking = existing.find((submission) => (
           (submission.access_origin || 'provider_workspace') === 'provider_workspace'
           && !isPromotedPrivateDraft(submission)
@@ -594,6 +764,21 @@ Deno.serve(async (req) => {
         status: 'draft',
         submitted_by_user_id: user.id,
       });
+
+      const activeAfterCreate = sortActiveSubmissions(await svc.entities.ProviderWorkspaceSubmission.filter(
+        activeSubmissionQuery(access, payload.section, itemKey),
+        'created_date',
+        20,
+      ));
+      const keeper = activeAfterCreate[0] || submission;
+      if (keeper.id !== submission.id) {
+        await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'withdrawn' });
+        if (keeper.submitted_by_user_id === user.id && samePayload(parsePayloadJson(keeper.payload_json), result.clean)) {
+          return Response.json({ submission: sanitizeSubmission(keeper), resumed: true, duplicate: true });
+        }
+        return Response.json(safeConflict(keeper), { status: 409 });
+      }
+
       await audit(svc, user, {
         entity_type: 'ProviderWorkspaceSubmission',
         entity_id: submission.id,
@@ -633,6 +818,21 @@ Deno.serve(async (req) => {
       if (!result.valid) return Response.json(result.body, { status: result.status });
       const referenceCheck = await assertSubmittedReferences(svc, access.location_id, payload.section, result.clean);
       if (!referenceCheck.valid) return Response.json(referenceCheck.body, { status: referenceCheck.status });
+      if (samePayload(parsePayloadJson(submission.payload_json), result.clean) && submission.status === 'draft') {
+        return Response.json({ success: true, unchanged: true, submission: sanitizeSubmission(submission) });
+      }
+      const hasChanges = await hasPublishedChanges(svc, access, payload.section, result.clean, submission.item_key || '');
+      if (!hasChanges) return discardNoopSubmission(svc, user, submission, 'Nu exista modificari noi de salvat. Draftul a fost inchis.');
+
+      const otherActive = sortActiveSubmissions((await svc.entities.ProviderWorkspaceSubmission.filter(
+        activeSubmissionQuery(access, payload.section, submission.item_key || ''),
+        '-created_date',
+        20,
+      )).filter((row) => row.id !== submission.id));
+      const blocking = otherActive.find((row) => row.status === 'pending_review' || row.submitted_by_user_id !== user.id);
+      if (blocking) return Response.json(safeConflict(blocking), { status: 409 });
+      for (const duplicate of otherActive) await svc.entities.ProviderWorkspaceSubmission.update(duplicate.id, { status: 'withdrawn' });
+
       await svc.entities.ProviderWorkspaceSubmission.update(submission.id, {
         payload_json: JSON.stringify(result.clean),
         status: 'draft',
@@ -643,6 +843,7 @@ Deno.serve(async (req) => {
         action_type: access.mode === 'applicant_preparation' ? 'update_claim_preparation_draft' : 'update_draft',
         changed_fields: ['payload_json', 'status'],
         previous: { status: submission.status },
+        next: { status: 'draft' },
         note: `Draft actualizat pentru sectiunea ${payload.section}`,
       });
       return Response.json({ success: true });
@@ -664,9 +865,35 @@ Deno.serve(async (req) => {
       if (submission.section === 'operating_hours') {
         return Response.json({ error: 'Programul se aplica prin update rapid, nu prin review admin' }, { status: 400 });
       }
+      if (submission.status === 'pending_review') {
+        return Response.json({ success: true, already_pending: true, submission: sanitizeSubmission(submission), message: 'Modificarea este deja in verificare.' });
+      }
       if (!['draft', 'needs_more_info'].includes(submission.status)) {
         return Response.json({ error: 'Draftul nu poate fi trimis' }, { status: 400 });
       }
+
+      const storedPayload = parsePayloadJson(submission.payload_json);
+      const validation = validatePayload(submission.section, storedPayload, access.context, access);
+      if (!validation.valid) return Response.json(validation.body, { status: validation.status });
+      const referenceCheck = await assertSubmittedReferences(svc, access.location_id, submission.section, validation.clean);
+      if (!referenceCheck.valid) return Response.json(referenceCheck.body, { status: referenceCheck.status });
+      const hasChanges = await hasPublishedChanges(svc, access, submission.section, validation.clean, submission.item_key || '');
+      if (!hasChanges) return discardNoopSubmission(svc, user, submission, 'Nu exista modificari noi de trimis. Draftul a fost inchis.');
+
+      const otherPending = (await svc.entities.ProviderWorkspaceSubmission.filter(
+        activeSubmissionQuery(access, submission.section, submission.item_key || ''),
+        '-created_date',
+        20,
+      )).filter((row) => row.id !== submission.id && row.status === 'pending_review');
+      if (otherPending.length > 0) {
+        const duplicate = otherPending.find((row) => samePayload(parsePayloadJson(row.payload_json), validation.clean));
+        if (duplicate) {
+          await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'withdrawn' });
+          return Response.json({ success: true, duplicate: true, submission: sanitizeSubmission(duplicate), message: 'Aceasta modificare este deja in verificare.' });
+        }
+        return Response.json(safeConflict(otherPending[0]), { status: 409 });
+      }
+
       const now = new Date().toISOString();
       await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'pending_review', submitted_at: now });
       await audit(svc, user, {
