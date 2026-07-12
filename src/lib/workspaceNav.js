@@ -1,4 +1,4 @@
-import { LayoutDashboard, FileText, Bookmark, Settings, Building2, Shield } from "lucide-react";
+import { LayoutDashboard, FileText, Bookmark, Settings, Building2, Shield, Clock3, Stethoscope } from "lucide-react";
 
 export const PERSONAL_NAV = [
   { key: "overview", label: "Prezentare generala", icon: LayoutDashboard },
@@ -10,6 +10,8 @@ export const PERSONAL_NAV = [
 export const APPLICANT_NAV = [
   { key: "overview", label: "Prezentare generala", icon: LayoutDashboard },
   { key: "profile", label: "Profil public", icon: Building2 },
+  { key: "hours", label: "Program", icon: Clock3 },
+  { key: "services", label: "Servicii", icon: Stethoscope },
   { key: "status", label: "Status solicitare", icon: FileText },
 ];
 
