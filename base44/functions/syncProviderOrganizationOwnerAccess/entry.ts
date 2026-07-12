@@ -6,18 +6,18 @@ function normalizeRole(value) {
   return ['organization_owner', 'location_manager', 'location_staff'].includes(value) ? value : '';
 }
 
-async function audit(svc, user, organizationId, created, reactivated) {
-  if (created.length === 0 && reactivated.length === 0) return;
+async function audit(svc, user, organizationId, created, reactivated, promoted) {
+  if (created.length === 0 && reactivated.length === 0 && promoted.length === 0) return;
   await svc.entities.DirectoryAuditRecord.create({
     entity_type: 'ProviderOrganization',
     entity_id: organizationId,
     action_type: 'sync_organization_owner_access',
     changed_fields: ['ProviderMembership'],
     previous_values: JSON.stringify({}),
-    new_values: JSON.stringify({ created, reactivated }),
+    new_values: JSON.stringify({ created, reactivated, promoted }),
     admin_user_id: user.id,
     admin_email: user.email,
-    note: 'Ownerii organizatiei au fost propagati pe toate locatiile actuale.',
+    note: 'Ownerii activi ai organizatiei au fost propagati pe toate locatiile actuale.',
     performed_at: new Date().toISOString(),
   });
 }
@@ -42,15 +42,19 @@ Deno.serve(async (req) => {
 
     let totalCreated = 0;
     let totalReactivated = 0;
+    let totalPromoted = 0;
     for (const organizationId of organizationIds) {
       const locations = await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, '-created_date', 500);
-      const ownerRows = await svc.entities.ProviderMembership.filter({ organization_id: organizationId }, '-created_date', 1000);
-      const ownerUserIds = [...new Set(ownerRows.filter((membership) => normalizeRole(membership.role) === 'organization_owner').map((membership) => membership.user_id))];
+      const membershipRows = await svc.entities.ProviderMembership.filter({ organization_id: organizationId }, '-created_date', 1000);
+      const activeOwnerUserIds = [...new Set(membershipRows
+        .filter((membership) => membership.status === 'active' && normalizeRole(membership.role) === 'organization_owner')
+        .map((membership) => membership.user_id))];
       const created = [];
       const reactivated = [];
-      for (const ownerUserId of ownerUserIds) {
+      const promoted = [];
+      for (const ownerUserId of activeOwnerUserIds) {
         for (const location of locations) {
-          const existing = ownerRows.find((membership) => membership.user_id === ownerUserId && membership.location_id === location.id);
+          const existing = membershipRows.find((membership) => membership.user_id === ownerUserId && membership.location_id === location.id);
           if (!existing) {
             const membership = await svc.entities.ProviderMembership.create({
               user_id: ownerUserId,
@@ -72,13 +76,21 @@ Deno.serve(async (req) => {
             totalReactivated += 1;
           } else if (normalizeRole(existing.role) !== 'organization_owner') {
             await svc.entities.ProviderMembership.update(existing.id, { role: 'organization_owner' });
+            promoted.push(existing.id);
+            totalPromoted += 1;
           }
         }
       }
-      await audit(svc, user, organizationId, created, reactivated);
+      await audit(svc, user, organizationId, created, reactivated, promoted);
     }
 
-    return res({ success: true, created: totalCreated, reactivated: totalReactivated, changed: totalCreated + totalReactivated > 0 });
+    return res({
+      success: true,
+      created: totalCreated,
+      reactivated: totalReactivated,
+      promoted: totalPromoted,
+      changed: totalCreated + totalReactivated + totalPromoted > 0,
+    });
   } catch (error) {
     return res({ error: error.message }, 500);
   }
