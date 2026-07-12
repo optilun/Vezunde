@@ -1,6 +1,13 @@
 import { normalizeServiceKey } from './canonicalServiceRegistry.js';
 import { getServiceOperationalContext } from './serviceOperationalTaxonomy.js';
 
+// MVP policy: providers may publish reviewed services before creating individual
+// specialist profiles. Keep the catalogue requirements intact so enforcement can
+// be re-enabled without migrating service definitions.
+export const SERVICE_PREREQUISITE_POLICY = Object.freeze({
+  enforce_verified_specialist: false,
+});
+
 const PROFESSIONAL_ALIASES = {
   medic_oftalmolog: 'ophthalmologist',
   ophthalmologist: 'ophthalmologist',
@@ -257,7 +264,7 @@ export function evaluateServicePrerequisites(rawKey, context = {}) {
   }
 
   const professionalResult = verifiedProfessionalTypes(assignments, professionals, prerequisiteUnitKey, enforceUnitScope);
-  if (definition.requires_verified_specialist) {
+  if (definition.requires_verified_specialist && SERVICE_PREREQUISITE_POLICY.enforce_verified_specialist) {
     const required = definition.required_professional_types || [];
     const matched = required.some((type) => professionalResult.types.has(normalizeProfessionalType(type)));
     if (!matched) {
@@ -333,6 +340,7 @@ export function evaluateServicePrerequisites(rawKey, context = {}) {
     definition,
     evidence: {
       verified_professional_types: [...professionalResult.types],
+      verified_specialist_enforced: SERVICE_PREREQUISITE_POLICY.enforce_verified_specialist,
       verified_equipment_types: [...equipmentResult.types],
       active_facility_types: [...facilityResult.types],
       active_functional_unit_keys: [...activeUnitKeys],
