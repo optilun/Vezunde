@@ -83,8 +83,8 @@ export default function ProviderLocationsWithPhoto(props) {
           <div className="grid h-full grid-cols-[40px_minmax(0,1fr)] items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center self-start rounded-2xl bg-secondary"><Image className="h-4 w-4" /></div>
             <div className="flex h-full min-w-0 flex-col">
-              <div className="flex min-h-10 items-center justify-between gap-2"><div className="text-sm font-bold">Fotografii</div><ArrowRight className="h-4 w-4 text-muted-foreground" /></div>
-              <p className="mt-1 min-h-16 text-xs leading-relaxed text-muted-foreground">Gestioneaza fotografia principala si galeria acestei locatii.</p>
+              <div className="flex min-h-10 items-center justify-between gap-2"><div className="text-sm font-bold">Fotografie locatie</div><ArrowRight className="h-4 w-4 text-muted-foreground" /></div>
+              <p className="mt-1 min-h-16 text-xs leading-relaxed text-muted-foreground">Adauga o fotografie reala din exteriorul sau interiorul locatiei. Logo-ul se gestioneaza separat din Profil public.</p>
               <div className="mt-auto pt-3 text-xs font-bold underline underline-offset-4">Configureaza</div>
             </div>
           </div>
@@ -94,12 +94,12 @@ export default function ProviderLocationsWithPhoto(props) {
 
       {photoOpen && selectedLocation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4 py-6 backdrop-blur-sm">
-          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-border bg-background shadow-2xl">
+          <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] border border-border bg-background shadow-2xl">
             <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-5 py-4">
-              <div><div className="text-xs font-medium text-muted-foreground">{selectedLocationName}</div><h2 className="font-heading text-xl font-extrabold tracking-tight">Fotografiile locatiei</h2></div>
+              <div><div className="text-xs font-medium text-muted-foreground">{selectedLocationName}</div><h2 className="font-heading text-xl font-extrabold tracking-tight">Fotografia locatiei</h2></div>
               <button type="button" onClick={() => setPhotoOpen(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary" aria-label="Inchide"><X className="h-4 w-4" /></button>
             </div>
-            <div className="overflow-y-auto p-5"><ProviderLocationPhotoCompact locationId={selectedLocation.id} onRefresh={onRefresh} /></div>
+            <div className="overflow-y-auto p-5"><ProviderLocationPhotoCompact locationId={selectedLocation.id} organization={organization} onRefresh={onRefresh} /></div>
           </div>
         </div>
       )}
