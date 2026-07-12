@@ -137,6 +137,9 @@ const unknownService = { service_key: "serviciu_complet_necunoscut", is_active: 
 
 assert.equal(isServicePubliclyEligible(productService, claimedLocation), true);
 assert.equal(isServiceMatchingEligible(productService, claimedLocation), true);
+assert.equal(isServicePubliclyEligible({ ...productService, provider_visibility_status: "removal_pending" }, claimedLocation), false, "Serviciul aflat în eliminare trebuie ascuns public");
+assert.equal(isServiceMatchingEligible({ ...productService, provider_visibility_status: "removal_pending" }, claimedLocation), false, "Serviciul aflat în eliminare trebuie exclus din matching");
+assert.equal(isServicePubliclyEligible({ ...productService, provider_visibility_status: "provider_suspended" }, claimedLocation), false, "Serviciul suspendat de furnizor trebuie ascuns public");
 assert.equal(isServicePubliclyEligible(medicalProviderConfirmed, verifiedLocation), false);
 assert.equal(isServiceMatchingEligible(medicalProviderConfirmed, verifiedLocation), false);
 assert.equal(isServicePubliclyEligible(medicalVerified, verifiedLocation), true);
