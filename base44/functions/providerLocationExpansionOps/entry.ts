@@ -250,7 +250,9 @@ async function adminList(svc: any, user: any) {
 
 async function propagateOwners(svc: any, organizationId: string, locationId: string, actorId: string) {
   const memberships = await svc.entities.ProviderMembership.filter({ organization_id: organizationId }, '-created_date', 1000);
-  const ownerUserIds = [...new Set(memberships.filter((membership: any) => role(membership.role) === 'organization_owner').map((membership: any) => membership.user_id))];
+  const ownerUserIds = [...new Set(memberships
+    .filter((membership: any) => membership.status === 'active' && role(membership.role) === 'organization_owner')
+    .map((membership: any) => membership.user_id))];
   const created: string[] = [];
   for (const ownerUserId of ownerUserIds) {
     const existing = memberships.find((membership: any) => membership.user_id === ownerUserId && membership.location_id === locationId);
