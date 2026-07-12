@@ -3,24 +3,24 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 const FAQ_ITEMS = [
   {
-    q: "Cine poate revendica o locatie?",
-    a: "Orice persoana care reprezinta locatia — proprietar, reprezentant al organizatiei, manager de locatie sau personal autorizat — poate initia o revendicare.",
+    q: "Cine isi poate crea profil profesional?",
+    a: "Medicii oftalmologi, optometristii si opticienii isi pot trimite profilul profesional pentru verificare.",
   },
   {
-    q: "Cat dureaza analiza unei revendicari?",
-    a: "Revendicarile sunt analizate manual inainte de acordarea accesului. Durata poate varia in functie de informatiile furnizate.",
+    q: "Profilul profesional imi da acces la o clinica sau optica?",
+    a: "Nu. Profilul profesional si accesul administrativ la o organizatie sunt separate. Accesul la o locatie este acordat de owner sau printr-o solicitare verificata.",
   },
   {
-    q: "Pot administra mai multe locatii?",
-    a: "Da. O organizatie poate avea mai multe locatii, iar un profesionist poate fi asociat cu mai multe locatii in acelasi timp.",
+    q: "Pot fi asociat cu mai multe locatii?",
+    a: "Da. Asocierile cu locatii se confirma separat si nu transfera controlul asupra profilului organizatiei.",
   },
   {
-    q: "Ce se intampla daca informatiile profilului sunt gresite?",
-    a: "Poti propune actualizari dupa ce revendicarea este aprobata. Anumite modificari pot necesita o noua analiza inainte de a deveni publice.",
+    q: "Profilul devine public imediat?",
+    a: "Nu. Solicitarea este analizata, iar profilul ramane draft pana la completare si aprobare.",
   },
   {
-    q: "De ce anumite modificari necesita analiza?",
-    a: "Analiza informatiilor publice ajuta la mentinerea acuratetei si increderii pacientilor care folosesc platforma.",
+    q: "Ce date sunt publice?",
+    a: "Numele profesional, descrierea, fotografia si contactele pe care alegi sa le publici. Datele folosite pentru verificare raman private.",
   },
 ];
 
@@ -30,8 +30,8 @@ export default function SpecialistsFAQ() {
       <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight text-center">Intrebari frecvente</h2>
       <div className="mt-5 bg-card border border-border rounded-2xl px-5 sm:px-7">
         <Accordion type="single" collapsible>
-          {FAQ_ITEMS.map((item, i) => (
-            <AccordionItem key={i} value={`item-${i}`}>
+          {FAQ_ITEMS.map((item, index) => (
+            <AccordionItem key={item.q} value={`item-${index}`}>
               <AccordionTrigger className="text-left font-medium">{item.q}</AccordionTrigger>
               <AccordionContent className="text-muted-foreground leading-relaxed">{item.a}</AccordionContent>
             </AccordionItem>
