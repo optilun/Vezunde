@@ -15,6 +15,15 @@ function isPlainObject(value) {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
+function parsePayload(value) {
+  try {
+    const parsed = JSON.parse(value || '{}');
+    return isPlainObject(parsed) ? parsed : {};
+  } catch (_error) {
+    return { __invalid_payload: clean(value) };
+  }
+}
+
 function canonicalize(value) {
   if (Array.isArray(value)) {
     return value.map(canonicalize).sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
@@ -148,7 +157,7 @@ function buildCandidates(data) {
           logo_url: organization.logo_url || '',
           profile_completeness: stored,
         },
-        apply: { kind: 'entity_update', entity: 'ProviderOrganization', id: organization.id, updates: { profile_completeness: calculated } },
+        apply: { kind: 'organization_update', id: organization.id, updates: { profile_completeness: calculated } },
       });
     }
 
@@ -160,7 +169,7 @@ function buildCandidates(data) {
         id: `organization_status:${organization.id}`,
         repair_type: 'organization_status',
         title: `${name}: normalizeaza statusul organizatiei`,
-        detail: `Valoarea actuala nu respecta schema. Statusul propus este derivat din locatiile active asociate.`,
+        detail: 'Valoarea actuala nu respecta schema. Statusul propus este derivat din locatiile active asociate.',
         entity_type: 'ProviderOrganization',
         entity_id: organization.id,
         current_values: { status: organization.status || 'lipsa' },
@@ -172,7 +181,7 @@ function buildCandidates(data) {
           status: organization.status || '',
           related_locations: relatedLocations.map((location) => ({ id: location.id, status: location.status, active_status: location.active_status, updated_date: location.updated_date || '' })),
         },
-        apply: { kind: 'entity_update', entity: 'ProviderOrganization', id: organization.id, updates: { status: proposedStatus } },
+        apply: { kind: 'organization_update', id: organization.id, updates: { status: proposedStatus } },
       });
     }
   }
@@ -204,7 +213,7 @@ function buildCandidates(data) {
           opening_hours: location.opening_hours || '',
           profile_completeness: stored,
         },
-        apply: { kind: 'entity_update', entity: 'ProviderLocation', id: location.id, updates: { profile_completeness: calculated } },
+        apply: { kind: 'location_update', id: location.id, updates: { profile_completeness: calculated } },
       });
     }
 
@@ -243,14 +252,15 @@ function buildCandidates(data) {
           verification_state: location.verification_state || '',
           is_verified: location.is_verified === true,
         },
-        apply: { kind: 'entity_update', entity: 'ProviderLocation', id: location.id, updates: proposed },
+        apply: { kind: 'location_update', id: location.id, updates: proposed },
       });
     }
   }
 
   const duplicateGroups = new Map();
   for (const submission of data.activeSubmissions) {
-    const key = `${submissionScope(submission)}::${stableStringify(JSON.parse(submission.payload_json || '{}'))}`;
+    const normalizedPayload = parsePayload(submission.payload_json);
+    const key = `${submissionScope(submission)}::${stableStringify(normalizedPayload)}`;
     if (!duplicateGroups.has(key)) duplicateGroups.set(key, []);
     duplicateGroups.get(key).push(submission);
   }
@@ -313,10 +323,21 @@ function publicRepair(candidate) {
 }
 
 async function applyCandidate(svc, user, candidate) {
-  if (candidate.apply.kind === 'entity_update') {
-    const entityApi = svc.entities[candidate.apply.entity];
-    if (!entityApi) throw new Error('Entitate indisponibila pentru reparatie');
-    await entityApi.update(candidate.apply.id, candidate.apply.updates);
+  if (candidate.apply.kind === 'organization_update') {
+    await svc.entities.ProviderOrganization.update(candidate.apply.id, candidate.apply.updates);
+    await audit(svc, user, {
+      entity_type: candidate.entity_type,
+      entity_id: candidate.entity_id,
+      changed_fields: candidate.changed_fields,
+      previous: candidate.current_values,
+      next: candidate.proposed_values,
+      note: `${candidate.title}. Reparatie confirmata manual din Integritate date.`,
+    });
+    return;
+  }
+
+  if (candidate.apply.kind === 'location_update') {
+    await svc.entities.ProviderLocation.update(candidate.apply.id, candidate.apply.updates);
     await audit(svc, user, {
       entity_type: candidate.entity_type,
       entity_id: candidate.entity_id,
