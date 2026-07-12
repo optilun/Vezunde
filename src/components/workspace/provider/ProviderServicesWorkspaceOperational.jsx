@@ -931,7 +931,12 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     setResourceLinks(payload.resource_links || buildResourceLinks(nextConfig));
     const allowedCareSettings = operationalLayout.careSettings || [];
     const persistedCareSetting = payload.care_setting || nextConfig.care_setting || "";
-    setCareSetting(allowedCareSettings.includes(persistedCareSetting) ? persistedCareSetting : allowedCareSettings[0] || persistedCareSetting || "not_applicable");
+    const hasCommercialSpace = initialUnits.includes("optical_store");
+    const hasClinicalSpace = initialUnits.some((unitKey) => ["optical_cabinet", "optometry_cabinet", "ophthalmology_office", "ophthalmology_diagnostics", "ophthalmology_procedure_room", "ophthalmology_surgery_unit"].includes(unitKey));
+    const recommendedCareSetting = hasCommercialSpace && hasClinicalSpace && allowedCareSettings.includes("mixed")
+      ? "mixed"
+      : allowedCareSettings[0] || "not_applicable";
+    setCareSetting(allowedCareSettings.includes(persistedCareSetting) ? persistedCareSetting : recommendedCareSetting);
     setSuggestions(normalizeSuggestions(payload));
     setRawRemovalKeys(payload.raw_removal_keys || []);
     setOpenUnit(initialUnits[0] || "");
