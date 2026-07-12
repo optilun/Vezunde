@@ -58,22 +58,34 @@ function payloadMatchesCurrent(payload = {}, current = {}) {
   return entries.length > 0 && entries.every(([key, value]) => sameValue(value, current[key]));
 }
 
+async function loadWorkspaceOverview(locationId) {
+  if (!locationId) return null;
+  const response = await originalInvoke('getProviderWorkspaceOverview', { location_id: locationId }).catch(() => null);
+  return response?.data || null;
+}
+
 async function unchangedDraftMessage(functionName, input = {}) {
   const action = input.action;
   if (!['create_draft', 'update_draft'].includes(action) || !input.payload) return '';
 
-  if (functionName === 'submitProviderWorkspaceChange' && input.section === 'location_details' && input.location_id) {
-    const location = await client.entities.ProviderLocation.get(input.location_id).catch(() => null);
-    if (location && payloadMatchesCurrent(input.payload, locationValues(location))) {
-      return 'Nu exista modificari noi de salvat.';
-    }
+  const guardsLocationDetails = functionName === 'submitProviderWorkspaceChange'
+    && input.section === 'location_details'
+    && input.location_id;
+  const guardsOrganizationProfile = functionName === 'manageProviderOrganizationProfile'
+    && input.organization_id
+    && input.location_id;
+
+  if (!guardsLocationDetails && !guardsOrganizationProfile) return '';
+
+  const overview = await loadWorkspaceOverview(input.location_id);
+  if (!overview) return '';
+
+  if (guardsLocationDetails && payloadMatchesCurrent(input.payload, locationValues(overview.location || {}))) {
+    return 'Nu exista modificari noi de salvat.';
   }
 
-  if (functionName === 'manageProviderOrganizationProfile' && input.organization_id) {
-    const organization = await client.entities.ProviderOrganization.get(input.organization_id).catch(() => null);
-    if (organization && payloadMatchesCurrent(input.payload, organizationValues(organization))) {
-      return 'Nu exista modificari noi de salvat.';
-    }
+  if (guardsOrganizationProfile && payloadMatchesCurrent(input.payload, organizationValues(overview.organization || {}))) {
+    return 'Nu exista modificari noi de salvat.';
   }
 
   return '';
