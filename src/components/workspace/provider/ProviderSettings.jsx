@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 import { Building2, Check, ChevronDown, ExternalLink, Mail, MapPin, Settings2, ShieldCheck, TriangleAlert } from "lucide-react";
-import { Link } from "react-router-dom";
 import { readAccountPreferences, saveAccountPreferences } from "@/lib/accountPreferences";
 import { PROFILE_CONTROL_LABELS, ROLE_LABELS } from "@/lib/workspaceStatusLabels";
 
