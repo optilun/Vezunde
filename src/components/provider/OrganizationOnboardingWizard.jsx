@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, Building2, MapPin } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -17,7 +17,6 @@ import {
 export const ORGANIZATION_ONBOARDING_RESUME_KEY = "pending_new_location_wizard";
 
 const PHASES = ["Organizatie", "Locatie", "Cont", "Acces", "Contact", "Revizuire"];
-const STEP_NUMBER = { organization: 1, location: 2, duplicate: 2, auth: 3, access: 4, contact: 5, review: 6 };
 const INPUT = "w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none transition-colors focus:border-foreground/50";
 
 const ORG_TYPES = {
@@ -74,12 +73,53 @@ function readResume() {
   }
 }
 
-function persist(data, step) {
-  sessionStorage.setItem(ORGANIZATION_ONBOARDING_RESUME_KEY, JSON.stringify({ data, step }));
+function saveResume(data, step) {
+  try {
+    sessionStorage.setItem(ORGANIZATION_ONBOARDING_RESUME_KEY, JSON.stringify({ data, step }));
+  } catch {
+    // The current flow remains usable even if session storage is unavailable.
+  }
 }
 
 function clearResume() {
   sessionStorage.removeItem(ORGANIZATION_ONBOARDING_RESUME_KEY);
+}
+
+function buildInitialData(resume, prefill) {
+  const base = {
+    ...INITIAL,
+    organization: { ...INITIAL.organization },
+    location: { ...INITIAL.location },
+    contact: { ...INITIAL.contact },
+    identityExtra: {},
+  };
+  if (resume?.data) {
+    return {
+      ...base,
+      ...resume.data,
+      organization: { ...base.organization, ...(resume.data.organization || {}) },
+      location: { ...base.location, ...(resume.data.location || {}) },
+      contact: { ...base.contact, ...(resume.data.contact || {}) },
+      identityExtra: { ...(resume.data.identityExtra || {}) },
+    };
+  }
+  if (!prefill) return base;
+  return {
+    ...base,
+    organization: { ...base.organization, name: prefill.organization_name || prefill.name || "" },
+    location: {
+      ...base.location,
+      name: prefill.name || "",
+      city: prefill.city || "",
+      county: prefill.county || "",
+      address: prefill.address || "",
+      phone_public: prefill.phone || "",
+      website: prefill.website || "",
+      place_id: prefill.place_id || "",
+      lat: typeof prefill.lat === "number" ? prefill.lat : null,
+      lng: typeof prefill.lng === "number" ? prefill.lng : null,
+    },
+  };
 }
 
 function Row({ label, value }) {
@@ -93,68 +133,70 @@ function Row({ label, value }) {
 
 export default function OrganizationOnboardingWizard({ prefill, onDone, onExit, onClaimExisting }) {
   const [resume] = useState(readResume);
-  const [data, setData] = useState(() => {
-    if (resume?.data) return { ...INITIAL, ...resume.data };
-    if (!prefill) return INITIAL;
-    return {
-      ...INITIAL,
-      organization: { ...INITIAL.organization, name: prefill.organization_name || prefill.name || "" },
-      location: {
-        ...INITIAL.location,
-        name: prefill.name || "",
-        city: prefill.city || "",
-        county: prefill.county || "",
-        address: prefill.address || "",
-        phone_public: prefill.phone || "",
-        website: prefill.website || "",
-        place_id: prefill.place_id || "",
-        lat: typeof prefill.lat === "number" ? prefill.lat : null,
-        lng: typeof prefill.lng === "number" ? prefill.lng : null,
-      },
-    };
-  });
-  const [step, setStepState] = useState(resume?.step || "organization");
+  const [data, setData] = useState(() => buildInitialData(resume, prefill));
+  const dataRef = useRef(data);
+  const [step, setStepState] = useState(() => resume?.step || "organization");
   const [identityCheck, setIdentityCheck] = useState(null);
+  const [duplicateSource, setDuplicateSource] = useState("precheck");
   const [checkingIdentity, setCheckingIdentity] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   const setStep = (next) => {
     setStepState(next);
-    persist(data, next);
+    saveResume(dataRef.current, next);
   };
-  const updateData = (next) => {
+
+  const replaceData = (next, stepForResume = step) => {
+    dataRef.current = next;
     setData(next);
-    persist(next, step);
+    saveResume(next, stepForResume);
   };
-  const patchOrganization = (patch) => updateData({ ...data, organization: { ...data.organization, ...patch } });
-  const patchLocation = (patch) => updateData({ ...data, location: { ...data.location, ...patch } });
-  const patchContact = (patch) => updateData({ ...data, contact: { ...data.contact, ...patch } });
+
+  const patchOrganization = (patch) => {
+    const current = dataRef.current;
+    replaceData({ ...current, organization: { ...current.organization, ...patch } });
+  };
+  const patchLocation = (patch) => {
+    const current = dataRef.current;
+    replaceData({ ...current, location: { ...current.location, ...patch } });
+  };
+  const patchContact = (patch) => {
+    const current = dataRef.current;
+    replaceData({ ...current, contact: { ...current.contact, ...patch } });
+  };
 
   const requestedRole = useMemo(
     () => requestedRoleForRelationship(data.contact.claimant_relationship),
     [data.contact.claimant_relationship],
   );
-
   const selectedType = ORG_TYPES[data.organization.organization_type];
   const computedProfileType = data.organization.organization_type === "optica_medicala" && data.organization.structure === "multiple"
     ? "optical_chain"
     : selectedType?.profileType || "";
 
+  const exitWizard = () => {
+    clearResume();
+    onExit?.();
+  };
+
   const goFromOrganization = () => {
-    if (!selectedType || !data.organization.name.trim()) return;
+    const current = dataRef.current;
+    const type = ORG_TYPES[current.organization.organization_type];
+    if (!type || !current.organization.name.trim()) return;
+    const profileType = current.organization.organization_type === "optica_medicala" && current.organization.structure === "multiple"
+      ? "optical_chain"
+      : type.profileType;
     const next = {
-      ...data,
-      organization: { ...data.organization, organization_type: data.organization.organization_type },
+      ...current,
       location: {
-        ...data.location,
-        name: data.location.name || data.organization.name,
-        provider_type: selectedType.providerType,
-        provider_profile_type: computedProfileType,
+        ...current.location,
+        name: current.location.name || current.organization.name,
+        provider_type: type.providerType,
+        provider_profile_type: profileType,
       },
     };
-    setData(next);
-    persist(next, "location");
+    replaceData(next, "location");
     setStepState("location");
   };
 
@@ -167,19 +209,20 @@ export default function OrganizationOnboardingWizard({ prefill, onDone, onExit, 
 
   const checkIdentity = async () => {
     if (!locationValid || checkingIdentity) return;
+    const current = dataRef.current;
     setCheckingIdentity(true);
     setError("");
     const response = await base44.functions.invoke("findProviderIdentityCandidates", {
       context: "provider_public_precheck",
       candidate: {
-        organization_name: data.organization.name,
-        location_name: data.location.name,
-        provider_profile_type: data.location.provider_profile_type,
-        locality_siruta_code: data.location.locality_siruta_code,
-        address: data.location.address,
-        phone_public: data.location.phone_public,
-        public_email: data.location.public_email,
-        website: data.location.website,
+        organization_name: current.organization.name,
+        location_name: current.location.name,
+        provider_profile_type: current.location.provider_profile_type,
+        locality_siruta_code: current.location.locality_siruta_code,
+        address: current.location.address,
+        phone_public: current.location.phone_public,
+        public_email: current.location.public_email,
+        website: current.location.website,
       },
       limit: 8,
     }).catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
@@ -189,80 +232,84 @@ export default function OrganizationOnboardingWizard({ prefill, onDone, onExit, 
       return;
     }
     if (response.data?.blocking_level && response.data.blocking_level !== "none") {
+      setDuplicateSource("precheck");
       setIdentityCheck(response.data);
       setStepState("duplicate");
-      persist(data, "duplicate");
+      saveResume(current, "duplicate");
       return;
     }
     setStep("auth");
   };
 
   const handleAuthenticated = useCallback((user) => {
-    setData((current) => {
-      const next = {
-        ...current,
-        contact: {
-          ...current.contact,
-          contact_name: current.contact.contact_name || user?.full_name || user?.name || "",
-          email: current.contact.email || user?.email || "",
-        },
-      };
-      persist(next, "access");
-      return next;
-    });
+    const current = dataRef.current;
+    const next = {
+      ...current,
+      contact: {
+        ...current.contact,
+        contact_name: current.contact.contact_name || user?.full_name || user?.name || "",
+        email: current.contact.email || user?.email || "",
+      },
+    };
+    replaceData(next, "access");
     setStepState("access");
   }, []);
 
   const goBack = () => {
     const previous = {
       location: "organization",
-      duplicate: "location",
+      duplicate: duplicateSource === "submit" ? "review" : "location",
       auth: "location",
       access: "auth",
       contact: "access",
       review: "contact",
     }[step];
     if (previous) setStep(previous);
-    else onExit?.();
+    else exitWizard();
   };
 
-  const submit = async () => {
+  const submit = async (identityExtraOverride = null) => {
     if (submitting) return;
     const authenticated = await base44.auth.isAuthenticated();
     if (!authenticated) {
       setStep("auth");
       return;
     }
+    const current = dataRef.current;
+    const type = ORG_TYPES[current.organization.organization_type];
+    const profileType = current.organization.organization_type === "optica_medicala" && current.organization.structure === "multiple"
+      ? "optical_chain"
+      : type?.profileType || current.location.provider_profile_type;
     setSubmitting(true);
     setError("");
-    const payload = {
+    const response = await base44.functions.invoke("submitProviderClaim", {
       mode: "new_location",
       claim_subject_type: "organization",
-      claimant_relationship: data.contact.claimant_relationship,
-      requested_membership_role: requestedRole,
-      verification_method: data.contact.verification_method || "manual_review",
+      claimant_relationship: current.contact.claimant_relationship,
+      requested_membership_role: requestedRoleForRelationship(current.contact.claimant_relationship),
+      verification_method: current.contact.verification_method || "manual_review",
       organization: {
-        name: data.organization.name.trim(),
-        legal_name: data.organization.legal_name.trim(),
-        organization_type: data.location.provider_profile_type,
-        structure: data.organization.structure,
+        name: current.organization.name.trim(),
+        legal_name: current.organization.legal_name.trim(),
+        organization_type: profileType,
+        structure: current.organization.structure,
       },
       location: {
-        ...data.location,
-        name: data.location.name.trim(),
-        provider_type: selectedType?.providerType || data.location.provider_type,
-        provider_profile_type: computedProfileType || data.location.provider_profile_type,
+        ...current.location,
+        name: current.location.name.trim(),
+        provider_type: type?.providerType || current.location.provider_type,
+        provider_profile_type: profileType,
       },
-      contact: data.contact,
-      representation_confirmed: data.contact.representation_confirmed,
-      ...data.identityExtra,
-    };
-    const response = await base44.functions.invoke("submitProviderClaim", payload)
-      .catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
+      contact: current.contact,
+      representation_confirmed: current.contact.representation_confirmed,
+      ...(identityExtraOverride || current.identityExtra),
+    }).catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
     setSubmitting(false);
     if (response.data?.identity_check) {
+      setDuplicateSource("submit");
       setIdentityCheck(response.data.identity_check);
       setStepState("duplicate");
+      saveResume(current, "duplicate");
       return;
     }
     if (response.data?.error) {
@@ -274,8 +321,9 @@ export default function OrganizationOnboardingWizard({ prefill, onDone, onExit, 
   };
 
   if (step === "duplicate" && identityCheck) {
+    const strong = identityCheck.blocking_level === "strong_duplicate_review_required";
     return (
-      <WizardShell phases={PHASES} phaseStep={2} title="Am gasit profiluri asemanatoare" subtitle="Verifica rezultatele inainte sa cream o locatie noua." onBack={() => { setIdentityCheck(null); setStep("location"); }}>
+      <WizardShell phases={PHASES} phaseStep={duplicateSource === "submit" ? 6 : 2} title="Am gasit profiluri asemanatoare" subtitle="Verifica rezultatele inainte sa cream o locatie noua." onBack={goBack}>
         <IdentityDuplicatePanel
           check={identityCheck}
           submitting={submitting}
@@ -294,19 +342,20 @@ export default function OrganizationOnboardingWizard({ prefill, onDone, onExit, 
             });
           }}
           onContinueDistinct={(note) => {
-            const strong = identityCheck.blocking_level === "strong_duplicate_review_required";
-            const next = {
-              ...data,
-              identityExtra: strong
-                ? { escalate_duplicate_review: true, identity_difference_note: note }
-                : { identity_difference_note: note },
-            };
-            setData(next);
-            persist(next, "auth");
+            const extra = strong
+              ? { escalate_duplicate_review: true, identity_difference_note: note }
+              : { identity_difference_note: note };
             setIdentityCheck(null);
+            if (duplicateSource === "submit") {
+              submit(extra);
+              return;
+            }
+            const current = dataRef.current;
+            const next = { ...current, identityExtra: extra };
+            replaceData(next, "auth");
             setStepState("auth");
           }}
-          onCancel={() => { setIdentityCheck(null); setStep("location"); }}
+          onCancel={goBack}
         />
       </WizardShell>
     );
@@ -315,7 +364,7 @@ export default function OrganizationOnboardingWizard({ prefill, onDone, onExit, 
   if (step === "organization") {
     const valid = data.organization.name.trim() && data.organization.organization_type;
     return (
-      <WizardShell phases={PHASES} phaseStep={1} title="Despre organizatie" subtitle="Incepem cu identitatea opticii, clinicii sau cabinetului." onBack={onExit}>
+      <WizardShell phases={PHASES} phaseStep={1} title="Despre organizatie" subtitle="Incepem cu identitatea opticii, clinicii sau cabinetului." onBack={exitWizard}>
         <div className="space-y-4 text-left">
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Numele public al organizatiei *</label>
@@ -347,13 +396,13 @@ export default function OrganizationOnboardingWizard({ prefill, onDone, onExit, 
   }
 
   if (step === "location") {
-    const selectLocality = (g) => patchLocation({
-      locality_siruta_code: g?.siruta_code || "",
-      city: g?.name || "",
-      county: g?.county_name || "",
-      county_code: g?.county_code || "",
-      uat_code: g?.uat_code || "",
-      uat_name: g?.uat_name || "",
+    const selectLocality = (locality) => patchLocation({
+      locality_siruta_code: locality?.siruta_code || "",
+      city: locality?.name || "",
+      county: locality?.county_name || "",
+      county_code: locality?.county_code || "",
+      uat_code: locality?.uat_code || "",
+      uat_name: locality?.uat_name || "",
     });
     return (
       <WizardShell phases={PHASES} phaseStep={2} title="Prima locatie" subtitle="Datele de aici identifica locatia. Profilul complet se configureaza dupa aprobarea accesului." onBack={goBack}>
@@ -492,7 +541,7 @@ export default function OrganizationOnboardingWizard({ prefill, onDone, onExit, 
           Prin trimitere confirmi informatiile si accepti <Link to="/termeni" className="underline underline-offset-2">Termenii</Link> si <Link to="/confidentialitate" className="underline underline-offset-2">Politica de confidentialitate</Link>.
         </p>
         {error && <p className="text-sm text-destructive">{error}</p>}
-        <ContinueButton onClick={submit} loading={submitting}>Trimite spre verificare</ContinueButton>
+        <ContinueButton onClick={() => submit()} loading={submitting}>Trimite spre verificare</ContinueButton>
       </div>
     </WizardShell>
   );
