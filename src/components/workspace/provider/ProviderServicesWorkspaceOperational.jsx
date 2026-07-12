@@ -286,27 +286,29 @@ function StatusBadge({ prerequisite, locallyBlocked }) {
   );
 }
 
-function ServiceRow({ item, selected, prerequisite, unitKey, capabilityActive, disabled, onToggle }) {
+function ServiceRow({ item, selected, prerequisite, unitKey, capabilityActive, disabled, helperText = "", onToggle }) {
   const active = isSelected(selected, item);
   const context = getServiceOperationalContext(item.id);
   const requiresUnit = context?.sectionKey !== "business_attributes";
   const locallyBlocked = active && requiresUnit && (!unitKey || (context?.capabilityKey && !capabilityActive));
-  const detail = active && prerequisite?.eligible === false
+  const blockerDetail = active && prerequisite?.eligible === false
     ? prerequisite.blockers?.[0]?.message
     : "";
+  const detail = blockerDetail || helperText;
   return (
     <button
       type="button"
+      aria-pressed={active}
       disabled={disabled || prerequisite?.status === "incompatible_profile"}
       onClick={() => onToggle(item, unitKey)}
-      className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 px-4 py-3 text-left transition last:border-b-0 disabled:cursor-not-allowed disabled:opacity-55 ${active ? "bg-secondary/35" : "bg-card hover:bg-secondary/20"}`}
+      className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 px-4 py-3 text-left transition last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-55 ${active ? "bg-secondary/35" : "bg-card hover:bg-secondary/20"}`}
     >
       <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${active ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`}>
         {active && <Check className="h-3.5 w-3.5" />}
       </span>
       <span className="min-w-0">
         <span className="block text-sm font-semibold leading-snug text-foreground">{serviceLabel(item)}</span>
-        {detail && <span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground">{detail}</span>}
+        {detail && <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">{detail}</span>}
       </span>
       <StatusBadge prerequisite={prerequisite} locallyBlocked={locallyBlocked} />
     </button>
@@ -317,9 +319,10 @@ function SelectionCard({ active, title, description, helper, icon: Icon, disable
   return (
     <button
       type="button"
+      aria-pressed={active}
       disabled={disabled}
       onClick={onClick}
-      className={`flex w-full items-start gap-3 rounded-2xl border p-3.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${active ? "border-foreground/15 bg-secondary/45" : "border-border bg-card hover:bg-secondary/25"}`}
+      className={`flex w-full items-start gap-3 rounded-2xl border p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-60 ${active ? "border-foreground/15 bg-secondary/45" : "border-border bg-card hover:bg-secondary/25"}`}
     >
       <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${active ? "bg-card text-foreground" : "bg-secondary/55 text-muted-foreground"}`}>
         <Icon className="h-4 w-4" />
@@ -339,14 +342,20 @@ function SelectionCard({ active, title, description, helper, icon: Icon, disable
 }
 
 function UnitSelection({ units, activeUnits, selectedByUnit, primaryUnits, disabled, onToggle }) {
+  const [showOptional, setShowOptional] = useState(false);
+  const hiddenUnits = units.filter((unitKey) => !primaryUnits.includes(unitKey) && !activeUnits.includes(unitKey));
+  const visibleUnits = showOptional
+    ? units
+    : units.filter((unitKey) => primaryUnits.includes(unitKey) || activeUnits.includes(unitKey));
+
   return (
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div>
-        <h2 className="text-sm font-bold">1. Spatiile disponibile in locatie</h2>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Alege numai spatiile care exista fizic. Cabinetul de optica, cabinetul optometric, atelierul si laboratorul sunt tratate separat.</p>
+        <h2 className="text-sm font-bold">1. Spațiile disponibile în locație</h2>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Alege numai spațiile care există fizic. Cabinetul de optică, cabinetul optometric, atelierul și laboratorul sunt tratate separat.</p>
       </div>
       <div className="mt-4 space-y-2">
-        {units.map((unitKey) => {
+        {visibleUnits.map((unitKey) => {
           const definition = getFunctionalUnitDefinition(unitKey);
           const Icon = UNIT_ICONS[unitKey] || Building2;
           const active = activeUnits.includes(unitKey);
@@ -357,7 +366,7 @@ function UnitSelection({ units, activeUnits, selectedByUnit, primaryUnits, disab
               active={active}
               title={definition?.title || unitKey}
               description={definition?.description || ""}
-              helper={count > 0 ? `${count} optiuni asociate` : primaryUnits.includes(unitKey) ? "Recomandat pentru acest profil" : "Optional"}
+              helper={count > 0 ? `${count} opțiuni asociate` : primaryUnits.includes(unitKey) ? "Recomandat pentru acest profil" : "Opțional"}
               icon={Icon}
               disabled={disabled}
               onClick={() => onToggle(unitKey)}
@@ -365,20 +374,33 @@ function UnitSelection({ units, activeUnits, selectedByUnit, primaryUnits, disab
           );
         })}
       </div>
+      {hiddenUnits.length > 0 && (
+        <button type="button" onClick={() => setShowOptional((value) => !value)} className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-secondary">
+          <ChevronDown className={`h-3.5 w-3.5 transition ${showOptional ? "rotate-180" : ""}`} />
+          {showOptional ? "Ascunde spațiile opționale" : `Arată alte spații disponibile (${hiddenUnits.length})`}
+        </button>
+      )}
     </section>
   );
 }
 
 function CapabilitySelection({ capabilityKeys, capabilities, activeUnits, primaryCapabilities, disabled, onToggle }) {
+  const [showOptional, setShowOptional] = useState(false);
   if (capabilityKeys.length === 0) return null;
+  const activeCapabilityKeys = new Set(capabilities.map((item) => item.capability_key));
+  const hiddenCapabilities = capabilityKeys.filter((key) => !primaryCapabilities.includes(key) && !activeCapabilityKeys.has(key));
+  const visibleCapabilities = showOptional
+    ? capabilityKeys
+    : capabilityKeys.filter((key) => primaryCapabilities.includes(key) || activeCapabilityKeys.has(key));
+
   return (
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div>
-        <h2 className="text-sm font-bold">2. Activitati speciale</h2>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Acestea sunt capabilitati, nu camere separate. Fiecare activitate este legata de un cabinet, magazin, atelier sau laborator selectat.</p>
+        <h2 className="text-sm font-bold">2. Activități speciale</h2>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Acestea sunt capabilități, nu camere separate. Fiecare activitate este legată de un cabinet, magazin, atelier sau laborator selectat.</p>
       </div>
       <div className="mt-4 space-y-2">
-        {capabilityKeys.map((capabilityKey) => {
+        {visibleCapabilities.map((capabilityKey) => {
           const definition = getCapabilityDefinition(capabilityKey);
           const activeRow = capabilities.find((item) => item.capability_key === capabilityKey);
           const parentOptions = (definition?.allowedParentUnits || []).filter((unitKey) => activeUnits.includes(unitKey));
@@ -389,7 +411,7 @@ function CapabilitySelection({ capabilityKeys, capabilities, activeUnits, primar
               active={Boolean(activeRow)}
               title={definition?.title || capabilityKey}
               description={definition?.description || ""}
-              helper={activeRow ? `Asociat: ${getFunctionalUnitDefinition(activeRow.parent_unit_key)?.shortTitle || activeRow.parent_unit_key}` : parentOptions.length === 0 ? "Selecteaza mai intai un spatiu compatibil" : primaryCapabilities.includes(capabilityKey) ? "Recomandat pentru acest profil" : "Optional"}
+              helper={activeRow ? `Asociat: ${getFunctionalUnitDefinition(activeRow.parent_unit_key)?.shortTitle || activeRow.parent_unit_key}` : parentOptions.length === 0 ? "Selectează mai întâi un spațiu compatibil" : primaryCapabilities.includes(capabilityKey) ? "Recomandat pentru acest profil" : "Opțional"}
               icon={Icon}
               disabled={disabled || parentOptions.length === 0}
               onClick={() => onToggle(capabilityKey, parentOptions)}
@@ -397,6 +419,12 @@ function CapabilitySelection({ capabilityKeys, capabilities, activeUnits, primar
           );
         })}
       </div>
+      {hiddenCapabilities.length > 0 && (
+        <button type="button" onClick={() => setShowOptional((value) => !value)} className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-secondary">
+          <ChevronDown className={`h-3.5 w-3.5 transition ${showOptional ? "rotate-180" : ""}`} />
+          {showOptional ? "Ascunde activitățile opționale" : `Arată alte activități (${hiddenCapabilities.length})`}
+        </button>
+      )}
     </section>
   );
 }
@@ -404,13 +432,15 @@ function CapabilitySelection({ capabilityKeys, capabilities, activeUnits, primar
 function CareSettingSelector({ options, value, disabled, onChange }) {
   const visibleOptions = options.filter((key) => CARE_SETTINGS[key]);
   if (visibleOptions.length <= 1 || visibleOptions.every((key) => key === "not_applicable" || key === "retail_only")) return null;
+  const hasVisibleSelection = visibleOptions.includes(value);
   return (
-    <section className="rounded-[22px] border border-border bg-card p-4 shadow-sm sm:p-5">
-      <h2 className="text-sm font-bold">Cadrul în care sunt oferite serviciile</h2>
-      <p className="mt-1 text-[11px] text-muted-foreground">Ajută Vezunde să diferențieze cabinetul, ambulatoriul, procedurile de zi, internarea și urgența fără a schimba tipul organizației.</p>
+    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <h2 className="text-sm font-bold">3. Modul în care funcționează locația</h2>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Alege varianta care descrie cel mai bine activitatea acestei locații. Aceasta nu modifică tipul organizației.</p>
+      {!hasVisibleSelection && <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">Alege o opțiune pentru a continua configurarea completă.</div>}
       <div className="mt-3 flex flex-wrap gap-2">
         {visibleOptions.map((key) => (
-          <button key={key} type="button" disabled={disabled} onClick={() => onChange(key)} className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${value === key ? "border-foreground bg-foreground text-background" : "border-border bg-card hover:bg-secondary"}`}>
+          <button key={key} type="button" aria-pressed={value === key} disabled={disabled} onClick={() => onChange(key)} className={`rounded-full border px-3 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 ${value === key ? "border-foreground bg-foreground text-background" : "border-border bg-card hover:bg-secondary"}`}>
             {CARE_SETTINGS[key].label}
           </button>
         ))}
@@ -543,91 +573,148 @@ function UnitAccordion({ unitKey, sections, selected, serviceUnitMap, capabiliti
 
 function GlobalServiceSections({ sections, selected, prerequisites, disabled, onToggleService }) {
   if (sections.length === 0) return null;
+  const helperText = {
+    cas_reimbursed_services: "Bifează dacă locația oferă cel puțin un produs sau serviciu care poate fi decontat prin CAS. Detaliile și eligibilitatea se confirmă separat.",
+    onsite_eye_testing_b2b: "Include consultații sau testări la domiciliu și screening ori testări de vedere la sediul companiilor.",
+  };
   return (
-    <section className="overflow-hidden rounded-[22px] border border-border bg-card shadow-sm">
+    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
       <div className="border-b border-border bg-secondary/10 px-4 py-4 sm:px-5">
-        <h2 className="text-sm font-bold">Opțiuni generale ale locației</h2>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Acestea se aplică întregii locații și nu sunt asociate unui cabinet sau spațiu fizic.</p>
+        <h2 className="text-sm font-bold">4. Opțiuni generale ale locației</h2>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Decontarea și serviciile oferite în afara locației se aplică întregii unități, nu unui singur cabinet.</p>
       </div>
       {sections.map((section) => (
         <div key={section.key} className="border-b border-border/60 last:border-b-0">
           <div className="bg-card px-4 py-3 sm:px-5"><h3 className="text-xs font-bold">{section.title}</h3><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{section.description}</p></div>
           <div className="border-t border-border/50">
-            {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} prerequisite={prerequisites[item.id]} unitKey="" capabilityActive disabled={disabled} onToggle={onToggleService} />)}
+            {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} prerequisite={prerequisites[item.id]} unitKey="" capabilityActive disabled={disabled} helperText={helperText[item.id] || ""} onToggle={onToggleService} />)}
           </div>
         </div>
       ))}
     </section>
   );
 }
-function ServicesSidebar({ activeUnits, capabilities, selectedCount, selectedByUnit, sections, selected, b2b }) {
+
+function ServiceCatalogIntro({ activeUnits, selectedCount }) {
+  return (
+    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-bold">5. Produse și servicii pe fiecare spațiu</h2>
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">Deschide fiecare spațiu și selectează oferta disponibilă. La final poți asocia specialiștii, echipamentele și facilitățile corespunzătoare.</p>
+        </div>
+        <span className="rounded-full bg-secondary px-3 py-1.5 text-[11px] font-semibold text-muted-foreground">{selectedCount} opțiuni · {activeUnits.length} spații</span>
+      </div>
+    </section>
+  );
+}
+
+function ServicesSidebar({ activeUnits, capabilities, selectedCount, selectedByUnit, sections, selected, b2b, careSetting, allowedCareSettings, resourceLinks, unitOrder }) {
   const publicRows = sections
     .map((section) => ({ ...section, count: selectedCountForSection(selected, section) }))
     .filter((section) => section.count > 0 && section.publicLabel);
+  const globalOptionCount = sections
+    .filter((section) => section.key === "business_attributes")
+    .reduce((sum, section) => sum + selectedCountForSection(selected, section), 0);
+  const serviceCount = Math.max(0, selectedCount - globalOptionCount);
+  const orderedActiveUnits = [
+    ...unitOrder.filter((unitKey) => activeUnits.includes(unitKey)),
+    ...activeUnits.filter((unitKey) => !unitOrder.includes(unitKey)),
+  ];
+  const resourceUnitKeys = new Set([
+    ...(resourceLinks.professionals || []).flatMap((item) => item.unit_keys || []),
+    ...(resourceLinks.equipment || []).map((item) => item.unit_key),
+    ...(resourceLinks.facilities || []).map((item) => item.unit_key),
+  ].filter(Boolean));
+  const careSettingComplete = allowedCareSettings.includes(careSetting);
+  const steps = [
+    { number: 1, label: "Spațiile locației", detail: activeUnits.length > 0 ? `${activeUnits.length} configurate` : "Selectează cel puțin un spațiu", done: activeUnits.length > 0 },
+    { number: 2, label: "Activități speciale", detail: capabilities.length > 0 ? `${capabilities.length} selectate` : "Opțional", done: capabilities.length > 0, optional: true },
+    { number: 3, label: "Mod de funcționare", detail: careSettingComplete ? CARE_SETTINGS[careSetting]?.label : "Necesită completare", done: careSettingComplete },
+    { number: 4, label: "Opțiuni generale", detail: globalOptionCount > 0 ? `${globalOptionCount} selectate` : "Opțional", done: globalOptionCount > 0, optional: true },
+    { number: 5, label: "Produse și servicii", detail: serviceCount > 0 ? `${serviceCount} selectate` : "Nu există selecții", done: serviceCount > 0 },
+  ];
 
   return (
-    <aside className="rounded-2xl border border-border bg-card p-4 shadow-sm xl:sticky xl:top-0">
+    <aside className="rounded-2xl border border-border bg-card p-4 shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
       <div className="mb-4 flex items-center gap-2">
         <Eye className="h-4 w-4" />
-        <h2 className="text-sm font-bold">Rezumat configurare</h2>
+        <h2 className="text-sm font-bold">Progres configurare</h2>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-        <div className="rounded-2xl bg-secondary/45 p-4">
-          <div className="text-[11px] font-semibold text-muted-foreground">Optiuni selectate</div>
-          <div className="mt-1 text-2xl font-extrabold">{selectedCount}</div>
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-2xl bg-secondary/45 px-3 py-3">
+          <div className="text-[10px] font-semibold text-muted-foreground">Opțiuni</div>
+          <div className="mt-1 text-xl font-extrabold">{selectedCount}</div>
         </div>
-        <div className="rounded-2xl bg-secondary/45 p-4">
-          <div className="text-[11px] font-semibold text-muted-foreground">Spatii configurate</div>
-          <div className="mt-1 text-2xl font-extrabold">{activeUnits.length}</div>
+        <div className="rounded-2xl bg-secondary/45 px-3 py-3">
+          <div className="text-[10px] font-semibold text-muted-foreground">Spații</div>
+          <div className="mt-1 text-xl font-extrabold">{activeUnits.length}</div>
         </div>
-        <div className="rounded-2xl bg-secondary/45 p-4">
-          <div className="text-[11px] font-semibold text-muted-foreground">Activitati speciale</div>
-          <div className="mt-1 text-2xl font-extrabold">{capabilities.length}</div>
+        <div className="rounded-2xl bg-secondary/45 px-3 py-3">
+          <div className="text-[10px] font-semibold text-muted-foreground">Activități</div>
+          <div className="mt-1 text-xl font-extrabold">{capabilities.length}</div>
         </div>
+      </div>
+
+      <div className="mt-4 border-t border-border pt-4">
+        <h3 className="text-xs font-bold">Ordinea recomandată</h3>
+        <ol className="mt-3 space-y-2">
+          {steps.map((step) => (
+            <li key={step.number} className="flex items-center gap-3 rounded-2xl bg-secondary/30 px-3 py-2.5">
+              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${step.done ? "bg-foreground text-background" : "border border-border bg-card text-muted-foreground"}`}>
+                {step.done ? <Check className="h-3.5 w-3.5" /> : step.number}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs font-bold">{step.label}</span>
+                <span className={`mt-0.5 block truncate text-[10px] ${!step.done && !step.optional ? "text-amber-700" : "text-muted-foreground"}`}>{step.detail}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
       </div>
 
       <div className="mt-5 border-t border-border pt-4">
-        <h3 className="text-xs font-bold">Spatii selectate</h3>
-        {activeUnits.length > 0 ? (
-          <ul className="mt-3 space-y-2">
-            {activeUnits.map((unitKey) => {
+        <h3 className="text-xs font-bold">Spații selectate</h3>
+        {orderedActiveUnits.length > 0 ? (
+          <ul className="mt-3 divide-y divide-border/70 overflow-hidden rounded-2xl border border-border/70">
+            {orderedActiveUnits.map((unitKey) => {
               const definition = getFunctionalUnitDefinition(unitKey);
               const Icon = UNIT_ICONS[unitKey] || Building2;
               return (
-                <li key={unitKey} className="flex items-center gap-3 rounded-2xl border border-border/70 px-3 py-2.5">
+                <li key={unitKey} className="flex items-center gap-3 px-3 py-2.5">
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-secondary"><Icon className="h-3.5 w-3.5" /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-xs font-bold">{definition?.shortTitle || definition?.title || unitKey}</span>
-                    <span className="mt-0.5 block text-[10px] text-muted-foreground">{selectedByUnit[unitKey] || 0} optiuni asociate</span>
+                    <span className="mt-0.5 block text-[10px] text-muted-foreground">{selectedByUnit[unitKey] || 0} opțiuni asociate</span>
                   </span>
+                  {resourceUnitKeys.has(unitKey) && <span className="rounded-full bg-secondary px-2 py-1 text-[9px] font-semibold text-muted-foreground">Resurse</span>}
                 </li>
               );
             })}
           </ul>
         ) : (
-          <p className="mt-3 rounded-2xl border border-dashed border-border bg-secondary/25 px-3 py-4 text-center text-xs text-muted-foreground">Nu ai selectat inca niciun spatiu.</p>
+          <p className="mt-3 rounded-2xl border border-dashed border-border bg-secondary/25 px-3 py-4 text-center text-xs text-muted-foreground">Nu ai selectat încă niciun spațiu.</p>
         )}
       </div>
 
       {capabilities.length > 0 && (
         <div className="mt-5 border-t border-border pt-4">
-          <h3 className="text-xs font-bold">Activitati active</h3>
-          <ul className="mt-3 space-y-2">
+          <h3 className="text-xs font-bold">Activități active</h3>
+          <div className="mt-3 flex flex-wrap gap-2">
             {capabilities.map((item) => (
-              <li key={`${item.capability_key}:${item.parent_unit_key}`} className="rounded-2xl bg-secondary/35 px-3 py-2.5">
-                <div className="text-xs font-semibold">{getCapabilityDefinition(item.capability_key)?.title || item.capability_key}</div>
-                <div className="mt-0.5 text-[10px] text-muted-foreground">Asociat: {getFunctionalUnitDefinition(item.parent_unit_key)?.shortTitle || item.parent_unit_key}</div>
-              </li>
+              <span key={`${item.capability_key}:${item.parent_unit_key}`} className="rounded-full bg-secondary px-2.5 py-1.5 text-[10px] font-semibold">
+                {getCapabilityDefinition(item.capability_key)?.shortTitle || getCapabilityDefinition(item.capability_key)?.title || item.capability_key}
+              </span>
             ))}
-          </ul>
+          </div>
         </div>
       )}
 
       <div className="mt-5 border-t border-border pt-4">
-        <h3 className="text-xs font-bold">{b2b ? "Oferta profesionala B2B" : "Cum va aparea public"}</h3>
+        <h3 className="text-xs font-bold">{b2b ? "Ofertă profesională B2B" : "Previzualizare după aprobare"}</h3>
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-          {b2b ? "Oferta este prezentata separat si nu intra in filtrele pentru pacienti." : "Pacientii vad filtre simple dupa nevoie, nu structura tehnica interna."}
+          {b2b ? "Oferta este prezentată separat și nu intră în filtrele pentru pacienți." : "Pacienții vor vedea filtre simple după nevoie, după aprobarea modificărilor."}
         </p>
         {!b2b && (
           publicRows.length > 0 ? (
@@ -639,7 +726,7 @@ function ServicesSidebar({ activeUnits, capabilities, selectedCount, selectedByU
               ))}
             </div>
           ) : (
-            <p className="mt-3 rounded-2xl border border-dashed border-border bg-secondary/25 px-3 py-4 text-center text-xs text-muted-foreground">Nu ai selectat inca servicii publice.</p>
+            <p className="mt-3 rounded-2xl border border-dashed border-border bg-secondary/25 px-3 py-4 text-center text-xs text-muted-foreground">Nu ai selectat încă servicii publice.</p>
           )
         )}
       </div>
@@ -842,7 +929,9 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     setCapabilities(initialCapabilities);
     setServiceUnitMap(initialMap);
     setResourceLinks(payload.resource_links || buildResourceLinks(nextConfig));
-    setCareSetting(payload.care_setting || nextConfig.care_setting || operationalLayout.careSettings?.[0] || "not_applicable");
+    const allowedCareSettings = operationalLayout.careSettings || [];
+    const persistedCareSetting = payload.care_setting || nextConfig.care_setting || "";
+    setCareSetting(allowedCareSettings.includes(persistedCareSetting) ? persistedCareSetting : allowedCareSettings[0] || persistedCareSetting || "not_applicable");
     setSuggestions(normalizeSuggestions(payload));
     setRawRemovalKeys(payload.raw_removal_keys || []);
     setOpenUnit(initialUnits[0] || "");
@@ -1023,6 +1112,8 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
           {!query && <CareSettingSelector options={operationalLayout.careSettings || []} value={careSetting} disabled={!editable} onChange={setCareSetting} />}
           {!query && <GlobalServiceSections sections={globalSections} selected={selected} prerequisites={config?.prerequisites_by_key || {}} disabled={!editable} onToggleService={toggleService} />}
 
+          {!query && <ServiceCatalogIntro activeUnits={activeUnits} selectedCount={selectedCount} />}
+
           {query ? (
             <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
               <div className="border-b border-border px-4 py-4 sm:px-5"><h2 className="text-sm font-bold">Rezultate pentru „{query}”</h2><p className="mt-1 text-[11px] text-muted-foreground">Căutarea recunoaște și formulări uzuale folosite de pacienții din România.</p></div>
@@ -1046,6 +1137,10 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
           sections={profileSections}
           selected={selected}
           b2b={isB2BProfile}
+          careSetting={careSetting}
+          allowedCareSettings={operationalLayout.careSettings || []}
+          resourceLinks={resourceLinks}
+          unitOrder={selectableUnits}
         />
       </div>
 
