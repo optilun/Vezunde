@@ -52,6 +52,15 @@ export default function ProviderLocationsWithPhoto(props) {
     };
   }, [selectedLocationId]);
 
+  useEffect(() => {
+    if (!photoOpen) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setPhotoOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [photoOpen]);
+
   return (
     <div ref={containerRef}>
       <style>{`
@@ -93,13 +102,21 @@ export default function ProviderLocationsWithPhoto(props) {
       )}
 
       {photoOpen && selectedLocation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4 py-6 backdrop-blur-sm">
-          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-border bg-background shadow-2xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4 py-6 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setPhotoOpen(false);
+          }}
+        >
+          <div
+            className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-border bg-background shadow-2xl"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-5 py-4">
               <div><div className="text-xs font-medium text-muted-foreground">{selectedLocationName}</div><h2 className="font-heading text-xl font-extrabold tracking-tight">Fotografia locatiei</h2></div>
               <button type="button" onClick={() => setPhotoOpen(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary" aria-label="Inchide"><X className="h-4 w-4" /></button>
             </div>
-            <div className="overflow-y-auto p-5"><ProviderLocationPhotoCompact locationId={selectedLocation.id} onRefresh={onRefresh} /></div>
+            <div className="overflow-y-auto p-5"><ProviderLocationPhotoCompact locationId={selectedLocation.id} /></div>
           </div>
         </div>
       )}
