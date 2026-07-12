@@ -2,6 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Initial provider requests are intentionally minimal. Services, schedule, team,
 // media, descriptions and social links are configured only after access approval.
+// New onboarding metadata is also mirrored inside submitted_payload so this
+// contract remains compatible with older ProviderClaimRequest schemas.
 const PROFILE_TYPES = ['independent_optical_store', 'optical_chain', 'ophthalmology_clinic', 'ophthalmology_office', 'independent_ophthalmologist', 'independent_optometrist', 'independent_optician', 'optical_laboratory_b2c', 'optical_laboratory_b2b', 'future_b2b_distributor'];
 const RELATIONSHIPS = ['owner', 'organization_representative', 'location_manager', 'authorized_staff'];
 const SUBJECT_TYPES = ['organization', 'independent_professional', 'b2b_supplier'];
@@ -20,6 +22,10 @@ const ROLE_BY_RELATIONSHIP = {
 
 function normalizeVerificationMethod(value) {
   return VERIFICATION_METHODS.includes(value) ? value : 'manual_review';
+}
+
+function schemaCompatibleSubjectType(value) {
+  return value === 'b2b_supplier' ? 'organization' : value;
 }
 
 Deno.serve(async (req) => {
@@ -91,6 +97,7 @@ Deno.serve(async (req) => {
         claimant_relationship: claimantRelationship,
         requested_membership_role: requestedMembershipRole,
         verification_method: verificationMethod,
+        verification_status: 'pending',
         existing_active_membership_count: activeMemberships.length,
         contact: { contact_name: c.contact_name, email: c.email, phone: c.phone || '' },
       });
@@ -174,6 +181,7 @@ Deno.serve(async (req) => {
         claimant_relationship: claimantRelationship,
         requested_membership_role: requestedMembershipRole,
         verification_method: verificationMethod,
+        verification_status: 'pending',
         organization_name: claimSubjectType !== 'independent_professional' ? org.name : '',
         organization_legal_name: claimSubjectType !== 'independent_professional' ? (org.legal_name || '') : '',
         organization_structure: claimSubjectType === 'organization' ? (org.structure || 'single') : '',
@@ -200,12 +208,8 @@ Deno.serve(async (req) => {
           const reviewClaim = await svc.entities.ProviderClaimRequest.create({
             user_id: user.id,
             mode: 'new_location_duplicate_review',
-            claim_subject_type: claimSubjectType,
-            request_type: 'duplicate_identity_clarification',
+            claim_subject_type: schemaCompatibleSubjectType(claimSubjectType),
             claimant_relationship: claimantRelationship,
-            requested_membership_role: requestedMembershipRole,
-            verification_method: verificationMethod,
-            verification_status: 'pending',
             business_name: l.name,
             contact_name: c.contact_name,
             role: c.role || '',
@@ -278,11 +282,7 @@ Deno.serve(async (req) => {
       location_id: locationId,
       user_id: user.id,
       mode: p.mode,
-      request_type: requestType,
       claimant_relationship: claimantRelationship,
-      requested_membership_role: requestedMembershipRole,
-      verification_method: verificationMethod,
-      verification_status: 'pending',
       business_name: businessName,
       contact_name: c.contact_name,
       role: c.role || '',
@@ -292,7 +292,7 @@ Deno.serve(async (req) => {
       submitted_payload: submittedPayload,
       status: 'in_asteptare',
     };
-    if (claimSubjectType) claimData.claim_subject_type = claimSubjectType;
+    if (claimSubjectType) claimData.claim_subject_type = schemaCompatibleSubjectType(claimSubjectType);
     if (organizationId) claimData.organization_id = organizationId;
     if (identitySnapshot) claimData.identity_check_snapshot = identitySnapshot;
     const claim = await svc.entities.ProviderClaimRequest.create(claimData);
