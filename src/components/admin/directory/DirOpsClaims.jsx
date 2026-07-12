@@ -11,6 +11,12 @@ const ROLE_LABELS = {
   location_manager: "Manager locatie",
   location_staff: "Membru locatie",
 };
+const ROLE_BY_RELATIONSHIP = {
+  owner: "organization_owner",
+  organization_representative: "organization_owner",
+  location_manager: "location_manager",
+  authorized_staff: "location_staff",
+};
 const REQUEST_LABELS = {
   claim_existing_directory_profile: "Revendicare profil liber",
   access_request_existing_claimed_profile: "Solicitare acces profil administrat",
@@ -22,6 +28,14 @@ const REQUEST_LABELS = {
 
 function parseJSON(value) {
   try { return value ? JSON.parse(value) : {}; } catch { return {}; }
+}
+
+function requestedRoleForClaim(claim, submitted) {
+  return claim.requested_membership_role
+    || submitted.requested_membership_role
+    || ROLE_BY_RELATIONSHIP[claim.claimant_relationship]
+    || ROLE_BY_RELATIONSHIP[submitted.claimant_relationship]
+    || "location_staff";
 }
 
 export default function DirOpsClaims() {
@@ -41,7 +55,7 @@ export default function DirOpsClaims() {
       const next = { ...current };
       rows.forEach((claim) => {
         const submitted = parseJSON(claim.submitted_payload);
-        next[claim.id] = next[claim.id] || claim.requested_membership_role || submitted.requested_membership_role || "location_staff";
+        next[claim.id] = next[claim.id] || requestedRoleForClaim(claim, submitted);
       });
       return next;
     });
@@ -80,7 +94,7 @@ export default function DirOpsClaims() {
             const location = locations[claim.location_id];
             const submitted = parseJSON(claim.submitted_payload);
             const requestType = claim.request_type || submitted.request_type || (claim.mode === "claim" ? "claim_existing_directory_profile" : "new_patient_facing_location");
-            const requestedRole = claim.requested_membership_role || submitted.requested_membership_role || "location_staff";
+            const requestedRole = requestedRoleForClaim(claim, submitted);
             const isDuplicateReview = claim.mode === "new_location_duplicate_review" || requestType === "duplicate_identity_clarification";
             const isProfessional = requestType === "new_professional_profile";
             const isPending = ["in_asteptare", "needs_more_info"].includes(claim.status);
