@@ -1,5 +1,5 @@
 import React from "react";
-import { LogOut, HelpCircle, User as UserIcon } from "lucide-react";
+import { Check, HelpCircle, LogOut, User as UserIcon } from "lucide-react";
 import ViaseeBrand from "@/components/brand/ViaseeBrand";
 
 function NavButton({ item, active, onClick }) {
@@ -17,7 +17,23 @@ function NavButton({ item, active, onClick }) {
   );
 }
 
-export default function ProviderSidebarContent({ navItems, activeKey, onNavigate, user, onLogout, title, subtitle, modeSwitch }) {
+export default function ProviderSidebarContent({
+  navItems,
+  activeKey,
+  onNavigate,
+  user,
+  onLogout,
+  title,
+  subtitle,
+  modeSwitch,
+  modeSwitches,
+}) {
+  const accountModes = modeSwitches?.length
+    ? modeSwitches
+    : modeSwitch
+      ? [{ key: "legacy", label: modeSwitch.label, active: false, onClick: modeSwitch.onClick }]
+      : [];
+
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 pt-5 pb-4">
@@ -35,10 +51,23 @@ export default function ProviderSidebarContent({ navItems, activeKey, onNavigate
       </nav>
 
       <div className="px-3 py-3 border-t border-border space-y-0.5">
-        {modeSwitch && (
-          <button onClick={modeSwitch.onClick} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">
-            <UserIcon className="w-4 h-4 shrink-0" /> <span className="truncate">{modeSwitch.label}</span>
-          </button>
+        {accountModes.length > 1 && (
+          <div className="mb-2 rounded-xl border border-border bg-secondary/20 p-1.5">
+            <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Spatiile contului</div>
+            {accountModes.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={item.onClick}
+                disabled={item.active}
+                className={`mt-0.5 flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs font-semibold transition ${item.active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:bg-card hover:text-foreground"}`}
+              >
+                <UserIcon className="h-3.5 w-3.5 shrink-0" />
+                <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                {item.active && <Check className="h-3.5 w-3.5 shrink-0" />}
+              </button>
+            ))}
+          </div>
         )}
         <a href="mailto:contact@viasee.ro" className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">
           <HelpCircle className="w-4 h-4 shrink-0" /> Ajutor
