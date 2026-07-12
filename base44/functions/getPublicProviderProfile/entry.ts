@@ -76,7 +76,10 @@ function normalizedCopy(value) {
 
 function exactMapPosition(location) {
   if (String(location?.place_id || '').trim()) return true;
-  return Number.isFinite(Number(location?.lat)) && Number.isFinite(Number(location?.lng));
+  const lat = location?.lat;
+  const lng = location?.lng;
+  if (lat === null || lat === undefined || lat === '' || lng === null || lng === undefined || lng === '') return false;
+  return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
 }
 
 Deno.serve(async (req) => {
