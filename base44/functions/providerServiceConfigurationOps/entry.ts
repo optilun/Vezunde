@@ -139,9 +139,43 @@ function validateProfileCompatibility(loc, cleanPayload) {
 }
 
 async function assertReferences(svc, locationId, payload) {
+  for (const ids of Object.values(payload.removal_ids || {})) {
+    for (const serviceKey of ids) {
+      const rows = await svc.entities.LocationService.filter({ location_id: locationId, service_key: serviceKey });
+      if (!rows.some((row) => row.is_active !== false)) throw new Error(`Serviciul aprobat nu există activ: ${serviceKey}`);
+    }
+  }
+
+  for (const unitKey of payload.removal_unit_keys || []) {
+    const rows = await svc.entities.LocationFunctionalUnit.filter({ location_id: locationId, unit_key: unitKey }, null, 20).catch(() => []);
+    if (!rows.some((row) => row.is_active !== false)) throw new Error(`Spațiul aprobat nu există activ: ${unitKey}`);
+  }
+
+  for (const removal of payload.removal_capabilities || []) {
+    const rows = await svc.entities.LocationCapability.filter({
+      location_id: locationId,
+      capability_key: removal.capability_key,
+      parent_unit_key: removal.parent_unit_key,
+    }, null, 20).catch(() => []);
+    if (!rows.some((row) => row.is_active !== false)) throw new Error(`Activitatea aprobată nu există activ: ${removal.capability_key}`);
+  }
+
   for (const rawKey of payload.raw_removal_keys || []) {
     const rows = await svc.entities.LocationService.filter({ location_id: locationId, service_key: rawKey });
     if (!rows.some((row) => row.is_active !== false)) throw new Error(`Serviciul legacy sau necunoscut nu există activ: ${rawKey}`);
+  }
+
+  for (const removal of payload.resource_removals?.professionals || []) {
+    const assignment = await svc.entities.ProfessionalLocationAssignment.get(removal.assignment_id).catch(() => null);
+    if (!assignment || assignment.location_id !== locationId) throw new Error('Specialistul eliminat nu aparține locației.');
+  }
+  for (const removal of payload.resource_removals?.equipment || []) {
+    const equipment = await svc.entities.LocationEquipment.get(removal.equipment_id).catch(() => null);
+    if (!equipment || equipment.location_id !== locationId) throw new Error('Echipamentul eliminat nu aparține locației.');
+  }
+  for (const removal of payload.resource_removals?.facilities || []) {
+    const facility = await svc.entities.LocationFacility.get(removal.facility_id).catch(() => null);
+    if (!facility || facility.location_id !== locationId) throw new Error('Facilitatea eliminată nu aparține locației.');
   }
 
   for (const link of payload.resource_links?.professionals || []) {
