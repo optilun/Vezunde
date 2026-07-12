@@ -192,12 +192,19 @@ function configurationSignature(payload = {}) {
     raw_removal_keys: [...new Set(payload.raw_removal_keys || [])].sort(),
     suggestions: sortRows(payload.suggestions || [], ["group", "label", "functional_unit_key", "capability_key"]),
     functional_units: sortRows(payload.functional_units || [], ["unit_key", "care_setting"]),
+    removal_unit_keys: [...new Set(payload.removal_unit_keys || [])].sort(),
     capabilities: sortRows(payload.capabilities || [], ["capability_key", "parent_unit_key"]),
+    removal_capabilities: sortRows(payload.removal_capabilities || [], ["capability_key", "parent_unit_key"]),
     service_unit_map: serviceMap,
     resource_links: {
       professionals: sortRows((links.professionals || []).map((item) => ({ ...item, unit_keys: [...(item.unit_keys || [])].sort() })), ["assignment_id"]),
       equipment: sortRows(links.equipment || [], ["equipment_id", "unit_key"]),
       facilities: sortRows(links.facilities || [], ["facility_id", "unit_key"]),
+    },
+    resource_removals: {
+      professionals: sortRows(payload.resource_removals?.professionals || [], ["assignment_id"]),
+      equipment: sortRows(payload.resource_removals?.equipment || [], ["equipment_id"]),
+      facilities: sortRows(payload.resource_removals?.facilities || [], ["facility_id"]),
     },
     care_setting: payload.care_setting || "",
   });
@@ -280,6 +287,34 @@ function buildResourceLinks(config) {
       .filter((item) => item.functional_unit_key)
       .map((item) => ({ facility_id: item.id, unit_key: item.functional_unit_key })),
   };
+}
+
+function capabilityIdentity(item) {
+  return `${item?.capability_key || ""}:${item?.parent_unit_key || ""}`;
+}
+
+function resourceRemovalPayload(approved, desired) {
+  const current = desired || { professionals: [], equipment: [], facilities: [] };
+  const removals = { professionals: [], equipment: [], facilities: [] };
+
+  const currentProfessionals = new Map((current.professionals || []).map((item) => [item.assignment_id, new Set(item.unit_keys || [])]));
+  for (const item of approved.professionals || []) {
+    const desiredUnits = currentProfessionals.get(item.assignment_id) || new Set();
+    const removedUnits = (item.unit_keys || []).filter((unitKey) => !desiredUnits.has(unitKey));
+    if (removedUnits.length > 0) removals.professionals.push({ assignment_id: item.assignment_id, unit_keys: removedUnits });
+  }
+
+  const currentEquipment = new Map((current.equipment || []).map((item) => [item.equipment_id, item.unit_key]));
+  for (const item of approved.equipment || []) {
+    if (currentEquipment.get(item.equipment_id) !== item.unit_key) removals.equipment.push({ equipment_id: item.equipment_id });
+  }
+
+  const currentFacilities = new Map((current.facilities || []).map((item) => [item.facility_id, item.unit_key]));
+  for (const item of approved.facilities || []) {
+    if (currentFacilities.get(item.facility_id) !== item.unit_key) removals.facilities.push({ facility_id: item.facility_id });
+  }
+
+  return removals;
 }
 
 function normalizeSuggestions(payload = {}) {
@@ -790,10 +825,14 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
   const [draft, setDraft] = useState(null);
   const [approvedSelected, setApprovedSelected] = useState({});
   const [selected, setSelected] = useState({});
+  const [approvedUnits, setApprovedUnits] = useState([]);
   const [activeUnits, setActiveUnits] = useState([]);
+  const [approvedCapabilities, setApprovedCapabilities] = useState([]);
   const [capabilities, setCapabilities] = useState([]);
   const [serviceUnitMap, setServiceUnitMap] = useState({});
+  const [approvedResourceLinks, setApprovedResourceLinks] = useState({ professionals: [], equipment: [], facilities: [] });
   const [resourceLinks, setResourceLinks] = useState({ professionals: [], equipment: [], facilities: [] });
+  const [approvedCareSetting, setApprovedCareSetting] = useState("not_applicable");
   const [careSetting, setCareSetting] = useState("not_applicable");
   const [suggestions, setSuggestions] = useState([]);
   const [rawRemovalKeys, setRawRemovalKeys] = useState([]);
@@ -874,16 +913,19 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
       raw_removal_keys: [...new Set(rawRemovalKeys)],
       suggestions,
       functional_units: unitRows,
+      removal_unit_keys: approvedUnits.filter((unitKey) => !activeUnits.includes(unitKey)),
       capabilities,
+      removal_capabilities: approvedCapabilities.filter((item) => !capabilities.some((current) => capabilityIdentity(current) === capabilityIdentity(item))),
       service_unit_map: completeServiceMap,
       resource_links: resourceLinks,
+      resource_removals: resourceRemovalPayload(approvedResourceLinks, resourceLinks),
       care_setting: careSetting,
     };
   };
 
   const currentSignature = useMemo(
     () => configurationSignature(buildPayload()),
-    [selected, approvedSelected, activeUnits, capabilities, serviceUnitMap, resourceLinks, careSetting, suggestions, rawRemovalKeys],
+    [selected, approvedSelected, approvedUnits, activeUnits, approvedCapabilities, capabilities, serviceUnitMap, approvedResourceLinks, resourceLinks, careSetting, suggestions, rawRemovalKeys],
   );
   const dirty = baselineSignature !== null && currentSignature !== baselineSignature;
 
@@ -973,12 +1015,17 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
       .filter((item) => selectableCapabilities.includes(item.capability_key) && initialUnits.includes(item.parent_unit_key));
     setConfig(nextConfig);
     setDraft(ownDraft);
+    const approvedLinks = buildResourceLinks(nextConfig);
+    const initialResourceLinks = payload.resource_links || approvedLinks;
     setApprovedSelected(approved);
     setSelected(desired);
+    setApprovedUnits(persistedUnits);
     setActiveUnits(initialUnits);
+    setApprovedCapabilities(persistedCapabilities);
     setCapabilities(initialCapabilities);
     setServiceUnitMap(initialMap);
-    setResourceLinks(payload.resource_links || buildResourceLinks(nextConfig));
+    setApprovedResourceLinks(approvedLinks);
+    setResourceLinks(initialResourceLinks);
     const allowedCareSettings = operationalLayout.careSettings || [];
     const persistedCareSetting = payload.care_setting || nextConfig.care_setting || "";
     const hasCommercialSpace = initialUnits.includes("optical_store");
@@ -986,6 +1033,8 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     const recommendedCareSetting = hasCommercialSpace && hasClinicalSpace && allowedCareSettings.includes("mixed")
       ? "mixed"
       : allowedCareSettings[0] || "not_applicable";
+    const approvedCare = nextConfig.care_setting || recommendedCareSetting;
+    setApprovedCareSetting(approvedCare);
     setCareSetting(allowedCareSettings.includes(persistedCareSetting) ? persistedCareSetting : recommendedCareSetting);
     setSuggestions(normalizeSuggestions(payload));
     setRawRemovalKeys(payload.raw_removal_keys || []);
