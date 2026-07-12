@@ -20,13 +20,19 @@ function validatePayload(payload) {
   return { values };
 }
 
-function computeCompleteness(organization) {
+function computeCompleteness(organization, locations) {
   const items = [
-    !!String(organization.public_display_name || organization.name || '').trim(),
-    !!String(organization.public_description || '').trim(),
-    !!(String(organization.public_phone || '').trim() || String(organization.public_email || '').trim()),
-    !!(String(organization.website_url || organization.website || '').trim() || String(organization.facebook_url || '').trim() || String(organization.instagram_url || '').trim() || String(organization.linkedin_url || '').trim()),
-    !!String(organization.logo_url || '').trim(),
+    !!clean(organization.public_display_name),
+    !!clean(organization.public_description),
+    !!(clean(organization.public_phone) || clean(organization.public_email)),
+    !!(
+      clean(organization.website_url || organization.website)
+      || clean(organization.facebook_url)
+      || clean(organization.instagram_url)
+      || clean(organization.linkedin_url)
+    ),
+    !!clean(organization.logo_url),
+    locations.some((location) => location.active_status !== 'inactiva' && location.status !== 'suspendata'),
   ];
   return Math.round((items.filter(Boolean).length / items.length) * 100);
 }
@@ -90,9 +96,10 @@ Deno.serve(async (req) => {
       if (validation.error) return res(validation, 400);
       const previous = Object.fromEntries(FIELDS.map((key) => [key, organization[key] || '']));
       const preview = { ...organization, ...validation.values };
+      const locations = await svc.entities.ProviderLocation.filter({ organization_id: organization.id }, '-created_date', 500);
       const updates = {
         ...validation.values,
-        profile_completeness: computeCompleteness(preview),
+        profile_completeness: computeCompleteness(preview, locations),
         public_visibility_status: 'approved',
         profile_updated_at: now,
       };
