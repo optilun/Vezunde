@@ -1,8 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Deterministic, read-only duplicate candidate detection. The public precheck
-// context is deliberately limited to the same safe fields already visible in
-// the directory. Admin and final submission contexts still require auth.
+// context is deliberately limited to profiles already visible in the public
+// directory. Admin and final submission contexts still inspect all records.
 const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 const STOPWORDS = ['optica', 'optic', 'optical', 'clinica', 'cabinet', 'centrul', 'centru', 'medical', 'medicala', 'oftalmologie', 'oftalmologic', 'oftalmologica', 'laborator', 'srl'];
 const tokens = (s) => norm(s).split(' ').filter((t) => t.length > 2 && !STOPWORDS.includes(t));
@@ -64,7 +64,11 @@ Deno.serve(async (req) => {
     const candidates = [];
     for (const l of allLocs) {
       if (p.exclude_location_id && l.id === p.exclude_location_id) continue;
-      if (isPublicPrecheck && (l.active_status === 'inactiva' || l.profile_control_status === 'suspended')) continue;
+      if (isPublicPrecheck && (
+        l.status !== 'publicata'
+        || l.active_status === 'inactiva'
+        || l.profile_control_status === 'suspended'
+      )) continue;
       const lToks = tokens(l.public_display_name || l.name);
       const lOrgName = orgNameById[l.organization_id] || '';
       const sameLocality = String(l.locality_siruta_code || '').trim() !== '' && String(l.locality_siruta_code || '').trim() === siruta;
