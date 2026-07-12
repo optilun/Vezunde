@@ -207,11 +207,80 @@ export function validateResourceLinks(value, functionalUnits, allowOperationalCo
   return { valid: true, clean: { professionals: professionals.clean, equipment: equipment.clean, facilities: facilities.clean } };
 }
 
+export function validateRemovalUnitKeys(value, allowOperationalContext = true) {
+  if (value === undefined) return { valid: true, clean: [] };
+  if (!allowOperationalContext) return resultError('Eliminarea unităților funcționale nu este permisă în acest flux');
+  if (!Array.isArray(value) || value.length > MAX_UNITS) return resultError('removal_unit_keys trebuie să fie o listă validă');
+  const cleanValue = uniqueStrings(value);
+  const invalid = cleanValue.filter((unitKey) => !FUNCTIONAL_UNIT_KEYS.includes(unitKey));
+  if (invalid.length > 0) return resultError('Cheie de unitate funcțională invalidă pentru eliminare', invalid);
+  return { valid: true, clean: cleanValue };
+}
+
+export function validateRemovalCapabilities(value, allowOperationalContext = true) {
+  if (value === undefined) return { valid: true, clean: [] };
+  if (!allowOperationalContext) return resultError('Eliminarea capabilităților nu este permisă în acest flux');
+  if (!Array.isArray(value) || value.length > MAX_CAPABILITIES) return resultError('removal_capabilities trebuie să fie o listă validă');
+  const cleanValue = [];
+  const seen = new Set();
+  for (const raw of value) {
+    if (!isPlainObject(raw)) return resultError('Capabilitate invalidă pentru eliminare');
+    const capabilityKey = clean(raw.capability_key || raw.key);
+    const parentUnitKey = clean(raw.parent_unit_key);
+    if (!CAPABILITY_KEYS.includes(capabilityKey)) return resultError('Cheie de capabilitate invalidă pentru eliminare', [capabilityKey]);
+    if (!FUNCTIONAL_UNIT_KEYS.includes(parentUnitKey) || !isCapabilityParentAllowed(capabilityKey, parentUnitKey)) {
+      return resultError('Unitate părinte invalidă pentru capabilitatea eliminată', [capabilityKey, parentUnitKey]);
+    }
+    const key = `${capabilityKey}:${parentUnitKey}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cleanValue.push({ capability_key: capabilityKey, parent_unit_key: parentUnitKey });
+  }
+  return { valid: true, clean: cleanValue };
+}
+
+function validateResourceRemovalRows(value, type) {
+  if (value === undefined) return { valid: true, clean: [] };
+  if (!Array.isArray(value) || value.length > MAX_RESOURCE_LINKS) return resultError(`resource_removals.${type} trebuie să fie o listă validă`);
+  const idField = type === 'professionals' ? 'assignment_id' : type === 'equipment' ? 'equipment_id' : 'facility_id';
+  const cleanValue = [];
+  const seen = new Set();
+  for (const raw of value) {
+    if (!isPlainObject(raw)) return resultError(`Eliminare de resursă invalidă pentru ${type}`);
+    const id = clean(raw[idField]);
+    if (!id) return resultError(`${idField} este obligatoriu pentru eliminare`);
+    const unitKeys = type === 'professionals' ? uniqueStrings(raw.unit_keys || []) : [];
+    const invalidUnits = unitKeys.filter((unitKey) => !FUNCTIONAL_UNIT_KEYS.includes(unitKey));
+    if (invalidUnits.length > 0) return resultError('Cheie de unitate invalidă în eliminarea specialistului', invalidUnits);
+    const key = `${id}:${unitKeys.sort().join(',')}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cleanValue.push(type === 'professionals' ? { assignment_id: id, unit_keys: unitKeys } : { [idField]: id });
+  }
+  return { valid: true, clean: cleanValue };
+}
+
+export function validateResourceRemovals(value, allowOperationalContext = true) {
+  if (value === undefined) return { valid: true, clean: { professionals: [], equipment: [], facilities: [] } };
+  if (!allowOperationalContext) return resultError('Eliminarea legăturilor de resurse nu este permisă în acest flux');
+  if (!isPlainObject(value)) return resultError('resource_removals trebuie să fie obiect');
+  const unknown = Object.keys(value).filter((key) => !['professionals', 'equipment', 'facilities'].includes(key));
+  if (unknown.length > 0) return resultError('Câmp necunoscut în resource_removals', unknown);
+  const professionals = validateResourceRemovalRows(value.professionals, 'professionals');
+  if (!professionals.valid) return professionals;
+  const equipment = validateResourceRemovalRows(value.equipment, 'equipment');
+  if (!equipment.valid) return equipment;
+  const facilities = validateResourceRemovalRows(value.facilities, 'facilities');
+  if (!facilities.valid) return facilities;
+  return { valid: true, clean: { professionals: professionals.clean, equipment: equipment.clean, facilities: facilities.clean } };
+}
+
 export function validateServiceConfigurationPayload(payload, options = {}) {
   if (!isPlainObject(payload)) return resultError('Payload invalid');
   const allowedFields = new Set([
     'selected_ids', 'removal_ids', 'raw_removal_keys', 'suggestions', 'custom_requests',
     'functional_units', 'capabilities', 'service_unit_map', 'resource_links', 'care_setting',
+    'removal_unit_keys', 'removal_capabilities', 'resource_removals',
   ]);
   const unknown = Object.keys(payload).filter((key) => !allowedFields.has(key));
   if (unknown.length > 0) return resultError('Câmp nepermis', unknown);
@@ -232,6 +301,12 @@ export function validateServiceConfigurationPayload(payload, options = {}) {
   if (!serviceUnitMap.valid) return serviceUnitMap;
   const resourceLinks = validateResourceLinks(payload.resource_links, functionalUnits.clean, options.allowOperationalContext !== false);
   if (!resourceLinks.valid) return resourceLinks;
+  const removalUnitKeys = validateRemovalUnitKeys(payload.removal_unit_keys, options.allowOperationalContext !== false);
+  if (!removalUnitKeys.valid) return removalUnitKeys;
+  const removalCapabilities = validateRemovalCapabilities(payload.removal_capabilities, options.allowOperationalContext !== false);
+  if (!removalCapabilities.valid) return removalCapabilities;
+  const resourceRemovals = validateResourceRemovals(payload.resource_removals, options.allowOperationalContext !== false);
+  if (!resourceRemovals.valid) return resourceRemovals;
   const careSetting = clean(payload.care_setting || 'not_applicable');
   if (!CARE_SETTING_KEYS.includes(careSetting)) return resultError('care_setting invalid', [careSetting]);
 
@@ -240,6 +315,9 @@ export function validateServiceConfigurationPayload(payload, options = {}) {
   const hasOperationalChanges = functionalUnits.clean.length > 0 || capabilities.clean.length > 0
     || Object.keys(serviceUnitMap.clean).length > 0
     || Object.values(resourceLinks.clean).some((items) => items.length > 0)
+    || removalUnitKeys.clean.length > 0
+    || removalCapabilities.clean.length > 0
+    || Object.values(resourceRemovals.clean).some((items) => items.length > 0)
     || payload.care_setting !== undefined;
   if (!hasSelected && !hasRemoved && rawRemovals.clean.length === 0 && suggestions.clean.length === 0 && !hasOperationalChanges) {
     return resultError('Payload gol');
@@ -256,6 +334,9 @@ export function validateServiceConfigurationPayload(payload, options = {}) {
       capabilities: capabilities.clean,
       service_unit_map: serviceUnitMap.clean,
       resource_links: resourceLinks.clean,
+      removal_unit_keys: removalUnitKeys.clean,
+      removal_capabilities: removalCapabilities.clean,
+      resource_removals: resourceRemovals.clean,
       care_setting: careSetting,
     },
   };
