@@ -343,8 +343,9 @@ function StatusBadge({ prerequisite, locallyBlocked }) {
   );
 }
 
-function ChangeBadge({ draftAddition, removalRequested }) {
+function ChangeBadge({ draftAddition, removalRequested, modified }) {
   if (removalRequested) return <span className="inline-flex shrink-0 items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-900">Eliminare solicitată</span>;
+  if (modified) return <span className="inline-flex shrink-0 items-center rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">Modificat în draft</span>;
   if (draftAddition) return <span className="inline-flex shrink-0 items-center rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">Nou în draft</span>;
   return null;
 }
@@ -516,7 +517,7 @@ function CareSettingSelector({ options, approvedValue, value, disabled, onChange
     <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-sm font-bold">3. Modul în care funcționează locația</h2>
-        {value !== approvedValue && <ChangeBadge draftAddition />}
+        {value !== approvedValue && <ChangeBadge modified />}
       </div>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Alege varianta care descrie cel mai bine activitatea acestei locații. Aceasta nu modifică tipul organizației.</p>
       {!hasVisibleSelection && <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">Alege o opțiune pentru a continua configurarea completă.</div>}
