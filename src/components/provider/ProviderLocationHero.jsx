@@ -6,20 +6,33 @@ import { PROVIDER_TYPES } from "@/lib/vezunde";
 function HeroContent({ profile, status, publicServiceCount, categoryLabel, mapUrl }) {
   return (
     <div className="p-6 sm:p-7">
+      {(profile.organization_name || profile.organization_logo_url) && (
+        <div className="mb-4 flex items-center gap-2.5">
+          {profile.organization_logo_url ? (
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-white p-1.5 shadow-sm">
+              <img src={profile.organization_logo_url} alt={`Logo ${profile.organization_name || profile.name}`} className="h-full w-full object-contain" />
+            </div>
+          ) : null}
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Organizatie</div>
+            <div className="text-xs font-bold text-foreground">{profile.organization_name || profile.name}</div>
+          </div>
+        </div>
+      )}
       <div className="text-xs font-medium text-primary">{PROVIDER_TYPES[profile.provider_type]}</div>
       <div className="mt-1 flex flex-wrap items-center gap-3">
         <h1 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">{profile.name}</h1>
         <TrustBadge status={status} />
       </div>
       <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" />{[profile.city, profile.county].filter(Boolean).join(", ") || profile.city || "România"}</span>
+        <span className="inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" />{[profile.city, profile.county].filter(Boolean).join(", ") || profile.city || "Romania"}</span>
         {publicServiceCount > 0 && <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-foreground">{publicServiceCount} {categoryLabel}</span>}
       </div>
       {(profile.phone_public || mapUrl) && (
         <div className="mt-5 flex flex-wrap gap-2">
           {profile.phone_public && (
             <a href={`tel:${profile.phone_public.replace(/\s/g, "")}`} className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background transition-opacity hover:opacity-90">
-              <Phone className="h-3.5 w-3.5" /> Sună locația
+              <Phone className="h-3.5 w-3.5" /> Suna locatia
             </a>
           )}
           {mapUrl && (
