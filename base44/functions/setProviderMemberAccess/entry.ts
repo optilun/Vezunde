@@ -51,43 +51,54 @@ Deno.serve(async (req) => {
     const ownedOrganizations = await ownerOrganizations(svc, user.id);
     if (!ownedOrganizations.has(organizationId) && user.role !== 'admin') return res({ error: 'Doar ownerul organizatiei poate modifica accesul utilizatorilor' }, 403);
 
+    const organizationLocations = await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, '-created_date', 500);
+    const organizationLocationIds = new Set(organizationLocations.map((location) => location.id));
     const normalized = [];
     const seen = new Set();
     for (const assignment of assignments) {
       const locationId = clean(assignment?.location_id);
-      const role = normalizeRole(assignment?.role);
-      if (!locationId || !role || seen.has(locationId)) return res({ error: 'Configuratie de acces invalida' }, 400);
-      const location = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
-      if (!location || location.organization_id !== organizationId) return res({ error: 'Locatie invalida sau din alta organizatie' }, 403);
+      const assignmentRole = normalizeRole(assignment?.role);
+      if (!locationId || !assignmentRole || seen.has(locationId)) return res({ error: 'Configuratie de acces invalida' }, 400);
+      if (!organizationLocationIds.has(locationId)) return res({ error: 'Locatie invalida sau din alta organizatie' }, 403);
       seen.add(locationId);
-      normalized.push({ location_id: locationId, role });
+      normalized.push({ location_id: locationId, role: assignmentRole });
     }
 
-    const currentRows = await svc.entities.ProviderMembership.filter({ user_id: targetUserId, organization_id: organizationId }, '-created_date', 1000);
+    const hasOwnerRole = normalized.some((assignment) => assignment.role === 'organization_owner');
+    if (hasOwnerRole) {
+      const coversAllLocations = organizationLocations.length > 0
+        && organizationLocations.every((location) => normalized.some((assignment) => assignment.location_id === location.id && assignment.role === 'organization_owner'));
+      const onlyOwnerRoles = normalized.every((assignment) => assignment.role === 'organization_owner');
+      if (!coversAllLocations || !onlyOwnerRoles) return res({ error: 'Ownerul organizatiei trebuie sa aiba rol de owner in toate locatiile actuale' }, 400);
+    }
+
+    const currentRows = await svc.entities.ProviderMembership.filter({ user_id: targetUserId }, '-created_date', 1000);
+    const organizationRows = currentRows.filter((row) => row.organization_id === organizationId || organizationLocationIds.has(row.location_id));
     const currentByLocation = new Map();
-    for (const row of currentRows) if (row.location_id && !currentByLocation.has(row.location_id)) currentByLocation.set(row.location_id, row);
+    for (const row of organizationRows) if (row.location_id && !currentByLocation.has(row.location_id)) currentByLocation.set(row.location_id, row);
 
     const activeOwners = await activeOwnerUsers(svc, organizationId);
     const targetIsOwner = activeOwners.has(targetUserId);
     const targetRemainsOwner = normalized.some((assignment) => assignment.role === 'organization_owner');
-    if (targetIsOwner && !targetRemainsOwner && activeOwners.size <= 1) {
-      return res({ error: 'Nu poti elimina ultimul owner activ al organizatiei' }, 400);
-    }
+    if (targetIsOwner && !targetRemainsOwner && activeOwners.size <= 1) return res({ error: 'Nu poti elimina ultimul owner activ al organizatiei' }, 400);
     if (targetUserId === user.id && normalized.length === 0) return res({ error: 'Nu iti poti elimina propriul acces' }, 403);
 
     const now = new Date().toISOString();
-    const previous = currentRows.map((row) => ({ location_id: row.location_id, role: normalizeRole(row.role), status: row.status }));
+    const previous = organizationRows.map((row) => ({ location_id: row.location_id, role: normalizeRole(row.role), status: row.status }));
 
     for (const assignment of normalized) {
       const existing = currentByLocation.get(assignment.location_id);
       if (existing) {
-        await svc.entities.ProviderMembership.update(existing.id, {
+        const updates = {
           role: assignment.role,
           status: 'active',
           organization_id: organizationId,
-          reactivated_by_user_id: existing.status === 'active' ? (existing.reactivated_by_user_id || '') : user.id,
-          reactivated_at: existing.status === 'active' ? (existing.reactivated_at || null) : now,
-        });
+        };
+        if (existing.status !== 'active') {
+          updates.reactivated_by_user_id = user.id;
+          updates.reactivated_at = now;
+        }
+        await svc.entities.ProviderMembership.update(existing.id, updates);
       } else {
         await svc.entities.ProviderMembership.create({
           user_id: targetUserId,
@@ -100,7 +111,7 @@ Deno.serve(async (req) => {
     }
 
     const selectedIds = new Set(normalized.map((assignment) => assignment.location_id));
-    for (const row of currentRows) {
+    for (const row of organizationRows) {
       if (!row.location_id || selectedIds.has(row.location_id) || row.status !== 'active') continue;
       await svc.entities.ProviderMembership.update(row.id, {
         status: 'inactive',
