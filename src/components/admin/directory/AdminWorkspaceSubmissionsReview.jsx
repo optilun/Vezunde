@@ -4,6 +4,7 @@ import {
   Building2,
   CheckCircle2,
   ClipboardCheck,
+  Image as ImageIcon,
   Info,
   Link2,
   PackageOpen,
@@ -26,7 +27,7 @@ const SECTION_LABELS = {
   operating_hours: "Program",
   services: "Servicii si structura",
   team: "Specialisti",
-  media: "Media",
+  media: "Fotografie locatie",
   article: "Articol",
 };
 
@@ -98,6 +99,65 @@ function FieldComparison({ fields, payload, current }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function MediaImage({ url, label, emptyText, proposed = false }) {
+  return (
+    <div className={`overflow-hidden rounded-2xl border ${proposed ? "border-blue-200 bg-blue-50/40" : "border-border bg-card"}`}>
+      <div className="flex items-center justify-between gap-3 border-b border-inherit px-3 py-2.5">
+        <span className="text-xs font-bold">{label}</span>
+        {proposed && <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">Propusa</span>}
+      </div>
+      <div className="aspect-[4/3] bg-secondary/30">
+        {url ? (
+          <img src={url} alt={label} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center px-5 text-center text-muted-foreground">
+            <ImageIcon className="h-7 w-7" />
+            <p className="mt-2 text-xs">{emptyText}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MediaPreview({ payload, current }) {
+  const currentUrl = String(current?.photo_url || "").trim();
+  const proposedUrl = String(payload.photo_url || payload.photo_data_url || "").trim();
+  const removePhoto = payload.remove_photo === true;
+
+  return (
+    <div className="mt-3 rounded-2xl border border-border bg-secondary/20 p-3">
+      <div className="mb-3">
+        <div className="text-xs font-bold">Comparatie fotografie locatie</div>
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+          Verifica fotografia publicata si fotografia trimisa de furnizor. Codul intern si URL-ul fisierului nu sunt afisate.
+        </p>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <MediaImage
+          url={currentUrl}
+          label="Fotografie publicata acum"
+          emptyText="Locatia nu are o fotografie publicata."
+        />
+        {removePhoto ? (
+          <div className="flex aspect-[4/3] flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-6 text-center text-red-900">
+            <XCircle className="h-8 w-8" />
+            <div className="mt-3 text-sm font-bold">Eliminarea fotografiei</div>
+            <p className="mt-1 text-xs leading-relaxed">Furnizorul solicita eliminarea fotografiei publicate.</p>
+          </div>
+        ) : (
+          <MediaImage
+            url={proposedUrl}
+            label="Fotografie trimisa spre aprobare"
+            emptyText="Fotografia propusa nu poate fi incarcata."
+            proposed
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -250,6 +310,7 @@ function Comparison({ submission, location, organization }) {
   if (submission.section === "public_profile") return <FieldComparison fields={PUBLIC_PROFILE_FIELDS} payload={payload} current={organization} />;
   if (submission.section === "services") return <ServicesPreview payload={payload} review={submission.prerequisite_review} />;
   if (submission.section === "team") return <TeamPreview payload={payload} />;
+  if (submission.section === "media" && payload.kind === "location_photo") return <MediaPreview payload={payload} current={location} />;
   return <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded-xl border border-border bg-secondary/40 p-3 text-xs">{JSON.stringify(payload, null, 2)}</pre>;
 }
 
@@ -320,9 +381,12 @@ export default function AdminWorkspaceSubmissionsReview() {
     setBusy(true);
     setError("");
     try {
+      const payload = parsePayload(submission.payload_json);
       const functionName = submission.section === "public_profile" && submission.organization_id
         ? "adminOrganizationProfileReview"
-        : "adminServiceConfigurationReview";
+        : submission.section === "media" && payload.kind === "location_photo"
+          ? "locationPhotoOps"
+          : "adminServiceConfigurationReview";
       const response = await base44.functions.invoke(functionName, { action, submission_id: submission.id, note: note || "" });
       if (response.data?.error) throw new Error(response.data.error);
       await load();
@@ -339,7 +403,7 @@ export default function AdminWorkspaceSubmissionsReview() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-base font-bold">Modificari workspace in verificare</h2>
-          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Profilurile organizationale sunt comparate cu ProviderOrganization. Configuratiile serviciilor pastreaza verificarea cerintelor operationale.</p>
+          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Profilurile organizationale sunt comparate cu ProviderOrganization. Fotografiile sunt afisate vizual, iar configuratiile serviciilor pastreaza verificarea cerintelor operationale.</p>
         </div>
         <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold">{submissions.length} in asteptare</span>
       </div>
