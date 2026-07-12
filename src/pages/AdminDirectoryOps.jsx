@@ -13,6 +13,7 @@ import DirOpsAudit from "@/components/admin/directory/DirOpsAudit";
 import DirResearch from "@/components/admin/directory/DirResearch";
 import GeoContractChecks from "@/components/admin/directory/GeoContractChecks";
 import GeoImport from "@/components/admin/directory/research/GeoImport";
+import AdminDataIntegrity from "@/components/admin/system/AdminDataIntegrity";
 import { ADMIN_NAV_LABELS } from "@/lib/adminNavConfig";
 
 const SIMPLE_HEADERS = {
@@ -23,6 +24,7 @@ const SIMPLE_HEADERS = {
   revendicari: "Analizeaza cererile de revendicare a profilurilor.",
   geografie: "Sursa canonica de geografie Vezunde si importul SIRUTA.",
   audit: "Istoricul actiunilor administrative si al modificarilor aplicate.",
+  data_integrity: "Detecteaza relatii rupte, statusuri contradictorii, completitudine nealiniata si date legacy. Verificarea nu modifica datele.",
   contract_geo: "Verificari de regresie pentru contractul geografic. Instrument intern.",
 };
 
@@ -63,6 +65,7 @@ export default function AdminDirectoryOps() {
     "revendicari",
     "geografie",
     "audit",
+    "data_integrity",
     "contract_geo",
   ];
 
@@ -97,6 +100,7 @@ export default function AdminDirectoryOps() {
             {tab === "revendicari" && <DirOpsClaims />}
             {tab === "geografie" && <GeoImport />}
             {tab === "audit" && <DirOpsAudit />}
+            {tab === "data_integrity" && <AdminDataIntegrity />}
             {tab === "contract_geo" && <GeoContractChecks />}
           </div>
         </div>
