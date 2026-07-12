@@ -8,7 +8,7 @@ import ApplicantHoursDraft from "./ApplicantHoursDraft";
 import ApplicantServicesDraft from "./ApplicantServicesDraft";
 import ApplicantStatus from "./ApplicantStatus";
 
-export default function ApplicantWorkspaceRoot({ user, workspace, onLogout, onRefresh }) {
+export default function ApplicantWorkspaceRoot({ user, workspace, onLogout, onRefresh, modeSwitches }) {
   const [params, setParams] = useSearchParams();
   const section = params.get("s") || "overview";
   const navigate = (key) => setParams({ s: key });
@@ -23,6 +23,7 @@ export default function ApplicantWorkspaceRoot({ user, workspace, onLogout, onRe
       onLogout={onLogout}
       title={location?.name || "Pregateste profilul"}
       subtitle="Pregatire profil"
+      modeSwitches={modeSwitches}
     >
       <div className="rounded-xl border border-border bg-accent/40 p-4 mb-6">
         <div className="font-semibold text-sm">Solicitarea este in verificare</div>
