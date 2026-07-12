@@ -26,6 +26,7 @@ const AVAILABILITY_LABELS = {
 };
 
 const AVAILABILITY_STALE_DAYS = 30;
+const MAX_INLINE_LOGO_BYTES = 450000;
 
 function isPublicSafeService(service, location, prerequisiteContext) {
   if (service?.migration_review_required) return false;
@@ -68,6 +69,40 @@ function publicImage(value) {
   if (!raw) return null;
   if (raw.length <= 800000 && /^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(raw)) return raw;
   return publicUrl(raw);
+}
+
+function bytesToBase64(bytes) {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length)));
+  }
+  return btoa(binary);
+}
+
+async function resilientPublicLogo(value) {
+  const safeUrl = publicImage(value);
+  if (!safeUrl || safeUrl.startsWith('data:image/')) return safeUrl;
+
+  try {
+    const parsed = new URL(safeUrl);
+    const isBase44PublicFile = parsed.hostname === 'base44.app' && parsed.pathname.includes('/files/mp/public/');
+    if (!isBase44PublicFile) return safeUrl;
+
+    const response = await fetch(safeUrl, {
+      headers: { Accept: 'image/avif,image/webp,image/png,image/jpeg,image/*' },
+    });
+    if (!response.ok) return safeUrl;
+
+    const contentType = String(response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(contentType)) return safeUrl;
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.length === 0 || bytes.length > MAX_INLINE_LOGO_BYTES) return safeUrl;
+    return `data:${contentType};base64,${bytesToBase64(bytes)}`;
+  } catch (_error) {
+    return safeUrl;
+  }
 }
 
 function normalizedCopy(value) {
@@ -145,13 +180,16 @@ Deno.serve(async (req) => {
       ? rawLocationDescription
       : null;
     const mapPrecision = exactMapPosition(location) ? 'exact' : location.address ? 'approximate' : null;
+    const organizationLogoUrl = await resilientPublicLogo(organization?.logo_url);
 
     return Response.json({
       profile: {
         id: location.id,
         organization_id: organization?.id || null,
         organization_name: organizationName,
-        organization_logo_url: publicImage(organization?.logo_url),
+        organization_logo_url: organizationLogoUrl,
+        organization_logo_configured: Boolean(publicImage(organization?.logo_url)),
+        organization_logo_version: organization?.profile_updated_at || organization?.updated_date || null,
         organization_description: organizationDescription,
         location_description: locationDescription,
         name: location.public_display_name || location.name,
