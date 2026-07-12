@@ -147,6 +147,26 @@ function PrerequisiteChecklist({ review }) {
   );
 }
 
+function OperationalRemovalPreview({ payload }) {
+  const units = payload.removal_unit_keys || [];
+  const capabilities = payload.removal_capabilities || [];
+  const resources = payload.resource_removals || {};
+  const professionalCount = resources.professionals?.length || 0;
+  const equipmentCount = resources.equipment?.length || 0;
+  const facilityCount = resources.facilities?.length || 0;
+  const total = units.length + capabilities.length + professionalCount + equipmentCount + facilityCount;
+  if (total === 0) return null;
+  return (
+    <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+      <div className="text-xs font-bold text-amber-950">Eliminări operaționale solicitate</div>
+      <p className="mt-1 text-[11px] leading-relaxed text-amber-900">Aceste elemente rămân în registrul aprobat până la decizie. Serviciile publice afectate sunt suspendate pe durata verificării.</p>
+      {units.length > 0 && <div className="mt-3"><div className="text-[11px] font-semibold text-amber-900">Spații</div><div className="mt-1 flex flex-wrap gap-1.5">{units.map((unitKey) => <span key={unitKey} className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-900">{getFunctionalUnitDefinition(unitKey)?.title || unitKey}</span>)}</div></div>}
+      {capabilities.length > 0 && <div className="mt-3"><div className="text-[11px] font-semibold text-amber-900">Activități speciale</div><div className="mt-1 flex flex-wrap gap-1.5">{capabilities.map((item) => <span key={`${item.capability_key}:${item.parent_unit_key}`} className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-900">{getCapabilityDefinition(item.capability_key)?.title || item.capability_key}</span>)}</div></div>}
+      {(professionalCount + equipmentCount + facilityCount) > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-3"><div className="rounded-lg bg-white px-2.5 py-2 text-[11px] text-amber-900">Specialiști <strong className="float-right">{professionalCount}</strong></div><div className="rounded-lg bg-white px-2.5 py-2 text-[11px] text-amber-900">Echipamente <strong className="float-right">{equipmentCount}</strong></div><div className="rounded-lg bg-white px-2.5 py-2 text-[11px] text-amber-900">Facilități <strong className="float-right">{facilityCount}</strong></div></div>}
+    </div>
+  );
+}
+
 function ServicesPreview({ payload, review }) {
   const selected = payload.selected_ids || {};
   const removals = payload.removal_ids || {};
@@ -161,6 +181,7 @@ function ServicesPreview({ payload, review }) {
         service_unit_map: payload.service_unit_map,
         resource_links: payload.resource_links,
       }} />
+      <OperationalRemovalPreview payload={payload} />
       <div className="mt-3 space-y-3 rounded-xl border border-border bg-secondary/20 p-3">
         {groups.map((group) => {
           const add = selected[group] || [];
