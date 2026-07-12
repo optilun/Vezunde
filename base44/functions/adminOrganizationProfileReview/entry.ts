@@ -20,7 +20,7 @@ function validatePayload(payload) {
   return { values };
 }
 
-function computeCompleteness(organization, locations) {
+function computeCompleteness(organization) {
   const items = [
     !!clean(organization.public_display_name),
     !!clean(organization.public_description),
@@ -32,7 +32,6 @@ function computeCompleteness(organization, locations) {
       || clean(organization.linkedin_url)
     ),
     !!clean(organization.logo_url),
-    locations.some((location) => location.active_status !== 'inactiva' && location.status !== 'suspendata'),
   ];
   return Math.round((items.filter(Boolean).length / items.length) * 100);
 }
@@ -96,11 +95,12 @@ Deno.serve(async (req) => {
       if (validation.error) return res(validation, 400);
       const previous = Object.fromEntries(FIELDS.map((key) => [key, organization[key] || '']));
       const preview = { ...organization, ...validation.values };
-      const locations = await svc.entities.ProviderLocation.filter({ organization_id: organization.id }, '-created_date', 500);
+      const normalizedStatus = organization.status === 'inactiva' ? 'inactiva' : 'activa';
       const updates = {
         ...validation.values,
-        profile_completeness: computeCompleteness(preview, locations),
+        profile_completeness: computeCompleteness(preview),
         public_visibility_status: 'approved',
+        status: normalizedStatus,
         profile_updated_at: now,
       };
       await svc.entities.ProviderOrganization.update(organization.id, updates);
@@ -114,8 +114,8 @@ Deno.serve(async (req) => {
         entity_type: 'ProviderOrganization',
         entity_id: organization.id,
         action_type: 'approve_organization_profile',
-        changed_fields: Object.keys(validation.values),
-        previous,
+        changed_fields: [...Object.keys(validation.values), 'profile_completeness', 'public_visibility_status', 'status'],
+        previous: { ...previous, profile_completeness: organization.profile_completeness || 0, public_visibility_status: organization.public_visibility_status || '', status: organization.status || '' },
         next: updates,
         note,
       });
