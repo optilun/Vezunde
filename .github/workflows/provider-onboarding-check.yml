@@ -1,0 +1,50 @@
+name: Provider Onboarding Checks
+
+on:
+  pull_request:
+    paths:
+      - "src/pages/**"
+      - "src/components/provider/**"
+      - "src/components/specialists/**"
+      - "src/components/workspace/applicant/**"
+      - "src/components/admin/directory/DirOpsClaims.jsx"
+      - "src/lib/postLoginRedirect.js"
+      - "src/lib/workspaceNav.js"
+      - "base44/functions/submitProviderClaim/**"
+      - "base44/functions/findProviderIdentityCandidates/**"
+      - "base44/functions/getClaimableProviderLocations/**"
+      - "base44/functions/adminProviderClaimReview/**"
+      - "scripts/verify-provider-onboarding.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/provider-onboarding-check.yml"
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Provider onboarding regression checks
+        run: npm run test:provider-onboarding
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
