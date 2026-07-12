@@ -37,7 +37,6 @@ export default function WizRepresentativeBasics({ data, update, next }) {
           </select>
         </div>
       )}
-      {isProfessional && !contact.claimant_relationship && setTimeout(() => setContact("claimant_relationship", "owner"), 0)}
       {contact.claimant_relationship && (
         <div className="rounded-xl border border-border bg-secondary/35 px-4 py-3 text-sm">
           <span className="text-muted-foreground">Acces solicitat:</span> <span className="font-semibold">{MEMBERSHIP_ROLE_LABELS[requestedRole]}</span>
