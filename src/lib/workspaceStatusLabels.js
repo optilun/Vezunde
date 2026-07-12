@@ -24,5 +24,5 @@ export const PROFILE_CONTROL_LABELS = {
 export const ROLE_LABELS = {
   organization_owner: "Owner organizatie",
   location_manager: "Manager locatie",
-  location_staff: "Staff locatie",
+  location_staff: "Membru locatie",
 };
