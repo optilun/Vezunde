@@ -67,105 +67,117 @@ export default function DirOpsClaims() {
   };
 
   return (
-    <AdminCard className="p-5">
-      {!claims && <p className="text-muted-foreground text-sm">Se incarca...</p>}
-      {claims && claims.length === 0 && (
-        <EmptyState icon={FileCheck2} title="Nicio revendicare in asteptare." subtitle="Cererile de revendicare a profilurilor vor aparea aici." />
-      )}
-      {claims && claims.length > 0 && (
-        <div className="space-y-2">
-          {claims.map((claim) => {
-            const location = locations[claim.location_id];
-            const payload = parsePayload(claim.submitted_payload);
-            const isDuplicateReview = claim.mode === "new_location_duplicate_review";
-            const isAccessRequest = payload.request_type === "access_request_existing_claimed_profile";
-            const modeLabel = isDuplicateReview
-              ? "locatie noua — verificare duplicat"
-              : isAccessRequest
-                ? "solicitare acces profil administrat"
-                : claim.mode || "claim";
-            const requestedRole = requestedRoleForClaim(claim);
-            const approvedRole = payload.approved_membership_role || "";
-            const defaultApprovedRole = approvalDefaultForClaim(claim, requestedRole);
-            const canReview = REVIEWABLE_STATUSES.has(claim.status);
-            return (
-              <div key={claim.id} className="bg-secondary/50 border border-border rounded-xl p-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex-1 min-w-[240px]">
-                    <div className="font-semibold text-sm">{claim.business_name || location?.name || "Fara nume"}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {location ? `${location.name}, ${location.city}` : isDuplicateReview ? "propunere de locatie (necreata)" : "locatie noua / necunoscuta"} · {claim.contact_name} · {claim.email}{claim.phone ? ` · ${claim.phone}` : ""}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Mod: {modeLabel} · Relatie: {claim.claimant_relationship || "—"} · Acces solicitat: {ROLE_LABELS[requestedRole] || requestedRole}
-                    </div>
-                    {approvedRole && (
-                      <div className="text-xs text-muted-foreground mt-1">Acces aprobat: {ROLE_LABELS[approvedRole] || approvedRole}</div>
-                    )}
-                    {claim.review_notes && <div className="text-xs text-muted-foreground mt-1">Nota: {claim.review_notes}</div>}
-                  </div>
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${claim.status === "aprobata" ? "bg-green-100 text-green-800" : claim.status === "respinsa" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}`}>{claim.status}</span>
-                  {canReview && (
-                    <div className="flex gap-2">
-                      {!isDuplicateReview && (
-                        <button
-                          onClick={() => setAction({
-                            claimId: claim.id,
-                            type: "approve",
-                            requestedRole,
-                            approvedRole: defaultApprovedRole,
-                            isAccessRequest,
-                          })}
-                          className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-semibold"
-                        >
-                          Aproba
-                        </button>
+    <div data-admin-mobile="true">
+      <AdminCard className="overflow-hidden p-3 sm:p-5">
+        {!claims && <p className="text-sm text-muted-foreground">Se incarca...</p>}
+        {claims && claims.length === 0 && (
+          <EmptyState icon={FileCheck2} title="Nicio revendicare in asteptare." subtitle="Cererile de revendicare a profilurilor vor aparea aici." />
+        )}
+        {claims && claims.length > 0 && (
+          <div className="space-y-3">
+            {claims.map((claim) => {
+              const location = locations[claim.location_id];
+              const payload = parsePayload(claim.submitted_payload);
+              const isDuplicateReview = claim.mode === "new_location_duplicate_review";
+              const isAccessRequest = payload.request_type === "access_request_existing_claimed_profile";
+              const modeLabel = isDuplicateReview
+                ? "locatie noua — verificare duplicat"
+                : isAccessRequest
+                  ? "solicitare acces profil administrat"
+                  : claim.mode || "claim";
+              const requestedRole = requestedRoleForClaim(claim);
+              const approvedRole = payload.approved_membership_role || "";
+              const defaultApprovedRole = approvalDefaultForClaim(claim, requestedRole);
+              const canReview = REVIEWABLE_STATUSES.has(claim.status);
+              return (
+                <div key={claim.id} className="rounded-2xl border border-border bg-secondary/50 p-3.5 sm:p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                    <div className="min-w-0 flex-1">
+                      <div className="break-words text-sm font-semibold">{claim.business_name || location?.name || "Fara nume"}</div>
+                      <div className="mt-1 break-words text-xs leading-relaxed text-muted-foreground">
+                        {location ? `${location.name}, ${location.city}` : isDuplicateReview ? "propunere de locatie (necreata)" : "locatie noua / necunoscuta"} · {claim.contact_name} · {claim.email}{claim.phone ? ` · ${claim.phone}` : ""}
+                      </div>
+                      <div className="mt-1 break-words text-xs leading-relaxed text-muted-foreground">
+                        Mod: {modeLabel} · Relatie: {claim.claimant_relationship || "—"} · Acces solicitat: {ROLE_LABELS[requestedRole] || requestedRole}
+                      </div>
+                      {approvedRole && (
+                        <div className="mt-1 text-xs text-muted-foreground">Acces aprobat: {ROLE_LABELS[approvedRole] || approvedRole}</div>
                       )}
-                      <button onClick={() => setAction({ claimId: claim.id, type: "reject" })} className="text-xs px-3 py-1.5 rounded-md bg-card border border-border text-destructive">Respinge</button>
+                      {claim.review_notes && <div className="mt-1 break-words text-xs text-muted-foreground">Nota: {claim.review_notes}</div>}
                     </div>
+
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+                      <span className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${claim.status === "aprobata" ? "bg-green-100 text-green-800" : claim.status === "respinsa" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}`}>{claim.status}</span>
+                      {canReview && (
+                        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+                          {!isDuplicateReview && (
+                            <button
+                              type="button"
+                              onClick={() => setAction({
+                                claimId: claim.id,
+                                type: "approve",
+                                requestedRole,
+                                approvedRole: defaultApprovedRole,
+                                isAccessRequest,
+                              })}
+                              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground sm:min-h-9 sm:rounded-md sm:px-3"
+                            >
+                              Aproba
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setAction({ claimId: claim.id, type: "reject" })}
+                            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border bg-card px-4 text-xs font-semibold text-destructive sm:min-h-9 sm:rounded-md sm:px-3"
+                          >
+                            Respinge
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <AdminClaimIdentityContext claim={claim} />
+                  {isDuplicateReview && canReview && (
+                    <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                      Nicio locatie nu a fost creata. Daca este distincta, creeaz-o prin fluxul canonic „Adauga locatie”, apoi inchide cererea cu o nota.
+                    </p>
                   )}
                 </div>
-                <AdminClaimIdentityContext claim={claim} />
-                {isDuplicateReview && canReview && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Nicio locatie nu a fost creata. Daca este distincta, creeaz-o prin fluxul canonic „Adauga locatie”, apoi inchide cererea cu o nota.
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
 
-      {action && (
-        <DirOpsActionNote
-          title={action.type === "approve" ? "Aproba solicitarea si accesul" : "Respinge solicitarea"}
-          noteOptional={action.type === "approve"}
-          onConfirm={run}
-          onCancel={() => setAction(null)}
-        >
-          {action.type === "approve" && (
-            <div>
-              <div className="rounded-lg bg-secondary/50 px-3 py-2 text-xs text-muted-foreground">
-                Acces solicitat: <span className="font-semibold text-foreground">{ROLE_LABELS[action.requestedRole]}</span>
-                {action.isAccessRequest && (
-                  <span className="mt-1 block">Profilul este deja administrat, de aceea rolul implicit este limitat. Acordarea rolului de owner trebuie aleasa explicit.</span>
-                )}
+        {action && (
+          <DirOpsActionNote
+            title={action.type === "approve" ? "Aproba solicitarea si accesul" : "Respinge solicitarea"}
+            noteOptional={action.type === "approve"}
+            onConfirm={run}
+            onCancel={() => setAction(null)}
+          >
+            {action.type === "approve" && (
+              <div>
+                <div className="rounded-lg bg-secondary/50 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                  Acces solicitat: <span className="font-semibold text-foreground">{ROLE_LABELS[action.requestedRole]}</span>
+                  {action.isAccessRequest && (
+                    <span className="mt-1 block">Profilul este deja administrat, de aceea rolul implicit este limitat. Acordarea rolului de owner trebuie aleasa explicit.</span>
+                  )}
+                </div>
+                <label htmlFor="approved-role" className="mt-3 block text-xs font-semibold text-muted-foreground">Rol acordat dupa aprobare</label>
+                <select
+                  id="approved-role"
+                  value={action.approvedRole}
+                  onChange={(event) => setAction((current) => ({ ...current, approvedRole: event.target.value }))}
+                  className="mt-2 min-h-11 w-full rounded-xl border border-input bg-card px-3 py-2 text-base sm:min-h-10 sm:rounded-md sm:text-sm"
+                >
+                  {ROLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Adminul confirma rolul solicitat sau acorda un nivel diferit pe baza verificarii.</p>
               </div>
-              <label htmlFor="approved-role" className="mt-3 block text-xs font-semibold text-muted-foreground">Rol acordat dupa aprobare</label>
-              <select
-                id="approved-role"
-                value={action.approvedRole}
-                onChange={(event) => setAction((current) => ({ ...current, approvedRole: event.target.value }))}
-                className="mt-2 w-full rounded-md border border-input bg-card px-3 py-2 text-sm"
-              >
-                {ROLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-              </select>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Adminul confirma rolul solicitat sau acorda un nivel diferit pe baza verificarii.</p>
-            </div>
-          )}
-        </DirOpsActionNote>
-      )}
-    </AdminCard>
+            )}
+          </DirOpsActionNote>
+        )}
+      </AdminCard>
+    </div>
   );
 }

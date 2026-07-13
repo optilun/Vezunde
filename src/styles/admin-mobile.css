@@ -1,0 +1,69 @@
+/* Shared responsive safeguards for the existing admin surfaces. */
+[data-admin-mobile="true"] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+[data-admin-mobile="true"] * {
+  min-width: 0;
+}
+
+[data-admin-mobile="true"] img,
+[data-admin-mobile="true"] svg,
+[data-admin-mobile="true"] video,
+[data-admin-mobile="true"] canvas {
+  max-width: 100%;
+}
+
+[data-admin-mobile="true"] table {
+  width: 100%;
+}
+
+[data-admin-mobile="true"] input,
+[data-admin-mobile="true"] select,
+[data-admin-mobile="true"] textarea {
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  [data-admin-mobile="true"] {
+    overflow-x: clip;
+  }
+
+  [data-admin-mobile="true"] table {
+    display: block;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+    font-size: 0.8125rem;
+  }
+
+  [data-admin-mobile="true"] input,
+  [data-admin-mobile="true"] select,
+  [data-admin-mobile="true"] textarea {
+    font-size: 16px;
+  }
+
+  [data-admin-mobile="true"] button,
+  [data-admin-mobile="true"] a,
+  [data-admin-mobile="true"] summary {
+    touch-action: manipulation;
+  }
+
+  [data-admin-mobile="true"] [role="dialog"],
+  [data-admin-mobile="true"] [data-radix-dialog-content] {
+    width: calc(100vw - 1rem);
+    max-width: none;
+    max-height: calc(100dvh - 1rem);
+    overflow-y: auto;
+    border-radius: 1.25rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  [data-admin-mobile="true"] table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
