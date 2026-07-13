@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-export default function DirOpsActionNote({ title, onConfirm, onCancel, noteOptional = false, children }) {
+export default function DirOpsActionNote({ title, onConfirm, onCancel, noteOptional = false, children = null }) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
