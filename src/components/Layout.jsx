@@ -15,8 +15,10 @@ const MOBILE_LINKS = [
 function DesktopHeader({ scrolled }) {
   return (
     <header
-      className={`relative z-40 hidden border-b transition-[background-color,border-color] duration-500 md:block ${
-        scrolled ? "border-transparent bg-transparent" : "border-transparent bg-background"
+      className={`sticky top-0 z-40 hidden border-b transition-[background-color,border-color,backdrop-filter] duration-300 md:block ${
+        scrolled
+          ? "border-border/70 bg-background/80 backdrop-blur-md"
+          : "border-transparent bg-background"
       }`}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-8">
