@@ -1,0 +1,45 @@
+name: Provider onboarding CI
+
+on:
+  pull_request:
+    paths:
+      - "src/components/provider/**"
+      - "src/components/specialists/**"
+      - "src/components/workspace/applicant/**"
+      - "src/components/admin/directory/**"
+      - "src/pages/AddOrClaim.jsx"
+      - "src/pages/Login.jsx"
+      - "src/pages/Register.jsx"
+      - "src/pages/ForgotPassword.jsx"
+      - "src/pages/ResetPassword.jsx"
+      - "src/pages/MyAccount.jsx"
+      - "src/lib/postLoginRedirect.js"
+      - "src/lib/workspaceNav.js"
+      - "base44/functions/submitProviderClaim/**"
+      - "base44/functions/getClaimableProviderLocations/**"
+      - "base44/functions/getMyProviderOnboardingWorkspace/**"
+      - "base44/functions/adminProviderClaimReview/**"
+      - "scripts/verify-provider-onboarding-continuity.mjs"
+      - ".github/workflows/provider-onboarding-ci.yml"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Onboarding regression checks
+        run: node scripts/verify-provider-onboarding-continuity.mjs
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Existing provider submission tests
+        run: npm run test:provider-submissions
