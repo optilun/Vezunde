@@ -17,29 +17,35 @@ export default function Search() {
   const [service, setService] = useState(urlParams.get("serviciu") || "");
   const [query, setQuery] = useState(urlParams.get("q") || "");
   const [type, setType] = useState("");
-  const initialLocality = urlParams.get("oras");
-  const [locality, setLocality] = useState(initialLocality ? {
-    name: initialLocality,
-    display_label: initialLocality,
+  const initialLocalityName = urlParams.get("oras");
+  const initialSirutaCode = urlParams.get("siruta");
+  const [locality, setLocality] = useState(initialLocalityName && initialSirutaCode ? {
+    name: initialLocalityName,
+    display_label: initialLocalityName,
     county_name: "",
-    siruta_code: "",
+    siruta_code: initialSirutaCode,
   } : null);
 
   const suggestions = useMemo(
     () => getServiceSearchSuggestions(query, { limit: 6 }),
     [query],
   );
-  const isDirectoryBrowse = !service && !query.trim() && !!locality;
+  const hasCanonicalLocality = Boolean(locality?.siruta_code);
+  const isDirectoryBrowse = !service && !query.trim() && hasCanonicalLocality;
 
   useEffect(() => {
     let active = true;
     setResults(null);
     const run = async () => {
+      if (!hasCanonicalLocality) {
+        if (active) setResults([]);
+        return;
+      }
+
       try {
         if (isDirectoryBrowse) {
           const response = await base44.functions.invoke("browseDirectoryProviders", {
-            locality_siruta_code: locality?.siruta_code || "",
-            city: locality?.name || "",
+            locality_siruta_code: locality.siruta_code,
             provider_types: type ? [type] : [],
             limit: 50,
           });
@@ -51,10 +57,7 @@ export default function Search() {
           search_text: query,
           service_keys: service ? [service] : [],
           provider_types: type ? [type] : [],
-          city: locality?.name || "",
-          county: locality?.county_name || "",
-          locality_siruta_code: locality?.siruta_code || "",
-          scope: locality ? "city" : "national",
+          locality_siruta_code: locality.siruta_code,
           limit: 50,
         });
         if (active) setResults(response.data?.results || []);
@@ -64,7 +67,7 @@ export default function Search() {
     };
     run();
     return () => { active = false; };
-  }, [service, query, type, locality, isDirectoryBrowse]);
+  }, [service, query, type, locality, isDirectoryBrowse, hasCanonicalLocality]);
 
   const chooseSuggestion = (suggestion) => {
     setService(suggestion.service_key);
@@ -110,11 +113,13 @@ export default function Search() {
             <option value="">Toate tipurile</option>
             {Object.entries(PROVIDER_TYPES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
-          <LocalityAutocomplete value={locality} onSelect={setLocality} placeholder="Toata Romania" className="w-full" />
+          <LocalityAutocomplete value={locality} onSelect={setLocality} placeholder="Alege localitatea" className="w-full" />
         </div>
       </section>
 
-      {isDirectoryBrowse ? (
+      {!hasCanonicalLocality ? (
+        <SelectLocalityNotice />
+      ) : isDirectoryBrowse ? (
         <div className="mt-8">
           <h2 className="font-heading text-lg font-bold sm:text-xl">Locatii in {locality?.name}</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -135,6 +140,17 @@ export default function Search() {
   );
 }
 
+function SelectLocalityNotice() {
+  return (
+    <div className="mt-8 rounded-2xl border border-border bg-card p-6 text-center sm:p-10">
+      <p className="font-heading font-bold">Alege localitatea in care vrei sa cauti.</p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        VIASEE foloseste localitatea oficiala selectata si nu extinde automat cautarea.
+      </p>
+    </div>
+  );
+}
+
 function LoadingState() {
   return <div className="sm:col-span-2 rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">Se incarca rezultatele...</div>;
 }
@@ -144,5 +160,5 @@ function EmptyDirectory() {
 }
 
 function EmptyMatch({ locality }) {
-  return <div className="sm:col-span-2 rounded-2xl border border-border bg-card p-6 text-center sm:p-10">{locality ? <><p className="font-heading font-bold">Nu exista momentan locatii cu servicii confirmate pentru aceasta nevoie in localitate.</p><p className="mt-2 text-sm text-muted-foreground">Poti extinde cautarea sau verifica din nou mai tarziu.</p></> : <><p className="font-heading font-bold">Nu am gasit profiluri care sa corespunda cautarii tale.</p><p className="mt-2 text-sm text-muted-foreground">Incearca o formulare mai generala sau alege un serviciu din sugestii.</p></>}<Link to="/cerere" className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground hover:opacity-90 sm:w-auto">Trimite o cerere</Link></div>;
+  return <div className="sm:col-span-2 rounded-2xl border border-border bg-card p-6 text-center sm:p-10">{locality ? <><p className="font-heading font-bold">Nu exista momentan locatii cu servicii confirmate pentru aceasta nevoie in localitate.</p><p className="mt-2 text-sm text-muted-foreground">Poti verifica din nou mai tarziu sau poti alege manual alta localitate.</p></> : <><p className="font-heading font-bold">Nu am gasit profiluri care sa corespunda cautarii tale.</p><p className="mt-2 text-sm text-muted-foreground">Incearca o formulare mai generala sau alege un serviciu din sugestii.</p></>}<Link to="/cerere" className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground hover:opacity-90 sm:w-auto">Trimite o cerere</Link></div>;
 }
