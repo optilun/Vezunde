@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { MapPin } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
@@ -6,7 +6,6 @@ import ClaimRelationStep from "@/components/provider/ClaimRelationStep";
 import ClaimContactStep from "@/components/provider/ClaimContactStep";
 import ClaimReviewStep from "@/components/provider/ClaimReviewStep";
 
-// Module 3H.1B.2: temporary session state so a login redirect doesn't lose the form.
 const CONTACT_RESUME_KEY = "pending_claim_contact";
 const LOCATION_RESUME_KEY = "pending_claim_location";
 const STEP_RESUME_KEY = "pending_claim_step";
@@ -31,18 +30,38 @@ const persistClaimResumeState = (location, contact, step = "review") => {
   sessionStorage.setItem(STEP_RESUME_KEY, step);
 };
 
-// Module 3H.1B.3.UI: short claim flow — orchestrates 3 sub-steps (relation,
-// contact, review) using the existing submitProviderClaim action, unchanged.
 export default function ClaimForm({ location, step, onStepChange, onDone }) {
   const [contact, setContactState] = useState(() => {
     try {
       const raw = sessionStorage.getItem(CONTACT_RESUME_KEY);
       if (raw) return { ...DEFAULT_CONTACT, ...JSON.parse(raw) };
-    } catch { /* ignore corrupt state */ }
+    } catch (_error) {
+      // Ignoram starea temporara invalida.
+    }
     return DEFAULT_CONTACT;
   });
   const [submitting, setSubmitting] = useState(false);
+  const [authChecking, setAuthChecking] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    base44.auth.isAuthenticated().then(async (authenticated) => {
+      if (!authenticated || cancelled) return;
+      const user = await base44.auth.me().catch(() => null);
+      if (!user || cancelled) return;
+      setContactState((current) => {
+        const next = {
+          ...current,
+          contact_name: current.contact_name || user.full_name || user.name || "",
+          email: current.email || user.email || "",
+        };
+        persistClaimResumeState(location, next, step || "contact");
+        return next;
+      });
+    });
+    return () => { cancelled = true; };
+  }, [location, step]);
 
   const setContact = (nextContact) => {
     const normalizedContact = { ...DEFAULT_CONTACT, ...nextContact };
@@ -53,6 +72,18 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
   const goToStep = (nextStep) => {
     persistClaimResumeState(location, contact, nextStep);
     onStepChange(nextStep);
+  };
+
+  const continueAfterRelation = async () => {
+    persistClaimResumeState(location, contact, "contact");
+    setAuthChecking(true);
+    const authenticated = await base44.auth.isAuthenticated().catch(() => false);
+    setAuthChecking(false);
+    if (!authenticated) {
+      base44.auth.redirectToLogin(window.location.href);
+      return;
+    }
+    onStepChange("contact");
   };
 
   const submit = async () => {
@@ -87,7 +118,7 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
     if (res.data?.error) setError(res.data.error);
     else {
       clearClaimResumeState();
-      onDone();
+      onDone(res.data || {});
     }
   };
 
@@ -103,26 +134,11 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
   );
 
   if (step === "contact") {
-    return (
-      <ClaimContactStep
-        locationCard={locationCard}
-        contact={contact}
-        onChange={setContact}
-        onContinue={() => goToStep("review")}
-      />
-    );
+    return <ClaimContactStep locationCard={locationCard} contact={contact} onChange={setContact} onContinue={() => goToStep("review")} />;
   }
 
   if (step === "review") {
-    return (
-      <ClaimReviewStep
-        locationCard={locationCard}
-        contact={contact}
-        error={error}
-        submitting={submitting}
-        onSubmit={submit}
-      />
-    );
+    return <ClaimReviewStep locationCard={locationCard} contact={contact} error={error} submitting={submitting} onSubmit={submit} />;
   }
 
   return (
@@ -130,7 +146,8 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
       locationCard={locationCard}
       contact={contact}
       onChange={setContact}
-      onContinue={() => goToStep("contact")}
+      onContinue={continueAfterRelation}
+      loading={authChecking}
     />
   );
 }
