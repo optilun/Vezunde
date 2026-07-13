@@ -15,7 +15,7 @@ const MOBILE_LINKS = [
 function DesktopHeader({ scrolled }) {
   return (
     <header
-      className={`sticky top-0 z-40 hidden border-b transition-[background-color,border-color,backdrop-filter] duration-300 md:block ${
+      className={`fixed inset-x-0 top-0 z-50 hidden border-b transition-[background-color,border-color,backdrop-filter] duration-300 md:block ${
         scrolled
           ? "border-border/70 bg-background/80 backdrop-blur-md"
           : "border-transparent bg-background"
@@ -84,6 +84,7 @@ export default function Layout() {
   return (
     <div className="flex min-h-screen min-h-dvh flex-col bg-background font-body text-foreground">
       <DesktopHeader scrolled={scrolled} />
+      <div aria-hidden="true" className="hidden h-16 md:block" />
       <MobileHeader scrolled={scrolled} onMenuOpen={() => setMobileOpen(true)} />
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
