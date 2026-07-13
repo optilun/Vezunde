@@ -5,13 +5,11 @@ import StepsExplanation from "@/components/specialists/StepsExplanation";
 import SpecialistsFAQ from "@/components/specialists/SpecialistsFAQ";
 import SpecialistsFooter from "@/components/specialists/SpecialistsFooter";
 
-// Standalone claim/manage entry point for providers — its own minimal header
-// and footer, intentionally not wrapped in the public site Layout.
 export default function ForSpecialists() {
   return (
-    <div className="min-h-screen bg-background text-foreground font-body flex flex-col">
+    <div className="flex min-h-screen min-h-dvh min-w-0 flex-col overflow-x-clip bg-background font-body text-foreground">
       <SpecialistsHeader />
-      <main className="flex-1">
+      <main className="min-w-0 flex-1 overflow-x-clip">
         <SpecialistsHero />
         <StepsExplanation />
         <SpecialistsFAQ />
