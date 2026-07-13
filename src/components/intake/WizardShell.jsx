@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 
 function PhaseStepper({ phases, phaseStep }) {
   return (
-    <div className="flex-1">
+    <div className="min-w-0 flex-1">
       <div className="hidden sm:flex items-center">
         {phases.map((label, i) => {
           const idx = i + 1;
@@ -32,9 +32,12 @@ function PhaseStepper({ phases, phaseStep }) {
         })}
       </div>
       <div className="sm:hidden">
-        <div className="text-xs text-muted-foreground mb-1.5">Pasul {phaseStep} din {phases.length} · {phases[phaseStep - 1]}</div>
-        <div className="h-1 rounded-full bg-secondary overflow-hidden">
-          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(phaseStep / phases.length) * 100}%`, backgroundColor: "#171717" }} />
+        <div className="mb-2 flex items-center justify-between gap-3 text-[11px] font-medium text-muted-foreground">
+          <span className="truncate">{phases[phaseStep - 1]}</span>
+          <span className="shrink-0">{phaseStep}/{phases.length}</span>
+        </div>
+        <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+          <div className="h-full rounded-full bg-foreground transition-all duration-500" style={{ width: `${(phaseStep / phases.length) * 100}%` }} />
         </div>
       </div>
     </div>
@@ -52,29 +55,32 @@ export default function WizardShell({
   children,
 }) {
   return (
-    <div className="max-w-xl mx-auto px-5 py-10 sm:py-14">
-      <div className="flex items-center gap-4">
+    <div className="mx-auto min-h-[calc(100dvh-1px)] w-full max-w-xl px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))] sm:min-h-0 sm:px-6 sm:py-14">
+      <div className="sticky top-0 z-20 -mx-4 flex items-center gap-3 border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-0">
         {onBack ? (
           <button
             type="button"
             onClick={onBack}
-            className="w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/40 transition-colors shrink-0"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
             aria-label="Inapoi"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
         ) : (
-          <div className="w-9 h-9 shrink-0" />
+          <div className="hidden h-11 w-11 shrink-0 sm:block" />
         )}
         {phases && phaseStep ? (
           <PhaseStepper phases={phases} phaseStep={phaseStep} />
         ) : step && total ? (
-          <div className="flex-1">
-            <div className="text-xs text-muted-foreground mb-1.5">Pasul {step} din {total}</div>
-            <div className="h-1 rounded-full bg-secondary overflow-hidden">
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 flex items-center justify-between gap-3 text-[11px] font-medium text-muted-foreground sm:text-xs">
+              <span>Pasul {step}</span>
+              <span>{step}/{total}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
               <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{ width: `${(step / total) * 100}%`, backgroundColor: "#171717" }}
+                className="h-full rounded-full bg-foreground transition-all duration-500"
+                style={{ width: `${(step / total) * 100}%` }}
               />
             </div>
           </div>
@@ -83,14 +89,14 @@ export default function WizardShell({
 
       <motion.div
         key={title}
-        initial={{ opacity: 0, y: 14 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: "easeOut" }}
-        className="mt-9"
+        transition={{ duration: 0.25, ease: "easeOut" }}
+        className="mt-6 sm:mt-9"
       >
-        <h1 className="font-heading text-2xl sm:text-3xl font-extrabold tracking-tight">{title}</h1>
-        {subtitle && <p className="mt-2 text-muted-foreground text-sm sm:text-base">{subtitle}</p>}
-        <div className="mt-7">{children}</div>
+        <h1 className="font-heading text-[1.65rem] font-extrabold leading-tight tracking-tight sm:text-3xl">{title}</h1>
+        {subtitle && <p className="mt-2 max-w-prose text-sm leading-6 text-muted-foreground sm:text-base">{subtitle}</p>}
+        <div className="mt-6 min-w-0 sm:mt-7">{children}</div>
       </motion.div>
     </div>
   );
