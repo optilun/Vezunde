@@ -36,13 +36,21 @@ jobs:
       - name: Onboarding regression checks
         run: node scripts/verify-provider-onboarding-continuity.mjs
       - name: Typecheck
+        id: typecheck
         shell: bash
         run: |
           set +e
-          OUTPUT=$(npm run typecheck -- --pretty false 2>&1)
+          npm run typecheck -- --pretty false > typecheck.log 2>&1
           STATUS=$?
-          echo "$OUTPUT" | grep -E "error TS|Found [0-9]+ errors" || true
-          exit $STATUS
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          grep -E "error TS|Found [0-9]+ errors" typecheck.log || true
+          exit 0
+      - name: Upload typecheck diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: provider-onboarding-typecheck
+          path: typecheck.log
       - name: Lint
         if: always()
         run: npm run lint
@@ -52,3 +60,6 @@ jobs:
       - name: Existing provider submission tests
         if: always()
         run: npm run test:provider-submissions
+      - name: Fail on typecheck
+        if: always()
+        run: test "${{ steps.typecheck.outputs.status }}" = "0"
