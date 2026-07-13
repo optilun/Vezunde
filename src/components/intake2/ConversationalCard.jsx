@@ -36,7 +36,6 @@ const initState = (initialIntent, initialMessage) => {
     city: "",
     scope: "",
     locality: null,
-    clientLocation: null,
     clientAddressText: "",
   };
 };
@@ -84,21 +83,15 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     setState((s) => ({ ...s, answers: [...s.answers, { question_key: question.key, answer_value: value }] }));
   };
 
-  const handleLocation = ({ scope, city, locality, clientLocation, clientAddressText }) => {
+  const handleLocation = ({ city, locality, clientAddressText }) => {
     pushHistory();
-    const answerValue = scope === "nearby"
-      ? "locatia_curenta"
-      : scope === "city"
-        ? city
-        : "oriunde_in_romania";
     setState((s) => ({
       ...s,
-      scope,
+      scope: "locality",
       city: city || "",
       locality: locality || null,
-      clientLocation: clientLocation || null,
       clientAddressText: clientAddressText || "",
-      answers: [...s.answers, { question_key: "locatie", answer_value: answerValue }],
+      answers: [...s.answers, { question_key: "locatie", answer_value: city }],
     }));
   };
 
@@ -118,14 +111,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
           search_text: initialMessage,
           intent: state.intent,
           service_keys: state.serviceKeys,
-          city: state.city,
           locality_siruta_code: state.locality?.siruta_code || "",
-          county: state.locality?.county_name || "",
-          scope: state.scope === "national" ? "national" : state.scope === "nearby" ? "nearby" : "city",
-          client_lat: state.clientLocation?.lat ?? null,
-          client_lng: state.clientLocation?.lng ?? null,
-          client_location_source: state.clientLocation?.source || "",
-          client_location_accuracy_m: state.clientLocation?.accuracy_m || null,
           client_address_text: state.clientAddressText || "",
           limit: 20,
         });
