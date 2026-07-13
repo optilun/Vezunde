@@ -1,9 +1,9 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
+  evaluateServicePrerequisites,
   isServicePubliclyEligible,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistryExtended.js';
-import { evaluateServicePrerequisites } from '../../../shared/servicePrerequisiteEngine.js';
+} from './sharedDependencies.js';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Read-only locality browse. It does not score or match by service.
 const PATIENT_FACING_PROFILE_TYPES = [
