@@ -131,12 +131,13 @@ Deno.serve(async (req) => {
       ROLE_BY_RELATIONSHIP[claim.claimant_relationship] ||
       'location_staff'
     );
-    const approvedRole = clean(p.approved_role || requestedRole);
+    const isAccessRequest = submitted.request_type === 'access_request_existing_claimed_profile';
+    const safeDefaultRole = isAccessRequest ? 'location_staff' : requestedRole;
+    const approvedRole = clean(p.approved_role || safeDefaultRole);
     if (!MEMBER_ROLES.includes(approvedRole)) {
       return Response.json({ error: 'Rolul aprobat este invalid' }, { status: 400 });
     }
 
-    const isAccessRequest = submitted.request_type === 'access_request_existing_claimed_profile';
     const isNewLocation = claim.mode === 'new_location';
     const locationUpdates = {
       claim_verification_status: 'approved',
