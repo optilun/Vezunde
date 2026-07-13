@@ -1,0 +1,92 @@
+@media (max-width: 767px) {
+  .workspace-mobile-surface {
+    min-width: 0;
+  }
+
+  .workspace-mobile-surface > * {
+    min-width: 0;
+  }
+
+  .workspace-mobile-surface section {
+    border-radius: 20px !important;
+  }
+
+  .workspace-mobile-surface section > div[class*="px-5"],
+  .workspace-mobile-surface section[class*="p-5"],
+  .workspace-mobile-surface div[class*="p-5"] {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .workspace-mobile-surface h1 {
+    overflow-wrap: anywhere;
+  }
+
+  .workspace-mobile-surface button,
+  .workspace-mobile-surface a[role="button"] {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  .workspace-mobile-surface .grid {
+    min-width: 0;
+  }
+
+  .workspace-mobile-surface [class*="grid-cols-"] > * {
+    min-width: 0;
+  }
+
+  .workspace-mobile-surface [class*="max-w-"] {
+    max-width: 100%;
+  }
+
+  .workspace-mobile-surface .overflow-hidden {
+    max-width: 100%;
+  }
+
+  .workspace-mobile-surface [class*="justify-between"] {
+    row-gap: 0.75rem;
+  }
+
+  .workspace-mobile-surface [class*="rounded-full"][class*="px-4"] {
+    white-space: normal;
+    text-align: center;
+  }
+
+  .workspace-mobile-surface table {
+    min-width: 640px;
+  }
+
+  .workspace-mobile-surface .workspace-mobile-scroll {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .workspace-mobile-surface .workspace-mobile-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+    border-top: 1px solid hsl(var(--border));
+    background: hsl(var(--background) / 0.96);
+    backdrop-filter: blur(12px);
+  }
+
+  .workspace-mobile-surface .workspace-mobile-actions > button,
+  .workspace-mobile-surface .workspace-mobile-actions > a {
+    width: 100%;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .workspace-mobile-surface section {
+    border-radius: 22px !important;
+  }
+
+  .workspace-mobile-surface [class*="xl:grid-cols-4"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
