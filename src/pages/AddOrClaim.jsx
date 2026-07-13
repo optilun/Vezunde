@@ -62,8 +62,12 @@ export default function AddOrClaim() {
   const [draft, setDraft] = useState(null);
   const [claimStep, setClaimStep] = useState(() => resumedClaimLocation ? getResumeClaimStep(resumedClaimContact, resumedClaimStep) : "relation");
 
-  const completeOnboardingRequest = () => {
+  const completeOnboardingRequest = (result = {}) => {
     clearResumeState();
+    if (result.duplicate_review) {
+      navigate("/contul-meu?mode=personal&s=requests&onboarding=duplicate-review", { replace: true });
+      return;
+    }
     navigate("/contul-meu?mode=applicant&onboarding=submitted", { replace: true });
   };
 
