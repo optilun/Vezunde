@@ -99,21 +99,36 @@ Deno.serve(async (req) => {
     await req.json().catch(() => ({}));
 
     const claims = await svc.entities.ProviderClaimRequest.filter({ user_id: user.id }, '-created_date', 50);
-    const activeClaim = claims.find((claim) => ACTIVE_CLAIM_STATUSES.includes(claim.status));
+    const activeClaim = claims.find((claim) => (
+      ACTIVE_CLAIM_STATUSES.includes(claim.status)
+      && claim.mode !== 'new_location_duplicate_review'
+      && Boolean(claim.location_id)
+    ));
     if (!activeClaim) {
       return Response.json({
         mode: 'none',
         latest_claim_status: claims[0] ? {
           id: claims[0].id,
           status: claims[0].status,
+          mode: claims[0].mode || '',
           reviewed_at: claims[0].reviewed_at || null,
         } : null,
       });
     }
 
-    const location = activeClaim.location_id
-      ? await svc.entities.ProviderLocation.get(activeClaim.location_id).catch(() => null)
-      : null;
+    const location = await svc.entities.ProviderLocation.get(activeClaim.location_id).catch(() => null);
+    if (!location) {
+      return Response.json({
+        mode: 'none',
+        latest_claim_status: {
+          id: activeClaim.id,
+          status: activeClaim.status,
+          mode: activeClaim.mode || '',
+          reviewed_at: activeClaim.reviewed_at || null,
+        },
+      });
+    }
+
     const drafts = await svc.entities.ProviderWorkspaceSubmission.filter({
       claim_request_id: activeClaim.id,
       submitted_by_user_id: user.id,
