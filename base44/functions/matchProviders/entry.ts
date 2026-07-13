@@ -1,11 +1,11 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
+  evaluateServicePrerequisites,
   getCanonicalServiceDefinition,
   isServiceMatchingEligible,
   isServicePubliclyEligible,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistryExtended.js';
-import { evaluateServicePrerequisites } from '../../../shared/servicePrerequisiteEngine.js';
+} from './sharedDependencies.js';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Safety rules remain disabled until reviewed by a qualified ophthalmologist.
 const SAFETY_RULES = [
