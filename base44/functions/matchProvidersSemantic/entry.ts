@@ -1,12 +1,12 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
+  evaluateServicePrerequisites,
   getCanonicalServiceDefinition,
+  getServiceOperationalContext,
   isServiceMatchingEligible,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistryExtended.js';
-import { getServiceOperationalContext } from '../../../shared/serviceOperationalTaxonomyExtended.js';
-import { resolveServiceSearchQuery } from '../../../shared/serviceSemanticSearch.js';
-import { evaluateServicePrerequisites } from '../../../shared/servicePrerequisiteEngine.js';
+  resolveServiceSearchQuery,
+} from './sharedDependencies.js';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const PATIENT_FACING_PROFILE_TYPES = new Set([
   'independent_optical_store',
