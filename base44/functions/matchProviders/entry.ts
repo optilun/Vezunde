@@ -176,50 +176,13 @@ function classifyMatchBucket(eligibility, matchedRows, needLevel, loc, prerequis
   return 'extended_directory';
 }
 
-function hasCoordinates(value) {
-  const lat = Number(value?.lat);
-  const lng = Number(value?.lng);
-  return Number.isFinite(lat) && Number.isFinite(lng)
-    && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
-}
-
-function distanceKm(a, b) {
-  const toRad = (degrees) => (degrees * Math.PI) / 180;
-  const lat1 = Number(a.lat);
-  const lng1 = Number(a.lng);
-  const lat2 = Number(b.lat);
-  const lng2 = Number(b.lng);
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const s1 = Math.sin(dLat / 2) ** 2;
-  const s2 = Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(s1 + s2), Math.sqrt(1 - s1 - s2));
-}
-
-function defaultRadiusKm(loc) {
-  if (Number.isFinite(Number(loc.service_radius_km)) && Number(loc.service_radius_km) > 0) {
-    return Number(loc.service_radius_km);
-  }
-  const profileType = loc.provider_profile_type || '';
-  if (profileType === 'ophthalmology_clinic') return 50;
-  if (profileType === 'ophthalmology_office') return 35;
-  if (profileType === 'independent_optical_store' || profileType === 'optical_chain') return 15;
-  if (loc.provider_type === 'clinica_oftalmologica') return 50;
-  if (loc.provider_type === 'cabinet_oftalmologic') return 35;
-  return 20;
-}
-
 function serviceReason(rawKey) {
   const normalized = normalizeServiceKey(rawKey);
   return `Ofera ${normalized.definition?.label || rawKey}`;
 }
 
-function routingReason(entry) {
-  if (Number.isFinite(entry.distance_km)) {
-    return `La ${entry.distance_km.toFixed(1)} km de locatia ta, in perimetrul de ${Math.round(entry.service_radius_km)} km al locatiei.`;
-  }
-  if (entry.tier === 'oras') return 'Potrivire dupa localitatea selectata.';
-  return 'Potrivire nationala, fara locatie exacta a clientului.';
+function routingReason() {
+  return 'Potrivire dupa localitatea selectata.';
 }
 
 Deno.serve(async (req) => {
@@ -236,14 +199,20 @@ Deno.serve(async (req) => {
       ? payload.required_professional_types.map((role) => ROLE_CANONICAL[role] || role)
       : [];
     const sirutaCode = String(payload.locality_siruta_code || '').trim();
-    const city = String(payload.city || '').trim();
-    const clientLocation = { lat: Number(payload.client_lat), lng: Number(payload.client_lng) };
-    const hasClientCoords = hasCoordinates(clientLocation);
-    const clientLocationSource = hasClientCoords ? (payload.client_location_source || 'browser') : '';
-    const clientAddressText = String(payload.client_address_text || '').trim();
-    const scope = payload.scope || (hasClientCoords ? 'nearby' : ((sirutaCode || city) ? 'city' : 'national'));
     const limit = Math.min(payload.limit || 20, 50);
     const needLevel = requestNeedLevel(serviceKeys, intent);
+
+    if (!sirutaCode) {
+      return Response.json({
+        results: [],
+        need_level: needLevel,
+        safety_message_keys: SAFETY_RULES.filter((rule) => rule.enabled).map((rule) => rule.key),
+        routing_mode: 'locality',
+        coverage_status: 'canonical_locality_required',
+        selected_locality_siruta_code: null,
+        service_key_statuses: requestKeys.statuses,
+      });
+    }
 
     const [locations, services, specializations, assignments, facilities, equipment] = await Promise.all([
       svc.entities.ProviderLocation.filter({ status: 'publicata' }, null, 500),
@@ -305,6 +274,7 @@ Deno.serve(async (req) => {
       if (loc.active_status === 'inactiva') continue;
       if (!loc.provider_profile_type || !PATIENT_FACING_PROFILE_TYPES.includes(loc.provider_profile_type)) continue;
       if (providerTypes.length > 0 && !providerTypes.includes(loc.provider_type)) continue;
+      if (String(loc.locality_siruta_code || '').trim() !== sirutaCode) continue;
 
       const locRows = serviceRowsByLocation[loc.id] || [];
       const roles = rolesByLocation[loc.id] || [];
@@ -337,22 +307,7 @@ Deno.serve(async (req) => {
       }
       if (requiredRoles.length > 0 && !requiredRoles.some((role) => roles.includes(role))) continue;
 
-      let tier = 'national';
-      let distance_km = null;
-      const radius = defaultRadiusKm(loc);
-      if (hasClientCoords) {
-        if (!hasCoordinates(loc)) continue;
-        distance_km = distanceKm(clientLocation, loc);
-        if (!Number.isFinite(distance_km) || distance_km > radius) continue;
-        tier = 'apropiere';
-      } else if (scope !== 'national') {
-        if (sirutaCode) {
-          if ((loc.locality_siruta_code || '') !== sirutaCode) continue;
-        } else if (city) {
-          if (loc.city !== city) continue;
-        }
-        tier = 'oras';
-      }
+      const tier = 'oras';
 
       const locSpecs = specializationsByLocation[loc.id] || [];
       const specMatched = locSpecs.filter((key) => {
@@ -386,7 +341,6 @@ Deno.serve(async (req) => {
       }
       if (eligibility.pcs === 'verified') score += 2;
       else if (eligibility.pcs === 'claimed') score += 1;
-      if (Number.isFinite(distance_km)) score += Math.max(0, 3 - Math.min(distance_km / 10, 3));
       if (availabilityLabel) {
         score += 1;
         reasons.push('Mod de primire publicat de furnizor');
@@ -405,20 +359,13 @@ Deno.serve(async (req) => {
         eligibility,
         bucket,
         directoryMatchType,
-        distance_km,
-        service_radius_km: radius,
       };
-      entry.routing_reason = routingReason(entry);
+      entry.routing_reason = routingReason();
       if (bucket === 'excluded') excludedList.push(entry);
       else scored.push(entry);
     }
 
-    scored.sort((a, b) => {
-      if (Number.isFinite(a.distance_km) && Number.isFinite(b.distance_km)) {
-        return a.distance_km - b.distance_km || b.score - a.score;
-      }
-      return b.score - a.score;
-    });
+    scored.sort((a, b) => b.score - a.score);
 
     const eligibleSorted = scored.filter((entry) => entry.bucket === 'eligible');
     const directorySorted = scored.filter((entry) => entry.bucket === 'extended_directory');
@@ -453,33 +400,18 @@ Deno.serve(async (req) => {
       result_bucket: entry.finalBucket,
       bucket_rank: entry.bucketRank,
       is_top3_eligible: entry.bucket === 'eligible',
-      distance_km: Number.isFinite(entry.distance_km) ? Math.round(entry.distance_km * 10) / 10 : null,
-      service_radius_km: Math.round(entry.service_radius_km),
       routing_reason: entry.routing_reason,
     }));
 
-    const body = {
+    return Response.json({
       results,
       need_level: needLevel,
       safety_message_keys: SAFETY_RULES.filter((rule) => rule.enabled).map((rule) => rule.key),
-      client_location_source: clientLocationSource || null,
-      client_address_text: clientAddressText || null,
-      routing_mode: hasClientCoords ? 'perimeter' : (scope === 'national' ? 'national' : 'locality'),
+      routing_mode: 'locality',
+      coverage_status: results.length > 0 ? 'results_found' : 'no_local_results',
+      selected_locality_siruta_code: sirutaCode,
       service_key_statuses: requestKeys.statuses,
-    };
-    if (scope !== 'national' && !hasClientCoords && (sirutaCode || city) && results.length === 0) {
-      body.coverage_status = 'no_local_results';
-      body.selected_locality_siruta_code = sirutaCode || null;
-      body.can_expand_to_county = true;
-      body.can_expand_nationally = true;
-    }
-    if (hasClientCoords && results.length === 0) {
-      body.coverage_status = 'no_perimeter_results';
-      body.can_expand_to_county = false;
-      body.can_expand_nationally = true;
-    }
-
-    return Response.json(body);
+    });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
