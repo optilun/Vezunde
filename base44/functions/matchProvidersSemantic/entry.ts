@@ -33,35 +33,6 @@ function active(row) {
     && !['inactiv', 'inactiva', 'inactive'].includes(status);
 }
 
-function hasCoordinates(value) {
-  const lat = Number(value?.lat);
-  const lng = Number(value?.lng);
-  return Number.isFinite(lat) && Number.isFinite(lng)
-    && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
-}
-
-function distanceKm(a, b) {
-  const toRad = (degrees) => (degrees * Math.PI) / 180;
-  const lat1 = Number(a.lat);
-  const lng1 = Number(a.lng);
-  const lat2 = Number(b.lat);
-  const lng2 = Number(b.lng);
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const sinLat = Math.sin(dLat / 2) ** 2;
-  const sinLng = Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(sinLat + sinLng), Math.sqrt(1 - sinLat - sinLng));
-}
-
-function defaultRadiusKm(location) {
-  const configured = Number(location?.service_radius_km);
-  if (Number.isFinite(configured) && configured > 0) return configured;
-  if (location?.provider_profile_type === 'ophthalmology_clinic') return 50;
-  if (location?.provider_profile_type === 'ophthalmology_office') return 35;
-  if (['independent_optical_store', 'optical_chain'].includes(location?.provider_profile_type)) return 15;
-  return 20;
-}
-
 function indexRowsByLocation(rows) {
   const result = {};
   for (const row of rows || []) {
@@ -147,16 +118,20 @@ Deno.serve(async (request) => {
       });
     }
 
-    const city = clean(payload.city);
-    const county = clean(payload.county);
     const sirutaCode = clean(payload.locality_siruta_code);
-    const clientCoordinates = {
-      lat: Number(payload.client_lat),
-      lng: Number(payload.client_lng),
-    };
-    const hasClientCoordinates = hasCoordinates(clientCoordinates);
-    const scope = payload.scope || (hasClientCoordinates ? 'nearby' : ((city || sirutaCode) ? 'city' : 'national'));
     const limit = Math.max(1, Math.min(Number(payload.limit) || 20, 50));
+
+    if (!sirutaCode) {
+      return Response.json({
+        results: [],
+        resolved_service_keys: requestedKeys,
+        semantic_resolution: semantic,
+        need_level: requestNeedLevel(requestedKeys),
+        routing_mode: 'locality',
+        coverage_status: 'canonical_locality_required',
+        selected_locality_siruta_code: null,
+      });
+    }
 
     const [
       locations,
@@ -198,17 +173,7 @@ Deno.serve(async (request) => {
     for (const location of locations) {
       if (!active(location) || location.profile_control_status === 'suspended') continue;
       if (!PATIENT_FACING_PROFILE_TYPES.has(location.provider_profile_type)) continue;
-      if (city && clean(location.city).toLowerCase() !== city.toLowerCase()) continue;
-      if (county && clean(location.county).toLowerCase() !== county.toLowerCase()) continue;
-      if (sirutaCode && clean(location.locality_siruta_code) !== sirutaCode) continue;
-
-      let distance = null;
-      const radius = defaultRadiusKm(location);
-      if (hasClientCoordinates) {
-        if (!hasCoordinates(location)) continue;
-        distance = distanceKm(clientCoordinates, location);
-        if (!Number.isFinite(distance) || distance > radius) continue;
-      }
+      if (clean(location.locality_siruta_code) !== sirutaCode) continue;
 
       const locationRows = servicesByLocation[location.id] || [];
       const candidateRows = locationRows.filter((row) => {
@@ -247,7 +212,6 @@ Deno.serve(async (request) => {
       let score = (matchedKeys.length * 3) + Math.min(semanticScore * 5, 10);
       if (location.profile_control_status === 'verified') score += 2;
       else if (location.profile_control_status === 'claimed') score += 1;
-      if (Number.isFinite(distance)) score += Math.max(0, 3 - Math.min(distance / 10, 3));
 
       results.push({
         id: location.id,
@@ -265,18 +229,11 @@ Deno.serve(async (request) => {
         semantic_matched_service_keys: semanticMatchedKeys,
         semantic_match_score: Math.round(semanticScore * 1000) / 1000,
         match_reasons: [semanticReason(semanticMatchedKeys)].filter(Boolean),
-        distance_km: Number.isFinite(distance) ? Math.round(distance * 10) / 10 : null,
-        service_radius_km: Math.round(radius),
         score: Math.round(score * 1000) / 1000,
       });
     }
 
-    results.sort((a, b) => {
-      if (Number.isFinite(a.distance_km) && Number.isFinite(b.distance_km)) {
-        return a.distance_km - b.distance_km || b.score - a.score;
-      }
-      return b.score - a.score;
-    });
+    results.sort((a, b) => b.score - a.score);
 
     return Response.json({
       results: results.slice(0, limit).map((entry, index) => ({
@@ -287,8 +244,9 @@ Deno.serve(async (request) => {
       resolved_service_keys: requestedKeys,
       semantic_resolution: semantic,
       need_level: needLevel,
-      routing_mode: hasClientCoordinates ? 'perimeter' : scope,
-      coverage_status: results.length > 0 ? 'results_found' : 'no_results',
+      routing_mode: 'locality',
+      coverage_status: results.length > 0 ? 'results_found' : 'no_local_results',
+      selected_locality_siruta_code: sirutaCode,
     });
   } catch (error) {
     return Response.json({
