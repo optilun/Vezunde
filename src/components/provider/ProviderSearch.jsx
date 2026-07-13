@@ -28,12 +28,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
     return () => clearTimeout(t);
   }, [query]);
 
-  const handleClaim = (location) => {
-    // Cautarea si confirmarea locatiei raman publice. Autentificarea este ceruta
-    // dupa alegerea relatiei, astfel incat toate punctele de intrare au acelasi flux.
-    onClaim(location);
-  };
-
+  const handleClaim = (location) => onClaim(location);
   const showGoogleTrigger = query.trim().length >= 3 && !loading && results.length === 0;
 
   if (similar) {
@@ -53,7 +48,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(event) => setQuery(event.target.value)}
           placeholder="Cauta dupa nume, organizatie, oras sau adresa"
           className="w-full rounded-xl border border-border bg-card pl-11 pr-4 py-3.5 text-sm outline-none focus:border-foreground/50 transition-colors"
         />
@@ -65,33 +60,38 @@ export default function ProviderSearch({ onClaim, onNew }) {
       )}
 
       <div className="mt-4 space-y-3">
-        {results.map((loc) => (
-          <div key={loc.id} className="rounded-xl border border-border bg-card p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-xs text-muted-foreground">{PROVIDER_TYPES[loc.provider_type] || loc.provider_type}</div>
-                <div className="font-semibold flex items-center gap-1.5">
-                  {loc.name}
-                  {loc.status_label === "Verificat de VIASEE" && <BadgeCheck className="w-4 h-4 text-primary" />}
+        {results.map((location) => {
+          const requestsAccess = location.claim_action === "request_access";
+          return (
+            <div key={location.id} className="rounded-xl border border-border bg-card p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-xs text-muted-foreground">{PROVIDER_TYPES[location.provider_type] || location.provider_type}</div>
+                  <div className="font-semibold flex items-center gap-1.5">
+                    {location.name}
+                    {location.profile_control_status === "verified" && <BadgeCheck className="w-4 h-4 text-primary" />}
+                  </div>
+                  {location.organization_name && <div className="text-xs text-muted-foreground">{location.organization_name}</div>}
+                  <div className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5" />
+                    {location.city}{location.address ? `, ${location.address}` : ""}
+                  </div>
+                  <div className="text-xs mt-1 text-muted-foreground">
+                    {requestsAccess ? "Profil administrat. Solicitarea va fi verificata inainte de acordarea accesului." : "Profil disponibil pentru revendicare."}
+                  </div>
                 </div>
-                {loc.organization_name && <div className="text-xs text-muted-foreground">{loc.organization_name}</div>}
-                <div className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5" />
-                  {loc.city}{loc.address ? `, ${loc.address}` : ""}
-                </div>
-                {loc.status_label && <div className="text-xs mt-1 text-muted-foreground">{loc.status_label}</div>}
+                <button
+                  type="button"
+                  onClick={() => handleClaim(location)}
+                  className="shrink-0 px-4 py-2 rounded-full text-xs font-semibold text-white transition-colors"
+                  style={{ backgroundColor: "#171717" }}
+                >
+                  {requestsAccess ? "Solicita acces" : "Aceasta este locatia mea"}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => handleClaim(loc)}
-                className="shrink-0 px-4 py-2 rounded-full text-xs font-semibold text-white transition-colors"
-                style={{ backgroundColor: "#171717" }}
-              >
-                Aceasta este locatia mea
-              </button>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {query.trim().length >= 2 && !loading && results.length === 0 && !googleMode && <p className="text-sm text-muted-foreground">Nicio locatie gasita.</p>}
       </div>
 
