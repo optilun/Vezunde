@@ -82,8 +82,6 @@
   }
 }
 
-/* Auth pages (Login/Register/ForgotPassword/ResetPassword) and authenticated
-   workspaces use the same neutral charcoal palette. */
 .auth-neutral {
   --background: 45 22% 96%;
   --foreground: 0 0% 9%;
@@ -112,14 +110,11 @@
   --input: 43 13% 90%;
 }
 
-/* Softer selected cards in provider/admin workspace. Keeps the selected state visible
-   without the harsh black outline from border-foreground. */
 .workspace-neutral .border-foreground.shadow-sm {
   border-color: hsl(var(--border)) !important;
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 0 0 1px rgb(0 0 0 / 0.025) !important;
 }
 
-/* Provider organization danger zone: bright matte orange instead of alarm-red. */
 .workspace-neutral section.border-red-200 {
   border-color: #fb923c !important;
 }
@@ -142,7 +137,6 @@
   background-color: #fff7ed !important;
 }
 
-/* Workspace info popovers: keep them visible and open into the available content area. */
 .workspace-neutral section:has(details[open]) {
   overflow: visible !important;
 }
@@ -163,12 +157,55 @@
   max-width: calc(100vw - 2rem);
 }
 
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
 
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overflow-x: hidden;
+  }
+
   body {
     @apply bg-background text-foreground font-body;
+    min-width: 320px;
+    overflow-x: hidden;
+  }
+
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@media (max-width: 767px) {
+  .workspace-neutral table {
+    font-size: 0.8125rem;
+  }
+
+  .workspace-neutral input,
+  .workspace-neutral select,
+  .workspace-neutral textarea {
+    font-size: 16px;
   }
 }
