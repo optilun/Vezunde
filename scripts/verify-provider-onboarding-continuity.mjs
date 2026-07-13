@@ -25,12 +25,16 @@ expect('src/components/provider/ClaimForm.jsx', 'continueAfterRelation', 'Revend
 expect('src/components/provider/NewLocationWizard.jsx', 'currentKey === "relation"', 'Locatia noua cere autentificare dupa relatie');
 reject('src/components/provider/NewLocationWizard.jsx', 'pendingSubmit', 'Locatia noua nu se trimite automat dupa login');
 expect('src/pages/AddOrClaim.jsx', '/contul-meu?mode=applicant&onboarding=submitted', 'Trimiterea intra direct in Pregatire profil');
+expect('src/pages/AddOrClaim.jsx', 'result.duplicate_review', 'Clarificarea unui duplicat nu intra intr-un workspace fara locatie');
 expect('src/pages/MyAccount.jsx', 'getMyProviderOnboardingWorkspace', 'Contul incarca onboardingul separat de membershipuri');
+expect('base44/functions/getMyProviderOnboardingWorkspace/entry.ts', "claim.mode !== 'new_location_duplicate_review'", 'Pregatirea exclude cererile care nu au o locatie creata');
 expect('base44/functions/submitProviderClaim/entry.ts', 'requested_membership_role: requestedMembershipRole', 'Cererea salveaza rolul solicitat');
 expect('base44/functions/adminProviderClaimReview/entry.ts', "approved_membership_role: approvedRole", 'Adminul salveaza rolul aprobat');
 expect('base44/functions/adminProviderClaimReview/entry.ts', "status: 'draft', public_visibility_status: 'draft'", 'Locatia noua ramane draft dupa aprobare');
 expect('src/components/specialists/SpecialistsHero.jsx', 'setShowProfessionalNotice(true)', 'Profilul profesional nu intra in wizardul organizatiilor');
 expect('src/components/specialists/SpecialistsHero.jsx', 'claim_action === "request_access"', 'Cautarea diferentiaza revendicarea de acces');
+expect('src/pages/Partners.jsx', 'mailto:contact@viasee.ro', 'Partenerii B2B nu intra in onboardingul organizatiilor');
+reject('src/pages/Partners.jsx', 'to="/adauga-sau-revendica"', 'CTA-ul B2B nu deschide wizardul locatiei');
 
 const failures = checks.filter((check) => !check.pass);
 for (const check of checks) {
