@@ -29,7 +29,7 @@ export default function ProviderLocationsWithPhoto(props) {
       const grid = configureSection?.querySelector(".grid.gap-3");
       if (grid) {
         grid.classList.remove("md:grid-cols-3");
-        grid.classList.add("md:grid-cols-2", "xl:grid-cols-4", "vezunde-location-modules");
+        grid.classList.add("sm:grid-cols-2", "xl:grid-cols-4", "vezunde-location-modules");
         setPortalTarget(grid);
       } else setPortalTarget(null);
     };
@@ -53,19 +53,26 @@ export default function ProviderLocationsWithPhoto(props) {
   }, [selectedLocationId]);
 
   useEffect(() => {
-    if (!photoOpen) return undefined;
+    if (!photoOpen && !addLocationOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const closeOnEscape = (event) => {
-      if (event.key === "Escape") setPhotoOpen(false);
+      if (event.key !== "Escape") return;
+      setPhotoOpen(false);
+      setAddLocationOpen(false);
     };
     document.addEventListener("keydown", closeOnEscape);
-    return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [photoOpen]);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [photoOpen, addLocationOpen]);
 
   return (
-    <div ref={containerRef}>
+    <div ref={containerRef} className="min-w-0">
       <style>{`
         .vezunde-location-modules { align-items: stretch; }
-        .vezunde-location-modules > button { height: 100%; }
+        .vezunde-location-modules > button { height: 100%; min-width: 0; }
         .vezunde-location-modules > button > div {
           display: grid;
           grid-template-columns: 40px minmax(0, 1fr);
@@ -83,12 +90,16 @@ export default function ProviderLocationsWithPhoto(props) {
         .vezunde-location-modules > button > div > div:last-child > div:first-child { min-height: 40px; align-items: center; }
         .vezunde-location-modules > button > div > div:last-child > p { min-height: 64px; }
         .vezunde-location-modules > button > div > div:last-child > div:last-child { margin-top: auto; padding-top: 12px; }
+        @media (max-width: 639px) {
+          .vezunde-location-modules > button > div > div:last-child > p { min-height: 0; }
+          .vezunde-location-modules > button > div > div:last-child > div:first-child { min-height: 0; }
+        }
       `}</style>
 
       <ProviderLocations {...props} />
 
       {portalTarget && selectedLocation && createPortal(
-        <button type="button" onClick={() => setPhotoOpen(true)} className="h-full rounded-2xl border border-border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:shadow-sm">
+        <button type="button" onClick={() => setPhotoOpen(true)} className="h-full min-h-28 rounded-2xl border border-border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:shadow-sm">
           <div className="grid h-full grid-cols-[40px_minmax(0,1fr)] items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center self-start rounded-2xl bg-secondary"><Image className="h-4 w-4" /></div>
             <div className="flex h-full min-w-0 flex-col">
@@ -103,32 +114,32 @@ export default function ProviderLocationsWithPhoto(props) {
 
       {photoOpen && selectedLocation && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4 py-6 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setPhotoOpen(false);
           }}
         >
           <div
-            className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-border bg-background shadow-2xl"
+            className="flex max-h-[96dvh] w-full flex-col overflow-hidden rounded-t-[24px] border border-border bg-background shadow-2xl sm:max-h-[90vh] sm:max-w-2xl sm:rounded-[28px]"
             onMouseDown={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-5 py-4">
-              <div><div className="text-xs font-medium text-muted-foreground">{selectedLocationName}</div><h2 className="font-heading text-xl font-extrabold tracking-tight">Fotografia locatiei</h2></div>
-              <button type="button" onClick={() => setPhotoOpen(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary" aria-label="Inchide"><X className="h-4 w-4" /></button>
+            <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-4 py-4 sm:px-5 safe-area-top">
+              <div className="min-w-0"><div className="truncate text-xs font-medium text-muted-foreground">{selectedLocationName}</div><h2 className="font-heading text-lg font-extrabold tracking-tight sm:text-xl">Fotografia locatiei</h2></div>
+              <button type="button" onClick={() => setPhotoOpen(false)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary" aria-label="Inchide"><X className="h-4 w-4" /></button>
             </div>
-            <div className="overflow-y-auto p-5"><ProviderLocationPhotoCompact locationId={selectedLocation.id} /></div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-5"><ProviderLocationPhotoCompact locationId={selectedLocation.id} /></div>
           </div>
         </div>
       )}
 
       {addLocationOpen && selectedLocation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4 py-6 backdrop-blur-sm">
-          <div className="flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] border border-border bg-background shadow-2xl">
-            <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-5 py-4">
-              <div><div className="text-xs font-medium text-muted-foreground">{organizationName}</div><h2 className="font-heading text-xl font-extrabold tracking-tight">Adauga o locatie noua</h2></div>
-              <button type="button" onClick={() => setAddLocationOpen(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary" aria-label="Inchide"><X className="h-4 w-4" /></button>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6">
+          <div className="flex max-h-[98dvh] w-full flex-col overflow-hidden rounded-t-[24px] border border-border bg-background shadow-2xl sm:max-h-[94vh] sm:max-w-4xl sm:rounded-[28px]">
+            <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-4 py-4 sm:px-5 safe-area-top">
+              <div className="min-w-0"><div className="truncate text-xs font-medium text-muted-foreground">{organizationName}</div><h2 className="font-heading text-lg font-extrabold tracking-tight sm:text-xl">Adauga o locatie noua</h2></div>
+              <button type="button" onClick={() => setAddLocationOpen(false)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary" aria-label="Inchide"><X className="h-4 w-4" /></button>
             </div>
-            <div className="overflow-y-auto p-5">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-5">
               <ProviderAddLocationFlow anchorLocationId={selectedLocation.id} organizationName={organizationName} onClose={() => setAddLocationOpen(false)} onSelectLocation={onSelect} onRefresh={onRefresh} />
             </div>
           </div>
