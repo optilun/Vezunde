@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, Outlet } from "react-router-dom";
 import { Menu } from "lucide-react";
 import HeaderAccountLink from "@/components/HeaderAccountLink";
@@ -14,81 +14,23 @@ const MOBILE_LINKS = [
 
 export default function Layout() {
   const [scrolled, setScrolled] = useState(false);
-  const [desktopHidden, setDesktopHidden] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const lastScrollY = useRef(0);
 
   useEffect(() => {
-    const media = window.matchMedia("(min-width: 768px)");
-    const syncDesktop = () => setIsDesktop(media.matches);
-    syncDesktop();
-    media.addEventListener?.("change", syncDesktop);
-    return () => media.removeEventListener?.("change", syncDesktop);
-  }, []);
-
-  useEffect(() => {
-    let frame = null;
-
-    const updateHeader = () => {
-      const currentScrollY = Math.max(
-        window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0,
-        0,
-      );
-      const delta = currentScrollY - lastScrollY.current;
-      const isScrolled = currentScrollY > 8;
-
-      setScrolled(isScrolled);
-
-      if (!isScrolled) {
-        setDesktopHidden(false);
-      } else if (delta > 2 && currentScrollY > 24) {
-        setDesktopHidden(true);
-      } else if (delta < -2) {
-        setDesktopHidden(false);
-      }
-
-      lastScrollY.current = currentScrollY;
-      frame = null;
-    };
-
-    const onScroll = () => {
-      if (frame !== null) return;
-      frame = window.requestAnimationFrame(updateHeader);
-    };
-
-    lastScrollY.current = Math.max(window.scrollY || 0, 0);
-    updateHeader();
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    document.addEventListener("scroll", onScroll, { passive: true, capture: true });
-
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      document.removeEventListener("scroll", onScroll, true);
-      if (frame !== null) window.cancelAnimationFrame(frame);
-    };
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  const mobileHeaderState = scrolled
-    ? "border-[#E8E8E8] bg-white shadow-[0_4px_20px_rgba(20,20,20,0.05)]"
-    : "border-transparent bg-white/75 backdrop-blur-md";
-
-  const desktopHeaderStyle = isDesktop
-    ? {
-        transform: desktopHidden ? "translateY(-100%)" : "translateY(0)",
-        opacity: desktopHidden ? 0 : 1,
-        backgroundColor: desktopHidden ? "transparent" : scrolled ? "#FFFFFF" : "hsl(var(--background))",
-        borderBottomColor: desktopHidden || !scrolled ? "transparent" : "#E8E8E8",
-        boxShadow: desktopHidden || !scrolled ? "none" : "0 4px 20px rgba(20,20,20,0.05)",
-        pointerEvents: desktopHidden ? "none" : "auto",
-      }
-    : undefined;
 
   return (
     <div className="flex min-h-screen min-h-dvh flex-col bg-background font-body text-foreground">
       <header
-        className={`sticky top-0 z-40 border-b safe-area-top transition-[transform,opacity,background-color,border-color,box-shadow] duration-300 ease-out ${mobileHeaderState}`}
-        style={desktopHeaderStyle}
+        className={`sticky top-0 z-40 border-b transition-all duration-500 safe-area-top md:relative ${
+          scrolled
+            ? "border-[#E8E8E8] bg-white shadow-[0_4px_20px_rgba(20,20,20,0.05)] md:border-transparent md:bg-transparent md:shadow-none"
+            : "border-transparent bg-white/75 backdrop-blur-md md:bg-background md:backdrop-blur-none"
+        }`}
       >
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:px-8">
           <Link to="/" className="flex min-w-0 items-center" aria-label="VIASEE - Pagina principala">
