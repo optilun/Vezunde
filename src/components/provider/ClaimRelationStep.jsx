@@ -3,7 +3,7 @@ import ChoiceCard from "@/components/intake/ChoiceCard";
 import ContinueButton from "@/components/intake/ContinueButton";
 import { CLAIMANT_RELATIONSHIPS } from "@/components/provider/ContactIdentityFields";
 
-export default function ClaimRelationStep({ locationCard, contact, onChange, onContinue }) {
+export default function ClaimRelationStep({ locationCard, contact, onChange, onContinue, loading = false }) {
   const valid = contact.claimant_relationship && contact.representation_confirmed;
   return (
     <div className="text-left">
@@ -25,9 +25,14 @@ export default function ClaimRelationStep({ locationCard, contact, onChange, onC
           checked={contact.representation_confirmed}
           onChange={(e) => onChange({ ...contact, representation_confirmed: e.target.checked })}
         />
-        <span>Confirm ca reprezint aceasta locatie si ca informatiile transmise sunt corecte.</span>
+        <span>Confirm ca sunt autorizat sa solicit acces pentru aceasta locatie si ca informatiile transmise sunt corecte.</span>
       </label>
-      <ContinueButton onClick={onContinue} disabled={!valid} />
+      <ContinueButton onClick={onContinue} disabled={!valid} loading={loading}>
+        Continua
+      </ContinueButton>
+      <p className="mt-3 text-center text-xs text-muted-foreground">
+        In pasul urmator te autentifici sau iti creezi contul VIASEE, apoi revii automat aici.
+      </p>
     </div>
   );
 }
