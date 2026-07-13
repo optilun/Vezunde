@@ -14,7 +14,8 @@
     "test:services": "node scripts/verify-service-registry.mjs && node scripts/verify-service-legacy-flows.mjs && node scripts/verify-service-prerequisites.mjs && node scripts/verify-service-configuration-payload.mjs && node scripts/verify-service-semantic-search.mjs",
     "audit:services": "node scripts/audit-service-registry-data.mjs",
     "preview": "vite preview",
-    "test:provider-submissions": "node scripts/verify-provider-submission-comparison.mjs && node scripts/verify-provider-submission-backend.mjs"
+    "test:provider-submissions": "node scripts/verify-provider-submission-comparison.mjs && node scripts/verify-provider-submission-backend.mjs",
+    "test:provider-onboarding": "node scripts/verify-provider-onboarding.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.38",

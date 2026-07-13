@@ -1,0 +1,77 @@
+name: Provider Onboarding Checks
+
+on:
+  pull_request:
+    paths:
+      - "src/pages/**"
+      - "src/components/provider/**"
+      - "src/components/specialists/**"
+      - "src/components/workspace/applicant/**"
+      - "src/components/admin/directory/DirOpsClaims.jsx"
+      - "src/lib/postLoginRedirect.js"
+      - "src/lib/workspaceNav.js"
+      - "base44/functions/submitProviderClaim/**"
+      - "base44/functions/findProviderIdentityCandidates/**"
+      - "base44/functions/getClaimableProviderLocations/**"
+      - "base44/functions/getMyProviderWorkspace/**"
+      - "base44/functions/adminProviderClaimReview/**"
+      - "scripts/verify-provider-onboarding.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/provider-onboarding-check.yml"
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --silent
+
+      - name: Provider onboarding regression checks
+        run: npm run test:provider-onboarding
+
+      - name: Typecheck
+        id: typecheck
+        continue-on-error: true
+        run: npm run typecheck -- --pretty false 2>&1 | tee typecheck.log
+
+      - name: Lint
+        id: lint
+        continue-on-error: true
+        run: npm run lint 2>&1 | tee lint.log
+
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: npm run build 2>&1 | tee build.log
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: provider-onboarding-diagnostics
+          path: |
+            typecheck.log
+            lint.log
+            build.log
+
+      - name: Enforce verification results
+        if: always()
+        run: |
+          echo "typecheck=${{ steps.typecheck.outcome }}"
+          echo "lint=${{ steps.lint.outcome }}"
+          echo "build=${{ steps.build.outcome }}"
+          test "${{ steps.typecheck.outcome }}" = "success"
+          test "${{ steps.lint.outcome }}" = "success"
+          test "${{ steps.build.outcome }}" = "success"
