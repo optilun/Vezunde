@@ -18,6 +18,7 @@ const ROLE_BY_RELATIONSHIP = {
   location_manager: "location_manager",
   authorized_staff: "location_staff",
 };
+const REVIEWABLE_STATUSES = new Set(["in_asteptare", "needs_more_info"]);
 
 function parsePayload(value) {
   try { return value ? JSON.parse(value) : {}; } catch (_error) { return {}; }
@@ -29,6 +30,13 @@ function requestedRoleForClaim(claim) {
     || payload.requested_membership_role
     || ROLE_BY_RELATIONSHIP[claim.claimant_relationship]
     || "location_staff";
+}
+
+function approvalDefaultForClaim(claim, requestedRole) {
+  const payload = parsePayload(claim.submitted_payload);
+  return payload.request_type === "access_request_existing_claimed_profile"
+    ? "location_staff"
+    : requestedRole;
 }
 
 export default function DirOpsClaims() {
@@ -69,9 +77,17 @@ export default function DirOpsClaims() {
         <div className="space-y-2">
           {claims.map((claim) => {
             const location = locations[claim.location_id];
+            const payload = parsePayload(claim.submitted_payload);
             const isDuplicateReview = claim.mode === "new_location_duplicate_review";
-            const modeLabel = isDuplicateReview ? "locatie noua — verificare duplicat" : claim.mode || "claim";
+            const isAccessRequest = payload.request_type === "access_request_existing_claimed_profile";
+            const modeLabel = isDuplicateReview
+              ? "locatie noua — verificare duplicat"
+              : isAccessRequest
+                ? "solicitare acces profil administrat"
+                : claim.mode || "claim";
             const requestedRole = requestedRoleForClaim(claim);
+            const defaultApprovedRole = approvalDefaultForClaim(claim, requestedRole);
+            const canReview = REVIEWABLE_STATUSES.has(claim.status);
             return (
               <div key={claim.id} className="bg-secondary/50 border border-border rounded-xl p-4">
                 <div className="flex flex-wrap items-center gap-3">
@@ -89,11 +105,17 @@ export default function DirOpsClaims() {
                     {claim.review_notes && <div className="text-xs text-muted-foreground mt-1">Nota: {claim.review_notes}</div>}
                   </div>
                   <span className={`text-xs font-semibold px-2 py-1 rounded-full ${claim.status === "aprobata" ? "bg-green-100 text-green-800" : claim.status === "respinsa" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}`}>{claim.status}</span>
-                  {claim.status === "in_asteptare" && (
+                  {canReview && (
                     <div className="flex gap-2">
                       {!isDuplicateReview && (
                         <button
-                          onClick={() => setAction({ claimId: claim.id, type: "approve", approvedRole: requestedRole })}
+                          onClick={() => setAction({
+                            claimId: claim.id,
+                            type: "approve",
+                            requestedRole,
+                            approvedRole: defaultApprovedRole,
+                            isAccessRequest,
+                          })}
                           className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-semibold"
                         >
                           Aproba
@@ -104,7 +126,7 @@ export default function DirOpsClaims() {
                   )}
                 </div>
                 <AdminClaimIdentityContext claim={claim} />
-                {isDuplicateReview && claim.status === "in_asteptare" && (
+                {isDuplicateReview && canReview && (
                   <p className="mt-2 text-xs text-muted-foreground">
                     Nicio locatie nu a fost creata. Daca este distincta, creeaz-o prin fluxul canonic „Adauga locatie”, apoi inchide cererea cu o nota.
                   </p>
@@ -124,7 +146,13 @@ export default function DirOpsClaims() {
         >
           {action.type === "approve" && (
             <div>
-              <label htmlFor="approved-role" className="text-xs font-semibold text-muted-foreground">Rol acordat dupa aprobare</label>
+              <div className="rounded-lg bg-secondary/50 px-3 py-2 text-xs text-muted-foreground">
+                Acces solicitat: <span className="font-semibold text-foreground">{ROLE_LABELS[action.requestedRole]}</span>
+                {action.isAccessRequest && (
+                  <span className="mt-1 block">Profilul este deja administrat, de aceea rolul implicit este limitat. Acordarea rolului de owner trebuie aleasa explicit.</span>
+                )}
+              </div>
+              <label htmlFor="approved-role" className="mt-3 block text-xs font-semibold text-muted-foreground">Rol acordat dupa aprobare</label>
               <select
                 id="approved-role"
                 value={action.approvedRole}
@@ -133,7 +161,7 @@ export default function DirOpsClaims() {
               >
                 {ROLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Adminul poate confirma rolul solicitat sau poate acorda un nivel mai restrans.</p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Adminul confirma rolul solicitat sau acorda un nivel diferit pe baza verificarii.</p>
             </div>
           )}
         </DirOpsActionNote>
