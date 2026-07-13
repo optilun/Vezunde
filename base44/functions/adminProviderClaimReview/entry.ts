@@ -126,7 +126,6 @@ Deno.serve(async (req) => {
     if (!location) return Response.json({ error: 'Locatia nu exista' }, { status: 404 });
     const submitted = parseJSON(claim.submitted_payload);
     const requestedRole = clean(
-      claim.requested_membership_role ||
       submitted.requested_membership_role ||
       ROLE_BY_RELATIONSHIP[claim.claimant_relationship] ||
       'location_staff'
@@ -147,10 +146,14 @@ Deno.serve(async (req) => {
       ...(isNewLocation ? { status: 'draft', public_visibility_status: 'draft' } : {}),
     };
     await svc.entities.ProviderLocation.update(location.id, locationUpdates);
-    await svc.entities.ProviderClaimRequest.update(claim.id, {
-      status: 'aprobata',
+    const updatedSubmitted = {
+      ...submitted,
       requested_membership_role: requestedRole,
       approved_membership_role: approvedRole,
+    };
+    await svc.entities.ProviderClaimRequest.update(claim.id, {
+      status: 'aprobata',
+      submitted_payload: JSON.stringify(updatedSubmitted),
       reviewed_at: new Date().toISOString(),
       review_notes: note,
     });
