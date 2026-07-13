@@ -20,11 +20,16 @@ Deno.serve(async (req) => {
     const payload = await req.json().catch(() => ({}));
 
     const sirutaCode = String(payload.locality_siruta_code || '').trim();
-    const city = String(payload.city || '').trim();
     const providerTypes = Array.isArray(payload.provider_types) ? payload.provider_types : [];
     const limit = Math.min(payload.limit || 20, 50);
 
-    if (!sirutaCode && !city) return Response.json({ results: [] });
+    if (!sirutaCode) {
+      return Response.json({
+        results: [],
+        coverage_status: 'canonical_locality_required',
+        selected_locality_siruta_code: null,
+      });
+    }
 
     const [locations, services, assignments, equipment, facilities] = await Promise.all([
       svc.entities.ProviderLocation.filter({ status: 'publicata' }, null, 500),
@@ -76,13 +81,7 @@ Deno.serve(async (req) => {
       if (!loc.provider_profile_type || !PATIENT_FACING_PROFILE_TYPES.includes(loc.provider_profile_type)) continue;
       if (providerTypes.length > 0 && !providerTypes.includes(loc.provider_type)) continue;
 
-      if (sirutaCode) {
-        if ((loc.locality_siruta_code || '') !== sirutaCode) continue;
-      } else if (!loc.locality_siruta_code && city) {
-        if (loc.city !== city) continue;
-      } else {
-        continue;
-      }
+      if (String(loc.locality_siruta_code || '').trim() !== sirutaCode) continue;
 
       const locAssignments = assignmentsByLocation[loc.id] || [];
       const locProfessionals = [...new Set(locAssignments.map((assignment) => assignment.professional_id).filter(Boolean))]
@@ -121,7 +120,11 @@ Deno.serve(async (req) => {
       if (results.length >= limit) break;
     }
 
-    return Response.json({ results });
+    return Response.json({
+      results,
+      coverage_status: results.length > 0 ? 'results_found' : 'no_local_results',
+      selected_locality_siruta_code: sirutaCode,
+    });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
