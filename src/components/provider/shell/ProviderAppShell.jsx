@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Menu, ExternalLink } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import ProviderSidebarContent from "./ProviderSidebarContent";
+import "@/styles/workspace-mobile.css";
 
 export default function ProviderAppShell({
   navItems,
@@ -98,7 +99,7 @@ export default function ProviderAppShell({
           </div>
         </header>
 
-        <main className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-10 py-5 sm:py-7 lg:py-8 overflow-x-clip">
+        <main className="workspace-mobile-surface w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-10 py-5 sm:py-7 lg:py-8 overflow-x-clip">
           {children}
         </main>
       </div>
