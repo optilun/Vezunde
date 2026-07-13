@@ -26,8 +26,7 @@ function parsePayload(value) {
 
 function requestedRoleForClaim(claim) {
   const payload = parsePayload(claim.submitted_payload);
-  return claim.requested_membership_role
-    || payload.requested_membership_role
+  return payload.requested_membership_role
     || ROLE_BY_RELATIONSHIP[claim.claimant_relationship]
     || "location_staff";
 }
@@ -86,6 +85,7 @@ export default function DirOpsClaims() {
                 ? "solicitare acces profil administrat"
                 : claim.mode || "claim";
             const requestedRole = requestedRoleForClaim(claim);
+            const approvedRole = payload.approved_membership_role || "";
             const defaultApprovedRole = approvalDefaultForClaim(claim, requestedRole);
             const canReview = REVIEWABLE_STATUSES.has(claim.status);
             return (
@@ -99,8 +99,8 @@ export default function DirOpsClaims() {
                     <div className="text-xs text-muted-foreground mt-1">
                       Mod: {modeLabel} · Relatie: {claim.claimant_relationship || "—"} · Acces solicitat: {ROLE_LABELS[requestedRole] || requestedRole}
                     </div>
-                    {claim.approved_membership_role && (
-                      <div className="text-xs text-muted-foreground mt-1">Acces aprobat: {ROLE_LABELS[claim.approved_membership_role] || claim.approved_membership_role}</div>
+                    {approvedRole && (
+                      <div className="text-xs text-muted-foreground mt-1">Acces aprobat: {ROLE_LABELS[approvedRole] || approvedRole}</div>
                     )}
                     {claim.review_notes && <div className="text-xs text-muted-foreground mt-1">Nota: {claim.review_notes}</div>}
                   </div>
