@@ -2,12 +2,16 @@ import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import WizardShell from "@/components/intake/WizardShell";
 import WizOrgBasics from "@/components/provider/steps/WizOrgBasics";
+import WizClaimRelation from "@/components/provider/steps/WizClaimRelation";
+import WizClaimContact from "@/components/provider/steps/WizClaimContact";
 import WizReviewShort from "@/components/provider/steps/WizReviewShort";
 import IdentityDuplicatePanel from "@/components/provider/IdentityDuplicatePanel";
 
 const STEPS = [
-  { key: "details", title: "Organizatia si prima locatie", subtitle: "Completeaza datele minime necesare pentru verificarea inscrierii.", Comp: WizOrgBasics },
-  { key: "review", title: "Revizuieste solicitarea", subtitle: "Verifica datele inainte de trimitere. Dupa autentificare vei reveni la acest pas.", Comp: WizReviewShort },
+  { key: "details", title: "Organizatia si prima locatie", subtitle: "Completeaza datele minime necesare pentru identificarea profilului.", Comp: WizOrgBasics },
+  { key: "relation", title: "Care este rolul tau?", subtitle: "Relatia declarata stabileste nivelul de acces pe care il soliciti.", Comp: WizClaimRelation },
+  { key: "contact", title: "Date private de verificare", subtitle: "Precompletam datele contului si le poti corecta inainte de trimitere.", Comp: WizClaimContact },
+  { key: "review", title: "Revizuieste solicitarea", subtitle: "Verifica organizatia, locatia si accesul solicitat inainte de trimitere.", Comp: WizReviewShort },
 ];
 
 const INITIAL = {
@@ -76,15 +80,14 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
     }
     return INITIAL;
   });
-  const [step, setStep] = useState(() => resume?.data ? Math.min(Number(resume.step) || STEPS.length - 1, STEPS.length - 1) : 0);
+  const [step, setStep] = useState(() => resume?.data ? Math.min(Number(resume.step) || 0, STEPS.length - 1) : 0);
   const [submitting, setSubmitting] = useState(false);
+  const [authChecking, setAuthChecking] = useState(false);
   const [error, setError] = useState("");
   const [identityCheck, setIdentityCheck] = useState(null);
 
   useEffect(() => {
-    if (!resume) return;
-    // Datele au fost deja incarcate in state. Nu trimitem automat cererea dupa login.
-    sessionStorage.removeItem(WIZARD_RESUME_KEY);
+    if (resume) sessionStorage.removeItem(WIZARD_RESUME_KEY);
   }, [resume]);
 
   useEffect(() => {
@@ -106,17 +109,32 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
   }, []);
 
   const update = (patch) => setData((current) => ({ ...current, ...patch, claimSubjectType: "organization" }));
-  const next = () => setStep((current) => Math.min(current + 1, STEPS.length - 1));
+
+  const next = async () => {
+    const currentKey = STEPS[step].key;
+    if (currentKey === "relation") {
+      const nextStep = Math.min(step + 1, STEPS.length - 1);
+      sessionStorage.setItem(WIZARD_RESUME_KEY, JSON.stringify({ data, step: nextStep }));
+      setAuthChecking(true);
+      const authenticated = await base44.auth.isAuthenticated().catch(() => false);
+      setAuthChecking(false);
+      if (!authenticated) {
+        base44.auth.redirectToLogin(window.location.href);
+        return;
+      }
+      sessionStorage.removeItem(WIZARD_RESUME_KEY);
+      setStep(nextStep);
+      return;
+    }
+    setStep((current) => Math.min(current + 1, STEPS.length - 1));
+  };
+
   const back = () => (step === 0 ? onExit() : setStep((current) => current - 1));
 
   const submit = async (identityExtra = {}) => {
     const authed = await base44.auth.isAuthenticated();
     if (!authed) {
-      sessionStorage.setItem(WIZARD_RESUME_KEY, JSON.stringify({
-        data: { ...data, claimSubjectType: "organization" },
-        step: STEPS.length - 1,
-        identityExtra,
-      }));
+      sessionStorage.setItem(WIZARD_RESUME_KEY, JSON.stringify({ data, step: STEPS.length - 1, identityExtra }));
       base44.auth.redirectToLogin(window.location.href);
       return;
     }
@@ -176,7 +194,15 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
           Date preluate de pe Google Maps. Verifica si corecteaza inainte de trimitere.
         </p>
       ) : null}
-      <Comp data={data} update={update} next={next} onSubmit={() => submit()} submitting={submitting} error={error} />
+      <Comp
+        data={data}
+        update={update}
+        next={next}
+        onSubmit={() => submit()}
+        submitting={submitting}
+        loading={authChecking}
+        error={error}
+      />
     </WizardShell>
   );
 }
