@@ -6,6 +6,7 @@ on:
       - fix/onboarding-schema-compatibility-20260713
     paths:
       - ".github/workflows/apply-onboarding-schema-compatibility.yml"
+      - "scripts/apply-onboarding-schema-compatibility.mjs"
 
 permissions:
   contents: write
@@ -33,26 +34,27 @@ jobs:
           admin_path = Path('base44/functions/adminProviderClaimReview/entry.ts')
           admin = admin_path.read_text()
           old = """    await svc.entities.ProviderClaimRequest.update(claim.id, {
-      status: 'aprobata',
-      requested_membership_role: requestedRole,
-      approved_membership_role: approvedRole,
-      reviewed_at: new Date().toISOString(),
-      review_notes: note,
-    });"""
-          new = """    const reviewedPayload = JSON.stringify({
-      ...submitted,
-      requested_membership_role: requestedRole,
-      approved_membership_role: approvedRole,
-    });
-    await svc.entities.ProviderClaimRequest.update(claim.id, {
-      status: 'aprobata',
-      submitted_payload: reviewedPayload,
-      reviewed_at: new Date().toISOString(),
-      review_notes: note,
-    });"""
+            status: 'aprobata',
+            requested_membership_role: requestedRole,
+            approved_membership_role: approvedRole,
+            reviewed_at: new Date().toISOString(),
+            review_notes: note,
+          });"""
+          new = """    const updatedSubmitted = {
+            ...submitted,
+            requested_membership_role: requestedRole,
+            approved_membership_role: approvedRole,
+          };
+          await svc.entities.ProviderClaimRequest.update(claim.id, {
+            status: 'aprobata',
+            submitted_payload: JSON.stringify(updatedSubmitted),
+            reviewed_at: new Date().toISOString(),
+            review_notes: note,
+          });"""
           if old not in admin:
               raise SystemExit('admin approval block not found')
           admin = admin.replace(old, new)
+          admin = admin.replace("      claim.requested_membership_role ||\n", "")
           admin_path.write_text(admin)
 
           claims_path = Path('src/components/admin/directory/DirOpsClaims.jsx')
@@ -67,21 +69,13 @@ jobs:
           )
           claims_path.write_text(claims)
 
-          test_path = Path('scripts/verify-provider-onboarding-continuity.mjs')
-          test = test_path.read_text()
-          test = test.replace(
-              "expect('base44/functions/submitProviderClaim/entry.ts', 'requested_membership_role: requestedMembershipRole', 'Cererea salveaza rolul solicitat');",
-              "expect('base44/functions/submitProviderClaim/entry.ts', 'requested_membership_role: requestedMembershipRole', 'Cererea salveaza rolul solicitat in submitted_payload');\nreject('base44/functions/submitProviderClaim/entry.ts', /ProviderClaimRequest\\.create\\([\\s\\S]*requested_membership_role:/, 'Crearea cererii nu depinde de un camp de schema nou');",
-          )
-          test = test.replace(
-              "expect('base44/functions/adminProviderClaimReview/entry.ts', \"approved_membership_role: approvedRole\", 'Adminul salveaza rolul aprobat');",
-              "expect('base44/functions/adminProviderClaimReview/entry.ts', \"approved_membership_role: approvedRole\", 'Adminul salveaza rolul aprobat in submitted_payload');\nreject('base44/functions/adminProviderClaimReview/entry.ts', /ProviderClaimRequest\\.update\\(claim\\.id,[\\s\\S]*approved_membership_role:/, 'Aprobarea nu depinde de un camp de schema nou');",
-          )
-          test_path.write_text(test)
-
           workflow = Path('.github/workflows/apply-onboarding-schema-compatibility.yml')
           workflow.unlink()
+          patch_script = Path('scripts/apply-onboarding-schema-compatibility.mjs')
+          if patch_script.exists(): patch_script.unlink()
           PY
+      - name: Verify compatibility
+        run: node scripts/verify-onboarding-schema-compatibility.mjs
       - name: Commit compatibility fix
         run: |
           git config user.name "github-actions[bot]"
