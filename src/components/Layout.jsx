@@ -26,12 +26,14 @@ export default function Layout() {
   return (
     <div className="flex min-h-screen min-h-dvh flex-col bg-background font-body text-foreground">
       <header
-        className="sticky top-0 z-40 transition-all duration-500 safe-area-top"
+        className={`sticky top-0 z-40 transition-all duration-500 safe-area-top ${
+          scrolled
+            ? "bg-white"
+            : "bg-white/75 backdrop-blur-md md:bg-transparent md:backdrop-blur-none"
+        }`}
         style={{
-          backgroundColor: scrolled ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.72)",
           borderBottom: scrolled ? "1px solid #E8E8E8" : "1px solid transparent",
           boxShadow: scrolled ? "0 4px 20px rgba(20,20,20,0.05)" : "none",
-          backdropFilter: "blur(14px)",
         }}
       >
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:px-8">
