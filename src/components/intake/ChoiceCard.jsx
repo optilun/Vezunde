@@ -1,7 +1,7 @@
 import React from "react";
 import { Check } from "lucide-react";
 
-export default function ChoiceCard({ label, hint, selected, suggested, onClick }) {
+export default function ChoiceCard({ label, hint = "", selected = false, suggested = false, onClick }) {
   return (
     <button
       type="button"

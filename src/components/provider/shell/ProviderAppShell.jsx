@@ -4,20 +4,18 @@ import { Menu, ExternalLink } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import ProviderSidebarContent from "./ProviderSidebarContent";
 
-// Generalized internal app shell — used by personal, applicant,
-// professional and provider workspace areas. No public website navbar.
 export default function ProviderAppShell({
   navItems,
   activeKey,
   onNavigate,
   user,
   onLogout,
-  publicProfileUrl,
+  publicProfileUrl = "",
   title,
-  subtitle,
-  statusBadge,
-  modeSwitch,
-  modeSwitches,
+  subtitle = "",
+  statusBadge = null,
+  modeSwitch = null,
+  modeSwitches = [],
   children,
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -86,9 +84,7 @@ export default function ProviderAppShell({
             </div>
           </div>
         </div>
-        <main className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 py-8">
-          {children}
-        </main>
+        <main className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-10 py-8">{children}</main>
       </div>
     </div>
   );

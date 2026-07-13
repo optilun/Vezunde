@@ -1,14 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-// Module 3H.1B.3.A — Short Claim Contract.
-// Initial claims are intentionally minimal: relation + identity + basic location
-// data only. ALL post-approval profile data (services, team, schedule, photos,
-// public description, website/social, equipment, brands, availability) is
-// IGNORED here and must be added after approval through the Provider Workspace.
-// No LocationService / LocationSpecialization / LocationFacility /
-// ProfessionalProfile / ProfessionalLocationAssignment / LocationEquipment /
-// ProductBrandOffering records are ever created during initial claim submission.
-
 const PROFILE_TYPES = ['independent_optical_store', 'optical_chain', 'ophthalmology_clinic', 'ophthalmology_office', 'independent_ophthalmologist', 'independent_optometrist', 'independent_optician', 'optical_laboratory_b2c', 'optical_laboratory_b2b', 'future_b2b_distributor'];
 const RELATIONSHIPS = ['owner', 'organization_representative', 'location_manager', 'authorized_staff'];
 const SUBJECT_TYPES = ['organization', 'independent_professional', 'b2b_supplier'];
@@ -16,6 +7,12 @@ const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
 const CONTROLLED_PROFILE_STATUSES = ['claimed', 'verified'];
 const B2B_PROFILE_TYPES = ['optical_laboratory_b2b', 'future_b2b_distributor'];
+const ROLE_BY_RELATIONSHIP = {
+  owner: 'organization_owner',
+  organization_representative: 'organization_owner',
+  location_manager: 'location_manager',
+  authorized_staff: 'location_staff',
+};
 
 Deno.serve(async (req) => {
   try {
@@ -32,17 +29,16 @@ Deno.serve(async (req) => {
     if (!c.contact_name || !c.email) {
       return Response.json({ error: 'Numele complet si emailul sunt obligatorii' }, { status: 400 });
     }
-    // Short-claim contract: structured claimant relationship is mandatory in both modes.
     const claimantRelationship = String(p.claimant_relationship || '').trim();
     if (!RELATIONSHIPS.includes(claimantRelationship)) {
       return Response.json({ error: 'Selecteaza relatia ta cu aceasta locatie' }, { status: 400 });
     }
+    const requestedMembershipRole = ROLE_BY_RELATIONSHIP[claimantRelationship] || 'location_staff';
 
     let locationId = p.location_id || null;
     let organizationId = null;
     let businessName = '';
     let claimSubjectType = '';
-    // Module 3H.1B.1/2: identity-gate context (admin-only review payloads).
     let identityNote = '';
     let identityBlocking = 'none';
     let identitySnapshot = '';
@@ -52,14 +48,12 @@ Deno.serve(async (req) => {
       if (!locationId) return Response.json({ error: 'Locatia este obligatorie' }, { status: 400 });
       const loc = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
       if (!loc) return Response.json({ error: 'Locatia nu a fost gasita' }, { status: 404 });
-      // Module 3E.1: only active, published, non-suspended locations can be claimed.
       if (loc.status !== 'publicata' || loc.active_status === 'inactiva' || (loc.profile_control_status || 'directory') === 'suspended') {
         return Response.json({ error: 'Aceasta locatie nu poate fi revendicata momentan.' }, { status: 400 });
       }
       organizationId = loc.organization_id || null;
       businessName = loc.name;
 
-      // Safety gate 1: the same user cannot submit repeated active claims for the same location.
       const previousUserClaims = await svc.entities.ProviderClaimRequest
         .filter({ location_id: locationId, user_id: user.id }, '-created_date', 20)
         .catch(() => []);
@@ -72,7 +66,6 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Ai deja o revendicare aprobata pentru aceasta locatie.' }, { status: 400 });
       }
 
-      // Safety gate 2: if the user already has active membership, do not create a duplicate claim.
       const activeMemberships = await svc.entities.ProviderMembership
         .filter({ location_id: locationId, status: 'active' }, '-created_date', 50)
         .catch(() => []);
@@ -81,9 +74,6 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Ai deja acces la administrarea acestei locatii.' }, { status: 400 });
       }
 
-      // Safety gate 3: already controlled profiles become access requests for admin review.
-      // The ProviderClaimRequest schema keeps mode="claim" for compatibility, while the
-      // admin-only submitted_payload marks request_type="access_request_existing_claimed_profile".
       const isControlledBySomeoneElse =
         activeMemberships.length > 0 ||
         CONTROLLED_PROFILE_STATUSES.includes(loc.profile_control_status || '') ||
@@ -92,22 +82,20 @@ Deno.serve(async (req) => {
         ? 'access_request_existing_claimed_profile'
         : 'claim_existing_directory_profile';
 
-      // Only free directory profiles move to pending. Already-claimed profiles stay approved/claimed.
       if (!isControlledBySomeoneElse) {
         await svc.entities.ProviderLocation.update(locationId, { claim_verification_status: 'pending' });
       }
-      // Existing-profile claim payload: relation + private contact ONLY.
       submittedPayload = JSON.stringify({
         mode: 'claim',
         request_type: requestType,
         location_id: locationId,
         claimant_relationship: claimantRelationship,
+        requested_membership_role: requestedMembershipRole,
         existing_active_membership_count: activeMemberships.length,
         contact: { contact_name: c.contact_name, email: c.email, phone: c.phone || '' },
       });
     } else if (p.mode === 'new_location') {
       const l = p.location || {};
-      // Short-claim contract: claim subject type is mandatory.
       claimSubjectType = String(p.claim_subject_type || '').trim();
       if (!SUBJECT_TYPES.includes(claimSubjectType)) {
         return Response.json({ error: 'Alege daca reprezinti o organizatie, esti profesionist independent sau furnizor B2B' }, { status: 400 });
@@ -115,7 +103,6 @@ Deno.serve(async (req) => {
       if (!l.name || !l.provider_type) {
         return Response.json({ error: 'Nume locatie si tip furnizor sunt obligatorii' }, { status: 400 });
       }
-      // Module 3H.1A.1: provider_profile_type is mandatory and enum-only.
       if (!PROFILE_TYPES.includes(l.provider_profile_type)) {
         return Response.json({ error: 'Tipul de profil al furnizorului lipseste sau este invalid' }, { status: 400 });
       }
@@ -125,7 +112,6 @@ Deno.serve(async (req) => {
       if (claimSubjectType !== 'b2b_supplier' && B2B_PROFILE_TYPES.includes(l.provider_profile_type)) {
         return Response.json({ error: 'Tipul B2B trebuie trimis prin fluxul de furnizori/parteneri' }, { status: 400 });
       }
-      // Short-claim contract: address and at least one public contact method required.
       if (!String(l.address || '').trim()) {
         return Response.json({ error: 'Adresa locatiei este obligatorie' }, { status: 400 });
       }
@@ -134,7 +120,7 @@ Deno.serve(async (req) => {
       if (!phonePublic && !publicEmail) {
         return Response.json({ error: 'Este necesar cel putin un mijloc de contact public: telefon sau email' }, { status: 400 });
       }
-      // Subject-specific identity requirements.
+
       const org = p.organization || {};
       const prof = p.professional || {};
       if ((claimSubjectType === 'organization' || claimSubjectType === 'b2b_supplier') && !String(org.name || '').trim()) {
@@ -148,7 +134,7 @@ Deno.serve(async (req) => {
           return Response.json({ error: 'Tipul de profesionist lipseste sau este invalid' }, { status: 400 });
         }
       }
-      // Module 3F.2.1: canonical GeographicLocality selection is REQUIRED.
+
       const sirutaCode = String(l.locality_siruta_code || '').trim();
       if (!sirutaCode) {
         return Response.json({ error: 'Selectarea localitatii din lista oficiala este obligatorie' }, { status: 400 });
@@ -158,7 +144,7 @@ Deno.serve(async (req) => {
       if (!geo) {
         return Response.json({ error: 'Localitatea selectata nu este valida' }, { status: 400 });
       }
-      // Module 3H.1B.1: deterministic, read-only identity gate BEFORE any creation.
+
       const idResRaw = await base44.functions.invoke('findProviderIdentityCandidates', {
         context: claimSubjectType === 'b2b_supplier' ? 'provider_new_b2b_supplier' : 'provider_new_location',
         candidate: {
@@ -181,23 +167,23 @@ Deno.serve(async (req) => {
         blocking_level: identityBlocking,
         source_flow: claimSubjectType === 'b2b_supplier' ? 'provider_new_b2b_supplier_wizard' : 'provider_new_location_wizard',
         identity_difference_note: identityNote,
-        candidates: (identity.candidates || []).map((cd) => ({
-          location_id: cd.location_id,
-          name: cd.name,
-          locality_name: cd.locality_name,
-          county_name: cd.county_name,
-          address: cd.address,
-          severity: cd.severity,
-          score: cd.score,
-          matched_fields: cd.matched_fields,
-          recommended_action: cd.recommended_action,
+        candidates: (identity.candidates || []).map((candidate) => ({
+          location_id: candidate.location_id,
+          name: candidate.name,
+          locality_name: candidate.locality_name,
+          county_name: candidate.county_name,
+          address: candidate.address,
+          severity: candidate.severity,
+          score: candidate.score,
+          matched_fields: candidate.matched_fields,
+          recommended_action: candidate.recommended_action,
         })),
       });
-      // Minimum review-safe snapshot (PART 5) — no services, team, schedule,
-      // photos or public-profile enrichment data is ever persisted here.
+
       const reviewSnapshot = {
         claim_subject_type: claimSubjectType,
         claimant_relationship: claimantRelationship,
+        requested_membership_role: requestedMembershipRole,
         organization_name: claimSubjectType !== 'independent_professional' ? org.name : '',
         professional_identity: claimSubjectType === 'independent_professional'
           ? { full_name: prof.full_name, professional_type: prof.professional_type }
@@ -217,8 +203,7 @@ Deno.serve(async (req) => {
         contact: { contact_name: c.contact_name, email: c.email, phone: c.phone || '' },
         ...(identityNote ? { identity_difference_note: identityNote, identity_blocking_level: identityBlocking } : {}),
       };
-      // Module 3H.1B.2: a strong duplicate NEVER creates any record besides the
-      // admin-only duplicate-review request. declared_distinct cannot bypass.
+
       if (identityBlocking === 'strong_duplicate_review_required') {
         if (p.escalate_duplicate_review === true) {
           if (identityNote.length < 15) {
@@ -229,6 +214,7 @@ Deno.serve(async (req) => {
             mode: 'new_location_duplicate_review',
             claim_subject_type: claimSubjectType,
             claimant_relationship: claimantRelationship,
+            requested_membership_role: requestedMembershipRole,
             business_name: l.name,
             contact_name: c.contact_name,
             role: c.role || '',
@@ -248,46 +234,41 @@ Deno.serve(async (req) => {
           },
         });
       }
-      // Possible duplicate: continue only with a short explanation (min 15 chars).
       if (identityBlocking === 'warning' && identityNote.length < 15) {
         return Response.json({ identity_check: identity });
       }
-      // Organization is created for organization and B2B supplier claims, after all gates pass.
+
       if (claimSubjectType === 'organization' || claimSubjectType === 'b2b_supplier') {
         const newOrg = await svc.entities.ProviderOrganization.create({
-          name: org.name, status: 'activa',
+          name: org.name,
+          status: 'activa',
           organization_type: l.provider_profile_type,
         });
         organizationId = newOrg.id;
       }
-      // Independent professional: NO ProfessionalProfile is created before approval —
-      // the proposed identity lives only in the admin review payload above.
+
       const locData = {
         name: l.name,
         provider_type: l.provider_type,
         provider_profile_type: l.provider_profile_type,
-        // Canonical geography (from GeographicLocality only):
         locality_siruta_code: geo.siruta_code,
         locality_name: geo.name,
         county_code: geo.county_code || '',
         county_name: geo.county_name || '',
         uat_code: geo.uat_code || '',
         uat_name: geo.uat_name || '',
-        // Compatibility mirrors ONLY — never geographic truth:
         city: geo.name,
         county: geo.county_name || '',
         address: l.address,
         phone_public: phonePublic,
         public_email: publicEmail,
-        // Post-approval fields are intentionally NOT accepted at claim time:
-        // description, website, social links, opening hours, availability, photos.
         availability_status: 'necunoscuta',
         status: 'in_verificare',
+        public_visibility_status: 'draft',
         profile_control_status: 'directory',
         claim_verification_status: 'pending',
         profile_control_status_updated_at: new Date().toISOString(),
         profile_control_status_reason: claimSubjectType === 'b2b_supplier' ? 'Furnizor B2B trimis spre verificare' : 'Locatie noua trimisa spre verificare',
-        // Legacy fields kept in sync temporarily for backward compatibility only.
         verification_state: 'in_verification',
         active_status: 'activa',
         is_verified: false,
@@ -306,12 +287,12 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Mod invalid' }, { status: 400 });
     }
 
-    // Module 3E: claims are created only here, via service role, after validation.
     const claimData = {
       location_id: locationId,
       user_id: user.id,
       mode: p.mode,
       claimant_relationship: claimantRelationship,
+      requested_membership_role: requestedMembershipRole,
       business_name: businessName,
       contact_name: c.contact_name,
       role: c.role || '',
@@ -323,11 +304,14 @@ Deno.serve(async (req) => {
     };
     if (claimSubjectType) claimData.claim_subject_type = claimSubjectType;
     if (organizationId) claimData.organization_id = organizationId;
-    // Module 3H.1B.2: admin-only Identity Gate context for review.
     if (identitySnapshot) claimData.identity_check_snapshot = identitySnapshot;
     const claim = await svc.entities.ProviderClaimRequest.create(claimData);
 
-    return Response.json({ claim_request_id: claim.id, location_id: locationId });
+    return Response.json({
+      claim_request_id: claim.id,
+      location_id: locationId,
+      requested_membership_role: requestedMembershipRole,
+    });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

@@ -1,13 +1,9 @@
 import React from "react";
 import ContinueButton from "@/components/intake/ContinueButton";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
-import { CLAIMANT_RELATIONSHIPS } from "@/components/provider/ContactIdentityFields";
 
 const inputCls = "w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-foreground/50";
 
-// Organization-only provider types. Independent professional types are selected
-// in WizProfessionalBasics. B2B suppliers use a partner-type selector below and
-// map to the existing backend provider enum for compatibility.
 const ORG_TYPES = {
   optica_medicala: "Optica medicala",
   cabinet_optometric: "Cabinet optometric",
@@ -15,12 +11,6 @@ const ORG_TYPES = {
   clinica_oftalmologica: "Clinica oftalmologica",
 };
 
-const B2B_PROFILE_TYPES = {
-  future_b2b_distributor: "Furnizor / distribuitor B2B",
-  optical_laboratory_b2b: "Laborator optic B2B",
-};
-
-// Deterministic enum-to-enum mapping — same approved profile-type catalog.
 const ORG_TYPE_TO_PROFILE_TYPE = {
   optica_medicala: "independent_optical_store",
   cabinet_optometric: "independent_optometrist",
@@ -28,107 +18,79 @@ const ORG_TYPE_TO_PROFILE_TYPE = {
   clinica_oftalmologica: "ophthalmology_clinic",
 };
 
-// Module 3H.1B.3.UI: single screen with only the fields supported by the
-// existing short backend contract — no description, website, social, services,
-// team, schedule, photos, equipment or brands.
 export default function WizOrgBasics({ data, update, next }) {
   const org = data.organization;
   const loc = data.location;
-  const contact = data.contact;
-  const isB2B = data.claimSubjectType === "b2b_supplier";
-  const setLoc = (k, v) => update({ location: { ...loc, [k]: v } });
-  const setContact = (k, v) => update({ contact: { ...contact, [k]: v } });
+  const setLoc = (key, value) => update({ location: { ...loc, [key]: value } });
 
-  const selectLocality = (g) =>
-    update({
-      location: {
-        ...loc,
-        locality_siruta_code: g?.siruta_code || "",
-        city: g?.name || "",
-        county: g?.county_name || "",
-        county_code: g?.county_code || "",
-        uat_code: g?.uat_code || "",
-        uat_name: g?.uat_name || "",
-      },
-    });
+  const selectLocality = (geo) => update({
+    location: {
+      ...loc,
+      locality_siruta_code: geo?.siruta_code || "",
+      city: geo?.name || "",
+      county: geo?.county_name || "",
+      county_code: geo?.county_code || "",
+      uat_code: geo?.uat_code || "",
+      uat_name: geo?.uat_name || "",
+    },
+  });
 
-  const valid =
-    org.name.trim() &&
-    loc.name.trim() &&
-    loc.provider_type &&
-    loc.provider_profile_type &&
-    loc.locality_siruta_code &&
-    loc.address.trim() &&
-    (loc.phone_public.trim() || loc.public_email.trim()) &&
-    contact.contact_name.trim() &&
-    contact.email.trim() &&
-    contact.claimant_relationship &&
-    contact.representation_confirmed;
+  const valid = Boolean(
+    org.name.trim()
+    && loc.name.trim()
+    && loc.provider_type
+    && loc.provider_profile_type
+    && loc.locality_siruta_code
+    && loc.address.trim()
+    && (loc.phone_public.trim() || loc.public_email.trim())
+  );
 
   return (
-    <div className="space-y-3 text-left">
-      {isB2B && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900 leading-relaxed">
-          Profilul de furnizor/partener B2B nu apare in cautarea pacientilor. Va fi folosit pentru modulul de parteneri, marketplace profesional si listari platite.
+    <div className="space-y-4 text-left">
+      <section className="rounded-2xl border border-border bg-card p-4 space-y-3">
+        <div>
+          <h2 className="text-sm font-bold">Organizatia</h2>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Datele generale ale opticii, clinicii sau cabinetului.</p>
         </div>
-      )}
-      <input className={inputCls} placeholder={isB2B ? "Numele firmei *" : "Numele organizatiei *"} value={org.name} onChange={(e) => update({ organization: { ...org, name: e.target.value } })} />
-      <input className={inputCls} placeholder={isB2B ? "Numele profilului / brandului *" : "Numele locatiei *"} value={loc.name} onChange={(e) => setLoc("name", e.target.value)} />
-      {isB2B ? (
-        <select
+        <input
           className={inputCls}
-          value={loc.provider_profile_type}
-          onChange={(e) => {
-            const profileType = e.target.value;
-            update({ location: { ...loc, provider_type: "laborator_optic", provider_profile_type: profileType } });
-          }}
-        >
-          <option value="">Tip partener B2B *</option>
-          {Object.entries(B2B_PROFILE_TYPES).map(([k, label]) => (
-            <option key={k} value={k}>{label}</option>
-          ))}
-        </select>
-      ) : (
+          placeholder="Numele organizatiei *"
+          value={org.name}
+          onChange={(event) => update({ organization: { ...org, name: event.target.value } })}
+        />
         <select
           className={inputCls}
           value={loc.provider_type}
-          onChange={(e) => {
-            const t = e.target.value;
-            update({ location: { ...loc, provider_type: t, provider_profile_type: ORG_TYPE_TO_PROFILE_TYPE[t] || "" } });
+          onChange={(event) => {
+            const providerType = event.target.value;
+            update({ location: { ...loc, provider_type: providerType, provider_profile_type: ORG_TYPE_TO_PROFILE_TYPE[providerType] || "" } });
           }}
         >
-          <option value="">Tipul locatiei *</option>
-          {Object.entries(ORG_TYPES).map(([k, label]) => (
-            <option key={k} value={k}>{label}</option>
-          ))}
+          <option value="">Tipul organizatiei *</option>
+          {Object.entries(ORG_TYPES).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
         </select>
-      )}
-      <LocalityAutocomplete
-        placeholder={isB2B ? "Localitatea sediului (lista oficiala) *" : "Localitatea (cauta in lista oficiala) *"}
-        value={loc.locality_siruta_code ? { display_label: `${loc.city}${loc.county ? ", " + loc.county : ""}` } : null}
-        onSelect={selectLocality}
-      />
-      <input className={inputCls} placeholder={isB2B ? "Adresa sediului *" : "Adresa *"} value={loc.address} onChange={(e) => setLoc("address", e.target.value)} />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <input className={inputCls} placeholder="Telefon public" value={loc.phone_public} onChange={(e) => setLoc("phone_public", e.target.value)} />
-        <input className={inputCls} type="email" placeholder="Email public" value={loc.public_email} onChange={(e) => setLoc("public_email", e.target.value)} />
-      </div>
-      <p className="text-xs text-muted-foreground">Necesar cel putin unul: telefon sau email public.</p>
+      </section>
 
-      <div className="pt-3 mt-1 border-t border-border" />
-      <input className={inputCls} placeholder="Numele persoanei care trimite cererea *" value={contact.contact_name} onChange={(e) => setContact("contact_name", e.target.value)} />
-      <input className={inputCls} type="email" placeholder="Emailul persoanei care trimite cererea *" value={contact.email} onChange={(e) => setContact("email", e.target.value)} />
-      <select className={inputCls} value={contact.claimant_relationship} onChange={(e) => setContact("claimant_relationship", e.target.value)}>
-        <option value="">Relatia ta cu {isB2B ? "firma" : "locatia"} *</option>
-        {Object.entries(CLAIMANT_RELATIONSHIPS).map(([k, label]) => (
-          <option key={k} value={k}>{label}</option>
-        ))}
-      </select>
-      <label className="flex items-start gap-3 text-sm text-muted-foreground cursor-pointer pt-1">
-        <input type="checkbox" className="mt-0.5 w-4 h-4" checked={contact.representation_confirmed} onChange={(e) => setContact("representation_confirmed", e.target.checked)} />
-        <span>Confirm ca reprezint aceasta {isB2B ? "firma" : "locatie"} si ca informatiile transmise sunt corecte.</span>
-      </label>
-      <ContinueButton onClick={next} disabled={!valid} />
+      <section className="rounded-2xl border border-border bg-card p-4 space-y-3">
+        <div>
+          <h2 className="text-sm font-bold">Prima locatie</h2>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Locul fizic care va fi verificat si administrat in VIASEE.</p>
+        </div>
+        <input className={inputCls} placeholder="Numele locatiei *" value={loc.name} onChange={(event) => setLoc("name", event.target.value)} />
+        <LocalityAutocomplete
+          placeholder="Localitatea (cauta in lista oficiala) *"
+          value={loc.locality_siruta_code ? { display_label: `${loc.city}${loc.county ? ", " + loc.county : ""}` } : null}
+          onSelect={selectLocality}
+        />
+        <input className={inputCls} placeholder="Adresa *" value={loc.address} onChange={(event) => setLoc("address", event.target.value)} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <input className={inputCls} placeholder="Telefon public" value={loc.phone_public} onChange={(event) => setLoc("phone_public", event.target.value)} />
+          <input className={inputCls} type="email" placeholder="Email public" value={loc.public_email} onChange={(event) => setLoc("public_email", event.target.value)} />
+        </div>
+        <p className="text-xs text-muted-foreground">Este necesar cel putin un contact public: telefon sau email.</p>
+      </section>
+
+      <ContinueButton onClick={next} disabled={!valid}>Continua</ContinueButton>
     </div>
   );
 }

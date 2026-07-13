@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 
-// Dialog simplu pentru actiuni admin care necesita o nota de audit.
-export default function DirOpsActionNote({ title, onConfirm, onCancel, noteOptional = false }) {
+export default function DirOpsActionNote({ title, onConfirm, onCancel, noteOptional = false, children = null }) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -21,6 +20,7 @@ export default function DirOpsActionNote({ title, onConfirm, onCancel, noteOptio
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
       <div className="bg-card rounded-lg p-5 w-full max-w-md border border-border">
         <h3 className="font-heading font-bold text-sm">{title}</h3>
+        {children && <div className="mt-4">{children}</div>}
         <textarea
           className="w-full border border-input rounded-md px-3 py-2 text-sm mt-3 bg-card"
           rows={3}

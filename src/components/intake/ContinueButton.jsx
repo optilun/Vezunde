@@ -1,10 +1,11 @@
 import React from "react";
 import { ArrowRight, Loader2 } from "lucide-react";
 
-export default function ContinueButton({ onClick, disabled, loading, children = "Continua", type = "button" }) {
+export default function ContinueButton({ onClick, disabled = false, loading = false, children = "Continua", type = "button" }) {
+  const buttonType = /** @type {"button" | "submit" | "reset"} */ (type);
   return (
     <button
-      type={type}
+      type={buttonType}
       onClick={onClick}
       disabled={disabled || loading}
       className="mt-8 sticky bottom-4 sm:static z-10 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full text-white font-semibold text-sm shadow-lg sm:shadow-none transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
