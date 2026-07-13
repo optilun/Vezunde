@@ -1,4 +1,5 @@
 import React from "react";
+import { Building2, CalendarDays } from "lucide-react";
 
 const STATUS = {
   in_asteptare: { label: "In verificare", cls: "bg-secondary text-foreground" },
@@ -24,22 +25,29 @@ const claimTypeLabel = (claim) => {
 };
 
 export default function ClaimStatusRow({ claim }) {
-  const s = STATUS[claim.status] || STATUS.in_asteptare;
+  const status = STATUS[claim.status] || STATUS.in_asteptare;
+  const createdDate = claim.created_date ? new Date(claim.created_date).toLocaleDateString("ro-RO") : "data necunoscuta";
+
   return (
-    <div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between gap-3">
-      <div>
-        <div className="font-semibold text-sm">{claim.business_name || "Locatie"}</div>
-        <div className="text-xs text-muted-foreground mt-0.5">
-          {claimTypeLabel(claim)} · trimisa {new Date(claim.created_date).toLocaleDateString("ro-RO")}
+    <article className="rounded-[20px] border border-border bg-card p-4 shadow-sm sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary"><Building2 className="h-4 w-4" /></div>
+          <div className="min-w-0">
+            <div className="break-words text-sm font-bold">{claim.business_name || "Locatie"}</div>
+            <div className="mt-1 text-xs leading-relaxed text-muted-foreground">{claimTypeLabel(claim)}</div>
+            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground"><CalendarDays className="h-3.5 w-3.5" /> Trimisa {createdDate}</div>
+          </div>
         </div>
-        {claim.status === "needs_more_info" && claim.review_notes && (
-          <div className="text-xs text-amber-700 mt-1">Completare necesara: {claim.review_notes}</div>
-        )}
-        {claim.status === "respinsa" && claim.review_notes && (
-          <div className="text-xs text-destructive mt-1">Motiv: {claim.review_notes}</div>
-        )}
+        <span className={`inline-flex w-fit shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${status.cls}`}>{status.label}</span>
       </div>
-      <span className={`text-xs font-semibold px-3 py-1 rounded-full shrink-0 ${s.cls}`}>{s.label}</span>
-    </div>
+
+      {claim.status === "needs_more_info" && claim.review_notes && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-800">Completare necesara: {claim.review_notes}</div>
+      )}
+      {claim.status === "respinsa" && claim.review_notes && (
+        <div className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-xs leading-relaxed text-destructive">Motiv: {claim.review_notes}</div>
+      )}
+    </article>
   );
 }
