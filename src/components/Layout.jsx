@@ -15,48 +15,80 @@ const MOBILE_LINKS = [
 export default function Layout() {
   const [scrolled, setScrolled] = useState(false);
   const [desktopHidden, setDesktopHidden] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const lastScrollY = useRef(0);
 
   useEffect(() => {
-    const onScroll = () => {
-      const currentScrollY = Math.max(window.scrollY, 0);
+    const media = window.matchMedia("(min-width: 768px)");
+    const syncDesktop = () => setIsDesktop(media.matches);
+    syncDesktop();
+    media.addEventListener?.("change", syncDesktop);
+    return () => media.removeEventListener?.("change", syncDesktop);
+  }, []);
+
+  useEffect(() => {
+    let frame = null;
+
+    const updateHeader = () => {
+      const currentScrollY = Math.max(
+        window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0,
+        0,
+      );
+      const delta = currentScrollY - lastScrollY.current;
       const isScrolled = currentScrollY > 8;
-      const isScrollingDown = currentScrollY > lastScrollY.current;
 
       setScrolled(isScrolled);
 
       if (!isScrolled) {
         setDesktopHidden(false);
-      } else if (isScrollingDown && currentScrollY > 24) {
+      } else if (delta > 2 && currentScrollY > 24) {
         setDesktopHidden(true);
-      } else if (!isScrollingDown) {
+      } else if (delta < -2) {
         setDesktopHidden(false);
       }
 
       lastScrollY.current = currentScrollY;
+      frame = null;
     };
 
-    lastScrollY.current = Math.max(window.scrollY, 0);
-    onScroll();
+    const onScroll = () => {
+      if (frame !== null) return;
+      frame = window.requestAnimationFrame(updateHeader);
+    };
+
+    lastScrollY.current = Math.max(window.scrollY || 0, 0);
+    updateHeader();
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    document.addEventListener("scroll", onScroll, { passive: true, capture: true });
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      document.removeEventListener("scroll", onScroll, true);
+      if (frame !== null) window.cancelAnimationFrame(frame);
+    };
   }, []);
 
   const mobileHeaderState = scrolled
     ? "border-[#E8E8E8] bg-white shadow-[0_4px_20px_rgba(20,20,20,0.05)]"
     : "border-transparent bg-white/75 backdrop-blur-md";
 
-  const desktopHeaderState = desktopHidden
-    ? "md:-translate-y-full md:border-transparent md:bg-transparent md:opacity-0 md:shadow-none"
-    : scrolled
-      ? "md:translate-y-0 md:border-[#E8E8E8] md:bg-white md:opacity-100 md:shadow-[0_4px_20px_rgba(20,20,20,0.05)]"
-      : "md:translate-y-0 md:border-transparent md:bg-background md:opacity-100 md:shadow-none md:backdrop-blur-none";
+  const desktopHeaderStyle = isDesktop
+    ? {
+        transform: desktopHidden ? "translateY(-100%)" : "translateY(0)",
+        opacity: desktopHidden ? 0 : 1,
+        backgroundColor: desktopHidden ? "transparent" : scrolled ? "#FFFFFF" : "hsl(var(--background))",
+        borderBottomColor: desktopHidden || !scrolled ? "transparent" : "#E8E8E8",
+        boxShadow: desktopHidden || !scrolled ? "none" : "0 4px 20px rgba(20,20,20,0.05)",
+        pointerEvents: desktopHidden ? "none" : "auto",
+      }
+    : undefined;
 
   return (
     <div className="flex min-h-screen min-h-dvh flex-col bg-background font-body text-foreground">
       <header
-        className={`sticky top-0 z-40 border-b safe-area-top transition-[transform,opacity,background-color,border-color,box-shadow] duration-300 ease-out ${mobileHeaderState} ${desktopHeaderState}`}
+        className={`sticky top-0 z-40 border-b safe-area-top transition-[transform,opacity,background-color,border-color,box-shadow] duration-300 ease-out ${mobileHeaderState}`}
+        style={desktopHeaderStyle}
       >
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:px-8">
           <Link to="/" className="flex min-w-0 items-center" aria-label="VIASEE - Pagina principala">
