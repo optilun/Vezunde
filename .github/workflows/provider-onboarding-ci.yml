@@ -30,16 +30,25 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
-      - run: npm ci
+      - run: npm ci --silent
       - name: Onboarding regression checks
         run: node scripts/verify-provider-onboarding-continuity.mjs
       - name: Typecheck
-        run: npm run typecheck
+        shell: bash
+        run: |
+          set +e
+          OUTPUT=$(npm run typecheck -- --pretty false 2>&1)
+          STATUS=$?
+          echo "$OUTPUT" | grep -E "error TS|Found [0-9]+ errors" || true
+          exit $STATUS
       - name: Lint
+        if: always()
         run: npm run lint
       - name: Build
+        if: always()
         run: npm run build
       - name: Existing provider submission tests
+        if: always()
         run: npm run test:provider-submissions
