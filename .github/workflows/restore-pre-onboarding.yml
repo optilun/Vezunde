@@ -1,0 +1,29 @@
+name: Restore Pre-Onboarding Version
+
+on:
+  push:
+    branches:
+      - restore/pre-onboarding-ui
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout restoration branch
+        uses: actions/checkout@v4
+        with:
+          ref: restore/pre-onboarding-ui
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Restore exact approved tree
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git read-tree --reset -u 87162f4255641c9a717f5f54f2f9aacd3bc32673
+          git commit -m "Restore approved pre-onboarding application"
+          git push origin HEAD:restore/pre-onboarding-ui
