@@ -1,21 +1,22 @@
-import React, { useCallback, useState } from "react";
+import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { CheckCircle2 } from "lucide-react";
 import ProviderSearch from "@/components/provider/ProviderSearch";
 import ClaimForm from "@/components/provider/ClaimForm";
-import OrganizationOnboardingWizard, { ORGANIZATION_ONBOARDING_RESUME_KEY } from "@/components/provider/OrganizationOnboardingWizard";
-import OnboardingAuthGate from "@/components/provider/OnboardingAuthGate";
+import NewLocationWizard from "@/components/provider/NewLocationWizard";
 import WizardShell from "@/components/intake/WizardShell";
 import SelectedLocationCard from "@/components/provider/SelectedLocationCard";
 
-const CLAIM_PHASES = ["Profil", "Cont", "Acces", "Contact", "Revizuire"];
-const CLAIM_STEP_NUMBER = { relation: 3, contact: 4, review: 5 };
-const CLAIM_COPY = {
-  relation: { title: "Ce relatie ai cu organizatia?", subtitle: "Relatia stabileste rolul pe care il soliciti." },
-  contact: { title: "Date private de verificare", subtitle: "Aceste date nu apar pe profilul public." },
-  review: { title: "Revizuieste solicitarea", subtitle: "Verifica profilul, accesul solicitat si datele de contact." },
+// Module 3H.1B.3.UI: short claim flow — max 4 screens before submit.
+const PHASES = ["Gaseste profilul", "Confirma relatia", "Date de contact", "Revizuire"];
+const STAGE_STEP = { relation: 2, contact: 3, review: 4 };
+const STAGE_COPY = {
+  relation: { title: "Care este relatia ta cu aceasta locatie?", subtitle: "Alege optiunea care descrie cel mai bine legatura ta cu aceasta locatie." },
+  contact: { title: "Date de contact", subtitle: "Vom folosi aceste date doar pentru verificarea solicitarii tale." },
+  review: { title: "Revizuieste solicitarea", subtitle: "Verifica datele inainte de trimitere." },
 };
 
+const PENDING_NEW_LOCATION_KEY = "pending_new_location_wizard";
 const PENDING_CLAIM_CONTACT_KEY = "pending_claim_contact";
 const PENDING_CLAIM_LOCATION_KEY = "pending_claim_location";
 const PENDING_CLAIM_STEP_KEY = "pending_claim_step";
@@ -29,14 +30,12 @@ const readSessionJson = (key) => {
   }
 };
 
-const persistClaimLocation = (location) => {
-  if (!location) return;
-  try {
-    sessionStorage.setItem(PENDING_CLAIM_LOCATION_KEY, JSON.stringify(location));
-  } catch {
-    // The current render remains usable; only cross-page resume is unavailable.
-  }
-};
+const isClaimContactComplete = (contact) => Boolean(
+  contact?.claimant_relationship &&
+  contact?.representation_confirmed &&
+  String(contact?.contact_name || "").trim() &&
+  String(contact?.email || "").trim()
+);
 
 const getResumeClaimStep = (contact, storedStep) => {
   if (!contact?.claimant_relationship || !contact?.representation_confirmed) return "relation";
@@ -44,157 +43,112 @@ const getResumeClaimStep = (contact, storedStep) => {
   return storedStep || "review";
 };
 
-const clearClaimResumeState = () => {
+// Module 3H.1B.2: explicit cancellation clears all temporary resume state.
+const clearResumeState = () => {
+  sessionStorage.removeItem(PENDING_NEW_LOCATION_KEY);
   sessionStorage.removeItem(PENDING_CLAIM_CONTACT_KEY);
   sessionStorage.removeItem(PENDING_CLAIM_LOCATION_KEY);
   sessionStorage.removeItem(PENDING_CLAIM_STEP_KEY);
 };
 
-const clearAllResumeState = () => {
-  clearClaimResumeState();
-  sessionStorage.removeItem(ORGANIZATION_ONBOARDING_RESUME_KEY);
-};
-
 export default function AddOrClaim() {
+  // A location selected on the "Pentru specialisti" hero search is passed
+  // via navigation state — skip the search step and confirm it instead.
   const { state: navState } = useLocation();
   const preselectedLocation = navState?.selectedLocation || null;
-  const initialNewLocationDraft = navState?.newLocationPrefill || null;
-  const startNewFromNavigation = navState?.startNew === true;
+
+  // Resume an existing-profile claim after a login redirect. The claim form saves
+  // the selected location + contact payload before redirecting to Base44 Auth.
   const [resumedClaimLocation] = useState(() => readSessionJson(PENDING_CLAIM_LOCATION_KEY));
   const [resumedClaimContact] = useState(() => readSessionJson(PENDING_CLAIM_CONTACT_KEY));
   const [resumedClaimStep] = useState(() => sessionStorage.getItem(PENDING_CLAIM_STEP_KEY));
-  const [selected, setSelected] = useState(() => {
-    const initial = preselectedLocation || resumedClaimLocation || null;
-    if (initial) persistClaimLocation(initial);
-    return initial;
-  });
-  const [draft, setDraft] = useState(initialNewLocationDraft);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [result, setResult] = useState(null);
-  const [claimStep, setClaimStep] = useState(() => getResumeClaimStep(resumedClaimContact, resumedClaimStep));
+  const initialSelectedLocation = preselectedLocation || resumedClaimLocation || null;
+
+  // Resume the new-location wizard after a login redirect.
   const [stage, setStage] = useState(() => {
-    if (sessionStorage.getItem(ORGANIZATION_ONBOARDING_RESUME_KEY) || startNewFromNavigation) return "wizard";
-    if (resumedClaimLocation || preselectedLocation) return "confirm";
+    if (sessionStorage.getItem(PENDING_NEW_LOCATION_KEY)) return "wizard";
+    if (resumedClaimLocation) return "claim";
+    if (preselectedLocation) return "confirm";
     return "search";
+  }); // search | confirm | claim | wizard | done
+  const [selected, setSelected] = useState(initialSelectedLocation);
+  const [draft, setDraft] = useState(null);
+  const [claimStep, setClaimStep] = useState(() => {
+    if (resumedClaimLocation) return getResumeClaimStep(resumedClaimContact, resumedClaimStep);
+    return "relation";
   });
-
-  const handleAuthenticated = useCallback((user) => {
-    setCurrentUser(user);
-    setClaimStep(getResumeClaimStep(readSessionJson(PENDING_CLAIM_CONTACT_KEY), sessionStorage.getItem(PENDING_CLAIM_STEP_KEY)));
-    setStage("claim");
-  }, []);
-
-  const chooseLocation = (location) => {
-    clearClaimResumeState();
-    persistClaimLocation(location);
-    setSelected(location);
-    setClaimStep("relation");
-    setStage("confirm");
-  };
-
-  const startNew = (prefill) => {
-    clearAllResumeState();
-    setDraft(prefill && prefill.place_id ? prefill : null);
-    setStage("wizard");
-  };
-
-  const continueToAuthentication = () => {
-    persistClaimLocation(selected);
-    setStage("auth");
-  };
 
   if (stage === "wizard") {
     return (
       <div className="workspace-neutral">
-        <OrganizationOnboardingWizard
+        <NewLocationWizard
           prefill={draft}
-          onDone={(response) => { clearAllResumeState(); setResult(response || {}); setStage("done"); }}
-          onExit={() => { clearAllResumeState(); setDraft(null); setStage("search"); }}
-          onClaimExisting={(location) => {
-            clearAllResumeState();
-            persistClaimLocation(location);
-            setSelected(location);
-            setClaimStep("relation");
-            setStage("confirm");
-          }}
+          onDone={() => { clearResumeState(); setStage("done"); }}
+          onExit={() => { clearResumeState(); setDraft(null); setStage("search"); }}
+          onClaimExisting={(loc) => { setSelected(loc); setDraft(null); setClaimStep("relation"); setStage("claim"); }}
         />
-      </div>
-    );
-  }
-
-  if (stage === "done") {
-    return (
-      <div className="workspace-neutral">
-        <div className="max-w-xl mx-auto px-5 py-16 text-center">
-          <CheckCircle2 className="w-12 h-12 mx-auto text-green-600" />
-          <h1 className="mt-5 font-heading text-2xl font-extrabold">Solicitarea a fost trimisa</h1>
-          <p className="mt-2 text-muted-foreground">Status: In verificare</p>
-          <p className="mt-1 text-sm text-muted-foreground">Profilul si accesul nu sunt aprobate automat. Poti urmari statusul si pregati datele disponibile din contul tau.</p>
-          {result?.duplicate_review && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Solicitarea necesita clarificarea unui posibil profil duplicat.</p>}
-          <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link to="/contul-meu" className="inline-flex h-11 items-center justify-center rounded-xl bg-foreground px-5 text-sm font-semibold text-background">Urmareste solicitarea</Link>
-            <Link to="/" className="inline-flex h-11 items-center justify-center rounded-xl border border-border bg-card px-5 text-sm font-semibold">Inapoi acasa</Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (stage === "confirm" && selected) {
-    return (
-      <div className="workspace-neutral">
-        <WizardShell phases={CLAIM_PHASES} phaseStep={1} title="Confirma profilul selectat" subtitle="Verifica numele si adresa inainte de a continua.">
-          <SelectedLocationCard
-            location={selected}
-            onContinue={continueToAuthentication}
-            onChangeLocation={() => { clearClaimResumeState(); setSelected(null); setStage("search"); }}
-          />
-        </WizardShell>
-      </div>
-    );
-  }
-
-  if (stage === "auth" && selected) {
-    return (
-      <div className="workspace-neutral">
-        <WizardShell phases={CLAIM_PHASES} phaseStep={2} title="Contul care va administra solicitarea" subtitle="Autentificarea are loc inainte de colectarea datelor private de reprezentare." onBack={() => setStage("confirm")}>
-          <OnboardingAuthGate onAuthenticated={handleAuthenticated} />
-        </WizardShell>
-      </div>
-    );
-  }
-
-  if (stage === "claim" && selected) {
-    return (
-      <div className="workspace-neutral">
-        <WizardShell
-          phases={CLAIM_PHASES}
-          phaseStep={CLAIM_STEP_NUMBER[claimStep]}
-          title={CLAIM_COPY[claimStep].title}
-          subtitle={CLAIM_COPY[claimStep].subtitle}
-          onBack={() => {
-            if (claimStep === "relation") setStage("auth");
-            else if (claimStep === "contact") setClaimStep("relation");
-            else setClaimStep("contact");
-          }}
-        >
-          <ClaimForm
-            location={selected}
-            user={currentUser}
-            step={claimStep}
-            onStepChange={setClaimStep}
-            onDone={(response) => { clearClaimResumeState(); setResult(response || {}); setStage("done"); }}
-          />
-        </WizardShell>
       </div>
     );
   }
 
   return (
     <div className="workspace-neutral">
-      <WizardShell phases={CLAIM_PHASES} phaseStep={1} title="Gaseste organizatia sau locatia" subtitle="Cauta mai intai in director. Daca profilul exista, il revendici sau soliciti acces fara sa cream un duplicat.">
-        <ProviderSearch onClaim={chooseLocation} onNew={startNew} />
-      </WizardShell>
+      {stage === "done" ? (
+        <div className="max-w-xl mx-auto px-5 py-10 sm:py-14 text-center py-16">
+          <CheckCircle2 className="w-12 h-12 mx-auto text-green-600" />
+          <h1 className="mt-5 font-heading text-2xl font-extrabold">Solicitarea ta a fost trimisa spre verificare.</h1>
+          <p className="mt-2 text-muted-foreground">Profilul nu va deveni public sau revendicat automat.</p>
+          <p className="mt-1 text-muted-foreground">Te vom anunta daca avem nevoie de informatii suplimentare.</p>
+          <div className="mt-6 flex justify-center gap-4 text-sm">
+            <Link to="/contul-meu" className="underline underline-offset-4">Vezi statusul in contul meu</Link>
+            <Link to="/" className="underline underline-offset-4 text-muted-foreground">Inapoi acasa</Link>
+          </div>
+        </div>
+      ) : stage === "confirm" && selected ? (
+        <WizardShell
+          phases={PHASES}
+          phaseStep={1}
+          title="Locatie selectata"
+          subtitle="Confirma ca aceasta este locatia pentru care vrei sa faci solicitarea."
+        >
+          <SelectedLocationCard
+            location={selected}
+            onContinue={() => { setClaimStep("relation"); setStage("claim"); }}
+            onChangeLocation={() => { clearResumeState(); setSelected(null); setStage("search"); }}
+          />
+        </WizardShell>
+      ) : stage === "claim" && selected ? (
+        <WizardShell
+          phases={PHASES}
+          phaseStep={STAGE_STEP[claimStep]}
+          title={STAGE_COPY[claimStep].title}
+          subtitle={STAGE_COPY[claimStep].subtitle}
+          onBack={() => {
+            if (claimStep === "relation") setStage(preselectedLocation ? "confirm" : "search");
+            else if (claimStep === "contact") setClaimStep("relation");
+            else setClaimStep("contact");
+          }}
+        >
+          <ClaimForm
+            location={selected}
+            step={claimStep}
+            onStepChange={setClaimStep}
+            onDone={() => { clearResumeState(); setStage("done"); }}
+          />
+        </WizardShell>
+      ) : (
+        <WizardShell
+          phases={PHASES}
+          phaseStep={1}
+          title="Gaseste profilul locatiei tale"
+          subtitle="Verificam mai intai daca profilul exista deja."
+        >
+          <ProviderSearch
+            onClaim={(loc) => { clearResumeState(); setSelected(loc); setClaimStep("relation"); setStage("claim"); }}
+            onNew={(d) => { clearResumeState(); setDraft(d && d.place_id ? d : null); setStage("wizard"); }}
+          />
+        </WizardShell>
+      )}
     </div>
   );
 }

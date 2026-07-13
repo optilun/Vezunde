@@ -9,7 +9,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { toast } from "@/components/ui/use-toast";
-import { buildAuthRoute, getPostLoginRedirect } from "@/lib/postLoginRedirect";
+import { getPostLoginRedirect } from "@/lib/postLoginRedirect";
 
 const REGISTER_HELP = "Nu am putut crea contul cu acest email. Daca ai deja cont sau ai folosit Google prima data, mergi la conectare si foloseste aceeasi metoda.";
 
@@ -45,7 +45,9 @@ export default function Register() {
     setLoading(true);
     try {
       const result = await base44.auth.verifyOtp({ email, otpCode });
-      if (result?.access_token) base44.auth.setToken(result.access_token);
+      if (result?.access_token) {
+        base44.auth.setToken(result.access_token);
+      }
       window.location.href = getPostLoginRedirect();
     } catch (err) {
       setError(err.message || "Cod de verificare invalid");
@@ -58,7 +60,10 @@ export default function Register() {
     setError("");
     try {
       await base44.auth.resendOtp(email);
-      toast({ title: "Cod trimis", description: "Verifica emailul pentru noul cod." });
+      toast({
+        title: "Cod trimis",
+        description: "Verifica emailul pentru noul cod.",
+      });
     } catch (err) {
       setError(err.message || "Nu am putut retrimite codul");
     }
@@ -70,20 +75,53 @@ export default function Register() {
 
   if (showOtp) {
     return (
-      <AuthLayout icon={Mail} title="Verifica emailul" subtitle={`Am trimis un cod la ${email}`}>
-        {error && <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>}
+      <AuthLayout
+        icon={Mail}
+        title="Verifica emailul"
+        subtitle={`Am trimis un cod la ${email}`}
+      >
+        {error && (
+          <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+            {error}
+          </div>
+        )}
         <div className="flex justify-center mb-6">
-          <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode} autoFocus autoComplete="one-time-code">
+          <InputOTP
+            maxLength={6}
+            value={otpCode}
+            onChange={setOtpCode}
+            autoFocus
+            autoComplete="one-time-code"
+          >
             <InputOTPGroup>
-              {[0, 1, 2, 3, 4, 5].map((index) => <InputOTPSlot key={index} index={index} />)}
+              <InputOTPSlot index={0} />
+              <InputOTPSlot index={1} />
+              <InputOTPSlot index={2} />
+              <InputOTPSlot index={3} />
+              <InputOTPSlot index={4} />
+              <InputOTPSlot index={5} />
             </InputOTPGroup>
           </InputOTP>
         </div>
-        <Button className="w-full h-12 font-medium" onClick={handleVerify} disabled={loading || otpCode.length < 6}>
-          {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Se verifica...</> : "Verifica"}
+        <Button
+          className="w-full h-12 font-medium"
+          onClick={handleVerify}
+          disabled={loading || otpCode.length < 6}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Se verifica...
+            </>
+          ) : (
+            "Verifica"
+          )}
         </Button>
         <p className="text-center text-sm text-muted-foreground mt-4">
-          Nu ai primit codul? <button onClick={handleResend} className="text-primary font-medium hover:underline">Retrimite</button>
+          Nu ai primit codul?{" "}
+          <button onClick={handleResend} className="text-primary font-medium hover:underline">
+            Retrimite
+          </button>
         </p>
       </AuthLayout>
     );
@@ -93,49 +131,103 @@ export default function Register() {
     <AuthLayout
       icon={UserPlus}
       title="Creeaza cont"
-      subtitle="Contul tau VIASEE va fi folosit pentru toate spatiile la care ai acces"
+      subtitle="Foloseste aceeasi adresa pentru acelasi profil Vezunde"
       footer={
         <>
           Ai deja cont?{" "}
-          <Link to={buildAuthRoute("/login")} className="text-primary font-medium hover:underline">Conecteaza-te</Link>
+          <Link to="/login" className="text-primary font-medium hover:underline">
+            Conecteaza-te
+          </Link>
         </>
       }
     >
-      <Button variant="outline" className="w-full h-12 text-sm font-medium mb-3" onClick={handleGoogle}>
-        <GoogleIcon className="w-5 h-5 mr-2" />Continua cu Google
+      <Button
+        variant="outline"
+        className="w-full h-12 text-sm font-medium mb-3"
+        onClick={handleGoogle}
+      >
+        <GoogleIcon className="w-5 h-5 mr-2" />
+        Continua cu Google
       </Button>
+
       <p className="mb-6 text-xs text-muted-foreground text-center leading-relaxed">
         Daca ai folosit Google cu acest email, continua cu Google pentru acelasi cont.
       </p>
+
       <div className="relative mb-6">
-        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
-        <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-3 text-muted-foreground">sau</span></div>
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-card px-3 text-muted-foreground">sau</span>
+        </div>
       </div>
-      {error && <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm leading-relaxed">{error}</div>}
+
+      {error && (
+        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm leading-relaxed">
+          {error}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <Input id="email" type="email" autoComplete="email" autoFocus placeholder="email@exemplu.ro" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 h-12" required />
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              autoFocus
+              placeholder="email@exemplu.ro"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="pl-10 h-12"
+              required
+            />
           </div>
         </div>
         <div className="space-y-2">
           <Label htmlFor="password">Parola</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <Input id="password" type="password" autoComplete="new-password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 h-12" required />
+            <Input
+              id="password"
+              type="password"
+              autoComplete="new-password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="pl-10 h-12"
+              required
+            />
           </div>
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirm">Confirma parola</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <Input id="confirm" type="password" autoComplete="new-password" placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="pl-10 h-12" required />
+            <Input
+              id="confirm"
+              type="password"
+              autoComplete="new-password"
+              placeholder="••••••••"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="pl-10 h-12"
+              required
+            />
           </div>
         </div>
         <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
-          {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Se creeaza contul...</> : "Creeaza cont"}
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Se creeaza contul...
+            </>
+          ) : (
+            "Creeaza cont"
+          )}
         </Button>
       </form>
     </AuthLayout>

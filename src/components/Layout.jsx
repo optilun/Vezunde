@@ -27,15 +27,14 @@ export default function Layout() {
           <Link to="/" className="flex items-center" aria-label="VIASEE - Pagina principala">
             <ViaseeBrand symbolClassName="h-8 w-8" wordmarkClassName="h-[18px] w-auto" />
           </Link>
-          <nav className="flex items-center gap-1 text-sm">
-            <Link to="/cauta" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors">Cauta</Link>
-            <Link to="/pentru-organizatii" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors hidden lg:block">Pentru organizatii</Link>
-            <Link to="/pentru-specialisti" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors hidden md:block">Pentru specialisti</Link>
-            <Link to="/parteneri" className="px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors hidden xl:block">Parteneri</Link>
+          <nav className="flex items-center gap-2 text-sm">
+            <Link to="/cauta" className="px-3.5 py-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors">Cauta</Link>
+            <Link to="/parteneri" className="px-3.5 py-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors hidden md:block">Parteneri</Link>
+            <Link to="/pentru-specialisti" className="px-3.5 py-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors hidden sm:block">Pentru specialisti</Link>
             <HeaderAccountLink />
             <Link
               to="/cerere"
-              className="ml-2 px-5 py-2 rounded-full text-white font-medium transition-colors"
+              className="ml-3 px-5 py-2 rounded-full text-white font-medium transition-colors"
               style={{ backgroundColor: "#171717" }}
               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#2B2B2B"; }}
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#171717"; }}
@@ -45,7 +44,9 @@ export default function Layout() {
           </nav>
         </div>
       </header>
-      <main className="flex-1"><Outlet /></main>
+      <main className="flex-1">
+        <Outlet />
+      </main>
       <footer className="border-t border-border mt-16">
         <div className="max-w-6xl mx-auto px-5 py-12 grid gap-8 sm:grid-cols-3">
           <div>
@@ -56,9 +57,9 @@ export default function Layout() {
             <div className="font-medium mb-3">Platforma</div>
             <Link to="/cauta" className="block text-muted-foreground hover:text-foreground">Cauta furnizori</Link>
             <Link to="/cerere" className="block text-muted-foreground hover:text-foreground">Trimite o cerere</Link>
-            <Link to="/pentru-organizatii" className="block text-muted-foreground hover:text-foreground">Pentru organizatii</Link>
-            <Link to="/pentru-specialisti" className="block text-muted-foreground hover:text-foreground">Pentru specialisti</Link>
             <Link to="/parteneri" className="block text-muted-foreground hover:text-foreground">Parteneri B2B</Link>
+            <Link to="/pentru-specialisti" className="block text-muted-foreground hover:text-foreground">Pentru specialisti</Link>
+            <Link to="/revendica-profil" className="block text-muted-foreground hover:text-foreground">Revendica un profil</Link>
           </div>
           <div className="text-sm space-y-2">
             <div className="font-medium mb-3">Legal</div>
@@ -67,7 +68,9 @@ export default function Layout() {
           </div>
         </div>
         <div className="border-t border-border">
-          <div className="max-w-6xl mx-auto px-5 py-4 text-xs text-muted-foreground">© {new Date().getFullYear()} VIASEE. Platforma de descoperire si orientare, nu de diagnostic sau licitatii de pret.</div>
+          <div className="max-w-6xl mx-auto px-5 py-4 text-xs text-muted-foreground">
+            © {new Date().getFullYear()} VIASEE. Date demonstrative fictive. Platforma de potrivire, nu de licitatii de pret.
+          </div>
         </div>
       </footer>
     </div>
