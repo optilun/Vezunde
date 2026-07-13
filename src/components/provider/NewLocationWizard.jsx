@@ -186,7 +186,8 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
     );
   }
 
-  const { title, subtitle, Comp } = STEPS[step];
+  const { title, subtitle } = STEPS[step];
+  const Comp = /** @type {any} */ (STEPS[step].Comp);
   return (
     <WizardShell step={step + 1} total={STEPS.length} title={title} subtitle={subtitle} onBack={back}>
       {step === 0 && data.location.place_id ? (
