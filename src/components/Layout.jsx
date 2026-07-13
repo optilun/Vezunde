@@ -26,15 +26,11 @@ export default function Layout() {
   return (
     <div className="flex min-h-screen min-h-dvh flex-col bg-background font-body text-foreground">
       <header
-        className={`sticky top-0 z-40 transition-all duration-500 safe-area-top ${
+        className={`sticky top-0 z-40 border-b transition-all duration-500 safe-area-top md:relative ${
           scrolled
-            ? "bg-white"
-            : "bg-white/75 backdrop-blur-md md:bg-transparent md:backdrop-blur-none"
+            ? "border-[#E8E8E8] bg-white shadow-[0_4px_20px_rgba(20,20,20,0.05)] md:border-transparent md:bg-transparent md:shadow-none"
+            : "border-transparent bg-white/75 backdrop-blur-md md:bg-background md:backdrop-blur-none"
         }`}
-        style={{
-          borderBottom: scrolled ? "1px solid #E8E8E8" : "1px solid transparent",
-          boxShadow: scrolled ? "0 4px 20px rgba(20,20,20,0.05)" : "none",
-        }}
       >
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:px-8">
           <Link to="/" className="flex min-w-0 items-center" aria-label="VIASEE - Pagina principala">
