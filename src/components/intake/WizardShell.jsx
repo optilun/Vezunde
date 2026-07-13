@@ -2,13 +2,9 @@ import React from "react";
 import { ArrowLeft, Check } from "lucide-react";
 import { motion } from "framer-motion";
 
-// Horizontal desktop stepper + compact mobile progress. Pass `phases` (array of
-// short labels) and 1-based `phaseStep` to get the named dot-stepper; omit them
-// to fall back to the legacy numeric bar (used for long internal sub-flows).
 function PhaseStepper({ phases, phaseStep }) {
   return (
     <div className="flex-1">
-      {/* Desktop: horizontal numbered stepper with labels */}
       <div className="hidden sm:flex items-center">
         {phases.map((label, i) => {
           const idx = i + 1;
@@ -35,7 +31,6 @@ function PhaseStepper({ phases, phaseStep }) {
           );
         })}
       </div>
-      {/* Mobile: compact progress indicator */}
       <div className="sm:hidden">
         <div className="text-xs text-muted-foreground mb-1.5">Pasul {phaseStep} din {phases.length} · {phases[phaseStep - 1]}</div>
         <div className="h-1 rounded-full bg-secondary overflow-hidden">
@@ -46,7 +41,16 @@ function PhaseStepper({ phases, phaseStep }) {
   );
 }
 
-export default function WizardShell({ step, total, phases, phaseStep, title, subtitle, onBack, children }) {
+export default function WizardShell({
+  step = 0,
+  total = 0,
+  phases = null,
+  phaseStep = 0,
+  title,
+  subtitle = "",
+  onBack = null,
+  children,
+}) {
   return (
     <div className="max-w-xl mx-auto px-5 py-10 sm:py-14">
       <div className="flex items-center gap-4">
