@@ -20,19 +20,22 @@ export default function MyAccount() {
   const [user, setUser] = useState(null);
   const [providerWorkspace, setProviderWorkspace] = useState(null);
   const [professionalWorkspace, setProfessionalWorkspace] = useState(null);
+  const [onboardingWorkspace, setOnboardingWorkspace] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeMode, setActiveMode] = useState(null);
   const { logout } = useAuth();
 
   const load = async () => {
-    const [currentUser, providerResult, professionalResult] = await Promise.all([
+    const [currentUser, providerResult, professionalResult, onboardingResult] = await Promise.all([
       base44.auth.me(),
       base44.functions.invoke("getMyProviderWorkspace", {}),
       base44.functions.invoke("getMyProfessionalWorkspace", {}).catch(() => ({ data: { mode: "none", professional: null, assignments: [] } })),
+      base44.functions.invoke("getMyProviderOnboardingWorkspace", {}).catch(() => ({ data: { mode: "none" } })),
     ]);
     setUser(currentUser);
     setProviderWorkspace(providerResult.data);
     setProfessionalWorkspace(professionalResult.data);
+    setOnboardingWorkspace(onboardingResult.data);
     setLoading(false);
   };
 
@@ -40,14 +43,14 @@ export default function MyAccount() {
     load().catch(() => base44.auth.redirectToLogin(window.location.href));
   }, []);
 
-  if (loading || !user || !providerWorkspace || !professionalWorkspace) {
+  if (loading || !user || !providerWorkspace || !professionalWorkspace || !onboardingWorkspace) {
     return <div className="min-h-[60vh] flex items-center justify-center text-muted-foreground text-sm">Se incarca...</div>;
   }
 
   const onLogout = () => logout(true);
   const hasProviderWorkspace = providerWorkspace.mode === "provider_workspace";
   const hasProfessionalWorkspace = professionalWorkspace.mode === "professional_workspace";
-  const hasApplicantWorkspace = providerWorkspace.mode === "applicant_preparation";
+  const hasApplicantWorkspace = onboardingWorkspace.mode === "applicant_preparation";
 
   const accountModes = [
     { key: "personal", label: MODE_LABELS.personal },
@@ -57,15 +60,18 @@ export default function MyAccount() {
   ];
   const availableModeKeys = new Set(accountModes.map((mode) => mode.key));
   const preferences = readAccountPreferences(user.id);
+  const requestedMode = params.get("mode");
   const preferredMode = preferences.startMode === "last" ? preferences.lastMode : preferences.startMode;
-  const fallbackMode = [preferredMode, "provider", "professional", "applicant", "personal"].find((mode) => availableModeKeys.has(mode)) || "personal";
+  const fallbackMode = [requestedMode, preferredMode, "provider", "professional", "applicant", "personal"]
+    .find((mode) => availableModeKeys.has(mode)) || "personal";
   const resolvedMode = activeMode && availableModeKeys.has(activeMode) ? activeMode : fallbackMode;
 
   const switchMode = (mode) => {
     if (!availableModeKeys.has(mode)) return;
+    const next = new URLSearchParams(params);
+    next.set("mode", mode);
     const settingsOpen = params.get("s") === "settings" || params.get("ps") === "settings";
     if (settingsOpen && mode !== "applicant") {
-      const next = new URLSearchParams(params);
       if (mode === "professional") {
         next.delete("s");
         next.set("ps", "settings");
@@ -73,8 +79,11 @@ export default function MyAccount() {
         next.delete("ps");
         next.set("s", "settings");
       }
-      setParams(next, { replace: true });
+    } else if (mode === "applicant") {
+      next.delete("ps");
+      if (next.get("s") === "settings") next.set("s", "overview");
     }
+    setParams(next, { replace: true });
     setActiveMode(mode);
     rememberAccountMode(user.id, mode);
   };
@@ -92,34 +101,18 @@ export default function MyAccount() {
   };
 
   if (resolvedMode === "provider" && hasProviderWorkspace) {
-    return (
-      <ProviderWorkspaceRoot
-        user={user}
-        workspace={providerWorkspace}
-        onLogout={onLogout}
-        onRefresh={load}
-        {...sharedAccountProps}
-      />
-    );
+    return <ProviderWorkspaceRoot user={user} workspace={providerWorkspace} onLogout={onLogout} onRefresh={load} {...sharedAccountProps} />;
   }
 
   if (resolvedMode === "professional" && hasProfessionalWorkspace) {
-    return (
-      <ProfessionalWorkspaceRoot
-        user={user}
-        workspace={professionalWorkspace}
-        onLogout={onLogout}
-        onRefresh={load}
-        {...sharedAccountProps}
-      />
-    );
+    return <ProfessionalWorkspaceRoot user={user} workspace={professionalWorkspace} onLogout={onLogout} onRefresh={load} {...sharedAccountProps} />;
   }
 
   if (resolvedMode === "applicant" && hasApplicantWorkspace) {
     return (
       <ApplicantWorkspaceRoot
         user={user}
-        workspace={providerWorkspace}
+        workspace={onboardingWorkspace}
         onLogout={onLogout}
         onRefresh={load}
         modeSwitches={modeSwitches}
@@ -127,12 +120,5 @@ export default function MyAccount() {
     );
   }
 
-  return (
-    <PersonalAccountWorkspace
-      user={user}
-      workspace={providerWorkspace}
-      onLogout={onLogout}
-      {...sharedAccountProps}
-    />
-  );
+  return <PersonalAccountWorkspace user={user} workspace={providerWorkspace} onLogout={onLogout} {...sharedAccountProps} />;
 }
