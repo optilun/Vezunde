@@ -12,6 +12,62 @@ const MOBILE_LINKS = [
   { to: "/adauga-sau-revendica", label: "Adauga sau revendica un profil" },
 ];
 
+function DesktopHeader({ scrolled }) {
+  return (
+    <header
+      className={`relative z-40 hidden border-b transition-[background-color,border-color] duration-500 md:block ${
+        scrolled ? "border-transparent bg-transparent" : "border-transparent bg-background"
+      }`}
+    >
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-8">
+        <Link to="/" className="flex min-w-0 items-center" aria-label="VIASEE - Pagina principala">
+          <ViaseeBrand symbolClassName="h-8 w-8" wordmarkClassName="h-[18px] w-auto" />
+        </Link>
+
+        <nav className="flex items-center gap-1 text-sm">
+          <Link to="/cauta" className="rounded-lg px-3.5 py-2 text-muted-foreground transition-colors hover:text-foreground">Cauta</Link>
+          <Link to="/parteneri" className="rounded-lg px-3.5 py-2 text-muted-foreground transition-colors hover:text-foreground">Parteneri</Link>
+          <Link to="/pentru-specialisti" className="rounded-lg px-3.5 py-2 text-muted-foreground transition-colors hover:text-foreground">Pentru specialisti</Link>
+          <HeaderAccountLink />
+          <Link to="/cerere" className="ml-2 inline-flex min-h-11 items-center rounded-full bg-[#171717] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#2B2B2B]">
+            Trimite o cerere
+          </Link>
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+function MobileHeader({ scrolled, onMenuOpen }) {
+  return (
+    <header
+      className={`sticky top-0 z-40 border-b transition-all duration-500 safe-area-top md:hidden ${
+        scrolled
+          ? "border-[#E8E8E8] bg-white shadow-[0_4px_20px_rgba(20,20,20,0.05)]"
+          : "border-transparent bg-white/75 backdrop-blur-md"
+      }`}
+    >
+      <div className="mx-auto flex h-16 items-center justify-between gap-2 px-4 sm:px-8">
+        <Link to="/" className="flex min-w-0 items-center" aria-label="VIASEE - Pagina principala">
+          <ViaseeBrand symbolClassName="h-8 w-8" wordmarkClassName="h-[18px] w-auto" />
+        </Link>
+
+        <div className="flex items-center gap-1">
+          <HeaderAccountLink />
+          <button
+            type="button"
+            onClick={onMenuOpen}
+            className="inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-xl hover:bg-secondary active:bg-secondary"
+            aria-label="Deschide meniul"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
 export default function Layout() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -25,41 +81,8 @@ export default function Layout() {
 
   return (
     <div className="flex min-h-screen min-h-dvh flex-col bg-background font-body text-foreground">
-      <header
-        className={`sticky top-0 z-40 border-b transition-all duration-500 safe-area-top md:relative ${
-          scrolled
-            ? "border-[#E8E8E8] bg-white shadow-[0_4px_20px_rgba(20,20,20,0.05)] md:border-transparent md:bg-transparent md:shadow-none"
-            : "border-transparent bg-white/75 backdrop-blur-md md:bg-background md:backdrop-blur-none"
-        }`}
-      >
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:px-8">
-          <Link to="/" className="flex min-w-0 items-center" aria-label="VIASEE - Pagina principala">
-            <ViaseeBrand symbolClassName="h-8 w-8" wordmarkClassName="h-[18px] w-auto" />
-          </Link>
-
-          <nav className="hidden items-center gap-1 text-sm md:flex">
-            <Link to="/cauta" className="rounded-lg px-3.5 py-2 text-muted-foreground transition-colors hover:text-foreground">Cauta</Link>
-            <Link to="/parteneri" className="rounded-lg px-3.5 py-2 text-muted-foreground transition-colors hover:text-foreground">Parteneri</Link>
-            <Link to="/pentru-specialisti" className="rounded-lg px-3.5 py-2 text-muted-foreground transition-colors hover:text-foreground">Pentru specialisti</Link>
-            <HeaderAccountLink />
-            <Link to="/cerere" className="ml-2 inline-flex min-h-11 items-center rounded-full bg-[#171717] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#2B2B2B]">
-              Trimite o cerere
-            </Link>
-          </nav>
-
-          <div className="flex items-center gap-1 md:hidden">
-            <HeaderAccountLink />
-            <button
-              type="button"
-              onClick={() => setMobileOpen(true)}
-              className="inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-xl hover:bg-secondary active:bg-secondary"
-              aria-label="Deschide meniul"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      </header>
+      <DesktopHeader scrolled={scrolled} />
+      <MobileHeader scrolled={scrolled} onMenuOpen={() => setMobileOpen(true)} />
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="right" className="w-[min(22rem,calc(100vw-1rem))] overflow-y-auto p-0 safe-area-top safe-area-bottom">
