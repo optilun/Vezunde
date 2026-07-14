@@ -199,6 +199,15 @@
   }
 }
 
+@media (max-width: 1023px) {
+  .auth-neutral a,
+  .auth-neutral button {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+  }
+}
+
 @media (max-width: 767px) {
   .workspace-neutral table {
     font-size: 0.8125rem;
