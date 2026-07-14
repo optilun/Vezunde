@@ -60,7 +60,7 @@ export default function AcceptProfessionalInvitation() {
             <UserRoundCheck className="h-5 w-5" />
           </div>
 
-          <h1 className="mt-5 font-heading text-2xl font-extrabold tracking-tight">Invitație de specialist Vezunde</h1>
+          <h1 className="mt-5 font-heading text-2xl font-extrabold tracking-tight">Invitație de specialist VIASEE</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             Acceptarea confirmă asocierea profesională cu locația. Nu primești acces administrativ la organizație, iar profilul nu devine public automat.
           </p>
@@ -68,7 +68,7 @@ export default function AcceptProfessionalInvitation() {
           <div className="mt-5 rounded-2xl border border-border bg-secondary/35 p-4 text-xs leading-relaxed text-muted-foreground">
             <div className="flex items-start gap-2">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
-              <p>Profilul profesional va rămâne în draft până când îl completezi și este verificat de Vezunde.</p>
+              <p>Profilul profesional va rămâne în draft până când îl completezi și este verificat de VIASEE.</p>
             </div>
           </div>
 
