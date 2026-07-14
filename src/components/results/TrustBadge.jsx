@@ -6,7 +6,7 @@ import { BadgeCheck } from "lucide-react";
 // never legacy is_verified / verification_state, never internal statuses.
 const CONFIG = {
   verified: {
-    label: "Profil verificat de Vezunde",
+    label: "Profil verificat de VIASEE",
     className: "text-primary bg-accent border-transparent",
     Icon: BadgeCheck,
   },
