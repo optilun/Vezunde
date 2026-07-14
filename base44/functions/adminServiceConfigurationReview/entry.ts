@@ -310,135 +310,13 @@ async function writeAudit(svc, user, submission, actionType, changedFields, next
   });
 }
 
-async function upsertFunctionalUnits(svc, user, submission, payload) {
-  const existing = await svc.entities.LocationFunctionalUnit.filter({ location_id: submission.location_id }, null, 100).catch(() => []);
-  const desired = new Map((payload.functional_units || []).map((item) => [item.unit_key, item]));
-  const removals = new Set(payload.removal_unit_keys || []);
-  const now = new Date().toISOString();
-  for (const row of existing) {
-    if (removals.has(row.unit_key)) {
-      if (row.is_active !== false) await svc.entities.LocationFunctionalUnit.update(row.id, { is_active: false, status: 'inactive', reviewed_by: user.id, reviewed_at: now });
-      desired.delete(row.unit_key);
-      continue;
-    }
-    const target = desired.get(row.unit_key);
-    if (!target) continue;
-    await svc.entities.LocationFunctionalUnit.update(row.id, {
-      care_setting: target.care_setting,
-      note: target.note || '',
-      is_active: true,
-      status: 'verified',
-      confirmation_level: 'vezunde_verified',
-      reviewed_by: user.id,
-      reviewed_at: now,
-    });
-    desired.delete(row.unit_key);
-  }
-  for (const target of desired.values()) {
-    if (removals.has(target.unit_key)) continue;
-    await svc.entities.LocationFunctionalUnit.create({
-      location_id: submission.location_id,
-      unit_key: target.unit_key,
-      care_setting: target.care_setting,
-      note: target.note || '',
-      is_active: true,
-      status: 'verified',
-      confirmation_level: 'vezunde_verified',
-      source: 'provider_submission',
-      reviewed_by: user.id,
-      reviewed_at: now,
-    });
-  }
-}
-
-async function upsertCapabilities(svc, user, submission, payload) {
-  const existing = await svc.entities.LocationCapability.filter({ location_id: submission.location_id }, null, 100).catch(() => []);
-  const desired = new Map((payload.capabilities || []).map((item) => [`${item.capability_key}:${item.parent_unit_key}`, item]));
-  const removals = new Set((payload.removal_capabilities || []).map((item) => `${item.capability_key}:${item.parent_unit_key}`));
-  const now = new Date().toISOString();
-  for (const row of existing) {
-    const key = `${row.capability_key}:${row.parent_unit_key}`;
-    if (removals.has(key)) {
-      if (row.is_active !== false) await svc.entities.LocationCapability.update(row.id, { is_active: false, status: 'inactive', reviewed_by: user.id, reviewed_at: now });
-      desired.delete(key);
-      continue;
-    }
-    const target = desired.get(key);
-    if (!target) continue;
-    await svc.entities.LocationCapability.update(row.id, {
-      note: target.note || '',
-      is_active: true,
-      status: 'verified',
-      confirmation_level: 'vezunde_verified',
-      reviewed_by: user.id,
-      reviewed_at: now,
-    });
-    desired.delete(key);
-  }
-  for (const target of desired.values()) {
-    const key = `${target.capability_key}:${target.parent_unit_key}`;
-    if (removals.has(key)) continue;
-    await svc.entities.LocationCapability.create({
-      location_id: submission.location_id,
-      capability_key: target.capability_key,
-      parent_unit_key: target.parent_unit_key,
-      note: target.note || '',
-      is_active: true,
-      status: 'verified',
-      confirmation_level: 'vezunde_verified',
-      source: 'provider_submission',
-      reviewed_by: user.id,
-      reviewed_at: now,
-    });
-  }
-}
-
-async function applyResourceLinks(svc, submission, payload) {
-  for (const removal of payload.resource_removals?.professionals || []) {
-    const row = await svc.entities.ProfessionalLocationAssignment.get(removal.assignment_id).catch(() => null);
-    if (!row || row.location_id !== submission.location_id) throw new Error('Specialist invalid în eliminările de resurse.');
-    const removedUnits = new Set(removal.unit_keys || []);
-    const nextUnits = removedUnits.size > 0
-      ? (row.functional_unit_keys || []).filter((unitKey) => !removedUnits.has(unitKey))
-      : [];
-    await svc.entities.ProfessionalLocationAssignment.update(row.id, { functional_unit_keys: nextUnits });
-  }
-  for (const removal of payload.resource_removals?.equipment || []) {
-    const row = await svc.entities.LocationEquipment.get(removal.equipment_id).catch(() => null);
-    if (!row || row.location_id !== submission.location_id) throw new Error('Echipament invalid în eliminările de resurse.');
-    await svc.entities.LocationEquipment.update(row.id, { functional_unit_key: '' });
-  }
-  for (const removal of payload.resource_removals?.facilities || []) {
-    const row = await svc.entities.LocationFacility.get(removal.facility_id).catch(() => null);
-    if (!row || row.location_id !== submission.location_id) throw new Error('Facilitate invalidă în eliminările de resurse.');
-    await svc.entities.LocationFacility.update(row.id, { functional_unit_key: '' });
-  }
-
-  for (const link of payload.resource_links?.professionals || []) {
-    const row = await svc.entities.ProfessionalLocationAssignment.get(link.assignment_id).catch(() => null);
-    if (!row || row.location_id !== submission.location_id) throw new Error('Specialist invalid în legăturile de resurse.');
-    await svc.entities.ProfessionalLocationAssignment.update(row.id, { functional_unit_keys: link.unit_keys || [] });
-  }
-  for (const link of payload.resource_links?.equipment || []) {
-    const row = await svc.entities.LocationEquipment.get(link.equipment_id).catch(() => null);
-    if (!row || row.location_id !== submission.location_id) throw new Error('Echipament invalid în legăturile de resurse.');
-    await svc.entities.LocationEquipment.update(row.id, { functional_unit_key: link.unit_key || '' });
-  }
-  for (const link of payload.resource_links?.facilities || []) {
-    const row = await svc.entities.LocationFacility.get(link.facility_id).catch(() => null);
-    if (!row || row.location_id !== submission.location_id) throw new Error('Facilitate invalidă în legăturile de resurse.');
-    await svc.entities.LocationFacility.update(row.id, { functional_unit_key: link.unit_key || '' });
-  }
-}
-
-function serviceApplyData(serviceKey, existing, payload, verified) {
+function serviceApplyData(serviceKey, existing, verified) {
   const definition = getCanonicalServiceDefinition(serviceKey);
   if (!definition) throw new Error(`Serviciu canonic necunoscut: ${serviceKey}`);
   const previousConfirmation = clean(existing?.confirmation_level);
   const confirmationLevel = definition.requires_review
     ? (verified ? 'vezunde_verified' : (previousConfirmation === 'vezunde_verified' ? 'vezunde_verified' : 'provider_confirmed'))
     : (previousConfirmation === 'vezunde_verified' ? 'vezunde_verified' : 'provider_confirmed');
-  const context = getServiceOperationalContext(serviceKey);
   return {
     is_active: true,
     accepts_requests: definition.patient_facing !== false,
@@ -446,8 +324,6 @@ function serviceApplyData(serviceKey, existing, payload, verified) {
     is_advanced_service: definition.requires_review || definition.service_need_level === 'specialized_medical',
     confirmation_level: confirmationLevel,
     matching_allowed: definition.patient_facing !== false && (definition.requires_review ? confirmationLevel === 'vezunde_verified' : definition.matching_allowed_when_provider_confirmed),
-    functional_unit_key: payload.service_unit_map?.[serviceKey] || context?.unitKey || '',
-    capability_key: context?.capabilityKey || '',
     migration_review_required: false,
     provider_visibility_status: 'active',
     removal_submission_id: '',
@@ -466,7 +342,7 @@ async function applyServices(svc, submission, payload, verifiedKeys = new Set())
       const definition = getCanonicalServiceDefinition(serviceKey);
       if (!definition) throw new Error(`Serviciu canonic necunoscut: ${serviceKey}`);
       const rows = await svc.entities.LocationService.filter({ location_id: submission.location_id, service_key: serviceKey });
-      const data = serviceApplyData(serviceKey, rows[0], payload, verifiedKeys.has(serviceKey));
+      const data = serviceApplyData(serviceKey, rows[0], verifiedKeys.has(serviceKey));
       if (rows[0]) await svc.entities.LocationService.update(rows[0].id, data);
       else await svc.entities.LocationService.create({ location_id: submission.location_id, service_key: serviceKey, ...data });
       if (group === 'specialties' || definition.group === 'specialties') await mirrorSpecialization(serviceKey, true);
@@ -492,6 +368,7 @@ async function applyServices(svc, submission, payload, verifiedKeys = new Set())
 }
 
 async function persistSuggestions(svc, user, submission, payload) {
+  if (!svc.entities.ServiceCatalogSuggestion?.create) return [];
   const created = [];
   for (const suggestion of payload.suggestions || []) {
     const row = await svc.entities.ServiceCatalogSuggestion.create({
@@ -575,10 +452,10 @@ Deno.serve(async (req) => {
         }, { status: 409 });
       }
 
-      await upsertFunctionalUnits(svc, user, submission, payload);
-      await upsertCapabilities(svc, user, submission, payload);
-      await applyResourceLinks(svc, submission, payload);
-      await svc.entities.ProviderLocation.update(submission.location_id, { care_setting: payload.care_setting || 'not_applicable' });
+      // The complete operational context remains in the approved submission.
+      // The live schema does not expose separate unit/capability entities or
+      // unit-link fields on resources, so approval applies only supported
+      // LocationService fields.
 
       // Apply first as provider-confirmed. Medical promotion happens only after a fresh read of all dependencies.
       await applyServices(svc, submission, payload, new Set());
