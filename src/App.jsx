@@ -15,6 +15,7 @@ import ForSpecialists from "./pages/ForSpecialists";
 import Partners from "./pages/Partners";
 import AddOrClaim from "./pages/AddOrClaim";
 import AcceptProfessionalInvitation from "./pages/AcceptProfessionalInvitation";
+import AcceptProviderInvitation from "./pages/AcceptProviderInvitation";
 import ProfessionalOnboarding from "./pages/ProfessionalOnboarding";
 import MyAccount from "./pages/MyAccount";
 import AdminDirectoryOps from "./pages/AdminDirectoryOps";
@@ -57,6 +58,7 @@ const AuthenticatedApp = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/pentru-specialisti" element={<ForSpecialists />} />
       <Route path="/accept-professional-invitation" element={<AcceptProfessionalInvitation />} />
+      <Route path="/accept-provider-invitation" element={<AcceptProviderInvitation />} />
 
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
