@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowRight, CheckCircle2, Circle, MapPin, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Circle, Clock3, LockKeyhole, MapPin, ShieldCheck } from "lucide-react";
 import { CLAIM_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 
 const ROLE_LABELS = {
@@ -19,9 +19,40 @@ export default function ApplicantOverview({ workspace, onNavigate, submitted = f
   const location = workspace.location_summary || {};
   const drafts = workspace.preparation_drafts || [];
   const completedSections = new Set(drafts.map((draft) => draft.section));
-  const completedCount = PREPARATION_ITEMS.filter((item) => completedSections.has(item.section)).length;
-  const progress = Math.round((completedCount / PREPARATION_ITEMS.length) * 100);
-  const nextItem = PREPARATION_ITEMS.find((item) => !completedSections.has(item.section)) || PREPARATION_ITEMS[0];
+  const fallbackItems = PREPARATION_ITEMS.map((item) => ({
+    ...item,
+    navigation_key: item.key,
+    status: completedSections.has(item.section) ? "complete" : "missing",
+    completed: completedSections.has(item.section),
+    detail: completedSections.has(item.section) ? "Draft salvat." : "Nu a fost inceput.",
+  }));
+  const statusCenter = workspace.status_center || {};
+  const items = statusCenter.items?.length ? statusCenter.items : fallbackItems;
+  const progress = statusCenter.preparation_progress?.percentage
+    ?? Math.round((fallbackItems.filter((item) => item.completed).length / fallbackItems.length) * 100);
+  const completedCount = statusCenter.preparation_progress?.completed_count
+    ?? fallbackItems.filter((item) => item.completed).length;
+  const totalCount = statusCenter.preparation_progress?.total_count ?? fallbackItems.length;
+  const nextAction = statusCenter.next_action || {
+    navigation_key: fallbackItems.find((item) => !item.completed)?.navigation_key || "status",
+    label: completedCount === totalCount ? "Urmareste verificarea solicitarii" : "Continua pregatirea profilului",
+  };
+
+  const itemIcon = (item) => {
+    if (item.status === "complete") return <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-700" />;
+    if (item.status === "needs_action") return <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />;
+    if (item.status === "in_review") return <Clock3 className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" />;
+    if (item.status === "blocked") return <LockKeyhole className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />;
+    return <Circle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />;
+  };
+
+  const itemStatusLabel = (item) => ({
+    complete: "Complet",
+    needs_action: "Necesita actiune",
+    in_review: "In verificare",
+    blocked: "Blocat",
+    missing: "Lipseste",
+  }[item.status] || "");
 
   return (
     <div className="space-y-6">
@@ -72,8 +103,10 @@ export default function ApplicantOverview({ workspace, onNavigate, submitted = f
       <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-sm font-bold">Configurarea initiala</h2>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Completeaza ce ai la indemana. Poti reveni oricand cat timp solicitarea este verificata.</p>
+            <h2 className="text-sm font-bold">Status si configurare initiala</h2>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              {completedCount}/{totalCount} pasi disponibili sunt completati. Elementele blocate se deschid dupa aprobarea solicitarii.
+            </p>
           </div>
           <span className="text-sm font-bold">{progress}%</span>
         </div>
@@ -82,28 +115,32 @@ export default function ApplicantOverview({ workspace, onNavigate, submitted = f
         </div>
 
         <div className="mt-5 divide-y divide-border">
-          {PREPARATION_ITEMS.map((item) => {
-            const done = completedSections.has(item.section);
+          {items.map((item) => {
+            const navigable = Boolean(item.navigation_key);
             return (
               <button
                 key={item.key}
                 type="button"
-                onClick={() => onNavigate(item.key)}
-                className="flex w-full items-start gap-3 py-4 text-left first:pt-0 last:pb-0"
+                onClick={() => navigable && onNavigate(item.navigation_key)}
+                disabled={!navigable}
+                className="flex w-full items-start gap-3 py-4 text-left first:pt-0 last:pb-0 disabled:cursor-default"
               >
-                {done ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-700" /> : <Circle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />}
+                {itemIcon(item)}
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold">{item.title}</span>
-                  <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{item.description}</span>
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold">{item.label || item.title}</span>
+                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">{itemStatusLabel(item)}</span>
+                  </span>
+                  <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{item.detail || item.description}</span>
                 </span>
-                <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+                {navigable && <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />}
               </button>
             );
           })}
         </div>
 
-        <button type="button" onClick={() => onNavigate(nextItem.key)} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-background">
-          {completedCount === PREPARATION_ITEMS.length ? "Revizuieste informatiile" : `Continua cu: ${nextItem.title}`} <ArrowRight className="h-4 w-4" />
+        <button type="button" onClick={() => onNavigate(nextAction.navigation_key || "status")} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-background">
+          {nextAction.label} <ArrowRight className="h-4 w-4" />
         </button>
       </section>
 

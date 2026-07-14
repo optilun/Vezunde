@@ -2,6 +2,30 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
 
+const PREPARATION_STEPS = [
+  {
+    key: 'organization_profile',
+    section: 'public_profile',
+    navigation_key: 'profile',
+    label: 'Profilul organizatiei',
+    description: 'Descrierea publica, datele de contact, website-ul si retelele sociale.',
+  },
+  {
+    key: 'operating_hours',
+    section: 'operating_hours',
+    navigation_key: 'hours',
+    label: 'Programul locatiei',
+    description: 'Programul care va putea fi publicat dupa confirmarea accesului.',
+  },
+  {
+    key: 'services',
+    section: 'services',
+    navigation_key: 'services',
+    label: 'Serviciile locatiei',
+    description: 'Serviciile declarate pentru verificarea si publicarea ulterioara.',
+  },
+];
+
 function parseJSON(value) {
   try {
     return value ? JSON.parse(value) : {};
@@ -90,6 +114,172 @@ function sanitizeDraft(submission) {
   };
 }
 
+function draftStep(step, draft) {
+  if (!draft || draft.status === 'withdrawn') {
+    return {
+      ...step,
+      status: 'missing',
+      completed: false,
+      detail: 'Nu a fost inceput.',
+      submission_status: draft?.status || '',
+    };
+  }
+  if (draft.status === 'needs_more_info' || draft.status === 'rejected') {
+    return {
+      ...step,
+      status: 'needs_action',
+      completed: false,
+      detail: 'Sunt necesare completari.',
+      submission_status: draft.status,
+    };
+  }
+  if (draft.status === 'pending_review') {
+    return {
+      ...step,
+      status: 'in_review',
+      completed: true,
+      detail: 'Informatiile sunt in verificare.',
+      submission_status: draft.status,
+    };
+  }
+  return {
+    ...step,
+    status: 'complete',
+    completed: true,
+    detail: draft.status === 'approved' ? 'Informatii aprobate.' : 'Draft salvat.',
+    submission_status: draft.status,
+  };
+}
+
+function buildStatusCenter(claim, location, drafts) {
+  const latestDraftBySection = new Map();
+  for (const draft of drafts) {
+    if (!latestDraftBySection.has(draft.section)) latestDraftBySection.set(draft.section, draft);
+  }
+
+  const locationReady = Boolean(location?.id && location?.name && location?.locality_siruta_code);
+  const preparationItems = [
+    draftStep(PREPARATION_STEPS[0], latestDraftBySection.get('public_profile')),
+    {
+      key: 'location_identity',
+      section: 'location_details',
+      navigation_key: 'status',
+      label: 'Identitatea locatiei',
+      description: 'Numele si localitatea canonica asociate solicitarii.',
+      status: locationReady ? 'complete' : 'in_review',
+      completed: locationReady,
+      detail: locationReady ? 'Identitate asociata solicitarii.' : 'Datele canonice sunt verificate de VIASEE.',
+      submission_status: '',
+    },
+    draftStep(PREPARATION_STEPS[1], latestDraftBySection.get('operating_hours')),
+    draftStep(PREPARATION_STEPS[2], latestDraftBySection.get('services')),
+  ];
+  const completedCount = preparationItems.filter((item) => item.completed).length;
+  const percentage = Math.round((completedCount / preparationItems.length) * 100);
+  const blockedItems = [
+    {
+      key: 'photos',
+      navigation_key: '',
+      label: 'Fotografiile locatiei',
+      description: 'Disponibile dupa aprobarea solicitarii.',
+      status: 'blocked',
+      completed: false,
+      detail: 'Blocat pana la confirmarea accesului.',
+    },
+    {
+      key: 'specialists',
+      navigation_key: '',
+      label: 'Specialistii locatiei',
+      description: 'Asocierile si invitatiile devin disponibile in workspace-ul organizatiei.',
+      status: 'blocked',
+      completed: false,
+      detail: 'Blocat pana la confirmarea accesului.',
+    },
+    {
+      key: 'publication',
+      navigation_key: '',
+      label: 'Publicarea profilului',
+      description: 'Publicarea necesita aprobarea solicitarii si verificarea informatiilor.',
+      status: 'blocked',
+      completed: false,
+      detail: 'Profilul ramane privat.',
+    },
+  ];
+
+  const claimNeedsAction = claim?.status === 'needs_more_info';
+  const stepNeedingAction = preparationItems.find((item) => item.status === 'needs_action');
+  const missingStep = preparationItems.find((item) => item.status === 'missing');
+  const waitingForVerification = !claimNeedsAction && !stepNeedingAction && !missingStep && percentage < 100;
+  let nextAction;
+  if (claimNeedsAction) {
+    nextAction = {
+      type: 'claim',
+      navigation_key: 'status',
+      label: 'Vezi completarile solicitate',
+      description: claim.latest_admin_note || 'VIASEE are nevoie de informatii suplimentare pentru verificare.',
+    };
+  } else if (stepNeedingAction) {
+    nextAction = {
+      type: 'section',
+      navigation_key: stepNeedingAction.navigation_key,
+      label: `Completeaza: ${stepNeedingAction.label}`,
+      description: stepNeedingAction.detail,
+    };
+  } else if (missingStep) {
+    nextAction = {
+      type: 'section',
+      navigation_key: missingStep.navigation_key,
+      label: `Continua cu: ${missingStep.label}`,
+      description: missingStep.description,
+    };
+  } else {
+    nextAction = {
+      type: 'wait',
+      navigation_key: 'status',
+      label: 'Urmareste verificarea solicitarii',
+      description: 'Pregatirea initiala este completa. Profilul ramane privat pana la aprobare.',
+    };
+  }
+
+  const actionRequiredCount = preparationItems.filter((item) => ['missing', 'needs_action'].includes(item.status)).length
+    + (claimNeedsAction ? 1 : 0);
+  return {
+    version: 1,
+    state: claimNeedsAction
+      ? 'needs_action'
+      : waitingForVerification
+        ? 'waiting_verification'
+        : percentage === 100
+          ? 'preparation_complete'
+          : 'in_progress',
+    headline: claimNeedsAction
+      ? 'Sunt necesare completari'
+      : waitingForVerification
+        ? 'Datele locatiei sunt in verificare'
+        : percentage === 100
+          ? 'Pregatirea initiala este completa'
+          : 'Continua pregatirea profilului',
+    message: claimNeedsAction
+      ? (claim.latest_admin_note || 'Verifica informatiile solicitate de echipa VIASEE.')
+      : waitingForVerification
+        ? 'Ai completat tot ce este disponibil momentan. Identitatea canonica a locatiei este verificata de VIASEE.'
+        : percentage === 100
+          ? 'Informatiile pregatite sunt salvate. Asteapta confirmarea relatiei cu locatia.'
+          : 'Completeaza informatiile disponibile cat timp solicitarea este verificata.',
+    claim_status: claim?.status || '',
+    preparation_progress: {
+      percentage,
+      completed_count: completedCount,
+      total_count: preparationItems.length,
+    },
+    action_required_count: actionRequiredCount,
+    blocked_count: blockedItems.length,
+    preparation_complete: percentage === 100,
+    items: [...preparationItems, ...blockedItems],
+    next_action: nextAction,
+  };
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -136,12 +326,17 @@ Deno.serve(async (req) => {
     }, '-created_date', 100);
     const activeDrafts = drafts.filter((draft) => !draft.preparation_locked_at && draft.preparation_lock_reason !== 'claim_rejected');
 
+    const claimSummary = sanitizeClaim(activeClaim);
+    const locationSummary = sanitizeLocation(location, activeClaim);
+    const preparationDrafts = activeDrafts.map(sanitizeDraft);
+
     return Response.json({
       mode: 'applicant_preparation',
       user: { id: user.id, full_name: user.full_name || user.name || '', email: user.email || '' },
-      claim: sanitizeClaim(activeClaim),
-      location_summary: sanitizeLocation(location, activeClaim),
-      preparation_drafts: activeDrafts.map(sanitizeDraft),
+      claim: claimSummary,
+      location_summary: locationSummary,
+      preparation_drafts: preparationDrafts,
+      status_center: buildStatusCenter(claimSummary, locationSummary, preparationDrafts),
       allowed_sections: ['public_profile', 'operating_hours', 'services'],
     });
   } catch (error) {
