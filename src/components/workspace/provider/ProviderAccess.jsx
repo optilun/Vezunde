@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Building2,
   Check,
@@ -115,7 +115,7 @@ function FieldLabel({ label, children }) {
   return <div><label className="text-xs font-semibold text-muted-foreground">{label}</label><div className="mt-1.5">{children}</div></div>;
 }
 
-export default function ProviderAccess({ locations = [] }) {
+export default function ProviderAccess({ organizationId = "", locations = [] }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -127,13 +127,20 @@ export default function ProviderAccess({ locations = [] }) {
   const [newLink, setNewLink] = useState("");
   const [copied, setCopied] = useState(false);
   const [form, setForm] = useState({ email: "", role: "location_staff", location_ids: [] });
+  const loadRequestRef = useRef(0);
 
   const locationById = useMemo(() => Object.fromEntries(locations.map((location) => [location.id, location])), [locations]);
-  const organizationId = useMemo(() => data?.manageable_organization_ids?.[0] || locations.find((location) => location.organization_id)?.organization_id || "", [data, locations]);
 
-  const load = async () => {
+  const load = useCallback(async () => {
+    const requestId = ++loadRequestRef.current;
     setLoading(true);
-    const response = await base44.functions.invoke("getMyProviderMembers", {}).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    if (!organizationId) {
+      setData({ members: [], invitations: [], manageable_location_ids: [], manageable_organization_ids: [], can_manage_members: false, counters: {} });
+      setLoading(false);
+      return;
+    }
+    const response = await base44.functions.invoke("getMyProviderMembers", { organization_id: organizationId }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    if (requestId !== loadRequestRef.current) return;
     setLoading(false);
     if (response.data?.error) {
       setMessage(response.data.error);
@@ -141,9 +148,16 @@ export default function ProviderAccess({ locations = [] }) {
       return;
     }
     setData(response.data || {});
-  };
+  }, [organizationId]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    setData(null);
+    setMessage("");
+    setInviteOpen(false);
+    setMemberOpen(null);
+    setQuery("");
+    load();
+  }, [load]);
 
   const memberGroups = useMemo(() => groupMembers(data?.members || []), [data?.members]);
   const invitations = data?.invitations || [];
