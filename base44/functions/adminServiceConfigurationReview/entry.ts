@@ -18,6 +18,44 @@ function parsePayload(raw) {
   try { return raw ? JSON.parse(raw) : {}; } catch (_error) { return {}; }
 }
 
+function isObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function hasApprovedOperationalContext(payload) {
+  return Array.isArray(payload?.functional_units)
+    && Array.isArray(payload?.capabilities)
+    && isObject(payload?.service_unit_map)
+    && isObject(payload?.resource_links);
+}
+
+async function loadApprovedOperationalSnapshot(svc, locationId) {
+  const submissions = await svc.entities.ProviderWorkspaceSubmission.filter({
+    location_id: locationId,
+    section: 'services',
+    status: 'approved',
+  }, '-reviewed_at', 10).catch(() => []);
+  for (const submission of submissions) {
+    const rawPayload = parsePayload(submission.payload_json);
+    if (!hasApprovedOperationalContext(rawPayload)) continue;
+    const validation = validateServiceConfigurationPayload(rawPayload, {
+      allowSuggestions: true,
+      allowRawRemovals: true,
+      allowOperationalContext: true,
+    });
+    if (!validation.valid) continue;
+    return {
+      ...validation.clean,
+      removal_ids: {},
+      raw_removal_keys: [],
+      removal_unit_keys: [],
+      removal_capabilities: [],
+      resource_removals: { professionals: [], equipment: [], facilities: [] },
+    };
+  }
+  return null;
+}
+
 function restoredMatchingAllowed(row) {
   const definition = getCanonicalServiceDefinition(row.service_key);
   if (!definition || row.is_active === false) return false;
@@ -100,6 +138,9 @@ function overlayResourceRemovals(rows, removals, type) {
 }
 
 async function loadApprovedPayload(svc, locationId) {
+  const snapshot = await loadApprovedOperationalSnapshot(svc, locationId);
+  if (snapshot) return snapshot;
+
   const location = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
   if (!location) throw new Error('Locația nu a fost găsită');
   const [services, units, capabilities, assignments, equipment, facilities] = await Promise.all([
@@ -459,9 +500,9 @@ Deno.serve(async (req) => {
 
       // Apply first as provider-confirmed. Medical promotion happens only after a fresh read of all dependencies.
       await applyServices(svc, submission, payload, new Set());
-      const persistedContext = await loadContext(svc, submission.location_id, null, true);
+      const postApplyContext = await loadContext(svc, submission.location_id, payload, false);
       const postEvaluation = evaluatePayload(payload, {
-        ...persistedContext,
+        ...postApplyContext,
         service_unit_map: payload.service_unit_map || {},
       });
       const verifiedKeys = new Set(postEvaluation.evaluations
