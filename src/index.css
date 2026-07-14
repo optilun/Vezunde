@@ -206,16 +206,16 @@
     min-height: 44px;
     align-items: center;
   }
-}
-
-@media (max-width: 767px) {
-  .workspace-neutral table {
-    font-size: 0.8125rem;
-  }
 
   .workspace-neutral input,
   .workspace-neutral select,
   .workspace-neutral textarea {
     font-size: 16px;
+  }
+}
+
+@media (max-width: 767px) {
+  .workspace-neutral table {
+    font-size: 0.8125rem;
   }
 }
