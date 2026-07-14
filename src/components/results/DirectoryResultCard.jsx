@@ -20,7 +20,7 @@ export default function DirectoryResultCard({ location }) {
 
       {location.service_coverage_status === "not_listed" && (
         <p className="mt-3 text-sm text-muted-foreground">
-          Serviciile acestui profil nu sunt inca listate sau confirmate pe Vezunde.
+          Serviciile acestui profil nu sunt inca listate sau confirmate pe VIASEE.
         </p>
       )}
 
