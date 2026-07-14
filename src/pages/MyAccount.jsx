@@ -10,9 +10,9 @@ import ProfessionalWorkspaceRoot from "@/components/workspace/professional/Profe
 
 const MODE_LABELS = {
   personal: "Cont personal",
-  provider: "Workspace furnizor",
+  provider: "Organizatii",
   professional: "Cont profesional",
-  applicant: "Pregatire profil",
+  applicant: "Organizatii · Pregatire profil",
 };
 
 export default function MyAccount() {
@@ -70,6 +70,10 @@ export default function MyAccount() {
     if (!availableModeKeys.has(mode)) return;
     const next = new URLSearchParams(params);
     next.set("mode", mode);
+    if (mode !== "provider") {
+      next.delete("organization");
+      next.delete("location");
+    }
     const settingsOpen = params.get("s") === "settings" || params.get("ps") === "settings";
     if (settingsOpen && mode !== "applicant") {
       if (mode === "professional") {
@@ -86,6 +90,25 @@ export default function MyAccount() {
     setParams(next, { replace: true });
     setActiveMode(mode);
     rememberAccountMode(user.id, mode);
+  };
+
+  const openOrganizationWorkspace = ({ mode = "provider", organizationId = "", locationId = "" } = {}) => {
+    if (mode === "applicant") {
+      switchMode("applicant");
+      return;
+    }
+    if (!hasProviderWorkspace) return;
+    const next = new URLSearchParams(params);
+    next.set("mode", "provider");
+    next.set("s", "overview");
+    next.delete("ps");
+    if (organizationId) next.set("organization", organizationId);
+    else next.delete("organization");
+    if (locationId) next.set("location", locationId);
+    else next.delete("location");
+    setParams(next, { replace: true });
+    setActiveMode("provider");
+    rememberAccountMode(user.id, "provider");
   };
 
   const modeSwitches = accountModes.map((mode) => ({
@@ -120,5 +143,14 @@ export default function MyAccount() {
     );
   }
 
-  return <PersonalAccountWorkspace user={user} workspace={providerWorkspace} onLogout={onLogout} {...sharedAccountProps} />;
+  return (
+    <PersonalAccountWorkspace
+      user={user}
+      workspace={providerWorkspace}
+      onboardingWorkspace={onboardingWorkspace}
+      onOpenOrganization={openOrganizationWorkspace}
+      onLogout={onLogout}
+      {...sharedAccountProps}
+    />
+  );
 }

@@ -106,20 +106,29 @@ export default function ProviderWorkspaceRoot({
   const { locationId: routeLocationId, locationModule } = useParams();
   const requestedLocationModule = LOCATION_MODULES.has(locationModule) ? locationModule : null;
   const requestedSection = params.get("s") || "overview";
+  const requestedOrganizationId = params.get("organization") || "";
+  const requestedLocationId = params.get("location") || "";
   const ownerSyncStarted = useRef(false);
   const overviewRequestRef = useRef(0);
 
   const allLocations = useMemo(() => workspace.locations || [], [workspace.locations]);
   const organizationContexts = useMemo(() => organizationContextsFor(workspace), [workspace]);
+  const requestedOrganizationContext = organizationContexts.find((context) => context.organization?.id === requestedOrganizationId);
+  const requestedOrganizationLocationId = requestedOrganizationContext?.locations?.[0]?.id
+    || requestedOrganizationContext?.memberships?.[0]?.location_id
+    || "";
   const preferences = readAccountPreferences(user?.id);
   const preferredProviderLocationId = preferences.providerLocationMode === "fixed"
     ? preferences.fixedProviderLocationId
     : preferences.lastProviderLocationId;
   const initialLocationId = allLocations.some((location) => location.id === routeLocationId)
     ? routeLocationId
-    : allLocations.some((location) => location.id === preferredProviderLocationId)
-      ? preferredProviderLocationId
-      : workspace.memberships?.[0]?.location_id || allLocations[0]?.id || "";
+    : allLocations.some((location) => location.id === requestedLocationId)
+      ? requestedLocationId
+      : requestedOrganizationLocationId
+        || (allLocations.some((location) => location.id === preferredProviderLocationId)
+          ? preferredProviderLocationId
+          : workspace.memberships?.[0]?.location_id || allLocations[0]?.id || "");
   const [selectedLocationId, setSelectedLocationId] = useState(initialLocationId);
   const [overview, setOverview] = useState(null);
   const [loadingOverview, setLoadingOverview] = useState(true);
@@ -192,6 +201,12 @@ export default function ProviderWorkspaceRoot({
       setSelectedLocationId(workspace.memberships?.[0]?.location_id || allLocations[0]?.id || "");
     }
   }, [routeLocationId, selectedLocationId, allLocations, workspace.memberships]);
+
+  useEffect(() => {
+    const requestedLocationExists = allLocations.some((location) => location.id === requestedLocationId);
+    const nextLocationId = requestedLocationExists ? requestedLocationId : requestedOrganizationLocationId;
+    if (nextLocationId) setSelectedLocationId(nextLocationId);
+  }, [requestedLocationId, requestedOrganizationId, requestedOrganizationLocationId, allLocations]);
 
   useEffect(() => {
     loadOverview(selectedLocationId);

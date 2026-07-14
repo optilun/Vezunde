@@ -9,7 +9,17 @@ import PersonalSaved from "./PersonalSaved";
 
 const PERSONAL_SECTIONS = new Set(["overview", "requests", "saved", "settings"]);
 
-export default function PersonalAccountWorkspace({ user, workspace, onLogout, accountModes, activeMode, onSwitchMode, modeSwitches }) {
+export default function PersonalAccountWorkspace({
+  user,
+  workspace,
+  onboardingWorkspace,
+  onOpenOrganization,
+  onLogout,
+  accountModes,
+  activeMode,
+  onSwitchMode,
+  modeSwitches,
+}) {
   const [params, setParams] = useSearchParams();
   const requestedSection = params.get("s") || "overview";
   const section = requestedSection === "data"
@@ -17,7 +27,7 @@ export default function PersonalAccountWorkspace({ user, workspace, onLogout, ac
     : PERSONAL_SECTIONS.has(requestedSection)
       ? requestedSection
       : "overview";
-  const navigate = (key) => setParams({ s: key });
+  const navigate = (key) => setParams({ s: key, mode: "personal" });
 
   return (
     <ProviderAppShell
@@ -30,7 +40,15 @@ export default function PersonalAccountWorkspace({ user, workspace, onLogout, ac
       subtitle="Contul meu"
       modeSwitches={modeSwitches}
     >
-      {section === "overview" && <PersonalOverview user={user} workspace={workspace} onNavigate={navigate} />}
+      {section === "overview" && (
+        <PersonalOverview
+          user={user}
+          workspace={workspace}
+          onboardingWorkspace={onboardingWorkspace}
+          onOpenOrganization={onOpenOrganization}
+          onNavigate={navigate}
+        />
+      )}
       {section === "requests" && <PersonalRequests user={user} />}
       {section === "saved" && <PersonalSaved />}
       {section === "settings" && (
