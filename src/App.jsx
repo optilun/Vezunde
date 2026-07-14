@@ -10,6 +10,7 @@ import Layout from "@/components/Layout";
 import Home from "./pages/Home";
 import Search from "./pages/Search";
 import ProviderProfile from "./pages/ProviderProfile";
+import ProfessionalProfile from "./pages/ProfessionalProfile";
 import RequestFlow from "./pages/RequestFlow";
 import ForSpecialists from "./pages/ForSpecialists";
 import Partners from "./pages/Partners";
@@ -65,6 +66,7 @@ const AuthenticatedApp = () => {
         <Route path="/cauta" element={<Search />} />
         <Route path="/parteneri" element={<Partners />} />
         <Route path="/furnizor/:id" element={<ProviderProfile />} />
+        <Route path="/specialist/:id" element={<ProfessionalProfile />} />
         <Route path="/cerere" element={<RequestFlow />} />
         <Route path="/revendica-profil" element={<Navigate to="/adauga-sau-revendica" replace />} />
         <Route path="/inscriere" element={<Navigate to="/adauga-sau-revendica" replace />} />

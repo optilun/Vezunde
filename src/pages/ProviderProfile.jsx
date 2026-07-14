@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { BadgeCheck, ChevronDown, Clock, ExternalLink, Globe2, Mail, Phone } from "lucide-react";
+import { ArrowRight, BadgeCheck, ChevronDown, Clock, ExternalLink, Globe2, Mail, Phone } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROFESSIONAL_TYPES } from "@/lib/vezunde";
 import { buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/lib/maps";
@@ -145,7 +145,7 @@ function groupedProgramRows(openingHoursJson) {
       label: group.start.key === group.end.key ? group.start.label : `${group.start.label}–${group.end.label}`,
       value: group.start.open ? `${group.start.from || "—"} - ${group.start.to || "—"}` : "Închis",
     }));
-  } catch (_error) {
+  } catch {
     return [];
   }
 }
@@ -313,6 +313,9 @@ function TeamCard({ team }) {
             )}
 
             {professional.bio && <p className="mt-3 line-clamp-4 text-xs leading-relaxed text-muted-foreground">{professional.bio}</p>}
+            <Link to={`/specialist/${professional.id}`} className="mt-4 inline-flex items-center gap-1 text-xs font-semibold hover:underline">
+              Vezi profilul specialistului <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </article>
         ))}
       </div>
