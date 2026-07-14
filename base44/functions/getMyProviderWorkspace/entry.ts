@@ -5,6 +5,39 @@ const CLAIM_PREP_ALLOWED_SECTIONS = ['public_profile', 'operating_hours', 'servi
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
 const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
 const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
+const CAPABILITY_ORDER = [
+  'organization.view',
+  'organization.manage_profile',
+  'organization.manage_members',
+  'organization.manage_settings',
+  'organization.manage_locations',
+  'location.view',
+  'location.manage_profile',
+  'location.manage_content',
+  'location.manage_specialists',
+  'location.manage_requests',
+  'location.manage_operational_status',
+  'location.manage_settings',
+  'location.manage_lifecycle',
+];
+const ROLE_CAPABILITIES = {
+  organization_owner: [...CAPABILITY_ORDER],
+  location_manager: [
+    'organization.view',
+    'location.view',
+    'location.manage_profile',
+    'location.manage_content',
+    'location.manage_specialists',
+    'location.manage_requests',
+    'location.manage_operational_status',
+  ],
+  location_staff: [
+    'organization.view',
+    'location.view',
+    'location.manage_requests',
+    'location.manage_operational_status',
+  ],
+};
 
 function normalizeMemberRole(value) {
   if (value === 'owner') return 'organization_owner';
@@ -17,6 +50,15 @@ function highestRole(roles) {
   if (roles.includes('location_manager')) return 'location_manager';
   if (roles.includes('location_staff')) return 'location_staff';
   return '';
+}
+
+function capabilitiesForRole(value) {
+  return [...(ROLE_CAPABILITIES[normalizeMemberRole(value)] || [])];
+}
+
+function mergeCapabilities(roles) {
+  const allowed = new Set(roles.flatMap((role) => capabilitiesForRole(role)));
+  return CAPABILITY_ORDER.filter((capability) => allowed.has(capability));
 }
 
 function unique(values) { return [...new Set(values.filter(Boolean))]; }
@@ -116,6 +158,33 @@ function sanitizeLocation(location, organizationName) {
     claim_verification_status: location.claim_verification_status || 'none',
     profile_completeness: computeLocationCompleteness(location),
   };
+}
+
+function buildOrganizationContexts(organizations, locations, memberships) {
+  return organizations.map((organization) => {
+    const contextMemberships = memberships.filter((membership) => membership.organization_id === organization.id);
+    const contextLocations = locations
+      .filter((location) => location.organization_id === organization.id)
+      .map((location) => {
+        const locationRoles = contextMemberships
+          .filter((membership) => membership.location_id === location.id)
+          .map((membership) => membership.role);
+        const currentUserRole = highestRole(locationRoles);
+        return { ...location, current_user_role: currentUserRole, capabilities: mergeCapabilities(locationRoles) };
+      });
+    const contextRoles = contextMemberships.map((membership) => membership.role);
+    const currentUserRole = highestRole(contextRoles);
+    return {
+      organization,
+      current_user_role: currentUserRole,
+      capabilities: mergeCapabilities(contextRoles),
+      can_manage_members: currentUserRole === 'organization_owner',
+      can_manage_settings: currentUserRole === 'organization_owner',
+      assigned_location_ids: contextLocations.map((location) => location.id),
+      memberships: contextMemberships,
+      locations: contextLocations,
+    };
+  });
 }
 
 async function getContentSummary(svc, locationId, userId) {
@@ -231,8 +300,10 @@ Deno.serve(async (req) => {
         const location = await svc.entities.ProviderLocation.get(membership.location_id).catch(() => null);
         if (location) locationMap.set(location.id, location);
       }
-      if (membership.organization_id && !organizationMap.has(membership.organization_id)) {
-        const organization = await svc.entities.ProviderOrganization.get(membership.organization_id).catch(() => null);
+      const location = locationMap.get(membership.location_id);
+      const organizationId = membership.organization_id || location?.organization_id || '';
+      if (organizationId && !organizationMap.has(organizationId)) {
+        const organization = await svc.entities.ProviderOrganization.get(organizationId).catch(() => null);
         if (organization) organizationMap.set(organization.id, organization);
       }
     }
@@ -251,18 +322,25 @@ Deno.serve(async (req) => {
     for (const locationId of locationMap.keys()) contentSummaries.set(locationId, await getContentSummary(svc, locationId, user.id));
     const membershipData = memberships.filter((membership) => locationMap.has(membership.location_id)).map((membership) => {
       const location = locationMap.get(membership.location_id);
-      const organization = membership.organization_id ? organizationMap.get(membership.organization_id) : null;
-      return { membership_id: membership.id, role: normalizeMemberRole(membership.role), organization_id: membership.organization_id || null, organization_name: organization?.public_display_name || organization?.name || null, location_id: membership.location_id, location_name: location.public_display_name || location.name, location_status: location.status, profile_control_status: location.profile_control_status || 'directory', claim_verification_status: location.claim_verification_status || 'none', profile_completeness: computeLocationCompleteness(location), content_summary: contentSummaries.get(membership.location_id) };
+      const organizationId = membership.organization_id || location.organization_id || null;
+      const organization = organizationId ? organizationMap.get(organizationId) : null;
+      const normalizedRole = normalizeMemberRole(membership.role);
+      return { membership_id: membership.id, role: normalizedRole, capabilities: capabilitiesForRole(normalizedRole), organization_id: organizationId, organization_name: organization?.public_display_name || organization?.name || null, location_id: membership.location_id, location_name: location.public_display_name || location.name, location_status: location.status, profile_control_status: location.profile_control_status || 'directory', claim_verification_status: location.claim_verification_status || 'none', profile_completeness: computeLocationCompleteness(location), content_summary: contentSummaries.get(membership.location_id) };
     });
     const memberSummary = await getMemberSummary(svc, memberships, [...locationMap.keys()]);
     const organizations = [...organizationMap.values()].map((organization) => sanitizeOrganization(organization, [...locationMap.values()].filter((location) => location.organization_id === organization.id)));
+    const sanitizedLocations = [...locationMap.values()].map((location) => ({ ...sanitizeLocation(location, location.organization_id ? (organizationMap.get(location.organization_id)?.public_display_name || organizationMap.get(location.organization_id)?.name) : null), content_summary: contentSummaries.get(location.id) }));
+    const organizationContexts = buildOrganizationContexts(organizations, sanitizedLocations, membershipData);
 
     return Response.json({
       mode: 'provider_workspace',
       user: { id: user.id, full_name: user.full_name, email: user.email, role: user.role },
       memberships: membershipData,
       organizations,
-      locations: [...locationMap.values()].map((location) => ({ ...sanitizeLocation(location, location.organization_id ? (organizationMap.get(location.organization_id)?.public_display_name || organizationMap.get(location.organization_id)?.name) : null), content_summary: contentSummaries.get(location.id) })),
+      locations: sanitizedLocations,
+      organization_contexts: organizationContexts,
+      capability_catalog_version: 1,
+      current_user_capabilities: mergeCapabilities(membershipData.map((membership) => membership.role)),
       pending_review_count: pendingReviewCount,
       member_summary: memberSummary,
       current_user_role: memberSummary.current_user_role,
