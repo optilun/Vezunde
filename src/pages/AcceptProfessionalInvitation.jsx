@@ -53,7 +53,7 @@ export default function AcceptProfessionalInvitation() {
   const login = () => base44.auth.redirectToLogin(window.location.href);
 
   return (
-    <div className="min-h-screen bg-background px-4 py-12">
+    <div className="min-h-screen min-h-dvh bg-background px-4 pb-[calc(3rem+env(safe-area-inset-bottom))] pt-[calc(3rem+env(safe-area-inset-top))]">
       <div className="mx-auto max-w-xl">
         <div className="rounded-[28px] border border-border bg-card p-6 shadow-sm sm:p-8">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary">
@@ -107,7 +107,7 @@ export default function AcceptProfessionalInvitation() {
                   <p className="mt-2 text-xs leading-relaxed text-green-900/80">Asocierea este privată. Următorul pas este completarea profilului profesional.</p>
                 </div>
               </div>
-              <Link to="/contul-meu" className="mt-4 inline-flex rounded-full bg-green-950 px-4 py-2 text-xs font-semibold text-white">Deschide contul profesional</Link>
+              <Link to="/contul-meu" className="mt-4 inline-flex min-h-11 items-center rounded-full bg-green-950 px-4 py-2 text-xs font-semibold text-white lg:min-h-0">Deschide contul profesional</Link>
             </div>
           )}
         </div>
