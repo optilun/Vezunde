@@ -13,7 +13,9 @@ export default function PersonalAccountWorkspace({
   user,
   workspace,
   onboardingWorkspace,
+  professionalWorkspace,
   onOpenOrganization,
+  onOpenProfessional,
   onLogout,
   accountModes,
   activeMode,
@@ -45,7 +47,9 @@ export default function PersonalAccountWorkspace({
           user={user}
           workspace={workspace}
           onboardingWorkspace={onboardingWorkspace}
+          professionalWorkspace={professionalWorkspace}
           onOpenOrganization={onOpenOrganization}
+          onOpenProfessional={onOpenProfessional}
           onNavigate={navigate}
         />
       )}

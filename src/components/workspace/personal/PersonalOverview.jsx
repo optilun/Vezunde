@@ -1,7 +1,11 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Building2, ClipboardList, MapPin, Search } from "lucide-react";
+import { ArrowRight, Building2, ClipboardList, MapPin, Search, UserRound } from "lucide-react";
 import { CLAIM_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
+import {
+  PROFESSIONAL_REVIEW_STATUS_LABELS,
+  PROFESSIONAL_TYPE_LABELS,
+} from "@/lib/professionalProfileCatalog";
 
 const ROLE_LABELS = {
   organization_owner: "Owner organizatie",
@@ -63,7 +67,15 @@ function organizationRows(workspace, onboardingWorkspace) {
   return rows;
 }
 
-export default function PersonalOverview({ user, workspace, onboardingWorkspace, onOpenOrganization, onNavigate }) {
+export default function PersonalOverview({
+  user,
+  workspace,
+  onboardingWorkspace,
+  professionalWorkspace,
+  onOpenOrganization,
+  onOpenProfessional,
+  onNavigate,
+}) {
   const preparationWorkspace = onboardingWorkspace?.mode === "applicant_preparation"
     ? onboardingWorkspace
     : workspace?.mode === "applicant_preparation"
@@ -72,6 +84,14 @@ export default function PersonalOverview({ user, workspace, onboardingWorkspace,
   const latest = workspace?.latest_claim_status || preparationWorkspace?.latest_claim_status || preparationWorkspace?.claim;
   const organizations = organizationRows(workspace, preparationWorkspace);
   const hasPendingOrganization = organizations.some((organization) => organization.status === "pending");
+  const professional = professionalWorkspace?.mode === "professional_workspace"
+    ? professionalWorkspace.professional
+    : null;
+  const professionalReviewStatus = professional?.profile_review_status
+    || professional?.public_visibility_status
+    || "draft";
+  const professionalApproved = professionalReviewStatus === "approved";
+  const professionalPending = professionalReviewStatus === "pending_review" || professionalReviewStatus === "needs_more_info";
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -80,6 +100,43 @@ export default function PersonalOverview({ user, workspace, onboardingWorkspace,
         <h1 className="mt-1.5 font-heading text-2xl font-extrabold tracking-tight sm:text-3xl">Salut, {user.full_name || "acolo"}</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Gaseste locatii, urmareste solicitarile tale si schimba usor intre spatiile disponibile ale contului.</p>
       </section>
+
+      {professional && (
+        <section className="rounded-[22px] border border-border bg-card p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-secondary/60">
+                {professional.profile_photo_url
+                  ? <img src={professional.profile_photo_url} alt="" className="h-full w-full object-cover" />
+                  : <UserRound className="h-4 w-4 text-muted-foreground" />}
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Profilul meu profesional</div>
+                <h2 className="mt-1 truncate text-base font-bold">{professional.public_display_name || professional.full_name || "Profil profesional"}</h2>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+                  <span className="rounded-full bg-secondary px-2 py-0.5 font-semibold">
+                    {PROFESSIONAL_TYPE_LABELS[professional.professional_type] || "Specialist"}
+                  </span>
+                  <span className={`rounded-full px-2 py-0.5 font-semibold ${professionalApproved ? "bg-green-100 text-green-800" : professionalPending ? "bg-amber-100 text-amber-900" : "bg-secondary text-muted-foreground"}`}>
+                    {PROFESSIONAL_REVIEW_STATUS_LABELS[professionalReviewStatus] || professionalReviewStatus}
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  <span>Profil {professional.profile_completeness || 0}%</span>
+                  <span>{professionalWorkspace.assignments?.length || 0} {(professionalWorkspace.assignments?.length || 0) === 1 ? "locatie asociata" : "locatii asociate"}</span>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenProfessional}
+              className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-semibold hover:bg-secondary sm:w-auto"
+            >
+              Deschide profilul <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </section>
+      )}
 
       {organizations.length > 0 && (
         <section className="rounded-[22px] border border-border bg-card p-4 shadow-sm sm:p-5">
