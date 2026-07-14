@@ -27,14 +27,14 @@ export default function DirectoryResultCard({ location }) {
       <div className="mt-4 flex flex-wrap gap-2">
         <Link
           to={`/furnizor/${location.id}`}
-          className="px-4 py-2 rounded-full text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+          className="inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 lg:min-h-0"
         >
           Vezi profilul
         </Link>
         {location.phone && (
           <a
             href={`tel:${location.phone.replace(/\s/g, "")}`}
-            className="px-4 py-2 rounded-full border border-border bg-card text-sm font-medium hover:border-foreground/40 transition-colors"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:border-foreground/40 lg:min-h-0"
           >
             Suna direct
           </a>
