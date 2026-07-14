@@ -19,6 +19,30 @@ function parsePayload(raw) {
   try { return raw ? JSON.parse(raw) : {}; } catch (_error) { return {}; }
 }
 
+function hasApprovedOperationalContext(payload) {
+  return Array.isArray(payload?.functional_units)
+    && Array.isArray(payload?.capabilities)
+    && payload?.service_unit_map
+    && typeof payload.service_unit_map === 'object'
+    && !Array.isArray(payload.service_unit_map)
+    && payload?.resource_links
+    && typeof payload.resource_links === 'object'
+    && !Array.isArray(payload.resource_links);
+}
+
+async function loadApprovedOperationalPayload(svc, locationId) {
+  const submissions = await svc.entities.ProviderWorkspaceSubmission.filter({
+    location_id: locationId,
+    section: 'services',
+    status: 'approved',
+  }, '-reviewed_at', 10).catch(() => []);
+  for (const submission of submissions) {
+    const payload = parsePayload(submission.payload_json);
+    if (hasApprovedOperationalContext(payload)) return payload;
+  }
+  return null;
+}
+
 function removalServiceKeys(payload = {}) {
   return [...new Set([
     ...Object.values(payload.removal_ids || {}).flat(),
@@ -206,18 +230,21 @@ async function assertReferences(svc, locationId, payload) {
     }
   }
 
-  for (const unitKey of payload.removal_unit_keys || []) {
-    const rows = await svc.entities.LocationFunctionalUnit.filter({ location_id: locationId, unit_key: unitKey }, null, 20).catch(() => []);
-    if (!rows.some((row) => row.is_active !== false)) throw new Error(`Spațiul aprobat nu există activ: ${unitKey}`);
-  }
-
-  for (const removal of payload.removal_capabilities || []) {
-    const rows = await svc.entities.LocationCapability.filter({
-      location_id: locationId,
-      capability_key: removal.capability_key,
-      parent_unit_key: removal.parent_unit_key,
-    }, null, 20).catch(() => []);
-    if (!rows.some((row) => row.is_active !== false)) throw new Error(`Activitatea aprobată nu există activ: ${removal.capability_key}`);
+  const removalUnitKeys = payload.removal_unit_keys || [];
+  const removalCapabilities = payload.removal_capabilities || [];
+  if (removalUnitKeys.length > 0 || removalCapabilities.length > 0) {
+    const approvedPayload = await loadApprovedOperationalPayload(svc, locationId);
+    const approvedUnitKeys = new Set((approvedPayload?.functional_units || []).map((item) => item.unit_key));
+    const approvedCapabilities = new Set((approvedPayload?.capabilities || []).map(
+      (item) => `${item.capability_key}:${item.parent_unit_key}`,
+    ));
+    for (const unitKey of removalUnitKeys) {
+      if (!approvedUnitKeys.has(unitKey)) throw new Error(`Spațiul aprobat nu există activ: ${unitKey}`);
+    }
+    for (const removal of removalCapabilities) {
+      const key = `${removal.capability_key}:${removal.parent_unit_key}`;
+      if (!approvedCapabilities.has(key)) throw new Error(`Activitatea aprobată nu există activ: ${removal.capability_key}`);
+    }
   }
 
   for (const rawKey of payload.raw_removal_keys || []) {
