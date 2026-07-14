@@ -35,6 +35,21 @@ function safeArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function parsePayload(raw) {
+  try { return raw ? JSON.parse(raw) : {}; } catch (_error) { return {}; }
+}
+
+function isObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function hasApprovedOperationalContext(payload) {
+  return Array.isArray(payload?.functional_units)
+    && Array.isArray(payload?.capabilities)
+    && isObject(payload?.service_unit_map)
+    && isObject(payload?.resource_links);
+}
+
 function inferInitialUnits(location, serviceKeys) {
   const layout = getFunctionalUnitLayout(location?.provider_profile_type, location?.provider_type);
   const keys = new Set(layout.primaryUnits || layout.primary || []);
@@ -68,13 +83,18 @@ Deno.serve(async (req) => {
     if (!location) return Response.json({ error: 'Locația nu a fost găsită' }, { status: 404 });
     if (location.profile_control_status === 'suspended') return Response.json({ error: 'Profilul este suspendat' }, { status: 403 });
 
-    const [services, assignments, equipment, facilities, functionalUnits, capabilities] = await Promise.all([
+    const [services, assignments, equipment, facilities, functionalUnits, capabilities, approvedSubmissions] = await Promise.all([
       svc.entities.LocationService.filter({ location_id: locationId }, 'service_key', 700),
       svc.entities.ProfessionalLocationAssignment.filter({ location_id: locationId, active_status: 'activ' }, null, 300),
       svc.entities.LocationEquipment.filter({ location_id: locationId }, null, 500).catch(() => []),
       svc.entities.LocationFacility.filter({ location_id: locationId }, null, 500).catch(() => []),
       svc.entities.LocationFunctionalUnit?.filter({ location_id: locationId }, null, 100).catch(() => []) || [],
       svc.entities.LocationCapability?.filter({ location_id: locationId }, null, 100).catch(() => []) || [],
+      svc.entities.ProviderWorkspaceSubmission.filter({
+        location_id: locationId,
+        section: 'services',
+        status: 'approved',
+      }, '-reviewed_at', 10).catch(() => []),
     ]);
 
     const professionalIds = [...new Set(assignments.map((item) => item.professional_id).filter(Boolean))];
@@ -82,18 +102,57 @@ Deno.serve(async (req) => {
       professionalIds.map((id) => svc.entities.ProfessionalProfile.get(id).catch(() => null)),
     )).filter(Boolean);
     const professionalById = Object.fromEntries(professionals.map((profile) => [profile.id, profile]));
+    const approvedSubmission = approvedSubmissions[0] || null;
+    const approvedPayload = parsePayload(approvedSubmission?.payload_json);
+    const approvedOperationalContext = hasApprovedOperationalContext(approvedPayload);
+    const approvedResourceLinks = approvedOperationalContext ? approvedPayload.resource_links : {};
+
+    const professionalUnitKeysByAssignmentId = Object.fromEntries(
+      safeArray(approvedResourceLinks.professionals).map((item) => [item.assignment_id, safeArray(item.unit_keys)]),
+    );
+    const equipmentUnitKeyById = Object.fromEntries(
+      safeArray(approvedResourceLinks.equipment).map((item) => [item.equipment_id, clean(item.unit_key)]),
+    );
+    const facilityUnitKeyById = Object.fromEntries(
+      safeArray(approvedResourceLinks.facilities).map((item) => [item.facility_id, clean(item.unit_key)]),
+    );
+    const contextualAssignments = assignments.map((assignment) => ({
+      ...assignment,
+      functional_unit_keys: approvedOperationalContext
+        ? (professionalUnitKeysByAssignmentId[assignment.id] || [])
+        : safeArray(assignment.functional_unit_keys),
+    }));
+    const contextualEquipment = equipment.map((item) => ({
+      ...item,
+      functional_unit_key: approvedOperationalContext
+        ? (equipmentUnitKeyById[item.id] || '')
+        : clean(item.functional_unit_key),
+    }));
+    const contextualFacilities = facilities.map((item) => ({
+      ...item,
+      functional_unit_key: approvedOperationalContext
+        ? (facilityUnitKeyById[item.id] || '')
+        : clean(item.functional_unit_key),
+    }));
 
     const canonicalActiveServices = services.filter((service) => service.is_active !== false)
       .map((service) => ({ service, normalized: normalizeServiceKey(service.service_key) }))
       .filter((item) => item.normalized.status === 'canonical');
     const serviceKeys = [...new Set(canonicalActiveServices.map((item) => item.normalized.canonicalKey).filter(Boolean))];
-    const activeFunctionalUnits = safeArray(functionalUnits).filter(active);
-    const activeCapabilities = safeArray(capabilities).filter(active);
+    const activeFunctionalUnits = approvedOperationalContext
+      ? safeArray(approvedPayload.functional_units).map((item) => ({ ...item, is_active: true, confirmation_level: 'vezunde_verified' }))
+      : safeArray(functionalUnits).filter(active);
+    const activeCapabilities = approvedOperationalContext
+      ? safeArray(approvedPayload.capabilities).map((item) => ({ ...item, is_active: true, confirmation_level: 'vezunde_verified' }))
+      : safeArray(capabilities).filter(active);
     const hasPersistedUnits = activeFunctionalUnits.length > 0;
     const inferredUnitKeys = inferInitialUnits(location, serviceKeys);
     const serviceUnitMap = Object.fromEntries(canonicalActiveServices.map(({ service, normalized }) => [
       normalized.canonicalKey,
-      clean(service.functional_unit_key) || getServiceOperationalContext(normalized.canonicalKey)?.unitKey || '',
+      clean(approvedPayload.service_unit_map?.[normalized.canonicalKey])
+        || clean(service.functional_unit_key)
+        || getServiceOperationalContext(normalized.canonicalKey)?.unitKey
+        || '',
     ]));
     const serviceCapabilityMap = Object.fromEntries(canonicalActiveServices.map(({ service, normalized }) => [
       normalized.canonicalKey,
@@ -102,10 +161,10 @@ Deno.serve(async (req) => {
 
     const baseContext = {
       location,
-      assignments,
+      assignments: contextualAssignments,
       professionals,
-      equipment,
-      facilities,
+      equipment: contextualEquipment,
+      facilities: contextualFacilities,
       functionalUnits: activeFunctionalUnits,
       capabilities: activeCapabilities,
       service_unit_map: serviceUnitMap,
@@ -162,7 +221,9 @@ Deno.serve(async (req) => {
       location_id: locationId,
       role: normalizeRole(membership.role),
       can_edit_services: ['organization_owner', 'location_manager'].includes(normalizeRole(membership.role)),
-      care_setting: clean(location.care_setting) || 'not_applicable',
+      care_setting: approvedOperationalContext
+        ? (clean(approvedPayload.care_setting) || 'not_applicable')
+        : (clean(location.care_setting) || 'not_applicable'),
       service_keys: serviceKeys,
       service_unit_map: serviceUnitMap,
       service_capability_map: serviceCapabilityMap,
@@ -171,8 +232,10 @@ Deno.serve(async (req) => {
       functional_units: activeFunctionalUnits,
       capabilities: activeCapabilities,
       inferred_functional_unit_keys: inferredUnitKeys,
-      operational_context_persisted: hasPersistedUnits,
-      assignments: assignments.map((assignment) => ({
+      operational_context_persisted: approvedOperationalContext || hasPersistedUnits,
+      operational_context_source: approvedOperationalContext ? 'approved_submission' : (hasPersistedUnits ? 'entities' : 'inferred'),
+      operational_context_submission_id: approvedOperationalContext ? approvedSubmission.id : '',
+      assignments: contextualAssignments.map((assignment) => ({
         id: assignment.id,
         professional_id: assignment.professional_id,
         professional_type: assignment.professional_type,
@@ -180,7 +243,7 @@ Deno.serve(async (req) => {
         full_name: professionalById[assignment.professional_id]?.full_name || professionalById[assignment.professional_id]?.public_display_name || 'Specialist',
         verification_status: professionalById[assignment.professional_id]?.verification_status || 'unverified',
       })),
-      equipment: equipment.map((item) => ({
+      equipment: contextualEquipment.map((item) => ({
         id: item.id,
         equipment_category_key: item.equipment_category_key,
         equipment_label: item.equipment_label || item.equipment_category_key,
@@ -189,7 +252,7 @@ Deno.serve(async (req) => {
         evidence_status: item.evidence_status,
         is_active: item.is_active !== false,
       })),
-      facilities: facilities.map((item) => ({
+      facilities: contextualFacilities.map((item) => ({
         id: item.id,
         facility_key: item.facility_key,
         functional_unit_key: clean(item.functional_unit_key),
