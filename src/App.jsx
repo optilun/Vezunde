@@ -15,6 +15,7 @@ import ForSpecialists from "./pages/ForSpecialists";
 import Partners from "./pages/Partners";
 import AddOrClaim from "./pages/AddOrClaim";
 import AcceptProfessionalInvitation from "./pages/AcceptProfessionalInvitation";
+import ProfessionalOnboarding from "./pages/ProfessionalOnboarding";
 import MyAccount from "./pages/MyAccount";
 import AdminDirectoryOps from "./pages/AdminDirectoryOps";
 import PostLogin from "./pages/PostLogin";
@@ -71,6 +72,7 @@ const AuthenticatedApp = () => {
       </Route>
 
       <Route element={<RequireAuth />}>
+        <Route path="/profil-profesional/nou" element={<ProfessionalOnboarding />} />
         <Route path="/contul-meu" element={<MyAccount />} />
         <Route path="/contul-meu/locatii/:locationId/:locationModule" element={<MyAccount />} />
         <Route path="/dupa-login" element={<PostLogin />} />

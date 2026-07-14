@@ -247,7 +247,7 @@ export default function ProfessionalProfileEditor({ workspace, onRefresh }) {
           <section className="space-y-5 rounded-3xl border border-border bg-card p-5 shadow-sm">
             <div>
               <h2 className="text-sm font-bold">Identitate publică</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Tipul profesional este blocat și poate fi schimbat doar prin verificare Vezunde.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Tipul profesional este blocat și poate fi schimbat doar prin verificare VIASEE.</p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Nume public" hint="Folosește numele profesional real, cu titulatura doar dacă este corectă.">
@@ -355,7 +355,7 @@ export default function ProfessionalProfileEditor({ workspace, onRefresh }) {
           <section className="rounded-3xl border border-border bg-card p-4 shadow-sm">
             <h3 className="text-sm font-bold">Reguli de publicare</h3>
             <div className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
-              <p>• Profilul rămâne privat până la aprobarea Vezunde.</p>
+              <p>• Profilul rămâne privat până la aprobarea VIASEE.</p>
               <p>• Locația nu poate schimba numele, fotografia sau descrierea ta.</p>
               <p>• Asocierea cu fiecare locație se aprobă separat pentru afișarea publică.</p>
               <p>• Tipul profesional nu se modifică din acest formular.</p>

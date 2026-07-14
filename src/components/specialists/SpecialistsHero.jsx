@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MapPin, Loader2, MapPinPlus, X } from "lucide-react";
+import { Search, MapPin, Loader2, MapPinPlus } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
 
@@ -9,7 +9,6 @@ export default function SpecialistsHero() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [showProfessionalNotice, setShowProfessionalNotice] = useState(false);
   const reqRef = useRef(0);
 
   useEffect(() => {
@@ -45,7 +44,7 @@ export default function SpecialistsHero() {
         <div className="relative z-10 text-center lg:text-left">
           <h1 className="font-heading font-extrabold tracking-[-0.03em] leading-[1.1] text-3xl sm:text-5xl">Administreaza cum apari pe VIASEE.</h1>
           <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-xl mx-auto lg:mx-0 leading-relaxed">
-            Revendica sau adauga o locatie. Daca lucrezi independent ca medic oftalmolog sau optometrist, iti poti crea un profil profesional.
+            Revendica sau adauga o locatie. Daca lucrezi independent ca medic oftalmolog, optometrist sau optician, iti poti crea un profil profesional.
           </p>
 
           <div className="mt-7 max-w-xl mx-auto lg:mx-0">
@@ -114,10 +113,10 @@ export default function SpecialistsHero() {
             <p className="mt-2 text-xs text-muted-foreground text-center sm:text-left">Noua locatie este analizata inainte de publicare.</p>
 
             <div className="mt-4 pt-4 border-t border-border/60 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-              <span className="text-xs text-muted-foreground text-center sm:text-left">Lucrezi independent ca medic oftalmolog sau optometrist?</span>
+              <span className="text-xs text-muted-foreground text-center sm:text-left">Lucrezi independent ca medic oftalmolog, optometrist sau optician?</span>
               <button
                 type="button"
-                onClick={() => setShowProfessionalNotice(true)}
+                onClick={() => navigate("/profil-profesional/nou")}
                 className="text-xs font-medium text-foreground underline underline-offset-4 hover:opacity-70 transition-opacity"
               >
                 Creeaza profil profesional →
@@ -127,22 +126,6 @@ export default function SpecialistsHero() {
         </div>
       </section>
 
-      {showProfessionalNotice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="professional-notice-title">
-          <div className="relative w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl">
-            <button type="button" onClick={() => setShowProfessionalNotice(false)} className="absolute right-4 top-4 rounded-lg p-1.5 text-muted-foreground hover:bg-secondary" aria-label="Inchide">
-              <X className="h-4 w-4" />
-            </button>
-            <h2 id="professional-notice-title" className="pr-8 font-heading text-xl font-bold">Profilurile profesionale sunt in pregatire</h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Fluxul dedicat medicilor oftalmologi, optometristilor si opticienilor va fi separat de inscrierea organizatiilor. Nu te trimitem intr-un formular de locatie care nu se potriveste profilului tau.
-            </p>
-            <button type="button" onClick={() => setShowProfessionalNotice(false)} className="mt-5 w-full rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-background">
-              Am inteles
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 }

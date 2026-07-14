@@ -29,6 +29,13 @@ const SPECIALIZATIONS_BY_TYPE: Record<string, string[]> = {
   ],
 };
 
+const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
+const ROLE_BY_TYPE: Record<string, string> = {
+  ophthalmologist: 'medic_oftalmolog',
+  optometrist: 'optometrist',
+  optician: 'optician',
+};
+
 function res(body: Record<string, unknown>, status = 200) {
   return Response.json(body, { status });
 }
@@ -165,7 +172,7 @@ function validatePayload(payload: Record<string, unknown>, professionalType: str
   };
 }
 
-function completeness(draft: Record<string, unknown>, hasAssignment: boolean) {
+function completeness(draft: Record<string, unknown>, professionalType: string) {
   let score = 0;
   if (text(draft.public_display_name).length >= 3) score += 15;
   if (text(draft.professional_bio).length >= 80) score += 25;
@@ -173,7 +180,7 @@ function completeness(draft: Record<string, unknown>, hasAssignment: boolean) {
   if (text(draft.profile_photo_url)) score += 15;
   if (text(draft.public_email) || text(draft.public_phone)) score += 10;
   if (text(draft.public_website_url) || text(draft.linkedin_url) || text(draft.facebook_url) || text(draft.instagram_url)) score += 5;
-  if (hasAssignment) score += 10;
+  if (PROFESSIONAL_TYPES.includes(professionalType)) score += 10;
   return score;
 }
 
@@ -203,6 +210,73 @@ Deno.serve(async (req) => {
     const action = text(payload.action || 'get');
     const profiles = await svc.entities.ProfessionalProfile.filter({ user_id: user.id }, '-created_date', 5);
     const profile = profiles[0] || null;
+
+    if (action === 'create_profile') {
+      if (profile) {
+        return res({
+          success: true,
+          already_exists: true,
+          professional_id: profile.id,
+          professional_type: profile.professional_type,
+        });
+      }
+
+      const professionalType = text(payload.professional_type);
+      if (!PROFESSIONAL_TYPES.includes(professionalType)) {
+        return res({ error: 'Selecteaza un tip profesional valid' }, 400);
+      }
+      const checkedName = plain(payload.full_name, 'Numele complet', 120, true);
+      if (checkedName.error) return res({ error: checkedName.error }, 400);
+
+      const draft = {
+        public_display_name: checkedName.value,
+        professional_bio: '',
+        specializations: [],
+        profile_photo_url: '',
+        public_website_url: '',
+        linkedin_url: '',
+        facebook_url: '',
+        instagram_url: '',
+        public_phone: '',
+        public_email: '',
+        accepts_independent_requests: false,
+      };
+      const now = new Date().toISOString();
+      const created = await svc.entities.ProfessionalProfile.create({
+        user_id: user.id,
+        full_name: checkedName.value,
+        public_display_name: checkedName.value,
+        role: ROLE_BY_TYPE[professionalType],
+        professional_type: professionalType,
+        specializations: [],
+        professional_bio: '',
+        public_email: '',
+        accepts_independent_requests: false,
+        verification_status: 'unverified',
+        public_visibility_status: 'draft',
+        profile_review_status: 'draft',
+        pending_profile_json: JSON.stringify(draft),
+        profile_completeness: completeness(draft, professionalType),
+        profile_updated_at: now,
+        is_public: false,
+      });
+      await audit(
+        svc,
+        user,
+        created.id,
+        'create_professional_profile',
+        {},
+        { professional_type: professionalType, profile_review_status: 'draft' },
+        'Utilizatorul si-a creat profilul profesional independent. Nu au fost create organizatii, acces administrativ sau asocieri la locatii.'
+      );
+      return res({
+        success: true,
+        professional_id: created.id,
+        professional_type: professionalType,
+        profile_review_status: 'draft',
+      }, 201);
+    }
+
     if (!profile) return res({ error: 'Nu exista un profil profesional asociat acestui cont' }, 404);
 
     const assignments = await svc.entities.ProfessionalLocationAssignment.filter({
@@ -222,7 +296,7 @@ Deno.serve(async (req) => {
         profile_review_status: profile.profile_review_status || profile.public_visibility_status || 'draft',
         public_visibility_status: profile.public_visibility_status || 'draft',
         verification_status: profile.verification_status || 'unverified',
-        profile_completeness: Number(profile.profile_completeness || completeness(currentDraft, hasAssignment)),
+        profile_completeness: Number(profile.profile_completeness || completeness(currentDraft, profile.professional_type || '')),
         review_note: profile.review_note || '',
         submitted_at: profile.submitted_at || null,
         has_active_assignment: hasAssignment,
@@ -234,7 +308,7 @@ Deno.serve(async (req) => {
       if (reviewStatus === 'pending_review') return res({ error: 'Profilul este deja in verificare si nu poate fi modificat' }, 409);
       const checked = validatePayload(payload.profile || {}, profile.professional_type || '');
       if (checked.error) return res({ error: checked.error, fields: checked.fields || [] }, 400);
-      const score = completeness(checked.value, hasAssignment);
+      const score = completeness(checked.value, profile.professional_type || '');
       const updates = {
         pending_profile_json: JSON.stringify(checked.value),
         profile_review_status: 'draft',
@@ -252,12 +326,11 @@ Deno.serve(async (req) => {
       if (reviewStatus === 'pending_review') return res({ error: 'Profilul este deja in verificare' }, 409);
       const checked = validatePayload(currentDraft, profile.professional_type || '');
       if (checked.error) return res({ error: checked.error }, 400);
-      const score = completeness(checked.value, hasAssignment);
+      const score = completeness(checked.value, profile.professional_type || '');
       const missing: string[] = [];
       if (text(checked.value.public_display_name).length < 3) missing.push('nume public');
       if (text(checked.value.professional_bio).length < 80) missing.push('descriere profesionala de minimum 80 de caractere');
       if (!Array.isArray(checked.value.specializations) || checked.value.specializations.length === 0) missing.push('cel putin o specializare');
-      if (!hasAssignment) missing.push('cel putin o locatie asociata');
       if (missing.length) return res({ error: `Completeaza inainte de trimitere: ${missing.join(', ')}`, missing }, 400);
 
       const now = new Date().toISOString();
