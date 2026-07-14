@@ -202,7 +202,12 @@ function LocationCompletionRow({ item, onNavigate }) {
   );
 }
 
-export default function ProviderOverview({ overview, onNavigate }) {
+export default function ProviderOverview({
+  overview,
+  onNavigate,
+  canManageOrganizationProfile = false,
+  canManageLocations = false,
+}) {
   const organization = overview.organization || {};
   const location = overview.location || {};
   const organizationSummary = overview.organization_summary || {};
@@ -258,12 +263,14 @@ export default function ProviderOverview({ overview, onNavigate }) {
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 font-semibold text-foreground"><Globe2 className="h-3.5 w-3.5" /> {PROFILE_STATUS_LABELS[profileStatus] || profileStatus}</span>
             </div>
           </div>
-          <button onClick={() => onNavigate("profile")} className="inline-flex w-fit items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background hover:opacity-90">
-            Editeaza profilul <ArrowRight className="h-4 w-4" />
-          </button>
+          {canManageOrganizationProfile && (
+            <button onClick={() => onNavigate("profile")} className="inline-flex w-fit items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background hover:opacity-90">
+              Editeaza profilul <ArrowRight className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
-        {fallbackLabels.length > 0 && (
+        {canManageOrganizationProfile && fallbackLabels.length > 0 && (
           <div className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
@@ -314,8 +321,8 @@ export default function ProviderOverview({ overview, onNavigate }) {
           </details>
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <button onClick={() => onNavigate("profile")} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary">Editeaza organizatia <ArrowRight className="h-4 w-4" /></button>
-            <button onClick={() => onNavigate("locations")} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary">Gestioneaza locatiile <ArrowRight className="h-4 w-4" /></button>
+            {canManageOrganizationProfile && <button onClick={() => onNavigate("profile")} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary">Editeaza organizatia <ArrowRight className="h-4 w-4" /></button>}
+            <button onClick={() => onNavigate("locations")} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary">{canManageLocations ? "Gestioneaza locatiile" : "Vezi locatiile"} <ArrowRight className="h-4 w-4" /></button>
           </div>
         </section>
 

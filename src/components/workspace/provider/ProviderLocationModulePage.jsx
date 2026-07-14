@@ -8,16 +8,19 @@ const MODULES = {
   servicii: {
     label: "Servicii",
     icon: Wrench,
+    capability: "location.manage_content",
     description: "Configureaza serviciile, spatiile functionale si resursele acestei locatii.",
   },
   program: {
     label: "Program",
     icon: Clock,
+    capability: "location.manage_operational_status",
     description: "Stabileste programul normal, exceptiile si modul de primire a clientilor.",
   },
   specialisti: {
     label: "Specialisti",
     icon: Users,
+    capability: "location.manage_specialists",
     description: "Gestioneaza specialistii si invitatiile profesionale asociate acestei locatii.",
   },
 };
@@ -32,12 +35,14 @@ export default function ProviderLocationModulePage({
 }) {
   const location = (workspace.locations || []).find((item) => item.id === locationId) || null;
   const config = MODULES[moduleKey];
+  const capabilities = new Set(workspace.current_user_capabilities || []);
+  const hasModuleAccess = Boolean(config && capabilities.has(config.capability));
 
-  if (!location || !config) {
+  if (!location || !config || !hasModuleAccess) {
     return (
       <div className="rounded-[24px] border border-border bg-card p-6 shadow-sm">
         <h1 className="font-heading text-xl font-extrabold tracking-tight">Modul indisponibil</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Locatia sau modulul solicitat nu a putut fi gasit.</p>
+        <p className="mt-2 text-sm text-muted-foreground">{location && config ? "Rolul tau nu permite accesul la acest modul." : "Locatia sau modulul solicitat nu a putut fi gasit."}</p>
         <button type="button" onClick={onBack} className="mt-5 inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary">
           <ArrowLeft className="h-4 w-4" /> Inapoi la locatii
         </button>

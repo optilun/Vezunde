@@ -174,6 +174,13 @@ function defaultValues(location) {
 
 export default function ProviderLocations({ workspace, selectedLocationId, onSelect, onRefresh, onOpenModule }) {
   const locations = workspace.locations || [];
+  const capabilities = new Set(workspace.current_user_capabilities || []);
+  const canAddLocations = capabilities.has("organization.manage_locations");
+  const canManageLocationProfile = capabilities.has("location.manage_profile");
+  const canManageLocationContent = capabilities.has("location.manage_content");
+  const canManageSpecialists = capabilities.has("location.manage_specialists");
+  const canManageOperationalStatus = capabilities.has("location.manage_operational_status");
+  const visibleModuleCount = [canManageLocationContent, canManageOperationalStatus, canManageSpecialists].filter(Boolean).length;
   const locationById = Object.fromEntries(locations.map((location) => [location.id, location]));
   const selectedLocation = locationById[selectedLocationId] || locations[0] || null;
   const [draft, setDraft] = useState(null);
@@ -225,6 +232,12 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
 
   const loadDraft = async () => {
     if (!selectedLocation?.id) return;
+    if (!canManageLocationProfile) {
+      setDraft(null);
+      setLatestLocationSubmission(null);
+      setValues(defaultValues(selectedLocation));
+      return;
+    }
     const response = await base44.functions.invoke("submitProviderWorkspaceChange", { action: "list_mine", location_id: selectedLocation.id }).catch(() => ({ data: { submissions: [] } }));
     const locationSubmissions = (response.data?.submissions || []).filter((submission) => submission.section === "location_details");
     const own = locationSubmissions.find((submission) => ["draft", "needs_more_info", "pending_review"].includes(submission.status));
@@ -247,7 +260,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
     setMessage("");
     setShowAdvancedMap(false);
     setEditOpen(false);
-  }, [selectedLocation?.id]);
+  }, [selectedLocation?.id, canManageLocationProfile]);
 
   useEffect(() => {
     if (!editOpen) return undefined;
@@ -334,7 +347,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
           <MapPin className="mx-auto h-7 w-7 text-muted-foreground" />
           <h2 className="mt-3 text-sm font-bold">Nu exista locatii</h2>
           <p className="mt-1 text-xs text-muted-foreground">Dupa aprobare, fiecare locatie va avea propriile servicii, program, specialisti si fotografii.</p>
-          <Link to="/adauga-sau-revendica" className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background"><Plus className="h-4 w-4" /> Adauga locatie</Link>
+          {canAddLocations && <Link to="/adauga-sau-revendica" className="mt-4 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background"><Plus className="h-4 w-4" /> Adauga locatie</Link>}
         </section>
       </div>
     );
@@ -347,7 +360,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
           <h1 className="font-heading text-2xl font-extrabold tracking-tight">Locatii</h1>
           <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Gestioneaza fiecare punct de lucru. Serviciile, programul, specialistii, fotografiile si datele publice sunt separate pe locatie.</p>
         </div>
-        <Link to="/adauga-sau-revendica" className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background hover:opacity-90"><Plus className="h-4 w-4" /> Adauga locatie</Link>
+        {canAddLocations && <Link to="/adauga-sau-revendica" className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background hover:opacity-90"><Plus className="h-4 w-4" /> Adauga locatie</Link>}
       </div>
 
       <div className={`grid gap-6 ${hasMultipleLocations ? "xl:grid-cols-[330px_minmax(0,1fr)] xl:items-start" : "grid-cols-1"}`}>
@@ -387,9 +400,11 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                         <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${locationDataState.className}`}>
                           {locationDataState.label}
                         </span>
-                        <button type="button" onClick={() => setEditOpen(true)} className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold hover:bg-secondary">
-                          <Pencil className="h-3.5 w-3.5" /> Editeaza datele
-                        </button>
+                        {canManageLocationProfile && (
+                          <button type="button" onClick={() => setEditOpen(true)} className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold hover:bg-secondary">
+                            <Pencil className="h-3.5 w-3.5" /> Editeaza datele
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -422,10 +437,10 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
                   <div><div className="text-sm font-bold">Configureaza locatia</div><p className="mt-1 text-xs text-muted-foreground">Module separate pentru acest punct de lucru.</p></div>
                   <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{selectedLocationName}</span>
                 </div>
-                <div className="grid gap-3 md:grid-cols-3">
-                  <ConfigureCard icon={Wrench} title="Servicii" text="Alege serviciile disponibile in aceasta locatie." onClick={() => onOpenModule?.("servicii", selectedLocation.id)} />
-                  <ConfigureCard icon={Clock} title="Program" text="Seteaza programul acestei locatii." onClick={() => onOpenModule?.("program", selectedLocation.id)} />
-                  <ConfigureCard icon={Users} title="Specialisti" text="Invita specialistii asociati acestei locatii." onClick={() => onOpenModule?.("specialisti", selectedLocation.id)} />
+                <div className={`grid gap-3 ${visibleModuleCount >= 3 ? "md:grid-cols-3" : visibleModuleCount === 2 ? "md:grid-cols-2" : "grid-cols-1"}`}>
+                  {canManageLocationContent && <ConfigureCard icon={Wrench} title="Servicii" text="Alege serviciile disponibile in aceasta locatie." onClick={() => onOpenModule?.("servicii", selectedLocation.id)} />}
+                  {canManageOperationalStatus && <ConfigureCard icon={Clock} title="Program" text="Seteaza programul acestei locatii." onClick={() => onOpenModule?.("program", selectedLocation.id)} />}
+                  {canManageSpecialists && <ConfigureCard icon={Users} title="Specialisti" text="Invita specialistii asociati acestei locatii." onClick={() => onOpenModule?.("specialisti", selectedLocation.id)} />}
                 </div>
               </section>
             </>
@@ -433,7 +448,7 @@ export default function ProviderLocations({ workspace, selectedLocationId, onSel
         </div>
       </div>
 
-      {editOpen && selectedLocation && (
+      {editOpen && canManageLocationProfile && selectedLocation && (
         <div className="fixed inset-0 z-[80] bg-black/35 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditOpen(false); }}>
           <aside className="absolute inset-y-0 right-0 flex w-full max-w-3xl flex-col border-l border-border bg-background shadow-2xl" role="dialog" aria-modal="true" aria-label="Editeaza datele locatiei">
             <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-5 py-4 sm:px-6">

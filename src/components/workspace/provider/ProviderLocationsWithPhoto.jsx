@@ -7,6 +7,9 @@ import ProviderAddLocationFlow from "./ProviderAddLocationFlow";
 
 export default function ProviderLocationsWithPhoto(props) {
   const { workspace, selectedLocationId, onSelect, onRefresh } = props;
+  const capabilities = new Set(workspace.current_user_capabilities || []);
+  const canManagePhoto = capabilities.has("location.manage_content");
+  const canAddLocation = capabilities.has("organization.manage_locations");
   const containerRef = useRef(null);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [addLocationOpen, setAddLocationOpen] = useState(false);
@@ -27,16 +30,20 @@ export default function ProviderLocationsWithPhoto(props) {
         return content.includes("Configureaza locatia") || content.includes("Configurează locația");
       });
       const grid = configureSection?.querySelector(".grid.gap-3");
-      if (grid) {
+      if (grid && canManagePhoto) {
         grid.classList.remove("md:grid-cols-3");
         grid.classList.add("sm:grid-cols-2", "xl:grid-cols-4", "vezunde-location-modules");
         setPortalTarget(grid);
-      } else setPortalTarget(null);
+      } else {
+        grid?.classList.remove("sm:grid-cols-2", "xl:grid-cols-4", "vezunde-location-modules");
+        if (grid) grid.classList.add("md:grid-cols-3");
+        setPortalTarget(null);
+      }
     };
 
     const interceptAddLocation = (event) => {
       const link = event.target.closest('a[href="/adauga-sau-revendica"]');
-      if (!link || !root.contains(link)) return;
+      if (!canAddLocation || !link || !root.contains(link)) return;
       event.preventDefault();
       event.stopPropagation();
       setAddLocationOpen(true);
@@ -50,7 +57,12 @@ export default function ProviderLocationsWithPhoto(props) {
       root.removeEventListener("click", interceptAddLocation, true);
       observer.disconnect();
     };
-  }, [selectedLocationId]);
+  }, [canAddLocation, canManagePhoto, selectedLocationId]);
+
+  useEffect(() => {
+    if (!canManagePhoto) setPhotoOpen(false);
+    if (!canAddLocation) setAddLocationOpen(false);
+  }, [canAddLocation, canManagePhoto]);
 
   useEffect(() => {
     if (!photoOpen && !addLocationOpen) return undefined;
@@ -98,7 +110,7 @@ export default function ProviderLocationsWithPhoto(props) {
 
       <ProviderLocations {...props} />
 
-      {portalTarget && selectedLocation && createPortal(
+      {canManagePhoto && portalTarget && selectedLocation && createPortal(
         <button type="button" onClick={() => setPhotoOpen(true)} className="h-full min-h-28 rounded-2xl border border-border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:shadow-sm">
           <div className="grid h-full grid-cols-[40px_minmax(0,1fr)] items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center self-start rounded-2xl bg-secondary"><Image className="h-4 w-4" /></div>
@@ -112,7 +124,7 @@ export default function ProviderLocationsWithPhoto(props) {
         portalTarget,
       )}
 
-      {photoOpen && selectedLocation && (
+      {canManagePhoto && photoOpen && selectedLocation && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
           onMouseDown={(event) => {
@@ -132,7 +144,7 @@ export default function ProviderLocationsWithPhoto(props) {
         </div>
       )}
 
-      {addLocationOpen && selectedLocation && (
+      {canAddLocation && addLocationOpen && selectedLocation && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6">
           <div className="flex max-h-[98dvh] w-full flex-col overflow-hidden rounded-t-[24px] border border-border bg-background shadow-2xl sm:max-h-[94vh] sm:max-w-4xl sm:rounded-[28px]">
             <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-4 py-4 sm:px-5 safe-area-top">

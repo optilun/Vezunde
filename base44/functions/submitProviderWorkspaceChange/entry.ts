@@ -26,6 +26,14 @@ const CLAIM_PREP_PUBLIC_PROFILE_FIELDS = ['public_description', 'website_url', '
 const CLAIM_PREP_SERVICE_GROUPS = [...CANONICAL_CLAIM_PREP_SERVICE_GROUPS, 'patient_services'];
 const AVAILABILITY_STATUSES = ['astazi', 'urmatoarele_zile', 'saptamana_aceasta', 'doar_programare', 'necunoscuta'];
 const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
+const PROVIDER_SECTION_ROLES = {
+  public_profile: ['organization_owner'],
+  location_details: ['organization_owner', 'location_manager'],
+  services: ['organization_owner', 'location_manager'],
+  team: ['organization_owner', 'location_manager'],
+  media: ['organization_owner', 'location_manager'],
+  article: ['organization_owner', 'location_manager'],
+};
 const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
 const SPECIALIST_INVITE_ROLES = ['ophthalmologist', 'optometrist', 'optician', 'contact_lens_specialist', 'optical_workshop_specialist', 'other_specialist', 'other_relevant_specialist'];
 
@@ -53,6 +61,17 @@ function normalizeMemberRole(role) {
   if (role === 'owner') return 'organization_owner';
   if (role === 'staff') return 'location_staff';
   return MEMBER_ROLES.includes(role) ? role : '';
+}
+
+function highestMemberRole(roles) {
+  if (roles.includes('organization_owner')) return 'organization_owner';
+  if (roles.includes('location_manager')) return 'location_manager';
+  if (roles.includes('location_staff')) return 'location_staff';
+  return '';
+}
+
+function roleCanEditSection(memberRole, section) {
+  return (PROVIDER_SECTION_ROLES[section] || []).includes(normalizeMemberRole(memberRole));
 }
 
 function checkUnknown(section, payload, allowedOverride = null) {
@@ -513,13 +532,14 @@ async function resolveAccess(svc, user, payload) {
       location_id: requestedLocationId,
       status: 'active',
     });
-    if (memberships.some((membership) => normalizeMemberRole(membership.role))) {
+    const memberRole = highestMemberRole(memberships.map((membership) => normalizeMemberRole(membership.role)));
+    if (memberRole) {
       const loc = await svc.entities.ProviderLocation.get(requestedLocationId).catch(() => null);
       if (!loc) return bad({ error: 'Locatia nu a fost gasita' }, 404);
       if (loc.profile_control_status === 'suspended') return bad({ error: 'Profilul este suspendat' }, 403);
       const allMemberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' });
       const permittedLocationIds = [...new Set(allMemberships
-        .filter((membership) => normalizeMemberRole(membership.role))
+        .filter((membership) => ['organization_owner', 'location_manager'].includes(normalizeMemberRole(membership.role)))
         .map((membership) => membership.location_id)
         .filter(Boolean))];
       return {
@@ -527,6 +547,7 @@ async function resolveAccess(svc, user, payload) {
         mode: 'provider_workspace',
         loc,
         location_id: requestedLocationId,
+        member_role: memberRole,
         claim: null,
         context: { permittedLocationIds },
       };
@@ -654,15 +675,18 @@ Deno.serve(async (req) => {
       }, '-created_date', 50);
       return Response.json({
         mode: access.mode,
-        submissions: mergedOwn.map(sanitizeSubmission),
+        submissions: mergedOwn.filter((submission) => roleCanEditSection(access.member_role, submission.section)).map(sanitizeSubmission),
         conflicts: otherActive
-          .filter((submission) => submission.submitted_by_user_id !== user.id && submission.section !== 'article' && !isPromotedPrivateDraft(submission))
+          .filter((submission) => roleCanEditSection(access.member_role, submission.section) && submission.submitted_by_user_id !== user.id && submission.section !== 'article' && !isPromotedPrivateDraft(submission))
           .map(safeConflict),
       });
     }
 
     if (!payload.section || !WRITABLE_SECTIONS.includes(payload.section)) {
       return Response.json({ error: 'Aceasta sectiune nu este disponibila' }, { status: 400 });
+    }
+    if (access.mode === 'provider_workspace' && !roleCanEditSection(access.member_role, payload.section)) {
+      return Response.json({ error: 'Rolul tau nu permite modificarea acestei sectiuni' }, { status: 403 });
     }
 
     if (action === 'create_draft') {
@@ -827,6 +851,9 @@ Deno.serve(async (req) => {
       if (!payload.submission_id) return Response.json({ error: 'submission_id este obligatoriu' }, { status: 400 });
       const submission = await svc.entities.ProviderWorkspaceSubmission.get(payload.submission_id).catch(() => null);
       if (!submission) return Response.json({ error: 'Draftul nu a fost gasit' }, { status: 404 });
+      if (!roleCanEditSection(access.member_role, submission.section)) {
+        return Response.json({ error: 'Rolul tau nu permite trimiterea acestei sectiuni' }, { status: 403 });
+      }
       if (isLockedPreparation(submission)) return Response.json({ error: 'Draftul de pregatire este blocat' }, { status: 403 });
       if (submission.location_id !== access.location_id) return Response.json({ error: 'Draftul nu apartine acestei locatii' }, { status: 403 });
       if (submission.submitted_by_user_id !== user.id) return Response.json({ error: 'Nu poti trimite acest draft' }, { status: 403 });
@@ -883,9 +910,18 @@ Deno.serve(async (req) => {
       if (!payload.submission_id) return Response.json({ error: 'submission_id este obligatoriu' }, { status: 400 });
       const submission = await svc.entities.ProviderWorkspaceSubmission.get(payload.submission_id).catch(() => null);
       if (!submission) return Response.json({ error: 'Submission nu a fost gasit' }, { status: 404 });
+      if (access.mode === 'provider_workspace' && !roleCanEditSection(access.member_role, submission.section)) {
+        return Response.json({ error: 'Rolul tau nu permite retragerea acestei sectiuni' }, { status: 403 });
+      }
       if (isLockedPreparation(submission)) return Response.json({ error: 'Draftul de pregatire este blocat' }, { status: 403 });
       if (submission.location_id !== access.location_id) return Response.json({ error: 'Submission nu apartine acestei locatii' }, { status: 403 });
       if (submission.submitted_by_user_id !== user.id) return Response.json({ error: 'Nu poti retrage aceasta submission' }, { status: 403 });
+      if (access.mode === 'applicant_preparation' && (submission.access_origin !== 'claim_preparation' || submission.claim_request_id !== access.claim.id)) {
+        return Response.json({ error: 'Submission nu apartine revendicarii tale active' }, { status: 403 });
+      }
+      if (access.mode === 'provider_workspace' && (submission.access_origin || 'provider_workspace') !== 'provider_workspace') {
+        return Response.json({ error: 'Draftul de pregatire nu poate fi retras din workspace-ul providerului' }, { status: 403 });
+      }
       if (!ACTIVE_STATUSES.includes(submission.status)) return Response.json({ error: 'Submission nu poate fi retrasa' }, { status: 400 });
       await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'withdrawn' });
       await audit(svc, user, {
