@@ -144,7 +144,7 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
                   type="button"
                   onClick={() => mode.key !== activeMode && onSwitchMode?.(mode.key)}
                   disabled={mode.key === activeMode || !onSwitchMode}
-                  className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${mode.key === activeMode ? "bg-foreground text-background" : "border border-border bg-background hover:bg-secondary disabled:opacity-60"}`}
+                  className={`min-h-11 rounded-full px-3 py-1 text-[11px] font-semibold transition lg:min-h-0 ${mode.key === activeMode ? "bg-foreground text-background" : "border border-border bg-background hover:bg-secondary disabled:opacity-60"}`}
                 >
                   {mode.label || MODE_LABELS[mode.key] || mode.key}
                 </button>
@@ -203,7 +203,7 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
               type="button"
               onClick={requestPasswordReset}
               disabled={!user?.email || resetStatus === "sending"}
-              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-semibold hover:bg-secondary disabled:opacity-50"
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-semibold hover:bg-secondary disabled:opacity-50 lg:h-10"
             >
               {resetStatus === "sending" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
               Trimite link de resetare
@@ -215,7 +215,7 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
               <div className="text-sm font-bold">Sesiunea curenta</div>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Gestionarea sesiunilor multiple si autentificarea in doi pasi nu sunt expuse de infrastructura actuala.</p>
             </div>
-            <button type="button" onClick={onLogout} className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-semibold hover:bg-secondary">
+            <button type="button" onClick={onLogout} className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-semibold hover:bg-secondary lg:h-10">
               <LogOut className="h-4 w-4" /> Deconectare
             </button>
           </div>
@@ -272,7 +272,7 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
           </div>
           <a
             href={deletionHref}
-            className={`inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-full px-4 text-xs font-semibold ${hasDeletionBlockers ? "border border-red-200 bg-white text-red-800 hover:bg-red-50" : "bg-red-700 text-white hover:bg-red-800"}`}
+            className={`inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full px-4 text-xs font-semibold lg:h-10 ${hasDeletionBlockers ? "border border-red-200 bg-white text-red-800 hover:bg-red-50" : "bg-red-700 text-white hover:bg-red-800"}`}
           >
             <Mail className="h-4 w-4" /> {hasDeletionBlockers ? "Contacteaza suportul" : "Trimite solicitarea"}
           </a>
