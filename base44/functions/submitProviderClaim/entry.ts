@@ -1,12 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-const PROFILE_TYPES = ['independent_optical_store', 'optical_chain', 'ophthalmology_clinic', 'ophthalmology_office', 'independent_ophthalmologist', 'independent_optometrist', 'independent_optician', 'optical_laboratory_b2c', 'optical_laboratory_b2b', 'future_b2b_distributor'];
+const PROFILE_TYPES = ['independent_optical_store', 'optical_chain', 'ophthalmology_clinic', 'ophthalmology_office', 'independent_ophthalmologist', 'independent_optometrist', 'independent_optician', 'optical_laboratory_b2c'];
 const RELATIONSHIPS = ['owner', 'organization_representative', 'location_manager', 'authorized_staff'];
-const SUBJECT_TYPES = ['organization', 'independent_professional', 'b2b_supplier'];
+const SUBJECT_TYPES = ['organization', 'independent_professional'];
 const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
 const CONTROLLED_PROFILE_STATUSES = ['claimed', 'verified'];
-const B2B_PROFILE_TYPES = ['optical_laboratory_b2b', 'future_b2b_distributor'];
+const DISABLED_B2B_PROFILE_TYPES = ['optical_laboratory_b2b', 'future_b2b_distributor'];
 const ROLE_BY_RELATIONSHIP = {
   owner: 'organization_owner',
   organization_representative: 'organization_owner',
@@ -97,20 +97,20 @@ Deno.serve(async (req) => {
     } else if (p.mode === 'new_location') {
       const l = p.location || {};
       claimSubjectType = String(p.claim_subject_type || '').trim();
+      if (claimSubjectType === 'b2b_supplier') {
+        return Response.json({ error: 'Onboardingul furnizorilor B2B nu este disponibil momentan. Foloseste pagina Parteneri pentru a trimite interesul.' }, { status: 400 });
+      }
       if (!SUBJECT_TYPES.includes(claimSubjectType)) {
-        return Response.json({ error: 'Alege daca reprezinti o organizatie, esti profesionist independent sau furnizor B2B' }, { status: 400 });
+        return Response.json({ error: 'Alege daca reprezinti o organizatie sau esti profesionist independent' }, { status: 400 });
       }
       if (!l.name || !l.provider_type) {
         return Response.json({ error: 'Nume locatie si tip furnizor sunt obligatorii' }, { status: 400 });
       }
+      if (DISABLED_B2B_PROFILE_TYPES.includes(l.provider_profile_type)) {
+        return Response.json({ error: 'Profilurile B2B nu pot fi create prin acest flux' }, { status: 400 });
+      }
       if (!PROFILE_TYPES.includes(l.provider_profile_type)) {
         return Response.json({ error: 'Tipul de profil al furnizorului lipseste sau este invalid' }, { status: 400 });
-      }
-      if (claimSubjectType === 'b2b_supplier' && !B2B_PROFILE_TYPES.includes(l.provider_profile_type)) {
-        return Response.json({ error: 'Pentru furnizori B2B selecteaza un tip de partener B2B valid' }, { status: 400 });
-      }
-      if (claimSubjectType !== 'b2b_supplier' && B2B_PROFILE_TYPES.includes(l.provider_profile_type)) {
-        return Response.json({ error: 'Tipul B2B trebuie trimis prin fluxul de furnizori/parteneri' }, { status: 400 });
       }
       if (!String(l.address || '').trim()) {
         return Response.json({ error: 'Adresa locatiei este obligatorie' }, { status: 400 });
@@ -123,8 +123,8 @@ Deno.serve(async (req) => {
 
       const org = p.organization || {};
       const prof = p.professional || {};
-      if ((claimSubjectType === 'organization' || claimSubjectType === 'b2b_supplier') && !String(org.name || '').trim()) {
-        return Response.json({ error: claimSubjectType === 'b2b_supplier' ? 'Numele firmei este obligatoriu' : 'Numele organizatiei este obligatoriu' }, { status: 400 });
+      if (claimSubjectType === 'organization' && !String(org.name || '').trim()) {
+        return Response.json({ error: 'Numele organizatiei este obligatoriu' }, { status: 400 });
       }
       if (claimSubjectType === 'independent_professional') {
         if (!String(prof.full_name || '').trim()) {
@@ -146,7 +146,7 @@ Deno.serve(async (req) => {
       }
 
       const idResRaw = await base44.functions.invoke('findProviderIdentityCandidates', {
-        context: claimSubjectType === 'b2b_supplier' ? 'provider_new_b2b_supplier' : 'provider_new_location',
+        context: 'provider_new_location',
         candidate: {
           organization_name: claimSubjectType === 'independent_professional' ? (prof.full_name || '') : org.name,
           location_name: l.name,
@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
       identityBlocking = identity.blocking_level || 'none';
       identitySnapshot = JSON.stringify({
         blocking_level: identityBlocking,
-        source_flow: claimSubjectType === 'b2b_supplier' ? 'provider_new_b2b_supplier_wizard' : 'provider_new_location_wizard',
+        source_flow: 'provider_new_location_wizard',
         identity_difference_note: identityNote,
         candidates: (identity.candidates || []).map((candidate) => ({
           location_id: candidate.location_id,
@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
         professional_identity: claimSubjectType === 'independent_professional'
           ? { full_name: prof.full_name, professional_type: prof.professional_type }
           : null,
-        request_type: claimSubjectType === 'b2b_supplier' ? 'new_b2b_supplier_profile' : 'new_patient_facing_location',
+        request_type: 'new_patient_facing_location',
         proposed_location: {
           name: l.name,
           provider_type: l.provider_type,
@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
         return Response.json({ identity_check: identity });
       }
 
-      if (claimSubjectType === 'organization' || claimSubjectType === 'b2b_supplier') {
+      if (claimSubjectType === 'organization') {
         const newOrg = await svc.entities.ProviderOrganization.create({
           name: org.name,
           status: 'activa',
@@ -267,7 +267,7 @@ Deno.serve(async (req) => {
         profile_control_status: 'directory',
         claim_verification_status: 'pending',
         profile_control_status_updated_at: new Date().toISOString(),
-        profile_control_status_reason: claimSubjectType === 'b2b_supplier' ? 'Furnizor B2B trimis spre verificare' : 'Locatie noua trimisa spre verificare',
+        profile_control_status_reason: 'Locatie noua trimisa spre verificare',
         verification_state: 'in_verification',
         active_status: 'activa',
         is_verified: false,
