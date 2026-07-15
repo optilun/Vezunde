@@ -170,7 +170,7 @@ export default function ProCta() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.25 }}
         transition={{ duration: 0.55 }}
-        className="relative grid overflow-hidden rounded-[2.25rem_2.25rem_0.75rem_2.25rem] border border-black/20 bg-[#171717] shadow-[0_22px_60px_rgba(23,23,23,0.12)] lg:grid-cols-[1.3fr_0.9fr]"
+        className="relative grid overflow-hidden rounded-[2.25rem_2.25rem_0.75rem_2.25rem] border border-black/20 bg-[#F8F4EC] shadow-[0_22px_60px_rgba(23,23,23,0.12)] lg:grid-cols-[1.3fr_0.9fr]"
       >
         <div className="relative z-20 flex flex-col justify-center bg-[#171717] px-7 py-12 text-[#F8F4EC] sm:px-12 sm:py-16 lg:min-h-[34rem] lg:px-16 lg:py-20">
           <span
@@ -224,7 +224,7 @@ export default function ProCta() {
             prefersReducedMotion
               ? false
               : isDesktop
-                ? { x: -56 }
+                ? { x: "-72%" }
                 : { opacity: 0, y: 12 }
           }
           whileInView={
@@ -237,9 +237,9 @@ export default function ProCta() {
             prefersReducedMotion
               ? { duration: 0 }
               : {
-                  duration: isDesktop ? 0.82 : 0.35,
-                  delay: isDesktop ? 0.12 : 0,
-                  ease: [0.22, 1, 0.36, 1],
+                  duration: isDesktop ? 1.35 : 0.35,
+                  delay: isDesktop ? 0.48 : 0,
+                  ease: [0.4, 0, 0.2, 1],
                 }
           }
           className="relative z-10 border-t border-black/25 lg:border-l lg:border-t-0 lg:shadow-[inset_18px_0_28px_-24px_rgba(0,0,0,0.68)]"
