@@ -1,6 +1,6 @@
 // Registru declarativ de intente pentru colectarea ghidata de informatii pentru orientare.
-// Fara AI deocamdata: mesajul liber este doar context pastrat; intentia vine din
-// URL / category picker. Fiecare optiune poate adauga service_keys sau comuta intentia.
+// Detectia locala si raspunsurile ghidate raman sursa de adevar. Interpretarea AI
+// ruleaza controlat pentru evaluare si nu poate decide singura eligibilitatea sau ordinea.
 
 export const TIMING_OPTIONS = [
   { key: "cat_mai_repede", label: "Cat mai repede" },
@@ -110,7 +110,7 @@ export const INTENTS = {
   reparatii_ochelari: {
     label: "Reparatii sau reglaje",
     service_keys: ["reparatii_ochelari", "reglaj_rame"],
-    notice: "Un specialist poate evalua daca reparatia este posibila. Vezunde nu poate garanta reparatia doar pe baza informatiilor oferite.",
+    notice: "Un specialist poate evalua daca reparatia este posibila. VIASEE nu poate garanta reparatia doar pe baza informatiilor oferite.",
     questions: [
       {
         key: "ce_deteriorat", type: "choice", title: "Ce s-a deteriorat?",
@@ -130,7 +130,7 @@ export const INTENTS = {
   simptome_oftalmologice: {
     label: "O problema la ochi",
     service_keys: ["consult_oftalmologic"],
-    notice: "Vezunde nu ofera diagnostic medical. Te ajutam sa gasesti unde poti merge pentru evaluare.",
+    notice: "VIASEE nu ofera diagnostic medical. Te ajutam sa gasesti unde poti merge pentru evaluare.",
     questions: [
       {
         key: "descriere", type: "text", title: "Descrie pe scurt ce te preocupa.",

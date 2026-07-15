@@ -22,6 +22,12 @@ const AVAILABILITY_LABELS = Object.freeze({
 });
 
 const AVAILABILITY_STALE_DAYS = 30;
+const TIMING_AVAILABILITY_POINTS = Object.freeze({
+  cat_mai_repede: 5,
+  zilele_urmatoare: 4,
+  saptamana_aceasta: 2,
+  nu_e_urgent: 0,
+});
 
 function clean(value) {
   return String(value || '').trim();
@@ -52,6 +58,7 @@ export function buildRecommendationScore({
   semanticScoreByKey = {},
   profileControlStatus = 'directory',
   availability = null,
+  timingKey = '',
 } = {}) {
   const matched = unique(matchedServiceKeys);
   const semanticScores = matched
@@ -61,7 +68,9 @@ export function buildRecommendationScore({
   const serviceMatch = matched.length > 0 ? Math.min(51, 35 + ((matched.length - 1) * 8)) : 0;
   const semanticFit = Math.min(24, bestSemanticScore * 24);
   const profileTrust = PROFILE_POINTS[profileControlStatus] || 0;
-  const availabilityPoints = availability ? 5 : 0;
+  const availabilityPoints = availability
+    ? (TIMING_AVAILABILITY_POINTS[clean(timingKey)] || 0)
+    : 0;
   const components = {
     service_match: round(serviceMatch),
     semantic_fit: round(semanticFit),

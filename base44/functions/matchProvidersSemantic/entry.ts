@@ -309,6 +309,7 @@ Deno.serve(async (request) => {
         semanticScoreByKey,
         profileControlStatus,
         availability,
+        timingKey: payload.timing_key,
       });
       const explanations = buildRecommendationExplanations({
         matchedServiceKeys: matchedKeys,

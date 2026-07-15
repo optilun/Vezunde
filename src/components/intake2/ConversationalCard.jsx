@@ -40,6 +40,16 @@ const initState = (initialIntent, initialMessage) => {
   };
 };
 
+function patientLanguageText(initialMessage, answers) {
+  const values = [
+    initialMessage,
+    ...(answers || [])
+      .filter((answer) => answer.question_key === "descriere")
+      .map((answer) => answer.answer_value),
+  ];
+  return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))].join(". ");
+}
+
 export default function ConversationalCard({ initialMessage = "", initialIntent = null }) {
   const [state, setState] = useState(() => initState(initialIntent, initialMessage));
   const [history, setHistory] = useState([]);
@@ -107,8 +117,9 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     setPhase("submitting");
     (async () => {
       try {
+        const languageText = patientLanguageText(initialMessage, state.answers);
         const matchPayload = {
-          search_text: initialMessage,
+          search_text: languageText,
           intent: state.intent,
           service_keys: state.serviceKeys,
           locality_siruta_code: state.locality?.siruta_code || "",
@@ -121,7 +132,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         void interpretPatientNeedInShadow({
           ...matchPayload,
           deterministic_intent: state.intent,
-          answers: state.answers,
+          answers: state.answers.filter((answer) => answer.question_key !== "locatie"),
         });
         const res = await matchProvidersWithSemanticFallback(matchPayload);
         setResults(res.data.results || []);

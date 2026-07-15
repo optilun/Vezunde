@@ -29,6 +29,7 @@ const strong = buildRecommendationScore({
   semanticScoreByKey: { optometry_consultation: 0.92, refraction: 0.8 },
   profileControlStatus: 'verified',
   availability,
+  timingKey: 'cat_mai_repede',
 });
 const weak = buildRecommendationScore({
   matchedServiceKeys: ['optometry_consultation'],
@@ -36,6 +37,15 @@ const weak = buildRecommendationScore({
   profileControlStatus: 'directory',
 });
 assert.ok(strong.total > weak.total);
+const notUrgent = buildRecommendationScore({
+  matchedServiceKeys: ['optometry_consultation', 'refraction'],
+  semanticScoreByKey: { optometry_consultation: 0.92, refraction: 0.8 },
+  profileControlStatus: 'verified',
+  availability,
+  timingKey: 'nu_e_urgent',
+});
+assert.equal(strong.components.availability, 5);
+assert.equal(notUrgent.components.availability, 0);
 
 const explanations = buildRecommendationExplanations({
   matchedServiceKeys: ['optometry_consultation'],

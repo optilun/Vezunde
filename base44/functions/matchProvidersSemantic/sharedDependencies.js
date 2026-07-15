@@ -2317,6 +2317,12 @@ var AVAILABILITY_LABELS = Object.freeze({
   doar_programare: "Doar cu programare"
 });
 var AVAILABILITY_STALE_DAYS = 30;
+var TIMING_AVAILABILITY_POINTS = Object.freeze({
+  cat_mai_repede: 5,
+  zilele_urmatoare: 4,
+  saptamana_aceasta: 2,
+  nu_e_urgent: 0
+});
 function clean3(value) {
   return String(value || "").trim();
 }
@@ -2341,7 +2347,8 @@ function buildRecommendationScore({
   matchedServiceKeys = [],
   semanticScoreByKey = {},
   profileControlStatus = "directory",
-  availability = null
+  availability = null,
+  timingKey = ""
 } = {}) {
   const matched = unique(matchedServiceKeys);
   const semanticScores = matched.map((key) => Number(semanticScoreByKey?.[key]) || 0).filter((value) => value > 0);
@@ -2349,7 +2356,7 @@ function buildRecommendationScore({
   const serviceMatch = matched.length > 0 ? Math.min(51, 35 + (matched.length - 1) * 8) : 0;
   const semanticFit = Math.min(24, bestSemanticScore * 24);
   const profileTrust = PROFILE_POINTS[profileControlStatus] || 0;
-  const availabilityPoints = availability ? 5 : 0;
+  const availabilityPoints = availability ? TIMING_AVAILABILITY_POINTS[clean3(timingKey)] || 0 : 0;
   const components = {
     service_match: round(serviceMatch),
     semantic_fit: round(semanticFit),
