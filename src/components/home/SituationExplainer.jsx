@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
 const ROLES = [
   {
@@ -165,18 +165,13 @@ export default function SituationExplainer() {
           </div>
         </div>
 
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.article
+        <article
             key={active}
             id="role-definition"
             role="tabpanel"
             aria-labelledby={`role-index-${active}`}
             aria-live="polite"
-            initial={prefersReducedMotion ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={prefersReducedMotion ? undefined : { opacity: 0 }}
-            transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
-            className="mt-12 sm:mt-14"
+            className="role-content-fade mt-12 sm:mt-14"
           >
             <div className="flex flex-col gap-5 pb-7 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
               <h3
@@ -236,8 +231,7 @@ export default function SituationExplainer() {
                 </span>
               </div>
             </div>
-          </motion.article>
-        </AnimatePresence>
+        </article>
       </motion.div>
     </section>
   );
