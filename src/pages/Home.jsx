@@ -24,7 +24,7 @@ export default function Home() {
     : { scale: heroScale, opacity: heroOpacity, y: heroY };
 
   return (
-    <div className="relative overflow-x-clip">
+    <div className="home-scroll-takeover relative">
       <div
         ref={transitionTrackRef}
         aria-hidden="true"
@@ -34,8 +34,8 @@ export default function Home() {
       <div
         className={
           prefersReducedMotion
-            ? "relative z-0 bg-[#F7F2E8]"
-            : "sticky top-16 z-0 bg-[#F7F2E8]"
+            ? "relative z-0 min-h-[calc(100svh-4rem)] bg-[#F7F2E8] sm:min-h-[92vh]"
+            : "sticky top-16 z-0 min-h-[calc(100svh-4rem)] bg-[#F7F2E8] sm:min-h-[92vh]"
         }
       >
         <motion.div
@@ -46,7 +46,7 @@ export default function Home() {
         </motion.div>
       </div>
 
-      <div className="relative z-20 -mt-36 isolate overflow-hidden rounded-t-[2rem] border-t border-white/80 bg-[#F8F4EC] pb-16 shadow-[0_-18px_65px_rgba(28,24,18,0.13)] sm:-mt-40 sm:rounded-t-[2.75rem] lg:-mt-44 lg:rounded-t-[3.25rem]">
+      <div className="relative z-20 -mt-20 isolate overflow-hidden rounded-t-[2rem] border-t border-white/80 bg-[#F8F4EC] pb-16 shadow-[0_-18px_65px_rgba(28,24,18,0.13)] sm:-mt-24 sm:rounded-t-[2.75rem] lg:-mt-28 lg:rounded-t-[3.25rem]">
         <span
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 z-0 opacity-[0.58]"
