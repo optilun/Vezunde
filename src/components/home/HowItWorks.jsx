@@ -45,18 +45,21 @@ const STEPS = [
 const RESULT_PRINCIPLES = [
   {
     number: "01",
-    title: "Relevant pentru ce cauți",
-    description: "Serviciile și zona sunt punctul de plecare.",
+    title: "Potrivire cu căutarea ta",
+    description:
+      "Rezultatele țin cont de serviciul selectat și de zona în care cauți.",
   },
   {
     number: "02",
-    title: "Informații clare",
-    description: "Vezi tipul locației și statutul profilului.",
+    title: "Detalii despre locație",
+    description:
+      "Vezi serviciile, adresa, datele de contact și statutul profilului.",
   },
   {
     number: "03",
-    title: "Disponibilitate confirmată",
-    description: "Este afișată numai când locația o actualizează.",
+    title: "Alegi mai ușor unde să mergi",
+    description:
+      "Compari informațiile disponibile și alegi varianta potrivită pentru tine.",
   },
 ];
 
@@ -232,7 +235,7 @@ export default function HowItWorks() {
               Ce vezi în rezultate
             </p>
             <h3 className="mt-3 max-w-sm font-heading text-2xl font-extrabold leading-tight tracking-[-0.035em] sm:text-3xl">
-              Variante construite în jurul căutării tale.
+              Informații care te ajută să alegi unde să mergi.
             </h3>
           </div>
 
@@ -248,7 +251,7 @@ export default function HowItWorks() {
                 <h4 className="mt-3 font-heading text-lg font-bold leading-tight tracking-[-0.025em]">
                   {item.title}
                 </h4>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                <p className="mt-2 text-sm leading-relaxed text-foreground/65">
                   {item.description}
                 </p>
               </div>
