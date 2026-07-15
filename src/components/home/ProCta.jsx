@@ -170,7 +170,7 @@ export default function ProCta() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.25 }}
         transition={{ duration: 0.55 }}
-        className="relative grid overflow-hidden rounded-[2.25rem_2.25rem_0.75rem_2.25rem] border border-black/20 bg-transparent shadow-[0_22px_60px_rgba(23,23,23,0.12)] lg:grid-cols-[1.3fr_0.9fr]"
+        className="relative grid overflow-hidden rounded-[2.25rem_2.25rem_0.75rem_2.25rem] bg-transparent drop-shadow-[0_22px_30px_rgba(23,23,23,0.10)] lg:grid-cols-[1.3fr_0.9fr]"
       >
         <div className="relative z-20 flex flex-col justify-center bg-[#171717] px-7 py-12 text-[#F8F4EC] sm:px-12 sm:py-16 lg:min-h-[34rem] lg:px-16 lg:py-20">
           <span
