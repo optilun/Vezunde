@@ -8,7 +8,7 @@ const STEPS = [
     number: "01",
     title: "Spui ce cauți",
     description:
-      "Scrii în cuvintele tale ce problemă vrei să rezolvi sau ce serviciu cauți.",
+      "Descrii în cuvintele tale ce ai nevoie, fără să cunoști denumirea exactă a serviciului.",
     kind: "input",
     accent: "#345bc8",
     tone: "bg-[#dce5e9]",
@@ -18,9 +18,9 @@ const STEPS = [
   },
   {
     number: "02",
-    title: "Clarifici câteva detalii",
+    title: "Răspunzi la câteva întrebări",
     description:
-      "Răspunzi la întrebări scurte despre nevoie, persoană și zona în care cauți.",
+      "Alegi câteva detalii despre nevoie, pentru cine cauți și zona dorită.",
     kind: "choices",
     accent: "#a97825",
     tone: "bg-[#eadcba]",
@@ -32,7 +32,7 @@ const STEPS = [
     number: "03",
     title: "Vezi variante relevante",
     description:
-      "Primești locuri care corespund informațiilor oferite și serviciilor disponibile.",
+      "Vezi locurile care corespund serviciului și zonei selectate.",
     kind: "results",
     accent: "#735c80",
     tone: "bg-[#e8e0ea]",
@@ -45,18 +45,18 @@ const STEPS = [
 const RESULT_PRINCIPLES = [
   {
     number: "01",
-    title: "Potrivire după nevoie",
-    description: "Serviciul și zona au prioritate.",
+    title: "Relevant pentru ce cauți",
+    description: "Serviciile și zona sunt punctul de plecare.",
   },
   {
     number: "02",
-    title: "Status vizibil",
-    description: "Vezi când un profil este verificat.",
+    title: "Informații clare",
+    description: "Vezi tipul locației și statutul profilului.",
   },
   {
     number: "03",
-    title: "Fără poziții cumpărate",
-    description: "Plata nu stabilește ordinea rezultatelor.",
+    title: "Disponibilitate confirmată",
+    description: "Este afișată numai când locația o actualizează.",
   },
 ];
 
@@ -146,7 +146,7 @@ export default function HowItWorks() {
 
         <div className="lg:pb-1">
           <p className="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Scrii în cuvintele tale. VIASEE clarifică informațiile necesare pentru căutare și îți arată opțiunile disponibile. Nu stabilește un diagnostic.
+            Spui ce cauți în cuvintele tale. Prin câteva întrebări scurte, VIASEE organizează informațiile necesare și îți arată variante relevante. VIASEE oferă orientare, nu diagnostic.
           </p>
           <Link
             to="/cerere"
@@ -229,10 +229,10 @@ export default function HowItWorks() {
         <div className="grid lg:grid-cols-[1.1fr_2fr]">
           <div className="border-b border-black/20 px-1 py-7 lg:border-b-0 lg:border-r lg:px-0 lg:py-9 lg:pr-10">
             <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground/65 sm:text-[11px]">
-              Principiile rezultatelor
+              Ce vezi în rezultate
             </p>
             <h3 className="mt-3 max-w-sm font-heading text-2xl font-extrabold leading-tight tracking-[-0.035em] sm:text-3xl">
-              Cum sunt selectate variantele.
+              Variante construite în jurul căutării tale.
             </h3>
           </div>
 
@@ -256,10 +256,6 @@ export default function HowItWorks() {
           </div>
         </div>
 
-        <div className="flex items-start gap-3 border-t border-black/20 px-1 py-5 text-xs leading-relaxed text-muted-foreground sm:items-center sm:text-sm">
-          <span aria-hidden="true" className="mt-1 h-2.5 w-2.5 shrink-0 bg-[#a97825] sm:mt-0" />
-          <span>Disponibilitatea este afișată numai atunci când a fost confirmată.</span>
-        </div>
       </motion.div>
     </section>
   );

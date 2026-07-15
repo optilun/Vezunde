@@ -20,7 +20,7 @@ export default function ProCta() {
           Fii găsit pentru <span className="font-display italic font-medium">ceea ce știi să faci</span>.
         </h2>
         <p className="mt-5 text-background/60 max-w-xl leading-relaxed">
-          Optică, cabinet sau clinică — pe VIASEE apari când serviciile tale se potrivesc cu nevoia pacientului. Fără licitații, fără bugete de promovare.
+          Optică, cabinet sau clinică — prezintă clar serviciile, echipa și locațiile tale. VIASEE te ajută să fii descoperit pentru nevoile pe care le poți acoperi.
         </p>
         <div className="mt-9 flex flex-wrap items-center gap-5">
           <Link to="/pentru-specialisti" className="inline-flex items-center gap-2 bg-primary text-primary-foreground rounded-full px-7 py-3.5 font-semibold hover:gap-3 transition-all">
