@@ -1,80 +1,91 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 320" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" fill="none">
   <defs>
-    <linearGradient id="acetate" x1="-5" y1="49" x2="157" y2="148" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#8B611B"/>
-      <stop offset=".38" stop-color="#C99A4C"/>
-      <stop offset=".7" stop-color="#A8782A"/>
-      <stop offset="1" stop-color="#714A13"/>
+    <linearGradient id="acetate" x1="20" y1="70" x2="385" y2="194" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7A5115"/>
+      <stop offset=".25" stop-color="#C49748"/>
+      <stop offset=".58" stop-color="#996C26"/>
+      <stop offset="1" stop-color="#64400F"/>
     </linearGradient>
-    <linearGradient id="metal" x1="158" y1="92" x2="248" y2="178" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF1C6"/>
-      <stop offset=".28" stop-color="#D9B66E"/>
-      <stop offset=".55" stop-color="#9B6D28"/>
-      <stop offset=".78" stop-color="#E4C583"/>
-      <stop offset="1" stop-color="#765019"/>
+    <linearGradient id="metal" x1="132" y1="78" x2="267" y2="203" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF0C1"/>
+      <stop offset=".22" stop-color="#D8B469"/>
+      <stop offset=".48" stop-color="#8B6122"/>
+      <stop offset=".7" stop-color="#E5C77F"/>
+      <stop offset="1" stop-color="#6B4611"/>
     </linearGradient>
-    <linearGradient id="screw" x1="175" y1="52" x2="216" y2="116" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFF0BF"/>
-      <stop offset=".5" stop-color="#B88637"/>
-      <stop offset="1" stop-color="#6E4913"/>
-    </linearGradient>
-    <pattern id="microDots" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#88621F" fill-opacity=".17"/></pattern>
+    <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0 6 3 0 6Z" fill="#805817"/></marker>
   </defs>
 
-  <rect width="400" height="320" fill="url(#microDots)" opacity=".56"/>
+  <g stroke="#89611D" stroke-width=".65" opacity=".18">
+    <path d="M20 35h360M20 70h360M20 105h360M20 140h360M20 175h360M20 210h360M20 245h360"/>
+    <path d="M40 20v240M80 20v240M120 20v240M160 20v240M200 20v240M240 20v240M280 20v240M320 20v240M360 20v240"/>
+  </g>
 
-  <g stroke="#89641F" stroke-width="1" stroke-dasharray="4 6" opacity=".52">
-    <path d="M25 196h350M159 38v181M241 38v181"/>
-    <path d="M153 196h12M235 196h12M159 190v12M241 190v12" stroke-dasharray="none"/>
-    <path d="M82 219v28M318 219v28M76 233h12M312 233h12"/>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#785116">
+    <text x="20" y="19" font-size="9" letter-spacing="1.1">HINGE / EXPLODED VIEW</text>
+    <text x="300" y="19" font-size="8" letter-spacing=".7">5 TENON</text>
+    <text x="20" y="263" font-size="8" opacity=".72">JOINT AXIS Ø 1.2</text>
+    <text x="292" y="263" font-size="8" opacity=".72">SCALE 4:1</text>
+  </g>
+
+  <path d="M-8 83 97 72l55 29 21 34-22 34-55 23-104-10Z" fill="#76501A" fill-opacity=".1" transform="translate(0 6)"/>
+  <path d="M408 73 303 69l-57 29-21 37 23 37 58 22 102-15Z" fill="#76501A" fill-opacity=".1" transform="translate(0 6)"/>
+  <path d="M-8 83 97 72l55 29 21 34-22 34-55 23-104-10Z" fill="url(#acetate)" stroke="#654310" stroke-width="2"/>
+  <path d="M408 73 303 69l-57 29-21 37 23 37 58 22 102-15Z" fill="url(#acetate)" stroke="#654310" stroke-width="2"/>
+  <path d="M4 91 94 82l46 23" stroke="#F1D99F" stroke-width="4" stroke-linecap="round" opacity=".38"/>
+  <path d="M396 82 307 79l-48 24" stroke="#EED498" stroke-width="4" stroke-linecap="round" opacity=".34"/>
+
+  <g>
+    <path d="M121 91h49l22 20v49l-22 20h-49Z" fill="url(#metal)" stroke="#674510" stroke-width="2"/>
+    <circle cx="142" cy="111" r="9" fill="#F3DEA6" stroke="#6F4A12" stroke-width="1.5"/>
+    <circle cx="142" cy="160" r="9" fill="#F3DEA6" stroke="#6F4A12" stroke-width="1.5"/>
+    <path d="M136 111h12M136 160h12" stroke="#81591A" stroke-width="1.5"/>
+    <path d="M170 104h27v25h-27c-6 0-10-5-10-12s4-13 10-13Z" fill="url(#metal)" stroke="#654310" stroke-width="1.8"/>
+    <path d="M170 142h27v25h-27c-6 0-10-5-10-12s4-13 10-13Z" fill="url(#metal)" stroke="#654310" stroke-width="1.8"/>
+    <circle cx="184" cy="116.5" r="5" fill="#F6E4B5" stroke="#6D4912" stroke-width="1.2"/>
+    <circle cx="184" cy="154.5" r="5" fill="#F6E4B5" stroke="#6D4912" stroke-width="1.2"/>
   </g>
 
   <g>
-    <path d="M-14 47 124 91l43 31-18 43-49-16L-14 82Z" fill="url(#acetate)" stroke="#6D4915" stroke-width="2.2"/>
-    <path d="M414 47 276 91l-43 31 18 43 49-16 114-67Z" fill="url(#acetate)" stroke="#6D4915" stroke-width="2.2"/>
-    <path d="M3 58 121 98" stroke="#F1D79B" stroke-width="4" stroke-linecap="round" opacity=".38"/>
-    <path d="M397 58 279 98" stroke="#F1D79B" stroke-width="4" stroke-linecap="round" opacity=".38"/>
-
-    <g transform="rotate(-12 145 132)">
-      <rect x="119" y="101" width="54" height="63" rx="13" fill="url(#metal)" stroke="#6E4A16" stroke-width="2.2"/>
-      <circle cx="145" cy="132" r="12" fill="#E9CF91" stroke="#704B16" stroke-width="2"/>
-      <circle cx="145" cy="132" r="4" fill="#80571B"/>
-      <path d="M140 132h10" stroke="#FFF0C2" stroke-width="1.5"/>
-    </g>
-    <g transform="rotate(12 255 132)">
-      <rect x="227" y="101" width="54" height="63" rx="13" fill="url(#metal)" stroke="#6E4A16" stroke-width="2.2"/>
-      <circle cx="255" cy="132" r="12" fill="#E9CF91" stroke="#704B16" stroke-width="2"/>
-      <circle cx="255" cy="132" r="4" fill="#80571B"/>
-      <path d="M250 132h10" stroke="#FFF0C2" stroke-width="1.5"/>
-    </g>
+    <path d="M279 88h-50l-22 20v55l22 20h50Z" fill="url(#metal)" stroke="#674510" stroke-width="2"/>
+    <circle cx="258" cy="108" r="9" fill="#F3DEA6" stroke="#6F4A12" stroke-width="1.5"/>
+    <circle cx="258" cy="163" r="9" fill="#F3DEA6" stroke="#6F4A12" stroke-width="1.5"/>
+    <path d="M252 108h12M252 163h12" stroke="#81591A" stroke-width="1.5"/>
+    <path d="M230 85h-27v25h27c6 0 10-5 10-12s-4-13-10-13Z" fill="url(#metal)" stroke="#654310" stroke-width="1.8"/>
+    <path d="M230 123h-27v25h27c6 0 10-5 10-12s-4-13-10-13Z" fill="url(#metal)" stroke="#654310" stroke-width="1.8"/>
+    <path d="M230 161h-27v25h27c6 0 10-5 10-12s-4-13-10-13Z" fill="url(#metal)" stroke="#654310" stroke-width="1.8"/>
+    <circle cx="216" cy="97.5" r="5" fill="#F6E4B5" stroke="#6D4912" stroke-width="1.2"/>
+    <circle cx="216" cy="135.5" r="5" fill="#F6E4B5" stroke="#6D4912" stroke-width="1.2"/>
+    <circle cx="216" cy="173.5" r="5" fill="#F6E4B5" stroke="#6D4912" stroke-width="1.2"/>
   </g>
+
+  <g stroke="#805817" stroke-width="1.2" fill="none" marker-end="url(#arrow)">
+    <path d="M153 69h37"/><path d="M247 69h-37"/>
+    <path d="M151 208h39"/><path d="M249 208h-39"/>
+  </g>
+  <path d="M200 38v184" stroke="#765019" stroke-width="1" stroke-dasharray="3 5" opacity=".8"/>
 
   <g>
-    <path d="M169 127h22v-13h18v13h22v43h-25v-16h-12v16h-25Z" fill="url(#metal)" stroke="#6D4914" stroke-width="2" stroke-linejoin="round"/>
-    <circle cx="180" cy="144" r="5.5" fill="#F6E4B3" stroke="#704B16" stroke-width="1.5"/>
-    <circle cx="220" cy="144" r="5.5" fill="#F6E4B3" stroke="#704B16" stroke-width="1.5"/>
-    <path d="M176 144h8M216 144h8" stroke="#7C5317" stroke-width="1.2"/>
-    <path d="M194 153h12M194 160h12" stroke="#7C5317" stroke-width="1.2"/>
+    <circle cx="200" cy="45" r="12" fill="url(#metal)" stroke="#60400E" stroke-width="1.8"/>
+    <path d="M193 45h14M200 38v14" stroke="#FFF0BD" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M200 57v41M194 65h12M195 73h10M195 81h10M196 89h8" stroke="#724B11" stroke-width="1.6" stroke-linecap="round"/>
   </g>
-
   <g>
-    <circle cx="200" cy="73" r="10" fill="url(#screw)" stroke="#664310" stroke-width="1.6"/>
-    <path d="M194 73h12" stroke="#FFF0BE" stroke-width="1.8" stroke-linecap="round"/>
-    <path d="M200 83v31M194 89h12M195 96h10M195 103h10M196 110h8" stroke="#795117" stroke-width="1.7" stroke-linecap="round"/>
-  </g>
-  <path d="M200 112v11" stroke="#765019" stroke-width="1.2" stroke-dasharray="2 3"/>
-
-  <g opacity=".78">
-    <path d="M135 174 157 187M265 174 243 187" stroke="#81591A" stroke-width="1.1" stroke-dasharray="3 4"/>
-    <circle cx="159" cy="190" r="3" fill="#906723"/>
-    <circle cx="241" cy="190" r="3" fill="#906723"/>
+    <ellipse cx="200" cy="225" rx="15" ry="5" fill="#D8B36A" stroke="#674510" stroke-width="1.2"/>
+    <ellipse cx="200" cy="225" rx="7" ry="2.3" fill="#F4E0AA" stroke="#765018" stroke-width=".8"/>
   </g>
 
-  <g transform="translate(323 226)" fill="none" stroke="#7B5418">
-    <circle r="34" stroke-width="1.3" opacity=".8"/>
-    <circle r="27" stroke-width=".8" opacity=".35"/>
-    <path d="m-15 18 34-39M-8 10l8 8M8-8l8 8" stroke-width="4.5" stroke-linecap="round"/>
-    <path d="m19-21 7-7" stroke-width="2" stroke-linecap="round"/>
-    <path d="M-24 24 24-24" stroke-width=".7" stroke-dasharray="2 4" opacity=".4"/>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="7.2" fill="#765019">
+    <text x="92" y="215">FRAME HALF / 2 TENON</text>
+    <text x="220" y="215">TEMPLE / 3 TENON</text>
+    <text x="214" y="51">M1.2 × 4.0</text>
+  </g>
+
+  <g transform="translate(344 223) rotate(-5)" fill="none" stroke="#704A11">
+    <circle r="28" stroke-width="1.1" opacity=".75"/>
+    <path d="m-17 17 35-36" stroke-width="5" stroke-linecap="round"/>
+    <path d="m-8 8 8 8M7-7l8 8" stroke-width="3" stroke-linecap="round"/>
+    <path d="m18-19 7-7" stroke-width="2" stroke-linecap="round"/>
+    <circle r="20" stroke-width=".7" opacity=".35"/>
   </g>
 </svg>
