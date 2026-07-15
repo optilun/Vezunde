@@ -5,7 +5,7 @@ import {
   isServicePubliclyEligible,
   normalizeServiceKey,
 } from './sharedDependencies.js';
-import { getPublicLocationDisclosure } from '../../../shared/providerPublicTrust.js';
+import { getPublicLocationDisclosure } from './providerPublicTrust.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Safety rules remain disabled until reviewed by a qualified ophthalmologist.
