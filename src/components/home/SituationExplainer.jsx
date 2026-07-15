@@ -8,15 +8,15 @@ const ROLES = [
     number: "01",
     term: "optician medical",
     termSize: "text-[clamp(3.35rem,6.5vw,6.5rem)]",
-    type: "/ specialist tehnic / ochelari și dispozitive optice",
-    navDescription: "ochelari, reglaje și reparații",
+    type: "/ specialist tehnic / ochelari si dispozitive optice",
+    navDescription: "ochelari, reglaje si reparatii",
     definition:
-      "Interpretează prescripția optică și realizează, montează, verifică, adaptează și întreține ochelarii, astfel încât lentilele și rama să ofere corecția și confortul prevăzute.",
+      "Interpreteaza prescriptia optica si realizeaza, monteaza, verifica, adapteaza si intretine ochelarii, astfel incat lentilele si rama sa ofere corectia si confortul prevazute.",
     example:
-      "„Am o prescripție și vreau ochelari noi, lentile noi, un reglaj sau o reparație.”",
+      "„Am o prescriptie si vreau ochelari noi, lentile noi, un reglaj sau o reparatie.”",
     difference:
-      "Nu efectuează consultații medicale și nu diagnostichează ori tratează afecțiuni oculare.",
-    cta: "Găsește o optică",
+      "Nu efectueaza consultatii medicale si nu diagnosticheaza ori trateaza afectiuni oculare.",
+    cta: "Gaseste o optica",
     to: "/cerere?categorie=reparatii",
     accent: "#a97825",
   },
@@ -24,15 +24,15 @@ const ROLES = [
     number: "02",
     term: "optometrist",
     termSize: "text-[clamp(3.35rem,8vw,7.5rem)]",
-    type: "/ specialist în evaluarea funcției vizuale /",
-    navDescription: "evaluarea vederii și corecție optică",
+    type: "/ specialist in evaluarea functiei vizuale /",
+    navDescription: "evaluarea vederii si corectie optica",
     definition:
-      "Evaluează funcția vizuală prin măsurători optometrice, determină corecția optică și recomandă soluții pentru vedere; când este necesară o evaluare medicală, te îndrumă către medicul oftalmolog.",
+      "Evalueaza functia vizuala prin masuratori optometrice, determina corectia optica si recomanda solutii pentru vedere; cand este necesara o evaluare medicala, te indruma catre medicul oftalmolog.",
     example:
-      "„Vreau să-mi verific vederea, dioptriile sau adaptarea la ochelari ori lentile de contact.”",
+      "„Vreau sa-mi verific vederea, dioptriile sau adaptarea la ochelari ori lentile de contact.”",
     difference:
-      "Nu este medic, iar evaluarea optometrică nu înlocuiește consultația, diagnosticul sau tratamentul oftalmologic.",
-    cta: "Găsește un optometrist",
+      "Nu este medic, iar evaluarea optometrica nu inlocuieste consultatia, diagnosticul sau tratamentul oftalmologic.",
+    cta: "Gaseste un optometrist",
     to: "/cerere?categorie=control_vedere",
     accent: "#345bc8",
   },
@@ -40,15 +40,15 @@ const ROLES = [
     number: "03",
     term: "medic oftalmolog",
     termSize: "text-[clamp(3.25rem,6vw,5.8rem)]",
-    type: "/ medic specialist / sănătatea ochilor",
-    navDescription: "diagnostic și tratament",
+    type: "/ medic specialist / sanatatea ochilor",
+    navDescription: "diagnostic si tratament",
     definition:
-      "Efectuează consultația medicală oftalmologică, diagnostichează și tratează afecțiunile ochilor și indică, atunci când este necesar, investigații, medicamente, proceduri sau intervenții chirurgicale.",
+      "Efectueaza consultatia medicala oftalmologica, diagnosticheaza si trateaza afectiunile ochilor si indica, atunci cand este necesar, investigatii, medicamente, proceduri sau interventii chirurgicale.",
     example:
-      "„Am durere, roșeață, vedere scăzută, un simptom nou sau vreau să verific sănătatea ochilor.”",
+      "„Am durere, roseata, vedere scazuta, un simptom nou sau vreau sa verific sanatatea ochilor.”",
     difference:
-      "Este singurul dintre aceste trei roluri care stabilește un diagnostic medical și indică tratamentul unei afecțiuni oculare.",
-    cta: "Găsește un medic oftalmolog",
+      "Este singurul dintre aceste trei roluri care stabileste un diagnostic medical si indica tratamentul unei afectiuni oculare.",
+    cta: "Gaseste un medic oftalmolog",
     to: "/cerere?categorie=consult_oftalmologic",
     accent: "#735c80",
   },
@@ -232,7 +232,7 @@ export default function SituationExplainer() {
               <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground sm:text-sm">
                 <RoleMark color={current.accent} />
                 <span>
-                  Competențele pot varia în funcție de calificare și autorizare. VIASEE oferă orientare, nu diagnostic.
+                  Competentele pot varia in functie de calificare si autorizare. VIASEE ofera orientare, nu diagnostic.
                 </span>
               </div>
             </div>
