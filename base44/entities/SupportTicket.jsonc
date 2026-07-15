@@ -1,0 +1,79 @@
+{
+  "name": "SupportTicket",
+  "type": "object",
+  "properties": {
+    "requester_user_id": {
+      "type": "string"
+    },
+    "requester_email": {
+      "type": "string"
+    },
+    "requester_name": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["account", "organization", "professional", "patient_request", "technical", "other"]
+    },
+    "subject": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 140
+    },
+    "description": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 3000
+    },
+    "status": {
+      "type": "string",
+      "enum": ["open", "in_progress", "waiting_user", "resolved", "closed"],
+      "default": "open"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["low", "normal", "high", "urgent"],
+      "default": "normal"
+    },
+    "source": {
+      "type": "string"
+    },
+    "page_path": {
+      "type": "string"
+    },
+    "organization_id": {
+      "type": "string"
+    },
+    "professional_profile_id": {
+      "type": "string"
+    },
+    "support_response": {
+      "type": "string",
+      "maxLength": 5000
+    },
+    "responded_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "responded_by_user_id": {
+      "type": "string"
+    }
+  },
+  "required": ["requester_user_id", "category", "subject", "description", "status", "priority"],
+  "rls": {
+    "create": {
+      "$or": [
+        { "user_condition": { "role": "user" } },
+        { "user_condition": { "role": "admin" } }
+      ]
+    },
+    "read": {
+      "$or": [
+        { "data.requester_user_id": "{{user.id}}" },
+        { "user_condition": { "role": "admin" } }
+      ]
+    },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

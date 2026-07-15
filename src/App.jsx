@@ -19,6 +19,7 @@ import AcceptProfessionalInvitation from "./pages/AcceptProfessionalInvitation";
 import AcceptProviderInvitation from "./pages/AcceptProviderInvitation";
 import ProfessionalOnboarding from "./pages/ProfessionalOnboarding";
 import MyAccount from "./pages/MyAccount";
+import HelpSupport from "./pages/HelpSupport";
 import AdminDirectoryOps from "./pages/AdminDirectoryOps";
 import PostLogin from "./pages/PostLogin";
 import RequireAuth from "@/components/guards/RequireAuth";
@@ -79,6 +80,7 @@ const AuthenticatedApp = () => {
         <Route path="/profil-profesional/nou" element={<ProfessionalOnboarding />} />
         <Route path="/contul-meu" element={<MyAccount />} />
         <Route path="/contul-meu/locatii/:locationId/:locationModule" element={<MyAccount />} />
+        <Route path="/ajutor-si-suport" element={<HelpSupport />} />
         <Route path="/dupa-login" element={<PostLogin />} />
       </Route>
 
