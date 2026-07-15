@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useInView, useReducedMotion } from "framer-motion";
 
 const ROLES = [
   {
@@ -54,6 +54,8 @@ const ROLES = [
   },
 ];
 
+const TAB_ROTATION_INTERVAL = 4000;
+
 function RoleMark({ color }) {
   return (
     <span
@@ -74,8 +76,28 @@ function RoleMark({ color }) {
 
 export default function SituationExplainer() {
   const [active, setActive] = useState(1);
+  const [hasUserSelected, setHasUserSelected] = useState(false);
+  const sectionRef = useRef(null);
   const prefersReducedMotion = useReducedMotion();
+  const isInView = useInView(sectionRef, { amount: 0.35 });
   const current = ROLES[active];
+
+  useEffect(() => {
+    if (!isInView || prefersReducedMotion || hasUserSelected) {
+      return undefined;
+    }
+
+    const rotationTimer = window.setInterval(() => {
+      setActive((currentIndex) => (currentIndex + 1) % ROLES.length);
+    }, TAB_ROTATION_INTERVAL);
+
+    return () => window.clearInterval(rotationTimer);
+  }, [hasUserSelected, isInView, prefersReducedMotion]);
+
+  const selectRole = (index) => {
+    setHasUserSelected(true);
+    setActive(index);
+  };
 
   const activateFromKeyboard = (event, index) => {
     if (!["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(event.key)) {
@@ -85,7 +107,7 @@ export default function SituationExplainer() {
     event.preventDefault();
     const direction = ["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : -1;
     const next = (index + direction + ROLES.length) % ROLES.length;
-    setActive(next);
+    selectRole(next);
     requestAnimationFrame(() => {
       document.getElementById(`role-index-${next}`)?.focus();
     });
@@ -93,6 +115,7 @@ export default function SituationExplainer() {
 
   return (
     <section
+      ref={sectionRef}
       aria-labelledby="specialist-guide-title"
       className="mx-auto mt-24 max-w-[84rem] px-5 sm:mt-32 lg:mt-36"
     >
@@ -134,7 +157,7 @@ export default function SituationExplainer() {
                   aria-controls="role-definition"
                   aria-selected={selected}
                   tabIndex={selected ? 0 : -1}
-                  onClick={() => setActive(index)}
+                  onClick={() => selectRole(index)}
                   onKeyDown={(event) => activateFromKeyboard(event, index)}
                   className={`relative min-h-[6.75rem] border-l border-black/20 px-3 py-4 text-left outline-none transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] sm:px-5 lg:min-h-[5.75rem] lg:py-2 ${
                     selected ? "text-foreground" : "text-muted-foreground/[0.58] hover:text-foreground"
@@ -170,7 +193,7 @@ export default function SituationExplainer() {
             id="role-definition"
             role="tabpanel"
             aria-labelledby={`role-index-${active}`}
-            aria-live="polite"
+            aria-live={hasUserSelected ? "polite" : "off"}
             className="role-content-fade mt-12 sm:mt-14"
           >
             <div className="flex flex-col gap-5 pb-7 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
