@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 320" fill="none">
+  <defs>
+    <linearGradient id="frame" x1="44" y1="61" x2="353" y2="178" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8E422D"/>
+      <stop offset=".26" stop-color="#D27C59"/>
+      <stop offset=".52" stop-color="#9C4C32"/>
+      <stop offset=".78" stop-color="#D98A66"/>
+      <stop offset="1" stop-color="#7E3828"/>
+    </linearGradient>
+    <linearGradient id="lens" x1="86" y1="67" x2="163" y2="166" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF8F1" stop-opacity=".82"/>
+      <stop offset=".44" stop-color="#F0C2AA" stop-opacity=".34"/>
+      <stop offset="1" stop-color="#CF7754" stop-opacity=".14"/>
+    </linearGradient>
+    <linearGradient id="looseLens" x1="73" y1="202" x2="166" y2="239" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF9F2" stop-opacity=".72"/>
+      <stop offset="1" stop-color="#D98862" stop-opacity=".12"/>
+    </linearGradient>
+    <pattern id="microDots" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#A15438" fill-opacity=".17"/></pattern>
+  </defs>
+
+  <rect width="400" height="320" fill="url(#microDots)" opacity=".56"/>
+
+  <g stroke="#A85B3E" stroke-width="1" stroke-dasharray="3 6" opacity=".52">
+    <path d="M27 35h346M27 190h346M70 22v182M200 22v182M330 22v182"/>
+    <path d="M70 29v12M200 29v12M330 29v12M64 35h12M194 35h12M324 35h12" stroke-dasharray="none"/>
+    <path d="M57 59v115M343 59v115"/>
+  </g>
+
+  <g>
+    <path d="M46 71c31-18 85-20 118-6 15 6 25 15 36 15s21-9 36-15c33-14 87-12 118 6l-5 21c-6 39-28 79-80 79-48 0-69-35-71-70-4-6-12-9-18-9s-14 3-18 9c-2 35-23 70-71 70-52 0-74-40-80-79Z" fill="#B95F40" fill-opacity=".16" stroke="url(#frame)" stroke-width="7" stroke-linejoin="round"/>
+    <path d="M59 84c26-13 69-14 94-4 14 6 19 16 19 31 0 29-17 49-59 49-44 0-61-26-67-63ZM341 84c-26-13-69-14-94-4-14 6-19 16-19 31 0 29 17 49 59 49 44 0 61-26 67-63Z" fill="url(#lens)" stroke="#C66F4E" stroke-width="1.6"/>
+    <path d="M164 88c18-14 54-14 72 0" stroke="url(#frame)" stroke-width="7" stroke-linecap="round"/>
+    <path d="M47 76 22 88l-5 79c0 12 7 17 13 8l12-78M353 76l25 12 5 79c0 12-7 17-13 8l-12-78" stroke="url(#frame)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="40" y="79" width="17" height="11" rx="3" fill="#E5A182" stroke="#7E3A29" stroke-width="2"/>
+    <rect x="343" y="79" width="17" height="11" rx="3" fill="#E5A182" stroke="#7E3A29" stroke-width="2"/>
+    <path d="M57 91c25-9 65-9 91 0M252 91c26-9 66-9 91 0" stroke="#FFF7F1" stroke-width="4" stroke-linecap="round" opacity=".55"/>
+    <path d="M67 117c8 25 25 35 49 35M333 117c-8 25-25 35-49 35" stroke="#EAA98B" stroke-width="1.5" opacity=".55"/>
+    <path d="M184 98c1 9 6 14 16 14s15-5 16-14" stroke="#81402D" stroke-width="1.4" opacity=".65"/>
+  </g>
+
+  <g>
+    <path d="M67 223c24-13 65-14 92-2 16 7 16 23 0 30-27 12-68 11-92-2-14-8-14-18 0-26Z" fill="url(#looseLens)" stroke="#B75C3D" stroke-width="1.2"/>
+    <path d="M241 221c27-12 68-11 92 2 14 8 14 18 0 26-24 13-65 14-92 2-16-7-16-23 0-30Z" fill="url(#looseLens)" stroke="#B75C3D" stroke-width="1.2"/>
+    <path d="M62 236h102M236 236h102" stroke="#A55237" stroke-width=".8" stroke-dasharray="3 5" opacity=".55"/>
+    <path d="M113 211v50M287 211v50" stroke="#A55237" stroke-width=".8" stroke-dasharray="3 5" opacity=".45"/>
+    <path d="M92 219c17-5 35-5 52 0M266 219c17-5 35-5 52 0" stroke="#FFF8F2" stroke-width="2.4" stroke-linecap="round" opacity=".62"/>
+  </g>
+
+  <g transform="translate(354 230)" stroke="#9C4D32" fill="none"><circle r="22" stroke-width="1.2" opacity=".72"/><path d="M0-13v26M-13 0h26" stroke-width="1" opacity=".55"/><circle r="4" fill="#E6A485" stroke-width="1"/></g>
+</svg>
