@@ -8,7 +8,8 @@ const CATEGORIES = [
     title: "Medici si clinici",
     to: "/cauta",
     artwork: "/images/home/viasee-artwork-medici-clinici.svg",
-    tone: "border-[#d4c6d8] bg-[#e8e0ea]",
+    tone: "border-[#d4c6d8]/80 bg-[#e8e0ea]/90",
+    ambient: "bg-[#bea9c8]/32",
     artworkScale: "scale-[1.01] group-hover:scale-[1.025] group-focus-visible:scale-[1.025] lg:scale-[1.18] lg:group-hover:scale-[1.21] lg:group-focus-visible:scale-[1.21]",
     desktopPlacement: "lg:col-[1/4] lg:row-[1/4]",
     desktopLabel: "lg:text-xl",
@@ -17,7 +18,8 @@ const CATEGORIES = [
     title: "Control de vedere",
     to: "/cerere?categorie=control_vedere",
     artwork: "/images/home/viasee-artwork-control-vedere.svg",
-    tone: "border-[#c6d3da] bg-[#dce5e9]",
+    tone: "border-[#c6d3da]/80 bg-[#dce5e9]/90",
+    ambient: "bg-[#a9c6d7]/30",
     artworkScale: "scale-[1.06] group-hover:scale-[1.08] group-focus-visible:scale-[1.08] lg:scale-[1.12] lg:group-hover:scale-[1.15] lg:group-focus-visible:scale-[1.15]",
     desktopPlacement: "lg:col-[4/6] lg:row-[2/4]",
     desktopLabel: "lg:text-[1.05rem]",
@@ -26,7 +28,8 @@ const CATEGORIES = [
     title: "Investigatii",
     to: "/cerere?categorie=investigatii",
     artwork: "/images/home/viasee-artwork-investigatii.svg",
-    tone: "border-[#ccd2ba] bg-[#dfe3d2]",
+    tone: "border-[#ccd2ba]/80 bg-[#dfe3d2]/90",
+    ambient: "bg-[#bdc8a4]/28",
     artworkScale: "scale-[1.04] group-hover:scale-[1.06] group-focus-visible:scale-[1.06] lg:scale-[1.18] lg:group-hover:scale-[1.21] lg:group-focus-visible:scale-[1.21]",
     desktopPlacement: "lg:col-[6/8] lg:row-[1/4]",
     desktopLabel: "lg:text-lg",
@@ -35,7 +38,8 @@ const CATEGORIES = [
     title: "Ochelari si lentile",
     to: "/cerere?categorie=ochelari_lentile",
     artwork: "/images/home/viasee-artwork-ochelari-lentile.svg",
-    tone: "border-[#e1bda8] bg-[#efd5c5]",
+    tone: "border-[#e1bda8]/80 bg-[#efd5c5]/90",
+    ambient: "bg-[#e4a786]/28",
     artworkScale: "scale-[1.03] group-hover:scale-[1.05] group-focus-visible:scale-[1.05] lg:scale-[1.18] lg:group-hover:scale-[1.21] lg:group-focus-visible:scale-[1.21]",
     desktopPlacement: "lg:col-[8/11] lg:row-[1/4]",
     desktopLabel: "lg:text-lg",
@@ -44,7 +48,8 @@ const CATEGORIES = [
     title: "Reparatii si reglaje",
     to: "/cerere?categorie=reparatii_ochelari",
     artwork: "/images/home/viasee-artwork-reparatii-reglaje.svg",
-    tone: "border-[#dac69b] bg-[#eadcba]",
+    tone: "border-[#dac69b]/80 bg-[#eadcba]/90",
+    ambient: "bg-[#d3b565]/28",
     artworkScale: "scale-[1.08] group-hover:scale-[1.1] group-focus-visible:scale-[1.1] lg:scale-[1.12] lg:group-hover:scale-[1.15] lg:group-focus-visible:scale-[1.15]",
     desktopPlacement: "lg:col-[11/13] lg:row-[2/4]",
     desktopLabel: "lg:text-base xl:text-[1.05rem]",
@@ -209,16 +214,20 @@ export default function CategoryShowcase({ preview = false }) {
                 duration: 0.55,
                 delay: preview || prefersReducedMotion ? 0 : index * 0.06,
               }}
-              className={`relative z-10 min-w-[78vw] shrink-0 snap-start sm:min-w-[46vw] lg:min-w-0 ${category.desktopPlacement}`}
+              className={`group relative z-10 min-w-[78vw] shrink-0 snap-start sm:min-w-[46vw] lg:min-w-0 ${category.desktopPlacement}`}
             >
+              <span
+                aria-hidden="true"
+                className={`pointer-events-none absolute -inset-x-3 -inset-y-5 z-0 rounded-[2.5rem] opacity-70 blur-3xl transition-opacity duration-500 group-hover:opacity-100 ${category.ambient}`}
+              />
               <Link
                 to={category.to}
                 aria-label={category.title}
-                className={`group relative grid h-full grid-rows-[minmax(0,1fr)_auto] overflow-hidden rounded-[1.35rem] border shadow-[0_12px_38px_rgba(20,20,20,0.035)] outline-none transition-[transform,box-shadow] duration-500 hover:-translate-y-1 hover:shadow-[0_20px_48px_rgba(20,20,20,0.075)] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none sm:rounded-[1.65rem] ${category.tone}`}
+                className={`group relative z-10 grid h-full grid-rows-[minmax(0,1fr)_auto] overflow-hidden rounded-[1.35rem] border shadow-[0_10px_30px_rgba(34,30,24,0.028)] backdrop-blur-[2px] outline-none transition-[transform,box-shadow] duration-500 hover:-translate-y-1 hover:shadow-[0_18px_42px_rgba(34,30,24,0.06)] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none sm:rounded-[1.65rem] ${category.tone}`}
               >
                 <span
                   aria-hidden="true"
-                  className="absolute inset-0 opacity-45 mix-blend-multiply"
+                  className="absolute inset-0 opacity-35 mix-blend-multiply"
                   style={{
                     backgroundImage:
                       "url('/images/home/viasee-technical-grain.svg')",
@@ -236,7 +245,7 @@ export default function CategoryShowcase({ preview = false }) {
                   />
                 </span>
 
-                <span className="relative z-20 flex min-h-[4.25rem] items-center gap-3 border-t border-black/[0.08] bg-white/[0.08] px-5 py-3 text-left text-[#1c1c1c] sm:min-h-[4.75rem] sm:px-6 lg:min-h-[4.5rem] lg:px-4 xl:px-5">
+                <span className="relative z-20 flex min-h-[4.25rem] items-center gap-3 border-t border-black/[0.07] bg-white/[0.045] px-5 py-3 text-left text-[#1c1c1c] sm:min-h-[4.75rem] sm:px-6 lg:min-h-[4.5rem] lg:px-4 xl:px-5">
                   {index === 4 && <SageMark />}
                   <span className={`font-heading text-xl font-bold leading-[1.08] tracking-[-0.025em] sm:text-2xl ${category.desktopLabel}`}>
                     {category.title}
