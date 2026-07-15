@@ -5,17 +5,19 @@ import { motion } from "framer-motion";
 import ConversationalCard from "@/components/intake2/ConversationalCard";
 
 const PROMPTS = [
-  "Vad neclar la distanta si vreau un control...",
-  "Mi s-au rupt ochelarii. Se pot repara?",
-  "Caut control de vedere pentru copilul meu...",
-  "Am nevoie de un consult oftalmologic...",
-  "Vreau lentile progresive...",
+  "Caut un medic oftalmolog aproape de mine",
+  "Caut o clinica de oftalmologie",
+  "Vad neclar la distanta",
+  "Caut un control de vedere pentru copil",
+  "Am recomandare pentru o investigatie OCT",
+  "Caut lentile progresive",
+  "Mi s-au rupt ochelarii",
 ];
 
 const EXAMPLES = [
-  { label: "Vad neclar la distanta", to: "/cerere?categorie=control_vedere" },
-  { label: "Caut control pentru copil", to: "/cerere?categorie=copii_miopie" },
-  { label: "Mi s-au rupt ochelarii", to: "/cerere?categorie=reparatii" },
+  { label: "Caut un medic oftalmolog", to: "/cerere?categorie=consult_oftalmologic" },
+  { label: "Control de vedere pentru copil", to: "/cerere?categorie=copii_miopie" },
+  { label: "Reparatie ochelari", to: "/cerere?categorie=reparatii" },
 ];
 
 function useTypingPlaceholder(active) {
@@ -105,7 +107,7 @@ export default function Hero() {
               className="font-heading text-[2.25rem] font-extrabold leading-[1.02] tracking-[-0.04em] min-[390px]:text-[2.65rem] sm:text-[4.25rem]"
               style={{ color: "#141414" }}
             >
-              Spune ce ai nevoie.
+              Spune ce cauti.
               <br />
               Vezi unde poti merge.
             </motion.h1>
@@ -114,10 +116,10 @@ export default function Hero() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.35 }}
-              className="mt-4 max-w-xl text-[0.95rem] leading-relaxed sm:mt-5 sm:text-lg"
+              className="mt-4 max-w-2xl text-[0.95rem] leading-relaxed sm:mt-5 sm:text-lg"
               style={{ color: "#6B675F" }}
             >
-              Descrie simplu ce te preocupa, iar VIASEE te ajuta sa gasesti unde poti merge.
+              VIASEE te ajuta sa gasesti medici oftalmologi, clinici si optici pentru controale, investigatii, ochelari sau reparatii.
             </motion.p>
 
             <motion.form
@@ -139,7 +141,7 @@ export default function Hero() {
                   onChange={(event) => { stopAnimation(); setText(event.target.value); }}
                   onFocus={stopAnimation}
                   onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) submit(event); }}
-                  placeholder={animating ? "" : "Scrie aici ce ai nevoie..."}
+                  placeholder={animating ? "" : "Scrie aici ce cauti..."}
                   rows={2}
                   className="w-full resize-none bg-transparent px-1.5 pt-1 text-base outline-none placeholder:text-[#9B968D] sm:px-2"
                   style={{ color: "#141414" }}
