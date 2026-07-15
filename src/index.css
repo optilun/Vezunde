@@ -174,13 +174,13 @@
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   body {
     @apply bg-background text-foreground font-body;
     min-width: 320px;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   img,
