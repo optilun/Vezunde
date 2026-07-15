@@ -20,17 +20,17 @@ export default function ProvidersShowcase() {
     <section className="max-w-6xl mx-auto px-5 mt-32 sm:mt-44">
       <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="flex flex-wrap items-end justify-between gap-4">
         <h2 className="font-heading text-3xl sm:text-5xl font-extrabold tracking-[-0.03em] leading-[1.05]">
-          Locuri unde poti merge
+          Locuri unde poți merge
           <br />
           <span className="font-display italic font-medium text-primary">chiar azi.</span>
         </h2>
         <Link to="/cauta" className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:gap-2.5 transition-all">
-          Exploreaza toti furnizorii <ArrowUpRight className="w-4 h-4" />
+          Explorează toți furnizorii <ArrowUpRight className="w-4 h-4" />
         </Link>
       </motion.div>
 
       <div className="mt-12">
-        {locations === null && <p className="text-sm text-muted-foreground py-8">Se incarca...</p>}
+        {locations === null && <p className="text-sm text-muted-foreground py-8">Se încarcă...</p>}
         {locations?.map((loc, i) => (
           <motion.div
             key={loc.id}
@@ -58,7 +58,7 @@ export default function ProvidersShowcase() {
           </motion.div>
         ))}
       </div>
-      <p className="mt-6 text-xs text-muted-foreground/70">Profiluri verificate. Ordinea nu reflecta niciodata marimea afacerii sau pretul.</p>
+      <p className="mt-6 text-xs text-muted-foreground/70">Profiluri verificate. Ordinea nu reflectă niciodată mărimea afacerii sau prețul.</p>
     </section>
   );
 }
