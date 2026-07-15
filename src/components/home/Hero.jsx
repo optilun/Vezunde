@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUp } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import ConversationalCard from "@/components/intake2/ConversationalCard";
 
 const PROMPTS = [
@@ -67,7 +67,9 @@ export default function Hero() {
   const [text, setText] = useState("");
   const [animating, setAnimating] = useState(true);
   const [started, setStarted] = useState(false);
-  const typed = useTypingPlaceholder(animating && !started);
+  const prefersReducedMotion = useReducedMotion();
+  const typed = useTypingPlaceholder(animating && !started && !prefersReducedMotion);
+  const promptPreview = prefersReducedMotion ? PROMPTS[0] : typed;
 
   const submit = (event) => {
     event.preventDefault();
@@ -132,8 +134,10 @@ export default function Hero() {
               <div className="relative rounded-[1.35rem] border border-black/[0.05] bg-white p-3.5 text-left shadow-[0_18px_55px_rgba(20,20,20,0.10)] transition-shadow duration-500 focus-within:shadow-[0_22px_65px_rgba(20,20,20,0.16)] sm:rounded-[1.5rem] sm:p-4">
                 {animating && !text && (
                   <div className="pointer-events-none absolute left-5 right-14 top-4.5 truncate text-[15px] sm:left-6 sm:right-16 sm:top-5 sm:text-base" style={{ color: "#9B968D" }}>
-                    {typed}
-                    <span className="ml-[1px] inline-block h-[1.1em] w-[1.5px] animate-pulse align-[-0.15em]" style={{ backgroundColor: "#9B968D" }} />
+                    {promptPreview}
+                    {!prefersReducedMotion && (
+                      <span className="ml-[1px] inline-block h-[1.1em] w-[1.5px] animate-pulse align-[-0.15em]" style={{ backgroundColor: "#9B968D" }} />
+                    )}
                   </div>
                 )}
                 <textarea
