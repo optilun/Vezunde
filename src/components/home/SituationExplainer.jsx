@@ -1,246 +1,242 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Info } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 const ROLES = [
   {
     number: "01",
     term: "optician",
-    type: "substantiv · specialist tehnic",
-    short: "ochelari, rame si reparatii",
+    termSize: "text-[clamp(4.25rem,8.5vw,8rem)]",
+    type: "/ s. m. si f. / specialist tehnic",
+    navDescription: "ochelari si reparatii",
     definition:
-      "Specialistul care realizeaza, monteaza, ajusteaza si repara ochelarii pe baza unei prescriptii sau a unei recomandari de corectie.",
-    helps: ["Rame si lentile", "Montaj si centrare", "Reglaje", "Reparatii"],
-    boundaryTitle: "Nu inlocuieste",
-    boundary:
-      "Consultul medical, diagnosticul sau tratamentul unei afectiuni oculare.",
+      "Realizeaza, monteaza, regleaza si repara ochelarii pe baza unei prescriptii sau recomandari de corectie.",
+    example:
+      "„Mi s-au strambat ochelarii sau am nevoie de lentile noi.”",
+    difference:
+      "Nu verifica sanatatea ochilor si nu stabileste un diagnostic medical.",
     cta: "Gaseste o optica",
     to: "/cerere?categorie=reparatii",
-    accent: "#9a6a22",
-    tabActive: "border-[#d6bd8b] bg-[#eadcba]/65",
-    cardTone: "border-[#ded0ad] bg-[#fffaf0]/82",
-    badgeTone: "border-[#d6bd8b] bg-[#eadcba]/60 text-[#75501b]",
+    accent: "#a97825",
   },
   {
     number: "02",
     term: "optometrist",
-    type: "substantiv · specialist in evaluarea vederii",
-    short: "evaluarea vederii si corectia optica",
+    termSize: "text-[clamp(3.35rem,8vw,7.5rem)]",
+    type: "/ s. m. si f. / specialist in evaluarea vederii",
+    navDescription: "evaluarea vederii",
     definition:
-      "Evalueaza functia vizuala, masoara acuitatea si refractia si determina corectia optica necesara pentru ochelari sau lentile de contact.",
-    helps: ["Control de vedere", "Dioptrii", "Ochelari", "Lentile de contact"],
-    boundaryTitle: "Important",
-    boundary:
-      "Nu este medic si nu trateaza boli oculare. Cand observa semne care necesita evaluare medicala, te indruma catre medicul oftalmolog.",
+      "Evalueaza vederea, masoara refractia si determina corectia optica pentru ochelari sau lentile.",
+    example:
+      "„Vreau sa imi verific vederea si dioptriile.”",
+    difference:
+      "Nu este medic. Pentru diagnostic si tratament mergi la medicul oftalmolog.",
     cta: "Cauta un control de vedere",
     to: "/cerere?categorie=control_vedere",
-    accent: "#48738a",
-    tabActive: "border-[#b7ccd6] bg-[#dce5e9]/72",
-    cardTone: "border-[#c3d3da] bg-[#f7fbfc]/82",
-    badgeTone: "border-[#b7ccd6] bg-[#dce5e9]/70 text-[#365c70]",
+    accent: "#345bc8",
   },
   {
     number: "03",
     term: "medic oftalmolog",
-    type: "substantiv · medic specialist",
-    short: "diagnostic si tratament medical",
+    termSize: "text-[clamp(3.25rem,6vw,5.8rem)]",
+    type: "/ medic specialist / diagnostic si tratament",
+    navDescription: "afectiuni si tratament",
     definition:
-      "Medicul care examineaza ochii, diagnosticheaza si trateaza afectiunile oculare. Poate recomanda investigatii, prescrie tratament si efectua proceduri sau interventii in limitele competentei sale.",
-    helps: ["Simptome oculare", "Afectiuni", "Consultatii pentru copii", "Investigatii si tratament"],
-    boundaryTitle: "Alege direct medicul pentru",
-    boundary:
-      "Durere, roseata persistenta, vedere scazuta brusc, traumatism sau orice simptom care te ingrijoreaza.",
+      "Examineaza ochii, diagnosticheaza si trateaza afectiunile oculare si poate recomanda investigatii sau tratament.",
+    example:
+      "„Am durere, roseata, vedere scazuta sau un simptom care ma ingrijoreaza.”",
+    difference:
+      "Este medic. Alege-l pentru simptome, afectiuni, investigatii si tratament medical.",
     cta: "Gaseste un medic oftalmolog",
     to: "/cerere?categorie=consult_oftalmologic",
     accent: "#735c80",
-    tabActive: "border-[#cec0d3] bg-[#e8e0ea]/72",
-    cardTone: "border-[#d7cadb] bg-[#fcf9fd]/82",
-    badgeTone: "border-[#cec0d3] bg-[#e8e0ea]/70 text-[#624f6e]",
   },
 ];
 
+function RoleMark({ color }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="grid h-8 w-8 shrink-0 place-items-center rounded-[0.35rem] shadow-[0_8px_20px_rgba(25,25,25,0.08)]"
+      style={{ backgroundColor: color }}
+    >
+      <svg viewBox="0 0 40 40" className="h-5 w-5 text-[#f8f4ec]" fill="currentColor">
+        <rect x="17" y="3" width="6" height="34" rx="2" />
+        <rect x="3" y="17" width="34" height="6" rx="2" />
+        <rect x="17" y="3" width="6" height="34" rx="2" transform="rotate(45 20 20)" />
+        <rect x="17" y="3" width="6" height="34" rx="2" transform="rotate(135 20 20)" />
+        <rect x="16" y="16" width="8" height="8" rx="1.5" fill={color} />
+      </svg>
+    </span>
+  );
+}
+
 export default function SituationExplainer() {
-  const [active, setActive] = useState(0);
+  const [active, setActive] = useState(1);
   const prefersReducedMotion = useReducedMotion();
   const current = ROLES[active];
+
+  const activateFromKeyboard = (event, index) => {
+    if (!["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(event.key)) {
+      return;
+    }
+
+    event.preventDefault();
+    const direction = ["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : -1;
+    const next = (index + direction + ROLES.length) % ROLES.length;
+    setActive(next);
+    requestAnimationFrame(() => {
+      document.getElementById(`role-index-${next}`)?.focus();
+    });
+  };
 
   return (
     <section
       aria-labelledby="specialist-guide-title"
-      className="mx-auto mt-32 max-w-6xl px-5 sm:mt-44"
+      className="mx-auto mt-24 max-w-[84rem] px-5 sm:mt-32 lg:mt-36"
     >
       <motion.div
-        initial={prefersReducedMotion ? false : { opacity: 0, y: 24 }}
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.5 }}
-        transition={{ duration: 0.6 }}
+        viewport={{ once: true, amount: 0.35 }}
+        transition={{ duration: 0.55 }}
       >
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/70 sm:text-[11px]">
-          Mic dictionar de vedere
+        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.24em] text-foreground/75 sm:text-[11px]">
+          Ghid VIASEE · Cine te poate ajuta
         </p>
-        <h2
-          id="specialist-guide-title"
-          className="mt-4 max-w-2xl font-heading text-3xl font-extrabold leading-[1.02] tracking-[-0.04em] sm:text-5xl"
-        >
-          Nu stii la cine sa mergi?
-          <br />
-          <span className="font-display font-medium italic text-muted-foreground/60">
-            Nu trebuie sa stii.
-          </span>
-        </h2>
-        <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-          Afla simplu ce face fiecare si alege ajutorul potrivit pentru vederea ta.
-        </p>
-      </motion.div>
 
-      <div className="mt-12 grid items-start gap-7 lg:mt-14 lg:grid-cols-[0.82fr_1.18fr] lg:gap-12 xl:gap-16">
-        <div
-          role="tablist"
-          aria-label="Alege profesionistul"
-          className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 lg:gap-2"
-        >
-          {ROLES.map((role, index) => {
-            const selected = active === index;
+        <div className="mt-7 grid gap-8 lg:grid-cols-[0.78fr_2.22fr] lg:items-end lg:gap-10">
+          <h2
+            id="specialist-guide-title"
+            className="font-heading text-2xl font-extrabold leading-[1.02] tracking-[-0.035em] sm:text-3xl"
+          >
+            Nu stii la cine sa mergi?
+            <span className="mt-1 block font-display text-[1.08em] font-medium italic text-muted-foreground/60">
+              Nu trebuie sa stii.
+            </span>
+          </h2>
 
-            return (
-              <button
-                key={role.term}
-                type="button"
-                role="tab"
-                id={`specialist-tab-${index}`}
-                aria-controls="specialist-definition"
-                aria-selected={selected}
-                onClick={() => setActive(index)}
-                onKeyDown={(event) => {
-                  if (!["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(event.key)) {
-                    return;
-                  }
+          <div
+            role="tablist"
+            aria-label="Alege profesionistul"
+            className="grid grid-cols-3 border-y border-black/15 lg:border-y-0"
+          >
+            {ROLES.map((role, index) => {
+              const selected = active === index;
 
-                  event.preventDefault();
-                  const direction = ["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : -1;
-                  const next = (index + direction + ROLES.length) % ROLES.length;
-                  setActive(next);
-                  requestAnimationFrame(() => {
-                    document.getElementById(`specialist-tab-${next}`)?.focus();
-                  });
-                }}
-                className={`group rounded-[1.35rem] border px-5 py-4 text-left outline-none transition-[background-color,border-color,transform] duration-300 focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none sm:min-h-[8.5rem] lg:min-h-0 lg:rounded-none lg:border-x-0 lg:border-t-0 lg:bg-transparent lg:px-0 lg:py-5 ${
-                  selected
-                    ? `${role.tabActive} lg:border-foreground/25 lg:bg-transparent`
-                    : "border-black/[0.07] bg-white/20 text-muted-foreground hover:-translate-y-0.5 hover:border-black/15 lg:border-border lg:bg-transparent lg:hover:translate-y-0"
-                }`}
-              >
-                <span className="flex items-center justify-between gap-3">
-                  <span className="font-mono text-[10px] tracking-[0.18em] text-muted-foreground/65">
-                    {role.number}
+              return (
+                <button
+                  key={role.term}
+                  type="button"
+                  role="tab"
+                  id={`role-index-${index}`}
+                  aria-controls="role-definition"
+                  aria-selected={selected}
+                  tabIndex={selected ? 0 : -1}
+                  onClick={() => setActive(index)}
+                  onKeyDown={(event) => activateFromKeyboard(event, index)}
+                  className={`relative min-h-[6.75rem] border-l border-black/20 px-3 py-4 text-left outline-none transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] sm:px-5 lg:min-h-[5.75rem] lg:py-2 ${
+                    selected ? "text-foreground" : "text-muted-foreground/[0.58] hover:text-foreground"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    {selected && <RoleMark color={role.accent} />}
+                    <span className="font-mono text-[10px] tracking-[0.16em] sm:text-xs">
+                      {role.number}
+                    </span>
+                  </span>
+                  <span className="mt-3 block font-heading text-sm font-bold leading-tight tracking-[-0.025em] sm:text-lg lg:text-xl">
+                    {role.term.charAt(0).toUpperCase() + role.term.slice(1)}
+                  </span>
+                  <span className="mt-1 hidden text-xs leading-tight text-muted-foreground xl:block">
+                    {role.navDescription}
                   </span>
                   <span
                     aria-hidden="true"
-                    className={`h-2 w-2 rounded-full transition-transform duration-300 ${
-                      selected ? "scale-100" : "scale-0"
+                    className={`absolute inset-x-3 -bottom-px h-[3px] origin-left transition-transform duration-300 sm:inset-x-5 ${
+                      selected ? "scale-x-100" : "scale-x-0"
                     }`}
                     style={{ backgroundColor: role.accent }}
                   />
-                </span>
-                <span
-                  className={`mt-3 block font-display text-[1.7rem] font-semibold italic leading-none tracking-[-0.025em] sm:text-3xl lg:text-[2rem] ${
-                    selected ? "text-foreground" : "text-muted-foreground/65"
-                  }`}
-                >
-                  {role.term}
-                </span>
-                <span className="mt-2 block text-xs leading-snug text-muted-foreground sm:text-sm">
-                  {role.short}
-                </span>
-              </button>
-            );
-          })}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="lg:sticky lg:top-28">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.article
-              key={active}
-              id="specialist-definition"
-              role="tabpanel"
-              aria-labelledby={`specialist-tab-${active}`}
-              aria-live="polite"
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={prefersReducedMotion ? undefined : { opacity: 0, y: -8 }}
-              transition={{ duration: prefersReducedMotion ? 0 : 0.25 }}
-              className={`relative isolate overflow-hidden rounded-[2rem] border p-6 shadow-[0_18px_55px_rgba(35,30,24,0.05)] backdrop-blur-[3px] sm:p-9 lg:p-10 ${current.cardTone}`}
-            >
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute -right-2 -top-10 -z-10 font-display text-[9rem] font-semibold italic leading-none text-black/[0.035] sm:text-[12rem]"
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.article
+            key={active}
+            id="role-definition"
+            role="tabpanel"
+            aria-labelledby={`role-index-${active}`}
+            aria-live="polite"
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={prefersReducedMotion ? undefined : { opacity: 0, y: -8 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.24 }}
+            className="mt-12 sm:mt-14"
+          >
+            <div className="flex flex-col gap-5 pb-7 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
+              <h3
+                className={`${current.termSize} min-w-0 font-heading font-extrabold leading-[0.82] tracking-[-0.075em] text-[#171717]`}
               >
-                {current.number}
-              </span>
-
-              <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/70">
-                Ghid VIASEE · definitia {current.number}
-              </p>
-              <h3 className="mt-5 max-w-[90%] font-display text-[3.2rem] font-semibold italic leading-[0.9] tracking-[-0.045em] text-foreground sm:text-[4.6rem]">
                 {current.term}
               </h3>
-              <p className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              <p className="max-w-xl pb-1 font-heading text-lg font-bold leading-tight tracking-[-0.025em] text-foreground/85 sm:text-xl lg:text-right xl:text-2xl">
                 {current.type}
               </p>
+            </div>
 
-              <div className="mt-7 border-t border-black/[0.09] pt-6">
-                <p className="text-base leading-relaxed text-foreground/[0.78] sm:text-lg">
-                  {current.definition}
+            <div className="grid gap-5 border-y-[4px] border-[#171717] py-7 sm:py-9 lg:grid-cols-[7rem_1fr] lg:items-start lg:gap-10">
+              <span className="grid h-16 w-16 place-items-center rounded-full border-[3px] border-[#171717] sm:h-[5.25rem] sm:w-[5.25rem]">
+                <ArrowRight className="h-7 w-7 sm:h-9 sm:w-9" aria-hidden="true" />
+              </span>
+              <p className="max-w-[70rem] font-heading text-[clamp(2rem,4.35vw,4.15rem)] font-bold leading-[1.04] tracking-[-0.055em] text-[#171717]">
+                {current.definition}
+              </p>
+            </div>
+
+            <div className="grid border-b-[3px] border-[#171717] lg:grid-cols-2">
+              <div className="py-7 lg:border-r lg:border-black/25 lg:py-9 lg:pr-12">
+                <p className="font-heading text-base font-semibold tracking-[-0.02em] text-foreground/75 sm:text-lg">
+                  Mergi cand
+                </p>
+                <p className="mt-4 max-w-[38rem] font-heading text-[clamp(2rem,3.45vw,3.45rem)] font-semibold leading-[1.06] tracking-[-0.05em] text-[#171717]">
+                  {current.example}
                 </p>
               </div>
 
-              <div className="mt-7 grid gap-6 border-t border-black/[0.09] pt-6 sm:grid-cols-[1fr_0.95fr]">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                    Te ajuta cu
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {current.helps.map((item) => (
-                      <span
-                        key={item}
-                        className={`rounded-full border px-3 py-1.5 text-xs font-medium ${current.badgeTone}`}
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-[1.25rem] border border-black/[0.07] bg-white/40 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                    {current.boundaryTitle}
-                  </p>
-                  <p className="mt-2 text-sm leading-relaxed text-foreground/70">
-                    {current.boundary}
-                  </p>
-                </div>
+              <div className="border-t border-black/25 py-7 lg:border-t-0 lg:py-9 lg:pl-12">
+                <p className="font-heading text-base font-semibold tracking-[-0.02em] text-foreground/75 sm:text-lg">
+                  Diferenta importanta
+                </p>
+                <p className="mt-4 max-w-[39rem] font-heading text-[clamp(1.8rem,3.1vw,3.1rem)] font-semibold leading-[1.07] tracking-[-0.045em] text-[#171717]">
+                  {current.difference}
+                </p>
               </div>
+            </div>
 
+            <div className="mt-8 flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
               <Link
                 to={current.to}
-                className="group mt-8 inline-flex min-h-12 items-center gap-3 rounded-full bg-[#171717] px-6 py-3 text-sm font-semibold text-white outline-none transition-[gap,transform] hover:-translate-y-0.5 hover:gap-4 focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none"
+                className="group inline-flex min-h-14 items-center gap-7 rounded-full bg-[#171717] py-2 pl-7 pr-2 text-sm font-semibold text-white shadow-[0_14px_32px_rgba(18,18,18,0.12)] outline-none transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(18,18,18,0.17)] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none sm:min-h-16 sm:pl-9 sm:text-base"
               >
                 {current.cta}
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-[#F8F4EC] text-[#171717] sm:h-12 sm:w-12">
+                  <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden="true" />
+                </span>
               </Link>
-            </motion.article>
-          </AnimatePresence>
-        </div>
-      </div>
 
-      <div className="mt-7 flex items-start gap-3 rounded-[1.25rem] border border-black/[0.07] bg-white/25 px-5 py-4 text-sm leading-relaxed text-muted-foreground sm:mt-9">
-        <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-        <p>
-          VIASEE ofera orientare, nu diagnostic. Pentru pierderea brusca a vederii,
-          traumatism ocular sau durere intensa, solicita asistenta medicala de urgenta.
-        </p>
-      </div>
+              <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground sm:text-sm">
+                <RoleMark color={current.accent} />
+                <span>VIASEE ofera orientare, nu diagnostic.</span>
+              </div>
+            </div>
+          </motion.article>
+        </AnimatePresence>
+      </motion.div>
     </section>
   );
 }
