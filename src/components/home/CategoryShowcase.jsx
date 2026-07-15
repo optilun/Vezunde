@@ -37,17 +37,20 @@ const CATEGORIES = [
   },
 ];
 
-export default function CategoryShowcase() {
+export default function CategoryShowcase({ preview = false }) {
   const prefersReducedMotion = useReducedMotion();
+  const headingId = preview
+    ? "home-categories-preview-title"
+    : "home-categories-title";
 
   return (
     <section
-      aria-labelledby="home-categories-title"
+      aria-labelledby={headingId}
       className="relative pb-4 pt-8 sm:pb-8 sm:pt-10 lg:pt-12"
     >
       <div className="relative z-10 mx-auto max-w-6xl px-5">
         <motion.div
-          initial={prefersReducedMotion ? false : { opacity: 0, y: 18 }}
+          initial={preview || prefersReducedMotion ? false : { opacity: 0, y: 18 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.5 }}
           transition={{ duration: 0.55 }}
@@ -58,7 +61,7 @@ export default function CategoryShowcase() {
               Servicii si specialisti
             </p>
             <h2
-              id="home-categories-title"
+              id={headingId}
               className="mt-2 max-w-3xl font-heading text-3xl font-extrabold leading-[1.04] tracking-[-0.04em] sm:text-4xl lg:text-5xl"
             >
               Ce poti gasi pe VIASEE
@@ -74,12 +77,12 @@ export default function CategoryShowcase() {
           {CATEGORIES.map((category, index) => (
             <motion.article
               key={category.title}
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 18 }}
+              initial={preview || prefersReducedMotion ? false : { opacity: 0, y: 18 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.2 }}
               transition={{
                 duration: 0.5,
-                delay: prefersReducedMotion ? 0 : index * 0.06,
+                delay: preview || prefersReducedMotion ? 0 : index * 0.06,
               }}
               className={
                 category.featured
