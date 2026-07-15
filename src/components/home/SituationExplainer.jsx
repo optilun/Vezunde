@@ -6,17 +6,17 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 const ROLES = [
   {
     number: "01",
-    term: "optician",
-    termSize: "text-[clamp(4.25rem,8.5vw,8rem)]",
-    type: "/ s. m. si f. / specialist tehnic",
-    navDescription: "ochelari si reparatii",
+    term: "optician medical",
+    termSize: "text-[clamp(3.35rem,6.5vw,6.5rem)]",
+    type: "/ specialist tehnic / ochelari și dispozitive optice",
+    navDescription: "ochelari, reglaje și reparații",
     definition:
-      "Realizeaza, monteaza, regleaza si repara ochelarii pe baza unei prescriptii sau recomandari de corectie.",
+      "Interpretează prescripția optică și realizează, montează, verifică, adaptează și întreține ochelarii, astfel încât lentilele și rama să ofere corecția și confortul prevăzute.",
     example:
-      "„Mi s-au strambat ochelarii sau am nevoie de lentile noi.”",
+      "„Am o prescripție și vreau ochelari noi, lentile noi, un reglaj sau o reparație.”",
     difference:
-      "Nu verifica sanatatea ochilor si nu stabileste un diagnostic medical.",
-    cta: "Gaseste o optica",
+      "Nu efectuează consultații medicale și nu diagnostichează ori tratează afecțiuni oculare.",
+    cta: "Găsește o optică",
     to: "/cerere?categorie=reparatii",
     accent: "#a97825",
   },
@@ -24,15 +24,15 @@ const ROLES = [
     number: "02",
     term: "optometrist",
     termSize: "text-[clamp(3.35rem,8vw,7.5rem)]",
-    type: "/ s. m. si f. / specialist in evaluarea vederii",
-    navDescription: "evaluarea vederii",
+    type: "/ specialist în evaluarea funcției vizuale /",
+    navDescription: "evaluarea vederii și corecție optică",
     definition:
-      "Evalueaza vederea, masoara refractia si determina corectia optica pentru ochelari sau lentile.",
+      "Evaluează funcția vizuală prin măsurători optometrice, determină corecția optică și recomandă soluții pentru vedere; când este necesară o evaluare medicală, te îndrumă către medicul oftalmolog.",
     example:
-      "„Vreau sa imi verific vederea si dioptriile.”",
+      "„Vreau să-mi verific vederea, dioptriile sau adaptarea la ochelari ori lentile de contact.”",
     difference:
-      "Nu este medic. Pentru diagnostic si tratament mergi la medicul oftalmolog.",
-    cta: "Cauta un control de vedere",
+      "Nu este medic, iar evaluarea optometrică nu înlocuiește consultația, diagnosticul sau tratamentul oftalmologic.",
+    cta: "Găsește un optometrist",
     to: "/cerere?categorie=control_vedere",
     accent: "#345bc8",
   },
@@ -40,15 +40,15 @@ const ROLES = [
     number: "03",
     term: "medic oftalmolog",
     termSize: "text-[clamp(3.25rem,6vw,5.8rem)]",
-    type: "/ medic specialist / diagnostic si tratament",
-    navDescription: "afectiuni si tratament",
+    type: "/ medic specialist / sănătatea ochilor",
+    navDescription: "diagnostic și tratament",
     definition:
-      "Examineaza ochii, diagnosticheaza si trateaza afectiunile oculare si poate recomanda investigatii sau tratament.",
+      "Efectuează consultația medicală oftalmologică, diagnostichează și tratează afecțiunile ochilor și indică, atunci când este necesar, investigații, medicamente, proceduri sau intervenții chirurgicale.",
     example:
-      "„Am durere, roseata, vedere scazuta sau un simptom care ma ingrijoreaza.”",
+      "„Am durere, roșeață, vedere scăzută, un simptom nou sau vreau să verific sănătatea ochilor.”",
     difference:
-      "Este medic. Alege-l pentru simptome, afectiuni, investigatii si tratament medical.",
-    cta: "Gaseste un medic oftalmolog",
+      "Este singurul dintre aceste trei roluri care stabilește un diagnostic medical și indică tratamentul unei afecțiuni oculare.",
+    cta: "Găsește un medic oftalmolog",
     to: "/cerere?categorie=consult_oftalmologic",
     accent: "#735c80",
   },
@@ -231,7 +231,9 @@ export default function SituationExplainer() {
 
               <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground sm:text-sm">
                 <RoleMark color={current.accent} />
-                <span>VIASEE ofera orientare, nu diagnostic.</span>
+                <span>
+                  Competențele pot varia în funcție de calificare și autorizare. VIASEE oferă orientare, nu diagnostic.
+                </span>
               </div>
             </div>
           </motion.article>
