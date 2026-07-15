@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { getRecommendationCoverageStatus } from '../base44/functions/matchProvidersSemantic/coverage.js';
+import { normalizeServiceKey } from '../shared/canonicalServiceRegistryExtended.js';
 import {
   sanitizePatientNeedInterpretation,
 } from '../shared/patientNeedInterpretation.js';
@@ -10,40 +11,46 @@ import {
   recommendationBucketForProfile,
 } from '../shared/providerRecommendation.js';
 import { resolveServiceSearchQuery } from '../shared/serviceSemanticSearch.js';
+import {
+  INTENTS,
+  detectIntentFromText,
+  detectSubIntentPrefill,
+} from '../src/lib/intentRegistry.js';
 
 function resolve(query) {
   return resolveServiceSearchQuery(query, { limit: 15, minScore: 0.34 });
 }
 
-assert.equal(
-  getRecommendationCoverageStatus({
-    resultCount: 1,
-    localProviderCount: 1,
-    configuredMatchingProviderCount: 1,
-  }),
-  'results_found',
-);
-assert.equal(
-  getRecommendationCoverageStatus({
-    localProviderCount: 0,
-    configuredMatchingProviderCount: 0,
-  }),
-  'no_local_providers',
-);
-assert.equal(
-  getRecommendationCoverageStatus({
-    localProviderCount: 2,
-    configuredMatchingProviderCount: 0,
-  }),
-  'local_service_data_missing',
-);
-assert.equal(
-  getRecommendationCoverageStatus({
-    localProviderCount: 2,
-    configuredMatchingProviderCount: 1,
-  }),
-  'no_eligible_local_results',
-);
+const coverageScenarios = [
+  {
+    label: 'rezultate locale eligibile',
+    counts: { resultCount: 1, localProviderCount: 1, configuredMatchingProviderCount: 1 },
+    expected: 'results_found',
+  },
+  {
+    label: 'localitate fara furnizori publicati',
+    counts: { localProviderCount: 0, configuredMatchingProviderCount: 0 },
+    expected: 'no_local_providers',
+  },
+  {
+    label: 'furnizori locali fara servicii configurate',
+    counts: { localProviderCount: 2, configuredMatchingProviderCount: 0 },
+    expected: 'local_service_data_missing',
+  },
+  {
+    label: 'servicii locale fara rezultat eligibil',
+    counts: { localProviderCount: 2, configuredMatchingProviderCount: 1 },
+    expected: 'no_eligible_local_results',
+  },
+];
+
+for (const scenario of coverageScenarios) {
+  assert.equal(
+    getRecommendationCoverageStatus(scenario.counts),
+    scenario.expected,
+    `Coverage incorect pentru ${scenario.label}`,
+  );
+}
 
 function candidate({
   id,
@@ -92,6 +99,22 @@ const patientQueries = [
     query: 'mi s-au rupt ochelarii si trebuie reparati',
     expected: ['eyeglasses_repair'],
   },
+  {
+    query: 'vreau lentile progresive',
+    expected: ['progressive_lenses'],
+  },
+  {
+    query: 'am nevoie de lentile de contact',
+    expected: ['contact_lenses'],
+  },
+  {
+    query: 'caut tonometrie',
+    expected: ['tonometry'],
+  },
+  {
+    query: 'am nevoie de fund de ochi',
+    expected: ['fundus_exam'],
+  },
 ];
 
 for (const scenario of patientQueries) {
@@ -100,6 +123,47 @@ for (const scenario of patientQueries) {
     assert.ok(
       resolution.service_keys.includes(serviceKey),
       `${JSON.stringify(scenario.query)} nu a rezolvat ${serviceKey}`,
+    );
+  }
+}
+
+const intentScenarios = [
+  { text: 'copilul nu vede tabla', expected: 'control_copil' },
+  { text: 'nu vad bine si vreau un control', expected: 'control_vedere' },
+  { text: 'am o rama rupta', expected: 'reparatii_ochelari' },
+  { text: 'vreau lentile de contact', expected: 'lentile_contact' },
+  { text: 'caut o investigatie OCT', expected: 'investigatii' },
+  { text: 'ma doare ochiul', expected: 'simptome_oftalmologice' },
+];
+
+for (const scenario of intentScenarios) {
+  assert.equal(
+    detectIntentFromText(scenario.text),
+    scenario.expected,
+    `Intentie incorecta pentru ${JSON.stringify(scenario.text)}`,
+  );
+}
+
+assert.deepEqual(
+  detectSubIntentPrefill('investigatii', 'am nevoie de un OCT'),
+  { question_key: 'investigatie', option_key: 'oct' },
+);
+assert.deepEqual(
+  detectSubIntentPrefill('ochelari_lentile', 'vreau lentile progresive'),
+  { question_key: 'ce_cauti', option_key: 'lentile_progresive' },
+);
+
+for (const [intentKey, intent] of Object.entries(INTENTS)) {
+  const configuredKeys = [
+    ...(intent.service_keys || []),
+    ...(intent.questions || []).flatMap((question) => (
+      (question.options || []).flatMap((option) => option.service_keys || [])
+    )),
+  ];
+  for (const serviceKey of configuredKeys) {
+    assert.ok(
+      normalizeServiceKey(serviceKey).canonicalKey,
+      `Intentia ${intentKey} foloseste un serviciu necunoscut: ${serviceKey}`,
     );
   }
 }
@@ -166,6 +230,29 @@ assert.deepEqual(
 );
 assert.ok(compareRecommendationEntries(ranked[0], ranked[1]) <= 0);
 
+const bucketMatrix = [
+  { id: 'confirmed-4', name: 'Delta', recommendation_group: 'confirmed', recommendation_score: 70, semantic_match_score: 0.7, matched_service_keys: ['refraction'], profile_control_status: 'claimed' },
+  { id: 'directory-high', name: 'Director', recommendation_group: 'directory', recommendation_score: 99, semantic_match_score: 1, matched_service_keys: ['refraction'], profile_control_status: 'directory' },
+  { id: 'confirmed-2', name: 'Beta', recommendation_group: 'confirmed', recommendation_score: 90, semantic_match_score: 0.9, matched_service_keys: ['refraction'], profile_control_status: 'verified' },
+  { id: 'confirmed-1', name: 'Alfa', recommendation_group: 'confirmed', recommendation_score: 95, semantic_match_score: 0.95, matched_service_keys: ['refraction'], profile_control_status: 'verified' },
+  { id: 'confirmed-3', name: 'Gamma', recommendation_group: 'confirmed', recommendation_score: 80, semantic_match_score: 0.8, matched_service_keys: ['refraction'], profile_control_status: 'verified' },
+];
+const bucketMatrixRanked = assignRecommendationBuckets(bucketMatrix, 20);
+assert.deepEqual(
+  bucketMatrixRanked.map((item) => item.id),
+  ['confirmed-1', 'confirmed-2', 'confirmed-3', 'confirmed-4', 'directory-high'],
+  'Profilurile din director trebuie afisate dupa toate rezultatele confirmate',
+);
+assert.deepEqual(
+  bucketMatrixRanked.map((item) => item.result_bucket),
+  ['top3', 'top3', 'top3', 'extended_confirmed', 'extended_directory'],
+);
+assert.deepEqual(
+  assignRecommendationBuckets([...bucketMatrix].reverse(), 20).map((item) => item.id),
+  bucketMatrixRanked.map((item) => item.id),
+  'Bucket-urile trebuie sa ramana stabile indiferent de ordinea initiala',
+);
+
 assert.equal(
   recommendationBucketForProfile('directory', 'specialized_medical'),
   'excluded',
@@ -214,5 +301,6 @@ assert.deepEqual(
 );
 
 console.log(`Patient query scenarios: ${patientQueries.length}`);
+console.log(`Deterministic intent scenarios: ${intentScenarios.length}`);
+console.log(`Coverage scenarios: ${coverageScenarios.length}`);
 console.log('Patient search and recommendation flow: PASS');
-
