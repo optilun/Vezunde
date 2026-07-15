@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
-import { PROVIDER_TYPES } from "@/lib/vezunde";
+import { getCityLabel, PROVIDER_TYPES } from "@/lib/vezunde";
 import TrustBadge from "@/components/results/TrustBadge";
 
 export default function ProvidersShowcase() {
@@ -50,7 +50,7 @@ export default function ProvidersShowcase() {
                   <TrustBadge status={loc.profile_control_status} />
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {PROVIDER_TYPES[loc.provider_type]} · {loc.city}
+                  {PROVIDER_TYPES[loc.provider_type]} · {getCityLabel(loc.city)}
                 </p>
               </div>
               <ArrowUpRight className="w-5 h-5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
