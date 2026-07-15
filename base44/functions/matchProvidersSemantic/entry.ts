@@ -1,10 +1,13 @@
 import {
+  buildPatientNeedPrompt,
   evaluateServicePrerequisites,
   getCanonicalServiceDefinition,
   getServiceOperationalContext,
+  getPatientNeedResponseSchema,
   isServiceMatchingEligible,
   normalizeServiceKey,
   resolveServiceSearchQuery,
+  sanitizePatientNeedInterpretation,
 } from './sharedDependencies.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
@@ -84,6 +87,47 @@ function semanticReason(serviceKeys) {
   return labels.length > 0 ? `Potrivire după limbajul căutat: ${labels.join(', ')}` : '';
 }
 
+async function interpretPatientNeed(base44, payload, searchText, deterministicServiceKeys) {
+  if (!searchText) {
+    return {
+      mode: 'shadow',
+      status: 'skipped',
+      reason: 'search_text_required',
+    };
+  }
+
+  const deterministicIntent = clean(payload.deterministic_intent || payload.intent);
+  const prompt = buildPatientNeedPrompt({
+    text: searchText,
+    deterministicIntent,
+    deterministicServiceKeys,
+    answers: payload.answers,
+  });
+
+  try {
+    const raw = await base44.integrations.Core.InvokeLLM({
+      prompt,
+      add_context_from_internet: false,
+      response_json_schema: getPatientNeedResponseSchema(),
+    });
+    return {
+      mode: 'shadow',
+      status: 'completed',
+      interpretation: sanitizePatientNeedInterpretation(raw, {
+        deterministicIntent,
+        deterministicServiceKeys,
+      }),
+    };
+  } catch (_error) {
+    // AI is advisory in shadow mode. Its failure must never block deterministic search.
+    return {
+      mode: 'shadow',
+      status: 'unavailable',
+      reason: 'ai_interpretation_unavailable',
+    };
+  }
+}
+
 Deno.serve(async (request) => {
   try {
     const base44 = createClientFromRequest(request);
@@ -107,6 +151,10 @@ Deno.serve(async (request) => {
     const semanticScoreByKey = Object.fromEntries(
       semantic.matches.map((match) => [match.service_key, Number(match.score) || 0]),
     );
+
+    if (payload.mode === 'interpret_only') {
+      return Response.json(await interpretPatientNeed(base44, payload, searchText, requestedKeys));
+    }
 
     if (requestedKeys.length === 0) {
       return Response.json({

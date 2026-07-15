@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
-import { matchProvidersWithSemanticFallback } from "@/lib/providerSemanticSearch";
+import { interpretPatientNeedInShadow, matchProvidersWithSemanticFallback } from "@/lib/providerSemanticSearch";
 import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill } from "@/lib/intentRegistry";
 import QuestionChoice from "./QuestionChoice";
 import QuestionText from "./QuestionText";
@@ -107,14 +107,23 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     setPhase("submitting");
     (async () => {
       try {
-        const res = await matchProvidersWithSemanticFallback({
+        const matchPayload = {
           search_text: initialMessage,
           intent: state.intent,
           service_keys: state.serviceKeys,
           locality_siruta_code: state.locality?.siruta_code || "",
           client_address_text: state.clientAddressText || "",
+          for_whom: state.answers.find((answer) => answer.question_key === "pentru_cine")?.answer_value || null,
+          age_group: state.answers.find((answer) => answer.question_key === "varsta_copil")?.answer_value || null,
+          timing_key: state.answers.find((answer) => answer.question_key === "timing")?.answer_value || null,
           limit: 20,
+        };
+        void interpretPatientNeedInShadow({
+          ...matchPayload,
+          deterministic_intent: state.intent,
+          answers: state.answers,
         });
+        const res = await matchProvidersWithSemanticFallback(matchPayload);
         setResults(res.data.results || []);
         setMatchMeta({
           routing_mode: res.data.routing_mode || null,

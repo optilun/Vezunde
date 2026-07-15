@@ -191,7 +191,7 @@ export default function Hero() {
               className="mt-5 text-xs sm:mt-6"
               style={{ color: "#A5A099" }}
             >
-              VIASEE nu ofera diagnostic medical.
+              Textul este interpretat automat pentru orientare. Nu include date personale. VIASEE nu ofera diagnostic medical.
             </motion.p>
           </>
         )}
