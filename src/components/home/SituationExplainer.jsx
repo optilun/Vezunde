@@ -8,15 +8,15 @@ const ROLES = [
     number: "01",
     term: "optician medical",
     termSize: "text-[clamp(3.35rem,6.5vw,6.5rem)]",
-    type: "/ specialist tehnic / ochelari si dispozitive optice",
-    navDescription: "ochelari, reglaje si reparatii",
+    type: "/ specialist tehnic / ochelari și dispozitive optice",
+    navDescription: "ochelari, reglaje și reparații",
     definition:
-      "Interpreteaza prescriptia optica si realizeaza, monteaza, verifica, adapteaza si intretine ochelarii, astfel incat lentilele si rama sa ofere corectia si confortul prevazute.",
+      "Interpretează prescripția optică pentru a realiza, monta și adapta ochelarii tăi. Se asigură că lentilele și rama îți oferă corecția și confortul de care ai nevoie.",
     example:
-      "„Am o prescriptie si vreau ochelari noi, lentile noi, un reglaj sau o reparatie.”",
+      "„Am o prescripție și vreau ochelari noi, lentile noi, un reglaj sau o reparație.”",
     difference:
-      "Nu efectueaza consultatii medicale si nu diagnosticheaza ori trateaza afectiuni oculare.",
-    cta: "Gaseste o optica",
+      "Nu efectuează consultații medicale și nu diagnostichează ori tratează afecțiuni oculare.",
+    cta: "Găsește o optică",
     to: "/cerere?categorie=reparatii",
     accent: "#a97825",
   },
@@ -24,15 +24,15 @@ const ROLES = [
     number: "02",
     term: "optometrist",
     termSize: "text-[clamp(3.35rem,8vw,7.5rem)]",
-    type: "/ specialist in evaluarea functiei vizuale /",
-    navDescription: "evaluarea vederii si corectie optica",
+    type: "/ specialist în evaluarea funcției vizuale /",
+    navDescription: "evaluarea vederii și corecție optică",
     definition:
-      "Evalueaza functia vizuala prin masuratori optometrice, determina corectia optica si recomanda solutii pentru vedere; cand este necesara o evaluare medicala, te indruma catre medicul oftalmolog.",
+      "Evaluează funcția vizuală prin măsurători optometrice, determină corecția optică și recomandă soluții pentru vedere. Atunci când este necesară o evaluare medicală, te îndrumă către un medic oftalmolog.",
     example:
-      "„Vreau sa-mi verific vederea, dioptriile sau adaptarea la ochelari ori lentile de contact.”",
+      "„Vreau să-mi verific vederea, dioptriile sau adaptarea la ochelari ori lentile de contact.”",
     difference:
-      "Nu este medic, iar evaluarea optometrica nu inlocuieste consultatia, diagnosticul sau tratamentul oftalmologic.",
-    cta: "Gaseste un optometrist",
+      "Nu este medic, iar evaluarea optometrică nu înlocuiește consultația, diagnosticul sau tratamentul oftalmologic.",
+    cta: "Găsește un optometrist",
     to: "/cerere?categorie=control_vedere",
     accent: "#345bc8",
   },
@@ -40,15 +40,15 @@ const ROLES = [
     number: "03",
     term: "medic oftalmolog",
     termSize: "text-[clamp(3.25rem,6vw,5.8rem)]",
-    type: "/ medic specialist / sanatatea ochilor",
-    navDescription: "diagnostic si tratament",
+    type: "/ medic specialist / sănătatea ochilor",
+    navDescription: "diagnostic și tratament",
     definition:
-      "Efectueaza consultatia medicala oftalmologica, diagnosticheaza si trateaza afectiunile ochilor si indica, atunci cand este necesar, investigatii, medicamente, proceduri sau interventii chirurgicale.",
+      "Efectuează consultații medicale oftalmologice, diagnostichează și tratează bolile de ochi. Atunci când este necesar, prescrie medicamente sau recomandă investigații și inițiază tratamente sau proceduri chirurgicale.",
     example:
-      "„Am durere, roseata, vedere scazuta, un simptom nou sau vreau sa verific sanatatea ochilor.”",
+      "„Am durere, roșeață, vedere scăzută, un simptom nou sau vreau să verific sănătatea ochilor.”",
     difference:
-      "Este singurul dintre aceste trei roluri care stabileste un diagnostic medical si indica tratamentul unei afectiuni oculare.",
-    cta: "Gaseste un medic oftalmolog",
+      "Este singurul dintre aceste trei roluri care stabilește un diagnostic medical și indică tratamentul unei afecțiuni oculare.",
+    cta: "Găsește un medic oftalmolog",
     to: "/cerere?categorie=consult_oftalmologic",
     accent: "#735c80",
   },
@@ -111,9 +111,9 @@ export default function SituationExplainer() {
             id="specialist-guide-title"
             className="font-heading text-2xl font-extrabold leading-[1.02] tracking-[-0.035em] sm:text-3xl"
           >
-            Nu stii la cine sa mergi?
+            Nu știi de ce specialist ai nevoie?
             <span className="mt-1 block font-display text-[1.08em] font-medium italic text-muted-foreground/60">
-              Nu trebuie sa stii.
+              Te ajutăm să alegi.
             </span>
           </h2>
 
@@ -172,10 +172,10 @@ export default function SituationExplainer() {
             role="tabpanel"
             aria-labelledby={`role-index-${active}`}
             aria-live="polite"
-            initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={prefersReducedMotion ? undefined : { opacity: 0, y: -8 }}
-            transition={{ duration: prefersReducedMotion ? 0 : 0.24 }}
+            initial={prefersReducedMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={prefersReducedMotion ? undefined : { opacity: 0 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
             className="mt-12 sm:mt-14"
           >
             <div className="flex flex-col gap-5 pb-7 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
@@ -201,7 +201,7 @@ export default function SituationExplainer() {
             <div className="grid border-b-[3px] border-[#171717] lg:grid-cols-2">
               <div className="py-7 lg:border-r lg:border-black/25 lg:py-9 lg:pr-12">
                 <p className="font-heading text-base font-semibold tracking-[-0.02em] text-foreground/75 sm:text-lg">
-                  Mergi cand
+                  Mergi când
                 </p>
                 <p className="mt-4 max-w-[38rem] font-heading text-[clamp(2rem,3.45vw,3.45rem)] font-semibold leading-[1.06] tracking-[-0.05em] text-[#171717]">
                   {current.example}
@@ -210,7 +210,7 @@ export default function SituationExplainer() {
 
               <div className="border-t border-black/25 py-7 lg:border-t-0 lg:py-9 lg:pl-12">
                 <p className="font-heading text-base font-semibold tracking-[-0.02em] text-foreground/75 sm:text-lg">
-                  Diferenta importanta
+                  Diferența importantă
                 </p>
                 <p className="mt-4 max-w-[39rem] font-heading text-[clamp(1.8rem,3.1vw,3.1rem)] font-semibold leading-[1.07] tracking-[-0.045em] text-[#171717]">
                   {current.difference}
@@ -232,7 +232,7 @@ export default function SituationExplainer() {
               <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground sm:text-sm">
                 <RoleMark color={current.accent} />
                 <span>
-                  Competentele pot varia in functie de calificare si autorizare. VIASEE ofera orientare, nu diagnostic.
+                  Competențele pot varia în funcție de calificare și autorizare. VIASEE oferă orientare, nu diagnostic.
                 </span>
               </div>
             </div>
