@@ -1,7 +1,25 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
+
+function useDesktopLayout() {
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+    const updateLayout = (event) => setIsDesktop(event.matches);
+
+    setIsDesktop(mediaQuery.matches);
+    mediaQuery.addEventListener("change", updateLayout);
+
+    return () => mediaQuery.removeEventListener("change", updateLayout);
+  }, []);
+
+  return isDesktop;
+}
 
 function ProfileBlueprint() {
   return (
@@ -140,6 +158,7 @@ function ProfileBlueprint() {
 
 export default function ProCta() {
   const prefersReducedMotion = useReducedMotion();
+  const isDesktop = useDesktopLayout();
 
   return (
     <section
@@ -153,7 +172,7 @@ export default function ProCta() {
         transition={{ duration: 0.55 }}
         className="relative grid overflow-hidden rounded-[2.25rem_2.25rem_0.75rem_2.25rem] border border-black/20 bg-[#171717] shadow-[0_22px_60px_rgba(23,23,23,0.12)] lg:grid-cols-[1.3fr_0.9fr]"
       >
-        <div className="relative flex flex-col justify-center px-7 py-12 text-[#F8F4EC] sm:px-12 sm:py-16 lg:min-h-[34rem] lg:px-16 lg:py-20">
+        <div className="relative z-20 flex flex-col justify-center bg-[#171717] px-7 py-12 text-[#F8F4EC] sm:px-12 sm:py-16 lg:min-h-[34rem] lg:px-16 lg:py-20">
           <span
             aria-hidden="true"
             className="absolute left-0 top-14 h-px w-8 bg-[#F8F4EC]/35 sm:w-12"
@@ -200,9 +219,33 @@ export default function ProCta() {
           </div>
         </div>
 
-        <div className="border-t border-black/25 lg:border-l lg:border-t-0">
+        <motion.div
+          initial={
+            prefersReducedMotion
+              ? false
+              : isDesktop
+                ? { x: -56 }
+                : { opacity: 0, y: 12 }
+          }
+          whileInView={
+            isDesktop
+              ? { x: 0 }
+              : { opacity: 1, y: 0 }
+          }
+          viewport={{ once: true, amount: 0.35 }}
+          transition={
+            prefersReducedMotion
+              ? { duration: 0 }
+              : {
+                  duration: isDesktop ? 0.82 : 0.35,
+                  delay: isDesktop ? 0.12 : 0,
+                  ease: [0.22, 1, 0.36, 1],
+                }
+          }
+          className="relative z-10 border-t border-black/25 lg:border-l lg:border-t-0 lg:shadow-[inset_18px_0_28px_-24px_rgba(0,0,0,0.68)]"
+        >
           <ProfileBlueprint />
-        </div>
+        </motion.div>
       </motion.div>
     </section>
   );
