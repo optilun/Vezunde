@@ -6,10 +6,10 @@ import ConversationalCard from "@/components/intake2/ConversationalCard";
 
 const PROMPTS = [
   "Caut un medic oftalmolog aproape de mine",
-  "Caut o clinica de oftalmologie",
-  "Vad neclar la distanta",
+  "Caut o clinică de oftalmologie",
+  "Văd neclar la distanță",
   "Caut un control de vedere pentru copil",
-  "Am recomandare pentru o investigatie OCT",
+  "Am recomandare pentru o investigație OCT",
   "Caut lentile progresive",
   "Mi s-au rupt ochelarii",
 ];
@@ -17,7 +17,7 @@ const PROMPTS = [
 const EXAMPLES = [
   { label: "Caut un medic oftalmolog", to: "/cerere?categorie=consult_oftalmologic" },
   { label: "Control de vedere pentru copil", to: "/cerere?categorie=copii_miopie" },
-  { label: "Reparatie ochelari", to: "/cerere?categorie=reparatii" },
+  { label: "Reparație ochelari", to: "/cerere?categorie=reparatii" },
 ];
 
 function useTypingPlaceholder(active) {
@@ -109,9 +109,9 @@ export default function Hero() {
               className="font-heading text-[2.25rem] font-extrabold leading-[1.02] tracking-[-0.04em] min-[390px]:text-[2.65rem] sm:text-[4.25rem]"
               style={{ color: "#141414" }}
             >
-              Spune ce cauti.
+              Spune ce cauți.
               <br />
-              Vezi unde poti merge.
+              Vezi unde poți merge.
             </motion.h1>
 
             <motion.p
@@ -121,7 +121,7 @@ export default function Hero() {
               className="mt-4 max-w-2xl text-[0.95rem] leading-relaxed sm:mt-5 sm:text-lg"
               style={{ color: "#6B675F" }}
             >
-              VIASEE te ajuta sa gasesti medici oftalmologi, clinici si optici pentru controale, investigatii, ochelari sau reparatii.
+              VIASEE te ajută să găsești medici oftalmologi, clinici și optici pentru controale, investigații, ochelari sau reparații.
             </motion.p>
 
             <motion.form
@@ -145,14 +145,14 @@ export default function Hero() {
                   onChange={(event) => { stopAnimation(); setText(event.target.value); }}
                   onFocus={stopAnimation}
                   onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) submit(event); }}
-                  placeholder={animating ? "" : "Scrie aici ce cauti..."}
+                  placeholder={animating ? "" : "Scrie aici ce cauți..."}
                   rows={2}
                   className="w-full resize-none bg-transparent px-1.5 pt-1 text-base outline-none placeholder:text-[#9B968D] sm:px-2"
                   style={{ color: "#141414" }}
                 />
                 <div className="mt-2 flex items-center justify-between px-0.5 sm:px-1">
                   <span className="hidden text-xs sm:block" style={{ color: "#9B968D" }}>
-                    Descrie pe scurt ce cauti
+                    Descrie pe scurt ce cauți
                   </span>
                   <button
                     type="submit"
@@ -191,7 +191,7 @@ export default function Hero() {
               className="mt-5 text-xs sm:mt-6"
               style={{ color: "#A5A099" }}
             >
-              Textul este interpretat automat pentru orientare. Nu include date personale. VIASEE nu ofera diagnostic medical.
+              Textul este interpretat automat pentru orientare. Nu include date personale. VIASEE nu oferă diagnostic medical.
             </motion.p>
           </>
         )}
