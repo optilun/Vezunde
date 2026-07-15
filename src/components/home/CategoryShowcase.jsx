@@ -87,10 +87,20 @@ export default function CategoryShowcase() {
             >
               <span
                 aria-hidden="true"
+                className="absolute inset-0 opacity-60 mix-blend-multiply"
+                style={{
+                  backgroundImage:
+                    "url('/images/home/viasee-technical-grain.svg')",
+                  backgroundSize: "180px 180px",
+                }}
+              />
+
+              <span
+                aria-hidden="true"
                 className={
                   category.featured
-                    ? "absolute inset-x-0 top-0 h-[82%]"
-                    : "absolute inset-x-0 top-0 h-[69%]"
+                    ? "absolute inset-x-0 top-0 h-[84%]"
+                    : "absolute inset-x-0 top-0 h-[66%]"
                 }
               >
                 <img
@@ -98,7 +108,7 @@ export default function CategoryShowcase() {
                   alt=""
                   loading="lazy"
                   decoding="async"
-                  className="h-full w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.025] group-focus-visible:scale-[1.025] motion-reduce:transition-none"
+                  className="h-full w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.018] group-focus-visible:scale-[1.018] motion-reduce:transition-none"
                 />
               </span>
 
@@ -122,8 +132,8 @@ export default function CategoryShowcase() {
                   aria-hidden="true"
                   className={
                     category.featured
-                      ? "flex h-11 w-11 items-center justify-center rounded-full border border-current/65 sm:h-12 sm:w-12"
-                      : "flex h-8 w-8 items-center justify-center rounded-full border border-current/65 sm:h-9 sm:w-9"
+                      ? "flex h-11 w-11 items-center justify-center rounded-full border border-[#1c1c1c]/60 sm:h-12 sm:w-12"
+                      : "flex h-8 w-8 items-center justify-center rounded-full border border-[#1c1c1c]/60 sm:h-9 sm:w-9"
                   }
                 >
                   <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transition-none sm:h-[18px] sm:w-[18px]" />
