@@ -363,6 +363,7 @@ Deno.serve(async (request) => {
       need_level: needLevel,
       resolved_intent: intent || null,
       routing_mode: 'locality',
+      routing_reason: 'Potrivire dupa localitatea selectata.',
       coverage_status: bucketedResults.length > 0 ? 'results_found' : 'no_local_results',
       selected_locality_siruta_code: sirutaCode,
     });
