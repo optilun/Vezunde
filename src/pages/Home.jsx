@@ -81,10 +81,13 @@ function PinnedTakeover() {
     ["calc(100% - 5rem)", "0%"],
   );
   const heroScale = useTransform(scrollYProgress, [0, 0.55, 1], [1, 0.99, 0.965]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.45, 0.9, 1], [1, 1, 0.5, 0.16]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.45, 0.9, 1], [1, 1, 0.5, 0]);
   const heroY = useTransform(scrollYProgress, [0, 1], [0, -18]);
   const heroPointerEvents = useTransform(scrollYProgress, (value) =>
     value > 0.96 ? "none" : "auto",
+  );
+  const stageVisibility = useTransform(scrollYProgress, (value) =>
+    value >= 0.999 ? "hidden" : "visible",
   );
 
   return (
@@ -92,9 +95,12 @@ function PinnedTakeover() {
       <section
         ref={sceneRef}
         aria-label="Tranzitie catre continutul homepage-ului"
-        className="relative z-30 h-[calc(170svh-4rem)]"
+        className="pointer-events-none relative z-30 h-[calc(170svh-4rem)]"
       >
-        <div className="sticky top-16 h-[calc(100svh-4rem)] overflow-hidden">
+        <motion.div
+          style={{ visibility: stageVisibility }}
+          className="sticky top-16 h-[calc(100svh-4rem)] overflow-hidden"
+        >
           <motion.div
             className="absolute inset-0 origin-top will-change-transform"
             style={{
@@ -115,7 +121,7 @@ function PinnedTakeover() {
               <HomeCanvas preview />
             </div>
           </motion.div>
-        </div>
+        </motion.div>
       </section>
 
       <div className="relative z-20 mt-[calc(-100svh+4rem)] isolate overflow-hidden rounded-t-[2rem] border-t border-white/80 bg-[#F8F4EC] pb-16 shadow-[0_-18px_65px_rgba(28,24,18,0.13)] sm:rounded-t-[2.75rem] lg:rounded-t-[3.25rem]">
