@@ -5,7 +5,7 @@ import { motion, useReducedMotion } from "framer-motion";
 
 const CATEGORIES = [
   {
-    title: "Medici si clinici",
+    title: "Medici și clinici",
     to: "/cauta",
     artwork: "/images/home/viasee-artwork-medici-clinici.svg",
     tone: "border-[#d4c6d8]/80 bg-[#e8e0ea]/90",
@@ -25,7 +25,7 @@ const CATEGORIES = [
     desktopLabel: "lg:text-[1.05rem]",
   },
   {
-    title: "Investigatii",
+    title: "Investigații",
     to: "/cerere?categorie=investigatii",
     artwork: "/images/home/viasee-artwork-investigatii.svg",
     tone: "border-[#ccd2ba]/80 bg-[#dfe3d2]/90",
@@ -35,7 +35,7 @@ const CATEGORIES = [
     desktopLabel: "lg:text-lg",
   },
   {
-    title: "Ochelari si lentile",
+    title: "Ochelari și lentile",
     to: "/cerere?categorie=ochelari_lentile",
     artwork: "/images/home/viasee-artwork-ochelari-lentile.svg",
     tone: "border-[#e1bda8]/80 bg-[#efd5c5]/90",
@@ -45,7 +45,7 @@ const CATEGORIES = [
     desktopLabel: "lg:text-lg",
   },
   {
-    title: "Reparatii si reglaje",
+    title: "Reparații și reglaje",
     to: "/cerere?categorie=reparatii_ochelari",
     artwork: "/images/home/viasee-artwork-reparatii-reglaje.svg",
     tone: "border-[#dac69b]/80 bg-[#eadcba]/90",
@@ -155,7 +155,7 @@ export default function CategoryShowcase({ preview = false }) {
           className="text-center"
         >
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75 sm:text-[11px]">
-            Servicii si specialisti
+            Servicii și specialiști
           </p>
           <h2
             id={headingId}
@@ -164,10 +164,10 @@ export default function CategoryShowcase({ preview = false }) {
             <span className="block lg:whitespace-nowrap">
               Tot ce ai nevoie pentru vedere.
             </span>
-            <span className="block">Intr-un singur loc.</span>
+            <span className="block">Într-un singur loc.</span>
           </h2>
           <p className="mx-auto mt-4 max-w-3xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Medici, clinici, controale, investigatii, ochelari si reparatii.
+            Medici, clinici, controale, investigații, ochelari și reparații.
           </p>
         </motion.div>
 
@@ -265,7 +265,7 @@ export default function CategoryShowcase({ preview = false }) {
         >
           <Link
             to="/cerere"
-            aria-label="Alege ce cauti si trimite o cerere"
+            aria-label="Alege ce cauți și trimite o cerere"
             className="group inline-flex min-h-14 items-center gap-5 rounded-full bg-[#171717] py-2 pl-7 pr-2 text-white shadow-[0_16px_38px_rgba(18,18,18,0.15)] outline-none transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_44px_rgba(18,18,18,0.2)] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-8 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none sm:min-h-[4.5rem] sm:gap-8 sm:pl-10"
           >
             <span
@@ -275,7 +275,7 @@ export default function CategoryShowcase({ preview = false }) {
               <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transition-none sm:h-7 sm:w-7" />
             </span>
             <span className="font-heading text-2xl font-bold leading-none tracking-[-0.035em] sm:text-[2rem]">
-              Alege ce cauti
+              Alege ce cauți
             </span>
           </Link>
         </motion.div>
