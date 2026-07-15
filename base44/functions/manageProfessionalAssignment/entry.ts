@@ -74,6 +74,47 @@ async function listAssignments(svc, locationId, location) {
   return items;
 }
 
+async function withdrawOwnAssignment(svc, user, locationId) {
+  const profiles = await svc.entities.ProfessionalProfile.filter({ user_id: user.id }, '-created_date', 5);
+  const profile = profiles[0] || null;
+  if (!profile) return res({ error: 'Profilul profesional nu a fost gasit' }, 404);
+
+  const assignments = await svc.entities.ProfessionalLocationAssignment.filter({
+    professional_id: profile.id,
+    location_id: locationId,
+  }, '-created_date', 10);
+  const assignment = assignments[0] || null;
+  if (!assignment) return res({ error: 'Asocierea profesionala nu a fost gasita' }, 404);
+  if (assignment.active_status === 'inactiv') {
+    return res({ success: true, already_inactive: true, location_id: locationId });
+  }
+
+  await svc.entities.ProfessionalLocationAssignment.update(assignment.id, {
+    active_status: 'inactiv',
+    public_status: 'privat',
+  });
+
+  await audit(svc, user, {
+    entity_type: 'ProfessionalLocationAssignment',
+    entity_id: assignment.id,
+    action_type: 'deactivate_professional_assignment_by_professional',
+    changed_fields: ['active_status', 'public_status'],
+    previous: {
+      active_status: assignment.active_status || 'activ',
+      public_status: assignment.public_status || 'privat',
+    },
+    next: {
+      active_status: 'inactiv',
+      public_status: 'privat',
+      location_id: locationId,
+      professional_id: profile.id,
+    },
+    note: 'Specialistul si-a retras asocierea cu locatia. Profilul profesional si accesul organizatiei nu au fost modificate.',
+  });
+
+  return res({ success: true, location_id: locationId });
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -87,6 +128,8 @@ Deno.serve(async (req) => {
     const professionalId = text(payload.professional_id);
 
     if (!locationId) return res({ error: 'location_id este obligatoriu' }, 400);
+    if (action === 'withdraw') return withdrawOwnAssignment(svc, user, locationId);
+
     const access = await assertProviderAccess(svc, user, locationId);
     if (access.error) return res({ error: access.error }, access.status);
 

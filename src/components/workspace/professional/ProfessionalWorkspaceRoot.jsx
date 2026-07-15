@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   AlertCircle,
   ArrowRight,
@@ -9,9 +9,11 @@ import {
   LayoutDashboard,
   LockKeyhole,
   Settings,
+  Unlink,
   UserRound,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
 import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
 import AccountSettings from "@/components/workspace/account/AccountSettings";
 import ProfessionalProfileEditor from "./ProfessionalProfileEditor";
@@ -252,14 +254,47 @@ function Overview({ workspace, onNavigate }) {
   );
 }
 
-function Locations({ workspace }) {
+function Locations({ workspace, onRefresh }) {
   const assignments = workspace.assignments || [];
+  const [savingId, setSavingId] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const withdrawAssignment = async (assignment) => {
+    const locationName = assignment.location?.name || "aceasta locatie";
+    const confirmed = window.confirm(
+      `Retragi asocierea cu ${locationName}? Profilul profesional ramane activ, dar nu vei mai aparea la aceasta locatie.`
+    );
+    if (!confirmed) return;
+
+    setSavingId(assignment.id);
+    setMessage("");
+    setError("");
+    const response = await base44.functions.invoke("manageProfessionalAssignment", {
+      action: "withdraw",
+      location_id: assignment.location_id,
+    }).catch((requestError) => ({
+      data: { error: requestError.response?.data?.error || requestError.message },
+    }));
+    setSavingId("");
+
+    if (response.data?.error) {
+      setError(response.data.error);
+      return;
+    }
+
+    setMessage("Asocierea a fost retrasa. Profilul profesional a ramas activ.");
+    await onRefresh?.();
+  };
+
   return (
     <div className="space-y-5">
       <div>
         <h1 className="font-heading text-2xl font-extrabold tracking-tight">Locatii asociate</h1>
         <p className="mt-1 text-xs text-muted-foreground">Asocierile sunt confirmate de tine. Publicarea la o locatie este un pas separat.</p>
       </div>
+      {message && <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-xs leading-relaxed text-green-900">{message}</div>}
+      {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs leading-relaxed text-red-800">{error}</div>}
       <div className="space-y-3">
         {assignments.length === 0 && <div className="rounded-3xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">Nu exista locatii asociate.</div>}
         {assignments.map((assignment) => (
@@ -270,9 +305,20 @@ function Locations({ workspace }) {
                 <p className="mt-1 text-xs text-muted-foreground">{[assignment.location?.city, assignment.location?.address].filter(Boolean).join(" · ") || "Adresa necompletata"}</p>
                 <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Asocierea confirma faptul ca activezi aici. Nu ofera acces la administrarea clinicii sau opticii.</p>
               </div>
-              <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${assignment.public_status === "public" ? "bg-green-100 text-green-800" : "bg-secondary text-muted-foreground"}`}>
-                {assignment.public_status === "public" ? "Public" : "Privat"}
-              </span>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${assignment.public_status === "public" ? "bg-green-100 text-green-800" : "bg-secondary text-muted-foreground"}`}>
+                  {assignment.public_status === "public" ? "Public" : "Privat"}
+                </span>
+                <button
+                  type="button"
+                  disabled={savingId === assignment.id}
+                  onClick={() => withdrawAssignment(assignment)}
+                  className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-red-200 px-3 text-[11px] font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                >
+                  <Unlink className="h-3.5 w-3.5" />
+                  {savingId === assignment.id ? "Se retrage..." : "Retrage asocierea"}
+                </button>
+              </div>
             </div>
           </section>
         ))}
@@ -315,7 +361,7 @@ export default function ProfessionalWorkspaceRoot({
     >
       {safeSection === "overview" && <Overview workspace={workspace} onNavigate={navigate} />}
       {safeSection === "profile" && <ProfessionalProfileEditor workspace={workspace} onRefresh={onRefresh} />}
-      {safeSection === "locations" && <Locations workspace={workspace} />}
+      {safeSection === "locations" && <Locations workspace={workspace} onRefresh={onRefresh} />}
       {safeSection === "settings" && (
         <AccountSettings
           user={user}
