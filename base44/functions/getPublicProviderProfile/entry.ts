@@ -1,10 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
+  evaluateServicePrerequisites,
   isServicePubliclyEligible,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistryExtended.js';
-import { evaluateServicePrerequisites } from '../../../shared/servicePrerequisiteEngine.js';
-import { getPublicLocationDisclosure } from '../../../shared/providerPublicTrust.js';
+} from './sharedDependencies.js';
+import { getPublicLocationDisclosure } from './providerPublicTrust.js';
 
 const PATIENT_FACING_PROFILE_TYPES = [
   'independent_optical_store',
