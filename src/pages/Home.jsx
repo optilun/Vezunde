@@ -12,20 +12,20 @@ function HomeCanvasBackground() {
     <>
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-0 opacity-[0.58]"
+        className="pointer-events-none absolute inset-0 z-0 opacity-[0.68]"
         style={{
           backgroundImage:
-            "radial-gradient(circle, rgba(52, 48, 43, 0.16) 0 0.8px, transparent 1.05px)",
+            "radial-gradient(circle, rgba(52, 48, 43, 0.20) 0 0.8px, transparent 1.05px)",
           backgroundSize: "20px 20px",
         }}
       />
 
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-[-20rem] z-0 h-[58rem] w-[min(96rem,165vw)] opacity-[0.52]"
+        className="pointer-events-none absolute left-1/2 top-[-20rem] z-0 h-[58rem] w-[min(96rem,165vw)] opacity-[0.62]"
         style={{
           backgroundImage:
-            "radial-gradient(circle, rgba(45, 42, 38, 0.25) 0 1px, transparent 1.25px)",
+            "radial-gradient(circle, rgba(45, 42, 38, 0.30) 0 1px, transparent 1.25px)",
           backgroundSize: "17px 17px",
           maskImage:
             "radial-gradient(ellipse 62% 56% at 50% 54%, black 22%, transparent 79%)",
