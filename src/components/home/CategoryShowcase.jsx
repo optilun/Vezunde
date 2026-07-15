@@ -9,31 +9,40 @@ const CATEGORIES = [
     to: "/cauta",
     artwork: "/images/home/viasee-artwork-medici-clinici.svg",
     tone: "border-[#d4c6d8] bg-[#e8e0ea]",
-    featured: true,
+    desktopSize: "lg:h-[26rem] lg:flex-[2.2_1_0%]",
+    desktopLabel: "lg:text-[1.35rem]",
   },
   {
     title: "Control de vedere",
     to: "/cerere?categorie=control_vedere",
     artwork: "/images/home/viasee-artwork-control-vedere.svg",
     tone: "border-[#c6d3da] bg-[#dce5e9]",
+    desktopSize: "lg:h-[23.5rem] lg:flex-[0.95_1_0%]",
+    desktopLabel: "lg:text-[1.05rem]",
   },
   {
     title: "Investigatii",
     to: "/cerere?categorie=investigatii",
     artwork: "/images/home/viasee-artwork-investigatii.svg",
     tone: "border-[#ccd2ba] bg-[#dfe3d2]",
+    desktopSize: "lg:h-[19.5rem] lg:flex-[1.2_1_0%]",
+    desktopLabel: "lg:text-lg",
   },
   {
     title: "Ochelari si lentile",
     to: "/cerere?categorie=ochelari_lentile",
     artwork: "/images/home/viasee-artwork-ochelari-lentile.svg",
     tone: "border-[#e1bda8] bg-[#efd5c5]",
+    desktopSize: "lg:h-[23.5rem] lg:flex-[1.75_1_0%]",
+    desktopLabel: "lg:text-lg",
   },
   {
     title: "Reparatii si reglaje",
     to: "/cerere?categorie=reparatii_ochelari",
     artwork: "/images/home/viasee-artwork-reparatii-reglaje.svg",
     tone: "border-[#dac69b] bg-[#eadcba]",
+    desktopSize: "lg:h-[21rem] lg:flex-[1_1_0%]",
+    desktopLabel: "lg:text-[1.05rem]",
   },
 ];
 
@@ -46,7 +55,7 @@ export default function CategoryShowcase({ preview = false }) {
   return (
     <section
       aria-labelledby={headingId}
-      className="relative pb-4 pt-8 sm:pb-8 sm:pt-10 lg:pt-12"
+      className="relative pb-7 pt-10 sm:pb-10 sm:pt-14 lg:pb-12 lg:pt-16"
     >
       <div className="relative z-10 mx-auto max-w-6xl px-5">
         <motion.div
@@ -54,26 +63,24 @@ export default function CategoryShowcase({ preview = false }) {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.5 }}
           transition={{ duration: 0.55 }}
-          className="grid gap-3 border-t border-black/[0.09] pt-4 sm:pt-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end lg:gap-12"
+          className="text-center"
         >
-          <div>
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/70 sm:text-[11px]">
-              Servicii si specialisti
-            </p>
-            <h2
-              id={headingId}
-              className="mt-2 max-w-3xl font-heading text-3xl font-extrabold leading-[1.04] tracking-[-0.04em] sm:text-4xl lg:text-5xl"
-            >
-              Ce poti gasi pe VIASEE
-            </h2>
-          </div>
-          <p className="hidden max-w-md text-base leading-relaxed text-muted-foreground lg:block lg:justify-self-end lg:text-right lg:text-lg">
-            De la un medic sau un control de vedere pana la ochelari,
-            investigatii si reparatii.
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75 sm:text-[11px]">
+            Servicii si specialisti
+          </p>
+          <h2
+            id={headingId}
+            className="mx-auto mt-4 max-w-5xl font-heading text-[2.5rem] font-extrabold leading-[0.98] tracking-[-0.055em] min-[390px]:text-[2.8rem] sm:text-6xl lg:text-[4.5rem] xl:text-[5rem]"
+          >
+            Tot ce ai nevoie pentru vedere.
+            <span className="block">Intr-un singur loc.</span>
+          </h2>
+          <p className="mx-auto mt-5 max-w-3xl text-[0.95rem] leading-relaxed text-muted-foreground sm:text-lg">
+            Medici, clinici, controale, investigatii, ochelari si reparatii.
           </p>
         </motion.div>
 
-        <div className="mt-7 grid grid-cols-2 gap-3 sm:mt-8 sm:gap-4 lg:h-[584px] lg:grid-cols-4 lg:grid-rows-2">
+        <div className="-mx-5 mt-9 flex snap-x snap-mandatory items-end gap-3 overflow-x-auto px-5 pb-4 scroll-px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-11 sm:gap-4 lg:mx-0 lg:h-[27rem] lg:overflow-visible lg:px-0 lg:pb-0">
           {CATEGORIES.map((category, index) => (
             <motion.article
               key={category.title}
@@ -81,23 +88,19 @@ export default function CategoryShowcase({ preview = false }) {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.2 }}
               transition={{
-                duration: 0.5,
+                duration: 0.55,
                 delay: preview || prefersReducedMotion ? 0 : index * 0.06,
               }}
-              className={
-                category.featured
-                  ? "col-span-2 aspect-[7/5] min-w-0 lg:row-span-2 lg:aspect-auto"
-                  : "aspect-[5/6] min-w-0 sm:aspect-square lg:aspect-auto"
-              }
+              className={`h-[21rem] min-w-[78vw] shrink-0 snap-start sm:h-[23rem] sm:min-w-[46vw] lg:min-w-0 ${category.desktopSize}`}
             >
               <Link
                 to={category.to}
                 aria-label={category.title}
-                className={`group relative grid h-full grid-rows-[minmax(0,1fr)_auto] overflow-hidden rounded-[1.35rem] border shadow-[0_12px_38px_rgba(20,20,20,0.04)] outline-none transition-[transform,box-shadow] duration-500 hover:-translate-y-0.5 hover:shadow-[0_18px_46px_rgba(20,20,20,0.075)] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-background motion-reduce:transform-none sm:rounded-[1.75rem] ${category.tone}`}
+                className={`group relative grid h-full grid-rows-[minmax(0,1fr)_auto] overflow-hidden rounded-[1.35rem] border shadow-[0_12px_38px_rgba(20,20,20,0.035)] outline-none transition-[transform,box-shadow] duration-500 hover:-translate-y-1 hover:shadow-[0_20px_48px_rgba(20,20,20,0.075)] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none sm:rounded-[1.65rem] ${category.tone}`}
               >
                 <span
                   aria-hidden="true"
-                  className="absolute inset-0 opacity-50 mix-blend-multiply"
+                  className="absolute inset-0 opacity-45 mix-blend-multiply"
                   style={{
                     backgroundImage:
                       "url('/images/home/viasee-technical-grain.svg')",
@@ -107,52 +110,50 @@ export default function CategoryShowcase({ preview = false }) {
 
                 <span
                   aria-hidden="true"
-                  className={
-                    category.featured
-                      ? "relative z-10 min-h-0 overflow-hidden px-2 pt-3 sm:px-4 sm:pt-4 lg:px-5 lg:pt-5"
-                      : "relative z-10 min-h-0 overflow-hidden px-1.5 pt-2 sm:px-3 sm:pt-3"
-                  }
+                  className="relative z-10 min-h-0 overflow-hidden px-2 pt-3 sm:px-3 sm:pt-4 lg:px-2 lg:pt-3"
                 >
                   <img
                     src={category.artwork}
                     alt=""
                     loading="lazy"
                     decoding="async"
-                    className="h-full w-full object-contain object-center transition-transform duration-700 ease-out group-hover:scale-[1.012] group-focus-visible:scale-[1.012] motion-reduce:transition-none"
+                    className="h-full w-full object-contain object-center transition-transform duration-700 ease-out group-hover:scale-[1.018] group-focus-visible:scale-[1.018] motion-reduce:transition-none"
                   />
                 </span>
 
-                <span
-                  className={
-                    category.featured
-                      ? "relative z-20 flex items-end justify-between gap-5 p-5 pt-3 text-[#1c1c1c] sm:p-7 sm:pt-4 lg:p-8 lg:pt-5"
-                      : "relative z-20 flex items-end justify-between gap-2.5 p-4 pt-2 text-[#1c1c1c] sm:p-5 sm:pt-3 lg:p-6 lg:pt-3"
-                  }
-                >
-                  <span
-                    className={
-                      category.featured
-                        ? "font-heading text-2xl font-bold leading-tight tracking-[-0.025em] sm:text-3xl"
-                        : "font-heading text-[15px] font-bold leading-[1.15] tracking-[-0.02em] sm:text-lg lg:text-xl"
-                    }
-                  >
+                <span className="relative z-20 flex min-h-[4.5rem] items-end p-5 pt-3 text-left text-[#1c1c1c] sm:min-h-[5rem] sm:p-6 sm:pt-3 lg:min-h-[4.5rem] lg:p-4 lg:pt-2 xl:p-5 xl:pt-3">
+                  <span className={`font-heading text-xl font-bold leading-[1.08] tracking-[-0.025em] sm:text-2xl ${category.desktopLabel}`}>
                     {category.title}
-                  </span>
-                  <span
-                    aria-hidden="true"
-                    className={
-                      category.featured
-                        ? "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#1c1c1c]/55 sm:h-12 sm:w-12"
-                        : "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#1c1c1c]/55 sm:h-9 sm:w-9"
-                    }
-                  >
-                    <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5 group-focus-visible:translate-x-0.5 motion-reduce:transition-none sm:h-[18px] sm:w-[18px]" />
                   </span>
                 </span>
               </Link>
             </motion.article>
           ))}
         </div>
+
+        <motion.div
+          initial={preview || prefersReducedMotion ? false : { opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.65 }}
+          transition={{ duration: 0.55, delay: preview || prefersReducedMotion ? 0 : 0.18 }}
+          className="mt-7 flex justify-center sm:mt-10 lg:mt-12"
+        >
+          <Link
+            to="/cerere"
+            aria-label="Alege ce cauti si trimite o cerere"
+            className="group inline-flex min-h-14 items-center gap-3 outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-8 focus-visible:ring-offset-[#F8F4EC] sm:gap-5"
+          >
+            <span
+              aria-hidden="true"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-foreground sm:h-14 sm:w-14 lg:h-16 lg:w-16"
+            >
+              <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1 group-focus-visible:translate-x-1 motion-reduce:transition-none sm:h-7 sm:w-7" />
+            </span>
+            <span className="border-b-[3px] border-foreground pb-1 font-heading text-[2.2rem] font-extrabold leading-none tracking-[-0.05em] sm:text-5xl lg:text-7xl">
+              Alege ce cauti
+            </span>
+          </Link>
+        </motion.div>
       </div>
     </section>
   );
