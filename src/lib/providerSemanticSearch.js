@@ -18,6 +18,20 @@ function functionUnavailable(error) {
   return status === 404 || /not found|not deployed|backend function|404/.test(message);
 }
 
+function trackShadowInterpretation(properties) {
+  try {
+    base44.analytics.track({
+      eventName: "patient_need_interpretation_shadow",
+      properties: {
+        analytics_version: "patient-search-v1",
+        ...properties,
+      },
+    });
+  } catch (_error) {
+    // Shadow analytics must never affect deterministic search.
+  }
+}
+
 function normalizeRecommendationResponse(data = {}) {
   const contractVersion = data.recommendation_contract_version || "provider-recommendation-legacy";
   return {
@@ -59,23 +73,24 @@ export async function interpretPatientNeedInShadow(payload = {}) {
     });
     const data = response?.data || null;
     const interpretation = data?.interpretation;
-    if (data?.status === "completed" && interpretation) {
-      base44.analytics.track({
-        eventName: "patient_need_interpretation_shadow",
-        properties: {
-          version: interpretation.version || "unknown",
-          deterministic_intent: payload.deterministic_intent || payload.intent || "unknown",
-          ai_intent: interpretation.intent || "unknown",
-          agreement_status: interpretation.agreement_status || "unknown",
-          confidence_band: interpretation.confidence_band || "low",
-          clarification_required: interpretation.clarification_required === true,
-          safety_flag_count: interpretation.possible_safety_flags?.length || 0,
-          service_key_count: interpretation.service_keys?.length || 0,
-        },
-      });
-    }
+    trackShadowInterpretation({
+      status: data?.status || "unknown",
+      reason: data?.reason || null,
+      version: interpretation?.version || "unknown",
+      deterministic_intent: payload.deterministic_intent || payload.intent || "unknown",
+      ai_intent: interpretation?.intent || "unknown",
+      agreement_status: interpretation?.agreement_status || "unknown",
+      confidence_band: interpretation?.confidence_band || "low",
+      clarification_required: interpretation?.clarification_required === true,
+      safety_flag_count: interpretation?.possible_safety_flags?.length || 0,
+      service_key_count: interpretation?.service_keys?.length || 0,
+    });
     return data;
   } catch (_error) {
+    trackShadowInterpretation({
+      status: "request_failed",
+      deterministic_intent: payload.deterministic_intent || payload.intent || "unknown",
+    });
     return null;
   }
 }

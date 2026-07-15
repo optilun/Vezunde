@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { getRecommendationCoverageStatus } from '../base44/functions/matchProvidersSemantic/coverage.js';
 import { normalizeServiceKey } from '../shared/canonicalServiceRegistryExtended.js';
 import {
@@ -298,6 +299,50 @@ assert.deepEqual(
   assignRecommendationBuckets(providers, 20).map((item) => item.id),
   ranked.map((item) => item.id),
   'Interpretarea AI shadow nu trebuie sa modifice eligibilitatea sau ordinea',
+);
+
+const analyticsSources = {
+  conversational: readFileSync(
+    new URL('../src/components/intake2/ConversationalCard.jsx', import.meta.url),
+    'utf8',
+  ),
+  results: readFileSync(
+    new URL('../src/components/intake2/MatchResults.jsx', import.meta.url),
+    'utf8',
+  ),
+  resultCard: readFileSync(
+    new URL('../src/components/intake2/MatchResultCard.jsx', import.meta.url),
+    'utf8',
+  ),
+  semanticSearch: readFileSync(
+    new URL('../src/lib/providerSemanticSearch.js', import.meta.url),
+    'utf8',
+  ),
+};
+
+for (const eventName of [
+  'patient_search_started',
+  'patient_search_free_text_submitted',
+  'patient_search_reformulation_started',
+  'patient_search_abandoned',
+  'patient_search_completed',
+  'patient_search_failed',
+]) {
+  assert.ok(
+    analyticsSources.conversational.includes(eventName),
+    `Lipseste evenimentul de cautare ${eventName}`,
+  );
+}
+assert.ok(analyticsSources.results.includes('provider_recommendation_results_viewed'));
+assert.ok(analyticsSources.results.includes('provider_recommendation_feedback_submitted'));
+assert.ok(analyticsSources.results.includes('configured_matching_provider_count'));
+assert.ok(analyticsSources.resultCard.includes('profile_opened'));
+assert.ok(analyticsSources.resultCard.includes('phone_clicked'));
+assert.ok(analyticsSources.semanticSearch.includes('patient_need_interpretation_shadow'));
+assert.ok(analyticsSources.semanticSearch.includes('status: "request_failed"'));
+assert.ok(
+  Object.values(analyticsSources).every((source) => source.includes('patient-search-v1')),
+  'Toata instrumentarea cautarii trebuie sa foloseasca aceeasi versiune analytics',
 );
 
 console.log(`Patient query scenarios: ${patientQueries.length}`);

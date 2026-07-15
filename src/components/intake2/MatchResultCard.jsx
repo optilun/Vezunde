@@ -12,6 +12,7 @@ export default function MatchResultCard({ location }) {
       base44.analytics.track({
         eventName: `provider_recommendation_${action}`,
         properties: {
+          analytics_version: "patient-search-v1",
           contract_version: location.recommendation_contract_version || "legacy",
           provider_location_id: location.id,
           result_bucket: location.result_bucket || "unknown",

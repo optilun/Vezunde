@@ -59,13 +59,19 @@ export default function MatchResults({ results, meta }) {
       base44.analytics.track({
         eventName: "provider_recommendation_results_viewed",
         properties: {
+          analytics_version: "patient-search-v1",
           contract_version: meta?.recommendation_contract_version || list[0]?.recommendation_contract_version || "legacy",
           coverage_status: meta?.coverage_status || "unknown",
           need_level: meta?.need_level || "unknown",
+          resolved_intent: meta?.resolved_intent || "unknown",
+          used_semantic_fallback: meta?.used_semantic_fallback === true,
           result_count: list.length,
           top3_count: top3.length,
           confirmed_count: confirmed.length,
           directory_count: directory.length,
+          local_provider_count: Number(meta?.coverage_counts?.local_provider_count) || 0,
+          configured_matching_provider_count: Number(meta?.coverage_counts?.configured_matching_provider_count) || 0,
+          eligible_provider_count: Number(meta?.coverage_counts?.eligible_provider_count) || 0,
         },
       });
     } catch (_error) {
@@ -80,8 +86,10 @@ export default function MatchResults({ results, meta }) {
       base44.analytics.track({
         eventName: "provider_recommendation_feedback_submitted",
         properties: {
+          analytics_version: "patient-search-v1",
           contract_version: meta?.recommendation_contract_version || list[0]?.recommendation_contract_version || "legacy",
           coverage_status: meta?.coverage_status || "unknown",
+          resolved_intent: meta?.resolved_intent || "unknown",
           result_count: list.length,
           useful,
         },
@@ -196,4 +204,3 @@ export default function MatchResults({ results, meta }) {
     </div>
   );
 }
-

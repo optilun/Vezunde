@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
+import { base44 } from "@/api/base44Client";
 import { interpretPatientNeedInShadow, matchProvidersWithSemanticFallback } from "@/lib/providerSemanticSearch";
 import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill } from "@/lib/intentRegistry";
 import QuestionChoice from "./QuestionChoice";
@@ -50,12 +51,43 @@ function patientLanguageText(initialMessage, answers) {
   return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))].join(". ");
 }
 
+const PATIENT_SEARCH_ANALYTICS_VERSION = "patient-search-v1";
+
+function textLengthBand(value) {
+  const length = String(value || "").trim().length;
+  if (length === 0) return "empty";
+  if (length <= 40) return "short";
+  if (length <= 120) return "medium";
+  return "long";
+}
+
+function trackPatientSearchEvent(eventName, properties = {}) {
+  try {
+    base44.analytics.track({
+      eventName,
+      properties: {
+        analytics_version: PATIENT_SEARCH_ANALYTICS_VERSION,
+        ...properties,
+      },
+    });
+  } catch (_error) {
+    // Patient search must never depend on analytics.
+  }
+}
+
 export default function ConversationalCard({ initialMessage = "", initialIntent = null }) {
   const [state, setState] = useState(() => initState(initialIntent, initialMessage));
   const [history, setHistory] = useState([]);
   const [phase, setPhase] = useState("questions"); // questions | submitting | results | error
   const [results, setResults] = useState(null);
   const [matchMeta, setMatchMeta] = useState(null);
+  const analyticsSessionRef = useRef({
+    started: false,
+    completed: false,
+    phase: "questions",
+    intent: null,
+    answeredCount: 0,
+  });
 
   const intentDef = state.intent ? INTENTS[state.intent] : null;
   const questions = intentDef ? intentDef.questions : [CATEGORY_QUESTION];
@@ -64,9 +96,24 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const total = state.answers.length + questions.filter((q) => !answeredKeys.includes(q.key)).length;
   const progress = total > 0 ? Math.round((state.answers.length / total) * 100) : 0;
 
+  analyticsSessionRef.current.phase = phase;
+  analyticsSessionRef.current.intent = state.intent || null;
+  analyticsSessionRef.current.answeredCount = state.answers.length;
+
+  const markSearchStarted = (intent) => {
+    if (analyticsSessionRef.current.started) return;
+    analyticsSessionRef.current.started = true;
+    trackPatientSearchEvent("patient_search_started", {
+      intent: intent || "unknown",
+      entry_mode: initialMessage ? "free_text" : "guided",
+      initial_text_length_band: textLengthBand(initialMessage),
+    });
+  };
+
   const pushHistory = () => setHistory((h) => [...h, state]);
 
   const handleChoice = (question, option) => {
+    markSearchStarted(state.intent || option.key);
     pushHistory();
     if (!state.intent) {
       setState((s) => ({
@@ -89,11 +136,18 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   };
 
   const handleText = (question, value) => {
+    markSearchStarted(state.intent);
+    trackPatientSearchEvent("patient_search_free_text_submitted", {
+      intent: state.intent || "unknown",
+      question_key: question.key,
+      text_length_band: textLengthBand(value),
+    });
     pushHistory();
     setState((s) => ({ ...s, answers: [...s.answers, { question_key: question.key, answer_value: value }] }));
   };
 
   const handleLocation = ({ city, locality, clientAddressText }) => {
+    markSearchStarted(state.intent);
     pushHistory();
     setState((s) => ({
       ...s,
@@ -108,9 +162,31 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const goBack = () => {
     const prev = history[history.length - 1];
     if (!prev) return;
+    trackPatientSearchEvent("patient_search_reformulation_started", {
+      intent: state.intent || "unknown",
+      question_key: current?.key || "unknown",
+      answered_count: state.answers.length,
+    });
     setHistory((h) => h.slice(0, -1));
     setState(prev);
   };
+
+  const retrySearch = () => {
+    trackPatientSearchEvent("patient_search_retry_clicked", {
+      intent: state.intent || "unknown",
+    });
+    setPhase("questions");
+  };
+
+  useEffect(() => () => {
+    const session = analyticsSessionRef.current;
+    if (!session.started || session.completed) return;
+    trackPatientSearchEvent("patient_search_abandoned", {
+      intent: session.intent || "unknown",
+      last_phase: session.phase,
+      answered_count: session.answeredCount,
+    });
+  }, []);
 
   useEffect(() => {
     if (phase !== "questions" || !state.intent || current) return;
@@ -142,11 +218,26 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
           coverage_status: res.data.coverage_status || null,
           coverage_counts: res.data.coverage_counts || null,
           need_level: res.data.need_level || null,
+          resolved_intent: res.data.resolved_intent || state.intent || null,
+          used_semantic_fallback: res.usedSemanticFallback === true,
           client_location_source: res.data.client_location_source || null,
           client_address_text: res.data.client_address_text || state.clientAddressText || "",
         });
+        analyticsSessionRef.current.completed = true;
+        trackPatientSearchEvent("patient_search_completed", {
+          contract_version: res.data.recommendation_contract_version || "legacy",
+          intent: res.data.resolved_intent || state.intent || "unknown",
+          coverage_status: res.data.coverage_status || "unknown",
+          result_count: res.data.results?.length || 0,
+          service_key_count: state.serviceKeys.length,
+          used_semantic_fallback: res.usedSemanticFallback === true,
+        });
         setPhase("results");
-      } catch (e) {
+      } catch (_error) {
+        trackPatientSearchEvent("patient_search_failed", {
+          intent: state.intent || "unknown",
+          stage: "provider_matching",
+        });
         setPhase("error");
       }
     })();
@@ -219,7 +310,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
           <p className="text-sm text-muted-foreground">Ceva nu a functionat. Incearca din nou.</p>
           <button
             type="button"
-            onClick={() => setPhase("questions")}
+            onClick={retrySearch}
             className="mt-4 px-5 py-2.5 rounded-full text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
           >
             Incearca din nou
@@ -229,4 +320,3 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     </motion.div>
   );
 }
-
