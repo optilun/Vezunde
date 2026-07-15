@@ -5,6 +5,7 @@ import {
   isServicePubliclyEligible,
   normalizeServiceKey,
 } from './sharedDependencies.js';
+import { getPublicLocationDisclosure } from '../../../shared/providerPublicTrust.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Safety rules remain disabled until reviewed by a qualified ophthalmologist.
@@ -127,7 +128,7 @@ function requestNeedLevel(rawKeys, intent) {
 }
 
 function evaluateEligibility(loc, matchedRows, needLevel, prerequisiteContext) {
-  const pcs = loc.profile_control_status || 'directory';
+  const pcs = getPublicLocationDisclosure(loc).profile_control_status;
   if (pcs === 'suspended') return { eligible: false, reasons: ['profile_suspended'], pcs, qualifying: [] };
 
   const reasons = [];
@@ -379,29 +380,42 @@ Deno.serve(async (req) => {
     });
 
     const finalVisible = [...eligibleSorted, ...directorySorted].slice(0, limit);
-    const results = finalVisible.map((entry) => ({
-      id: entry.loc.id,
-      name: entry.loc.name,
-      provider_type: entry.loc.provider_type,
-      city: entry.loc.city,
-      county: entry.loc.county || null,
-      address: entry.loc.address || null,
-      phone: entry.loc.phone_public || entry.loc.public_phone || null,
-      website: entry.loc.website || entry.loc.website_url || null,
-      opening_hours: entry.loc.opening_hours || null,
-      saturday_hours: entry.loc.saturday_hours || null,
-      profile_control_status: entry.eligibility.pcs,
-      public_services: entry.safeLocRows.map(toPublicService).filter(Boolean),
-      matched_public_services: entry.safeMatchedRows.map(toPublicService).filter(Boolean),
-      availability_label: entry.availabilityLabel,
-      match_reasons: entry.reasons,
-      directory_match_type: entry.directoryMatchType || null,
-      expansion_tier: entry.tier,
-      result_bucket: entry.finalBucket,
-      bucket_rank: entry.bucketRank,
-      is_top3_eligible: entry.bucket === 'eligible',
-      routing_reason: entry.routing_reason,
-    }));
+    const results = finalVisible.map((entry) => {
+      const publicDisclosure = getPublicLocationDisclosure(entry.loc, entry.eligibility.pcs);
+      return {
+        id: entry.loc.id,
+        name: entry.loc.public_display_name || entry.loc.name,
+        provider_type: entry.loc.provider_type,
+        provider_profile_type: entry.loc.provider_profile_type,
+        city: entry.loc.city,
+        county: entry.loc.county || null,
+        address: publicDisclosure.address,
+        phone: publicDisclosure.phone,
+        website: publicDisclosure.website,
+        opening_hours: publicDisclosure.opening_hours,
+        saturday_hours: publicDisclosure.saturday_hours,
+        profile_control_status: entry.eligibility.pcs,
+        public_detail_level: publicDisclosure.public_detail_level,
+        exact_location_visible: publicDisclosure.exact_location_visible,
+        contact_details_visible: publicDisclosure.contact_details_visible,
+        public_services: publicDisclosure.expose_full_details
+          ? entry.safeLocRows.map(toPublicService).filter(Boolean)
+          : [],
+        matched_public_services: publicDisclosure.expose_full_details
+          ? entry.safeMatchedRows.map(toPublicService).filter(Boolean)
+          : [],
+        availability_label: publicDisclosure.expose_full_details ? entry.availabilityLabel : null,
+        match_reasons: publicDisclosure.expose_full_details
+          ? entry.reasons
+          : ['Profil din director pentru localitatea selectata'],
+        directory_match_type: entry.directoryMatchType || null,
+        expansion_tier: entry.tier,
+        result_bucket: entry.finalBucket,
+        bucket_rank: entry.bucketRank,
+        is_top3_eligible: entry.bucket === 'eligible',
+        routing_reason: entry.routing_reason,
+      };
+    });
 
     return Response.json({
       results,
