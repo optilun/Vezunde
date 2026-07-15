@@ -18,6 +18,26 @@ function functionUnavailable(error) {
   return status === 404 || /not found|not deployed|backend function|404/.test(message);
 }
 
+function normalizeRecommendationResponse(data = {}) {
+  const contractVersion = data.recommendation_contract_version || "provider-recommendation-legacy";
+  return {
+    ...data,
+    recommendation_contract_version: contractVersion,
+    results: (data.results || []).map((result) => {
+      const explanations = Array.isArray(result.recommendation_explanations)
+        ? result.recommendation_explanations
+        : (result.match_reasons || [])
+          .filter((label) => label && label !== "service_alias_match")
+          .map((label) => ({ code: "legacy_match_reason", label }));
+      return {
+        ...result,
+        recommendation_contract_version: result.recommendation_contract_version || contractVersion,
+        recommendation_explanations: explanations,
+      };
+    }),
+  };
+}
+
 export async function interpretPatientNeedInShadow(payload = {}) {
   const searchText = searchTextFromPayload(payload);
   if (!searchText) return null;
@@ -70,12 +90,12 @@ export async function matchProvidersWithSemanticFallback(payload = {}) {
   const serviceKeys = [...new Set([...explicitKeys, ...localResolution.service_keys])];
   if (searchText && serviceKeys.length === 0) {
     return {
-      data: {
+      data: normalizeRecommendationResponse({
         results: [],
         resolved_service_keys: [],
         semantic_resolution: localResolution,
         coverage_status: "query_not_mapped",
-      },
+      }),
       usedSemanticFallback: true,
       localResolution,
     };
@@ -94,7 +114,7 @@ export async function matchProvidersWithSemanticFallback(payload = {}) {
       throw error;
     }
     return {
-      data: response?.data || {},
+      data: normalizeRecommendationResponse(response?.data || {}),
       usedSemanticFallback: false,
       localResolution,
     };
@@ -105,11 +125,11 @@ export async function matchProvidersWithSemanticFallback(payload = {}) {
       service_keys: serviceKeys,
     });
     return {
-      data: {
+      data: normalizeRecommendationResponse({
         ...(response?.data || {}),
         resolved_service_keys: serviceKeys,
         semantic_resolution: localResolution,
-      },
+      }),
       usedSemanticFallback: true,
       localResolution,
     };

@@ -1,11 +1,18 @@
 import {
+  PROVIDER_RECOMMENDATION_CONTRACT_VERSION,
+  assignRecommendationBuckets,
+  buildRecommendationExplanations,
+  buildRecommendationScore,
   buildPatientNeedPrompt,
   evaluateServicePrerequisites,
   getCanonicalServiceDefinition,
+  getFreshAvailability,
+  getRecommendationConfidence,
   getServiceOperationalContext,
   getPatientNeedResponseSchema,
   isServiceMatchingEligible,
   normalizeServiceKey,
+  recommendationBucketForProfile,
   resolveServiceSearchQuery,
   sanitizePatientNeedInterpretation,
 } from './sharedDependencies.js';
@@ -17,6 +24,18 @@ const PATIENT_FACING_PROFILE_TYPES = new Set([
   'ophthalmology_clinic',
   'ophthalmology_office',
 ]);
+
+const ROLE_CANONICAL = {
+  medic_oftalmolog: 'ophthalmologist',
+  ophthalmologist: 'ophthalmologist',
+  optometrist: 'optometrist',
+  optician: 'optician',
+};
+
+const OPHTHALMO_TYPES = new Set(['clinica_oftalmologica', 'cabinet_oftalmologic']);
+const OPTICAL_TYPES = new Set(['optica_medicala', 'laborator_optic', 'cabinet_optometric']);
+const OPHTHALMO_PROFILE_TYPES = new Set(['ophthalmology_clinic', 'ophthalmology_office']);
+const OPTICAL_PROFILE_TYPES = new Set(['independent_optical_store', 'optical_chain']);
 
 const NEED_ORDER = {
   general: 0,
@@ -80,11 +99,23 @@ function toPublicService(row) {
   };
 }
 
-function semanticReason(serviceKeys) {
-  const labels = serviceKeys
-    .slice(0, 3)
-    .map((key) => getCanonicalServiceDefinition(key)?.label || key);
-  return labels.length > 0 ? `Potrivire după limbajul căutat: ${labels.join(', ')}` : '';
+function assignmentRoles(assignments) {
+  return new Set((assignments || [])
+    .map((assignment) => ROLE_CANONICAL[assignment?.professional_type] || assignment?.professional_type)
+    .filter(Boolean));
+}
+
+function locationMatchesIntent(location, intent, roles) {
+  if (intent === 'simptome_oftalmologice' || intent === 'investigatii') {
+    return OPHTHALMO_TYPES.has(location?.provider_type)
+      || OPHTHALMO_PROFILE_TYPES.has(location?.provider_profile_type)
+      || roles.has('ophthalmologist');
+  }
+  if (intent === 'reparatii_ochelari') {
+    return OPTICAL_TYPES.has(location?.provider_type)
+      || OPTICAL_PROFILE_TYPES.has(location?.provider_profile_type);
+  }
+  return true;
 }
 
 async function interpretPatientNeed(base44, payload, searchText, deterministicServiceKeys) {
@@ -158,6 +189,7 @@ Deno.serve(async (request) => {
 
     if (requestedKeys.length === 0) {
       return Response.json({
+        recommendation_contract_version: PROVIDER_RECOMMENDATION_CONTRACT_VERSION,
         results: [],
         resolved_service_keys: [],
         semantic_resolution: semantic,
@@ -171,6 +203,7 @@ Deno.serve(async (request) => {
 
     if (!sirutaCode) {
       return Response.json({
+        recommendation_contract_version: PROVIDER_RECOMMENDATION_CONTRACT_VERSION,
         results: [],
         resolved_service_keys: requestedKeys,
         semantic_resolution: semantic,
@@ -216,11 +249,17 @@ Deno.serve(async (request) => {
 
     const requestedSet = new Set(requestedKeys);
     const needLevel = requestNeedLevel(requestedKeys);
+    const intent = clean(payload.intent);
+    const providerTypes = new Set(Array.isArray(payload.provider_types) ? payload.provider_types.filter(Boolean) : []);
+    const requiredRoles = new Set((Array.isArray(payload.required_professional_types)
+      ? payload.required_professional_types
+      : []).map((role) => ROLE_CANONICAL[role] || role));
     const results = [];
 
     for (const location of locations) {
       if (!active(location) || location.profile_control_status === 'suspended') continue;
       if (!PATIENT_FACING_PROFILE_TYPES.has(location.provider_profile_type)) continue;
+      if (providerTypes.size > 0 && !providerTypes.has(location.provider_type)) continue;
       if (clean(location.locality_siruta_code) !== sirutaCode) continue;
 
       const locationRows = servicesByLocation[location.id] || [];
@@ -231,6 +270,9 @@ Deno.serve(async (request) => {
       if (candidateRows.length === 0) continue;
 
       const locationAssignments = assignmentsByLocation[location.id] || [];
+      const roles = assignmentRoles(locationAssignments);
+      if (!locationMatchesIntent(location, intent, roles)) continue;
+      if (requiredRoles.size > 0 && ![...requiredRoles].some((role) => roles.has(role))) continue;
       const locationProfessionals = locationAssignments
         .map((assignment) => professionalsById[assignment.professional_id])
         .filter(Boolean);
@@ -248,6 +290,7 @@ Deno.serve(async (request) => {
 
       const qualifyingRows = candidateRows.filter((row) => safeServiceRow(row, location, prerequisiteContext));
       if (qualifyingRows.length === 0) continue;
+      const safeLocationRows = locationRows.filter((row) => safeServiceRow(row, location, prerequisiteContext));
 
       const matchedKeys = [...new Set(
         qualifyingRows.map((row) => normalizeServiceKey(row.service_key).canonicalKey).filter(Boolean),
@@ -257,9 +300,21 @@ Deno.serve(async (request) => {
         (sum, key) => sum + semanticScoreByKey[key],
         0,
       );
-      let score = (matchedKeys.length * 3) + Math.min(semanticScore * 5, 10);
-      if (location.profile_control_status === 'verified') score += 2;
-      else if (location.profile_control_status === 'claimed') score += 1;
+      const profileControlStatus = location.profile_control_status || 'directory';
+      const recommendationGroup = recommendationBucketForProfile(profileControlStatus, needLevel);
+      if (recommendationGroup === 'excluded') continue;
+      const availability = getFreshAvailability(location);
+      const score = buildRecommendationScore({
+        matchedServiceKeys: matchedKeys,
+        semanticScoreByKey,
+        profileControlStatus,
+        availability,
+      });
+      const explanations = buildRecommendationExplanations({
+        matchedServiceKeys: matchedKeys,
+        profileControlStatus,
+        availability,
+      });
 
       results.push({
         id: location.id,
@@ -271,29 +326,43 @@ Deno.serve(async (request) => {
         address: location.address || null,
         phone: location.phone_public || location.public_phone || null,
         website: location.website || location.website_url || null,
-        profile_control_status: location.profile_control_status || 'directory',
+        opening_hours: location.opening_hours || null,
+        saturday_hours: location.saturday_hours || null,
+        profile_control_status: profileControlStatus,
+        public_services: safeLocationRows.map(toPublicService).filter(Boolean),
         matched_public_services: qualifyingRows.map(toPublicService).filter(Boolean),
         matched_service_keys: matchedKeys,
         semantic_matched_service_keys: semanticMatchedKeys,
         semantic_match_score: Math.round(semanticScore * 1000) / 1000,
-        match_reasons: [semanticReason(semanticMatchedKeys)].filter(Boolean),
-        score: Math.round(score * 1000) / 1000,
+        availability_label: availability?.label || null,
+        recommendation_contract_version: PROVIDER_RECOMMENDATION_CONTRACT_VERSION,
+        recommendation_group: recommendationGroup,
+        recommendation_score: score.total,
+        recommendation_score_components: score.components,
+        recommendation_confidence: getRecommendationConfidence({
+          profileControlStatus,
+          matchedServiceKeys: matchedKeys,
+          bestSemanticScore: score.best_semantic_score,
+        }),
+        recommendation_explanations: explanations,
+        match_reasons: explanations.map((item) => item.label),
+        expansion_tier: 'oras',
+        routing_reason: 'Potrivire dupa localitatea selectata.',
+        score: score.total,
       });
     }
 
-    results.sort((a, b) => b.score - a.score);
+    const bucketedResults = assignRecommendationBuckets(results, limit);
 
     return Response.json({
-      results: results.slice(0, limit).map((entry, index) => ({
-        ...entry,
-        result_bucket: index < 3 ? 'top3' : 'extended_confirmed',
-        bucket_rank: index + 1,
-      })),
+      recommendation_contract_version: PROVIDER_RECOMMENDATION_CONTRACT_VERSION,
+      results: bucketedResults,
       resolved_service_keys: requestedKeys,
       semantic_resolution: semantic,
       need_level: needLevel,
+      resolved_intent: intent || null,
       routing_mode: 'locality',
-      coverage_status: results.length > 0 ? 'results_found' : 'no_local_results',
+      coverage_status: bucketedResults.length > 0 ? 'results_found' : 'no_local_results',
       selected_locality_siruta_code: sirutaCode,
     });
   } catch (error) {

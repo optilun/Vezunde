@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
 import MatchResultCard from "./MatchResultCard";
 
 function RoutingNotice({ meta }) {
@@ -18,11 +19,57 @@ function RoutingNotice({ meta }) {
 // Top 3 = result_bucket === "top3" only — never a positional slice.
 export default function MatchResults({ results, meta }) {
   const [showMore, setShowMore] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const lastImpressionKey = useRef("");
   const list = results || [];
   const top3 = list.filter((r) => r.result_bucket === "top3");
   const confirmed = list.filter((r) => r.result_bucket === "extended_confirmed");
   const directory = list.filter((r) => r.result_bucket === "extended_directory");
   const moreCount = confirmed.length + directory.length;
+
+  useEffect(() => {
+    if (list.length === 0 && !meta?.coverage_status) return;
+    const impressionKey = list.length > 0
+      ? list.map((item) => `${item.id}:${item.result_bucket}:${item.bucket_rank}`).join("|")
+      : `empty:${meta?.coverage_status || "unknown"}`;
+    if (!impressionKey || impressionKey === lastImpressionKey.current) return;
+    lastImpressionKey.current = impressionKey;
+    setFeedback(null);
+    try {
+      base44.analytics.track({
+        eventName: "provider_recommendation_results_viewed",
+        properties: {
+          contract_version: meta?.recommendation_contract_version || list[0]?.recommendation_contract_version || "legacy",
+          coverage_status: meta?.coverage_status || "unknown",
+          need_level: meta?.need_level || "unknown",
+          result_count: list.length,
+          top3_count: top3.length,
+          confirmed_count: confirmed.length,
+          directory_count: directory.length,
+        },
+      });
+    } catch (_error) {
+      // Recommendation display must not depend on analytics.
+    }
+  }, [confirmed.length, directory.length, list, meta, top3.length]);
+
+  const submitFeedback = (useful) => {
+    if (feedback !== null) return;
+    setFeedback(useful);
+    try {
+      base44.analytics.track({
+        eventName: "provider_recommendation_feedback_submitted",
+        properties: {
+          contract_version: meta?.recommendation_contract_version || list[0]?.recommendation_contract_version || "legacy",
+          coverage_status: meta?.coverage_status || "unknown",
+          result_count: list.length,
+          useful,
+        },
+      });
+    } catch (_error) {
+      // Feedback UI remains usable if analytics is unavailable.
+    }
+  };
 
   if (top3.length === 0 && moreCount === 0) {
     return (
@@ -47,7 +94,7 @@ export default function MatchResults({ results, meta }) {
         <>
           <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight">Cele mai potrivite optiuni</h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Selectate pe baza serviciilor confirmate si a verificarii profilului in localitatea aleasa.
+            Selectate pe baza serviciilor confirmate, relevantei cautarii si verificarii profilului in localitatea aleasa.
           </p>
           <RoutingNotice meta={meta} />
           <div className="mt-5 space-y-3">
@@ -98,8 +145,32 @@ export default function MatchResults({ results, meta }) {
       )}
 
       <p className="mt-6 text-xs text-muted-foreground/80">
-        Ordinea reflecta potrivirea serviciilor, verificarea profilului si modul de primire publicat de furnizor. VIASEE nu ofera diagnostic medical.
+        Ordinea reflecta serviciile confirmate, relevanta cautarii si verificarea profilului. VIASEE nu ofera diagnostic medical.
       </p>
+
+      <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+        {feedback === null ? (
+          <>
+            <span className="mr-1 text-xs font-medium text-foreground">Ti-au fost utile recomandarile?</span>
+            <button
+              type="button"
+              onClick={() => submitFeedback(true)}
+              className="rounded-full border border-border px-3 py-1.5 text-xs font-medium hover:border-foreground/40"
+            >
+              Da
+            </button>
+            <button
+              type="button"
+              onClick={() => submitFeedback(false)}
+              className="rounded-full border border-border px-3 py-1.5 text-xs font-medium hover:border-foreground/40"
+            >
+              Nu
+            </button>
+          </>
+        ) : (
+          <span className="text-xs text-muted-foreground">Multumim. Feedbackul tau ne ajuta sa imbunatatim recomandarile.</span>
+        )}
+      </div>
     </div>
   );
 }

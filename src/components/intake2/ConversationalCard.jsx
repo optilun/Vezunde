@@ -126,8 +126,10 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         const res = await matchProvidersWithSemanticFallback(matchPayload);
         setResults(res.data.results || []);
         setMatchMeta({
+          recommendation_contract_version: res.data.recommendation_contract_version || "legacy",
           routing_mode: res.data.routing_mode || null,
           coverage_status: res.data.coverage_status || null,
+          need_level: res.data.need_level || null,
           client_location_source: res.data.client_location_source || null,
           client_address_text: res.data.client_address_text || state.clientAddressText || "",
         });
