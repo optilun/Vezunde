@@ -15,6 +15,35 @@ const MODE_LABELS = {
   applicant: "Organizatii · Pregatire profil",
 };
 
+const PROVIDER_ROLE_LABELS = {
+  organization_owner: "Owner",
+  location_manager: "Manager",
+  location_staff: "Membru",
+};
+
+function providerOrganizationContexts(workspace) {
+  if (workspace?.organization_contexts?.length) return workspace.organization_contexts;
+
+  const organizations = workspace?.organizations || [];
+  const locations = workspace?.locations || [];
+  const memberships = workspace?.memberships || [];
+  return organizations.map((organization) => {
+    const organizationLocations = locations.filter((location) => location.organization_id === organization.id);
+    const locationIds = new Set(organizationLocations.map((location) => location.id));
+    const organizationMemberships = memberships.filter((membership) => (
+      membership.organization_id === organization.id || locationIds.has(membership.location_id)
+    ));
+    const role = ["organization_owner", "location_manager", "location_staff"]
+      .find((candidate) => organizationMemberships.some((membership) => membership.role === candidate)) || "";
+    return {
+      organization,
+      locations: organizationLocations,
+      memberships: organizationMemberships,
+      current_user_role: role,
+    };
+  });
+}
+
 export default function MyAccount() {
   const [params, setParams] = useSearchParams();
   const [user, setUser] = useState(null);
@@ -111,11 +140,91 @@ export default function MyAccount() {
     rememberAccountMode(user.id, "provider");
   };
 
-  const modeSwitches = accountModes.map((mode) => ({
-    ...mode,
-    active: mode.key === resolvedMode,
-    onClick: () => switchMode(mode.key),
-  }));
+  const openPersonalSettings = () => {
+    const next = new URLSearchParams(params);
+    next.set("mode", "personal");
+    next.set("s", "settings");
+    next.delete("ps");
+    next.delete("organization");
+    next.delete("location");
+    setParams(next, { replace: true });
+    setActiveMode("personal");
+    rememberAccountMode(user.id, "personal");
+  };
+
+  const organizationContexts = providerOrganizationContexts(providerWorkspace);
+  const requestedOrganizationId = params.get("organization") || "";
+  const requestedLocationId = params.get("location") || preferences.lastProviderLocationId || "";
+  const selectedOrganizationContext = organizationContexts.find((context) => context.organization?.id === requestedOrganizationId)
+    || organizationContexts.find((context) => (
+      context.locations?.some((location) => location.id === requestedLocationId)
+      || context.memberships?.some((membership) => membership.location_id === requestedLocationId)
+    ))
+    || organizationContexts[0]
+    || null;
+  const selectedOrganizationId = selectedOrganizationContext?.organization?.id || "";
+
+  const modeSwitches = [
+    {
+      key: "personal",
+      kind: "personal",
+      group: "account",
+      label: MODE_LABELS.personal,
+      subtitle: user.email,
+      avatarUrl: user.profile_photo_url || "",
+      active: resolvedMode === "personal",
+      onClick: () => switchMode("personal"),
+      onSettings: openPersonalSettings,
+    },
+    ...(hasProfessionalWorkspace ? [{
+      key: "professional",
+      kind: "professional",
+      group: "account",
+      label: professionalWorkspace.professional?.public_display_name
+        || professionalWorkspace.professional?.full_name
+        || MODE_LABELS.professional,
+      subtitle: MODE_LABELS.professional,
+      avatarUrl: professionalWorkspace.professional?.profile_photo_url || "",
+      professionalProfileId: professionalWorkspace.professional?.id || "",
+      active: resolvedMode === "professional",
+      onClick: () => switchMode("professional"),
+    }] : []),
+    ...(hasProviderWorkspace && organizationContexts.length ? organizationContexts.map((context) => {
+      const organization = context.organization || {};
+      const firstLocationId = context.locations?.[0]?.id || context.memberships?.[0]?.location_id || "";
+      return {
+        key: `organization:${organization.id}`,
+        kind: "organization",
+        group: "organizations",
+        label: organization.public_display_name || organization.name || "Organizatie",
+        subtitle: PROVIDER_ROLE_LABELS[context.current_user_role] || "Organizatie",
+        avatarUrl: organization.logo_url || "",
+        organizationId: organization.id || "",
+        active: resolvedMode === "provider" && organization.id === selectedOrganizationId,
+        onClick: () => openOrganizationWorkspace({
+          organizationId: organization.id,
+          locationId: firstLocationId,
+        }),
+      };
+    }) : hasProviderWorkspace ? [{
+      key: "provider",
+      kind: "organization",
+      group: "organizations",
+      label: MODE_LABELS.provider,
+      subtitle: "Workspace organizatie",
+      active: resolvedMode === "provider",
+      onClick: () => switchMode("provider"),
+    }] : []),
+    ...(hasApplicantWorkspace ? [{
+      key: "applicant",
+      kind: "applicant",
+      group: "organizations",
+      label: onboardingWorkspace.location_summary?.name || "Pregatire profil",
+      subtitle: "Solicitare in pregatire",
+      active: resolvedMode === "applicant",
+      onClick: () => switchMode("applicant"),
+    }] : []),
+  ];
   const sharedAccountProps = {
     accountModes,
     activeMode: resolvedMode,

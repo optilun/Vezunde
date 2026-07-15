@@ -29,6 +29,12 @@ export default function ProviderAppShell({
       item.onClick?.();
       setMobileOpen(false);
     },
+    onSettings: item.onSettings
+      ? () => {
+        item.onSettings();
+        setMobileOpen(false);
+      }
+      : undefined,
   }));
 
   return (
