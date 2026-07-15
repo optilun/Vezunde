@@ -3,6 +3,26 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import MatchResultCard from "./MatchResultCard";
 
+const EMPTY_RECOMMENDATION_STATES = {
+  no_local_providers: {
+    title: "Nu avem inca furnizori publicati pentru filtrele alese.",
+    description: "VIASEE a cautat corect in localitatea selectata, dar directorul nu contine inca profiluri publicate care sa corespunda filtrelor.",
+  },
+  local_service_data_missing: {
+    title: "Exista furnizori in localitate, dar nu avem suficiente date despre serviciul cautat.",
+    description: "Nu putem confirma momentan cine ofera acest serviciu. Asta descrie datele disponibile in VIASEE, nu inseamna ca serviciul nu exista in localitate.",
+  },
+  no_eligible_local_results: {
+    title: "Nu avem momentan un rezultat eligibil pentru aceasta nevoie.",
+    description: "Exista furnizori si date locale, dar niciun profil nu indeplineste toate conditiile de serviciu, verificare sau specializare.",
+  },
+};
+
+const DEFAULT_EMPTY_RECOMMENDATION_STATE = {
+  title: "Nu avem inca profiluri relevante in zona ta.",
+  description: "VIASEE a cautat strict in localitatea selectata. Poti alege manual alta localitate si incerca din nou.",
+};
+
 function RoutingNotice({ meta }) {
   if (!meta?.routing_mode) return null;
   if (meta.routing_mode === "locality") {
@@ -72,11 +92,13 @@ export default function MatchResults({ results, meta }) {
   };
 
   if (top3.length === 0 && moreCount === 0) {
+    const emptyState = EMPTY_RECOMMENDATION_STATES[meta?.coverage_status]
+      || DEFAULT_EMPTY_RECOMMENDATION_STATE;
     return (
       <div>
-        <h2 className="font-heading text-xl font-bold tracking-tight">Nu avem inca profiluri relevante in zona ta.</h2>
+        <h2 className="font-heading text-xl font-bold tracking-tight">{emptyState.title}</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          VIASEE a cautat strict in localitatea selectata. Poti alege manual alta localitate si incerca din nou.
+          {emptyState.description}
         </p>
         <RoutingNotice meta={meta} />
         <Link to="/cauta" className="mt-4 inline-block text-sm font-semibold underline underline-offset-4">
@@ -174,3 +196,4 @@ export default function MatchResults({ results, meta }) {
     </div>
   );
 }
+

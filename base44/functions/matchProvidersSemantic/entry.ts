@@ -16,6 +16,7 @@ import {
   resolveServiceSearchQuery,
   sanitizePatientNeedInterpretation,
 } from './sharedDependencies.js';
+import { getRecommendationCoverageStatus } from './coverage.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const PATIENT_FACING_PROFILE_TYPES = new Set([
@@ -254,13 +255,17 @@ Deno.serve(async (request) => {
     const requiredRoles = new Set((Array.isArray(payload.required_professional_types)
       ? payload.required_professional_types
       : []).map((role) => ROLE_CANONICAL[role] || role));
+    const localLocations = locations.filter((location) => (
+      active(location)
+      && location.profile_control_status !== 'suspended'
+      && PATIENT_FACING_PROFILE_TYPES.has(location.provider_profile_type)
+      && (providerTypes.size === 0 || providerTypes.has(location.provider_type))
+      && clean(location.locality_siruta_code) === sirutaCode
+    ));
+    let configuredMatchingProviderCount = 0;
     const results = [];
 
-    for (const location of locations) {
-      if (!active(location) || location.profile_control_status === 'suspended') continue;
-      if (!PATIENT_FACING_PROFILE_TYPES.has(location.provider_profile_type)) continue;
-      if (providerTypes.size > 0 && !providerTypes.has(location.provider_type)) continue;
-      if (clean(location.locality_siruta_code) !== sirutaCode) continue;
+    for (const location of localLocations) {
 
       const locationRows = servicesByLocation[location.id] || [];
       const candidateRows = locationRows.filter((row) => {
@@ -268,6 +273,7 @@ Deno.serve(async (request) => {
         return Boolean(canonicalKey && requestedSet.has(canonicalKey));
       });
       if (candidateRows.length === 0) continue;
+      configuredMatchingProviderCount += 1;
 
       const locationAssignments = assignmentsByLocation[location.id] || [];
       const roles = assignmentRoles(locationAssignments);
@@ -354,6 +360,17 @@ Deno.serve(async (request) => {
     }
 
     const bucketedResults = assignRecommendationBuckets(results, limit);
+    const coverageCounts = {
+      local_provider_count: localLocations.length,
+      configured_matching_provider_count: configuredMatchingProviderCount,
+      eligible_provider_count: results.length,
+      result_count: bucketedResults.length,
+    };
+    const coverageStatus = getRecommendationCoverageStatus({
+      resultCount: coverageCounts.result_count,
+      localProviderCount: coverageCounts.local_provider_count,
+      configuredMatchingProviderCount: coverageCounts.configured_matching_provider_count,
+    });
 
     return Response.json({
       recommendation_contract_version: PROVIDER_RECOMMENDATION_CONTRACT_VERSION,
@@ -364,7 +381,8 @@ Deno.serve(async (request) => {
       resolved_intent: intent || null,
       routing_mode: 'locality',
       routing_reason: 'Potrivire dupa localitatea selectata.',
-      coverage_status: bucketedResults.length > 0 ? 'results_found' : 'no_local_results',
+      coverage_status: coverageStatus,
+      coverage_counts: coverageCounts,
       selected_locality_siruta_code: sirutaCode,
     });
   } catch (error) {

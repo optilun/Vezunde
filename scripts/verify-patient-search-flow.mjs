@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { getRecommendationCoverageStatus } from '../base44/functions/matchProvidersSemantic/coverage.js';
 import {
   sanitizePatientNeedInterpretation,
 } from '../shared/patientNeedInterpretation.js';
@@ -13,6 +14,36 @@ import { resolveServiceSearchQuery } from '../shared/serviceSemanticSearch.js';
 function resolve(query) {
   return resolveServiceSearchQuery(query, { limit: 15, minScore: 0.34 });
 }
+
+assert.equal(
+  getRecommendationCoverageStatus({
+    resultCount: 1,
+    localProviderCount: 1,
+    configuredMatchingProviderCount: 1,
+  }),
+  'results_found',
+);
+assert.equal(
+  getRecommendationCoverageStatus({
+    localProviderCount: 0,
+    configuredMatchingProviderCount: 0,
+  }),
+  'no_local_providers',
+);
+assert.equal(
+  getRecommendationCoverageStatus({
+    localProviderCount: 2,
+    configuredMatchingProviderCount: 0,
+  }),
+  'local_service_data_missing',
+);
+assert.equal(
+  getRecommendationCoverageStatus({
+    localProviderCount: 2,
+    configuredMatchingProviderCount: 1,
+  }),
+  'no_eligible_local_results',
+);
 
 function candidate({
   id,
@@ -184,3 +215,4 @@ assert.deepEqual(
 
 console.log(`Patient query scenarios: ${patientQueries.length}`);
 console.log('Patient search and recommendation flow: PASS');
+
