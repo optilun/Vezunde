@@ -41,12 +41,23 @@ async function assertProviderAccess(svc, user, locationId) {
   return { location };
 }
 
-async function listAssignments(svc, locationId) {
+function publicEligibility(profile, location) {
+  if (!profile || profile.verification_status !== 'verified' || profile.public_visibility_status !== 'approved' || profile.is_public !== true) {
+    return { can_publish: false, publish_block_reason: 'Profilul profesional trebuie sa fie verificat si public in VIASEE.' };
+  }
+  if (!location || location.status !== 'publicata' || location.active_status === 'inactiva' || location.profile_control_status === 'suspended') {
+    return { can_publish: false, publish_block_reason: 'Locatia trebuie sa fie publicata si activa in VIASEE.' };
+  }
+  return { can_publish: true, publish_block_reason: '' };
+}
+
+async function listAssignments(svc, locationId, location) {
   const assignments = await svc.entities.ProfessionalLocationAssignment.filter({ location_id: locationId }, '-created_date', 100);
   const items = [];
   for (const assignment of assignments) {
     const profile = await svc.entities.ProfessionalProfile.get(assignment.professional_id).catch(() => null);
     if (!profile) continue;
+    const eligibility = publicEligibility(profile, location);
     items.push({
       id: assignment.id,
       professional_id: profile.id,
@@ -57,6 +68,7 @@ async function listAssignments(svc, locationId) {
       verification_status: profile.verification_status || 'unverified',
       profile_review_status: profile.profile_review_status || 'draft',
       is_public: profile.is_public === true,
+      ...eligibility,
     });
   }
   return items;
@@ -79,15 +91,47 @@ Deno.serve(async (req) => {
     if (access.error) return res({ error: access.error }, access.status);
 
     if (action === 'list') {
-      return res({ assignments: await listAssignments(svc, locationId) });
+      return res({ assignments: await listAssignments(svc, locationId, access.location) });
     }
 
-    if (action !== 'deactivate') return res({ error: 'Actiune invalida' }, 400);
+    if (!['deactivate', 'set_visibility'].includes(action)) return res({ error: 'Actiune invalida' }, 400);
     if (!professionalId) return res({ error: 'professional_id este obligatoriu' }, 400);
 
     const assignments = await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: professionalId, location_id: locationId }, '-created_date', 10);
     const assignment = assignments[0] || null;
     if (!assignment) return res({ error: 'Asocierea specialistului nu a fost gasita' }, 404);
+
+    if (action === 'set_visibility') {
+      const publicStatus = text(payload.public_status);
+      if (!['public', 'privat'].includes(publicStatus)) return res({ error: 'public_status este invalid' }, 400);
+      if (assignment.active_status !== 'activ') return res({ error: 'Doar o asociere activa poate fi publicata' }, 409);
+
+      const profile = await svc.entities.ProfessionalProfile.get(professionalId).catch(() => null);
+      if (!profile) return res({ error: 'Profilul profesional nu a fost gasit' }, 404);
+      if (publicStatus === 'public') {
+        const eligibility = publicEligibility(profile, access.location);
+        if (!eligibility.can_publish) return res({ error: eligibility.publish_block_reason }, 409);
+      }
+      if ((assignment.public_status || 'privat') === publicStatus) {
+        return res({ success: true, already_set: true, public_status: publicStatus });
+      }
+
+      await svc.entities.ProfessionalLocationAssignment.update(assignment.id, { public_status: publicStatus });
+      await audit(svc, user, {
+        entity_type: 'ProfessionalLocationAssignment',
+        entity_id: assignment.id,
+        action_type: publicStatus === 'public' ? 'publish_professional_assignment_by_provider' : 'hide_professional_assignment_by_provider',
+        changed_fields: ['public_status'],
+        previous: { public_status: assignment.public_status || 'privat' },
+        next: { public_status: publicStatus, location_id: locationId, professional_id: professionalId },
+        note: publicStatus === 'public'
+          ? 'Furnizorul a publicat asocierea specialistului la aceasta locatie.'
+          : 'Furnizorul a ascuns asocierea specialistului de pe profilul public al locatiei.',
+      });
+
+      return res({ success: true, public_status: publicStatus });
+    }
+
     if (assignment.active_status === 'inactiv') return res({ success: true, already_inactive: true });
 
     await svc.entities.ProfessionalLocationAssignment.update(assignment.id, {

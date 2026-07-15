@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Check, Copy, Trash2, UserPlus, Send, Eye } from "lucide-react";
+import { Check, Copy, Trash2, UserPlus, Send, Eye, EyeOff } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-foreground/40";
@@ -145,6 +145,31 @@ export default function ProviderTeam({ locationId }) {
     await load();
   };
 
+  const setAssignmentVisibility = async (assignment, publicStatus) => {
+    const actionLabel = publicStatus === "public" ? "publici" : "ascunzi";
+    const confirmed = window.confirm(`Sigur vrei sa ${actionLabel} acest specialist pe profilul public al locatiei?`);
+    if (!confirmed) return;
+
+    setSaving(true);
+    setMsg("");
+    const response = await base44.functions.invoke("manageProfessionalAssignment", {
+      action: "set_visibility",
+      location_id: locationId,
+      professional_id: assignment.professional_id,
+      public_status: publicStatus,
+    }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    setSaving(false);
+
+    if (response.data?.error) {
+      setMsg(response.data.error);
+      return;
+    }
+    setMsg(publicStatus === "public"
+      ? "Specialistul este acum vizibil pe profilul public al locatiei."
+      : "Specialistul a fost ascuns de pe profilul public al locatiei.");
+    await load();
+  };
+
   const copyLink = async () => {
     if (!newLink) return;
     await navigator.clipboard.writeText(newLink);
@@ -169,16 +194,31 @@ export default function ProviderTeam({ locationId }) {
                 const status = assignmentStatus(assignment);
                 return (
                   <li key={assignment.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border px-3 py-3 text-xs">
-                    <div>
+                    <div className="min-w-0">
                       <div className="font-bold">{assignment.full_name}</div>
                       <div className="mt-0.5 text-muted-foreground">{roleLabel(assignment.professional_type)}</div>
+                      {assignment.active_status === "activ" && assignment.public_status !== "public" && !assignment.can_publish && assignment.publish_block_reason && (
+                        <div className="mt-1 max-w-xl text-[11px] leading-relaxed text-amber-700">{assignment.publish_block_reason}</div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
                       <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${status.className}`}>{status.label}</span>
                       {assignment.active_status === "activ" && (
-                        <button type="button" disabled={saving} onClick={() => deactivateAssignment(assignment.professional_id)} className="inline-flex items-center gap-1 rounded-full border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">
-                          <Trash2 className="h-3.5 w-3.5" /> Elimină
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            disabled={saving || (assignment.public_status !== "public" && !assignment.can_publish)}
+                            title={assignment.public_status !== "public" && !assignment.can_publish ? assignment.publish_block_reason : ""}
+                            onClick={() => setAssignmentVisibility(assignment, assignment.public_status === "public" ? "privat" : "public")}
+                            className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {assignment.public_status === "public" ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                            {assignment.public_status === "public" ? "Ascunde" : "Publica"}
+                          </button>
+                          <button type="button" disabled={saving} onClick={() => deactivateAssignment(assignment.professional_id)} className="inline-flex items-center gap-1 rounded-full border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">
+                            <Trash2 className="h-3.5 w-3.5" /> Elimină
+                          </button>
+                        </>
                       )}
                     </div>
                   </li>
@@ -250,7 +290,7 @@ export default function ProviderTeam({ locationId }) {
             </div>
             <div>
               <h2 className="text-sm font-bold">Invită un specialist</h2>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Invită medicii oftalmologi, optometriștii și opticienii asociați acestei locații. Specialistul acceptă cu propriul cont. Asocierea rămâne privată până când profilul profesional este completat și aprobat de Vezunde.</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Invită medicii oftalmologi, optometriștii și opticienii asociați acestei locații. Specialistul acceptă cu propriul cont. Asocierea rămâne privată până când profilul profesional este completat și aprobat de VIASEE.</p>
             </div>
           </div>
 
@@ -286,7 +326,7 @@ export default function ProviderTeam({ locationId }) {
 
           <div className="mt-4 rounded-2xl border border-border bg-secondary/25 p-3">
             <div className="text-[11px] font-bold text-foreground">Separat de Acces și utilizatori</div>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Invitația nu le acordă acces administrativ și nu publică automat profilul. Profilul specialistului devine public doar după completare și aprobarea Vezunde. Asocierea cu locația nu acordă acces administrativ.</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Invitația nu le acordă acces administrativ și nu publică automat profilul. Profilul specialistului devine public doar după completare și aprobarea VIASEE. Asocierea cu locația nu acordă acces administrativ.</p>
           </div>
         </section>
       </aside>
