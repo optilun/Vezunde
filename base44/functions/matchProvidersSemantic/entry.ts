@@ -17,6 +17,7 @@ import {
   sanitizePatientNeedInterpretation,
 } from './sharedDependencies.js';
 import { getRecommendationCoverageStatus } from './coverage.js';
+import { getPublicLocationDisclosure } from '../../../shared/providerPublicTrust.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const PATIENT_FACING_PROFILE_TYPES = new Set([
@@ -306,7 +307,8 @@ Deno.serve(async (request) => {
         (sum, key) => sum + semanticScoreByKey[key],
         0,
       );
-      const profileControlStatus = location.profile_control_status || 'directory';
+      const publicDisclosure = getPublicLocationDisclosure(location);
+      const profileControlStatus = publicDisclosure.profile_control_status;
       const recommendationGroup = recommendationBucketForProfile(profileControlStatus, needLevel);
       if (recommendationGroup === 'excluded') continue;
       const availability = getFreshAvailability(location);
@@ -318,9 +320,9 @@ Deno.serve(async (request) => {
         timingKey: payload.timing_key,
       });
       const explanations = buildRecommendationExplanations({
-        matchedServiceKeys: matchedKeys,
+        matchedServiceKeys: publicDisclosure.expose_full_details ? matchedKeys : [],
         profileControlStatus,
-        availability,
+        availability: publicDisclosure.expose_full_details ? availability : null,
       });
 
       results.push({
@@ -330,18 +332,25 @@ Deno.serve(async (request) => {
         provider_profile_type: location.provider_profile_type,
         city: location.city || null,
         county: location.county || null,
-        address: location.address || null,
-        phone: location.phone_public || location.public_phone || null,
-        website: location.website || location.website_url || null,
-        opening_hours: location.opening_hours || null,
-        saturday_hours: location.saturday_hours || null,
+        address: publicDisclosure.address,
+        phone: publicDisclosure.phone,
+        website: publicDisclosure.website,
+        opening_hours: publicDisclosure.opening_hours,
+        saturday_hours: publicDisclosure.saturday_hours,
         profile_control_status: profileControlStatus,
-        public_services: safeLocationRows.map(toPublicService).filter(Boolean),
-        matched_public_services: qualifyingRows.map(toPublicService).filter(Boolean),
+        public_detail_level: publicDisclosure.public_detail_level,
+        exact_location_visible: publicDisclosure.exact_location_visible,
+        contact_details_visible: publicDisclosure.contact_details_visible,
+        public_services: publicDisclosure.expose_full_details
+          ? safeLocationRows.map(toPublicService).filter(Boolean)
+          : [],
+        matched_public_services: publicDisclosure.expose_full_details
+          ? qualifyingRows.map(toPublicService).filter(Boolean)
+          : [],
         matched_service_keys: matchedKeys,
         semantic_matched_service_keys: semanticMatchedKeys,
         semantic_match_score: Math.round(semanticScore * 1000) / 1000,
-        availability_label: availability?.label || null,
+        availability_label: publicDisclosure.expose_full_details ? (availability?.label || null) : null,
         recommendation_contract_version: PROVIDER_RECOMMENDATION_CONTRACT_VERSION,
         recommendation_group: recommendationGroup,
         recommendation_score: score.total,
