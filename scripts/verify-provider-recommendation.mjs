@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   PROVIDER_RECOMMENDATION_CONTRACT_VERSION,
   assignRecommendationBuckets,
@@ -55,6 +56,27 @@ const explanations = buildRecommendationExplanations({
 assert.ok(explanations.some((item) => item.code === 'confirmed_service_match'));
 assert.ok(explanations.some((item) => item.code === 'verified_location_profile'));
 assert.ok(explanations.some((item) => item.code === 'fresh_availability'));
+
+const semanticFunctionSource = readFileSync(
+  new URL('../base44/functions/matchProvidersSemantic/entry.ts', import.meta.url),
+  'utf8',
+);
+for (const field of [
+  'recommendation_explanations: explanations',
+  "routing_reason: 'Potrivire dupa localitatea selectata.'",
+]) {
+  assert.ok(
+    semanticFunctionSource.includes(field),
+    `matchProvidersSemantic trebuie sa returneze ${field}`,
+  );
+}
+
+const resultCardSource = readFileSync(
+  new URL('../src/components/results/ResultCard.jsx', import.meta.url),
+  'utf8',
+);
+assert.ok(resultCardSource.includes('De ce se potriveste'));
+assert.ok(resultCardSource.includes('location.routing_reason'));
 
 const entries = [
   { id: 'b', name: 'Beta', recommendation_group: 'directory', recommendation_score: 90, semantic_match_score: 1, matched_service_keys: ['refraction'], profile_control_status: 'directory' },
