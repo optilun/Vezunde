@@ -1,70 +1,65 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 320" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" fill="none">
   <defs>
-    <radialGradient id="lensA" cx="0" cy="0" r="1" gradientTransform="translate(124 78) rotate(58) scale(125)">
-      <stop stop-color="#FCFEFF" stop-opacity=".92"/>
-      <stop offset=".42" stop-color="#D4E0E6" stop-opacity=".54"/>
-      <stop offset="1" stop-color="#7894A6" stop-opacity=".16"/>
-    </radialGradient>
-    <radialGradient id="lensB" cx="0" cy="0" r="1" gradientTransform="translate(211 75) rotate(57) scale(132)">
-      <stop stop-color="#FFFFFF" stop-opacity=".88"/>
-      <stop offset=".5" stop-color="#CAD8E0" stop-opacity=".48"/>
-      <stop offset="1" stop-color="#5F7F93" stop-opacity=".18"/>
-    </radialGradient>
-    <linearGradient id="rim" x1="65" y1="37" x2="280" y2="195" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#7691A3"/>
-      <stop offset=".46" stop-color="#355C75"/>
-      <stop offset="1" stop-color="#8DA6B5"/>
+    <linearGradient id="glass" x1="89" y1="34" x2="144" y2="220" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FCFE" stop-opacity=".9"/>
+      <stop offset=".45" stop-color="#AFC4D0" stop-opacity=".42"/>
+      <stop offset="1" stop-color="#63849A" stop-opacity=".18"/>
     </linearGradient>
-    <filter id="dotBlur"><feGaussianBlur stdDeviation="3.2"/></filter>
-    <pattern id="microDots" width="15" height="15" patternUnits="userSpaceOnUse">
-      <circle cx="2" cy="2" r="1" fill="#526F82" fill-opacity=".17"/>
-    </pattern>
+    <linearGradient id="eye" x1="239" y1="48" x2="359" y2="214" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7FBFC" stop-opacity=".78"/>
+      <stop offset="1" stop-color="#93ABBA" stop-opacity=".2"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="5.8" refY="3.5" orient="auto"><path d="M0 0 7 3.5 0 7Z" fill="#496B80"/></marker>
   </defs>
 
-  <rect width="400" height="320" fill="url(#microDots)" opacity=".52"/>
-
-  <g stroke="#557286" stroke-width="1.4" opacity=".7">
-    <path d="M29 72V28h44M327 28h44v44M29 183v44h44M327 227h44v-44"/>
-    <path d="M42 43h21M42 55h11M338 43h21M348 55h11" opacity=".5"/>
+  <g stroke="#527286" stroke-width=".7" opacity=".18">
+    <path d="M21 36h358M21 70h358M21 104h358M21 138h358M21 172h358M21 206h358M21 240h358"/>
+    <path d="M40 22v235M80 22v235M120 22v235M160 22v235M200 22v235M240 22v235M280 22v235M320 22v235M360 22v235"/>
   </g>
 
-  <g stroke="#6D8797" stroke-width="1" opacity=".25">
-    <path d="M20 128h360M20 143h360M20 158h360"/>
-    <path d="M95 19v218M111 19v218M127 19v218M143 19v218M159 19v218M175 19v218M191 19v218M207 19v218M223 19v218M239 19v218"/>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#496B80">
+    <text x="21" y="21" font-size="9" letter-spacing="1.4">REFRACTION / OD</text>
+    <text x="287" y="21" font-size="9" letter-spacing="1">AXIS 090°</text>
+    <text x="22" y="258" font-size="8" opacity=".7">D +1.50</text>
+    <text x="89" y="258" font-size="8" opacity=".7">F 0.66 m</text>
+    <text x="318" y="258" font-size="8" opacity=".7">RETINA</text>
   </g>
+
+  <path d="M20 136h360" stroke="#456A80" stroke-width="1.1" stroke-dasharray="6 6" opacity=".75"/>
+  <path d="M35 128v16M48 132v8M61 128v16M74 132v8M87 128v16M100 132v8M113 128v16M126 132v8" stroke="#557588" stroke-width=".9" opacity=".58"/>
+
+  <path d="M104 38c22 29 22 167 0 196 19-10 36-31 36-98S123 48 104 38Z" fill="url(#glass)" stroke="#41677E" stroke-width="2"/>
+  <path d="M104 38c-22 29-22 167 0 196" stroke="#41677E" stroke-width="2"/>
+  <path d="M99 51c8 41 8 130 0 171" stroke="#F9FCFD" stroke-width="3" stroke-linecap="round" opacity=".62"/>
+  <path d="M84 44h40M84 228h40" stroke="#4B7085" stroke-width="1"/>
+  <path d="M88 44v184M120 44v184" stroke="#4B7085" stroke-width=".8" stroke-dasharray="3 5" opacity=".5"/>
+  <path d="M78 44h-9v184h9" stroke="#4B7085" stroke-width="1.1"/>
+  <text x="59" y="141" transform="rotate(-90 59 141)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="8" fill="#496B80">Ø 68 mm</text>
 
   <g>
-    <circle cx="136" cy="120" r="89" fill="url(#lensA)" stroke="url(#rim)" stroke-width="2.4"/>
-    <circle cx="222" cy="120" r="89" fill="url(#lensB)" stroke="url(#rim)" stroke-width="2.4"/>
-  </g>
-  <circle cx="136" cy="120" r="82" stroke="#F9FCFD" stroke-width="1.5" opacity=".64"/>
-  <circle cx="222" cy="120" r="82" stroke="#F9FCFD" stroke-width="1.5" opacity=".58"/>
-  <path d="M88 48c27-20 66-24 97-9" stroke="#FFF" stroke-width="5" stroke-linecap="round" opacity=".42"/>
-  <path d="M174 48c28-20 67-23 98-8" stroke="#FFF" stroke-width="5" stroke-linecap="round" opacity=".38"/>
-  <path d="M179 48a89 89 0 0 1 0 144" stroke="#365F78" stroke-width="1.2" opacity=".58"/>
-  <path d="M180 48a89 89 0 0 0 0 144" stroke="#F7FBFC" stroke-width="1.5" opacity=".62"/>
-  <path d="M70 121c28-18 48-18 76 0s48 18 76 0 48-18 76 0" stroke="#6C8798" stroke-width="1" opacity=".34"/>
-
-  <g fill="#5C7B8E">
-    <g opacity=".18" filter="url(#dotBlur)">
-      <circle cx="230" cy="75" r="8"/><circle cx="230" cy="96" r="8"/><circle cx="230" cy="117" r="8"/><circle cx="230" cy="138" r="8"/><circle cx="230" cy="159" r="8"/>
-      <circle cx="249" cy="75" r="7"/><circle cx="249" cy="96" r="7"/><circle cx="249" cy="117" r="7"/><circle cx="249" cy="138" r="7"/><circle cx="249" cy="159" r="7"/>
-    </g>
-    <g opacity=".32" filter="url(#dotBlur)">
-      <circle cx="268" cy="75" r="5"/><circle cx="268" cy="96" r="5"/><circle cx="268" cy="117" r="5"/><circle cx="268" cy="138" r="5"/><circle cx="268" cy="159" r="5"/>
-    </g>
-    <g opacity=".54">
-      <circle cx="287" cy="75" r="3.3"/><circle cx="287" cy="96" r="3.3"/><circle cx="287" cy="117" r="3.3"/><circle cx="287" cy="138" r="3.3"/><circle cx="287" cy="159" r="3.3"/>
-    </g>
-    <g opacity=".72">
-      <circle cx="306" cy="75" r="2.8"/><circle cx="306" cy="96" r="2.8"/><circle cx="306" cy="117" r="2.8"/><circle cx="306" cy="138" r="2.8"/><circle cx="306" cy="159" r="2.8"/>
-      <circle cx="325" cy="75" r="2.5"/><circle cx="325" cy="96" r="2.5"/><circle cx="325" cy="117" r="2.5"/><circle cx="325" cy="138" r="2.5"/><circle cx="325" cy="159" r="2.5"/>
-      <circle cx="344" cy="75" r="2.2"/><circle cx="344" cy="96" r="2.2"/><circle cx="344" cy="117" r="2.2"/><circle cx="344" cy="138" r="2.2"/><circle cx="344" cy="159" r="2.2"/>
-    </g>
+    <path d="M251 49c54-23 116 15 119 80 3 69-58 111-119 84-19-8-31-25-35-47-3-16-3-44 0-60 4-26 16-47 35-57Z" fill="url(#eye)" stroke="#446A80" stroke-width="2"/>
+    <path d="M251 49c-16 15-25 39-26 81-1 43 9 69 26 83" stroke="#F8FCFD" stroke-width="3" opacity=".8"/>
+    <path d="M233 87c12 9 19 24 19 43s-7 34-19 43" stroke="#4D7084" stroke-width="2"/>
+    <path d="M253 99v62" stroke="#4B6D81" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="253" cy="130" r="9" fill="#EAF2F5" stroke="#3E6278" stroke-width="1.4"/>
+    <path d="M274 84c-16 20-16 72 0 92 19-9 29-24 29-46s-10-37-29-46Z" fill="#D3E0E6" fill-opacity=".7" stroke="#4A6E82" stroke-width="1.6"/>
+    <path d="M278 94c-7 20-7 51 0 72" stroke="#F9FCFD" stroke-width="2" opacity=".75"/>
+    <path d="M347 66c-14 31-14 97 0 128" stroke="#41677D" stroke-width="4"/>
+    <path d="M352 73c9 23 9 90 0 114" stroke="#87A2B1" stroke-width="2"/>
+    <path d="M367 117c15 3 20 13 24 23-8 8-14 12-24 13" fill="#6D8A9B" fill-opacity=".35" stroke="#486C80" stroke-width="1.4"/>
   </g>
 
-  <g stroke="#557286" opacity=".5">
-    <path d="M50 246h300" stroke-dasharray="3 7"/>
-    <path d="M79 239v14M136 239v14M193 239v14M250 239v14M307 239v14"/>
+  <g stroke="#496F84" stroke-width="1.7" fill="none" marker-end="url(#arrow)">
+    <path d="M20 82h66l22 2 236 46"/>
+    <path d="M20 136h66l22 0h236"/>
+    <path d="M20 190h66l22-2 236-52"/>
   </g>
+  <g fill="#456A80"><circle cx="344" cy="130" r="4"/><circle cx="108" cy="84" r="2.2"/><circle cx="108" cy="136" r="2.2"/><circle cx="108" cy="188" r="2.2"/></g>
+
+  <g stroke="#496D81" opacity=".72">
+    <path d="M188 62a73 73 0 0 1 0 148" stroke-dasharray="3 5"/>
+    <path d="M177 62h22M177 210h22"/>
+    <path d="M188 54v16M188 202v16"/>
+  </g>
+  <circle cx="188" cy="136" r="5" fill="#DCE8ED" stroke="#496D81"/>
 </svg>
