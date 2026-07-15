@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, Outlet } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
 import HeaderAccountLink from "@/components/HeaderAccountLink";
 import ViaseeBrand from "@/components/brand/ViaseeBrand";
@@ -71,6 +71,8 @@ function MobileHeader({ scrolled, onMenuOpen }) {
 }
 
 export default function Layout() {
+  const location = useLocation();
+  const isHome = location.pathname === "/";
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -117,7 +119,13 @@ export default function Layout() {
         </SheetContent>
       </Sheet>
 
-      <main className="min-w-0 flex-1 overflow-x-clip">
+      <main
+        className={
+          isHome
+            ? "min-w-0 flex-1 overflow-visible"
+            : "min-w-0 flex-1 overflow-x-clip"
+        }
+      >
         <Outlet />
       </main>
 
