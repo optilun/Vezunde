@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import {
   derivePublicProfileControlStatus,
   getPublicLocationDisclosure,
@@ -61,5 +63,25 @@ assert.equal(derivePublicProfileControlStatus({ claim_verification_status: 'pend
 assert.equal(derivePublicProfileControlStatus({ verification_state: 'in_verification' }), 'claimed');
 assert.equal(derivePublicProfileControlStatus({ profile_control_status: 'suspended' }), 'suspended');
 assert.equal(derivePublicProfileControlStatus({ status: 'suspendata' }), 'suspended');
+
+const canonicalTrustSource = await readFile(
+  new URL('../shared/providerPublicTrust.js', import.meta.url),
+  'utf8',
+);
+const bundledTrustFiles = [
+  '../base44/functions/matchProvidersSemantic/providerPublicTrust.js',
+  '../base44/functions/browseDirectoryProviders/providerPublicTrust.js',
+  '../base44/functions/getPublicProviderProfile/providerPublicTrust.js',
+  '../base44/functions/matchProviders/providerPublicTrust.js',
+];
+
+for (const relativePath of bundledTrustFiles) {
+  const bundledSource = await readFile(new URL(relativePath, import.meta.url), 'utf8');
+  assert.equal(
+    bundledSource.trimEnd(),
+    canonicalTrustSource.trimEnd(),
+    `${fileURLToPath(new URL(relativePath, import.meta.url))} trebuie sincronizat cu sursa canonica.`,
+  );
+}
 
 console.log('Provider public trust regression checks passed.');
