@@ -43,41 +43,15 @@ export default function CategoryShowcase() {
   return (
     <section
       aria-labelledby="home-categories-title"
-      className="relative isolate overflow-hidden pb-4 pt-20 sm:pb-8 sm:pt-28 lg:pt-32"
+      className="relative pb-4 pt-8 sm:pb-8 sm:pt-10 lg:pt-12"
     >
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-[-19rem] z-0 h-[54rem] w-[min(92rem,155vw)] opacity-[0.55] sm:top-[-17rem]"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, rgba(45, 42, 38, 0.28) 0 1px, transparent 1.2px)",
-          backgroundSize: "18px 18px",
-          maskImage:
-            "radial-gradient(ellipse 62% 54% at 50% 54%, black 24%, transparent 78%)",
-          WebkitMaskImage:
-            "radial-gradient(ellipse 62% 54% at 50% 54%, black 24%, transparent 78%)",
-          transform:
-            "translateX(-50%) perspective(850px) rotateX(61deg) scale(1.08)",
-          transformOrigin: "50% 100%",
-        }}
-      />
-
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 -z-20 h-[32rem]"
-        style={{
-          background:
-            "radial-gradient(ellipse 52% 70% at 50% 20%, rgba(255,255,255,0.72), rgba(247,242,232,0) 72%)",
-        }}
-      />
-
       <div className="relative z-10 mx-auto max-w-6xl px-5">
         <motion.div
           initial={prefersReducedMotion ? false : { opacity: 0, y: 18 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.5 }}
           transition={{ duration: 0.55 }}
-          className="grid gap-5 border-t border-black/[0.09] pt-5 sm:pt-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end lg:gap-12"
+          className="grid gap-3 border-t border-black/[0.09] pt-4 sm:pt-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end lg:gap-12"
         >
           <div>
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground/70 sm:text-[11px]">
@@ -85,18 +59,18 @@ export default function CategoryShowcase() {
             </p>
             <h2
               id="home-categories-title"
-              className="mt-3 max-w-3xl font-heading text-3xl font-extrabold leading-[1.04] tracking-[-0.04em] sm:text-4xl lg:text-5xl"
+              className="mt-2 max-w-3xl font-heading text-3xl font-extrabold leading-[1.04] tracking-[-0.04em] sm:text-4xl lg:text-5xl"
             >
               Ce poti gasi pe VIASEE
             </h2>
           </div>
-          <p className="max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg lg:justify-self-end lg:text-right">
+          <p className="hidden max-w-md text-base leading-relaxed text-muted-foreground lg:block lg:justify-self-end lg:text-right lg:text-lg">
             De la un medic sau un control de vedere pana la ochelari,
             investigatii si reparatii.
           </p>
         </motion.div>
 
-        <div className="mt-9 grid grid-cols-2 gap-3 sm:mt-12 sm:gap-4 lg:h-[584px] lg:grid-cols-4 lg:grid-rows-2">
+        <div className="mt-7 grid grid-cols-2 gap-3 sm:mt-8 sm:gap-4 lg:h-[584px] lg:grid-cols-4 lg:grid-rows-2">
           {CATEGORIES.map((category, index) => (
             <motion.article
               key={category.title}
