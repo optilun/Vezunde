@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { readAccountPreferences, saveAccountPreferences } from "@/lib/accountPreferences";
+import PersonalProfileSettings from "./PersonalProfileSettings";
 
 const MODE_LABELS = {
   personal: "Cont personal",
@@ -21,16 +22,6 @@ const MODE_LABELS = {
   professional: "Cont profesional",
   applicant: "Pregatire profil",
 };
-
-function initials(value = "") {
-  return String(value || "U")
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase() || "U";
-}
 
 function SectionCard({ icon: Icon, title, description, children, danger = false }) {
   return (
@@ -49,7 +40,7 @@ function SectionCard({ icon: Icon, title, description, children, danger = false 
   );
 }
 
-export default function AccountSettings({ user, accountModes = [], activeMode, onSwitchMode, onLogout }) {
+export default function AccountSettings({ user, accountModes = [], activeMode, onSwitchMode, onLogout, onRefresh }) {
   const [preferences, setPreferences] = useState(() => readAccountPreferences(user?.id));
   const [resetStatus, setResetStatus] = useState("idle");
   const [eligibility, setEligibility] = useState({ status: "loading", blockers: [], summary: null });
@@ -90,7 +81,7 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
     setResetStatus("sending");
     try {
       await base44.auth.resetPasswordRequest(user.email);
-    } catch (_error) {
+    } catch {
       // Keep the response neutral. Password reset flows should not expose account state.
     } finally {
       setResetStatus("sent");
@@ -130,30 +121,25 @@ export default function AccountSettings({ user, accountModes = [], activeMode, o
       </section>
 
       <SectionCard icon={UserRound} title="Contul tau" description="Identitatea contului este separata de profilul public al specialistului si de datele organizatiilor.">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-foreground text-sm font-bold text-background">
-            {initials(fullName)}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-base font-bold">{fullName}</div>
-            <div className="mt-1 truncate text-sm text-muted-foreground">{user?.email || "Email indisponibil"}</div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {accountModes.map((mode) => (
-                <button
-                  key={mode.key}
-                  type="button"
-                  onClick={() => mode.key !== activeMode && onSwitchMode?.(mode.key)}
-                  disabled={mode.key === activeMode || !onSwitchMode}
-                  className={`min-h-11 rounded-full px-3 py-1 text-[11px] font-semibold transition lg:min-h-0 ${mode.key === activeMode ? "bg-foreground text-background" : "border border-border bg-background hover:bg-secondary disabled:opacity-60"}`}
-                >
-                  {mode.label || MODE_LABELS[mode.key] || mode.key}
-                </button>
-              ))}
-            </div>
+        <PersonalProfileSettings user={user} onRefresh={onRefresh} />
+        <div className="mt-5 border-t border-border pt-5">
+          <div className="text-xs font-semibold text-muted-foreground">Spatiile aceluiasi cont</div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {accountModes.map((mode) => (
+              <button
+                key={mode.key}
+                type="button"
+                onClick={() => mode.key !== activeMode && onSwitchMode?.(mode.key)}
+                disabled={mode.key === activeMode || !onSwitchMode}
+                className={`min-h-11 rounded-full px-3 py-1 text-[11px] font-semibold transition lg:min-h-0 ${mode.key === activeMode ? "bg-foreground text-background" : "border border-border bg-background hover:bg-secondary disabled:opacity-60"}`}
+              >
+                {mode.label || MODE_LABELS[mode.key] || mode.key}
+              </button>
+            ))}
           </div>
         </div>
         <p className="mt-4 rounded-2xl bg-secondary/35 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-          Numele si emailul sunt momentan afisate doar pentru verificare. Nu introducem schimbarea directa a emailului pana cand exista un flux sigur de reverificare.
+          Emailul nu se modifica aici. Functia, descrierea profesionala si specializarile se gestioneaza separat din Cont profesional si devin publice numai dupa verificare VIASEE.
         </p>
       </SectionCard>
 

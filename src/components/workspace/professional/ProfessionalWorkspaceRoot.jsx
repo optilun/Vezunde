@@ -322,6 +322,7 @@ export default function ProfessionalWorkspaceRoot({
           accountModes={accountModes}
           activeMode={activeMode}
           onSwitchMode={onSwitchMode}
+          onRefresh={onRefresh}
           onLogout={onLogout}
         />
       )}

@@ -21,6 +21,7 @@ export default function ProviderAppShell({
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const initials = (user?.full_name || "U").trim().charAt(0).toUpperCase();
+  const profilePhotoUrl = user?.profile_photo_url || "";
   const activeLabel = navItems.find((item) => item.key === activeKey)?.label || navItems[0]?.label || "";
   const mobileModeSwitches = modeSwitches?.map((item) => ({
     ...item,
@@ -92,8 +93,10 @@ export default function ProviderAppShell({
                   <ExternalLink className="w-3.5 h-3.5" />
                 </Link>
               )}
-              <div className="w-9 h-9 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-xs font-semibold shrink-0" title={user?.full_name || ""}>
-                {initials}
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent text-xs font-semibold text-accent-foreground" title={user?.full_name || ""}>
+                {profilePhotoUrl
+                  ? <img src={profilePhotoUrl} alt="" className="h-full w-full object-cover" />
+                  : initials}
               </div>
             </div>
           </div>

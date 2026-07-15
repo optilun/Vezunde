@@ -16,6 +16,7 @@ export default function PersonalAccountWorkspace({
   professionalWorkspace,
   onOpenOrganization,
   onOpenProfessional,
+  onRefresh,
   onLogout,
   accountModes,
   activeMode,
@@ -61,6 +62,7 @@ export default function PersonalAccountWorkspace({
           accountModes={accountModes}
           activeMode={activeMode}
           onSwitchMode={onSwitchMode}
+          onRefresh={onRefresh}
           onLogout={onLogout}
         />
       )}

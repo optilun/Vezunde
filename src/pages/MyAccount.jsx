@@ -151,6 +151,7 @@ export default function MyAccount() {
       professionalWorkspace={professionalWorkspace}
       onOpenOrganization={openOrganizationWorkspace}
       onOpenProfessional={() => switchMode("professional")}
+      onRefresh={load}
       onLogout={onLogout}
       {...sharedAccountProps}
     />
