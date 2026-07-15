@@ -4,6 +4,7 @@ import {
   normalizeServiceKey,
 } from '../../../shared/canonicalServiceRegistryExtended.js';
 import { evaluateServicePrerequisites } from '../../../shared/servicePrerequisiteEngine.js';
+import { getPublicLocationDisclosure } from '../../../shared/providerPublicTrust.js';
 
 const PATIENT_FACING_PROFILE_TYPES = [
   'independent_optical_store',
@@ -126,7 +127,8 @@ Deno.serve(async (req) => {
     if (!locationId) return Response.json({ error: 'location_id este obligatoriu' }, { status: 400 });
 
     const location = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
-    const controlStatus = location ? (location.profile_control_status || 'directory') : null;
+    const publicDisclosure = location ? getPublicLocationDisclosure(location) : null;
+    const controlStatus = publicDisclosure?.profile_control_status || null;
     if (
       !location
       || location.status !== 'publicata'
@@ -149,9 +151,11 @@ Deno.serve(async (req) => {
 
     const profiles = await Promise.all(assignments.map((assignment) => svc.entities.ProfessionalProfile.get(assignment.professional_id).catch(() => null)));
     const prerequisiteContext = { location, assignments, professionals: profiles.filter(Boolean), equipment, facilities };
-    const publicServices = services.filter((service) => isPublicSafeService(service, location, prerequisiteContext)).map(toPublicService).filter(Boolean);
+    const publicServices = publicDisclosure.expose_full_details
+      ? services.filter((service) => isPublicSafeService(service, location, prerequisiteContext)).map(toPublicService).filter(Boolean)
+      : [];
 
-    const team = assignments.map((assignment, index) => {
+    const team = publicDisclosure.expose_full_details ? assignments.map((assignment, index) => {
       const profile = profiles[index];
       if (!profile || assignment.public_status !== 'public' || profile.is_public !== true || profile.verification_status !== 'verified' || profile.public_visibility_status !== 'approved') return null;
       const displayName = profile.public_display_name || profile.full_name;
@@ -165,22 +169,26 @@ Deno.serve(async (req) => {
         specializations: Array.isArray(profile.specializations) ? profile.specializations.slice(0, 6) : [],
         verified: true,
       };
-    }).filter(Boolean);
+    }).filter(Boolean) : [];
 
     let availabilityLabel = null;
-    if (location.availability_status && location.availability_status !== 'necunoscuta' && location.availability_updated_at) {
+    if (publicDisclosure.expose_full_details && location.availability_status && location.availability_status !== 'necunoscuta' && location.availability_updated_at) {
       const ageDays = (Date.now() - new Date(location.availability_updated_at).getTime()) / 86400000;
       if (ageDays >= 0 && ageDays <= AVAILABILITY_STALE_DAYS) availabilityLabel = AVAILABILITY_LABELS[location.availability_status] || null;
     }
 
     const organizationName = organization?.public_display_name || organization?.name || null;
-    const organizationDescription = organization?.public_description || null;
-    const rawLocationDescription = location.public_description || location.description || null;
+    const organizationDescription = publicDisclosure.expose_full_details ? (organization?.public_description || null) : null;
+    const rawLocationDescription = publicDisclosure.expose_full_details ? (location.public_description || location.description || null) : null;
     const locationDescription = rawLocationDescription && normalizedCopy(rawLocationDescription) !== normalizedCopy(organizationDescription)
       ? rawLocationDescription
       : null;
-    const mapPrecision = exactMapPosition(location) ? 'exact' : location.address ? 'approximate' : null;
-    const organizationLogoUrl = await resilientPublicLogo(organization?.logo_url);
+    const mapPrecision = publicDisclosure.exact_location_visible
+      ? (exactMapPosition(location) ? 'exact' : location.address ? 'approximate' : null)
+      : null;
+    const organizationLogoUrl = publicDisclosure.expose_full_details
+      ? await resilientPublicLogo(organization?.logo_url)
+      : null;
 
     return Response.json({
       profile: {
@@ -188,7 +196,7 @@ Deno.serve(async (req) => {
         organization_id: organization?.id || null,
         organization_name: organizationName,
         organization_logo_url: organizationLogoUrl,
-        organization_logo_configured: Boolean(publicImage(organization?.logo_url)),
+        organization_logo_configured: publicDisclosure.expose_full_details && Boolean(publicImage(organization?.logo_url)),
         organization_logo_version: organization?.profile_updated_at || organization?.updated_date || null,
         organization_description: organizationDescription,
         location_description: locationDescription,
@@ -197,23 +205,28 @@ Deno.serve(async (req) => {
         provider_profile_type: location.provider_profile_type,
         city: location.city,
         county: location.county || null,
-        address: location.address || null,
-        lat: location.lat ?? null,
-        lng: location.lng ?? null,
-        place_id: location.place_id || null,
+        address: publicDisclosure.address,
+        lat: publicDisclosure.lat,
+        lng: publicDisclosure.lng,
+        place_id: publicDisclosure.place_id,
         map_precision: mapPrecision,
-        phone_public: location.public_phone || location.phone_public || null,
-        public_email: location.public_email || null,
-        website: publicUrl(organization?.website_url || organization?.website || location.website_url || location.website),
-        facebook: publicUrl(organization?.facebook_url || location.facebook_url),
-        instagram: publicUrl(organization?.instagram_url || location.instagram_url),
-        linkedin: publicUrl(organization?.linkedin_url || location.linkedin_url),
+        phone_public: publicDisclosure.phone,
+        public_email: publicDisclosure.public_email,
+        website: publicDisclosure.expose_full_details
+          ? publicUrl(organization?.website_url || organization?.website || publicDisclosure.website)
+          : null,
+        facebook: publicDisclosure.expose_full_details ? publicUrl(organization?.facebook_url || location.facebook_url) : null,
+        instagram: publicDisclosure.expose_full_details ? publicUrl(organization?.instagram_url || location.instagram_url) : null,
+        linkedin: publicDisclosure.expose_full_details ? publicUrl(organization?.linkedin_url || location.linkedin_url) : null,
         description: locationDescription || organizationDescription || rawLocationDescription,
-        photo_url: publicImage(location.photo_url),
-        opening_hours: location.opening_hours || null,
-        saturday_hours: location.saturday_hours || null,
-        opening_hours_json: location.opening_hours_json || null,
+        photo_url: publicDisclosure.expose_full_details ? publicImage(location.photo_url) : null,
+        opening_hours: publicDisclosure.opening_hours,
+        saturday_hours: publicDisclosure.saturday_hours,
+        opening_hours_json: publicDisclosure.opening_hours_json,
         profile_control_status: controlStatus,
+        public_detail_level: publicDisclosure.public_detail_level,
+        exact_location_visible: publicDisclosure.exact_location_visible,
+        contact_details_visible: publicDisclosure.contact_details_visible,
         status_label: STATUS_LABELS[controlStatus] || STATUS_LABELS.directory,
         availability_label: availabilityLabel,
         service_confirmation_level: serviceConfirmationLevel(publicServices),
