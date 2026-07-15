@@ -3,8 +3,7 @@ import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion
 import Hero from "@/components/home/Hero";
 import CategoryShowcase from "@/components/home/CategoryShowcase";
 import SituationExplainer from "@/components/home/SituationExplainer";
-import ServicesEditorial from "@/components/home/ServicesEditorial";
-import ProvidersShowcase from "@/components/home/ProvidersShowcase";
+import HowItWorks from "@/components/home/HowItWorks";
 import ProCta from "@/components/home/ProCta";
 
 function HomeCanvasBackground() {
@@ -58,8 +57,7 @@ function HomeCanvas({ preview = false }) {
         {!preview && (
           <>
             <SituationExplainer />
-            <ServicesEditorial />
-            <ProvidersShowcase />
+            <HowItWorks />
             <ProCta />
           </>
         )}
