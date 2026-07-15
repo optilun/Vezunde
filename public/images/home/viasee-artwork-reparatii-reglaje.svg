@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 320" fill="none">
+  <defs>
+    <linearGradient id="acetate" x1="-5" y1="49" x2="157" y2="148" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8B611B"/>
+      <stop offset=".38" stop-color="#C99A4C"/>
+      <stop offset=".7" stop-color="#A8782A"/>
+      <stop offset="1" stop-color="#714A13"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="158" y1="92" x2="248" y2="178" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF1C6"/>
+      <stop offset=".28" stop-color="#D9B66E"/>
+      <stop offset=".55" stop-color="#9B6D28"/>
+      <stop offset=".78" stop-color="#E4C583"/>
+      <stop offset="1" stop-color="#765019"/>
+    </linearGradient>
+    <linearGradient id="screw" x1="175" y1="52" x2="216" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF0BF"/>
+      <stop offset=".5" stop-color="#B88637"/>
+      <stop offset="1" stop-color="#6E4913"/>
+    </linearGradient>
+    <pattern id="microDots" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#88621F" fill-opacity=".17"/></pattern>
+  </defs>
+
+  <rect width="400" height="320" fill="url(#microDots)" opacity=".56"/>
+
+  <g stroke="#89641F" stroke-width="1" stroke-dasharray="4 6" opacity=".52">
+    <path d="M25 196h350M159 38v181M241 38v181"/>
+    <path d="M153 196h12M235 196h12M159 190v12M241 190v12" stroke-dasharray="none"/>
+    <path d="M82 219v28M318 219v28M76 233h12M312 233h12"/>
+  </g>
+
+  <g>
+    <path d="M-14 47 124 91l43 31-18 43-49-16L-14 82Z" fill="url(#acetate)" stroke="#6D4915" stroke-width="2.2"/>
+    <path d="M414 47 276 91l-43 31 18 43 49-16 114-67Z" fill="url(#acetate)" stroke="#6D4915" stroke-width="2.2"/>
+    <path d="M3 58 121 98" stroke="#F1D79B" stroke-width="4" stroke-linecap="round" opacity=".38"/>
+    <path d="M397 58 279 98" stroke="#F1D79B" stroke-width="4" stroke-linecap="round" opacity=".38"/>
+
+    <g transform="rotate(-12 145 132)">
+      <rect x="119" y="101" width="54" height="63" rx="13" fill="url(#metal)" stroke="#6E4A16" stroke-width="2.2"/>
+      <circle cx="145" cy="132" r="12" fill="#E9CF91" stroke="#704B16" stroke-width="2"/>
+      <circle cx="145" cy="132" r="4" fill="#80571B"/>
+      <path d="M140 132h10" stroke="#FFF0C2" stroke-width="1.5"/>
+    </g>
+    <g transform="rotate(12 255 132)">
+      <rect x="227" y="101" width="54" height="63" rx="13" fill="url(#metal)" stroke="#6E4A16" stroke-width="2.2"/>
+      <circle cx="255" cy="132" r="12" fill="#E9CF91" stroke="#704B16" stroke-width="2"/>
+      <circle cx="255" cy="132" r="4" fill="#80571B"/>
+      <path d="M250 132h10" stroke="#FFF0C2" stroke-width="1.5"/>
+    </g>
+  </g>
+
+  <g>
+    <path d="M169 127h22v-13h18v13h22v43h-25v-16h-12v16h-25Z" fill="url(#metal)" stroke="#6D4914" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="180" cy="144" r="5.5" fill="#F6E4B3" stroke="#704B16" stroke-width="1.5"/>
+    <circle cx="220" cy="144" r="5.5" fill="#F6E4B3" stroke="#704B16" stroke-width="1.5"/>
+    <path d="M176 144h8M216 144h8" stroke="#7C5317" stroke-width="1.2"/>
+    <path d="M194 153h12M194 160h12" stroke="#7C5317" stroke-width="1.2"/>
+  </g>
+
+  <g>
+    <circle cx="200" cy="73" r="10" fill="url(#screw)" stroke="#664310" stroke-width="1.6"/>
+    <path d="M194 73h12" stroke="#FFF0BE" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M200 83v31M194 89h12M195 96h10M195 103h10M196 110h8" stroke="#795117" stroke-width="1.7" stroke-linecap="round"/>
+  </g>
+  <path d="M200 112v11" stroke="#765019" stroke-width="1.2" stroke-dasharray="2 3"/>
+
+  <g opacity=".78">
+    <path d="M135 174 157 187M265 174 243 187" stroke="#81591A" stroke-width="1.1" stroke-dasharray="3 4"/>
+    <circle cx="159" cy="190" r="3" fill="#906723"/>
+    <circle cx="241" cy="190" r="3" fill="#906723"/>
+  </g>
+
+  <g transform="translate(323 226)" fill="none" stroke="#7B5418">
+    <circle r="34" stroke-width="1.3" opacity=".8"/>
+    <circle r="27" stroke-width=".8" opacity=".35"/>
+    <path d="m-15 18 34-39M-8 10l8 8M8-8l8 8" stroke-width="4.5" stroke-linecap="round"/>
+    <path d="m19-21 7-7" stroke-width="2" stroke-linecap="round"/>
+    <path d="M-24 24 24-24" stroke-width=".7" stroke-dasharray="2 4" opacity=".4"/>
+  </g>
+</svg>
