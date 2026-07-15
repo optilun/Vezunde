@@ -93,7 +93,20 @@ export function getProfileAudience(profileType) {
   return "Profil neclasificat";
 }
 
-export const CITIES = ["Bucuresti", "Cluj-Napoca", "Timisoara", "Iași", "Brașov", "Constanța"];
+export const CITIES = ["Bucuresti", "Cluj-Napoca", "Timisoara", "Iasi", "Brasov", "Constanta"];
+
+export const CITY_LABELS = {
+  Bucuresti: "București",
+  "Cluj-Napoca": "Cluj-Napoca",
+  Timisoara: "Timișoara",
+  Iasi: "Iași",
+  Brasov: "Brașov",
+  Constanta: "Constanța",
+};
+
+export function getCityLabel(city) {
+  return CITY_LABELS[city] || city;
+}
 
 // Existing intake categories keep their legacy keys for backward compatibility.
 // matchProviders normalizes deterministic aliases through the canonical registry.
