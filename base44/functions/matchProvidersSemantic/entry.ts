@@ -17,7 +17,7 @@ import {
   sanitizePatientNeedInterpretation,
 } from './sharedDependencies.js';
 import { getRecommendationCoverageStatus } from './coverage.js';
-import { getPublicLocationDisclosure } from '../../../shared/providerPublicTrust.js';
+import { getPublicLocationDisclosure } from './providerPublicTrust.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const PATIENT_FACING_PROFILE_TYPES = new Set([
