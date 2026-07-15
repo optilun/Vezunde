@@ -15,19 +15,19 @@ export default function ProCta() {
       >
         <div aria-hidden className="absolute -bottom-24 -right-24 w-72 h-72 rounded-full border border-background/10 pointer-events-none" />
         <div aria-hidden className="absolute -bottom-10 -right-10 w-40 h-40 rounded-full border border-background/10 pointer-events-none" />
-        <p className="text-xs font-semibold uppercase tracking-widest text-background/50">Pentru specialisti</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-background/50">Pentru specialiști</p>
         <h2 className="mt-4 font-heading text-3xl sm:text-5xl font-extrabold tracking-[-0.03em] leading-[1.05] max-w-2xl">
-          Fii gasit pentru <span className="font-display italic font-medium">ceea ce stii sa faci</span>.
+          Fii găsit pentru <span className="font-display italic font-medium">ceea ce stii sa faci</span>.
         </h2>
         <p className="mt-5 text-background/60 max-w-xl leading-relaxed">
-          Optica, cabinet sau clinica — pe VIASEE apari cand serviciile tale se potrivesc cu nevoia pacientului. Fara licitatii, fara bugete de promovare.
+          Optică, cabinet sau clinică — pe VIASEE apari când serviciile tale se potrivesc cu nevoia pacientului. Fără licitații, fără bugete de promovare.
         </p>
         <div className="mt-9 flex flex-wrap items-center gap-5">
           <Link to="/pentru-specialisti" className="inline-flex items-center gap-2 bg-primary text-primary-foreground rounded-full px-7 py-3.5 font-semibold hover:gap-3 transition-all">
-            Afla cum functioneaza <ArrowRight className="w-4 h-4" />
+            Află cum funcționează <ArrowRight className="w-4 h-4" />
           </Link>
           <Link to="/revendica-profil" className="text-sm font-medium text-background/70 underline underline-offset-4 decoration-background/30 hover:text-background transition-colors">
-            Revendica un profil existent
+            Revendică un profil existent
           </Link>
         </div>
       </motion.div>
