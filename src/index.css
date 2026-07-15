@@ -199,6 +199,26 @@
   }
 }
 
+@keyframes role-content-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.role-content-fade {
+  animation: role-content-fade 0.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .role-content-fade {
+    animation: none;
+  }
+}
+
 @media (max-width: 1023px) {
   .auth-neutral a,
   .auth-neutral button {

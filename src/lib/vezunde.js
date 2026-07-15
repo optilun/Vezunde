@@ -26,14 +26,14 @@ export const SERVICES = {
 export const FACILITIES = {
   laborator_optic_propriu: "Laborator optic propriu",
   atelier_service_propriu: "Atelier de service propriu",
-  reparatii_pe_loc: "Reparatii pe loc",
+  reparatii_pe_loc: "Reparații pe loc",
   laborator_partener: "Laborator partener",
-  montaj_lentile_in_locatie: "Montaj lentile in locatie",
+  montaj_lentile_in_locatie: "Montaj lentile în locație",
 };
 
 export const PROVIDER_TYPES = {
-  optica_medicala: "Optica medicala",
-  clinica_oftalmologica: "Clinica oftalmologica",
+  optica_medicala: "Optică medicală",
+  clinica_oftalmologica: "Clinică oftalmologică",
   cabinet_oftalmologic: "Cabinet oftalmologic",
   cabinet_optometric: "Cabinet optometric",
   laborator_optic: "Laborator optic",
@@ -42,9 +42,9 @@ export const PROVIDER_TYPES = {
 };
 
 export const PROVIDER_PROFILE_TYPES = {
-  independent_optical_store: "Optica independenta",
-  optical_chain: "Lant de optici",
-  ophthalmology_clinic: "Clinica oftalmologica",
+  independent_optical_store: "Optică independentă",
+  optical_chain: "Lanț de optici",
+  ophthalmology_clinic: "Clinică oftalmologică",
   ophthalmology_office: "Cabinet oftalmologic",
   independent_ophthalmologist: "Medic oftalmolog independent",
   independent_optometrist: "Optometrist independent",
@@ -62,7 +62,7 @@ export const PROFESSIONAL_TYPES = {
 };
 
 export const PROFESSIONAL_AFFILIATION_STATUS = {
-  location_added: "Adaugat de locatie",
+  location_added: "Adăugat de locație",
   professional_confirmed: "Confirmat de specialist",
   vezunde_verified: "Verificat de Vezunde",
 };
@@ -87,7 +87,7 @@ export const B2B_ONLY_PROFILE_TYPES = [
 ];
 
 export function getProfileAudience(profileType) {
-  if (PATIENT_FACING_PROFILE_TYPES.includes(profileType)) return "Director pacienti";
+  if (PATIENT_FACING_PROFILE_TYPES.includes(profileType)) return "Director pacienți";
   if (PROFESSIONAL_ONLY_PROFILE_TYPES.includes(profileType)) return "Profil profesional";
   if (B2B_ONLY_PROFILE_TYPES.includes(profileType)) return "Parteneri B2B";
   return "Profil neclasificat";
@@ -95,14 +95,27 @@ export function getProfileAudience(profileType) {
 
 export const CITIES = ["Bucuresti", "Cluj-Napoca", "Timisoara", "Iasi", "Brasov", "Constanta"];
 
+export const CITY_LABELS = {
+  Bucuresti: "București",
+  "Cluj-Napoca": "Cluj-Napoca",
+  Timisoara: "Timișoara",
+  Iasi: "Iași",
+  Brasov: "Brașov",
+  Constanta: "Constanța",
+};
+
+export function getCityLabel(city) {
+  return CITY_LABELS[city] || city;
+}
+
 // Existing intake categories keep their legacy keys for backward compatibility.
 // matchProviders normalizes deterministic aliases through the canonical registry.
 export const CATEGORIES = [
   { key: "control_vedere", label: "Control vedere", services: ["control_vedere_adulti", "control_vedere_copii"] },
   { key: "consult_oftalmologic", label: "Consult oftalmologic", services: ["consult_oftalmologic"] },
   { key: "copii_miopie", label: "Control vedere copii", services: ["control_vedere_copii"] },
-  { key: "lentile_ochelari", label: "Lentile si ochelari", services: ["lentile_contact", "lentile_progresive", "montaj_lentile"] },
-  { key: "reparatii", label: "Reparatii ochelari", services: ["reparatii_ochelari", "reglaj_rame", "montaj_lentile"] },
+  { key: "lentile_ochelari", label: "Lentile și ochelari", services: ["lentile_contact", "lentile_progresive", "montaj_lentile"] },
+  { key: "reparatii", label: "Reparații ochelari", services: ["reparatii_ochelari", "reglaj_rame", "montaj_lentile"] },
   { key: "ochi_uscat", label: "Ochi uscat", services: ["ochi_uscat"] },
 ];
 

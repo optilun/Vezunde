@@ -6,10 +6,10 @@ import ViaseeBrand from "@/components/brand/ViaseeBrand";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 const MOBILE_LINKS = [
-  { to: "/cauta", label: "Cauta" },
+  { to: "/cauta", label: "Caută" },
   { to: "/parteneri", label: "Parteneri" },
-  { to: "/pentru-specialisti", label: "Pentru specialisti" },
-  { to: "/adauga-sau-revendica", label: "Adauga sau revendica un profil" },
+  { to: "/pentru-specialisti", label: "Pentru specialiști" },
+  { to: "/adauga-sau-revendica", label: "Adaugă sau revendică un profil" },
 ];
 
 function DesktopHeader({ scrolled }) {
@@ -22,14 +22,14 @@ function DesktopHeader({ scrolled }) {
       }`}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-8">
-        <Link to="/" className="flex min-w-0 items-center" aria-label="VIASEE - Pagina principala">
+        <Link to="/" className="flex min-w-0 items-center" aria-label="VIASEE - Pagina principală">
           <ViaseeBrand symbolClassName="h-8 w-8" wordmarkClassName="h-[18px] w-auto" />
         </Link>
 
         <nav className="flex items-center gap-1 text-sm">
-          <Link to="/cauta" className="rounded-lg px-3.5 py-2 text-muted-foreground transition-colors hover:text-foreground">Cauta</Link>
+          <Link to="/cauta" className="rounded-lg px-3.5 py-2 text-muted-foreground transition-colors hover:text-foreground">Caută</Link>
           <Link to="/parteneri" className="rounded-lg px-3.5 py-2 text-muted-foreground transition-colors hover:text-foreground">Parteneri</Link>
-          <Link to="/pentru-specialisti" className="rounded-lg px-3.5 py-2 text-muted-foreground transition-colors hover:text-foreground">Pentru specialisti</Link>
+          <Link to="/pentru-specialisti" className="rounded-lg px-3.5 py-2 text-muted-foreground transition-colors hover:text-foreground">Pentru specialiști</Link>
           <HeaderAccountLink />
           <Link to="/cerere" className="ml-2 inline-flex min-h-11 items-center rounded-full bg-[#171717] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#2B2B2B]">
             Trimite o cerere
@@ -50,7 +50,7 @@ function MobileHeader({ scrolled, onMenuOpen }) {
       }`}
     >
       <div className="mx-auto flex h-16 items-center justify-between gap-2 px-4 sm:px-8">
-        <Link to="/" className="flex min-w-0 items-center" aria-label="VIASEE - Pagina principala">
+        <Link to="/" className="flex min-w-0 items-center" aria-label="VIASEE - Pagina principală">
           <ViaseeBrand symbolClassName="h-8 w-8" wordmarkClassName="h-[18px] w-auto" />
         </Link>
 
@@ -92,7 +92,7 @@ export default function Layout() {
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="right" className="w-[min(22rem,calc(100vw-1rem))] overflow-y-auto p-0 safe-area-top safe-area-bottom">
           <SheetHeader className="border-b border-border px-5 py-5 text-left">
-            <SheetTitle className="sr-only">Navigatie VIASEE</SheetTitle>
+            <SheetTitle className="sr-only">Navigație VIASEE</SheetTitle>
             <ViaseeBrand symbolClassName="h-8 w-8" wordmarkClassName="h-[18px] w-auto" />
           </SheetHeader>
           <div className="space-y-1 px-4 py-5">
@@ -133,25 +133,25 @@ export default function Layout() {
         <div className="mx-auto grid max-w-6xl gap-8 px-5 py-10 sm:grid-cols-3 sm:py-12">
           <div>
             <ViaseeBrand symbolClassName="h-8 w-8" wordmarkClassName="h-4 w-auto" />
-            <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">Spune ce ai nevoie. Vezi unde poti merge. VIASEE nu ofera diagnostic medical.</p>
+            <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">Spune ce ai nevoie. Vezi unde poți merge. VIASEE nu oferă diagnostic medical.</p>
           </div>
           <div className="space-y-1 text-sm">
             <div className="mb-3 font-medium">Platforma</div>
-            <Link to="/cauta" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Cauta furnizori</Link>
+            <Link to="/cauta" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Caută furnizori</Link>
             <Link to="/cerere" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Trimite o cerere</Link>
             <Link to="/parteneri" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Parteneri B2B</Link>
-            <Link to="/pentru-specialisti" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Pentru specialisti</Link>
-            <Link to="/revendica-profil" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Revendica un profil</Link>
+            <Link to="/pentru-specialisti" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Pentru specialiști</Link>
+            <Link to="/revendica-profil" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Revendică un profil</Link>
           </div>
           <div className="space-y-1 text-sm">
             <div className="mb-3 font-medium">Legal</div>
-            <Link to="/confidentialitate" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Confidentialitate</Link>
-            <Link to="/termeni" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Termeni si conditii</Link>
+            <Link to="/confidentialitate" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Confidențialitate</Link>
+            <Link to="/termeni" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Termeni și condiții</Link>
           </div>
         </div>
         <div className="border-t border-border">
           <div className="mx-auto max-w-6xl px-5 py-4 text-xs leading-relaxed text-muted-foreground safe-area-bottom">
-            © {new Date().getFullYear()} VIASEE. Date demonstrative fictive. Platforma de potrivire, nu de licitatii de pret.
+            © {new Date().getFullYear()} VIASEE. Date demonstrative fictive. Platformă de potrivire, nu de licitații de preț.
           </div>
         </div>
       </footer>

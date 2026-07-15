@@ -94,7 +94,7 @@ function PinnedTakeover() {
     <>
       <section
         ref={sceneRef}
-        aria-label="Tranzitie catre continutul homepage-ului"
+        aria-label="Tranziție către conținutul homepage-ului"
         className="pointer-events-none relative z-30 h-[calc(170svh-4rem)]"
       >
         <motion.div

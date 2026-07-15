@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { base44 } from "@/api/base44Client";
-import { PROVIDER_TYPES } from "@/lib/vezunde";
+import { getCityLabel, PROVIDER_TYPES } from "@/lib/vezunde";
 import TrustBadge from "@/components/results/TrustBadge";
 
 export default function ProvidersShowcase() {
@@ -20,17 +20,17 @@ export default function ProvidersShowcase() {
     <section className="max-w-6xl mx-auto px-5 mt-32 sm:mt-44">
       <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="flex flex-wrap items-end justify-between gap-4">
         <h2 className="font-heading text-3xl sm:text-5xl font-extrabold tracking-[-0.03em] leading-[1.05]">
-          Locuri unde poti merge
+          Locuri unde poți merge
           <br />
           <span className="font-display italic font-medium text-primary">chiar azi.</span>
         </h2>
         <Link to="/cauta" className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:gap-2.5 transition-all">
-          Exploreaza toti furnizorii <ArrowUpRight className="w-4 h-4" />
+          Explorează toți furnizorii <ArrowUpRight className="w-4 h-4" />
         </Link>
       </motion.div>
 
       <div className="mt-12">
-        {locations === null && <p className="text-sm text-muted-foreground py-8">Se incarca...</p>}
+        {locations === null && <p className="text-sm text-muted-foreground py-8">Se încarcă...</p>}
         {locations?.map((loc, i) => (
           <motion.div
             key={loc.id}
@@ -50,7 +50,7 @@ export default function ProvidersShowcase() {
                   <TrustBadge status={loc.profile_control_status} />
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {PROVIDER_TYPES[loc.provider_type]} · {loc.city}
+                  {PROVIDER_TYPES[loc.provider_type]} · {getCityLabel(loc.city)}
                 </p>
               </div>
               <ArrowUpRight className="w-5 h-5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
@@ -58,7 +58,7 @@ export default function ProvidersShowcase() {
           </motion.div>
         ))}
       </div>
-      <p className="mt-6 text-xs text-muted-foreground/70">Profiluri verificate. Ordinea nu reflecta niciodata marimea afacerii sau pretul.</p>
+      <p className="mt-6 text-xs text-muted-foreground/70">Profiluri verificate. Ordinea nu reflectă niciodată mărimea afacerii sau prețul.</p>
     </section>
   );
 }
