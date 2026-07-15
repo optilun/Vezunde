@@ -3,6 +3,7 @@ import {
   isServicePubliclyEligible,
   normalizeServiceKey,
 } from './sharedDependencies.js';
+import { getPublicLocationDisclosure } from '../../../shared/providerPublicTrust.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Read-only locality browse. It does not score or match by service.
@@ -75,8 +76,9 @@ Deno.serve(async (req) => {
 
     const results = [];
     for (const loc of locations) {
+      const publicDisclosure = getPublicLocationDisclosure(loc);
       if (loc.public_visibility_status !== 'approved') continue;
-      if (loc.profile_control_status !== 'verified') continue;
+      if (publicDisclosure.profile_control_status === 'suspended') continue;
       if (loc.active_status === 'inactiva') continue;
       if (!loc.provider_profile_type || !PATIENT_FACING_PROFILE_TYPES.includes(loc.provider_profile_type)) continue;
       if (providerTypes.length > 0 && !providerTypes.includes(loc.provider_type)) continue;
@@ -103,19 +105,25 @@ Deno.serve(async (req) => {
 
       results.push({
         id: loc.id,
-        name: loc.name,
+        name: loc.public_display_name || loc.name,
         provider_type: loc.provider_type,
+        provider_profile_type: loc.provider_profile_type,
         city: loc.city,
         county: loc.county || null,
-        address: loc.address || null,
-        phone: loc.phone_public || null,
-        website: loc.website || null,
-        opening_hours: loc.opening_hours || null,
-        saturday_hours: loc.saturday_hours || null,
-        profile_control_status: loc.profile_control_status,
+        address: publicDisclosure.address,
+        phone: publicDisclosure.phone,
+        website: publicDisclosure.website,
+        opening_hours: publicDisclosure.opening_hours,
+        saturday_hours: publicDisclosure.saturday_hours,
+        profile_control_status: publicDisclosure.profile_control_status,
+        public_detail_level: publicDisclosure.public_detail_level,
+        exact_location_visible: publicDisclosure.exact_location_visible,
+        contact_details_visible: publicDisclosure.contact_details_visible,
         result_type: 'directory',
         is_match_eligible: false,
-        service_coverage_status: hasPublicService ? 'listed' : 'not_listed',
+        service_coverage_status: publicDisclosure.expose_full_details
+          ? (hasPublicService ? 'listed' : 'not_listed')
+          : 'not_disclosed',
       });
       if (results.length >= limit) break;
     }
