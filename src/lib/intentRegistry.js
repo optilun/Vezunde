@@ -265,6 +265,7 @@ const INTENT_KEYWORDS = {
     "topografie corneana",
   ],
   simptome_oftalmologice: [
+    "oftalmolog",
     "durere la ochi",
     "ochi rosu",
     "vedere dubla",
