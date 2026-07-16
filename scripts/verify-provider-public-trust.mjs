@@ -72,6 +72,7 @@ const bundledTrustFiles = [
   '../base44/functions/matchProvidersSemantic/providerPublicTrust.js',
   '../base44/functions/browseDirectoryProviders/providerPublicTrust.js',
   '../base44/functions/getPublicProviderProfile/providerPublicTrust.js',
+  '../base44/functions/getPublicOrganizationBrand/providerPublicTrust.js',
   '../base44/functions/matchProviders/providerPublicTrust.js',
 ];
 
@@ -83,5 +84,15 @@ for (const relativePath of bundledTrustFiles) {
     `${fileURLToPath(new URL(relativePath, import.meta.url))} trebuie sincronizat cu sursa canonica.`,
   );
 }
+
+const publicBrandEntry = await readFile(
+  new URL('../base44/functions/getPublicOrganizationBrand/entry.ts', import.meta.url),
+  'utf8',
+);
+assert.match(
+  publicBrandEntry,
+  /publicDisclosure\?\.expose_full_details !== true/,
+  'Brandul organizatiei trebuie blocat pentru profilurile nerevendicate din director.',
+);
 
 console.log('Provider public trust regression checks passed.');
