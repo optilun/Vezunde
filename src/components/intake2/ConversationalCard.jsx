@@ -10,6 +10,12 @@ import QuestionLocation from "./QuestionLocation";
 import MatchResults from "./MatchResults";
 import SearchingTransition from "./SearchingTransition";
 
+function resolveOptionServiceKeys(currentKeys = [], option = {}) {
+  const optionKeys = Array.isArray(option.service_keys) ? option.service_keys.filter(Boolean) : [];
+  if (option.replace_service_keys === true) return [...new Set(optionKeys)];
+  return [...new Set([...currentKeys, ...optionKeys])];
+}
+
 const initState = (initialIntent, initialMessage) => {
   const intent = (initialIntent && INTENTS[initialIntent])
     ? initialIntent
@@ -25,7 +31,7 @@ const initState = (initialIntent, initialMessage) => {
       const option = question?.options?.find((o) => o.key === prefill.option_key);
       if (option) {
         answers.push({ question_key: prefill.question_key, answer_value: option.key });
-        if (option.service_keys) serviceKeys = [...new Set([...serviceKeys, ...option.service_keys])];
+        if (option.service_keys) serviceKeys = resolveOptionServiceKeys(serviceKeys, option);
       }
     }
   }
@@ -127,7 +133,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     }
     setState((s) => {
       const next = { ...s, answers: [...s.answers, { question_key: question.key, answer_value: option.key }] };
-      if (option.service_keys) next.serviceKeys = [...new Set([...next.serviceKeys, ...option.service_keys])];
+      if (option.service_keys) next.serviceKeys = resolveOptionServiceKeys(next.serviceKeys, option);
       if (option.next_intent && INTENTS[option.next_intent]) {
         next.intent = option.next_intent;
         next.serviceKeys = [...INTENTS[option.next_intent].service_keys];
@@ -321,4 +327,3 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     </motion.div>
   );
 }
-
