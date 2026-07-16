@@ -12,11 +12,14 @@ export default function ViaseeBrand({
 }) {
   return (
     <span
+      role="img"
       className={`inline-flex min-w-0 items-center gap-2.5 ${className}`.trim()}
       aria-label={label}
     >
       <img
         src={SYMBOL_SRC}
+        width="496"
+        height="427"
         alt=""
         aria-hidden="true"
         className={`shrink-0 object-contain ${symbolClassName}`.trim()}
@@ -26,6 +29,8 @@ export default function ViaseeBrand({
       {!compact && (
         <img
           src={WORDMARK_SRC}
+          width="686"
+          height="123"
           alt=""
           aria-hidden="true"
           className={`min-w-0 object-contain object-left ${wordmarkClassName}`.trim()}
