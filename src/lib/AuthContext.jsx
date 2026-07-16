@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { appParams } from "@/lib/app-params";
 
 const AuthContext = createContext();
@@ -48,7 +54,7 @@ export const AuthProvider = ({ children }) => {
   const [authChecked, setAuthChecked] = useState(!hasInitialToken);
   const [appPublicSettings, setAppPublicSettings] = useState(null);
 
-  const checkUserAuth = async () => {
+  const checkUserAuth = useCallback(async () => {
     if (!appParams.token) {
       setUser(null);
       setIsAuthenticated(false);
@@ -80,9 +86,9 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(false);
       setAuthChecked(true);
     }
-  };
+  }, []);
 
-  const checkAppState = async () => {
+  const checkAppState = useCallback(async () => {
     setIsLoadingPublicSettings(true);
     setAuthError(null);
 
@@ -124,13 +130,13 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingPublicSettings(false);
       await authPromise;
     }
-  };
+  }, [checkUserAuth]);
 
   useEffect(() => {
     void checkAppState();
-  }, []);
+  }, [checkAppState]);
 
-  const logout = async (shouldRedirect = true) => {
+  const logout = useCallback(async (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
     const base44 = await loadBase44();
@@ -140,12 +146,12 @@ export const AuthProvider = ({ children }) => {
     } else {
       base44.auth.logout();
     }
-  };
+  }, []);
 
-  const navigateToLogin = async (returnUrl = window.location.href) => {
+  const navigateToLogin = useCallback(async (returnUrl = window.location.href) => {
     const base44 = await loadBase44();
     base44.auth.redirectToLogin(returnUrl);
-  };
+  }, []);
 
   return (
     <AuthContext.Provider
