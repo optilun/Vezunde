@@ -36,11 +36,15 @@ function HeroContent({ profile, status, serviceCount, mapUrl }) {
   const [publicBrand, setPublicBrand] = useState(null);
   const [logoAttempt, setLogoAttempt] = useState(0);
   const [logoFailed, setLogoFailed] = useState(false);
+  const isDirectoryProfile = status === "directory";
 
   useEffect(() => {
     let cancelled = false;
     setPublicBrand(null);
-    if (!profile.id) return () => { cancelled = true; };
+    if (!profile.id || isDirectoryProfile) {
+      setPublicBrand({});
+      return () => { cancelled = true; };
+    }
 
     base44.functions.invoke("getPublicOrganizationBrand", { location_id: profile.id })
       .then((response) => {
@@ -51,9 +55,11 @@ function HeroContent({ profile, status, serviceCount, mapUrl }) {
       });
 
     return () => { cancelled = true; };
-  }, [profile.id]);
+  }, [isDirectoryProfile, profile.id]);
 
-  const organizationName = publicBrand?.organization_name || profile.organization_name || profile.name;
+  const organizationName = isDirectoryProfile
+    ? profile.name
+    : (publicBrand?.organization_name || profile.organization_name || profile.name);
   const organizationDiffers = normalizedName(organizationName) !== normalizedName(profile.name);
   const providerLabel = PROVIDER_PROFILE_TYPES[profile.provider_profile_type]
     || PROVIDER_TYPES[profile.provider_type]
@@ -129,24 +135,26 @@ function HeroContent({ profile, status, serviceCount, mapUrl }) {
             </div>
           )}
 
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Link
-              to={`/cerere?furnizor=${profile.id}`}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-xs font-semibold text-background transition-opacity hover:opacity-90 lg:min-h-0"
-            >
-              Trimite o cerere <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-            {profile.phone_public && (
-              <a href={`tel:${profile.phone_public.replace(/\s/g, "")}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-xs font-semibold hover:bg-secondary lg:min-h-0">
-                <Phone className="h-3.5 w-3.5" /> Suna locatia
-              </a>
-            )}
-            {mapUrl && (
-              <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-xs font-semibold hover:bg-secondary lg:min-h-0">
-                <MapPin className="h-3.5 w-3.5" /> Vezi traseul
-              </a>
-            )}
-          </div>
+          {!isDirectoryProfile && (
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Link
+                to={`/cerere?furnizor=${profile.id}`}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-xs font-semibold text-background transition-opacity hover:opacity-90 lg:min-h-0"
+              >
+                Trimite o cerere <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+              {profile.phone_public && (
+                <a href={`tel:${profile.phone_public.replace(/\s/g, "")}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-xs font-semibold hover:bg-secondary lg:min-h-0">
+                  <Phone className="h-3.5 w-3.5" /> Suna locatia
+                </a>
+              )}
+              {mapUrl && (
+                <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-xs font-semibold hover:bg-secondary lg:min-h-0">
+                  <MapPin className="h-3.5 w-3.5" /> Vezi traseul
+                </a>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -170,3 +178,4 @@ export default function ProviderLocationHero({ profile, status, serviceCount, ma
     </section>
   );
 }
+
