@@ -37,9 +37,9 @@ export const AuthProvider = ({ children }) => {
         const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
         setAppPublicSettings(publicSettings);
 
-        // OAuth sessions may be persisted by the SDK without an access_token
-        // query parameter. Always ask the SDK before treating the visitor as
-        // unauthenticated.
+        // The SDK stores the access token in base44_access_token. Anonymous
+        // visitors do not need a /User/me request, which would return a normal
+        // 401 and be reported by browser diagnostics as an application error.
         await checkUserAuth();
         setIsLoadingPublicSettings(false);
       } catch (appError) {
@@ -91,8 +91,7 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(true);
       setAuthError(null);
 
-      const hasSession = await base44.auth.isAuthenticated();
-      if (!hasSession) {
+      if (!appParams.token) {
         setUser(null);
         setIsAuthenticated(false);
         return;
@@ -102,13 +101,13 @@ export const AuthProvider = ({ children }) => {
       setUser(currentUser || null);
       setIsAuthenticated(Boolean(currentUser));
     } catch (error) {
-      console.error('User auth check failed:', error);
       setUser(null);
       setIsAuthenticated(false);
 
       // An absent or expired session is a normal unauthenticated state for
       // public pages. Protected route guards will send the visitor to login.
       if (error.status !== 401 && error.status !== 403) {
+        console.error('User auth check failed:', error);
         setAuthError({
           type: 'unknown',
           message: error.message || 'Failed to verify authentication'
