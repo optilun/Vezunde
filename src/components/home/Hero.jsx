@@ -1,8 +1,11 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUp } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
-import ConversationalCard from "@/components/intake2/ConversationalCard";
+
+const ConversationalCard = lazy(
+  () => import("@/components/intake2/ConversationalCard"),
+);
 
 const PROMPTS = [
   "Caut un medic oftalmolog aproape de mine",
@@ -98,14 +101,24 @@ export default function Hero() {
       <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col items-center px-4 py-16 text-center sm:px-5 sm:py-28">
         {started ? (
           <div className="w-full max-w-2xl text-left">
-            <ConversationalCard initialMessage={text.trim()} />
+            <Suspense
+              fallback={
+                <div
+                  className="min-h-[20rem] rounded-[1.5rem] border border-black/[0.06] bg-white/70"
+                  role="status"
+                  aria-label="Se încarcă formularul"
+                />
+              }
+            >
+              <ConversationalCard initialMessage={text.trim()} />
+            </Suspense>
           </div>
         ) : (
           <>
             <motion.h1
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: prefersReducedMotion ? 0 : 0.8, ease: "easeOut", delay: prefersReducedMotion ? 0 : 0.1 }}
+              initial={prefersReducedMotion ? false : { y: 10 }}
+              animate={{ y: 0 }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.55, ease: "easeOut" }}
               className="font-heading text-[2.25rem] font-extrabold leading-[1.02] tracking-[-0.04em] min-[390px]:text-[2.65rem] sm:text-[4.25rem]"
               style={{ color: "#141414" }}
             >
@@ -117,9 +130,9 @@ export default function Hero() {
             <motion.p
               initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: prefersReducedMotion ? 0 : 0.7, delay: prefersReducedMotion ? 0 : 0.35 }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.7, delay: prefersReducedMotion ? 0 : 0.2 }}
               className="mt-4 max-w-2xl text-[0.95rem] leading-relaxed sm:mt-5 sm:text-lg"
-              style={{ color: "#6B675F" }}
+              style={{ color: "#5F5A53" }}
             >
               VIASEE te ajută să găsești medici oftalmologi, clinici și optici pentru controale, investigații, ochelari sau reparații.
             </motion.p>
@@ -128,15 +141,15 @@ export default function Hero() {
               onSubmit={submit}
               initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: prefersReducedMotion ? 0 : 0.7, delay: prefersReducedMotion ? 0 : 0.55, ease: "easeOut" }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.7, delay: prefersReducedMotion ? 0 : 0.4, ease: "easeOut" }}
               className="mt-7 w-full max-w-xl sm:mt-10"
             >
               <div className="relative rounded-[1.35rem] border border-black/[0.05] bg-white p-3.5 text-left shadow-[0_18px_55px_rgba(20,20,20,0.10)] transition-shadow duration-500 focus-within:shadow-[0_22px_65px_rgba(20,20,20,0.16)] sm:rounded-[1.5rem] sm:p-4">
                 {animating && !text && (
-                  <div className="pointer-events-none absolute left-5 right-14 top-4.5 truncate text-[15px] sm:left-6 sm:right-16 sm:top-5 sm:text-base" style={{ color: "#9B968D" }}>
+                  <div className="pointer-events-none absolute left-5 right-14 top-4.5 truncate text-[15px] sm:left-6 sm:right-16 sm:top-5 sm:text-base" style={{ color: "#6F6A63" }}>
                     {promptPreview}
                     {!prefersReducedMotion && (
-                      <span className="ml-[1px] inline-block h-[1.1em] w-[1.5px] animate-pulse align-[-0.15em]" style={{ backgroundColor: "#9B968D" }} />
+                      <span className="ml-[1px] inline-block h-[1.1em] w-[1.5px] animate-pulse align-[-0.15em]" style={{ backgroundColor: "#6F6A63" }} />
                     )}
                   </div>
                 )}
@@ -148,11 +161,11 @@ export default function Hero() {
                   placeholder={animating ? "" : "Scrie aici ce cauți..."}
                   aria-label="Descrie ce cauți"
                   rows={2}
-                  className="w-full resize-none bg-transparent px-1.5 pt-1 text-base outline-none placeholder:text-[#9B968D] sm:px-2"
+                  className="w-full resize-none bg-transparent px-1.5 pt-1 text-base outline-none placeholder:text-[#6F6A63] sm:px-2"
                   style={{ color: "#141414" }}
                 />
                 <div className="mt-2 flex items-center justify-between px-0.5 sm:px-1">
-                  <span className="hidden text-xs sm:block" style={{ color: "#9B968D" }}>
+                  <span className="hidden text-xs sm:block" style={{ color: "#6F6A63" }}>
                     Descrie pe scurt ce cauți
                   </span>
                   <button
@@ -170,7 +183,7 @@ export default function Hero() {
             <motion.div
               initial={prefersReducedMotion ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: prefersReducedMotion ? 0 : 0.7, delay: prefersReducedMotion ? 0 : 0.85 }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.7, delay: prefersReducedMotion ? 0 : 0.7 }}
               className="mt-6 grid w-full max-w-xl gap-2 sm:mt-7 sm:flex sm:flex-wrap sm:justify-center sm:gap-x-6 sm:gap-y-2"
             >
               {EXAMPLES.map((example) => (
@@ -178,7 +191,7 @@ export default function Hero() {
                   key={example.label}
                   to={example.to}
                   className="flex min-h-11 items-center justify-center rounded-full border border-black/[0.07] bg-white/50 px-4 text-sm transition-colors sm:min-h-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:underline sm:underline-offset-4"
-                  style={{ color: "#8A857D", textDecorationColor: "#D8D4CC" }}
+                  style={{ color: "#5F5A53", textDecorationColor: "#B8B2A9" }}
                 >
                   {example.label}
                 </Link>
@@ -188,9 +201,9 @@ export default function Hero() {
             <motion.p
               initial={prefersReducedMotion ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: prefersReducedMotion ? 0 : 0.7, delay: prefersReducedMotion ? 0 : 1.0 }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.7, delay: prefersReducedMotion ? 0 : 0.85 }}
               className="mt-5 text-xs sm:mt-6"
-              style={{ color: "#A5A099" }}
+              style={{ color: "#6A655E" }}
             >
               Textul este interpretat automat pentru orientare. Nu include date personale. VIASEE nu oferă diagnostic medical.
             </motion.p>
@@ -200,4 +213,3 @@ export default function Hero() {
     </section>
   );
 }
-

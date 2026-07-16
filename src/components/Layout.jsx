@@ -223,8 +223,13 @@ export default function Layout() {
         <Suspense
           fallback={
             <div
-              className="flex min-h-[45vh] items-center justify-center"
+              className={`flex items-center justify-center ${
+                isHome
+                  ? "min-h-[calc(100svh-4rem)] bg-[#F7F2E8]"
+                  : "min-h-[45vh]"
+              }`}
               role="status"
+              aria-live="polite"
             >
               <div
                 className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-foreground"
