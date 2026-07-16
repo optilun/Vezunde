@@ -6,22 +6,17 @@ import TrustBadge from "@/components/results/TrustBadge";
 import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
 
 function initials(name = "") {
-  return (
-    String(name || "V")
-      .split(" ")
-      .filter(Boolean)
-      .map((part) => part[0])
-      .slice(0, 2)
-      .join("")
-      .toUpperCase() || "V"
-  );
+  return String(name || "V")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "V";
 }
 
 function normalizedName(value) {
-  return String(value || "")
-    .trim()
-    .replace(/\s+/g, " ")
-    .toLocaleLowerCase("ro-RO");
+  return String(value || "").trim().replace(/\s+/g, " ").toLocaleLowerCase("ro-RO");
 }
 
 function versionedImageUrl(value, version, attempt) {
@@ -48,13 +43,10 @@ function HeroContent({ profile, status, serviceCount, mapUrl }) {
     setPublicBrand(null);
     if (!profile.id || isDirectoryProfile) {
       setPublicBrand({});
-      return () => {
-        cancelled = true;
-      };
+      return () => { cancelled = true; };
     }
 
-    base44.functions
-      .invoke("getPublicOrganizationBrand", { location_id: profile.id })
+    base44.functions.invoke("getPublicOrganizationBrand", { location_id: profile.id })
       .then((response) => {
         if (!cancelled) setPublicBrand(response.data?.brand || {});
       })
@@ -62,32 +54,23 @@ function HeroContent({ profile, status, serviceCount, mapUrl }) {
         if (!cancelled) setPublicBrand({});
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [isDirectoryProfile, profile.id]);
 
   const organizationName = isDirectoryProfile
     ? profile.name
-    : publicBrand?.organization_name ||
-      profile.organization_name ||
-      profile.name;
-  const organizationDiffers =
-    normalizedName(organizationName) !== normalizedName(profile.name);
-  const providerLabel =
-    PROVIDER_PROFILE_TYPES[profile.provider_profile_type] ||
-    PROVIDER_TYPES[profile.provider_type] ||
-    "Furnizor medical";
-  const organizationLogo =
-    publicBrand?.logo_data_url ||
-    publicBrand?.logo_url ||
-    profile.organization_logo_url ||
-    "";
-  const organizationLogoVersion =
-    publicBrand?.logo_version || profile.organization_logo_version || "";
+    : (publicBrand?.organization_name || profile.organization_name || profile.name);
+  const organizationDiffers = normalizedName(organizationName) !== normalizedName(profile.name);
+  const providerLabel = PROVIDER_PROFILE_TYPES[profile.provider_profile_type]
+    || PROVIDER_TYPES[profile.provider_type]
+    || "Furnizor medical";
+  const organizationLogo = publicBrand?.logo_data_url
+    || publicBrand?.logo_url
+    || profile.organization_logo_url
+    || "";
+  const organizationLogoVersion = publicBrand?.logo_version || profile.organization_logo_version || "";
   const logoSrc = useMemo(
-    () =>
-      versionedImageUrl(organizationLogo, organizationLogoVersion, logoAttempt),
+    () => versionedImageUrl(organizationLogo, organizationLogoVersion, logoAttempt),
     [organizationLogo, organizationLogoVersion, logoAttempt],
   );
 
@@ -119,50 +102,35 @@ function HeroContent({ profile, status, serviceCount, mapUrl }) {
               onError={handleLogoError}
             />
           ) : (
-            <span className="font-heading text-sm font-black">
-              {initials(organizationName)}
-            </span>
+            <span className="font-heading text-sm font-black">{initials(organizationName)}</span>
           )}
         </div>
 
         <div className="min-w-0 flex-1">
           {organizationDiffers && (
             <div className="mb-2">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Organizație
-              </div>
-              <div className="mt-0.5 truncate text-sm font-bold text-foreground">
-                {organizationName}
-              </div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Organizație</div>
+              <div className="mt-0.5 truncate text-sm font-bold text-foreground">{organizationName}</div>
             </div>
           )}
 
-          <h1 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">
-            {profile.name}
-          </h1>
+          <h1 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">{profile.name}</h1>
 
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span className="font-medium text-foreground">{providerLabel}</span>
             <span aria-hidden="true">·</span>
             <span className="inline-flex items-center gap-1.5">
               <MapPin className="h-4 w-4" />
-              {[profile.city, profile.county].filter(Boolean).join(", ") ||
-                profile.city ||
-                "România"}
+              {[profile.city, profile.county].filter(Boolean).join(", ") || profile.city || "România"}
             </span>
-            {status === "verified" && (
-              <TrustBadge status={status} label="Locație verificată" />
-            )}
+            {status === "verified" && <TrustBadge status={status} label="Locație verificată" />}
             {status !== "verified" && <TrustBadge status={status} />}
           </div>
 
           {serviceCount > 0 && (
             <div className="mt-4">
               <span className="inline-flex rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-foreground">
-                {serviceCount}{" "}
-                {serviceCount === 1
-                  ? "serviciu disponibil"
-                  : "servicii disponibile"}
+                {serviceCount} {serviceCount === 1 ? "serviciu disponibil" : "servicii disponibile"}
               </span>
             </div>
           )}
@@ -176,20 +144,12 @@ function HeroContent({ profile, status, serviceCount, mapUrl }) {
                 Trimite o cerere <ArrowRight className="h-3.5 w-3.5" />
               </Link>
               {profile.phone_public && (
-                <a
-                  href={`tel:${profile.phone_public.replace(/\s/g, "")}`}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-xs font-semibold hover:bg-secondary lg:min-h-0"
-                >
+                <a href={`tel:${profile.phone_public.replace(/\s/g, "")}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-xs font-semibold hover:bg-secondary lg:min-h-0">
                   <Phone className="h-3.5 w-3.5" /> Sună locația
                 </a>
               )}
               {mapUrl && (
-                <a
-                  href={mapUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-xs font-semibold hover:bg-secondary lg:min-h-0"
-                >
+                <a href={mapUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-xs font-semibold hover:bg-secondary lg:min-h-0">
                   <MapPin className="h-3.5 w-3.5" /> Vezi traseul
                 </a>
               )}
@@ -201,43 +161,22 @@ function HeroContent({ profile, status, serviceCount, mapUrl }) {
   );
 }
 
-export default function ProviderLocationHero({
-  profile,
-  status,
-  serviceCount,
-  mapUrl,
-}) {
+export default function ProviderLocationHero({ profile, status, serviceCount, mapUrl }) {
   return (
     <section className="overflow-hidden rounded-[32px] border border-border bg-card/70 shadow-sm">
       {profile.photo_url ? (
         <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-stretch">
-          <HeroContent
-            profile={profile}
-            status={status}
-            serviceCount={serviceCount}
-            mapUrl={mapUrl}
-          />
+          <HeroContent profile={profile} status={status} serviceCount={serviceCount} mapUrl={mapUrl} />
           <div className="relative aspect-video border-t border-border bg-secondary/35 lg:aspect-auto lg:min-h-[240px] lg:border-l lg:border-t-0">
-            <img
-              src={profile.photo_url}
-              alt={`Fotografie ${profile.name}`}
-              className="h-full w-full object-cover"
-              decoding="async"
-              fetchPriority="high"
-            />
-            <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-foreground shadow-sm backdrop-blur-sm">
-              <ImageIcon className="h-3 w-3" /> Fotografie locație
-            </span>
+            <img src={profile.photo_url} alt={`Fotografie ${profile.name}`} className="h-full w-full object-cover" decoding="async" fetchPriority="high" />
+            <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-foreground shadow-sm backdrop-blur-sm"><ImageIcon className="h-3 w-3" /> Fotografie locație</span>
           </div>
         </div>
       ) : (
-        <HeroContent
-          profile={profile}
-          status={status}
-          serviceCount={serviceCount}
-          mapUrl={mapUrl}
-        />
+        <HeroContent profile={profile} status={status} serviceCount={serviceCount} mapUrl={mapUrl} />
       )}
     </section>
   );
 }
+
+

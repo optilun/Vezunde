@@ -2,16 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import {
-  interpretPatientNeedInShadow,
-  matchProvidersWithSemanticFallback,
-} from "@/lib/providerSemanticSearch";
-import {
-  INTENTS,
-  CATEGORY_QUESTION,
-  detectIntentFromText,
-  detectSubIntentPrefill,
-} from "@/lib/intentRegistry";
+import { interpretPatientNeedInShadow, matchProvidersWithSemanticFallback } from "@/lib/providerSemanticSearch";
+import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill } from "@/lib/intentRegistry";
 import QuestionChoice from "./QuestionChoice";
 import QuestionText from "./QuestionText";
 import QuestionLocation from "./QuestionLocation";
@@ -19,10 +11,9 @@ import MatchResults from "./MatchResults";
 import SearchingTransition from "./SearchingTransition";
 
 const initState = (initialIntent, initialMessage) => {
-  const intent =
-    initialIntent && INTENTS[initialIntent]
-      ? initialIntent
-      : detectIntentFromText(initialMessage);
+  const intent = (initialIntent && INTENTS[initialIntent])
+    ? initialIntent
+    : detectIntentFromText(initialMessage);
 
   const answers = [];
   let serviceKeys = intent ? [...INTENTS[intent].service_keys] : [];
@@ -30,19 +21,11 @@ const initState = (initialIntent, initialMessage) => {
   if (intent) {
     const prefill = detectSubIntentPrefill(intent, initialMessage);
     if (prefill) {
-      const question = INTENTS[intent].questions.find(
-        (q) => q.key === prefill.question_key,
-      );
-      const option = question?.options?.find(
-        (o) => o.key === prefill.option_key,
-      );
+      const question = INTENTS[intent].questions.find((q) => q.key === prefill.question_key);
+      const option = question?.options?.find((o) => o.key === prefill.option_key);
       if (option) {
-        answers.push({
-          question_key: prefill.question_key,
-          answer_value: option.key,
-        });
-        if (option.service_keys)
-          serviceKeys = [...new Set([...serviceKeys, ...option.service_keys])];
+        answers.push({ question_key: prefill.question_key, answer_value: option.key });
+        if (option.service_keys) serviceKeys = [...new Set([...serviceKeys, ...option.service_keys])];
       }
     }
   }
@@ -65,11 +48,7 @@ function patientLanguageText(initialMessage, answers) {
       .filter((answer) => answer.question_key === "descriere")
       .map((answer) => answer.answer_value),
   ];
-  return [
-    ...new Set(
-      values.map((value) => String(value || "").trim()).filter(Boolean),
-    ),
-  ].join(". ");
+  return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))].join(". ");
 }
 
 const PATIENT_SEARCH_ANALYTICS_VERSION = "patient-search-v1";
@@ -96,14 +75,9 @@ function trackPatientSearchEvent(eventName, properties = {}) {
   }
 }
 
-export default function ConversationalCard({
-  initialMessage = "",
-  initialIntent = null,
-}) {
+export default function ConversationalCard({ initialMessage = "", initialIntent = null }) {
   const reduceMotion = useReducedMotion();
-  const [state, setState] = useState(() =>
-    initState(initialIntent, initialMessage),
-  );
+  const [state, setState] = useState(() => initState(initialIntent, initialMessage));
   const [history, setHistory] = useState([]);
   const [phase, setPhase] = useState("questions"); // questions | submitting | results | error
   const [results, setResults] = useState(null);
@@ -120,11 +94,8 @@ export default function ConversationalCard({
   const questions = intentDef ? intentDef.questions : [CATEGORY_QUESTION];
   const answeredKeys = state.answers.map((a) => a.question_key);
   const current = questions.find((q) => !answeredKeys.includes(q.key));
-  const total =
-    state.answers.length +
-    questions.filter((q) => !answeredKeys.includes(q.key)).length;
-  const progress =
-    total > 0 ? Math.round((state.answers.length / total) * 100) : 0;
+  const total = state.answers.length + questions.filter((q) => !answeredKeys.includes(q.key)).length;
+  const progress = total > 0 ? Math.round((state.answers.length / total) * 100) : 0;
 
   analyticsSessionRef.current.phase = phase;
   analyticsSessionRef.current.intent = state.intent || null;
@@ -150,25 +121,13 @@ export default function ConversationalCard({
         ...s,
         intent: option.key,
         serviceKeys: [...INTENTS[option.key].service_keys],
-        answers: [
-          ...s.answers,
-          { question_key: "categorie", answer_value: option.key },
-        ],
+        answers: [...s.answers, { question_key: "categorie", answer_value: option.key }],
       }));
       return;
     }
     setState((s) => {
-      const next = {
-        ...s,
-        answers: [
-          ...s.answers,
-          { question_key: question.key, answer_value: option.key },
-        ],
-      };
-      if (option.service_keys)
-        next.serviceKeys = [
-          ...new Set([...next.serviceKeys, ...option.service_keys]),
-        ];
+      const next = { ...s, answers: [...s.answers, { question_key: question.key, answer_value: option.key }] };
+      if (option.service_keys) next.serviceKeys = [...new Set([...next.serviceKeys, ...option.service_keys])];
       if (option.next_intent && INTENTS[option.next_intent]) {
         next.intent = option.next_intent;
         next.serviceKeys = [...INTENTS[option.next_intent].service_keys];
@@ -185,13 +144,7 @@ export default function ConversationalCard({
       text_length_band: textLengthBand(value),
     });
     pushHistory();
-    setState((s) => ({
-      ...s,
-      answers: [
-        ...s.answers,
-        { question_key: question.key, answer_value: value },
-      ],
-    }));
+    setState((s) => ({ ...s, answers: [...s.answers, { question_key: question.key, answer_value: value }] }));
   };
 
   const handleLocation = ({ city, locality, clientAddressText }) => {
@@ -226,18 +179,15 @@ export default function ConversationalCard({
     setPhase("questions");
   };
 
-  useEffect(
-    () => () => {
-      const session = analyticsSessionRef.current;
-      if (!session.started || session.completed) return;
-      trackPatientSearchEvent("patient_search_abandoned", {
-        intent: session.intent || "unknown",
-        last_phase: session.phase,
-        answered_count: session.answeredCount,
-      });
-    },
-    [],
-  );
+  useEffect(() => () => {
+    const session = analyticsSessionRef.current;
+    if (!session.started || session.completed) return;
+    trackPatientSearchEvent("patient_search_abandoned", {
+      intent: session.intent || "unknown",
+      last_phase: session.phase,
+      answered_count: session.answeredCount,
+    });
+  }, []);
 
   useEffect(() => {
     if (phase !== "questions" || !state.intent || current) return;
@@ -251,31 +201,20 @@ export default function ConversationalCard({
           service_keys: state.serviceKeys,
           locality_siruta_code: state.locality?.siruta_code || "",
           client_address_text: state.clientAddressText || "",
-          for_whom:
-            state.answers.find(
-              (answer) => answer.question_key === "pentru_cine",
-            )?.answer_value || null,
-          age_group:
-            state.answers.find(
-              (answer) => answer.question_key === "varsta_copil",
-            )?.answer_value || null,
-          timing_key:
-            state.answers.find((answer) => answer.question_key === "timing")
-              ?.answer_value || null,
+          for_whom: state.answers.find((answer) => answer.question_key === "pentru_cine")?.answer_value || null,
+          age_group: state.answers.find((answer) => answer.question_key === "varsta_copil")?.answer_value || null,
+          timing_key: state.answers.find((answer) => answer.question_key === "timing")?.answer_value || null,
           limit: 20,
         };
         void interpretPatientNeedInShadow({
           ...matchPayload,
           deterministic_intent: state.intent,
-          answers: state.answers.filter(
-            (answer) => answer.question_key !== "locatie",
-          ),
+          answers: state.answers.filter((answer) => answer.question_key !== "locatie"),
         });
         const res = await matchProvidersWithSemanticFallback(matchPayload);
         setResults(res.data.results || []);
         setMatchMeta({
-          recommendation_contract_version:
-            res.data.recommendation_contract_version || "legacy",
+          recommendation_contract_version: res.data.recommendation_contract_version || "legacy",
           routing_mode: res.data.routing_mode || null,
           coverage_status: res.data.coverage_status || null,
           coverage_counts: res.data.coverage_counts || null,
@@ -283,13 +222,11 @@ export default function ConversationalCard({
           resolved_intent: res.data.resolved_intent || state.intent || null,
           used_semantic_fallback: res.usedSemanticFallback === true,
           client_location_source: res.data.client_location_source || null,
-          client_address_text:
-            res.data.client_address_text || state.clientAddressText || "",
+          client_address_text: res.data.client_address_text || state.clientAddressText || "",
         });
         analyticsSessionRef.current.completed = true;
         trackPatientSearchEvent("patient_search_completed", {
-          contract_version:
-            res.data.recommendation_contract_version || "legacy",
+          contract_version: res.data.recommendation_contract_version || "legacy",
           intent: res.data.resolved_intent || state.intent || "unknown",
           coverage_status: res.data.coverage_status || "unknown",
           result_count: res.data.results?.length || 0,
@@ -317,8 +254,7 @@ export default function ConversationalCard({
     >
       {initialMessage && (
         <p className="mb-6 text-xs text-muted-foreground">
-          Ai spus:{" "}
-          <span className="italic">&bdquo;{initialMessage}&rdquo;</span>
+          Ai spus: <span className="italic">&bdquo;{initialMessage}&rdquo;</span>
         </p>
       )}
 
@@ -333,9 +269,7 @@ export default function ConversationalCard({
               >
                 <ArrowLeft className="w-3.5 h-3.5" /> Înapoi
               </button>
-            ) : (
-              <span />
-            )}
+            ) : <span />}
             <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden">
               <motion.div
                 className="h-full rounded-full bg-primary"
@@ -356,37 +290,25 @@ export default function ConversationalCard({
               <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                 {current.title}
               </h2>
-              {current.type === "choice" && (
-                <QuestionChoice question={current} onSelect={handleChoice} />
-              )}
-              {current.type === "text" && (
-                <QuestionText question={current} onSubmit={handleText} />
-              )}
-              {current.type === "location" && (
-                <QuestionLocation onAnswer={handleLocation} />
-              )}
+              {current.type === "choice" && <QuestionChoice question={current} onSelect={handleChoice} />}
+              {current.type === "text" && <QuestionText question={current} onSubmit={handleText} />}
+              {current.type === "location" && <QuestionLocation onAnswer={handleLocation} />}
             </motion.div>
           </AnimatePresence>
 
           {intentDef?.notice && (
-            <p className="mt-7 text-xs leading-relaxed text-muted-foreground">
-              {intentDef.notice}
-            </p>
+            <p className="mt-7 text-xs leading-relaxed text-muted-foreground">{intentDef.notice}</p>
           )}
         </>
       )}
 
       {phase === "submitting" && <SearchingTransition />}
 
-      {phase === "results" && (
-        <MatchResults results={results} meta={matchMeta} />
-      )}
+      {phase === "results" && <MatchResults results={results} meta={matchMeta} />}
 
       {phase === "error" && (
         <div className="py-6">
-          <p className="text-sm text-muted-foreground">
-            Ceva nu a funcționat. Încearcă din nou.
-          </p>
+          <p className="text-sm text-muted-foreground">Ceva nu a funcționat. Încearcă din nou.</p>
           <button
             type="button"
             onClick={retrySearch}
@@ -399,3 +321,4 @@ export default function ConversationalCard({
     </motion.div>
   );
 }
+
