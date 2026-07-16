@@ -7,6 +7,7 @@ import { buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/l
 import { CLIENT_NEED_BY_KEY, summarizePublicServices } from "@/lib/servicePresentation";
 import SocialBrandIcon from "@/components/common/SocialBrandIcon";
 import ProviderLocationHero from "@/components/provider/ProviderLocationHero";
+import DirectoryProfileNotice from "@/components/provider/DirectoryProfileNotice";
 
 const SOCIAL_LINKS = [
   { key: "facebook", label: "Facebook", platform: "facebook" },
@@ -375,14 +376,30 @@ export default function ProviderProfile() {
           {team.length > 0 && <TeamCard team={team} />}
 
           {status === "directory" && (
-            <div className="rounded-3xl border border-dashed border-border/80 bg-secondary/40 p-6">
-              <p className="text-sm text-muted-foreground">Informațiile acestui profil provin din surse publice și pot fi actualizate de furnizor prin revendicarea profilului.</p>
-              <Link to="/adauga-sau-revendica" className="mt-3 inline-block text-sm font-semibold underline underline-offset-4">Aceasta este locația ta? Revendică profilul</Link>
-            </div>
+            <DirectoryProfileNotice location={profile} />
           )}
         </main>
 
         <aside className="space-y-5 lg:sticky lg:top-6">
+          {status === "directory" ? (
+            <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+              <h2 className="font-heading text-sm font-bold">Informatii publice disponibile</h2>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                Pentru acest profil afisam numai datele generale care nu identifica adresa exacta sau contactul locatiei.
+              </p>
+              <dl className="mt-4 space-y-3 border-t border-border pt-4 text-sm">
+                <div>
+                  <dt className="text-[11px] font-semibold text-muted-foreground">Localitate</dt>
+                  <dd className="mt-1 font-medium">{[profile.city, profile.county].filter(Boolean).join(", ") || "Nepublicata"}</dd>
+                </div>
+                <div>
+                  <dt className="text-[11px] font-semibold text-muted-foreground">Status</dt>
+                  <dd className="mt-1 font-medium">Profil nerevendicat</dd>
+                </div>
+              </dl>
+            </div>
+          ) : (
+            <>
           <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
             <h2 className="font-heading text-sm font-bold">Date și contact</h2>
             <div className="mt-4">
@@ -438,8 +455,11 @@ export default function ProviderProfile() {
               <div className="border-t border-border bg-secondary/40 p-5 text-sm text-muted-foreground">Harta va fi afișată după publicarea adresei sau a pinului verificat.</div>
             )}
           </div>
+            </>
+          )}
         </aside>
       </div>
     </div>
   );
 }
+
