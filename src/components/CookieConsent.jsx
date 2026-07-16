@@ -110,20 +110,20 @@ export default function CookieConsent() {
       {!storedConsent && !preferencesOpen ? (
         <section
           aria-label="Preferințe cookies"
-          className="fixed inset-x-3 bottom-3 z-[90] mx-auto max-w-5xl border-2 border-[#171717] bg-[#f8f4ec] shadow-[0_18px_70px_rgba(23,23,23,0.22)] sm:inset-x-5 sm:bottom-5"
+          className="fixed inset-x-3 bottom-3 z-[90] mx-auto max-w-[920px] border border-[#171717] bg-[#f8f4ec] shadow-[0_14px_50px_rgba(23,23,23,0.18)] sm:inset-x-5 sm:bottom-5"
         >
-          <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-center">
             <div>
               <p className="font-mono text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-[#6d6962]">
                 Confidențialitate
               </p>
-              <h2 className="mt-3 font-heading text-xl font-bold tracking-[-0.025em] text-[#171717] sm:text-2xl">
+              <h2 className="mt-2 font-heading text-lg font-bold tracking-[-0.025em] text-[#171717] sm:text-xl">
                 Tu alegi ce date opționale folosim.
               </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#625e57]">
+              <p className="mt-1.5 max-w-xl text-sm leading-6 text-[#625e57]">
                 Folosim elementele necesare pentru funcționarea platformei. Analiza utilizării și marketingul rămân oprite până când le accepți.
               </p>
-              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs">
+              <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-2 text-xs">
                 <Link to="/cookies" className="font-semibold text-[#171717] underline underline-offset-4">
                   Politica de cookies
                 </Link>
@@ -132,27 +132,27 @@ export default function CookieConsent() {
                 </Link>
               </div>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap lg:max-w-md lg:justify-end">
+            <div className="grid grid-cols-2 gap-2 lg:w-[19rem]">
               <button
                 type="button"
                 onClick={() => applyConsent(false, false)}
-                className="min-h-11 rounded-full border border-[#171717] px-5 text-sm font-semibold text-[#171717] transition-colors hover:bg-[#ebe4d9]"
+                className="min-h-11 rounded-full border border-[#171717] px-4 text-sm font-semibold text-[#171717] transition-colors hover:bg-[#ebe4d9]"
               >
-                Respinge opționale
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreferencesOpen(true)}
-                className="min-h-11 rounded-full border border-[#171717] px-5 text-sm font-semibold text-[#171717] transition-colors hover:bg-[#ebe4d9]"
-              >
-                Configurează
+                Doar necesare
               </button>
               <button
                 type="button"
                 onClick={() => applyConsent(true, true)}
-                className="min-h-11 rounded-full bg-[#171717] px-6 text-sm font-semibold text-white transition-colors hover:bg-[#2b2b2b]"
+                className="min-h-11 rounded-full bg-[#171717] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#2b2b2b]"
               >
                 Acceptă toate
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreferencesOpen(true)}
+                className="col-span-2 min-h-11 rounded-full border border-[#171717] px-5 text-sm font-semibold text-[#171717] transition-colors hover:bg-[#ebe4d9]"
+              >
+                Configurează preferințele
               </button>
             </div>
           </div>
@@ -238,4 +238,3 @@ export default function CookieConsent() {
     </>
   );
 }
-
