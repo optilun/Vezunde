@@ -266,7 +266,13 @@ for (const relativePath of [
   'base44/functions/matchProviders/entry.ts',
   'base44/functions/adminServiceConfigurationReview/entry.ts',
 ]) {
-  assert.match(await source(relativePath), /servicePrerequisiteEngine\.js/, `${relativePath} trebuie să folosească motorul comun`);
+  const entrySource = await source(relativePath);
+  if (/servicePrerequisiteEngine\.js/.test(entrySource)) continue;
+
+  assert.match(entrySource, /from ['"]\.\/sharedDependencies\.js['"]/, `${relativePath} nu importa motorul comun sau bundle-ul local`);
+  const functionDirectory = relativePath.slice(0, relativePath.lastIndexOf('/'));
+  const bundledSource = await source(`${functionDirectory}/sharedDependencies.js`);
+  assert.match(bundledSource, /shared\/servicePrerequisiteEngine\.js/, `${relativePath} are un bundle local fara motorul comun`);
 }
 
 const adminUiSource = await source('src/components/admin/directory/AdminWorkspaceSubmissionsReview.jsx');

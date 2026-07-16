@@ -19,7 +19,11 @@ assert.match(reviewSource, /shared\/canonicalServiceRegistryExtended\.js/, "Flux
 assert.match(updateSource, /invalidNewKeys/, "Fluxul legacy de update trebuie sa blocheze cheile necanonice noi");
 assert.match(reviewSource, /invalidNewKeys/, "Fluxul legacy de review trebuie sa revalideze cheile necanonice noi");
 assert.match(reviewSource, /isServiceMatchingEligible/, "Reactivarea legacy trebuie sa ramana fail-closed pentru matching");
-assert.match(reviewSource, /soft-deactivate/i, "Eliminarea legacy trebuie sa ramana soft-delete");
+assert.match(
+  reviewSource,
+  /is_active:\s*false,\s*accepts_requests:\s*false,\s*matching_allowed:\s*false/,
+  "Eliminarea legacy trebuie sa ramana soft-delete",
+);
 assert.doesNotMatch(reviewSource, /KNOWN_LEVELS/, "Fluxul legacy nu trebuie sa pastreze un registru duplicat de servicii");
 assert.doesNotMatch(updateSource, /Object\.freeze\s*\(/, "Adaptorul legacy nu trebuie sa extinda obiecte inghetate");
 
