@@ -238,6 +238,8 @@ export default function CategoryShowcase({ preview = false }) {
                 <span aria-hidden="true" className="relative z-10 aspect-[214/150] overflow-hidden p-1.5 sm:p-2 lg:aspect-auto lg:min-h-0 lg:p-2">
                   <img
                     src={category.artwork}
+                    width="214"
+                    height="150"
                     alt=""
                     loading="lazy"
                     decoding="async"
