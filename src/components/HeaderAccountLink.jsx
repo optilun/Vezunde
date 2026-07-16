@@ -1,37 +1,39 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { isAdmin } from "@/lib/access";
 
-// Single account entry point in the public header.
+// The public header reuses the authentication state already loaded by
+// AuthProvider. This avoids duplicate session and user requests from the
+// desktop and mobile header instances.
 export default function HeaderAccountLink() {
-  const [state, setState] = useState(null); // null | "guest" | "user" | "admin"
+  const { user, isAuthenticated, isLoadingAuth } = useAuth();
 
-  useEffect(() => {
-    let active = true;
-    base44.auth.isAuthenticated().then(async (authed) => {
-      if (!authed) { if (active) setState("guest"); return; }
-      const user = await base44.auth.me().catch(() => null);
-      if (active) setState(user ? (isAdmin(user) ? "admin" : "user") : "guest");
-    }).catch(() => { if (active) setState("guest"); });
-    return () => { active = false; };
-  }, []);
+  if (isLoadingAuth) return null;
 
-  if (state === null) return null;
+  const className =
+    "inline-flex min-h-11 items-center rounded-lg px-3.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary/55 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40";
 
-  const cls = "px-3.5 py-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors";
-
-  if (state === "guest") {
+  if (!isAuthenticated || !user) {
     return (
-      <button type="button" className={cls} onClick={() => base44.auth.redirectToLogin("/dupa-login")}>
+      <button
+        type="button"
+        className={className}
+        onClick={() => base44.auth.redirectToLogin("/dupa-login")}
+      >
         Autentificare
       </button>
     );
   }
 
-  const { to, label } = state === "admin"
+  const destination = isAdmin(user)
     ? { to: "/admin/operatiuni", label: "Administrare" }
     : { to: "/contul-meu", label: "Contul meu" };
 
-  return <Link to={to} className={cls}>{label}</Link>;
+  return (
+    <Link to={destination.to} className={className}>
+      {destination.label}
+    </Link>
+  );
 }

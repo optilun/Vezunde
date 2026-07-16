@@ -1,11 +1,15 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { useSearchParams } from "react-router-dom";
 import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
-import AccountSettings from "@/components/workspace/account/AccountSettings";
+const AccountSettings = lazy(() => import("@/components/workspace/account/AccountSettings"));
 import { PERSONAL_NAV } from "@/lib/workspaceNav";
-import PersonalOverview from "./PersonalOverview";
-import PersonalRequests from "./PersonalRequests";
-import PersonalSaved from "./PersonalSaved";
+const PersonalOverview = lazy(() => import("./PersonalOverview"));
+const PersonalRequests = lazy(() => import("./PersonalRequests"));
+const PersonalSaved = lazy(() => import("./PersonalSaved"));
+
+function WorkspaceSectionLoading() {
+  return <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground" role="status">Se încarcă secțiunea...</div>;
+}
 
 const PERSONAL_SECTIONS = new Set(["overview", "requests", "saved", "settings"]);
 
@@ -43,6 +47,7 @@ export default function PersonalAccountWorkspace({
       subtitle="Contul meu"
       modeSwitches={modeSwitches}
     >
+      <Suspense fallback={<WorkspaceSectionLoading />}>
       {section === "overview" && (
         <PersonalOverview
           user={user}
@@ -66,6 +71,8 @@ export default function PersonalAccountWorkspace({
           onLogout={onLogout}
         />
       )}
+      </Suspense>
     </ProviderAppShell>
   );
 }
+

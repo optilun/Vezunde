@@ -109,7 +109,7 @@ function HeroContent({ profile, status, serviceCount, mapUrl }) {
         <div className="min-w-0 flex-1">
           {organizationDiffers && (
             <div className="mb-2">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Organizatie</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Organizație</div>
               <div className="mt-0.5 truncate text-sm font-bold text-foreground">{organizationName}</div>
             </div>
           )}
@@ -121,9 +121,9 @@ function HeroContent({ profile, status, serviceCount, mapUrl }) {
             <span aria-hidden="true">·</span>
             <span className="inline-flex items-center gap-1.5">
               <MapPin className="h-4 w-4" />
-              {[profile.city, profile.county].filter(Boolean).join(", ") || profile.city || "Romania"}
+              {[profile.city, profile.county].filter(Boolean).join(", ") || profile.city || "România"}
             </span>
-            {status === "verified" && <TrustBadge status={status} label="Locatie verificata" />}
+            {status === "verified" && <TrustBadge status={status} label="Locație verificată" />}
             {status !== "verified" && <TrustBadge status={status} />}
           </div>
 
@@ -145,7 +145,7 @@ function HeroContent({ profile, status, serviceCount, mapUrl }) {
               </Link>
               {profile.phone_public && (
                 <a href={`tel:${profile.phone_public.replace(/\s/g, "")}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-xs font-semibold hover:bg-secondary lg:min-h-0">
-                  <Phone className="h-3.5 w-3.5" /> Suna locatia
+                  <Phone className="h-3.5 w-3.5" /> Sună locația
                 </a>
               )}
               {mapUrl && (
@@ -168,8 +168,8 @@ export default function ProviderLocationHero({ profile, status, serviceCount, ma
         <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-stretch">
           <HeroContent profile={profile} status={status} serviceCount={serviceCount} mapUrl={mapUrl} />
           <div className="relative aspect-video border-t border-border bg-secondary/35 lg:aspect-auto lg:min-h-[240px] lg:border-l lg:border-t-0">
-            <img src={profile.photo_url} alt={`Fotografie ${profile.name}`} className="h-full w-full object-cover" />
-            <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-foreground shadow-sm backdrop-blur-sm"><ImageIcon className="h-3 w-3" /> Fotografie locatie</span>
+            <img src={profile.photo_url} alt={`Fotografie ${profile.name}`} className="h-full w-full object-cover" decoding="async" fetchPriority="high" />
+            <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-foreground shadow-sm backdrop-blur-sm"><ImageIcon className="h-3 w-3" /> Fotografie locație</span>
           </div>
         </div>
       ) : (
@@ -178,4 +178,5 @@ export default function ProviderLocationHero({ profile, status, serviceCount, ma
     </section>
   );
 }
+
 

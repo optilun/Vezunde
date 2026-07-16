@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { interpretPatientNeedInShadow, matchProvidersWithSemanticFallback } from "@/lib/providerSemanticSearch";
@@ -76,6 +76,7 @@ function trackPatientSearchEvent(eventName, properties = {}) {
 }
 
 export default function ConversationalCard({ initialMessage = "", initialIntent = null }) {
+  const reduceMotion = useReducedMotion();
   const [state, setState] = useState(() => initState(initialIntent, initialMessage));
   const [history, setHistory] = useState([]);
   const [phase, setPhase] = useState("questions"); // questions | submitting | results | error
@@ -246,10 +247,10 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, scale: 0.96, y: 10 }}
+      initial={reduceMotion ? false : { opacity: 0, scale: 0.96, y: 10 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.45, ease: "easeOut" }}
-      className="w-full max-w-2xl mx-auto bg-card rounded-[1.75rem] p-6 sm:p-10 text-left shadow-[0_24px_70px_rgba(20,20,20,0.12)] border border-border"
+      transition={{ duration: reduceMotion ? 0 : 0.35, ease: "easeOut" }}
+      className="mx-auto w-full max-w-2xl rounded-[1.5rem] border border-border bg-card p-5 text-left shadow-[0_18px_55px_rgba(20,20,20,0.11)] sm:rounded-[1.75rem] sm:p-10"
     >
       {initialMessage && (
         <p className="mb-6 text-xs text-muted-foreground">
@@ -264,16 +265,16 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
               <button
                 type="button"
                 onClick={goBack}
-                className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="inline-flex min-h-11 items-center gap-1 rounded-lg pr-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
-                <ArrowLeft className="w-3.5 h-3.5" /> Inapoi
+                <ArrowLeft className="w-3.5 h-3.5" /> Înapoi
               </button>
             ) : <span />}
             <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden">
               <motion.div
                 className="h-full rounded-full bg-primary"
                 animate={{ width: `${Math.max(progress, 4)}%` }}
-                transition={{ duration: 0.35 }}
+                transition={{ duration: reduceMotion ? 0 : 0.35 }}
               />
             </div>
           </div>
@@ -281,10 +282,10 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
           <AnimatePresence mode="wait">
             <motion.div
               key={`${state.intent || "categorie"}-${current.key}`}
-              initial={{ opacity: 0, x: 14 }}
+              initial={reduceMotion ? false : { opacity: 0, x: 14 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -14 }}
-              transition={{ duration: 0.22 }}
+              exit={reduceMotion ? undefined : { opacity: 0, x: -14 }}
+              transition={{ duration: reduceMotion ? 0 : 0.2 }}
             >
               <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                 {current.title}
@@ -307,16 +308,17 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
 
       {phase === "error" && (
         <div className="py-6">
-          <p className="text-sm text-muted-foreground">Ceva nu a functionat. Incearca din nou.</p>
+          <p className="text-sm text-muted-foreground">Ceva nu a funcționat. Încearcă din nou.</p>
           <button
             type="button"
             onClick={retrySearch}
             className="mt-4 px-5 py-2.5 rounded-full text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
           >
-            Incearca din nou
+            Încearcă din nou
           </button>
         </div>
       )}
     </motion.div>
   );
 }
+

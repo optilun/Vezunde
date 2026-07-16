@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
@@ -6,12 +6,16 @@ import { getProviderNav } from "@/lib/workspaceNav";
 import { PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 import { readAccountPreferences, rememberProviderLocation } from "@/lib/accountPreferences";
 import LocationSwitcher from "./LocationSwitcher";
-import ProviderOverview from "./ProviderOverview";
-import ProviderProfilePublic from "./ProviderProfilePublic";
-import ProviderLocationsWithPhoto from "./ProviderLocationsWithPhoto";
-import ProviderLocationModulePage from "./ProviderLocationModulePage";
-import ProviderAccess from "./ProviderAccess";
-import ProviderSettings from "./ProviderSettings";
+const ProviderOverview = lazy(() => import("./ProviderOverview"));
+const ProviderProfilePublic = lazy(() => import("./ProviderProfilePublic"));
+const ProviderLocationsWithPhoto = lazy(() => import("./ProviderLocationsWithPhoto"));
+const ProviderLocationModulePage = lazy(() => import("./ProviderLocationModulePage"));
+const ProviderAccess = lazy(() => import("./ProviderAccess"));
+const ProviderSettings = lazy(() => import("./ProviderSettings"));
+
+function WorkspaceSectionLoading() {
+  return <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground" role="status">Se încarcă secțiunea...</div>;
+}
 
 const LOCATION_MODULES = new Set(["servicii", "program", "specialisti"]);
 const LOCATION_MODULE_CAPABILITIES = {
@@ -70,7 +74,7 @@ function organizationContextsFor(workspace) {
     ? workspace.organizations
     : [...new Set(locations.map((location) => location.organization_id).filter(Boolean))].map((id) => ({
       id,
-      name: locations.find((location) => location.organization_id === id)?.organization_name || "Organizatie",
+      name: locations.find((location) => location.organization_id === id)?.organization_name || "Organizație",
     }));
 
   return organizations.map((organization) => {
@@ -280,7 +284,7 @@ export default function ProviderWorkspaceRoot({
     || overview?.organization?.name
     || overview?.location?.organization_name
     || overview?.location?.name
-    || "Workspace furnizor";
+    || "Spațiu furnizor";
 
   return (
     <ProviderAppShell
@@ -290,13 +294,13 @@ export default function ProviderWorkspaceRoot({
       user={user}
       onLogout={onLogout}
       title={organizationName}
-      subtitle="Workspace furnizor"
+      subtitle="Spațiu furnizor"
       publicProfileUrl={selectedLocationId ? `/furnizor/${selectedLocationId}` : null}
       modeSwitches={modeSwitches}
       statusBadge={(statusLabel || multiLocation) ? (
         <span className="hidden items-center gap-1.5 sm:inline-flex">
           {statusLabel && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusGreen ? "bg-green-100 text-green-800" : "bg-secondary text-foreground"}`}>{statusLabel}</span>}
-          {multiLocation && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-foreground">Organizatie cu {activeLocationCount} locatii</span>}
+          {multiLocation && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-foreground">Organizație cu {activeLocationCount} locații</span>}
         </span>
       ) : null}
     >
@@ -312,9 +316,10 @@ export default function ProviderWorkspaceRoot({
         />
       )}
       {loadingOverview || !overview ? (
-        <p className="text-sm text-muted-foreground">Se incarca...</p>
+        <WorkspaceSectionLoading />
       ) : (
-        <>
+        <Suspense fallback={<WorkspaceSectionLoading />}>
+          <>
           {safeSection === "overview" && (
             <ProviderOverview
               overview={overview}
@@ -356,8 +361,10 @@ export default function ProviderWorkspaceRoot({
               onNavigate={goToSection}
             />
           )}
-        </>
+          </>
+        </Suspense>
       )}
     </ProviderAppShell>
   );
 }
+

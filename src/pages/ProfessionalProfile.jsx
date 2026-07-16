@@ -75,7 +75,7 @@ export default function ProfessionalProfile() {
   }, [id]);
 
   if (loading) {
-    return <div className="mx-auto min-h-[55vh] max-w-5xl px-5 pt-20 text-sm text-muted-foreground">Se incarca profilul profesional...</div>;
+    return <div className="mx-auto min-h-[55vh] max-w-5xl px-5 pt-20 text-sm text-muted-foreground">Se încarcă profilul profesional...</div>;
   }
 
   if (!profile) {
@@ -84,7 +84,7 @@ export default function ProfessionalProfile() {
         <h1 className="font-heading text-2xl font-extrabold">Profilul nu a fost gasit</h1>
         <p className="mt-2 text-sm text-muted-foreground">Profilul nu este public sau nu mai este disponibil.</p>
         <Link to="/cauta" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold hover:bg-secondary">
-          <ArrowLeft className="h-4 w-4" /> Inapoi la cautare
+          <ArrowLeft className="h-4 w-4" /> Înapoi la căutare
         </Link>
       </div>
     );
@@ -99,7 +99,7 @@ export default function ProfessionalProfile() {
   return (
     <div className="mx-auto max-w-5xl px-5 pb-12 pt-8 sm:pt-12">
       <Link to="/cauta" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" /> Inapoi la cautare
+        <ArrowLeft className="h-4 w-4" /> Înapoi la căutare
       </Link>
 
       <section className="mt-5 overflow-hidden rounded-[30px] border border-border bg-card shadow-sm">
@@ -107,7 +107,7 @@ export default function ProfessionalProfile() {
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
             <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[28px] border border-white/90 bg-foreground font-heading text-2xl font-black text-background shadow-sm sm:h-28 sm:w-28">
               {profile.profile_photo_url
-                ? <img src={profile.profile_photo_url} alt={`Fotografie ${profile.display_name}`} className="h-full w-full object-cover" />
+                ? <img src={profile.profile_photo_url} alt={`Fotografie ${profile.display_name}`} className="h-full w-full object-cover" decoding="async" />
                 : initials(profile.display_name)}
             </div>
             <div className="min-w-0 flex-1">
@@ -135,7 +135,7 @@ export default function ProfessionalProfile() {
       </section>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
-        <main className="space-y-5">
+        <div className="min-w-0 space-y-5">
           {profile.bio && (
             <section className="rounded-3xl border border-border bg-card p-6 shadow-sm">
               <h2 className="font-heading font-bold">Despre specialist</h2>
@@ -146,7 +146,7 @@ export default function ProfessionalProfile() {
           {specializations.length > 0 && (
             <section className="rounded-3xl border border-border bg-card p-6 shadow-sm">
               <h2 className="font-heading font-bold">Domenii profesionale</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Domeniile declarate si verificate pentru acest profil.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Domeniile declarate și verificate pentru acest profil.</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {specializations.map((key) => (
                   <span key={key} className="rounded-full border border-border bg-secondary/35 px-3 py-2 text-xs font-semibold">
@@ -160,17 +160,17 @@ export default function ProfessionalProfile() {
           <section className="rounded-3xl border border-border bg-card p-6 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 className="font-heading font-bold">Locatii asociate</h2>
-                <p className="mt-1 text-xs text-muted-foreground">Sunt afisate numai asocierile publice cu locatii active in VIASEE.</p>
+                <h2 className="font-heading font-bold">Locații asociate</h2>
+                <p className="mt-1 text-xs text-muted-foreground">Sunt afișate numai asocierile publice cu locații active în VIASEE.</p>
               </div>
               <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
-                {locations.length} {locations.length === 1 ? "locatie" : "locatii"}
+                {locations.length} {locations.length === 1 ? "locație" : "locații"}
               </span>
             </div>
 
             {locations.length === 0 ? (
               <p className="mt-5 rounded-2xl border border-dashed border-border bg-secondary/25 p-4 text-sm text-muted-foreground">
-                Acest specialist lucreaza independent sau nu are inca o asociere publica cu o locatie.
+                Acest specialist lucreaza independent sau nu are inca o asociere publica cu o locație.
               </p>
             ) : (
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -179,7 +179,7 @@ export default function ProfessionalProfile() {
                     <div className="flex items-start gap-3">
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-card">
                         {location.image_url
-                          ? <img src={location.image_url} alt="" className="h-full w-full object-cover" />
+                          ? <img src={location.image_url} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
                           : <Building2 className="h-4 w-4 text-muted-foreground" />}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -187,29 +187,29 @@ export default function ProfessionalProfile() {
                         {location.organization_name && <p className="mt-0.5 text-[11px] text-muted-foreground">{location.organization_name}</p>}
                         <p className="mt-2 flex items-start gap-1 text-xs leading-relaxed text-muted-foreground">
                           <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
-                          {[location.address, location.city, location.county].filter(Boolean).join(", ") || "Adresa nepublicata"}
+                          {[location.address, location.city, location.county].filter(Boolean).join(", ") || "Adresa nepublicată"}
                         </p>
                       </div>
                     </div>
-                    <div className="mt-3 inline-flex items-center gap-1 text-xs font-semibold">Vezi locatia <ArrowRight className="h-3.5 w-3.5" /></div>
+                    <div className="mt-3 inline-flex items-center gap-1 text-xs font-semibold">Vezi locația <ArrowRight className="h-3.5 w-3.5" /></div>
                   </Link>
                 ))}
               </div>
             )}
           </section>
-        </main>
+        </div>
 
-        <aside className="space-y-5 lg:sticky lg:top-6">
+        <aside className="min-w-0 space-y-5 lg:sticky lg:top-20">
           <section className="rounded-3xl border border-border bg-card p-5 shadow-sm">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary">
               <UserRound className="h-4 w-4" />
             </div>
             <h2 className="mt-4 font-heading text-sm font-bold">Profil profesional</h2>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Identitatea profesionala apartine specialistului. Asocierea cu o locatie nu inseamna acces la administrarea acelei organizatii.
+              Identitatea profesionala apartine specialistului. Asocierea cu o locație nu inseamna acces la administrarea acelei organizatii.
             </p>
             {profile.accepts_independent_requests && (
-              <div className="mt-4 rounded-2xl bg-green-50 px-3 py-2 text-xs font-semibold text-green-800">Accepta cereri independente</div>
+              <div className="mt-4 rounded-2xl bg-green-50 px-3 py-2 text-xs font-semibold text-green-800">Acceptă cereri independente</div>
             )}
           </section>
 
@@ -254,3 +254,4 @@ export default function ProfessionalProfile() {
     </div>
   );
 }
+

@@ -294,7 +294,7 @@ function TeamCard({ team }) {
           <article key={professional.id} className="rounded-2xl border border-border bg-secondary/20 p-4">
             <div className="flex items-start gap-3">
               {professional.profile_photo_url ? (
-                <img src={professional.profile_photo_url} alt={`Fotografie ${professional.full_name}`} className="h-14 w-14 shrink-0 rounded-2xl border border-border object-cover" />
+                <img src={professional.profile_photo_url} alt={`Fotografie ${professional.full_name}`} className="h-14 w-14 shrink-0 rounded-2xl border border-border object-cover" loading="lazy" decoding="async" />
               ) : (
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-border bg-card font-heading font-bold">{initials(professional.full_name)}</div>
               )}
@@ -357,7 +357,7 @@ export default function ProviderProfile() {
       <ProviderLocationHero profile={profile} status={status} serviceCount={services.length} mapUrl={mapUrl} />
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
-        <main className="space-y-5">
+        <div className="min-w-0 space-y-5">
           {organizationDescription && (
             <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
               <h2 className="font-heading font-bold">Despre organizație</h2>
@@ -378,19 +378,19 @@ export default function ProviderProfile() {
           {status === "directory" && (
             <DirectoryProfileNotice location={profile} />
           )}
-        </main>
+        </div>
 
-        <aside className="space-y-5 lg:sticky lg:top-6">
+        <aside className="min-w-0 space-y-5 lg:sticky lg:top-20">
           {status === "directory" ? (
             <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
-              <h2 className="font-heading text-sm font-bold">Informatii publice disponibile</h2>
+              <h2 className="font-heading text-sm font-bold">Informații publice disponibile</h2>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                Pentru acest profil afisam numai datele generale care nu identifica adresa exacta sau contactul locatiei.
+                Pentru acest profil afișăm numai datele generale care nu identifică adresa exactă sau contactul locației.
               </p>
               <dl className="mt-4 space-y-3 border-t border-border pt-4 text-sm">
                 <div>
                   <dt className="text-[11px] font-semibold text-muted-foreground">Localitate</dt>
-                  <dd className="mt-1 font-medium">{[profile.city, profile.county].filter(Boolean).join(", ") || "Nepublicata"}</dd>
+                  <dd className="mt-1 font-medium">{[profile.city, profile.county].filter(Boolean).join(", ") || "Nepublicată"}</dd>
                 </div>
                 <div>
                   <dt className="text-[11px] font-semibold text-muted-foreground">Status</dt>
@@ -462,4 +462,5 @@ export default function ProviderProfile() {
     </div>
   );
 }
+
 

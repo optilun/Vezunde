@@ -54,7 +54,12 @@
   }
 
   .workspace-mobile-surface table {
-    min-width: 640px;
+    display: block;
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .workspace-mobile-surface .workspace-mobile-scroll {

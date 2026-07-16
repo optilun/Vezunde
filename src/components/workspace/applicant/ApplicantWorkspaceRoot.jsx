@@ -1,12 +1,16 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { useSearchParams } from "react-router-dom";
 import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
 import { APPLICANT_NAV } from "@/lib/workspaceNav";
-import ApplicantOverview from "./ApplicantOverview";
-import ApplicantProfileDraft from "./ApplicantProfileDraft";
-import ApplicantHoursDraft from "./ApplicantHoursDraft";
-import ApplicantServicesDraft from "./ApplicantServicesDraft";
-import ApplicantStatus from "./ApplicantStatus";
+const ApplicantOverview = lazy(() => import("./ApplicantOverview"));
+const ApplicantProfileDraft = lazy(() => import("./ApplicantProfileDraft"));
+const ApplicantHoursDraft = lazy(() => import("./ApplicantHoursDraft"));
+const ApplicantServicesDraft = lazy(() => import("./ApplicantServicesDraft"));
+const ApplicantStatus = lazy(() => import("./ApplicantStatus"));
+
+function WorkspaceSectionLoading() {
+  return <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground" role="status">Se încarcă secțiunea...</div>;
+}
 
 const ALLOWED_SECTIONS = new Set(["overview", "profile", "hours", "services", "status"]);
 
@@ -36,21 +40,24 @@ export default function ApplicantWorkspaceRoot({ user, workspace, onLogout, onRe
       onNavigate={navigate}
       user={user}
       onLogout={onLogout}
-      title={location?.name || "Pregateste profilul"}
-      subtitle="Pregatire profil"
+      title={location?.name || "Pregătește profilul"}
+      subtitle="Pregătire profil"
       modeSwitches={modeSwitches}
     >
       <div className={`mb-6 rounded-xl border p-4 ${bannerTone}`}>
-        <div className="text-sm font-semibold">{statusCenter.headline || "Solicitarea este in verificare"}</div>
+        <div className="text-sm font-semibold">{statusCenter.headline || "Solicitarea este în verificare"}</div>
         <p className="mt-1 text-xs leading-relaxed opacity-80">
-          {statusCenter.message || "Poti pregati informatiile de baza intre timp. Acestea raman private pana cand relatia ta cu locatia este confirmata."}
+          {statusCenter.message || "Poți pregăti informațiile de bază între timp. Acestea rămân private până când relația ta cu locația este confirmată."}
         </p>
       </div>
+      <Suspense fallback={<WorkspaceSectionLoading />}>
       {section === "overview" && <ApplicantOverview workspace={workspace} onNavigate={navigate} submitted={submitted} />}
       {section === "profile" && <ApplicantProfileDraft workspace={workspace} onRefresh={onRefresh} />}
       {section === "hours" && <ApplicantHoursDraft workspace={workspace} onRefresh={onRefresh} />}
       {section === "services" && <ApplicantServicesDraft workspace={workspace} onRefresh={onRefresh} />}
       {section === "status" && <ApplicantStatus claim={workspace.claim} statusCenter={statusCenter} onNavigate={navigate} />}
+      </Suspense>
     </ProviderAppShell>
   );
 }
+

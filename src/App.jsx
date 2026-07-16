@@ -1,49 +1,77 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClientInstance } from "@/lib/query-client";
-import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-dom";
-import PageNotFound from "./lib/PageNotFound";
+import {
+  BrowserRouter as Router,
+  Navigate,
+  Route,
+  Routes,
+} from "react-router-dom";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import UserNotRegisteredError from "@/components/UserNotRegisteredError";
 import ScrollToTop from "./components/ScrollToTop";
 import CookieConsent from "@/components/CookieConsent";
 import Layout from "@/components/Layout";
-import Home from "./pages/Home";
-import Search from "./pages/Search";
-import ProviderProfile from "./pages/ProviderProfile";
-import ProfessionalProfile from "./pages/ProfessionalProfile";
-import RequestFlow from "./pages/RequestFlow";
-import ForSpecialists from "./pages/ForSpecialists";
-import Partners from "./pages/Partners";
-import AddOrClaim from "./pages/AddOrClaim";
-import AcceptProfessionalInvitation from "./pages/AcceptProfessionalInvitation";
-import AcceptProviderInvitation from "./pages/AcceptProviderInvitation";
-import ProfessionalOnboarding from "./pages/ProfessionalOnboarding";
-import MyAccount from "./pages/MyAccount";
-import HelpSupport from "./pages/HelpSupport";
-import AdminDirectoryOps from "./pages/AdminDirectoryOps";
-import PostLogin from "./pages/PostLogin";
 import RequireAuth from "@/components/guards/RequireAuth";
 import RequireAdmin from "@/components/guards/RequireAdmin";
-import Privacy from "./pages/Privacy";
-import Terms from "./pages/Terms";
-import Cookies from "./pages/Cookies";
-import PaymentsAndSubscriptions from "./pages/PaymentsAndSubscriptions";
-import DataRights from "./pages/DataRights";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
+
+const PageNotFound = lazy(() => import("./lib/PageNotFound"));
+const Home = lazy(() => import("./pages/Home"));
+const Search = lazy(() => import("./pages/Search"));
+const ProviderProfile = lazy(() => import("./pages/ProviderProfile"));
+const ProfessionalProfile = lazy(() => import("./pages/ProfessionalProfile"));
+const RequestFlow = lazy(() => import("./pages/RequestFlow"));
+const ForSpecialists = lazy(() => import("./pages/ForSpecialists"));
+const Partners = lazy(() => import("./pages/Partners"));
+const AddOrClaim = lazy(() => import("./pages/AddOrClaim"));
+const AcceptProfessionalInvitation = lazy(
+  () => import("./pages/AcceptProfessionalInvitation"),
+);
+const AcceptProviderInvitation = lazy(
+  () => import("./pages/AcceptProviderInvitation"),
+);
+const ProfessionalOnboarding = lazy(
+  () => import("./pages/ProfessionalOnboarding"),
+);
+const MyAccount = lazy(() => import("./pages/MyAccount"));
+const HelpSupport = lazy(() => import("./pages/HelpSupport"));
+const AdminDirectoryOps = lazy(() => import("./pages/AdminDirectoryOps"));
+const PostLogin = lazy(() => import("./pages/PostLogin"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Cookies = lazy(() => import("./pages/Cookies"));
+const PaymentsAndSubscriptions = lazy(
+  () => import("./pages/PaymentsAndSubscriptions"),
+);
+const DataRights = lazy(() => import("./pages/DataRights"));
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+
+function PageLoading({ fullScreen = false }) {
+  return (
+    <div
+      className={`${fullScreen ? "fixed inset-0" : "min-h-[45vh]"} flex items-center justify-center bg-background`}
+      role="status"
+      aria-live="polite"
+    >
+      <div
+        className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-foreground"
+        aria-hidden="true"
+      />
+      <span className="sr-only">Se încarcă pagina...</span>
+    </div>
+  );
+}
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } =
+    useAuth();
 
   if (isLoadingPublicSettings || isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-slate-800" />
-      </div>
-    );
+    return <PageLoading fullScreen />;
   }
 
   if (authError) {
@@ -57,47 +85,73 @@ const AuthenticatedApp = () => {
   }
 
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/pentru-specialisti" element={<ForSpecialists />} />
-      <Route path="/accept-professional-invitation" element={<AcceptProfessionalInvitation />} />
-      <Route path="/accept-provider-invitation" element={<AcceptProviderInvitation />} />
+    <Suspense fallback={<PageLoading />}>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/pentru-specialisti" element={<ForSpecialists />} />
+        <Route
+          path="/accept-professional-invitation"
+          element={<AcceptProfessionalInvitation />}
+        />
+        <Route
+          path="/accept-provider-invitation"
+          element={<AcceptProviderInvitation />}
+        />
 
-      <Route element={<Layout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/cauta" element={<Search />} />
-        <Route path="/parteneri" element={<Partners />} />
-        <Route path="/furnizor/:id" element={<ProviderProfile />} />
-        <Route path="/specialist/:id" element={<ProfessionalProfile />} />
-        <Route path="/cerere" element={<RequestFlow />} />
-        <Route path="/revendica-profil" element={<Navigate to="/adauga-sau-revendica" replace />} />
-        <Route path="/inscriere" element={<Navigate to="/adauga-sau-revendica" replace />} />
-        <Route path="/adauga-sau-revendica" element={<AddOrClaim />} />
-        <Route path="/confidentialitate" element={<Privacy />} />
-        <Route path="/termeni" element={<Terms />} />
-        <Route path="/cookies" element={<Cookies />} />
-        <Route path="/plati-si-abonamente" element={<PaymentsAndSubscriptions />} />
-        <Route path="/drepturile-tale" element={<DataRights />} />
-      </Route>
+        <Route element={<Layout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/cauta" element={<Search />} />
+          <Route path="/parteneri" element={<Partners />} />
+          <Route path="/furnizor/:id" element={<ProviderProfile />} />
+          <Route path="/specialist/:id" element={<ProfessionalProfile />} />
+          <Route path="/cerere" element={<RequestFlow />} />
+          <Route
+            path="/revendica-profil"
+            element={<Navigate to="/adauga-sau-revendica" replace />}
+          />
+          <Route
+            path="/inscriere"
+            element={<Navigate to="/adauga-sau-revendica" replace />}
+          />
+          <Route path="/adauga-sau-revendica" element={<AddOrClaim />} />
+          <Route path="/confidentialitate" element={<Privacy />} />
+          <Route path="/termeni" element={<Terms />} />
+          <Route path="/cookies" element={<Cookies />} />
+          <Route
+            path="/plati-si-abonamente"
+            element={<PaymentsAndSubscriptions />}
+          />
+          <Route path="/drepturile-tale" element={<DataRights />} />
+        </Route>
 
-      <Route element={<RequireAuth />}>
-        <Route path="/profil-profesional/nou" element={<ProfessionalOnboarding />} />
-        <Route path="/contul-meu" element={<MyAccount />} />
-        <Route path="/contul-meu/locatii/:locationId/:locationModule" element={<MyAccount />} />
-        <Route path="/ajutor-si-suport" element={<HelpSupport />} />
-        <Route path="/dupa-login" element={<PostLogin />} />
-      </Route>
+        <Route element={<RequireAuth />}>
+          <Route
+            path="/profil-profesional/nou"
+            element={<ProfessionalOnboarding />}
+          />
+          <Route path="/contul-meu" element={<MyAccount />} />
+          <Route
+            path="/contul-meu/locatii/:locationId/:locationModule"
+            element={<MyAccount />}
+          />
+          <Route path="/ajutor-si-suport" element={<HelpSupport />} />
+          <Route path="/dupa-login" element={<PostLogin />} />
+        </Route>
 
-      <Route element={<RequireAdmin />}>
-        <Route path="/admin/verificari" element={<Navigate to="/admin/operatiuni" replace />} />
-        <Route path="/admin/operatiuni" element={<AdminDirectoryOps />} />
-      </Route>
+        <Route element={<RequireAdmin />}>
+          <Route
+            path="/admin/verificari"
+            element={<Navigate to="/admin/operatiuni" replace />}
+          />
+          <Route path="/admin/operatiuni" element={<AdminDirectoryOps />} />
+        </Route>
 
-      <Route path="*" element={<PageNotFound />} />
-    </Routes>
+        <Route path="*" element={<PageNotFound />} />
+      </Routes>
+    </Suspense>
   );
 };
 
@@ -117,4 +171,3 @@ function App() {
 }
 
 export default App;
-

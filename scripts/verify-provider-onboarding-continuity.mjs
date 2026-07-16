@@ -31,7 +31,7 @@ expect('base44/functions/getMyProviderOnboardingWorkspace/entry.ts', "claim.mode
 expect('base44/functions/submitProviderClaim/entry.ts', 'requested_membership_role: requestedMembershipRole', 'Cererea salveaza rolul solicitat');
 expect('base44/functions/adminProviderClaimReview/entry.ts', "approved_membership_role: approvedRole", 'Adminul salveaza rolul aprobat');
 expect('base44/functions/adminProviderClaimReview/entry.ts', "status: 'draft', public_visibility_status: 'draft'", 'Locatia noua ramane draft dupa aprobare');
-expect('src/components/specialists/SpecialistsHero.jsx', 'setShowProfessionalNotice(true)', 'Profilul profesional nu intra in wizardul organizatiilor');
+expect('src/components/specialists/SpecialistsHero.jsx', 'navigate("/profil-profesional/nou")', 'Profilul profesional nu intra in wizardul organizatiilor');
 expect('src/components/specialists/SpecialistsHero.jsx', 'claim_action === "request_access"', 'Cautarea diferentiaza revendicarea de acces');
 expect('src/pages/Partners.jsx', 'mailto:contact@viasee.ro', 'Partenerii B2B nu intra in onboardingul organizatiilor');
 reject('src/pages/Partners.jsx', 'to="/adauga-sau-revendica"', 'CTA-ul B2B nu deschide wizardul locatiei');

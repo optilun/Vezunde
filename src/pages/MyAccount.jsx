@@ -1,18 +1,18 @@
-import React, { useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { readAccountPreferences, rememberAccountMode } from "@/lib/accountPreferences";
-import PersonalAccountWorkspace from "@/components/workspace/personal/PersonalAccountWorkspace";
-import ApplicantWorkspaceRoot from "@/components/workspace/applicant/ApplicantWorkspaceRoot";
-import ProviderWorkspaceRoot from "@/components/workspace/provider/ProviderWorkspaceRoot";
-import ProfessionalWorkspaceRoot from "@/components/workspace/professional/ProfessionalWorkspaceRoot";
+const PersonalAccountWorkspace = lazy(() => import("@/components/workspace/personal/PersonalAccountWorkspace"));
+const ApplicantWorkspaceRoot = lazy(() => import("@/components/workspace/applicant/ApplicantWorkspaceRoot"));
+const ProviderWorkspaceRoot = lazy(() => import("@/components/workspace/provider/ProviderWorkspaceRoot"));
+const ProfessionalWorkspaceRoot = lazy(() => import("@/components/workspace/professional/ProfessionalWorkspaceRoot"));
 
 const MODE_LABELS = {
   personal: "Cont personal",
-  provider: "Organizatii",
+  provider: "Organizații",
   professional: "Cont profesional",
-  applicant: "Organizatii · Pregatire profil",
+  applicant: "Organizații · Pregătire profil",
 };
 
 const PROVIDER_ROLE_LABELS = {
@@ -20,6 +20,14 @@ const PROVIDER_ROLE_LABELS = {
   location_manager: "Manager",
   location_staff: "Membru",
 };
+
+function WorkspaceLoading() {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground" role="status">
+      Se încarcă spațiul de lucru...
+    </div>
+  );
+}
 
 function providerOrganizationContexts(workspace) {
   if (workspace?.organization_contexts?.length) return workspace.organization_contexts;
@@ -73,7 +81,7 @@ export default function MyAccount() {
   }, []);
 
   if (loading || !user || !providerWorkspace || !professionalWorkspace || !onboardingWorkspace) {
-    return <div className="min-h-[60vh] flex items-center justify-center text-muted-foreground text-sm">Se incarca...</div>;
+    return <WorkspaceLoading />;
   }
 
   const onLogout = () => logout(true);
@@ -196,8 +204,8 @@ export default function MyAccount() {
         key: `organization:${organization.id}`,
         kind: "organization",
         group: "organizations",
-        label: organization.public_display_name || organization.name || "Organizatie",
-        subtitle: PROVIDER_ROLE_LABELS[context.current_user_role] || "Organizatie",
+        label: organization.public_display_name || organization.name || "Organizație",
+        subtitle: PROVIDER_ROLE_LABELS[context.current_user_role] || "Organizație",
         avatarUrl: organization.logo_url || "",
         organizationId: organization.id || "",
         active: resolvedMode === "provider" && organization.id === selectedOrganizationId,
@@ -211,7 +219,7 @@ export default function MyAccount() {
       kind: "organization",
       group: "organizations",
       label: MODE_LABELS.provider,
-      subtitle: "Workspace organizatie",
+      subtitle: "Spațiu organizație",
       active: resolvedMode === "provider",
       onClick: () => switchMode("provider"),
     }] : []),
@@ -219,8 +227,8 @@ export default function MyAccount() {
       key: "applicant",
       kind: "applicant",
       group: "organizations",
-      label: onboardingWorkspace.location_summary?.name || "Pregatire profil",
-      subtitle: "Solicitare in pregatire",
+      label: onboardingWorkspace.location_summary?.name || "Pregătire profil",
+      subtitle: "Solicitare în pregătire",
       active: resolvedMode === "applicant",
       onClick: () => switchMode("applicant"),
     }] : []),
@@ -233,27 +241,38 @@ export default function MyAccount() {
   };
 
   if (resolvedMode === "provider" && hasProviderWorkspace) {
-    return <ProviderWorkspaceRoot user={user} workspace={providerWorkspace} onLogout={onLogout} onRefresh={load} {...sharedAccountProps} />;
+    return (
+      <Suspense fallback={<WorkspaceLoading />}>
+        <ProviderWorkspaceRoot user={user} workspace={providerWorkspace} onLogout={onLogout} onRefresh={load} {...sharedAccountProps} />
+      </Suspense>
+    );
   }
 
   if (resolvedMode === "professional" && hasProfessionalWorkspace) {
-    return <ProfessionalWorkspaceRoot user={user} workspace={professionalWorkspace} onLogout={onLogout} onRefresh={load} {...sharedAccountProps} />;
+    return (
+      <Suspense fallback={<WorkspaceLoading />}>
+        <ProfessionalWorkspaceRoot user={user} workspace={professionalWorkspace} onLogout={onLogout} onRefresh={load} {...sharedAccountProps} />
+      </Suspense>
+    );
   }
 
   if (resolvedMode === "applicant" && hasApplicantWorkspace) {
     return (
-      <ApplicantWorkspaceRoot
+      <Suspense fallback={<WorkspaceLoading />}>
+        <ApplicantWorkspaceRoot
         user={user}
         workspace={onboardingWorkspace}
         onLogout={onLogout}
         onRefresh={load}
         modeSwitches={modeSwitches}
-      />
+        />
+      </Suspense>
     );
   }
 
   return (
-    <PersonalAccountWorkspace
+    <Suspense fallback={<WorkspaceLoading />}>
+      <PersonalAccountWorkspace
       user={user}
       workspace={providerWorkspace}
       onboardingWorkspace={onboardingWorkspace}
@@ -262,7 +281,9 @@ export default function MyAccount() {
       onOpenProfessional={() => switchMode("professional")}
       onRefresh={load}
       onLogout={onLogout}
-      {...sharedAccountProps}
-    />
+        {...sharedAccountProps}
+      />
+    </Suspense>
   );
 }
+

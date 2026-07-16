@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&display=swap');
 @import "./styles/admin-mobile.css";
 
 @tailwind base;
@@ -33,10 +31,12 @@
     --chart-4: 45 22% 70%;
     --chart-5: 0 0% 52%;
     --radius: 0.5rem;
-    --font-heading: 'Manrope', ui-sans-serif, system-ui, sans-serif;
-    --font-body: 'Manrope', ui-sans-serif, system-ui, sans-serif;
-    --font-display: 'Fraunces', Georgia, serif;
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    --font-heading: "Manrope", ui-sans-serif, system-ui, sans-serif;
+    --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Fraunces", Georgia, serif;
+    --font-mono:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+      "Courier New", monospace;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
@@ -113,7 +113,9 @@
 
 .workspace-neutral .border-foreground.shadow-sm {
   border-color: hsl(var(--border)) !important;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 0 0 1px rgb(0 0 0 / 0.025) !important;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.04),
+    0 0 0 1px rgb(0 0 0 / 0.025) !important;
 }
 
 .workspace-neutral section.border-red-200 {
@@ -175,6 +177,7 @@
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     overflow-x: clip;
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -197,6 +200,12 @@
   textarea {
     -webkit-tap-highlight-color: transparent;
   }
+
+  button,
+  [role="button"],
+  a {
+    touch-action: manipulation;
+  }
 }
 
 @keyframes role-content-fade {
@@ -217,6 +226,15 @@
   .role-content-fade {
     animation: none;
   }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @media (max-width: 1023px) {
@@ -235,6 +253,12 @@
 }
 
 @media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
   .workspace-neutral table {
     font-size: 0.8125rem;
   }
