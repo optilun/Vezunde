@@ -5,6 +5,7 @@ import { PROVIDER_TYPES } from "@/lib/vezunde";
 import { summarizePublicServices } from "@/lib/servicePresentation";
 import TrustBadge from "@/components/results/TrustBadge";
 import ServiceChip from "@/components/results/ServiceChip";
+import DirectoryProfileNotice from "@/components/provider/DirectoryProfileNotice";
 
 const TIER_LABELS = {
   apropiere: "In zona ta",
@@ -21,12 +22,13 @@ const VARIANT_STYLES = {
 };
 
 export default function ResultCard({ location, variant = "neutral", onProfileClick, onPhoneClick }) {
+  const isDirectoryProfile = location.profile_control_status === "directory";
   const allServices = location.public_services || [];
   const matchedServices = location.matched_public_services?.length ? location.matched_public_services : allServices;
   const serviceSummaries = summarizePublicServices(matchedServices);
   const shown = serviceSummaries.slice(0, 3);
   const extra = Math.max(0, serviceSummaries.length - shown.length);
-  const hasDistance = Number.isFinite(Number(location.distance_km));
+  const hasDistance = !isDirectoryProfile && Number.isFinite(Number(location.distance_km));
   const explanationLabels = (location.recommendation_explanations || location.match_reasons || [])
     .map((item) => typeof item === "string" ? item : item?.label)
     .filter((label) => label && label !== "service_alias_match")
@@ -83,13 +85,19 @@ export default function ResultCard({ location, variant = "neutral", onProfileCli
         <p className="mt-3 rounded-2xl bg-secondary/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">{location.routing_reason}</p>
       )}
 
+      {isDirectoryProfile && (
+        <div className="mt-4">
+          <DirectoryProfileNotice location={location} compact />
+        </div>
+      )}
+
       <div className="mt-4 flex flex-wrap gap-2">
         <Link
           to={`/furnizor/${location.id}`}
           onClick={onProfileClick}
-          className="px-4 py-2 rounded-full text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-90 ${isDirectoryProfile ? "border border-border bg-card text-foreground" : "bg-primary text-primary-foreground"}`}
         >
-          Vezi profilul
+          {isDirectoryProfile ? "Vezi informatiile publice" : "Vezi profilul"}
         </Link>
         {location.phone && (
           <a
