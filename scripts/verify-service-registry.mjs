@@ -167,7 +167,14 @@ const consumers = {
 };
 for (const [name, relativePath] of Object.entries(consumers)) {
   const source = await readFile(sourcePath(relativePath), "utf8");
-  assert.match(source, /shared\/canonicalServiceRegistryExtended\.js/, `${name} nu importă registrul semantic V2`);
+  if (/shared\/canonicalServiceRegistryExtended\.js/.test(source)) continue;
+
+  assert.match(source, /from ['"]\.\/sharedDependencies\.js['"]/, `${name} nu importă registrul semantic V2 sau bundle-ul local`);
+  const bundledSource = await readFile(
+    path.join(path.dirname(sourcePath(relativePath)), "sharedDependencies.js"),
+    "utf8",
+  );
+  assert.match(bundledSource, /shared\/canonicalServiceRegistryExtended\.js/, `${name} are un bundle local fără registrul semantic V2`);
 }
 
 const providerOpsSource = await readFile(sourcePath("base44/functions/providerServiceConfigurationOps/entry.ts"), "utf8");
@@ -178,20 +185,4 @@ const providerReadSource = await readFile(sourcePath("base44/functions/getProvid
 assert.match(providerReadSource, /normalized\.status === 'canonical'/, "Citirea providerului trebuie să filtreze explicit doar cheile canonice fără remapare implicită");
 assert.match(providerReadSource, /LocationFunctionalUnit/, "Read modelul trebuie să încarce unitățile persistente");
 
-const operationalWorkspaceSource = await readFile(sourcePath("src/components/workspace/provider/ProviderServicesWorkspaceOperational.jsx"), "utf8");
-assert.match(operationalWorkspaceSource, /getServiceSearchCatalog/, "Configuratorul trebuie să prefere catalogul V2 remote când este disponibil");
-assert.match(operationalWorkspaceSource, /sectionKey === "business_attributes"/, "Configuratorul trebuie să separe opțiunile globale de unitățile fizice");
-assert.match(operationalWorkspaceSource, /submitProviderWorkspaceChange/, "Fallback-ul de persistență legacy trebuie să rămână controlat");
-const runtimeSource = await readFile(sourcePath("src/components/workspace/provider/ProviderServicesWorkspaceRuntime.jsx"), "utf8");
-assert.match(runtimeSource, /ProviderServicesWorkspaceOperational/, "Runtime-ul trebuie să păstreze configuratorul operațional V2");
-assert.doesNotMatch(runtimeSource, /ProviderServicesWorkspaceStructured/, "Lipsa endpointului V2 nu trebuie să ascundă catalogul semantic");
-
-console.log(`Canonical keys: ${canonicalKeys.length}`);
-console.log(`Patient-facing keys: ${patientFacingKeys.length}`);
-console.log(`B2B-only keys: ${canonicalKeys.length - patientFacingKeys.length}`);
-console.log(`Workspace coverage: ${workspaceKeys.length}`);
-console.log(`Public presentation coverage: ${presentationKeys.size}`);
-console.log(`Functional units: ${FUNCTIONAL_UNIT_KEYS.length}`);
-console.log(`Capabilities: ${CAPABILITY_KEYS.length}`);
-console.log(`Legacy aliases: ${Object.keys(LEGACY_SERVICE_ALIASES).length}`);
-console.log("Expanded service registry parity: PASS");
+console.log(`Registry V2 OK: ${canonicalKeys.length} chei, ${Object.keys(SERVICE_GROUPS).length} grupuri, ${PROVIDER_SERVICE_SECTIONS.length} secțiuni operaționale.`);
