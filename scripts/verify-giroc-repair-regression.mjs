@@ -6,7 +6,8 @@ import {
   getGenericRepairEligibility,
 } from '../base44/functions/matchProvidersSemantic/genericRepairPolicy.js';
 
-const damageQuestion = INTENTS.reparatii_ochelari.questions.find((question) => question.key === 'ce_deteriorat');
+const repairIntent = INTENTS.reparatii_ochelari;
+const damageQuestion = repairIntent.questions.find((question) => question.key === 'ce_deteriorat');
 const brokenFrame = damageQuestion?.options?.find((option) => option.key === 'rama_rupta');
 
 assert.ok(brokenFrame, 'Optiunea Rama rupta trebuie sa existe.');
@@ -14,6 +15,19 @@ assert.deepEqual(
   brokenFrame.service_keys,
   ['frame_repair'],
   'Rama rupta trebuie sa ceara explicit reparatia ramei.',
+);
+assert.equal(
+  brokenFrame.replace_service_keys,
+  true,
+  'Rama rupta trebuie sa inlocuiasca serviciile generice ale intentiei.',
+);
+const resolvedBrokenFrameKeys = brokenFrame.replace_service_keys
+  ? [...new Set(brokenFrame.service_keys || [])]
+  : [...new Set([...(repairIntent.service_keys || []), ...(brokenFrame.service_keys || [])])];
+assert.deepEqual(
+  resolvedBrokenFrameKeys,
+  ['frame_repair'],
+  'Payloadul trimis la matching trebuie sa contina numai reparatia ramei.',
 );
 
 assert.deepEqual(
@@ -45,6 +59,13 @@ assert.equal(getGenericRepairEligibility({
   confirmationLevel: 'provider_confirmed',
   exposeFullDetails: true,
 }), null, 'Operatiunile tehnice specializate raman in motorul strict de prerequisite.');
+
+const conversationalSource = await readFile(
+  new URL('../src/components/intake2/ConversationalCard.jsx', import.meta.url),
+  'utf8',
+);
+assert.match(conversationalSource, /option\.replace_service_keys === true/);
+assert.match(conversationalSource, /resolveOptionServiceKeys\(next\.serviceKeys, option\)/);
 
 const semanticEntry = await readFile(
   new URL('../base44/functions/matchProvidersSemantic/entry.ts', import.meta.url),
