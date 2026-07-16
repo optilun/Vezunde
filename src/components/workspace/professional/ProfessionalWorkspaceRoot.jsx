@@ -83,7 +83,7 @@ function professionalChecklist(professional, assignments) {
       label: "Contact public",
       detail: contactRequired
         ? "Necesar pentru a accepta cereri independente"
-        : "Telefon sau email public, optional",
+        : "Telefon sau email public, opțional",
       done: Boolean(draft.public_phone || draft.public_email),
       required: contactRequired,
     },
@@ -101,8 +101,8 @@ function reviewPresentation(reviewStatus, professional, missingRequiredCount) {
   if (reviewStatus === "pending_review") {
     return {
       icon: Clock3,
-      title: "Profilul este in verificare",
-      description: "Datele trimise sunt blocate temporar. VIASEE verifica profilul inainte de publicare.",
+      title: "Profilul este în verificare",
+      description: "Datele trimise sunt blocate temporar. VIASEE verifică profilul înainte de publicare.",
       tone: "border-blue-200 bg-blue-50 text-blue-950",
       actionLabel: "",
     };
@@ -112,38 +112,38 @@ function reviewPresentation(reviewStatus, professional, missingRequiredCount) {
       icon: CheckCircle2,
       title: professional.is_public ? "Profil profesional public" : "Profil profesional aprobat",
       description: professional.is_public
-        ? "Profilul este verificat si poate aparea in VIASEE si la locatiile publice asociate."
-        : "Profilul a fost verificat. Publicarea depinde de setarile profilului si ale locatiilor asociate.",
+        ? "Profilul este verificat și poate apărea în VIASEE și la locațiile publice asociate."
+        : "Profilul a fost verificat. Publicarea depinde de setările profilului și ale locațiilor asociate.",
       tone: "border-green-200 bg-green-50 text-green-950",
-      actionLabel: "Actualizeaza profilul",
+      actionLabel: "Actualizează profilul",
     };
   }
   if (reviewStatus === "needs_more_info") {
     return {
       icon: AlertCircle,
-      title: "Sunt necesare completari",
-      description: professional.review_note || "VIASEE a solicitat informatii suplimentare inainte de aprobarea profilului.",
+      title: "Sunt necesare completări",
+      description: professional.review_note || "VIASEE a solicitat informații suplimentare înainte de aprobarea profilului.",
       tone: "border-amber-200 bg-amber-50 text-amber-950",
-      actionLabel: "Completeaza profilul",
+      actionLabel: "Completează profilul",
     };
   }
   if (reviewStatus === "rejected") {
     return {
       icon: AlertCircle,
       title: "Profilul nu a fost aprobat",
-      description: professional.review_note || "Verifica datele profesionale si corecteaza informatiile inainte de o noua trimitere.",
+      description: professional.review_note || "Verifică datele profesionale și corectează informațiile înainte de o nouă trimitere.",
       tone: "border-red-200 bg-red-50 text-red-950",
-      actionLabel: "Revizuieste profilul",
+      actionLabel: "Revizuiește profilul",
     };
   }
   return {
     icon: missingRequiredCount > 0 ? AlertCircle : CheckCircle2,
-    title: missingRequiredCount > 0 ? "Profil in pregatire" : "Profil pregatit pentru verificare",
+    title: missingRequiredCount > 0 ? "Profil în pregătire" : "Profil pregătit pentru verificare",
     description: missingRequiredCount > 0
-      ? `Mai ai ${missingRequiredCount} ${missingRequiredCount === 1 ? "pas obligatoriu" : "pasi obligatorii"} de completat.`
-      : "Datele obligatorii sunt complete. Poti trimite profilul spre verificare din editor.",
+      ? `Mai ai ${missingRequiredCount} ${missingRequiredCount === 1 ? "pas obligatoriu" : "pași obligatorii"} de completat.`
+      : "Datele obligatorii sunt complete. Poți trimite profilul spre verificare din editor.",
     tone: "border-border bg-card text-foreground",
-    actionLabel: missingRequiredCount > 0 ? "Continua profilul" : "Trimite spre verificare",
+    actionLabel: missingRequiredCount > 0 ? "Continuă profilul" : "Trimite spre verificare",
   };
 }
 
@@ -161,12 +161,12 @@ function Overview({ workspace, onNavigate }) {
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-2xl font-extrabold tracking-tight">Cont profesional</h1>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Gestioneaza identitatea profesionala si locatiile cu care ai confirmat asocierea.</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Gestionează identitatea profesională și locațiile cu care ai confirmat asocierea.</p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <InfoCard label="Tip profesional" value={PROFESSIONAL_TYPE_LABELS[professional.professional_type] || "Specialist"} hint="Tipul profesional nu poate fi schimbat de o clinica sau optica." />
-        <InfoCard label="Status profil" value={PROFESSIONAL_REVIEW_STATUS_LABELS[reviewStatus] || reviewStatus} hint="Profilul devine public numai dupa completare si verificare." />
+        <InfoCard label="Tip profesional" value={PROFESSIONAL_TYPE_LABELS[professional.professional_type] || "Specialist"} hint="Tipul profesional nu poate fi schimbat de o clinică sau optică." />
+        <InfoCard label="Status profil" value={PROFESSIONAL_REVIEW_STATUS_LABELS[reviewStatus] || reviewStatus} hint="Profilul devine public numai după completare și verificare." />
         <InfoCard label="Locații asociate" value={assignments.length} hint={`${workspace.public_assignment_count || 0} publice · ${workspace.private_assignment_count || 0} private`} />
       </div>
 
@@ -199,7 +199,7 @@ function Overview({ workspace, onNavigate }) {
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 className="text-sm font-bold">Checklist profil profesional</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Pasii obligatorii controleaza trimiterea spre verificare. Ceilalti imbunatatesc profilul.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Pașii obligatorii controlează trimiterea spre verificare. Ceilalți îmbunătățesc profilul.</p>
             </div>
             <div className="text-xs font-semibold text-muted-foreground">{completedRequiredCount}/{requiredItems.length} obligatorii</div>
           </div>
@@ -218,7 +218,7 @@ function Overview({ workspace, onNavigate }) {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-sm font-semibold">{item.label}</span>
                       <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                        {item.required ? "Obligatoriu" : "Optional"}
+                        {item.required ? "Obligatoriu" : "Opțional"}
                       </span>
                     </div>
                     <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{item.detail}</p>
@@ -267,7 +267,7 @@ function Locations({ workspace, onRefresh }) {
   const withdrawAssignment = async (assignment) => {
     const locationName = assignment.location?.name || "această locație";
     const confirmed = window.confirm(
-      `Retragi asocierea cu ${locationName}? Profilul profesional ramane activ, dar nu vei mai aparea la această locație.`
+      `Retragi asocierea cu ${locationName}? Profilul profesional rămâne activ, dar nu vei mai apărea la această locație.`
     );
     if (!confirmed) return;
 
@@ -381,4 +381,3 @@ export default function ProfessionalWorkspaceRoot({
     </ProviderAppShell>
   );
 }
-
