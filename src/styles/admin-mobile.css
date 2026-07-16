@@ -50,6 +50,12 @@
     touch-action: manipulation;
   }
 
+  [data-admin-mobile="true"] button,
+  [data-admin-mobile="true"] a[role="button"],
+  [data-admin-mobile="true"] summary {
+    min-height: 44px;
+  }
+
   [data-admin-mobile="true"] [role="dialog"],
   [data-admin-mobile="true"] [data-radix-dialog-content] {
     width: calc(100vw - 1rem);

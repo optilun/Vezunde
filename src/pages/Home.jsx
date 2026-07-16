@@ -1,5 +1,10 @@
-import React, { useRef } from "react";
-import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "framer-motion";
 import Hero from "@/components/home/Hero";
 import CategoryShowcase from "@/components/home/CategoryShowcase";
 import SituationExplainer from "@/components/home/SituationExplainer";
@@ -78,8 +83,16 @@ function PinnedTakeover() {
     [0, 1],
     ["calc(100% - 5rem)", "0%"],
   );
-  const heroScale = useTransform(scrollYProgress, [0, 0.55, 1], [1, 0.99, 0.965]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.45, 0.9, 1], [1, 1, 0.5, 0]);
+  const heroScale = useTransform(
+    scrollYProgress,
+    [0, 0.55, 1],
+    [1, 0.99, 0.965],
+  );
+  const heroOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.45, 0.9, 1],
+    [1, 1, 0.5, 0],
+  );
   const heroY = useTransform(scrollYProgress, [0, 1], [0, -18]);
   const heroPointerEvents = useTransform(scrollYProgress, (value) =>
     value > 0.96 ? "none" : "auto",
@@ -115,7 +128,11 @@ function PinnedTakeover() {
             style={{ y: sheetY }}
             className="pointer-events-none absolute inset-0 z-20 isolate overflow-hidden rounded-t-[2rem] border-t border-white/80 bg-[#F8F4EC] shadow-[0_-18px_65px_rgba(28,24,18,0.13)] will-change-transform sm:rounded-t-[2.75rem] lg:rounded-t-[3.25rem]"
           >
-            <div aria-hidden="true" inert="" className="pointer-events-none min-h-full">
+            <div
+              aria-hidden="true"
+              inert=""
+              className="pointer-events-none min-h-full"
+            >
               <HomeCanvas preview />
             </div>
           </motion.div>
@@ -140,12 +157,35 @@ function StaticTakeover() {
   );
 }
 
+function usePinnedTakeoverSupport() {
+  const mediaQuery = "(min-width: 768px) and (min-height: 600px)";
+  const [supported, setSupported] = useState(
+    () =>
+      typeof window !== "undefined" && window.matchMedia(mediaQuery).matches,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia(mediaQuery);
+    const onChange = (event) => setSupported(event.matches);
+    setSupported(media.matches);
+    media.addEventListener?.("change", onChange);
+    return () => media.removeEventListener?.("change", onChange);
+  }, []);
+
+  return supported;
+}
+
 export default function Home() {
   const prefersReducedMotion = useReducedMotion();
+  const supportsPinnedTakeover = usePinnedTakeoverSupport();
 
   return (
     <div className="home-scroll-takeover relative">
-      {prefersReducedMotion ? <StaticTakeover /> : <PinnedTakeover />}
+      {prefersReducedMotion || !supportsPinnedTakeover ? (
+        <StaticTakeover />
+      ) : (
+        <PinnedTakeover />
+      )}
     </div>
   );
 }

@@ -11,22 +11,50 @@ const getHashId = (hash) => {
   }
 };
 
+const prefersReducedMotion = () =>
+  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+
 export default function ScrollToTop() {
   const { pathname, hash } = useLocation();
   const navigationType = useNavigationType();
 
   useEffect(() => {
-    if (navigationType === "POP") return;
+    if (navigationType === "POP") return undefined;
 
     if (hash) {
       const id = getHashId(hash);
-      const timer = window.setTimeout(() => {
-        document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-      }, 50);
-      return () => window.clearTimeout(timer);
+      let timeoutId = 0;
+      let observer;
+
+      const scrollToHash = () => {
+        const target = document.getElementById(id);
+        if (!target) return false;
+        observer?.disconnect();
+        window.clearTimeout(timeoutId);
+        target.scrollIntoView({
+          behavior: prefersReducedMotion() ? "auto" : "smooth",
+          block: "start",
+        });
+        return true;
+      };
+
+      if (!scrollToHash()) {
+        observer = new MutationObserver(scrollToHash);
+        observer.observe(document.body, { childList: true, subtree: true });
+        timeoutId = window.setTimeout(() => observer.disconnect(), 4000);
+      }
+
+      return () => {
+        observer?.disconnect();
+        window.clearTimeout(timeoutId);
+      };
     }
 
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    const animationFrame = window.requestAnimationFrame(() => {
+      document.getElementById("main-content")?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(animationFrame);
   }, [pathname, hash, navigationType]);
 
   return null;

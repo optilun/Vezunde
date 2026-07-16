@@ -17,7 +17,9 @@ function Toggle({ checked, onChange, disabled = false, label }) {
       disabled={disabled}
       onClick={() => !disabled && onChange(!checked)}
       className={`relative inline-flex h-7 w-12 flex-none items-center rounded-full border transition-colors ${
-        checked ? "border-[#171717] bg-[#171717]" : "border-[#aaa49b] bg-[#e6dfd5]"
+        checked
+          ? "border-[#171717] bg-[#171717]"
+          : "border-[#aaa49b] bg-[#e6dfd5]"
       } ${disabled ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
     >
       <span
@@ -25,13 +27,21 @@ function Toggle({ checked, onChange, disabled = false, label }) {
           checked ? "translate-x-6" : "translate-x-1"
         }`}
       >
-        {checked ? <Check className="h-3 w-3 text-[#171717]" aria-hidden="true" /> : null}
+        {checked ? (
+          <Check className="h-3 w-3 text-[#171717]" aria-hidden="true" />
+        ) : null}
       </span>
     </button>
   );
 }
 
-function PreferenceRow({ title, description, checked, onChange, required = false }) {
+function PreferenceRow({
+  title,
+  description,
+  checked,
+  onChange,
+  required = false,
+}) {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-5 border-t border-[#d7d0c5] py-5 first:border-t-0">
       <div>
@@ -78,7 +88,8 @@ export default function CookieConsent() {
     };
 
     window.addEventListener(OPEN_COOKIE_SETTINGS_EVENT, openPreferences);
-    return () => window.removeEventListener(OPEN_COOKIE_SETTINGS_EVENT, openPreferences);
+    return () =>
+      window.removeEventListener(OPEN_COOKIE_SETTINGS_EVENT, openPreferences);
   }, []);
 
   useEffect(() => {
@@ -110,7 +121,7 @@ export default function CookieConsent() {
       {!storedConsent && !preferencesOpen ? (
         <section
           aria-label="Preferințe cookies"
-          className="fixed inset-x-3 bottom-3 z-[90] mx-auto max-w-[920px] border border-[#171717] bg-[#f8f4ec] shadow-[0_14px_50px_rgba(23,23,23,0.18)] sm:inset-x-5 sm:bottom-5"
+          className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-[90] mx-auto max-h-[calc(100dvh-1.5rem-env(safe-area-inset-bottom))] max-w-[920px] overflow-y-auto border border-[#171717] bg-[#f8f4ec] shadow-[0_14px_50px_rgba(23,23,23,0.18)] sm:inset-x-5 sm:bottom-5 sm:max-h-none"
         >
           <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-center">
             <div>
@@ -121,13 +132,21 @@ export default function CookieConsent() {
                 Tu alegi ce date opționale folosim.
               </h2>
               <p className="mt-1.5 max-w-xl text-sm leading-6 text-[#625e57]">
-                Folosim elementele necesare pentru funcționarea platformei. Analiza utilizării și marketingul rămân oprite până când le accepți.
+                Folosim elementele necesare pentru funcționarea platformei.
+                Analiza utilizării și marketingul rămân oprite până când le
+                accepți.
               </p>
               <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-2 text-xs">
-                <Link to="/cookies" className="font-semibold text-[#171717] underline underline-offset-4">
+                <Link
+                  to="/cookies"
+                  className="font-semibold text-[#171717] underline underline-offset-4"
+                >
                   Politica de cookies
                 </Link>
-                <Link to="/confidentialitate" className="font-semibold text-[#171717] underline underline-offset-4">
+                <Link
+                  to="/confidentialitate"
+                  className="font-semibold text-[#171717] underline underline-offset-4"
+                >
                   Confidențialitate
                 </Link>
               </div>
@@ -165,7 +184,7 @@ export default function CookieConsent() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="cookie-preferences-title"
-            className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto border-2 border-[#171717] bg-[#f8f4ec] shadow-2xl sm:max-h-[86dvh]"
+            className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-[1.5rem] border-2 border-[#171717] bg-[#f8f4ec] shadow-2xl sm:max-h-[86dvh] sm:rounded-none"
           >
             <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b-2 border-[#171717] bg-[#f8f4ec] p-5 sm:p-6">
               <div>
@@ -191,9 +210,10 @@ export default function CookieConsent() {
               </button>
             </div>
 
-            <div className="p-5 sm:p-6">
+            <div className="p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:p-6">
               <p className="text-sm leading-6 text-[#625e57]">
-                Poți schimba această alegere oricând din linkul „Setări cookies” din footer.
+                Poți schimba această alegere oricând din linkul „Setări cookies”
+                din footer.
               </p>
               <div className="mt-5 border-y-2 border-[#171717]">
                 <PreferenceRow
