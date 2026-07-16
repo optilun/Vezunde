@@ -177,7 +177,9 @@ Deno.serve(async (req) => {
       if (ageDays >= 0 && ageDays <= AVAILABILITY_STALE_DAYS) availabilityLabel = AVAILABILITY_LABELS[location.availability_status] || null;
     }
 
-    const organizationName = organization?.public_display_name || organization?.name || null;
+    const organizationName = publicDisclosure.expose_full_details
+      ? (organization?.public_display_name || organization?.name || null)
+      : null;
     const organizationDescription = publicDisclosure.expose_full_details ? (organization?.public_description || null) : null;
     const rawLocationDescription = publicDisclosure.expose_full_details ? (location.public_description || location.description || null) : null;
     const locationDescription = rawLocationDescription && normalizedCopy(rawLocationDescription) !== normalizedCopy(organizationDescription)
@@ -193,7 +195,7 @@ Deno.serve(async (req) => {
     return Response.json({
       profile: {
         id: location.id,
-        organization_id: organization?.id || null,
+        organization_id: publicDisclosure.expose_full_details ? (organization?.id || null) : null,
         organization_name: organizationName,
         organization_logo_url: organizationLogoUrl,
         organization_logo_configured: publicDisclosure.expose_full_details && Boolean(publicImage(organization?.logo_url)),
