@@ -9,6 +9,7 @@ import {
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import ScrollToTop from "./components/ScrollToTop";
+import RouteSeo from "@/components/seo/RouteSeo";
 import Layout from "@/components/Layout";
 import RequireAuth from "@/components/guards/RequireAuth";
 import RequireAdmin from "@/components/guards/RequireAdmin";
@@ -31,6 +32,14 @@ const RequestFlow = lazy(() => import("./pages/RequestFlow"));
 const ForSpecialists = lazy(() => import("./pages/ForSpecialists"));
 const Partners = lazy(() => import("./pages/Partners"));
 const AddOrClaim = lazy(() => import("./pages/AddOrClaim"));
+const GuideIndex = lazy(() => import("./pages/GuideIndex"));
+const SpecialistGuide = lazy(() => import("./pages/SpecialistGuide"));
+const SpecialistComparison = lazy(
+  () => import("./pages/SpecialistComparison"),
+);
+const EditorialMethodology = lazy(
+  () => import("./pages/EditorialMethodology"),
+);
 const AcceptProfessionalInvitation = lazy(
   () => import("./pages/AcceptProfessionalInvitation"),
 );
@@ -138,6 +147,16 @@ const AppRoutes = () => {
           <Route path="/furnizor/:id" element={<ProviderProfile />} />
           <Route path="/specialist/:id" element={<ProfessionalProfile />} />
           <Route path="/cerere" element={<RequestFlow />} />
+          <Route path="/ghid" element={<GuideIndex />} />
+          <Route
+            path="/ghid/optometrist-optician-oftalmolog"
+            element={<SpecialistComparison />}
+          />
+          <Route path="/ghid/:slug" element={<SpecialistGuide />} />
+          <Route
+            path="/cum-verificam-informatiile"
+            element={<EditorialMethodology />}
+          />
           <Route
             path="/revendica-profil"
             element={<Navigate to="/adauga-sau-revendica" replace />}
@@ -191,6 +210,7 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <ScrollToTop />
+          <RouteSeo />
           <AppRoutes />
           <DeferredClientUi />
         </Router>
