@@ -14,6 +14,7 @@ import { VIASEE_COMPANY } from "@/lib/legal";
 
 const MOBILE_LINKS = [
   { to: "/cauta", label: "Caută" },
+  { to: "/ghid", label: "Ghid pentru vedere" },
   { to: "/parteneri", label: "Parteneri" },
   { to: "/pentru-specialisti", label: "Pentru specialiști" },
   { to: "/adauga-sau-revendica", label: "Adaugă sau revendică un profil" },
@@ -50,6 +51,14 @@ function DesktopHeader({ scrolled }) {
         <nav className="flex items-center gap-1 text-sm">
           <NavLink to="/cauta" className={desktopNavLinkClassName}>
             Caută
+          </NavLink>
+          <NavLink
+            to="/ghid"
+            className={({ isActive }) =>
+              `${desktopNavLinkClassName({ isActive })} hidden lg:inline-flex`
+            }
+          >
+            Ghid
           </NavLink>
           <NavLink to="/parteneri" className={desktopNavLinkClassName}>
             Parteneri
@@ -276,6 +285,9 @@ export default function Layout() {
             <FooterLinkGroup title="Platforma">
               <Link to="/cauta" className={footerLinkClassName}>
                 Caută
+              </Link>
+              <Link to="/ghid" className={footerLinkClassName}>
+                Ghid pentru vedere
               </Link>
               <Link to="/cerere" className={footerLinkClassName}>
                 Trimite o cerere

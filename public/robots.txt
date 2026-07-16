@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /contul-meu/
+Disallow: /dupa-login
+Disallow: /accept-professional-invitation
+Disallow: /accept-provider-invitation
+
+User-agent: OAI-SearchBot
+Allow: /
+
+Sitemap: https://vezunde-core-link.base44.app/sitemap.xml
+
