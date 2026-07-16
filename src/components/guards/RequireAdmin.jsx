@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
-import { base44 } from "@/api/base44Client";
 import { isAdmin } from "@/lib/access";
 
 const Spinner = () => (
@@ -18,12 +17,18 @@ const Spinner = () => (
 );
 
 export default function RequireAdmin() {
-  const { user, isAuthenticated, isLoadingAuth, authChecked } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    isLoadingAuth,
+    authChecked,
+    navigateToLogin,
+  } = useAuth();
   const shouldRedirect = authChecked && !isLoadingAuth && !isAuthenticated;
 
   useEffect(() => {
-    if (shouldRedirect) base44.auth.redirectToLogin(window.location.href);
-  }, [shouldRedirect]);
+    if (shouldRedirect) void navigateToLogin(window.location.href);
+  }, [navigateToLogin, shouldRedirect]);
 
   if (isLoadingAuth || !authChecked || shouldRedirect) return <Spinner />;
   if (!isAdmin(user)) return <Navigate to="/" replace />;
