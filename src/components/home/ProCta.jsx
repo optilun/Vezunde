@@ -166,11 +166,11 @@ export default function ProCta() {
       className="mx-auto mt-28 max-w-[84rem] px-5 sm:mt-36 lg:mt-44"
     >
       <motion.div
-        initial={prefersReducedMotion ? false : { opacity: 0, y: 22 }}
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 14 }}
         whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.25 }}
-        transition={{ duration: 0.55 }}
-        className="relative grid overflow-hidden rounded-[2.25rem_2.25rem_0.75rem_2.25rem] bg-transparent drop-shadow-[0_22px_30px_rgba(23,23,23,0.10)] lg:grid-cols-[1.3fr_0.9fr]"
+        viewport={{ once: true, amount: 0.08 }}
+        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        className="relative grid transform-gpu overflow-hidden rounded-[2.25rem_2.25rem_0.75rem_2.25rem] bg-transparent drop-shadow-[0_22px_30px_rgba(23,23,23,0.10)] will-change-transform lg:grid-cols-[1.3fr_0.9fr]"
       >
         <div className="relative z-20 flex flex-col justify-center bg-[#171717] px-7 py-12 text-[#F8F4EC] sm:px-12 sm:py-16 lg:min-h-[34rem] lg:px-16 lg:py-20">
           <span
@@ -224,7 +224,7 @@ export default function ProCta() {
             prefersReducedMotion
               ? false
               : isDesktop
-                ? { x: "-72%" }
+                ? { x: "-100%" }
                 : { opacity: 0, y: 12 }
           }
           whileInView={
@@ -232,17 +232,17 @@ export default function ProCta() {
               ? { x: 0 }
               : { opacity: 1, y: 0 }
           }
-          viewport={{ once: true, amount: 0.35 }}
+          viewport={{ once: true, amount: 0.08 }}
           transition={
             prefersReducedMotion
               ? { duration: 0 }
               : {
-                  duration: isDesktop ? 1.35 : 0.35,
-                  delay: isDesktop ? 0.48 : 0,
+                  duration: isDesktop ? 1.75 : 0.35,
+                  delay: isDesktop ? 0.3 : 0,
                   ease: [0.4, 0, 0.2, 1],
                 }
           }
-          className="relative z-10 border-t border-black/25 lg:border-l lg:border-t-0 lg:shadow-[inset_18px_0_28px_-24px_rgba(0,0,0,0.68)]"
+          className="relative z-10 transform-gpu will-change-transform border-t border-black/25 lg:border-l lg:border-t-0 lg:shadow-[inset_18px_0_28px_-24px_rgba(0,0,0,0.68)]"
         >
           <ProfileBlueprint />
         </motion.div>
