@@ -115,7 +115,7 @@ export const INTENTS = {
       {
         key: "ce_deteriorat", type: "choice", title: "Ce s-a deteriorat?",
         options: [
-          { key: "rama_rupta", label: "Rama rupta" },
+          { key: "rama_rupta", label: "Rama rupta", service_keys: ["frame_repair"], replace_service_keys: true },
           { key: "balama_surub", label: "Balamaua sau surubul" },
           { key: "lentila_zgariata", label: "Lentila zgariata sau sparta", service_keys: ["montaj_lentile"] },
           { key: "reglaj_rama", label: "Reglaj rama" },

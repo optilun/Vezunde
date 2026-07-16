@@ -18,6 +18,7 @@ import {
 } from './sharedDependencies.js';
 import { getRecommendationCoverageStatus } from './coverage.js';
 import { getPublicLocationDisclosure } from './providerPublicTrust.js';
+import { getGenericRepairEligibility } from './genericRepairPolicy.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const PATIENT_FACING_PROFILE_TYPES = new Set([
@@ -80,9 +81,19 @@ function requestNeedLevel(serviceKeys) {
   return result;
 }
 
+function genericRepairEligibility(row, location) {
+  return getGenericRepairEligibility({
+    canonicalKey: normalizeServiceKey(row?.service_key).canonicalKey,
+    confirmationLevel: row?.confirmation_level,
+    exposeFullDetails: getPublicLocationDisclosure(location).expose_full_details,
+  });
+}
+
 function safeServiceRow(row, location, context) {
   if (!row || row.migration_review_required || row.matching_allowed !== true) return false;
   if (!isServiceMatchingEligible(row, location)) return false;
+  const genericRepairResult = genericRepairEligibility(row, location);
+  if (genericRepairResult !== null) return genericRepairResult;
   const serviceContext = getServiceOperationalContext(row.service_key);
   const prerequisite = evaluateServicePrerequisites(row.service_key, {
     ...context,
