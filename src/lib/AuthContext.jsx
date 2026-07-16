@@ -16,12 +16,12 @@ const loadBase44 = async () => {
 };
 
 const loadPublicSettings = async () => {
-  const headers = {
+  const headers = new Headers({
     "X-App-Id": appParams.appId,
-  };
+  });
 
   if (appParams.token) {
-    headers.Authorization = `Bearer ${appParams.token}`;
+    headers.set("Authorization", `Bearer ${appParams.token}`);
   }
 
   const response = await fetch(
@@ -34,12 +34,15 @@ const loadPublicSettings = async () => {
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const error = new Error(
-      data?.message || `Public settings request failed with ${response.status}`,
+    throw Object.assign(
+      new Error(
+        data?.message || `Public settings request failed with ${response.status}`,
+      ),
+      {
+        status: response.status,
+        data,
+      },
     );
-    error.status = response.status;
-    error.data = data;
-    throw error;
   }
 
   return data;
