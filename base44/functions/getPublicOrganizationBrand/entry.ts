@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { getPublicLocationDisclosure } from './providerPublicTrust.js';
 
 const MAX_INLINE_LOGO_BYTES = 750000;
 
@@ -54,11 +55,13 @@ Deno.serve(async (req) => {
     if (!locationId) return Response.json({ error: 'location_id este obligatoriu' }, { status: 400 });
 
     const location = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
+    const publicDisclosure = location ? getPublicLocationDisclosure(location) : null;
     if (
       !location
       || location.status !== 'publicata'
       || location.active_status === 'inactiva'
-      || location.profile_control_status === 'suspended'
+      || publicDisclosure?.profile_control_status === 'suspended'
+      || publicDisclosure?.expose_full_details !== true
       || !location.organization_id
     ) return Response.json({ error: 'Profilul nu a fost gasit' }, { status: 404 });
 
@@ -84,3 +87,4 @@ Deno.serve(async (req) => {
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
+
