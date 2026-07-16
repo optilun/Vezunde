@@ -188,73 +188,73 @@ export default function SituationExplainer() {
           </div>
         </div>
 
-        <article
-            key={active}
-            id="role-definition"
-            role="tabpanel"
-            aria-labelledby={`role-index-${active}`}
-            aria-live={hasUserSelected ? "polite" : "off"}
-            className="role-content-fade mt-12 sm:mt-14"
-          >
-            <div className="flex flex-col gap-5 pb-7 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
-              <h3
-                className={`${current.termSize} min-w-0 font-heading font-extrabold leading-[0.82] tracking-[-0.075em] text-[#171717]`}
-              >
-                {current.term}
-              </h3>
-              <p className="max-w-xl pb-1 font-heading text-lg font-bold leading-tight tracking-[-0.025em] text-foreground/85 sm:text-xl lg:text-right xl:text-2xl">
-                {current.type}
+        <div
+          key={active}
+          id="role-definition"
+          role="tabpanel"
+          aria-labelledby={`role-index-${active}`}
+          aria-live={hasUserSelected ? "polite" : "off"}
+          className="role-content-fade mt-12 sm:mt-14"
+        >
+          <div className="flex flex-col gap-5 pb-7 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
+            <h3
+              className={`${current.termSize} min-w-0 font-heading font-extrabold leading-[0.82] tracking-[-0.075em] text-[#171717]`}
+            >
+              {current.term}
+            </h3>
+            <p className="max-w-xl pb-1 font-heading text-lg font-bold leading-tight tracking-[-0.025em] text-foreground/85 sm:text-xl lg:text-right xl:text-2xl">
+              {current.type}
+            </p>
+          </div>
+
+          <div className="grid gap-5 border-y-[4px] border-[#171717] py-7 sm:py-9 lg:grid-cols-[7rem_1fr] lg:items-start lg:gap-10">
+            <span className="grid h-16 w-16 place-items-center rounded-full border-[3px] border-[#171717] sm:h-[5.25rem] sm:w-[5.25rem]">
+              <ArrowRight className="h-7 w-7 sm:h-9 sm:w-9" aria-hidden="true" />
+            </span>
+            <p className="max-w-[70rem] font-heading text-[clamp(2rem,4.35vw,4.15rem)] font-bold leading-[1.04] tracking-[-0.055em] text-[#171717]">
+              {current.definition}
+            </p>
+          </div>
+
+          <div className="grid border-b-[3px] border-[#171717] lg:grid-cols-2">
+            <div className="py-7 lg:border-r lg:border-black/25 lg:py-9 lg:pr-12">
+              <p className="font-heading text-base font-semibold tracking-[-0.02em] text-foreground/75 sm:text-lg">
+                Mergi când
+              </p>
+              <p className="mt-4 max-w-[38rem] font-heading text-[clamp(2rem,3.45vw,3.45rem)] font-semibold leading-[1.06] tracking-[-0.05em] text-[#171717]">
+                {current.example}
               </p>
             </div>
 
-            <div className="grid gap-5 border-y-[4px] border-[#171717] py-7 sm:py-9 lg:grid-cols-[7rem_1fr] lg:items-start lg:gap-10">
-              <span className="grid h-16 w-16 place-items-center rounded-full border-[3px] border-[#171717] sm:h-[5.25rem] sm:w-[5.25rem]">
-                <ArrowRight className="h-7 w-7 sm:h-9 sm:w-9" aria-hidden="true" />
+            <div className="border-t border-black/25 py-7 lg:border-t-0 lg:py-9 lg:pl-12">
+              <p className="font-heading text-base font-semibold tracking-[-0.02em] text-foreground/75 sm:text-lg">
+                Diferența importantă
+              </p>
+              <p className="mt-4 max-w-[39rem] font-heading text-[clamp(1.8rem,3.1vw,3.1rem)] font-semibold leading-[1.07] tracking-[-0.045em] text-[#171717]">
+                {current.difference}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
+            <Link
+              to={current.to}
+              className="group inline-flex min-h-14 items-center gap-7 rounded-full bg-[#171717] py-2 pl-7 pr-2 text-sm font-semibold text-white shadow-[0_14px_32px_rgba(18,18,18,0.12)] outline-none transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(18,18,18,0.17)] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none sm:min-h-16 sm:pl-9 sm:text-base"
+            >
+              {current.cta}
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-[#F8F4EC] text-[#171717] sm:h-12 sm:w-12">
+                <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden="true" />
               </span>
-              <p className="max-w-[70rem] font-heading text-[clamp(2rem,4.35vw,4.15rem)] font-bold leading-[1.04] tracking-[-0.055em] text-[#171717]">
-                {current.definition}
-              </p>
+            </Link>
+
+            <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground sm:text-sm">
+              <RoleMark color={current.accent} />
+              <span>
+                Competențele pot varia în funcție de calificare și autorizare. VIASEE oferă orientare, nu diagnostic.
+              </span>
             </div>
-
-            <div className="grid border-b-[3px] border-[#171717] lg:grid-cols-2">
-              <div className="py-7 lg:border-r lg:border-black/25 lg:py-9 lg:pr-12">
-                <p className="font-heading text-base font-semibold tracking-[-0.02em] text-foreground/75 sm:text-lg">
-                  Mergi când
-                </p>
-                <p className="mt-4 max-w-[38rem] font-heading text-[clamp(2rem,3.45vw,3.45rem)] font-semibold leading-[1.06] tracking-[-0.05em] text-[#171717]">
-                  {current.example}
-                </p>
-              </div>
-
-              <div className="border-t border-black/25 py-7 lg:border-t-0 lg:py-9 lg:pl-12">
-                <p className="font-heading text-base font-semibold tracking-[-0.02em] text-foreground/75 sm:text-lg">
-                  Diferența importantă
-                </p>
-                <p className="mt-4 max-w-[39rem] font-heading text-[clamp(1.8rem,3.1vw,3.1rem)] font-semibold leading-[1.07] tracking-[-0.045em] text-[#171717]">
-                  {current.difference}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-8 flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
-              <Link
-                to={current.to}
-                className="group inline-flex min-h-14 items-center gap-7 rounded-full bg-[#171717] py-2 pl-7 pr-2 text-sm font-semibold text-white shadow-[0_14px_32px_rgba(18,18,18,0.12)] outline-none transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(18,18,18,0.17)] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none sm:min-h-16 sm:pl-9 sm:text-base"
-              >
-                {current.cta}
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-[#F8F4EC] text-[#171717] sm:h-12 sm:w-12">
-                  <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden="true" />
-                </span>
-              </Link>
-
-              <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground sm:text-sm">
-                <RoleMark color={current.accent} />
-                <span>
-                  Competențele pot varia în funcție de calificare și autorizare. VIASEE oferă orientare, nu diagnostic.
-                </span>
-              </div>
-            </div>
-        </article>
+          </div>
+        </div>
       </motion.div>
     </section>
   );
