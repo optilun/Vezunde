@@ -3,7 +3,7 @@ export interface ProviderServiceSection {
   unitKey: string;
   fallbackUnitKeys?: string[];
   capabilityKey?: string | null;
-  scope?: 'location' | 'unit';
+  scope?: string;
   area: string;
   kind: string;
   title: string;
@@ -25,7 +25,7 @@ export interface ServiceOperationalContext {
   capabilityKey: string | null;
   publicNeedKey: string | null;
   kind: string;
-  scope?: 'location' | 'unit';
+  scope?: string;
 }
 
 export const PROVIDER_SERVICE_SECTIONS: ProviderServiceSection[];
