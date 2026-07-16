@@ -6,6 +6,7 @@ import PageNotFound from "./lib/PageNotFound";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import UserNotRegisteredError from "@/components/UserNotRegisteredError";
 import ScrollToTop from "./components/ScrollToTop";
+import CookieConsent from "@/components/CookieConsent";
 import Layout from "@/components/Layout";
 import Home from "./pages/Home";
 import Search from "./pages/Search";
@@ -26,6 +27,9 @@ import RequireAuth from "@/components/guards/RequireAuth";
 import RequireAdmin from "@/components/guards/RequireAdmin";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
+import Cookies from "./pages/Cookies";
+import PaymentsAndSubscriptions from "./pages/PaymentsAndSubscriptions";
+import DataRights from "./pages/DataRights";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -74,6 +78,9 @@ const AuthenticatedApp = () => {
         <Route path="/adauga-sau-revendica" element={<AddOrClaim />} />
         <Route path="/confidentialitate" element={<Privacy />} />
         <Route path="/termeni" element={<Terms />} />
+        <Route path="/cookies" element={<Cookies />} />
+        <Route path="/plati-si-abonamente" element={<PaymentsAndSubscriptions />} />
+        <Route path="/drepturile-tale" element={<DataRights />} />
       </Route>
 
       <Route element={<RequireAuth />}>
@@ -100,6 +107,7 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <ScrollToTop />
+          <CookieConsent />
           <AuthenticatedApp />
         </Router>
         <Toaster />
@@ -109,3 +117,4 @@ function App() {
 }
 
 export default App;
+

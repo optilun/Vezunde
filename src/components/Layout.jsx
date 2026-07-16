@@ -4,6 +4,8 @@ import { Menu } from "lucide-react";
 import HeaderAccountLink from "@/components/HeaderAccountLink";
 import ViaseeBrand from "@/components/brand/ViaseeBrand";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { openCookieSettings } from "@/lib/cookieConsent";
+import { VIASEE_COMPANY } from "@/lib/legal";
 
 const MOBILE_LINKS = [
   { to: "/cauta", label: "Caută" },
@@ -70,6 +72,20 @@ function MobileHeader({ scrolled, onMenuOpen }) {
   );
 }
 
+function FooterLinkGroup({ title, children }) {
+  return (
+    <nav aria-label={title} className="border-t border-[#171717] pt-4">
+      <h2 className="font-mono text-[0.64rem] font-semibold uppercase tracking-[0.2em] text-[#6f6a63]">
+        {title}
+      </h2>
+      <div className="mt-3 space-y-0.5 text-sm">{children}</div>
+    </nav>
+  );
+}
+
+const footerLinkClassName =
+  "flex min-h-11 items-center text-[#5f5a53] transition-colors hover:text-[#171717]";
+
 export default function Layout() {
   const location = useLocation();
   const isHome = location.pathname === "/";
@@ -129,29 +145,65 @@ export default function Layout() {
         <Outlet />
       </main>
 
-      <footer className="mt-12 border-t border-border sm:mt-16">
-        <div className="mx-auto grid max-w-6xl gap-8 px-5 py-10 sm:grid-cols-3 sm:py-12">
-          <div>
-            <ViaseeBrand symbolClassName="h-8 w-8" wordmarkClassName="h-4 w-auto" />
-            <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">Spune ce ai nevoie. Vezi unde poți merge. VIASEE nu oferă diagnostic medical.</p>
-          </div>
-          <div className="space-y-1 text-sm">
-            <div className="mb-3 font-medium">Platforma</div>
-            <Link to="/cauta" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Caută furnizori</Link>
-            <Link to="/cerere" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Trimite o cerere</Link>
-            <Link to="/parteneri" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Parteneri B2B</Link>
-            <Link to="/pentru-specialisti" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Pentru specialiști</Link>
-            <Link to="/revendica-profil" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Revendică un profil</Link>
-          </div>
-          <div className="space-y-1 text-sm">
-            <div className="mb-3 font-medium">Legal</div>
-            <Link to="/confidentialitate" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Confidențialitate</Link>
-            <Link to="/termeni" className="flex min-h-11 items-center text-muted-foreground hover:text-foreground">Termeni și condiții</Link>
+      <footer
+        className="relative mt-12 overflow-hidden border-t-2 border-[#171717] bg-[#f8f4ec] sm:mt-16"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(23,23,23,0.13) 1px, transparent 1.2px)",
+          backgroundSize: "21px 21px",
+        }}
+      >
+        <div className="relative mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16 lg:px-10">
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.45fr_repeat(3,minmax(0,1fr))] lg:gap-12">
+            <div className="sm:col-span-2 lg:col-span-1">
+              <ViaseeBrand symbolClassName="h-9 w-9" wordmarkClassName="h-[18px] w-auto" />
+              <p className="mt-5 max-w-sm text-sm leading-6 text-[#5f5a53]">
+                Spune ce ai nevoie. Vezi unde poți merge. VIASEE oferă orientare și informații, nu diagnostic medical.
+              </p>
+              <a
+                href={`mailto:${VIASEE_COMPANY.contactEmail}`}
+                className="mt-5 inline-flex min-h-11 items-center text-sm font-semibold text-[#171717] underline decoration-[#171717]/30 underline-offset-4"
+              >
+                {VIASEE_COMPANY.contactEmail}
+              </a>
+              <p className="mt-5 font-mono text-[0.62rem] uppercase tracking-[0.18em] text-[#77716a]">
+                Disponibil în România
+              </p>
+            </div>
+
+            <FooterLinkGroup title="Platforma">
+              <Link to="/cauta" className={footerLinkClassName}>Caută</Link>
+              <Link to="/cerere" className={footerLinkClassName}>Trimite o cerere</Link>
+              <Link to="/parteneri" className={footerLinkClassName}>Parteneri</Link>
+            </FooterLinkGroup>
+
+            <FooterLinkGroup title="Pentru specialiști">
+              <Link to="/pentru-specialisti" className={footerLinkClassName}>Descoperă VIASEE</Link>
+              <Link to="/adauga-sau-revendica" className={footerLinkClassName}>Adaugă sau revendică un profil</Link>
+              <Link to="/plati-si-abonamente" className={footerLinkClassName}>Plăți și abonamente</Link>
+              <Link to="/ajutor-si-suport" className={footerLinkClassName}>Ajutor și suport</Link>
+            </FooterLinkGroup>
+
+            <FooterLinkGroup title="Legal și date">
+              <Link to="/confidentialitate" className={footerLinkClassName}>Confidențialitate</Link>
+              <Link to="/termeni" className={footerLinkClassName}>Termeni și condiții</Link>
+              <Link to="/cookies" className={footerLinkClassName}>Politica de cookies</Link>
+              <Link to="/drepturile-tale" className={footerLinkClassName}>Drepturile tale</Link>
+              <button
+                type="button"
+                onClick={openCookieSettings}
+                className={`${footerLinkClassName} w-full text-left`}
+              >
+                Setări cookies
+              </button>
+            </FooterLinkGroup>
           </div>
         </div>
-        <div className="border-t border-border">
-          <div className="mx-auto max-w-6xl px-5 py-4 text-xs leading-relaxed text-muted-foreground safe-area-bottom">
-            © {new Date().getFullYear()} VIASEE. Date demonstrative fictive. Platformă de potrivire, nu de licitații de preț.
+
+        <div className="relative border-t border-[#bcb5aa] bg-[#f8f4ec]/90">
+          <div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-5 text-xs leading-5 text-[#6a655e] safe-area-bottom sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:px-10">
+            <span>© {new Date().getFullYear()} VIASEE · {VIASEE_COMPANY.legalName}</span>
+            <span>CUI {VIASEE_COMPANY.taxId} · ONRC {VIASEE_COMPANY.registrationNumber} · {VIASEE_COMPANY.registeredOffice}</span>
           </div>
         </div>
       </footer>
