@@ -1,14 +1,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { isAdmin } from "@/lib/access";
 
 // The public header reuses the authentication state already loaded by
-// AuthProvider. This avoids duplicate session and user requests from the
-// desktop and mobile header instances.
+// AuthProvider. The Base44 SDK is imported only when a session exists or the
+// visitor explicitly starts authentication.
 export default function HeaderAccountLink() {
-  const { user, isAuthenticated, isLoadingAuth } = useAuth();
+  const { user, isAuthenticated, isLoadingAuth, navigateToLogin } = useAuth();
 
   if (isLoadingAuth) return null;
 
@@ -20,7 +19,7 @@ export default function HeaderAccountLink() {
       <button
         type="button"
         className={className}
-        onClick={() => base44.auth.redirectToLogin("/dupa-login")}
+        onClick={() => void navigateToLogin("/dupa-login")}
       >
         Autentificare
       </button>

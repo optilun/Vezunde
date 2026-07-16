@@ -1,5 +1,4 @@
-import { lazy, Suspense } from "react";
-import { Toaster } from "@/components/ui/toaster";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClientInstance } from "@/lib/query-client";
 import {
@@ -9,13 +8,20 @@ import {
   Routes,
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
-import UserNotRegisteredError from "@/components/UserNotRegisteredError";
 import ScrollToTop from "./components/ScrollToTop";
-import CookieConsent from "@/components/CookieConsent";
 import Layout from "@/components/Layout";
 import RequireAuth from "@/components/guards/RequireAuth";
 import RequireAdmin from "@/components/guards/RequireAdmin";
 
+const CookieConsent = lazy(() => import("@/components/CookieConsent"));
+const UserNotRegisteredError = lazy(
+  () => import("@/components/UserNotRegisteredError"),
+);
+const Toaster = lazy(() =>
+  import("@/components/ui/toaster").then((module) => ({
+    default: module.Toaster,
+  })),
+);
 const PageNotFound = lazy(() => import("./lib/PageNotFound"));
 const Home = lazy(() => import("./pages/Home"));
 const Search = lazy(() => import("./pages/Search"));
@@ -50,10 +56,10 @@ const Register = lazy(() => import("./pages/Register"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 
-function PageLoading({ fullScreen = false }) {
+function PageLoading() {
   return (
     <div
-      className={`${fullScreen ? "fixed inset-0" : "min-h-[45vh]"} flex items-center justify-center bg-background`}
+      className="flex min-h-[45vh] items-center justify-center bg-background"
       role="status"
       aria-live="polite"
     >
@@ -66,23 +72,47 @@ function PageLoading({ fullScreen = false }) {
   );
 }
 
-const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } =
-    useAuth();
+function DeferredClientUi() {
+  const [mounted, setMounted] = useState(false);
 
-  if (isLoadingPublicSettings || isLoadingAuth) {
-    return <PageLoading fullScreen />;
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setMounted(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  if (!mounted) return null;
+
+  return (
+    <>
+      <Suspense fallback={null}>
+        <CookieConsent />
+      </Suspense>
+      <Suspense fallback={null}>
+        <Toaster />
+      </Suspense>
+    </>
+  );
+}
+
+const AppRoutes = () => {
+  const { isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const resolvedAuthError = isLoadingPublicSettings ? null : authError;
+
+  useEffect(() => {
+    if (resolvedAuthError?.type === "auth_required") {
+      void navigateToLogin(window.location.href);
+    }
+  }, [navigateToLogin, resolvedAuthError]);
+
+  if (resolvedAuthError?.type === "user_not_registered") {
+    return (
+      <Suspense fallback={<PageLoading />}>
+        <UserNotRegisteredError />
+      </Suspense>
+    );
   }
 
-  if (authError) {
-    if (authError.type === "user_not_registered") {
-      return <UserNotRegisteredError />;
-    }
-    if (authError.type === "auth_required") {
-      navigateToLogin();
-      return null;
-    }
-  }
+  if (resolvedAuthError?.type === "auth_required") return null;
 
   return (
     <Suspense fallback={<PageLoading />}>
@@ -161,10 +191,9 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <ScrollToTop />
-          <CookieConsent />
-          <AuthenticatedApp />
+          <AppRoutes />
+          <DeferredClientUi />
         </Router>
-        <Toaster />
       </QueryClientProvider>
     </AuthProvider>
   );

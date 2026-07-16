@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
-import { base44 } from "@/api/base44Client";
 
 const Spinner = () => (
   <div
@@ -17,12 +16,17 @@ const Spinner = () => (
 );
 
 export default function RequireAuth() {
-  const { isAuthenticated, isLoadingAuth, authChecked } = useAuth();
+  const {
+    isAuthenticated,
+    isLoadingAuth,
+    authChecked,
+    navigateToLogin,
+  } = useAuth();
   const shouldRedirect = authChecked && !isLoadingAuth && !isAuthenticated;
 
   useEffect(() => {
-    if (shouldRedirect) base44.auth.redirectToLogin(window.location.href);
-  }, [shouldRedirect]);
+    if (shouldRedirect) void navigateToLogin(window.location.href);
+  }, [navigateToLogin, shouldRedirect]);
 
   if (isLoadingAuth || !authChecked || shouldRedirect) return <Spinner />;
   return <Outlet />;
