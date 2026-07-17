@@ -92,6 +92,32 @@ export default function Hero() {
       />
       <div
         aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-50"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, rgba(52,48,43,0.16) 0 0.75px, transparent 1px)",
+          backgroundSize: "24px 24px",
+          maskImage:
+            "radial-gradient(ellipse 58% 48% at 50% 40%, transparent 0%, transparent 42%, rgba(0,0,0,0.16) 62%, rgba(0,0,0,0.74) 84%, black 100%)",
+          WebkitMaskImage:
+            "radial-gradient(ellipse 58% 48% at 50% 40%, transparent 0%, transparent 42%, rgba(0,0,0,0.16) 62%, rgba(0,0,0,0.74) 84%, black 100%)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] opacity-[0.42]"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, rgba(52,48,43,0.15) 0 0.7px, transparent 0.95px)",
+          backgroundSize: "20px 20px",
+          maskImage:
+            "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.12) 28%, black 100%)",
+          WebkitMaskImage:
+            "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.12) 28%, black 100%)",
+        }}
+      />
+      <div
+        aria-hidden
         className="pointer-events-none absolute inset-0"
         style={{
           background: "radial-gradient(ellipse 80% 50% at 50% 30%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 70%)",
