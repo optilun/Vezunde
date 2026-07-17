@@ -46,22 +46,22 @@ const AdminDataRepairs = lazy(
 
 const SIMPLE_HEADERS = {
   adauga:
-    "Creeaza o organizatie si prima locatie sau adauga manual un profil nou in director, cu provenienta obligatorie.",
+    "Creează o organizație și prima locație sau adaugă manual un profil nou în director, cu proveniență obligatorie.",
   profiluri:
-    "Gestioneaza locatiile din director, statusul de incredere si eventualele revizuiri de migrare.",
+    "Gestionează locațiile din director, statusul de încredere și eventualele revizuiri de migrare.",
   workspace_reviews:
-    "Analizeaza intr-un singur loc cererile trimise de furnizori, locatiile noi si profilurile specialistilor.",
+    "Analizează într-un singur loc cererile trimise de furnizori, locațiile noi și profilurile specialiștilor.",
   support_tickets:
-    "Gestioneaza tichetele de suport si feedback-ul trimis din conturile utilizatorilor, din acelasi centru administrativ.",
+    "Gestionează tichetele de suport și feedback-ul trimis din conturile utilizatorilor, din același centru administrativ.",
   servicii:
-    "Gestioneaza serviciile existente, nivelul de confirmare si eligibilitatea pentru rezultate.",
-  revendicari: "Analizeaza cererile de revendicare a profilurilor.",
-  geografie: "Sursa canonica de geografie VIASEE si importul SIRUTA.",
-  audit: "Istoricul actiunilor administrative si al modificarilor aplicate.",
+    "Gestionează serviciile existente, nivelul de confirmare și eligibilitatea pentru rezultate.",
+  revendicari: "Analizează cererile de revendicare a profilurilor.",
+  geografie: "Sursa canonică de geografie VIASEE și importul SIRUTA.",
+  audit: "Istoricul acțiunilor administrative și al modificărilor aplicate.",
   data_integrity:
-    "Detecteaza neconcordantele si permite numai reparatii deterministe, previzualizate si confirmate individual.",
+    "Detectează neconcordanțele și permite numai reparații deterministe, previzualizate și confirmate individual.",
   contract_geo:
-    "Verificari de regresie pentru contractul geografic. Instrument intern.",
+    "Verificări de regresie pentru contractul geografic. Instrument intern.",
 };
 
 const LEGACY_TAB_REDIRECTS = {
@@ -77,7 +77,7 @@ function SectionLoading() {
       className="flex min-h-48 items-center justify-center text-sm text-muted-foreground"
       role="status"
     >
-      Se incarca sectiunea...
+      Se încarcă secțiunea...
     </div>
   );
 }
@@ -114,7 +114,7 @@ export default function AdminDirectoryOps() {
           <div>
             <AdminPageHeader
               title="Research director"
-              subtitle="Colecteaza, verifica si completeaza datele directorului. AI Copilot ramane inclus in acest flux si nu publica automat."
+              subtitle="Colectează, verifică și completează datele directorului. AI Copilot rămâne inclus în acest flux și nu publică automat."
             />
             <div className="mt-6">
               <DirResearch onNavigate={navigate} />
