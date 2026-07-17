@@ -8,6 +8,33 @@ import React, {
 import { appParams } from "@/lib/app-params";
 
 const AuthContext = createContext();
+
+function clearStoredAccessToken() {
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem("base44_access_token");
+    window.localStorage.removeItem("token");
+  }
+  appParams.token = null;
+}
+
+function isExpiredJwt(token) {
+  try {
+    const payloadPart = String(token || "").split(".")[1];
+    if (!payloadPart || typeof window === "undefined") return false;
+    const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const payload = JSON.parse(window.atob(padded));
+    if (!Number.isFinite(Number(payload?.exp))) return false;
+    return Number(payload.exp) * 1000 <= Date.now() + 30000;
+  } catch (_error) {
+    return false;
+  }
+}
+
+if (appParams.token && isExpiredJwt(appParams.token)) {
+  clearStoredAccessToken();
+}
+
 const hasInitialToken = Boolean(appParams.token);
 
 const loadBase44 = async () => {
@@ -76,9 +103,9 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setIsAuthenticated(false);
 
-      // An absent or expired session is a normal unauthenticated state for
-      // public pages. Protected route guards will send the visitor to login.
-      if (error.status !== 401 && error.status !== 403) {
+      if (error.status === 401 || error.status === 403) {
+        clearStoredAccessToken();
+      } else {
         console.error("User auth check failed:", error);
         setAuthError({
           type: "unknown",
@@ -95,8 +122,6 @@ export const AuthProvider = ({ children }) => {
     setIsLoadingPublicSettings(true);
     setAuthError(null);
 
-    // Public settings and an existing authenticated session are independent.
-    // Run them in parallel and never hold public route rendering behind either.
     const authPromise = checkUserAuth();
 
     try {
