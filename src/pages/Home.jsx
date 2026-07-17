@@ -81,7 +81,7 @@ function PinnedTakeover() {
   const sheetY = useTransform(
     scrollYProgress,
     [0, 1],
-    ["calc(100% - 5rem)", "0%"],
+    ["calc(100% - 2rem)", "0%"],
   );
   const heroScale = useTransform(
     scrollYProgress,
