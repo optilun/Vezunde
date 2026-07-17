@@ -92,7 +92,7 @@ export default function Hero() {
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-50"
+        className="pointer-events-none absolute inset-0 opacity-[0.56]"
         style={{
           backgroundImage:
             "radial-gradient(circle, rgba(52,48,43,0.16) 0 0.75px, transparent 1px)",
@@ -105,7 +105,7 @@ export default function Hero() {
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] opacity-[0.42]"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] opacity-[0.47]"
         style={{
           backgroundImage:
             "radial-gradient(circle, rgba(52,48,43,0.15) 0 0.7px, transparent 0.95px)",
