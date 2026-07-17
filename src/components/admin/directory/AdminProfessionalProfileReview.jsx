@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { CheckCircle2, MapPin, MessageSquareMore, RefreshCw, UserRound, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  Loader2,
+  MapPin,
+  MessageSquareMore,
+  RefreshCw,
+  UserRound,
+  XCircle,
+} from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const TYPE_LABELS = {
@@ -35,18 +43,38 @@ const SPECIALIZATION_LABELS = {
 
 function formatDate(value) {
   if (!value) return "—";
-  try { return new Date(value).toLocaleString("ro-RO"); } catch (_error) { return value; }
+  try {
+    return new Date(value).toLocaleString("ro-RO");
+  } catch (_error) {
+    return value;
+  }
 }
 
 function initials(value) {
-  return String(value || "S").split(" ").filter(Boolean).map((part) => part[0]).slice(0, 2).join("").toUpperCase();
+  return String(value || "S")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
 function ProfilePhoto({ draft, name }) {
   if (draft.profile_photo_url) {
-    return <img src={draft.profile_photo_url} alt={`Fotografie ${draft.public_display_name || name}`} className="h-16 w-16 rounded-2xl border border-border object-cover" />;
+    return (
+      <img
+        src={draft.profile_photo_url}
+        alt={`Fotografie ${draft.public_display_name || name}`}
+        className="h-16 w-16 rounded-2xl border border-border object-cover"
+      />
+    );
   }
-  return <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-border bg-secondary font-heading text-lg font-bold">{initials(draft.public_display_name || name)}</div>;
+  return (
+    <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-border bg-secondary font-heading text-lg font-bold">
+      {initials(draft.public_display_name || name)}
+    </div>
+  );
 }
 
 function ContactItem({ label, value }) {
@@ -63,6 +91,7 @@ export default function AdminProfessionalProfileReview() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState("");
+  const [decisionNotes, setDecisionNotes] = useState({});
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -70,71 +99,123 @@ export default function AdminProfessionalProfileReview() {
     setLoading(true);
     setError("");
     try {
-      const response = await base44.functions.invoke("adminProfessionalProfileReview", { action: "list", status: "pending_review" });
+      const response = await base44.functions.invoke("adminProfessionalProfileReview", {
+        action: "list",
+        status: "pending_review",
+      });
       setItems(response.data?.profiles || []);
-    } catch (err) {
-      setError(err?.response?.data?.error || err?.message || "Nu am putut încărca profilurile profesionale.");
+    } catch (requestError) {
+      setError(
+        requestError?.response?.data?.error
+          || requestError?.message
+          || "Nu am putut încărca profilurile profesionale.",
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
+
+  const setDecisionNote = (profileId, value) => {
+    setDecisionNotes((current) => ({ ...current, [profileId]: value }));
+  };
 
   const decide = async (profile, action) => {
-    let note = "";
-    if (action === "request_more_info") {
-      note = window.prompt("Ce informații trebuie completate?") || "";
-      if (!note.trim()) return;
-    }
-    if (action === "reject") {
-      note = window.prompt("Motivul respingerii") || "";
-      if (!note.trim()) return;
-    }
-    if (action === "approve") {
-      note = window.prompt("Notă internă opțională pentru aprobare") || "";
+    const note = String(decisionNotes[profile.id] || "").trim();
+    if ((action === "request_more_info" || action === "reject") && !note) {
+      setMessage("");
+      setError(
+        action === "request_more_info"
+          ? "Completează nota cu informațiile care trebuie adăugate."
+          : "Completează motivul respingerii.",
+      );
+      document.getElementById(`professional-review-note-${profile.id}`)?.focus();
+      return;
     }
 
     setBusyId(profile.id);
     setError("");
     setMessage("");
     try {
-      await base44.functions.invoke("adminProfessionalProfileReview", {
+      const response = await base44.functions.invoke("adminProfessionalProfileReview", {
         action,
         professional_id: profile.id,
         note,
       });
-      setMessage(action === "approve" ? "Profilul specialistului a fost aprobat și publicat." : action === "request_more_info" ? "Au fost solicitate completări." : "Profilul a fost respins.");
+      if (response.data?.error) throw new Error(response.data.error);
+
+      setMessage(
+        action === "approve"
+          ? "Profilul specialistului a fost aprobat și publicat."
+          : action === "request_more_info"
+            ? "Au fost solicitate completări."
+            : "Profilul a fost respins.",
+      );
+      setDecisionNotes((current) => {
+        const next = { ...current };
+        delete next[profile.id];
+        return next;
+      });
       await load();
-    } catch (err) {
-      setError(err?.response?.data?.error || err?.message || "Decizia nu a putut fi aplicată.");
+    } catch (requestError) {
+      setError(
+        requestError?.response?.data?.error
+          || requestError?.message
+          || "Decizia nu a putut fi aplicată.",
+      );
     } finally {
       setBusyId("");
     }
   };
+
+  const anyBusy = Boolean(busyId);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 rounded-3xl border border-border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-heading text-lg font-bold">Profiluri de specialiști în verificare</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Aprobarea publică identitatea profesională și asocierile eligibile cu locațiile.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Aprobarea publică identitatea profesională și asocierile eligibile cu locațiile.
+          </p>
         </div>
-        <button onClick={load} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary disabled:opacity-50">
+        <button
+          type="button"
+          onClick={load}
+          disabled={loading || anyBusy}
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary disabled:opacity-50"
+        >
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Reîncarcă
         </button>
       </div>
 
-      {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
-      {message && <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{message}</div>}
+      {error && (
+        <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {error}
+        </div>
+      )}
+      {message && (
+        <div aria-live="polite" className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          {message}
+        </div>
+      )}
 
-      {loading && <div className="rounded-3xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">Se încarcă profilurile...</div>}
+      {loading && (
+        <div className="rounded-3xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+          Se încarcă profilurile...
+        </div>
+      )}
 
       {!loading && items.length === 0 && (
         <div className="rounded-3xl border border-dashed border-border bg-card p-10 text-center">
           <UserRound className="mx-auto h-7 w-7 text-muted-foreground" />
           <p className="mt-3 text-sm font-semibold">Nu există profiluri de specialiști în verificare.</p>
-          <p className="mt-1 text-xs text-muted-foreground">Profilurile apar aici după ce specialistul își completează datele și le trimite spre review.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Profilurile apar aici după ce specialistul își completează datele și le trimite spre review.
+          </p>
         </div>
       )}
 
@@ -143,30 +224,46 @@ export default function AdminProfessionalProfileReview() {
           const draft = profile.draft || {};
           const locations = profile.assignments || [];
           const busy = busyId === profile.id;
+          const noteId = `professional-review-note-${profile.id}`;
+
           return (
-            <article key={profile.id} className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+            <article key={profile.id} className="rounded-3xl border border-border bg-card p-4 shadow-sm sm:p-5">
               <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start gap-4">
                     <ProfilePhoto draft={draft} name={profile.full_name} />
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-heading text-lg font-bold">{draft.public_display_name || profile.full_name}</h3>
-                        <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">{TYPE_LABELS[profile.professional_type] || profile.professional_type}</span>
+                        <h3 className="font-heading text-lg font-bold">
+                          {draft.public_display_name || profile.full_name}
+                        </h3>
+                        <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">
+                          {TYPE_LABELS[profile.professional_type] || profile.professional_type}
+                        </span>
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground">Identitate de cont: {profile.full_name || "—"}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">Trimis: {formatDate(profile.submitted_at)} · Completitudine: {profile.profile_completeness || 0}%</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Identitate de cont: {profile.full_name || "—"}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Trimis: {formatDate(profile.submitted_at)} · Completitudine: {profile.profile_completeness || 0}%
+                      </p>
                     </div>
                   </div>
 
                   <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(260px,0.7fr)]">
                     <div>
                       <div className="text-xs font-semibold text-muted-foreground">Descriere profesională</div>
-                      <p className="mt-2 whitespace-pre-line text-sm leading-relaxed">{draft.professional_bio || "Descriere necompletată."}</p>
+                      <p className="mt-2 whitespace-pre-line text-sm leading-relaxed">
+                        {draft.professional_bio || "Descriere necompletată."}
+                      </p>
 
                       <div className="mt-4 text-xs font-semibold text-muted-foreground">Domenii profesionale</div>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {(draft.specializations || []).map((key) => <span key={key} className="rounded-full border border-border bg-secondary/45 px-2.5 py-1 text-xs font-medium">{SPECIALIZATION_LABELS[key] || key}</span>)}
+                        {(draft.specializations || []).map((key) => (
+                          <span key={key} className="rounded-full border border-border bg-secondary/45 px-2.5 py-1 text-xs font-medium">
+                            {SPECIALIZATION_LABELS[key] || key}
+                          </span>
+                        ))}
                       </div>
                     </div>
 
@@ -177,7 +274,11 @@ export default function AdminProfessionalProfileReview() {
                       <ContactItem label="LinkedIn" value={draft.linkedin_url} />
                       <ContactItem label="Facebook" value={draft.facebook_url} />
                       <ContactItem label="Instagram" value={draft.instagram_url} />
-                      {draft.accepts_independent_requests && <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">Solicită activarea cererilor independente.</div>}
+                      {draft.accepts_independent_requests && (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+                          Solicită activarea cererilor independente.
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -188,30 +289,71 @@ export default function AdminProfessionalProfileReview() {
                         <div key={assignment.id} className="rounded-2xl border border-border bg-secondary/30 px-3 py-3">
                           <div className="flex items-start gap-2">
                             <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                            <div>
-                              <div className="text-sm font-semibold">{assignment.location?.name || "Locație indisponibilă"}</div>
-                              <div className="mt-0.5 text-xs text-muted-foreground">{[assignment.location?.city, assignment.location?.address].filter(Boolean).join(" · ") || "Adresă nepublicată"}</div>
-                              <div className="mt-1 text-[11px] text-muted-foreground">Asociere: {assignment.active_status === "activ" ? "activă" : "inactivă"} · locație: {assignment.location?.profile_control_status || "necunoscut"}</div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold">
+                                {assignment.location?.name || "Locație indisponibilă"}
+                              </div>
+                              <div className="mt-0.5 text-xs text-muted-foreground">
+                                {[assignment.location?.city, assignment.location?.address].filter(Boolean).join(" · ") || "Adresă nepublicată"}
+                              </div>
+                              <div className="mt-1 text-[11px] text-muted-foreground">
+                                Asociere: {assignment.active_status === "activ" ? "activă" : "inactivă"} · locație: {assignment.location?.profile_control_status || "necunoscut"}
+                              </div>
                             </div>
                           </div>
                         </div>
                       ))}
-                      {locations.length === 0 && <p className="text-sm text-muted-foreground">Nu există nicio locație asociată.</p>}
+                      {locations.length === 0 && (
+                        <p className="text-sm text-muted-foreground">Nu există nicio locație asociată.</p>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex shrink-0 flex-wrap gap-2 xl:w-48 xl:flex-col">
-                  <button onClick={() => decide(profile, "approve")} disabled={busy} className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-50">
-                    <CheckCircle2 className="h-4 w-4" /> Aprobă
-                  </button>
-                  <button onClick={() => decide(profile, "request_more_info")} disabled={busy} className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50">
-                    <MessageSquareMore className="h-4 w-4" /> Cere completări
-                  </button>
-                  <button onClick={() => decide(profile, "reject")} disabled={busy} className="inline-flex items-center justify-center gap-2 rounded-full border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">
-                    <XCircle className="h-4 w-4" /> Respinge
-                  </button>
-                </div>
+                <aside className="w-full shrink-0 rounded-2xl border border-border bg-secondary/20 p-3 xl:w-64">
+                  <label htmlFor={noteId} className="text-xs font-bold text-foreground">
+                    Nota deciziei
+                  </label>
+                  <textarea
+                    id={noteId}
+                    rows={4}
+                    value={decisionNotes[profile.id] || ""}
+                    onChange={(event) => setDecisionNote(profile.id, event.target.value)}
+                    placeholder="Scrie ce trebuie completat sau motivul respingerii. Pentru aprobare, nota este opțională."
+                    className="mt-2 w-full resize-y rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-foreground/40"
+                  />
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                    Nota este obligatorie pentru solicitarea de completări și pentru respingere.
+                  </p>
+
+                  <div className="mt-3 grid gap-2">
+                    <button
+                      type="button"
+                      onClick={() => decide(profile, "approve")}
+                      disabled={anyBusy}
+                      className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-50"
+                    >
+                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                      {busy ? "Se procesează..." : "Aprobă"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => decide(profile, "request_more_info")}
+                      disabled={anyBusy}
+                      className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"
+                    >
+                      <MessageSquareMore className="h-4 w-4" /> Cere completări
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => decide(profile, "reject")}
+                      disabled={anyBusy}
+                      className="inline-flex items-center justify-center gap-2 rounded-full border border-red-200 bg-card px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      <XCircle className="h-4 w-4" /> Respinge
+                    </button>
+                  </div>
+                </aside>
               </div>
             </article>
           );
