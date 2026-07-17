@@ -38,6 +38,56 @@ export default function ProviderLocationsWithPhoto(props) {
     const root = containerRef.current;
     if (!root) return;
 
+    const layoutCompactMap = () => {
+      const editButton = Array.from(root.querySelectorAll("button")).find(
+        (button) =>
+          String(button.textContent || "").includes("Editeaza datele"),
+      );
+      const summarySection = editButton?.closest("section");
+      if (!summarySection) return;
+
+      summarySection.classList.add("vezunde-location-summary");
+      summarySection.firstElementChild?.classList.add(
+        "vezunde-location-summary-header",
+      );
+
+      const detailGrid = Array.from(summarySection.children).find((element) => {
+        const text = String(element.textContent || "");
+        return (
+          element.classList.contains("grid") &&
+          text.includes("Adresa") &&
+          text.includes("Telefon") &&
+          text.includes("Email public")
+        );
+      });
+      detailGrid?.classList.add("vezunde-location-summary-details");
+
+      const mapToggle = Array.from(
+        summarySection.querySelectorAll("button"),
+      ).find((button) => {
+        const text = String(button.textContent || "");
+        return text.includes("Vezi pe harta") || text.includes("Ascunde harta");
+      });
+
+      if (mapToggle) {
+        mapToggle.classList.add("vezunde-location-map-toggle");
+        mapToggle.parentElement?.classList.add(
+          "vezunde-location-map-actions",
+        );
+        if (
+          String(mapToggle.textContent || "").includes("Vezi pe harta") &&
+          mapToggle.dataset.autoOpened !== "true"
+        ) {
+          mapToggle.dataset.autoOpened = "true";
+          window.requestAnimationFrame(() => mapToggle.click());
+        }
+      }
+
+      const mapFrame = summarySection.querySelector('iframe[title^="Harta "]');
+      const mapPanel = mapFrame?.parentElement?.parentElement;
+      mapPanel?.classList.add("vezunde-location-map");
+    };
+
     const findTarget = () => {
       const sections = Array.from(root.querySelectorAll("section"));
       const configureSection = sections.find((section) => {
@@ -65,6 +115,8 @@ export default function ProviderLocationsWithPhoto(props) {
         if (grid) grid.classList.add("md:grid-cols-3");
         setPortalTarget(null);
       }
+
+      layoutCompactMap();
     };
 
     const interceptAddLocation = (event) => {
@@ -84,20 +136,6 @@ export default function ProviderLocationsWithPhoto(props) {
       observer.disconnect();
     };
   }, [canAddLocation, canManagePhoto, selectedLocationId]);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      const root = containerRef.current;
-      if (!root) return;
-      const mapToggle = Array.from(root.querySelectorAll("button")).find(
-        (button) =>
-          String(button.textContent || "").includes("Vezi pe harta"),
-      );
-      mapToggle?.click();
-    });
-
-    return () => window.cancelAnimationFrame(frame);
-  }, [selectedLocationId]);
 
   useEffect(() => {
     if (!canManagePhoto) setPhotoOpen(false);
@@ -142,9 +180,46 @@ export default function ProviderLocationsWithPhoto(props) {
         .vezunde-location-modules > button > div > div:last-child > div:first-child { min-height: 40px; align-items: center; }
         .vezunde-location-modules > button > div > div:last-child > p { min-height: 64px; }
         .vezunde-location-modules > button > div > div:last-child > div:last-child { margin-top: auto; padding-top: 12px; }
+
+        .vezunde-location-map-toggle { display: none !important; }
+        .vezunde-location-map {
+          margin-top: 1rem !important;
+          overflow: hidden;
+        }
+        .vezunde-location-map > div { height: 190px !important; }
+
+        @media (min-width: 1024px) {
+          .vezunde-location-summary {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 340px;
+            column-gap: 2rem;
+            align-items: start;
+          }
+          .vezunde-location-summary > * { grid-column: 1; }
+          .vezunde-location-summary > .vezunde-location-summary-header {
+            grid-column: 1 / -1;
+          }
+          .vezunde-location-summary > .vezunde-location-summary-details {
+            margin-top: 1rem !important;
+          }
+          .vezunde-location-summary > .vezunde-location-map-actions {
+            margin-top: 0.25rem !important;
+          }
+          .vezunde-location-summary > .vezunde-location-map {
+            grid-column: 2;
+            grid-row: 2 / span 4;
+            width: 100%;
+            margin-top: 1.25rem !important;
+          }
+          .vezunde-location-summary > .vezunde-location-map > div {
+            height: 210px !important;
+          }
+        }
+
         @media (max-width: 639px) {
           .vezunde-location-modules > button > div > div:last-child > p { min-height: 0; }
           .vezunde-location-modules > button > div > div:last-child > div:first-child { min-height: 0; }
+          .vezunde-location-map > div { height: 180px !important; }
         }
       `}</style>
 
