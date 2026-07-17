@@ -264,11 +264,11 @@ function LocationSummaryCard({ organizationName, logoPreview, location, location
 
   return (
     <section className="overflow-hidden rounded-[28px] border border-[#171717]/15 bg-[#f8f4ec] shadow-[0_14px_36px_rgba(23,23,23,0.06)]">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#171717]/10 bg-[#efe7f1] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#171717]/10 bg-[#fbfaf7] p-4">
         <div className="flex min-w-0 items-center gap-3">
           <BrandLogo name={organizationName} photoUrl={logoPreview} small />
           <div className="min-w-0">
-            <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#735c80]">Organizație + locație</div>
+            <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#77736b]">Organizație + locație</div>
             <div className="truncate text-sm font-bold">{locationName}</div>
             <div className="mt-0.5 truncate text-xs text-muted-foreground">{locality}</div>
           </div>
@@ -282,7 +282,7 @@ function LocationSummaryCard({ organizationName, logoPreview, location, location
         {photoLoading ? <div className="flex h-full items-center justify-center text-xs text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă fotografia...</div> : photoUrl ? <><img src={photoUrl} alt={`Fotografie ${locationName}`} className="h-full w-full object-cover" />{photoStatusLabel && <span className="absolute bottom-3 left-3 rounded-full border border-amber-200 bg-amber-50/95 px-3 py-1 text-[10px] font-bold text-amber-900 shadow-sm backdrop-blur-sm">{photoStatusLabel}</span>}</> : <div className="flex h-full flex-col items-center justify-center px-5 text-center text-muted-foreground"><ImagePlus className="h-7 w-7" /><p className="mt-2 text-xs font-semibold">Fotografia locației se adaugă din Locații</p></div>}
       </div>
       <div className="flex items-center justify-between gap-3 px-4 py-3 text-[11px] text-muted-foreground"><span>{locations.length || 1} {locations.length === 1 ? "punct de lucru asociat" : "puncte de lucru asociate"}</span><span>Fotografie separată de logo</span></div>
-      {otherLocations.length > 0 && <div className="border-t border-border">{otherLocations.slice(0, 3).map((item) => <button key={item.id} type="button" onClick={() => onManageLocation(item.id)} className="flex min-h-12 w-full items-center gap-3 border-b border-border/70 px-4 py-3 text-left last:border-b-0 hover:bg-white/70"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#dfe8f5]"><MapPin className="h-3.5 w-3.5" /></div><div className="min-w-0 flex-1"><div className="truncate text-xs font-semibold">{item.public_display_name || item.name || "Locație"}</div><div className="mt-0.5 truncate text-[10px] text-muted-foreground">{item.locality_name || item.city || "Localitate lipsă"}</div></div></button>)}{otherLocations.length > 3 && <button type="button" onClick={onManageAll} className="w-full px-4 py-3 text-xs font-semibold hover:bg-white/70">Vezi toate cele {locations.length} locații</button>}</div>}
+      {otherLocations.length > 0 && <div className="border-t border-border">{otherLocations.slice(0, 3).map((item) => <button key={item.id} type="button" onClick={() => onManageLocation(item.id)} className="flex min-h-12 w-full items-center gap-3 border-b border-border/70 px-4 py-3 text-left last:border-b-0 hover:bg-white/70"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#efece5]"><MapPin className="h-3.5 w-3.5" /></div><div className="min-w-0 flex-1"><div className="truncate text-xs font-semibold">{item.public_display_name || item.name || "Locație"}</div><div className="mt-0.5 truncate text-[10px] text-muted-foreground">{item.locality_name || item.city || "Localitate lipsă"}</div></div></button>)}{otherLocations.length > 3 && <button type="button" onClick={onManageAll} className="w-full px-4 py-3 text-xs font-semibold hover:bg-white/70">Vezi toate cele {locations.length} locații</button>}</div>}
     </section>
   );
 }
@@ -448,7 +448,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
         <div className="pointer-events-none absolute right-0 top-0 hidden h-full w-56 sm:block" aria-hidden="true">
           <div className="absolute right-8 top-1/2 h-px w-36 bg-[#171717]/30" />
           <div className="absolute right-8 top-[calc(50%_-_5px)] h-2.5 w-2.5 bg-[#171717]" />
-          <div className="absolute right-28 top-[calc(50%_-_36px)] h-[72px] w-[72px] rounded-full border border-[#345bc8]/25 bg-[#dfe8f5]/70" />
+          <div className="absolute right-28 top-[calc(50%_-_36px)] h-[72px] w-[72px] rounded-full border border-[#171717]/15 bg-[#efece5]" />
         </div>
         <div className="relative pr-0 sm:pr-52">
           <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#345bc8]">Identitate publică · organizație</div>
@@ -475,13 +475,13 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
           )}
 
           <section className="overflow-hidden rounded-[28px] border border-[#171717]/15 bg-white shadow-[0_14px_40px_rgba(23,23,23,0.055)]">
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#171717]/12 bg-[#eef3f7] px-5 py-5 sm:px-7">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#171717]/12 bg-[#f8f4ec] px-5 py-5 sm:px-7">
               <div>
-                <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[#345bc8]">Profil de brand</div>
+                <div className="inline-flex border-l-2 border-[#345bc8] pl-2 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[#5d5a54]">Profil de brand</div>
                 <h2 className="mt-1 text-lg font-bold tracking-[-0.025em]">Informații publice generale</h2>
                 <p className="mt-1 max-w-2xl text-xs leading-relaxed text-[#686c73]">Câmpurile afișate folosesc datele aprobate sau conținutul draftului activ. Datele locației nu sunt introduse automat.</p>
               </div>
-              {draft && <span className="rounded-full border border-[#345bc8]/15 bg-white/80 px-3 py-1.5 text-[11px] font-semibold text-[#345bc8]">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}
+              {draft && <span className="rounded-full border border-[#171717]/10 bg-white/80 px-3 py-1.5 text-[11px] font-semibold text-[#5d5a54]">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}
             </div>
 
             <div className="space-y-6 px-5 py-6 sm:px-7 sm:py-7">
@@ -492,7 +492,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
               </div>
 
               <div className="relative overflow-hidden rounded-[20px] border border-[#171717]/10 bg-[#f8f4ec] p-4 sm:p-5">
-                <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full border border-[#735c80]/20 bg-[#efe7f1]" />
+                <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full border border-[#171717]/10 bg-[#efece5]" />
                 <div className="relative flex items-center gap-4">
                   <label className="relative block shrink-0 cursor-pointer" title={logoPreview ? "Schimbă logo-ul" : "Adaugă logo"}>
                     <BrandLogo name={values.public_display_name || organizationName} photoUrl={logoPreview} pending={hasPendingLogo} small />
@@ -541,8 +541,8 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
               </div>
             </div>
 
-            <div className="border-t border-[#171717]/12 bg-[#eef3f7] px-5 py-5 sm:px-7">
-              <div className="mb-4 rounded-[16px] border border-[#345bc8]/15 bg-white/65 px-4 py-3 text-xs leading-relaxed text-[#44536e]">Propunerea este comparată cu profilul actual. Aprobarea actualizează numai informațiile organizației și nu modifică datele locației.</div>
+            <div className="border-t border-[#171717]/12 bg-[#f8f4ec] px-5 py-5 sm:px-7">
+              <div className="mb-4 rounded-[16px] border border-[#171717]/10 bg-white/70 px-4 py-3 text-xs leading-relaxed text-[#69655d]">Propunerea este comparată cu profilul actual. Aprobarea actualizează numai informațiile organizației și nu modifică datele locației.</div>
               {message && <p className="mb-4 rounded-[16px] border border-[#171717]/10 bg-white/80 px-4 py-3 text-xs leading-relaxed text-[#69655d]">{message}</p>}
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
                 <button type="button" disabled={saving || pendingReview} onClick={saveDraft} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#171717]/20 bg-white px-5 text-sm font-semibold transition-colors hover:bg-[#f8f4ec] disabled:opacity-50"><Save className="h-4 w-4" /> Salvează draftul</button>
