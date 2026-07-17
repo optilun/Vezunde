@@ -1,10 +1,107 @@
 /* Keep the location editor focused on data entry. The map remains on the location page. */
 aside[aria-label="Editeaza datele locatiei"] {
-  max-width: 48rem !important;
+  max-width: 56rem !important;
 }
 
 aside[aria-label="Editeaza datele locatiei"] > div:nth-child(2) > div {
-  display: block !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  grid-template-areas:
+    "pending pending"
+    "identity-heading identity-heading"
+    "name address"
+    "contact position"
+    "warning warning" !important;
+  column-gap: 1.5rem !important;
+  row-gap: 0 !important;
+  align-items: start !important;
+}
+
+aside[aria-label="Editeaza datele locatiei"]
+  > div:nth-child(2)
+  > div
+  > * {
+  margin-top: 0 !important;
+}
+
+aside[aria-label="Editeaza datele locatiei"]
+  > div:nth-child(2)
+  > div
+  > div[class*="border-blue-200"] {
+  grid-area: pending;
+  margin-bottom: 1rem !important;
+}
+
+aside[aria-label="Editeaza datele locatiei"]
+  > div:nth-child(2)
+  > div
+  > section:first-of-type {
+  display: contents !important;
+}
+
+aside[aria-label="Editeaza datele locatiei"]
+  > div:nth-child(2)
+  > div
+  > section:first-of-type
+  > div:first-child {
+  grid-area: identity-heading;
+  margin-bottom: 1rem !important;
+  padding-bottom: 1rem !important;
+  border-bottom: 1px solid rgb(23 23 23 / 0.12) !important;
+}
+
+aside[aria-label="Editeaza datele locatiei"]
+  > div:nth-child(2)
+  > div
+  > section:first-of-type
+  > div:nth-child(2) {
+  display: contents !important;
+}
+
+aside[aria-label="Editeaza datele locatiei"]
+  > div:nth-child(2)
+  > div
+  > section:first-of-type
+  > div:nth-child(2)
+  > div:first-child {
+  grid-area: name;
+}
+
+aside[aria-label="Editeaza datele locatiei"]
+  > div:nth-child(2)
+  > div
+  > section:first-of-type
+  > div:nth-child(2)
+  > div:nth-child(2) {
+  grid-area: address;
+}
+
+aside[aria-label="Editeaza datele locatiei"]
+  > div:nth-child(2)
+  > div
+  > section:nth-of-type(2) {
+  grid-area: position;
+  margin-top: 1.5rem !important;
+  padding-top: 1.25rem !important;
+  border-top: 1px solid rgb(23 23 23 / 0.12) !important;
+}
+
+aside[aria-label="Editeaza datele locatiei"]
+  > div:nth-child(2)
+  > div
+  > section:nth-of-type(3) {
+  grid-area: contact;
+  margin-top: 1.5rem !important;
+  padding-top: 1.25rem !important;
+  border-top: 1px solid rgb(23 23 23 / 0.12) !important;
+}
+
+aside[aria-label="Editeaza datele locatiei"]
+  > div:nth-child(2)
+  > div
+  > section:nth-of-type(3)
+  > div:last-child {
+  grid-template-columns: minmax(0, 1fr) !important;
 }
 
 aside[aria-label="Editeaza datele locatiei"]
@@ -15,16 +112,42 @@ aside[aria-label="Editeaza datele locatiei"]
 aside[aria-label="Editeaza datele locatiei"]
   > div:nth-child(2)
   > div
-  > div[class*="border-blue-200"],
-aside[aria-label="Editeaza datele locatiei"]
-  > div:nth-child(2)
-  > div
   > div[class*="border-amber-200"] {
+  grid-area: warning;
   margin-top: 1rem !important;
 }
 
 @media (max-width: 767px) {
   aside[aria-label="Editeaza datele locatiei"] {
     max-width: none !important;
+  }
+
+  aside[aria-label="Editeaza datele locatiei"] > div:nth-child(2) > div {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas:
+      "pending"
+      "identity-heading"
+      "name"
+      "contact"
+      "address"
+      "position"
+      "warning" !important;
+  }
+
+  aside[aria-label="Editeaza datele locatiei"]
+    > div:nth-child(2)
+    > div
+    > section:first-of-type
+    > div:nth-child(2)
+    > div:nth-child(2) {
+    margin-top: 1.5rem !important;
+  }
+
+  aside[aria-label="Editeaza datele locatiei"]
+    > div:nth-child(2)
+    > div
+    > section:nth-of-type(2)
+    > div:nth-child(2) {
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 }
