@@ -1,12 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://vezunde-core-link.base44.app/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://vezunde-core-link.base44.app/ghid</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://vezunde-core-link.base44.app/ghid/optician-medical</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://vezunde-core-link.base44.app/ghid/optometrist</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://vezunde-core-link.base44.app/ghid/medic-oftalmolog</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://vezunde-core-link.base44.app/ghid/optometrist-optician-oftalmolog</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
-  <url><loc>https://vezunde-core-link.base44.app/cum-verificam-informatiile</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://vezunde-core-link.base44.app/pentru-specialisti</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://vezunde-core-link.base44.app/</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/optician-medical</loc><lastmod>2026-07-16</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/optometrist</loc><lastmod>2026-07-16</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/medic-oftalmolog</loc><lastmod>2026-07-16</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/optometrist-optician-oftalmolog</loc><lastmod>2026-07-16</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/consultatii/consult-oftalmologic</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/consultatii/control-vedere</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/consultatii/control-vedere-copii</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/consultatii/examen-fund-de-ochi</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/investigatii/oct</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/investigatii/camp-vizual</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/investigatii/tonometrie</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/investigatii/topografie-corneana</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/vedere/miopie</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/vedere/hipermetropie</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/vedere/astigmatism</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/vedere/presbiopie</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/afectiuni/cataracta</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/afectiuni/glaucom</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/ochelari/lentile-progresive</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/ochelari/lentile-de-contact</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/ochelari/reparatii-ochelari</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/ghid/ochelari/ochelari-pentru-calculator</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/cum-verificam-informatiile</loc><lastmod>2026-07-17</lastmod></url>
+  <url><loc>https://vezunde-core-link.base44.app/pentru-specialisti</loc><lastmod>2026-07-16</lastmod></url>
 </urlset>
 

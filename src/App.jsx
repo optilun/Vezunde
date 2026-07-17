@@ -34,6 +34,7 @@ const Partners = lazy(() => import("./pages/Partners"));
 const AddOrClaim = lazy(() => import("./pages/AddOrClaim"));
 const GuideIndex = lazy(() => import("./pages/GuideIndex"));
 const SpecialistGuide = lazy(() => import("./pages/SpecialistGuide"));
+const TopicGuide = lazy(() => import("./pages/TopicGuide"));
 const SpecialistComparison = lazy(
   () => import("./pages/SpecialistComparison"),
 );
@@ -152,6 +153,7 @@ const AppRoutes = () => {
             path="/ghid/optometrist-optician-oftalmolog"
             element={<SpecialistComparison />}
           />
+          <Route path="/ghid/:category/:slug" element={<TopicGuide />} />
           <Route path="/ghid/:slug" element={<SpecialistGuide />} />
           <Route
             path="/cum-verificam-informatiile"

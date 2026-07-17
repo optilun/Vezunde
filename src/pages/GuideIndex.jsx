@@ -7,6 +7,11 @@ import {
   TechnicalMark,
 } from "@/components/guides/GuideCanvas";
 import { GUIDE_ORDER, SPECIALIST_GUIDES } from "@/data/specialistGuides";
+import {
+  getGuidesByGroup,
+  getTopicPath,
+  TOPIC_GROUPS,
+} from "@/data/topicGuides";
 
 export default function GuideIndex() {
   return (
@@ -116,6 +121,84 @@ export default function GuideIndex() {
           <span className="absolute left-0 top-1/2 h-px w-full bg-[#171717]" />
           <span className="absolute left-1/2 top-0 h-full w-px bg-[#171717]" />
           <span className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 bg-[#171717]" />
+        </div>
+      </section>
+
+      <section aria-labelledby="guide-topics" className="mt-20 sm:mt-28">
+        <div className="grid gap-7 border-b-[3px] border-[#171717] pb-7 lg:grid-cols-[1fr_0.75fr] lg:items-end">
+          <div>
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#6f6a63]">
+              02–06 · Biblioteca VIASEE
+            </p>
+            <h2 id="guide-topics" className="mt-4 max-w-4xl text-[clamp(2.8rem,6vw,6.4rem)] font-extrabold leading-[0.92] tracking-[-0.065em]">
+              Înțelege înainte să alegi.
+            </h2>
+          </div>
+          <p className="max-w-xl text-base leading-7 text-[#5f5a53] sm:text-lg">
+            Consultații, investigații, dioptrii, afecțiuni și soluții optice — explicate direct, cu limite clare și surse consultate.
+          </p>
+        </div>
+
+        <div>
+          {TOPIC_GROUPS.map((group) => {
+            const guides = getGuidesByGroup(group.key);
+            return (
+              <section
+                key={group.key}
+                aria-labelledby={`grup-${group.key}`}
+                className="grid border-b-[3px] border-[#171717] lg:grid-cols-[0.68fr_1.32fr]"
+              >
+                <div className="py-8 lg:border-r lg:border-[#171717] lg:pr-10">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="h-3 w-3 bg-[#171717]"
+                      aria-hidden="true"
+                      style={{ boxShadow: `0 0 0 5px ${group.tint}` }}
+                    />
+                    <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#6f6a63]">
+                      {group.number}
+                    </span>
+                  </div>
+                  <h3 id={`grup-${group.key}`} className="mt-5 max-w-md text-3xl font-extrabold tracking-[-0.045em] sm:text-5xl">
+                    {group.label}
+                  </h3>
+                  <p className="mt-5 max-w-md text-sm leading-6 text-[#5f5a53] sm:text-base sm:leading-7">
+                    {group.description}
+                  </p>
+                </div>
+
+                <div className="grid sm:grid-cols-2 lg:pl-10">
+                  {guides.map((guide, guideIndex) => (
+                    <Link
+                      key={`${guide.category}/${guide.slug}`}
+                      to={getTopicPath(guide)}
+                      className={`group relative flex min-h-40 flex-col justify-between border-[#171717]/35 p-6 transition-colors hover:bg-white/45 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#171717] sm:p-7 ${
+                        guideIndex % 2 ? "sm:border-l" : ""
+                      } ${guideIndex >= 2 ? "border-t" : ""} ${
+                        guideIndex === 1 ? "border-t sm:border-t-0" : ""
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-5">
+                        <span className="font-mono text-[10px] tracking-[0.18em] text-[#6f6a63]">
+                          {guide.number}
+                        </span>
+                        <span
+                          aria-hidden="true"
+                          className="h-2.5 w-2.5 bg-[#171717] transition-transform group-hover:rotate-45"
+                        />
+                      </div>
+                      <div className="mt-10 flex items-end justify-between gap-5">
+                        <h4 className="text-2xl font-extrabold tracking-[-0.04em] sm:text-3xl">
+                          {guide.shortTitle}
+                        </h4>
+                        <ArrowUpRight className="h-5 w-5 shrink-0 transition-transform group-hover:-translate-y-1 group-hover:translate-x-1" aria-hidden="true" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
       </section>
 
