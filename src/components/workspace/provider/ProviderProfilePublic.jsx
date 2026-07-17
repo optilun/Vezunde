@@ -18,7 +18,7 @@ import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
 import SocialBrandIcon from "@/components/common/SocialBrandIcon";
 
-const inputCls = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-foreground/50 disabled:cursor-not-allowed disabled:opacity-60";
+const inputCls = "min-h-11 w-full rounded-[14px] border border-[#d9d4ca] bg-[#fbfaf7] px-4 py-3 text-sm text-[#171717] outline-none transition-[border-color,box-shadow,background-color] focus:border-[#345bc8] focus:bg-white focus:ring-4 focus:ring-[#345bc8]/10 disabled:cursor-not-allowed disabled:opacity-60";
 const DESCRIPTION_MAX_LENGTH = 500;
 const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const LOGO_MAX_BYTES = 4 * 1024 * 1024;
@@ -37,8 +37,8 @@ const PROFILE_FIELDS = [
 ];
 
 const FIELD_LABELS = {
-  public_display_name: "Nume public organizatie",
-  public_description: "Descriere organizatie",
+  public_display_name: "Nume public organizație",
+  public_description: "Descriere organizație",
   public_phone: "Telefon general",
   public_email: "Email general",
   website_url: "Website",
@@ -95,7 +95,7 @@ function readImage(file) {
     };
     image.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("Imaginea nu poate fi citita."));
+      reject(new Error("Imaginea nu poate fi citită."));
     };
     image.src = url;
   });
@@ -141,34 +141,34 @@ async function makeSafeLogoFile(file, organizationId) {
     type = "image/jpeg";
     extension = "jpg";
   }
-  if (blob.size > LOGO_MAX_OPTIMIZED_BYTES) throw new Error("Logo-ul este prea mare dupa optimizare. Incearca o imagine mai simpla.");
+  if (blob.size > LOGO_MAX_OPTIMIZED_BYTES) throw new Error("Logo-ul este prea mare după optimizare. Încearcă o imagine mai simplă.");
   return new File([blob], `organization-${organizationId || "logo"}-${Date.now()}.${extension}`, { type, lastModified: Date.now() });
 }
 
 function Field({ label, hint, children }) {
   return (
     <div>
-      <label className="text-xs font-semibold text-muted-foreground">{label}</label>
+      <label className="text-xs font-semibold text-[#3f3d38]">{label}</label>
       <div className="mt-1.5">{children}</div>
-      {hint && <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">{hint}</p>}
+      {hint && <p className="mt-1.5 text-[11px] leading-relaxed text-[#77736b]">{hint}</p>}
     </div>
   );
 }
 
 function BrandLogo({ name, photoUrl, pending, small = false }) {
-  const sizeClass = small ? "h-14 w-14 rounded-2xl" : "h-16 w-16 rounded-3xl";
+  const sizeClass = small ? "h-14 w-14 rounded-[16px]" : "h-[72px] w-[72px] rounded-[20px]";
   return (
-    <div className={`relative shrink-0 overflow-hidden border border-white/70 bg-white shadow-sm ${sizeClass}`}>
+    <div className={`relative shrink-0 overflow-hidden border border-[#171717]/10 bg-white shadow-[0_8px_24px_rgba(23,23,23,0.08)] ${sizeClass}`}>
       {photoUrl ? <img src={photoUrl} alt={`Logo ${name}`} className="h-full w-full object-contain p-2" /> : <div className="flex h-full w-full items-center justify-center bg-foreground font-heading text-lg font-black text-background">{initials(name)}</div>}
-      {pending && <div className="absolute inset-x-0 bottom-0 bg-amber-500/90 py-0.5 text-center text-[9px] font-bold text-white">review</div>}
+      {pending && <div className="absolute inset-x-0 bottom-0 bg-amber-500/90 py-0.5 text-center text-[9px] font-bold text-white">în verificare</div>}
     </div>
   );
 }
 
 function PreviewMetric({ icon: Icon, label, value, muted }) {
   return (
-    <div className="rounded-2xl border border-white/70 bg-white/75 px-3 py-2.5 shadow-sm backdrop-blur-sm">
-      <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground"><Icon className="h-3 w-3" /> {label}</div>
+    <div className="rounded-[14px] border border-[#171717]/10 bg-[#f8f4ec]/90 px-3 py-3 backdrop-blur-sm">
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#77736b]"><Icon className="h-3 w-3" /> {label}</div>
       <div className={`mt-1 truncate text-xs font-bold ${muted ? "text-muted-foreground" : "text-foreground"}`}>{value}</div>
     </div>
   );
@@ -178,7 +178,7 @@ function SocialPill({ item, url }) {
   const safeUrl = normalizeClientUrl(url);
   if (!safeUrl) return null;
   return (
-    <a href={safeUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-foreground shadow-sm hover:bg-white" title={displayUrl(url)}>
+    <a href={safeUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[#171717]/10 bg-[#f8f4ec]/90 px-3 py-1 text-[11px] font-semibold text-foreground transition-colors hover:bg-white" title={displayUrl(url)}>
       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-background"><SocialBrandIcon platform={item.platform} className="h-3.5 w-3.5" /></span>
       {item.label}
     </a>
@@ -188,28 +188,37 @@ function SocialPill({ item, url }) {
 function OrganizationPreview({ organizationName, profileTypeLabel, verified, values, logoPreview, hasPendingLogo, locationCount }) {
   const socialItems = SOCIAL_ITEMS.filter((item) => normalizeClientUrl(values[item.key]));
   return (
-    <div className="overflow-hidden rounded-[28px] border border-border bg-card shadow-sm">
-      <div className="relative p-5" style={{ background: "linear-gradient(135deg, #fffaf2 0%, #ffffff 46%, #f4f1ea 100%)" }}>
-        <div className="absolute right-0 top-0 h-24 w-24 rounded-bl-full bg-amber-100/60" />
-        <div className="relative flex gap-4">
+    <div className="overflow-hidden rounded-[28px] border border-[#171717]/15 bg-[#eef3f7] shadow-[0_18px_42px_rgba(23,23,23,0.08)]">
+      <div
+        className="relative overflow-hidden p-5 sm:p-6"
+        style={{
+          backgroundColor: "#eef3f7",
+          backgroundImage: "radial-gradient(circle, rgba(23,23,23,0.12) 0.75px, transparent 0.75px), linear-gradient(135deg, rgba(255,255,255,0.5), transparent 52%)",
+          backgroundSize: "18px 18px, 100% 100%",
+        }}
+      >
+        <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full border border-[#345bc8]/20 bg-[#dfe8f5]/70" />
+        <div className="pointer-events-none absolute right-5 top-5 h-3 w-3 bg-[#171717]" />
+        <div className="pointer-events-none absolute right-8 top-[26px] h-px w-16 bg-[#171717]/25" />
+        <div className="relative flex gap-4 pr-8">
           <BrandLogo name={organizationName} photoUrl={logoPreview} pending={hasPendingLogo} />
           <div className="min-w-0">
-            <div className="text-xs font-medium text-muted-foreground">Previzualizare organizatie</div>
-            <h2 className="mt-1 truncate font-heading text-2xl font-extrabold tracking-tight">{values.public_display_name || organizationName}</h2>
+            <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[#5d6470]">Previzualizare organizație</div>
+            <h2 className="mt-1 truncate font-heading text-[1.65rem] font-extrabold tracking-[-0.04em] text-[#171717]">{values.public_display_name || organizationName}</h2>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold shadow-sm">{profileTypeLabel}</span>
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold shadow-sm ${verified ? "bg-green-100 text-green-800" : "bg-white/80 text-foreground"}`}>
-                <ShieldCheck className="h-3.5 w-3.5" /> {verified ? "Locatie verificata" : "Activ"}
+              <span className="rounded-full border border-[#171717]/10 bg-[#f8f4ec]/90 px-3 py-1 text-[11px] font-semibold">{profileTypeLabel}</span>
+              <span className={`inline-flex items-center gap-1.5 rounded-full border border-[#171717]/5 px-3 py-1 text-[11px] font-bold ${verified ? "bg-[#dcead8] text-[#315c3a]" : "bg-[#f8f4ec]/90 text-foreground"}`}>
+                <ShieldCheck className="h-3.5 w-3.5" /> {verified ? "Locație verificată" : "Activ"}
               </span>
-              {hasPendingLogo && <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800 shadow-sm">Logo in review</span>}
+              {hasPendingLogo && <span className="rounded-full bg-[#f1e1b9] px-3 py-1 text-[11px] font-bold text-[#76551f]">Logo în verificare</span>}
             </div>
           </div>
         </div>
-        <p className="relative mt-4 line-clamp-4 text-sm leading-relaxed text-muted-foreground">{values.public_description || "Adauga o descriere generala pentru organizatie. Datele punctelor de lucru se gestioneaza separat."}</p>
+        <p className="relative mt-5 line-clamp-4 border-t border-[#171717]/15 pt-4 text-sm leading-relaxed text-[#5d5a54]">{values.public_description || "Adaugă o descriere generală pentru organizație. Datele punctelor de lucru se gestionează separat."}</p>
         <div className="relative mt-5 grid grid-cols-2 gap-2">
-          <PreviewMetric icon={Store} label="Locatii" value={`${locationCount} ${locationCount === 1 ? "locatie" : "locatii"}`} />
-          <PreviewMetric icon={Phone} label="Telefon" value={values.public_phone || "Lipseste"} muted={!values.public_phone} />
-          <PreviewMetric icon={Mail} label="Email" value={values.public_email || "Lipseste"} muted={!values.public_email} />
+          <PreviewMetric icon={Store} label="Locații" value={`${locationCount} ${locationCount === 1 ? "locație" : "locații"}`} />
+          <PreviewMetric icon={Phone} label="Telefon" value={values.public_phone || "Lipsește"} muted={!values.public_phone} />
+          <PreviewMetric icon={Mail} label="Email" value={values.public_email || "Lipsește"} muted={!values.public_email} />
           <PreviewMetric icon={Globe2} label="Website" value={displayUrl(values.website_url) || "Nepublicat"} muted={!values.website_url} />
         </div>
         {socialItems.length > 0 && <div className="relative mt-4 flex flex-wrap gap-2">{socialItems.map((item) => <SocialPill key={item.key} item={item} url={values[item.key]} />)}</div>}
@@ -222,8 +231,8 @@ function LocationSummaryCard({ organizationName, logoPreview, location, location
   const [photoUrl, setPhotoUrl] = useState("");
   const [photoStatus, setPhotoStatus] = useState("");
   const [photoLoading, setPhotoLoading] = useState(true);
-  const locationName = location?.public_display_name || location?.name || "Locatie";
-  const locality = location?.locality_name || location?.city || "Localitate necompletata";
+  const locationName = location?.public_display_name || location?.name || "Locație";
+  const locality = location?.locality_name || location?.city || "Localitate necompletată";
   const otherLocations = (locations || []).filter((item) => item.id && item.id !== location?.id);
   const inactive = location?.active_status === "inactiva";
 
@@ -251,29 +260,29 @@ function LocationSummaryCard({ organizationName, logoPreview, location, location
     return () => { cancelled = true; };
   }, [location?.id]);
 
-  const photoStatusLabel = { draft: "Draft fotografie", pending_review: "Fotografie in verificare", needs_more_info: "Necesita completari" }[photoStatus] || "";
+  const photoStatusLabel = { draft: "Draft fotografie", pending_review: "Fotografie în verificare", needs_more_info: "Necesită completări" }[photoStatus] || "";
 
   return (
-    <section className="overflow-hidden rounded-[24px] border border-border bg-card shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3 p-4">
+    <section className="overflow-hidden rounded-[28px] border border-[#171717]/15 bg-[#f8f4ec] shadow-[0_14px_36px_rgba(23,23,23,0.06)]">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#171717]/10 bg-[#efe7f1] p-4">
         <div className="flex min-w-0 items-center gap-3">
           <BrandLogo name={organizationName} photoUrl={logoPreview} small />
           <div className="min-w-0">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Logo organizatie + locatie</div>
+            <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#735c80]">Organizație + locație</div>
             <div className="truncate text-sm font-bold">{locationName}</div>
             <div className="mt-0.5 truncate text-xs text-muted-foreground">{locality}</div>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${inactive ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"}`}>{inactive ? "Inactiva" : "Activa"}</span>
-          <button type="button" onClick={() => onManageLocation(location?.id)} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary">Gestioneaza</button>
+          <button type="button" onClick={() => onManageLocation(location?.id)} className="min-h-9 rounded-full border border-[#171717]/15 bg-[#f8f4ec] px-3 text-xs font-semibold transition-colors hover:bg-white">Gestionează</button>
         </div>
       </div>
       <div className="relative aspect-video border-y border-border bg-secondary/35">
-        {photoLoading ? <div className="flex h-full items-center justify-center text-xs text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se incarca fotografia...</div> : photoUrl ? <><img src={photoUrl} alt={`Fotografie ${locationName}`} className="h-full w-full object-cover" />{photoStatusLabel && <span className="absolute bottom-3 left-3 rounded-full border border-amber-200 bg-amber-50/95 px-3 py-1 text-[10px] font-bold text-amber-900 shadow-sm backdrop-blur-sm">{photoStatusLabel}</span>}</> : <div className="flex h-full flex-col items-center justify-center px-5 text-center text-muted-foreground"><ImagePlus className="h-7 w-7" /><p className="mt-2 text-xs font-semibold">Fotografia locatiei se adauga din Locatii</p></div>}
+        {photoLoading ? <div className="flex h-full items-center justify-center text-xs text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă fotografia...</div> : photoUrl ? <><img src={photoUrl} alt={`Fotografie ${locationName}`} className="h-full w-full object-cover" />{photoStatusLabel && <span className="absolute bottom-3 left-3 rounded-full border border-amber-200 bg-amber-50/95 px-3 py-1 text-[10px] font-bold text-amber-900 shadow-sm backdrop-blur-sm">{photoStatusLabel}</span>}</> : <div className="flex h-full flex-col items-center justify-center px-5 text-center text-muted-foreground"><ImagePlus className="h-7 w-7" /><p className="mt-2 text-xs font-semibold">Fotografia locației se adaugă din Locații</p></div>}
       </div>
-      <div className="flex items-center justify-between gap-3 px-4 py-3 text-[11px] text-muted-foreground"><span>{locations.length || 1} {locations.length === 1 ? "punct de lucru asociat" : "puncte de lucru asociate"}</span><span>Fotografie separata de logo</span></div>
-      {otherLocations.length > 0 && <div className="border-t border-border">{otherLocations.slice(0, 3).map((item) => <button key={item.id} type="button" onClick={() => onManageLocation(item.id)} className="flex w-full items-center gap-3 border-b border-border/70 px-4 py-3 text-left last:border-b-0 hover:bg-secondary/30"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-secondary"><MapPin className="h-3.5 w-3.5" /></div><div className="min-w-0 flex-1"><div className="truncate text-xs font-semibold">{item.public_display_name || item.name || "Locatie"}</div><div className="mt-0.5 truncate text-[10px] text-muted-foreground">{item.locality_name || item.city || "Localitate lipsa"}</div></div></button>)}{otherLocations.length > 3 && <button type="button" onClick={onManageAll} className="w-full px-4 py-3 text-xs font-semibold hover:bg-secondary/30">Vezi toate cele {locations.length} locatii</button>}</div>}
+      <div className="flex items-center justify-between gap-3 px-4 py-3 text-[11px] text-muted-foreground"><span>{locations.length || 1} {locations.length === 1 ? "punct de lucru asociat" : "puncte de lucru asociate"}</span><span>Fotografie separată de logo</span></div>
+      {otherLocations.length > 0 && <div className="border-t border-border">{otherLocations.slice(0, 3).map((item) => <button key={item.id} type="button" onClick={() => onManageLocation(item.id)} className="flex min-h-12 w-full items-center gap-3 border-b border-border/70 px-4 py-3 text-left last:border-b-0 hover:bg-white/70"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#dfe8f5]"><MapPin className="h-3.5 w-3.5" /></div><div className="min-w-0 flex-1"><div className="truncate text-xs font-semibold">{item.public_display_name || item.name || "Locație"}</div><div className="mt-0.5 truncate text-[10px] text-muted-foreground">{item.locality_name || item.city || "Localitate lipsă"}</div></div></button>)}{otherLocations.length > 3 && <button type="button" onClick={onManageAll} className="w-full px-4 py-3 text-xs font-semibold hover:bg-white/70">Vezi toate cele {locations.length} locații</button>}</div>}
     </section>
   );
 }
@@ -297,7 +306,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
   const locations = workspace?.locations || overview.locations || [];
   const location = locations.find((item) => item.id === locationId) || (overviewLocation.id ? overviewLocation : null) || locations[0] || {};
   const organizationId = organization.id || location.organization_id || workspace?.organizations?.[0]?.id || "";
-  const organizationName = organization.public_display_name || organization.name || location.organization_name || location.name || "Organizatie";
+  const organizationName = organization.public_display_name || organization.name || location.organization_name || location.name || "Organizație";
   const locationCount = locations.length || 1;
   const profileTypeLabel = PROVIDER_PROFILE_TYPES[organization.organization_type] || PROVIDER_PROFILE_TYPES[location.provider_profile_type] || PROVIDER_TYPES[location.provider_type] || "Profil";
   const pendingProfile = overview.pending_profile_changes || {};
@@ -306,7 +315,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
   const canonicalLogo = organization.logo_url || "";
   const profileState = overview.organization_profile_state || {};
   const fallbackValues = profileState.fallback || overview.organization_profile_fallback_values || {};
-  const fallbackLocationName = profileState.fallback_location_name || location.public_display_name || location.name || "locatia principala";
+  const fallbackLocationName = profileState.fallback_location_name || location.public_display_name || location.name || "locația principală";
   const baseValues = useMemo(() => canonicalValues(organization), [organization]);
 
   const [values, setValues] = useState(baseValues);
@@ -349,7 +358,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
       for (const key of PROFILE_FIELDS) if (!String(next[key] || "").trim() && String(fallbackValues[key] || "").trim()) next[key] = fallbackValues[key];
       return next;
     });
-    setMessage(`Datele din ${fallbackLocationName} au fost preluate in formular, dar nu sunt inca salvate. Salveaza draftul si trimite-l spre review.`);
+    setMessage(`Datele din ${fallbackLocationName} au fost preluate în formular, dar nu sunt încă salvate. Salvează draftul și trimite-l spre verificare.`);
   };
 
   const saveDraft = async () => {
@@ -366,10 +375,10 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
     setSaving(false);
     const data = response.data || {};
     if (data.error) { setMessage(data.error); return; }
-    if (data.no_changes) setMessage(data.message || "Nu exista modificari noi de salvat.");
-    else if (data.duplicate || data.already_pending) setMessage(data.message || "Aceasta modificare este deja in verificare.");
-    else if (data.resumed || data.unchanged) setMessage(data.message || "Draftul existent a fost incarcat.");
-    else setMessage("Draft salvat. In acest moment apare in Prezentare generala la Necesita actiune, dar nu intra in admin pana nu il trimiti spre review.");
+    if (data.no_changes) setMessage(data.message || "Nu există modificări noi de salvat.");
+    else if (data.duplicate || data.already_pending) setMessage(data.message || "Această modificare este deja în verificare.");
+    else if (data.resumed || data.unchanged) setMessage(data.message || "Draftul existent a fost încărcat.");
+    else setMessage("Draft salvat. În acest moment apare în Prezentare generală la Necesită acțiune, dar nu intră în administrare până nu îl trimiți spre verificare.");
     await loadDraft();
     await onRefresh?.();
   };
@@ -382,9 +391,9 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
     setSaving(false);
     const data = response.data || {};
     if (data.error) { setMessage(data.error); return; }
-    if (data.no_changes) setMessage(data.message || "Nu exista modificari noi de trimis.");
-    else if (data.duplicate || data.already_pending) setMessage(data.message || "Aceasta modificare este deja in verificare.");
-    else setMessage("Profilul organizatiei a fost trimis spre review. Acum apare si in admin la Modificari workspace.");
+    if (data.no_changes) setMessage(data.message || "Nu există modificări noi de trimis.");
+    else if (data.duplicate || data.already_pending) setMessage(data.message || "Această modificare este deja în verificare.");
+    else setMessage("Profilul organizației a fost trimis spre verificare. Acum apare și în administrare la Modificări workspace.");
     await loadDraft();
     await onRefresh?.();
   };
@@ -393,7 +402,7 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
     setLogoMessage("");
     if (!file) return;
     if (!LOGO_TYPES.includes(file.type)) { setLogoMessage("Format acceptat: PNG, JPG sau WEBP."); return; }
-    if (file.size > LOGO_MAX_BYTES) { setLogoMessage("Logo-ul trebuie sa aiba maximum 4MB inainte de optimizare."); return; }
+    if (file.size > LOGO_MAX_BYTES) { setLogoMessage("Logo-ul trebuie să aibă maximum 4 MB înainte de optimizare."); return; }
     setUploadingLogo(true);
     let localPreviewUrl = "";
     try {
@@ -402,15 +411,15 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
       setLogoPreview(localPreviewUrl);
       const uploadResponse = await base44.integrations.Core.UploadFile({ file: optimizedFile });
       const logoUrl = String(uploadResponse?.file_url || "").trim();
-      if (!logoUrl) throw new Error("Incarcarea logo-ului nu a returnat un URL valid.");
+      if (!logoUrl) throw new Error("Încărcarea logo-ului nu a returnat un URL valid.");
       const response = await base44.functions.invoke("submitProviderLogoForReview", { location_id: locationId, organization_id: organizationId, photo_url: logoUrl }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
       if (response.data?.error) throw new Error(response.data.error);
       setLogoPreview(logoUrl);
-      setLogoMessage("Logo trimis separat spre verificare. Va aparea langa numele organizatiei dupa aprobare.");
+      setLogoMessage("Logo trimis separat spre verificare. Va apărea lângă numele organizației după aprobare.");
       await onRefresh?.();
     } catch (error) {
       setLogoPreview(pendingLogoUrl || canonicalLogo);
-      setLogoMessage(error.message || "Nu am putut incarca logo-ul.");
+      setLogoMessage(error.message || "Nu am putut încărca logo-ul.");
     } finally {
       if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
       setUploadingLogo(false);
@@ -423,80 +432,132 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-heading text-2xl font-extrabold tracking-tight">Profil public organizatie</h1>
-        <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Date generale de brand. Acestea sunt separate de adresa, programul, contactul local si fotografiile fiecarei locatii.</p>
-      </div>
+    <div className="relative isolate space-y-7 pb-10">
+      <div
+        className="pointer-events-none absolute inset-x-0 -top-8 -z-10 h-64 opacity-45"
+        aria-hidden="true"
+        style={{
+          backgroundImage: "radial-gradient(circle, rgba(23,23,23,0.14) 0.7px, transparent 0.7px)",
+          backgroundSize: "18px 18px",
+          maskImage: "linear-gradient(to bottom, black, transparent)",
+          WebkitMaskImage: "linear-gradient(to bottom, black, transparent)",
+        }}
+      />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_390px] xl:items-start">
+      <header className="relative overflow-hidden border-y border-[#171717] py-7 sm:py-9">
+        <div className="pointer-events-none absolute right-0 top-0 hidden h-full w-56 sm:block" aria-hidden="true">
+          <div className="absolute right-8 top-1/2 h-px w-36 bg-[#171717]/30" />
+          <div className="absolute right-8 top-[calc(50%_-_5px)] h-2.5 w-2.5 bg-[#171717]" />
+          <div className="absolute right-28 top-[calc(50%_-_36px)] h-[72px] w-[72px] rounded-full border border-[#345bc8]/25 bg-[#dfe8f5]/70" />
+        </div>
+        <div className="relative pr-0 sm:pr-52">
+          <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#345bc8]">Identitate publică · organizație</div>
+          <h1 className="mt-3 max-w-3xl font-heading text-3xl font-extrabold tracking-[-0.045em] text-[#171717] sm:text-[2.15rem]">Profilul pe care îl văd clienții tăi.</h1>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#69655d]">Configurează identitatea generală a brandului. Adresa, programul, contactul local și fotografiile rămân separate pentru fiecare locație.</p>
+        </div>
+      </header>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_410px] xl:items-start">
         <div className="space-y-5">
           {availableFallbackFields.length > 0 && !pendingReview && (
-            <section className="rounded-[24px] border border-amber-200 bg-amber-50 p-4 shadow-sm sm:p-5">
+            <section className="rounded-[22px] border border-[#a97825]/25 bg-[#f5ead0] p-4 sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex min-w-0 items-start gap-3">
-                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-800" />
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#a97825] text-white"><AlertTriangle className="h-4 w-4" /></div>
                   <div>
-                    <h2 className="text-sm font-bold text-amber-950">Exista date in {fallbackLocationName}, dar nu sunt salvate pe organizatie</h2>
-                    <p className="mt-1 text-xs leading-relaxed text-amber-900">{availableFallbackFields.map((key) => FIELD_LABELS[key]).join(", ")}. Preluarea completeaza doar formularul. Datele ajung in admin numai dupa salvare si trimitere spre review.</p>
+                    <h2 className="text-sm font-bold text-[#5f4317]">Există date în {fallbackLocationName}, dar nu sunt salvate pe organizație</h2>
+                    <p className="mt-1 text-xs leading-relaxed text-[#76551f]">{availableFallbackFields.map((key) => FIELD_LABELS[key]).join(", ")}. Preluarea completează doar formularul. Datele ajung în verificare numai după salvare și trimitere.</p>
                   </div>
                 </div>
-                <button type="button" onClick={importFallback} className="shrink-0 rounded-full bg-amber-950 px-4 py-2 text-xs font-semibold text-white hover:opacity-90">Preia datele in formular</button>
+                <button type="button" onClick={importFallback} className="min-h-10 shrink-0 rounded-full bg-[#171717] px-4 text-xs font-semibold text-white transition-opacity hover:opacity-85">Preia datele în formular</button>
               </div>
             </section>
           )}
 
-          <section className="space-y-5 rounded-[24px] border border-border bg-card p-5 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+          <section className="overflow-hidden rounded-[28px] border border-[#171717]/15 bg-white shadow-[0_14px_40px_rgba(23,23,23,0.055)]">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#171717]/12 bg-[#eef3f7] px-5 py-5 sm:px-7">
               <div>
-                <h2 className="text-sm font-bold">Informatii publice generale</h2>
-                <p className="mt-1 text-xs text-muted-foreground">Campurile afisate sunt date organizationale aprobate sau continutul draftului activ. Datele locatiei nu sunt introduse automat.</p>
+                <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[#345bc8]">Profil de brand</div>
+                <h2 className="mt-1 text-lg font-bold tracking-[-0.025em]">Informații publice generale</h2>
+                <p className="mt-1 max-w-2xl text-xs leading-relaxed text-[#686c73]">Câmpurile afișate folosesc datele aprobate sau conținutul draftului activ. Datele locației nu sunt introduse automat.</p>
               </div>
-              {draft && <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}
+              {draft && <span className="rounded-full border border-[#345bc8]/15 bg-white/80 px-3 py-1.5 text-[11px] font-semibold text-[#345bc8]">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}
             </div>
 
-            <div className="rounded-2xl border border-border bg-secondary/35 p-4">
+            <div className="space-y-6 px-5 py-6 sm:px-7 sm:py-7">
               <div className="flex items-center gap-3">
-                <label className="relative block shrink-0 cursor-pointer" title={logoPreview ? "Schimba logo" : "Adauga logo"}>
-                  <BrandLogo name={values.public_display_name || organizationName} photoUrl={logoPreview} pending={hasPendingLogo} small />
-                  <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-card bg-foreground text-background shadow-sm">{uploadingLogo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-4 w-4" />}</span>
-                  <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploadingLogo} onChange={(event) => { uploadLogo(event.target.files?.[0]); event.target.value = ""; }} />
-                </label>
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold">Logo organizatie</div>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Este afisat langa numele organizatiei. Nu este folosit ca fotografie a locatiei.</p>
-                  <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-background px-3 py-1 text-[11px] font-semibold text-muted-foreground"><ImagePlus className="h-3.5 w-3.5" /> Publicare dupa aprobare</div>
-                </div>
+                <span className="font-mono text-[10px] font-semibold tracking-[0.16em] text-[#77736b]">01</span>
+                <div className="h-px flex-1 bg-[#171717]/12" />
+                <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#77736b]">Identitate</span>
               </div>
-              {logoMessage && <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{logoMessage}</p>}
+
+              <div className="relative overflow-hidden rounded-[20px] border border-[#171717]/10 bg-[#f8f4ec] p-4 sm:p-5">
+                <div className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full border border-[#735c80]/20 bg-[#efe7f1]" />
+                <div className="relative flex items-center gap-4">
+                  <label className="relative block shrink-0 cursor-pointer" title={logoPreview ? "Schimbă logo-ul" : "Adaugă logo"}>
+                    <BrandLogo name={values.public_display_name || organizationName} photoUrl={logoPreview} pending={hasPendingLogo} small />
+                    <span className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#f8f4ec] bg-[#171717] text-white shadow-sm">{uploadingLogo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-4 w-4" />}</span>
+                    <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploadingLogo} onChange={(event) => { uploadLogo(event.target.files?.[0]); event.target.value = ""; }} />
+                  </label>
+                  <div className="min-w-0 pr-8">
+                    <div className="text-sm font-semibold">Logo organizație</div>
+                    <p className="mt-1 text-xs leading-relaxed text-[#69655d]">Apare lângă numele organizației și rămâne separat de fotografia fiecărei locații.</p>
+                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[#171717]/10 bg-white/70 px-3 py-1 text-[11px] font-semibold text-[#69655d]"><ImagePlus className="h-3.5 w-3.5" /> Publicare după aprobare</div>
+                  </div>
+                </div>
+                {logoMessage && <p className="relative mt-3 border-t border-[#171717]/10 pt-3 text-xs leading-relaxed text-[#69655d]">{logoMessage}</p>}
+              </div>
+
+              <Field label="Nume public organizație" hint="Exemplu: Lunera Optic. Numele locației poate fi diferit."><input className={inputCls} value={values.public_display_name} disabled={pendingReview} onChange={(event) => setField("public_display_name", event.target.value)} /></Field>
+              <Field label="Descriere organizație" hint="Prezintă pe scurt ce oferiți, cui vă adresați și ce diferențiază brandul.">
+                <textarea className={`${inputCls} min-h-36 resize-y`} value={values.public_description} maxLength={DESCRIPTION_MAX_LENGTH} disabled={pendingReview} onChange={(event) => setField("public_description", event.target.value)} />
+                <div className="mt-1 text-right font-mono text-[10px] text-muted-foreground">{descriptionCount}/{DESCRIPTION_MAX_LENGTH}</div>
+              </Field>
             </div>
 
-            <Field label="Nume public organizatie" hint="Exemplu: Lunera Optic. Numele locatiei poate fi diferit."><input className={inputCls} value={values.public_display_name} disabled={pendingReview} onChange={(event) => setField("public_display_name", event.target.value)} /></Field>
-            <Field label="Descriere organizatie" hint="Prezentare generala a brandului: ce oferiti, cui va adresati si ce va diferentiaza.">
-              <textarea className={`${inputCls} min-h-36 resize-y`} value={values.public_description} maxLength={DESCRIPTION_MAX_LENGTH} disabled={pendingReview} onChange={(event) => setField("public_description", event.target.value)} />
-              <div className="mt-1 text-right text-[11px] text-muted-foreground">{descriptionCount}/{DESCRIPTION_MAX_LENGTH}</div>
-            </Field>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Telefon general" hint="Telefon general al organizatiei."><input className={inputCls} value={values.public_phone} disabled={pendingReview} onChange={(event) => setField("public_phone", event.target.value)} /></Field>
-              <Field label="Email general" hint="Email general pentru contact."><input className={inputCls} value={values.public_email} disabled={pendingReview} onChange={(event) => setField("public_email", event.target.value)} /></Field>
-              <Field label="Website" hint="Link catre site-ul organizatiei."><input className={inputCls} value={values.website_url} disabled={pendingReview} onChange={(event) => setField("website_url", event.target.value)} /></Field>
-              <Field label="Facebook" hint="Link catre pagina oficiala."><input className={inputCls} value={values.facebook_url} disabled={pendingReview} onChange={(event) => setField("facebook_url", event.target.value)} /></Field>
-              <Field label="Instagram" hint="Link catre profilul oficial."><input className={inputCls} value={values.instagram_url} disabled={pendingReview} onChange={(event) => setField("instagram_url", event.target.value)} /></Field>
-              <Field label="LinkedIn" hint="Optional, util mai ales pentru B2B."><input className={inputCls} value={values.linkedin_url} disabled={pendingReview} onChange={(event) => setField("linkedin_url", event.target.value)} /></Field>
+            <div className="border-t border-[#171717]/12 bg-[#fbfaf7] px-5 py-6 sm:px-7 sm:py-7">
+              <div className="mb-5 flex items-center gap-3">
+                <span className="font-mono text-[10px] font-semibold tracking-[0.16em] text-[#77736b]">02</span>
+                <div className="h-px flex-1 bg-[#171717]/12" />
+                <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#77736b]">Contact public</span>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Telefon general" hint="Telefonul general al organizației."><input className={inputCls} value={values.public_phone} disabled={pendingReview} onChange={(event) => setField("public_phone", event.target.value)} /></Field>
+                <Field label="Email general" hint="Adresa generală pentru contact."><input className={inputCls} value={values.public_email} disabled={pendingReview} onChange={(event) => setField("public_email", event.target.value)} /></Field>
+                <div className="md:col-span-2"><Field label="Website" hint="Link către site-ul organizației."><input className={inputCls} value={values.website_url} disabled={pendingReview} onChange={(event) => setField("website_url", event.target.value)} /></Field></div>
+              </div>
             </div>
 
-            <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs leading-relaxed text-blue-900">Adminul compara propunerea cu ProviderOrganization. Aprobarea actualizeaza numai profilul organizatiei si nu modifica datele locatiei.</div>
+            <div className="border-t border-[#171717]/12 px-5 py-6 sm:px-7 sm:py-7">
+              <div className="mb-5 flex items-center gap-3">
+                <span className="font-mono text-[10px] font-semibold tracking-[0.16em] text-[#77736b]">03</span>
+                <div className="h-px flex-1 bg-[#171717]/12" />
+                <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#77736b]">Canale online</span>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Facebook" hint="Link către pagina oficială."><input className={inputCls} value={values.facebook_url} disabled={pendingReview} onChange={(event) => setField("facebook_url", event.target.value)} /></Field>
+                <Field label="Instagram" hint="Link către profilul oficial."><input className={inputCls} value={values.instagram_url} disabled={pendingReview} onChange={(event) => setField("instagram_url", event.target.value)} /></Field>
+                <div className="md:col-span-2"><Field label="LinkedIn" hint="Opțional, util mai ales pentru comunicarea profesională."><input className={inputCls} value={values.linkedin_url} disabled={pendingReview} onChange={(event) => setField("linkedin_url", event.target.value)} /></Field></div>
+              </div>
+            </div>
 
-            {message && <p className="rounded-2xl border border-border bg-secondary/35 px-4 py-3 text-xs leading-relaxed text-muted-foreground">{message}</p>}
-            <div className="flex flex-wrap items-center gap-2">
-              <button type="button" disabled={saving || pendingReview} onClick={saveDraft} className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><Save className="h-4 w-4" /> Salveaza draft</button>
-              {draft && ["draft", "needs_more_info"].includes(draft.status) && <button type="button" disabled={saving} onClick={submitDraft} className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-50"><Send className="h-4 w-4" /> Trimite spre review</button>}
+            <div className="border-t border-[#171717]/12 bg-[#eef3f7] px-5 py-5 sm:px-7">
+              <div className="mb-4 rounded-[16px] border border-[#345bc8]/15 bg-white/65 px-4 py-3 text-xs leading-relaxed text-[#44536e]">Propunerea este comparată cu profilul actual. Aprobarea actualizează numai informațiile organizației și nu modifică datele locației.</div>
+              {message && <p className="mb-4 rounded-[16px] border border-[#171717]/10 bg-white/80 px-4 py-3 text-xs leading-relaxed text-[#69655d]">{message}</p>}
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+                <button type="button" disabled={saving || pendingReview} onClick={saveDraft} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#171717]/20 bg-white px-5 text-sm font-semibold transition-colors hover:bg-[#f8f4ec] disabled:opacity-50"><Save className="h-4 w-4" /> Salvează draftul</button>
+                {draft && ["draft", "needs_more_info"].includes(draft.status) && <button type="button" disabled={saving} onClick={submitDraft} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#171717] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-50"><Send className="h-4 w-4" /> Trimite spre verificare</button>}
+              </div>
             </div>
           </section>
         </div>
 
-        <aside className="space-y-4 xl:sticky xl:top-6">
+        <aside className="space-y-4 xl:sticky xl:top-7">
+          <div className="flex items-center gap-3 px-1">
+            <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[#77736b]">Previzualizare în timp real</span>
+            <div className="h-px flex-1 bg-[#171717]/15" />
+            <span className="h-2.5 w-2.5 bg-[#171717]" />
+          </div>
           <OrganizationPreview organizationName={organizationName} profileTypeLabel={profileTypeLabel} verified={location.profile_control_status === "verified"} values={values} logoPreview={logoPreview} hasPendingLogo={hasPendingLogo} locationCount={locationCount} />
           <LocationSummaryCard organizationName={values.public_display_name || organizationName} logoPreview={logoPreview} location={location} locations={locations} onManageLocation={manageLocation} onManageAll={() => onNavigate?.("locations")} />
         </aside>
