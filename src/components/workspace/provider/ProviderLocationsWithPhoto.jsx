@@ -4,6 +4,52 @@ import { ArrowRight, Image, X } from "lucide-react";
 import ProviderLocations from "./ProviderLocations";
 import ProviderLocationPhotoCompact from "./ProviderLocationPhotoCompact";
 import ProviderAddLocationFlow from "./ProviderAddLocationFlow";
+import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
+
+function plainLabel(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function locationAddress(location) {
+  const parts = [
+    location?.address,
+    location?.address_line1,
+    location?.street_address,
+    location?.locality_name,
+    location?.city,
+    location?.county_name,
+    location?.county,
+  ]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  return [...new Set(parts)].join(", ") || "Adresa nu este completata";
+}
+
+function locationTypeLabel(location) {
+  return plainLabel(
+    PROVIDER_PROFILE_TYPES[location?.provider_profile_type] ||
+      PROVIDER_PROFILE_TYPES[location?.organization_type] ||
+      PROVIDER_TYPES[location?.provider_type] ||
+      "Locatie",
+  );
+}
+
+function isVerifiedLocation(location) {
+  return [
+    location?.profile_control_status,
+    location?.verification_state,
+    location?.trust_state,
+  ].includes("verified");
+}
+
+function textNode(tag, className, text) {
+  const element = document.createElement(tag);
+  element.className = className;
+  element.textContent = text;
+  return element;
+}
 
 export default function ProviderLocationsWithPhoto(props) {
   const { workspace, selectedLocationId, onSelect, onRefresh } = props;
@@ -37,6 +83,104 @@ export default function ProviderLocationsWithPhoto(props) {
   useEffect(() => {
     const root = containerRef.current;
     if (!root) return;
+
+    const layoutLocationCards = () => {
+      const locationSection = Array.from(root.querySelectorAll("section")).find(
+        (section) =>
+          Array.from(section.querySelectorAll("h2")).some(
+            (heading) =>
+              String(heading.textContent || "").trim() === "Puncte de lucru",
+          ),
+      );
+      const grid = locationSection?.querySelector(".grid");
+      if (!grid) return;
+
+      grid.classList.add("vezunde-location-selector-grid");
+      const cards = Array.from(grid.children).filter(
+        (element) => element.tagName === "BUTTON",
+      );
+
+      cards.forEach((card, index) => {
+        const location = (workspace.locations || [])[index];
+        if (!location) return;
+
+        const active = location.id === selectedLocation?.id;
+        const typeLabel = locationTypeLabel(location);
+        const verified = isVerifiedLocation(location);
+        const name =
+          location.public_display_name || location.name || "Locatie fara nume";
+        const address = locationAddress(location);
+        const signature = JSON.stringify({
+          id: location.id,
+          active,
+          typeLabel,
+          verified,
+          name,
+          address,
+        });
+
+        card.classList.add("vezunde-location-selector-card");
+        card.classList.toggle("is-active", active);
+        card.dataset.locationId = location.id || "";
+        card.children[1]?.classList.add(
+          "vezunde-location-card-original-copy",
+        );
+
+        let custom = card.querySelector(
+          ":scope > .vezunde-location-card-custom",
+        );
+        if (!custom) {
+          custom = document.createElement("div");
+          custom.className = "vezunde-location-card-custom";
+        }
+        if (custom.dataset.signature === signature) {
+          if (!custom.parentElement) card.appendChild(custom);
+          return;
+        }
+
+        custom.dataset.signature = signature;
+        custom.replaceChildren();
+
+        const meta = document.createElement("div");
+        meta.className = "vezunde-location-card-meta";
+        meta.appendChild(
+          textNode("span", "vezunde-location-card-type", typeLabel),
+        );
+        if (verified) {
+          meta.appendChild(
+            textNode("span", "vezunde-location-card-verified", "✓ Verificata"),
+          );
+        }
+        if (active) {
+          meta.appendChild(
+            textNode("span", "vezunde-location-card-selected", "Selectata"),
+          );
+        }
+
+        custom.appendChild(meta);
+        custom.appendChild(
+          textNode("h3", "vezunde-location-card-title", name),
+        );
+
+        const addressRow = document.createElement("div");
+        addressRow.className = "vezunde-location-card-address";
+        addressRow.appendChild(
+          textNode("span", "vezunde-location-card-pin", "⌖"),
+        );
+        addressRow.appendChild(textNode("span", "", address));
+        custom.appendChild(addressRow);
+
+        const manage = document.createElement("div");
+        manage.className = "vezunde-location-card-manage";
+        manage.appendChild(textNode("span", "", "Gestioneaza"));
+        manage.appendChild(
+          textNode("span", "vezunde-location-card-arrow", "›"),
+        );
+        custom.appendChild(manage);
+
+        if (!custom.parentElement) card.appendChild(custom);
+      });
+    };
 
     const layoutCompactMap = () => {
       const editButton = Array.from(root.querySelectorAll("button")).find(
@@ -116,6 +260,7 @@ export default function ProviderLocationsWithPhoto(props) {
         setPortalTarget(null);
       }
 
+      layoutLocationCards();
       layoutCompactMap();
     };
 
@@ -135,7 +280,13 @@ export default function ProviderLocationsWithPhoto(props) {
       root.removeEventListener("click", interceptAddLocation, true);
       observer.disconnect();
     };
-  }, [canAddLocation, canManagePhoto, selectedLocationId]);
+  }, [
+    canAddLocation,
+    canManagePhoto,
+    selectedLocationId,
+    selectedLocation?.id,
+    workspace.locations,
+  ]);
 
   useEffect(() => {
     if (!canManagePhoto) setPhotoOpen(false);
@@ -161,6 +312,126 @@ export default function ProviderLocationsWithPhoto(props) {
   return (
     <div ref={containerRef} className="min-w-0">
       <style>{`
+        .vezunde-location-selector-grid {
+          display: grid !important;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 340px)) !important;
+          justify-content: start;
+          gap: 1rem !important;
+        }
+        .vezunde-location-selector-card {
+          display: flex;
+          width: 100%;
+          max-width: 340px;
+          min-width: 0;
+          flex-direction: column;
+          overflow: hidden;
+          border: 1px solid rgb(23 23 23 / 0.24) !important;
+          border-radius: 6px !important;
+          background: hsl(var(--background)) !important;
+          padding: 14px 14px 0 !important;
+          text-align: left;
+          box-shadow: none !important;
+          transition: border-color 160ms ease, transform 160ms ease;
+        }
+        .vezunde-location-selector-card:hover {
+          transform: translateY(-1px);
+          border-color: rgb(23 23 23 / 0.48) !important;
+        }
+        .vezunde-location-selector-card.is-active {
+          border-color: rgb(23 23 23 / 0.48) !important;
+          box-shadow: 0 0 0 1px rgb(23 23 23 / 0.05) !important;
+        }
+        .vezunde-location-selector-card > div:first-child {
+          width: 100%;
+          aspect-ratio: 16 / 8.4 !important;
+          overflow: hidden;
+          border: 1px solid rgb(23 23 23 / 0.12) !important;
+          border-radius: 2px !important;
+          background: hsl(var(--secondary) / 0.45);
+        }
+        .vezunde-location-selector-card > div:first-child > span {
+          display: none !important;
+        }
+        .vezunde-location-selector-card > div:first-child img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .vezunde-location-card-original-copy {
+          display: none !important;
+        }
+        .vezunde-location-card-custom {
+          display: flex;
+          min-width: 0;
+          flex: 1;
+          flex-direction: column;
+          padding-top: 12px;
+        }
+        .vezunde-location-card-meta {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 6px;
+          min-height: 22px;
+          font-size: 12px;
+          line-height: 1.35;
+        }
+        .vezunde-location-card-type {
+          color: #345bc8;
+          font-weight: 600;
+        }
+        .vezunde-location-card-verified {
+          color: #315c3a;
+          font-weight: 600;
+        }
+        .vezunde-location-card-selected {
+          color: hsl(var(--foreground));
+          font-weight: 800;
+        }
+        .vezunde-location-card-title {
+          margin-top: 7px;
+          overflow-wrap: anywhere;
+          font-size: 18px;
+          font-weight: 800;
+          line-height: 1.25;
+          letter-spacing: -0.02em;
+          color: hsl(var(--foreground));
+        }
+        .vezunde-location-card-address {
+          display: flex;
+          min-width: 0;
+          align-items: flex-start;
+          gap: 7px;
+          margin-top: 8px;
+          color: hsl(var(--muted-foreground));
+          font-size: 13px;
+          line-height: 1.55;
+        }
+        .vezunde-location-card-pin {
+          flex: 0 0 auto;
+          margin-top: 1px;
+          color: hsl(var(--foreground) / 0.68);
+          font-size: 15px;
+        }
+        .vezunde-location-card-manage {
+          display: flex;
+          min-height: 47px;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin: 14px -14px 0;
+          border-top: 1px solid rgb(23 23 23 / 0.14);
+          padding: 12px 14px;
+          color: hsl(var(--foreground));
+          font-size: 14px;
+          font-weight: 700;
+        }
+        .vezunde-location-card-arrow {
+          font-size: 24px;
+          font-weight: 400;
+          line-height: 1;
+        }
+
         .vezunde-location-modules { align-items: stretch; }
         .vezunde-location-modules > button { height: 100%; min-width: 0; }
         .vezunde-location-modules > button > div {
@@ -219,6 +490,12 @@ export default function ProviderLocationsWithPhoto(props) {
         }
 
         @media (max-width: 639px) {
+          .vezunde-location-selector-grid {
+            grid-template-columns: minmax(0, 1fr) !important;
+          }
+          .vezunde-location-selector-card {
+            max-width: none;
+          }
           .vezunde-location-modules > button > div > div:last-child > p { min-height: 0; }
           .vezunde-location-modules > button > div > div:last-child > div:first-child { min-height: 0; }
           .vezunde-location-map > div { height: 180px !important; }
