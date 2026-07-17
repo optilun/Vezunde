@@ -23,8 +23,21 @@
   }
 
   .workspace-mobile-surface button,
-  .workspace-mobile-surface a[role="button"] {
+  .workspace-mobile-surface a[role="button"],
+  .workspace-mobile-surface summary {
     min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  .workspace-mobile-surface input:not([type="checkbox"]):not([type="radio"]),
+  .workspace-mobile-surface select,
+  .workspace-mobile-surface textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .workspace-mobile-surface input[type="checkbox"],
+  .workspace-mobile-surface input[type="radio"] {
     touch-action: manipulation;
   }
 
