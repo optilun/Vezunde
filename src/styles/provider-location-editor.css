@@ -1,4 +1,4 @@
-/* Keep the location editor focused on data entry. The map remains on the location page. */
+/* Location editor: group public identity/contact separately from map details. */
 aside[aria-label="Editeaza datele locatiei"] {
   max-width: 56rem !important;
 }
@@ -10,6 +10,7 @@ aside[aria-label="Editeaza datele locatiei"] > div:nth-child(2) > div {
     "pending pending"
     "identity-heading identity-heading"
     "name address"
+    "contact map"
     "contact position"
     "warning warning" !important;
   column-gap: 1.5rem !important;
@@ -81,8 +82,8 @@ aside[aria-label="Editeaza datele locatiei"]
   > div
   > section:nth-of-type(2) {
   grid-area: position;
-  margin-top: 1.5rem !important;
-  padding-top: 1.25rem !important;
+  margin-top: 1rem !important;
+  padding-top: 1.1rem !important;
   border-top: 1px solid rgb(23 23 23 / 0.12) !important;
 }
 
@@ -94,6 +95,7 @@ aside[aria-label="Editeaza datele locatiei"]
   margin-top: 1.5rem !important;
   padding-top: 1.25rem !important;
   border-top: 1px solid rgb(23 23 23 / 0.12) !important;
+  align-self: start;
 }
 
 aside[aria-label="Editeaza datele locatiei"]
@@ -105,10 +107,40 @@ aside[aria-label="Editeaza datele locatiei"]
 }
 
 aside[aria-label="Editeaza datele locatiei"]
-  section:has(iframe[title^="Harta "]),
+  > div:nth-child(2)
+  > div
+  > section:nth-of-type(4) {
+  display: block !important;
+  grid-area: map;
+  margin-top: 1.5rem !important;
+  overflow: hidden;
+  border-radius: 14px !important;
+  background: hsl(var(--background)) !important;
+}
+
 aside[aria-label="Editeaza datele locatiei"]
-  section:has(iframe[title^="Previzualizare harta"]) {
-  display: none !important;
+  > div:nth-child(2)
+  > div
+  > section:nth-of-type(4)
+  > div:first-child {
+  padding: 0.8rem 0.9rem !important;
+}
+
+aside[aria-label="Editeaza datele locatiei"]
+  > div:nth-child(2)
+  > div
+  > section:nth-of-type(4)
+  > div:first-child
+  p {
+  display: none;
+}
+
+aside[aria-label="Editeaza datele locatiei"]
+  > div:nth-child(2)
+  > div
+  > section:nth-of-type(4)
+  > div:last-child {
+  height: 11rem !important;
 }
 
 aside[aria-label="Editeaza datele locatiei"]
@@ -116,7 +148,7 @@ aside[aria-label="Editeaza datele locatiei"]
   > div
   > div[class*="border-amber-200"] {
   grid-area: warning;
-  margin-top: 1rem !important;
+  margin-top: 1.1rem !important;
 }
 
 @media (max-width: 767px) {
@@ -132,6 +164,7 @@ aside[aria-label="Editeaza datele locatiei"]
       "name"
       "contact"
       "address"
+      "map"
       "position"
       "warning" !important;
   }
@@ -151,5 +184,13 @@ aside[aria-label="Editeaza datele locatiei"]
     > section:nth-of-type(2)
     > div:nth-child(2) {
     grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  aside[aria-label="Editeaza datele locatiei"]
+    > div:nth-child(2)
+    > div
+    > section:nth-of-type(4)
+    > div:last-child {
+    height: 10rem !important;
   }
 }
