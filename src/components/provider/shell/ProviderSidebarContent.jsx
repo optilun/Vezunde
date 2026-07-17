@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Building2,
@@ -50,11 +50,13 @@ function workspaceIcon(kind) {
 function WorkspaceAvatar({ item, user, size = "md" }) {
   const Icon = workspaceIcon(item?.kind);
   const avatarUrl = item?.avatarUrl || (item?.kind === "personal" ? user?.profile_photo_url : "");
+  const [imageFailed, setImageFailed] = useState(false);
   const sizeClass = size === "sm" ? "h-8 w-8 rounded-xl" : "h-9 w-9 rounded-xl";
+  useEffect(() => setImageFailed(false), [avatarUrl]);
   return (
     <span className={`flex shrink-0 items-center justify-center overflow-hidden bg-secondary text-foreground ${sizeClass}`}>
-      {avatarUrl
-        ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+      {avatarUrl && !imageFailed
+        ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" onError={() => setImageFailed(true)} />
         : <Icon className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"} />}
     </span>
   );
