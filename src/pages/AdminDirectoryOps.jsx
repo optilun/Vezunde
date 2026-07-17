@@ -3,6 +3,7 @@ import { useAuth } from "@/lib/AuthContext";
 import AdminAppShell from "@/components/admin/shell/AdminAppShell";
 import AdminPageHeader from "@/components/admin/ui/AdminPageHeader";
 import { ADMIN_NAV_LABELS } from "@/lib/adminNavConfig";
+import "@/styles/admin-mobile.css";
 
 const AdminDashboardHome = lazy(
   () => import("@/components/admin/dashboard/AdminDashboardHome"),
