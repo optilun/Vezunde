@@ -1,14 +1,24 @@
 .workspace-neutral
   section.pt-3
+  > div.mt-5.divide-y.border-y:has(> article > button) {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 340px)) !important;
+  justify-content: start;
+  gap: 1rem !important;
+}
+
+.workspace-neutral
+  section.pt-3
   > div.mt-5.divide-y.border-y:has(> article > button)
   > article {
+  width: 100%;
+  max-width: 340px;
   border-color: rgb(23 23 23 / 0.09) !important;
   background: linear-gradient(
     180deg,
     rgb(248 244 236 / 0.96) 0%,
     rgb(243 238 228 / 0.96) 100%
   ) !important;
-  box-shadow: 0 6px 18px rgb(23 23 23 / 0.025) !important;
+  box-shadow: 0 5px 14px rgb(23 23 23 / 0.025) !important;
 }
 
 .workspace-neutral
@@ -17,7 +27,25 @@
   > article:hover {
   transform: translateY(-1px);
   border-color: rgb(23 23 23 / 0.14) !important;
-  box-shadow: 0 10px 24px rgb(23 23 23 / 0.04) !important;
+  box-shadow: 0 8px 20px rgb(23 23 23 / 0.04) !important;
+}
+
+.workspace-neutral
+  section.pt-3
+  > div.mt-5.divide-y.border-y:has(> article > button)
+  > article
+  > div:first-child
+  > div:first-child {
+  height: 9rem !important;
+}
+
+.workspace-neutral
+  section.pt-3
+  > div.mt-5.divide-y.border-y:has(> article > button)
+  > article
+  > div:first-child
+  > div:nth-child(2) {
+  padding: 0.85rem 0.9rem 0.7rem !important;
 }
 
 .workspace-neutral
@@ -25,8 +53,10 @@
   > div.mt-5.divide-y.border-y:has(> article > button)
   > article
   > button {
+  min-height: 2.75rem !important;
   border-top-color: rgb(23 23 23 / 0.08) !important;
   background: rgb(255 255 255 / 0.08) !important;
+  padding: 0.65rem 0.9rem !important;
 }
 
 .workspace-neutral
@@ -35,4 +65,28 @@
   > article
   > button:hover {
   background: rgb(255 255 255 / 0.28) !important;
+}
+
+@media (max-width: 767px) {
+  .workspace-neutral
+    section.pt-3
+    > div.mt-5.divide-y.border-y:has(> article > button) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .workspace-neutral
+    section.pt-3
+    > div.mt-5.divide-y.border-y:has(> article > button)
+    > article {
+    max-width: none;
+  }
+
+  .workspace-neutral
+    section.pt-3
+    > div.mt-5.divide-y.border-y:has(> article > button)
+    > article
+    > div:first-child
+    > div:first-child {
+    height: 9.5rem !important;
+  }
 }
