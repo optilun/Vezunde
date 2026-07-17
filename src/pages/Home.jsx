@@ -115,7 +115,7 @@ function PinnedTakeover() {
       >
         <motion.div
           style={{ visibility: stageVisibility }}
-          className="sticky top-16 h-[calc(100svh-4rem)] overflow-hidden"
+          className="sticky top-16 h-[calc(100svh-4rem)] overflow-hidden bg-[#F7F2E8]"
         >
           <motion.div
             className="absolute inset-0 origin-top will-change-transform"
