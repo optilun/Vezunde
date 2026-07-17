@@ -24,7 +24,8 @@
 
   .workspace-mobile-surface button,
   .workspace-mobile-surface a[role="button"],
-  .workspace-mobile-surface summary {
+  .workspace-mobile-surface summary,
+  .workspace-mobile-surface label[class*="cursor-pointer"] {
     min-height: 44px;
     touch-action: manipulation;
   }
@@ -118,6 +119,11 @@
 
   .workspace-mobile-surface div.sticky.bottom-0 button,
   .workspace-mobile-surface div.sticky.bottom-0 a[role="button"] {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .workspace-mobile-surface div[class*="justify-end"][class*="rounded-3xl"] > button {
     width: 100%;
     justify-content: center;
   }
