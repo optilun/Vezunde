@@ -66,6 +66,11 @@
     text-align: center;
   }
 
+  .workspace-mobile-surface details > div[class*="w-72"] {
+    width: min(18rem, calc(100vw - 2rem));
+    max-width: calc(100vw - 2rem);
+  }
+
   .workspace-mobile-surface table {
     display: block;
     width: 100%;
@@ -96,6 +101,25 @@
   .workspace-mobile-surface .workspace-mobile-actions > button,
   .workspace-mobile-surface .workspace-mobile-actions > a {
     width: 100%;
+  }
+}
+
+@media (max-width: 639px) {
+  .workspace-mobile-surface div.sticky.bottom-0 > div.flex {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .workspace-mobile-surface div.sticky.bottom-0 > div.flex > div.flex {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace-mobile-surface div.sticky.bottom-0 button,
+  .workspace-mobile-surface div.sticky.bottom-0 a[role="button"] {
+    width: 100%;
+    justify-content: center;
   }
 }
 
