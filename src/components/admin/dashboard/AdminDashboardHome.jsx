@@ -10,6 +10,7 @@ import RecentActivityCard from "./RecentActivityCard";
 import QuickActionsGrid from "./QuickActionsGrid";
 
 const TOTAL_COUNTIES = 42;
+const ACTIVE_SUPPORT_STATUSES = new Set(["open", "in_progress", "waiting_user"]);
 const pj = (value, fallback) => {
   try {
     const parsed = JSON.parse(value);
@@ -37,6 +38,7 @@ export default function AdminDashboardHome({ onNavigate }) {
       base44.entities.ProviderLocation.list(null, 500),
       base44.entities.LocationService.list(null, 2000),
       base44.entities.ProviderClaimRequest.filter({ status: "in_asteptare" }, null, 200),
+      base44.entities.SupportTicket.list("-updated_date", 500),
       base44.entities.AIResearchDraft.list("-created_date", 200),
       base44.entities.ResearchSource.list("-created_date", 200),
       base44.entities.DirectoryAuditRecord.list("-created_date", 200),
@@ -48,6 +50,7 @@ export default function AdminDashboardHome({ onNavigate }) {
       locations,
       services,
       claims,
+      supportTickets,
       drafts,
       sources,
       audit,
@@ -66,6 +69,7 @@ export default function AdminDashboardHome({ onNavigate }) {
         locations,
         services,
         claims,
+        supportTickets,
         drafts,
         sources,
         audit,
@@ -82,6 +86,7 @@ export default function AdminDashboardHome({ onNavigate }) {
     locations,
     services,
     claims,
+    supportTickets,
     drafts,
     sources,
     audit,
@@ -98,6 +103,9 @@ export default function AdminDashboardHome({ onNavigate }) {
   }).length;
 
   const reviewQueueCount = reviewSubmissions.length + newLocationReviews.length + professionalReviews.length;
+  const activeSupportTickets = supportTickets.filter(
+    (ticket) => ACTIVE_SUPPORT_STATUSES.has(ticket.status || "open"),
+  );
   const directoryProfiles = locations.filter((location) => (location.profile_control_status || "directory") === "directory").length;
   const unconfirmedServices = services.filter((service) => (service.confirmation_level || "not_confirmed") === "not_confirmed").length;
   const activeResearchDrafts = drafts.filter((draft) => ["draft", "in_review", "ready_to_transfer"].includes(draft.status)).length;
@@ -141,6 +149,7 @@ export default function AdminDashboardHome({ onNavigate }) {
   };
 
   const actionItems = [
+    { label: "Tichete de suport active", count: activeSupportTickets.length, tab: "support_tickets" },
     { label: "Cereri in coada de verificare", count: reviewQueueCount, tab: "workspace_reviews" },
     { label: "Revendicari noi", count: claims.length, tab: "revendicari" },
     { label: "Profiluri directory neverificate", count: directoryProfiles, tab: "profiluri" },
