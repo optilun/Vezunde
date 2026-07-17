@@ -105,7 +105,9 @@ aside[aria-label="Editeaza datele locatiei"]
 }
 
 aside[aria-label="Editeaza datele locatiei"]
-  section:has(iframe[title^="Harta "]) {
+  section:has(iframe[title^="Harta "]),
+aside[aria-label="Editeaza datele locatiei"]
+  section:has(iframe[title^="Previzualizare harta"]) {
   display: none !important;
 }
 
