@@ -154,10 +154,12 @@ function Field({ label, hint, children }) {
 }
 
 function BrandLogo({ name, photoUrl, pending, small = false }) {
+  const [imageFailed, setImageFailed] = useState(false);
   const sizeClass = small ? "h-12 w-12 rounded-[14px]" : "h-[72px] w-[72px] rounded-[20px]";
+  useEffect(() => setImageFailed(false), [photoUrl]);
   return (
     <div className={`relative shrink-0 overflow-hidden border border-[#171717]/10 bg-white shadow-[0_8px_24px_rgba(23,23,23,0.08)] ${sizeClass}`}>
-      {photoUrl ? <img src={photoUrl} alt={`Logo ${name}`} className="h-full w-full object-contain p-2" /> : <div className="flex h-full w-full items-center justify-center bg-foreground font-heading text-lg font-black text-background">{initials(name)}</div>}
+      {photoUrl && !imageFailed ? <img src={photoUrl} alt={`Logo ${name}`} className="h-full w-full object-contain p-2" onError={() => setImageFailed(true)} /> : <div className="flex h-full w-full items-center justify-center bg-foreground font-heading text-lg font-black text-background">{initials(name)}</div>}
       {pending && <div className="absolute inset-x-0 bottom-0 bg-amber-500/90 py-0.5 text-center text-[9px] font-bold text-white">în verificare</div>}
     </div>
   );
@@ -197,7 +199,6 @@ function OrganizationPreview({ organizationName, profileTypeLabel, verified, val
           backgroundSize: "20px 20px, 100% 100%",
         }}
       >
-        <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full border border-[#345bc8]/20 bg-[#dfe8f5]/70" />
         <div className="pointer-events-none absolute right-5 top-5 h-3 w-3 bg-[#171717]" />
         <div className="pointer-events-none absolute right-8 top-[26px] h-px w-16 bg-[#171717]/25" />
         <div className="relative flex gap-4 pr-8">
