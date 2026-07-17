@@ -11,7 +11,9 @@ export default defineConfig({
       legacySDKImports: process.env.BASE44_LEGACY_SDK_IMPORTS === 'true',
       hmrNotifier: true,
       navigationNotifier: true,
-      analyticsTracker: true,
+      // The production tracker requests /User/me for anonymous public visitors,
+      // which creates an expected 401 that Lighthouse reports as a browser error.
+      analyticsTracker: false,
       visualEditAgent: true
     }),
     react(),
