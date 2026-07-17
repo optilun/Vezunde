@@ -1,24 +1,14 @@
-import React, { Suspense, useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
 import HeaderAccountLink from "@/components/HeaderAccountLink";
 import ViaseeBrand from "@/components/brand/ViaseeBrand";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { openCookieSettings } from "@/lib/cookieConsent";
 import { VIASEE_COMPANY } from "@/lib/legal";
 
-const MOBILE_LINKS = [
-  { to: "/cauta", label: "Caută" },
-  { to: "/ghid", label: "Ghid pentru vedere" },
-  { to: "/parteneri", label: "Parteneri" },
-  { to: "/pentru-specialisti", label: "Pentru specialiști" },
-  { to: "/adauga-sau-revendica", label: "Adaugă sau revendică un profil" },
-];
+const loadMobileNavigationSheet = () =>
+  import("@/components/navigation/MobileNavigationSheet");
+const MobileNavigationSheet = lazy(loadMobileNavigationSheet);
 
 const desktopNavLinkClassName = ({ isActive }) =>
   `inline-flex min-h-12 items-center rounded-lg px-4 py-2.5 text-[0.95rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40 ${
@@ -79,7 +69,7 @@ function DesktopHeader({ scrolled }) {
   );
 }
 
-function MobileHeader({ scrolled, onMenuOpen }) {
+function MobileHeader({ scrolled, onMenuOpen, onMenuPreload }) {
   return (
     <header
       className={`sticky top-0 z-40 border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 safe-area-top lg:hidden ${
@@ -105,6 +95,9 @@ function MobileHeader({ scrolled, onMenuOpen }) {
           <button
             type="button"
             onClick={onMenuOpen}
+            onPointerDown={onMenuPreload}
+            onPointerEnter={onMenuPreload}
+            onFocus={onMenuPreload}
             className="inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-xl hover:bg-secondary active:bg-secondary"
             aria-label="Deschide meniul"
           >
@@ -135,6 +128,7 @@ export default function Layout() {
   const isHome = location.pathname === "/";
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileSheetMounted, setMobileSheetMounted] = useState(false);
 
   useEffect(() => {
     let animationFrame = 0;
@@ -163,6 +157,15 @@ export default function Layout() {
     setMobileOpen(false);
   }, [location.pathname]);
 
+  const preloadMobileMenu = () => {
+    void loadMobileNavigationSheet();
+  };
+
+  const openMobileMenu = () => {
+    setMobileSheetMounted(true);
+    setMobileOpen(true);
+  };
+
   return (
     <div className="flex min-h-screen min-h-dvh flex-col bg-background font-body text-foreground">
       <a
@@ -175,50 +178,18 @@ export default function Layout() {
       <div aria-hidden="true" className="hidden h-20 lg:block" />
       <MobileHeader
         scrolled={scrolled}
-        onMenuOpen={() => setMobileOpen(true)}
+        onMenuOpen={openMobileMenu}
+        onMenuPreload={preloadMobileMenu}
       />
 
-      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent
-          side="right"
-          className="w-[min(22rem,calc(100vw-1rem))] overflow-y-auto p-0 safe-area-top safe-area-bottom"
-        >
-          <SheetHeader className="border-b border-border px-5 py-5 text-left">
-            <SheetTitle className="sr-only">Navigație VIASEE</SheetTitle>
-            <ViaseeBrand
-              symbolClassName="h-8 w-8"
-              wordmarkClassName="h-[18px] w-auto"
-            />
-          </SheetHeader>
-          <div className="space-y-1 px-4 py-5">
-            {MOBILE_LINKS.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={() => setMobileOpen(false)}
-                className={({ isActive }) =>
-                  `flex min-h-12 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
-                    isActive
-                      ? "bg-secondary text-foreground"
-                      : "hover:bg-secondary"
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </div>
-          <div className="border-t border-border px-4 py-5">
-            <Link
-              to="/cerere"
-              onClick={() => setMobileOpen(false)}
-              className="flex min-h-12 w-full items-center justify-center rounded-full bg-[#171717] px-5 text-sm font-semibold text-white"
-            >
-              Găsește opțiuni
-            </Link>
-          </div>
-        </SheetContent>
-      </Sheet>
+      {mobileSheetMounted && (
+        <Suspense fallback={null}>
+          <MobileNavigationSheet
+            open={mobileOpen}
+            onOpenChange={setMobileOpen}
+          />
+        </Suspense>
+      )}
 
       <main
         id="main-content"
