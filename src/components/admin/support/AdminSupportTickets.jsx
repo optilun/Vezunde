@@ -25,12 +25,12 @@ const STATUS_OPTIONS = [
   { value: "closed", label: "Închis" },
 ];
 
-const STATUS_PRESENTATION = {
-  open: { label: "Deschis", className: "border-blue-200 bg-blue-50 text-blue-800" },
-  in_progress: { label: "În lucru", className: "border-amber-200 bg-amber-50 text-amber-800" },
-  waiting_user: { label: "Așteaptă utilizatorul", className: "border-violet-200 bg-violet-50 text-violet-800" },
-  resolved: { label: "Rezolvat", className: "border-green-200 bg-green-50 text-green-800" },
-  closed: { label: "Închis", className: "border-border bg-secondary text-muted-foreground" },
+const STATUS_STYLE = {
+  open: ["Deschis", "border-blue-200 bg-blue-50 text-blue-800"],
+  in_progress: ["În lucru", "border-amber-200 bg-amber-50 text-amber-800"],
+  waiting_user: ["Așteaptă utilizatorul", "border-violet-200 bg-violet-50 text-violet-800"],
+  resolved: ["Rezolvat", "border-green-200 bg-green-50 text-green-800"],
+  closed: ["Închis", "border-border bg-secondary text-muted-foreground"],
 };
 
 const PRIORITY_OPTIONS = [
@@ -40,11 +40,11 @@ const PRIORITY_OPTIONS = [
   { value: "urgent", label: "Urgentă" },
 ];
 
-const PRIORITY_PRESENTATION = {
-  low: { label: "Scăzută", className: "text-muted-foreground" },
-  normal: { label: "Normală", className: "text-foreground" },
-  high: { label: "Ridicată", className: "text-amber-700" },
-  urgent: { label: "Urgentă", className: "font-bold text-red-700" },
+const PRIORITY_STYLE = {
+  low: ["Scăzută", "text-muted-foreground"],
+  normal: ["Normală", "text-foreground"],
+  high: ["Ridicată", "text-amber-700"],
+  urgent: ["Urgentă", "font-bold text-red-700"],
 };
 
 const CATEGORY_LABELS = {
@@ -69,16 +69,16 @@ function formatDate(value) {
 }
 
 function StatusBadge({ status }) {
-  const presentation = STATUS_PRESENTATION[status] || STATUS_PRESENTATION.open;
+  const [label, className] = STATUS_STYLE[status] || STATUS_STYLE.open;
   return (
-    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold ${presentation.className}`}>
-      {presentation.label}
+    <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold ${className}`}>
+      {label}
     </span>
   );
 }
 
-function ticketMatchesQuery(ticket, normalizedQuery) {
-  if (!normalizedQuery) return true;
+function matchesSearch(ticket, query) {
+  if (!query) return true;
   return [
     ticket.subject,
     ticket.description,
@@ -87,7 +87,23 @@ function ticketMatchesQuery(ticket, normalizedQuery) {
     ticket.category,
     ticket.source,
     ticket.page_path,
-  ].some((value) => String(value || "").toLowerCase().includes(normalizedQuery));
+  ].some((value) => String(value || "").toLowerCase().includes(query));
+}
+
+function SummaryCard({ icon: Icon, label, value }) {
+  return (
+    <AdminCard className="p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-xs font-semibold text-muted-foreground">{label}</div>
+          <div className="mt-1 font-heading text-2xl font-extrabold">{value}</div>
+        </div>
+        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary text-muted-foreground">
+          <Icon className="h-4 w-4" />
+        </span>
+      </div>
+    </AdminCard>
+  );
 }
 
 export default function AdminSupportTickets({ adminUser }) {
@@ -97,7 +113,11 @@ export default function AdminSupportTickets({ adminUser }) {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [query, setQuery] = useState("");
-  const [draft, setDraft] = useState({ status: "open", priority: "normal", supportResponse: "" });
+  const [draft, setDraft] = useState({
+    status: "open",
+    priority: "normal",
+    response: "",
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -108,13 +128,13 @@ export default function AdminSupportTickets({ adminUser }) {
     setError("");
     try {
       const rows = await base44.entities.SupportTicket.list("-updated_date", 500);
-      const normalizedRows = rows || [];
-      setTickets(normalizedRows);
+      const nextTickets = rows || [];
+      setTickets(nextTickets);
       setSelectedId((current) => {
-        if (preserveSelection && current && normalizedRows.some((ticket) => ticket.id === current)) {
+        if (preserveSelection && current && nextTickets.some((ticket) => ticket.id === current)) {
           return current;
         }
-        return normalizedRows[0]?.id || "";
+        return nextTickets[0]?.id || "";
       });
     } catch (requestError) {
       setTickets([]);
@@ -142,17 +162,17 @@ export default function AdminSupportTickets({ adminUser }) {
     setDraft({
       status: selectedTicket.status || "open",
       priority: selectedTicket.priority || "normal",
-      supportResponse: selectedTicket.support_response || "",
+      response: selectedTicket.support_response || "",
     });
-    setError("");
-    setMessage("");
   }, [selectedTicket]);
 
   const counts = useMemo(() => {
     const rows = tickets || [];
     return {
       active: rows.filter((ticket) => ACTIVE_STATUSES.has(ticket.status || "open")).length,
-      urgent: rows.filter((ticket) => ACTIVE_STATUSES.has(ticket.status || "open") && ticket.priority === "urgent").length,
+      urgent: rows.filter(
+        (ticket) => ACTIVE_STATUSES.has(ticket.status || "open") && ticket.priority === "urgent",
+      ).length,
       resolved: rows.filter((ticket) => ["resolved", "closed"].includes(ticket.status)).length,
       total: rows.length,
     };
@@ -166,49 +186,62 @@ export default function AdminSupportTickets({ adminUser }) {
       if (statusFilter === "resolved" && !["resolved", "closed"].includes(status)) return false;
       if (categoryFilter !== "all" && ticket.category !== categoryFilter) return false;
       if (priorityFilter !== "all" && ticket.priority !== priorityFilter) return false;
-      return ticketMatchesQuery(ticket, normalizedQuery);
+      return matchesSearch(ticket, normalizedQuery);
     });
   }, [categoryFilter, priorityFilter, query, statusFilter, tickets]);
 
   useEffect(() => {
-    if (visibleTickets.length === 0) return;
+    if (visibleTickets.length === 0) {
+      setSelectedId("");
+      return;
+    }
     if (!visibleTickets.some((ticket) => ticket.id === selectedId)) {
       setSelectedId(visibleTickets[0].id);
     }
   }, [selectedId, visibleTickets]);
 
+  const selectTicket = (ticketId) => {
+    setSelectedId(ticketId);
+    setError("");
+    setMessage("");
+  };
+
   const saveTicket = async () => {
     if (!selectedTicket || saving) return;
 
-    const normalizedResponse = draft.supportResponse.trim();
-    if (["resolved", "closed", "waiting_user"].includes(draft.status) && !normalizedResponse) {
+    const response = draft.response.trim();
+    if (["waiting_user", "resolved", "closed"].includes(draft.status) && !response) {
       setMessage("");
       setError("Adaugă un răspuns înainte de a muta tichetul în acest status.");
       document.getElementById("admin-support-response")?.focus();
       return;
     }
 
+    const previousResponse = String(selectedTicket.support_response || "").trim();
+    const responseChanged = response !== previousResponse;
+    const payload = {
+      status: draft.status,
+      priority: draft.priority,
+      support_response: response,
+      ...(responseChanged && response
+        ? {
+            responded_at: new Date().toISOString(),
+            responded_by_user_id: adminUser?.id || "",
+          }
+        : {}),
+    };
+
     setSaving(true);
     setError("");
     setMessage("");
-
     try {
-      const payload = {
-        status: draft.status,
-        priority: draft.priority,
-      };
-
-      if (normalizedResponse) {
-        payload.support_response = normalizedResponse;
-        if (normalizedResponse !== String(selectedTicket.support_response || "").trim()) {
-          payload.responded_at = new Date().toISOString();
-          payload.responded_by_user_id = adminUser?.id || "";
-        }
-      }
-
       await base44.entities.SupportTicket.update(selectedTicket.id, payload);
-      setMessage("Tichetul a fost actualizat. Răspunsul este vizibil în contul utilizatorului.");
       await loadTickets();
+      setMessage(
+        response
+          ? "Tichetul a fost actualizat. Răspunsul este vizibil în contul utilizatorului."
+          : "Statusul și prioritatea tichetului au fost actualizate.",
+      );
     } catch (requestError) {
       setError(
         requestError?.response?.data?.error
@@ -223,27 +256,10 @@ export default function AdminSupportTickets({ adminUser }) {
   return (
     <div className="space-y-4" data-admin-mobile="true">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          { label: "Tichete active", value: counts.active, icon: Inbox },
-          { label: "Urgente active", value: counts.urgent, icon: AlertTriangle },
-          { label: "Rezolvate / închise", value: counts.resolved, icon: CheckCircle2 },
-          { label: "Total tichete", value: counts.total, icon: Mail },
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <AdminCard key={item.label} className="p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-xs font-semibold text-muted-foreground">{item.label}</div>
-                  <div className="mt-1 font-heading text-2xl font-extrabold">{item.value}</div>
-                </div>
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-secondary text-muted-foreground">
-                  <Icon className="h-4 w-4" />
-                </span>
-              </div>
-            </AdminCard>
-          );
-        })}
+        <SummaryCard icon={Inbox} label="Tichete active" value={counts.active} />
+        <SummaryCard icon={AlertTriangle} label="Urgente active" value={counts.urgent} />
+        <SummaryCard icon={CheckCircle2} label="Rezolvate / închise" value={counts.resolved} />
+        <SummaryCard icon={Mail} label="Total tichete" value={counts.total} />
       </div>
 
       <AdminCard className="p-3 sm:p-4">
@@ -260,21 +276,21 @@ export default function AdminSupportTickets({ adminUser }) {
 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:flex">
             {[
-              { key: "active", label: `Active (${counts.active})` },
-              { key: "resolved", label: `Rezolvate (${counts.resolved})` },
-              { key: "all", label: `Toate (${counts.total})` },
-            ].map((filter) => (
+              ["active", `Active (${counts.active})`],
+              ["resolved", `Rezolvate (${counts.resolved})`],
+              ["all", `Toate (${counts.total})`],
+            ].map(([key, label]) => (
               <button
-                key={filter.key}
+                key={key}
                 type="button"
-                onClick={() => setStatusFilter(filter.key)}
+                onClick={() => setStatusFilter(key)}
                 className={`min-h-10 rounded-xl px-3 text-xs font-semibold ${
-                  statusFilter === filter.key
+                  statusFilter === key
                     ? "bg-foreground text-background"
                     : "border border-border bg-background hover:bg-secondary"
                 }`}
               >
-                {filter.label}
+                {label}
               </button>
             ))}
             <button
@@ -364,17 +380,22 @@ export default function AdminSupportTickets({ adminUser }) {
               <div className="max-h-[70vh] divide-y divide-border overflow-y-auto">
                 {visibleTickets.map((ticket) => {
                   const selected = ticket.id === selectedId;
-                  const priority = PRIORITY_PRESENTATION[ticket.priority] || PRIORITY_PRESENTATION.normal;
+                  const [priorityLabel, priorityClass] = PRIORITY_STYLE[ticket.priority]
+                    || PRIORITY_STYLE.normal;
                   return (
                     <button
                       key={ticket.id}
                       type="button"
-                      onClick={() => setSelectedId(ticket.id)}
-                      className={`w-full p-4 text-left transition ${selected ? "bg-secondary/70" : "hover:bg-secondary/35"}`}
+                      onClick={() => selectTicket(ticket.id)}
+                      className={`w-full p-4 text-left transition ${
+                        selected ? "bg-secondary/70" : "hover:bg-secondary/35"
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <div className="line-clamp-2 text-sm font-bold leading-snug">{ticket.subject}</div>
+                          <div className="line-clamp-2 text-sm font-bold leading-snug">
+                            {ticket.subject}
+                          </div>
                           <div className="mt-1 truncate text-xs text-muted-foreground">
                             {ticket.requester_name || "Utilizator VIASEE"}
                             {ticket.requester_email ? ` · ${ticket.requester_email}` : ""}
@@ -384,7 +405,7 @@ export default function AdminSupportTickets({ adminUser }) {
                       </div>
                       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted-foreground">
                         <span>{CATEGORY_LABELS[ticket.category] || "Suport"}</span>
-                        <span className={priority.className}>{priority.label}</span>
+                        <span className={priorityClass}>{priorityLabel}</span>
                       </div>
                       <div className="mt-1 text-[10px] text-muted-foreground">
                         Actualizat {formatDate(ticket.updated_date || ticket.created_date)}
@@ -405,21 +426,19 @@ export default function AdminSupportTickets({ adminUser }) {
               />
             ) : (
               <div className="space-y-5">
-                <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusBadge status={selectedTicket.status} />
-                      <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
-                        {CATEGORY_LABELS[selectedTicket.category] || "Suport"}
-                      </span>
-                    </div>
-                    <h2 className="mt-3 break-words font-heading text-xl font-extrabold leading-snug">
-                      {selectedTicket.subject}
-                    </h2>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Creat {formatDate(selectedTicket.created_date)} · actualizat {formatDate(selectedTicket.updated_date || selectedTicket.created_date)}
-                    </p>
+                <div className="border-b border-border pb-5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge status={selectedTicket.status} />
+                    <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
+                      {CATEGORY_LABELS[selectedTicket.category] || "Suport"}
+                    </span>
                   </div>
+                  <h2 className="mt-3 break-words font-heading text-xl font-extrabold leading-snug">
+                    {selectedTicket.subject}
+                  </h2>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Creat {formatDate(selectedTicket.created_date)} · actualizat {formatDate(selectedTicket.updated_date || selectedTicket.created_date)}
+                  </p>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
@@ -445,8 +464,12 @@ export default function AdminSupportTickets({ adminUser }) {
                     <div className="mt-3 space-y-1 break-all text-xs text-muted-foreground">
                       <div>Sursă: {selectedTicket.source || "—"}</div>
                       <div>Pagină: {selectedTicket.page_path || "—"}</div>
-                      {selectedTicket.organization_id && <div>Organizație: {selectedTicket.organization_id}</div>}
-                      {selectedTicket.professional_profile_id && <div>Profil profesional: {selectedTicket.professional_profile_id}</div>}
+                      {selectedTicket.organization_id && (
+                        <div>Organizație: {selectedTicket.organization_id}</div>
+                      )}
+                      {selectedTicket.professional_profile_id && (
+                        <div>Profil profesional: {selectedTicket.professional_profile_id}</div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -467,7 +490,10 @@ export default function AdminSupportTickets({ adminUser }) {
                       <select
                         id="admin-ticket-status"
                         value={draft.status}
-                        onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))}
+                        onChange={(event) => setDraft((current) => ({
+                          ...current,
+                          status: event.target.value,
+                        }))}
                         className="mt-2 min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none"
                       >
                         {STATUS_OPTIONS.map((option) => (
@@ -480,7 +506,10 @@ export default function AdminSupportTickets({ adminUser }) {
                       <select
                         id="admin-ticket-priority"
                         value={draft.priority}
-                        onChange={(event) => setDraft((current) => ({ ...current, priority: event.target.value }))}
+                        onChange={(event) => setDraft((current) => ({
+                          ...current,
+                          priority: event.target.value,
+                        }))}
                         className="mt-2 min-h-11 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none"
                       >
                         {PRIORITY_OPTIONS.map((option) => (
@@ -498,14 +527,17 @@ export default function AdminSupportTickets({ adminUser }) {
                       id="admin-support-response"
                       rows={8}
                       maxLength={5000}
-                      value={draft.supportResponse}
-                      onChange={(event) => setDraft((current) => ({ ...current, supportResponse: event.target.value }))}
+                      value={draft.response}
+                      onChange={(event) => setDraft((current) => ({
+                        ...current,
+                        response: event.target.value,
+                      }))}
                       placeholder="Scrie răspunsul care va fi afișat în contul utilizatorului..."
                       className="mt-2 min-h-40 w-full resize-y rounded-2xl border border-border bg-card px-4 py-3 text-sm leading-relaxed outline-none focus:border-foreground/40"
                     />
                     <div className="mt-1 flex items-center justify-between gap-3 text-[10px] text-muted-foreground">
                       <span>Răspunsul este vizibil în Ajutor și suport după salvare.</span>
-                      <span>{draft.supportResponse.length}/5000</span>
+                      <span>{draft.response.length}/5000</span>
                     </div>
                   </div>
 
