@@ -21,7 +21,7 @@ const MOBILE_LINKS = [
 ];
 
 const desktopNavLinkClassName = ({ isActive }) =>
-  `inline-flex min-h-11 items-center rounded-lg px-3.5 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40 ${
+  `inline-flex min-h-12 items-center rounded-lg px-4 py-2.5 text-[0.95rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40 ${
     isActive
       ? "bg-secondary text-foreground"
       : "text-muted-foreground hover:bg-secondary/55 hover:text-foreground"
@@ -30,25 +30,25 @@ const desktopNavLinkClassName = ({ isActive }) =>
 function DesktopHeader({ scrolled }) {
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 hidden border-b transition-[background-color,border-color,backdrop-filter] duration-300 md:block ${
+      className={`fixed inset-x-0 top-0 z-50 hidden border-b transition-[background-color,border-color,backdrop-filter] duration-300 lg:block ${
         scrolled
           ? "border-border/70 bg-background/88 backdrop-blur-sm"
           : "border-transparent bg-background"
       }`}
     >
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-8">
+      <div className="flex h-20 w-full items-center justify-between gap-6 px-6 lg:px-12 xl:px-16">
         <Link
           to="/"
           className="flex min-w-0 items-center"
           aria-label="VIASEE - Pagina principală"
         >
           <ViaseeBrand
-            symbolClassName="h-8 w-8"
-            wordmarkClassName="h-[18px] w-auto"
+            symbolClassName="h-10 w-10"
+            wordmarkClassName="h-[22px] w-auto"
           />
         </Link>
 
-        <nav className="flex items-center gap-1 text-sm">
+        <nav className="flex items-center gap-1.5">
           <NavLink to="/cauta" className={desktopNavLinkClassName}>
             Caută
           </NavLink>
@@ -69,7 +69,7 @@ function DesktopHeader({ scrolled }) {
           <HeaderAccountLink />
           <Link
             to="/cerere"
-            className="ml-2 inline-flex min-h-11 items-center rounded-full bg-[#171717] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#2B2B2B]"
+            className="ml-3 inline-flex min-h-12 items-center rounded-full bg-[#171717] px-6 py-2.5 text-[0.95rem] font-semibold text-white transition-colors hover:bg-[#2B2B2B]"
           >
             Trimite o cerere
           </Link>
@@ -82,7 +82,7 @@ function DesktopHeader({ scrolled }) {
 function MobileHeader({ scrolled, onMenuOpen }) {
   return (
     <header
-      className={`sticky top-0 z-40 border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 safe-area-top md:hidden ${
+      className={`sticky top-0 z-40 border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 safe-area-top lg:hidden ${
         scrolled
           ? "border-[#E8E8E8] bg-white shadow-[0_4px_20px_rgba(20,20,20,0.05)]"
           : "border-transparent bg-white/85 backdrop-blur-sm"
@@ -172,7 +172,7 @@ export default function Layout() {
         Sari la conținut
       </a>
       <DesktopHeader scrolled={scrolled} />
-      <div aria-hidden="true" className="hidden h-16 md:block" />
+      <div aria-hidden="true" className="hidden h-20 lg:block" />
       <MobileHeader
         scrolled={scrolled}
         onMenuOpen={() => setMobileOpen(true)}
@@ -234,7 +234,7 @@ export default function Layout() {
             <div
               className={`flex items-center justify-center ${
                 isHome
-                  ? "min-h-[calc(100svh-4rem)] bg-[#F7F2E8]"
+                  ? "min-h-[calc(100svh-4rem)] bg-[#F7F2E8] lg:min-h-[calc(100svh-5rem)]"
                   : "min-h-[45vh]"
               }`}
               role="status"
