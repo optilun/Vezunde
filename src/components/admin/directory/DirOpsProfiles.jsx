@@ -25,7 +25,10 @@ function getStatusIssues(location) {
   if (location.status === "publicata" && location.public_visibility_status !== "approved") {
     issues.push(`Vizibilitatea legacy este ${location.public_visibility_status || "lipsa"}.`);
   }
-  if (location.claim_verification_status === "approved" && !["claimed", "verified"].includes(location.profile_control_status)) {
+  if (
+    location.claim_verification_status === "approved"
+    && !["claimed", "verified"].includes(location.profile_control_status)
+  ) {
     issues.push("Revendicarea este aprobata, dar controlul profilului nu reflecta aprobarea.");
   }
   if (location.pending_changes) issues.push("Campul legacy pending_changes este inca populat.");
@@ -33,8 +36,12 @@ function getStatusIssues(location) {
 }
 
 function canonicalLabel(location) {
-  if (location.profile_control_status === "suspended" || location.status === "suspendata") return "Suspendata";
-  if (location.profile_control_status === "verified" && location.status === "publicata") return "Publicata si verificata";
+  if (location.profile_control_status === "suspended" || location.status === "suspendata") {
+    return "Suspendata";
+  }
+  if (location.profile_control_status === "verified" && location.status === "publicata") {
+    return "Publicata si verificata";
+  }
   if (location.profile_control_status === "verified") return "Verificata, nepublicata";
   if (location.profile_control_status === "claimed") return "Revendicata";
   return "Profil directory";
@@ -48,7 +55,11 @@ function StatusBadge({ label, tone = "neutral" }) {
     amber: "border-amber-200 bg-amber-50 text-amber-800",
     neutral: "border-border bg-background text-muted-foreground",
   };
-  return <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold ${classes[tone]}`}>{label}</span>;
+  return (
+    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold ${classes[tone]}`}>
+      {label}
+    </span>
+  );
 }
 
 export default function DirOpsProfiles() {
@@ -67,14 +78,18 @@ export default function DirOpsProfiles() {
         base44.entities.ProviderOrganization.list("name", 500),
       ]);
       setLocations(locationRows);
-      setOrganizations(Object.fromEntries(organizationRows.map((organization) => [organization.id, organization])));
+      setOrganizations(
+        Object.fromEntries(organizationRows.map((organization) => [organization.id, organization])),
+      );
     } catch (reason) {
       setError(reason.response?.data?.error || reason.message || "Nu am putut incarca profilurile.");
       setLocations([]);
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   const run = async (note) => {
     setError("");
@@ -99,11 +114,23 @@ export default function DirOpsProfiles() {
       if (filter === "problems" && issues.length === 0) return false;
       if (filter === "directory" && (location.profile_control_status || "directory") !== "directory") return false;
       if (filter === "verified" && location.profile_control_status !== "verified") return false;
-      if (filter === "suspended" && location.profile_control_status !== "suspended" && location.status !== "suspendata") return false;
+      if (
+        filter === "suspended"
+        && location.profile_control_status !== "suspended"
+        && location.status !== "suspendata"
+      ) {
+        return false;
+      }
       if (!normalizedQuery) return true;
       const organization = organizations[location.organization_id];
-      return [location.name, location.public_display_name, location.city, location.county, organization?.name, organization?.public_display_name]
-        .some((value) => String(value || "").toLowerCase().includes(normalizedQuery));
+      return [
+        location.name,
+        location.public_display_name,
+        location.city,
+        location.county,
+        organization?.name,
+        organization?.public_display_name,
+      ].some((value) => String(value || "").toLowerCase().includes(normalizedQuery));
     });
   }, [filter, locations, organizations, query]);
 
@@ -113,22 +140,46 @@ export default function DirOpsProfiles() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap gap-1.5">
             {FILTERS.map((item) => (
-              <button key={item.key} type="button" onClick={() => setFilter(item.key)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${filter === item.key ? "bg-foreground text-background" : "border border-border bg-background hover:bg-secondary"}`}>
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setFilter(item.key)}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                  filter === item.key
+                    ? "bg-foreground text-background"
+                    : "border border-border bg-background hover:bg-secondary"
+                }`}
+              >
                 {item.label}
               </button>
             ))}
           </div>
-          <label className="flex min-w-64 items-center gap-2 rounded-full border border-border bg-background px-3 py-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cauta organizatie sau locatie" className="w-full bg-transparent text-xs outline-none" />
+          <label className="flex w-full items-center gap-2 rounded-full border border-border bg-background px-3 py-2 lg:w-auto lg:min-w-64">
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Cauta organizatie sau locatie"
+              className="min-w-0 flex-1 bg-transparent text-xs outline-none"
+            />
           </label>
         </div>
       </AdminCard>
 
-      {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
+      {error && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {error}
+        </div>
+      )}
       {!locations && <p className="text-sm text-muted-foreground">Se incarca...</p>}
       {locations && visibleLocations.length === 0 && (
-        <AdminCard className="p-5"><EmptyState icon={Building2} title="Niciun profil pentru filtrul selectat." subtitle="Schimba filtrul sau termenul de cautare." /></AdminCard>
+        <AdminCard className="p-5">
+          <EmptyState
+            icon={Building2}
+            title="Niciun profil pentru filtrul selectat."
+            subtitle="Schimba filtrul sau termenul de cautare."
+          />
+        </AdminCard>
       )}
 
       {visibleLocations.map((location) => {
@@ -136,40 +187,98 @@ export default function DirOpsProfiles() {
         const organization = organizations[location.organization_id];
         const issues = getStatusIssues(location);
         const canonical = canonicalLabel(location);
-        const canonicalTone = canonical === "Publicata si verificata" ? "green" : canonical === "Suspendata" ? "red" : canonical === "Revendicata" ? "blue" : "neutral";
+        const canonicalTone = canonical === "Publicata si verificata"
+          ? "green"
+          : canonical === "Suspendata"
+            ? "red"
+            : canonical === "Revendicata"
+              ? "blue"
+              : "neutral";
+
         return (
           <AdminCard key={location.id} className="p-4">
             <div className="flex flex-wrap items-start gap-4">
-              <div className="min-w-[260px] flex-1">
+              <div className="min-w-0 flex-1 sm:min-w-[260px]">
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="text-sm font-bold">{location.public_display_name || location.name}</div>
+                  <div className="break-words text-sm font-bold">
+                    {location.public_display_name || location.name}
+                  </div>
                   <StatusBadge label={canonical} tone={canonicalTone} />
-                  {issues.length > 0 && <StatusBadge label={`${issues.length} neconcordante`} tone="amber" />}
+                  {issues.length > 0 && (
+                    <StatusBadge label={`${issues.length} neconcordante`} tone="amber" />
+                  )}
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {organization?.public_display_name || organization?.name || "Organizatie necunoscuta"} · {location.locality_name || location.city || "Localitate lipsa"}{location.county_name || location.county ? `, ${location.county_name || location.county}` : ""}
+                <p className="mt-1 break-words text-xs leading-relaxed text-muted-foreground">
+                  {organization?.public_display_name || organization?.name || "Organizatie necunoscuta"}
+                  {" · "}
+                  {location.locality_name || location.city || "Localitate lipsa"}
+                  {location.county_name || location.county
+                    ? `, ${location.county_name || location.county}`
+                    : ""}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  <StatusBadge label={`Publicare: ${location.status || "lipsa"}`} tone={location.status === "publicata" ? "green" : location.status === "suspendata" ? "red" : "neutral"} />
-                  <StatusBadge label={`Control: ${PCS_LABELS[pcs] || pcs}`} tone={pcs === "verified" ? "green" : pcs === "claimed" ? "blue" : pcs === "suspended" ? "red" : "neutral"} />
-                  <StatusBadge label={`Revendicare: ${location.claim_verification_status || "none"}`} tone={location.claim_verification_status === "approved" ? "green" : location.claim_verification_status === "pending" ? "amber" : "neutral"} />
-                  <StatusBadge label={`Activitate: ${location.active_status || "lipsa"}`} tone={location.active_status === "activa" ? "green" : "neutral"} />
+                  <StatusBadge
+                    label={`Publicare: ${location.status || "lipsa"}`}
+                    tone={location.status === "publicata" ? "green" : location.status === "suspendata" ? "red" : "neutral"}
+                  />
+                  <StatusBadge
+                    label={`Control: ${PCS_LABELS[pcs] || pcs}`}
+                    tone={pcs === "verified" ? "green" : pcs === "claimed" ? "blue" : pcs === "suspended" ? "red" : "neutral"}
+                  />
+                  <StatusBadge
+                    label={`Revendicare: ${location.claim_verification_status || "none"}`}
+                    tone={location.claim_verification_status === "approved" ? "green" : location.claim_verification_status === "pending" ? "amber" : "neutral"}
+                  />
+                  <StatusBadge
+                    label={`Activitate: ${location.active_status || "lipsa"}`}
+                    tone={location.active_status === "activa" ? "green" : "neutral"}
+                  />
                 </div>
                 {issues.length > 0 && (
                   <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5">
-                    <div className="flex items-center gap-2 text-xs font-bold text-amber-900"><AlertTriangle className="h-3.5 w-3.5" /> Statusuri de verificat</div>
-                    <ul className="mt-1.5 space-y-1 text-[11px] leading-relaxed text-amber-900">{issues.map((issue) => <li key={issue}>- {issue}</li>)}</ul>
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
+                      <AlertTriangle className="h-3.5 w-3.5" /> Statusuri de verificat
+                    </div>
+                    <ul className="mt-1.5 space-y-1 text-[11px] leading-relaxed text-amber-900">
+                      {issues.map((issue) => <li key={issue}>- {issue}</li>)}
+                    </ul>
                   </div>
                 )}
-                <p className="mt-2 text-[11px] text-muted-foreground">Sursa: {location.source_url ? <a href={location.source_url} target="_blank" rel="noreferrer" className="underline">{location.source_url}</a> : "lipsa"}</p>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Sursa:{" "}
+                  {location.source_url ? (
+                    <a
+                      href={location.source_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="break-all underline"
+                    >
+                      {location.source_url}
+                    </a>
+                  ) : (
+                    "lipsa"
+                  )}
+                </p>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
                 {pcs !== "verified" && (
-                  <button onClick={() => setAction({ locationId: location.id, type: "verify" })} className="rounded-full border border-border px-3 py-2 text-xs font-semibold hover:bg-secondary">Verifica profil</button>
+                  <button
+                    type="button"
+                    onClick={() => setAction({ locationId: location.id, type: "verify" })}
+                    className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-3 py-2 text-xs font-semibold hover:bg-secondary sm:rounded-full"
+                  >
+                    Verifica profil
+                  </button>
                 )}
                 {pcs !== "suspended" && (
-                  <button onClick={() => setAction({ locationId: location.id, type: "suspend" })} className="rounded-full border border-border px-3 py-2 text-xs font-semibold text-destructive hover:bg-secondary">Suspenda</button>
+                  <button
+                    type="button"
+                    onClick={() => setAction({ locationId: location.id, type: "suspend" })}
+                    className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-3 py-2 text-xs font-semibold text-destructive hover:bg-secondary sm:rounded-full"
+                  >
+                    Suspenda
+                  </button>
                 )}
               </div>
             </div>
