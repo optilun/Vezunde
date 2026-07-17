@@ -277,7 +277,7 @@ function EmptyDirectory() {
         to="/cerere"
         className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground hover:opacity-90 sm:w-auto"
       >
-        Trimite o cerere
+        Încearcă o căutare ghidată
       </Link>
     </div>
   );
@@ -311,7 +311,7 @@ function EmptyMatch({ locality }) {
         to="/cerere"
         className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground hover:opacity-90 sm:w-auto"
       >
-        Trimite o cerere
+        Încearcă o căutare ghidată
       </Link>
     </div>
   );
