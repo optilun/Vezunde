@@ -71,7 +71,7 @@ function DesktopHeader({ scrolled }) {
             to="/cerere"
             className="ml-3 inline-flex min-h-12 items-center rounded-full bg-[#171717] px-6 py-2.5 text-[0.95rem] font-semibold text-white transition-colors hover:bg-[#2B2B2B]"
           >
-            Trimite o cerere
+            Găsește opțiuni
           </Link>
         </nav>
       </div>
@@ -214,7 +214,7 @@ export default function Layout() {
               onClick={() => setMobileOpen(false)}
               className="flex min-h-12 w-full items-center justify-center rounded-full bg-[#171717] px-5 text-sm font-semibold text-white"
             >
-              Trimite o cerere
+              Găsește opțiuni
             </Link>
           </div>
         </SheetContent>
@@ -290,7 +290,7 @@ export default function Layout() {
                 Ghid pentru vedere
               </Link>
               <Link to="/cerere" className={footerLinkClassName}>
-                Trimite o cerere
+                Găsește opțiuni
               </Link>
               <Link to="/parteneri" className={footerLinkClassName}>
                 Parteneri

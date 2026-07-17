@@ -138,10 +138,10 @@ function HeroContent({ profile, status, serviceCount, mapUrl }) {
           {!isDirectoryProfile && (
             <div className="mt-5 flex flex-wrap gap-2">
               <Link
-                to={`/cerere?furnizor=${profile.id}`}
+                to="/cerere"
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-xs font-semibold text-background transition-opacity hover:opacity-90 lg:min-h-0"
               >
-                Trimite o cerere <ArrowRight className="h-3.5 w-3.5" />
+                Găsește opțiuni potrivite <ArrowRight className="h-3.5 w-3.5" />
               </Link>
               {profile.phone_public && (
                 <a href={`tel:${profile.phone_public.replace(/\s/g, "")}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-xs font-semibold hover:bg-secondary lg:min-h-0">
@@ -178,5 +178,3 @@ export default function ProviderLocationHero({ profile, status, serviceCount, ma
     </section>
   );
 }
-
-
