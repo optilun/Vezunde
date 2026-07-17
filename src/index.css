@@ -217,6 +217,128 @@
   padding-top: 1.25rem !important;
 }
 
+.workspace-neutral
+  section.pt-3
+  > div.mt-5.divide-y.border-y:has(> article > button) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  border: 0 !important;
+}
+
+.workspace-neutral
+  section.pt-3
+  > div.mt-5.divide-y.border-y:has(> article > button)
+  > article {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0 !important;
+  overflow: hidden;
+  padding: 0 !important;
+  border: 1px solid rgb(23 23 23 / 0.12) !important;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 10px 26px rgb(23 23 23 / 0.04);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+
+.workspace-neutral
+  section.pt-3
+  > div.mt-5.divide-y.border-y:has(> article > button)
+  > article:hover {
+  transform: translateY(-2px);
+  border-color: rgb(23 23 23 / 0.2) !important;
+  box-shadow: 0 16px 34px rgb(23 23 23 / 0.075);
+}
+
+.workspace-neutral
+  section.pt-3
+  > div.mt-5.divide-y.border-y:has(> article > button)
+  > article
+  > div:first-child {
+  display: block;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.workspace-neutral
+  section.pt-3
+  > div.mt-5.divide-y.border-y:has(> article > button)
+  > article
+  > div:first-child
+  > div:first-child {
+  width: 100% !important;
+  height: clamp(10.5rem, 22vw, 13.5rem) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background:
+    radial-gradient(circle at 1px 1px, rgb(23 23 23 / 0.08) 1px, transparent 1.2px),
+    linear-gradient(180deg, #dce4f2 0%, #eff1f5 54%, #f7f2e8 100%) !important;
+  background-size: 20px 20px, auto;
+}
+
+.workspace-neutral
+  section.pt-3
+  > div.mt-5.divide-y.border-y:has(> article > button)
+  > article
+  > div:first-child
+  > div:first-child
+  img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.workspace-neutral
+  section.pt-3
+  > div.mt-5.divide-y.border-y:has(> article > button)
+  > article
+  > div:first-child
+  > div:first-child
+  svg {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: #4f6080;
+}
+
+.workspace-neutral
+  section.pt-3
+  > div.mt-5.divide-y.border-y:has(> article > button)
+  > article
+  > div:first-child
+  > div:nth-child(2) {
+  min-width: 0;
+  padding: 1rem 1rem 0.85rem;
+}
+
+.workspace-neutral
+  section.pt-3
+  > div.mt-5.divide-y.border-y:has(> article > button)
+  > article
+  > button {
+  width: 100% !important;
+  min-height: 3rem;
+  justify-content: space-between;
+  border: 0 !important;
+  border-top: 1px solid rgb(23 23 23 / 0.1) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0.75rem 1rem;
+}
+
+.workspace-neutral
+  section.pt-3
+  > div.mt-5.divide-y.border-y:has(> article > button)
+  > article
+  > button:hover {
+  background: #f8f4ec !important;
+}
+
 .safe-area-top {
   padding-top: env(safe-area-inset-top);
 }
@@ -318,5 +440,21 @@
 
   .workspace-neutral table {
     font-size: 0.8125rem;
+  }
+
+  .workspace-neutral
+    section.pt-3
+    > div.mt-5.divide-y.border-y:has(> article > button) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .workspace-neutral
+    section.pt-3
+    > div.mt-5.divide-y.border-y:has(> article > button)
+    > article
+    > div:first-child
+    > div:first-child {
+    height: 11rem !important;
   }
 }
