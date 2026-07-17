@@ -191,28 +191,30 @@ export default function ProviderLocationsWithPhoto(props) {
         @media (min-width: 1024px) {
           .vezunde-location-summary {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) 340px;
-            column-gap: 2rem;
+            grid-template-columns: minmax(0, 1fr) 320px;
+            column-gap: 1.5rem;
             align-items: start;
           }
           .vezunde-location-summary > * { grid-column: 1; }
           .vezunde-location-summary > .vezunde-location-summary-header {
-            grid-column: 1 / -1;
+            grid-column: 1;
+            grid-row: 1;
           }
           .vezunde-location-summary > .vezunde-location-summary-details {
-            margin-top: 1rem !important;
+            margin-top: 0.75rem !important;
           }
           .vezunde-location-summary > .vezunde-location-map-actions {
-            margin-top: 0.25rem !important;
+            margin-top: 0 !important;
           }
           .vezunde-location-summary > .vezunde-location-map {
             grid-column: 2;
-            grid-row: 2 / span 4;
+            grid-row: 1 / span 4;
+            align-self: start;
             width: 100%;
-            margin-top: 1.25rem !important;
+            margin-top: 0 !important;
           }
           .vezunde-location-summary > .vezunde-location-map > div {
-            height: 210px !important;
+            height: 190px !important;
           }
         }
 
