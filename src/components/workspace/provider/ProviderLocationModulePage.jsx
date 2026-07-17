@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowLeft, Clock, MapPin, Users, Wrench } from "lucide-react";
+import { ArrowLeft, Clock, Info, MapPin, Users, Wrench } from "lucide-react";
 import ProviderServices from "./ProviderServices";
 import ProviderHours from "./ProviderHours";
 import ProviderTeam from "./ProviderTeam";
@@ -9,19 +9,19 @@ const MODULES = {
     label: "Servicii",
     icon: Wrench,
     capability: "location.manage_content",
-    description: "Configureaza serviciile, spatiile functionale si resursele acestei locatii.",
+    description: "Configurează serviciile, spațiile funcționale și resursele acestei locații.",
   },
   program: {
     label: "Program",
     icon: Clock,
     capability: "location.manage_operational_status",
-    description: "Stabileste programul normal, exceptiile si modul de primire a clientilor.",
+    description: "Stabilește programul normal, excepțiile și modul de primire a clienților.",
   },
   specialisti: {
-    label: "Specialisti",
+    label: "Specialiști",
     icon: Users,
     capability: "location.manage_specialists",
-    description: "Gestioneaza specialistii si invitatiile profesionale asociate acestei locatii.",
+    description: "Gestionează specialiștii și invitațiile profesionale asociate acestei locații.",
   },
 };
 
@@ -42,22 +42,22 @@ export default function ProviderLocationModulePage({
     return (
       <div className="rounded-[24px] border border-border bg-card p-6 shadow-sm">
         <h1 className="font-heading text-xl font-extrabold tracking-tight">Modul indisponibil</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{location && config ? "Rolul tau nu permite accesul la acest modul." : "Locatia sau modulul solicitat nu a putut fi gasit."}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{location && config ? "Rolul tău nu permite accesul la acest modul." : "Locația sau modulul solicitat nu a putut fi găsit."}</p>
         <button type="button" onClick={onBack} className="mt-5 inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary">
-          <ArrowLeft className="h-4 w-4" /> Inapoi la locatii
+          <ArrowLeft className="h-4 w-4" /> Înapoi la locații
         </button>
       </div>
     );
   }
 
   const Icon = config.icon;
-  const locationName = location.public_display_name || location.name || "Locatie";
+  const locationName = location.public_display_name || location.name || "Locație";
 
   return (
     <div className={`space-y-6 ${moduleKey === "servicii" ? "provider-location-services-page" : ""}`}>
       <header className="provider-location-module-header rounded-[24px] border border-border bg-card p-5 shadow-sm">
         <button type="button" onClick={onBack} className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Inapoi la locatii
+          <ArrowLeft className="h-4 w-4" /> Înapoi la locații
         </button>
         <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3">
@@ -67,7 +67,7 @@ export default function ProviderLocationModulePage({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="font-heading text-2xl font-extrabold tracking-tight">{config.label}</h1>
-                <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">Pagina locatiei</span>
+                <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">Pagina locației</span>
               </div>
               <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">{config.description}</p>
             </div>
@@ -78,6 +78,13 @@ export default function ProviderLocationModulePage({
           </div>
         </div>
       </header>
+
+      {moduleKey === "program" && (
+        <div className="flex items-start gap-2 rounded-2xl border border-border bg-secondary/30 px-4 py-3 text-xs leading-relaxed text-muted-foreground md:hidden">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>Pentru fiecare zi, completează mai întâi ora de deschidere, apoi ora de închidere. Butonul de salvare rămâne disponibil în partea de jos a ecranului.</span>
+        </div>
+      )}
 
       <div key={`${location.id}:${moduleKey}`}>
         {moduleKey === "servicii" && (
@@ -100,7 +107,7 @@ export default function ProviderLocationModulePage({
 
       <div className="flex justify-start border-t border-border pt-4">
         <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold hover:bg-secondary">
-          <ArrowLeft className="h-4 w-4" /> Inapoi la locatii
+          <ArrowLeft className="h-4 w-4" /> Înapoi la locații
         </button>
       </div>
     </div>
