@@ -14,10 +14,25 @@ export default function ProviderLocationsWithPhoto(props) {
   const [photoOpen, setPhotoOpen] = useState(false);
   const [addLocationOpen, setAddLocationOpen] = useState(false);
   const [portalTarget, setPortalTarget] = useState(null);
-  const selectedLocation = (workspace.locations || []).find((location) => location.id === selectedLocationId) || (workspace.locations || [])[0] || null;
-  const selectedLocationName = selectedLocation?.public_display_name || selectedLocation?.name || "Locație";
-  const organization = (workspace.organizations || []).find((item) => item.id === selectedLocation?.organization_id) || workspace.organizations?.[0] || null;
-  const organizationName = organization?.public_display_name || organization?.name || selectedLocation?.organization_name || selectedLocationName;
+  const selectedLocation =
+    (workspace.locations || []).find(
+      (location) => location.id === selectedLocationId,
+    ) ||
+    (workspace.locations || [])[0] ||
+    null;
+  const selectedLocationName =
+    selectedLocation?.public_display_name || selectedLocation?.name || "Locatie";
+  const organization =
+    (workspace.organizations || []).find(
+      (item) => item.id === selectedLocation?.organization_id,
+    ) ||
+    workspace.organizations?.[0] ||
+    null;
+  const organizationName =
+    organization?.public_display_name ||
+    organization?.name ||
+    selectedLocation?.organization_name ||
+    selectedLocationName;
 
   useEffect(() => {
     const root = containerRef.current;
@@ -27,15 +42,26 @@ export default function ProviderLocationsWithPhoto(props) {
       const sections = Array.from(root.querySelectorAll("section"));
       const configureSection = sections.find((section) => {
         const content = section.textContent || "";
-        return content.includes("Configureaza locatia") || content.includes("Configurează locația");
+        return (
+          content.includes("Configureaza locatia") ||
+          content.includes("Configureaza locatia")
+        );
       });
       const grid = configureSection?.querySelector(".grid.gap-3");
       if (grid && canManagePhoto) {
         grid.classList.remove("md:grid-cols-3");
-        grid.classList.add("sm:grid-cols-2", "xl:grid-cols-4", "vezunde-location-modules");
+        grid.classList.add(
+          "sm:grid-cols-2",
+          "xl:grid-cols-4",
+          "vezunde-location-modules",
+        );
         setPortalTarget(grid);
       } else {
-        grid?.classList.remove("sm:grid-cols-2", "xl:grid-cols-4", "vezunde-location-modules");
+        grid?.classList.remove(
+          "sm:grid-cols-2",
+          "xl:grid-cols-4",
+          "vezunde-location-modules",
+        );
         if (grid) grid.classList.add("md:grid-cols-3");
         setPortalTarget(null);
       }
@@ -110,19 +136,35 @@ export default function ProviderLocationsWithPhoto(props) {
 
       <ProviderLocations {...props} />
 
-      {canManagePhoto && portalTarget && selectedLocation && createPortal(
-        <button type="button" onClick={() => setPhotoOpen(true)} className="h-full min-h-28 rounded-[18px] border border-foreground/10 bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/25 hover:shadow-sm">
-          <div className="grid h-full grid-cols-[40px_minmax(0,1fr)] items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center self-start rounded-2xl bg-secondary"><Image className="h-4 w-4" /></div>
-            <div className="flex h-full min-w-0 flex-col">
-              <div className="flex min-h-10 items-center justify-between gap-2"><div className="text-sm font-bold">Fotografie locație</div><ArrowRight className="h-4 w-4 text-muted-foreground" /></div>
-              <p className="mt-1.5 min-h-16 text-sm leading-relaxed text-muted-foreground">Adaugă fotografia principală a acestei locații.</p>
-              <div className="mt-auto pt-3 text-sm font-bold underline underline-offset-4">Configurează</div>
+      {canManagePhoto &&
+        portalTarget &&
+        selectedLocation &&
+        createPortal(
+          <button
+            type="button"
+            onClick={() => setPhotoOpen(true)}
+            className="h-full min-h-28 rounded-[14px] border border-foreground/20 bg-background p-4 text-left transition-colors hover:border-foreground/45 hover:bg-white/45"
+          >
+            <div className="grid h-full grid-cols-[40px_minmax(0,1fr)] items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center self-start rounded-full border border-foreground/10 bg-secondary/70">
+                <Image className="h-4 w-4" />
+              </div>
+              <div className="flex h-full min-w-0 flex-col">
+                <div className="flex min-h-10 items-center justify-between gap-2">
+                  <div className="text-sm font-bold">Fotografie locatie</div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="mt-1.5 min-h-16 text-sm leading-relaxed text-muted-foreground">
+                  Adauga fotografia principala a acestei locatii.
+                </p>
+                <div className="mt-auto pt-3 text-sm font-bold underline underline-offset-4">
+                  Configureaza
+                </div>
+              </div>
             </div>
-          </div>
-        </button>,
-        portalTarget,
-      )}
+          </button>,
+          portalTarget,
+        )}
 
       {canManagePhoto && photoOpen && selectedLocation && (
         <div
@@ -135,11 +177,27 @@ export default function ProviderLocationsWithPhoto(props) {
             className="flex max-h-[96dvh] w-full flex-col overflow-hidden rounded-t-[24px] border border-border bg-background shadow-2xl sm:max-h-[90vh] sm:max-w-2xl sm:rounded-[28px]"
             onMouseDown={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-4 py-4 sm:px-5 safe-area-top">
-              <div className="min-w-0"><div className="truncate text-sm font-medium text-muted-foreground">{selectedLocationName}</div><h2 className="font-heading text-xl font-extrabold tracking-tight sm:text-2xl">Fotografia locației</h2></div>
-              <button type="button" onClick={() => setPhotoOpen(false)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary" aria-label="Închide"><X className="h-4 w-4" /></button>
+            <div className="safe-area-top flex items-start justify-between gap-4 border-b border-border bg-card px-4 py-4 sm:px-5">
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium text-muted-foreground">
+                  {selectedLocationName}
+                </div>
+                <h2 className="font-heading text-xl font-extrabold tracking-tight sm:text-2xl">
+                  Fotografia locatiei
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPhotoOpen(false)}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary"
+                aria-label="Inchide"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-5"><ProviderLocationPhotoCompact locationId={selectedLocation.id} /></div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-5">
+              <ProviderLocationPhotoCompact locationId={selectedLocation.id} />
+            </div>
           </div>
         </div>
       )}
@@ -147,12 +205,32 @@ export default function ProviderLocationsWithPhoto(props) {
       {canAddLocation && addLocationOpen && selectedLocation && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6">
           <div className="flex max-h-[98dvh] w-full flex-col overflow-hidden rounded-t-[24px] border border-border bg-background shadow-2xl sm:max-h-[94vh] sm:max-w-4xl sm:rounded-[28px]">
-            <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-4 py-4 sm:px-5 safe-area-top">
-              <div className="min-w-0"><div className="truncate text-sm font-medium text-muted-foreground">{organizationName}</div><h2 className="font-heading text-xl font-extrabold tracking-tight sm:text-2xl">Adaugă o locație nouă</h2></div>
-              <button type="button" onClick={() => setAddLocationOpen(false)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary" aria-label="Închide"><X className="h-4 w-4" /></button>
+            <div className="safe-area-top flex items-start justify-between gap-4 border-b border-border bg-card px-4 py-4 sm:px-5">
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium text-muted-foreground">
+                  {organizationName}
+                </div>
+                <h2 className="font-heading text-xl font-extrabold tracking-tight sm:text-2xl">
+                  Adauga o locatie noua
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAddLocationOpen(false)}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary"
+                aria-label="Inchide"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-5">
-              <ProviderAddLocationFlow anchorLocationId={selectedLocation.id} organizationName={organizationName} onClose={() => setAddLocationOpen(false)} onSelectLocation={onSelect} onRefresh={onRefresh} />
+              <ProviderAddLocationFlow
+                anchorLocationId={selectedLocation.id}
+                organizationName={organizationName}
+                onClose={() => setAddLocationOpen(false)}
+                onSelectLocation={onSelect}
+                onRefresh={onRefresh}
+              />
             </div>
           </div>
         </div>
