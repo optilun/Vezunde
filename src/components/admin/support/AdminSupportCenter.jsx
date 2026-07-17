@@ -36,7 +36,7 @@ export default function AdminSupportCenter({ adminUser }) {
       setCountsError(
         requestError?.response?.data?.error
           || requestError?.message
-          || "Numaratoarea pentru suport nu a putut fi actualizata.",
+          || "Numărătoarea pentru suport nu a putut fi actualizată.",
       );
     } finally {
       setLoadingCounts(false);
@@ -72,7 +72,7 @@ export default function AdminSupportCenter({ adminUser }) {
                 <span className={`mt-1 block text-xs ${
                   view === "tickets" ? "text-background/70" : "text-muted-foreground"
                 }`}>
-                  Probleme care necesita raspuns si urmarire.
+                  Probleme care necesită răspuns și urmărire.
                 </span>
               </span>
               <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
@@ -104,7 +104,7 @@ export default function AdminSupportCenter({ adminUser }) {
                 <span className={`mt-1 block text-xs ${
                   view === "feedback" ? "text-background/70" : "text-muted-foreground"
                 }`}>
-                  Evaluari si sugestii trimise din conturi.
+                  Evaluări și sugestii trimise din conturi.
                 </span>
               </span>
               <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
@@ -128,7 +128,7 @@ export default function AdminSupportCenter({ adminUser }) {
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
-            Actualizeaza numerele
+            Actualizează numerele
           </button>
         </div>
 
