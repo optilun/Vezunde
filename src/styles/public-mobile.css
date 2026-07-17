@@ -9,14 +9,18 @@
 
   #root > div > main#main-content input:not([type="checkbox"]):not([type="radio"]),
   #root > div > main#main-content select,
-  #root > div > main#main-content textarea {
+  #root > div > main#main-content textarea,
+  #root > div > header + main input:not([type="checkbox"]):not([type="radio"]),
+  #root > div > header + main select,
+  #root > div > header + main textarea {
     min-height: 44px;
     font-size: 16px;
   }
 
   #root > div > main#main-content summary,
   #root > div > main#main-content a[class*="rounded-full"],
-  #root > div > main#main-content button[class*="rounded-full"] {
+  #root > div > main#main-content button[class*="rounded-full"],
+  #root > div > header + main button {
     min-height: 44px;
     touch-action: manipulation;
   }
@@ -39,6 +43,26 @@
   #root > div > main#main-content [class*="grid-cols-"] > *,
   #root > div > main#main-content [class*="justify-between"] > * {
     min-width: 0;
+  }
+
+  [role="dialog"][class*="rounded-3xl"] {
+    max-height: calc(100dvh - 1rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
+  }
+
+  [role="dialog"][class*="rounded-3xl"] input:not([type="checkbox"]):not([type="radio"]),
+  [role="dialog"][class*="rounded-3xl"] select,
+  [role="dialog"][class*="rounded-3xl"] textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  [role="dialog"][class*="rounded-3xl"] button {
+    min-height: 44px;
+    touch-action: manipulation;
   }
 }
 
