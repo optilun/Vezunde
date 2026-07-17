@@ -86,6 +86,20 @@ export default function ProviderLocationsWithPhoto(props) {
   }, [canAddLocation, canManagePhoto, selectedLocationId]);
 
   useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const root = containerRef.current;
+      if (!root) return;
+      const mapToggle = Array.from(root.querySelectorAll("button")).find(
+        (button) =>
+          String(button.textContent || "").includes("Vezi pe harta"),
+      );
+      mapToggle?.click();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedLocationId]);
+
+  useEffect(() => {
     if (!canManagePhoto) setPhotoOpen(false);
     if (!canAddLocation) setAddLocationOpen(false);
   }, [canAddLocation, canManagePhoto]);
