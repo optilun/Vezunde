@@ -40,7 +40,7 @@ export default function ProviderLocationModulePage({
 
   if (!location || !config || !hasModuleAccess) {
     return (
-      <div className="rounded-[24px] border border-border bg-card p-6 shadow-sm">
+      <div className="rounded-[20px] border border-foreground/10 bg-card p-6 shadow-[0_14px_40px_rgba(23,23,23,0.04)]">
         <h1 className="font-heading text-xl font-extrabold tracking-tight">Modul indisponibil</h1>
         <p className="mt-2 text-sm text-muted-foreground">{location && config ? "Rolul tău nu permite accesul la acest modul." : "Locația sau modulul solicitat nu a putut fi găsit."}</p>
         <button type="button" onClick={onBack} className="mt-5 inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary">
@@ -55,24 +55,24 @@ export default function ProviderLocationModulePage({
 
   return (
     <div className={`space-y-6 ${moduleKey === "servicii" ? "provider-location-services-page" : ""}`}>
-      <header className="provider-location-module-header rounded-[24px] border border-border bg-card p-5 shadow-sm">
-        <button type="button" onClick={onBack} className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground">
+      <header className="provider-location-module-header rounded-[20px] border border-foreground/10 bg-card p-5 shadow-[0_14px_40px_rgba(23,23,23,0.04)] sm:p-6">
+        <button type="button" onClick={onBack} className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Înapoi la locații
         </button>
         <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-secondary">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-[#eaf0fc] text-[#345bc8]">
               <Icon className="h-5 w-5" />
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="font-heading text-2xl font-extrabold tracking-tight">{config.label}</h1>
-                <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">Pagina locației</span>
+                <h1 className="font-heading text-[2rem] font-extrabold leading-tight tracking-[-0.035em]">{config.label}</h1>
+                <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-muted-foreground">Pagina locației</span>
               </div>
-              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">{config.description}</p>
+              <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground">{config.description}</p>
             </div>
           </div>
-          <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-xs font-semibold">
+          <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-sm font-semibold">
             <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <span className="truncate">{locationName}</span>
           </div>
@@ -80,7 +80,7 @@ export default function ProviderLocationModulePage({
       </header>
 
       {moduleKey === "program" && (
-        <div className="flex items-start gap-2 rounded-2xl border border-border bg-secondary/30 px-4 py-3 text-xs leading-relaxed text-muted-foreground md:hidden">
+        <div className="flex items-start gap-2 rounded-[18px] border border-border bg-secondary/30 px-4 py-3 text-sm leading-relaxed text-muted-foreground md:hidden">
           <Info className="mt-0.5 h-4 w-4 shrink-0" />
           <span>Pentru fiecare zi, completează mai întâi ora de deschidere, apoi ora de închidere. Butonul de salvare rămâne disponibil în partea de jos a ecranului.</span>
         </div>

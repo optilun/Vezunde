@@ -15,7 +15,7 @@ export default function ProviderLocationsWithPhoto(props) {
   const [addLocationOpen, setAddLocationOpen] = useState(false);
   const [portalTarget, setPortalTarget] = useState(null);
   const selectedLocation = (workspace.locations || []).find((location) => location.id === selectedLocationId) || (workspace.locations || [])[0] || null;
-  const selectedLocationName = selectedLocation?.public_display_name || selectedLocation?.name || "Locatie";
+  const selectedLocationName = selectedLocation?.public_display_name || selectedLocation?.name || "Locație";
   const organization = (workspace.organizations || []).find((item) => item.id === selectedLocation?.organization_id) || workspace.organizations?.[0] || null;
   const organizationName = organization?.public_display_name || organization?.name || selectedLocation?.organization_name || selectedLocationName;
 
@@ -111,13 +111,13 @@ export default function ProviderLocationsWithPhoto(props) {
       <ProviderLocations {...props} />
 
       {canManagePhoto && portalTarget && selectedLocation && createPortal(
-        <button type="button" onClick={() => setPhotoOpen(true)} className="h-full min-h-28 rounded-2xl border border-border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/30 hover:shadow-sm">
+        <button type="button" onClick={() => setPhotoOpen(true)} className="h-full min-h-28 rounded-[18px] border border-foreground/10 bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-foreground/25 hover:shadow-sm">
           <div className="grid h-full grid-cols-[40px_minmax(0,1fr)] items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center self-start rounded-2xl bg-secondary"><Image className="h-4 w-4" /></div>
             <div className="flex h-full min-w-0 flex-col">
-              <div className="flex min-h-10 items-center justify-between gap-2"><div className="text-sm font-bold">Fotografie locatie</div><ArrowRight className="h-4 w-4 text-muted-foreground" /></div>
-              <p className="mt-1 min-h-16 text-xs leading-relaxed text-muted-foreground">Adauga fotografia principala a acestei locatii.</p>
-              <div className="mt-auto pt-3 text-xs font-bold underline underline-offset-4">Configureaza</div>
+              <div className="flex min-h-10 items-center justify-between gap-2"><div className="text-sm font-bold">Fotografie locație</div><ArrowRight className="h-4 w-4 text-muted-foreground" /></div>
+              <p className="mt-1.5 min-h-16 text-sm leading-relaxed text-muted-foreground">Adaugă fotografia principală a acestei locații.</p>
+              <div className="mt-auto pt-3 text-sm font-bold underline underline-offset-4">Configurează</div>
             </div>
           </div>
         </button>,
@@ -136,8 +136,8 @@ export default function ProviderLocationsWithPhoto(props) {
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-4 py-4 sm:px-5 safe-area-top">
-              <div className="min-w-0"><div className="truncate text-xs font-medium text-muted-foreground">{selectedLocationName}</div><h2 className="font-heading text-lg font-extrabold tracking-tight sm:text-xl">Fotografia locatiei</h2></div>
-              <button type="button" onClick={() => setPhotoOpen(false)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary" aria-label="Inchide"><X className="h-4 w-4" /></button>
+              <div className="min-w-0"><div className="truncate text-sm font-medium text-muted-foreground">{selectedLocationName}</div><h2 className="font-heading text-xl font-extrabold tracking-tight sm:text-2xl">Fotografia locației</h2></div>
+              <button type="button" onClick={() => setPhotoOpen(false)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary" aria-label="Închide"><X className="h-4 w-4" /></button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-5"><ProviderLocationPhotoCompact locationId={selectedLocation.id} /></div>
           </div>
@@ -148,8 +148,8 @@ export default function ProviderLocationsWithPhoto(props) {
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6">
           <div className="flex max-h-[98dvh] w-full flex-col overflow-hidden rounded-t-[24px] border border-border bg-background shadow-2xl sm:max-h-[94vh] sm:max-w-4xl sm:rounded-[28px]">
             <div className="flex items-start justify-between gap-4 border-b border-border bg-card px-4 py-4 sm:px-5 safe-area-top">
-              <div className="min-w-0"><div className="truncate text-xs font-medium text-muted-foreground">{organizationName}</div><h2 className="font-heading text-lg font-extrabold tracking-tight sm:text-xl">Adauga o locatie noua</h2></div>
-              <button type="button" onClick={() => setAddLocationOpen(false)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary" aria-label="Inchide"><X className="h-4 w-4" /></button>
+              <div className="min-w-0"><div className="truncate text-sm font-medium text-muted-foreground">{organizationName}</div><h2 className="font-heading text-xl font-extrabold tracking-tight sm:text-2xl">Adaugă o locație nouă</h2></div>
+              <button type="button" onClick={() => setAddLocationOpen(false)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-background hover:bg-secondary" aria-label="Închide"><X className="h-4 w-4" /></button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-5">
               <ProviderAddLocationFlow anchorLocationId={selectedLocation.id} organizationName={organizationName} onClose={() => setAddLocationOpen(false)} onSelectLocation={onSelect} onRefresh={onRefresh} />
