@@ -17,7 +17,7 @@ import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
 import SocialBrandIcon from "@/components/common/SocialBrandIcon";
 
-const inputCls = "min-h-11 w-full rounded-[14px] border border-[#d9d4ca] bg-[#fbfaf7] px-4 py-3 text-sm text-[#171717] outline-none transition-[border-color,box-shadow,background-color] focus:border-[#345bc8] focus:bg-white focus:ring-4 focus:ring-[#345bc8]/10 disabled:cursor-not-allowed disabled:opacity-60";
+const inputCls = "min-h-12 w-full rounded-[14px] border border-[#d9d4ca] bg-[#fbfaf7] px-4 py-3.5 text-[15px] leading-relaxed text-[#171717] outline-none transition-[border-color,box-shadow,background-color] focus:border-[#345bc8] focus:bg-white focus:ring-4 focus:ring-[#345bc8]/10 disabled:cursor-not-allowed disabled:opacity-60";
 const DESCRIPTION_MAX_LENGTH = 500;
 const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const LOGO_MAX_BYTES = 4 * 1024 * 1024;
@@ -146,9 +146,9 @@ async function makeSafeLogoFile(file, organizationId) {
 function Field({ label, hint, children }) {
   return (
     <div>
-      <label className="text-xs font-semibold text-[#3f3d38]">{label}</label>
-      <div className="mt-1.5">{children}</div>
-      {hint && <p className="mt-1.5 text-[11px] leading-relaxed text-[#77736b]">{hint}</p>}
+      <label className="text-sm font-semibold text-[#2d2b27]">{label}</label>
+      <div className="mt-2">{children}</div>
+      {hint && <p className="mt-2 text-[13px] leading-relaxed text-[#706c64]">{hint}</p>}
     </div>
   );
 }
@@ -165,9 +165,9 @@ function BrandLogo({ name, photoUrl, pending, small = false }) {
 
 function PreviewMetric({ icon: Icon, label, value, muted }) {
   return (
-    <div className="rounded-[14px] border border-[#171717]/10 bg-[#f8f4ec]/90 px-3 py-3 backdrop-blur-sm">
-      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#77736b]"><Icon className="h-3 w-3" /> {label}</div>
-      <div className={`mt-1 truncate text-xs font-bold ${muted ? "text-muted-foreground" : "text-foreground"}`}>{value}</div>
+    <div className="rounded-[14px] border border-[#171717]/10 bg-[#f8f4ec]/90 px-3.5 py-3.5 backdrop-blur-sm">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-[#706c64]"><Icon className="h-3.5 w-3.5" /> {label}</div>
+      <div className={`mt-1 text-sm font-bold leading-snug ${muted ? "text-muted-foreground" : "text-foreground"}`}>{value}</div>
     </div>
   );
 }
@@ -176,7 +176,7 @@ function SocialPill({ item, url }) {
   const safeUrl = normalizeClientUrl(url);
   if (!safeUrl) return null;
   return (
-    <a href={safeUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[#171717]/10 bg-[#f8f4ec]/90 px-3 py-1 text-[11px] font-semibold text-foreground transition-colors hover:bg-white" title={displayUrl(url)}>
+    <a href={safeUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[#171717]/10 bg-[#f8f4ec]/90 px-3 py-1 text-[13px] font-semibold text-foreground transition-colors hover:bg-white" title={displayUrl(url)}>
       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-background"><SocialBrandIcon platform={item.platform} className="h-3.5 w-3.5" /></span>
       {item.label}
     </a>
@@ -203,18 +203,18 @@ function OrganizationPreview({ organizationName, profileTypeLabel, verified, val
         <div className="relative flex gap-4 pr-8">
           <BrandLogo name={organizationName} photoUrl={logoPreview} pending={hasPendingLogo} />
           <div className="min-w-0">
-            <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[#5d6470]">Previzualizare organizație</div>
-            <h2 className="mt-1 truncate font-heading text-[1.65rem] font-extrabold tracking-[-0.04em] text-[#171717]">{values.public_display_name || organizationName}</h2>
+            <div className="font-heading text-[13px] font-semibold text-[#5d6470]">Previzualizare organizație</div>
+            <h2 className="mt-1 line-clamp-2 font-heading text-[1.8rem] font-extrabold leading-[1.05] tracking-[-0.035em] text-[#171717]">{values.public_display_name || organizationName}</h2>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-[#171717]/10 bg-[#f8f4ec]/90 px-3 py-1 text-[11px] font-semibold">{profileTypeLabel}</span>
-              <span className={`inline-flex items-center gap-1.5 rounded-full border border-[#171717]/5 px-3 py-1 text-[11px] font-bold ${verified ? "bg-[#dcead8] text-[#315c3a]" : "bg-[#f8f4ec]/90 text-foreground"}`}>
+              <span className="rounded-full border border-[#171717]/10 bg-[#f8f4ec]/90 px-3 py-1 text-[13px] font-semibold">{profileTypeLabel}</span>
+              <span className={`inline-flex items-center gap-1.5 rounded-full border border-[#171717]/5 px-3 py-1 text-[13px] font-bold ${verified ? "bg-[#dcead8] text-[#315c3a]" : "bg-[#f8f4ec]/90 text-foreground"}`}>
                 <ShieldCheck className="h-3.5 w-3.5" /> {verified ? "Locație verificată" : "Activ"}
               </span>
-              {hasPendingLogo && <span className="rounded-full bg-[#f1e1b9] px-3 py-1 text-[11px] font-bold text-[#76551f]">Logo în verificare</span>}
+              {hasPendingLogo && <span className="rounded-full bg-[#f1e1b9] px-3 py-1 text-[13px] font-bold text-[#76551f]">Logo în verificare</span>}
             </div>
           </div>
         </div>
-        <p className="relative mt-5 line-clamp-3 border-t border-[#171717]/15 pt-4 text-sm leading-relaxed text-[#5d5a54]">{values.public_description || "Adaugă o descriere generală pentru organizație. Datele punctelor de lucru se gestionează separat."}</p>
+        <p className="relative mt-5 line-clamp-3 border-t border-[#171717]/15 pt-4 text-[15px] leading-[1.65] text-[#514e48]">{values.public_description || "Adaugă o descriere generală pentru organizație. Datele punctelor de lucru se gestionează separat."}</p>
         <div className="relative mt-5 grid grid-cols-2 gap-2">
           <PreviewMetric icon={Store} label="Locații" value={`${locationCount} ${locationCount === 1 ? "locație" : "locații"}`} />
           <PreviewMetric icon={Phone} label="Telefon" value={values.public_phone || "Lipsește"} muted={!values.public_phone} />
@@ -226,11 +226,11 @@ function OrganizationPreview({ organizationName, profileTypeLabel, verified, val
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f8f4ec]/90 text-[#5d5a54]"><Store className="h-4 w-4" /></span>
             <div className="min-w-0">
-              <div className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-[#77736b]">Locație selectată</div>
-              <div className="truncate text-xs font-bold text-[#171717]">{locationName} <span className="font-normal text-[#77736b]">· {locality}</span></div>
+              <div className="text-xs font-semibold text-[#706c64]">Locație selectată</div>
+              <div className="truncate text-sm font-bold text-[#171717]">{locationName} <span className="font-normal text-[#77736b]">· {locality}</span></div>
             </div>
           </div>
-          <button type="button" onClick={() => onManageLocation(location?.id)} className="min-h-9 shrink-0 rounded-full border border-[#171717]/15 bg-[#f8f4ec]/90 px-3 text-[11px] font-semibold text-[#171717] transition-colors hover:bg-white">Gestionează</button>
+          <button type="button" onClick={() => onManageLocation(location?.id)} className="min-h-10 shrink-0 rounded-full border border-[#171717]/15 bg-[#f8f4ec]/90 px-3.5 text-[13px] font-semibold text-[#171717] transition-colors hover:bg-white">Gestionează</button>
         </div>
       </div>
     </div>
@@ -386,14 +386,14 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
     <div className="space-y-5 pb-8">
       <header className="flex flex-col gap-4 border-b border-[#171717]/20 pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="inline-flex items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#345bc8]"><span className="h-1.5 w-1.5 bg-[#345bc8]" /> Identitate publică · organizație</div>
-          <h1 className="mt-2 max-w-3xl font-heading text-[1.75rem] font-extrabold tracking-[-0.045em] text-[#171717] sm:text-[2rem]">Profilul pe care îl văd clienții tăi.</h1>
-          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-[#69655d]">Configurează identitatea brandului. Adresa, programul, contactul local și fotografiile se gestionează separat pentru fiecare locație.</p>
+          <div className="inline-flex items-center gap-2 text-sm font-semibold text-[#345bc8]"><span className="h-2 w-2 bg-[#345bc8]" /> Identitate publică · organizație</div>
+          <h1 className="mt-3 max-w-3xl font-heading text-[2.1rem] font-extrabold leading-[1.05] tracking-[-0.04em] text-[#171717] sm:text-[2.5rem]">Profilul pe care îl văd clienții tăi.</h1>
+          <p className="mt-2.5 max-w-3xl text-base leading-[1.65] text-[#615e57]">Configurează identitatea brandului. Adresa, programul, contactul local și fotografiile se gestionează separat pentru fiecare locație.</p>
         </div>
-        {draft && <span className="w-fit shrink-0 rounded-full border border-[#171717]/10 bg-white px-3 py-1.5 text-[11px] font-semibold text-[#5d5a54]">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}
+        {draft && <span className="w-fit shrink-0 rounded-full border border-[#171717]/10 bg-white px-3.5 py-2 text-[13px] font-semibold text-[#5d5a54]">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}
       </header>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_390px] xl:items-start">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_420px] xl:items-start">
         <div className="space-y-5">
           {availableFallbackFields.length > 0 && !pendingReview && (
             <section className="rounded-[18px] border border-[#a97825]/25 bg-[#f5ead0] p-4">
@@ -401,11 +401,11 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
                 <div className="flex min-w-0 items-start gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#a97825] text-white"><AlertTriangle className="h-4 w-4" /></div>
                   <div>
-                    <h2 className="text-sm font-bold text-[#5f4317]">Există date în {fallbackLocationName}, dar nu sunt salvate pe organizație</h2>
-                    <p className="mt-1 text-xs leading-relaxed text-[#76551f]">{availableFallbackFields.map((key) => FIELD_LABELS[key]).join(", ")}. Preluarea completează doar formularul. Datele ajung în verificare numai după salvare și trimitere.</p>
+                    <h2 className="text-base font-bold text-[#5f4317]">Există date în {fallbackLocationName}, dar nu sunt salvate pe organizație</h2>
+                    <p className="mt-1.5 text-sm leading-relaxed text-[#76551f]">{availableFallbackFields.map((key) => FIELD_LABELS[key]).join(", ")}. Preluarea completează doar formularul. Datele ajung în verificare numai după salvare și trimitere.</p>
                   </div>
                 </div>
-                <button type="button" onClick={importFallback} className="min-h-10 shrink-0 rounded-full bg-[#171717] px-4 text-xs font-semibold text-white transition-opacity hover:opacity-85">Preia datele în formular</button>
+                <button type="button" onClick={importFallback} className="min-h-11 shrink-0 rounded-full bg-[#171717] px-4 text-sm font-semibold text-white transition-opacity hover:opacity-85">Preia datele în formular</button>
               </div>
             </section>
           )}
@@ -413,9 +413,9 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
           <section className="overflow-hidden rounded-[18px] border border-[#171717]/12 bg-white shadow-[0_12px_32px_rgba(23,23,23,0.04)]">
             <div className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-[10px] font-semibold tracking-[0.16em] text-[#77736b]">01</span>
-                <span className="h-3 w-px bg-[#171717]/25" />
-                <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#77736b]">Identitate</span>
+                <span className="text-[13px] font-bold text-[#345bc8]">01</span>
+                <span className="h-4 w-px bg-[#171717]/20" />
+                <span className="font-heading text-base font-bold text-[#2d2b27]">Identitate</span>
                 <div className="ml-2 h-px flex-1 bg-[#171717]/12" />
               </div>
 
@@ -428,27 +428,27 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
                       <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploadingLogo} onChange={(event) => { uploadLogo(event.target.files?.[0]); event.target.value = ""; }} />
                     </label>
                     <div className="min-w-0">
-                      <div className="text-sm font-semibold">Logo organizație</div>
-                      <p className="mt-0.5 text-xs leading-relaxed text-[#69655d]">Apare lângă numele organizației, separat de fotografiile locațiilor.</p>
+                      <div className="text-base font-semibold">Logo organizație</div>
+                      <p className="mt-1 text-sm leading-relaxed text-[#69655d]">Apare lângă numele organizației, separat de fotografiile locațiilor.</p>
                     </div>
                   </div>
-                  <div className="inline-flex items-center gap-1.5 rounded-full border border-[#171717]/10 bg-white/75 px-3 py-1 text-[10px] font-semibold text-[#69655d]"><ImagePlus className="h-3.5 w-3.5" /> Publicare după aprobare</div>
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-[#171717]/10 bg-white/75 px-3 py-1.5 text-xs font-semibold text-[#69655d]"><ImagePlus className="h-3.5 w-3.5" /> Publicare după aprobare</div>
                 </div>
-                {logoMessage && <p className="mt-3 border-t border-[#171717]/10 pt-3 text-xs leading-relaxed text-[#69655d]">{logoMessage}</p>}
+                {logoMessage && <p className="mt-3 border-t border-[#171717]/10 pt-3 text-sm leading-relaxed text-[#69655d]">{logoMessage}</p>}
               </div>
 
               <Field label="Nume public organizație" hint="Exemplu: Lunera Optic. Numele locației poate fi diferit."><input className={inputCls} value={values.public_display_name} disabled={pendingReview} onChange={(event) => setField("public_display_name", event.target.value)} /></Field>
               <Field label="Descriere organizație" hint="Prezintă pe scurt ce oferiți, cui vă adresați și ce diferențiază brandul.">
                 <textarea className={`${inputCls} min-h-32 resize-y`} value={values.public_description} maxLength={DESCRIPTION_MAX_LENGTH} disabled={pendingReview} onChange={(event) => setField("public_description", event.target.value)} />
-                <div className="mt-1 text-right font-mono text-[10px] text-muted-foreground">{descriptionCount}/{DESCRIPTION_MAX_LENGTH}</div>
+                <div className="mt-1.5 text-right text-xs text-muted-foreground">{descriptionCount}/{DESCRIPTION_MAX_LENGTH}</div>
               </Field>
             </div>
 
             <div className="border-t border-[#171717]/10 px-5 py-5 sm:px-6 sm:py-6">
               <div className="mb-4 flex items-center gap-2">
-                <span className="font-mono text-[10px] font-semibold tracking-[0.16em] text-[#77736b]">02</span>
-                <span className="h-3 w-px bg-[#171717]/25" />
-                <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#77736b]">Contact public</span>
+                <span className="text-[13px] font-bold text-[#345bc8]">02</span>
+                <span className="h-4 w-px bg-[#171717]/20" />
+                <span className="font-heading text-base font-bold text-[#2d2b27]">Contact public</span>
                 <div className="ml-2 h-px flex-1 bg-[#171717]/12" />
               </div>
               <div className="grid gap-3.5 md:grid-cols-2">
@@ -460,9 +460,9 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
 
             <div className="border-t border-[#171717]/10 px-5 py-5 sm:px-6 sm:py-6">
               <div className="mb-4 flex items-center gap-2">
-                <span className="font-mono text-[10px] font-semibold tracking-[0.16em] text-[#77736b]">03</span>
-                <span className="h-3 w-px bg-[#171717]/25" />
-                <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#77736b]">Canale online</span>
+                <span className="text-[13px] font-bold text-[#345bc8]">03</span>
+                <span className="h-4 w-px bg-[#171717]/20" />
+                <span className="font-heading text-base font-bold text-[#2d2b27]">Canale online</span>
                 <div className="ml-2 h-px flex-1 bg-[#171717]/12" />
               </div>
               <div className="grid gap-3.5 md:grid-cols-2">
@@ -476,19 +476,19 @@ export default function ProviderProfilePublic({ locationId, overview, workspace,
 
           <div className="sticky bottom-3 z-20 rounded-[16px] border border-[#171717]/12 bg-[#f8f4ec]/95 px-4 py-3 shadow-[0_10px_28px_rgba(23,23,23,0.1)] backdrop-blur-xl">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex min-w-0 items-start gap-2 text-xs leading-relaxed text-[#69655d]"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#5d5a54]" /><span>Aprobarea actualizează doar informațiile organizației. Datele locației rămân separate.</span></div>
+              <div className="flex min-w-0 items-start gap-2.5 text-sm leading-relaxed text-[#5f5b54]"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#5d5a54]" /><span>Aprobarea actualizează doar informațiile organizației. Datele locației rămân separate.</span></div>
               <div className="flex shrink-0 flex-col-reverse gap-2 sm:flex-row">
                 <button type="button" disabled={saving || pendingReview} onClick={saveDraft} className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition-colors disabled:opacity-50 ${canSubmitDraft ? "border-[#171717]/20 bg-white text-[#171717] hover:bg-[#f8f4ec]" : "border-[#171717] bg-[#171717] text-white hover:bg-[#2a2a2a]"}`}><Save className="h-4 w-4" /> Salvează draftul</button>
                 {canSubmitDraft && <button type="button" disabled={saving} onClick={submitDraft} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#171717] px-4 text-sm font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-50"><Send className="h-4 w-4" /> Trimite spre verificare</button>}
               </div>
             </div>
-            {message && <p className="mt-3 border-t border-[#171717]/10 pt-3 text-xs leading-relaxed text-[#69655d]">{message}</p>}
+            {message && <p className="mt-3 border-t border-[#171717]/10 pt-3 text-sm leading-relaxed text-[#69655d]">{message}</p>}
           </div>
         </div>
 
         <aside className="space-y-3 xl:sticky xl:top-4">
           <div className="flex items-center gap-3 px-1">
-            <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[#77736b]">Previzualizare în timp real</span>
+            <span className="text-[13px] font-semibold text-[#706c64]">Previzualizare în timp real</span>
             <div className="h-px flex-1 bg-[#171717]/15" />
           </div>
           <OrganizationPreview organizationName={organizationName} profileTypeLabel={profileTypeLabel} verified={location.profile_control_status === "verified"} values={values} logoPreview={logoPreview} hasPendingLogo={hasPendingLogo} locationCount={locationCount} location={location} onManageLocation={manageLocation} />
