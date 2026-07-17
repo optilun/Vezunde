@@ -70,7 +70,7 @@ function ensureMeta(selector, attributes) {
   Object.entries(attributes).forEach(([key, value]) => node.setAttribute(key, value));
 }
 
-function getMetadata(pathname) {
+async function getMetadata(pathname) {
   const guideMatch = pathname.match(/^\/ghid\/(optician-medical|optometrist|medic-oftalmolog)$/);
   if (guideMatch) {
     const guide = getGuide(guideMatch[1]);
@@ -80,6 +80,20 @@ function getMetadata(pathname) {
       type: "article",
       guide,
     };
+  }
+
+  const topicMatch = pathname.match(/^\/ghid\/([^/]+)\/([^/]+)$/);
+  if (topicMatch) {
+    const { getTopicGuide } = await import("@/data/topicGuides");
+    const guide = getTopicGuide(topicMatch[1], topicMatch[2]);
+    if (guide) {
+      return {
+        title: `${guide.title.replace(/\?$/, "")} | VIASEE`,
+        description: guide.description,
+        type: "article",
+        guide,
+      };
+    }
   }
 
   if (pathname.startsWith("/furnizor/")) {
@@ -140,9 +154,12 @@ function buildStructuredData(pathname, metadata, canonical) {
         description: metadata.description,
         mainEntityOfPage: canonical,
         inLanguage: "ro-RO",
-        dateModified: "2026-07-16",
+        dateModified: "2026-07-17",
         author: organization,
         publisher: organization,
+        ...(metadata.guide?.sources?.length
+          ? { citation: metadata.guide.sources.map((source) => source.url) }
+          : {}),
       },
       {
         "@type": "BreadcrumbList",
@@ -178,60 +195,71 @@ export default function RouteSeo() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    const metadata = getMetadata(pathname);
-    const canonical = `${window.location.origin}${pathname === "/" ? "/" : pathname}`;
-    const noindex =
-      metadata.noindex ||
-      NOINDEX_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+    let cancelled = false;
 
-    document.title = metadata.title;
-    ensureMeta('meta[name="description"]', {
-      name: "description",
-      content: metadata.description || DEFAULT_DESCRIPTION,
-    });
-    ensureMeta('meta[name="robots"]', {
-      name: "robots",
-      content: noindex ? "noindex,follow" : "index,follow",
-    });
-    ensureMeta('meta[property="og:title"]', {
-      property: "og:title",
-      content: metadata.title,
-    });
-    ensureMeta('meta[property="og:description"]', {
-      property: "og:description",
-      content: metadata.description || DEFAULT_DESCRIPTION,
-    });
-    ensureMeta('meta[property="og:type"]', {
-      property: "og:type",
-      content: metadata.type || "website",
-    });
-    ensureMeta('meta[property="og:url"]', { property: "og:url", content: canonical });
-    ensureMeta('meta[name="twitter:card"]', {
-      name: "twitter:card",
-      content: "summary_large_image",
-    });
+    const updateMetadata = async () => {
+      const metadata = await getMetadata(pathname);
+      if (cancelled) return;
 
-    let canonicalLink = document.head.querySelector('link[rel="canonical"]');
-    if (!canonicalLink) {
-      canonicalLink = document.createElement("link");
-      canonicalLink.rel = "canonical";
-      document.head.appendChild(canonicalLink);
-    }
-    canonicalLink.href = canonical;
+      const canonical = `${window.location.origin}${pathname === "/" ? "/" : pathname}`;
+      const noindex =
+        metadata.noindex ||
+        NOINDEX_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
-    const structuredData = buildStructuredData(pathname, metadata, canonical);
-    let script = document.getElementById("viasee-route-structured-data");
-    if (structuredData) {
-      if (!script) {
-        script = document.createElement("script");
-        script.id = "viasee-route-structured-data";
-        script.type = "application/ld+json";
-        document.head.appendChild(script);
+      document.title = metadata.title;
+      ensureMeta('meta[name="description"]', {
+        name: "description",
+        content: metadata.description || DEFAULT_DESCRIPTION,
+      });
+      ensureMeta('meta[name="robots"]', {
+        name: "robots",
+        content: noindex ? "noindex,follow" : "index,follow",
+      });
+      ensureMeta('meta[property="og:title"]', {
+        property: "og:title",
+        content: metadata.title,
+      });
+      ensureMeta('meta[property="og:description"]', {
+        property: "og:description",
+        content: metadata.description || DEFAULT_DESCRIPTION,
+      });
+      ensureMeta('meta[property="og:type"]', {
+        property: "og:type",
+        content: metadata.type || "website",
+      });
+      ensureMeta('meta[property="og:url"]', { property: "og:url", content: canonical });
+      ensureMeta('meta[name="twitter:card"]', {
+        name: "twitter:card",
+        content: "summary_large_image",
+      });
+
+      let canonicalLink = document.head.querySelector('link[rel="canonical"]');
+      if (!canonicalLink) {
+        canonicalLink = document.createElement("link");
+        canonicalLink.rel = "canonical";
+        document.head.appendChild(canonicalLink);
       }
-      script.textContent = JSON.stringify(structuredData);
-    } else {
-      script?.remove();
-    }
+      canonicalLink.href = canonical;
+
+      const structuredData = buildStructuredData(pathname, metadata, canonical);
+      let script = document.getElementById("viasee-route-structured-data");
+      if (structuredData) {
+        if (!script) {
+          script = document.createElement("script");
+          script.id = "viasee-route-structured-data";
+          script.type = "application/ld+json";
+          document.head.appendChild(script);
+        }
+        script.textContent = JSON.stringify(structuredData);
+      } else {
+        script?.remove();
+      }
+    };
+
+    void updateMetadata();
+    return () => {
+      cancelled = true;
+    };
   }, [pathname]);
 
   return null;
