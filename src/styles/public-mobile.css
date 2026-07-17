@@ -1,51 +1,51 @@
 @media (max-width: 767px) {
-  .public-mobile-surface {
+  #root > div > main#main-content {
     min-width: 0;
   }
 
-  .public-mobile-surface > * {
+  #root > div > main#main-content > * {
     min-width: 0;
   }
 
-  .public-mobile-surface input:not([type="checkbox"]):not([type="radio"]),
-  .public-mobile-surface select,
-  .public-mobile-surface textarea {
+  #root > div > main#main-content input:not([type="checkbox"]):not([type="radio"]),
+  #root > div > main#main-content select,
+  #root > div > main#main-content textarea {
     min-height: 44px;
     font-size: 16px;
   }
 
-  .public-mobile-surface summary,
-  .public-mobile-surface a[class*="rounded-full"],
-  .public-mobile-surface button[class*="rounded-full"] {
+  #root > div > main#main-content summary,
+  #root > div > main#main-content a[class*="rounded-full"],
+  #root > div > main#main-content button[class*="rounded-full"] {
     min-height: 44px;
     touch-action: manipulation;
   }
 
-  .public-mobile-surface a[href^="tel:"],
-  .public-mobile-surface a[href^="mailto:"] {
+  #root > div > main#main-content a[href^="tel:"],
+  #root > div > main#main-content a[href^="mailto:"] {
     display: inline-flex;
     min-height: 44px;
     align-items: center;
     touch-action: manipulation;
   }
 
-  .public-mobile-surface iframe,
-  .public-mobile-surface img {
+  #root > div > main#main-content iframe,
+  #root > div > main#main-content img {
     max-width: 100%;
   }
 
-  .public-mobile-surface [class*="grid-cols-"] > *,
-  .public-mobile-surface [class*="justify-between"] > * {
+  #root > div > main#main-content [class*="grid-cols-"] > *,
+  #root > div > main#main-content [class*="justify-between"] > * {
     min-width: 0;
   }
 }
 
 @media (max-width: 639px) {
-  .public-mobile-surface [class*="items-start"][class*="justify-between"] {
+  #root > div > main#main-content [class*="items-start"][class*="justify-between"] {
     flex-wrap: wrap;
   }
 
-  .public-mobile-surface a[class*="rounded-full"][class*="shrink-0"] {
+  #root > div > main#main-content a[class*="rounded-full"][class*="shrink-0"] {
     width: 100%;
     justify-content: center;
   }
