@@ -81,7 +81,12 @@ function PinnedTakeover() {
   const sheetY = useTransform(
     scrollYProgress,
     [0, 1],
-    ["calc(100% - 2rem)", "0%"],
+    ["calc(100% - 5rem)", "0%"],
+  );
+  const previewContentOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.12, 0.22],
+    [0, 0, 1],
   );
   const heroScale = useTransform(
     scrollYProgress,
@@ -128,13 +133,14 @@ function PinnedTakeover() {
             style={{ y: sheetY }}
             className="pointer-events-none absolute inset-0 z-20 isolate overflow-hidden rounded-t-[2rem] border-t border-white/80 bg-[#F8F4EC] shadow-[0_-18px_65px_rgba(28,24,18,0.13)] will-change-transform sm:rounded-t-[2.75rem] lg:rounded-t-[3.25rem]"
           >
-            <div
+            <motion.div
               aria-hidden="true"
               inert=""
+              style={{ opacity: previewContentOpacity }}
               className="pointer-events-none min-h-full"
             >
               <HomeCanvas preview />
-            </div>
+            </motion.div>
           </motion.div>
         </motion.div>
       </section>
