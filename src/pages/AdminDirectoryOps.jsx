@@ -13,8 +13,8 @@ const AdminProfilesSection = lazy(
 const AdminReviewQueue = lazy(
   () => import("@/components/admin/review/AdminReviewQueue"),
 );
-const AdminSupportTickets = lazy(
-  () => import("@/components/admin/support/AdminSupportTickets"),
+const AdminSupportCenter = lazy(
+  () => import("@/components/admin/support/AdminSupportCenter"),
 );
 const DirOpsAddLocation = lazy(
   () => import("@/components/admin/directory/DirOpsAddLocation"),
@@ -46,22 +46,22 @@ const AdminDataRepairs = lazy(
 
 const SIMPLE_HEADERS = {
   adauga:
-    "Creează o organizație și prima locație sau adaugă manual un profil nou în director, cu proveniență obligatorie.",
+    "Creeaza o organizatie si prima locatie sau adauga manual un profil nou in director, cu provenienta obligatorie.",
   profiluri:
-    "Gestionează locațiile din director, statusul de încredere și eventualele revizuiri de migrare.",
+    "Gestioneaza locatiile din director, statusul de incredere si eventualele revizuiri de migrare.",
   workspace_reviews:
-    "Analizează într-un singur loc cererile trimise de furnizori, locațiile noi și profilurile specialiștilor.",
+    "Analizeaza intr-un singur loc cererile trimise de furnizori, locatiile noi si profilurile specialistilor.",
   support_tickets:
-    "Primește solicitările trimise din conturile utilizatorilor, stabilește prioritatea și publică răspunsul în centrul lor de suport.",
+    "Gestioneaza tichetele de suport si feedback-ul trimis din conturile utilizatorilor, din acelasi centru administrativ.",
   servicii:
-    "Gestionează serviciile existente, nivelul de confirmare și eligibilitatea pentru rezultate.",
-  revendicari: "Analizează cererile de revendicare a profilurilor.",
-  geografie: "Sursa canonică de geografie VIASEE și importul SIRUTA.",
-  audit: "Istoricul acțiunilor administrative și al modificărilor aplicate.",
+    "Gestioneaza serviciile existente, nivelul de confirmare si eligibilitatea pentru rezultate.",
+  revendicari: "Analizeaza cererile de revendicare a profilurilor.",
+  geografie: "Sursa canonica de geografie VIASEE si importul SIRUTA.",
+  audit: "Istoricul actiunilor administrative si al modificarilor aplicate.",
   data_integrity:
-    "Detectează neconcordanțele și permite numai reparații deterministe, previzualizate și confirmate individual.",
+    "Detecteaza neconcordantele si permite numai reparatii deterministe, previzualizate si confirmate individual.",
   contract_geo:
-    "Verificări de regresie pentru contractul geografic. Instrument intern.",
+    "Verificari de regresie pentru contractul geografic. Instrument intern.",
 };
 
 const LEGACY_TAB_REDIRECTS = {
@@ -77,7 +77,7 @@ function SectionLoading() {
       className="flex min-h-48 items-center justify-center text-sm text-muted-foreground"
       role="status"
     >
-      Se încarcă secțiunea...
+      Se incarca sectiunea...
     </div>
   );
 }
@@ -114,7 +114,7 @@ export default function AdminDirectoryOps() {
           <div>
             <AdminPageHeader
               title="Research director"
-              subtitle="Colectează, verifică și completează datele directorului. AI Copilot rămâne inclus în acest flux și nu publică automat."
+              subtitle="Colecteaza, verifica si completeaza datele directorului. AI Copilot ramane inclus in acest flux si nu publica automat."
             />
             <div className="mt-6">
               <DirResearch onNavigate={navigate} />
@@ -143,7 +143,7 @@ export default function AdminDirectoryOps() {
             <div className="mt-6">
               {tab === "adauga" && <DirOpsAddLocation />}
               {tab === "workspace_reviews" && <AdminReviewQueue />}
-              {tab === "support_tickets" && <AdminSupportTickets adminUser={user} />}
+              {tab === "support_tickets" && <AdminSupportCenter adminUser={user} />}
               {tab === "servicii" && <DirOpsServices />}
               {tab === "revendicari" && <DirOpsClaims />}
               {tab === "geografie" && <GeoImport />}
