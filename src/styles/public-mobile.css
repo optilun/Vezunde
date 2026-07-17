@@ -22,7 +22,9 @@
   }
 
   #root > div > main#main-content a[href^="tel:"],
-  #root > div > main#main-content a[href^="mailto:"] {
+  #root > div > main#main-content a[href^="mailto:"],
+  #root > div > main#main-content article > a[class*="text-xs"][class*="font-semibold"],
+  #root > div > main#main-content a[class*="text-sm"][class*="text-muted-foreground"] {
     display: inline-flex;
     min-height: 44px;
     align-items: center;
