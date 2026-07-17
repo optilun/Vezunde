@@ -4,6 +4,7 @@ import { Menu, ExternalLink } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import AdminSidebarContent from "./AdminSidebarContent";
 import { ADMIN_NAV_LABELS } from "@/lib/adminNavConfig";
+import "@/styles/workspace-mobile.css";
 
 // Reusable admin app shell: fixed sidebar on desktop and a touch-friendly
 // drawer plus compact utility bar on smaller screens.
@@ -91,7 +92,7 @@ export default function AdminAppShell({
         <main
           id="main-content"
           tabIndex={-1}
-          className="mx-auto w-full max-w-6xl overflow-x-clip px-3 py-5 outline-none sm:px-8 sm:py-8"
+          className="workspace-mobile-surface mx-auto w-full max-w-6xl overflow-x-clip px-3 py-5 outline-none sm:px-8 sm:py-8"
         >
           {children}
         </main>
