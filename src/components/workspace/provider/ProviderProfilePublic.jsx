@@ -1,16 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  Building2,
+  ChevronRight,
   Globe2,
   ImagePlus,
   Loader2,
   Mail,
+  MapPin,
+  Pencil,
   Phone,
   Plus,
   Save,
   Send,
   ShieldCheck,
   Store,
+  X,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
@@ -260,6 +265,45 @@ function SectionHeader({ number, title, description }) {
   );
 }
 
+function EditableLogo({
+  name,
+  logoPreview,
+  hasPendingLogo,
+  uploadingLogo,
+  onLogoChange,
+}) {
+  return (
+    <label
+      className="group relative block w-fit shrink-0 cursor-pointer"
+      title={logoPreview ? "Schimbă logo-ul" : "Adaugă logo"}
+    >
+      <BrandLogo
+        name={name}
+        photoUrl={logoPreview}
+        pending={hasPendingLogo}
+        className="h-28 w-28 sm:h-32 sm:w-32"
+      />
+      <span className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full border-4 border-white bg-[#171717] text-white shadow-md transition-transform group-hover:scale-105">
+        {uploadingLogo ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Plus className="h-4 w-4" />
+        )}
+      </span>
+      <input
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        disabled={uploadingLogo}
+        onChange={(event) => {
+          onLogoChange(event.target.files?.[0]);
+          event.target.value = "";
+        }}
+      />
+    </label>
+  );
+}
+
 function OrganizationProfileHeader({
   organizationName,
   profileTypeLabel,
@@ -271,8 +315,9 @@ function OrganizationProfileHeader({
   onLogoChange,
   locationCount,
   location,
-  onManageLocation,
   draft,
+  editing,
+  onEdit,
 }) {
   const socialItems = SOCIAL_ITEMS.filter((item) =>
     normalizeClientUrl(values[item.key]),
@@ -281,6 +326,7 @@ function OrganizationProfileHeader({
     location?.public_display_name || location?.name || "Locația principală";
   const locality =
     location?.locality_name || location?.city || "Localitate necompletată";
+  const displayName = values.public_display_name || organizationName;
 
   return (
     <section className="overflow-hidden rounded-[28px] border border-[#171717]/12 bg-white shadow-[0_18px_50px_rgba(34,30,24,0.07)]">
@@ -288,7 +334,7 @@ function OrganizationProfileHeader({
         className="relative h-36 overflow-hidden sm:h-44 lg:h-48"
         style={{
           background:
-            "linear-gradient(180deg, #eef2f1 0%, #e6ecec 54%, #f0cdb6 82%, #ea6b37 100%)",
+            "linear-gradient(180deg, #DCE4F2 0%, #E9ECF4 28%, #F5F3EE 68%, #F7F2E8 100%)",
         }}
       >
         <span
@@ -310,7 +356,7 @@ function OrganizationProfileHeader({
         />
         <div className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full border border-white/55 bg-white/75 px-3 py-1.5 text-xs font-semibold text-[#4e4b46] backdrop-blur-sm sm:left-7 sm:top-6">
           <span className="h-2 w-2 bg-[#345bc8]" />
-          Previzualizare profil public
+          Profil public organizație
         </div>
         {draft && (
           <span className="absolute right-5 top-5 rounded-full border border-white/55 bg-white/80 px-3 py-1.5 text-xs font-semibold text-[#5d5a54] backdrop-blur-sm sm:right-7 sm:top-6">
@@ -321,38 +367,26 @@ function OrganizationProfileHeader({
 
       <div className="relative px-5 pb-6 sm:px-7 sm:pb-7 lg:px-9">
         <div className="-mt-14 flex flex-col gap-5 sm:-mt-16 sm:flex-row sm:items-end sm:gap-6">
-          <label
-            className="group relative block w-fit shrink-0 cursor-pointer"
-            title={logoPreview ? "Schimbă logo-ul" : "Adaugă logo"}
-          >
+          {editing ? (
+            <EditableLogo
+              name={displayName}
+              logoPreview={logoPreview}
+              hasPendingLogo={hasPendingLogo}
+              uploadingLogo={uploadingLogo}
+              onLogoChange={onLogoChange}
+            />
+          ) : (
             <BrandLogo
-              name={values.public_display_name || organizationName}
+              name={displayName}
               photoUrl={logoPreview}
               pending={hasPendingLogo}
               className="h-28 w-28 sm:h-32 sm:w-32"
             />
-            <span className="absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full border-4 border-white bg-[#171717] text-white shadow-md transition-transform group-hover:scale-105">
-              {uploadingLogo ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Plus className="h-4 w-4" />
-              )}
-            </span>
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              className="hidden"
-              disabled={uploadingLogo}
-              onChange={(event) => {
-                onLogoChange(event.target.files?.[0]);
-                event.target.value = "";
-              }}
-            />
-          </label>
+          )}
 
           <div className="min-w-0 flex-1 pb-1 sm:pb-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-[#e8d7ca] bg-[#fff7ef] px-3 py-1 text-xs font-semibold text-[#96502f]">
+              <span className="rounded-full border border-[#d8ddea] bg-[#f4f6fb] px-3 py-1 text-xs font-semibold text-[#42577d]">
                 {profileTypeLabel}
               </span>
               <span
@@ -372,7 +406,7 @@ function OrganizationProfileHeader({
               )}
             </div>
             <h1 className="mt-3 break-words font-heading text-[2rem] font-extrabold leading-[1.03] tracking-[-0.045em] text-[#171717] sm:text-[2.65rem]">
-              {values.public_display_name || organizationName}
+              {displayName}
             </h1>
             <p className="mt-2 text-sm font-medium text-[#706c64]">
               {locationCount} {locationCount === 1 ? "locație" : "locații"} în
@@ -380,13 +414,19 @@ function OrganizationProfileHeader({
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => onManageLocation(location?.id)}
-            className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-[#171717]/15 bg-white px-5 text-sm font-semibold text-[#171717] transition-colors hover:bg-[#f8f4ec] sm:w-auto"
-          >
-            <Store className="h-4 w-4" /> Gestionează locația
-          </button>
+          {!editing && (
+            <button
+              type="button"
+              onClick={onEdit}
+              disabled={draft?.status === "pending_review"}
+              className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-[#171717]/15 bg-white px-5 text-sm font-semibold text-[#171717] transition-colors hover:bg-[#f8f4ec] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+            >
+              <Pencil className="h-4 w-4" />
+              {draft?.status === "pending_review"
+                ? "Profil în verificare"
+                : "Editează profilul"}
+            </button>
+          )}
         </div>
 
         <div className="mt-6 grid gap-5 border-t border-[#171717]/10 pt-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
@@ -408,7 +448,7 @@ function OrganizationProfileHeader({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
             <ProfileMetric
               icon={Phone}
               label="Telefon"
@@ -435,6 +475,141 @@ function OrganizationProfileHeader({
           </div>
         </div>
       </div>
+    </section>
+  );
+}
+
+function locationAddress(location) {
+  const parts = [
+    location?.address,
+    location?.address_line1,
+    location?.street_address,
+    location?.locality_name,
+    location?.city,
+    location?.county_name,
+    location?.county,
+  ]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+  return [...new Set(parts)].join(", ") || "Adresa nu este completată";
+}
+
+function LocationCard({ location, selected, onManage }) {
+  const name =
+    location?.public_display_name || location?.name || "Locație fără nume";
+  const typeLabel =
+    PROVIDER_PROFILE_TYPES[location?.provider_profile_type] ||
+    PROVIDER_TYPES[location?.provider_type] ||
+    "Locație";
+  const photo =
+    location?.cover_photo_url ||
+    location?.primary_photo_url ||
+    location?.image_url ||
+    location?.photo_url ||
+    "";
+  const verified = location?.profile_control_status === "verified";
+
+  return (
+    <article
+      className={`overflow-hidden rounded-[20px] border bg-white shadow-[0_10px_28px_rgba(23,23,23,0.04)] ${
+        selected ? "border-[#345bc8]/40" : "border-[#171717]/10"
+      }`}
+    >
+      <div className="flex min-w-0 gap-4 p-4 sm:p-5">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[16px] border border-[#171717]/10 bg-[#f8f4ec]">
+          {photo ? (
+            <img
+              src={photo}
+              alt=""
+              className="h-full w-full object-cover"
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <Building2 className="h-5 w-5 text-[#77736b]" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-[#f4f6fb] px-2.5 py-1 text-[11px] font-semibold text-[#42577d]">
+              {typeLabel}
+            </span>
+            {verified && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#dcead8] px-2.5 py-1 text-[11px] font-bold text-[#315c3a]">
+                <ShieldCheck className="h-3 w-3" /> Verificată
+              </span>
+            )}
+            {selected && (
+              <span className="rounded-full bg-[#171717] px-2.5 py-1 text-[11px] font-bold text-white">
+                Selectată
+              </span>
+            )}
+          </div>
+          <h3 className="mt-2 break-words font-heading text-lg font-bold tracking-[-0.02em] text-[#171717]">
+            {name}
+          </h3>
+          <p className="mt-2 flex items-start gap-1.5 text-sm leading-relaxed text-[#706c64]">
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{locationAddress(location)}</span>
+          </p>
+        </div>
+      </div>
+      <div className="border-t border-[#171717]/10 px-4 py-3 sm:px-5">
+        <button
+          type="button"
+          onClick={() => onManage(location?.id)}
+          className="inline-flex min-h-11 w-full items-center justify-between rounded-full px-1 text-sm font-semibold text-[#171717]"
+        >
+          Gestionează locația
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function LocationsSection({ locations, selectedLocationId, onManage, onManageAll }) {
+  return (
+    <section className="rounded-[24px] border border-[#171717]/10 bg-white p-5 shadow-[0_12px_34px_rgba(23,23,23,0.04)] sm:p-6">
+      <div className="flex flex-col gap-4 border-b border-[#171717]/10 pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="inline-flex items-center gap-2 text-sm font-semibold text-[#345bc8]">
+            <Store className="h-4 w-4" /> Gestionare locații
+          </div>
+          <h2 className="mt-2 font-heading text-2xl font-extrabold tracking-[-0.035em] text-[#171717]">
+            Locațiile organizației
+          </h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-[#706c64]">
+            Adresa, programul, serviciile, echipa și fotografiile se gestionează
+            separat pentru fiecare locație.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onManageAll}
+          className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-[#171717]/15 bg-[#f8f4ec] px-5 text-sm font-semibold text-[#171717] transition-colors hover:bg-white sm:w-auto"
+        >
+          Gestionează toate locațiile
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+
+      {locations.length > 0 ? (
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          {locations.map((item) => (
+            <LocationCard
+              key={item.id || item.name}
+              location={item}
+              selected={item.id === selectedLocationId}
+              onManage={onManage}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-5 rounded-[18px] border border-dashed border-[#171717]/15 bg-[#f8f4ec]/55 p-5 text-sm text-[#706c64]">
+          Organizația nu are încă locații disponibile în workspace.
+        </div>
+      )}
     </section>
   );
 }
@@ -466,12 +641,14 @@ export default function ProviderProfilePublic({
   const organization =
     overview.organization || workspace?.organizations?.[0] || {};
   const overviewLocation = overview.location || {};
-  const locations = workspace?.locations || overview.locations || [];
+  const rawLocations = workspace?.locations || overview.locations || [];
   const location =
-    locations.find((item) => item.id === locationId) ||
+    rawLocations.find((item) => item.id === locationId) ||
     (overviewLocation.id ? overviewLocation : null) ||
-    locations[0] ||
+    rawLocations[0] ||
     {};
+  const locations =
+    rawLocations.length > 0 ? rawLocations : location.id ? [location] : [];
   const organizationId =
     organization.id ||
     location.organization_id ||
@@ -483,7 +660,7 @@ export default function ProviderProfilePublic({
     location.organization_name ||
     location.name ||
     "Organizație";
-  const locationCount = locations.length || 1;
+  const locationCount = locations.length;
   const profileTypeLabel =
     PROVIDER_PROFILE_TYPES[organization.organization_type] ||
     PROVIDER_PROFILE_TYPES[location.provider_profile_type] ||
@@ -517,6 +694,8 @@ export default function ProviderProfilePublic({
   const [draft, setDraft] = useState(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [editSnapshot, setEditSnapshot] = useState(null);
 
   const pendingReview = draft?.status === "pending_review";
   const canSubmitDraft = Boolean(
@@ -573,6 +752,20 @@ export default function ProviderProfilePublic({
   const setField = (key, value) =>
     setValues((current) => ({ ...current, [key]: value }));
 
+  const startEditing = () => {
+    if (pendingReview) return;
+    setEditSnapshot({ ...values });
+    setMessage("");
+    setEditing(true);
+  };
+
+  const cancelEditing = () => {
+    if (editSnapshot) setValues(editSnapshot);
+    setEditSnapshot(null);
+    setMessage("");
+    setEditing(false);
+  };
+
   const importFallback = () => {
     setValues((current) => {
       const next = { ...current };
@@ -587,7 +780,7 @@ export default function ProviderProfilePublic({
       return next;
     });
     setMessage(
-      `Datele din ${fallbackLocationName} au fost preluate în formular, dar nu sunt încă salvate. Salvează draftul și trimite-l spre verificare.`,
+      `Datele din ${fallbackLocationName} au fost preluate în formular, dar nu sunt încă salvate. Salvează modificările pentru a păstra draftul.`,
     );
   };
 
@@ -631,11 +824,13 @@ export default function ProviderProfilePublic({
       setMessage(data.message || "Draftul existent a fost încărcat.");
     } else {
       setMessage(
-        "Draft salvat. În acest moment apare în Prezentare generală la Necesită acțiune, dar nu intră în administrare până nu îl trimiți spre verificare.",
+        "Modificările au fost salvate. Profilul este afișat acum cu datele din draft; trimite draftul spre verificare pentru publicare.",
       );
     }
     await loadDraft();
     await onRefresh?.();
+    setEditSnapshot(null);
+    setEditing(false);
   };
 
   const submitDraft = async () => {
@@ -666,7 +861,7 @@ export default function ProviderProfilePublic({
       );
     } else {
       setMessage(
-        "Profilul organizației a fost trimis spre verificare. Acum apare și în administrare la Modificări workspace.",
+        "Profilul organizației a fost trimis spre verificare.",
       );
     }
     await loadDraft();
@@ -711,7 +906,7 @@ export default function ProviderProfilePublic({
       if (response.data?.error) throw new Error(response.data.error);
       setLogoPreview(logoUrl);
       setLogoMessage(
-        "Logo trimis separat spre verificare. Va apărea lângă numele organizației după aprobare.",
+        "Logo trimis separat spre verificare. Va apărea public după aprobare.",
       );
       await onRefresh?.();
     } catch (error) {
@@ -730,20 +925,18 @@ export default function ProviderProfilePublic({
 
   return (
     <div className="space-y-6 pb-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="inline-flex items-center gap-2 text-sm font-semibold text-[#345bc8]">
-            <span className="h-2 w-2 bg-[#345bc8]" />
-            Identitate publică · organizație
-          </div>
-          <h1 className="mt-3 max-w-3xl font-heading text-[2.05rem] font-extrabold leading-[1.05] tracking-[-0.04em] text-[#171717] sm:text-[2.45rem]">
-            Profilul organizației tale.
-          </h1>
-          <p className="mt-2.5 max-w-3xl text-base leading-[1.65] text-[#615e57]">
-            Vezi identitatea exact ca într-un profil public și completează mai jos
-            informațiile generale ale brandului.
-          </p>
+      <header>
+        <div className="inline-flex items-center gap-2 text-sm font-semibold text-[#345bc8]">
+          <span className="h-2 w-2 bg-[#345bc8]" />
+          Identitate publică · organizație
         </div>
+        <h1 className="mt-3 max-w-3xl font-heading text-[2.05rem] font-extrabold leading-[1.05] tracking-[-0.04em] text-[#171717] sm:text-[2.45rem]">
+          Profilul organizației tale.
+        </h1>
+        <p className="mt-2.5 max-w-3xl text-base leading-[1.65] text-[#615e57]">
+          Vezi profilul așa cum este prezentat public, editează datele generale și
+          gestionează separat fiecare locație.
+        </p>
       </header>
 
       <OrganizationProfileHeader
@@ -757,8 +950,9 @@ export default function ProviderProfilePublic({
         onLogoChange={uploadLogo}
         locationCount={locationCount}
         location={location}
-        onManageLocation={manageLocation}
         draft={draft}
+        editing={editing}
+        onEdit={startEditing}
       />
 
       {logoMessage && (
@@ -770,256 +964,252 @@ export default function ProviderProfilePublic({
         </div>
       )}
 
-      {availableFallbackFields.length > 0 && !pendingReview && (
-        <section className="rounded-[18px] border border-[#a97825]/25 bg-[#f5ead0] p-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#a97825] text-white">
-                <AlertTriangle className="h-4 w-4" />
+      {editing && (
+        <>
+          <div className="sticky top-3 z-20 flex flex-col gap-3 rounded-[18px] border border-[#171717]/12 bg-[#f8f4ec]/95 px-4 py-3 shadow-[0_12px_32px_rgba(23,23,23,0.1)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div>
+              <div className="font-heading text-base font-bold text-[#171717]">
+                Editează profilul
               </div>
-              <div>
-                <h2 className="text-base font-bold text-[#5f4317]">
-                  Există date în {fallbackLocationName}, dar nu sunt salvate pe
-                  organizație
-                </h2>
-                <p className="mt-1.5 text-sm leading-relaxed text-[#76551f]">
-                  {availableFallbackFields
-                    .map((key) => FIELD_LABELS[key])
-                    .join(", ")}
-                  . Preluarea completează doar formularul. Datele ajung în
-                  verificare numai după salvare și trimitere.
-                </p>
-              </div>
+              <p className="mt-0.5 text-sm text-[#706c64]">
+                Logo-ul se schimbă direct din antet. Restul datelor se editează mai jos.
+              </p>
             </div>
-            <button
-              type="button"
-              onClick={importFallback}
-              className="min-h-11 w-full shrink-0 rounded-full bg-[#171717] px-4 text-sm font-semibold text-white transition-opacity hover:opacity-85 sm:w-auto"
-            >
-              Preia datele în formular
-            </button>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={cancelEditing}
+                disabled={saving}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#171717]/15 bg-white px-5 text-sm font-semibold text-[#171717] hover:bg-[#f8f4ec] disabled:opacity-50"
+              >
+                <X className="h-4 w-4" /> Renunță
+              </button>
+              <button
+                type="button"
+                onClick={saveDraft}
+                disabled={saving || pendingReview}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#171717] px-5 text-sm font-semibold text-white hover:bg-[#2a2a2a] disabled:opacity-50"
+              >
+                {saving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                Salvează modificările
+              </button>
+            </div>
           </div>
-        </section>
-      )}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:items-start">
-        <section className="overflow-hidden rounded-[22px] border border-[#171717]/12 bg-white shadow-[0_12px_32px_rgba(23,23,23,0.04)]">
-          <SectionHeader
-            number="01"
-            title="Identitate și prezentare"
-            description="Numele și descrierea care definesc organizația în VIASEE."
-          />
-          <div className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
-            <div className="rounded-[18px] border border-[#171717]/10 bg-[#f8f4ec]/70 p-4">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-center gap-3">
-                  <label
-                    className="relative block shrink-0 cursor-pointer"
-                    title={logoPreview ? "Schimbă logo-ul" : "Adaugă logo"}
-                  >
-                    <BrandLogo
-                      name={values.public_display_name || organizationName}
-                      photoUrl={logoPreview}
-                      pending={hasPendingLogo}
-                      className="h-16 w-16 rounded-[18px] border-2 shadow-md"
-                    />
-                    <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#f8f4ec] bg-[#171717] text-white shadow-sm">
-                      {uploadingLogo ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Plus className="h-3.5 w-3.5" />
-                      )}
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      className="hidden"
-                      disabled={uploadingLogo}
-                      onChange={(event) => {
-                        uploadLogo(event.target.files?.[0]);
-                        event.target.value = "";
-                      }}
-                    />
-                  </label>
-                  <div className="min-w-0">
-                    <div className="text-base font-semibold">Logo organizație</div>
-                    <p className="mt-1 text-sm leading-relaxed text-[#69655d]">
-                      Apasă pe logo pentru a-l adăuga sau înlocui.
+          {availableFallbackFields.length > 0 && !pendingReview && (
+            <section className="rounded-[18px] border border-[#a97825]/25 bg-[#f5ead0] p-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#a97825] text-white">
+                    <AlertTriangle className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-[#5f4317]">
+                      Există date în {fallbackLocationName}, dar nu sunt salvate pe
+                      organizație
+                    </h2>
+                    <p className="mt-1.5 text-sm leading-relaxed text-[#76551f]">
+                      {availableFallbackFields
+                        .map((key) => FIELD_LABELS[key])
+                        .join(", ")}
+                      . Preluarea completează formularul curent.
                     </p>
                   </div>
                 </div>
-                <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-[#171717]/10 bg-white/75 px-3 py-1.5 text-xs font-semibold text-[#69655d]">
-                  <ImagePlus className="h-3.5 w-3.5" /> Publicare după aprobare
+                <button
+                  type="button"
+                  onClick={importFallback}
+                  className="min-h-11 w-full shrink-0 rounded-full bg-[#171717] px-4 text-sm font-semibold text-white transition-opacity hover:opacity-85 sm:w-auto"
+                >
+                  Preia datele în formular
+                </button>
+              </div>
+            </section>
+          )}
+
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:items-start">
+            <section className="overflow-hidden rounded-[22px] border border-[#171717]/12 bg-white shadow-[0_12px_32px_rgba(23,23,23,0.04)]">
+              <SectionHeader
+                number="01"
+                title="Identitate și prezentare"
+                description="Numele și descrierea care definesc organizația în VIASEE."
+              />
+              <div className="space-y-5 px-5 py-5 sm:px-6 sm:py-6">
+                <Field
+                  label="Nume public organizație"
+                  hint="Exemplu: Lunera Optic. Numele locației poate fi diferit."
+                >
+                  <input
+                    className={inputCls}
+                    value={values.public_display_name}
+                    disabled={pendingReview}
+                    onChange={(event) =>
+                      setField("public_display_name", event.target.value)
+                    }
+                  />
+                </Field>
+
+                <Field
+                  label="Descriere organizație"
+                  hint="Prezintă pe scurt ce oferiți, cui vă adresați și ce diferențiază brandul."
+                >
+                  <textarea
+                    className={`${inputCls} min-h-40 resize-y`}
+                    value={values.public_description}
+                    maxLength={DESCRIPTION_MAX_LENGTH}
+                    disabled={pendingReview}
+                    onChange={(event) =>
+                      setField("public_description", event.target.value)
+                    }
+                  />
+                  <div className="mt-1.5 text-right text-xs text-muted-foreground">
+                    {descriptionCount}/{DESCRIPTION_MAX_LENGTH}
+                  </div>
+                </Field>
+              </div>
+            </section>
+
+            <div className="space-y-5">
+              <section className="overflow-hidden rounded-[22px] border border-[#171717]/12 bg-white shadow-[0_12px_32px_rgba(23,23,23,0.04)]">
+                <SectionHeader
+                  number="02"
+                  title="Contact public"
+                  description="Date generale ale organizației, separate de contactul fiecărei locații."
+                />
+                <div className="space-y-4 px-5 py-5 sm:px-6 sm:py-6">
+                  <Field label="Telefon general">
+                    <input
+                      type="tel"
+                      className={inputCls}
+                      value={values.public_phone}
+                      disabled={pendingReview}
+                      onChange={(event) =>
+                        setField("public_phone", event.target.value)
+                      }
+                    />
+                  </Field>
+                  <Field label="Email general">
+                    <input
+                      type="email"
+                      className={inputCls}
+                      value={values.public_email}
+                      disabled={pendingReview}
+                      onChange={(event) =>
+                        setField("public_email", event.target.value)
+                      }
+                    />
+                  </Field>
+                  <Field label="Website">
+                    <input
+                      type="url"
+                      className={inputCls}
+                      value={values.website_url}
+                      disabled={pendingReview}
+                      onChange={(event) =>
+                        setField("website_url", event.target.value)
+                      }
+                    />
+                  </Field>
                 </div>
-              </div>
+              </section>
+
+              <section className="overflow-hidden rounded-[22px] border border-[#171717]/12 bg-white shadow-[0_12px_32px_rgba(23,23,23,0.04)]">
+                <SectionHeader
+                  number="03"
+                  title="Canale online"
+                  description="Profilurile oficiale care pot fi afișate public."
+                />
+                <div className="space-y-4 px-5 py-5 sm:px-6 sm:py-6">
+                  <Field label="Facebook">
+                    <input
+                      type="url"
+                      className={inputCls}
+                      value={values.facebook_url}
+                      disabled={pendingReview}
+                      onChange={(event) =>
+                        setField("facebook_url", event.target.value)
+                      }
+                    />
+                  </Field>
+                  <Field label="Instagram">
+                    <input
+                      type="url"
+                      className={inputCls}
+                      value={values.instagram_url}
+                      disabled={pendingReview}
+                      onChange={(event) =>
+                        setField("instagram_url", event.target.value)
+                      }
+                    />
+                  </Field>
+                  <Field
+                    label="LinkedIn"
+                    hint="Opțional, util mai ales pentru comunicarea profesională."
+                  >
+                    <input
+                      type="url"
+                      className={inputCls}
+                      value={values.linkedin_url}
+                      disabled={pendingReview}
+                      onChange={(event) =>
+                        setField("linkedin_url", event.target.value)
+                      }
+                    />
+                  </Field>
+                </div>
+              </section>
             </div>
-
-            <Field
-              label="Nume public organizație"
-              hint="Exemplu: Lunera Optic. Numele locației poate fi diferit."
-            >
-              <input
-                className={inputCls}
-                value={values.public_display_name}
-                disabled={pendingReview}
-                onChange={(event) =>
-                  setField("public_display_name", event.target.value)
-                }
-              />
-            </Field>
-
-            <Field
-              label="Descriere organizație"
-              hint="Prezintă pe scurt ce oferiți, cui vă adresați și ce diferențiază brandul."
-            >
-              <textarea
-                className={`${inputCls} min-h-40 resize-y`}
-                value={values.public_description}
-                maxLength={DESCRIPTION_MAX_LENGTH}
-                disabled={pendingReview}
-                onChange={(event) =>
-                  setField("public_description", event.target.value)
-                }
-              />
-              <div className="mt-1.5 text-right text-xs text-muted-foreground">
-                {descriptionCount}/{DESCRIPTION_MAX_LENGTH}
-              </div>
-            </Field>
           </div>
-        </section>
+        </>
+      )}
 
-        <div className="space-y-5">
-          <section className="overflow-hidden rounded-[22px] border border-[#171717]/12 bg-white shadow-[0_12px_32px_rgba(23,23,23,0.04)]">
-            <SectionHeader
-              number="02"
-              title="Contact public"
-              description="Date generale ale organizației, separate de contactul fiecărei locații."
-            />
-            <div className="space-y-4 px-5 py-5 sm:px-6 sm:py-6">
-              <Field label="Telefon general">
-                <input
-                  type="tel"
-                  className={inputCls}
-                  value={values.public_phone}
-                  disabled={pendingReview}
-                  onChange={(event) =>
-                    setField("public_phone", event.target.value)
-                  }
-                />
-              </Field>
-              <Field label="Email general">
-                <input
-                  type="email"
-                  className={inputCls}
-                  value={values.public_email}
-                  disabled={pendingReview}
-                  onChange={(event) =>
-                    setField("public_email", event.target.value)
-                  }
-                />
-              </Field>
-              <Field label="Website">
-                <input
-                  type="url"
-                  className={inputCls}
-                  value={values.website_url}
-                  disabled={pendingReview}
-                  onChange={(event) =>
-                    setField("website_url", event.target.value)
-                  }
-                />
-              </Field>
-            </div>
-          </section>
-
-          <section className="overflow-hidden rounded-[22px] border border-[#171717]/12 bg-white shadow-[0_12px_32px_rgba(23,23,23,0.04)]">
-            <SectionHeader
-              number="03"
-              title="Canale online"
-              description="Profilurile oficiale care pot fi afișate public."
-            />
-            <div className="space-y-4 px-5 py-5 sm:px-6 sm:py-6">
-              <Field label="Facebook">
-                <input
-                  type="url"
-                  className={inputCls}
-                  value={values.facebook_url}
-                  disabled={pendingReview}
-                  onChange={(event) =>
-                    setField("facebook_url", event.target.value)
-                  }
-                />
-              </Field>
-              <Field label="Instagram">
-                <input
-                  type="url"
-                  className={inputCls}
-                  value={values.instagram_url}
-                  disabled={pendingReview}
-                  onChange={(event) =>
-                    setField("instagram_url", event.target.value)
-                  }
-                />
-              </Field>
-              <Field
-                label="LinkedIn"
-                hint="Opțional, util mai ales pentru comunicarea profesională."
-              >
-                <input
-                  type="url"
-                  className={inputCls}
-                  value={values.linkedin_url}
-                  disabled={pendingReview}
-                  onChange={(event) =>
-                    setField("linkedin_url", event.target.value)
-                  }
-                />
-              </Field>
-            </div>
-          </section>
+      {!editing && message && (
+        <div className="rounded-[16px] border border-[#171717]/10 bg-white px-4 py-3 text-sm leading-relaxed text-[#69655d]">
+          {message}
         </div>
-      </div>
+      )}
 
-      <div className="sticky bottom-3 z-20 rounded-[18px] border border-[#171717]/12 bg-[#f8f4ec]/95 px-4 py-3 shadow-[0_12px_32px_rgba(23,23,23,0.12)] backdrop-blur-xl sm:px-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-start gap-2.5 text-sm leading-relaxed text-[#5f5b54]">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>
-              Modificările profilului organizației se publică numai după
-              aprobare. Datele locației rămân separate.
+      {!editing && canSubmitDraft && (
+        <div className="flex flex-col gap-4 rounded-[18px] border border-[#345bc8]/20 bg-[#eef3fb] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#345bc8] text-white">
+              <Save className="h-4 w-4" />
             </span>
+            <div>
+              <div className="font-semibold text-[#243b66]">
+                Modificările sunt salvate ca draft
+              </div>
+              <p className="mt-1 text-sm leading-relaxed text-[#526789]">
+                Verifică profilul de mai sus, apoi trimite modificările pentru aprobare.
+              </p>
+            </div>
           </div>
-          <div className="flex shrink-0 flex-col-reverse gap-2 sm:flex-row">
-            <button
-              type="button"
-              disabled={saving || pendingReview}
-              onClick={saveDraft}
-              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-5 text-sm font-semibold transition-colors disabled:opacity-50 ${
-                canSubmitDraft
-                  ? "border-[#171717]/20 bg-white text-[#171717] hover:bg-[#f8f4ec]"
-                  : "border-[#171717] bg-[#171717] text-white hover:bg-[#2a2a2a]"
-              }`}
-            >
-              <Save className="h-4 w-4" /> Salvează draftul
-            </button>
-            {canSubmitDraft && (
-              <button
-                type="button"
-                disabled={saving}
-                onClick={submitDraft}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#171717] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-85 disabled:opacity-50"
-              >
-                <Send className="h-4 w-4" /> Trimite spre verificare
-              </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={submitDraft}
+            className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full bg-[#171717] px-5 text-sm font-semibold text-white disabled:opacity-50 sm:w-auto"
+          >
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
             )}
-          </div>
+            Trimite spre verificare
+          </button>
         </div>
-        {message && (
-          <p className="mt-3 border-t border-[#171717]/10 pt-3 text-sm leading-relaxed text-[#69655d]">
-            {message}
-          </p>
-        )}
-      </div>
+      )}
+
+      <LocationsSection
+        locations={locations}
+        selectedLocationId={location.id}
+        onManage={manageLocation}
+        onManageAll={() => onNavigate?.("locations")}
+      />
     </div>
   );
 }
