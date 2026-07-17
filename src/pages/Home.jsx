@@ -75,7 +75,7 @@ function PinnedTakeover() {
   const sceneRef = useRef(null);
   const { scrollYProgress } = useScroll({
     target: sceneRef,
-    offset: ["start 64px", "end end"],
+    offset: ["start 80px", "end end"],
   });
 
   const sheetY = useTransform(
@@ -111,11 +111,11 @@ function PinnedTakeover() {
       <section
         ref={sceneRef}
         aria-label="Tranziție către conținutul homepage-ului"
-        className="pointer-events-none relative z-30 h-[calc(170svh-4rem)]"
+        className="pointer-events-none relative z-30 h-[calc(170svh-5rem)]"
       >
         <motion.div
           style={{ visibility: stageVisibility }}
-          className="sticky top-16 h-[calc(100svh-4rem)] overflow-hidden bg-[#F7F2E8]"
+          className="sticky top-20 h-[calc(100svh-5rem)] overflow-hidden bg-[#F7F2E8]"
         >
           <motion.div
             className="absolute inset-0 origin-top will-change-transform"
@@ -145,7 +145,7 @@ function PinnedTakeover() {
         </motion.div>
       </section>
 
-      <div className="relative z-20 mt-[calc(-100svh+4rem)] isolate overflow-hidden rounded-t-[2rem] border-t border-white/80 bg-[#F8F4EC] pb-16 shadow-[0_-18px_65px_rgba(28,24,18,0.13)] sm:rounded-t-[2.75rem] lg:rounded-t-[3.25rem]">
+      <div className="relative z-20 mt-[calc(-100svh+5rem)] isolate overflow-hidden rounded-t-[2rem] border-t border-white/80 bg-[#F8F4EC] pb-16 shadow-[0_-18px_65px_rgba(28,24,18,0.13)] sm:rounded-t-[2.75rem] lg:rounded-t-[3.25rem]">
         <HomeCanvas />
       </div>
     </>
@@ -164,7 +164,7 @@ function StaticTakeover() {
 }
 
 function usePinnedTakeoverSupport() {
-  const mediaQuery = "(min-width: 768px) and (min-height: 600px)";
+  const mediaQuery = "(min-width: 1024px) and (min-height: 600px)";
   const [supported, setSupported] = useState(
     () =>
       typeof window !== "undefined" && window.matchMedia(mediaQuery).matches,
