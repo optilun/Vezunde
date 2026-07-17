@@ -13,8 +13,8 @@ const AdminProfilesSection = lazy(
 const AdminReviewQueue = lazy(
   () => import("@/components/admin/review/AdminReviewQueue"),
 );
-const AdminSupportTickets = lazy(
-  () => import("@/components/admin/support/AdminSupportTickets"),
+const AdminSupportCenter = lazy(
+  () => import("@/components/admin/support/AdminSupportCenter"),
 );
 const DirOpsAddLocation = lazy(
   () => import("@/components/admin/directory/DirOpsAddLocation"),
@@ -52,7 +52,7 @@ const SIMPLE_HEADERS = {
   workspace_reviews:
     "Analizează într-un singur loc cererile trimise de furnizori, locațiile noi și profilurile specialiștilor.",
   support_tickets:
-    "Primește solicitările trimise din conturile utilizatorilor, stabilește prioritatea și publică răspunsul în centrul lor de suport.",
+    "Gestionează tichetele de suport și feedback-ul trimis din conturile utilizatorilor, din același centru administrativ.",
   servicii:
     "Gestionează serviciile existente, nivelul de confirmare și eligibilitatea pentru rezultate.",
   revendicari: "Analizează cererile de revendicare a profilurilor.",
@@ -143,7 +143,7 @@ export default function AdminDirectoryOps() {
             <div className="mt-6">
               {tab === "adauga" && <DirOpsAddLocation />}
               {tab === "workspace_reviews" && <AdminReviewQueue />}
-              {tab === "support_tickets" && <AdminSupportTickets adminUser={user} />}
+              {tab === "support_tickets" && <AdminSupportCenter adminUser={user} />}
               {tab === "servicii" && <DirOpsServices />}
               {tab === "revendicari" && <DirOpsClaims />}
               {tab === "geografie" && <GeoImport />}
