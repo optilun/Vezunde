@@ -318,7 +318,8 @@ function InlineProfileEditor({
             <div className="flex min-w-0 items-start gap-3">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#76551f]" />
               <p className="text-sm leading-relaxed text-[#76551f]">
-                Exista date in {fallbackLocationName} pentru: {availableFallbackFields
+                Exista date in {fallbackLocationName} pentru:{" "}
+                {availableFallbackFields
                   .map((key) => FIELD_LABELS[key])
                   .join(", ")}.
               </p>
@@ -374,7 +375,9 @@ function InlineProfileEditor({
         <div className="space-y-7">
           <div className="space-y-4">
             <div>
-              <div className="text-sm font-bold text-[#171717]">Contact public</div>
+              <div className="text-sm font-bold text-[#171717]">
+                Contact public
+              </div>
               <p className="mt-1 text-xs text-[#77736b]">
                 Date generale, separate de contactul fiecarei locatii.
               </p>
@@ -409,14 +412,18 @@ function InlineProfileEditor({
                 className={inputCls}
                 value={values.website_url}
                 disabled={pendingReview}
-                onChange={(event) => setField("website_url", event.target.value)}
+                onChange={(event) =>
+                  setField("website_url", event.target.value)
+                }
               />
             </Field>
           </div>
 
           <div className="space-y-4 border-t border-[#171717]/10 pt-6">
             <div>
-              <div className="text-sm font-bold text-[#171717]">Canale online</div>
+              <div className="text-sm font-bold text-[#171717]">
+                Canale online
+              </div>
               <p className="mt-1 text-xs text-[#77736b]">
                 Linkurile oficiale afisate in profil.
               </p>
@@ -486,7 +493,6 @@ function OrganizationProfile({
   uploadingLogo,
   onLogoChange,
   locationCount,
-  location,
   draft,
   editing,
   onEdit,
@@ -504,10 +510,6 @@ function OrganizationProfile({
   const socialItems = SOCIAL_ITEMS.filter((item) =>
     normalizeClientUrl(values[item.key]),
   );
-  const locationName =
-    location?.public_display_name || location?.name || "Locatia principala";
-  const locality =
-    location?.locality_name || location?.city || "Localitate necompletata";
   const displayName = values.public_display_name || organizationName;
 
   return (
@@ -549,22 +551,13 @@ function OrganizationProfile({
 
       <div className="relative px-1 sm:px-3">
         <div className="-mt-12 flex flex-col gap-5 sm:-mt-14 sm:flex-row sm:items-end sm:gap-6">
-          {editing ? (
-            <EditableLogo
-              name={displayName}
-              logoPreview={logoPreview}
-              hasPendingLogo={hasPendingLogo}
-              uploadingLogo={uploadingLogo}
-              onLogoChange={onLogoChange}
-            />
-          ) : (
-            <BrandLogo
-              name={displayName}
-              photoUrl={logoPreview}
-              pending={hasPendingLogo}
-              className="h-28 w-28 sm:h-32 sm:w-32"
-            />
-          )}
+          <EditableLogo
+            name={displayName}
+            logoPreview={logoPreview}
+            hasPendingLogo={hasPendingLogo}
+            uploadingLogo={uploadingLogo}
+            onLogoChange={onLogoChange}
+          />
 
           <div className="min-w-0 flex-1 pb-1 sm:pb-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -586,7 +579,8 @@ function OrganizationProfile({
               {displayName}
             </h1>
             <p className="mt-2 text-sm font-medium text-[#706c64]">
-              {locationCount} {locationCount === 1 ? "locatie" : "locatii"} in VIASEE
+              {locationCount} {locationCount === 1 ? "locatie" : "locatii"} in
+              VIASEE
             </p>
           </div>
 
@@ -670,8 +664,8 @@ function OrganizationProfile({
               />
               <ProfileInfo
                 icon={Store}
-                label="Locatie selectata"
-                value={`${locationName} · ${locality}`}
+                label="Organizatie"
+                value={displayName}
               />
             </div>
           </div>
@@ -1146,7 +1140,6 @@ export default function ProviderProfilePublic({
         uploadingLogo={uploadingLogo}
         onLogoChange={uploadLogo}
         locationCount={locationCount}
-        location={location}
         draft={draft}
         editing={editing}
         onEdit={startEditing}
@@ -1162,9 +1155,15 @@ export default function ProviderProfilePublic({
         message={message}
       />
 
-      {!editing && message && (
-        <div className="border-y border-[#171717]/10 py-3 text-sm leading-relaxed text-[#69655d]">
-          {message}
+      {!editing && (logoMessage || message) && (
+        <div className="space-y-2 border-y border-[#171717]/10 py-3 text-sm leading-relaxed text-[#69655d]">
+          {logoMessage && (
+            <p className="flex items-start gap-2">
+              <ImagePlus className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{logoMessage}</span>
+            </p>
+          )}
+          {message && <p>{message}</p>}
         </div>
       )}
 
