@@ -83,23 +83,45 @@ function PageLoading() {
 }
 
 function DeferredClientUi() {
-  const [mounted, setMounted] = useState(false);
+  const [cookieUiMounted, setCookieUiMounted] = useState(false);
+  const [toasterMounted, setToasterMounted] = useState(false);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => setMounted(true));
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
+    const frame = window.requestAnimationFrame(() => setCookieUiMounted(true));
+    let toasterTimer = window.setTimeout(() => setToasterMounted(true), 3000);
 
-  if (!mounted) return null;
+    const mountToaster = () => {
+      window.clearTimeout(toasterTimer);
+      toasterTimer = 0;
+      setToasterMounted(true);
+    };
+
+    window.addEventListener("pointerdown", mountToaster, {
+      once: true,
+      passive: true,
+    });
+    window.addEventListener("keydown", mountToaster, { once: true });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (toasterTimer) window.clearTimeout(toasterTimer);
+      window.removeEventListener("pointerdown", mountToaster);
+      window.removeEventListener("keydown", mountToaster);
+    };
+  }, []);
 
   return (
     <>
-      <Suspense fallback={null}>
-        <CookieConsent />
-      </Suspense>
-      <Suspense fallback={null}>
-        <Toaster />
-      </Suspense>
+      {cookieUiMounted && (
+        <Suspense fallback={null}>
+          <CookieConsent />
+        </Suspense>
+      )}
+      {toasterMounted && (
+        <Suspense fallback={null}>
+          <Toaster />
+        </Suspense>
+      )}
     </>
   );
 }
