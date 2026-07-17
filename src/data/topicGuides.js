@@ -67,6 +67,26 @@ const SOURCES = {
     label: "National Eye Institute — Eyeglasses for Refractive Errors",
     url: "https://www.nei.nih.gov/eye-health-information/eye-conditions-and-diseases/refractive-errors/eyeglasses-refractive-errors",
   },
+  appointmentPrep: {
+    label: "Moorfields Eye Hospital — Preparing for Your Appointment",
+    url: "https://www.moorfields.nhs.uk/for-patients/plan-your-visit/pre-appointment-information",
+  },
+  firstAppointment: {
+    label: "Salisbury NHS Foundation Trust — Your First Appointment",
+    url: "https://www.salisbury.nhs.uk/wards-departments/departments/eye-clinic/your-first-appointment/",
+  },
+  contactAppointment: {
+    label: "Kingston and Richmond NHS — Contact Lens Appointment",
+    url: "https://www.kingstonandrichmond.nhs.uk/patients-and-families/patient-leaflets/contact-lens-appointment",
+  },
+  opticalAppointment: {
+    label: "UCI Health — Optical Shop Appointment Preparation",
+    url: "https://www.ucihealth.org/medical-services/programs/optical-shop/appointment-preparation",
+  },
+  cornealClinic: {
+    label: "Royal Free London — Preparing for Corneal Measurements",
+    url: "https://www.royalfree.nhs.uk/patients-and-visitors/patient-information-leaflets/virtual-keratoconus-clinic",
+  },
 };
 
 const consultationCta = {
@@ -348,6 +368,101 @@ export const TOPIC_GUIDES = {
     sources: [SOURCES.dilatedExam, SOURCES.imaging],
     cta: consultationCta,
     related: ["investigatii/oct", "investigatii/camp-vizual", "afectiuni/glaucom"],
+  },
+  "consultatii/pregatire-consult-oftalmologic": {
+    category: "consultatii",
+    slug: "pregatire-consult-oftalmologic",
+    number: "C05",
+    shortTitle: "Pregătirea pentru consult",
+    eyebrow: "Ce aduci și ce întrebi înainte",
+    title: "Cum te pregătești pentru consultul oftalmologic sau controlul de vedere?",
+    description: "Checklist complet pentru consultul oftalmologic, controlul de vedere sau vizita în optică: istoric, ochelari, lentile de contact, documente și transport.",
+    accent: "#345bc8",
+    tint: "#dce8f2",
+    intro: "O pregătire bună îl ajută pe profesionist să înțeleagă schimbările, să compare corecțiile și să aleagă testele potrivite. Cerințele diferă însă între consultație, evaluare optometrică, adaptarea lentilelor și investigațiile corneene.",
+    shortAnswer: "Adu ochelarii folosiți, prescripțiile și investigațiile vechi, datele lentilelor de contact, lista medicamentelor și informații despre bolile, operațiile și antecedentele oculare din familie.",
+    sections: [
+      {
+        label: "Istoric și documente",
+        title: "Construiește o imagine clară a sănătății tale",
+        items: [
+          "notează afecțiunile generale importante, inclusiv diabetul, hipertensiunea, bolile autoimune și alergiile cunoscute",
+          "adu lista medicamentelor, suplimentelor și picăturilor folosite, cu doza și frecvența dacă le cunoști",
+          "menționează operațiile, tratamentele cu laser, traumatismele și infecțiile oculare anterioare",
+          "adu scrisori medicale, rezultate, imagini sau recomandări anterioare și istoricul familial de glaucom, degenerescență maculară, keratoconus ori alte boli oculare",
+        ],
+      },
+      {
+        label: "Ochelari și lentile",
+        title: "Adu tot ce folosești pentru a vedea",
+        items: [
+          "ia ochelarii actuali pentru distanță, citit, calculator sau condus, chiar dacă nu îi porți permanent",
+          "adu prescripțiile mai vechi și ochelarii anteriori dacă vederea s-a schimbat sau vrei o comparație",
+          "pentru lentile de contact, notează marca, materialul, puterea, curbura, diametrul și programul de înlocuire sau adu ambalajul",
+          "ia recipientul curat, soluția potrivită și ochelarii de rezervă, în cazul în care lentilele trebuie scoase",
+        ],
+      },
+      {
+        label: "Motivul vizitei",
+        title: "Descrie problema și activitățile reale",
+        items: [
+          "notează când a început simptomul, dacă a apărut brusc sau treptat și dacă afectează unul ori ambii ochi",
+          "spune ce te deranjează la distanță, la aproape, noaptea, la volan sau în fața ecranelor",
+          "pentru ochelari, măsoară aproximativ distanța până la monitor și descrie activitatea, postura și numărul de ecrane",
+          "scrie întrebările înainte de vizită și spune ce rezultat urmărești: sănătatea ochilor, dioptrii, lentile, ochelari sau o investigație",
+        ],
+      },
+      {
+        label: "Ziua programării",
+        title: "Lasă timp pentru teste și întoarcerea acasă",
+        items: [
+          "urmează instrucțiunile primite de la locație și anunță dacă nu le-ai putut respecta",
+          "nu întrerupe medicamentele și nu folosi picături noi din proprie inițiativă; întreabă locația dacă ai o nelămurire",
+          "ia ochelari de soare și organizează transport alternativ dacă este posibil să ți se dilate pupilele",
+          "spune dinainte dacă ai nevoie de interpret, însoțitor, accesibilitate sau mai mult timp pentru comunicare",
+        ],
+      },
+    ],
+    important: {
+      title: "Nu aplica automat regula de „minimum 5 ore fără lentile”.",
+      text: "Pentru evaluarea lentilelor, unele clinici cer să vii cu ele purtate dacă sunt confortabile. Pentru topografie, biometrie sau evaluare preoperatorie, lentilele moi pot necesita o pauză de câteva zile, iar cele rigide una de săptămâni. Instrucțiunea locației și tipul investigației au prioritate. Dacă ai durere, roșeață sau vedere brusc neclară, scoate lentilele și solicită sfat medical.",
+    },
+    questions: [
+      {
+        question: "Trebuie să scot lentilele de contact cu 5 ore înainte?",
+        answer: "Nu există o regulă universală. Pentru o vizită de verificare a lentilelor ți se poate cere să le porți, iar pentru măsurători ale corneei pauza poate fi mult mai lungă. Sună locația și spune ce tip de lentile porți și pentru ce serviciu ești programat.",
+      },
+      {
+        question: "Ce informații medicale sunt relevante pentru ochi?",
+        answer: "Menționează diagnosticele generale, tratamentele și alergiile, operațiile sau traumatismele oculare și bolile de ochi din familie. Diabetul, hipertensiunea și unele medicamente pot conta pentru evaluare.",
+      },
+      {
+        question: "Îmi iau toate perechile de ochelari?",
+        answer: "Da, dacă le folosești pentru distanțe sau activități diferite. Profesionistul poate măsura lentilele, verifica poziția ramei și compara corecția actuală cu nevoile tale.",
+      },
+      {
+        question: "Pot conduce după consultație?",
+        answer: "Dacă se folosesc picături pentru dilatarea pupilei, vederea poate fi temporar neclară și lumina poate deranja. Planifică transport alternativ și urmează recomandarea primită înainte de a conduce.",
+      },
+      {
+        question: "Trebuie să vin nemâncat sau să opresc tratamentul?",
+        answer: "Pentru un consult obișnuit, în general nu, dar procedurile și evaluările preoperatorii pot avea alte reguli. Nu modifica tratamentul fără indicație și verifică instrucțiunile programării.",
+      },
+    ],
+    sources: [
+      SOURCES.appointmentPrep,
+      SOURCES.firstAppointment,
+      SOURCES.contactAppointment,
+      SOURCES.opticalAppointment,
+      SOURCES.cornealClinic,
+      SOURCES.dilatedExam,
+    ],
+    cta: consultationCta,
+    related: [
+      "consultatii/consult-oftalmologic",
+      "consultatii/control-vedere",
+      "ochelari/lentile-de-contact",
+    ],
   },
   "investigatii/oct": {
     category: "investigatii",
@@ -1118,4 +1233,3 @@ export const getTopicGroup = (category) =>
 
 export const getGuidesByGroup = (category) =>
   Object.values(TOPIC_GUIDES).filter((guide) => guide.category === category);
-

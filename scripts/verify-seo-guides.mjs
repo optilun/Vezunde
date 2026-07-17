@@ -44,7 +44,7 @@ for (const specialist of ["Optician medical", "Optometrist", "Medic oftalmolog"]
 const topicKeys = [...topicGuides.matchAll(/^  "([a-z-]+\/[a-z-]+)": \{/gm)].map(
   (match) => match[1],
 );
-assert.equal(topicKeys.length, 18, "Lotul editorial trebuie să conțină 18 ghiduri tematice.");
+assert.equal(topicKeys.length, 19, "Biblioteca editorială trebuie să conțină 19 ghiduri tematice.");
 assert.equal(topicKeys.length, new Set(topicKeys).size, "Cheile ghidurilor tematice trebuie să fie unice.");
 assert.ok(
   (topicGuides.match(/question:/g) || []).length >= topicKeys.length * 3,
@@ -60,7 +60,7 @@ assert.match(robots, /Sitemap: https:\/\/vezunde-core-link\.base44\.app\/sitemap
 
 const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
 assert.equal(sitemapUrls.length, new Set(sitemapUrls).size, "Sitemap-ul conține URL-uri duplicate.");
-assert.ok(sitemapUrls.length >= 26, "Sitemap-ul nu conține întregul lot editorial.");
+assert.ok(sitemapUrls.length >= 27, "Sitemap-ul nu conține întreaga bibliotecă editorială.");
 for (const key of topicKeys) {
   assert.ok(
     sitemapUrls.includes(`https://vezunde-core-link.base44.app/ghid/${key}`),

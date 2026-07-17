@@ -173,9 +173,15 @@ export default function GuideIndex() {
                       key={`${guide.category}/${guide.slug}`}
                       to={getTopicPath(guide)}
                       className={`group relative flex min-h-40 flex-col justify-between border-[#171717]/35 p-6 transition-colors hover:bg-white/45 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#171717] sm:p-7 ${
-                        guideIndex % 2 ? "sm:border-l" : ""
+                        guideIndex % 2 && !(guides.length % 2 && guideIndex === guides.length - 1)
+                          ? "sm:border-l"
+                          : ""
                       } ${guideIndex >= 2 ? "border-t" : ""} ${
                         guideIndex === 1 ? "border-t sm:border-t-0" : ""
+                      } ${
+                        guides.length % 2 && guideIndex === guides.length - 1
+                          ? "sm:col-span-2"
+                          : ""
                       }`}
                     >
                       <div className="flex items-center justify-between gap-5">
