@@ -1,0 +1,30 @@
+/* Keep the location editor focused on data entry. The map remains on the location page. */
+aside[aria-label="Editeaza datele locatiei"] {
+  max-width: 48rem !important;
+}
+
+aside[aria-label="Editeaza datele locatiei"] > div:nth-child(2) > div {
+  display: block !important;
+}
+
+aside[aria-label="Editeaza datele locatiei"]
+  section:has(iframe[title^="Harta "]) {
+  display: none !important;
+}
+
+aside[aria-label="Editeaza datele locatiei"]
+  > div:nth-child(2)
+  > div
+  > div[class*="border-blue-200"],
+aside[aria-label="Editeaza datele locatiei"]
+  > div:nth-child(2)
+  > div
+  > div[class*="border-amber-200"] {
+  margin-top: 1rem !important;
+}
+
+@media (max-width: 767px) {
+  aside[aria-label="Editeaza datele locatiei"] {
+    max-width: none !important;
+  }
+}
