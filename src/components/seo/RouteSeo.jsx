@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { getGuide } from "@/data/specialistGuides";
 
 const DEFAULT_DESCRIPTION =
-  "Găsește specialiști, servicii și locații pentru vedere în România. VIASEE te ajută să alegi unde poți merge.";
+  "VIASEE te ajută să găsești medici oftalmologi, optometriști, opticieni, clinici și servicii pentru vedere, investigații, ochelari sau reparații în România.";
 
 const STATIC_META = {
   "/": {
