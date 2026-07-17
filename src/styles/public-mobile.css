@@ -1,0 +1,54 @@
+@media (max-width: 767px) {
+  #root > div > main#main-content {
+    min-width: 0;
+  }
+
+  #root > div > main#main-content > * {
+    min-width: 0;
+  }
+
+  #root > div > main#main-content input:not([type="checkbox"]):not([type="radio"]),
+  #root > div > main#main-content select,
+  #root > div > main#main-content textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  #root > div > main#main-content summary,
+  #root > div > main#main-content a[class*="rounded-full"],
+  #root > div > main#main-content button[class*="rounded-full"] {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  #root > div > main#main-content a[href^="tel:"],
+  #root > div > main#main-content a[href^="mailto:"],
+  #root > div > main#main-content article > a[class*="text-xs"][class*="font-semibold"],
+  #root > div > main#main-content a[class*="text-sm"][class*="text-muted-foreground"] {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    touch-action: manipulation;
+  }
+
+  #root > div > main#main-content iframe,
+  #root > div > main#main-content img {
+    max-width: 100%;
+  }
+
+  #root > div > main#main-content [class*="grid-cols-"] > *,
+  #root > div > main#main-content [class*="justify-between"] > * {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 639px) {
+  #root > div > main#main-content [class*="items-start"][class*="justify-between"] {
+    flex-wrap: wrap;
+  }
+
+  #root > div > main#main-content a[class*="rounded-full"][class*="shrink-0"] {
+    width: 100%;
+    justify-content: center;
+  }
+}
