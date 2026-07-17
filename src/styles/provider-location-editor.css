@@ -8,7 +8,6 @@ aside[aria-label="Editeaza datele locatiei"] > div:nth-child(2) > div {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
   grid-template-areas:
     "pending pending"
-    "identity-heading identity-heading"
     "name address"
     "contact map"
     "contact position"
@@ -45,10 +44,7 @@ aside[aria-label="Editeaza datele locatiei"]
   > div
   > section:first-of-type
   > div:first-child {
-  grid-area: identity-heading;
-  margin-bottom: 1rem !important;
-  padding-bottom: 1rem !important;
-  border-bottom: 1px solid rgb(23 23 23 / 0.12) !important;
+  display: none !important;
 }
 
 aside[aria-label="Editeaza datele locatiei"]
@@ -160,7 +156,6 @@ aside[aria-label="Editeaza datele locatiei"]
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-areas:
       "pending"
-      "identity-heading"
       "name"
       "contact"
       "address"
