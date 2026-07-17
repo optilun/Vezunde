@@ -32,6 +32,7 @@ const MOBILE_CATEGORIES = [
     to: "/cerere?categorie=ochelari_lentile",
     artwork: "/images/home/viasee-artwork-ochelari-lentile.svg",
     tone: "border-[#e1bda8]/80 bg-[#efd5c5]/90",
+    wide: true,
   },
   {
     title: "Reparații și reglaje",
