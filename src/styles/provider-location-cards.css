@@ -1,0 +1,38 @@
+.workspace-neutral
+  section.pt-3
+  > div.mt-5.divide-y.border-y:has(> article > button)
+  > article {
+  border-color: rgb(23 23 23 / 0.09) !important;
+  background: linear-gradient(
+    180deg,
+    rgb(248 244 236 / 0.96) 0%,
+    rgb(243 238 228 / 0.96) 100%
+  ) !important;
+  box-shadow: 0 6px 18px rgb(23 23 23 / 0.025) !important;
+}
+
+.workspace-neutral
+  section.pt-3
+  > div.mt-5.divide-y.border-y:has(> article > button)
+  > article:hover {
+  transform: translateY(-1px);
+  border-color: rgb(23 23 23 / 0.14) !important;
+  box-shadow: 0 10px 24px rgb(23 23 23 / 0.04) !important;
+}
+
+.workspace-neutral
+  section.pt-3
+  > div.mt-5.divide-y.border-y:has(> article > button)
+  > article
+  > button {
+  border-top-color: rgb(23 23 23 / 0.08) !important;
+  background: rgb(255 255 255 / 0.08) !important;
+}
+
+.workspace-neutral
+  section.pt-3
+  > div.mt-5.divide-y.border-y:has(> article > button)
+  > article
+  > button:hover {
+  background: rgb(255 255 255 / 0.28) !important;
+}
