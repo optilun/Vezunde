@@ -12,22 +12,19 @@
   > article {
   width: 100%;
   max-width: 340px;
-  border-color: rgb(23 23 23 / 0.09) !important;
-  background: linear-gradient(
-    180deg,
-    rgb(248 244 236 / 0.96) 0%,
-    rgb(243 238 228 / 0.96) 100%
-  ) !important;
-  box-shadow: 0 5px 14px rgb(23 23 23 / 0.025) !important;
+  border: 1px solid rgb(23 23 23 / 0.18) !important;
+  border-radius: 6px !important;
+  background: hsl(var(--background)) !important;
+  box-shadow: none !important;
 }
 
 .workspace-neutral
   section.pt-3
   > div.mt-5.divide-y.border-y:has(> article > button)
   > article:hover {
-  transform: translateY(-1px);
-  border-color: rgb(23 23 23 / 0.14) !important;
-  box-shadow: 0 8px 20px rgb(23 23 23 / 0.04) !important;
+  transform: none;
+  border-color: rgb(23 23 23 / 0.28) !important;
+  box-shadow: none !important;
 }
 
 .workspace-neutral
@@ -36,7 +33,12 @@
   > article
   > div:first-child
   > div:first-child {
+  width: auto !important;
   height: 9rem !important;
+  margin: 0.9rem 0.9rem 0;
+  overflow: hidden;
+  border: 1px solid rgb(23 23 23 / 0.08) !important;
+  border-radius: 3px !important;
 }
 
 .workspace-neutral
@@ -45,7 +47,7 @@
   > article
   > div:first-child
   > div:nth-child(2) {
-  padding: 0.85rem 0.9rem 0.7rem !important;
+  padding: 0.75rem 0.9rem 0.7rem !important;
 }
 
 .workspace-neutral
@@ -54,8 +56,8 @@
   > article
   > button {
   min-height: 2.75rem !important;
-  border-top-color: rgb(23 23 23 / 0.08) !important;
-  background: rgb(255 255 255 / 0.08) !important;
+  border-top: 1px solid rgb(23 23 23 / 0.14) !important;
+  background: hsl(var(--background)) !important;
   padding: 0.65rem 0.9rem !important;
 }
 
@@ -64,7 +66,7 @@
   > div.mt-5.divide-y.border-y:has(> article > button)
   > article
   > button:hover {
-  background: rgb(255 255 255 / 0.28) !important;
+  background: rgb(23 23 23 / 0.025) !important;
 }
 
 @media (max-width: 767px) {
