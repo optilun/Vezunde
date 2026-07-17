@@ -12,7 +12,7 @@ export default function HeaderAccountLink() {
   if (isLoadingAuth) return null;
 
   const className =
-    "inline-flex min-h-11 items-center rounded-lg px-3.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary/55 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40";
+    "inline-flex min-h-11 items-center rounded-lg px-3.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary/55 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/40 lg:min-h-12 lg:px-4 lg:py-2.5 lg:text-[0.95rem] lg:font-medium";
 
   if (!isAuthenticated || !user) {
     return (
