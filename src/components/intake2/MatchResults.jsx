@@ -5,22 +5,22 @@ import MatchResultCard from "./MatchResultCard";
 
 const EMPTY_RECOMMENDATION_STATES = {
   no_local_providers: {
-    title: "Nu avem inca furnizori publicati pentru filtrele alese.",
-    description: "VIASEE a cautat corect in localitatea selectata, dar directorul nu contine inca profiluri publicate care sa corespunda filtrelor.",
+    title: "Nu avem încă furnizori publicați pentru filtrele alese.",
+    description: "VIASEE a căutat corect în localitatea selectată, dar directorul nu conține încă profiluri publicate care să corespundă filtrelor.",
   },
   local_service_data_missing: {
-    title: "Exista furnizori in localitate, dar nu avem suficiente date despre serviciul cautat.",
-    description: "Nu putem confirma momentan cine ofera acest serviciu. Asta descrie datele disponibile in VIASEE, nu inseamna ca serviciul nu exista in localitate.",
+    title: "Există furnizori în localitate, dar nu avem suficiente date despre serviciul căutat.",
+    description: "Nu putem confirma momentan cine oferă acest serviciu. Asta descrie datele disponibile în VIASEE, nu înseamnă că serviciul nu există în localitate.",
   },
   no_eligible_local_results: {
-    title: "Nu avem momentan un rezultat eligibil pentru aceasta nevoie.",
-    description: "Exista furnizori si date locale, dar niciun profil nu indeplineste toate conditiile de serviciu, verificare sau specializare.",
+    title: "Nu avem momentan un rezultat eligibil pentru această nevoie.",
+    description: "Există furnizori și date locale, dar niciun profil nu îndeplinește toate condițiile de serviciu, verificare sau specializare.",
   },
 };
 
 const DEFAULT_EMPTY_RECOMMENDATION_STATE = {
-  title: "Nu avem inca profiluri relevante in zona ta.",
-  description: "VIASEE a cautat strict in localitatea selectata. Poti alege manual alta localitate si incerca din nou.",
+  title: "Nu avem încă profiluri relevante în zona ta.",
+  description: "VIASEE a căutat strict în localitatea selectată. Poți alege manual altă localitate și încerca din nou.",
 };
 
 function RoutingNotice({ meta }) {
@@ -28,7 +28,7 @@ function RoutingNotice({ meta }) {
   if (meta.routing_mode === "locality") {
     return (
       <div className="mt-4 rounded-2xl border border-border bg-secondary/40 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-        Am cautat dupa localitatea selectata: {meta.client_address_text || "localitate selectata"}.
+        Am căutat după localitatea selectată: {meta.client_address_text || "localitate selectată"}.
       </div>
     );
   }
@@ -109,8 +109,8 @@ export default function MatchResults({ results, meta }) {
           {emptyState.description}
         </p>
         <RoutingNotice meta={meta} />
-        <Link to="/cauta" className="mt-4 inline-block text-sm font-semibold underline underline-offset-4">
-          Exploreaza toti furnizorii
+        <Link to="/cauta" className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4">
+          Explorează toți furnizorii
         </Link>
       </div>
     );
@@ -122,9 +122,9 @@ export default function MatchResults({ results, meta }) {
     <div>
       {top3.length > 0 ? (
         <>
-          <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight">Cele mai potrivite optiuni</h2>
+          <h2 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">Cele mai potrivite opțiuni</h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Selectate pe baza serviciilor confirmate, relevantei cautarii si verificarii profilului in localitatea aleasa.
+            Selectate pe baza serviciilor confirmate, relevanței căutării și verificării profilului în localitatea aleasă.
           </p>
           <RoutingNotice meta={meta} />
           <div className="mt-5 space-y-3">
@@ -133,10 +133,10 @@ export default function MatchResults({ results, meta }) {
         </>
       ) : (
         <>
-          <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight">Nu avem inca optiuni confirmate pentru aceasta nevoie in zona ta</h2>
+          <h2 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">Nu avem încă opțiuni confirmate pentru această nevoie în zona ta</h2>
           {directory.length > 0 && (
             <p className="mt-2 text-sm text-muted-foreground">
-              Poti vedea mai jos cateva profiluri din director.
+              Poți vedea mai jos câteva profiluri din director.
             </p>
           )}
           <RoutingNotice meta={meta} />
@@ -147,15 +147,15 @@ export default function MatchResults({ results, meta }) {
         <button
           type="button"
           onClick={() => setShowMore(true)}
-          className="mt-6 w-full rounded-2xl border border-border bg-card px-5 py-3.5 text-sm font-semibold hover:border-foreground/40 transition-colors"
+          className="mt-6 min-h-12 w-full rounded-2xl border border-border bg-card px-5 py-3.5 text-sm font-semibold transition-colors hover:border-foreground/40"
         >
-          Vezi mai multe optiuni ({moreCount})
+          Vezi mai multe opțiuni ({moreCount})
         </button>
       )}
 
       {expanded && confirmed.length > 0 && (
         <div className="mt-8">
-          <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Mai multe optiuni relevante</div>
+          <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Mai multe opțiuni relevante</div>
           <div className="mt-3 space-y-3">
             {confirmed.map((loc) => <MatchResultCard key={loc.id} location={loc} />)}
           </div>
@@ -164,9 +164,9 @@ export default function MatchResults({ results, meta }) {
 
       {expanded && directory.length > 0 && (
         <div className="mt-8">
-          <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Optiuni din director</div>
+          <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Opțiuni din director</div>
           <p className="mt-1.5 text-xs text-muted-foreground">
-            Aceste profiluri provin din surse publice. VIASEE nu a confirmat toate informatiile afisate.
+            Aceste profiluri provin din surse publice. VIASEE nu a confirmat toate informațiile afișate.
           </p>
           <div className="mt-3 space-y-3">
             {directory.map((loc) => <MatchResultCard key={loc.id} location={loc} />)}
@@ -175,30 +175,32 @@ export default function MatchResults({ results, meta }) {
       )}
 
       <p className="mt-6 text-xs text-muted-foreground/80">
-        Ordinea reflecta serviciile confirmate, relevanta cautarii si verificarea profilului. VIASEE nu ofera diagnostic medical.
+        Ordinea reflectă serviciile confirmate, relevanța căutării și verificarea profilului. VIASEE nu oferă diagnostic medical.
       </p>
 
-      <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+      <div className="mt-5 flex flex-col items-stretch gap-2 border-t border-border pt-4 sm:flex-row sm:items-center">
         {feedback === null ? (
           <>
-            <span className="mr-1 text-xs font-medium text-foreground">Ti-au fost utile recomandarile?</span>
-            <button
-              type="button"
-              onClick={() => submitFeedback(true)}
-              className="rounded-full border border-border px-3 py-1.5 text-xs font-medium hover:border-foreground/40"
-            >
-              Da
-            </button>
-            <button
-              type="button"
-              onClick={() => submitFeedback(false)}
-              className="rounded-full border border-border px-3 py-1.5 text-xs font-medium hover:border-foreground/40"
-            >
-              Nu
-            </button>
+            <span className="text-xs font-medium text-foreground sm:mr-1">Ți-au fost utile recomandările?</span>
+            <div className="grid grid-cols-2 gap-2 sm:flex">
+              <button
+                type="button"
+                onClick={() => submitFeedback(true)}
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-border px-4 text-xs font-medium hover:border-foreground/40"
+              >
+                Da
+              </button>
+              <button
+                type="button"
+                onClick={() => submitFeedback(false)}
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-border px-4 text-xs font-medium hover:border-foreground/40"
+              >
+                Nu
+              </button>
+            </div>
           </>
         ) : (
-          <span className="text-xs text-muted-foreground">Multumim. Feedbackul tau ne ajuta sa imbunatatim recomandarile.</span>
+          <span className="text-xs leading-relaxed text-muted-foreground">Mulțumim. Feedbackul tău ne ajută să îmbunătățim recomandările.</span>
         )}
       </div>
     </div>
