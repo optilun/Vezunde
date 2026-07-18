@@ -2,13 +2,24 @@ import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { getGuide } from "@/data/specialistGuides";
 
+const SITE_URL = "https://viasee.ro";
+const ORGANIZATION_ID = `${SITE_URL}/#organization`;
+const WEBSITE_ID = `${SITE_URL}/#website`;
 const DEFAULT_DESCRIPTION =
   "VIASEE te ajută să găsești medici oftalmologi, optometriști, opticieni, clinici și servicii pentru vedere, investigații, ochelari sau reparații în România.";
+const ORGANIZATION_DESCRIPTION =
+  "VIASEE este o platformă românească de descoperire, orientare și promovare pentru servicii de vedere, locații și profesioniști din România.";
 
 const STATIC_META = {
   "/": {
     title: "VIASEE — Găsește servicii pentru vedere în România",
     description: DEFAULT_DESCRIPTION,
+  },
+  "/despre-viasee": {
+    title: "Despre VIASEE — platforma pentru servicii de vedere",
+    description:
+      "Află ce este VIASEE, cum funcționează platforma, ce servicii pentru vedere acoperă și cum sunt verificate informațiile publice.",
+    type: "about",
   },
   "/ghid": {
     title: "Ghid pentru vedere și alegerea specialistului | VIASEE",
@@ -41,7 +52,8 @@ const STATIC_META = {
   "/drepturile-tale": { title: "Drepturile tale privind datele | VIASEE" },
   "/adauga-sau-revendica": {
     title: "Adaugă sau revendică un profil | VIASEE",
-    description: "Adaugă sau revendică profilul tău profesional ori profilul unei locații pe VIASEE.",
+    description:
+      "Adaugă sau revendică profilul tău profesional ori profilul unei locații pe VIASEE.",
     noindex: true,
   },
 };
@@ -67,11 +79,15 @@ function ensureMeta(selector, attributes) {
     node = document.createElement("meta");
     document.head.appendChild(node);
   }
-  Object.entries(attributes).forEach(([key, value]) => node.setAttribute(key, value));
+  Object.entries(attributes).forEach(([key, value]) =>
+    node.setAttribute(key, value),
+  );
 }
 
 async function getMetadata(pathname) {
-  const guideMatch = pathname.match(/^\/ghid\/(optician-medical|optometrist|medic-oftalmolog)$/);
+  const guideMatch = pathname.match(
+    /^\/ghid\/(optician-medical|optometrist|medic-oftalmolog)$/,
+  );
   if (guideMatch) {
     const guide = getGuide(guideMatch[1]);
     return {
@@ -97,38 +113,111 @@ async function getMetadata(pathname) {
   }
 
   if (pathname.startsWith("/furnizor/")) {
-    return { title: "Profil locație | VIASEE", description: DEFAULT_DESCRIPTION };
+    return {
+      title: "Profil locație | VIASEE",
+      description: DEFAULT_DESCRIPTION,
+    };
   }
 
   if (pathname.startsWith("/specialist/")) {
-    return { title: "Profil specialist | VIASEE", description: DEFAULT_DESCRIPTION };
+    return {
+      title: "Profil specialist | VIASEE",
+      description: DEFAULT_DESCRIPTION,
+    };
   }
 
-  return STATIC_META[pathname] || {
-    title: "Pagina nu a fost găsită | VIASEE",
-    description: "Pagina solicitată nu este disponibilă.",
-    noindex: true,
+  return (
+    STATIC_META[pathname] || {
+      title: "Pagina nu a fost găsită | VIASEE",
+      description: "Pagina solicitată nu este disponibilă.",
+      noindex: true,
+    }
+  );
+}
+
+function buildOrganization() {
+  return {
+    "@type": "Organization",
+    "@id": ORGANIZATION_ID,
+    name: "VIASEE",
+    alternateName: ["VIASEE România", "VIASEE servicii pentru vedere"],
+    legalName: "Lunera Optic SRL",
+    url: SITE_URL,
+    email: "contact@viasee.ro",
+    description: ORGANIZATION_DESCRIPTION,
+    areaServed: {
+      "@type": "Country",
+      name: "România",
+    },
+    knowsAbout: [
+      "servicii pentru vedere",
+      "optică medicală",
+      "optometrie",
+      "oftalmologie",
+      "ochelari și lentile",
+      "investigații oftalmologice",
+    ],
+    identifier: [
+      {
+        "@type": "PropertyValue",
+        propertyID: "CUI",
+        value: "53362575",
+      },
+      {
+        "@type": "PropertyValue",
+        propertyID: "ONRC",
+        value: "J2026003935004",
+      },
+    ],
+    contactPoint: {
+      "@type": "ContactPoint",
+      contactType: "customer support",
+      email: "contact@viasee.ro",
+      availableLanguage: ["ro"],
+    },
+  };
+}
+
+function buildWebsite() {
+  return {
+    "@type": "WebSite",
+    "@id": WEBSITE_ID,
+    name: "VIASEE",
+    alternateName: "VIASEE România",
+    url: SITE_URL,
+    description: DEFAULT_DESCRIPTION,
+    inLanguage: "ro-RO",
+    publisher: { "@id": ORGANIZATION_ID },
   };
 }
 
 function buildStructuredData(pathname, metadata, canonical) {
-  const organization = {
-    "@type": "Organization",
-    name: "VIASEE",
-    url: window.location.origin,
-    email: "contact@viasee.ro",
-  };
+  const organization = buildOrganization();
+  const website = buildWebsite();
 
   if (pathname === "/") {
     return {
       "@context": "https://schema.org",
+      "@graph": [organization, website],
+    };
+  }
+
+  if (pathname === "/despre-viasee") {
+    return {
+      "@context": "https://schema.org",
       "@graph": [
         organization,
+        website,
         {
-          "@type": "WebSite",
-          name: "VIASEE",
-          url: window.location.origin,
+          "@type": "AboutPage",
+          "@id": `${canonical}#webpage`,
+          url: canonical,
+          name: "Despre VIASEE",
+          description: metadata.description,
           inLanguage: "ro-RO",
+          isPartOf: { "@id": WEBSITE_ID },
+          mainEntity: { "@id": ORGANIZATION_ID },
+          about: { "@id": ORGANIZATION_ID },
         },
       ],
     };
@@ -137,8 +226,8 @@ function buildStructuredData(pathname, metadata, canonical) {
   if (metadata.type !== "article") return null;
 
   const breadcrumbs = [
-    { name: "VIASEE", item: `${window.location.origin}/` },
-    { name: "Ghid", item: `${window.location.origin}/ghid` },
+    { name: "VIASEE", item: `${SITE_URL}/` },
+    { name: "Ghid", item: `${SITE_URL}/ghid` },
   ];
   if (pathname !== "/ghid") {
     breadcrumbs.push({
@@ -148,28 +237,30 @@ function buildStructuredData(pathname, metadata, canonical) {
   }
 
   const graph = [
-      {
-        "@type": "Article",
-        headline: metadata.title.replace(" | VIASEE", ""),
-        description: metadata.description,
-        mainEntityOfPage: canonical,
-        inLanguage: "ro-RO",
-        dateModified: "2026-07-17",
-        author: organization,
-        publisher: organization,
-        ...(metadata.guide?.sources?.length
-          ? { citation: metadata.guide.sources.map((source) => source.url) }
-          : {}),
-      },
-      {
-        "@type": "BreadcrumbList",
-        itemListElement: breadcrumbs.map((item, index) => ({
-          "@type": "ListItem",
-          position: index + 1,
-          ...item,
-        })),
-      },
-    ];
+    organization,
+    {
+      "@type": "Article",
+      headline: metadata.title.replace(" | VIASEE", ""),
+      description: metadata.description,
+      mainEntityOfPage: canonical,
+      isPartOf: { "@id": WEBSITE_ID },
+      inLanguage: "ro-RO",
+      dateModified: "2026-07-17",
+      author: { "@id": ORGANIZATION_ID },
+      publisher: { "@id": ORGANIZATION_ID },
+      ...(metadata.guide?.sources?.length
+        ? { citation: metadata.guide.sources.map((source) => source.url) }
+        : {}),
+    },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: breadcrumbs.map((item, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        ...item,
+      })),
+    },
+  ];
 
   if (metadata.guide?.questions?.length) {
     graph.push({
@@ -201,7 +292,7 @@ export default function RouteSeo() {
       const metadata = await getMetadata(pathname);
       if (cancelled) return;
 
-      const canonical = `${window.location.origin}${pathname === "/" ? "/" : pathname}`;
+      const canonical = `${SITE_URL}${pathname === "/" ? "/" : pathname}`;
       const noindex =
         metadata.noindex ||
         NOINDEX_PREFIXES.some((prefix) => pathname.startsWith(prefix));
@@ -225,9 +316,16 @@ export default function RouteSeo() {
       });
       ensureMeta('meta[property="og:type"]', {
         property: "og:type",
-        content: metadata.type || "website",
+        content: metadata.type === "article" ? "article" : "website",
       });
-      ensureMeta('meta[property="og:url"]', { property: "og:url", content: canonical });
+      ensureMeta('meta[property="og:url"]', {
+        property: "og:url",
+        content: canonical,
+      });
+      ensureMeta('meta[property="og:site_name"]', {
+        property: "og:site_name",
+        content: "VIASEE",
+      });
       ensureMeta('meta[name="twitter:card"]', {
         name: "twitter:card",
         content: "summary_large_image",

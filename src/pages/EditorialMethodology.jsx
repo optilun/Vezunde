@@ -69,7 +69,10 @@ export default function EditorialMethodology() {
 
       <div className="mt-12 flex flex-col gap-5 border-t border-[#171717]/30 pt-6 sm:flex-row sm:items-center sm:justify-between">
         <GuideNote />
-        <Link to="/ghid" className="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4">Înapoi la Ghid VIASEE</Link>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+          <Link to="/despre-viasee" className="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4">Despre VIASEE</Link>
+          <Link to="/ghid" className="inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4">Înapoi la Ghid VIASEE</Link>
+        </div>
       </div>
     </GuideCanvas>
   );
