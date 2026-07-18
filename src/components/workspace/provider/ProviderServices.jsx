@@ -157,13 +157,13 @@ export default function ProviderServices(props) {
         </nav>
       </aside>
 
-      <main className="provider-services-task__content">
+      <section className="provider-services-task__content" aria-labelledby="provider-services-stage-title">
         <header className="provider-services-task__panel-header">
           <div className="provider-services-task__panel-heading">
             <span className="provider-services-task__panel-icon"><CurrentIcon aria-hidden="true" /></span>
             <div>
               <p>Etapa {activeIndex + 1} din {SERVICE_STAGES.length}</p>
-              <h2>{currentStage.label}</h2>
+              <h2 id="provider-services-stage-title">{currentStage.label}</h2>
               <span>{currentStage.description}</span>
             </div>
           </div>
@@ -197,7 +197,7 @@ export default function ProviderServices(props) {
         >
           <ProviderServicesWorkspaceRuntime {...props} />
         </div>
-      </main>
+      </section>
     </div>
   );
 }
