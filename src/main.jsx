@@ -7,6 +7,7 @@ import '@/styles/provider-location-cards.css'
 import '@/styles/provider-location-editor.css'
 import '@/styles/provider-profile.css'
 import '@/styles/provider-location-modules.css'
+import '@/styles/provider-program-flat.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <App />
