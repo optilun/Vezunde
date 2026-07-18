@@ -81,6 +81,7 @@ function loadGoogleAnalytics() {
     script.addEventListener(
       "error",
       () => {
+        script.remove();
         scriptPromise = null;
         resolve(false);
       },
@@ -94,6 +95,8 @@ function loadGoogleAnalytics() {
 
 export default function GoogleAnalytics() {
   useEffect(() => {
+    let consentRevision = 0;
+
     ensureGtag();
     window[GA_DISABLE_KEY] = true;
     window.gtag("consent", "default", {
@@ -105,12 +108,14 @@ export default function GoogleAnalytics() {
     });
 
     const applyConsent = async (consent) => {
+      const revision = ++consentRevision;
       const analyticsGranted = Boolean(consent?.analytics);
       window[GA_DISABLE_KEY] = !analyticsGranted;
       updateGoogleConsent(consent);
 
       if (analyticsGranted) {
         const loaded = await loadGoogleAnalytics();
+        if (revision !== consentRevision) return;
         window.__viaseeAnalyticsEnabled = loaded;
       } else {
         window.__viaseeAnalyticsEnabled = false;
@@ -130,6 +135,7 @@ export default function GoogleAnalytics() {
     );
 
     return () => {
+      consentRevision += 1;
       window.removeEventListener(
         COOKIE_CONSENT_CHANGED_EVENT,
         onConsentChanged,
