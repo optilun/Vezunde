@@ -297,6 +297,7 @@ export default function ProviderWorkspaceRoot({
       subtitle="Spațiu furnizor"
       publicProfileUrl={selectedLocationId ? `/furnizor/${selectedLocationId}` : null}
       modeSwitches={modeSwitches}
+      wideContent={activeLocationModule === "servicii"}
       statusBadge={(statusLabel || multiLocation) ? (
         <span className="hidden items-center gap-1.5 sm:inline-flex">
           {statusLabel && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusGreen ? "bg-green-100 text-green-800" : "bg-secondary text-foreground"}`}>{statusLabel}</span>}
@@ -367,4 +368,3 @@ export default function ProviderWorkspaceRoot({
     </ProviderAppShell>
   );
 }
-

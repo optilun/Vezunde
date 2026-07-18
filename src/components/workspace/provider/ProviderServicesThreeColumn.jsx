@@ -66,7 +66,7 @@ function selectedNames(section) {
     .filter(Boolean);
 }
 
-function NavButton({ active, icon: Icon, label, description, count, status, onClick }) {
+function NavButton({ active, icon: Icon, label, count, status, onClick }) {
   return (
     <button
       type="button"
@@ -75,11 +75,9 @@ function NavButton({ active, icon: Icon, label, description, count, status, onCl
       onClick={onClick}
     >
       <Icon aria-hidden="true" />
-      <span className="provider-services-three__nav-copy">
-        <strong>{label}</strong>
-        {description && <small>{description}</small>}
-      </span>
-      {(status || Number.isFinite(count)) && <em>{status || count}</em>}
+      <span>{label}</span>
+      {status && <small>{status}</small>}
+      {Number.isFinite(count) && <em>{count}</em>}
     </button>
   );
 }
@@ -296,24 +294,24 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
     : view === "configuration"
       ? "Spații și funcționare"
       : view === "options"
-        ? "Opțiuni la nivelul locației"
+        ? "Opțiuni pentru locație"
         : view === "selected"
           ? "Servicii selectate"
-        : view === "issues"
-            ? "Servicii de completat"
+          : view === "issues"
+            ? "De completat"
             : view === "unit"
               ? activeUnit?.title || "Serviciile spațiului"
-              : "Catalogul de servicii";
+              : "Toate serviciile";
 
   const centerDescription = view === "configuration"
-    ? "Definește spațiile existente, activitățile speciale și modul în care funcționează această locație."
+    ? "Alege spațiile existente, activitățile speciale și modul de funcționare."
     : view === "options"
-      ? "Configurează opțiunile valabile pentru întreaga locație, precum decontarea CAS și serviciile oferite în afara sediului."
+      ? "Configurează opțiunile valabile pentru întreaga locație, inclusiv decontarea CAS și serviciile oferite în afara locației."
       : view === "issues"
-        ? "Aici apar numai serviciile selectate cărora le lipsesc informații sau cerințe obligatorii."
+        ? "Sunt afișate serviciile selectate care mai au cerințe de completat."
         : view === "selected"
-          ? "Verifică toate serviciile adăugate în configurația curentă a locației."
-          : "Alege serviciile disponibile în această locație și completează cerințele relevante pentru fiecare spațiu.";
+          ? "Sunt afișate numai serviciile adăugate în configurația curentă."
+          : "Selectează serviciile oferite și completează doar cerințele relevante.";
 
   const locationName = location?.public_display_name
     || location?.display_name
@@ -334,61 +332,27 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
           <div className="provider-services-three__left-sticky">
             <div className="provider-services-three__left-heading">
               <PanelLabel index="01" label="Selecție" />
-              <strong>Alege ce configurezi</strong>
-              <small>Fiecare opțiune deschide o parte diferită a configurației locației.</small>
+              <strong>Alege zona de lucru</strong>
+              <small>Selectează ce vrei să configurezi. Detaliile apar în panoul central.</small>
             </div>
 
             <div className="provider-services-three__nav-groups">
-              <nav className="provider-services-three__nav-group" aria-label="Structura și funcționarea locației">
-                <p>Structura locației</p>
-                <NavButton
-                  active={view === "configuration" && !query}
-                  icon={Settings2}
-                  label="Spații și funcționare"
-                  description="Alege spațiile, activitățile speciale și modul de funcționare."
-                  status={snapshot.unitCount > 0 ? `${snapshot.unitCount} spații` : "Necesar"}
-                  onClick={() => chooseView("configuration")}
-                />
-                <NavButton
-                  active={view === "options" && !query}
-                  icon={SlidersHorizontal}
-                  label="Opțiuni la nivelul locației"
-                  description="Configurează decontarea CAS și serviciile oferite în afara sediului."
-                  onClick={() => chooseView("options")}
-                />
+              <nav className="provider-services-three__nav-group" aria-label="Configurarea locației">
+                <p>Configurare</p>
+                <NavButton active={view === "configuration" && !query} icon={Settings2} label="Spații și funcționare" status={snapshot.unitCount > 0 ? `${snapshot.unitCount} spații` : "Necesar"} onClick={() => chooseView("configuration")} />
+                <NavButton active={view === "options" && !query} icon={SlidersHorizontal} label="Opțiuni pentru locație" onClick={() => chooseView("options")} />
               </nav>
 
               <nav className="provider-services-three__nav-group" aria-label="Filtrarea serviciilor">
-                <p>Oferta locației</p>
-                <NavButton
-                  active={view === "all" && !query}
-                  icon={ListFilter}
-                  label="Catalogul de servicii"
-                  description="Vezi oferta completă și alege ce este disponibil aici."
-                  count={snapshot.units.reduce((sum, unit) => sum + unit.total, 0)}
-                  onClick={() => chooseView("all")}
-                />
-                <NavButton
-                  active={view === "selected" && !query}
-                  icon={CheckCircle2}
-                  label="Servicii selectate"
-                  description="Verifică opțiunile adăugate în configurația curentă."
-                  count={snapshot.selectedCount}
-                  onClick={() => chooseView("selected")}
-                />
-                <NavButton
-                  active={view === "issues" && !query}
-                  icon={AlertTriangle}
-                  label="Servicii de completat"
-                  description="Rezolvă informațiile sau cerințele care încă lipsesc."
-                  count={snapshot.issueCount}
-                  onClick={() => chooseView("issues")}
-                />
+                <p>Servicii</p>
+                <NavButton active={view === "all" && !query} icon={ListFilter} label="Toate serviciile" count={snapshot.units.reduce((sum, unit) => sum + unit.total, 0)} onClick={() => chooseView("all")} />
+                <NavButton active={view === "selected" && !query} icon={CheckCircle2} label="Servicii selectate" count={snapshot.selectedCount} onClick={() => chooseView("selected")} />
+                <NavButton active={view === "issues" && !query} icon={AlertTriangle} label="De completat" count={snapshot.issueCount} onClick={() => chooseView("issues")} />
               </nav>
 
               {snapshot.units.length > 0 && (
                 <nav className="provider-services-three__nav-group provider-services-three__units" aria-label="Servicii după spațiu">
-                  <p>Servicii după spațiu</p>
+                  <p>După spațiu</p>
                   {snapshot.units.map((unit) => (
                     <NavButton
                       key={`${unit.title}-${unit.index}`}
