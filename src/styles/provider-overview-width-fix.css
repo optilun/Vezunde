@@ -1,0 +1,29 @@
+/* Keep public organization data readable on desktop overview layouts. */
+@media (min-width: 1024px) {
+  :where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+    > .grid.items-start.gap-5.lg\:grid-cols-2:last-of-type {
+    grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr) !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  :where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+    > .grid.items-start.gap-5.lg\:grid-cols-2:last-of-type
+    > section:first-child
+    > .mt-5.grid {
+    grid-template-columns: minmax(300px, 1.12fr) minmax(230px, 0.88fr) !important;
+  }
+}
+
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2:last-of-type
+  > section:first-child
+  > .mt-5.grid
+  > div:first-child
+  > .divide-y
+  > .flex.items-start.gap-3
+  > div:last-child {
+  max-width: 70% !important;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
