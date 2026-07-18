@@ -7,24 +7,24 @@ import ProviderTeam from "./ProviderTeam";
 const MODULES = {
   servicii: {
     label: "Servicii",
-    title: "Serviciile locatiei",
+    title: "Serviciile locației",
     icon: Wrench,
     capability: "location.manage_content",
-    description: "Configureaza serviciile, spatiile functionale si resursele acestei locatii.",
+    description: "Configurează serviciile, spațiile funcționale și resursele acestei locații.",
   },
   program: {
     label: "Program",
-    title: "Programul locatiei",
+    title: "Programul locației",
     icon: Clock,
     capability: "location.manage_operational_status",
-    description: "Stabileste programul normal, exceptiile si modul de primire a clientilor.",
+    description: "Stabilește programul normal, excepțiile și modul de primire a clienților.",
   },
   specialisti: {
-    label: "Specialisti",
-    title: "Specialistii locatiei",
+    label: "Specialiști",
+    title: "Specialiștii locației",
     icon: Users,
     capability: "location.manage_specialists",
-    description: "Gestioneaza specialistii si invitatiile profesionale asociate acestei locatii.",
+    description: "Gestionează specialiștii și invitațiile profesionale asociate acestei locații.",
   },
 };
 
@@ -45,16 +45,16 @@ export default function ProviderLocationModulePage({
     return (
       <div className="rounded-[20px] border border-foreground/10 bg-card p-6 shadow-[0_14px_40px_rgba(23,23,23,0.04)]">
         <h1 className="font-heading text-xl font-extrabold tracking-tight">Modul indisponibil</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{location && config ? "Rolul tau nu permite accesul la acest modul." : "Locatia sau modulul solicitat nu a putut fi gasit."}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{location && config ? "Rolul tău nu permite accesul la acest modul." : "Locația sau modulul solicitat nu a putut fi găsit."}</p>
         <button type="button" onClick={onBack} className="mt-5 inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-secondary">
-          <ArrowLeft className="h-4 w-4" /> Inapoi la locatii
+          <ArrowLeft className="h-4 w-4" /> Înapoi la locații
         </button>
       </div>
     );
   }
 
   const Icon = config.icon;
-  const locationName = location.public_display_name || location.name || "Locatie";
+  const locationName = location.public_display_name || location.name || "Locație";
   const locationPlace = [location.locality || location.city, location.county]
     .filter(Boolean)
     .join(", ");
@@ -70,17 +70,17 @@ export default function ProviderLocationModulePage({
       {moduleKey === "servicii" ? (
         <header className="provider-location-services-header">
           <button type="button" onClick={onBack} className="provider-location-services-header__back">
-            <ArrowLeft aria-hidden="true" /> Inapoi la locatii
+            <ArrowLeft aria-hidden="true" /> Înapoi la locații
           </button>
           <div className="provider-location-services-header__content">
             <div className="provider-location-services-header__eyebrow">
               <span aria-hidden="true" />
-              <strong>Configurare locatie</strong>
+              <strong>Configurare locație</strong>
             </div>
             <div className="provider-location-services-header__row">
               <div>
-                <h1>Serviciile locatiei</h1>
-                <p>Alege serviciile, spatiile si activitatile pe care clientii le pot gasi la aceasta locatie.</p>
+                <h1>Serviciile locației</h1>
+                <p>Alege serviciile, spațiile și activitățile pe care clienții le pot găsi la această locație.</p>
               </div>
               <div className="provider-location-services-header__location">
                 <MapPin aria-hidden="true" />
@@ -92,11 +92,11 @@ export default function ProviderLocationModulePage({
       ) : (
         <header className="provider-location-module-hero">
           <button type="button" onClick={onBack} className="provider-location-module-hero__back">
-            <ArrowLeft aria-hidden="true" /> Inapoi la locatii
+            <ArrowLeft aria-hidden="true" /> Înapoi la locații
           </button>
           <div className="provider-location-module-hero__eyebrow">
             <span aria-hidden="true" />
-            <strong>Gestionare locatie</strong>
+            <strong>Gestionare locație</strong>
           </div>
           <div className="provider-location-module-hero__row">
             <div className="provider-location-module-hero__title">
@@ -113,7 +113,7 @@ export default function ProviderLocationModulePage({
                 <MapPin aria-hidden="true" />
                 <span><strong>{locationName}</strong>{locationPlace && <> · {locationPlace}</>}</span>
               </div>
-              {moduleKey === "program" && <span className="provider-location-module-hero__status">Se publica imediat</span>}
+              {moduleKey === "program" && <span className="provider-location-module-hero__status">Se publică imediat</span>}
             </div>
           </div>
         </header>
@@ -122,7 +122,7 @@ export default function ProviderLocationModulePage({
       {moduleKey === "program" && (
         <div className="provider-location-module-note md:hidden">
           <Info aria-hidden="true" />
-          <span>Pentru fiecare zi, completeaza mai intai ora de deschidere, apoi ora de inchidere. Butonul de salvare ramane disponibil in partea de jos a ecranului.</span>
+          <span>Pentru fiecare zi, completează mai întâi ora de deschidere, apoi ora de închidere. Butonul de salvare rămâne disponibil în partea de jos a ecranului.</span>
         </div>
       )}
 
