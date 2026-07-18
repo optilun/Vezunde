@@ -32,6 +32,7 @@ const ProfessionalProfile = lazy(() => import("./pages/ProfessionalProfile"));
 const RequestFlow = lazy(() => import("./pages/RequestFlow"));
 const ForSpecialists = lazy(() => import("./pages/ForSpecialists"));
 const Partners = lazy(() => import("./pages/Partners"));
+const AboutViasee = lazy(() => import("./pages/AboutViasee"));
 const AddOrClaim = lazy(() => import("./pages/AddOrClaim"));
 const GuideIndex = lazy(() => import("./pages/GuideIndex"));
 const SpecialistGuide = lazy(() => import("./pages/SpecialistGuide"));
@@ -168,6 +169,7 @@ const AppRoutes = () => {
           <Route path="/" element={<Home />} />
           <Route path="/cauta" element={<Search />} />
           <Route path="/parteneri" element={<Partners />} />
+          <Route path="/despre-viasee" element={<AboutViasee />} />
           <Route path="/furnizor/:id" element={<ProviderProfile />} />
           <Route path="/specialist/:id" element={<ProfessionalProfile />} />
           <Route path="/cerere" element={<RequestFlow />} />
