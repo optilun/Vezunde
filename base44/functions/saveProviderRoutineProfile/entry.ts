@@ -1,4 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import {
+  formatProviderSaturdayHours,
+  formatProviderWeeklyHours,
+  validateProviderOpeningHours,
+} from '../../../shared/providerOpeningHours.js';
 
 // Fast-path provider routine updates.
 // Only operational schedule/access-mode fields are allowed here.
@@ -36,12 +41,23 @@ function cleanPlainText(value, field, maxLen) {
   return { value: val };
 }
 
-function cleanJsonString(value) {
+function cleanOpeningHoursJson(value) {
   const raw = String(value || '').trim();
-  if (!raw) return { value: '' };
+  if (!raw) return { value: '', openingHours: '', saturdayHours: '' };
   if (raw.length > MAX_JSON_LEN) return { error: 'opening_hours_json este prea lung' };
-  try { JSON.parse(raw); } catch (_e) { return { error: 'opening_hours_json trebuie sa fie JSON valid' }; }
-  return { value: raw };
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (_error) {
+    return { error: 'opening_hours_json trebuie sa fie JSON valid' };
+  }
+  const checked = validateProviderOpeningHours(parsed);
+  if (!checked.valid) return { error: checked.error, fields: checked.fields || [] };
+  return {
+    value: JSON.stringify(checked.value),
+    openingHours: formatProviderWeeklyHours(checked.value.weekly),
+    saturdayHours: formatProviderSaturdayHours(checked.value.weekly),
+  };
 }
 
 function cleanPayload(p) {
@@ -51,15 +67,18 @@ function cleanPayload(p) {
 
   const updates = {};
   if ('opening_hours_json' in p) {
-    const cleaned = cleanJsonString(p.opening_hours_json);
+    const cleaned = cleanOpeningHoursJson(p.opening_hours_json);
     if (cleaned.error) return cleaned;
     updates.opening_hours_json = cleaned.value;
-  }
-  for (const field of ['opening_hours', 'saturday_hours']) {
-    if (field in p) {
-      const cleaned = cleanPlainText(p[field], field, MAX_HOURS_LEN);
-      if (cleaned.error) return cleaned;
-      updates[field] = cleaned.value;
+    updates.opening_hours = cleaned.openingHours;
+    updates.saturday_hours = cleaned.saturdayHours;
+  } else {
+    for (const field of ['opening_hours', 'saturday_hours']) {
+      if (field in p) {
+        const cleaned = cleanPlainText(p[field], field, MAX_HOURS_LEN);
+        if (cleaned.error) return cleaned;
+        updates[field] = cleaned.value;
+      }
     }
   }
   if ('availability_status' in p) {
