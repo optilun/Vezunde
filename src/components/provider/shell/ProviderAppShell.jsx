@@ -17,6 +17,7 @@ export default function ProviderAppShell({
   statusBadge = null,
   modeSwitch = null,
   modeSwitches = [],
+  wideContent = false,
   children,
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -145,7 +146,7 @@ export default function ProviderAppShell({
         <main
           id="main-content"
           tabIndex={-1}
-          className="mx-auto w-full max-w-7xl overflow-x-clip px-3 py-5 outline-none workspace-mobile-surface sm:px-6 sm:py-7 lg:px-10 lg:py-8"
+          className={`mx-auto w-full ${wideContent ? "max-w-[1664px]" : "max-w-7xl"} overflow-x-clip px-3 py-5 outline-none workspace-mobile-surface sm:px-6 sm:py-7 lg:px-10 lg:py-8`}
         >
           {children}
         </main>
