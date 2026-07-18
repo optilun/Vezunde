@@ -19,7 +19,7 @@ const availability = getFreshAvailability({
   availability_status: 'astazi',
   availability_updated_at: '2026-07-14T12:00:00.000Z',
 }, new Date('2026-07-15T12:00:00.000Z').getTime());
-assert.equal(availability?.label, 'Fara programare');
+assert.equal(availability?.label, 'Primeste clienti fara programare');
 assert.equal(getFreshAvailability({
   availability_status: 'astazi',
   availability_updated_at: '2026-05-01T12:00:00.000Z',
