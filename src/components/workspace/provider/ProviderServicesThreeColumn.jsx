@@ -147,6 +147,22 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
     const unitList = [...mainColumn.children].find((element) => element.classList?.contains("space-y-3"));
     if (unitList) unitList.dataset.servicesPanel = "units";
 
+    [...operationalRoot.querySelectorAll("button")].forEach((button) => {
+      if (/^Arată alte (spații|activități)/i.test(cleanText(button))) {
+        button.dataset.servicesDisclosure = "true";
+      } else {
+        delete button.dataset.servicesDisclosure;
+      }
+    });
+
+    [...operationalRoot.querySelectorAll("span")].forEach((badge) => {
+      if (/^Nou în draft$/i.test(cleanText(badge))) {
+        badge.dataset.servicesDraftBadge = "true";
+      } else {
+        delete badge.dataset.servicesDraftBadge;
+      }
+    });
+
     const rows = [...operationalRoot.querySelectorAll("button.grid")];
     const selectedServiceNames = new Set();
     let issueCount = 0;
@@ -313,41 +329,43 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
     <div className="provider-services-three" data-view={dataView} data-filter={filter}>
       <div className="provider-services-three__layout">
         <aside className="provider-services-three__left" aria-label="Organizarea serviciilor">
-          <div className="provider-services-three__left-heading">
-            <PanelLabel index="01" label="Selecție" />
-            <strong>Alege zona de lucru</strong>
-            <small>Navighează între configurare, filtre și spațiile locației.</small>
-          </div>
+          <div className="provider-services-three__left-sticky">
+            <div className="provider-services-three__left-heading">
+              <PanelLabel index="01" label="Selecție" />
+              <strong>Alege zona de lucru</strong>
+              <small>Navighează între configurare, filtre și spațiile locației.</small>
+            </div>
 
-          <div className="provider-services-three__nav-groups">
-            <nav className="provider-services-three__nav-group" aria-label="Configurarea locației">
-              <p>Configurare</p>
-              <NavButton active={view === "configuration" && !query} icon={Settings2} label="Configurarea locației" status={snapshot.unitCount > 0 ? `${snapshot.unitCount} spații` : "Necesar"} onClick={() => chooseView("configuration")} />
-              <NavButton active={view === "options" && !query} icon={SlidersHorizontal} label="Opțiuni generale" onClick={() => chooseView("options")} />
-            </nav>
-
-            <nav className="provider-services-three__nav-group" aria-label="Filtrarea serviciilor">
-              <p>Servicii</p>
-              <NavButton active={view === "all" && !query} icon={ListFilter} label="Toate serviciile" count={snapshot.units.reduce((sum, unit) => sum + unit.total, 0)} onClick={() => chooseView("all")} />
-              <NavButton active={view === "selected" && !query} icon={CheckCircle2} label="Selectate" count={snapshot.selectedCount} onClick={() => chooseView("selected")} />
-              <NavButton active={view === "issues" && !query} icon={AlertTriangle} label="Necesită completare" count={snapshot.issueCount} onClick={() => chooseView("issues")} />
-            </nav>
-
-            {snapshot.units.length > 0 && (
-              <nav className="provider-services-three__nav-group provider-services-three__units" aria-label="Servicii după spațiu">
-                <p>După spațiu</p>
-                {snapshot.units.map((unit) => (
-                  <NavButton
-                    key={`${unit.title}-${unit.index}`}
-                    active={view === "unit" && !query && activeUnitIndex === unit.index}
-                    icon={unit.index === 0 ? Store : Building2}
-                    label={unit.title}
-                    count={unit.selected}
-                    onClick={() => openUnit(unit.index)}
-                  />
-                ))}
+            <div className="provider-services-three__nav-groups">
+              <nav className="provider-services-three__nav-group" aria-label="Configurarea locației">
+                <p>Configurare</p>
+                <NavButton active={view === "configuration" && !query} icon={Settings2} label="Configurarea locației" status={snapshot.unitCount > 0 ? `${snapshot.unitCount} spații` : "Necesar"} onClick={() => chooseView("configuration")} />
+                <NavButton active={view === "options" && !query} icon={SlidersHorizontal} label="Opțiuni generale" onClick={() => chooseView("options")} />
               </nav>
-            )}
+
+              <nav className="provider-services-three__nav-group" aria-label="Filtrarea serviciilor">
+                <p>Servicii</p>
+                <NavButton active={view === "all" && !query} icon={ListFilter} label="Toate serviciile" count={snapshot.units.reduce((sum, unit) => sum + unit.total, 0)} onClick={() => chooseView("all")} />
+                <NavButton active={view === "selected" && !query} icon={CheckCircle2} label="Selectate" count={snapshot.selectedCount} onClick={() => chooseView("selected")} />
+                <NavButton active={view === "issues" && !query} icon={AlertTriangle} label="Necesită completare" count={snapshot.issueCount} onClick={() => chooseView("issues")} />
+              </nav>
+
+              {snapshot.units.length > 0 && (
+                <nav className="provider-services-three__nav-group provider-services-three__units" aria-label="Servicii după spațiu">
+                  <p>După spațiu</p>
+                  {snapshot.units.map((unit) => (
+                    <NavButton
+                      key={`${unit.title}-${unit.index}`}
+                      active={view === "unit" && !query && activeUnitIndex === unit.index}
+                      icon={unit.index === 0 ? Store : Building2}
+                      label={unit.title}
+                      count={unit.selected}
+                      onClick={() => openUnit(unit.index)}
+                    />
+                  ))}
+                </nav>
+              )}
+            </div>
           </div>
         </aside>
 
@@ -383,66 +401,68 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
         </section>
 
         <aside className="provider-services-three__right" aria-label="Previzualizarea configurației">
-          <div className="provider-services-three__preview-heading">
-            <div>
-              <PanelLabel index="03" label="Previzualizare" />
-              <strong>Rezumat servicii</strong>
-            </div>
-          </div>
-
-          <div className="provider-services-three__location">
-            <strong>{locationName}</strong>
-            {locationPlace && <span>{locationPlace}</span>}
-            {snapshot.status && <em>{snapshot.status}</em>}
-          </div>
-
-          <section className="provider-services-three__preview-section">
-            <h3>Spații și activități</h3>
-            {snapshot.units.length > 0 ? (
-              <ul>
-                {snapshot.units.slice(0, 4).map((unit) => <li key={unit.index}><Building2 aria-hidden="true" /> {unit.title}</li>)}
-                {snapshot.units.length > 4 && <li className="is-more">+ {snapshot.units.length - 4} alte spații</li>}
-              </ul>
-            ) : <p>Configurează cel puțin un spațiu pentru locație.</p>}
-            {snapshot.careSetting && <div className="provider-services-three__care"><span>Mod de funcționare</span><strong>{snapshot.careSetting}</strong></div>}
-          </section>
-
-          <section className="provider-services-three__preview-section">
-            <h3>Rezumat servicii</h3>
-            <dl>
-              <div><dt>Selectate</dt><dd>{snapshot.selectedCount}</dd></div>
-              <div><dt>Spații</dt><dd>{snapshot.unitCount}</dd></div>
-              <div><dt>Activități</dt><dd>{snapshot.capabilityCount}</dd></div>
-              {snapshot.issueCount > 0 && <div className="has-issues"><dt>Necesită completare</dt><dd>{snapshot.issueCount}</dd></div>}
-            </dl>
-            {snapshot.unitCount > 0 && snapshot.issueCount === 0 && (
-              <div className="provider-services-three__complete-state">
-                <CheckCircle2 aria-hidden="true" />
-                <span>Configurație completă</span>
+          <div className="provider-services-three__preview-card">
+            <div className="provider-services-three__preview-heading">
+              <div>
+                <PanelLabel index="03" label="Previzualizare" />
+                <strong>Rezumat servicii</strong>
               </div>
-            )}
-          </section>
-
-          {snapshot.issueCount > 0 && (
-            <button type="button" className="provider-services-three__requirements" onClick={() => chooseView("issues")}>
-              <AlertTriangle aria-hidden="true" />
-              <span><strong>{snapshot.issueCount} cerințe de completat</strong><small>Verifică specialiștii, echipamentele și facilitățile necesare.</small></span>
-              <ChevronRight aria-hidden="true" />
-            </button>
-          )}
-
-          <section className="provider-services-three__preview-section">
-            <div className="provider-services-three__preview-section-heading">
-              <h3>Servicii selectate</h3>
-              {snapshot.selectedCount > selectedPreview.length && <button type="button" onClick={() => chooseView("selected")}>Vezi toate</button>}
             </div>
-            {selectedPreview.length > 0 ? (
-              <ul className="provider-services-three__selected-list">
-                {selectedPreview.map((service) => <li key={service}><CheckCircle2 aria-hidden="true" /> {service}</li>)}
-                {snapshot.selectedCount > selectedPreview.length && <li className="is-more">+ {snapshot.selectedCount - selectedPreview.length} alte servicii</li>}
-              </ul>
-            ) : <p>Nu există servicii selectate încă.</p>}
-          </section>
+
+            <div className="provider-services-three__location">
+              <strong>{locationName}</strong>
+              {locationPlace && <span>{locationPlace}</span>}
+              {snapshot.status && <em>{snapshot.status}</em>}
+            </div>
+
+            <section className="provider-services-three__preview-section">
+              <h3>Spații și activități</h3>
+              {snapshot.units.length > 0 ? (
+                <ul>
+                  {snapshot.units.slice(0, 4).map((unit) => <li key={unit.index}><Building2 aria-hidden="true" /> {unit.title}</li>)}
+                  {snapshot.units.length > 4 && <li className="is-more">+ {snapshot.units.length - 4} alte spații</li>}
+                </ul>
+              ) : <p>Configurează cel puțin un spațiu pentru locație.</p>}
+              {snapshot.careSetting && <div className="provider-services-three__care"><span>Mod de funcționare</span><strong>{snapshot.careSetting}</strong></div>}
+            </section>
+
+            <section className="provider-services-three__preview-section">
+              <h3>Rezumat servicii</h3>
+              <dl>
+                <div><dt>Selectate</dt><dd>{snapshot.selectedCount}</dd></div>
+                <div><dt>Spații</dt><dd>{snapshot.unitCount}</dd></div>
+                <div><dt>Activități</dt><dd>{snapshot.capabilityCount}</dd></div>
+                {snapshot.issueCount > 0 && <div className="has-issues"><dt>Necesită completare</dt><dd>{snapshot.issueCount}</dd></div>}
+              </dl>
+              {snapshot.unitCount > 0 && snapshot.issueCount === 0 && (
+                <div className="provider-services-three__complete-state">
+                  <CheckCircle2 aria-hidden="true" />
+                  <span>Configurație completă</span>
+                </div>
+              )}
+            </section>
+
+            {snapshot.issueCount > 0 && (
+              <button type="button" className="provider-services-three__requirements" onClick={() => chooseView("issues")}>
+                <AlertTriangle aria-hidden="true" />
+                <span><strong>{snapshot.issueCount} cerințe de completat</strong><small>Verifică specialiștii, echipamentele și facilitățile necesare.</small></span>
+                <ChevronRight aria-hidden="true" />
+              </button>
+            )}
+
+            <section className="provider-services-three__preview-section">
+              <div className="provider-services-three__preview-section-heading">
+                <h3>Servicii selectate</h3>
+                {snapshot.selectedCount > selectedPreview.length && <button type="button" onClick={() => chooseView("selected")}>Vezi toate</button>}
+              </div>
+              {selectedPreview.length > 0 ? (
+                <ul className="provider-services-three__selected-list">
+                  {selectedPreview.map((service) => <li key={service}><CheckCircle2 aria-hidden="true" /> {service}</li>)}
+                  {snapshot.selectedCount > selectedPreview.length && <li className="is-more">+ {snapshot.selectedCount - selectedPreview.length} alte servicii</li>}
+                </ul>
+              ) : <p>Nu există servicii selectate încă.</p>}
+            </section>
+          </div>
         </aside>
       </div>
 
