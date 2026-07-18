@@ -1,2 +1,0 @@
-Scope: UI-only redesign for provider Services workspace.
-No route, entity, backend function, permission, payload, matching or review logic changes.
