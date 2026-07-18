@@ -1,0 +1,1 @@
+Base44 publish remains manual. Do not treat this branch or PR as live until the build is visible in Base44 Version History and the user publishes it.
