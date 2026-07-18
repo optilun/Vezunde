@@ -86,8 +86,8 @@ async function lifecycleRows(svc, locationId, statuses = null) {
 }
 
 function validateRequestAgainstLocation(action, location) {
-  const hidden = location.status === 'ascunsa' || location.public_visibility_status === 'archived';
-  const closed = location.status === 'arhivata' || location.active_status === 'inactiva';
+  const hidden = location.public_visibility_status === 'archived' && location.active_status !== 'inactiva';
+  const closed = location.active_status === 'inactiva' || location.status === 'suspendata';
 
   if (action === 'hide') {
     if (closed) return { error: 'Locatia este inchisa si nu poate fi doar ascunsa' };
@@ -214,7 +214,7 @@ async function updateOrganizationAfterLifecycle(svc, location, action, now) {
   const locations = await svc.entities.ProviderLocation.filter({ organization_id: location.organization_id }, '-created_date', 500);
 
   if (action === 'close') {
-    const otherActive = locations.some((item) => item.id !== location.id && item.active_status !== 'inactiva' && item.status !== 'arhivata');
+    const otherActive = locations.some((item) => item.id !== location.id && item.active_status !== 'inactiva');
     if (!otherActive) {
       await svc.entities.ProviderOrganization.update(organization.id, {
         status: 'inactiva',
@@ -264,10 +264,10 @@ async function adminDecide(svc, user, payload) {
       request_intake_status: location.request_intake_status,
     };
     const updates = request.action === 'hide'
-      ? { status: 'ascunsa', public_visibility_status: 'archived', profile_updated_at: now }
+      ? { status: 'in_verificare', public_visibility_status: 'archived', profile_updated_at: now }
       : request.action === 'republish'
         ? { status: 'publicata', active_status: 'activa', public_visibility_status: 'approved', profile_updated_at: now }
-        : { status: 'arhivata', active_status: 'inactiva', public_visibility_status: 'archived', request_intake_status: 'inactive', profile_updated_at: now };
+        : { status: 'suspendata', active_status: 'inactiva', public_visibility_status: 'archived', request_intake_status: 'inactive', profile_updated_at: now };
 
     await svc.entities.ProviderLocation.update(location.id, updates);
     const organizationUpdate = await updateOrganizationAfterLifecycle(svc, location, request.action, now);
