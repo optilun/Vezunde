@@ -4,7 +4,6 @@ import {
   Building2,
   CheckCircle2,
   ChevronRight,
-  Eye,
   ListFilter,
   Save,
   Search,
@@ -80,6 +79,15 @@ function NavButton({ active, icon: Icon, label, count, status, onClick }) {
       {status && <small>{status}</small>}
       {Number.isFinite(count) && <em>{count}</em>}
     </button>
+  );
+}
+
+function PanelLabel({ index, label }) {
+  return (
+    <div className="provider-services-three__panel-label" aria-hidden="true">
+      <span>{index}</span>
+      <i>{label}</i>
+    </div>
   );
 }
 
@@ -306,8 +314,9 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
       <div className="provider-services-three__layout">
         <aside className="provider-services-three__left" aria-label="Organizarea serviciilor">
           <div className="provider-services-three__left-heading">
-            <span>Organizare</span>
-            <strong>Serviciile locației</strong>
+            <PanelLabel index="01" label="Selecție" />
+            <strong>Alege zona de lucru</strong>
+            <small>Navighează între configurare, filtre și spațiile locației.</small>
           </div>
 
           <div className="provider-services-three__nav-groups">
@@ -344,7 +353,8 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
 
         <section className="provider-services-three__center" aria-labelledby="provider-services-center-title">
           <header className="provider-services-three__center-header">
-            <div>
+            <div className="provider-services-three__center-copy">
+              <PanelLabel index="02" label="Configurare" />
               <h2 id="provider-services-center-title">{centerTitle}</h2>
               <p>{centerDescription}</p>
             </div>
@@ -372,10 +382,12 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
           </div>
         </section>
 
-        <aside className="provider-services-three__right" aria-label="Rezumatul configurației">
+        <aside className="provider-services-three__right" aria-label="Previzualizarea configurației">
           <div className="provider-services-three__preview-heading">
-            <span><Eye aria-hidden="true" /> Rezumat locație</span>
-            <button type="button" onClick={() => chooseView("configuration")}>Editează</button>
+            <div>
+              <PanelLabel index="03" label="Previzualizare" />
+              <strong>Rezumat servicii</strong>
+            </div>
           </div>
 
           <div className="provider-services-three__location">
@@ -388,7 +400,8 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
             <h3>Spații și activități</h3>
             {snapshot.units.length > 0 ? (
               <ul>
-                {snapshot.units.slice(0, 5).map((unit) => <li key={unit.index}><Building2 aria-hidden="true" /> {unit.title}</li>)}
+                {snapshot.units.slice(0, 4).map((unit) => <li key={unit.index}><Building2 aria-hidden="true" /> {unit.title}</li>)}
+                {snapshot.units.length > 4 && <li className="is-more">+ {snapshot.units.length - 4} alte spații</li>}
               </ul>
             ) : <p>Configurează cel puțin un spațiu pentru locație.</p>}
             {snapshot.careSetting && <div className="provider-services-three__care"><span>Mod de funcționare</span><strong>{snapshot.careSetting}</strong></div>}
@@ -400,8 +413,14 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
               <div><dt>Selectate</dt><dd>{snapshot.selectedCount}</dd></div>
               <div><dt>Spații</dt><dd>{snapshot.unitCount}</dd></div>
               <div><dt>Activități</dt><dd>{snapshot.capabilityCount}</dd></div>
-              <div className={snapshot.issueCount > 0 ? "has-issues" : ""}><dt>Necesită completare</dt><dd>{snapshot.issueCount}</dd></div>
+              {snapshot.issueCount > 0 && <div className="has-issues"><dt>Necesită completare</dt><dd>{snapshot.issueCount}</dd></div>}
             </dl>
+            {snapshot.issueCount === 0 && (
+              <div className="provider-services-three__complete-state">
+                <CheckCircle2 aria-hidden="true" />
+                <span>Configurație completă</span>
+              </div>
+            )}
           </section>
 
           {snapshot.issueCount > 0 && (
