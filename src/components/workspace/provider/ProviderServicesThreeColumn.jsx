@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Building2,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   ListFilter,
   Save,
@@ -226,6 +227,15 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
     });
   }, []);
 
+  const chooseMobileView = useCallback((value) => {
+    const unitMatch = String(value).match(/^unit:(\d+)$/);
+    if (unitMatch) {
+      openUnit(Number(unitMatch[1]));
+      return;
+    }
+    chooseView(value);
+  }, [chooseView, openUnit]);
+
   const updateSearch = useCallback((value) => {
     setQuery(value);
     const input = contentRef.current?.querySelector('input[placeholder^="Caută"], input[placeholder^="Cauta"]');
@@ -275,6 +285,16 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   const selectedPreview = useMemo(() => snapshot.selectedServices.slice(0, 5), [snapshot.selectedServices]);
   const showActionBar = snapshot.hasSave || snapshot.hasSubmit || snapshot.hasWithdraw || Boolean(snapshot.actionStatus);
   const dataView = query ? "search" : view;
+  const mobileNavValue = view === "unit" ? `unit:${activeUnitIndex}` : view;
+  const mobileNavValues = [
+    "configuration",
+    "options",
+    ...snapshot.units.map((unit) => `unit:${unit.index}`),
+    "all",
+    "selected",
+    "issues",
+  ];
+  const mobileStepPosition = Math.max(1, mobileNavValues.indexOf(mobileNavValue) + 1);
 
   return (
     <div className="provider-services-three" data-view={dataView} data-filter={filter}>
@@ -321,6 +341,76 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
         </aside>
 
         <section className="provider-services-three__center" aria-labelledby="provider-services-center-title">
+          <div className="provider-services-three__mobile-nav" aria-label="Navigarea serviciilor pe telefon">
+            <div className="provider-services-three__mobile-nav-heading">
+              <div>
+                <span>Pasul curent</span>
+                <strong>{centerTitle}</strong>
+              </div>
+              <small>{mobileStepPosition} din {mobileNavValues.length}</small>
+            </div>
+            <label htmlFor="provider-services-mobile-view">Alege ce configurezi</label>
+            <div className="provider-services-three__mobile-select">
+              <select
+                id="provider-services-mobile-view"
+                value={mobileNavValue}
+                onChange={(event) => chooseMobileView(event.target.value)}
+              >
+                <optgroup label="Structura locației">
+                  <option value="configuration">Zone și tip de activitate</option>
+                  <option value="options">La nivelul locației</option>
+                </optgroup>
+                {snapshot.units.length > 0 && (
+                  <optgroup label="Oferta pe zone">
+                    {snapshot.units.map((unit) => (
+                      <option key={`mobile-${unit.title}-${unit.index}`} value={`unit:${unit.index}`}>
+                        {unit.title} · {unit.selected} selectate
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                <optgroup label="Oferta locației">
+                  <option value="all">Oferta completă</option>
+                  <option value="selected">Oferta selectată · {snapshot.selectedCount}</option>
+                  <option value="issues">Observații de catalog · {snapshot.issueCount}</option>
+                </optgroup>
+              </select>
+              <ChevronDown aria-hidden="true" />
+            </div>
+          </div>
+
+          <details className="provider-services-three__mobile-overview">
+            <summary>
+              <span>
+                <small>Rezumatul locației</small>
+                <strong>{snapshot.selectedCount} în ofertă · {snapshot.unitCount} zone</strong>
+              </span>
+              <ChevronDown aria-hidden="true" />
+            </summary>
+            <div className="provider-services-three__mobile-overview-body">
+              <div>
+                <strong>{locationName}</strong>
+                {locationPlace && <span>{locationPlace}</span>}
+                {snapshot.status && <em>{snapshot.status}</em>}
+              </div>
+              <dl>
+                <div><dt>În ofertă</dt><dd>{snapshot.selectedCount}</dd></div>
+                <div><dt>Zone</dt><dd>{snapshot.unitCount}</dd></div>
+                <div><dt>Observații</dt><dd>{snapshot.issueCount}</dd></div>
+              </dl>
+              <div className="provider-services-three__mobile-overview-links">
+                <button type="button" onClick={() => chooseView("selected")}>
+                  Vezi oferta selectată <ChevronRight aria-hidden="true" />
+                </button>
+                {snapshot.issueCount > 0 && (
+                  <button type="button" onClick={() => chooseView("issues")}>
+                    Vezi observațiile <ChevronRight aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </details>
+
           <header className="provider-services-three__center-header">
             <div className="provider-services-three__center-copy">
               <PanelLabel index="02" label="Configurare" />
@@ -434,17 +524,23 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
           <div className="provider-services-three__action-buttons">
             {snapshot.hasSave && (
               <button type="button" disabled={!snapshot.canSave} onClick={() => clickNativeAction(/Salvează draftul|Salveaza draftul/i)}>
-                <Save aria-hidden="true" /> Salvează draftul
+                <Save aria-hidden="true" />
+                <span className="provider-services-three__action-label-desktop">Salvează draftul</span>
+                <span className="provider-services-three__action-label-mobile">Salvează</span>
               </button>
             )}
             {snapshot.hasSubmit && (
               <button type="button" className="is-primary" disabled={!snapshot.canSubmit} onClick={() => clickNativeAction(/Trimite modificările spre aprobare/i)}>
-                <Send aria-hidden="true" /> Trimite spre aprobare
+                <Send aria-hidden="true" />
+                <span className="provider-services-three__action-label-desktop">Trimite spre aprobare</span>
+                <span className="provider-services-three__action-label-mobile">Trimite</span>
               </button>
             )}
             {snapshot.hasWithdraw && (
               <button type="button" disabled={!snapshot.canWithdraw} onClick={() => clickNativeAction(/Retrage cererea/i)}>
-                <X aria-hidden="true" /> Retrage cererea
+                <X aria-hidden="true" />
+                <span className="provider-services-three__action-label-desktop">Retrage cererea</span>
+                <span className="provider-services-three__action-label-mobile">Retrage</span>
               </button>
             )}
           </div>
