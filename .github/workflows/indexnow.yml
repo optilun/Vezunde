@@ -1,0 +1,24 @@
+name: Submit sitemap to IndexNow
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "public/sitemap.xml"
+      - "scripts/indexnow-submit.mjs"
+      - ".github/workflows/indexnow.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Submit sitemap URLs
+        run: node scripts/indexnow-submit.mjs
