@@ -1,0 +1,590 @@
+.provider-services-clean {
+  --services-card: hsl(var(--card));
+  --services-canvas: hsl(var(--background));
+  --services-soft: hsl(var(--secondary));
+  --services-border: hsl(var(--border));
+  --services-text: hsl(var(--foreground));
+  --services-muted: hsl(var(--muted-foreground));
+  --services-focus: hsl(var(--foreground) / 0.16);
+  display: grid;
+  gap: 0.875rem;
+}
+
+.provider-services-clean *,
+.provider-services-clean *::before,
+.provider-services-clean *::after {
+  box-sizing: border-box;
+}
+
+.provider-services-clean .lucide {
+  stroke-width: 1.65;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Quick orientation under the page header. */
+.provider-services-clean__navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--services-border);
+  border-radius: 1rem;
+  background: var(--services-card);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.025);
+}
+
+.provider-services-clean__navigation-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.provider-services-clean__navigation-copy strong {
+  color: var(--services-text);
+  font-size: 0.8125rem;
+  line-height: 1.3;
+}
+
+.provider-services-clean__navigation-copy span {
+  color: var(--services-muted);
+  font-size: 0.6875rem;
+  line-height: 1.45;
+}
+
+.provider-services-clean__navigation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.provider-services-clean__navigation-actions button {
+  min-height: 36px;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--services-border);
+  border-radius: 999px;
+  background: var(--services-canvas);
+  color: var(--services-text);
+  font-size: 0.75rem;
+  font-weight: 700;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.provider-services-clean__navigation-actions button:hover {
+  border-color: hsl(var(--foreground) / 0.16);
+  background: hsl(var(--secondary) / 0.45);
+}
+
+.provider-services-clean__navigation-actions button:focus-visible,
+.provider-services-polish button:focus-visible,
+.provider-services-polish input:focus-visible,
+.provider-services-polish select:focus-visible {
+  outline: 2px solid var(--services-focus);
+  outline-offset: 2px;
+}
+
+/* Keep page header and module content visually related without making one oversized card. */
+.provider-location-services-page > .provider-location-module-header {
+  margin-bottom: -0.25rem;
+  box-shadow: none;
+}
+
+.provider-location-services-page > .provider-location-module-header + div {
+  margin-top: 0 !important;
+}
+
+.provider-services-polish > div {
+  display: grid;
+  gap: 0.875rem;
+  padding-bottom: 5rem;
+}
+
+/* Intro/search block. */
+.provider-services-polish > div > section:first-child {
+  padding: 1rem;
+  border: 1px solid var(--services-border);
+  border-radius: 1rem;
+  background: var(--services-card);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.025);
+}
+
+.provider-services-polish > div > section:first-child > div:first-child {
+  gap: 0.75rem;
+}
+
+.provider-services-polish > div > section:first-child p {
+  line-height: 1.5;
+}
+
+.provider-services-polish > div > section:first-child input[placeholder^="Caută"] {
+  min-height: 46px;
+  padding-right: 2.75rem;
+  border-color: var(--services-border);
+  background: var(--services-canvas);
+  font-size: 0.875rem;
+  box-shadow: none;
+}
+
+.provider-services-polish > div > section:first-child input[placeholder^="Caută"]:focus {
+  border-color: hsl(var(--foreground) / 0.25);
+  background: var(--services-card);
+  box-shadow: 0 0 0 3px hsl(var(--foreground) / 0.045);
+}
+
+/* Status messages use a common compact rhythm. */
+.provider-services-polish > div > div[class*="rounded-2xl"][class*="px-4"][class*="py-3"] {
+  border-radius: 0.875rem;
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+
+/* Main workspace and summary. */
+.provider-services-polish > div > div.grid[class*="xl:grid-cols"] {
+  align-items: start;
+  gap: 0.875rem;
+}
+
+.provider-services-polish > div > div.grid[class*="xl:grid-cols"] > div[class~="space-y-4"] {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.provider-services-polish section,
+.provider-services-polish aside {
+  scroll-margin-top: 1rem;
+}
+
+/* All main sections use one calm card system. */
+.provider-services-polish > div > div.grid[class*="xl:grid-cols"] > div[class~="space-y-4"] > section,
+.provider-services-polish [class~="space-y-3"] > section,
+.provider-services-polish aside {
+  overflow: hidden;
+  border-color: var(--services-border) !important;
+  border-radius: 1rem !important;
+  background: var(--services-card) !important;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.025) !important;
+}
+
+.provider-services-polish > div > div.grid[class*="xl:grid-cols"] > div[class~="space-y-4"] > section {
+  padding: 1rem;
+}
+
+.provider-services-polish > div > div.grid[class*="xl:grid-cols"] > div[class~="space-y-4"] > section:has(> div[class*="border-b"]) {
+  padding: 0;
+}
+
+.provider-services-polish h2,
+.provider-services-polish h3 {
+  color: var(--services-text);
+  letter-spacing: -0.01em;
+}
+
+/* Configuration choices become compact list rows instead of large tiles. */
+.provider-services-polish section > div[class~="mt-4"][class~="space-y-2"] {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.provider-services-polish section > div[class~="mt-4"][class~="space-y-2"] > button {
+  min-height: 72px;
+  padding: 0.75rem;
+  border-color: var(--services-border);
+  border-radius: 0.875rem;
+  background: var(--services-card);
+  box-shadow: none;
+}
+
+.provider-services-polish section > div[class~="mt-4"][class~="space-y-2"] > button:hover:not(:disabled) {
+  border-color: hsl(var(--foreground) / 0.15);
+  background: hsl(var(--secondary) / 0.25);
+}
+
+.provider-services-polish section > div[class~="mt-4"][class~="space-y-2"] > button > span:first-child {
+  width: 36px;
+  height: 36px;
+  border-radius: 0.75rem;
+  background: hsl(var(--secondary) / 0.42);
+}
+
+.provider-services-polish section > div[class~="mt-4"][class~="space-y-2"] > button > span:nth-child(2) > span:first-child > span:first-child {
+  font-size: 0.8125rem;
+}
+
+.provider-services-polish section > div[class~="mt-4"][class~="space-y-2"] > button > span:nth-child(2) > span:nth-child(2) {
+  font-size: 0.6875rem;
+}
+
+.provider-services-polish section > button[class*="rounded-full"][class*="border"] {
+  min-height: 40px;
+  padding-inline: 0.875rem;
+}
+
+/* Care setting becomes a clear segmented control. */
+.provider-services-polish section:has(> div[class~="mt-3"] > button[class*="rounded-full"]) > div[class~="mt-3"] {
+  display: inline-flex;
+  max-width: 100%;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  overflow-x: auto;
+  border: 1px solid var(--services-border);
+  border-radius: 0.875rem;
+  background: hsl(var(--secondary) / 0.22);
+}
+
+.provider-services-polish section:has(> div[class~="mt-3"] > button[class*="rounded-full"]) > div[class~="mt-3"] > button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  border-color: transparent;
+  border-radius: 0.65rem;
+}
+
+/* Catalogue intro is visually lighter than editable sections. */
+.provider-services-polish section:has(h2:first-child:last-child),
+.provider-services-polish section:has(h2 + p) {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.02);
+}
+
+/* Unit accordions. */
+.provider-services-polish [class~="space-y-3"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.625rem;
+}
+
+.provider-services-polish [class~="space-y-3"] > section > button:first-child {
+  min-height: 66px;
+  padding: 0.75rem 1rem;
+  background: var(--services-card);
+}
+
+.provider-services-polish [class~="space-y-3"] > section > button:first-child:hover {
+  background: hsl(var(--secondary) / 0.22);
+}
+
+.provider-services-polish [class~="space-y-3"] > section > button:first-child > span:first-child {
+  width: 38px;
+  height: 38px;
+  border-color: var(--services-border);
+  border-radius: 0.8rem;
+  background: hsl(var(--secondary) / 0.4);
+  color: var(--services-text);
+}
+
+.provider-services-polish [class~="space-y-3"] > section > button:first-child > span:nth-child(2) > span:first-child {
+  font-size: 0.875rem;
+}
+
+.provider-services-polish [class~="space-y-3"] > section > button:first-child > span:nth-child(2) > span:last-child {
+  margin-top: 0.1rem;
+  color: var(--services-muted);
+}
+
+.provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] {
+  padding-bottom: 0.625rem;
+  background: hsl(var(--secondary) / 0.08);
+}
+
+.provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:first-child {
+  border-bottom: 1px solid var(--services-border);
+  background: hsl(var(--secondary) / 0.2);
+}
+
+/* Service categories are full-width cards; rows remain a list, not a tile wall. */
+.provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:has(> div[class*="border-border/50"]) {
+  overflow: hidden;
+  margin: 0.625rem 0.625rem 0;
+  border: 1px solid var(--services-border);
+  border-radius: 0.875rem;
+  background: var(--services-card);
+}
+
+.provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:has(> div[class*="border-border/50"]) > div:first-child {
+  min-height: 0;
+  padding: 0.8rem 0.875rem;
+  background: var(--services-card);
+}
+
+.provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:has(> div[class*="border-border/50"]) > div[class*="border-border/50"] {
+  display: block;
+  padding: 0;
+  border-top: 1px solid var(--services-border);
+  background: var(--services-card);
+}
+
+/* Service rows: one action, one state, readable on desktop and mobile. */
+.provider-services-polish button.grid {
+  min-height: 58px;
+  grid-template-columns: auto minmax(0, 1fr) auto !important;
+  gap: 0.7rem;
+  padding: 0.7rem 0.875rem;
+  border-color: var(--services-border);
+  background: var(--services-card);
+  transition: background-color 150ms ease;
+}
+
+.provider-services-polish button.grid:hover:not(:disabled) {
+  background: hsl(var(--secondary) / 0.23);
+}
+
+.provider-services-polish button.grid[class*="bg-secondary/35"] {
+  background: hsl(var(--secondary) / 0.4);
+}
+
+.provider-services-polish button.grid[class*="bg-amber-50"] {
+  background: hsl(42 100% 96%);
+}
+
+.provider-services-polish button.grid > span:first-child {
+  width: 21px;
+  height: 21px;
+  border-radius: 6px;
+  border-color: var(--services-border);
+  background: var(--services-card);
+}
+
+.provider-services-polish button.grid > span:first-child[class*="bg-foreground"] {
+  border-color: var(--services-text);
+  background: var(--services-text);
+}
+
+.provider-services-polish button.grid > span:nth-child(2) {
+  min-width: 0;
+}
+
+.provider-services-polish button.grid > span:nth-child(2) > span:first-child {
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.provider-services-polish button.grid > span:nth-child(2) > span:last-child {
+  max-width: 52rem;
+  font-size: 0.6875rem;
+  line-height: 1.5;
+}
+
+.provider-services-polish button.grid > span:last-child {
+  justify-self: end;
+}
+
+.provider-services-polish button.grid > span:last-child > span {
+  min-height: 25px;
+  padding: 0.25rem 0.5rem;
+  box-shadow: none;
+}
+
+/* Manual suggestions are clearly secondary. */
+.provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:has(> div[class*="border-border/50"]) > div:last-child {
+  background: hsl(var(--secondary) / 0.12);
+}
+
+.provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:last-child button[class*="rounded-full"] {
+  min-height: 38px;
+}
+
+/* Resources are grouped below the service list. */
+.provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:not(:first-child):not(:has(> div[class*="border-border/50"])) {
+  overflow: hidden;
+  margin: 0.625rem 0.625rem 0;
+  border: 1px solid var(--services-border);
+  border-radius: 0.875rem;
+  background: var(--services-card);
+}
+
+/* Progress sidebar remains useful but visually quieter. */
+.provider-services-polish aside {
+  padding: 1rem;
+}
+
+.provider-services-polish aside > div:first-child {
+  margin-bottom: 0.875rem;
+}
+
+.provider-services-polish aside [class*="grid-cols-3"] {
+  gap: 0.4rem;
+}
+
+.provider-services-polish aside [class*="grid-cols-3"] > div {
+  border: 1px solid hsl(var(--border) / 0.75);
+  border-radius: 0.75rem;
+  background: hsl(var(--secondary) / 0.3);
+}
+
+.provider-services-polish aside ol li {
+  border: 1px solid hsl(var(--border) / 0.65);
+  border-radius: 0.75rem;
+  background: var(--services-card);
+}
+
+/* Sticky action area is the strongest action surface. */
+.provider-services-polish [class~="sticky"][class~="bottom-0"] {
+  margin-inline: 0;
+  padding: 0.75rem;
+  border-color: hsl(var(--foreground) / 0.13);
+  border-radius: 1rem;
+  background: hsl(var(--card) / 0.97);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.1);
+}
+
+.provider-services-polish [class~="sticky"][class~="bottom-0"] > div {
+  align-items: center;
+}
+
+.provider-services-polish [class~="sticky"][class~="bottom-0"] button {
+  min-height: 44px;
+  padding-inline: 1rem;
+  border-radius: 0.75rem;
+  box-shadow: none;
+}
+
+.provider-services-polish [class~="sticky"][class~="bottom-0"] button[class*="bg-foreground"] {
+  min-width: 185px;
+}
+
+@media (min-width: 1280px) {
+  .provider-services-polish > div > div.grid[class*="xl:grid-cols"] {
+    grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.65fr) !important;
+  }
+
+  .provider-services-polish aside {
+    top: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 1023px) {
+  .provider-services-clean__navigation {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .provider-services-clean__navigation-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.1rem;
+    scrollbar-width: thin;
+  }
+
+  .provider-services-clean__navigation-actions button {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .provider-location-services-page > .provider-location-module-header {
+    margin-bottom: 0;
+  }
+
+  .provider-services-clean {
+    gap: 0.75rem;
+  }
+
+  .provider-services-clean__navigation {
+    padding: 0.75rem;
+  }
+
+  .provider-services-polish > div {
+    gap: 0.75rem;
+    padding-bottom: 7rem;
+  }
+
+  .provider-services-polish > div > div.grid[class*="xl:grid-cols"] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .provider-services-polish > div > div.grid[class*="xl:grid-cols"] > aside {
+    order: -1;
+    width: 100%;
+  }
+
+  /* On mobile show the useful summary, not the full duplicate checklist. */
+  .provider-services-polish aside > div[class*="border-t"] {
+    display: none;
+  }
+
+  .provider-services-polish aside [class*="grid-cols-3"] {
+    margin-top: 0;
+  }
+
+  .provider-services-polish > div > section:first-child {
+    padding: 0.875rem;
+  }
+
+  .provider-services-polish section > div[class~="mt-4"][class~="space-y-2"] > button {
+    min-height: 68px;
+    padding: 0.7rem;
+  }
+
+  .provider-services-polish button.grid {
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    align-items: start;
+    min-height: 62px;
+    padding: 0.75rem;
+  }
+
+  .provider-services-polish button.grid > span:last-child {
+    grid-column: 2;
+    justify-self: start;
+    justify-content: flex-start;
+    margin-top: 0.1rem;
+  }
+
+  .provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:has(> div[class*="border-border/50"]),
+  .provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:not(:first-child):not(:has(> div[class*="border-border/50"])) {
+    margin-right: 0.45rem;
+    margin-left: 0.45rem;
+  }
+
+  .provider-services-polish [class~="sticky"][class~="bottom-0"] {
+    position: sticky;
+    bottom: 0.5rem;
+    padding: 0.65rem;
+  }
+
+  .provider-services-polish [class~="sticky"][class~="bottom-0"] > div {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .provider-services-polish [class~="sticky"][class~="bottom-0"] > div > div:last-child {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.45rem;
+  }
+
+  .provider-services-polish [class~="sticky"][class~="bottom-0"] button,
+  .provider-services-polish [class~="sticky"][class~="bottom-0"] button[class*="bg-foreground"] {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .provider-services-clean__navigation-copy span {
+    display: none;
+  }
+
+  .provider-services-clean__navigation-actions button {
+    min-height: 40px;
+  }
+
+  .provider-services-polish > div > section:first-child input[placeholder^="Caută"] {
+    font-size: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .provider-services-clean *,
+  .provider-services-clean *::before,
+  .provider-services-clean *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
