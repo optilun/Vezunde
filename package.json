@@ -14,7 +14,8 @@
     "test:services": "node scripts/verify-service-registry.mjs && node scripts/verify-service-legacy-flows.mjs && node scripts/verify-service-prerequisites.mjs && node scripts/verify-service-configuration-payload.mjs && node scripts/verify-service-semantic-search.mjs && node scripts/verify-patient-need-interpretation.mjs && node scripts/verify-provider-recommendation.mjs && node scripts/verify-provider-public-trust.mjs && node scripts/verify-public-profile-presentation.mjs && node scripts/verify-patient-search-flow.mjs && node scripts/verify-giroc-repair-regression.mjs",
     "audit:services": "node scripts/audit-service-registry-data.mjs",
     "preview": "vite preview",
-    "test:provider-submissions": "node scripts/verify-provider-submission-comparison.mjs && node scripts/verify-provider-submission-backend.mjs"
+    "test:provider-submissions": "node scripts/verify-provider-submission-comparison.mjs && node scripts/verify-provider-submission-backend.mjs",
+    "test:provider-hours": "node scripts/verify-provider-opening-hours.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.39",
