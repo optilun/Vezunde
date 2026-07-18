@@ -294,13 +294,6 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                 <NavButton active={view === "options" && !query} icon={SlidersHorizontal} label="La nivelul locației" onClick={() => chooseView("options")} />
               </nav>
 
-              <nav className="provider-services-three__nav-group" aria-label="Filtrarea serviciilor">
-                <p>Oferta locației</p>
-                <NavButton active={view === "all" && !query} icon={ListFilter} label="Oferta completă" count={snapshot.units.reduce((sum, unit) => sum + unit.total, 0)} onClick={() => chooseView("all")} />
-                <NavButton active={view === "selected" && !query} icon={CheckCircle2} label="Oferta selectată" count={snapshot.selectedCount} onClick={() => chooseView("selected")} />
-                <NavButton active={view === "issues" && !query} icon={AlertTriangle} label="Observații de catalog" count={snapshot.issueCount} onClick={() => chooseView("issues")} />
-              </nav>
-
               {snapshot.units.length > 0 && (
                 <nav className="provider-services-three__nav-group provider-services-three__units" aria-label="Servicii după spațiu">
                   <p>Oferta pe zone</p>
@@ -316,6 +309,13 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                   ))}
                 </nav>
               )}
+
+              <nav className="provider-services-three__nav-group" aria-label="Filtrarea serviciilor">
+                <p>Oferta locației</p>
+                <NavButton active={view === "all" && !query} icon={ListFilter} label="Oferta completă" count={snapshot.units.reduce((sum, unit) => sum + unit.total, 0)} onClick={() => chooseView("all")} />
+                <NavButton active={view === "selected" && !query} icon={CheckCircle2} label="Oferta selectată" count={snapshot.selectedCount} onClick={() => chooseView("selected")} />
+                <NavButton active={view === "issues" && !query} icon={AlertTriangle} label="Observații de catalog" count={snapshot.issueCount} onClick={() => chooseView("issues")} />
+              </nav>
             </div>
           </div>
         </aside>
