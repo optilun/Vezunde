@@ -1,0 +1,124 @@
+/* Small visual cleanup for Services. The structure and interaction remain unchanged. */
+.provider-services-three {
+  --services-accent-soft: #f1f3f7;
+  --services-canvas: #f8f4ec;
+  --services-preview: #f7f5f0;
+  --services-soft: #f7f4ed;
+  --services-border: rgb(23 23 23 / 0.1);
+  --services-border-soft: rgb(23 23 23 / 0.065);
+}
+
+.provider-services-three__layout {
+  border-color: var(--services-border);
+}
+
+.provider-services-three__left {
+  background: transparent;
+}
+
+.provider-services-three__nav-group > button {
+  border-radius: 7px;
+}
+
+.provider-services-three__nav-group > button:hover {
+  background: rgb(255 255 255 / 0.56);
+}
+
+.provider-services-three__nav-group > button.is-active {
+  background: #f5f2eb;
+  color: var(--services-text);
+  box-shadow: inset 2px 0 0 var(--services-accent);
+}
+
+.provider-services-three__nav-group > button.is-active > svg,
+.provider-services-three__nav-group > button.is-active > small,
+.provider-services-three__nav-group > button.is-active > em {
+  color: var(--services-accent-strong);
+}
+
+.provider-services-three__center {
+  background: #ffffff;
+}
+
+.provider-services-three__center-header {
+  background: #ffffff;
+}
+
+.provider-services-three__search input {
+  border-color: #d8d3ca;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.provider-services-three__search input:focus {
+  box-shadow: 0 0 0 3px rgb(52 91 200 / 0.08);
+}
+
+.provider-services-three__native [data-services-panel="configuration"],
+.provider-services-three__native [data-services-panel="options"],
+.provider-services-three__native [data-services-panel="advanced"],
+.provider-services-three__native [data-services-panel="search-results"] {
+  background: #ffffff !important;
+}
+
+.provider-services-three__native [data-services-panel="units"] > section > button:first-child {
+  background: #faf8f4 !important;
+}
+
+.provider-services-three__native [data-services-panel="units"] > section > button:first-child:hover {
+  background: #f6f2eb !important;
+}
+
+.provider-services-three__native [data-services-panel="configuration"] button[aria-pressed="true"],
+.provider-services-three__native [data-services-panel="options"] button[aria-pressed="true"],
+.provider-services-three__native button.grid[aria-pressed="true"] {
+  background: #f7f4ed !important;
+}
+
+.provider-services-three__native button.grid:hover:not(:disabled) {
+  background: #fbfaf7 !important;
+}
+
+.provider-services-three__preview-card {
+  border-color: rgb(23 23 23 / 0.1);
+  border-radius: 14px;
+  background: var(--services-preview);
+  background-image: none;
+  box-shadow: none;
+}
+
+.provider-services-three__location em {
+  border-color: var(--services-border);
+  background: rgb(255 255 255 / 0.7);
+}
+
+.provider-services-three__requirements:hover {
+  background: rgb(255 255 255 / 0.42);
+}
+
+.provider-services-three__actions {
+  box-shadow: 0 -5px 16px rgb(23 23 23 / 0.035);
+}
+
+@media (max-width: 820px) {
+  .provider-services-three__mobile-nav {
+    box-shadow: 0 5px 14px rgb(23 23 23 / 0.035);
+  }
+
+  .provider-services-three__nav-group > button.is-active {
+    border-color: rgb(52 91 200 / 0.18);
+    background: #f5f2eb;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .provider-services-three__mobile-overview {
+    background: #f7f5f0;
+  }
+
+  .provider-services-three__preview-card {
+    border-radius: 12px;
+  }
+}
