@@ -1,8 +1,7 @@
 import React from "react";
-import ProviderServicesGuided from "./ProviderServicesGuided";
-import "./ProviderServicesClean.css";
-import "./ProviderServicesGuided.css";
+import ProviderServicesThreeColumn from "./ProviderServicesThreeColumn";
+import "./ProviderServicesThreeColumn.css";
 
 export default function ProviderServices(props) {
-  return <ProviderServicesGuided {...props} />;
+  return <ProviderServicesThreeColumn {...props} />;
 }
