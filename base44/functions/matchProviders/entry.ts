@@ -39,14 +39,6 @@ const PATIENT_FACING_PROFILE_TYPES = [
   'ophthalmology_office',
 ];
 
-const ROLE_CANONICAL = {
-  medic_oftalmolog: 'ophthalmologist',
-  ophthalmologist: 'ophthalmologist',
-  optometrist: 'optometrist',
-  optician: 'optician',
-};
-
-const OPHTHALMO_TYPES = ['clinica_oftalmologica', 'cabinet_oftalmologic'];
 const OPTICAL_TYPES = ['optica_medicala', 'laborator_optic', 'cabinet_optometric'];
 const REPAIR_FACILITIES = [
   'atelier_service_propriu',
@@ -105,7 +97,7 @@ function isPublicSafeService(service, location, prerequisiteContext) {
 }
 
 function isMatchingSafeService(service, location, prerequisiteContext) {
-  if (service?.migration_review_required || service?.matching_allowed !== true) return false;
+  if (service?.migration_review_required) return false;
   if (!isServiceMatchingEligible(service, location)) return false;
   return evaluateServicePrerequisites(service?.service_key, prerequisiteContext).eligible;
 }
@@ -133,9 +125,9 @@ function evaluateEligibility(loc, matchedRows, needLevel, prerequisiteContext) {
 
   const reasons = [];
   if (loc.migration_review_required) reasons.push('migration_review_required');
-  const requiredPcs = needLevel === 'specialized_medical' ? ['verified'] : ['claimed', 'verified'];
+  const requiredPcs = ['claimed', 'verified'];
   if (!requiredPcs.includes(pcs)) {
-    reasons.push(needLevel === 'specialized_medical' ? 'profile_not_verified' : 'profile_not_claimed_or_verified');
+    reasons.push('profile_not_claimed_or_verified');
   }
 
   if (matchedRows.length === 0) {
@@ -143,12 +135,11 @@ function evaluateEligibility(loc, matchedRows, needLevel, prerequisiteContext) {
   } else {
     const qualifying = matchedRows.filter((service) => isMatchingSafeService(service, loc, prerequisiteContext));
     if (qualifying.length === 0) {
-      if (!matchedRows.some((service) => service.matching_allowed === true)) reasons.push('matching_not_allowed');
       const prerequisiteBlocked = matchedRows.some((service) => (
         !evaluateServicePrerequisites(service.service_key, prerequisiteContext).eligible
       ));
       if (prerequisiteBlocked) reasons.push('service_prerequisites_not_met');
-      reasons.push(needLevel === 'specialized_medical' ? 'service_not_vezunde_verified' : 'service_not_confirmed');
+      reasons.push('service_not_provider_confirmed');
     }
     if (reasons.length === 0) return { eligible: true, reasons: [], pcs, qualifying };
   }
@@ -169,8 +160,7 @@ function classifyMatchBucket(eligibility, matchedRows, needLevel, loc, prerequis
   if (directorySafeRows.length === 0) return 'excluded';
 
   const directoryQualifies = needLevel === 'general' && directorySafeRows.some((service) => (
-    service.matching_allowed === true
-    && !service.migration_review_required
+    !service.migration_review_required
     && isPublicSafeService(service, loc, prerequisiteContext)
   ));
   if (eligibility.pcs === 'directory' && !directoryQualifies) return 'excluded';
@@ -196,9 +186,6 @@ Deno.serve(async (req) => {
     const serviceKeys = Array.isArray(payload.service_keys) ? payload.service_keys.map(String) : [];
     const requestKeys = normalizeRequestKeys(serviceKeys);
     const providerTypes = Array.isArray(payload.provider_types) ? payload.provider_types : [];
-    const requiredRoles = Array.isArray(payload.required_professional_types)
-      ? payload.required_professional_types.map((role) => ROLE_CANONICAL[role] || role)
-      : [];
     const sirutaCode = String(payload.locality_siruta_code || '').trim();
     const limit = Math.min(payload.limit || 20, 50);
     const needLevel = requestNeedLevel(serviceKeys, intent);
@@ -245,12 +232,9 @@ Deno.serve(async (req) => {
     }
 
     const assignmentsByLocation = {};
-    const rolesByLocation = {};
     for (const assignment of assignments) {
       if (!assignmentsByLocation[assignment.location_id]) assignmentsByLocation[assignment.location_id] = [];
       assignmentsByLocation[assignment.location_id].push(assignment);
-      if (!rolesByLocation[assignment.location_id]) rolesByLocation[assignment.location_id] = [];
-      rolesByLocation[assignment.location_id].push(ROLE_CANONICAL[assignment.professional_type] || assignment.professional_type);
     }
 
     const facilitiesByLocation = {};
@@ -278,7 +262,6 @@ Deno.serve(async (req) => {
       if (String(loc.locality_siruta_code || '').trim() !== sirutaCode) continue;
 
       const locRows = serviceRowsByLocation[loc.id] || [];
-      const roles = rolesByLocation[loc.id] || [];
       const locFacilities = facilitiesByLocation[loc.id] || [];
       const locAssignments = assignmentsByLocation[loc.id] || [];
       const locProfessionalIds = new Set(locAssignments.map((assignment) => assignment.professional_id).filter(Boolean));
@@ -296,9 +279,6 @@ Deno.serve(async (req) => {
         : locRows;
       const matched = [...new Set(matchedRows.map((service) => normalizeServiceKey(service.service_key).canonicalKey).filter(Boolean))];
 
-      if (intent === 'simptome_oftalmologice' || intent === 'investigatii') {
-        if (!OPHTHALMO_TYPES.includes(loc.provider_type) && !roles.includes('ophthalmologist')) continue;
-      }
       if (intent === 'reparatii_ochelari') {
         if (!OPTICAL_TYPES.includes(loc.provider_type)) continue;
         const hasRepairFacility = locFacilities.some((facility) => REPAIR_FACILITIES.includes(facility.facility_key));
@@ -306,8 +286,6 @@ Deno.serve(async (req) => {
       } else if (serviceKeys.length > 0 && matchedRows.length === 0) {
         continue;
       }
-      if (requiredRoles.length > 0 && !requiredRoles.some((role) => roles.includes(role))) continue;
-
       const tier = 'oras';
 
       const locSpecs = specializationsByLocation[loc.id] || [];

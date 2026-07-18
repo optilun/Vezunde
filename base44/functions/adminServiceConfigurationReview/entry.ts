@@ -59,10 +59,9 @@ async function loadApprovedOperationalSnapshot(svc, locationId) {
 function restoredMatchingAllowed(row) {
   const definition = getCanonicalServiceDefinition(row.service_key);
   if (!definition || row.is_active === false) return false;
-  if (definition.requires_review || definition.service_need_level === 'specialized_medical') {
-    return row.confirmation_level === 'vezunde_verified';
-  }
-  return definition.matching_allowed_when_provider_confirmed === true;
+  return definition.patient_facing !== false
+    && definition.b2b_only !== true
+    && definition.matching_allowed_when_provider_confirmed === true;
 }
 
 async function restoreRemovalVisibility(svc, submission) {
@@ -270,18 +269,8 @@ function evaluatePayload(payload, context) {
     });
     const definition = result.definition || getCanonicalServiceDefinition(key);
     const blockers = [...result.blockers];
-    if (definition?.requires_review && context.location.profile_control_status !== 'verified') {
-      blockers.unshift({
-        code: 'location_not_verified',
-        message: 'Locația trebuie verificată de Vezunde înaintea aprobării unui serviciu medical.',
-        required: ['verified'],
-        actual: context.location.profile_control_status || 'directory',
-      });
-    }
-    const eligible = blockers.length === 0;
-    const status = blockers.some((blocker) => blocker.code === 'location_not_verified')
-      ? 'requires_verified_location'
-      : result.status;
+    const eligible = result.eligible;
+    const status = result.status;
     return {
       service_key: key,
       label: definition?.label || key,
@@ -351,27 +340,27 @@ async function writeAudit(svc, user, submission, actionType, changedFields, next
   });
 }
 
-function serviceApplyData(serviceKey, existing, verified) {
+function serviceApplyData(serviceKey, existing) {
   const definition = getCanonicalServiceDefinition(serviceKey);
   if (!definition) throw new Error(`Serviciu canonic necunoscut: ${serviceKey}`);
   const previousConfirmation = clean(existing?.confirmation_level);
-  const confirmationLevel = definition.requires_review
-    ? (verified ? 'vezunde_verified' : (previousConfirmation === 'vezunde_verified' ? 'vezunde_verified' : 'provider_confirmed'))
-    : (previousConfirmation === 'vezunde_verified' ? 'vezunde_verified' : 'provider_confirmed');
+  const confirmationLevel = previousConfirmation === 'vezunde_verified' ? 'vezunde_verified' : 'provider_confirmed';
   return {
     is_active: true,
     accepts_requests: definition.patient_facing !== false,
     service_need_level: definition.service_need_level,
     is_advanced_service: definition.requires_review || definition.service_need_level === 'specialized_medical',
     confirmation_level: confirmationLevel,
-    matching_allowed: definition.patient_facing !== false && (definition.requires_review ? confirmationLevel === 'vezunde_verified' : definition.matching_allowed_when_provider_confirmed),
+    matching_allowed: definition.patient_facing !== false
+      && definition.b2b_only !== true
+      && definition.matching_allowed_when_provider_confirmed === true,
     migration_review_required: false,
     provider_visibility_status: 'active',
     removal_submission_id: '',
   };
 }
 
-async function applyServices(svc, submission, payload, verifiedKeys = new Set()) {
+async function applyServices(svc, submission, payload) {
   const mirrorSpecialization = async (serviceKey, active) => {
     const existing = await svc.entities.LocationSpecialization.filter({ location_id: submission.location_id, specialization_key: serviceKey });
     if (existing[0]) await svc.entities.LocationSpecialization.update(existing[0].id, { is_active: active });
@@ -383,7 +372,7 @@ async function applyServices(svc, submission, payload, verifiedKeys = new Set())
       const definition = getCanonicalServiceDefinition(serviceKey);
       if (!definition) throw new Error(`Serviciu canonic necunoscut: ${serviceKey}`);
       const rows = await svc.entities.LocationService.filter({ location_id: submission.location_id, service_key: serviceKey });
-      const data = serviceApplyData(serviceKey, rows[0], verifiedKeys.has(serviceKey));
+      const data = serviceApplyData(serviceKey, rows[0]);
       if (rows[0]) await svc.entities.LocationService.update(rows[0].id, data);
       else await svc.entities.LocationService.create({ location_id: submission.location_id, service_key: serviceKey, ...data });
       if (group === 'specialties' || definition.group === 'specialties') await mirrorSpecialization(serviceKey, true);
@@ -498,17 +487,15 @@ Deno.serve(async (req) => {
       // unit-link fields on resources, so approval applies only supported
       // LocationService fields.
 
-      // Apply first as provider-confirmed. Medical promotion happens only after a fresh read of all dependencies.
-      await applyServices(svc, submission, payload, new Set());
+      // Services are provider-declared at launch. Approval keeps the generic
+      // administrative workflow, but does not promote declarations to verified.
+      await applyServices(svc, submission, payload);
       const postApplyContext = await loadContext(svc, submission.location_id, payload, false);
       const postEvaluation = evaluatePayload(payload, {
         ...postApplyContext,
         service_unit_map: payload.service_unit_map || {},
       });
-      const verifiedKeys = new Set(postEvaluation.evaluations
-        .filter((item) => item.eligible && item.requires_review)
-        .map((item) => item.service_key));
-      await applyServices(svc, submission, payload, verifiedKeys);
+      const providerDeclaredKeys = postEvaluation.evaluations.map((item) => item.service_key);
       const suggestionIds = await persistSuggestions(svc, user, submission, payload);
 
       const now = new Date().toISOString();
@@ -526,7 +513,8 @@ Deno.serve(async (req) => {
         ['status', 'functional_units', 'capabilities', 'resource_links', 'services', 'care_setting'],
         {
           prerequisite_summary: postEvaluation.summary,
-          promoted_services: [...verifiedKeys],
+          provider_declared_services: providerDeclaredKeys,
+          promoted_services: [],
           suggestion_ids: suggestionIds,
           functional_units: payload.functional_units,
           removal_unit_keys: payload.removal_unit_keys,
@@ -539,9 +527,10 @@ Deno.serve(async (req) => {
 
       return Response.json({
         success: true,
-        promoted_services: [...verifiedKeys],
+        provider_declared_services: providerDeclaredKeys,
+        promoted_services: [],
         suggestion_ids: suggestionIds,
-        warning: postEvaluation.approval_allowed ? '' : 'Configurația a fost aplicată, dar unele servicii medicale au rămas nepublice după revalidare.',
+        warning: '',
         prerequisite_review: reviewPayload(payload, postEvaluation),
       });
     }

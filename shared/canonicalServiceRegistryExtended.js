@@ -19,7 +19,7 @@ const NEW_KEYS = {
     group: 'business_attributes',
     kind: 'service',
     need: 'general',
-    review: true,
+    review: false,
     specialist: false,
     professionalTypes: [],
   },
@@ -203,7 +203,7 @@ function addGroupAndKeys() {
     if (CANONICAL_SERVICE_KEY_SET.has(key)) continue;
     const rules = profileRulesForGroup(config.group);
     const aliases = aliasesForKey(key);
-    const publicImmediately = !config.review && config.need !== 'specialized_medical';
+    const publicImmediately = true;
     CANONICAL_SERVICE_REGISTRY[key] = {
       key,
       label: config.label,
@@ -212,7 +212,7 @@ function addGroupAndKeys() {
       patient_facing: true,
       b2b_only: false,
       service_need_level: config.need,
-      default_confirmation_level: publicImmediately ? 'provider_confirmed' : 'vezunde_verified',
+      default_confirmation_level: 'provider_confirmed',
       requires_review: Boolean(config.review),
       requires_verified_specialist: Boolean(config.specialist),
       required_professional_types: [...(config.professionalTypes || [])],

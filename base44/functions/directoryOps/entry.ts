@@ -50,10 +50,9 @@ function computeMatchingAllowed(level, rawKey, loc) {
   const normalized = normalizeServiceKey(rawKey);
   const definition = normalized.definition;
   if (!definition) return false;
-  if (definition.requires_review || definition.service_need_level === 'specialized_medical') {
-    return level === 'vezunde_verified' && loc.profile_control_status === 'verified';
-  }
-  return definition.matching_allowed_when_provider_confirmed
+  return definition.patient_facing !== false
+    && definition.b2b_only !== true
+    && definition.matching_allowed_when_provider_confirmed
     && ['publicly_listed', 'provider_confirmed', 'vezunde_verified'].includes(level);
 }
 

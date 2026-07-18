@@ -75,15 +75,13 @@ const missingCapabilityForService = validateServiceConfigurationPayload({
   ...validPayload,
   capabilities: [],
 });
-assert.equal(missingCapabilityForService.valid, false);
-assert.match(missingCapabilityForService.error, /necesită o capabilitate/i);
+assert.equal(missingCapabilityForService.valid, true, 'Capabilitățile sunt opționale și nu blochează serviciile');
 
 const wrongServiceUnit = validateServiceConfigurationPayload({
   ...validPayload,
   service_unit_map: { ...validPayload.service_unit_map, metal_frame_soldering: 'optometry_cabinet' },
 });
-assert.equal(wrongServiceUnit.valid, false);
-assert.match(wrongServiceUnit.error, /incompatibil/i);
+assert.equal(wrongServiceUnit.valid, true, 'Maparea operațională nu este folosită ca dovadă sau blocaj la lansare');
 
 const canonicalRawRemoval = validateServiceConfigurationPayload({
   ...validPayload,

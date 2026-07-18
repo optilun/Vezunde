@@ -6,7 +6,6 @@ import {
   profileAllowsFunctionalUnit,
 } from '../../../shared/locationOperationalRegistry.js';
 import { validateServiceConfigurationPayload } from '../../../shared/serviceConfigurationPayloadExtended.js';
-import { getServiceOperationalContext } from '../../../shared/serviceOperationalTaxonomyExtended.js';
 
 const ACTIVE_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
@@ -54,10 +53,9 @@ function removalServiceKeys(payload = {}) {
 function restoredMatchingAllowed(row) {
   const definition = getCanonicalServiceDefinition(row.service_key);
   if (!definition || row.is_active === false) return false;
-  if (definition.requires_review || definition.service_need_level === 'specialized_medical') {
-    return row.confirmation_level === 'vezunde_verified';
-  }
-  return definition.matching_allowed_when_provider_confirmed === true;
+  return definition.patient_facing !== false
+    && definition.b2b_only !== true
+    && definition.matching_allowed_when_provider_confirmed === true;
 }
 
 async function restoreRemovalVisibility(svc, locationId, submissionId) {
@@ -233,39 +231,11 @@ function validateProfileCompatibility(loc, cleanPayload) {
   return null;
 }
 
-function validateSubmissionReadiness(cleanPayload) {
-  const unitKeys = new Set((cleanPayload.functional_units || []).map((item) => clean(item.unit_key)).filter(Boolean));
-  const capabilityRows = cleanPayload.capabilities || [];
-  const selectedKeys = [...new Set(Object.values(cleanPayload.selected_ids || {}).flat().map(clean).filter(Boolean))];
-  const publicServiceKeys = selectedKeys.filter((serviceKey) => getServiceOperationalContext(serviceKey)?.sectionKey !== 'business_attributes');
-  const issues = [];
-
-  if (unitKeys.size === 0) issues.push('Selectează cel puțin o zonă existentă.');
-  if (publicServiceKeys.length === 0) issues.push('Adaugă cel puțin un produs sau serviciu în oferta locației.');
-  if (!clean(cleanPayload.care_setting)) issues.push('Selectează tipul activității locației.');
-
-  for (const serviceKey of publicServiceKeys) {
-    const context = getServiceOperationalContext(serviceKey);
-    if (!context) {
-      issues.push(`Serviciul ${serviceKey} nu are context operațional configurat.`);
-      continue;
-    }
-    const mappedUnit = clean(cleanPayload.service_unit_map?.[serviceKey]);
-    if (!mappedUnit || !unitKeys.has(mappedUnit)) {
-      issues.push(`Serviciul ${serviceKey} trebuie asociat unei zone selectate.`);
-      continue;
-    }
-    if (context.capabilityKey && !capabilityRows.some((item) => (
-      clean(item.capability_key) === context.capabilityKey
-      && clean(item.parent_unit_key) === mappedUnit
-    ))) {
-      issues.push(`Serviciul ${serviceKey} necesită activitatea asociată ${context.capabilityKey}.`);
-    }
-  }
-
-  return issues.length > 0
-    ? { error: 'Configurația nu este pregătită pentru trimitere.', fields: issues }
-    : null;
+function validateSubmissionReadiness() {
+  // The payload validator already protects schema integrity. At launch, services
+  // are provider-declared, so units, capabilities and resources are optional and
+  // cannot prevent a draft from being submitted.
+  return null;
 }
 
 async function assertReferences(svc, locationId, payload) {

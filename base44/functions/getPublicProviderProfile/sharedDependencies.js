@@ -121,7 +121,7 @@ var SERVICE_GROUPS = {
   },
   investigations: {
     label: "Investiga\u021Bii oftalmologice",
-    helper: "Investiga\u021Bii disponibile \xEEn loca\u021Bie, \xEEn func\u021Bie de dot\u0103ri \u0219i personalul autorizat.",
+    helper: "Investiga\u021Bii declarate de furnizor ca fiind disponibile \xEEn aceast\u0103 loca\u021Bie.",
     ids: {
       oct: "OCT",
       visual_field_analyzer: "C\xE2mp vizual",
@@ -166,7 +166,7 @@ var SERVICE_GROUPS = {
   },
   procedures_surgery: {
     label: "Proceduri \u0219i chirurgie oftalmologic\u0103",
-    helper: "Proceduri medicale care necesit\u0103 verificare \xEEnainte de publicare \u0219i folosire \xEEn recomand\u0103ri.",
+    helper: "Proceduri \u0219i interven\u021Bii declarate de furnizor ca fiind disponibile \xEEn aceast\u0103 loca\u021Bie.",
     ids: {
       cataract_surgery: "Chirurgia cataractei",
       refractive_surgery: "Chirurgie refractiv\u0103",
@@ -493,7 +493,7 @@ function buildRegistry() {
       const override = SERVICE_OVERRIDES[key] || {};
       const policy = { ...base, ...override };
       const aliases = aliasesForKey(key);
-      const publicImmediately = policy.patientFacing !== false && !policy.review && policy.need !== "specialized_medical";
+      const publicImmediately = policy.patientFacing !== false && policy.b2bOnly !== true;
       registry[key] = {
         key,
         label,
@@ -502,7 +502,7 @@ function buildRegistry() {
         patient_facing: policy.patientFacing !== false,
         b2b_only: policy.b2bOnly === true,
         service_need_level: policy.need,
-        default_confirmation_level: publicImmediately ? "provider_confirmed" : "vezunde_verified",
+        default_confirmation_level: publicImmediately ? "provider_confirmed" : "not_confirmed",
         requires_review: Boolean(policy.review),
         requires_verified_specialist: Boolean(policy.specialist),
         required_professional_types: [...policy.professionalTypes || []],
@@ -578,20 +578,14 @@ function isServicePubliclyEligible(service, location) {
   if (["removal_pending", "provider_suspended"].includes(service.provider_visibility_status)) return false;
   if (!location || location.active_status === "inactiva" || location.profile_control_status === "suspended") return false;
   const normalized = normalizeServiceKey(service.service_key || service.key);
-  if (!normalized.definition || normalized.definition.patient_facing === false) return false;
+  if (!normalized.definition || normalized.definition.patient_facing === false || normalized.definition.b2b_only === true) return false;
   const level = service.confirmation_level || "not_confirmed";
-  if (normalized.definition.requires_review || normalized.definition.service_need_level === "specialized_medical") {
-    return level === "vezunde_verified" && location.profile_control_status === "verified";
-  }
   return normalized.definition.public_immediately && ["publicly_listed", "provider_confirmed", "vezunde_verified"].includes(level);
 }
 function isServiceMatchingEligible(service, location) {
   if (!isServicePubliclyEligible(service, location)) return false;
   const normalized = normalizeServiceKey(service.service_key || service.key);
   if (!normalized.definition) return false;
-  if (normalized.definition.requires_review || normalized.definition.service_need_level === "specialized_medical") {
-    return (service.confirmation_level || "") === "vezunde_verified" && location?.profile_control_status === "verified";
-  }
   return normalized.definition.matching_allowed_when_provider_confirmed;
 }
 var CLAIM_PREP_SERVICE_GROUPS = ["optical_retail", "lenses_and_measurements", "optometry", "contact_lenses", "technical_activities"];
@@ -615,7 +609,7 @@ var NEW_KEYS = {
     group: "business_attributes",
     kind: "service",
     need: "general",
-    review: true,
+    review: false,
     specialist: false,
     professionalTypes: []
   },
@@ -681,7 +675,15 @@ var SPECIFIC_SEARCH_KEYWORDS = {
   visual_field_analyzer: ["camp vizual", "perimetrie", "test camp vizual"],
   fundus_exam: ["fund de ochi", "examinare retina", "control retina"],
   tonometry: ["tonometrie", "tensiune oculara", "presiune intraoculara"],
-  eyeglasses_repair: ["reparatii ochelari", "reparat ochelari", "ochelari rupti"],
+  eyeglasses_repair: [
+    "reparatii ochelari",
+    "reparat ochelari",
+    "ochelari rupti",
+    "ochelarii rupti",
+    "rupt ochelari",
+    "s-au rupt ochelarii",
+    "ochelari stricati"
+  ],
   eyeglasses_adjustment: ["reglaj ochelari", "ajustare rame", "ochelari largi"],
   lens_replacement: ["schimb lentile", "inlocuire sticle"],
   metal_frame_soldering: ["sudura rame", "lipire rama metalica"],
@@ -773,7 +775,7 @@ function addGroupAndKeys() {
     if (CANONICAL_SERVICE_KEY_SET2.has(key)) continue;
     const rules = profileRulesForGroup(config.group);
     const aliases = aliasesForKey2(key);
-    const publicImmediately = !config.review && config.need !== "specialized_medical";
+    const publicImmediately = true;
     CANONICAL_SERVICE_REGISTRY2[key] = {
       key,
       label: config.label,
@@ -782,7 +784,7 @@ function addGroupAndKeys() {
       patient_facing: true,
       b2b_only: false,
       service_need_level: config.need,
-      default_confirmation_level: publicImmediately ? "provider_confirmed" : "vezunde_verified",
+      default_confirmation_level: "provider_confirmed",
       requires_review: Boolean(config.review),
       requires_verified_specialist: Boolean(config.specialist),
       required_professional_types: [...config.professionalTypes || []],
@@ -909,8 +911,8 @@ var PROVIDER_SERVICE_SECTIONS = [
     title: "Evaluarea vederii \u0219i dioptriilor",
     publicNeedKey: "eye_exam",
     publicLabel: "Control vedere \u0219i dioptrii",
-    description: "Servicii realizate \xEEn cabinetul optometric de un specialist compatibil.",
-    note: "Eligibilitatea depinde de specialistul asociat \u0219i de dot\u0103rile declarate ale cabinetului.",
+    description: "Servicii optometrice declarate ca fiind disponibile \xEEn aceast\u0103 loca\u021Bie.",
+    note: "Speciali\u0219tii \u0219i dot\u0103rile pot fi completate op\u021Bional; nu blocheaz\u0103 selectarea sau publicarea serviciilor.",
     searchTerms: ["control vedere", "verificare vedere", "masurat dioptrii", "test vedere", "control ochi", "optometrist"],
     items: [
       ["optometry", "optometry_consultation"],
@@ -954,7 +956,7 @@ var PROVIDER_SERVICE_SECTIONS = [
     title: "Adaptare \u0219i monitorizare lentile de contact",
     publicNeedKey: "contact_lens_services",
     publicLabel: "Adaptare lentile de contact",
-    description: "Consulta\u021Bie, prob\u0103, instruire, adaptare \u0219i control ulterior realizate de un specialist compatibil.",
+    description: "Consulta\u021Bie, prob\u0103, instruire, adaptare \u0219i control ulterior, declarate ca fiind disponibile \xEEn loca\u021Bie.",
     note: "V\xE2nzarea lentilelor de contact nu activeaz\u0103 automat serviciile profesionale de adaptare.",
     searchTerms: ["adaptare lentile contact", "proba lentile", "invatat lentile", "lentile speciale", "ortokeratologie"],
     items: [
@@ -1059,7 +1061,7 @@ var PROVIDER_SERVICE_SECTIONS = [
     publicNeedKey: "ophthalmology_consults",
     publicLabel: "Consulta\u021Bii oftalmologice",
     description: "Consulta\u021Bii, controale \u0219i examin\u0103ri efectuate de medicul oftalmolog.",
-    note: "Serviciile medicale sunt publicate numai dup\u0103 verificarea medicului \u0219i a condi\u021Biilor necesare.",
+    note: "Serviciile sunt informa\u021Bii declarate de furnizor. Profilurile profesionale \u0219i resursele sunt op\u021Bionale \xEEn aceast\u0103 etap\u0103.",
     searchTerms: ["oftalmolog", "doctor de ochi", "medic de ochi", "consult ochi", "control oftalmologic"],
     items: [
       ["ophthalmology_consults", "ophthalmology_consultation"],
@@ -1081,7 +1083,7 @@ var PROVIDER_SERVICE_SECTIONS = [
     title: "Investiga\u021Bii \u0219i imagistic\u0103",
     publicNeedKey: "ophthalmology_investigations",
     publicLabel: "Investiga\u021Bii oftalmologice",
-    description: "Investiga\u021Bii disponibile \xEEn func\u021Bie de aparatura verificat\u0103 a loca\u021Biei.",
+    description: "Investiga\u021Bii declarate de furnizor ca fiind disponibile \xEEn aceast\u0103 loca\u021Bie.",
     searchTerms: ["oct ochi", "camp vizual", "fund de ochi", "poza retina", "tensiune oculara", "topografie corneana", "ecografie ochi"],
     items: [
       ["investigations", "oct"],
@@ -1221,7 +1223,7 @@ var PROVIDER_SERVICE_SECTIONS = [
     title: "Urgen\u021Be \u0219i traumatisme oculare",
     publicNeedKey: "emergency_ophthalmology",
     publicLabel: "Urgen\u021Be oftalmologice",
-    description: "Evaluarea urgen\u021Belor \u0219i traumatismelor \xEEn limitele capacit\u0103\u021Bii verificate a loca\u021Biei.",
+    description: "Evaluarea urgen\u021Belor \u0219i traumatismelor, conform disponibilit\u0103\u021Bii declarate de loca\u021Bie.",
     searchTerms: ["urgenta ochi", "traumatism ochi", "corp strain ochi", "durere oculara brusca"],
     items: [["specialties", "emergency_ophthalmology"], ["specialties", "ocular_trauma"]]
   },
@@ -1261,7 +1263,7 @@ var PROVIDER_SERVICE_SECTIONS = [
     title: "Proceduri, injec\u021Bii \u0219i laser",
     publicNeedKey: "procedures_treatments",
     publicLabel: "Proceduri \u0219i tratamente oftalmologice",
-    description: "Proceduri realizate \xEEntr-o sal\u0103 compatibil\u0103, cu medic, aparatur\u0103 \u0219i infrastructur\u0103 verificate.",
+    description: "Proceduri declarate de furnizor ca fiind disponibile \xEEn aceast\u0103 loca\u021Bie.",
     searchTerms: ["laser ochi", "injectie ochi", "yag", "laser retina", "chalazion", "corp strain"],
     items: [
       ["procedures_surgery", "laser_procedures"],
@@ -1285,7 +1287,7 @@ var PROVIDER_SERVICE_SECTIONS = [
     title: "Chirurgie oftalmologic\u0103",
     publicNeedKey: "ophthalmology_surgery",
     publicLabel: "Chirurgie oftalmologic\u0103",
-    description: "Interven\u021Bii chirurgicale efectuate \xEEntr-o unitate \u0219i cu echipamente verificate.",
+    description: "Interven\u021Bii chirurgicale declarate de furnizor ca fiind disponibile \xEEn aceast\u0103 loca\u021Bie.",
     searchTerms: ["operatie ochi", "chirurgie cataracta", "chirurgie retina", "vitrectomie", "chirurgie pleoape"],
     items: [
       ["procedures_surgery", "cataract_surgery"],
@@ -1396,7 +1398,13 @@ function getServiceOperationalContext(serviceKey) {
 
 // shared/servicePrerequisiteEngine.js
 var SERVICE_PREREQUISITE_POLICY = Object.freeze({
-  enforce_verified_specialist: false
+  enforce_profile_compatibility: false,
+  enforce_functional_unit: false,
+  enforce_capability: false,
+  enforce_verified_specialist: false,
+  enforce_verified_equipment: false,
+  enforce_verified_infrastructure: false,
+  show_review_status: false
 });
 var PROFESSIONAL_ALIASES = {
   medic_oftalmolog: "ophthalmologist",
@@ -1584,7 +1592,7 @@ function evaluateServicePrerequisites(rawKey, context = {}) {
   const activeUnitKeys = activeContextKeys(functionalUnits, "unit_key");
   const activeCapabilityKeys = activeContextKeys(capabilities, "capability_key");
   const profileType = clean(location.provider_profile_type);
-  if (profileType && definition.hidden_for_profile_types.includes(profileType)) {
+  if (SERVICE_PREREQUISITE_POLICY.enforce_profile_compatibility && profileType && definition.hidden_for_profile_types.includes(profileType)) {
     blockers.push({
       code: "incompatible_profile_type",
       message: "Serviciul nu este compatibil cu tipul acestei loca\u021Bii.",
@@ -1592,7 +1600,7 @@ function evaluateServicePrerequisites(rawKey, context = {}) {
       actual: profileType
     });
   }
-  if (enforceUnitScope && prerequisiteUnitKey && !activeUnitKeys.has(prerequisiteUnitKey)) {
+  if (SERVICE_PREREQUISITE_POLICY.enforce_functional_unit && enforceUnitScope && prerequisiteUnitKey && !activeUnitKeys.has(prerequisiteUnitKey)) {
     const fallbackUnits = serviceContext?.fallbackUnitKeys || [];
     const fallbackMatched = fallbackUnits.some((unitKey) => activeUnitKeys.has(unitKey));
     if (!fallbackMatched) {
@@ -1604,7 +1612,7 @@ function evaluateServicePrerequisites(rawKey, context = {}) {
       });
     }
   }
-  if (enforceUnitScope && capabilityKey && !activeCapabilityKeys.has(capabilityKey)) {
+  if (SERVICE_PREREQUISITE_POLICY.enforce_capability && enforceUnitScope && capabilityKey && !activeCapabilityKeys.has(capabilityKey)) {
     blockers.push({
       code: "capability_missing",
       message: "Capabilitatea necesar\u0103 nu este declarat\u0103 pentru aceast\u0103 loca\u021Bie.",
@@ -1627,7 +1635,7 @@ function evaluateServicePrerequisites(rawKey, context = {}) {
   }
   const medical = definition.requires_review || definition.service_need_level === "specialized_medical";
   const equipmentResult = verifiedEquipmentTypes(equipment, medical, prerequisiteUnitKey, enforceUnitScope);
-  if (definition.requires_equipment) {
+  if (definition.requires_equipment && SERVICE_PREREQUISITE_POLICY.enforce_verified_equipment) {
     const required = definition.required_equipment_types || [];
     if (required.length === 0) {
       blockers.push({
@@ -1651,7 +1659,7 @@ function evaluateServicePrerequisites(rawKey, context = {}) {
     }
   }
   const facilityResult = activeFacilityTypes(facilities, prerequisiteUnitKey, enforceUnitScope);
-  if (definition.requires_infrastructure) {
+  if (definition.requires_infrastructure && SERVICE_PREREQUISITE_POLICY.enforce_verified_infrastructure) {
     const required = definition.required_infrastructure_types || [];
     const matched = required.length > 0 && required.every((requirement) => infrastructureSatisfied(requirement, facilityResult.types, location, activeUnitKeys));
     if (!matched) {
@@ -1670,7 +1678,7 @@ function evaluateServicePrerequisites(rawKey, context = {}) {
   else if (blockers.some((blocker) => blocker.code === "verified_specialist_missing")) status = "requires_verified_specialist";
   else if (blockers.some((blocker) => blocker.code.includes("equipment"))) status = "requires_equipment";
   else if (blockers.some((blocker) => blocker.code.includes("infrastructure"))) status = "requires_infrastructure";
-  else if (definition.requires_review) status = "ready_for_review";
+  else if (definition.requires_review && SERVICE_PREREQUISITE_POLICY.show_review_status) status = "ready_for_review";
   return {
     service_key: definition.key,
     canonical_key: definition.key,
@@ -1680,16 +1688,21 @@ function evaluateServicePrerequisites(rawKey, context = {}) {
     definition,
     evidence: {
       verified_professional_types: [...professionalResult.types],
+      profile_compatibility_enforced: SERVICE_PREREQUISITE_POLICY.enforce_profile_compatibility,
+      functional_unit_enforced: SERVICE_PREREQUISITE_POLICY.enforce_functional_unit,
+      capability_enforced: SERVICE_PREREQUISITE_POLICY.enforce_capability,
       verified_specialist_enforced: SERVICE_PREREQUISITE_POLICY.enforce_verified_specialist,
       verified_equipment_types: [...equipmentResult.types],
+      verified_equipment_enforced: SERVICE_PREREQUISITE_POLICY.enforce_verified_equipment,
       active_facility_types: [...facilityResult.types],
+      verified_infrastructure_enforced: SERVICE_PREREQUISITE_POLICY.enforce_verified_infrastructure,
       active_functional_unit_keys: [...activeUnitKeys],
       active_capability_keys: [...activeCapabilityKeys],
       service_unit_key: serviceUnitKey,
       prerequisite_unit_key: prerequisiteUnitKey,
       validation_scope: serviceContext?.scope || "unit",
       capability_key: capabilityKey,
-      unit_scope_enforced: enforceUnitScope,
+      unit_scope_enforced: enforceUnitScope && SERVICE_PREREQUISITE_POLICY.enforce_functional_unit,
       scoped_assignment_ids: professionalResult.scopedAssignments,
       scoped_equipment_ids: equipmentResult.scopedEquipment,
       scoped_facility_ids: facilityResult.scopedFacilities
@@ -1703,4 +1716,3 @@ export {
   isServicePubliclyEligible2 as isServicePubliclyEligible,
   normalizeServiceKey2 as normalizeServiceKey
 };
-

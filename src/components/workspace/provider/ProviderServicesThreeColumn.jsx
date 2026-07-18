@@ -249,7 +249,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
         : view === "selected"
           ? "Oferta selectată"
           : view === "issues"
-            ? "Cerințe de completat"
+            ? "Observații de catalog"
             : view === "unit"
               ? activeUnit?.title || "Oferta zonei"
               : "Oferta completă";
@@ -259,10 +259,10 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
     : view === "options"
       ? "Configurează opțiunile valabile pentru întreaga locație, inclusiv decontarea CAS și serviciile oferite în afara locației."
       : view === "issues"
-        ? "Sunt afișate elementele selectate care mai au cerințe de completat."
+        ? "Sunt afișate numai observațiile de catalog. Acestea nu cer acte, specialiști sau echipamente."
         : view === "selected"
           ? "Sunt afișate numai elementele adăugate în oferta curentă."
-          : "Selectează serviciile oferite și completează doar cerințele relevante.";
+          : "Selectează serviciile declarate ca disponibile și adaugă opțional detaliile relevante.";
 
   const locationName = location?.public_display_name
     || location?.display_name
@@ -290,7 +290,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
             <div className="provider-services-three__nav-groups">
               <nav className="provider-services-three__nav-group" aria-label="Configurarea locației">
                 <p>Structura locației</p>
-                <NavButton active={view === "configuration" && !query} icon={Settings2} label="Zone și tip de activitate" status={snapshot.unitCount > 0 ? `${snapshot.unitCount} zone` : "Necesar"} onClick={() => chooseView("configuration")} />
+                <NavButton active={view === "configuration" && !query} icon={Settings2} label="Zone și tip de activitate" status={snapshot.unitCount > 0 ? `${snapshot.unitCount} zone` : "Opțional"} onClick={() => chooseView("configuration")} />
                 <NavButton active={view === "options" && !query} icon={SlidersHorizontal} label="La nivelul locației" onClick={() => chooseView("options")} />
               </nav>
 
@@ -298,7 +298,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                 <p>Oferta locației</p>
                 <NavButton active={view === "all" && !query} icon={ListFilter} label="Oferta completă" count={snapshot.units.reduce((sum, unit) => sum + unit.total, 0)} onClick={() => chooseView("all")} />
                 <NavButton active={view === "selected" && !query} icon={CheckCircle2} label="Oferta selectată" count={snapshot.selectedCount} onClick={() => chooseView("selected")} />
-                <NavButton active={view === "issues" && !query} icon={AlertTriangle} label="Cerințe de completat" count={snapshot.issueCount} onClick={() => chooseView("issues")} />
+                <NavButton active={view === "issues" && !query} icon={AlertTriangle} label="Observații de catalog" count={snapshot.issueCount} onClick={() => chooseView("issues")} />
               </nav>
 
               {snapshot.units.length > 0 && (
@@ -378,13 +378,13 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
             </section>
 
             <section className="provider-services-three__preview-section">
-              <h3>Oferta și cerințele</h3>
+              <h3>Oferta și informațiile opționale</h3>
               <dl>
                 <div><dt>În ofertă</dt><dd>{snapshot.selectedCount}</dd></div>
                 <div><dt>Zone</dt><dd>{snapshot.unitCount}</dd></div>
                 <div><dt>Activități asociate</dt><dd>{snapshot.capabilityCount}</dd></div>
                 {snapshot.globalOptionCount > 0 && <div><dt>La nivelul locației</dt><dd>{snapshot.globalOptionCount}</dd></div>}
-                {snapshot.issueCount > 0 && <div className="has-issues"><dt>Necesită completare</dt><dd>{snapshot.issueCount}</dd></div>}
+                {snapshot.issueCount > 0 && <div className="has-issues"><dt>Observații</dt><dd>{snapshot.issueCount}</dd></div>}
               </dl>
               {snapshot.configurationComplete && !snapshot.dirty && (
                 <div className="provider-services-three__complete-state">
@@ -397,7 +397,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
             {snapshot.issueCount > 0 && (
               <button type="button" className="provider-services-three__requirements" onClick={() => chooseView("issues")}>
                 <AlertTriangle aria-hidden="true" />
-                <span><strong>{snapshot.issueCount} cerințe de completat</strong><small>Verifică zona, activitatea și resursele necesare.</small></span>
+                <span><strong>{snapshot.issueCount} observații de catalog</strong><small>Clarifică opțiunile necunoscute; specialiștii și resursele nu sunt obligatorii.</small></span>
                 <ChevronRight aria-hidden="true" />
               </button>
             )}

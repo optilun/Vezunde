@@ -28,18 +28,6 @@ const PATIENT_FACING_PROFILE_TYPES = new Set([
   'ophthalmology_office',
 ]);
 
-const ROLE_CANONICAL = {
-  medic_oftalmolog: 'ophthalmologist',
-  ophthalmologist: 'ophthalmologist',
-  optometrist: 'optometrist',
-  optician: 'optician',
-};
-
-const OPHTHALMO_TYPES = new Set(['clinica_oftalmologica', 'cabinet_oftalmologic']);
-const OPTICAL_TYPES = new Set(['optica_medicala', 'laborator_optic', 'cabinet_optometric']);
-const OPHTHALMO_PROFILE_TYPES = new Set(['ophthalmology_clinic', 'ophthalmology_office']);
-const OPTICAL_PROFILE_TYPES = new Set(['independent_optical_store', 'optical_chain']);
-
 const NEED_ORDER = {
   general: 0,
   technical: 1,
@@ -90,7 +78,7 @@ function genericRepairEligibility(row, location) {
 }
 
 function safeServiceRow(row, location, context) {
-  if (!row || row.migration_review_required || row.matching_allowed !== true) return false;
+  if (!row || row.migration_review_required) return false;
   if (!isServiceMatchingEligible(row, location)) return false;
   const genericRepairResult = genericRepairEligibility(row, location);
   if (genericRepairResult !== null) return genericRepairResult;
@@ -110,25 +98,6 @@ function toPublicService(row) {
     key: normalized.canonicalKey,
     label: normalized.definition.label,
   };
-}
-
-function assignmentRoles(assignments) {
-  return new Set((assignments || [])
-    .map((assignment) => ROLE_CANONICAL[assignment?.professional_type] || assignment?.professional_type)
-    .filter(Boolean));
-}
-
-function locationMatchesIntent(location, intent, roles) {
-  if (intent === 'simptome_oftalmologice' || intent === 'investigatii') {
-    return OPHTHALMO_TYPES.has(location?.provider_type)
-      || OPHTHALMO_PROFILE_TYPES.has(location?.provider_profile_type)
-      || roles.has('ophthalmologist');
-  }
-  if (intent === 'reparatii_ochelari') {
-    return OPTICAL_TYPES.has(location?.provider_type)
-      || OPTICAL_PROFILE_TYPES.has(location?.provider_profile_type);
-  }
-  return true;
 }
 
 async function interpretPatientNeed(base44, payload, searchText, deterministicServiceKeys) {
@@ -264,9 +233,6 @@ Deno.serve(async (request) => {
     const needLevel = requestNeedLevel(requestedKeys);
     const intent = clean(payload.intent);
     const providerTypes = new Set(Array.isArray(payload.provider_types) ? payload.provider_types.filter(Boolean) : []);
-    const requiredRoles = new Set((Array.isArray(payload.required_professional_types)
-      ? payload.required_professional_types
-      : []).map((role) => ROLE_CANONICAL[role] || role));
     const localLocations = locations.filter((location) => (
       active(location)
       && location.profile_control_status !== 'suspended'
@@ -288,9 +254,6 @@ Deno.serve(async (request) => {
       configuredMatchingProviderCount += 1;
 
       const locationAssignments = assignmentsByLocation[location.id] || [];
-      const roles = assignmentRoles(locationAssignments);
-      if (!locationMatchesIntent(location, intent, roles)) continue;
-      if (requiredRoles.size > 0 && ![...requiredRoles].some((role) => roles.has(role))) continue;
       const locationProfessionals = locationAssignments
         .map((assignment) => professionalsById[assignment.professional_id])
         .filter(Boolean);

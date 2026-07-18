@@ -99,7 +99,7 @@ export const SERVICE_GROUPS = {
   },
   investigations: {
     label: "Investigații oftalmologice",
-    helper: "Investigații disponibile în locație, în funcție de dotări și personalul autorizat.",
+    helper: "Investigații declarate de furnizor ca fiind disponibile în această locație.",
     ids: {
       oct: "OCT",
       visual_field_analyzer: "Câmp vizual",
@@ -144,7 +144,7 @@ export const SERVICE_GROUPS = {
   },
   procedures_surgery: {
     label: "Proceduri și chirurgie oftalmologică",
-    helper: "Proceduri medicale care necesită verificare înainte de publicare și folosire în recomandări.",
+    helper: "Proceduri și intervenții declarate de furnizor ca fiind disponibile în această locație.",
     ids: {
       cataract_surgery: "Chirurgia cataractei",
       refractive_surgery: "Chirurgie refractivă",
@@ -478,7 +478,7 @@ function buildRegistry() {
       const override = SERVICE_OVERRIDES[key] || {};
       const policy = { ...base, ...override };
       const aliases = aliasesForKey(key);
-      const publicImmediately = policy.patientFacing !== false && !policy.review && policy.need !== "specialized_medical";
+      const publicImmediately = policy.patientFacing !== false && policy.b2bOnly !== true;
       registry[key] = {
         key,
         label,
@@ -487,7 +487,7 @@ function buildRegistry() {
         patient_facing: policy.patientFacing !== false,
         b2b_only: policy.b2bOnly === true,
         service_need_level: policy.need,
-        default_confirmation_level: publicImmediately ? "provider_confirmed" : "vezunde_verified",
+        default_confirmation_level: publicImmediately ? "provider_confirmed" : "not_confirmed",
         requires_review: Boolean(policy.review),
         requires_verified_specialist: Boolean(policy.specialist),
         required_professional_types: [...(policy.professionalTypes || [])],
@@ -571,11 +571,8 @@ export function isServicePubliclyEligible(service, location) {
   if (["removal_pending", "provider_suspended"].includes(service.provider_visibility_status)) return false;
   if (!location || location.active_status === "inactiva" || location.profile_control_status === "suspended") return false;
   const normalized = normalizeServiceKey(service.service_key || service.key);
-  if (!normalized.definition || normalized.definition.patient_facing === false) return false;
+  if (!normalized.definition || normalized.definition.patient_facing === false || normalized.definition.b2b_only === true) return false;
   const level = service.confirmation_level || "not_confirmed";
-  if (normalized.definition.requires_review || normalized.definition.service_need_level === "specialized_medical") {
-    return level === "vezunde_verified" && location.profile_control_status === "verified";
-  }
   return normalized.definition.public_immediately && ["publicly_listed", "provider_confirmed", "vezunde_verified"].includes(level);
 }
 
@@ -583,9 +580,6 @@ export function isServiceMatchingEligible(service, location) {
   if (!isServicePubliclyEligible(service, location)) return false;
   const normalized = normalizeServiceKey(service.service_key || service.key);
   if (!normalized.definition) return false;
-  if (normalized.definition.requires_review || normalized.definition.service_need_level === "specialized_medical") {
-    return (service.confirmation_level || "") === "vezunde_verified" && location?.profile_control_status === "verified";
-  }
   return normalized.definition.matching_allowed_when_provider_confirmed;
 }
 

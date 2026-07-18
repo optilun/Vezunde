@@ -150,7 +150,7 @@ function applyTaxonomyExtensions() {
     title: 'Lentile de noapte și lentile de contact pentru controlul miopiei',
     publicNeedKey: 'myopia_management',
     publicLabel: 'Managementul miopiei',
-    description: 'Ortokeratologie și lentile de contact speciale, adaptate și monitorizate de un specialist compatibil.',
+    description: 'Ortokeratologie și lentile de contact speciale, declarate ca fiind disponibile în această locație.',
     searchTerms: [
       'lentile de noapte',
       'ortokeratologie',

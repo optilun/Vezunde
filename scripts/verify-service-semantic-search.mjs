@@ -154,10 +154,10 @@ assert.ok(!b2bOnly.includes('wholesale_frames'), 'Capabilitățile B2B-only nu t
 assert.equal(
   isServiceMatchingEligible(
     { service_key: 'emergency_ophthalmology', confirmation_level: 'provider_confirmed', matching_allowed: true },
-    { profile_control_status: 'verified' },
+    { active_status: 'activa', profile_control_status: 'claimed' },
   ),
-  false,
-  'Un serviciu medical provider_confirmed nu este eligibil pentru matching',
+  true,
+  'Un serviciu medical declarat de furnizor este eligibil pentru matching fără verificare separată',
 );
 const unknown = resolveServiceSearchQuery('serviciu complet inventat zzzzz');
 assert.equal(unknown.matches.length, 0);
