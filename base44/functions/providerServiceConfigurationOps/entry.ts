@@ -6,6 +6,7 @@ import {
   profileAllowsFunctionalUnit,
 } from '../../../shared/locationOperationalRegistry.js';
 import { validateServiceConfigurationPayload } from '../../../shared/serviceConfigurationPayloadExtended.js';
+import { getServiceOperationalContext } from '../../../shared/serviceOperationalTaxonomyExtended.js';
 
 const ACTIVE_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
@@ -178,7 +179,17 @@ async function resolveAccess(svc, user, payload) {
     }
     const staffMembership = memberships.find((item) => normalizeRole(item.role) === 'location_staff');
     if (staffMembership) {
-      return { valid: false, status: 403, body: { error: 'Serviciile publice pot fi modificate numai de owner sau managerul locației.' } };
+      const loc = await svc.entities.ProviderLocation.get(requestedLocationId).catch(() => null);
+      if (!loc) return { valid: false, status: 404, body: { error: 'Locația nu a fost găsită' } };
+      if (loc.profile_control_status === 'suspended') return { valid: false, status: 403, body: { error: 'Profilul este suspendat' } };
+      return {
+        valid: true,
+        readOnly: true,
+        mode: 'provider_workspace',
+        loc,
+        location_id: requestedLocationId,
+        claim: null,
+      };
     }
   }
 
@@ -220,6 +231,41 @@ function validateProfileCompatibility(loc, cleanPayload) {
     return { error: 'Cadrul de îngrijire nu este compatibil cu profilul locației.', fields: [cleanPayload.care_setting] };
   }
   return null;
+}
+
+function validateSubmissionReadiness(cleanPayload) {
+  const unitKeys = new Set((cleanPayload.functional_units || []).map((item) => clean(item.unit_key)).filter(Boolean));
+  const capabilityRows = cleanPayload.capabilities || [];
+  const selectedKeys = [...new Set(Object.values(cleanPayload.selected_ids || {}).flat().map(clean).filter(Boolean))];
+  const publicServiceKeys = selectedKeys.filter((serviceKey) => getServiceOperationalContext(serviceKey)?.sectionKey !== 'business_attributes');
+  const issues = [];
+
+  if (unitKeys.size === 0) issues.push('Selectează cel puțin o zonă existentă.');
+  if (publicServiceKeys.length === 0) issues.push('Adaugă cel puțin un produs sau serviciu în oferta locației.');
+  if (!clean(cleanPayload.care_setting)) issues.push('Selectează tipul activității locației.');
+
+  for (const serviceKey of publicServiceKeys) {
+    const context = getServiceOperationalContext(serviceKey);
+    if (!context) {
+      issues.push(`Serviciul ${serviceKey} nu are context operațional configurat.`);
+      continue;
+    }
+    const mappedUnit = clean(cleanPayload.service_unit_map?.[serviceKey]);
+    if (!mappedUnit || !unitKeys.has(mappedUnit)) {
+      issues.push(`Serviciul ${serviceKey} trebuie asociat unei zone selectate.`);
+      continue;
+    }
+    if (context.capabilityKey && !capabilityRows.some((item) => (
+      clean(item.capability_key) === context.capabilityKey
+      && clean(item.parent_unit_key) === mappedUnit
+    ))) {
+      issues.push(`Serviciul ${serviceKey} necesită activitatea asociată ${context.capabilityKey}.`);
+    }
+  }
+
+  return issues.length > 0
+    ? { error: 'Configurația nu este pregătită pentru trimitere.', fields: issues }
+    : null;
 }
 
 async function assertReferences(svc, locationId, payload) {
@@ -312,8 +358,14 @@ Deno.serve(async (req) => {
 
     const access = await resolveAccess(svc, user, payload);
     if (!access.valid) return Response.json(access.body, { status: access.status });
+    if (access.readOnly && action !== 'list_mine') {
+      return Response.json({ error: 'Serviciile publice pot fi modificate numai de owner sau managerul locației.' }, { status: 403 });
+    }
 
     if (action === 'list_mine') {
+      if (access.readOnly) {
+        return Response.json({ mode: access.mode, read_only: true, submissions: [], conflicts: [] });
+      }
       if (access.mode === 'applicant_preparation') {
         const rows = await svc.entities.ProviderWorkspaceSubmission.filter({
           location_id: access.location_id,
@@ -414,6 +466,17 @@ Deno.serve(async (req) => {
     if (action === 'submit') {
       if (access.mode !== 'provider_workspace') return Response.json({ error: 'Draftul de revendicare nu poate fi trimis înainte de aprobarea revendicării' }, { status: 403 });
       if (!['draft', 'needs_more_info'].includes(submission.status)) return Response.json({ error: 'Draftul nu poate fi trimis' }, { status: 400 });
+      const storedPayload = parsePayload(submission.payload_json);
+      const validation = validateServiceConfigurationPayload(storedPayload, {
+        allowSuggestions: true,
+        allowRawRemovals: true,
+        allowOperationalContext: true,
+      });
+      if (!validation.valid) return Response.json({ error: validation.error, fields: validation.fields || [] }, { status: 400 });
+      const profileError = validateProfileCompatibility(access.loc, validation.clean);
+      if (profileError) return Response.json(profileError, { status: 400 });
+      const readinessError = validateSubmissionReadiness(validation.clean);
+      if (readinessError) return Response.json(readinessError, { status: 400 });
       const now = new Date().toISOString();
       await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'pending_review', submitted_at: now });
       await syncRemovalVisibility(svc, user, submission, parsePayload(submission.payload_json));

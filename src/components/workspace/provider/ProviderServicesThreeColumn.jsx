@@ -18,12 +18,21 @@ import ProviderServicesWorkspaceRuntime from "./ProviderServicesWorkspaceRuntime
 const INITIAL_SNAPSHOT = {
   units: [],
   selectedCount: 0,
+  globalOptionCount: 0,
+  suggestionCount: 0,
   unitCount: 0,
   capabilityCount: 0,
   issueCount: 0,
+  issueServiceKeys: [],
+  blockers: [],
   selectedServices: [],
   careSetting: "",
   status: "",
+  dirty: false,
+  readyToSubmit: false,
+  configurationComplete: false,
+  adminNote: "",
+  conflictMessage: "",
   actionStatus: "",
   actionMessage: "",
   canSave: false,
@@ -36,11 +45,6 @@ const INITIAL_SNAPSHOT = {
 
 function cleanText(element) {
   return String(element?.textContent || "").trim().replace(/\s+/g, " ");
-}
-
-function firstNumber(element) {
-  const match = cleanText(element).match(/\d+/);
-  return match ? Number(match[0]) : 0;
 }
 
 function setNativeInputValue(input, value) {
@@ -57,13 +61,6 @@ function findMainGrid(root) {
     && element.classList.contains("grid")
     && String(element.className).includes("xl:grid-cols")
   )) || null;
-}
-
-function selectedNames(section) {
-  if (!section) return [];
-  return [...section.querySelectorAll('button[aria-pressed="true"]')]
-    .map((button) => cleanText(button.querySelector("span:nth-child(2) > span:first-child")) || cleanText(button))
-    .filter(Boolean);
 }
 
 function NavButton({ active, icon: Icon, label, count, status, onClick }) {
@@ -97,6 +94,10 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   const [activeUnitIndex, setActiveUnitIndex] = useState(0);
   const [query, setQuery] = useState("");
   const [snapshot, setSnapshot] = useState(INITIAL_SNAPSHOT);
+
+  const updateWorkspaceSnapshot = useCallback((nextSnapshot) => {
+    setSnapshot((current) => ({ ...current, ...nextSnapshot }));
+  }, []);
 
   const filter = ["selected", "issues"].includes(view) ? view : "all";
 
@@ -164,80 +165,30 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
     });
 
     const rows = [...operationalRoot.querySelectorAll("button.grid")];
-    const selectedServiceNames = new Set();
-    let issueCount = 0;
+    const issueKeys = new Set(snapshot.issueServiceKeys || []);
     rows.forEach((row) => {
       const selected = row.getAttribute("aria-pressed") === "true";
-      const rowText = cleanText(row);
-      const issue = /Configurare incompletă|Cerințe lipsă|Necesită verificare|Spațiu neconfigurat/i.test(rowText);
+      const issue = issueKeys.has(row.dataset.serviceKey || "");
       row.dataset.serviceSelected = selected ? "true" : "false";
       row.dataset.serviceIssue = issue ? "true" : "false";
       const visible = filter === "all" || (filter === "selected" && selected) || (filter === "issues" && selected && issue);
       row.dataset.serviceFilterVisible = visible ? "true" : "false";
-      if (selected) {
-        const label = cleanText(row.querySelector("span:nth-child(2) > span:first-child"));
-        if (label) selectedServiceNames.add(label);
-        if (issue) issueCount += 1;
-      }
     });
 
-    const units = [];
     if (unitList) {
       [...unitList.children].forEach((unitSection, index) => {
         if (!(unitSection instanceof HTMLElement) || unitSection.tagName !== "SECTION") return;
-        const header = unitSection.querySelector(":scope > button:first-child");
-        const title = cleanText(header?.querySelector("span:nth-child(2) > span:first-child")) || `Spațiul ${index + 1}`;
-        const countText = cleanText(header?.querySelector("span:nth-child(2) > span:last-child"));
-        const countMatch = countText.match(/(\d+)\s+selectate\s+din\s+(\d+)/i);
-        const selected = countMatch ? Number(countMatch[1]) : 0;
-        const total = countMatch ? Number(countMatch[2]) : 0;
         const visible = view === "all" || view === "selected" || view === "issues" || (view === "unit" && index === activeUnitIndex);
         unitSection.dataset.servicesUnitIndex = String(index);
         unitSection.dataset.servicesUnitVisible = visible ? "true" : "false";
-        units.push({ index, title, selected, total });
       });
     }
-
-    const counters = nativeSidebar ? [...nativeSidebar.querySelectorAll('[class*="grid-cols-3"] > div')] : [];
-    const selectedCount = firstNumber(counters.find((item) => /Opțiuni/i.test(cleanText(item))));
-    const unitCount = firstNumber(counters.find((item) => /Spații/i.test(cleanText(item))));
-    const capabilityCount = firstNumber(counters.find((item) => /Activități/i.test(cleanText(item))));
-    const careSetting = cleanText(numberedSections.get(3)?.querySelector('button[aria-pressed="true"]'));
-    const status = cleanText(intro?.querySelector("span.rounded-full"));
 
     const actions = [...operationalRoot.children].find((element) => (
       element.classList?.contains("sticky") && element.classList?.contains("bottom-0")
     ));
     if (actions) actions.dataset.servicesRole = "native-actions";
-    const actionButtons = actions ? [...actions.querySelectorAll("button")] : [];
-    const saveButton = actionButtons.find((button) => /Salvează draftul|Salveaza draftul/i.test(cleanText(button)));
-    const submitButton = actionButtons.find((button) => /Trimite spre verificare/i.test(cleanText(button)));
-    const withdrawButton = actionButtons.find((button) => /Retrage cererea/i.test(cleanText(button)));
-    const actionStatus = cleanText(actions?.querySelector(":scope > div > div:first-child"));
-    const actionMessage = cleanText(actions?.querySelector(":scope > p"));
-
-    setSnapshot((current) => {
-      const next = {
-        units: units.length > 0 ? units : current.units,
-        selectedCount,
-        unitCount,
-        capabilityCount,
-        issueCount,
-        selectedServices: selectedServiceNames.size > 0 ? [...selectedServiceNames] : current.selectedServices,
-        careSetting: careSetting || current.careSetting,
-        status,
-        actionStatus,
-        actionMessage,
-        canSave: Boolean(saveButton && !saveButton.disabled),
-        canSubmit: Boolean(submitButton && !submitButton.disabled),
-        canWithdraw: Boolean(withdrawButton && !withdrawButton.disabled),
-        hasSave: Boolean(saveButton),
-        hasSubmit: Boolean(submitButton),
-        hasWithdraw: Boolean(withdrawButton),
-      };
-      return JSON.stringify(current) === JSON.stringify(next) ? current : next;
-    });
-  }, [activeUnitIndex, filter, query, view]);
+  }, [activeUnitIndex, filter, query, snapshot.issueServiceKeys, view]);
 
   useEffect(() => {
     const root = contentRef.current;
@@ -292,25 +243,25 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   const centerTitle = query
     ? `Rezultate pentru „${query}”`
     : view === "configuration"
-      ? "Spații și funcționare"
+      ? "Zone și tip de activitate"
       : view === "options"
-        ? "Opțiuni pentru locație"
+        ? "La nivelul locației"
         : view === "selected"
-          ? "Servicii selectate"
+          ? "Oferta selectată"
           : view === "issues"
-            ? "De completat"
+            ? "Cerințe de completat"
             : view === "unit"
-              ? activeUnit?.title || "Serviciile spațiului"
-              : "Toate serviciile";
+              ? activeUnit?.title || "Oferta zonei"
+              : "Oferta completă";
 
   const centerDescription = view === "configuration"
-    ? "Alege spațiile existente, activitățile speciale și modul de funcționare."
+    ? "Alege zonele existente, activitățile asociate și tipul activității."
     : view === "options"
       ? "Configurează opțiunile valabile pentru întreaga locație, inclusiv decontarea CAS și serviciile oferite în afara locației."
       : view === "issues"
-        ? "Sunt afișate serviciile selectate care mai au cerințe de completat."
+        ? "Sunt afișate elementele selectate care mai au cerințe de completat."
         : view === "selected"
-          ? "Sunt afișate numai serviciile adăugate în configurația curentă."
+          ? "Sunt afișate numai elementele adăugate în oferta curentă."
           : "Selectează serviciile oferite și completează doar cerințele relevante.";
 
   const locationName = location?.public_display_name
@@ -331,28 +282,28 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
         <aside className="provider-services-three__left" aria-label="Organizarea serviciilor">
           <div className="provider-services-three__left-sticky">
             <div className="provider-services-three__left-heading">
-              <PanelLabel index="01" label="Selecție" />
-              <strong>Alege zona de lucru</strong>
-              <small>Selectează ce vrei să configurezi. Detaliile apar în panoul central.</small>
+              <PanelLabel index="01" label="Navigare" />
+              <strong>Alege ce configurezi</strong>
+              <small>Fiecare opțiune deschide partea corespunzătoare a configurației.</small>
             </div>
 
             <div className="provider-services-three__nav-groups">
               <nav className="provider-services-three__nav-group" aria-label="Configurarea locației">
-                <p>Configurare</p>
-                <NavButton active={view === "configuration" && !query} icon={Settings2} label="Spații și funcționare" status={snapshot.unitCount > 0 ? `${snapshot.unitCount} spații` : "Necesar"} onClick={() => chooseView("configuration")} />
-                <NavButton active={view === "options" && !query} icon={SlidersHorizontal} label="Opțiuni pentru locație" onClick={() => chooseView("options")} />
+                <p>Structura locației</p>
+                <NavButton active={view === "configuration" && !query} icon={Settings2} label="Zone și tip de activitate" status={snapshot.unitCount > 0 ? `${snapshot.unitCount} zone` : "Necesar"} onClick={() => chooseView("configuration")} />
+                <NavButton active={view === "options" && !query} icon={SlidersHorizontal} label="La nivelul locației" onClick={() => chooseView("options")} />
               </nav>
 
               <nav className="provider-services-three__nav-group" aria-label="Filtrarea serviciilor">
-                <p>Servicii</p>
-                <NavButton active={view === "all" && !query} icon={ListFilter} label="Toate serviciile" count={snapshot.units.reduce((sum, unit) => sum + unit.total, 0)} onClick={() => chooseView("all")} />
-                <NavButton active={view === "selected" && !query} icon={CheckCircle2} label="Servicii selectate" count={snapshot.selectedCount} onClick={() => chooseView("selected")} />
-                <NavButton active={view === "issues" && !query} icon={AlertTriangle} label="De completat" count={snapshot.issueCount} onClick={() => chooseView("issues")} />
+                <p>Oferta locației</p>
+                <NavButton active={view === "all" && !query} icon={ListFilter} label="Oferta completă" count={snapshot.units.reduce((sum, unit) => sum + unit.total, 0)} onClick={() => chooseView("all")} />
+                <NavButton active={view === "selected" && !query} icon={CheckCircle2} label="Oferta selectată" count={snapshot.selectedCount} onClick={() => chooseView("selected")} />
+                <NavButton active={view === "issues" && !query} icon={AlertTriangle} label="Cerințe de completat" count={snapshot.issueCount} onClick={() => chooseView("issues")} />
               </nav>
 
               {snapshot.units.length > 0 && (
                 <nav className="provider-services-three__nav-group provider-services-three__units" aria-label="Servicii după spațiu">
-                  <p>După spațiu</p>
+                  <p>Oferta pe zone</p>
                   {snapshot.units.map((unit) => (
                     <NavButton
                       key={`${unit.title}-${unit.index}`}
@@ -396,7 +347,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
           </header>
 
           <div ref={contentRef} className="provider-services-three__native">
-            <ProviderServicesWorkspaceRuntime location={location} {...props} />
+            <ProviderServicesWorkspaceRuntime location={location} {...props} onWorkspaceSnapshot={updateWorkspaceSnapshot} />
           </div>
         </section>
 
@@ -404,8 +355,8 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
           <div className="provider-services-three__preview-card">
             <div className="provider-services-three__preview-heading">
               <div>
-                <PanelLabel index="03" label="Previzualizare" />
-                <strong>Rezumat servicii</strong>
+                <PanelLabel index="03" label="Rezumat" />
+                <strong>Rezumat configurație</strong>
               </div>
             </div>
 
@@ -416,28 +367,29 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
             </div>
 
             <section className="provider-services-three__preview-section">
-              <h3>Spații și activități</h3>
+              <h3>Structura locației</h3>
               {snapshot.units.length > 0 ? (
                 <ul>
                   {snapshot.units.slice(0, 4).map((unit) => <li key={unit.index}><Building2 aria-hidden="true" /> {unit.title}</li>)}
-                  {snapshot.units.length > 4 && <li className="is-more">+ {snapshot.units.length - 4} alte spații</li>}
+                  {snapshot.units.length > 4 && <li className="is-more">+ {snapshot.units.length - 4} alte zone</li>}
                 </ul>
-              ) : <p>Configurează cel puțin un spațiu pentru locație.</p>}
-              {snapshot.careSetting && <div className="provider-services-three__care"><span>Mod de funcționare</span><strong>{snapshot.careSetting}</strong></div>}
+              ) : <p>Configurează cel puțin o zonă pentru locație.</p>}
+              {snapshot.careSetting && <div className="provider-services-three__care"><span>Tipul activității</span><strong>{snapshot.careSetting}</strong></div>}
             </section>
 
             <section className="provider-services-three__preview-section">
-              <h3>Rezumat servicii</h3>
+              <h3>Oferta și cerințele</h3>
               <dl>
-                <div><dt>Selectate</dt><dd>{snapshot.selectedCount}</dd></div>
-                <div><dt>Spații</dt><dd>{snapshot.unitCount}</dd></div>
-                <div><dt>Activități</dt><dd>{snapshot.capabilityCount}</dd></div>
+                <div><dt>În ofertă</dt><dd>{snapshot.selectedCount}</dd></div>
+                <div><dt>Zone</dt><dd>{snapshot.unitCount}</dd></div>
+                <div><dt>Activități asociate</dt><dd>{snapshot.capabilityCount}</dd></div>
+                {snapshot.globalOptionCount > 0 && <div><dt>La nivelul locației</dt><dd>{snapshot.globalOptionCount}</dd></div>}
                 {snapshot.issueCount > 0 && <div className="has-issues"><dt>Necesită completare</dt><dd>{snapshot.issueCount}</dd></div>}
               </dl>
-              {snapshot.unitCount > 0 && snapshot.issueCount === 0 && (
+              {snapshot.configurationComplete && !snapshot.dirty && (
                 <div className="provider-services-three__complete-state">
                   <CheckCircle2 aria-hidden="true" />
-                  <span>Configurație completă</span>
+                  <span>Pregătită pentru trimitere</span>
                 </div>
               )}
             </section>
@@ -445,23 +397,30 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
             {snapshot.issueCount > 0 && (
               <button type="button" className="provider-services-three__requirements" onClick={() => chooseView("issues")}>
                 <AlertTriangle aria-hidden="true" />
-                <span><strong>{snapshot.issueCount} cerințe de completat</strong><small>Verifică specialiștii, echipamentele și facilitățile necesare.</small></span>
+                <span><strong>{snapshot.issueCount} cerințe de completat</strong><small>Verifică zona, activitatea și resursele necesare.</small></span>
                 <ChevronRight aria-hidden="true" />
               </button>
             )}
 
             <section className="provider-services-three__preview-section">
               <div className="provider-services-three__preview-section-heading">
-                <h3>Servicii selectate</h3>
+                <h3>Oferta selectată</h3>
                 {snapshot.selectedCount > selectedPreview.length && <button type="button" onClick={() => chooseView("selected")}>Vezi toate</button>}
               </div>
               {selectedPreview.length > 0 ? (
                 <ul className="provider-services-three__selected-list">
                   {selectedPreview.map((service) => <li key={service}><CheckCircle2 aria-hidden="true" /> {service}</li>)}
-                  {snapshot.selectedCount > selectedPreview.length && <li className="is-more">+ {snapshot.selectedCount - selectedPreview.length} alte servicii</li>}
+                  {snapshot.selectedCount > selectedPreview.length && <li className="is-more">+ {snapshot.selectedCount - selectedPreview.length} alte opțiuni</li>}
                 </ul>
-              ) : <p>Nu există servicii selectate încă.</p>}
+              ) : <p>Oferta publică nu conține încă servicii sau produse.</p>}
             </section>
+
+            {snapshot.adminNote && (
+              <section className="provider-services-three__preview-section">
+                <h3>Completări solicitate</h3>
+                <p>{snapshot.adminNote}</p>
+              </section>
+            )}
           </div>
         </aside>
       </div>
@@ -479,8 +438,8 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
               </button>
             )}
             {snapshot.hasSubmit && (
-              <button type="button" className="is-primary" disabled={!snapshot.canSubmit} onClick={() => clickNativeAction(/Trimite spre verificare/i)}>
-                <Send aria-hidden="true" /> Trimite spre verificare
+              <button type="button" className="is-primary" disabled={!snapshot.canSubmit} onClick={() => clickNativeAction(/Trimite modificările spre aprobare/i)}>
+                <Send aria-hidden="true" /> Trimite spre aprobare
               </button>
             )}
             {snapshot.hasWithdraw && (

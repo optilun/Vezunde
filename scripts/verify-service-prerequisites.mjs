@@ -284,9 +284,14 @@ assert.match(providerUiSource, /providerServiceConfigurationOps/, 'Provider UI t
 assert.match(providerUiSource, /getProviderServiceConfiguration/, 'Provider UI trebuie să consume read modelul complet');
 assert.match(providerUiSource, /CapabilitySelection/, 'Provider UI trebuie să separe capabilitățile de spații');
 assert.match(providerUiSource, /UnitResources/, 'Provider UI trebuie să lege resursele de unitate');
+assert.match(providerUiSource, /evaluateServicePrerequisites/, 'Readiness-ul draftului trebuie calculat din motorul comun de cerințe');
+assert.match(providerUiSource, /onWorkspaceSnapshot/, 'Panoul de rezumat trebuie să primească stare structurată');
+assert.match(providerUiSource, /dirty \|\| !readiness\.configurationComplete/, 'Trimiterea trebuie blocată pentru modificări nesalvate sau configurații incomplete');
 
 const providerOpsSource = await source('base44/functions/providerServiceConfigurationOps/entry.ts');
 assert.match(providerOpsSource, /organization_owner.*location_manager/, 'Doar ownerul și managerul pot edita serviciile publice');
+assert.match(providerOpsSource, /validateSubmissionReadiness/, 'Backendul trebuie să revalideze configurația înainte de trimitere');
+assert.match(providerOpsSource, /access\.readOnly.*action !== 'list_mine'/, 'Membrii locației trebuie să aibă acces read-only fără drept de modificare');
 const adminSource = await source('base44/functions/adminServiceConfigurationReview/entry.ts');
 for (const entity of ['LocationFunctionalUnit', 'LocationCapability', 'ServiceCatalogSuggestion']) {
   assert.match(adminSource, new RegExp(entity), `Admin review trebuie să persiste ${entity}`);
