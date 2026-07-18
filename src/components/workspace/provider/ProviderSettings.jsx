@@ -1,5 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Archive, ChevronDown, ExternalLink, EyeOff, Mail, ShieldCheck, TriangleAlert, X } from "lucide-react";
+import {
+  Archive,
+  CheckCircle2,
+  ChevronDown,
+  ExternalLink,
+  EyeOff,
+  Loader2,
+  RotateCcw,
+  ShieldCheck,
+  TriangleAlert,
+  X,
+} from "lucide-react";
+import { base44 } from "@/api/base44Client";
 import { readAccountPreferences, saveAccountPreferences } from "@/lib/accountPreferences";
 import { PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 
@@ -11,7 +23,7 @@ function locationOptionLabel(location) {
   return [locationLabel(location), location?.locality_name || location?.city].filter(Boolean).join(" · ");
 }
 
-function SettingsSection({ title, description, danger = false, children }) {
+function SettingsSection({ title, description = "", danger = false, children = null }) {
   return (
     <section className={`overflow-hidden rounded-[20px] border bg-card shadow-[0_14px_40px_rgba(23,23,23,0.035)] ${danger ? "border-red-200" : "border-foreground/10"}`}>
       <div className={`border-b px-5 py-5 ${danger ? "border-red-100 bg-red-50/40" : "border-border bg-[#f8f4ec]/45"}`}>
@@ -23,7 +35,7 @@ function SettingsSection({ title, description, danger = false, children }) {
   );
 }
 
-function SettingsRow({ title, description, action, children }) {
+function SettingsRow({ title, description = "", action = null, children = null }) {
   return (
     <div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
@@ -36,12 +48,13 @@ function SettingsRow({ title, description, action, children }) {
   );
 }
 
-function CompactButton({ children, onClick, danger = false }) {
+function CompactButton({ children, onClick, danger = false, disabled = false }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex h-10 items-center justify-center gap-2 rounded-full border bg-background px-4 text-sm font-semibold transition ${danger ? "border-red-300 text-red-700 hover:bg-red-50" : "border-border text-foreground hover:bg-secondary"}`}
+      disabled={disabled}
+      className={`inline-flex h-10 items-center justify-center gap-2 rounded-full border bg-background px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${danger ? "border-red-300 text-red-700 hover:bg-red-50" : "border-border text-foreground hover:bg-secondary"}`}
     >
       {children}
     </button>
@@ -56,48 +69,66 @@ function organizationStatus(organization) {
 
 function organizationVisibility(organization) {
   const visibility = String(organization?.public_visibility_status || "").toLowerCase();
-  if (["public", "published", "publicata", "visible"].includes(visibility)) return { label: "Profil public", className: "bg-green-100 text-green-800" };
+  if (["public", "published", "publicata", "visible", "approved"].includes(visibility)) return { label: "Profil public", className: "bg-green-100 text-green-800" };
   if (["pending_review", "in_review", "in_verificare"].includes(visibility)) return { label: "În verificare", className: "bg-amber-100 text-amber-800" };
-  if (["hidden", "private", "unpublished", "ascunsa"].includes(visibility)) return { label: "Profil ascuns", className: "bg-secondary text-muted-foreground" };
+  if (["hidden", "private", "unpublished", "ascunsa", "archived"].includes(visibility)) return { label: "Profil ascuns", className: "bg-secondary text-muted-foreground" };
   return { label: "Profil în pregătire", className: "bg-secondary text-muted-foreground" };
 }
 
 function locationVisibility(location) {
+  if (location?.active_status === "inactiva") return { label: "Închisă", className: "bg-red-100 text-red-800" };
+  if (location?.public_visibility_status === "archived") return { label: "Ascunsă", className: "bg-secondary text-muted-foreground" };
   if (location?.profile_control_status === "suspended" || location?.status === "suspendata") return { label: "Suspendată", className: "bg-red-100 text-red-800" };
-  if (location?.active_status === "inactiva") return { label: "Inactivă", className: "bg-secondary text-muted-foreground" };
   const visibility = String(location?.public_visibility_status || "").toLowerCase();
-  if (["public", "published", "publicata", "visible"].includes(visibility) || location?.status === "publicata") return { label: "Publică", className: "bg-green-100 text-green-800" };
-  if (["hidden", "private", "unpublished", "ascunsa"].includes(visibility)) return { label: "Ascunsă", className: "bg-secondary text-muted-foreground" };
+  if (["public", "published", "publicata", "visible", "approved"].includes(visibility) || location?.status === "publicata") return { label: "Publică", className: "bg-green-100 text-green-800" };
   if (["pending_review", "in_review", "in_verificare"].includes(visibility)) return { label: "În verificare", className: "bg-amber-100 text-amber-800" };
   return { label: "Draft", className: "bg-secondary text-muted-foreground" };
 }
 
-function ConfirmationModal({ action, location, isLastActiveLocation, onClose, onConfirm }) {
+const LIFECYCLE_ACTION_LABELS = {
+  hide: "ascundere temporară",
+  republish: "republicare",
+  close: "închidere",
+};
+
+const LIFECYCLE_STATUS_LABELS = {
+  pending_review: "În verificare",
+  needs_more_info: "Necesită completări",
+  approved: "Aprobată",
+  rejected: "Respinsă",
+  withdrawn: "Retrasă",
+};
+
+function ConfirmationModal({ action, location, isLastActiveLocation, submitting, error, onClose, onConfirm }) {
   const [acknowledged, setAcknowledged] = useState(false);
   const [confirmationText, setConfirmationText] = useState("");
   const isClose = action === "close";
+  const isRepublish = action === "republish";
   const expectedText = locationLabel(location);
   const canConfirm = isClose ? confirmationText.trim() === expectedText : acknowledged;
 
   useEffect(() => {
     const onKeyDown = (event) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape" && !submitting) onClose();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  }, [onClose, submitting]);
+
+  const title = isClose ? "Solicită închiderea locației" : isRepublish ? "Solicită republicarea locației" : "Ascunde temporar locația";
+  const confirmationCopy = isRepublish
+    ? `Confirm că doresc republicarea locației ${expectedText}.`
+    : `Confirm că doresc să ascund temporar locația ${expectedText}.`;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-4" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-4" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && !submitting && onClose()}>
       <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-card shadow-xl" role="dialog" aria-modal="true" aria-labelledby="provider-settings-confirm-title">
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div>
-            <h2 id="provider-settings-confirm-title" className="text-base font-semibold">
-              {isClose ? "Solicită închiderea locației" : "Ascunde temporar locația"}
-            </h2>
+            <h2 id="provider-settings-confirm-title" className="text-base font-semibold">{title}</h2>
             <p className="mt-1.5 text-sm text-muted-foreground">Acțiunea se aplică locației {expectedText}.</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground" aria-label="Închide">
+          <button type="button" disabled={submitting} onClick={onClose} className="rounded-lg p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-40" aria-label="Închide">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -122,32 +153,37 @@ function ConfirmationModal({ action, location, isLastActiveLocation, onClose, on
                   onChange={(event) => setConfirmationText(event.target.value)}
                   placeholder={expectedText}
                   autoComplete="off"
-                  className="mt-2 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition focus:border-foreground/40"
+                  disabled={submitting}
+                  className="mt-2 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition focus:border-foreground/40 disabled:opacity-50"
                 />
               </div>
             </>
           ) : (
             <>
               <div className="rounded-xl bg-secondary/45 p-4 text-sm leading-relaxed text-muted-foreground">
-                Locația nu va mai fi vizibilă public, dar rămâne în workspace și poate fi republicată ulterior. Datele nu sunt șterse.
+                {isRepublish
+                  ? "Locația va reveni în căutare și pe profilul public numai după aprobarea administratorului."
+                  : "Locația nu va mai fi vizibilă public, dar rămâne în workspace și poate fi republicată ulterior. Datele nu sunt șterse."}
               </div>
               <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-4">
-                <input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-border" />
-                <span className="text-sm leading-relaxed text-foreground">Confirm că doresc să ascund temporar locația {expectedText}.</span>
+                <input type="checkbox" checked={acknowledged} disabled={submitting} onChange={(event) => setAcknowledged(event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-border" />
+                <span className="text-sm leading-relaxed text-foreground">{confirmationCopy}</span>
               </label>
             </>
           )}
+          {error && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
         </div>
 
         <div className="flex justify-end gap-2 border-t border-border bg-secondary/20 px-5 py-4">
-          <CompactButton onClick={onClose}>Renunță</CompactButton>
+          <CompactButton disabled={submitting} onClick={onClose}>Renunță</CompactButton>
           <button
             type="button"
             onClick={onConfirm}
-            disabled={!canConfirm}
+            disabled={!canConfirm || submitting}
             className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-red-700 px-4 text-xs font-semibold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <Mail className="h-3.5 w-3.5" /> Continuă cu solicitarea
+            {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+            Trimite solicitarea
           </button>
         </div>
       </div>
@@ -158,6 +194,10 @@ function ConfirmationModal({ action, location, isLastActiveLocation, onClose, on
 export default function ProviderSettings({ user, workspace, overview, selectedLocationId, onSelectLocation, onSwitchMode, onNavigate }) {
   const [preferences, setPreferences] = useState(() => readAccountPreferences(user?.id));
   const [pendingAction, setPendingAction] = useState(null);
+  const [lifecycleSubmission, setLifecycleSubmission] = useState(null);
+  const [lifecycleLoading, setLifecycleLoading] = useState(false);
+  const [lifecycleMessage, setLifecycleMessage] = useState("");
+  const [lifecycleError, setLifecycleError] = useState("");
   const locations = workspace?.locations || [];
   const roleByLocation = workspace?.member_summary?.current_user_role_by_location || {};
   const ownerLocations = useMemo(() => {
@@ -177,6 +217,30 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
   const orgStatus = organizationStatus(organization);
   const orgVisibility = organizationVisibility(organization);
   const controlLabel = PROFILE_CONTROL_LABELS[selectedLocation?.profile_control_status] || selectedLocation?.profile_control_status || "În director";
+  const locationHidden = selectedLocation?.public_visibility_status === "archived" && selectedLocation?.active_status !== "inactiva";
+  const locationClosed = selectedLocation?.active_status === "inactiva";
+  const lifecycleActive = ["pending_review", "needs_more_info"].includes(lifecycleSubmission?.status);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!selectedLocation?.id) {
+      setLifecycleSubmission(null);
+      return undefined;
+    }
+    setLifecycleLoading(true);
+    setLifecycleError("");
+    base44.functions.invoke("providerLocationLifecycleOps", { action: "get", location_id: selectedLocation.id })
+      .then((response) => {
+        if (!mounted) return;
+        if (response.data?.error) setLifecycleError(response.data.error);
+        else setLifecycleSubmission(response.data?.submission || null);
+      })
+      .catch((error) => {
+        if (mounted) setLifecycleError(error.response?.data?.error || error.message || "Nu am putut încărca solicitările locației.");
+      })
+      .finally(() => mounted && setLifecycleLoading(false));
+    return () => { mounted = false; };
+  }, [selectedLocation?.id]);
 
   const fixedLocationId = locations.some((location) => location.id === preferences.fixedProviderLocationId)
     ? preferences.fixedProviderLocationId
@@ -199,29 +263,42 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
     }));
   };
 
-  const requestHref = (action) => {
-    const isClose = action === "close";
-    const subject = encodeURIComponent(`${isClose ? "Solicitare închidere locație" : "Solicitare ascundere locație"} VIASEE - ${locationLabel(selectedLocation)}`);
-    const body = encodeURIComponent([
-      "Bună ziua,",
-      "",
-      `${isClose ? "Solicit închiderea" : "Solicit ascunderea temporară"} locației "${locationLabel(selectedLocation)}" în VIASEE.`,
-      `ID locație: ${selectedLocation?.id || "-"}`,
-      `Organizație: ${organizationName}`,
-      `Cont solicitant: ${user?.email || "-"}`,
-      "",
-      isClose
-        ? "Înțeleg că locația va fi retrasă din director și arhivată după verificare, fără ștergerea contului personal VIASEE."
-        : "Doresc ca locația să rămână în workspace, dar să nu mai fie vizibilă public până la republicare.",
-    ].join("\n"));
-    return `mailto:contact@viasee.ro?subject=${subject}&body=${body}`;
+  const confirmLifecycleRequest = async () => {
+    if (!pendingAction || !selectedLocation?.id) return;
+    setLifecycleLoading(true);
+    setLifecycleError("");
+    setLifecycleMessage("");
+    const response = await base44.functions.invoke("providerLocationLifecycleOps", {
+      action: "submit",
+      location_id: selectedLocation.id,
+      request_action: pendingAction,
+    }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    setLifecycleLoading(false);
+    if (response.data?.error) {
+      setLifecycleError(response.data.error);
+      return;
+    }
+    setLifecycleSubmission(response.data?.submission || lifecycleSubmission);
+    setLifecycleMessage(response.data?.message || "Solicitarea a fost trimisă spre verificare.");
+    setPendingAction(null);
   };
 
-  const confirmLifecycleRequest = () => {
-    if (!pendingAction || typeof window === "undefined") return;
-    const href = requestHref(pendingAction);
-    setPendingAction(null);
-    window.location.assign(href);
+  const withdrawLifecycleRequest = async () => {
+    if (!selectedLocation?.id || !lifecycleSubmission?.id) return;
+    setLifecycleLoading(true);
+    setLifecycleError("");
+    const response = await base44.functions.invoke("providerLocationLifecycleOps", {
+      action: "withdraw",
+      location_id: selectedLocation.id,
+      submission_id: lifecycleSubmission.id,
+    }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
+    setLifecycleLoading(false);
+    if (response.data?.error) {
+      setLifecycleError(response.data.error);
+      return;
+    }
+    setLifecycleSubmission({ ...lifecycleSubmission, status: "withdrawn" });
+    setLifecycleMessage("Solicitarea a fost retrasă.");
   };
 
   if (!selectedLocation || overview?.current_user_role !== "organization_owner") return null;
@@ -356,26 +433,59 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
       </SettingsSection>
 
       <SettingsSection title="Zona de pericol" description={`Acțiunile se aplică locației ${locationLabel(selectedLocation)}, nu contului personal VIASEE.`} danger>
-        <SettingsRow
-          title="Ascunde temporar locația"
-          description="Locația dispare din căutare și din profilul public, dar rămâne în workspace și poate fi republicată."
-          action={<CompactButton danger onClick={() => setPendingAction("hide")}><EyeOff className="h-3.5 w-3.5" /> Ascunde locația</CompactButton>}
-        />
-        <SettingsRow
-          title="Închide locația în VIASEE"
-          description="Locația este retrasă din director și arhivată după verificare. Istoricul este păstrat."
-          action={<CompactButton danger onClick={() => setPendingAction("close")}><Archive className="h-3.5 w-3.5" /> Solicită închiderea</CompactButton>}
-        >
-          {isLastActiveLocation && (
-            <p className="mt-2 flex max-w-2xl items-start gap-2 text-xs leading-relaxed text-amber-800">
-              <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Aceasta este ultima locație activă a organizației.
-            </p>
-          )}
-        </SettingsRow>
+        {(lifecycleLoading || lifecycleActive || lifecycleMessage || lifecycleError) && (
+          <div className="px-5 py-4">
+            {lifecycleLoading && <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Se actualizează starea solicitării...</p>}
+            {!lifecycleLoading && lifecycleActive && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                <div className="font-semibold">Solicitare de {LIFECYCLE_ACTION_LABELS[lifecycleSubmission.action] || "schimbare"}: {LIFECYCLE_STATUS_LABELS[lifecycleSubmission.status] || lifecycleSubmission.status}</div>
+                {lifecycleSubmission.admin_note && <p className="mt-2 text-xs leading-relaxed">Mesaj administrator: {lifecycleSubmission.admin_note}</p>}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {lifecycleSubmission.status === "needs_more_info" && (
+                    <CompactButton disabled={lifecycleLoading} onClick={() => setPendingAction(lifecycleSubmission.action)}>Retrimite solicitarea</CompactButton>
+                  )}
+                  <CompactButton disabled={lifecycleLoading} onClick={withdrawLifecycleRequest}>Retrage solicitarea</CompactButton>
+                </div>
+              </div>
+            )}
+            {!lifecycleLoading && lifecycleMessage && <p className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">{lifecycleMessage}</p>}
+            {!lifecycleLoading && lifecycleError && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{lifecycleError}</p>}
+          </div>
+        )}
+
+        {!locationHidden && !locationClosed && (
+          <SettingsRow
+            title="Ascunde temporar locația"
+            description="Locația dispare din căutare și din profilul public, dar rămâne în workspace și poate fi republicată."
+            action={<CompactButton danger disabled={lifecycleActive || lifecycleLoading} onClick={() => setPendingAction("hide")}><EyeOff className="h-3.5 w-3.5" /> Ascunde locația</CompactButton>}
+          />
+        )}
+
+        {locationHidden && !locationClosed && (
+          <SettingsRow
+            title="Republică locația"
+            description="Solicită revenirea locației în căutare și pe profilul public."
+            action={<CompactButton disabled={lifecycleActive || lifecycleLoading} onClick={() => setPendingAction("republish")}><RotateCcw className="h-3.5 w-3.5" /> Solicită republicarea</CompactButton>}
+          />
+        )}
+
+        {!locationClosed && (
+          <SettingsRow
+            title="Închide locația în VIASEE"
+            description="Locația este retrasă din director și arhivată după verificare. Istoricul este păstrat."
+            action={<CompactButton danger disabled={lifecycleActive || lifecycleLoading} onClick={() => setPendingAction("close")}><Archive className="h-3.5 w-3.5" /> Solicită închiderea</CompactButton>}
+          >
+            {isLastActiveLocation && (
+              <p className="mt-2 flex max-w-2xl items-start gap-2 text-xs leading-relaxed text-amber-800">
+                <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" /> Aceasta este ultima locație activă a organizației.
+              </p>
+            )}
+          </SettingsRow>
+        )}
       </SettingsSection>
 
       <p className="px-1 text-xs leading-relaxed text-muted-foreground">
-        Solicitările de ascundere și închidere sunt verificate manual pentru a proteja membrii asociați, datele publice și istoricul de audit.
+        Solicitările sunt salvate în VIASEE, apar în panoul administratorului și păstrează istoricul complet al deciziei.
       </p>
 
       {pendingAction && (
@@ -383,7 +493,14 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
           action={pendingAction}
           location={selectedLocation}
           isLastActiveLocation={isLastActiveLocation}
-          onClose={() => setPendingAction(null)}
+          submitting={lifecycleLoading}
+          error={lifecycleError}
+          onClose={() => {
+            if (!lifecycleLoading) {
+              setPendingAction(null);
+              setLifecycleError("");
+            }
+          }}
           onConfirm={confirmLifecycleRequest}
         />
       )}

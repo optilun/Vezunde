@@ -3,12 +3,18 @@ import AdminCard from "@/components/admin/ui/AdminCard";
 import AdminWorkspaceSubmissionsReview from "@/components/admin/directory/AdminWorkspaceSubmissionsReview";
 import AdminNewLocationReview from "@/components/admin/directory/AdminNewLocationReview";
 import AdminProfessionalProfileReview from "@/components/admin/directory/AdminProfessionalProfileReview";
+import AdminLocationLifecycleReview from "@/components/admin/directory/AdminLocationLifecycleReview";
 
 const TABS = [
   {
     key: "workspace",
     label: "Profil si continut",
     description: "Profil organizational, date locatie, servicii, fotografii, program, echipa si articole.",
+  },
+  {
+    key: "lifecycle",
+    label: "Stare locatii",
+    description: "Ascunderea temporara, republicarea si inchiderea locatiilor.",
   },
   {
     key: "locations",
@@ -51,6 +57,7 @@ export default function AdminReviewQueue() {
       </AdminCard>
 
       {tab === "workspace" && <AdminWorkspaceSubmissionsReview />}
+      {tab === "lifecycle" && <AdminLocationLifecycleReview />}
       {tab === "locations" && <AdminNewLocationReview />}
       {tab === "professionals" && <AdminProfessionalProfileReview />}
     </div>
