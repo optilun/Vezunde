@@ -13,6 +13,7 @@ const INITIAL_STATE = {
   selectedCount: 0,
   unitCount: 0,
   issueCount: 0,
+  configurationComplete: false,
   statusText: "",
   actionText: "",
 };
@@ -38,11 +39,21 @@ export default function ProviderServicesGuided(props) {
     const selectedCount = firstNumber(metrics.find((item) => /opțiuni|optiuni/i.test(cleanText(item))));
     const unitCount = firstNumber(metrics.find((item) => /spații|spatii/i.test(cleanText(item))));
     const issueCount = root.querySelectorAll('[data-service-issue="true"][aria-pressed="true"]').length;
+    const careSection = root.querySelector('[data-services-configuration-index="3"]');
+    const careSettingComplete = !careSection || Boolean(careSection.querySelector('button[aria-pressed="true"]'));
+    const configurationComplete = unitCount > 0 && careSettingComplete;
     const statusText = cleanText(root.querySelector(".provider-services-progressive__eyebrow span:first-child"));
     const actionText = cleanText(root.querySelector('[data-services-role="actions"]'));
 
     setState((current) => {
-      const next = { selectedCount, unitCount, issueCount, statusText, actionText };
+      const next = {
+        selectedCount,
+        unitCount,
+        issueCount,
+        configurationComplete,
+        statusText,
+        actionText,
+      };
       return JSON.stringify(current) === JSON.stringify(next) ? current : next;
     });
   }, []);
@@ -64,14 +75,13 @@ export default function ProviderServicesGuided(props) {
   }, [readState]);
 
   const progress = useMemo(() => {
-    const configurationComplete = state.unitCount > 0;
     const servicesComplete = state.selectedCount > 0;
     const requirementsComplete = servicesComplete && state.issueCount === 0;
     const pendingReview = /verificare/i.test(`${state.statusText} ${state.actionText}`);
     const dirty = /modificări nesalvate|modificari nesalvate/i.test(state.actionText);
     const draftSaved = /draft salvat/i.test(state.actionText);
 
-    const currentStep = !configurationComplete
+    const currentStep = !state.configurationComplete
       ? 1
       : !servicesComplete
         ? 2
@@ -88,8 +98,8 @@ export default function ProviderServicesGuided(props) {
           label: "Configurează locația",
           description: "Spații, activități și mod de funcționare",
           icon: Building2,
-          done: configurationComplete,
-          status: configurationComplete ? "Complet" : "Începe aici",
+          done: state.configurationComplete,
+          status: state.configurationComplete ? "Complet" : "Începe aici",
         },
         {
           id: 2,
@@ -167,7 +177,6 @@ export default function ProviderServicesGuided(props) {
 
         <div className="provider-services-guided__steps">
           {progress.steps.map((step) => {
-            const Icon = step.icon;
             const current = progress.currentStep === step.id && !progress.pendingReview;
             return (
               <button
