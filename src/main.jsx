@@ -10,6 +10,7 @@ import '@/styles/provider-location-modules.css'
 import '@/styles/provider-program-flat.css'
 import '@/styles/provider-access-redesign.css'
 import '@/styles/provider-overview-refinement.css'
+import '@/styles/provider-overview-width-fix.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <App />
