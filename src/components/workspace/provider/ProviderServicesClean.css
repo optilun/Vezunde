@@ -1,108 +1,167 @@
-.provider-services-clean {
+.provider-services-task {
   --services-card: hsl(var(--card));
   --services-canvas: hsl(var(--background));
   --services-soft: hsl(var(--secondary));
   --services-border: hsl(var(--border));
   --services-text: hsl(var(--foreground));
   --services-muted: hsl(var(--muted-foreground));
-  --services-focus: hsl(var(--foreground) / 0.16);
+  --services-focus: hsl(var(--foreground) / 0.18);
   display: grid;
-  gap: 0.875rem;
+  grid-template-columns: 248px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
 }
 
-.provider-services-clean *,
-.provider-services-clean *::before,
-.provider-services-clean *::after {
+.provider-services-task *,
+.provider-services-task *::before,
+.provider-services-task *::after {
   box-sizing: border-box;
 }
 
-.provider-services-clean .lucide {
+.provider-services-task .lucide {
   stroke-width: 1.65;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-/* Quick orientation under the page header. */
-.provider-services-clean__navigation {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.875rem 1rem;
+.provider-services-task button:focus-visible,
+.provider-services-task input:focus-visible,
+.provider-services-task select:focus-visible {
+  outline: 2px solid var(--services-focus);
+  outline-offset: 2px;
+}
+
+/* Stage navigation */
+.provider-services-task__navigation {
+  position: sticky;
+  top: 1rem;
+  overflow: hidden;
   border: 1px solid var(--services-border);
   border-radius: 1rem;
   background: var(--services-card);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.025);
 }
 
-.provider-services-clean__navigation-copy {
+.provider-services-task__navigation-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--services-border);
+  background: hsl(var(--secondary) / 0.18);
+}
+
+.provider-services-task__navigation-title span {
+  color: var(--services-text);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.provider-services-task__navigation-title strong {
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: var(--services-card);
+  color: var(--services-muted);
+  font-size: 0.625rem;
+}
+
+.provider-services-task__steps {
+  display: grid;
+  padding: 0.45rem;
+}
+
+.provider-services-task__steps button {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 64px;
+  padding: 0.7rem 0.75rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--services-text);
+  text-align: left;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.provider-services-task__steps button:hover {
+  background: hsl(var(--secondary) / 0.28);
+}
+
+.provider-services-task__steps button.is-active {
+  background: var(--services-text);
+  color: hsl(var(--background));
+}
+
+.provider-services-task__step-number {
+  display: flex;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--services-border);
+  border-radius: 999px;
+  background: var(--services-card);
+  color: var(--services-muted);
+  font-size: 0.625rem;
+  font-weight: 800;
+}
+
+.provider-services-task__steps button.is-active .provider-services-task__step-number {
+  border-color: hsl(var(--background) / 0.22);
+  background: hsl(var(--background) / 0.12);
+  color: hsl(var(--background));
+}
+
+.provider-services-task__step-icon {
+  display: none;
+}
+
+.provider-services-task__step-copy {
   min-width: 0;
   display: grid;
   gap: 0.15rem;
 }
 
-.provider-services-clean__navigation-copy strong {
-  color: var(--services-text);
-  font-size: 0.8125rem;
+.provider-services-task__step-copy strong {
+  font-size: 0.75rem;
   line-height: 1.3;
 }
 
-.provider-services-clean__navigation-copy span {
+.provider-services-task__step-copy small {
   color: var(--services-muted);
-  font-size: 0.6875rem;
-  line-height: 1.45;
+  font-size: 0.625rem;
 }
 
-.provider-services-clean__navigation-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.4rem;
+.provider-services-task__steps button.is-active .provider-services-task__step-copy small {
+  color: hsl(var(--background) / 0.7);
 }
 
-.provider-services-clean__navigation-actions button {
-  min-height: 36px;
-  padding: 0.45rem 0.75rem;
-  border: 1px solid var(--services-border);
-  border-radius: 999px;
-  background: var(--services-canvas);
-  color: var(--services-text);
-  font-size: 0.75rem;
-  font-weight: 700;
-  transition: border-color 150ms ease, background-color 150ms ease;
+.provider-services-task__step-arrow {
+  width: 16px;
+  height: 16px;
+  color: var(--services-muted);
 }
 
-.provider-services-clean__navigation-actions button:hover {
-  border-color: hsl(var(--foreground) / 0.16);
-  background: hsl(var(--secondary) / 0.45);
+.provider-services-task__steps button.is-active .provider-services-task__step-arrow {
+  color: hsl(var(--background) / 0.8);
 }
 
-.provider-services-clean__navigation-actions button:focus-visible,
-.provider-services-polish button:focus-visible,
-.provider-services-polish input:focus-visible,
-.provider-services-polish select:focus-visible {
-  outline: 2px solid var(--services-focus);
-  outline-offset: 2px;
-}
-
-/* Keep page header and module content visually related without making one oversized card. */
-.provider-location-services-page > .provider-location-module-header {
-  margin-bottom: -0.25rem;
-  box-shadow: none;
-}
-
-.provider-location-services-page > .provider-location-module-header + div {
-  margin-top: 0 !important;
-}
-
-.provider-services-polish > div {
+/* Active stage */
+.provider-services-task__content {
+  min-width: 0;
   display: grid;
   gap: 0.875rem;
-  padding-bottom: 5rem;
 }
 
-/* Intro/search block. */
-.provider-services-polish > div > section:first-child {
+.provider-services-task__panel-header {
+  scroll-margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   padding: 1rem;
   border: 1px solid var(--services-border);
   border-radius: 1rem;
@@ -110,15 +169,155 @@
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.025);
 }
 
-.provider-services-polish > div > section:first-child > div:first-child {
-  gap: 0.75rem;
+.provider-services-task__panel-heading {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
 }
 
-.provider-services-polish > div > section:first-child p {
+.provider-services-task__panel-icon {
+  display: flex;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--services-border);
+  border-radius: 0.8rem;
+  background: hsl(var(--secondary) / 0.35);
+}
+
+.provider-services-task__panel-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.provider-services-task__panel-heading p {
+  margin: 0 0 0.15rem;
+  color: var(--services-muted);
+  font-size: 0.625rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.provider-services-task__panel-heading h2 {
+  margin: 0;
+  color: var(--services-text);
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.provider-services-task__panel-heading span:last-child {
+  display: block;
+  margin-top: 0.25rem;
+  max-width: 680px;
+  color: var(--services-muted);
+  font-size: 0.75rem;
   line-height: 1.5;
 }
 
-.provider-services-polish > div > section:first-child input[placeholder^="Caută"] {
+.provider-services-task__panel-controls {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.4rem;
+}
+
+.provider-services-task__panel-controls button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--services-border);
+  border-radius: 0.7rem;
+  background: var(--services-canvas);
+  color: var(--services-text);
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.provider-services-task__panel-controls button:hover:not(:disabled) {
+  background: hsl(var(--secondary) / 0.4);
+}
+
+.provider-services-task__panel-controls button:disabled {
+  opacity: 0.35;
+}
+
+.provider-services-task__panel-controls svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Operational workspace visibility */
+.provider-services-polish > div {
+  display: grid;
+  gap: 0.75rem;
+  padding-bottom: 5rem;
+}
+
+.provider-services-polish [data-services-stage] {
+  display: none !important;
+}
+
+.provider-services-task--structure .provider-services-polish [data-services-stage="structure"],
+.provider-services-task--services .provider-services-polish [data-services-stage="services"],
+.provider-services-task--services .provider-services-polish [data-services-stage="catalog"],
+.provider-services-task--resources .provider-services-polish [data-services-stage="catalog"],
+.provider-services-task--review .provider-services-polish [data-services-stage="review"] {
+  display: block !important;
+}
+
+.provider-services-polish [data-services-workspace="main"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.provider-services-polish [data-services-column="content"] {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.provider-services-task:not(.provider-services-task--review) .provider-services-polish [data-services-workspace="main"] > aside {
+  display: none !important;
+}
+
+.provider-services-task--review .provider-services-polish [data-services-column="content"] {
+  display: contents;
+}
+
+.provider-services-task--review .provider-services-polish [data-services-workspace="main"] > aside {
+  position: static;
+  width: 100%;
+  max-height: none;
+  overflow: visible;
+}
+
+/* Search appears only inside the services stage. */
+.provider-services-polish > div > section:first-child {
+  padding: 0.85rem;
+  border: 1px solid var(--services-border);
+  border-radius: 1rem;
+  background: var(--services-card);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.025);
+}
+
+.provider-services-polish > div > section:first-child > div:first-child {
+  display: none;
+}
+
+.provider-services-polish > div > section:first-child > div.relative {
+  margin-top: 0;
+}
+
+.provider-services-polish > div > section:first-child input[placeholder^="Caută"],
+.provider-services-polish > div > section:first-child input[placeholder^="Cauta"] {
   min-height: 46px;
   padding-right: 2.75rem;
   border-color: var(--services-border);
@@ -127,38 +326,27 @@
   box-shadow: none;
 }
 
-.provider-services-polish > div > section:first-child input[placeholder^="Caută"]:focus {
-  border-color: hsl(var(--foreground) / 0.25);
+.provider-services-polish > div > section:first-child input:focus {
+  border-color: hsl(var(--foreground) / 0.24);
   background: var(--services-card);
   box-shadow: 0 0 0 3px hsl(var(--foreground) / 0.045);
 }
 
-/* Status messages use a common compact rhythm. */
+/* System messages remain visible in every stage. */
 .provider-services-polish > div > div[class*="rounded-2xl"][class*="px-4"][class*="py-3"] {
   border-radius: 0.875rem;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   line-height: 1.55;
 }
 
-/* Main workspace and summary. */
-.provider-services-polish > div > div.grid[class*="xl:grid-cols"] {
-  align-items: start;
-  gap: 0.875rem;
-}
-
-.provider-services-polish > div > div.grid[class*="xl:grid-cols"] > div[class~="space-y-4"] {
-  display: grid;
-  gap: 0.75rem;
-}
-
+/* Shared cards */
 .provider-services-polish section,
 .provider-services-polish aside {
   scroll-margin-top: 1rem;
 }
 
-/* All main sections use one calm card system. */
-.provider-services-polish > div > div.grid[class*="xl:grid-cols"] > div[class~="space-y-4"] > section,
-.provider-services-polish [class~="space-y-3"] > section,
+.provider-services-polish [data-services-column="content"] > section,
+.provider-services-polish [data-services-stage="catalog"] > section,
 .provider-services-polish aside {
   overflow: hidden;
   border-color: var(--services-border) !important;
@@ -167,11 +355,11 @@
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.025) !important;
 }
 
-.provider-services-polish > div > div.grid[class*="xl:grid-cols"] > div[class~="space-y-4"] > section {
+.provider-services-polish [data-services-column="content"] > section {
   padding: 1rem;
 }
 
-.provider-services-polish > div > div.grid[class*="xl:grid-cols"] > div[class~="space-y-4"] > section:has(> div[class*="border-b"]) {
+.provider-services-polish [data-services-column="content"] > section:has(> div[class*="border-b"]) {
   padding: 0;
 }
 
@@ -181,47 +369,38 @@
   letter-spacing: -0.01em;
 }
 
-/* Configuration choices become compact list rows instead of large tiles. */
+/* Compact space and capability choices */
 .provider-services-polish section > div[class~="mt-4"][class~="space-y-2"] {
   display: grid;
   gap: 0.45rem;
 }
 
 .provider-services-polish section > div[class~="mt-4"][class~="space-y-2"] > button {
-  min-height: 72px;
-  padding: 0.75rem;
+  min-height: 70px;
+  padding: 0.72rem;
   border-color: var(--services-border);
-  border-radius: 0.875rem;
+  border-radius: 0.8rem;
   background: var(--services-card);
   box-shadow: none;
 }
 
 .provider-services-polish section > div[class~="mt-4"][class~="space-y-2"] > button:hover:not(:disabled) {
   border-color: hsl(var(--foreground) / 0.15);
-  background: hsl(var(--secondary) / 0.25);
+  background: hsl(var(--secondary) / 0.24);
 }
 
 .provider-services-polish section > div[class~="mt-4"][class~="space-y-2"] > button > span:first-child {
   width: 36px;
   height: 36px;
-  border-radius: 0.75rem;
-  background: hsl(var(--secondary) / 0.42);
-}
-
-.provider-services-polish section > div[class~="mt-4"][class~="space-y-2"] > button > span:nth-child(2) > span:first-child > span:first-child {
-  font-size: 0.8125rem;
-}
-
-.provider-services-polish section > div[class~="mt-4"][class~="space-y-2"] > button > span:nth-child(2) > span:nth-child(2) {
-  font-size: 0.6875rem;
+  border-radius: 0.72rem;
+  background: hsl(var(--secondary) / 0.4);
 }
 
 .provider-services-polish section > button[class*="rounded-full"][class*="border"] {
-  min-height: 40px;
-  padding-inline: 0.875rem;
+  min-height: 39px;
 }
 
-/* Care setting becomes a clear segmented control. */
+/* Mode selector */
 .provider-services-polish section:has(> div[class~="mt-3"] > button[class*="rounded-full"]) > div[class~="mt-3"] {
   display: inline-flex;
   max-width: 100%;
@@ -229,96 +408,78 @@
   padding: 0.25rem;
   overflow-x: auto;
   border: 1px solid var(--services-border);
-  border-radius: 0.875rem;
-  background: hsl(var(--secondary) / 0.22);
+  border-radius: 0.8rem;
+  background: hsl(var(--secondary) / 0.2);
 }
 
 .provider-services-polish section:has(> div[class~="mt-3"] > button[class*="rounded-full"]) > div[class~="mt-3"] > button {
   flex: 0 0 auto;
   min-height: 38px;
   border-color: transparent;
-  border-radius: 0.65rem;
+  border-radius: 0.62rem;
 }
 
-/* Catalogue intro is visually lighter than editable sections. */
-.provider-services-polish section:has(h2:first-child:last-child),
-.provider-services-polish section:has(h2 + p) {
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.02);
-}
-
-/* Unit accordions. */
-.provider-services-polish [class~="space-y-3"] {
+/* Catalogue */
+.provider-services-polish [data-services-stage="catalog"] {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
   gap: 0.625rem;
 }
 
-.provider-services-polish [class~="space-y-3"] > section > button:first-child {
-  min-height: 66px;
-  padding: 0.75rem 1rem;
+.provider-services-polish [data-services-stage="catalog"] > section > button:first-child {
+  min-height: 64px;
+  padding: 0.75rem 0.9rem;
   background: var(--services-card);
 }
 
-.provider-services-polish [class~="space-y-3"] > section > button:first-child:hover {
+.provider-services-polish [data-services-stage="catalog"] > section > button:first-child:hover {
   background: hsl(var(--secondary) / 0.22);
 }
 
-.provider-services-polish [class~="space-y-3"] > section > button:first-child > span:first-child {
-  width: 38px;
-  height: 38px;
+.provider-services-polish [data-services-stage="catalog"] > section > button:first-child > span:first-child {
+  width: 37px;
+  height: 37px;
   border-color: var(--services-border);
-  border-radius: 0.8rem;
-  background: hsl(var(--secondary) / 0.4);
+  border-radius: 0.75rem;
+  background: hsl(var(--secondary) / 0.38);
   color: var(--services-text);
 }
 
-.provider-services-polish [class~="space-y-3"] > section > button:first-child > span:nth-child(2) > span:first-child {
-  font-size: 0.875rem;
-}
-
-.provider-services-polish [class~="space-y-3"] > section > button:first-child > span:nth-child(2) > span:last-child {
-  margin-top: 0.1rem;
-  color: var(--services-muted);
-}
-
-.provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] {
-  padding-bottom: 0.625rem;
+.provider-services-polish [data-services-stage="catalog"] > section > div[class*="border-t"] {
+  padding-bottom: 0.6rem;
   background: hsl(var(--secondary) / 0.08);
 }
 
-.provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:first-child {
+.provider-services-polish [data-services-stage="catalog"] > section > div[class*="border-t"] > div:first-child {
   border-bottom: 1px solid var(--services-border);
-  background: hsl(var(--secondary) / 0.2);
+  background: hsl(var(--secondary) / 0.18);
 }
 
-/* Service categories are full-width cards; rows remain a list, not a tile wall. */
-.provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:has(> div[class*="border-border/50"]) {
+.provider-services-polish [data-services-stage="catalog"] > section > div[class*="border-t"] > div:has(> div[class*="border-border/50"]) {
   overflow: hidden;
-  margin: 0.625rem 0.625rem 0;
+  margin: 0.6rem 0.6rem 0;
   border: 1px solid var(--services-border);
-  border-radius: 0.875rem;
+  border-radius: 0.8rem;
   background: var(--services-card);
 }
 
-.provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:has(> div[class*="border-border/50"]) > div:first-child {
-  min-height: 0;
-  padding: 0.8rem 0.875rem;
+.provider-services-polish [data-services-stage="catalog"] > section > div[class*="border-t"] > div:has(> div[class*="border-border/50"]) > div:first-child {
+  padding: 0.78rem 0.85rem;
   background: var(--services-card);
 }
 
-.provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:has(> div[class*="border-border/50"]) > div[class*="border-border/50"] {
+.provider-services-polish [data-services-stage="catalog"] > section > div[class*="border-t"] > div:has(> div[class*="border-border/50"]) > div[class*="border-border/50"] {
   display: block;
   padding: 0;
   border-top: 1px solid var(--services-border);
   background: var(--services-card);
 }
 
-/* Service rows: one action, one state, readable on desktop and mobile. */
+/* Service rows */
 .provider-services-polish button.grid {
   min-height: 58px;
   grid-template-columns: auto minmax(0, 1fr) auto !important;
   gap: 0.7rem;
-  padding: 0.7rem 0.875rem;
+  padding: 0.7rem 0.85rem;
   border-color: var(--services-border);
   background: var(--services-card);
   transition: background-color 150ms ease;
@@ -330,10 +491,6 @@
 
 .provider-services-polish button.grid[class*="bg-secondary/35"] {
   background: hsl(var(--secondary) / 0.4);
-}
-
-.provider-services-polish button.grid[class*="bg-amber-50"] {
-  background: hsl(42 100% 96%);
 }
 
 .provider-services-polish button.grid > span:first-child {
@@ -354,13 +511,12 @@
 }
 
 .provider-services-polish button.grid > span:nth-child(2) > span:first-child {
-  font-size: 0.8125rem;
+  font-size: 0.8rem;
   font-weight: 700;
 }
 
 .provider-services-polish button.grid > span:nth-child(2) > span:last-child {
-  max-width: 52rem;
-  font-size: 0.6875rem;
+  font-size: 0.675rem;
   line-height: 1.5;
 }
 
@@ -368,73 +524,66 @@
   justify-self: end;
 }
 
-.provider-services-polish button.grid > span:last-child > span {
-  min-height: 25px;
-  padding: 0.25rem 0.5rem;
-  box-shadow: none;
+/* Separate services from resources without duplicating the state logic. */
+.provider-services-task--services .provider-services-polish [data-services-stage="catalog"] > section > div[class*="border-t"] > div:last-child:not(:first-child) {
+  display: none;
 }
 
-/* Manual suggestions are clearly secondary. */
-.provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:has(> div[class*="border-border/50"]) > div:last-child {
-  background: hsl(var(--secondary) / 0.12);
+.provider-services-task--resources .provider-services-polish [data-services-stage="catalog"] > section > div[class*="border-t"] > div:not(:first-child):not(:last-child) {
+  display: none;
 }
 
-.provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:last-child button[class*="rounded-full"] {
-  min-height: 38px;
+.provider-services-task--resources .provider-services-polish [data-services-stage="catalog"] > section > div[class*="border-t"] > div:first-child p {
+  max-width: 720px;
 }
 
-/* Resources are grouped below the service list. */
-.provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:not(:first-child):not(:has(> div[class*="border-border/50"])) {
+.provider-services-task--resources .provider-services-polish [data-services-stage="catalog"] > section > div[class*="border-t"] > div:last-child {
+  display: block;
   overflow: hidden;
-  margin: 0.625rem 0.625rem 0;
+  margin: 0.6rem;
   border: 1px solid var(--services-border);
-  border-radius: 0.875rem;
+  border-radius: 0.8rem;
   background: var(--services-card);
 }
 
-/* Progress sidebar remains useful but visually quieter. */
+/* Review */
 .provider-services-polish aside {
   padding: 1rem;
 }
 
-.provider-services-polish aside > div:first-child {
-  margin-bottom: 0.875rem;
-}
-
 .provider-services-polish aside [class*="grid-cols-3"] {
-  gap: 0.4rem;
+  gap: 0.45rem;
 }
 
-.provider-services-polish aside [class*="grid-cols-3"] > div {
-  border: 1px solid hsl(var(--border) / 0.75);
-  border-radius: 0.75rem;
-  background: hsl(var(--secondary) / 0.3);
-}
-
+.provider-services-polish aside [class*="grid-cols-3"] > div,
 .provider-services-polish aside ol li {
-  border: 1px solid hsl(var(--border) / 0.65);
+  border: 1px solid hsl(var(--border) / 0.7);
   border-radius: 0.75rem;
-  background: var(--services-card);
+  background: hsl(var(--secondary) / 0.26);
 }
 
-/* Sticky action area is the strongest action surface. */
+.provider-services-task--review .provider-services-polish aside {
+  max-width: none;
+}
+
+.provider-services-task--review .provider-services-polish aside > div[class*="border-t"] {
+  display: block;
+}
+
+/* Sticky actions always remain available. */
 .provider-services-polish [class~="sticky"][class~="bottom-0"] {
   margin-inline: 0;
-  padding: 0.75rem;
+  padding: 0.72rem;
   border-color: hsl(var(--foreground) / 0.13);
   border-radius: 1rem;
   background: hsl(var(--card) / 0.97);
   box-shadow: 0 12px 30px rgb(0 0 0 / 0.1);
 }
 
-.provider-services-polish [class~="sticky"][class~="bottom-0"] > div {
-  align-items: center;
-}
-
 .provider-services-polish [class~="sticky"][class~="bottom-0"] button {
   min-height: 44px;
   padding-inline: 1rem;
-  border-radius: 0.75rem;
+  border-radius: 0.72rem;
   box-shadow: none;
 }
 
@@ -442,82 +591,87 @@
   min-width: 185px;
 }
 
-@media (min-width: 1280px) {
-  .provider-services-polish > div > div.grid[class*="xl:grid-cols"] {
-    grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.65fr) !important;
+@media (max-width: 1100px) {
+  .provider-services-task {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .provider-services-polish aside {
-    top: 1rem;
-    max-height: calc(100vh - 2rem);
-    overflow-y: auto;
-  }
-}
-
-@media (max-width: 1023px) {
-  .provider-services-clean__navigation {
-    align-items: flex-start;
-    flex-direction: column;
+  .provider-services-task__navigation {
+    position: static;
   }
 
-  .provider-services-clean__navigation-actions {
-    width: 100%;
-    justify-content: flex-start;
-    flex-wrap: nowrap;
+  .provider-services-task__navigation-title {
+    display: none;
+  }
+
+  .provider-services-task__steps {
+    display: flex;
+    gap: 0.35rem;
+    padding: 0.45rem;
     overflow-x: auto;
-    padding-bottom: 0.1rem;
     scrollbar-width: thin;
   }
 
-  .provider-services-clean__navigation-actions button {
+  .provider-services-task__steps button {
     flex: 0 0 auto;
+    min-height: 44px;
+    grid-template-columns: 24px auto;
+    gap: 0.45rem;
+    padding: 0.45rem 0.7rem;
+  }
+
+  .provider-services-task__step-copy small,
+  .provider-services-task__step-arrow {
+    display: none;
+  }
+
+  .provider-services-task__step-copy strong {
+    white-space: nowrap;
   }
 }
 
 @media (max-width: 767px) {
   .provider-location-services-page > .provider-location-module-header {
-    margin-bottom: 0;
+    box-shadow: none;
   }
 
-  .provider-services-clean {
+  .provider-services-task {
     gap: 0.75rem;
   }
 
-  .provider-services-clean__navigation {
-    padding: 0.75rem;
+  .provider-services-task__panel-header {
+    display: grid;
+    padding: 0.85rem;
   }
 
-  .provider-services-polish > div {
-    gap: 0.75rem;
-    padding-bottom: 7rem;
+  .provider-services-task__panel-icon {
+    width: 38px;
+    height: 38px;
   }
 
-  .provider-services-polish > div > div.grid[class*="xl:grid-cols"] {
-    display: flex;
-    flex-direction: column;
+  .provider-services-task__panel-heading h2 {
+    font-size: 1rem;
   }
 
-  .provider-services-polish > div > div.grid[class*="xl:grid-cols"] > aside {
-    order: -1;
+  .provider-services-task__panel-heading span:last-child {
+    font-size: 0.72rem;
+  }
+
+  .provider-services-task__panel-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .provider-services-task__panel-controls button {
     width: 100%;
   }
 
-  /* On mobile show the useful summary, not the full duplicate checklist. */
-  .provider-services-polish aside > div[class*="border-t"] {
-    display: none;
+  .provider-services-polish > div {
+    padding-bottom: 7rem;
   }
 
-  .provider-services-polish aside [class*="grid-cols-3"] {
-    margin-top: 0;
-  }
-
-  .provider-services-polish > div > section:first-child {
-    padding: 0.875rem;
-  }
-
-  .provider-services-polish section > div[class~="mt-4"][class~="space-y-2"] > button {
-    min-height: 68px;
-    padding: 0.7rem;
+  .provider-services-polish [data-services-workspace="main"] {
+    display: block;
   }
 
   .provider-services-polish button.grid {
@@ -534,8 +688,8 @@
     margin-top: 0.1rem;
   }
 
-  .provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:has(> div[class*="border-border/50"]),
-  .provider-services-polish [class~="space-y-3"] > section > div[class*="border-t"] > div:not(:first-child):not(:has(> div[class*="border-border/50"])) {
+  .provider-services-polish [data-services-stage="catalog"] > section > div[class*="border-t"] > div:has(> div[class*="border-border/50"]),
+  .provider-services-task--resources .provider-services-polish [data-services-stage="catalog"] > section > div[class*="border-t"] > div:last-child {
     margin-right: 0.45rem;
     margin-left: 0.45rem;
   }
@@ -566,24 +720,24 @@
   }
 }
 
-@media (max-width: 420px) {
-  .provider-services-clean__navigation-copy span {
-    display: none;
+@media (max-width: 440px) {
+  .provider-services-task__steps button {
+    min-width: 116px;
   }
 
-  .provider-services-clean__navigation-actions button {
-    min-height: 40px;
+  .provider-services-task__step-copy strong {
+    font-size: 0.7rem;
   }
 
-  .provider-services-polish > div > section:first-child input[placeholder^="Caută"] {
+  .provider-services-polish > div > section:first-child input {
     font-size: 1rem;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .provider-services-clean *,
-  .provider-services-clean *::before,
-  .provider-services-clean *::after {
+  .provider-services-task *,
+  .provider-services-task *::before,
+  .provider-services-task *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
