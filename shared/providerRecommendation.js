@@ -123,8 +123,8 @@ export function getRecommendationConfidence({
 }
 
 export function recommendationBucketForProfile(profileControlStatus, needLevel = 'general') {
+  void needLevel;
   const status = clean(profileControlStatus) || 'directory';
-  if (needLevel === 'specialized_medical' && status !== 'verified') return 'excluded';
   return ['verified', 'claimed'].includes(status) ? 'confirmed' : 'directory';
 }
 

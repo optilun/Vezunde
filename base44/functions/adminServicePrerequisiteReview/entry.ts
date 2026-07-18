@@ -46,20 +46,8 @@ async function evaluateSubmission(svc, submission) {
     const result = evaluateServicePrerequisites(key, context);
     const definition = result.definition || getCanonicalServiceDefinition(key);
     const blockers = [...result.blockers];
-
-    if (definition?.requires_review && context.location.profile_control_status !== 'verified') {
-      blockers.unshift({
-        code: 'location_not_verified',
-        message: 'Locatia trebuie verificata de Vezunde inaintea aprobarii unui serviciu medical.',
-        required: ['verified'],
-        actual: context.location.profile_control_status || 'directory',
-      });
-    }
-
-    const eligible = blockers.length === 0;
-    const status = blockers.some((blocker) => blocker.code === 'location_not_verified')
-      ? 'requires_verified_location'
-      : result.status;
+    const eligible = result.eligible;
+    const status = result.status;
 
     return {
       service_key: key,
@@ -116,53 +104,6 @@ async function delegate(base44, action, payload) {
   return result?.data || result || {};
 }
 
-async function writeAudit(svc, user, submission, actionType, next, note) {
-  await svc.entities.DirectoryAuditRecord.create({
-    entity_type: 'ProviderWorkspaceSubmission',
-    entity_id: submission.id,
-    action_type: actionType,
-    changed_fields: ['confirmation_level', 'matching_allowed'],
-    previous_values: '{}',
-    new_values: JSON.stringify(next || {}),
-    admin_user_id: user.id,
-    admin_email: user.email,
-    note: note || '',
-    performed_at: new Date().toISOString(),
-  });
-}
-
-async function promoteVerifiedServices(svc, user, submission, evaluation) {
-  const promoted = [];
-  for (const item of evaluation.evaluations) {
-    if (!item.requires_review || !item.eligible) continue;
-    const rows = await svc.entities.LocationService.filter({
-      location_id: submission.location_id,
-      service_key: item.service_key,
-    }, null, 20);
-    for (const row of rows) {
-      await svc.entities.LocationService.update(row.id, {
-        confirmation_level: 'vezunde_verified',
-        matching_allowed: true,
-        migration_review_required: false,
-      });
-      promoted.push(item.service_key);
-    }
-  }
-
-  const uniquePromoted = [...new Set(promoted)];
-  if (uniquePromoted.length > 0) {
-    await writeAudit(
-      svc,
-      user,
-      submission,
-      'verify_service_prerequisites',
-      { services: uniquePromoted, prerequisite_summary: evaluation.summary },
-      'Servicii medicale verificate numai dupa validarea specialistului, echipamentului si infrastructurii.',
-    );
-  }
-  return uniquePromoted;
-}
-
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -212,32 +153,13 @@ Deno.serve(async (req) => {
       const delegated = await delegate(base44, 'approve', payload);
       if (delegated.error) return Response.json(delegated, { status: 400 });
 
-      // Re-read every dependency after the underlying approval. This closes the window
-      // in which a specialist, equipment item or infrastructure proof could change
-      // between validation and promotion. Public/matching stay fail-closed regardless.
+      // Keep the compatibility endpoint non-blocking too. The underlying review
+      // stores services as provider-declared; it does not create a Vezunde verification.
       const postApprovalEvaluation = await evaluateSubmission(svc, submission);
-      if (!postApprovalEvaluation.approval_allowed) {
-        await writeAudit(
-          svc,
-          user,
-          submission,
-          'service_prerequisite_revalidation_failed',
-          { prerequisite_review: reviewPayload(postApprovalEvaluation) },
-          'Submissionul a fost aplicat, dar serviciile medicale nu au fost promovate deoarece cerintele s-au schimbat in timpul aprobarii.',
-        );
-        return Response.json({
-          success: true,
-          promoted_services: [],
-          warning: 'Modificarile au fost aplicate, dar serviciile medicale au ramas nepublice deoarece cerintele s-au schimbat. Reia verificarea.',
-          code: 'SERVICE_PREREQUISITES_CHANGED_DURING_APPROVAL',
-          prerequisite_review: reviewPayload(postApprovalEvaluation),
-        });
-      }
-
-      const promotedServices = await promoteVerifiedServices(svc, user, submission, postApprovalEvaluation);
       return Response.json({
         success: true,
-        promoted_services: promotedServices,
+        provider_declared_services: postApprovalEvaluation.evaluations.map((item) => item.service_key),
+        promoted_services: [],
         prerequisite_review: reviewPayload(postApprovalEvaluation),
       });
     }

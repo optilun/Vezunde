@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  AlertTriangle,
   Building2,
   CheckCircle2,
   ClipboardCheck,
@@ -8,7 +7,6 @@ import {
   Info,
   Link2,
   PackageOpen,
-  ShieldCheck,
   XCircle,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -203,33 +201,20 @@ function OperationalContext({ context }) {
   );
 }
 
-function PrerequisiteChecklist({ review }) {
-  if (!review) return null;
-  const services = review.services || [];
+function ProviderDeclarationNotice({ review }) {
+  const selectedCount = review?.summary?.selected_count || review?.services?.length || 0;
   return (
-    <div className={`mt-3 rounded-xl border p-3 ${review.approval_allowed ? "border-green-200 bg-green-50/70" : "border-amber-200 bg-amber-50/80"}`}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          {review.approval_allowed ? <ShieldCheck className="h-4 w-4 text-green-700" /> : <AlertTriangle className="h-4 w-4 text-amber-700" />}
-          <div className="text-xs font-bold">Verificarea cerintelor</div>
+    <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50/70 p-3 text-blue-950">
+      <div className="flex items-start gap-2">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" />
+        <div>
+          <div className="text-xs font-bold">Servicii declarate de furnizor</div>
+          <p className="mt-1 text-[11px] leading-relaxed">
+            Aprobarea administrativă verifică doar coerența modificării. Nu cerem acte, specialiști, echipamente sau alte dovezi pentru publicarea serviciilor în această etapă.
+          </p>
+          {selectedCount > 0 && <p className="mt-1.5 text-[11px] font-semibold">{selectedCount} opțiuni declarate</p>}
         </div>
-        <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold">{review.summary?.eligible_count || 0}/{review.summary?.selected_count || 0} eligibile</span>
       </div>
-      <div className="mt-3 space-y-2">
-        {services.map((service) => (
-          <div key={service.service_key} className="rounded-lg border border-black/5 bg-white p-2.5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <span className="text-xs font-semibold">{service.label || serviceLabel(service.service_key)}</span>
-                {service.functional_unit_key && <div className="mt-0.5 text-[10px] text-muted-foreground">{getFunctionalUnitDefinition(service.functional_unit_key)?.shortTitle || service.functional_unit_key}</div>}
-              </div>
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${service.eligible ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-900"}`}>{service.status_label || service.status}</span>
-            </div>
-            {!service.eligible && <div className="mt-1.5 space-y-1">{(service.blockers || []).map((blocker, index) => <p key={`${blocker.code}-${index}`} className="text-[11px] leading-relaxed text-amber-900">- {blocker.message}</p>)}</div>}
-          </div>
-        ))}
-      </div>
-      {!review.approval_allowed && <p className="mt-2 text-[11px] font-semibold text-amber-900">Aprobarea este blocata pana cand toate cerintele sunt indeplinite.</p>}
     </div>
   );
 }
@@ -277,14 +262,14 @@ function ServicesPreview({ payload, review }) {
           return (
             <div key={group} className="rounded-xl border border-border bg-card p-3">
               <div className="text-xs font-bold">{SERVICE_GROUPS[group]?.label || group}</div>
-              {add.length > 0 && <div className="mt-2"><div className="text-[11px] font-semibold text-blue-700">De verificat si adaugat</div><div className="mt-1 flex flex-wrap gap-1.5">{add.map((id) => <span key={id} className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-800">{serviceLabel(id)}</span>)}</div></div>}
+              {add.length > 0 && <div className="mt-2"><div className="text-[11px] font-semibold text-blue-700">De aprobat si adaugat</div><div className="mt-1 flex flex-wrap gap-1.5">{add.map((id) => <span key={id} className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-800">{serviceLabel(id)}</span>)}</div></div>}
               {remove.length > 0 && <div className="mt-2"><div className="text-[11px] font-semibold text-red-700">De eliminat</div><div className="mt-1 flex flex-wrap gap-1.5">{remove.map((id) => <span key={id} className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-800">{serviceLabel(id)}</span>)}</div></div>}
             </div>
           );
         })}
         {suggestions.length > 0 && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3"><div className="text-xs font-bold text-amber-900">Propuneri pentru catalog</div><div className="mt-2 flex flex-wrap gap-1.5">{suggestions.map((item, index) => <span key={`${item.label}-${index}`} className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-amber-900">{item.label}</span>)}</div></div>}
       </div>
-      <PrerequisiteChecklist review={review} />
+      <ProviderDeclarationNotice review={review} />
     </>
   );
 }
@@ -321,7 +306,6 @@ function SubmissionCard({ submission, location, organization, busy, onDecision }
   const organizationName = organization?.public_display_name || organization?.name || "Organizatie necunoscuta";
   const subjectName = submission.section === "public_profile" ? organizationName : locationName;
   const title = payload.public_display_name || payload.title || subjectName;
-  const blocked = submission.section === "services" && submission.prerequisite_review?.approval_allowed === false;
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -332,12 +316,12 @@ function SubmissionCard({ submission, location, organization, busy, onDecision }
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{subjectName} - trimisa {submission.submitted_at ? new Date(submission.submitted_at).toLocaleString("ro-RO") : "la o data necunoscuta"}</p>
         </div>
-        <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${blocked ? "border-amber-200 bg-amber-50 text-amber-800" : "border-blue-200 bg-blue-50 text-blue-800"}`}>{blocked ? "Cerinte lipsa" : "In verificare"}</span>
+        <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-800">In verificare</span>
       </div>
       <Comparison submission={submission} location={location} organization={organization} />
       <textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Nota admin. Obligatorie pentru respingere sau cerere de informatii." rows={2} className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none" />
       <div className="mt-3 flex flex-wrap gap-2">
-        <button disabled={busy || blocked} onClick={() => onDecision(submission, "approve", note)} className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background disabled:opacity-40"><CheckCircle2 className="h-3.5 w-3.5" /> Aproba</button>
+        <button disabled={busy} onClick={() => onDecision(submission, "approve", note)} className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background disabled:opacity-40"><CheckCircle2 className="h-3.5 w-3.5" /> Aproba</button>
         <button disabled={busy} onClick={() => onDecision(submission, "request_more_info", note)} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-semibold disabled:opacity-50"><Info className="h-3.5 w-3.5" /> Cere informatii</button>
         <button disabled={busy} onClick={() => onDecision(submission, "reject", note)} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-semibold text-destructive disabled:opacity-50"><XCircle className="h-3.5 w-3.5" /> Respinge</button>
       </div>
@@ -403,7 +387,7 @@ export default function AdminWorkspaceSubmissionsReview() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-base font-bold">Modificari workspace in verificare</h2>
-          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Profilurile organizationale sunt comparate cu ProviderOrganization. Fotografiile sunt afisate vizual, iar configuratiile serviciilor pastreaza verificarea cerintelor operationale.</p>
+          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Profilurile organizationale sunt comparate cu ProviderOrganization. Fotografiile sunt afisate vizual, iar serviciile sunt tratate ca informatii declarate de furnizor.</p>
         </div>
         <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold">{submissions.length} in asteptare</span>
       </div>

@@ -12,7 +12,7 @@ import {
 
 assert.equal(PROVIDER_RECOMMENDATION_CONTRACT_VERSION, 'provider-recommendation-v1');
 assert.equal(recommendationBucketForProfile('verified', 'specialized_medical'), 'confirmed');
-assert.equal(recommendationBucketForProfile('claimed', 'specialized_medical'), 'excluded');
+assert.equal(recommendationBucketForProfile('claimed', 'specialized_medical'), 'confirmed');
 assert.equal(recommendationBucketForProfile('directory', 'general'), 'directory');
 
 const availability = getFreshAvailability({

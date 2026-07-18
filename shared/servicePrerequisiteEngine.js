@@ -1,11 +1,17 @@
 import { normalizeServiceKey } from './canonicalServiceRegistry.js';
 import { getServiceOperationalContext } from './serviceOperationalTaxonomy.js';
 
-// MVP policy: providers may publish reviewed services before creating individual
-// specialist profiles. Keep the catalogue requirements intact so enforcement can
-// be re-enabled without migrating service definitions.
+// Launch policy: service information is declared by the provider. Operational
+// details remain available as optional reference data, but none of them blocks
+// selecting, submitting, publishing or matching a known service.
 export const SERVICE_PREREQUISITE_POLICY = Object.freeze({
+  enforce_profile_compatibility: false,
+  enforce_functional_unit: false,
+  enforce_capability: false,
   enforce_verified_specialist: false,
+  enforce_verified_equipment: false,
+  enforce_verified_infrastructure: false,
+  show_review_status: false,
 });
 
 const PROFESSIONAL_ALIASES = {
@@ -232,7 +238,9 @@ export function evaluateServicePrerequisites(rawKey, context = {}) {
   const activeCapabilityKeys = activeContextKeys(capabilities, 'capability_key');
 
   const profileType = clean(location.provider_profile_type);
-  if (profileType && definition.hidden_for_profile_types.includes(profileType)) {
+  if (SERVICE_PREREQUISITE_POLICY.enforce_profile_compatibility
+    && profileType
+    && definition.hidden_for_profile_types.includes(profileType)) {
     blockers.push({
       code: 'incompatible_profile_type',
       message: 'Serviciul nu este compatibil cu tipul acestei locații.',
@@ -241,7 +249,10 @@ export function evaluateServicePrerequisites(rawKey, context = {}) {
     });
   }
 
-  if (enforceUnitScope && prerequisiteUnitKey && !activeUnitKeys.has(prerequisiteUnitKey)) {
+  if (SERVICE_PREREQUISITE_POLICY.enforce_functional_unit
+    && enforceUnitScope
+    && prerequisiteUnitKey
+    && !activeUnitKeys.has(prerequisiteUnitKey)) {
     const fallbackUnits = serviceContext?.fallbackUnitKeys || [];
     const fallbackMatched = fallbackUnits.some((unitKey) => activeUnitKeys.has(unitKey));
     if (!fallbackMatched) {
@@ -254,7 +265,10 @@ export function evaluateServicePrerequisites(rawKey, context = {}) {
     }
   }
 
-  if (enforceUnitScope && capabilityKey && !activeCapabilityKeys.has(capabilityKey)) {
+  if (SERVICE_PREREQUISITE_POLICY.enforce_capability
+    && enforceUnitScope
+    && capabilityKey
+    && !activeCapabilityKeys.has(capabilityKey)) {
     blockers.push({
       code: 'capability_missing',
       message: 'Capabilitatea necesară nu este declarată pentru această locație.',
@@ -281,7 +295,7 @@ export function evaluateServicePrerequisites(rawKey, context = {}) {
 
   const medical = definition.requires_review || definition.service_need_level === 'specialized_medical';
   const equipmentResult = verifiedEquipmentTypes(equipment, medical, prerequisiteUnitKey, enforceUnitScope);
-  if (definition.requires_equipment) {
+  if (definition.requires_equipment && SERVICE_PREREQUISITE_POLICY.enforce_verified_equipment) {
     const required = definition.required_equipment_types || [];
     if (required.length === 0) {
       blockers.push({
@@ -308,7 +322,7 @@ export function evaluateServicePrerequisites(rawKey, context = {}) {
   }
 
   const facilityResult = activeFacilityTypes(facilities, prerequisiteUnitKey, enforceUnitScope);
-  if (definition.requires_infrastructure) {
+  if (definition.requires_infrastructure && SERVICE_PREREQUISITE_POLICY.enforce_verified_infrastructure) {
     const required = definition.required_infrastructure_types || [];
     const matched = required.length > 0
       && required.every((requirement) => infrastructureSatisfied(requirement, facilityResult.types, location, activeUnitKeys));
@@ -329,7 +343,7 @@ export function evaluateServicePrerequisites(rawKey, context = {}) {
   else if (blockers.some((blocker) => blocker.code === 'verified_specialist_missing')) status = 'requires_verified_specialist';
   else if (blockers.some((blocker) => blocker.code.includes('equipment'))) status = 'requires_equipment';
   else if (blockers.some((blocker) => blocker.code.includes('infrastructure'))) status = 'requires_infrastructure';
-  else if (definition.requires_review) status = 'ready_for_review';
+  else if (definition.requires_review && SERVICE_PREREQUISITE_POLICY.show_review_status) status = 'ready_for_review';
 
   return {
     service_key: definition.key,
@@ -340,16 +354,21 @@ export function evaluateServicePrerequisites(rawKey, context = {}) {
     definition,
     evidence: {
       verified_professional_types: [...professionalResult.types],
+      profile_compatibility_enforced: SERVICE_PREREQUISITE_POLICY.enforce_profile_compatibility,
+      functional_unit_enforced: SERVICE_PREREQUISITE_POLICY.enforce_functional_unit,
+      capability_enforced: SERVICE_PREREQUISITE_POLICY.enforce_capability,
       verified_specialist_enforced: SERVICE_PREREQUISITE_POLICY.enforce_verified_specialist,
       verified_equipment_types: [...equipmentResult.types],
+      verified_equipment_enforced: SERVICE_PREREQUISITE_POLICY.enforce_verified_equipment,
       active_facility_types: [...facilityResult.types],
+      verified_infrastructure_enforced: SERVICE_PREREQUISITE_POLICY.enforce_verified_infrastructure,
       active_functional_unit_keys: [...activeUnitKeys],
       active_capability_keys: [...activeCapabilityKeys],
       service_unit_key: serviceUnitKey,
       prerequisite_unit_key: prerequisiteUnitKey,
       validation_scope: serviceContext?.scope || 'unit',
       capability_key: capabilityKey,
-      unit_scope_enforced: enforceUnitScope,
+      unit_scope_enforced: enforceUnitScope && SERVICE_PREREQUISITE_POLICY.enforce_functional_unit,
       scoped_assignment_ids: professionalResult.scopedAssignments,
       scoped_equipment_ids: equipmentResult.scopedEquipment,
       scoped_facility_ids: facilityResult.scopedFacilities,

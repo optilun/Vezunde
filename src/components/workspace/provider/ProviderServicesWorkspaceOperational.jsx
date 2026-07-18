@@ -10,6 +10,7 @@ import {
   FlaskConical,
   Glasses,
   Hospital,
+  Info,
   Microscope,
   PackageOpen,
   Plus,
@@ -330,16 +331,13 @@ function selectedCountForSection(selected, section) {
   return section.items.reduce((sum, item) => sum + (isSelected(selected, item) ? 1 : 0), 0);
 }
 
-function StatusBadge({ prerequisite, locallyBlocked }) {
-  if (locallyBlocked) {
-    return <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-900"><AlertTriangle className="h-3 w-3" /> Configurare incompletă</span>;
-  }
+function StatusBadge({ prerequisite }) {
   if (!prerequisite || prerequisite.status === "available") return null;
   const blocked = prerequisite.eligible === false;
   return (
     <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${blocked ? "border-amber-200 bg-amber-50 text-amber-900" : "border-blue-200 bg-blue-50 text-blue-900"}`}>
       {blocked ? <AlertTriangle className="h-3 w-3" /> : <ShieldCheck className="h-3 w-3" />}
-      {prerequisite.status_label || (blocked ? "Cerințe lipsă" : "Necesită verificare")}
+      {prerequisite.status_label || (blocked ? "Opțiune indisponibilă" : "Informație declarată")}
     </span>
   );
 }
@@ -351,14 +349,11 @@ function ChangeBadge({ draftAddition, removalRequested, modified }) {
   return null;
 }
 
-function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, capabilityActive, disabled, helperText = "", onToggle }) {
+function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, disabled, helperText = "", onToggle }) {
   const active = isSelected(selected, item);
   const approved = isSelected(approvedSelected, item);
   const removalRequested = approved && !active;
   const draftAddition = active && !approved;
-  const context = getServiceOperationalContext(item.id);
-  const requiresUnit = context?.sectionKey !== "business_attributes";
-  const locallyBlocked = active && requiresUnit && (!unitKey || (context?.capabilityKey && !capabilityActive));
   const blockerDetail = active && prerequisite?.eligible === false
     ? prerequisite.blockers?.[0]?.message
     : "";
@@ -370,7 +365,7 @@ function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, c
       type="button"
       data-service-key={item.id}
       aria-pressed={active}
-      disabled={disabled || prerequisite?.status === "incompatible_profile"}
+      disabled={disabled}
       onClick={() => onToggle(item, unitKey)}
       className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 px-4 py-3 text-left transition last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-55 ${removalRequested ? "bg-amber-50/70 hover:bg-amber-50" : active ? "bg-secondary/35" : "bg-card hover:bg-secondary/20"}`}
     >
@@ -383,7 +378,7 @@ function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, c
       </span>
       <span className="flex flex-wrap items-center justify-end gap-1.5">
         <ChangeBadge draftAddition={draftAddition} removalRequested={removalRequested} />
-        {!removalRequested && <StatusBadge prerequisite={prerequisite} locallyBlocked={locallyBlocked} />}
+        {!removalRequested && <StatusBadge prerequisite={prerequisite} />}
       </span>
     </button>
   );
@@ -627,7 +622,7 @@ function CustomSuggestion({ unitKey, section, disabled, items, onAdd, onRemove }
   );
 }
 
-function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceUnitMap, capabilities, prerequisites, config, resourceLinks, approvedResourceLinks, customSuggestions, open, disabled, onOpen, onToggleService, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion }) {
+function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceUnitMap, prerequisites, config, resourceLinks, approvedResourceLinks, customSuggestions, open, disabled, onOpen, onToggleService, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion }) {
   const definition = getFunctionalUnitDefinition(unitKey);
   const Icon = UNIT_ICONS[unitKey] || Building2;
   const selectedCount = sections.reduce((sum, section) => sum + selectedCountForSection(selected, section), 0);
@@ -645,7 +640,6 @@ function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceU
           {sections.map((section) => {
             const activeUnit = resolveSectionUnit(section, selected, serviceUnitMap, [unitKey]);
             const availableParents = possibleUnits(section).filter((key) => config.activeUnits.includes(key));
-            const capabilityActive = !section.capabilityKey || capabilities.some((item) => item.capability_key === section.capabilityKey && item.parent_unit_key === activeUnit);
             const suggestions = customSuggestions.filter((item) => item.functional_unit_key === unitKey && item.group === section.items[0]?.group);
             return (
               <div key={section.key} className="border-t border-border/60 first:border-t-0">
@@ -662,10 +656,9 @@ function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceU
                     )}
                   </div>
                 </div>
-                {section.note && <div className="mx-4 mb-3 flex gap-2 rounded-xl border border-border bg-secondary/25 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground sm:mx-5"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" /> {section.note}</div>}
-                {!capabilityActive && <div className="mx-4 mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900 sm:mx-5">Activează mai întâi capabilitatea „{getCapabilityDefinition(section.capabilityKey)?.title || section.capabilityKey}” pentru această unitate.</div>}
+                {section.note && <div className="mx-4 mb-3 flex gap-2 rounded-xl border border-border bg-secondary/25 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground sm:mx-5"><Info className="mt-0.5 h-4 w-4 shrink-0" /> {section.note}</div>}
                 <div className="border-t border-border/50">
-                  {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={prerequisites[item.id]} unitKey={activeUnit} capabilityActive={capabilityActive} disabled={disabled || !capabilityActive} onToggle={onToggleService} />)}
+                  {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={prerequisites[item.id]} unitKey={activeUnit} disabled={disabled} onToggle={onToggleService} />)}
                 </div>
                 <CustomSuggestion unitKey={unitKey} section={section} disabled={disabled} items={suggestions} onAdd={onAddSuggestion} onRemove={onRemoveSuggestion} />
               </div>
@@ -681,7 +674,7 @@ function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceU
 function GlobalServiceSections({ sections, selected, approvedSelected, prerequisites, disabled, onToggleService }) {
   if (sections.length === 0) return null;
   const helperText = {
-    cas_reimbursed_services: "Selectează numai dacă locația are un contract sau un cadru de decontare aplicabil. Categoria și eligibilitatea se verifică separat.",
+    cas_reimbursed_services: "Informație declarată de furnizor. Nu cerem documente. Disponibilitatea poate varia; pacientul confirmă direct cu locația.",
     onsite_eye_testing_b2b: "Include consultații sau testări la domiciliu și screening ori testări de vedere la sediul companiilor.",
   };
   return (
@@ -694,7 +687,7 @@ function GlobalServiceSections({ sections, selected, approvedSelected, prerequis
         <div key={section.key} className="border-b border-border/60 last:border-b-0">
           <div className="bg-card px-4 py-3 sm:px-5"><h3 className="text-xs font-bold">{section.title}</h3><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{section.description}</p></div>
           <div className="border-t border-border/50">
-            {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={prerequisites[item.id]} unitKey="" capabilityActive disabled={disabled} helperText={helperText[item.id] || ""} onToggle={onToggleService} />)}
+            {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={prerequisites[item.id]} unitKey="" disabled={disabled} helperText={helperText[item.id] || ""} onToggle={onToggleService} />)}
           </div>
         </div>
       ))}
@@ -708,7 +701,7 @@ function ServiceCatalogIntro({ activeUnits, selectedCount }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold">5. Oferta fiecărei zone</h2>
-          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">Deschide fiecare zonă și selectează oferta disponibilă. Asociază specialiștii și dotările zonei, iar VIASEE verifică automat serviciile acoperite.</p>
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">Deschide fiecare zonă și selectează oferta declarată ca disponibilă. Specialiștii, dotările și facilitățile pot fi completate opțional și nu blochează serviciile.</p>
         </div>
         <span className="rounded-full bg-secondary px-3 py-1.5 text-[11px] font-semibold text-muted-foreground">{selectedCount} opțiuni · {activeUnits.length} zone</span>
       </div>
@@ -735,11 +728,11 @@ function ServicesSidebar({ activeUnits, capabilities, selectedCount, selectedByU
   ].filter(Boolean));
   const careSettingComplete = allowedCareSettings.includes(careSetting);
   const steps = [
-    { number: 1, label: "Zonele locației", detail: activeUnits.length > 0 ? `${activeUnits.length} configurate` : "Selectează cel puțin o zonă", done: activeUnits.length > 0 },
+    { number: 1, label: "Zonele locației", detail: activeUnits.length > 0 ? `${activeUnits.length} configurate` : "Opțional", done: activeUnits.length > 0, optional: true },
     { number: 2, label: "Activități speciale", detail: capabilities.length > 0 ? `${capabilities.length} selectate` : "Opțional", done: capabilities.length > 0, optional: true },
-    { number: 3, label: "Mod de funcționare", detail: careSettingComplete ? CARE_SETTINGS[careSetting]?.label : "Necesită completare", done: careSettingComplete },
+    { number: 3, label: "Mod de funcționare", detail: careSettingComplete ? CARE_SETTINGS[careSetting]?.label : "Opțional", done: careSettingComplete, optional: true },
     { number: 4, label: "Opțiuni generale", detail: globalOptionCount > 0 ? `${globalOptionCount} selectate` : "Opțional", done: globalOptionCount > 0, optional: true },
-    { number: 5, label: "Produse și servicii", detail: serviceCount > 0 ? `${serviceCount} selectate` : "Nu există selecții", done: serviceCount > 0 },
+    { number: 5, label: "Produse și servicii", detail: serviceCount > 0 ? `${serviceCount} selectate` : "Nicio selecție", done: serviceCount > 0, optional: true },
   ];
 
   return (
@@ -1050,34 +1043,14 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     const selectedKeys = selectedServiceKeys(selected);
     const publicServiceKeys = selectedKeys.filter((serviceKey) => getServiceOperationalContext(serviceKey)?.sectionKey !== "business_attributes");
     const globalOptionCount = selectedKeys.length - publicServiceKeys.length;
-    const blockers = [];
-    if (activeUnits.length === 0) blockers.push({ code: "functional_unit_required", message: "Selectează cel puțin o zonă existentă." });
-    if (publicServiceKeys.length === 0) blockers.push({ code: "public_offer_required", message: "Adaugă cel puțin un produs sau serviciu în oferta locației." });
-    const allowedCareSettings = operationalLayout.careSettings || [];
-    if (allowedCareSettings.length > 0 && !allowedCareSettings.includes(careSetting)) {
-      blockers.push({ code: "care_setting_required", message: "Selectează un tip de activitate compatibil cu locația." });
-    }
-    const issueServiceKeys = [];
-    for (const serviceKey of publicServiceKeys) {
-      const evaluation = draftPrerequisites[serviceKey];
-      if (!evaluation || evaluation.eligible !== false) continue;
-      issueServiceKeys.push(serviceKey);
-      for (const blocker of evaluation.blockers || []) {
-        blockers.push({ ...blocker, service_key: serviceKey });
-      }
-    }
-    const uniqueBlockers = [...new Map(blockers.map((blocker) => [
-      `${blocker.service_key || "configuration"}:${blocker.code || blocker.message}`,
-      blocker,
-    ])).values()];
     return {
       publicServiceKeys,
       globalOptionCount,
-      issueServiceKeys: [...new Set(issueServiceKeys)],
-      blockers: uniqueBlockers,
-      configurationComplete: uniqueBlockers.length === 0,
+      issueServiceKeys: [],
+      blockers: [],
+      configurationComplete: true,
     };
-  }, [activeUnits, careSetting, draftPrerequisites, operationalLayout.careSettings, selected]);
+  }, [selected]);
 
   const workspaceSnapshot = useMemo(() => {
     const itemByKey = Object.fromEntries(profileSections.flatMap((section) => section.items.map((item) => [item.id, item])));
@@ -1556,7 +1529,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     <div className="space-y-4 pb-20">
       <section className="rounded-[24px] border border-border bg-card p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold">Configurează oferta pentru {profileLabel(location)}.</p>{draft && <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}</div><p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Începe cu zonele existente, continuă cu activitățile asociate și configurează oferta fiecărei zone. Resursele se asociază zonei, iar VIASEE verifică serviciile acoperite.</p></div>
+          <div><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold">Configurează oferta pentru {profileLabel(location)}.</p>{draft && <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}</div><p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Selectează produsele și serviciile declarate ca disponibile. Zonele, activitățile, specialiștii și dotările sunt informații opționale și nu blochează trimiterea.</p></div>
         </div>
         <div className="relative mt-4"><Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input className={`${inputClass} pl-10`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Caută: control vedere, schimb șurub, OCT, oftalmolog copii..." />{query && <button type="button" onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted-foreground hover:bg-secondary"><X className="h-4 w-4" /></button>}</div>
       </section>
@@ -1580,11 +1553,11 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
           {query ? (
             <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
               <div className="border-b border-border px-4 py-4 sm:px-5"><h2 className="text-sm font-bold">Rezultate pentru „{query}”</h2><p className="mt-1 text-[11px] text-muted-foreground">Căutarea recunoaște și formulări uzuale folosite de pacienții din România.</p></div>
-              {searchResults.length > 0 ? searchResults.map(({ section, item }) => { const isLocationWide = section.key === "business_attributes"; const unitKey = isLocationWide ? "" : resolveSectionUnit(section, selected, serviceUnitMap, activeUnits); const capabilityActive = !section.capabilityKey || capabilities.some((capability) => capability.capability_key === section.capabilityKey && capability.parent_unit_key === unitKey); return <div key={`${section.key}:${item.id}`}><div className="border-b border-border/60 bg-secondary/10 px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{isLocationWide ? "Valabil la nivelul locației" : getFunctionalUnitDefinition(unitKey)?.shortTitle || "Zonă neconfigurată"} · {section.title}</div><ServiceRow item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={draftPrerequisites[item.id]} unitKey={unitKey} capabilityActive={capabilityActive} disabled={!editable || (!isLocationWide && !activeUnits.includes(unitKey))} onToggle={toggleService} /></div>; }) : <div className="px-4 py-10 text-center text-sm text-muted-foreground">Nu am găsit opțiuni pentru această căutare.</div>}
+              {searchResults.length > 0 ? searchResults.map(({ section, item }) => { const isLocationWide = section.key === "business_attributes"; const unitKey = isLocationWide ? "" : resolveSectionUnit(section, selected, serviceUnitMap, activeUnits); return <div key={`${section.key}:${item.id}`}><div className="border-b border-border/60 bg-secondary/10 px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{isLocationWide ? "Valabil la nivelul locației" : getFunctionalUnitDefinition(unitKey)?.shortTitle || "Zonă neconfigurată"} · {section.title}</div><ServiceRow item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={draftPrerequisites[item.id]} unitKey={unitKey} disabled={!editable} onToggle={toggleService} /></div>; }) : <div className="px-4 py-10 text-center text-sm text-muted-foreground">Nu am găsit opțiuni pentru această căutare.</div>}
             </section>
           ) : (
             <div className="space-y-3">
-              {visibleUnits.map((unitKey) => <UnitAccordion key={unitKey} unitKey={unitKey} sections={sectionsByUnit[unitKey] || []} selected={selected} approvedSelected={approvedSelected} serviceUnitMap={serviceUnitMap} capabilities={capabilities} prerequisites={draftPrerequisites} config={{ ...config, activeUnits }} resourceLinks={resourceLinks} approvedResourceLinks={approvedResourceLinks} customSuggestions={suggestions} open={openUnit === unitKey} disabled={!editable} onOpen={() => setOpenUnit((current) => current === unitKey ? "" : unitKey)} onToggleService={toggleService} onChangeSectionUnit={changeSectionUnit} onToggleResource={toggleResource} onAddSuggestion={addSuggestion} onRemoveSuggestion={removeSuggestion} />)}
+              {visibleUnits.map((unitKey) => <UnitAccordion key={unitKey} unitKey={unitKey} sections={sectionsByUnit[unitKey] || []} selected={selected} approvedSelected={approvedSelected} serviceUnitMap={serviceUnitMap} prerequisites={draftPrerequisites} config={{ ...config, activeUnits }} resourceLinks={resourceLinks} approvedResourceLinks={approvedResourceLinks} customSuggestions={suggestions} open={openUnit === unitKey} disabled={!editable} onOpen={() => setOpenUnit((current) => current === unitKey ? "" : unitKey)} onToggleService={toggleService} onChangeSectionUnit={changeSectionUnit} onToggleResource={toggleResource} onAddSuggestion={addSuggestion} onRemoveSuggestion={removeSuggestion} />)}
               {visibleUnits.length === 0 && <div className="rounded-2xl border border-dashed border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground">Selectează cel puțin o zonă care există în locație.</div>}
             </div>
           )}

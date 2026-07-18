@@ -27,26 +27,14 @@ function proposedMatchingState(service, location) {
   }
 
   const proposed = isServiceMatchingEligible(service, location);
-  if (definition.requires_review || level === 'specialized_medical') {
-    if (location?.profile_control_status !== 'verified') {
-      return { proposed: false, level, catalog_status: normalized.status, reason: 'Locatia nu este verificata Vezunde pentru servicii medicale.' };
-    }
-    if (service?.confirmation_level !== 'vezunde_verified') {
-      return { proposed: false, level, catalog_status: normalized.status, reason: 'Serviciul medical nu este verificat individual de Vezunde.' };
-    }
-    return { proposed, level, catalog_status: normalized.status, reason: 'Serviciu medical verificat la o locatie verificata.' };
-  }
-
   if (!proposed) {
-    return { proposed: false, level, catalog_status: normalized.status, reason: 'Serviciul nu indeplineste regula canonica de publicare si matching.' };
+    return { proposed: false, level, catalog_status: normalized.status, reason: 'Serviciul nu este activ, destinat pacientilor sau confirmat de furnizor.' };
   }
   return {
     proposed: true,
     level,
     catalog_status: normalized.status,
-    reason: level === 'technical'
-      ? 'Serviciu tehnic activ si confirmat conform registrului canonic.'
-      : 'Serviciu general activ si confirmat conform registrului canonic.',
+    reason: 'Serviciu activ, declarat si confirmat de furnizor.',
   };
 }
 

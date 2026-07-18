@@ -304,9 +304,9 @@ function serviceApplyData(serviceKey, existing = {}) {
   if (!definition) throw new Error(`Serviciu canonic necunoscut: ${serviceKey}`);
   const previousConfirmation = cleanString(existing?.confirmation_level);
   const confirmationLevel = previousConfirmation === 'vezunde_verified' ? 'vezunde_verified' : 'provider_confirmed';
-  const matchingAllowed = definition.requires_review
-    ? confirmationLevel === 'vezunde_verified'
-    : definition.matching_allowed_when_provider_confirmed;
+  const matchingAllowed = definition.patient_facing !== false
+    && definition.b2b_only !== true
+    && definition.matching_allowed_when_provider_confirmed === true;
   return {
     is_active: true,
     accepts_requests: true,

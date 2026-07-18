@@ -8,7 +8,6 @@ import {
   FUNCTIONAL_UNIT_KEYS,
   isCapabilityParentAllowed,
 } from './locationOperationalRegistry.js';
-import { getServiceOperationalContext } from './serviceOperationalTaxonomy.js';
 
 const SERVICE_IDS = getCanonicalServiceGroupIds();
 const MAX_UNITS = 30;
@@ -144,11 +143,11 @@ export function validateCapabilities(value, functionalUnits, allowOperationalCon
 }
 
 export function validateServiceUnitMap(value, functionalUnits, capabilities, allowOperationalContext = true) {
+  void capabilities;
   if (value === undefined) return { valid: true, clean: {} };
   if (!allowOperationalContext) return resultError('Maparea serviciilor pe unități nu este permisă în acest flux');
   if (!isPlainObject(value)) return resultError('service_unit_map trebuie să fie obiect');
   const unitKeys = new Set((functionalUnits || []).map((item) => item.unit_key));
-  const capabilityPairs = new Set((capabilities || []).map((item) => `${item.capability_key}:${item.parent_unit_key}`));
   const cleanValue = {};
   for (const [rawServiceKey, rawUnitKey] of Object.entries(value)) {
     const normalized = normalizeServiceKey(rawServiceKey);
@@ -156,12 +155,6 @@ export function validateServiceUnitMap(value, functionalUnits, capabilities, all
     const unitKey = clean(rawUnitKey);
     if (!serviceKey) return resultError('Cheie de serviciu invalidă în service_unit_map', [rawServiceKey]);
     if (!unitKeys.has(unitKey)) return resultError('Serviciul trebuie asociat unei unități selectate', [serviceKey, unitKey]);
-    const context = getServiceOperationalContext(serviceKey);
-    const allowedUnits = new Set([context?.unitKey, ...(context?.fallbackUnitKeys || [])].filter(Boolean));
-    if (allowedUnits.size > 0 && !allowedUnits.has(unitKey)) return resultError('Serviciu incompatibil cu unitatea selectată', [serviceKey, unitKey]);
-    if (context?.capabilityKey && !capabilityPairs.has(`${context.capabilityKey}:${unitKey}`)) {
-      return resultError('Serviciul necesită o capabilitate activă în unitatea selectată', [serviceKey, context.capabilityKey, unitKey]);
-    }
     cleanValue[serviceKey] = unitKey;
   }
   return { valid: true, clean: cleanValue };

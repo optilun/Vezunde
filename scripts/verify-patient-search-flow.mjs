@@ -256,8 +256,8 @@ assert.deepEqual(
 
 assert.equal(
   recommendationBucketForProfile('directory', 'specialized_medical'),
-  'excluded',
-  'O nevoie medicala specializata nu poate recomanda un profil neverificat',
+  'directory',
+  'Un serviciu declarat poate apărea în director fără a fi prezentat ca verificat',
 );
 assert.equal(recommendationBucketForProfile('verified', 'specialized_medical'), 'confirmed');
 

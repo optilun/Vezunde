@@ -121,7 +121,7 @@ var SERVICE_GROUPS = {
   },
   investigations: {
     label: "Investiga\u021Bii oftalmologice",
-    helper: "Investiga\u021Bii disponibile \xEEn loca\u021Bie, \xEEn func\u021Bie de dot\u0103ri \u0219i personalul autorizat.",
+    helper: "Investiga\u021Bii declarate de furnizor ca fiind disponibile \xEEn aceast\u0103 loca\u021Bie.",
     ids: {
       oct: "OCT",
       visual_field_analyzer: "C\xE2mp vizual",
@@ -166,7 +166,7 @@ var SERVICE_GROUPS = {
   },
   procedures_surgery: {
     label: "Proceduri \u0219i chirurgie oftalmologic\u0103",
-    helper: "Proceduri medicale care necesit\u0103 verificare \xEEnainte de publicare \u0219i folosire \xEEn recomand\u0103ri.",
+    helper: "Proceduri \u0219i interven\u021Bii declarate de furnizor ca fiind disponibile \xEEn aceast\u0103 loca\u021Bie.",
     ids: {
       cataract_surgery: "Chirurgia cataractei",
       refractive_surgery: "Chirurgie refractiv\u0103",
@@ -493,7 +493,7 @@ function buildRegistry() {
       const override = SERVICE_OVERRIDES[key] || {};
       const policy = { ...base, ...override };
       const aliases = aliasesForKey(key);
-      const publicImmediately = policy.patientFacing !== false && !policy.review && policy.need !== "specialized_medical";
+      const publicImmediately = policy.patientFacing !== false && policy.b2bOnly !== true;
       registry[key] = {
         key,
         label,
@@ -502,7 +502,7 @@ function buildRegistry() {
         patient_facing: policy.patientFacing !== false,
         b2b_only: policy.b2bOnly === true,
         service_need_level: policy.need,
-        default_confirmation_level: publicImmediately ? "provider_confirmed" : "vezunde_verified",
+        default_confirmation_level: publicImmediately ? "provider_confirmed" : "not_confirmed",
         requires_review: Boolean(policy.review),
         requires_verified_specialist: Boolean(policy.specialist),
         required_professional_types: [...policy.professionalTypes || []],
@@ -578,20 +578,14 @@ function isServicePubliclyEligible(service, location) {
   if (["removal_pending", "provider_suspended"].includes(service.provider_visibility_status)) return false;
   if (!location || location.active_status === "inactiva" || location.profile_control_status === "suspended") return false;
   const normalized = normalizeServiceKey(service.service_key || service.key);
-  if (!normalized.definition || normalized.definition.patient_facing === false) return false;
+  if (!normalized.definition || normalized.definition.patient_facing === false || normalized.definition.b2b_only === true) return false;
   const level = service.confirmation_level || "not_confirmed";
-  if (normalized.definition.requires_review || normalized.definition.service_need_level === "specialized_medical") {
-    return level === "vezunde_verified" && location.profile_control_status === "verified";
-  }
   return normalized.definition.public_immediately && ["publicly_listed", "provider_confirmed", "vezunde_verified"].includes(level);
 }
 function isServiceMatchingEligible(service, location) {
   if (!isServicePubliclyEligible(service, location)) return false;
   const normalized = normalizeServiceKey(service.service_key || service.key);
   if (!normalized.definition) return false;
-  if (normalized.definition.requires_review || normalized.definition.service_need_level === "specialized_medical") {
-    return (service.confirmation_level || "") === "vezunde_verified" && location?.profile_control_status === "verified";
-  }
   return normalized.definition.matching_allowed_when_provider_confirmed;
 }
 var CLAIM_PREP_SERVICE_GROUPS = ["optical_retail", "lenses_and_measurements", "optometry", "contact_lenses", "technical_activities"];
@@ -615,7 +609,7 @@ var NEW_KEYS = {
     group: "business_attributes",
     kind: "service",
     need: "general",
-    review: true,
+    review: false,
     specialist: false,
     professionalTypes: []
   },
@@ -681,7 +675,15 @@ var SPECIFIC_SEARCH_KEYWORDS = {
   visual_field_analyzer: ["camp vizual", "perimetrie", "test camp vizual"],
   fundus_exam: ["fund de ochi", "examinare retina", "control retina"],
   tonometry: ["tonometrie", "tensiune oculara", "presiune intraoculara"],
-  eyeglasses_repair: ["reparatii ochelari", "reparat ochelari", "ochelari rupti", "ochelarii rupti", "rupt ochelari", "s-au rupt ochelarii", "ochelari stricati"],
+  eyeglasses_repair: [
+    "reparatii ochelari",
+    "reparat ochelari",
+    "ochelari rupti",
+    "ochelarii rupti",
+    "rupt ochelari",
+    "s-au rupt ochelarii",
+    "ochelari stricati"
+  ],
   eyeglasses_adjustment: ["reglaj ochelari", "ajustare rame", "ochelari largi"],
   lens_replacement: ["schimb lentile", "inlocuire sticle"],
   metal_frame_soldering: ["sudura rame", "lipire rama metalica"],
@@ -773,7 +775,7 @@ function addGroupAndKeys() {
     if (CANONICAL_SERVICE_KEY_SET2.has(key)) continue;
     const rules = profileRulesForGroup(config.group);
     const aliases = aliasesForKey2(key);
-    const publicImmediately = !config.review && config.need !== "specialized_medical";
+    const publicImmediately = true;
     CANONICAL_SERVICE_REGISTRY2[key] = {
       key,
       label: config.label,
@@ -782,7 +784,7 @@ function addGroupAndKeys() {
       patient_facing: true,
       b2b_only: false,
       service_need_level: config.need,
-      default_confirmation_level: publicImmediately ? "provider_confirmed" : "vezunde_verified",
+      default_confirmation_level: "provider_confirmed",
       requires_review: Boolean(config.review),
       requires_verified_specialist: Boolean(config.specialist),
       required_professional_types: [...config.professionalTypes || []],
@@ -923,8 +925,8 @@ var PROVIDER_SERVICE_SECTIONS = [
     title: "Evaluarea vederii \u0219i dioptriilor",
     publicNeedKey: "eye_exam",
     publicLabel: "Control vedere \u0219i dioptrii",
-    description: "Servicii realizate \xEEn cabinetul optometric de un specialist compatibil.",
-    note: "Eligibilitatea depinde de specialistul asociat \u0219i de dot\u0103rile declarate ale cabinetului.",
+    description: "Servicii optometrice declarate ca fiind disponibile \xEEn aceast\u0103 loca\u021Bie.",
+    note: "Speciali\u0219tii \u0219i dot\u0103rile pot fi completate op\u021Bional; nu blocheaz\u0103 selectarea sau publicarea serviciilor.",
     searchTerms: ["control vedere", "verificare vedere", "masurat dioptrii", "test vedere", "control ochi", "optometrist"],
     items: [
       ["optometry", "optometry_consultation"],
@@ -968,7 +970,7 @@ var PROVIDER_SERVICE_SECTIONS = [
     title: "Adaptare \u0219i monitorizare lentile de contact",
     publicNeedKey: "contact_lens_services",
     publicLabel: "Adaptare lentile de contact",
-    description: "Consulta\u021Bie, prob\u0103, instruire, adaptare \u0219i control ulterior realizate de un specialist compatibil.",
+    description: "Consulta\u021Bie, prob\u0103, instruire, adaptare \u0219i control ulterior, declarate ca fiind disponibile \xEEn loca\u021Bie.",
     note: "V\xE2nzarea lentilelor de contact nu activeaz\u0103 automat serviciile profesionale de adaptare.",
     searchTerms: ["adaptare lentile contact", "proba lentile", "invatat lentile", "lentile speciale", "ortokeratologie"],
     items: [
@@ -1073,7 +1075,7 @@ var PROVIDER_SERVICE_SECTIONS = [
     publicNeedKey: "ophthalmology_consults",
     publicLabel: "Consulta\u021Bii oftalmologice",
     description: "Consulta\u021Bii, controale \u0219i examin\u0103ri efectuate de medicul oftalmolog.",
-    note: "Serviciile medicale sunt publicate numai dup\u0103 verificarea medicului \u0219i a condi\u021Biilor necesare.",
+    note: "Serviciile sunt informa\u021Bii declarate de furnizor. Profilurile profesionale \u0219i resursele sunt op\u021Bionale \xEEn aceast\u0103 etap\u0103.",
     searchTerms: ["oftalmolog", "doctor de ochi", "medic de ochi", "consult ochi", "control oftalmologic"],
     items: [
       ["ophthalmology_consults", "ophthalmology_consultation"],
@@ -1095,7 +1097,7 @@ var PROVIDER_SERVICE_SECTIONS = [
     title: "Investiga\u021Bii \u0219i imagistic\u0103",
     publicNeedKey: "ophthalmology_investigations",
     publicLabel: "Investiga\u021Bii oftalmologice",
-    description: "Investiga\u021Bii disponibile \xEEn func\u021Bie de aparatura verificat\u0103 a loca\u021Biei.",
+    description: "Investiga\u021Bii declarate de furnizor ca fiind disponibile \xEEn aceast\u0103 loca\u021Bie.",
     searchTerms: ["oct ochi", "camp vizual", "fund de ochi", "poza retina", "tensiune oculara", "topografie corneana", "ecografie ochi"],
     items: [
       ["investigations", "oct"],
@@ -1235,7 +1237,7 @@ var PROVIDER_SERVICE_SECTIONS = [
     title: "Urgen\u021Be \u0219i traumatisme oculare",
     publicNeedKey: "emergency_ophthalmology",
     publicLabel: "Urgen\u021Be oftalmologice",
-    description: "Evaluarea urgen\u021Belor \u0219i traumatismelor \xEEn limitele capacit\u0103\u021Bii verificate a loca\u021Biei.",
+    description: "Evaluarea urgen\u021Belor \u0219i traumatismelor, conform disponibilit\u0103\u021Bii declarate de loca\u021Bie.",
     searchTerms: ["urgenta ochi", "traumatism ochi", "corp strain ochi", "durere oculara brusca"],
     items: [["specialties", "emergency_ophthalmology"], ["specialties", "ocular_trauma"]]
   },
@@ -1275,7 +1277,7 @@ var PROVIDER_SERVICE_SECTIONS = [
     title: "Proceduri, injec\u021Bii \u0219i laser",
     publicNeedKey: "procedures_treatments",
     publicLabel: "Proceduri \u0219i tratamente oftalmologice",
-    description: "Proceduri realizate \xEEntr-o sal\u0103 compatibil\u0103, cu medic, aparatur\u0103 \u0219i infrastructur\u0103 verificate.",
+    description: "Proceduri declarate de furnizor ca fiind disponibile \xEEn aceast\u0103 loca\u021Bie.",
     searchTerms: ["laser ochi", "injectie ochi", "yag", "laser retina", "chalazion", "corp strain"],
     items: [
       ["procedures_surgery", "laser_procedures"],
@@ -1299,7 +1301,7 @@ var PROVIDER_SERVICE_SECTIONS = [
     title: "Chirurgie oftalmologic\u0103",
     publicNeedKey: "ophthalmology_surgery",
     publicLabel: "Chirurgie oftalmologic\u0103",
-    description: "Interven\u021Bii chirurgicale efectuate \xEEntr-o unitate \u0219i cu echipamente verificate.",
+    description: "Interven\u021Bii chirurgicale declarate de furnizor ca fiind disponibile \xEEn aceast\u0103 loca\u021Bie.",
     searchTerms: ["operatie ochi", "chirurgie cataracta", "chirurgie retina", "vitrectomie", "chirurgie pleoape"],
     items: [
       ["procedures_surgery", "cataract_surgery"],
@@ -1602,7 +1604,7 @@ function applyTaxonomyExtensions() {
     title: "Lentile de noapte \u0219i lentile de contact pentru controlul miopiei",
     publicNeedKey: "myopia_management",
     publicLabel: "Managementul miopiei",
-    description: "Ortokeratologie \u0219i lentile de contact speciale, adaptate \u0219i monitorizate de un specialist compatibil.",
+    description: "Ortokeratologie \u0219i lentile de contact speciale, declarate ca fiind disponibile \xEEn aceast\u0103 loca\u021Bie.",
     searchTerms: [
       "lentile de noapte",
       "ortokeratologie",
@@ -1849,309 +1851,6 @@ function resolveServiceSearchQuery(rawQuery, options = {}) {
   };
 }
 
-// shared/servicePrerequisiteEngine.js
-var SERVICE_PREREQUISITE_POLICY = Object.freeze({
-  enforce_verified_specialist: false
-});
-var PROFESSIONAL_ALIASES = {
-  medic_oftalmolog: "ophthalmologist",
-  ophthalmologist: "ophthalmologist",
-  optometrist: "optometrist",
-  optician: "optician"
-};
-var EQUIPMENT_ALIASES = {
-  ocular_ultrasound: "ophthalmic_ultrasound",
-  ultrasound: "ophthalmic_ultrasound",
-  corneal_topography: "corneal_topographer",
-  visual_field: "visual_field_analyzer",
-  retinal_angiography: "retinal_angiography_system"
-};
-var GROUP_EQUIPMENT_DEFAULTS = {
-  optometry: { mode: "any", types: ["visual_acuity_chart", "phoropter", "autorefractometer", "slit_lamp"] },
-  ophthalmology_consults: { mode: "any", types: ["slit_lamp", "visual_acuity_chart", "tonometer"] },
-  children_and_prevention: { mode: "any", types: ["visual_acuity_chart", "phoropter", "autorefractometer", "slit_lamp"] }
-};
-var EQUIPMENT_MODE_OVERRIDES = {
-  complete_eye_exam: "all",
-  contact_lens_fitting: "all",
-  specialty_contact_lens_fitting: "all",
-  orthokeratology: "all",
-  cataract_surgery: "all",
-  vitreoretinal_surgery: "all"
-};
-var PROFESSIONAL_OVERRIDES = {
-  children_eye_exam: ["ophthalmologist"],
-  pediatric_refraction: ["optometrist", "ophthalmologist"],
-  amblyopia_screening: ["ophthalmologist"],
-  strabismus_screening: ["ophthalmologist"],
-  school_screening: ["optometrist", "ophthalmologist"],
-  myopia_control_children: ["optometrist", "ophthalmologist"],
-  vision_therapy: ["optometrist", "ophthalmologist"],
-  low_vision_rehabilitation: ["optometrist", "ophthalmologist"]
-};
-var INFRASTRUCTURE_ALIASES = {
-  optical_workshop_infrastructure: ["laborator_optic_propriu", "atelier_service_propriu", "reparatii_pe_loc", "montaj_lentile_in_locatie", "optical_workshop"],
-  optical_laboratory_infrastructure: ["laborator_optic_propriu", "optical_laboratory"],
-  clinical_procedure_infrastructure: ["clinical_procedure_room", "sterile_procedure_room", "day_procedure_unit", "ophthalmology_procedure_room"],
-  surgical_infrastructure: ["operating_room", "day_surgery_unit", "surgical_unit", "ophthalmology_surgery_unit"]
-};
-function clean(value) {
-  return String(value || "").trim();
-}
-function normalizeProfessionalType(value) {
-  const raw = clean(value);
-  return PROFESSIONAL_ALIASES[raw] || raw;
-}
-function normalizeEquipmentType(value) {
-  const raw = clean(value);
-  return EQUIPMENT_ALIASES[raw] || raw;
-}
-function activeRow(row) {
-  return Boolean(row) && row.is_active !== false && row.active !== false && row.active_status !== "inactiv";
-}
-function profileMap(profiles) {
-  if (!profiles) return /* @__PURE__ */ new Map();
-  if (!Array.isArray(profiles)) return new Map(Object.entries(profiles));
-  return new Map(profiles.filter(Boolean).map((profile) => [profile.id, profile]));
-}
-function rowUnitKeys(row) {
-  const values = [
-    ...Array.isArray(row?.functional_unit_keys) ? row.functional_unit_keys : [],
-    row?.functional_unit_key,
-    row?.unit_key
-  ];
-  return [...new Set(values.map(clean).filter(Boolean))];
-}
-function rowMatchesUnit(row, unitKey, enforceUnitScope) {
-  if (!unitKey) return true;
-  const keys = rowUnitKeys(row);
-  if (keys.includes(unitKey)) return true;
-  return !enforceUnitScope && keys.length === 0;
-}
-function activeContextKeys(rows, keyField) {
-  return new Set((rows || []).filter(activeRow).map((row) => clean(row?.[keyField] || row?.key)).filter(Boolean));
-}
-function verifiedProfessionalTypes(assignments, profiles, unitKey, enforceUnitScope) {
-  const byId = profileMap(profiles);
-  const result = /* @__PURE__ */ new Set();
-  const scopedAssignments = [];
-  for (const assignment of assignments || []) {
-    if (!activeRow(assignment) || !rowMatchesUnit(assignment, unitKey, enforceUnitScope)) continue;
-    const profile = byId.get(assignment.professional_id) || assignment.professional_profile || null;
-    const verified = assignment.affiliation_status === "vezunde_verified" || assignment.confirmation_level === "vezunde_verified" || profile?.verification_status === "verified" || profile?.confirmation_level === "vezunde_verified" || profile?.verified === true;
-    if (!verified) continue;
-    const type = normalizeProfessionalType(assignment.professional_type || profile?.professional_type || profile?.role);
-    if (type) result.add(type);
-    scopedAssignments.push(assignment.id || assignment.professional_id);
-  }
-  return { types: result, scopedAssignments };
-}
-function verifiedEquipmentTypes(equipment, medical, unitKey, enforceUnitScope) {
-  const result = /* @__PURE__ */ new Set();
-  const scopedEquipment = [];
-  for (const item2 of equipment || []) {
-    if (!activeRow(item2) || !rowMatchesUnit(item2, unitKey, enforceUnitScope)) continue;
-    const evidenceApproved = item2.evidence_status === "approved" || item2.verification_status === "verified" || item2.verified === true;
-    const confirmation = clean(item2.confirmation_level);
-    const confirmationAccepted = medical ? confirmation === "vezunde_verified" : ["provider_confirmed", "vezunde_verified"].includes(confirmation);
-    if (!evidenceApproved || !confirmationAccepted) continue;
-    const type = normalizeEquipmentType(item2.equipment_category_key || item2.equipment_key || item2.key);
-    if (type) result.add(type);
-    scopedEquipment.push(item2.id || type);
-  }
-  return { types: result, scopedEquipment };
-}
-function activeFacilityTypes(facilities, unitKey, enforceUnitScope) {
-  const result = /* @__PURE__ */ new Set();
-  const scopedFacilities = [];
-  for (const facility of facilities || []) {
-    if (!activeRow(facility) || !rowMatchesUnit(facility, unitKey, enforceUnitScope)) continue;
-    const type = clean(facility.facility_key || facility.key);
-    if (type) result.add(type);
-    scopedFacilities.push(facility.id || type);
-  }
-  return { types: result, scopedFacilities };
-}
-function infrastructureSatisfied(requirement, facilities, location, unitKeys) {
-  if (unitKeys.has(requirement)) return true;
-  if (requirement === "clinical_procedure_infrastructure") {
-    if (location?.clinical_infrastructure_verified === true || location?.has_procedure_room === true) return true;
-  }
-  if (requirement === "surgical_infrastructure") {
-    if (location?.surgical_infrastructure_verified === true || location?.has_operating_room === true) return true;
-  }
-  const aliases = INFRASTRUCTURE_ALIASES[requirement] || [];
-  return aliases.some((key) => facilities.has(key) || unitKeys.has(key));
-}
-function resolveUnitKey(serviceKey, context) {
-  const explicit = clean(context.serviceUnitKey || context.service_unit_key || context.service_unit_map?.[serviceKey]);
-  if (explicit) return explicit;
-  return getServiceOperationalContext(serviceKey)?.unitKey || "";
-}
-function resolveCapabilityKey(serviceKey, context) {
-  const explicit = clean(context.capabilityKey || context.capability_key || context.service_capability_map?.[serviceKey]);
-  if (explicit) return explicit;
-  return getServiceOperationalContext(serviceKey)?.capabilityKey || "";
-}
-function getServicePrerequisiteDefinition(rawKey) {
-  const normalized = normalizeServiceKey(rawKey);
-  if (!normalized.canonicalKey || !normalized.definition) return null;
-  const base = normalized.definition;
-  const groupEquipment = GROUP_EQUIPMENT_DEFAULTS[base.group] || null;
-  const requiredEquipmentTypes = Array.isArray(base.required_equipment_types) && base.required_equipment_types.length > 0 ? base.required_equipment_types : groupEquipment?.types || [];
-  const requiredInfrastructureTypes = Array.isArray(base.required_infrastructure_types) ? base.required_infrastructure_types : [];
-  return {
-    ...base,
-    required_professional_types: [...PROFESSIONAL_OVERRIDES[normalized.canonicalKey] || base.required_professional_types || []],
-    required_equipment_types: [...requiredEquipmentTypes],
-    equipment_requirement_mode: EQUIPMENT_MODE_OVERRIDES[normalized.canonicalKey] || groupEquipment?.mode || "all",
-    required_infrastructure_types: [...requiredInfrastructureTypes]
-  };
-}
-function evaluateServicePrerequisites(rawKey, context = {}) {
-  const definition = getServicePrerequisiteDefinition(rawKey);
-  if (!definition) {
-    return {
-      service_key: clean(rawKey),
-      canonical_key: null,
-      eligible: false,
-      status: "unknown_service",
-      blockers: [{ code: "unknown_service", message: "Serviciul nu exist\u0103 \xEEn registrul canonic." }],
-      definition: null,
-      evidence: { verified_professional_types: [], verified_equipment_types: [], active_facility_types: [], service_unit_key: "", capability_key: "" }
-    };
-  }
-  const location = context.location || {};
-  const assignments = context.assignments || [];
-  const professionals = context.professionals || [];
-  const equipment = context.equipment || [];
-  const facilities = context.facilities || [];
-  const functionalUnits = context.functionalUnits || context.functional_units || [];
-  const capabilities = context.capabilities || [];
-  const blockers = [];
-  const serviceKey = definition.key;
-  const serviceContext = getServiceOperationalContext(serviceKey);
-  const serviceUnitKey = resolveUnitKey(serviceKey, context);
-  const prerequisiteUnitKey = serviceContext?.scope === "location" ? "" : serviceUnitKey;
-  const capabilityKey = resolveCapabilityKey(serviceKey, context);
-  const hasPersistedUnits = functionalUnits.length > 0;
-  const enforceUnitScope = context.enforceUnitScope === true || hasPersistedUnits;
-  const activeUnitKeys = activeContextKeys(functionalUnits, "unit_key");
-  const activeCapabilityKeys = activeContextKeys(capabilities, "capability_key");
-  const profileType = clean(location.provider_profile_type);
-  if (profileType && definition.hidden_for_profile_types.includes(profileType)) {
-    blockers.push({
-      code: "incompatible_profile_type",
-      message: "Serviciul nu este compatibil cu tipul acestei loca\u021Bii.",
-      required: definition.applicable_profile_types,
-      actual: profileType
-    });
-  }
-  if (enforceUnitScope && prerequisiteUnitKey && !activeUnitKeys.has(prerequisiteUnitKey)) {
-    const fallbackUnits = serviceContext?.fallbackUnitKeys || [];
-    const fallbackMatched = fallbackUnits.some((unitKey) => activeUnitKeys.has(unitKey));
-    if (!fallbackMatched) {
-      blockers.push({
-        code: "functional_unit_missing",
-        message: "Lipse\u0219te spa\u021Biul sau unitatea func\u021Bional\u0103 \xEEn care poate fi realizat\u0103 aceast\u0103 activitate.",
-        required: [serviceUnitKey, ...fallbackUnits],
-        actual: [...activeUnitKeys]
-      });
-    }
-  }
-  if (enforceUnitScope && capabilityKey && !activeCapabilityKeys.has(capabilityKey)) {
-    blockers.push({
-      code: "capability_missing",
-      message: "Capabilitatea necesar\u0103 nu este declarat\u0103 pentru aceast\u0103 loca\u021Bie.",
-      required: [capabilityKey],
-      actual: [...activeCapabilityKeys]
-    });
-  }
-  const professionalResult = verifiedProfessionalTypes(assignments, professionals, prerequisiteUnitKey, enforceUnitScope);
-  if (definition.requires_verified_specialist && SERVICE_PREREQUISITE_POLICY.enforce_verified_specialist) {
-    const required = definition.required_professional_types || [];
-    const matched = required.some((type) => professionalResult.types.has(normalizeProfessionalType(type)));
-    if (!matched) {
-      blockers.push({
-        code: "verified_specialist_missing",
-        message: enforceUnitScope ? "Este necesar un specialist verificat \u0219i asociat acestei unit\u0103\u021Bi." : "Este necesar un specialist verificat \u0219i asociat activ loca\u021Biei.",
-        required,
-        actual: [...professionalResult.types]
-      });
-    }
-  }
-  const medical = definition.requires_review || definition.service_need_level === "specialized_medical";
-  const equipmentResult = verifiedEquipmentTypes(equipment, medical, prerequisiteUnitKey, enforceUnitScope);
-  if (definition.requires_equipment) {
-    const required = definition.required_equipment_types || [];
-    if (required.length === 0) {
-      blockers.push({
-        code: "equipment_requirement_not_configured",
-        message: "Cerin\u021Bele de echipament pentru acest serviciu trebuie configurate \xEEn registru.",
-        required: [],
-        actual: [...equipmentResult.types]
-      });
-    } else {
-      const checks = required.map((type) => equipmentResult.types.has(normalizeEquipmentType(type)));
-      const matched = definition.equipment_requirement_mode === "any" ? checks.some(Boolean) : checks.every(Boolean);
-      if (!matched) {
-        blockers.push({
-          code: "verified_equipment_missing",
-          message: enforceUnitScope ? "Lipse\u0219te echipamentul verificat \u0219i asociat unit\u0103\u021Bii \xEEn care este realizat serviciul." : "Lipse\u0219te echipamentul verificat necesar acestui serviciu.",
-          mode: definition.equipment_requirement_mode,
-          required,
-          actual: [...equipmentResult.types]
-        });
-      }
-    }
-  }
-  const facilityResult = activeFacilityTypes(facilities, prerequisiteUnitKey, enforceUnitScope);
-  if (definition.requires_infrastructure) {
-    const required = definition.required_infrastructure_types || [];
-    const matched = required.length > 0 && required.every((requirement) => infrastructureSatisfied(requirement, facilityResult.types, location, activeUnitKeys));
-    if (!matched) {
-      blockers.push({
-        code: "verified_infrastructure_missing",
-        message: "Lipse\u0219te dovada infrastructurii necesare acestui serviciu.",
-        required,
-        actual: [...facilityResult.types]
-      });
-    }
-  }
-  let status = "available";
-  if (blockers.some((blocker) => blocker.code === "incompatible_profile_type")) status = "incompatible_profile";
-  else if (blockers.some((blocker) => blocker.code === "functional_unit_missing")) status = "requires_functional_unit";
-  else if (blockers.some((blocker) => blocker.code === "capability_missing")) status = "requires_capability";
-  else if (blockers.some((blocker) => blocker.code === "verified_specialist_missing")) status = "requires_verified_specialist";
-  else if (blockers.some((blocker) => blocker.code.includes("equipment"))) status = "requires_equipment";
-  else if (blockers.some((blocker) => blocker.code.includes("infrastructure"))) status = "requires_infrastructure";
-  else if (definition.requires_review) status = "ready_for_review";
-  return {
-    service_key: definition.key,
-    canonical_key: definition.key,
-    eligible: blockers.length === 0,
-    status,
-    blockers,
-    definition,
-    evidence: {
-      verified_professional_types: [...professionalResult.types],
-      verified_specialist_enforced: SERVICE_PREREQUISITE_POLICY.enforce_verified_specialist,
-      verified_equipment_types: [...equipmentResult.types],
-      active_facility_types: [...facilityResult.types],
-      active_functional_unit_keys: [...activeUnitKeys],
-      active_capability_keys: [...activeCapabilityKeys],
-      service_unit_key: serviceUnitKey,
-      prerequisite_unit_key: prerequisiteUnitKey,
-      validation_scope: serviceContext?.scope || "unit",
-      capability_key: capabilityKey,
-      unit_scope_enforced: enforceUnitScope,
-      scoped_assignment_ids: professionalResult.scopedAssignments,
-      scoped_equipment_ids: equipmentResult.scopedEquipment,
-      scoped_facility_ids: facilityResult.scopedFacilities
-    }
-  };
-}
-
 // shared/patientNeedInterpretation.js
 var PATIENT_NEED_INTERPRETATION_VERSION = "patient-need-ai-v1";
 var PATIENT_INTENT_KEYS = Object.freeze([
@@ -2178,14 +1877,14 @@ var TIMING_KEYS = Object.freeze(["cat_mai_repede", "zilele_urmatoare", "saptaman
 var CONFIDENCE_KEYS = Object.freeze(["high", "medium", "low"]);
 var INTENT_SET = new Set(PATIENT_INTENT_KEYS);
 var SAFETY_FLAG_SET = new Set(PATIENT_SAFETY_FLAG_KEYS);
-function clean2(value, maxLength = 200) {
+function clean(value, maxLength = 200) {
   return String(value || "").trim().slice(0, maxLength);
 }
 function cleanAnswers(answers) {
   if (!Array.isArray(answers)) return [];
   return answers.slice(0, 20).map((answer) => ({
-    question_key: clean2(answer?.question_key, 80),
-    answer_value: clean2(answer?.answer_value, 240)
+    question_key: clean(answer?.question_key, 80),
+    answer_value: clean(answer?.answer_value, 240)
   })).filter((answer) => answer.question_key && answer.answer_value);
 }
 function canonicalServiceKeys(values) {
@@ -2238,7 +1937,7 @@ function buildPatientNeedPrompt({
   answers = []
 } = {}) {
   const input = {
-    text: clean2(text, 800),
+    text: clean(text, 800),
     deterministic_intent: INTENT_SET.has(deterministicIntent) ? deterministicIntent : "unknown",
     deterministic_service_keys: canonicalServiceKeys(deterministicServiceKeys),
     guided_answers: cleanAnswers(answers)
@@ -2270,7 +1969,7 @@ function sanitizePatientNeedInterpretation(raw, {
   const possibleSafetyFlags = [...new Set(
     (Array.isArray(candidate.possible_safety_flags) ? candidate.possible_safety_flags : []).filter((flag) => SAFETY_FLAG_SET.has(flag))
   )];
-  const evidencePhrases = (Array.isArray(candidate.evidence_phrases) ? candidate.evidence_phrases : []).map((phrase) => clean2(phrase, 120)).filter(Boolean).slice(0, 5);
+  const evidencePhrases = (Array.isArray(candidate.evidence_phrases) ? candidate.evidence_phrases : []).map((phrase) => clean(phrase, 120)).filter(Boolean).slice(0, 5);
   const clarificationRequired = candidate.clarification_required === true;
   const normalizedDeterministicIntent = INTENT_SET.has(deterministicIntent) ? deterministicIntent : "unknown";
   const normalizedDeterministicKeys = canonicalServiceKeys(deterministicServiceKeys);
@@ -2287,10 +1986,10 @@ function sanitizePatientNeedInterpretation(raw, {
     for_whom: forWhom,
     age_group: ageGroup,
     timing_key: timingKey,
-    location_text: clean2(candidate.location_text, 120),
+    location_text: clean(candidate.location_text, 120),
     confidence_band: confidenceBand,
     clarification_required: clarificationRequired,
-    clarification_question: clarificationRequired ? clean2(candidate.clarification_question, 240) : "",
+    clarification_question: clarificationRequired ? clean(candidate.clarification_question, 240) : "",
     possible_safety_flags: possibleSafetyFlags,
     evidence_phrases: evidencePhrases,
     agreement_status: agreementStatus,
@@ -2323,18 +2022,18 @@ var TIMING_AVAILABILITY_POINTS = Object.freeze({
   saptamana_aceasta: 2,
   nu_e_urgent: 0
 });
-function clean3(value) {
+function clean2(value) {
   return String(value || "").trim();
 }
 function round(value) {
   return Math.round((Number(value) || 0) * 1e3) / 1e3;
 }
 function unique(values) {
-  return [...new Set((values || []).map(clean3).filter(Boolean))];
+  return [...new Set((values || []).map(clean2).filter(Boolean))];
 }
 function getFreshAvailability(location, now = Date.now()) {
-  const status = clean3(location?.availability_status);
-  const updatedAt = clean3(location?.availability_updated_at);
+  const status = clean2(location?.availability_status);
+  const updatedAt = clean2(location?.availability_updated_at);
   if (!status || status === "necunoscuta" || !updatedAt) return null;
   const timestamp = new Date(updatedAt).getTime();
   if (!Number.isFinite(timestamp)) return null;
@@ -2356,7 +2055,7 @@ function buildRecommendationScore({
   const serviceMatch = matched.length > 0 ? Math.min(51, 35 + (matched.length - 1) * 8) : 0;
   const semanticFit = Math.min(24, bestSemanticScore * 24);
   const profileTrust = PROFILE_POINTS[profileControlStatus] || 0;
-  const availabilityPoints = availability ? TIMING_AVAILABILITY_POINTS[clean3(timingKey)] || 0 : 0;
+  const availabilityPoints = availability ? TIMING_AVAILABILITY_POINTS[clean2(timingKey)] || 0 : 0;
   const components = {
     service_match: round(serviceMatch),
     semantic_fit: round(semanticFit),
@@ -2403,8 +2102,8 @@ function getRecommendationConfidence({
   return "limited";
 }
 function recommendationBucketForProfile(profileControlStatus, needLevel = "general") {
-  const status = clean3(profileControlStatus) || "directory";
-  if (needLevel === "specialized_medical" && status !== "verified") return "excluded";
+  void needLevel;
+  const status = clean2(profileControlStatus) || "directory";
   return ["verified", "claimed"].includes(status) ? "confirmed" : "directory";
 }
 function compareRecommendationEntries(a, b) {
@@ -2416,9 +2115,9 @@ function compareRecommendationEntries(a, b) {
   if (serviceDifference !== 0) return serviceDifference;
   const trustDifference = (PROFILE_ORDER[b?.profile_control_status] || 0) - (PROFILE_ORDER[a?.profile_control_status] || 0);
   if (trustDifference !== 0) return trustDifference;
-  const nameDifference = clean3(a?.name).localeCompare(clean3(b?.name), "ro");
+  const nameDifference = clean2(a?.name).localeCompare(clean2(b?.name), "ro");
   if (nameDifference !== 0) return nameDifference;
-  return clean3(a?.id).localeCompare(clean3(b?.id), "ro");
+  return clean2(a?.id).localeCompare(clean2(b?.id), "ro");
 }
 function assignRecommendationBuckets(entries = [], limit = 20) {
   const sorted = [...entries].sort(compareRecommendationEntries);
@@ -2445,6 +2144,320 @@ function assignRecommendationBuckets(entries = [], limit = 20) {
       is_top3_eligible: false
     };
   });
+}
+
+// shared/servicePrerequisiteEngine.js
+var SERVICE_PREREQUISITE_POLICY = Object.freeze({
+  enforce_profile_compatibility: false,
+  enforce_functional_unit: false,
+  enforce_capability: false,
+  enforce_verified_specialist: false,
+  enforce_verified_equipment: false,
+  enforce_verified_infrastructure: false,
+  show_review_status: false
+});
+var PROFESSIONAL_ALIASES = {
+  medic_oftalmolog: "ophthalmologist",
+  ophthalmologist: "ophthalmologist",
+  optometrist: "optometrist",
+  optician: "optician"
+};
+var EQUIPMENT_ALIASES = {
+  ocular_ultrasound: "ophthalmic_ultrasound",
+  ultrasound: "ophthalmic_ultrasound",
+  corneal_topography: "corneal_topographer",
+  visual_field: "visual_field_analyzer",
+  retinal_angiography: "retinal_angiography_system"
+};
+var GROUP_EQUIPMENT_DEFAULTS = {
+  optometry: { mode: "any", types: ["visual_acuity_chart", "phoropter", "autorefractometer", "slit_lamp"] },
+  ophthalmology_consults: { mode: "any", types: ["slit_lamp", "visual_acuity_chart", "tonometer"] },
+  children_and_prevention: { mode: "any", types: ["visual_acuity_chart", "phoropter", "autorefractometer", "slit_lamp"] }
+};
+var EQUIPMENT_MODE_OVERRIDES = {
+  complete_eye_exam: "all",
+  contact_lens_fitting: "all",
+  specialty_contact_lens_fitting: "all",
+  orthokeratology: "all",
+  cataract_surgery: "all",
+  vitreoretinal_surgery: "all"
+};
+var PROFESSIONAL_OVERRIDES = {
+  children_eye_exam: ["ophthalmologist"],
+  pediatric_refraction: ["optometrist", "ophthalmologist"],
+  amblyopia_screening: ["ophthalmologist"],
+  strabismus_screening: ["ophthalmologist"],
+  school_screening: ["optometrist", "ophthalmologist"],
+  myopia_control_children: ["optometrist", "ophthalmologist"],
+  vision_therapy: ["optometrist", "ophthalmologist"],
+  low_vision_rehabilitation: ["optometrist", "ophthalmologist"]
+};
+var INFRASTRUCTURE_ALIASES = {
+  optical_workshop_infrastructure: ["laborator_optic_propriu", "atelier_service_propriu", "reparatii_pe_loc", "montaj_lentile_in_locatie", "optical_workshop"],
+  optical_laboratory_infrastructure: ["laborator_optic_propriu", "optical_laboratory"],
+  clinical_procedure_infrastructure: ["clinical_procedure_room", "sterile_procedure_room", "day_procedure_unit", "ophthalmology_procedure_room"],
+  surgical_infrastructure: ["operating_room", "day_surgery_unit", "surgical_unit", "ophthalmology_surgery_unit"]
+};
+function clean3(value) {
+  return String(value || "").trim();
+}
+function normalizeProfessionalType(value) {
+  const raw = clean3(value);
+  return PROFESSIONAL_ALIASES[raw] || raw;
+}
+function normalizeEquipmentType(value) {
+  const raw = clean3(value);
+  return EQUIPMENT_ALIASES[raw] || raw;
+}
+function activeRow(row) {
+  return Boolean(row) && row.is_active !== false && row.active !== false && row.active_status !== "inactiv";
+}
+function profileMap(profiles) {
+  if (!profiles) return /* @__PURE__ */ new Map();
+  if (!Array.isArray(profiles)) return new Map(Object.entries(profiles));
+  return new Map(profiles.filter(Boolean).map((profile) => [profile.id, profile]));
+}
+function rowUnitKeys(row) {
+  const values = [
+    ...Array.isArray(row?.functional_unit_keys) ? row.functional_unit_keys : [],
+    row?.functional_unit_key,
+    row?.unit_key
+  ];
+  return [...new Set(values.map(clean3).filter(Boolean))];
+}
+function rowMatchesUnit(row, unitKey, enforceUnitScope) {
+  if (!unitKey) return true;
+  const keys = rowUnitKeys(row);
+  if (keys.includes(unitKey)) return true;
+  return !enforceUnitScope && keys.length === 0;
+}
+function activeContextKeys(rows, keyField) {
+  return new Set((rows || []).filter(activeRow).map((row) => clean3(row?.[keyField] || row?.key)).filter(Boolean));
+}
+function verifiedProfessionalTypes(assignments, profiles, unitKey, enforceUnitScope) {
+  const byId = profileMap(profiles);
+  const result = /* @__PURE__ */ new Set();
+  const scopedAssignments = [];
+  for (const assignment of assignments || []) {
+    if (!activeRow(assignment) || !rowMatchesUnit(assignment, unitKey, enforceUnitScope)) continue;
+    const profile = byId.get(assignment.professional_id) || assignment.professional_profile || null;
+    const verified = assignment.affiliation_status === "vezunde_verified" || assignment.confirmation_level === "vezunde_verified" || profile?.verification_status === "verified" || profile?.confirmation_level === "vezunde_verified" || profile?.verified === true;
+    if (!verified) continue;
+    const type = normalizeProfessionalType(assignment.professional_type || profile?.professional_type || profile?.role);
+    if (type) result.add(type);
+    scopedAssignments.push(assignment.id || assignment.professional_id);
+  }
+  return { types: result, scopedAssignments };
+}
+function verifiedEquipmentTypes(equipment, medical, unitKey, enforceUnitScope) {
+  const result = /* @__PURE__ */ new Set();
+  const scopedEquipment = [];
+  for (const item2 of equipment || []) {
+    if (!activeRow(item2) || !rowMatchesUnit(item2, unitKey, enforceUnitScope)) continue;
+    const evidenceApproved = item2.evidence_status === "approved" || item2.verification_status === "verified" || item2.verified === true;
+    const confirmation = clean3(item2.confirmation_level);
+    const confirmationAccepted = medical ? confirmation === "vezunde_verified" : ["provider_confirmed", "vezunde_verified"].includes(confirmation);
+    if (!evidenceApproved || !confirmationAccepted) continue;
+    const type = normalizeEquipmentType(item2.equipment_category_key || item2.equipment_key || item2.key);
+    if (type) result.add(type);
+    scopedEquipment.push(item2.id || type);
+  }
+  return { types: result, scopedEquipment };
+}
+function activeFacilityTypes(facilities, unitKey, enforceUnitScope) {
+  const result = /* @__PURE__ */ new Set();
+  const scopedFacilities = [];
+  for (const facility of facilities || []) {
+    if (!activeRow(facility) || !rowMatchesUnit(facility, unitKey, enforceUnitScope)) continue;
+    const type = clean3(facility.facility_key || facility.key);
+    if (type) result.add(type);
+    scopedFacilities.push(facility.id || type);
+  }
+  return { types: result, scopedFacilities };
+}
+function infrastructureSatisfied(requirement, facilities, location, unitKeys) {
+  if (unitKeys.has(requirement)) return true;
+  if (requirement === "clinical_procedure_infrastructure") {
+    if (location?.clinical_infrastructure_verified === true || location?.has_procedure_room === true) return true;
+  }
+  if (requirement === "surgical_infrastructure") {
+    if (location?.surgical_infrastructure_verified === true || location?.has_operating_room === true) return true;
+  }
+  const aliases = INFRASTRUCTURE_ALIASES[requirement] || [];
+  return aliases.some((key) => facilities.has(key) || unitKeys.has(key));
+}
+function resolveUnitKey(serviceKey, context) {
+  const explicit = clean3(context.serviceUnitKey || context.service_unit_key || context.service_unit_map?.[serviceKey]);
+  if (explicit) return explicit;
+  return getServiceOperationalContext(serviceKey)?.unitKey || "";
+}
+function resolveCapabilityKey(serviceKey, context) {
+  const explicit = clean3(context.capabilityKey || context.capability_key || context.service_capability_map?.[serviceKey]);
+  if (explicit) return explicit;
+  return getServiceOperationalContext(serviceKey)?.capabilityKey || "";
+}
+function getServicePrerequisiteDefinition(rawKey) {
+  const normalized = normalizeServiceKey(rawKey);
+  if (!normalized.canonicalKey || !normalized.definition) return null;
+  const base = normalized.definition;
+  const groupEquipment = GROUP_EQUIPMENT_DEFAULTS[base.group] || null;
+  const requiredEquipmentTypes = Array.isArray(base.required_equipment_types) && base.required_equipment_types.length > 0 ? base.required_equipment_types : groupEquipment?.types || [];
+  const requiredInfrastructureTypes = Array.isArray(base.required_infrastructure_types) ? base.required_infrastructure_types : [];
+  return {
+    ...base,
+    required_professional_types: [...PROFESSIONAL_OVERRIDES[normalized.canonicalKey] || base.required_professional_types || []],
+    required_equipment_types: [...requiredEquipmentTypes],
+    equipment_requirement_mode: EQUIPMENT_MODE_OVERRIDES[normalized.canonicalKey] || groupEquipment?.mode || "all",
+    required_infrastructure_types: [...requiredInfrastructureTypes]
+  };
+}
+function evaluateServicePrerequisites(rawKey, context = {}) {
+  const definition = getServicePrerequisiteDefinition(rawKey);
+  if (!definition) {
+    return {
+      service_key: clean3(rawKey),
+      canonical_key: null,
+      eligible: false,
+      status: "unknown_service",
+      blockers: [{ code: "unknown_service", message: "Serviciul nu exist\u0103 \xEEn registrul canonic." }],
+      definition: null,
+      evidence: { verified_professional_types: [], verified_equipment_types: [], active_facility_types: [], service_unit_key: "", capability_key: "" }
+    };
+  }
+  const location = context.location || {};
+  const assignments = context.assignments || [];
+  const professionals = context.professionals || [];
+  const equipment = context.equipment || [];
+  const facilities = context.facilities || [];
+  const functionalUnits = context.functionalUnits || context.functional_units || [];
+  const capabilities = context.capabilities || [];
+  const blockers = [];
+  const serviceKey = definition.key;
+  const serviceContext = getServiceOperationalContext(serviceKey);
+  const serviceUnitKey = resolveUnitKey(serviceKey, context);
+  const prerequisiteUnitKey = serviceContext?.scope === "location" ? "" : serviceUnitKey;
+  const capabilityKey = resolveCapabilityKey(serviceKey, context);
+  const hasPersistedUnits = functionalUnits.length > 0;
+  const enforceUnitScope = context.enforceUnitScope === true || hasPersistedUnits;
+  const activeUnitKeys = activeContextKeys(functionalUnits, "unit_key");
+  const activeCapabilityKeys = activeContextKeys(capabilities, "capability_key");
+  const profileType = clean3(location.provider_profile_type);
+  if (SERVICE_PREREQUISITE_POLICY.enforce_profile_compatibility && profileType && definition.hidden_for_profile_types.includes(profileType)) {
+    blockers.push({
+      code: "incompatible_profile_type",
+      message: "Serviciul nu este compatibil cu tipul acestei loca\u021Bii.",
+      required: definition.applicable_profile_types,
+      actual: profileType
+    });
+  }
+  if (SERVICE_PREREQUISITE_POLICY.enforce_functional_unit && enforceUnitScope && prerequisiteUnitKey && !activeUnitKeys.has(prerequisiteUnitKey)) {
+    const fallbackUnits = serviceContext?.fallbackUnitKeys || [];
+    const fallbackMatched = fallbackUnits.some((unitKey) => activeUnitKeys.has(unitKey));
+    if (!fallbackMatched) {
+      blockers.push({
+        code: "functional_unit_missing",
+        message: "Lipse\u0219te spa\u021Biul sau unitatea func\u021Bional\u0103 \xEEn care poate fi realizat\u0103 aceast\u0103 activitate.",
+        required: [serviceUnitKey, ...fallbackUnits],
+        actual: [...activeUnitKeys]
+      });
+    }
+  }
+  if (SERVICE_PREREQUISITE_POLICY.enforce_capability && enforceUnitScope && capabilityKey && !activeCapabilityKeys.has(capabilityKey)) {
+    blockers.push({
+      code: "capability_missing",
+      message: "Capabilitatea necesar\u0103 nu este declarat\u0103 pentru aceast\u0103 loca\u021Bie.",
+      required: [capabilityKey],
+      actual: [...activeCapabilityKeys]
+    });
+  }
+  const professionalResult = verifiedProfessionalTypes(assignments, professionals, prerequisiteUnitKey, enforceUnitScope);
+  if (definition.requires_verified_specialist && SERVICE_PREREQUISITE_POLICY.enforce_verified_specialist) {
+    const required = definition.required_professional_types || [];
+    const matched = required.some((type) => professionalResult.types.has(normalizeProfessionalType(type)));
+    if (!matched) {
+      blockers.push({
+        code: "verified_specialist_missing",
+        message: enforceUnitScope ? "Este necesar un specialist verificat \u0219i asociat acestei unit\u0103\u021Bi." : "Este necesar un specialist verificat \u0219i asociat activ loca\u021Biei.",
+        required,
+        actual: [...professionalResult.types]
+      });
+    }
+  }
+  const medical = definition.requires_review || definition.service_need_level === "specialized_medical";
+  const equipmentResult = verifiedEquipmentTypes(equipment, medical, prerequisiteUnitKey, enforceUnitScope);
+  if (definition.requires_equipment && SERVICE_PREREQUISITE_POLICY.enforce_verified_equipment) {
+    const required = definition.required_equipment_types || [];
+    if (required.length === 0) {
+      blockers.push({
+        code: "equipment_requirement_not_configured",
+        message: "Cerin\u021Bele de echipament pentru acest serviciu trebuie configurate \xEEn registru.",
+        required: [],
+        actual: [...equipmentResult.types]
+      });
+    } else {
+      const checks = required.map((type) => equipmentResult.types.has(normalizeEquipmentType(type)));
+      const matched = definition.equipment_requirement_mode === "any" ? checks.some(Boolean) : checks.every(Boolean);
+      if (!matched) {
+        blockers.push({
+          code: "verified_equipment_missing",
+          message: enforceUnitScope ? "Lipse\u0219te echipamentul verificat \u0219i asociat unit\u0103\u021Bii \xEEn care este realizat serviciul." : "Lipse\u0219te echipamentul verificat necesar acestui serviciu.",
+          mode: definition.equipment_requirement_mode,
+          required,
+          actual: [...equipmentResult.types]
+        });
+      }
+    }
+  }
+  const facilityResult = activeFacilityTypes(facilities, prerequisiteUnitKey, enforceUnitScope);
+  if (definition.requires_infrastructure && SERVICE_PREREQUISITE_POLICY.enforce_verified_infrastructure) {
+    const required = definition.required_infrastructure_types || [];
+    const matched = required.length > 0 && required.every((requirement) => infrastructureSatisfied(requirement, facilityResult.types, location, activeUnitKeys));
+    if (!matched) {
+      blockers.push({
+        code: "verified_infrastructure_missing",
+        message: "Lipse\u0219te dovada infrastructurii necesare acestui serviciu.",
+        required,
+        actual: [...facilityResult.types]
+      });
+    }
+  }
+  let status = "available";
+  if (blockers.some((blocker) => blocker.code === "incompatible_profile_type")) status = "incompatible_profile";
+  else if (blockers.some((blocker) => blocker.code === "functional_unit_missing")) status = "requires_functional_unit";
+  else if (blockers.some((blocker) => blocker.code === "capability_missing")) status = "requires_capability";
+  else if (blockers.some((blocker) => blocker.code === "verified_specialist_missing")) status = "requires_verified_specialist";
+  else if (blockers.some((blocker) => blocker.code.includes("equipment"))) status = "requires_equipment";
+  else if (blockers.some((blocker) => blocker.code.includes("infrastructure"))) status = "requires_infrastructure";
+  else if (definition.requires_review && SERVICE_PREREQUISITE_POLICY.show_review_status) status = "ready_for_review";
+  return {
+    service_key: definition.key,
+    canonical_key: definition.key,
+    eligible: blockers.length === 0,
+    status,
+    blockers,
+    definition,
+    evidence: {
+      verified_professional_types: [...professionalResult.types],
+      profile_compatibility_enforced: SERVICE_PREREQUISITE_POLICY.enforce_profile_compatibility,
+      functional_unit_enforced: SERVICE_PREREQUISITE_POLICY.enforce_functional_unit,
+      capability_enforced: SERVICE_PREREQUISITE_POLICY.enforce_capability,
+      verified_specialist_enforced: SERVICE_PREREQUISITE_POLICY.enforce_verified_specialist,
+      verified_equipment_types: [...equipmentResult.types],
+      verified_equipment_enforced: SERVICE_PREREQUISITE_POLICY.enforce_verified_equipment,
+      active_facility_types: [...facilityResult.types],
+      verified_infrastructure_enforced: SERVICE_PREREQUISITE_POLICY.enforce_verified_infrastructure,
+      active_functional_unit_keys: [...activeUnitKeys],
+      active_capability_keys: [...activeCapabilityKeys],
+      service_unit_key: serviceUnitKey,
+      prerequisite_unit_key: prerequisiteUnitKey,
+      validation_scope: serviceContext?.scope || "unit",
+      capability_key: capabilityKey,
+      unit_scope_enforced: enforceUnitScope && SERVICE_PREREQUISITE_POLICY.enforce_functional_unit,
+      scoped_assignment_ids: professionalResult.scopedAssignments,
+      scoped_equipment_ids: equipmentResult.scopedEquipment,
+      scoped_facility_ids: facilityResult.scopedFacilities
+    }
+  };
 }
 export {
   PROVIDER_RECOMMENDATION_CONTRACT_VERSION,

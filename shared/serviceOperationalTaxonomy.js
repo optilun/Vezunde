@@ -56,8 +56,8 @@ export const PROVIDER_SERVICE_SECTIONS = [
     key: 'optometry', unitKey: 'optometry_cabinet', capabilityKey: null,
     area: 'professional_services', kind: 'professional_service', title: 'Evaluarea vederii și dioptriilor',
     publicNeedKey: 'eye_exam', publicLabel: 'Control vedere și dioptrii',
-    description: 'Servicii realizate în cabinetul optometric de un specialist compatibil.',
-    note: 'Eligibilitatea depinde de specialistul asociat și de dotările declarate ale cabinetului.',
+    description: 'Servicii optometrice declarate ca fiind disponibile în această locație.',
+    note: 'Specialiștii și dotările pot fi completate opțional; nu blochează selectarea sau publicarea serviciilor.',
     searchTerms: ['control vedere', 'verificare vedere', 'masurat dioptrii', 'test vedere', 'control ochi', 'optometrist'],
     items: [
       ['optometry', 'optometry_consultation'], ['optometry', 'visual_acuity_test'], ['optometry', 'refraction'],
@@ -82,7 +82,7 @@ export const PROVIDER_SERVICE_SECTIONS = [
     key: 'contact_lens_services', unitKey: 'optometry_cabinet', fallbackUnitKeys: ['ophthalmology_office'], capabilityKey: 'contact_lens_professional_services',
     area: 'professional_services', kind: 'professional_service', title: 'Adaptare și monitorizare lentile de contact',
     publicNeedKey: 'contact_lens_services', publicLabel: 'Adaptare lentile de contact',
-    description: 'Consultație, probă, instruire, adaptare și control ulterior realizate de un specialist compatibil.',
+    description: 'Consultație, probă, instruire, adaptare și control ulterior, declarate ca fiind disponibile în locație.',
     note: 'Vânzarea lentilelor de contact nu activează automat serviciile profesionale de adaptare.',
     searchTerms: ['adaptare lentile contact', 'proba lentile', 'invatat lentile', 'lentile speciale', 'ortokeratologie'],
     items: [
@@ -146,7 +146,7 @@ export const PROVIDER_SERVICE_SECTIONS = [
     area: 'medical_services', kind: 'medical_service', title: 'Consultații și controale oftalmologice',
     publicNeedKey: 'ophthalmology_consults', publicLabel: 'Consultații oftalmologice',
     description: 'Consultații, controale și examinări efectuate de medicul oftalmolog.',
-    note: 'Serviciile medicale sunt publicate numai după verificarea medicului și a condițiilor necesare.',
+    note: 'Serviciile sunt informații declarate de furnizor. Profilurile profesionale și resursele sunt opționale în această etapă.',
     searchTerms: ['oftalmolog', 'doctor de ochi', 'medic de ochi', 'consult ochi', 'control oftalmologic'],
     items: [
       ['ophthalmology_consults', 'ophthalmology_consultation'], ['ophthalmology_consults', 'complete_eye_exam'],
@@ -159,7 +159,7 @@ export const PROVIDER_SERVICE_SECTIONS = [
     key: 'ophthalmology_investigations', unitKey: 'ophthalmology_diagnostics', capabilityKey: null,
     area: 'medical_services', kind: 'investigation', title: 'Investigații și imagistică',
     publicNeedKey: 'ophthalmology_investigations', publicLabel: 'Investigații oftalmologice',
-    description: 'Investigații disponibile în funcție de aparatura verificată a locației.',
+    description: 'Investigații declarate de furnizor ca fiind disponibile în această locație.',
     searchTerms: ['oct ochi', 'camp vizual', 'fund de ochi', 'poza retina', 'tensiune oculara', 'topografie corneana', 'ecografie ochi'],
     items: [
       ['investigations', 'oct'], ['investigations', 'visual_field_analyzer'], ['investigations', 'fundus_camera'],
@@ -240,7 +240,7 @@ export const PROVIDER_SERVICE_SECTIONS = [
     key: 'emergency_trauma', unitKey: 'ophthalmology_office', fallbackUnitKeys: ['ophthalmology_procedure_room', 'ophthalmology_surgery_unit'], capabilityKey: 'emergency_ophthalmology',
     area: 'medical_specialties', kind: 'emergency_service', title: 'Urgențe și traumatisme oculare',
     publicNeedKey: 'emergency_ophthalmology', publicLabel: 'Urgențe oftalmologice',
-    description: 'Evaluarea urgențelor și traumatismelor în limitele capacității verificate a locației.',
+    description: 'Evaluarea urgențelor și traumatismelor, conform disponibilității declarate de locație.',
     searchTerms: ['urgenta ochi', 'traumatism ochi', 'corp strain ochi', 'durere oculara brusca'],
     items: [['specialties', 'emergency_ophthalmology'], ['specialties', 'ocular_trauma']],
   },
@@ -264,7 +264,7 @@ export const PROVIDER_SERVICE_SECTIONS = [
     key: 'procedure_room', unitKey: 'ophthalmology_procedure_room', capabilityKey: null,
     area: 'medical_procedures', kind: 'procedure', title: 'Proceduri, injecții și laser',
     publicNeedKey: 'procedures_treatments', publicLabel: 'Proceduri și tratamente oftalmologice',
-    description: 'Proceduri realizate într-o sală compatibilă, cu medic, aparatură și infrastructură verificate.',
+    description: 'Proceduri declarate de furnizor ca fiind disponibile în această locație.',
     searchTerms: ['laser ochi', 'injectie ochi', 'yag', 'laser retina', 'chalazion', 'corp strain'],
     items: [
       ['procedures_surgery', 'laser_procedures'], ['procedures_surgery', 'yag_laser'],
@@ -278,7 +278,7 @@ export const PROVIDER_SERVICE_SECTIONS = [
     key: 'surgery', unitKey: 'ophthalmology_surgery_unit', capabilityKey: null,
     area: 'medical_procedures', kind: 'surgery', title: 'Chirurgie oftalmologică',
     publicNeedKey: 'ophthalmology_surgery', publicLabel: 'Chirurgie oftalmologică',
-    description: 'Intervenții chirurgicale efectuate într-o unitate și cu echipamente verificate.',
+    description: 'Intervenții chirurgicale declarate de furnizor ca fiind disponibile în această locație.',
     searchTerms: ['operatie ochi', 'chirurgie cataracta', 'chirurgie retina', 'vitrectomie', 'chirurgie pleoape'],
     items: [
       ['procedures_surgery', 'cataract_surgery'], ['procedures_surgery', 'refractive_surgery'],
