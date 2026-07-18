@@ -9,5 +9,4 @@ Disallow: /accept-provider-invitation
 User-agent: OAI-SearchBot
 Allow: /
 
-Sitemap: https://vezunde-core-link.base44.app/sitemap.xml
-
+Sitemap: https://viasee.ro/sitemap.xml
