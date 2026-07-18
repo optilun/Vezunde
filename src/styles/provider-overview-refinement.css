@@ -1,0 +1,256 @@
+/* Provider overview: fewer nested cards and clearer information hierarchy. */
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2) {
+  --overview-card: #ffffff;
+  --overview-soft: #f4f1eb;
+  --overview-soft-light: #f8f6f1;
+  --overview-border: rgb(23 23 23 / 0.09);
+  --overview-border-strong: rgb(23 23 23 / 0.12);
+}
+
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > :not([hidden])
+  ~ :not([hidden]) {
+  margin-top: 20px !important;
+}
+
+/* Header directly on the page canvas. */
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > section:first-child {
+  padding: 4px 2px 22px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--overview-border-strong) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > section:first-child h1 {
+  font-size: clamp(1.85rem, 3vw, 2.25rem) !important;
+}
+
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > section:first-child button {
+  box-shadow: none;
+}
+
+/* Shared section rhythm. */
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2 {
+  gap: 18px !important;
+}
+
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2
+  > section {
+  border-color: var(--overview-border) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 10px 28px rgb(23 23 23 / 0.035) !important;
+}
+
+/* First row: one primary card and one quieter action panel. */
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2:first-of-type
+  > section:first-child {
+  background: var(--overview-card) !important;
+}
+
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2:first-of-type
+  > section:last-child {
+  background: var(--overview-soft) !important;
+  box-shadow: none !important;
+}
+
+/* Completion figures become one compact information band. */
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2:first-of-type
+  > section:first-child
+  > .mt-4.grid
+  > div {
+  padding: 14px 15px !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  background: var(--overview-soft-light) !important;
+}
+
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2:first-of-type
+  > section:first-child
+  > .mt-4.grid
+  > div span {
+  background: #ffffff !important;
+}
+
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2:first-of-type
+  > section:first-child
+  > p.mt-4 {
+  border-radius: 14px !important;
+  background: var(--overview-soft-light) !important;
+}
+
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2:first-of-type
+  > section:first-child
+  details {
+  border-radius: 13px !important;
+  background: #ffffff !important;
+}
+
+/* Active changes are still visible, without looking like another large dashboard card. */
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2:first-of-type
+  > section:last-child
+  .flex.flex-col.items-center.justify-center {
+  border: 1px solid rgb(23 23 23 / 0.06);
+  border-radius: 14px !important;
+  background: rgb(255 255 255 / 0.72) !important;
+}
+
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2:first-of-type
+  > section:last-child
+  li {
+  border-color: rgb(23 23 23 / 0.08) !important;
+  background: rgb(255 255 255 / 0.78) !important;
+}
+
+/* Second row: public information is the compact reference card. */
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2:last-of-type
+  > section:first-child {
+  background: var(--overview-soft) !important;
+  box-shadow: none !important;
+}
+
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2:last-of-type
+  > section:first-child
+  > .mt-5.grid {
+  gap: 0 !important;
+  overflow: hidden;
+  border: 1px solid var(--overview-border);
+  border-radius: 15px;
+  background: #ffffff;
+}
+
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2:last-of-type
+  > section:first-child
+  > .mt-5.grid
+  > div {
+  padding: 4px 15px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2:last-of-type
+  > section:first-child
+  > .mt-5.grid
+  > div
+  > .flex.items-start.gap-3
+  > div:last-child {
+  max-width: 64% !important;
+  font-size: 13px !important;
+}
+
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2:last-of-type
+  > section:first-child
+  > .mt-5.grid
+  > div
+  + div {
+  border-top: 1px solid var(--overview-border) !important;
+}
+
+/* Recent activity sits directly on the page canvas. */
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2:last-of-type
+  > section:last-child {
+  padding: 7px 2px 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2:last-of-type
+  > section:last-child
+  .divide-y.rounded-2xl.border {
+  border-color: var(--overview-border) !important;
+  border-radius: 14px !important;
+  background: rgb(255 255 255 / 0.72) !important;
+}
+
+:where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+  > .grid.items-start.gap-5.lg\:grid-cols-2:last-of-type
+  > section:last-child
+  .flex.flex-col.items-center.justify-center {
+  border: 1px solid var(--overview-border);
+  border-radius: 14px !important;
+  background: rgb(255 255 255 / 0.62) !important;
+}
+
+@media (min-width: 1024px) {
+  :where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+    > .grid.items-start.gap-5.lg\:grid-cols-2:first-of-type {
+    grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr) !important;
+  }
+
+  :where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+    > .grid.items-start.gap-5.lg\:grid-cols-2:last-of-type {
+    grid-template-columns: minmax(0, 0.96fr) minmax(0, 1.04fr) !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  :where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+    > .grid.items-start.gap-5.lg\:grid-cols-2:last-of-type
+    > section:first-child
+    > .mt-5.grid
+    > div
+    + div {
+    border-top: 0 !important;
+    border-left: 1px solid var(--overview-border) !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  :where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+    > .grid.items-start.gap-5.lg\:grid-cols-2:last-of-type
+    > section:last-child {
+    padding-top: 20px !important;
+    border-top: 1px solid var(--overview-border-strong) !important;
+  }
+}
+
+@media (max-width: 639px) {
+  :where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+    > section:first-child {
+    padding-bottom: 18px !important;
+  }
+
+  :where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+    > section:first-child button {
+    width: 100% !important;
+    justify-content: center;
+  }
+
+  :where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+    > .grid.items-start.gap-5.lg\:grid-cols-2
+    > section {
+    padding: 18px 16px !important;
+    border-radius: 16px !important;
+  }
+
+  :where(.space-y-6):has(> .grid.items-start.gap-5.lg\:grid-cols-2 + .grid.items-start.gap-5.lg\:grid-cols-2)
+    > .grid.items-start.gap-5.lg\:grid-cols-2:last-of-type
+    > section:last-child {
+    padding: 18px 0 0 !important;
+    border-radius: 0 !important;
+  }
+}
