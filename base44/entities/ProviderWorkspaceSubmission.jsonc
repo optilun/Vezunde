@@ -25,6 +25,7 @@
         "public_profile",
         "location_details",
         "location_create",
+        "location_lifecycle",
         "operating_hours",
         "services",
         "team",
