@@ -415,7 +415,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
               <div><dt>Activități</dt><dd>{snapshot.capabilityCount}</dd></div>
               {snapshot.issueCount > 0 && <div className="has-issues"><dt>Necesită completare</dt><dd>{snapshot.issueCount}</dd></div>}
             </dl>
-            {snapshot.issueCount === 0 && (
+            {snapshot.unitCount > 0 && snapshot.issueCount === 0 && (
               <div className="provider-services-three__complete-state">
                 <CheckCircle2 aria-hidden="true" />
                 <span>Configurație completă</span>
