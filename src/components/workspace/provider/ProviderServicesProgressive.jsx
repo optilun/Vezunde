@@ -83,9 +83,14 @@ export default function ProviderServicesProgressive(props) {
     const directSections = [...mainColumn.children].filter((element) => element.tagName === "SECTION");
     const sectionByNumber = new Map();
     directSections.forEach((section) => {
-      const heading = text(section.querySelector("h2"));
+      const headingElement = section.querySelector("h2");
+      const heading = text(headingElement);
       const match = heading.match(/^(\d+)\./);
-      if (match) sectionByNumber.set(Number(match[1]), section);
+      if (!match) return;
+      const number = Number(match[1]);
+      sectionByNumber.set(number, section);
+      section.dataset.servicesConfigurationIndex = String(number);
+      if (headingElement) headingElement.dataset.servicesCleanTitle = heading.replace(/^\d+\.\s*/, "");
     });
 
     [1, 2, 3, 4].forEach((number) => {
@@ -105,7 +110,13 @@ export default function ProviderServicesProgressive(props) {
     const stickyActions = [...operationalRoot.children].find((element) => (
       element.classList?.contains("sticky") && element.classList?.contains("bottom-0")
     ));
-    if (stickyActions) stickyActions.dataset.servicesRole = "actions";
+    if (stickyActions) {
+      stickyActions.dataset.servicesRole = "actions";
+      const hasEnabledAction = [...stickyActions.querySelectorAll("button")].some((button) => !button.disabled);
+      const actionText = text(stickyActions);
+      const needsAttention = /modificări nesalvate|în verificare/i.test(actionText);
+      stickyActions.dataset.servicesActionsVisible = hasEnabledAction || needsAttention ? "true" : "false";
+    }
 
     let openUnitTitle = "";
     const categories = [];
