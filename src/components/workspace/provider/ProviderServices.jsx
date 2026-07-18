@@ -13,30 +13,30 @@ import "./ProviderServicesClean.css";
 const SERVICE_STAGES = [
   {
     id: "structure",
-    label: "Spatii si activitate",
-    shortLabel: "Spatii",
-    description: "Declara spatiile care exista in locatie, activitatile speciale si modul de functionare.",
+    label: "Spații și activitate",
+    shortLabel: "Spații",
+    description: "Declară spațiile care există în locație, activitățile speciale și modul de funcționare.",
     icon: Building2,
   },
   {
     id: "services",
-    label: "Servicii si optiuni",
+    label: "Servicii și opțiuni",
     shortLabel: "Servicii",
-    description: "Selecteaza optiunile generale si oferta disponibila in fiecare spatiu al locatiei.",
+    description: "Selectează opțiunile generale și oferta disponibilă în fiecare spațiu al locației.",
     icon: ListChecks,
   },
   {
     id: "resources",
-    label: "Specialisti si dotari",
+    label: "Specialiști și dotări",
     shortLabel: "Resurse",
-    description: "Asociaza specialistii, echipamentele si facilitatile cu spatiile in care sunt folosite.",
+    description: "Asociază specialiștii, echipamentele și facilitățile cu spațiile în care sunt folosite.",
     icon: Users,
   },
   {
     id: "review",
-    label: "Rezumat si trimitere",
+    label: "Rezumat și trimitere",
     shortLabel: "Rezumat",
-    description: "Verifica structura si serviciile care vor deveni publice inainte de trimitere.",
+    description: "Verifică structura și serviciile care vor deveni publice înainte de trimitere.",
     icon: ClipboardCheck,
   },
 ];
@@ -126,9 +126,9 @@ export default function ProviderServices(props) {
 
   return (
     <div className={`provider-services-task ${stageClass}`}>
-      <aside className="provider-services-task__navigation" aria-label="Etapele configurarii serviciilor">
+      <aside className="provider-services-task__navigation" aria-label="Etapele configurării serviciilor">
         <div className="provider-services-task__navigation-title">
-          <span>Configurarea locatiei</span>
+          <span>Configurarea locației</span>
           <strong>4 etape</strong>
         </div>
 
@@ -168,20 +168,20 @@ export default function ProviderServices(props) {
             </div>
           </div>
 
-          <div className="provider-services-task__panel-controls" aria-label="Navigare intre etape">
+          <div className="provider-services-task__panel-controls" aria-label="Navigare între etape">
             <button
               type="button"
               disabled={activeIndex === 0}
               onClick={() => changeStage(SERVICE_STAGES[activeIndex - 1]?.id)}
             >
-              <ArrowLeft aria-hidden="true" /> Inapoi
+              <ArrowLeft aria-hidden="true" /> Înapoi
             </button>
             <button
               type="button"
               disabled={activeIndex === SERVICE_STAGES.length - 1}
               onClick={() => changeStage(SERVICE_STAGES[activeIndex + 1]?.id)}
             >
-              Continua <ArrowRight aria-hidden="true" />
+              Continuă <ArrowRight aria-hidden="true" />
             </button>
           </div>
         </header>
