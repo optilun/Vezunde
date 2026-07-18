@@ -1,0 +1,45 @@
+.workspace-neutral
+  .space-y-8.pb-8:has(> section > .relative.h-36.overflow-hidden)
+  > section
+  > .relative.h-36.overflow-hidden {
+  height: 8rem !important;
+}
+
+.workspace-neutral
+  .space-y-8.pb-8:has(> section > .relative.h-36.overflow-hidden)
+  > section
+  > .relative.px-1
+  > div:first-child
+  > .min-w-0.flex-1
+  > h1 {
+  font-size: 1.85rem !important;
+  line-height: 1.06 !important;
+}
+
+@media (min-width: 640px) {
+  .workspace-neutral
+    .space-y-8.pb-8:has(> section > .relative.h-36.overflow-hidden)
+    > section
+    > .relative.h-36.overflow-hidden {
+    height: 9.5rem !important;
+  }
+
+  .workspace-neutral
+    .space-y-8.pb-8:has(> section > .relative.h-36.overflow-hidden)
+    > section
+    > .relative.px-1
+    > div:first-child
+    > .min-w-0.flex-1
+    > h1 {
+    font-size: 2.3rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .workspace-neutral
+    .space-y-8.pb-8:has(> section > .relative.h-36.overflow-hidden)
+    > section
+    > .relative.h-36.overflow-hidden {
+    height: 10.5rem !important;
+  }
+}
