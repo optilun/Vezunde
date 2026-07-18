@@ -77,7 +77,8 @@ export default function ProviderServicesGuided(props) {
   const progress = useMemo(() => {
     const servicesComplete = state.selectedCount > 0;
     const requirementsComplete = servicesComplete && state.issueCount === 0;
-    const pendingReview = /verificare/i.test(`${state.statusText} ${state.actionText}`);
+    const reviewText = `${state.statusText} ${state.actionText}`;
+    const pendingReview = /(?:în|in) verificare|pending_review/i.test(reviewText);
     const dirty = /modificări nesalvate|modificari nesalvate/i.test(state.actionText);
     const draftSaved = /draft salvat/i.test(state.actionText);
 
