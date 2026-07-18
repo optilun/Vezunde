@@ -6,6 +6,7 @@ on:
       - "src/components/provider/**"
       - "src/components/specialists/**"
       - "src/components/workspace/applicant/**"
+      - "src/components/workspace/provider/**"
       - "src/components/admin/directory/**"
       - "src/pages/AddOrClaim.jsx"
       - "src/pages/Login.jsx"
@@ -15,11 +16,14 @@ on:
       - "src/pages/MyAccount.jsx"
       - "src/lib/postLoginRedirect.js"
       - "src/lib/workspaceNav.js"
+      - "shared/providerOpeningHours.js"
       - "base44/functions/submitProviderClaim/**"
       - "base44/functions/getClaimableProviderLocations/**"
       - "base44/functions/getMyProviderOnboardingWorkspace/**"
       - "base44/functions/adminProviderClaimReview/**"
+      - "base44/functions/saveProviderRoutineProfile/**"
       - "scripts/verify-provider-onboarding-continuity.mjs"
+      - "scripts/verify-provider-opening-hours.mjs"
       - "scripts/compare-typecheck-baseline.mjs"
       - ".github/workflows/provider-onboarding-ci.yml"
 
@@ -39,6 +43,8 @@ jobs:
       - run: npm ci --silent
       - name: Onboarding regression checks
         run: node scripts/verify-provider-onboarding-continuity.mjs
+      - name: Provider hours regression checks
+        run: npm run test:provider-hours
       - name: Typecheck current branch
         shell: bash
         run: |
