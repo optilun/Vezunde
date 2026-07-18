@@ -8,6 +8,7 @@ import '@/styles/provider-location-editor.css'
 import '@/styles/provider-profile.css'
 import '@/styles/provider-location-modules.css'
 import '@/styles/provider-program-flat.css'
+import '@/styles/provider-access-redesign.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <App />
