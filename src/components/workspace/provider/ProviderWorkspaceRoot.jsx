@@ -329,7 +329,18 @@ export default function ProviderWorkspaceRoot({
               canManageLocations={canManageAnyLocation}
             />
           )}
-          {safeSection === "profile" && <ProviderProfilePublic locationId={selectedLocationId} overview={overview} workspace={scopedWorkspace} onNavigate={goToSection} onSelectLocation={selectLocation} onRefresh={refreshOverviewInPlace} />}
+          {safeSection === "profile" && (
+            <div className="[&>div>header:first-child]:hidden">
+              <ProviderProfilePublic
+                locationId={selectedLocationId}
+                overview={overview}
+                workspace={scopedWorkspace}
+                onNavigate={goToSection}
+                onSelectLocation={selectLocation}
+                onRefresh={refreshOverviewInPlace}
+              />
+            </div>
+          )}
           {safeSection === "locations" && activeLocationModule && (
             <ProviderLocationModulePage
               workspace={scopedWorkspace}
