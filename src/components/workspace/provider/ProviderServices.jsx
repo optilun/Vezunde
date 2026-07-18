@@ -1,7 +1,8 @@
 import React from "react";
-import ProviderServicesProgressive from "./ProviderServicesProgressive";
+import ProviderServicesGuided from "./ProviderServicesGuided";
 import "./ProviderServicesClean.css";
+import "./ProviderServicesGuided.css";
 
 export default function ProviderServices(props) {
-  return <ProviderServicesProgressive {...props} />;
+  return <ProviderServicesGuided {...props} />;
 }
