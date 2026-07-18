@@ -224,7 +224,7 @@ export default function CookieConsent() {
                 />
                 <PreferenceRow
                   title="Analiză"
-                  description="Ne ajută să înțelegem agregat cum este utilizată platforma. Google Analytics nu este încă activ și nu va porni fără acord."
+                  description="Ne ajută să înțelegem agregat cum este utilizată platforma. Google Analytics pornește numai după acord și se oprește dacă acordul este retras."
                   checked={analytics}
                   onChange={setAnalytics}
                 />
