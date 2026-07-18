@@ -236,11 +236,20 @@ export default function ProviderServicesProgressive(props) {
   }, [activeCategory, snapshot.categories]);
 
   const configurationSummary = useMemo(() => {
-    if (snapshot.unitNames.length === 0) return "Configurarea locației nu este completată.";
+    if (snapshot.unitNames.length === 0) {
+      return snapshot.unitCount > 0
+        ? `${snapshot.unitCount} spații configurate`
+        : "Configurarea locației nu este completată.";
+    }
     const units = snapshot.unitNames.slice(0, 2).join(", ");
     const extra = snapshot.unitNames.length > 2 ? ` +${snapshot.unitNames.length - 2}` : "";
     return `${units}${extra}`;
-  }, [snapshot.unitNames]);
+  }, [snapshot.unitCount, snapshot.unitNames]);
+
+  const configurationDetail = snapshot.careSetting
+    || (snapshot.unitCount > 0
+      ? "Configurarea de bază este completă."
+      : "Alege spațiile, activitățile și modul de funcționare.");
 
   const updateSearch = (value) => {
     setSearchValue(value);
@@ -269,9 +278,9 @@ export default function ProviderServicesProgressive(props) {
           <p>Selectează serviciile disponibile și completează doar informațiile cerute de opțiunile alese.</p>
         </div>
         <div className="provider-services-progressive__metrics" aria-label="Sumar configurare">
-          <span><strong>{snapshot.selectedCount}</strong> servicii</span>
+          <span><strong>{snapshot.selectedCount}</strong> opțiuni</span>
           <span><strong>{snapshot.unitCount}</strong> spații</span>
-          <span><strong>{snapshot.issueCount}</strong> de completat</span>
+          <span><strong>{snapshot.capabilityCount}</strong> activități</span>
         </div>
       </section>
 
@@ -285,7 +294,7 @@ export default function ProviderServicesProgressive(props) {
           <span className="provider-services-progressive__configuration-copy">
             <span className="provider-services-progressive__configuration-title">Configurarea locației</span>
             <strong>{configurationSummary}</strong>
-            <small>{snapshot.careSetting || "Alege spațiile, activitățile și modul de funcționare."}</small>
+            <small>{configurationDetail}</small>
           </span>
           <span className="provider-services-progressive__configuration-action">
             {configurationOpen ? "Restrânge" : "Modifică"}
