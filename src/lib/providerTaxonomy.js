@@ -40,14 +40,14 @@ export const TEAM_ROLES = {
   optician: "Optician",
 };
 
-// Folosim in continuare valorile tehnice existente in schema Base44
-// (availability_status) ca sa nu rupem compatibilitatea. In UI, campul
-// reprezinta regula de acces in locatie, nu disponibilitate dinamica pe zile.
+// Valorile tehnice existente din schema Base44 sunt pastrate pentru
+// compatibilitate. Etichetele descriu regula de acces la servicii, nu
+// disponibilitatea dinamica a locatiei.
 export const AVAILABILITY_OPTIONS = {
-  astazi: "Primeste clienti fara programare",
-  urmatoarele_zile: "Primeste clienti si cu programare",
-  saptamana_aceasta: "Walk-in pentru optica, programare pentru consultatii",
-  doar_programare: "Doar cu programare",
+  astazi: "Fara programare",
+  urmatoarele_zile: "Cu sau fara programare",
+  saptamana_aceasta: "Optica fara programare; consultatii cu programare",
+  doar_programare: "Numai cu programare",
 };
 
 export const VERIFICATION_STATE_LABELS = {
