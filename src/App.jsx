@@ -10,6 +10,7 @@ import {
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import ScrollToTop from "./components/ScrollToTop";
 import RouteSeo from "@/components/seo/RouteSeo";
+import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 import Layout from "@/components/Layout";
 import RequireAuth from "@/components/guards/RequireAuth";
 import RequireAdmin from "@/components/guards/RequireAdmin";
@@ -235,6 +236,7 @@ function App() {
         <Router>
           <ScrollToTop />
           <RouteSeo />
+          <GoogleAnalytics />
           <AppRoutes />
           <DeferredClientUi />
         </Router>
