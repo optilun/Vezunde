@@ -220,7 +220,13 @@ export default function ProviderServicesProgressive(props) {
     if (!root) return undefined;
     decorate();
     const observer = new MutationObserver(decorate);
-    observer.observe(root, { childList: true, subtree: true, characterData: true });
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["aria-pressed", "class", "disabled"],
+    });
     return () => observer.disconnect();
   }, [decorate]);
 
