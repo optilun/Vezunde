@@ -23,7 +23,7 @@ function locationOptionLabel(location) {
   return [locationLabel(location), location?.locality_name || location?.city].filter(Boolean).join(" · ");
 }
 
-function SettingsSection({ title, description, danger = false, children }) {
+function SettingsSection({ title, description = "", danger = false, children = null }) {
   return (
     <section className={`overflow-hidden rounded-[20px] border bg-card shadow-[0_14px_40px_rgba(23,23,23,0.035)] ${danger ? "border-red-200" : "border-foreground/10"}`}>
       <div className={`border-b px-5 py-5 ${danger ? "border-red-100 bg-red-50/40" : "border-border bg-[#f8f4ec]/45"}`}>
@@ -35,7 +35,7 @@ function SettingsSection({ title, description, danger = false, children }) {
   );
 }
 
-function SettingsRow({ title, description, action, children }) {
+function SettingsRow({ title, description = "", action = null, children = null }) {
   return (
     <div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
