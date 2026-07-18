@@ -149,7 +149,7 @@ export default function AdminLocationLifecycleReview() {
       {error && <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
       <div className="mt-4 space-y-3">
         {submissions.length === 0 ? (
-          <EmptyState icon={Archive} title="Nu există solicitări privind starea locațiilor." subtitle="Cererile trimise de owneri vor apărea aici." />
+          <EmptyState icon={Archive} title="Nu există solicitări privind starea locațiilor." subtitle="Cererile trimise de owneri vor apărea aici." ctaLabel="" onCta={() => {}} />
         ) : submissions.map((submission) => (
           <RequestCard
             key={submission.id}
