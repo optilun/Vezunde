@@ -61,7 +61,7 @@ export default function Cookies() {
             <code className="bg-[#ebe4d9] px-1.5 py-0.5 text-sm text-[#171717]">
               viasee_cookie_consent_v1
             </code>
-            , împreună cu versiunea și data actualizării.
+            {", împreună cu versiunea și data actualizării."}
           </p>
         </>
       ),
@@ -76,16 +76,15 @@ export default function Cookies() {
             <code className="bg-[#ebe4d9] px-1.5 py-0.5 text-sm text-[#171717]">
               G-YWTE0T07CH
             </code>
-            . Eticheta Google este încărcată numai după acordul pentru categoria
-            „Analiză”. Dacă acordul este retras, măsurarea este dezactivată și
-            cookie-urile Analytics accesibile site-ului sunt șterse.
+            {". Eticheta Google este încărcată numai după acordul pentru categoria „Analiză”. Dacă acordul este retras, măsurarea este dezactivată și cookie-urile Analytics accesibile site-ului sunt șterse."}
           </p>
           <p>
-            Sunt măsurate vizualizările paginilor și evenimentele automate
-            activate în Enhanced Measurement, precum scrollurile și clickurile
-            către domenii externe. Nu trebuie introduse în Analytics nume,
-            adrese de e-mail, numere de telefon sau alte date care identifică
-            direct o persoană.
+            Sunt măsurate vizualizările paginilor, interacțiunile automate
+            activate în măsurarea îmbunătățită, precum scrollurile și clickurile
+            către domenii externe, precum și informații tehnice despre browser,
+            dispozitiv și localizarea aproximativă. Nu trebuie introduse în
+            Analytics nume, adrese de e-mail, numere de telefon sau alte date
+            care identifică direct o persoană.
           </p>
           <LegalList>
             <li>
