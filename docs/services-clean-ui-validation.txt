@@ -1,3 +1,0 @@
-Desktop: verificare navigare rapida, catalog, progres, salvare, submit si retragere.
-Telefon: verificare fara overflow, statusuri sub denumire, butoane late si dialog complet vizibil.
-Roluri: owner, manager, read-only si pending review.
