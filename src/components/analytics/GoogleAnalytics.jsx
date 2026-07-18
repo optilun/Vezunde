@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import {
   COOKIE_CONSENT_CHANGED_EVENT,
   readCookieConsent,
@@ -59,9 +58,7 @@ function configureGtag() {
 
   ensureGtag();
   window.gtag("js", new Date());
-  window.gtag("config", MEASUREMENT_ID, {
-    send_page_view: false,
-  });
+  window.gtag("config", MEASUREMENT_ID);
   gtagConfigured = true;
 }
 
@@ -96,9 +93,6 @@ function loadGoogleAnalytics() {
 }
 
 export default function GoogleAnalytics() {
-  const { pathname, search } = useLocation();
-  const [analyticsEnabled, setAnalyticsEnabled] = useState(false);
-
   useEffect(() => {
     ensureGtag();
     window[GA_DISABLE_KEY] = true;
@@ -118,10 +112,8 @@ export default function GoogleAnalytics() {
       if (analyticsGranted) {
         const loaded = await loadGoogleAnalytics();
         window.__viaseeAnalyticsEnabled = loaded;
-        setAnalyticsEnabled(loaded);
       } else {
         window.__viaseeAnalyticsEnabled = false;
-        setAnalyticsEnabled(false);
         clearAnalyticsCookies();
       }
     };
@@ -144,20 +136,6 @@ export default function GoogleAnalytics() {
       );
     };
   }, []);
-
-  useEffect(() => {
-    if (!analyticsEnabled || typeof window.gtag !== "function") return undefined;
-
-    const timer = window.setTimeout(() => {
-      window.gtag("event", "page_view", {
-        page_title: document.title,
-        page_location: window.location.href,
-        page_path: `${pathname}${search}`,
-      });
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [analyticsEnabled, pathname, search]);
 
   return null;
 }
