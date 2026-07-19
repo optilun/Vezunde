@@ -16,7 +16,7 @@ const RESPONSE_OPTIONS = [
   { key: "cannot_help", label: "Nu putem ajuta", icon: XCircle },
 ];
 
-const FREE_ENTITLEMENT = Object.freeze({ plan_code: "free", status: "free", feature_keys: [] });
+const FREE_ENTITLEMENT = { plan_code: "free", status: "free", feature_keys: [] };
 
 function responseData(response) {
   const data = response?.data || {};
