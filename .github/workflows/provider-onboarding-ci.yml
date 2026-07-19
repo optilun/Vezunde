@@ -18,6 +18,7 @@ on:
       - "src/lib/postLoginRedirect.js"
       - "src/lib/workspaceNav.js"
       - "src/lib/providerWorkspaceAccess.js"
+      - "src/lib/providerContextSearch.js"
       - "shared/providerOpeningHours.js"
       - "shared/providerLocationIdentityResolution.js"
       - "shared/providerAccountWorkflowContract.js"
@@ -41,6 +42,7 @@ on:
       - "scripts/verify-provider-logo-review-status.mjs"
       - "scripts/verify-provider-account-workflow-e2e.mjs"
       - "scripts/verify-provider-location-access-scope.mjs"
+      - "scripts/verify-provider-context-url.mjs"
       - "scripts/verify-dead-code-cleanup.mjs"
       - "scripts/audit-frontend-dead-code.mjs"
       - "scripts/compare-typecheck-baseline.mjs"
@@ -76,6 +78,8 @@ jobs:
         run: npm run test:account-loading
       - name: Provider location access scope checks
         run: npm run test:provider-location-access
+      - name: Provider context URL checks
+        run: npm run test:provider-context-url
       - name: Dead code cleanup regression checks
         run: node scripts/verify-dead-code-cleanup.mjs
       - name: Frontend dead code audit report
