@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const ROLES = ['organization_owner', 'location_manager', 'location_staff'];
+const ACTIONS = ['list_mine', 'inspect', 'accept'];
 
 function res(body, status = 200) { return Response.json(body, { status }); }
 function normEmail(value) { return String(value || '').trim().toLowerCase(); }
@@ -38,6 +39,8 @@ function invitationView(invitation, organization, locations) {
     proposed_role: invitation.proposed_role,
     locations: locations.map(safeLocation),
     expires_at: invitation.expires_at || null,
+    delivery_status: invitation.delivery_status || 'pending',
+    delivery_provider: invitation.delivery_provider || '',
   };
 }
 async function hash(token) {
@@ -70,6 +73,45 @@ async function loadContext(svc, invitation) {
   return { organization, locations };
 }
 
+async function expireIfNeeded(svc, invitation) {
+  if (new Date(invitation.expires_at).getTime() > Date.now()) return false;
+  if (invitation.status === 'pending') {
+    await svc.entities.ProviderMemberInvitation.update(invitation.id, { status: 'expired' });
+  }
+  return true;
+}
+
+async function invitationForRequest(svc, { token, invitationId }) {
+  if (token) {
+    const rows = await svc.entities.ProviderMemberInvitation.filter({ secure_token_hash: await hash(token) }, '-created_date', 2);
+    return rows[0] || null;
+  }
+  if (invitationId) return svc.entities.ProviderMemberInvitation.get(invitationId).catch(() => null);
+  return null;
+}
+
+async function auditAcceptance(svc, user, invitation, memberships, source) {
+  await svc.entities.DirectoryAuditRecord.create({
+    entity_type: 'ProviderMemberInvitation',
+    entity_id: invitation.id,
+    action_type: 'accept_provider_member_invitation',
+    changed_fields: ['status', 'accepted_by_user_id', 'accepted_at', 'memberships'],
+    previous_values: JSON.stringify({ status: invitation.status }),
+    new_values: JSON.stringify({
+      status: 'accepted',
+      accepted_by_user_id: user.id,
+      membership_ids: memberships.map((membership) => membership.id),
+      source,
+    }),
+    admin_user_id: user.id,
+    admin_email: user.email || '',
+    note: source === 'account_email_match'
+      ? 'Invitatie acceptata din contul Base44 asociat emailului invitat.'
+      : 'Invitatie acceptata prin linkul securizat.',
+    performed_at: new Date().toISOString(),
+  });
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -79,22 +121,38 @@ Deno.serve(async (req) => {
     const svc = base44.asServiceRole;
     const payload = await req.json().catch(() => ({}));
     const action = String(payload.action || 'accept').trim();
-    const token = String(new URL(req.url).searchParams.get('token') || payload.token || payload.invitation_token || '').trim();
-    if (!token) return res({ error: 'Token obligatoriu' }, 400);
-    if (!['inspect', 'accept'].includes(action)) return res({ error: 'Actiune invalida' }, 400);
-    if (user.email_verified === false || user.email_verified === 'false') {
+    if (!ACTIONS.includes(action)) return res({ error: 'Actiune invalida' }, 400);
+    if (user.is_verified === false || user.email_verified === false || user.email_verified === 'false') {
       return res({ error: 'Emailul contului trebuie verificat' }, 403);
     }
 
-    const rows = await svc.entities.ProviderMemberInvitation.filter({ secure_token_hash: await hash(token) }, '-created_date', 2);
-    const invitation = rows[0] || null;
+    const userEmail = normEmail(user.email);
+    if (!userEmail) return res({ error: 'Contul nu are un email valid' }, 400);
+
+    if (action === 'list_mine') {
+      const rows = await svc.entities.ProviderMemberInvitation.filter({
+        invited_email_normalized: userEmail,
+        status: 'pending',
+      }, '-created_date', 50);
+      const invitations = [];
+      for (const invitation of rows) {
+        if (await expireIfNeeded(svc, invitation)) continue;
+        const context = await loadContext(svc, invitation);
+        if (context.error) continue;
+        invitations.push(invitationView(invitation, context.organization, context.locations));
+      }
+      return res({ invitations, count: invitations.length });
+    }
+
+    const token = String(new URL(req.url).searchParams.get('token') || payload.token || payload.invitation_token || '').trim();
+    const invitationId = String(payload.invitation_id || '').trim();
+    if (!token && !invitationId) return res({ error: 'Tokenul sau invitation_id este obligatoriu' }, 400);
+
+    const invitation = await invitationForRequest(svc, { token, invitationId });
     if (!invitation) return res({ error: 'Invitatie invalida' }, 404);
     if (invitation.status !== 'pending') return res({ error: 'Invitatia nu mai este activa' }, 400);
-    if (new Date(invitation.expires_at).getTime() <= Date.now()) {
-      await svc.entities.ProviderMemberInvitation.update(invitation.id, { status: 'expired' });
-      return res({ error: 'Invitatia a expirat' }, 400);
-    }
-    if (normEmail(user.email) !== normEmail(invitation.invited_email_normalized)) {
+    if (await expireIfNeeded(svc, invitation)) return res({ error: 'Invitatia a expirat' }, 400);
+    if (userEmail !== normEmail(invitation.invited_email_normalized)) {
       return res({ error: 'Invitatia este pentru alta adresa de email' }, 403);
     }
 
@@ -132,12 +190,21 @@ Deno.serve(async (req) => {
       }
     }
 
+    const acceptedAt = new Date().toISOString();
     await svc.entities.ProviderMemberInvitation.update(invitation.id, {
       status: 'accepted',
       accepted_by_user_id: user.id,
-      accepted_at: new Date().toISOString(),
+      accepted_at: acceptedAt,
     });
-    return res({ success: true, invitation: view, memberships: memberships.map(safeMembership) });
+    const source = token ? 'secure_link' : 'account_email_match';
+    await auditAcceptance(svc, user, invitation, memberships, source);
+    return res({
+      success: true,
+      invitation: view,
+      memberships: memberships.map(safeMembership),
+      accepted_at: acceptedAt,
+      acceptance_source: source,
+    });
   } catch (error) {
     return res({ error: error?.message || 'Eroare neasteptata' }, 500);
   }

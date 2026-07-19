@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { Building2, CheckCircle2, Loader2, MapPin, ShieldCheck, UsersRound } from "lucide-react";
+import {
+  Building2,
+  CheckCircle2,
+  ChevronRight,
+  Loader2,
+  MapPin,
+  ShieldCheck,
+  UsersRound,
+} from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import ViaseeBrand from "@/components/brand/ViaseeBrand";
@@ -33,6 +41,7 @@ export default function AcceptProviderInvitation() {
   const [loadingInvitation, setLoadingInvitation] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [invitation, setInvitation] = useState(null);
+  const [pendingInvitations, setPendingInvitations] = useState([]);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
 
@@ -49,15 +58,30 @@ export default function AcceptProviderInvitation() {
   }, []);
 
   useEffect(() => {
-    if (authState !== "authenticated" || !token || result) return undefined;
+    if (authState !== "authenticated" || result) return undefined;
     let active = true;
     setLoadingInvitation(true);
     setError("");
-    base44.functions.invoke("acceptProviderMemberInvitation", { action: "inspect", token })
+
+    const request = token
+      ? base44.functions.invoke("acceptProviderMemberInvitation", { action: "inspect", token })
+      : base44.functions.invoke("acceptProviderMemberInvitation", { action: "list_mine" });
+
+    request
       .then((response) => {
         if (!active) return;
-        if (response.data?.error) setError(response.data.error);
-        else setInvitation(response.data?.invitation || null);
+        if (response.data?.error) {
+          setError(response.data.error);
+          return;
+        }
+        if (token) {
+          setInvitation(response.data?.invitation || null);
+          setPendingInvitations([]);
+          return;
+        }
+        const rows = response.data?.invitations || [];
+        setPendingInvitations(rows);
+        setInvitation(rows.length === 1 ? rows[0] : null);
       })
       .catch((requestError) => {
         if (active) setError(requestError.response?.data?.error || requestError.message || "Invitatia nu a putut fi verificata.");
@@ -69,12 +93,12 @@ export default function AcceptProviderInvitation() {
   }, [authState, result, token]);
 
   const accept = async () => {
-    if (!token || !invitation) return;
+    if (!invitation) return;
     setAccepting(true);
     setError("");
     const response = await base44.functions.invoke("acceptProviderMemberInvitation", {
       action: "accept",
-      token,
+      ...(token ? { token } : { invitation_id: invitation.id }),
     }).catch((requestError) => ({
       data: { error: requestError.response?.data?.error || requestError.message || "Invitatia nu a putut fi acceptata." },
     }));
@@ -84,6 +108,7 @@ export default function AcceptProviderInvitation() {
       return;
     }
     setResult(response.data);
+    setPendingInvitations([]);
   };
 
   const login = () => base44.auth.redirectToLogin(window.location.href);
@@ -103,14 +128,8 @@ export default function AcceptProviderInvitation() {
 
           <h1 className="mt-5 font-heading text-2xl font-extrabold tracking-tight sm:text-3xl">Invitatie de acces in VIASEE</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Ai fost invitat sa administrezi una sau mai multe locatii. Accesul organizational este separat de profilul tau personal si de un eventual profil profesional.
+            Invitatiile sunt asociate adresei tale de email. Dupa autentificare poti verifica organizatia, rolul si locatiile inainte sa accepti accesul.
           </p>
-
-          {!token && (
-            <div role="alert" className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-              Linkul invitatiei este incomplet.
-            </div>
-          )}
 
           {authState === "loading" && (
             <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
@@ -125,11 +144,11 @@ export default function AcceptProviderInvitation() {
                 <div>
                   <h2 className="text-sm font-bold">Autentificare necesara</h2>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    Foloseste contul VIASEE cu aceeasi adresa de email pe care ai primit invitatia.
+                    Foloseste contul VIASEE cu aceeasi adresa de email la care ai primit invitatia Base44.
                   </p>
                 </div>
               </div>
-              <button type="button" onClick={login} disabled={!token} className="mt-4 w-full rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background disabled:opacity-50">
+              <button type="button" onClick={login} className="mt-4 w-full rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background">
                 Autentifica-te pentru a continua
               </button>
             </div>
@@ -137,12 +156,52 @@ export default function AcceptProviderInvitation() {
 
           {authState === "authenticated" && loadingInvitation && (
             <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Se verifica invitatia...
+              <Loader2 className="h-4 w-4 animate-spin" /> Se verifica invitatiile asociate contului...
+            </div>
+          )}
+
+          {authState === "authenticated" && !loadingInvitation && !token && pendingInvitations.length > 1 && !invitation && !result && (
+            <section className="mt-6 space-y-3">
+              <div>
+                <h2 className="text-sm font-bold">Alege invitatia</h2>
+                <p className="mt-1 text-xs text-muted-foreground">Ai mai multe invitatii active asociate acestei adrese de email.</p>
+              </div>
+              {pendingInvitations.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setInvitation(item)}
+                  className="flex w-full items-center gap-3 rounded-2xl border border-border bg-secondary/20 p-4 text-left transition hover:bg-secondary/40"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-card">
+                    <Building2 className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-bold">{item.organization?.name || "Organizatie VIASEE"}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {ROLE_DETAILS[item.proposed_role]?.label || item.proposed_role} · {(item.locations || []).length} {(item.locations || []).length === 1 ? "locatie" : "locatii"}
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0" />
+                </button>
+              ))}
+            </section>
+          )}
+
+          {authState === "authenticated" && !loadingInvitation && !token && pendingInvitations.length === 0 && !result && !error && (
+            <div className="mt-6 rounded-2xl border border-border bg-secondary/20 p-4 text-sm leading-relaxed text-muted-foreground">
+              Nu exista invitatii active asociate adresei acestui cont.
             </div>
           )}
 
           {authState === "authenticated" && invitation && !result && (
             <div className="mt-6 space-y-4">
+              {!token && pendingInvitations.length > 1 && (
+                <button type="button" onClick={() => setInvitation(null)} className="text-xs font-semibold underline underline-offset-4">
+                  Inapoi la toate invitatiile
+                </button>
+              )}
+
               <section className="rounded-2xl border border-border bg-secondary/25 p-4 sm:p-5">
                 <div className="flex items-start gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-card">
