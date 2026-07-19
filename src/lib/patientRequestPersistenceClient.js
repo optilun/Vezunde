@@ -12,6 +12,13 @@ export function createPatientRequestIdempotencyKey() {
   return `patient:${Array.from(bytes).map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 }
 
+export function createControlledChatMessageId() {
+  if (typeof globalThis.crypto?.randomUUID === "function") return `chat:${globalThis.crypto.randomUUID()}`;
+  const bytes = new Uint8Array(24);
+  globalThis.crypto.getRandomValues(bytes);
+  return `chat:${Array.from(bytes).map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+}
+
 export function storePatientRequestDraft(draft) {
   try {
     sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft || null));
@@ -52,6 +59,7 @@ function responseData(response) {
   if (data.error) throw Object.assign(new Error(data.error), {
     field: data.field || "",
     verification: data.verification || null,
+    reasons: data.reasons || [],
   });
   return data;
 }
@@ -140,6 +148,27 @@ export async function managePatientContactShareApproval({
     request_id: requestId,
     request_access_token: token,
     location_id: locationId || "",
+  });
+  return responseData(response);
+}
+
+export async function patientControlledChat({
+  requestId,
+  locationId,
+  action = "status",
+  message = "",
+  clientMessageId = "",
+  explicitAccessToken = "",
+}) {
+  const token = resolveRequestAccessToken(requestId, explicitAccessToken);
+  const response = await base44.functions.invoke("controlledChatOps", {
+    actor: "patient",
+    action,
+    request_id: requestId,
+    request_access_token: token,
+    location_id: locationId,
+    message,
+    client_message_id: clientMessageId,
   });
   return responseData(response);
 }
