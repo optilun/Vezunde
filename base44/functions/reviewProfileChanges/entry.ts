@@ -91,6 +91,10 @@ Deno.serve(async (req) => {
       if (organizationLogo) {
         const organizationUpdates = {
           logo_url: fields.photo_url,
+          logo_review_status: 'approved',
+          logo_reviewed_at: now,
+          logo_review_note: input.notes || 'Logo organizational aprobat',
+          logo_review_location_id: location.id,
           profile_updated_at: now,
         };
         organizationUpdates.profile_completeness = organizationCompleteness({ ...organization, ...organizationUpdates });
@@ -99,9 +103,9 @@ Deno.serve(async (req) => {
           entity_type: 'ProviderOrganization',
           entity_id: organization.id,
           action_type: 'approve_organization_logo',
-          changed_fields: ['logo_url'],
-          previous_values: JSON.stringify({ logo_url: organization.logo_url || '' }),
-          new_values: JSON.stringify({ logo_url: fields.photo_url }),
+          changed_fields: ['logo_url', 'logo_review_status'],
+          previous_values: JSON.stringify({ logo_url: organization.logo_url || '', logo_review_status: organization.logo_review_status || 'pending_review' }),
+          new_values: JSON.stringify({ logo_url: fields.photo_url, logo_review_status: 'approved' }),
           admin_user_id: user.id,
           admin_email: user.email,
           note: input.notes || 'Logo organizational aprobat',
@@ -154,6 +158,14 @@ Deno.serve(async (req) => {
         if (changes.facilities.length > 0) await svc.entities.LocationFacility.bulkCreate(changes.facilities.map((key) => ({ location_id: location.id, facility_key: key, is_active: true })));
       }
     } else {
+      if (organizationLogo) {
+        await svc.entities.ProviderOrganization.update(organization.id, {
+          logo_review_status: 'rejected',
+          logo_reviewed_at: now,
+          logo_review_note: input.notes || 'Logo-ul nu a fost aprobat',
+          logo_review_location_id: location.id,
+        });
+      }
       await svc.entities.ProviderLocation.update(location.id, { pending_changes: '' });
     }
 
@@ -169,16 +181,16 @@ Deno.serve(async (req) => {
       entity_type: organizationLogo ? 'ProviderOrganization' : 'ProviderLocation',
       entity_id: organizationLogo ? organizationId : location.id,
       action_type: input.decision === 'aproba' ? 'approve_profile_changes' : 'reject_profile_changes',
-      changed_fields: Object.keys(fields),
+      changed_fields: organizationLogo ? [...Object.keys(fields), 'logo_review_status'] : Object.keys(fields),
       previous_values: '{}',
-      new_values: JSON.stringify(fields),
+      new_values: JSON.stringify({ ...fields, ...(organizationLogo ? { logo_review_status: input.decision === 'aproba' ? 'approved' : 'rejected' } : {}) }),
       admin_user_id: user.id,
       admin_email: user.email,
       note: input.notes || '',
       performed_at: now,
     });
 
-    return Response.json({ success: true });
+    return Response.json({ success: true, ...(organizationLogo ? { logo_review_status: input.decision === 'aproba' ? 'approved' : 'rejected' } : {}) });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
