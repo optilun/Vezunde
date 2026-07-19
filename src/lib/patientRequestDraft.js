@@ -1,4 +1,4 @@
-import { CATEGORY_QUESTION, INTENTS } from "@/lib/intentRegistry";
+import { CATEGORY_QUESTION, INTENTS } from "./intentRegistry.js";
 
 export const PATIENT_QUESTIONNAIRE_VERSION = "patient-questionnaire-v1";
 export const PATIENT_REQUEST_DRAFT_CONTRACT_VERSION = "patient-request-draft-v1";
@@ -16,6 +16,7 @@ function questionnaireKey(intent) {
 }
 
 function questionCatalog() {
+  /** @type {Map<string, any>} */
   const entries = new Map([[CATEGORY_QUESTION.key, CATEGORY_QUESTION]]);
   for (const intent of Object.values(INTENTS)) {
     for (const question of intent.questions || []) {
@@ -57,8 +58,10 @@ export function buildPatientRequestDraft({
   originalMessage = "",
   interpretation = null,
 } = {}) {
-  const intent = clean(state.intent, 80) || "unknown";
-  const answers = normalizedAnswers(state.answers);
+  const safeState = /** @type {any} */ (state || {});
+  const safeInterpretation = /** @type {any} */ (interpretation || null);
+  const intent = clean(safeState.intent, 80) || "unknown";
+  const answers = normalizedAnswers(safeState.answers);
   const answerByKey = Object.fromEntries(answers.map((answer) => [answer.question_key, answer.answer_value]));
   const intentDefinition = INTENTS[intent] || INTENTS.unknown;
 
@@ -69,20 +72,20 @@ export function buildPatientRequestDraft({
     intent,
     intent_label: clean(intentDefinition?.label || "Nu sunt sigur", 120),
     original_message: clean(originalMessage, 800),
-    service_keys: unique(state.serviceKeys),
-    location_scope: clean(state.scope, 40) || "locality",
-    city: clean(state.city, 120),
-    locality_siruta_code: clean(state.locality?.siruta_code, 40),
-    client_address_text: clean(state.clientAddressText, 240),
+    service_keys: unique(safeState.serviceKeys),
+    location_scope: clean(safeState.scope, 40) || "locality",
+    city: clean(safeState.city, 120),
+    locality_siruta_code: clean(safeState.locality?.siruta_code, 40),
+    client_address_text: clean(safeState.clientAddressText, 240),
     for_whom: clean(answerByKey.pentru_cine, 40) || null,
     age_group: clean(answerByKey.varsta_copil, 40) || null,
     timing_key: clean(answerByKey.timing, 60) || null,
     answers,
-    interpretation: interpretation ? {
-      version: clean(interpretation.version, 80) || null,
-      confidence_band: clean(interpretation.confidence_band, 20) || null,
-      agreement_status: clean(interpretation.agreement_status, 30) || null,
-      possible_safety_flags: unique(interpretation.possible_safety_flags),
+    interpretation: safeInterpretation ? {
+      version: clean(safeInterpretation.version, 80) || null,
+      confidence_band: clean(safeInterpretation.confidence_band, 20) || null,
+      agreement_status: clean(safeInterpretation.agreement_status, 30) || null,
+      possible_safety_flags: unique(safeInterpretation.possible_safety_flags),
     } : null,
   };
 }
