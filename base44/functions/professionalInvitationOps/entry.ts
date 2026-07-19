@@ -147,6 +147,26 @@ async function deliverInvitation(base44, { to, subject, body }) {
   }
 }
 
+async function loadAcceptableInvitationLocation(svc, invitation) {
+  const location = await svc.entities.ProviderLocation.get(invitation.location_id).catch(() => null);
+  if (!location) return { error: 'Locatia asociata invitatiei nu mai exista', status: 404 };
+  if (invitation.organization_id && location.organization_id !== invitation.organization_id) {
+    return { error: 'Locatia nu mai apartine organizatiei care a emis invitatia', status: 403 };
+  }
+  if (location.claim_verification_status !== 'approved') {
+    return { error: 'Revendicarea locatiei nu mai este aprobata', status: 403 };
+  }
+  if (location.profile_control_status === 'suspended' || location.status === 'suspendata' || location.active_status === 'inactiva') {
+    return { error: 'Locatia asociata nu mai este activa', status: 403 };
+  }
+  if (invitation.organization_id) {
+    const organization = await svc.entities.ProviderOrganization.get(invitation.organization_id).catch(() => null);
+    if (!organization) return { error: 'Organizatia asociata invitatiei nu mai exista', status: 404 };
+    if (organization.status === 'inactiva') return { error: 'Organizatia asociata invitatiei nu mai este activa', status: 403 };
+  }
+  return { location };
+}
+
 async function listInvitations(svc, user, payload) {
   const locationId = cleanString(payload.location_id);
   if (!locationId) return response({ error: 'location_id este obligatoriu' }, 400);
@@ -315,11 +335,9 @@ async function acceptInvitation(svc, user, payload, req) {
     return response({ error: 'Invitatia este destinata altui email' }, 403);
   }
 
-  const location = await svc.entities.ProviderLocation.get(invitation.location_id).catch(() => null);
-  if (!location) return response({ error: 'Locatia asociata invitatiei nu mai exista' }, 404);
-  if (location.profile_control_status === 'suspended' || location.status === 'suspendata') {
-    return response({ error: 'Locatia asociata este suspendata' }, 403);
-  }
+  const locationContext = await loadAcceptableInvitationLocation(svc, invitation);
+  if (locationContext.error) return response({ error: locationContext.error }, locationContext.status);
+  const location = locationContext.location;
 
   const profiles = await svc.entities.ProfessionalProfile.filter({ user_id: user.id }, '-created_date', 5);
   let profile = profiles[0] || null;
