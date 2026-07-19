@@ -7,7 +7,7 @@ import {
   sanitizePatientRequestSubmission,
 } from '../../../shared/patientRequestPersistence.js';
 
-const MAX_REQUESTS_PER_EMAIL_PER_HOUR = 5;
+const MAX_REQUESTS_PER_CONTACT_PER_HOUR = 5;
 const IDEMPOTENCY_SETTLE_MS = 90;
 
 function addDays(date, days) {
@@ -31,6 +31,10 @@ async function sha256(value) {
   const bytes = new TextEncoder().encode(String(value || ''));
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function phoneIdentity(value) {
+  return String(value || '').replace(/\D/g, '');
 }
 
 function sleep(milliseconds) {
@@ -120,13 +124,19 @@ Deno.serve(async (request) => {
       return Response.json({ error: 'Localitatea selectata nu mai este disponibila.', field: 'request_draft.locality_siruta_code' }, { status: 400 });
     }
 
-    const contactEmailHash = await sha256(submission.contact.contact_email);
+    const contactEmailHash = submission.contact.contact_email
+      ? await sha256(submission.contact.contact_email)
+      : '';
+    const identitySource = submission.contact.contact_email
+      ? `email:${submission.contact.contact_email}`
+      : `phone:${phoneIdentity(submission.contact.contact_phone)}`;
+    const contactIdentityHash = await sha256(identitySource);
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
     const recent = await svc.entities.PatientRequest.filter({
-      contact_email_hash: contactEmailHash,
+      contact_identity_hash: contactIdentityHash,
       created_date: { $gt: oneHourAgo },
     }, '-created_date', 10);
-    if (recent.length >= MAX_REQUESTS_PER_EMAIL_PER_HOUR) {
+    if (recent.length >= MAX_REQUESTS_PER_CONTACT_PER_HOUR) {
       return Response.json({ error: 'Au fost create prea multe cereri intr-un interval scurt. Incearca mai tarziu.' }, { status: 429 });
     }
 
@@ -138,6 +148,7 @@ Deno.serve(async (request) => {
       locality_siruta_code: geography.siruta_code,
       requester_user_id: user?.id || '',
       contact_email_hash: contactEmailHash,
+      contact_identity_hash: contactIdentityHash,
       idempotency_key: submission.idempotency_key,
       public_reference: publicReference(),
       submitted_at: nowIso,
@@ -154,14 +165,20 @@ Deno.serve(async (request) => {
       return replayResponse(winner, winner.persistence_state === 'complete' ? 200 : 202);
     }
 
+    const normalizedUserEmail = String(user?.email || '').trim().toLowerCase();
+    const emailVerified = Boolean(
+      submission.contact.contact_email
+      && normalizedUserEmail
+      && normalizedUserEmail === submission.contact.contact_email,
+    );
     const contactRecord = await svc.entities.PatientRequestContact.create({
       request_id: requestRecord.id,
       requester_user_id: user?.id || '',
       ...submission.contact,
       provider_contact_sharing_consent: false,
       processing_consent_at: nowIso,
-      contact_email_verified: Boolean(user?.email && String(user.email).trim().toLowerCase() === submission.contact.contact_email),
-      contact_email_verified_at: user?.email && String(user.email).trim().toLowerCase() === submission.contact.contact_email ? nowIso : null,
+      contact_email_verified: emailVerified,
+      contact_email_verified_at: emailVerified ? nowIso : null,
       access_token_hash: await sha256(accessToken),
       retention_policy_key: PATIENT_REQUEST_RETENTION_POLICY_KEY,
       retention_until: addDays(now, PATIENT_REQUEST_CONTACT_RETENTION_DAYS),
@@ -205,7 +222,7 @@ Deno.serve(async (request) => {
       match_count: validMatches.length,
       top3_count: validMatches.filter((match) => match.result_bucket === 'top3').length,
       contact_sharing_enabled: false,
-      message: 'Cererea a fost salvata. Datele de contact nu au fost transmise niciunui furnizor.',
+      message: 'Cererea a fost salvata. Telefonul nu a fost transmis niciunui furnizor.',
     }, { status: 201 });
   } catch (error) {
     if (createdRequestId) {
