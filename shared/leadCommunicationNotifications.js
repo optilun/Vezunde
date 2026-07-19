@@ -9,6 +9,8 @@ import {
   recordSkippedCommunication,
 } from './communicationDelivery.js';
 
+const MAX_PROVIDER_LEAD_EMAIL_RECIPIENTS = 20;
+
 function clean(value, maxLength = 180) {
   return String(value || '').trim().slice(0, maxLength);
 }
@@ -29,7 +31,7 @@ export async function notifyProviderLeadAvailable({ base44, svc, lead, location 
     location_id: location.id,
     status: 'active',
   }, '-created_date', 500);
-  const recipients = uniqueProviderRecipients(memberships);
+  const recipients = uniqueProviderRecipients(memberships).slice(0, MAX_PROVIDER_LEAD_EMAIL_RECIPIENTS);
   const email = buildProviderLeadAvailableEmail({
     locationName: location.public_display_name || location.name || 'Locatia ta',
     city: lead.city || location.locality_name || location.city || '',
