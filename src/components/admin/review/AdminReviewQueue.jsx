@@ -4,6 +4,7 @@ import AdminWorkspaceSubmissionsReview from "@/components/admin/directory/AdminW
 import AdminNewLocationReview from "@/components/admin/directory/AdminNewLocationReview";
 import AdminProfessionalProfileReview from "@/components/admin/directory/AdminProfessionalProfileReview";
 import AdminLocationLifecycleReview from "@/components/admin/directory/AdminLocationLifecycleReview";
+import AdminPhotoCleanupQueue from "@/components/admin/directory/AdminPhotoCleanupQueue";
 
 const TABS = [
   {
@@ -19,12 +20,17 @@ const TABS = [
   {
     key: "locations",
     label: "Locatii noi",
-    description: "Puncte de lucru noi trimise pentru organizatii existente.",
+    description: "Puncte de lucru noi, profiluri existente si transferuri intre organizatii.",
   },
   {
     key: "professionals",
     label: "Specialisti",
     description: "Profiluri profesionale trimise spre verificare publica.",
+  },
+  {
+    key: "media_cleanup",
+    label: "Curatare media",
+    description: "Fisiere incarcate pentru fotografii, dar retrase sau inlocuite inainte de publicare.",
   },
 ];
 
@@ -60,6 +66,7 @@ export default function AdminReviewQueue() {
       {tab === "lifecycle" && <AdminLocationLifecycleReview />}
       {tab === "locations" && <AdminNewLocationReview />}
       {tab === "professionals" && <AdminProfessionalProfileReview />}
+      {tab === "media_cleanup" && <AdminPhotoCleanupQueue />}
     </div>
   );
 }
