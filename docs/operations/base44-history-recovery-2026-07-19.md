@@ -8,14 +8,16 @@ GitHub comparison at recovery time:
 
 - previous Base44 tip: `827623f11ae6f020f0d93f9a2a56cc29bb7029c6`;
 - common ancestor: `e35fdf4f1ba3235103049c8823a3fb7653c2e5b1`;
-- valid `main` tip before this recovery commit: `d877a76556ed3350bddec6c6960ed5d46a269e7e`;
-- relation: histories diverged; the Base44 tip was one removed commit, while `main` contained 20 commits after the common ancestor.
+- valid `main` tip before recovery: `d877a76556ed3350bddec6c6960ed5d46a269e7e`;
+- relation: histories diverged; the Base44 tip was one removed commit, while `main` contained the valid implementation line.
 
 ## Recovery
 
-This commit creates a new normal descendant of the valid `main` history so the GitHub-Base44 connection can create a fresh version from a reachable commit.
+The first documentation-only descendant did not restore the missing ancestry and therefore did not produce a new Base44 build.
 
-No application code, entity schema or production data is changed by this recovery.
+The final recovery joins the valid `main` history with the Base44-observed commit through normal merge commits, then removes the obsolete `tmp_placeholder` file. This makes `827623f11ae6f020f0d93f9a2a56cc29bb7029c6` reachable again from `main` without reset or force-push and preserves the current application tree.
+
+No application behavior, entity schema or production data is changed by this recovery.
 
 ## Rule
 
