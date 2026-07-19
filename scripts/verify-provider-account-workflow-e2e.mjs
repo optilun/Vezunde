@@ -79,8 +79,9 @@ const browseDirectory = await source('base44/functions/browseDirectoryProviders/
 const publicOrganization = await source('base44/functions/getPublicOrganizationBrand/entry.ts');
 
 hasAll(publicProviderProfile, [
-  /status\s*!==\s*'publicata'/,
-  /public_visibility_status/,
+  /publicDisclosure\?\.is_publicly_available !== true/,
+  /ProviderLocationDirectoryState/,
+  /public_detail_level/,
   /LocationService/,
 ], 'profil public');
 assert.doesNotMatch(publicProviderProfile, /pending_changes/, 'profilul public nu trebuie sa citeasca drafturi');
