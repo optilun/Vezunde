@@ -15,6 +15,7 @@ import {
   acquireContactShareApprovalLock,
   releaseContactShareApprovalLock,
 } from '../../../shared/contactShareApprovalLock.js';
+import { notifyPatientProviderResponse } from '../../../shared/leadCommunicationNotifications.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -117,6 +118,7 @@ Deno.serve(async (req) => {
         status: 'active',
       }, '-updated_date', 20);
       const existing = activeRows[0] || null;
+      const responseChanged = !existing || existing.response_type !== responseType;
       const payload = {
         lead_id: lead.id,
         request_id: lead.request_id || '',
@@ -161,6 +163,20 @@ Deno.serve(async (req) => {
           last_contact_approval_at: now,
         } : {}),
       });
+
+      if (responseChanged && lead.request_id) {
+        const request = await svc.entities.PatientRequest.get(lead.request_id).catch(() => null);
+        if (request) {
+          await notifyPatientProviderResponse({
+            base44,
+            svc,
+            lead,
+            response,
+            location: authorized.location,
+            request,
+          }).catch(() => null);
+        }
+      }
 
       return res({
         entitlement: access.entitlement,
