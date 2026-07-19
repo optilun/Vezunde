@@ -1,0 +1,46 @@
+name: Provider Contact Access UI
+
+on:
+  pull_request:
+    paths:
+      - "src/components/workspace/provider/ProviderLeadContactAccess.jsx"
+      - "src/components/workspace/provider/ProviderLeadInbox.jsx"
+      - "scripts/verify-provider-contact-access-ui.mjs"
+      - ".github/workflows/provider-contact-access-ui-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify provider contact access UI
+        run: node scripts/verify-provider-contact-access-ui.mjs
+      - name: Verify backend contact access contract
+        run: node scripts/verify-provider-contact-access.mjs
+      - name: Verify existing service regressions
+        run: npm run test:services
+      - name: Lint contact access UI
+        run: >-
+          npx eslint
+          src/components/workspace/provider/ProviderLeadContactAccess.jsx
+          src/components/workspace/provider/ProviderLeadInbox.jsx
+          scripts/verify-provider-contact-access-ui.mjs
+          --quiet
+      - name: Repository typecheck
+        run: npm run typecheck
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
