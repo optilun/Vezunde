@@ -1,5 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
+  acquirePatientRequestDistributionLock,
+  releasePatientRequestDistributionLock,
+} from '../../../shared/patientRequestDistributionLock.js';
+import {
   PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION,
   PROVIDER_LEAD_CONTRACT_VERSION,
   PROVIDER_LEAD_ELIGIBILITY_POLICY_VERSION,
@@ -54,9 +58,12 @@ async function eligibleLeadPlans(svc, request) {
 }
 
 Deno.serve(async (httpRequest) => {
+  let distributionLock = null;
+  let svc = null;
+
   try {
     const base44 = createClientFromRequest(httpRequest);
-    const svc = base44.asServiceRole;
+    svc = base44.asServiceRole;
     const input = await httpRequest.json().catch(() => ({}));
     const requestId = clean(input.request_id, 120);
     const accessToken = clean(input.request_access_token, 160);
@@ -80,7 +87,21 @@ Deno.serve(async (httpRequest) => {
       return Response.json({ error: 'Cererea nu mai poate fi trimisa.' }, { status: 409 });
     }
 
-    const existingLeads = await svc.entities.ProviderLead.filter({ request_id: request.id }, null, 100);
+    distributionLock = await acquirePatientRequestDistributionLock(svc, request.id);
+    if (!distributionLock) {
+      return Response.json({ error: 'Cererea este deja in curs de procesare. Incearca din nou.' }, { status: 409 });
+    }
+
+    const lockedRequest = await svc.entities.PatientRequest.get(request.id).catch(() => null);
+    if (!lockedRequest) return Response.json({ error: 'Cererea nu a fost gasita.' }, { status: 404 });
+    if (lockedRequest.persistence_state !== 'complete') {
+      return Response.json({ error: 'Cererea nu este pregatita pentru distribuire.' }, { status: 409 });
+    }
+    if (['retrasa', 'inchisa', 'expirata'].includes(lockedRequest.status) || expired(lockedRequest)) {
+      return Response.json({ error: 'Cererea nu mai poate fi trimisa.' }, { status: 409 });
+    }
+
+    const existingLeads = await svc.entities.ProviderLead.filter({ request_id: lockedRequest.id }, null, 100);
     if (existingLeads.length > 0) {
       if (contact.provider_request_distribution_consent !== true) {
         await svc.entities.PatientRequestContact.update(contact.id, {
@@ -98,28 +119,28 @@ Deno.serve(async (httpRequest) => {
       });
     }
 
-    const plans = await eligibleLeadPlans(svc, request);
+    const plans = await eligibleLeadPlans(svc, lockedRequest);
     const now = new Date().toISOString();
     const leadRows = plans.map(({ match, location, eligibility }) => ({
-      request_id: request.id,
+      request_id: lockedRequest.id,
       request_match_id: match.id,
       organization_id: location.organization_id || '',
       location_id: location.id,
       lead_contract_version: PROVIDER_LEAD_CONTRACT_VERSION,
       eligibility_policy_version: PROVIDER_LEAD_ELIGIBILITY_POLICY_VERSION,
-      intent: request.intent,
-      intent_label: patientIntentLabel(request.intent),
-      service_keys: request.service_keys || [],
-      city: request.city || '',
-      county: request.county || '',
-      for_whom: request.for_whom || '',
-      age_group: request.age_group || '',
-      timing_key: request.timing_key || '',
+      intent: lockedRequest.intent,
+      intent_label: patientIntentLabel(lockedRequest.intent),
+      service_keys: lockedRequest.service_keys || [],
+      city: lockedRequest.city || '',
+      county: lockedRequest.county || '',
+      for_whom: lockedRequest.for_whom || '',
+      age_group: lockedRequest.age_group || '',
+      timing_key: lockedRequest.timing_key || '',
       result_bucket_snapshot: match.result_bucket || '',
-      need_level_snapshot: match.need_level_snapshot || request.matching_need_level || '',
+      need_level_snapshot: match.need_level_snapshot || lockedRequest.matching_need_level || '',
       profile_control_status_snapshot: location.profile_control_status || '',
       matched_service_keys: eligibility.matched_service_keys,
-      preview_summary: buildProviderLeadPreview(request),
+      preview_summary: buildProviderLeadPreview(lockedRequest),
       access_tier: 'free_preview',
       contact_access_state: 'hidden',
       conversation_access_state: 'locked',
@@ -127,7 +148,7 @@ Deno.serve(async (httpRequest) => {
       status: 'new',
       eligible_at: now,
       last_revalidated_at: now,
-      expires_at: request.expires_at || null,
+      expires_at: lockedRequest.expires_at || null,
       eligibility_reasons: ['request_distribution_consent', 'server_revalidated'],
     }));
 
@@ -140,7 +161,7 @@ Deno.serve(async (httpRequest) => {
         provider_request_distribution_consent_at: now,
         provider_contact_sharing_consent: false,
       }),
-      svc.entities.PatientRequest.update(request.id, {
+      svc.entities.PatientRequest.update(lockedRequest.id, {
         status: leadRows.length > 0 ? 'pregatita_pentru_distribuire' : 'salvata',
       }),
     ]);
@@ -157,5 +178,7 @@ Deno.serve(async (httpRequest) => {
     });
   } catch (_error) {
     return Response.json({ error: 'Cererea nu a putut fi pregatita pentru distribuire.' }, { status: 500 });
+  } finally {
+    if (svc && distributionLock) await releasePatientRequestDistributionLock(svc, distributionLock);
   }
 });
