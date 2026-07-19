@@ -89,7 +89,7 @@ hasAll(browseDirectory, [/status:\s*'publicata'/, /public_visibility_status/], '
 
 const accessInvite = await source('base44/functions/createProviderMemberInvitation/entry.ts');
 const accessAccept = await source('base44/functions/acceptProviderMemberInvitation/entry.ts');
-const accessManage = await source('base44/functions/manageProviderMemberAccess/entry.ts');
+const accessManage = await source('base44/functions/setProviderMemberAccess/entry.ts');
 hasAll(accessInvite, [/secure_token_hash/, /delivery_status/, /ProviderMemberInvitation/], 'invitatie membru');
 hasAll(accessAccept, [/secure_token_hash/, /ProviderMembership/, /accepted/], 'acceptare invitatie');
 hasAll(accessManage, [/organization_owner/, /ProviderMembership/, /DirectoryAuditRecord/], 'administrare acces');
