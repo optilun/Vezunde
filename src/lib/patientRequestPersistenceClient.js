@@ -49,8 +49,17 @@ export function readPatientRequestAccess(requestId) {
 
 function responseData(response) {
   const data = response?.data || {};
-  if (data.error) throw Object.assign(new Error(data.error), { field: data.field || "" });
+  if (data.error) throw Object.assign(new Error(data.error), {
+    field: data.field || "",
+    verification: data.verification || null,
+  });
   return data;
+}
+
+function resolveRequestAccessToken(requestId, explicitAccessToken = "") {
+  const token = explicitAccessToken || readPatientRequestAccess(requestId);
+  if (!token) throw new Error("Tokenul local al cererii nu mai este disponibil.");
+  return token;
 }
 
 export async function persistPatientRequest({
@@ -82,11 +91,10 @@ export async function persistPatientRequest({
 }
 
 export async function authorizePatientRequestDistribution(requestId, explicitAccessToken = "") {
-  const requestAccessToken = explicitAccessToken || readPatientRequestAccess(requestId);
-  if (!requestAccessToken) throw new Error("Tokenul local al cererii nu mai este disponibil.");
+  const token = resolveRequestAccessToken(requestId, explicitAccessToken);
   const response = await base44.functions.invoke("authorizePatientRequestDistribution", {
     request_id: requestId,
-    request_access_token: requestAccessToken,
+    request_access_token: token,
     distribution_consent: true,
     consent_version: PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION,
   });
@@ -94,11 +102,26 @@ export async function authorizePatientRequestDistribution(requestId, explicitAcc
 }
 
 export async function getPatientRequestStatus(requestId, explicitAccessToken = "") {
-  const requestAccessToken = explicitAccessToken || readPatientRequestAccess(requestId);
-  if (!requestAccessToken) throw new Error("Tokenul local al cererii nu mai este disponibil.");
+  const token = resolveRequestAccessToken(requestId, explicitAccessToken);
   const response = await base44.functions.invoke("getPatientRequestStatus", {
     request_id: requestId,
-    request_access_token: requestAccessToken,
+    request_access_token: token,
+  });
+  return responseData(response);
+}
+
+export async function patientRequestEmailVerification({
+  requestId,
+  action,
+  code = "",
+  explicitAccessToken = "",
+}) {
+  const token = resolveRequestAccessToken(requestId, explicitAccessToken);
+  const response = await base44.functions.invoke("patientRequestEmailVerificationOps", {
+    action,
+    request_id: requestId,
+    request_access_token: token,
+    code,
   });
   return responseData(response);
 }
@@ -109,12 +132,11 @@ export async function managePatientContactShareApproval({
   action,
   explicitAccessToken = "",
 }) {
-  const requestAccessToken = explicitAccessToken || readPatientRequestAccess(requestId);
-  if (!requestAccessToken) throw new Error("Tokenul local al cererii nu mai este disponibil.");
+  const token = resolveRequestAccessToken(requestId, explicitAccessToken);
   const response = await base44.functions.invoke("managePatientContactShareApproval", {
     action,
     request_id: requestId,
-    request_access_token: requestAccessToken,
+    request_access_token: token,
     location_id: locationId || "",
   });
   return responseData(response);
