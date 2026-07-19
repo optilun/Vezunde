@@ -19,9 +19,28 @@ const PENDING_CLAIM_CONTACT_KEY = "pending_claim_contact";
 const PENDING_CLAIM_LOCATION_KEY = "pending_claim_location";
 const PENDING_CLAIM_STEP_KEY = "pending_claim_step";
 
+function getSessionStorage() {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.sessionStorage;
+  } catch (_error) {
+    return null;
+  }
+}
+
+const readSessionValue = (key) => {
+  const storage = getSessionStorage();
+  if (!storage) return null;
+  try {
+    return storage.getItem(key);
+  } catch (_error) {
+    return null;
+  }
+};
+
 const readSessionJson = (key) => {
   try {
-    const raw = sessionStorage.getItem(key);
+    const raw = readSessionValue(key);
     return raw ? JSON.parse(raw) : null;
   } catch (_error) {
     return null;
@@ -35,10 +54,16 @@ const getResumeClaimStep = (contact, storedStep) => {
 };
 
 const clearResumeState = () => {
-  sessionStorage.removeItem(PENDING_NEW_LOCATION_KEY);
-  sessionStorage.removeItem(PENDING_CLAIM_CONTACT_KEY);
-  sessionStorage.removeItem(PENDING_CLAIM_LOCATION_KEY);
-  sessionStorage.removeItem(PENDING_CLAIM_STEP_KEY);
+  const storage = getSessionStorage();
+  if (!storage) return;
+  try {
+    storage.removeItem(PENDING_NEW_LOCATION_KEY);
+    storage.removeItem(PENDING_CLAIM_CONTACT_KEY);
+    storage.removeItem(PENDING_CLAIM_LOCATION_KEY);
+    storage.removeItem(PENDING_CLAIM_STEP_KEY);
+  } catch (_error) {
+    // Fluxul ramane utilizabil chiar daca browserul blocheaza stocarea temporara.
+  }
 };
 
 export default function AddOrClaim() {
@@ -49,11 +74,11 @@ export default function AddOrClaim() {
 
   const [resumedClaimLocation] = useState(() => readSessionJson(PENDING_CLAIM_LOCATION_KEY));
   const [resumedClaimContact] = useState(() => readSessionJson(PENDING_CLAIM_CONTACT_KEY));
-  const [resumedClaimStep] = useState(() => sessionStorage.getItem(PENDING_CLAIM_STEP_KEY));
+  const [resumedClaimStep] = useState(() => readSessionValue(PENDING_CLAIM_STEP_KEY));
   const initialSelectedLocation = preselectedLocation || resumedClaimLocation || null;
 
   const [stage, setStage] = useState(() => {
-    if (sessionStorage.getItem(PENDING_NEW_LOCATION_KEY) || startWithNewLocation) return "wizard";
+    if (readSessionValue(PENDING_NEW_LOCATION_KEY) || startWithNewLocation) return "wizard";
     if (resumedClaimLocation) return "claim";
     if (preselectedLocation) return "confirm";
     return "search";
@@ -71,6 +96,17 @@ export default function AddOrClaim() {
     navigate("/contul-meu?mode=applicant&onboarding=submitted", { replace: true });
   };
 
+  const returnFromClaim = () => {
+    if (preselectedLocation) {
+      setStage("confirm");
+      return;
+    }
+    clearResumeState();
+    setSelected(null);
+    setClaimStep("relation");
+    setStage("search");
+  };
+
   if (stage === "wizard") {
     return (
       <div className="workspace-neutral">
@@ -78,7 +114,13 @@ export default function AddOrClaim() {
           prefill={draft}
           onDone={completeOnboardingRequest}
           onExit={() => { clearResumeState(); setDraft(null); setStage("search"); }}
-          onClaimExisting={(loc) => { setSelected(loc); setDraft(null); setClaimStep("relation"); setStage("claim"); }}
+          onClaimExisting={(loc) => {
+            clearResumeState();
+            setSelected(loc);
+            setDraft(null);
+            setClaimStep("relation");
+            setStage("claim");
+          }}
         />
       </div>
     );
@@ -101,7 +143,7 @@ export default function AddOrClaim() {
           title={STAGE_COPY[claimStep].title}
           subtitle={STAGE_COPY[claimStep].subtitle}
           onBack={() => {
-            if (claimStep === "relation") setStage(preselectedLocation ? "confirm" : "search");
+            if (claimStep === "relation") returnFromClaim();
             else if (claimStep === "contact") setClaimStep("relation");
             else setClaimStep("contact");
           }}
