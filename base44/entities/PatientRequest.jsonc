@@ -58,6 +58,8 @@
     "matching_need_level": { "type": "string" },
     "match_count": { "type": "number", "default": 0 },
     "top3_count": { "type": "number", "default": 0 },
+    "distribution_lock_token": { "type": "string" },
+    "distribution_lock_at": { "type": "string", "format": "date-time" },
     "submitted_at": { "type": "string", "format": "date-time" },
     "expires_at": { "type": "string", "format": "date-time" },
     "persistence_state": {
