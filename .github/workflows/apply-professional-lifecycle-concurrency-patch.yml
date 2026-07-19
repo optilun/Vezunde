@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - fix/professional-lifecycle-concurrency
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
