@@ -6,7 +6,7 @@ import {
   sanitizePatientRequestStatus,
 } from '../shared/patientRequestStatusPolicy.js';
 
-assert.equal(PATIENT_REQUEST_STATUS_CONTRACT_VERSION, 'patient-request-status-v1');
+assert.equal(PATIENT_REQUEST_STATUS_CONTRACT_VERSION, 'patient-request-status-v2');
 
 const request = sanitizePatientRequestStatus({
   id: 'request-1',
@@ -41,10 +41,15 @@ const response = sanitizePatientProviderResponse({
   status: 'publicata',
   active_status: 'activa',
   profile_control_status: 'claimed',
+}, {
+  location_id: 'location-1',
+  status: 'approved',
 });
 assert.equal(response.location_name, 'Optica Test');
 assert.equal(response.response_label, 'Poate ajuta');
 assert.equal(response.profile_available, true);
+assert.equal(response.contact_share_allowed, true);
+assert.equal(response.contact_share_status, 'approved');
 for (const forbidden of ['lead_id', 'request_id', 'responder_user_id', 'organization_id']) {
   assert.equal(Object.hasOwn(response, forbidden), false, `${forbidden} nu trebuie returnat clientului`);
 }
@@ -57,6 +62,18 @@ const hiddenProfile = sanitizePatientProviderResponse({ response_type: 'needs_de
   profile_control_status: 'suspended',
 });
 assert.equal(hiddenProfile.profile_available, false);
+assert.equal(hiddenProfile.contact_share_allowed, true);
+assert.equal(hiddenProfile.contact_share_status, 'not_approved');
+
+const declined = sanitizePatientProviderResponse({ response_type: 'cannot_help' }, {
+  id: 'location-3',
+  name: 'Locatie indisponibila',
+  status: 'publicata',
+  active_status: 'activa',
+  profile_control_status: 'claimed',
+}, { status: 'approved' });
+assert.equal(declined.contact_share_allowed, false);
+assert.equal(declined.contact_share_status, 'not_approved');
 
 const backend = await readFile(new URL('../base44/functions/getPatientRequestStatus/entry.ts', import.meta.url), 'utf8');
 const client = await readFile(new URL('../src/lib/patientRequestPersistenceClient.js', import.meta.url), 'utf8');
@@ -68,10 +85,11 @@ assert.match(backend, /PatientRequestContact\.filter/);
 assert.match(backend, /access_token_hash: tokenHash/);
 assert.match(backend, /status: 'active'/);
 assert.match(backend, /ProviderLeadResponse\.filter/);
+assert.match(backend, /ContactShareApproval\.filter/);
 assert.match(backend, /request_id: requestId/);
 assert.match(backend, /sanitizePatientRequestStatus/);
 assert.match(backend, /sanitizePatientProviderResponse/);
-assert.match(backend, /contact_sharing_enabled: false/);
+assert.match(backend, /contact_share_status === 'approved'/);
 assert.match(backend, /conversation_enabled: false/);
 assert.doesNotMatch(backend, /base44\.auth\.me\(\)/);
 assert.doesNotMatch(backend, /contact_email:|contact_phone:|original_message:|responder_user_id:/);
