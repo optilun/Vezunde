@@ -8,6 +8,7 @@ import {
   hasPublishedSectionChanges,
   sameSubmissionPayload,
 } from '../../../shared/providerWorkspaceSubmissionComparison.js';
+import { resolveProviderTeamLocationScope } from '../../../shared/providerTeamLocationScope.js';
 
 // Deployment revision: provider-location-noop-2026-07-12
 // Provider Workspace draft/submit/withdraw.
@@ -538,10 +539,10 @@ async function resolveAccess(svc, user, payload) {
       if (!loc) return bad({ error: 'Locatia nu a fost gasita' }, 404);
       if (loc.profile_control_status === 'suspended') return bad({ error: 'Profilul este suspendat' }, 403);
       const allMemberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' });
-      const permittedLocationIds = [...new Set(allMemberships
-        .filter((membership) => ['organization_owner', 'location_manager'].includes(normalizeMemberRole(membership.role)))
-        .map((membership) => membership.location_id)
-        .filter(Boolean))];
+      const organizationLocations = loc.organization_id
+        ? await svc.entities.ProviderLocation.filter({ organization_id: loc.organization_id }, '-created_date', 500)
+        : [loc];
+      const permittedLocationIds = resolveProviderTeamLocationScope(allMemberships, organizationLocations);
       return {
         valid: true,
         mode: 'provider_workspace',
