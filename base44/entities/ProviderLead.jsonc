@@ -52,7 +52,10 @@
     "eligibility_reasons": { "type": "array", "items": { "type": "string" } },
     "response_lock_token": { "type": "string" },
     "response_lock_at": { "type": "string", "format": "date-time" },
-    "last_response_at": { "type": "string", "format": "date-time" }
+    "last_response_at": { "type": "string", "format": "date-time" },
+    "contact_approval_lock_token": { "type": "string" },
+    "contact_approval_lock_at": { "type": "string", "format": "date-time" },
+    "last_contact_approval_at": { "type": "string", "format": "date-time" }
   },
   "required": [
     "request_id",

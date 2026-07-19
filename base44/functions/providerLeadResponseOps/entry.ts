@@ -11,6 +11,10 @@ import {
   acquireProviderLeadResponseLock,
   releaseProviderLeadResponseLock,
 } from '../../../shared/providerLeadResponseLock.js';
+import {
+  acquireContactShareApprovalLock,
+  releaseContactShareApprovalLock,
+} from '../../../shared/contactShareApprovalLock.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -95,11 +99,17 @@ Deno.serve(async (req) => {
 
     const lock = await acquireProviderLeadResponseLock(svc, leadId);
     if (!lock) return res({ error: 'Raspunsul este actualizat in alta sesiune. Reincearca.' }, 409);
+    let contactLock = null;
 
     try {
       const checked = await loadLead(svc, leadId, locationId);
       if (checked.error) return res({ error: checked.error }, checked.status);
       const lead = checked.lead;
+      if (responseType === 'cannot_help') {
+        contactLock = await acquireContactShareApprovalLock(svc, lead.id);
+        if (!contactLock) return res({ error: 'Acordul pentru contact este actualizat in alta sesiune. Reincearca.' }, 409);
+      }
+
       const now = new Date().toISOString();
       const activeRows = await svc.entities.ProviderLeadResponse.filter({
         lead_id: leadId,
@@ -129,19 +139,40 @@ Deno.serve(async (req) => {
         withdrawn_by_user_id: user.id,
       })));
 
+      if (responseType === 'cannot_help') {
+        const approvals = await svc.entities.ContactShareApproval.filter({
+          lead_id: lead.id,
+          location_id: locationId,
+          status: 'approved',
+        }, '-updated_date', 20);
+        await Promise.all(approvals.map((approval) => svc.entities.ContactShareApproval.update(approval.id, {
+          status: 'revoked',
+          allowed_contact_fields: [],
+          revoked_at: now,
+        })));
+      }
+
       await svc.entities.ProviderLead.update(lead.id, {
         status: providerLeadStatusForResponse(responseType),
         last_response_at: now,
+        ...(responseType === 'cannot_help' ? {
+          contact_access_state: 'revoked',
+          conversation_access_state: 'locked',
+          last_contact_approval_at: now,
+        } : {}),
       });
 
       return res({
         entitlement: access.entitlement,
         response: sanitizeProviderLeadResponse(response),
         lead_status: providerLeadStatusForResponse(responseType),
-        contact_access_state: 'hidden',
+        contact_access_state: responseType === 'cannot_help'
+          ? 'revoked'
+          : (lead.contact_access_state || 'hidden'),
         conversation_access_state: 'locked',
       });
     } finally {
+      if (contactLock) await releaseContactShareApprovalLock(svc, contactLock);
       await releaseProviderLeadResponseLock(svc, lock);
     }
   } catch (_error) {

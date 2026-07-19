@@ -44,10 +44,19 @@ Deno.serve(async (req) => {
     const authorized = await authorizeRequest(svc, requestId, accessToken);
     if (authorized.error) return res({ error: authorized.error }, authorized.status);
 
-    const rows = await svc.entities.ProviderLeadResponse.filter({
-      request_id: requestId,
-      status: 'active',
-    }, '-updated_date', 100);
+    const [rows, approvalRows] = await Promise.all([
+      svc.entities.ProviderLeadResponse.filter({
+        request_id: requestId,
+        status: 'active',
+      }, '-updated_date', 100),
+      svc.entities.ContactShareApproval.filter({ request_id: requestId }, '-updated_date', 100),
+    ]);
+    const approvalByLocation = new Map();
+    for (const approval of approvalRows) {
+      if (!approval.location_id || approvalByLocation.has(approval.location_id)) continue;
+      approvalByLocation.set(approval.location_id, approval);
+    }
+
     const responses = [];
     const seenLocations = new Set();
     for (const row of rows) {
@@ -55,7 +64,7 @@ Deno.serve(async (req) => {
       const location = await svc.entities.ProviderLocation.get(row.location_id).catch(() => null);
       if (!location) continue;
       seenLocations.add(row.location_id);
-      responses.push(sanitizePatientProviderResponse(row, location));
+      responses.push(sanitizePatientProviderResponse(row, location, approvalByLocation.get(row.location_id) || null));
     }
 
     return res({
@@ -63,7 +72,7 @@ Deno.serve(async (req) => {
       request: sanitizePatientRequestStatus(authorized.request),
       response_count: responses.length,
       responses,
-      contact_sharing_enabled: false,
+      contact_sharing_enabled: responses.some((response) => response.contact_share_status === 'approved'),
       conversation_enabled: false,
     });
   } catch (_error) {

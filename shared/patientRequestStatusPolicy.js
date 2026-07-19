@@ -1,10 +1,12 @@
-export const PATIENT_REQUEST_STATUS_CONTRACT_VERSION = 'patient-request-status-v1';
+export const PATIENT_REQUEST_STATUS_CONTRACT_VERSION = 'patient-request-status-v2';
 
 const RESPONSE_LABELS = Object.freeze({
   can_help: 'Poate ajuta',
   needs_details: 'Are nevoie de detalii',
   cannot_help: 'Nu poate ajuta',
 });
+
+const CONTACT_SHARE_APPROVABLE_RESPONSES = new Set(['can_help', 'needs_details']);
 
 function clean(value, maxLength = 180) {
   return String(value || '').trim().slice(0, maxLength);
@@ -23,13 +25,15 @@ export function sanitizePatientRequestStatus(request) {
   };
 }
 
-export function sanitizePatientProviderResponse(response, location) {
+export function sanitizePatientProviderResponse(response, location, approval = null) {
   const responseType = Object.hasOwn(RESPONSE_LABELS, response?.response_type)
     ? response.response_type
     : '';
   const locationPublic = location?.status === 'publicata'
     && location?.active_status !== 'inactiva'
     && location?.profile_control_status !== 'suspended';
+  const contactShareAllowed = CONTACT_SHARE_APPROVABLE_RESPONSES.has(responseType);
+  const contactShareApproved = contactShareAllowed && approval?.status === 'approved';
   return {
     location_id: clean(location?.id || response?.location_id, 120),
     location_name: clean(location?.public_display_name || location?.name || 'Locatie', 180),
@@ -38,5 +42,7 @@ export function sanitizePatientProviderResponse(response, location) {
     response_label: RESPONSE_LABELS[responseType] || 'Raspuns disponibil',
     submitted_at: response?.submitted_at || response?.updated_date || null,
     profile_available: Boolean(locationPublic),
+    contact_share_allowed: contactShareAllowed,
+    contact_share_status: contactShareApproved ? 'approved' : 'not_approved',
   };
 }
