@@ -32,6 +32,30 @@
     "logo_url": {
       "type": "string"
     },
+    "logo_review_status": {
+      "type": "string",
+      "enum": [
+        "none",
+        "pending_review",
+        "approved",
+        "rejected"
+      ],
+      "default": "none"
+    },
+    "logo_review_submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "logo_reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "logo_review_note": {
+      "type": "string"
+    },
+    "logo_review_location_id": {
+      "type": "string"
+    },
     "cover_image_url": {
       "type": "string"
     },
