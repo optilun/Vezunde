@@ -152,16 +152,15 @@ Deno.serve(async (req) => {
         })));
       }
 
-      const leadUpdate = {
+      await svc.entities.ProviderLead.update(lead.id, {
         status: providerLeadStatusForResponse(responseType),
         last_response_at: now,
-      };
-      if (responseType === 'cannot_help') {
-        leadUpdate.contact_access_state = 'revoked';
-        leadUpdate.conversation_access_state = 'locked';
-        leadUpdate.last_contact_approval_at = now;
-      }
-      await svc.entities.ProviderLead.update(lead.id, leadUpdate);
+        ...(responseType === 'cannot_help' ? {
+          contact_access_state: 'revoked',
+          conversation_access_state: 'locked',
+          last_contact_approval_at: now,
+        } : {}),
+      });
 
       return res({
         entitlement: access.entitlement,
