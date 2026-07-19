@@ -75,9 +75,11 @@ for (const forbidden of ['message', 'contact_name', 'contact_email', 'contact_ph
 assert.ok(leadSchema.properties.response_lock_token);
 assert.ok(leadSchema.properties.response_lock_at);
 assert.ok(leadSchema.properties.last_response_at);
+assert.ok(leadSchema.properties.conversation_lock_token);
 
 const backend = await readFile(new URL('../base44/functions/providerLeadResponseOps/entry.ts', import.meta.url), 'utf8');
 const component = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInbox.jsx', import.meta.url), 'utf8');
+const chatComponent = await readFile(new URL('../src/components/workspace/provider/ProviderLeadChat.jsx', import.meta.url), 'utf8');
 assert.match(backend, /base44\.auth\.me\(\)/);
 assert.match(backend, /ProviderMembership\.filter/);
 assert.match(backend, /ProviderSubscription\.filter/);
@@ -87,6 +89,8 @@ assert.match(backend, /releaseProviderLeadResponseLock/);
 assert.match(backend, /ProviderLeadResponse\.create/);
 assert.match(backend, /responseType === 'cannot_help'/);
 assert.match(backend, /contact_access_state: 'revoked'/);
+assert.match(backend, /PatientRequestConversation\.filter/);
+assert.match(backend, /closed_by: 'system'/);
 assert.match(backend, /conversation_access_state: 'locked'/);
 assert.doesNotMatch(backend, /input\.plan_code/);
 assert.doesNotMatch(backend, /input\.(message|contact_email|contact_phone|original_message|detailed_message)/);
@@ -95,10 +99,14 @@ assert.doesNotMatch(backend, /PatientRequestContact/);
 assert.match(component, /providerLeadResponseOps/);
 assert.match(component, /provider_leads\.respond/);
 assert.match(component, /response_type: responseType/);
-assert.match(component, /Telefonul rămâne ascuns/);
-assert.match(component, /Chatul urmează într-o etapă distinctă/);
+assert.match(component, /Telefonul rămâne separat/);
+assert.match(component, /nu deschide unilateral chatul/);
 assert.match(component, /Detalii Pro · Top 3/);
+assert.match(component, /<ProviderLeadChat/);
 assert.doesNotMatch(component, /<textarea|contentEditable/);
 assert.doesNotMatch(component, /contact_phone\s*:|original_message|PatientRequestContact/);
+assert.match(chatComponent, /<textarea/);
+assert.match(chatComponent, /Locația nu poate iniția chatul unilateral/);
+assert.match(chatComponent, /controlledChatOps/);
 
-console.log('Provider lead response checks passed.');
+console.log('Provider lead response and controlled chat transition checks passed.');
