@@ -16,9 +16,33 @@ function sameSet(a, b) { const aa = ids(a).sort(); const bb = ids(b).sort(); ret
 function invLocIds(invitation) { return ids(invitation.invited_location_ids); }
 function mask(value) { const [user, domain] = String(value || '').split('@'); return user && domain ? `${user.slice(0, 2)}***@${domain}` : ''; }
 function clean(value, max = 1000) { return String(value || '').trim().slice(0, max); }
-function safe(invitation) { return { id: invitation.id, organization_id: invitation.organization_id || null, invited_location_ids: invLocIds(invitation), invited_email_masked: mask(invitation.invited_email_normalized), proposed_role: invitation.proposed_role, invited_by_user_id: invitation.invited_by_user_id || '', status: invitation.status, expires_at: invitation.expires_at || null, delivery_status: invitation.delivery_status || 'pending', delivery_provider: invitation.delivery_provider || '', last_delivery_attempt_at: invitation.last_delivery_attempt_at || null, created_date: invitation.created_date || null, updated_date: invitation.updated_date || null }; }
-async function hash(tokenValue) { const bytes = new TextEncoder().encode(tokenValue); const digest = await crypto.subtle.digest('SHA-256', bytes); return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join(''); }
-function token() { const bytes = new Uint8Array(32); crypto.getRandomValues(bytes); return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function safe(invitation) {
+  return {
+    id: invitation.id,
+    organization_id: invitation.organization_id || null,
+    invited_location_ids: invLocIds(invitation),
+    invited_email_masked: mask(invitation.invited_email_normalized),
+    proposed_role: invitation.proposed_role,
+    invited_by_user_id: invitation.invited_by_user_id || '',
+    status: invitation.status,
+    expires_at: invitation.expires_at || null,
+    delivery_status: invitation.delivery_status || 'pending',
+    delivery_provider: invitation.delivery_provider || '',
+    last_delivery_attempt_at: invitation.last_delivery_attempt_at || null,
+    created_date: invitation.created_date || null,
+    updated_date: invitation.updated_date || null,
+  };
+}
+async function hash(tokenValue) {
+  const bytes = new TextEncoder().encode(tokenValue);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+function token() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
 
 async function ownerScope(svc, userId) {
   const memberships = await svc.entities.ProviderMembership.filter({ user_id: userId, status: 'active' }, '-created_date', 500);
@@ -85,48 +109,15 @@ function invitationCopy({ organizationName, locationNames, proposedRole, invitat
     '',
     'Echipa VIASEE',
   ].join('\n');
-  const html = `
-    <div style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;color:#171717;line-height:1.55">
-      <p>Buna ziua,</p>
-      <p>Ai fost invitat sa colaborezi in contul VIASEE al organizatiei <strong>${organizationName}</strong>.</p>
-      <p><strong>Rol propus:</strong> ${roleLabel}</p>
-      <p><strong>Locatii:</strong><br>${locationNames.map((name) => clean(name, 200)).join('<br>')}</p>
-      <p style="margin:28px 0"><a href="${invitationLink}" style="display:inline-block;background:#171717;color:#fff;text-decoration:none;padding:12px 20px;border-radius:999px;font-weight:700">Accepta invitatia</a></p>
-      <p style="font-size:13px;color:#666">Invitatia este valabila pana la ${expiryText}. Daca nu te asteptai la acest mesaj, il poti ignora.</p>
-      <p>Echipa VIASEE</p>
-    </div>`;
-  return { subject, body, html };
+  return { subject, body };
 }
 
-async function sendWithResend({ to, subject, body, html, invitationId }) {
-  const apiKey = clean(Deno.env.get('RESEND_API_KEY'), 500);
-  const from = clean(Deno.env.get('RESEND_FROM_EMAIL') || Deno.env.get('VIASEE_EMAIL_FROM'), 300);
-  if (!apiKey || !from) return { attempted: false, sent: false, error: '' };
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'Idempotency-Key': `provider-invitation-${invitationId}`,
-      'User-Agent': 'VIASEE/1.0',
-    },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      subject,
-      html,
-      text: body,
-      tags: [{ name: 'category', value: 'provider_invitation' }],
-    }),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok || !data.id) {
-    return { attempted: true, sent: false, error: clean(data.message || data.error || `Resend HTTP ${response.status}`, 500) };
-  }
-  return { attempted: true, sent: true, provider: 'resend', messageId: String(data.id), error: '' };
+async function findExistingAppUser(svc, invitedEmail) {
+  const rows = await svc.entities.User.filter({ email: invitedEmail }, '-created_date', 5).catch(() => []);
+  return rows.find((row) => email(row.email) === invitedEmail) || null;
 }
 
-async function sendWithBase44(base44, { to, subject, body }) {
+async function notifyExistingUser(base44, { to, subject, body }) {
   try {
     await base44.integrations.Core.SendEmail({
       to,
@@ -134,28 +125,61 @@ async function sendWithBase44(base44, { to, subject, body }) {
       body,
       from_name: 'VIASEE',
     });
-    return { attempted: true, sent: true, provider: 'base44', messageId: '', error: '' };
+    return {
+      attempted: true,
+      sent: true,
+      provider: 'base44',
+      deliveryKind: 'existing_user_email',
+      messageId: '',
+      error: '',
+    };
   } catch (error) {
-    return { attempted: true, sent: false, error: clean(error?.message || 'Trimiterea Base44 a esuat', 500) };
+    return {
+      attempted: true,
+      sent: false,
+      provider: 'manual',
+      deliveryKind: 'existing_user_email',
+      messageId: '',
+      error: clean(error?.message || 'Notificarea Base44 a esuat', 500),
+    };
   }
 }
 
-async function deliverInvitation(base44, params) {
-  const errors = [];
-  const resendResult = await sendWithResend(params).catch((error) => ({ attempted: true, sent: false, error: clean(error?.message || 'Trimiterea Resend a esuat', 500) }));
-  if (resendResult.sent) return resendResult;
-  if (resendResult.attempted && resendResult.error) errors.push(resendResult.error);
+async function inviteNewAppUser(base44, invitedEmail) {
+  try {
+    await base44.auth.inviteUser(invitedEmail, 'user');
+    return {
+      attempted: true,
+      sent: true,
+      provider: 'base44',
+      deliveryKind: 'app_invitation',
+      messageId: '',
+      error: '',
+    };
+  } catch (error) {
+    return {
+      attempted: true,
+      sent: false,
+      provider: 'manual',
+      deliveryKind: 'app_invitation',
+      messageId: '',
+      error: clean(error?.message || 'Invitatia Base44 a esuat', 500),
+    };
+  }
+}
 
-  const base44Result = await sendWithBase44(base44, params);
-  if (base44Result.sent) return base44Result;
-  if (base44Result.error) errors.push(base44Result.error);
+async function deliverInvitation(base44, svc, params) {
+  const existingUser = await findExistingAppUser(svc, params.to);
+  const delivery = existingUser
+    ? await notifyExistingUser(base44, params)
+    : await inviteNewAppUser(base44, params.to);
 
+  if (delivery.sent) return delivery;
   return {
-    attempted: resendResult.attempted || base44Result.attempted,
+    ...delivery,
     sent: false,
     provider: 'manual',
-    messageId: '',
-    error: clean(errors.join(' | ') || 'Nu exista un canal automat configurat pentru acest destinatar', 700),
+    error: delivery.error || 'Invitatia a fost creata, dar trebuie trimis manual linkul de acces.',
   };
 }
 
@@ -210,10 +234,9 @@ Deno.serve(async (req) => {
     const organizationName = organization?.public_display_name || organization?.name || 'organizatia ta';
     const locationNames = loaded.locations.map((location) => location.public_display_name || location.name || 'Locatie');
     const copy = invitationCopy({ organizationName, locationNames, proposedRole, invitationLink, expiresAt });
-    const delivery = await deliverInvitation(base44, {
+    const delivery = await deliverInvitation(base44, svc, {
       to: invitedEmail,
       ...copy,
-      invitationId: invitation.id,
     });
     const attemptedAt = new Date().toISOString();
     const deliveryUpdate = {
@@ -239,9 +262,10 @@ Deno.serve(async (req) => {
         expires_at: expiresAt,
         delivery_status: deliveryUpdate.delivery_status,
         delivery_provider: deliveryUpdate.delivery_provider,
+        delivery_kind: delivery.deliveryKind || '',
       },
       note: delivery.sent
-        ? `Invitatia a fost trimisa automat prin ${deliveryUpdate.delivery_provider}.`
+        ? `Invitatia a fost trimisa prin infrastructura Base44 (${delivery.deliveryKind || 'invite'}).`
         : 'Invitatia a fost creata, dar necesita transmiterea manuala a linkului.',
     });
 
@@ -252,11 +276,14 @@ Deno.serve(async (req) => {
       email_sent: delivery.sent,
       delivery_status: deliveryUpdate.delivery_status,
       delivery_provider: deliveryUpdate.delivery_provider,
+      delivery_kind: delivery.deliveryKind || '',
       delivery_message: delivery.sent
-        ? 'Invitatia a fost trimisa automat.'
+        ? (delivery.deliveryKind === 'app_invitation'
+          ? 'Invitatia Base44 pentru acces in aplicatie a fost trimisa.'
+          : 'Notificarea a fost trimisa utilizatorului existent prin Base44.')
         : 'Invitatia a fost creata. Trimite manual linkul afisat.',
     });
   } catch (error) {
-    return res({ error: error.message }, 500);
+    return res({ error: error?.message || 'Eroare neasteptata' }, 500);
   }
 });
