@@ -85,6 +85,9 @@ assert.ok(matchingCall > interpretationCall, 'provider matching must happen afte
 
 assert.match(semanticSource, /mode: "interpret_only"/);
 assert.match(semanticSource, /patient_need_interpretation_confirmation/);
+assert.match(semanticSource, /rememberCompletedConfirmation/);
+assert.match(semanticSource, /hasRecentCompletedConfirmation/);
+assert.match(semanticSource, /skipped_duplicate_confirmation/);
 assert.match(confirmationSource, /AI-ul nu alege furnizorii si nu stabileste ordinea rezultatelor/);
 assert.match(confirmationSource, /possible_safety_flags/);
 
