@@ -18,7 +18,7 @@ assert.ok(legacyApply > legacyGuard, 'legacy team approval must be blocked befor
 assert.match(adminReview, /Sectiunea legacy pentru echipa nu mai poate modifica identitatea profesionala/);
 assert.match(adminReview, /Foloseste invitatiile profesionale si administrarea assignmenturilor dedicate/);
 
-assert.match(providerTeam, /nu poți modifica identitatea profesională a specialistului/);
+assert.match(providerTeam, /Specialistul decide dacă profilul său devine public/);
 assert.match(providerTeam, /functions\.invoke\("professionalInvitationOps"/);
 assert.match(providerTeam, /functions\.invoke\("manageProfessionalAssignment"/);
 assert.match(providerTeam, /Solicită afișarea/);
