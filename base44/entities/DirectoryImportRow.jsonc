@@ -1,0 +1,48 @@
+{
+  "name": "DirectoryImportRow",
+  "type": "object",
+  "properties": {
+    "batch_id": { "type": "string" },
+    "source_row_key": { "type": "string" },
+    "organization_external_key": { "type": "string" },
+    "location_external_key": { "type": "string" },
+    "address_fingerprint": { "type": "string" },
+    "raw_payload_json": { "type": "string" },
+    "normalized_payload_json": { "type": "string" },
+    "planned_action": {
+      "type": "string",
+      "enum": [
+        "create_organization",
+        "create_location",
+        "update_location",
+        "link_organization_location",
+        "skip_duplicate",
+        "block_conflict",
+        "reject_invalid"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "valid", "blocked", "applied", "skipped", "rejected", "rolled_back"],
+      "default": "pending"
+    },
+    "validation_codes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "target_organization_id": { "type": "string" },
+    "target_location_id": { "type": "string" },
+    "error_message": { "type": "string" },
+    "applied_at": { "type": "string", "format": "date-time" },
+    "rollback_status": {
+      "type": "string",
+      "enum": ["not_required", "pending", "completed", "failed"],
+      "default": "not_required"
+    }
+  },
+  "required": ["batch_id", "source_row_key", "status"],
+  "rls": {
+    "read": { "user_condition": { "role": "admin" } },
+    "write": { "user_condition": { "role": "admin" } }
+  }
+}

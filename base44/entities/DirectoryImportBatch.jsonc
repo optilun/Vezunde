@@ -1,0 +1,35 @@
+{
+  "name": "DirectoryImportBatch",
+  "type": "object",
+  "properties": {
+    "batch_key": { "type": "string" },
+    "source_version": { "type": "string" },
+    "source_sha256": { "type": "string" },
+    "mode": {
+      "type": "string",
+      "enum": ["dry_run", "import"],
+      "default": "dry_run"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "validating", "ready", "running", "completed", "failed", "rolled_back"],
+      "default": "draft"
+    },
+    "total_rows": { "type": "number", "default": 0 },
+    "valid_rows": { "type": "number", "default": 0 },
+    "blocked_rows": { "type": "number", "default": 0 },
+    "applied_rows": { "type": "number", "default": 0 },
+    "skipped_rows": { "type": "number", "default": 0 },
+    "summary_json": { "type": "string" },
+    "created_by_user_id": { "type": "string" },
+    "started_at": { "type": "string", "format": "date-time" },
+    "finished_at": { "type": "string", "format": "date-time" },
+    "rollback_of_batch_id": { "type": "string" },
+    "failure_message": { "type": "string" }
+  },
+  "required": ["batch_key", "source_version", "mode", "status"],
+  "rls": {
+    "read": { "user_condition": { "role": "admin" } },
+    "write": { "user_condition": { "role": "admin" } }
+  }
+}

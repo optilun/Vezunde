@@ -1,15 +1,15 @@
 const STATUS_PRESENTATION = Object.freeze({
   directory: Object.freeze({
     label: "Profil nerevendicat",
-    description: "Informatii de baza colectate din surse publice. Profilul nu este administrat inca de furnizor.",
+    description: "Informații din surse publice. Profilul nu este administrat de furnizor, iar afișarea nu reprezintă un parteneriat sau o recomandare VIASEE.",
   }),
   claimed: Object.freeze({
     label: "Profil revendicat",
-    description: "Profil administrat de furnizor, aflat inaintea verificarii complete VIASEE.",
+    description: "Profil administrat de furnizor, aflat înaintea verificării complete VIASEE.",
   }),
   verified: Object.freeze({
     label: "Profil verificat de VIASEE",
-    description: "Identitatea si controlul profilului au fost verificate de VIASEE.",
+    description: "Identitatea și controlul profilului au fost verificate de VIASEE.",
   }),
 });
 

@@ -16,7 +16,7 @@ const PATIENT_FACING_PROFILE_TYPES = [
 const STATUS_LABELS = {
   verified: 'Locatie verificata',
   claimed: 'Profil revendicat',
-  directory: 'Profil din director',
+  directory: 'Profil nerevendicat',
 };
 
 const AVAILABILITY_LABELS = {
@@ -127,12 +127,19 @@ Deno.serve(async (req) => {
     if (!locationId) return Response.json({ error: 'location_id este obligatoriu' }, { status: 400 });
 
     const location = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
-    const publicDisclosure = location ? getPublicLocationDisclosure(location) : null;
+    const directoryStates = location
+      ? await svc.entities.ProviderLocationDirectoryState.filter(
+        { location_id: location.id, state_status: 'active' },
+        '-normalized_at',
+        1,
+      ).catch(() => [])
+      : [];
+    const directoryRecord = location ? { ...location, ...(directoryStates[0] || {}) } : null;
+    const publicDisclosure = directoryRecord ? getPublicLocationDisclosure(directoryRecord) : null;
     const controlStatus = publicDisclosure?.profile_control_status || null;
     if (
       !location
-      || location.status !== 'publicata'
-      || location.active_status === 'inactiva'
+      || publicDisclosure?.is_publicly_available !== true
       || controlStatus === 'suspended'
       || !location.provider_profile_type
       || !PATIENT_FACING_PROFILE_TYPES.includes(location.provider_profile_type)
@@ -157,7 +164,7 @@ Deno.serve(async (req) => {
 
     const team = publicDisclosure.expose_full_details ? assignments.map((assignment, index) => {
       const profile = profiles[index];
-      if (!profile || assignment.public_status !== 'public' || profile.is_public !== true || profile.verification_status !== 'verified' || profile.public_visibility_status !== 'approved') return null;
+      if (!profile || assignment.public_status !== 'public' || assignment.visibility_consent_status !== 'accepted' || profile.is_public !== true || profile.verification_status !== 'verified' || profile.public_visibility_status !== 'approved') return null;
       const displayName = profile.public_display_name || profile.full_name;
       if (!displayName) return null;
       return {
@@ -191,6 +198,9 @@ Deno.serve(async (req) => {
     const organizationLogoUrl = publicDisclosure.expose_full_details
       ? await resilientPublicLogo(organization?.logo_url)
       : null;
+    const website = publicDisclosure.expose_full_details
+      ? publicUrl(organization?.website_url || organization?.website || publicDisclosure.website)
+      : publicUrl(publicDisclosure.website);
 
     return Response.json({
       profile: {
@@ -214,9 +224,7 @@ Deno.serve(async (req) => {
         map_precision: mapPrecision,
         phone_public: publicDisclosure.phone,
         public_email: publicDisclosure.public_email,
-        website: publicDisclosure.expose_full_details
-          ? publicUrl(organization?.website_url || organization?.website || publicDisclosure.website)
-          : null,
+        website,
         facebook: publicDisclosure.expose_full_details ? publicUrl(organization?.facebook_url || location.facebook_url) : null,
         instagram: publicDisclosure.expose_full_details ? publicUrl(organization?.instagram_url || location.instagram_url) : null,
         linkedin: publicDisclosure.expose_full_details ? publicUrl(organization?.linkedin_url || location.linkedin_url) : null,
@@ -226,9 +234,21 @@ Deno.serve(async (req) => {
         saturday_hours: publicDisclosure.saturday_hours,
         opening_hours_json: publicDisclosure.opening_hours_json,
         profile_control_status: controlStatus,
+        control_status: publicDisclosure.control_status,
+        publication_status: publicDisclosure.publication_status,
+        operational_status: publicDisclosure.operational_status,
+        data_quality_status: publicDisclosure.data_quality_status,
+        organization_link_status: publicDisclosure.organization_link_status,
+        location_type_code: publicDisclosure.location_type_code,
+        care_setting_code: publicDisclosure.care_setting_code,
+        ownership_type_code: publicDisclosure.ownership_type_code,
         public_detail_level: publicDisclosure.public_detail_level,
         exact_location_visible: publicDisclosure.exact_location_visible,
         contact_details_visible: publicDisclosure.contact_details_visible,
+        expose_basic_details: publicDisclosure.expose_basic_details,
+        source_label: publicDisclosure.source_label,
+        source_checked_at: publicDisclosure.source_checked_at,
+        is_unclaimed_profile: publicDisclosure.is_unclaimed_profile,
         status_label: STATUS_LABELS[controlStatus] || STATUS_LABELS.directory,
         availability_label: availabilityLabel,
         service_confirmation_level: serviceConfirmationLevel(publicServices),

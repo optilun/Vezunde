@@ -7,7 +7,8 @@ import {
 assert.equal(getPublicProfilePresentation("directory").label, "Profil nerevendicat");
 assert.equal(getPublicProfilePresentation("claimed").label, "Profil revendicat");
 assert.equal(getPublicProfilePresentation("verified").label, "Profil verificat de VIASEE");
-assert.match(getPublicProfilePresentation("directory").description, /nu este administrat inca de furnizor/);
+assert.match(getPublicProfilePresentation("directory").description, /nu este administrat(?: inca| încă)? de furnizor/);
+assert.match(getPublicProfilePresentation("directory").description, /nu reprezint(?:a|ă) un parteneriat sau o recomandare VIASEE/);
 
 const privateLocation = {
   id: "location-1",

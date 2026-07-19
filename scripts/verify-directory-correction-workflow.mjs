@@ -57,11 +57,11 @@ assert.match(admin, /updateOrganizationAfterClose/);
 assert.match(admin, /notification_sent/);
 
 assert.match(notice, /DirectoryCorrectionForm/);
-assert.match(notice, /Semnaleaza informatii incorecte/);
+assert.match(notice, /Semnaleaz(?:a|ă) informa(?:t|ț)ii incorecte/);
 assert.doesNotMatch(notice, /buildDirectoryReportHref/);
 assert.doesNotMatch(notice, /mailto:/);
-assert.match(notice, /nu este administrat inca de furnizor/);
-assert.match(notice, /nu reprezinta un parteneriat sau o recomandare VIASEE/);
+assert.match(notice, /nu este administrat (?:inca|încă) de furnizor/);
+assert.match(notice, /nu reprezint(?:a|ă) un parteneriat sau o recomandare VIASEE/);
 
 assert.match(form, /functions\.invoke\("submitDirectoryCorrection"/);
 assert.match(form, /privacy_confirmed/);

@@ -1,0 +1,34 @@
+{
+  "name": "DirectoryOrganizationLocationLink",
+  "type": "object",
+  "properties": {
+    "organization_id": { "type": "string" },
+    "location_id": { "type": "string" },
+    "source_row_key": { "type": "string" },
+    "source_version": { "type": "string" },
+    "link_status": {
+      "type": "string",
+      "enum": ["confirmed", "probable", "conflict", "rejected", "unassigned"],
+      "default": "probable"
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["low", "medium", "high"],
+      "default": "medium"
+    },
+    "evidence_summary": { "type": "string" },
+    "review_note": { "type": "string" },
+    "reviewed_by_user_id": { "type": "string" },
+    "reviewed_at": { "type": "string", "format": "date-time" },
+    "link_record_status": {
+      "type": "string",
+      "enum": ["active", "superseded", "rejected"],
+      "default": "active"
+    }
+  },
+  "required": ["location_id", "link_status", "link_record_status"],
+  "rls": {
+    "read": { "user_condition": { "role": "admin" } },
+    "write": { "user_condition": { "role": "admin" } }
+  }
+}
