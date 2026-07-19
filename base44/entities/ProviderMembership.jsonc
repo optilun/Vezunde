@@ -2,82 +2,46 @@
   "name": "ProviderMembership",
   "type": "object",
   "properties": {
-    "user_id": {
-      "type": "string"
-    },
-    "organization_id": {
-      "type": "string"
-    },
-    "location_id": {
-      "type": "string"
-    },
+    "user_id": { "type": "string" },
+    "organization_id": { "type": "string" },
+    "location_id": { "type": "string" },
     "role": {
       "type": "string",
-      "enum": [
-        "organization_owner",
-        "location_manager",
-        "location_staff"
-      ]
+      "enum": ["organization_owner", "location_manager", "location_staff"]
     },
     "status": {
       "type": "string",
-      "enum": [
-        "active",
-        "inactive"
-      ],
+      "enum": ["active", "inactive"],
       "default": "active"
     },
-    "invitation_id": {
-      "type": "string"
-    },
-    "deactivated_by_user_id": {
-      "type": "string"
-    },
-    "deactivated_at": {
+    "invitation_id": { "type": "string" },
+    "claim_request_id": { "type": "string" },
+    "access_origin": {
       "type": "string",
-      "format": "date-time"
+      "enum": ["legacy", "claim", "invitation", "admin", "organization_sync"]
     },
-    "reactivated_by_user_id": {
-      "type": "string"
-    },
-    "reactivated_at": {
+    "claim_scope": {
       "type": "string",
-      "format": "date-time"
-    }
+      "enum": ["location", "selected_locations", "organization"]
+    },
+    "organization_wide_access": {
+      "type": "boolean"
+    },
+    "deactivated_by_user_id": { "type": "string" },
+    "deactivated_at": { "type": "string", "format": "date-time" },
+    "reactivated_by_user_id": { "type": "string" },
+    "reactivated_at": { "type": "string", "format": "date-time" }
   },
-  "required": [
-    "user_id",
-    "location_id",
-    "role",
-    "status"
-  ],
+  "required": ["user_id", "location_id", "role", "status"],
   "rls": {
     "read": {
       "$or": [
-        {
-          "data.user_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
+        { "data.user_id": "{{user.id}}" },
+        { "user_condition": { "role": "admin" } }
       ]
     },
-    "create": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "update": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "delete": {
-      "user_condition": {
-        "role": "admin"
-      }
-    }
+    "create": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
   }
 }

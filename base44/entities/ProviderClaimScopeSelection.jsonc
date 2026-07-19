@@ -1,0 +1,54 @@
+{
+  "name": "ProviderClaimScopeSelection",
+  "type": "object",
+  "properties": {
+    "claim_request_id": { "type": "string" },
+    "organization_id": { "type": "string" },
+    "primary_location_id": { "type": "string" },
+    "scope_contract_version": { "type": "string" },
+    "claim_scope": {
+      "type": "string",
+      "enum": ["location", "selected_locations", "organization"]
+    },
+    "candidate_location_count": { "type": "number", "default": 0 },
+    "requested_location_count": { "type": "number", "default": 0 },
+    "excluded_location_count": { "type": "number", "default": 0 },
+    "reported_missing_locations_json": { "type": "string" },
+    "scope_snapshot_json": { "type": "string" },
+    "requested_membership_role": {
+      "type": "string",
+      "enum": ["organization_owner", "location_manager", "location_staff"]
+    },
+    "approved_membership_role": {
+      "type": "string",
+      "enum": ["organization_owner", "location_manager", "location_staff"]
+    },
+    "approval_status": {
+      "type": "string",
+      "enum": ["pending", "approved", "rejected"],
+      "default": "pending"
+    },
+    "approved_location_count": { "type": "number", "default": 0 },
+    "reviewed_by_user_id": { "type": "string" },
+    "reviewed_at": { "type": "string", "format": "date-time" },
+    "review_note": { "type": "string" },
+    "selection_status": {
+      "type": "string",
+      "enum": ["active", "superseded"],
+      "default": "active"
+    }
+  },
+  "required": [
+    "claim_request_id",
+    "primary_location_id",
+    "scope_contract_version",
+    "claim_scope",
+    "requested_membership_role",
+    "approval_status",
+    "selection_status"
+  ],
+  "rls": {
+    "read": { "user_condition": { "role": "admin" } },
+    "write": { "user_condition": { "role": "admin" } }
+  }
+}

@@ -1,4 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import {
+  loadOrganizationOwnerScopeResolution,
+  membershipHasOrganizationWideAccess,
+} from '../../../shared/providerOrganizationOwnerScope.js';
 
 const PROVIDER_ROLES = ['organization_owner'];
 const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
@@ -248,19 +252,42 @@ async function adminList(svc: any, user: any) {
   return res({ submissions: items });
 }
 
-async function propagateOwners(svc: any, organizationId: string, locationId: string, actorId: string) {
+async function propagateOwners(svc: any, organizationId: string, locationId: string, actorId: string, requesterUserId: string) {
   const memberships = await svc.entities.ProviderMembership.filter({ organization_id: organizationId }, '-created_date', 1000);
-  const ownerUserIds = [...new Set(memberships
-    .filter((membership: any) => membership.status === 'active' && role(membership.role) === 'organization_owner')
-    .map((membership: any) => membership.user_id))];
+  const resolution = await loadOrganizationOwnerScopeResolution(svc, organizationId);
+  const wideOwnerUserIds = new Set(memberships
+    .filter((membership: any) => membershipHasOrganizationWideAccess(membership, resolution))
+    .map((membership: any) => membership.user_id));
+  const requesterHasOwnerMembership = memberships.some((membership: any) => membership.user_id === requesterUserId
+    && membership.status === 'active'
+    && role(membership.role) === 'organization_owner');
+  const ownerUserIds = [...wideOwnerUserIds];
+  if (requesterUserId && requesterHasOwnerMembership && !wideOwnerUserIds.has(requesterUserId)) ownerUserIds.push(requesterUserId);
+
   const created: string[] = [];
   for (const ownerUserId of ownerUserIds) {
+    const wideAccess = wideOwnerUserIds.has(ownerUserId);
     const existing = memberships.find((membership: any) => membership.user_id === ownerUserId && membership.location_id === locationId);
     if (!existing) {
-      const row = await svc.entities.ProviderMembership.create({ user_id: ownerUserId, organization_id: organizationId, location_id: locationId, role: 'organization_owner', status: 'active' });
+      const row = await svc.entities.ProviderMembership.create({
+        user_id: ownerUserId,
+        organization_id: organizationId,
+        location_id: locationId,
+        role: 'organization_owner',
+        status: 'active',
+        access_origin: 'admin',
+        claim_scope: 'organization',
+        organization_wide_access: wideAccess,
+      });
       created.push(row.id);
     } else if (existing.status !== 'active' || role(existing.role) !== 'organization_owner') {
-      await svc.entities.ProviderMembership.update(existing.id, { role: 'organization_owner', status: 'active', reactivated_by_user_id: actorId, reactivated_at: new Date().toISOString() });
+      await svc.entities.ProviderMembership.update(existing.id, {
+        role: 'organization_owner',
+        status: 'active',
+        organization_wide_access: wideAccess || existing.organization_wide_access === true,
+        reactivated_by_user_id: actorId,
+        reactivated_at: new Date().toISOString(),
+      });
     }
   }
   return created;
@@ -315,7 +342,7 @@ async function adminDecide(svc: any, user: any, payload: Record<string, unknown>
     verification_state: 'verified',
   });
 
-  const ownerMembershipIds = await propagateOwners(svc, submission.organization_id, location.id, user.id);
+  const ownerMembershipIds = await propagateOwners(svc, submission.organization_id, location.id, user.id, submission.submitted_by_user_id || '');
   await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'approved', reviewed_by_user_id: user.id, reviewed_at: new Date().toISOString(), admin_note: note, applied_entity_id: location.id });
   await svc.entities.DirectoryAuditRecord.create({
     entity_type: 'ProviderLocation',

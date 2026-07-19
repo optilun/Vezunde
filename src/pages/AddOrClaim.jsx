@@ -6,17 +6,19 @@ import NewLocationWizard from "@/components/provider/NewLocationWizard";
 import WizardShell from "@/components/intake/WizardShell";
 import SelectedLocationCard from "@/components/provider/SelectedLocationCard";
 
-const PHASES = ["Gaseste profilul", "Confirma relatia", "Date de contact", "Revizuire"];
-const STAGE_STEP = { relation: 2, contact: 3, review: 4 };
+const PHASES = ["Gaseste profilul", "Confirma relatia", "Alege accesul", "Date private", "Revizuire"];
+const STAGE_STEP = { relation: 2, scope: 3, contact: 4, review: 5 };
 const STAGE_COPY = {
-  relation: { title: "Care este relatia ta cu aceasta locatie?", subtitle: "Alege optiunea care descrie cel mai bine legatura ta cu aceasta locatie." },
+  relation: { title: "Care este relatia ta cu furnizorul?", subtitle: "Alege optiunea care descrie cel mai bine rolul tau." },
+  scope: { title: "Ce vrei sa administrezi?", subtitle: "Confirma locatia, locatiile selectate sau intreaga organizatie." },
   contact: { title: "Date private de verificare", subtitle: "Aceste date sunt folosite pentru verificarea solicitarii si nu apar in profilul public." },
-  review: { title: "Revizuieste solicitarea", subtitle: "Verifica locatia, accesul solicitat si datele private inainte de trimitere." },
+  review: { title: "Revizuieste solicitarea", subtitle: "Verifica aria de acces, rolul solicitat si datele private inainte de trimitere." },
 };
 
 const PENDING_NEW_LOCATION_KEY = "pending_new_location_wizard";
 const PENDING_CLAIM_CONTACT_KEY = "pending_claim_contact";
 const PENDING_CLAIM_LOCATION_KEY = "pending_claim_location";
+const PENDING_CLAIM_SCOPE_KEY = "pending_claim_scope";
 const PENDING_CLAIM_STEP_KEY = "pending_claim_step";
 
 function getSessionStorage() {
@@ -47,10 +49,12 @@ const readSessionJson = (key) => {
   }
 };
 
-const getResumeClaimStep = (contact, storedStep) => {
+const getResumeClaimStep = (contact, scope, storedStep) => {
   if (!contact?.claimant_relationship || !contact?.representation_confirmed) return "relation";
+  if (!scope?.claim_scope || storedStep === "scope") return "scope";
   if (!String(contact?.contact_name || "").trim() || !String(contact?.email || "").trim()) return "contact";
-  return storedStep || "review";
+  if (storedStep === "contact") return "contact";
+  return storedStep === "review" ? "review" : "scope";
 };
 
 const clearResumeState = () => {
@@ -60,6 +64,7 @@ const clearResumeState = () => {
     storage.removeItem(PENDING_NEW_LOCATION_KEY);
     storage.removeItem(PENDING_CLAIM_CONTACT_KEY);
     storage.removeItem(PENDING_CLAIM_LOCATION_KEY);
+    storage.removeItem(PENDING_CLAIM_SCOPE_KEY);
     storage.removeItem(PENDING_CLAIM_STEP_KEY);
   } catch (_error) {
     // Fluxul ramane utilizabil chiar daca browserul blocheaza stocarea temporara.
@@ -74,6 +79,7 @@ export default function AddOrClaim() {
 
   const [resumedClaimLocation] = useState(() => readSessionJson(PENDING_CLAIM_LOCATION_KEY));
   const [resumedClaimContact] = useState(() => readSessionJson(PENDING_CLAIM_CONTACT_KEY));
+  const [resumedClaimScope] = useState(() => readSessionJson(PENDING_CLAIM_SCOPE_KEY));
   const [resumedClaimStep] = useState(() => readSessionValue(PENDING_CLAIM_STEP_KEY));
   const initialSelectedLocation = preselectedLocation || resumedClaimLocation || null;
 
@@ -85,7 +91,9 @@ export default function AddOrClaim() {
   });
   const [selected, setSelected] = useState(initialSelectedLocation);
   const [draft, setDraft] = useState(null);
-  const [claimStep, setClaimStep] = useState(() => resumedClaimLocation ? getResumeClaimStep(resumedClaimContact, resumedClaimStep) : "relation");
+  const [claimStep, setClaimStep] = useState(() => resumedClaimLocation
+    ? getResumeClaimStep(resumedClaimContact, resumedClaimScope, resumedClaimStep)
+    : "relation");
 
   const completeOnboardingRequest = (result = {}) => {
     clearResumeState();
@@ -129,7 +137,7 @@ export default function AddOrClaim() {
   return (
     <div className="workspace-neutral">
       {stage === "confirm" && selected ? (
-        <WizardShell phases={PHASES} phaseStep={1} title="Locatie selectata" subtitle="Confirma ca aceasta este locatia pentru care vrei sa faci solicitarea.">
+        <WizardShell phases={PHASES} phaseStep={1} title="Locatie selectata" subtitle="Confirma ca aceasta este locatia de la care porneste solicitarea.">
           <SelectedLocationCard
             location={selected}
             onContinue={() => { setClaimStep("relation"); setStage("claim"); }}
@@ -139,12 +147,13 @@ export default function AddOrClaim() {
       ) : stage === "claim" && selected ? (
         <WizardShell
           phases={PHASES}
-          phaseStep={STAGE_STEP[claimStep]}
-          title={STAGE_COPY[claimStep].title}
-          subtitle={STAGE_COPY[claimStep].subtitle}
+          phaseStep={STAGE_STEP[claimStep] || 2}
+          title={STAGE_COPY[claimStep]?.title || STAGE_COPY.relation.title}
+          subtitle={STAGE_COPY[claimStep]?.subtitle || STAGE_COPY.relation.subtitle}
           onBack={() => {
             if (claimStep === "relation") returnFromClaim();
-            else if (claimStep === "contact") setClaimStep("relation");
+            else if (claimStep === "scope") setClaimStep("relation");
+            else if (claimStep === "contact") setClaimStep("scope");
             else setClaimStep("contact");
           }}
         >
