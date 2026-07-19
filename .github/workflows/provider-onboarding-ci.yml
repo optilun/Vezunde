@@ -38,6 +38,8 @@ on:
       - "scripts/verify-provider-invitation-delivery.mjs"
       - "scripts/verify-provider-logo-review-status.mjs"
       - "scripts/verify-provider-account-workflow-e2e.mjs"
+      - "scripts/verify-dead-code-cleanup.mjs"
+      - "scripts/audit-frontend-dead-code.mjs"
       - "scripts/compare-typecheck-baseline.mjs"
       - ".github/workflows/provider-onboarding-ci.yml"
 
@@ -67,6 +69,10 @@ jobs:
         run: npm run test:provider-logo-review
       - name: Provider account workflow contract E2E
         run: npm run test:provider-account-e2e
+      - name: Dead code cleanup regression checks
+        run: node scripts/verify-dead-code-cleanup.mjs
+      - name: Frontend dead code audit report
+        run: node scripts/audit-frontend-dead-code.mjs | tee dead-code-audit.log
       - name: Typecheck current branch
         shell: bash
         run: |
@@ -89,14 +95,15 @@ jobs:
           exit 0
       - name: Reject new TypeScript errors
         run: node scripts/compare-typecheck-baseline.mjs typecheck-base.log typecheck-head.log
-      - name: Upload typecheck diagnostics
+      - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: provider-onboarding-typecheck
+          name: provider-onboarding-diagnostics
           path: |
             typecheck-head.log
             typecheck-base.log
+            dead-code-audit.log
       - name: Lint
         if: always()
         run: npm run lint
