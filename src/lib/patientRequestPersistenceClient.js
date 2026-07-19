@@ -1,6 +1,7 @@
 import { base44 } from "@/api/base44Client";
 
 export const PATIENT_REQUEST_PROCESSING_CONSENT_VERSION = "patient-request-processing-v1";
+export const PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION = "patient-request-distribution-v1";
 const DRAFT_STORAGE_KEY = "viasee.patient_request_draft.v1";
 const ACCESS_STORAGE_PREFIX = "viasee.patient_request_access.";
 
@@ -37,6 +38,21 @@ export function storePatientRequestAccess(requestId, accessToken) {
   }
 }
 
+export function readPatientRequestAccess(requestId) {
+  if (!requestId) return "";
+  try {
+    return sessionStorage.getItem(`${ACCESS_STORAGE_PREFIX}${requestId}`) || "";
+  } catch (_error) {
+    return "";
+  }
+}
+
+function responseData(response) {
+  const data = response?.data || {};
+  if (data.error) throw Object.assign(new Error(data.error), { field: data.field || "" });
+  return data;
+}
+
 export async function persistPatientRequest({
   idempotencyKey,
   requestDraft,
@@ -60,10 +76,19 @@ export async function persistPatientRequest({
       results: Array.isArray(results) ? results : [],
     },
   });
-  const data = response?.data || {};
-  if (data.error) {
-    throw Object.assign(new Error(data.error), { field: data.field || "" });
-  }
+  const data = responseData(response);
   storePatientRequestAccess(data.request_id, data.request_access_token);
   return data;
+}
+
+export async function authorizePatientRequestDistribution(requestId, explicitAccessToken = "") {
+  const requestAccessToken = explicitAccessToken || readPatientRequestAccess(requestId);
+  if (!requestAccessToken) throw new Error("Tokenul local al cererii nu mai este disponibil.");
+  const response = await base44.functions.invoke("authorizePatientRequestDistribution", {
+    request_id: requestId,
+    request_access_token: requestAccessToken,
+    distribution_consent: true,
+    consent_version: PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION,
+  });
+  return responseData(response);
 }

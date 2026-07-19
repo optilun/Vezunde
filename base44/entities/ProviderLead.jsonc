@@ -1,0 +1,67 @@
+{
+  "name": "ProviderLead",
+  "type": "object",
+  "properties": {
+    "request_id": { "type": "string" },
+    "request_match_id": { "type": "string" },
+    "organization_id": { "type": "string" },
+    "location_id": { "type": "string" },
+    "lead_contract_version": { "type": "string" },
+    "eligibility_policy_version": { "type": "string" },
+    "intent": { "type": "string" },
+    "intent_label": { "type": "string" },
+    "service_keys": { "type": "array", "items": { "type": "string" } },
+    "city": { "type": "string" },
+    "county": { "type": "string" },
+    "for_whom": { "type": "string" },
+    "age_group": { "type": "string" },
+    "timing_key": { "type": "string" },
+    "result_bucket_snapshot": { "type": "string" },
+    "need_level_snapshot": { "type": "string" },
+    "profile_control_status_snapshot": { "type": "string" },
+    "matched_service_keys": { "type": "array", "items": { "type": "string" } },
+    "preview_summary": { "type": "string" },
+    "access_tier": {
+      "type": "string",
+      "enum": ["free_preview", "pro_full"],
+      "default": "free_preview"
+    },
+    "contact_access_state": {
+      "type": "string",
+      "enum": ["hidden", "patient_approved", "revoked"],
+      "default": "hidden"
+    },
+    "conversation_access_state": {
+      "type": "string",
+      "enum": ["locked", "available"],
+      "default": "locked"
+    },
+    "delivery_state": {
+      "type": "string",
+      "enum": ["available", "withdrawn", "expired"],
+      "default": "available"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["new", "viewed", "interested", "needs_details", "declined", "closed", "expired"],
+      "default": "new"
+    },
+    "eligible_at": { "type": "string", "format": "date-time" },
+    "last_revalidated_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "eligibility_reasons": { "type": "array", "items": { "type": "string" } }
+  },
+  "required": [
+    "request_id",
+    "location_id",
+    "lead_contract_version",
+    "eligibility_policy_version",
+    "status"
+  ],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}
