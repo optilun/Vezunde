@@ -8,6 +8,7 @@ import {
   matchProvidersWithSemanticFallback,
 } from "@/lib/providerSemanticSearch";
 import { buildIntentConfirmationProposal } from "@/lib/patientIntentConfirmation";
+import { buildPatientRequestDraft } from "@/lib/patientRequestDraft";
 import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill } from "@/lib/intentRegistry";
 import QuestionChoice from "./QuestionChoice";
 import QuestionText from "./QuestionText";
@@ -15,6 +16,7 @@ import QuestionLocation from "./QuestionLocation";
 import MatchResults from "./MatchResults";
 import SearchingTransition from "./SearchingTransition";
 import PatientIntentConfirmation from "./PatientIntentConfirmation";
+import PatientRequestReview from "./PatientRequestReview";
 
 function resolveOptionServiceKeys(currentKeys = [], option = {}) {
   const optionKeys = Array.isArray(option.service_keys) ? option.service_keys.filter(Boolean) : [];
@@ -96,6 +98,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const [results, setResults] = useState(null);
   const [matchMeta, setMatchMeta] = useState(null);
   const [intentProposal, setIntentProposal] = useState(null);
+  const [requestDraft, setRequestDraft] = useState(null);
   const interpretationAttemptedRef = useRef(false);
   const analyticsSessionRef = useRef({
     started: false,
@@ -180,6 +183,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     const confirmedState = initState(intentProposal.intent, initialMessage);
     setState(confirmedState);
     setHistory([]);
+    setRequestDraft(null);
     markSearchStarted(intentProposal.intent);
     trackPatientSearchEvent("patient_search_ai_intent_confirmed", {
       intent: intentProposal.intent,
@@ -194,12 +198,14 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const handleCorrectInterpretation = () => {
     setState(initState(null, ""));
     setHistory([]);
+    setRequestDraft(null);
     markSearchStarted(intentProposal?.intent || state.intent);
     trackPatientSearchEvent("patient_search_ai_intent_corrected", {
       proposed_intent: intentProposal?.intent || "unknown",
       confidence_band: intentProposal?.confidence_band || "low",
       agreement_status: intentProposal?.agreement_status || "unknown",
     });
+    setIntentProposal(null);
     setPhase("questions");
   };
 
@@ -215,11 +221,37 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     setState(prev);
   };
 
+  const handleReviewConfirm = () => {
+    if (!requestDraft) return;
+    trackPatientSearchEvent("patient_search_request_review_confirmed", {
+      intent: requestDraft.intent,
+      questionnaire_version: requestDraft.questionnaire_version,
+      questionnaire_key: requestDraft.questionnaire_key,
+      answer_count: requestDraft.answers.length,
+      service_key_count: requestDraft.service_keys.length,
+    });
+    setPhase("submitting");
+  };
+
+  const handleReviewEdit = () => {
+    const prev = history[history.length - 1];
+    trackPatientSearchEvent("patient_search_request_review_edited", {
+      intent: requestDraft?.intent || state.intent || "unknown",
+      questionnaire_version: requestDraft?.questionnaire_version || "unknown",
+    });
+    setRequestDraft(null);
+    if (prev) {
+      setHistory((items) => items.slice(0, -1));
+      setState(prev);
+    }
+    setPhase("questions");
+  };
+
   const retrySearch = () => {
     trackPatientSearchEvent("patient_search_retry_clicked", {
       intent: state.intent || "unknown",
     });
-    setPhase("questions");
+    setPhase(requestDraft ? "review" : "questions");
   };
 
   useEffect(() => () => {
@@ -268,25 +300,47 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
 
   useEffect(() => {
     if (phase !== "questions" || !state.intent || current) return;
-    setPhase("submitting");
+    const draft = buildPatientRequestDraft({
+      state,
+      originalMessage: initialMessage,
+      interpretation: intentProposal,
+    });
+    setRequestDraft(draft);
+    trackPatientSearchEvent("patient_search_request_review_opened", {
+      intent: draft.intent,
+      questionnaire_version: draft.questionnaire_version,
+      questionnaire_key: draft.questionnaire_key,
+      answer_count: draft.answers.length,
+      service_key_count: draft.service_keys.length,
+    });
+    setPhase("review");
+  }, [phase, state, current, initialMessage, intentProposal]);
+
+  useEffect(() => {
+    if (phase !== "submitting" || !requestDraft) return;
     (async () => {
       try {
         const languageText = patientLanguageText(initialMessage, state.answers);
         const matchPayload = {
           search_text: languageText,
-          intent: state.intent,
-          service_keys: state.serviceKeys,
-          locality_siruta_code: state.locality?.siruta_code || "",
-          client_address_text: state.clientAddressText || "",
-          for_whom: state.answers.find((answer) => answer.question_key === "pentru_cine")?.answer_value || null,
-          age_group: state.answers.find((answer) => answer.question_key === "varsta_copil")?.answer_value || null,
-          timing_key: state.answers.find((answer) => answer.question_key === "timing")?.answer_value || null,
+          intent: requestDraft.intent,
+          service_keys: requestDraft.service_keys,
+          locality_siruta_code: requestDraft.locality_siruta_code,
+          client_address_text: requestDraft.client_address_text,
+          for_whom: requestDraft.for_whom,
+          age_group: requestDraft.age_group,
+          timing_key: requestDraft.timing_key,
           limit: 20,
         };
         void interpretPatientNeedInShadow({
           ...matchPayload,
-          deterministic_intent: state.intent,
-          answers: state.answers.filter((answer) => answer.question_key !== "locatie"),
+          deterministic_intent: requestDraft.intent,
+          answers: requestDraft.answers
+            .filter((answer) => answer.question_key !== "locatie")
+            .map((answer) => ({
+              question_key: answer.question_key,
+              answer_value: answer.answer_value,
+            })),
         });
         const res = await matchProvidersWithSemanticFallback(matchPayload);
         setResults(res.data.results || []);
@@ -296,30 +350,35 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
           coverage_status: res.data.coverage_status || null,
           coverage_counts: res.data.coverage_counts || null,
           need_level: res.data.need_level || null,
-          resolved_intent: res.data.resolved_intent || state.intent || null,
+          resolved_intent: res.data.resolved_intent || requestDraft.intent || null,
           used_semantic_fallback: res.usedSemanticFallback === true,
           client_location_source: res.data.client_location_source || null,
-          client_address_text: res.data.client_address_text || state.clientAddressText || "",
+          client_address_text: res.data.client_address_text || requestDraft.client_address_text || "",
+          patient_request_contract_version: requestDraft.contract_version,
+          questionnaire_version: requestDraft.questionnaire_version,
+          questionnaire_key: requestDraft.questionnaire_key,
         });
         analyticsSessionRef.current.completed = true;
         trackPatientSearchEvent("patient_search_completed", {
           contract_version: res.data.recommendation_contract_version || "legacy",
-          intent: res.data.resolved_intent || state.intent || "unknown",
+          patient_request_contract_version: requestDraft.contract_version,
+          questionnaire_version: requestDraft.questionnaire_version,
+          intent: res.data.resolved_intent || requestDraft.intent || "unknown",
           coverage_status: res.data.coverage_status || "unknown",
           result_count: res.data.results?.length || 0,
-          service_key_count: state.serviceKeys.length,
+          service_key_count: requestDraft.service_keys.length,
           used_semantic_fallback: res.usedSemanticFallback === true,
         });
         setPhase("results");
       } catch (_error) {
         trackPatientSearchEvent("patient_search_failed", {
-          intent: state.intent || "unknown",
+          intent: requestDraft.intent || state.intent || "unknown",
           stage: "provider_matching",
         });
         setPhase("error");
       }
     })();
-  }, [phase, state, current, initialMessage]);
+  }, [phase, requestDraft, initialMessage, state.answers, state.intent]);
 
   return (
     <motion.div
@@ -404,6 +463,14 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
             <p className="mt-7 text-xs leading-relaxed text-muted-foreground">{intentDef.notice}</p>
           )}
         </>
+      )}
+
+      {phase === "review" && requestDraft && (
+        <PatientRequestReview
+          draft={requestDraft}
+          onConfirm={handleReviewConfirm}
+          onEdit={handleReviewEdit}
+        />
       )}
 
       {phase === "submitting" && <SearchingTransition />}
