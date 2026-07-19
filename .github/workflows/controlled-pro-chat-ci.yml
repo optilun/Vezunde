@@ -1,0 +1,66 @@
+name: Controlled Pro Chat
+
+on:
+  pull_request:
+    paths:
+      - "shared/controlledChatPolicy.js"
+      - "shared/controlledChatLock.js"
+      - "base44/entities/PatientRequestConversation.jsonc"
+      - "base44/entities/PatientRequestMessage.jsonc"
+      - "base44/entities/ProviderLead.jsonc"
+      - "base44/functions/controlledChatOps/entry.ts"
+      - "base44/functions/providerLeadResponseOps/entry.ts"
+      - "src/lib/patientRequestPersistenceClient.js"
+      - "src/components/intake2/PatientRequestChat.jsx"
+      - "src/components/intake2/PatientRequestResponseStatus.jsx"
+      - "src/components/workspace/provider/ProviderLeadChat.jsx"
+      - "src/components/workspace/provider/ProviderLeadInbox.jsx"
+      - "scripts/verify-controlled-pro-chat.mjs"
+      - "jsconfig.services.json"
+      - "package.json"
+      - ".github/workflows/controlled-pro-chat-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify controlled Pro chat contract
+        run: node scripts/verify-controlled-pro-chat.mjs
+      - name: Verify existing service regressions
+        run: npm run test:services
+      - name: Typecheck service scope
+        run: npm run typecheck:services
+      - name: Lint controlled chat scope
+        run: >-
+          npx eslint
+          shared/controlledChatPolicy.js
+          shared/controlledChatLock.js
+          base44/functions/controlledChatOps/entry.ts
+          base44/functions/providerLeadResponseOps/entry.ts
+          src/lib/patientRequestPersistenceClient.js
+          src/components/intake2/PatientRequestChat.jsx
+          src/components/intake2/PatientRequestResponseStatus.jsx
+          src/components/workspace/provider/ProviderLeadChat.jsx
+          src/components/workspace/provider/ProviderLeadInbox.jsx
+          scripts/verify-controlled-pro-chat.mjs
+          --quiet
+      - name: Repository typecheck diagnostic
+        continue-on-error: true
+        run: npm run typecheck
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
