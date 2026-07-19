@@ -1,10 +1,7 @@
-export const PROVIDER_CONTACT_ACCESS_CONTRACT_VERSION = 'provider-contact-access-v1';
+export const PROVIDER_CONTACT_ACCESS_CONTRACT_VERSION = 'provider-phone-access-v2';
 
 export const PROVIDER_CONTACT_ACCESS_ALLOWED_FIELDS = Object.freeze([
-  'contact_name',
-  'contact_email',
   'contact_phone',
-  'contact_preference',
 ]);
 
 const ALLOWED_FIELD_SET = new Set(PROVIDER_CONTACT_ACCESS_ALLOWED_FIELDS);
@@ -30,9 +27,9 @@ export function providerContactAccessEligibility({ lead, response, approval, con
   if (approval && lead && approval.lead_id !== lead.id) reasons.push('approval_lead_mismatch');
   if (approval && lead && approval.location_id !== lead.location_id) reasons.push('approval_location_mismatch');
   if (!contact || contact.status !== 'active') reasons.push('contact_not_active');
-  if (contact?.contact_email_verified !== true) reasons.push('patient_email_not_verified');
+  if (!clean(contact?.contact_phone, 32)) reasons.push('patient_phone_not_available');
   const fields = normalizeApprovedContactFields(approval?.allowed_contact_fields);
-  if (fields.length === 0) reasons.push('no_contact_fields_approved');
+  if (!fields.includes('contact_phone')) reasons.push('phone_not_approved');
   return {
     eligible: reasons.length === 0,
     reasons,
@@ -42,12 +39,9 @@ export function providerContactAccessEligibility({ lead, response, approval, con
 
 export function buildApprovedProviderContact(contact, approvedFields) {
   const fields = normalizeApprovedContactFields(approvedFields);
-  const result = {};
-  for (const field of fields) {
-    const value = clean(contact?.[field], field === 'contact_email' ? 254 : 160);
-    if (value) result[field] = value;
-  }
-  return result;
+  if (!fields.includes('contact_phone')) return {};
+  const phone = clean(contact?.contact_phone, 32);
+  return phone ? { contact_phone: phone } : {};
 }
 
 export function sanitizeProviderContactAccessStatus({ eligible, reasons, approvedFields }) {
@@ -55,6 +49,6 @@ export function sanitizeProviderContactAccessStatus({ eligible, reasons, approve
     available: eligible === true,
     state: eligible === true ? 'patient_approved' : 'locked',
     approved_fields: eligible === true ? normalizeApprovedContactFields(approvedFields) : [],
-    reason: eligible === true ? '' : clean(reasons?.[0] || 'contact_locked', 120),
+    reason: eligible === true ? '' : clean(reasons?.[0] || 'phone_locked', 120),
   };
 }
