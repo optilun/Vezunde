@@ -47,10 +47,7 @@ Deno.serve(async (req) => {
     if (authorized.error) return res({ error: authorized.error }, authorized.status);
 
     const [rows, approvalRows] = await Promise.all([
-      svc.entities.ProviderLeadResponse.filter({
-        request_id: requestId,
-        status: 'active',
-      }, '-updated_date', 100),
+      svc.entities.ProviderLeadResponse.filter({ request_id: requestId, status: 'active' }, '-updated_date', 100),
       svc.entities.ContactShareApproval.filter({ request_id: requestId }, '-updated_date', 100),
     ]);
     const approvalByLocation = new Map();
@@ -76,6 +73,8 @@ Deno.serve(async (req) => {
       responses,
       contact_email_verified: authorized.contact.contact_email_verified === true,
       contact_email_masked: maskPatientEmail(authorized.contact.contact_email),
+      contact_phone_available: Boolean(clean(authorized.contact.contact_phone, 32)),
+      phone_sharing_enabled: responses.some((response) => response.contact_share_status === 'approved'),
       contact_sharing_enabled: responses.some((response) => response.contact_share_status === 'approved'),
       conversation_enabled: false,
     });
