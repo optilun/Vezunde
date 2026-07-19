@@ -4,6 +4,7 @@ import {
   sanitizePatientProviderResponse,
   sanitizePatientRequestStatus,
 } from '../../../shared/patientRequestStatusPolicy.js';
+import { maskPatientEmail } from '../../../shared/patientEmailVerificationPolicy.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -28,8 +29,9 @@ async function authorizeRequest(svc, requestId, accessToken) {
     access_token_hash: tokenHash,
     status: 'active',
   }, null, 2);
-  if (!contacts[0]) return { error: 'Accesul la cerere nu este valid.', status: 403 };
-  return { request };
+  const contact = contacts[0];
+  if (!contact) return { error: 'Accesul la cerere nu este valid.', status: 403 };
+  return { request, contact };
 }
 
 Deno.serve(async (req) => {
@@ -72,6 +74,8 @@ Deno.serve(async (req) => {
       request: sanitizePatientRequestStatus(authorized.request),
       response_count: responses.length,
       responses,
+      contact_email_verified: authorized.contact.contact_email_verified === true,
+      contact_email_masked: maskPatientEmail(authorized.contact.contact_email),
       contact_sharing_enabled: responses.some((response) => response.contact_share_status === 'approved'),
       conversation_enabled: false,
     });
