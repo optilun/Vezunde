@@ -60,6 +60,6 @@ assert.ok(matchingIndex > reviewIndex, 'matching must run only after the request
 
 assert.match(reviewSource, /Caută rezultate/);
 assert.match(reviewSource, /Modifică ultimul răspuns/);
-assert.match(reviewSource, /draft\.questionnaire_version/);
+assert.match(reviewSource, /draft\?\.questionnaire_version/);
 
 console.log('Patient request review contract checks passed.');
