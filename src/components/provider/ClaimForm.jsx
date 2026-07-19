@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
@@ -94,10 +94,19 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
   const [submitting, setSubmitting] = useState(false);
   const [authChecking, setAuthChecking] = useState(false);
   const [error, setError] = useState("");
+  const scopeRequestInFlight = useRef(false);
+  const scopeLoadAttempted = useRef(false);
 
   useEffect(() => {
     persistClaimResumeState(location, contact, scope, step || "relation");
   }, [location, step]);
+
+  useEffect(() => {
+    scopeRequestInFlight.current = false;
+    scopeLoadAttempted.current = false;
+    setScopeOptions(null);
+    setScopeError("");
+  }, [location?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,13 +127,16 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
     return () => { cancelled = true; };
   }, [location, step]);
 
-  const loadScopeOptions = useCallback(async () => {
-    if (!location?.id || scopeLoading) return;
+  const loadScopeOptions = useCallback(async (force = false) => {
+    if (!location?.id || scopeRequestInFlight.current || (!force && scopeLoadAttempted.current)) return;
+    scopeRequestInFlight.current = true;
+    scopeLoadAttempted.current = true;
     setScopeLoading(true);
     setScopeError("");
     const response = await base44.functions.invoke("getProviderClaimScopeOptions", {
       location_id: location.id,
     }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }));
+    scopeRequestInFlight.current = false;
     setScopeLoading(false);
     if (response.data?.error) {
       setScopeError(response.data.error);
@@ -142,11 +154,11 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
       persistClaimResumeState(location, contact, next, step || "scope");
       return next;
     });
-  }, [contact, location, scopeLoading, step]);
+  }, [contact, location, step]);
 
   useEffect(() => {
-    if (["scope", "contact", "review"].includes(step) && !scopeOptions && !scopeLoading) loadScopeOptions();
-  }, [loadScopeOptions, scopeLoading, scopeOptions, step]);
+    if (["scope", "contact", "review"].includes(step) && !scopeOptions) loadScopeOptions();
+  }, [loadScopeOptions, scopeOptions, step]);
 
   const setContact = (nextContact) => {
     const normalizedContact = { ...DEFAULT_CONTACT, ...nextContact };
@@ -259,7 +271,7 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
         loading={scopeLoading}
         error={scopeError}
         onChange={setScope}
-        onRetry={loadScopeOptions}
+        onRetry={() => loadScopeOptions(true)}
         onContinue={continueAfterScope}
       />
     );
