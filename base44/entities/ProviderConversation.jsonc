@@ -1,0 +1,37 @@
+{
+  "name": "ProviderConversation",
+  "type": "object",
+  "properties": {
+    "request_id": { "type": "string" },
+    "lead_id": { "type": "string" },
+    "organization_id": { "type": "string" },
+    "location_id": { "type": "string" },
+    "patient_approval_id": { "type": "string" },
+    "provider_response_id": { "type": "string" },
+    "conversation_contract_version": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["active", "revoked", "closed"],
+      "default": "active"
+    },
+    "started_at": { "type": "string", "format": "date-time" },
+    "last_message_at": { "type": "string", "format": "date-time" },
+    "revoked_at": { "type": "string", "format": "date-time" },
+    "closed_at": { "type": "string", "format": "date-time" },
+    "close_reason": { "type": "string" }
+  },
+  "required": [
+    "request_id",
+    "lead_id",
+    "location_id",
+    "patient_approval_id",
+    "conversation_contract_version",
+    "status"
+  ],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}
