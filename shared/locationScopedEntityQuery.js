@@ -1,6 +1,13 @@
 const DEFAULT_LOCALITY_LOCATION_LIMIT = 1000;
 const DEFAULT_PER_LOCATION_LIMIT = 300;
 const DEFAULT_CONCURRENCY = 12;
+const ROMANIA_COUNTY_CODES = [
+  'AB', 'AR', 'AG', 'BC', 'BH', 'BN', 'BT', 'BV', 'BR', 'BZ',
+  'CS', 'CL', 'CJ', 'CT', 'CV', 'DB', 'DJ', 'GL', 'GR', 'GJ',
+  'HR', 'HD', 'IL', 'IS', 'IF', 'MM', 'MH', 'MS', 'NT', 'OT',
+  'PH', 'SM', 'SJ', 'SB', 'SV', 'TR', 'TM', 'TL', 'VS', 'VL',
+  'VN', 'B',
+];
 
 function clean(value) {
   return String(value || '').trim();
@@ -8,6 +15,15 @@ function clean(value) {
 
 function unique(values) {
   return [...new Set((values || []).map(clean).filter(Boolean))];
+}
+
+function dedupeRowsById(rows) {
+  const byId = new Map();
+  for (const row of rows || []) {
+    const key = clean(row?.id) || `${clean(row?.locality_siruta_code)}:${clean(row?.name)}`;
+    if (key && !byId.has(key)) byId.set(key, row);
+  }
+  return [...byId.values()];
 }
 
 export async function loadPublicLocationsForLocality(svc, localitySirutaCode, options = {}) {
@@ -18,6 +34,23 @@ export async function loadPublicLocationsForLocality(svc, localitySirutaCode, op
     status: 'publicata',
     locality_siruta_code: sirutaCode,
   }, options.sort || 'name', limit);
+}
+
+export async function loadAllPublicLocationsByCounty(svc, options = {}) {
+  const perCountyLimit = Math.max(1, Math.min(Number(options.perCountyLimit) || 1000, 5000));
+  const concurrency = Math.max(1, Math.min(Number(options.concurrency) || 8, 16));
+  const rows = [];
+
+  for (let offset = 0; offset < ROMANIA_COUNTY_CODES.length; offset += concurrency) {
+    const batch = ROMANIA_COUNTY_CODES.slice(offset, offset + concurrency);
+    const results = await Promise.all(batch.map((countyCode) => svc.entities.ProviderLocation.filter({
+      status: 'publicata',
+      county_code: countyCode,
+    }, options.sort || 'name', perCountyLimit).catch(() => [])));
+    for (const result of results) rows.push(...(Array.isArray(result) ? result : []));
+  }
+
+  return dedupeRowsById(rows);
 }
 
 export async function loadRowsForLocationIds(entity, locationIds, options = {}) {
