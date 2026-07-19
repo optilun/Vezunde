@@ -40,28 +40,23 @@
     },
     "operational_status": {
       "type": "string",
-      "enum": ["active", "temporarily_closed", "closed", "unknown"],
-      "default": "unknown"
+      "enum": ["active", "temporarily_closed", "closed", "unknown"]
     },
     "publication_status": {
       "type": "string",
-      "enum": ["draft", "published", "hidden", "archived"],
-      "default": "draft"
+      "enum": ["draft", "published", "hidden", "archived"]
     },
     "control_status": {
       "type": "string",
-      "enum": ["directory", "claimed", "verified", "suspended"],
-      "default": "directory"
+      "enum": ["directory", "claimed", "verified", "suspended"]
     },
     "data_quality_status": {
       "type": "string",
-      "enum": ["high", "medium", "low", "conflict"],
-      "default": "low"
+      "enum": ["high", "medium", "low", "conflict"]
     },
     "directory_detail_level": {
       "type": "string",
-      "enum": ["summary", "basic", "full"],
-      "default": "summary"
+      "enum": ["summary", "basic", "full"]
     },
     "directory_basic_details_approved": {
       "type": "boolean",
@@ -69,8 +64,7 @@
     },
     "organization_link_status": {
       "type": "string",
-      "enum": ["confirmed", "probable", "conflict", "rejected", "unassigned"],
-      "default": "unassigned"
+      "enum": ["confirmed", "probable", "conflict", "rejected", "unassigned"]
     },
     "organization_link_confidence": {
       "type": "string",
@@ -85,7 +79,16 @@
       "default": "active"
     }
   },
-  "required": ["location_id", "state_status"],
+  "required": [
+    "location_id",
+    "operational_status",
+    "publication_status",
+    "control_status",
+    "data_quality_status",
+    "directory_detail_level",
+    "organization_link_status",
+    "state_status"
+  ],
   "rls": {
     "read": { "user_condition": { "role": "admin" } },
     "write": { "user_condition": { "role": "admin" } }
