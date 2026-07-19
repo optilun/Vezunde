@@ -38,6 +38,35 @@
         "privat"
       ],
       "default": "privat"
+    },
+    "visibility_consent_status": {
+      "type": "string",
+      "enum": [
+        "not_requested",
+        "pending",
+        "accepted",
+        "declined",
+        "revoked"
+      ],
+      "default": "not_requested"
+    },
+    "visibility_requested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "visibility_requested_by_user_id": {
+      "type": "string"
+    },
+    "visibility_decided_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "visibility_decided_by_user_id": {
+      "type": "string"
+    },
+    "visibility_revoked_at": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [
