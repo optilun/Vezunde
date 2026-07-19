@@ -2,40 +2,24 @@
   "name": "PatientRequestAnswer",
   "type": "object",
   "properties": {
-    "request_id": {
-      "type": "string"
-    },
-    "question_key": {
-      "type": "string"
-    },
-    "answer_value": {
-      "type": "string"
-    }
+    "request_id": { "type": "string" },
+    "questionnaire_version": { "type": "string" },
+    "questionnaire_key": { "type": "string" },
+    "position": { "type": "number" },
+    "question_key": { "type": "string" },
+    "question_label": { "type": "string" },
+    "answer_value": { "type": "string" },
+    "answer_label": { "type": "string" }
   },
   "required": [
     "request_id",
+    "questionnaire_version",
     "question_key"
   ],
   "rls": {
-    "create": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "read": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "update": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "delete": {
-      "user_condition": {
-        "role": "admin"
-      }
-    }
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
   }
 }
