@@ -100,7 +100,7 @@ export async function notifyPatientProviderResponse({ base44, svc, lead, respons
     locationName: location.public_display_name || location.name || 'O locatie',
     responseType: response.response_type || '',
   });
-  const variant = clean(response.response_type, 80);
+  const variant = `${clean(response.response_type, 80)}:${clean(response.submitted_at, 80)}`;
 
   if (!contact) {
     await recordSkippedCommunication({
