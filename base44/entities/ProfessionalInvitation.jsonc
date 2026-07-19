@@ -49,6 +49,25 @@
     "professional_id": {
       "type": "string"
     },
+    "delivery_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "sent",
+        "manual_required"
+      ],
+      "default": "pending"
+    },
+    "delivery_provider": {
+      "type": "string"
+    },
+    "last_delivery_attempt_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "delivery_error": {
+      "type": "string"
+    },
     "revoked_by_user_id": {
       "type": "string"
     },
