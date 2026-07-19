@@ -85,7 +85,8 @@ assert.match(component, /Verifică răspunsurile/);
 assert.match(component, /Numărul de telefon rămâne separat/);
 assert.match(component, /Permite acestei locații accesul la telefon/);
 assert.match(component, /Retrage accesul la telefon/);
-assert.doesNotMatch(component, /contact_phone|original_message|detailed_message|responder_user_id/);
+assert.match(component, /status\.contact_phone_available === true/);
+assert.doesNotMatch(component, /response\.contact_phone|contact_phone\s*:|original_message|detailed_message|responder_user_id/);
 assert.match(submission, /PatientRequestResponseStatus/);
 assert.match(submission, /requestId=\{success\.request_id\}/);
 
