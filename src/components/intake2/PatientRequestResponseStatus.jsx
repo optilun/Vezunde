@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, Clock3, HelpCircle, Loader2, RefreshCw, Store, XCircle } from "lucide-react";
-import { getPatientRequestStatus } from "@/lib/patientRequestPersistenceClient";
+import { CheckCircle2, Clock3, ExternalLink, HelpCircle, Loader2, RefreshCw, Store, UserCheck, UserX, XCircle } from "lucide-react";
+import {
+  getPatientRequestStatus,
+  managePatientContactShareApproval,
+} from "@/lib/patientRequestPersistenceClient";
 
 const RESPONSE_PRESENTATION = {
   can_help: {
@@ -36,6 +39,7 @@ export default function PatientRequestResponseStatus({ requestId, accessToken })
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [updatingLocationId, setUpdatingLocationId] = useState("");
 
   const load = useCallback(async () => {
     if (!requestId) return;
@@ -54,19 +58,37 @@ export default function PatientRequestResponseStatus({ requestId, accessToken })
     void load();
   }, [load]);
 
+  const updateContactShare = async (locationId, action) => {
+    setUpdatingLocationId(locationId);
+    setError("");
+    try {
+      await managePatientContactShareApproval({
+        requestId,
+        locationId,
+        action,
+        explicitAccessToken: accessToken || "",
+      });
+      await load();
+    } catch (updateError) {
+      setError(updateError?.message || "Acordul pentru contact nu a putut fi actualizat.");
+    } finally {
+      setUpdatingLocationId("");
+    }
+  };
+
   return (
     <section className="mt-5 border-t border-primary/15 pt-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h4 className="text-sm font-bold text-foreground">Răspunsurile locațiilor</h4>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Aici apar răspunsurile structurate. Datele de contact și conversația rămân blocate.
+            Aici apar răspunsurile structurate. Datele de contact și conversația rămân blocate până la acordul tău separat.
           </p>
         </div>
         <button
           type="button"
           onClick={() => void load()}
-          disabled={loading}
+          disabled={loading || Boolean(updatingLocationId)}
           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-60"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Verifică răspunsurile
@@ -94,35 +116,62 @@ export default function PatientRequestResponseStatus({ requestId, accessToken })
           {status.responses.map((response) => {
             const presentation = RESPONSE_PRESENTATION[response.response_type] || RESPONSE_PRESENTATION.needs_details;
             const Icon = presentation.icon;
-            const content = (
-              <div className="flex items-start gap-3">
-                <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-bold text-foreground">{response.location_name}</p>
-                    {formatDate(response.submitted_at) && (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                        <Clock3 className="h-3 w-3" /> {formatDate(response.submitted_at)}
-                      </span>
+            const approved = response.contact_share_status === "approved";
+            const updating = updatingLocationId === response.location_id;
+            return (
+              <article key={response.location_id} className="rounded-xl border border-border bg-background p-4">
+                <div className="flex items-start gap-3">
+                  <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-bold text-foreground">{response.location_name}</p>
+                      {formatDate(response.submitted_at) && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <Clock3 className="h-3 w-3" /> {formatDate(response.submitted_at)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs font-semibold text-foreground">{presentation.title}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{presentation.description}</p>
+
+                    {response.contact_share_allowed && (
+                      <div className={`mt-4 rounded-xl border p-3 ${approved ? "border-primary/20 bg-primary/5" : "border-border bg-secondary/35"}`}>
+                        <div className="flex items-start gap-2">
+                          {approved ? <UserCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> : <UserX className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-foreground">
+                              {approved ? "Accesul la contact este aprobat" : "Contactul este încă ascuns"}
+                            </p>
+                            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                              {approved
+                                ? "Doar această locație poate primi numele, emailul, telefonul disponibil și preferința ta de contact. Conversația rămâne blocată."
+                                : "Poți permite doar acestei locații accesul la numele, emailul, telefonul disponibil și preferința ta de contact."}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => void updateContactShare(response.location_id, approved ? "revoke" : "approve")}
+                              disabled={updating}
+                              className={`mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full px-4 text-xs font-bold disabled:opacity-60 sm:w-auto ${approved ? "border border-border bg-background text-foreground hover:bg-secondary" : "bg-foreground text-background hover:opacity-90"}`}
+                            >
+                              {updating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                              {approved ? "Retrage accesul la contact" : "Permit acestei locații accesul la contact"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {response.profile_available && (
+                      <a
+                        href={`/furnizor/${response.location_id}`}
+                        className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+                      >
+                        Vezi profilul public <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
                     )}
                   </div>
-                  <p className="mt-1 text-xs font-semibold text-foreground">{presentation.title}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{presentation.description}</p>
                 </div>
-              </div>
-            );
-            return response.profile_available ? (
-              <a
-                key={response.location_id}
-                href={`/furnizor/${response.location_id}`}
-                className="block rounded-xl border border-border bg-background p-4 transition-colors hover:bg-secondary/50"
-              >
-                {content}
-              </a>
-            ) : (
-              <div key={response.location_id} className="rounded-xl border border-border bg-background p-4">
-                {content}
-              </div>
+              </article>
             );
           })}
         </div>
