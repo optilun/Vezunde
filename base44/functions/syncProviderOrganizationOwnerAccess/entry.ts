@@ -5,6 +5,11 @@ function normalizeRole(value) {
   if (value === 'owner') return 'organization_owner';
   return ['organization_owner', 'location_manager', 'location_staff'].includes(value) ? value : '';
 }
+function hasOrganizationWideAccess(membership) {
+  return normalizeRole(membership?.role) === 'organization_owner'
+    && membership?.status === 'active'
+    && membership?.organization_wide_access !== false;
+}
 
 async function audit(svc, user, organizationId, created, reactivated, promoted) {
   if (created.length === 0 && reactivated.length === 0 && promoted.length === 0) return;
@@ -17,7 +22,7 @@ async function audit(svc, user, organizationId, created, reactivated, promoted) 
     new_values: JSON.stringify({ created, reactivated, promoted }),
     admin_user_id: user.id,
     admin_email: user.email,
-    note: 'Ownerii activi ai organizatiei au fost propagati pe toate locatiile actuale.',
+    note: 'Numai ownerii cu acces explicit la intreaga organizatie au fost propagati pe locatii.',
     performed_at: new Date().toISOString(),
   });
 }
@@ -32,12 +37,12 @@ Deno.serve(async (req) => {
 
     const ownMemberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' }, '-created_date', 500);
     const ownedOrganizationIds = [...new Set(ownMemberships
-      .filter((membership) => normalizeRole(membership.role) === 'organization_owner' && membership.organization_id)
+      .filter((membership) => hasOrganizationWideAccess(membership) && membership.organization_id)
       .map((membership) => membership.organization_id))];
     const requestedOrganizationId = String(payload.organization_id || '').trim();
     const organizationIds = requestedOrganizationId ? [requestedOrganizationId] : ownedOrganizationIds;
     if (user.role !== 'admin' && organizationIds.some((id) => !ownedOrganizationIds.includes(id))) {
-      return res({ error: 'Doar ownerul organizatiei poate sincroniza accesul ownerilor' }, 403);
+      return res({ error: 'Doar ownerul cu acces la intreaga organizatie poate sincroniza locatiile' }, 403);
     }
 
     let totalCreated = 0;
@@ -47,7 +52,7 @@ Deno.serve(async (req) => {
       const locations = await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, '-created_date', 500);
       const membershipRows = await svc.entities.ProviderMembership.filter({ organization_id: organizationId }, '-created_date', 1000);
       const activeOwnerUserIds = [...new Set(membershipRows
-        .filter((membership) => membership.status === 'active' && normalizeRole(membership.role) === 'organization_owner')
+        .filter(hasOrganizationWideAccess)
         .map((membership) => membership.user_id))];
       const created = [];
       const reactivated = [];
@@ -62,6 +67,9 @@ Deno.serve(async (req) => {
               location_id: location.id,
               role: 'organization_owner',
               status: 'active',
+              access_origin: 'organization_sync',
+              claim_scope: 'organization',
+              organization_wide_access: true,
             });
             created.push(membership.id);
             totalCreated += 1;
@@ -69,13 +77,19 @@ Deno.serve(async (req) => {
             await svc.entities.ProviderMembership.update(existing.id, {
               role: 'organization_owner',
               status: 'active',
+              access_origin: existing.access_origin || 'organization_sync',
+              claim_scope: existing.claim_scope || 'organization',
+              organization_wide_access: true,
               reactivated_by_user_id: user.id,
               reactivated_at: new Date().toISOString(),
             });
             reactivated.push(existing.id);
             totalReactivated += 1;
-          } else if (normalizeRole(existing.role) !== 'organization_owner') {
-            await svc.entities.ProviderMembership.update(existing.id, { role: 'organization_owner' });
+          } else if (normalizeRole(existing.role) !== 'organization_owner' || existing.organization_wide_access === false) {
+            await svc.entities.ProviderMembership.update(existing.id, {
+              role: 'organization_owner',
+              organization_wide_access: true,
+            });
             promoted.push(existing.id);
             totalPromoted += 1;
           }
