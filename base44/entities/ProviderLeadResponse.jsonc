@@ -1,0 +1,38 @@
+{
+  "name": "ProviderLeadResponse",
+  "type": "object",
+  "properties": {
+    "lead_id": { "type": "string" },
+    "request_id": { "type": "string" },
+    "organization_id": { "type": "string" },
+    "location_id": { "type": "string" },
+    "responder_user_id": { "type": "string" },
+    "response_contract_version": { "type": "string" },
+    "response_type": {
+      "type": "string",
+      "enum": ["can_help", "needs_details", "cannot_help"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "withdrawn"],
+      "default": "active"
+    },
+    "submitted_at": { "type": "string", "format": "date-time" },
+    "withdrawn_at": { "type": "string", "format": "date-time" },
+    "withdrawn_by_user_id": { "type": "string" }
+  },
+  "required": [
+    "lead_id",
+    "location_id",
+    "responder_user_id",
+    "response_contract_version",
+    "response_type",
+    "status"
+  ],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}
