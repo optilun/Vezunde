@@ -4,12 +4,15 @@ on:
   pull_request:
     paths:
       - "shared/providerContactAccessPolicy.js"
+      - "shared/providerLeadFullDetailsPolicy.js"
       - "base44/entities/ProviderLeadContactAccessAudit.jsonc"
       - "base44/functions/providerLeadContactAccessOps/entry.ts"
+      - "base44/functions/providerLeadInboxOps/entry.ts"
       - "src/components/workspace/provider/ProviderLeadContactAccess.jsx"
       - "src/components/workspace/provider/ProviderLeadInbox.jsx"
       - "scripts/verify-provider-contact-access.mjs"
       - "scripts/verify-provider-contact-access-ui.mjs"
+      - "scripts/verify-provider-lead-inbox-free.mjs"
       - "jsconfig.services.json"
       - ".github/workflows/provider-contact-access-ci.yml"
 
@@ -30,10 +33,12 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Verify provider contact access contract
+      - name: Verify provider phone access contract
         run: node scripts/verify-provider-contact-access.mjs
-      - name: Verify provider contact access UI
+      - name: Verify provider phone access UI
         run: node scripts/verify-provider-contact-access-ui.mjs
+      - name: Verify Top 3 Pro detail isolation
+        run: node scripts/verify-provider-lead-inbox-free.mjs
       - name: Verify existing service regressions
         run: npm run test:services
       - name: Typecheck service scope
@@ -42,11 +47,14 @@ jobs:
         run: >-
           npx eslint
           shared/providerContactAccessPolicy.js
+          shared/providerLeadFullDetailsPolicy.js
           base44/functions/providerLeadContactAccessOps/entry.ts
+          base44/functions/providerLeadInboxOps/entry.ts
           src/components/workspace/provider/ProviderLeadContactAccess.jsx
           src/components/workspace/provider/ProviderLeadInbox.jsx
           scripts/verify-provider-contact-access.mjs
           scripts/verify-provider-contact-access-ui.mjs
+          scripts/verify-provider-lead-inbox-free.mjs
           --quiet
       - name: Repository typecheck diagnostic
         continue-on-error: true
