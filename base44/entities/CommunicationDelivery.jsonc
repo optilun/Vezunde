@@ -1,0 +1,64 @@
+{
+  "name": "CommunicationDelivery",
+  "type": "object",
+  "properties": {
+    "catalog_version": { "type": "string" },
+    "event_key": { "type": "string" },
+    "template_version": { "type": "string" },
+    "channel": {
+      "type": "string",
+      "enum": ["email", "in_app"]
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["low", "medium", "high"],
+      "default": "medium"
+    },
+    "recipient_type": {
+      "type": "string",
+      "enum": ["provider_user", "provider_location", "patient_contact"]
+    },
+    "recipient_ref_id": { "type": "string" },
+    "recipient_email_hash": { "type": "string" },
+    "source_entity_type": { "type": "string" },
+    "source_entity_id": { "type": "string" },
+    "request_id": { "type": "string" },
+    "lead_id": { "type": "string" },
+    "organization_id": { "type": "string" },
+    "location_id": { "type": "string" },
+    "idempotency_key": { "type": "string" },
+    "subject_preview": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "sent", "failed", "skipped"],
+      "default": "pending"
+    },
+    "attempt_count": { "type": "number", "default": 0 },
+    "delivery_provider": { "type": "string" },
+    "last_error": { "type": "string" },
+    "skip_reason": { "type": "string" },
+    "queued_at": { "type": "string", "format": "date-time" },
+    "last_attempt_at": { "type": "string", "format": "date-time" },
+    "sent_at": { "type": "string", "format": "date-time" },
+    "failed_at": { "type": "string", "format": "date-time" },
+    "skipped_at": { "type": "string", "format": "date-time" }
+  },
+  "required": [
+    "catalog_version",
+    "event_key",
+    "template_version",
+    "channel",
+    "recipient_type",
+    "recipient_ref_id",
+    "source_entity_type",
+    "source_entity_id",
+    "idempotency_key",
+    "status"
+  ],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

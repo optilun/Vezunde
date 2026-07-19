@@ -11,6 +11,7 @@ import {
   evaluateProviderLeadEligibility,
   patientIntentLabel,
 } from '../../../shared/providerLeadEligibility.js';
+import { notifyProviderLeadAvailable } from '../../../shared/leadCommunicationNotifications.js';
 
 function clean(value, maxLength = 240) {
   return String(value || '').trim().slice(0, maxLength);
@@ -165,6 +166,16 @@ Deno.serve(async (httpRequest) => {
         status: leadRows.length > 0 ? 'pregatita_pentru_distribuire' : 'salvata',
       }),
     ]);
+
+    if (leadRows.length > 0) {
+      const createdLeads = await svc.entities.ProviderLead.filter({ request_id: lockedRequest.id }, null, 100);
+      const locationsById = new Map(plans.map((plan) => [plan.location.id, plan.location]));
+      await Promise.allSettled(createdLeads.map((lead) => {
+        const location = locationsById.get(lead.location_id);
+        if (!location) return Promise.resolve(null);
+        return notifyProviderLeadAvailable({ base44, svc, lead, location });
+      }));
+    }
 
     return Response.json({
       success: true,
