@@ -62,9 +62,15 @@ async function findActiveResponse(svc, requestId, locationId) {
   return rows[0] || null;
 }
 
+function leadAllowsContactApproval(lead) {
+  return Boolean(lead)
+    && lead.delivery_state === 'available'
+    && !['declined', 'closed', 'expired'].includes(lead.status);
+}
+
 async function approve(svc, request, locationId) {
   const lead = await findLead(svc, request.id, locationId);
-  if (!lead || lead.delivery_state !== 'available' || ['declined', 'closed', 'expired'].includes(lead.status)) {
+  if (!leadAllowsContactApproval(lead)) {
     return { error: 'Locatia nu mai poate primi acces la contact pentru aceasta cerere.', status: 409 };
   }
   const response = await findActiveResponse(svc, request.id, locationId);
@@ -75,7 +81,13 @@ async function approve(svc, request, locationId) {
   const lock = await acquireContactShareApprovalLock(svc, lead.id);
   if (!lock) return { error: 'Acordul este actualizat in alta sesiune. Reincearca.', status: 409 };
   try {
-    const checkedResponse = await findActiveResponse(svc, request.id, locationId);
+    const [checkedLead, checkedResponse] = await Promise.all([
+      findLead(svc, request.id, locationId),
+      findActiveResponse(svc, request.id, locationId),
+    ]);
+    if (!checkedLead || checkedLead.id !== lead.id || !leadAllowsContactApproval(checkedLead)) {
+      return { error: 'Locatia nu mai poate primi acces la contact pentru aceasta cerere.', status: 409 };
+    }
     if (!canApproveContactShareForResponse(checkedResponse)) {
       return { error: 'Raspunsul locatiei nu mai permite distribuirea contactului.', status: 409 };
     }
@@ -83,21 +95,20 @@ async function approve(svc, request, locationId) {
     const now = new Date().toISOString();
     const payload = {
       request_id: request.id,
-      lead_id: lead.id,
+      lead_id: checkedLead.id,
       provider_response_id: checkedResponse.id,
-      organization_id: lead.organization_id || '',
+      organization_id: checkedLead.organization_id || '',
       location_id: locationId,
       approval_contract_version: CONTACT_SHARE_APPROVAL_CONTRACT_VERSION,
       status: 'approved',
       allowed_contact_fields: [...CONTACT_SHARE_ALLOWED_FIELDS],
       approved_at: now,
-      revoked_at: null,
       consent_source: 'patient_request_status',
     };
-    const approval = existing
+    const approval = existing?.status === 'approved'
       ? await svc.entities.ContactShareApproval.update(existing.id, payload)
       : await svc.entities.ContactShareApproval.create(payload);
-    await svc.entities.ProviderLead.update(lead.id, {
+    await svc.entities.ProviderLead.update(checkedLead.id, {
       contact_access_state: 'patient_approved',
       conversation_access_state: 'locked',
       last_contact_approval_at: now,
