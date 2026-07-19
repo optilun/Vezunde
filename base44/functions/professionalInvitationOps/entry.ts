@@ -312,7 +312,7 @@ async function acceptInvitation(svc, user, payload, req) {
   const urlToken = new URL(req.url).searchParams.get('token');
   const rawToken = cleanString(payload.token || payload.invitation_token || urlToken);
   if (!rawToken) return response({ error: 'Tokenul invitatiei este obligatoriu' }, 400);
-  if (user.email_verified === false || user.email_verified === 'false') {
+  if (user.is_verified === false || user.email_verified === false || user.email_verified === 'false') {
     return response({ error: 'Emailul contului trebuie verificat inainte de acceptare' }, 403);
   }
 
