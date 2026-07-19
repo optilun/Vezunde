@@ -56,7 +56,7 @@ function responseData(response) {
   return data;
 }
 
-function requestAccessToken(requestId, explicitAccessToken = "") {
+function resolveRequestAccessToken(requestId, explicitAccessToken = "") {
   const token = explicitAccessToken || readPatientRequestAccess(requestId);
   if (!token) throw new Error("Tokenul local al cererii nu mai este disponibil.");
   return token;
@@ -91,10 +91,10 @@ export async function persistPatientRequest({
 }
 
 export async function authorizePatientRequestDistribution(requestId, explicitAccessToken = "") {
-  const requestAccessToken = requestAccessToken(requestId, explicitAccessToken);
+  const token = resolveRequestAccessToken(requestId, explicitAccessToken);
   const response = await base44.functions.invoke("authorizePatientRequestDistribution", {
     request_id: requestId,
-    request_access_token: requestAccessToken,
+    request_access_token: token,
     distribution_consent: true,
     consent_version: PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION,
   });
@@ -102,7 +102,7 @@ export async function authorizePatientRequestDistribution(requestId, explicitAcc
 }
 
 export async function getPatientRequestStatus(requestId, explicitAccessToken = "") {
-  const token = requestAccessToken(requestId, explicitAccessToken);
+  const token = resolveRequestAccessToken(requestId, explicitAccessToken);
   const response = await base44.functions.invoke("getPatientRequestStatus", {
     request_id: requestId,
     request_access_token: token,
@@ -116,7 +116,7 @@ export async function patientRequestEmailVerification({
   code = "",
   explicitAccessToken = "",
 }) {
-  const token = requestAccessToken(requestId, explicitAccessToken);
+  const token = resolveRequestAccessToken(requestId, explicitAccessToken);
   const response = await base44.functions.invoke("patientRequestEmailVerificationOps", {
     action,
     request_id: requestId,
@@ -132,7 +132,7 @@ export async function managePatientContactShareApproval({
   action,
   explicitAccessToken = "",
 }) {
-  const token = requestAccessToken(requestId, explicitAccessToken);
+  const token = resolveRequestAccessToken(requestId, explicitAccessToken);
   const response = await base44.functions.invoke("managePatientContactShareApproval", {
     action,
     request_id: requestId,
