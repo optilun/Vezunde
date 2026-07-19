@@ -55,7 +55,10 @@
     "last_response_at": { "type": "string", "format": "date-time" },
     "contact_approval_lock_token": { "type": "string" },
     "contact_approval_lock_at": { "type": "string", "format": "date-time" },
-    "last_contact_approval_at": { "type": "string", "format": "date-time" }
+    "last_contact_approval_at": { "type": "string", "format": "date-time" },
+    "conversation_lock_token": { "type": "string" },
+    "conversation_lock_at": { "type": "string", "format": "date-time" },
+    "last_conversation_at": { "type": "string", "format": "date-time" }
   },
   "required": [
     "request_id",
