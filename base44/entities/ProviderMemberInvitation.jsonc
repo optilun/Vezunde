@@ -43,6 +43,46 @@
       "type": "string",
       "format": "date-time"
     },
+    "delivery_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "sent",
+        "manual_required",
+        "failed"
+      ],
+      "default": "pending"
+    },
+    "delivery_provider": {
+      "type": "string",
+      "enum": [
+        "base44",
+        "resend",
+        "manual"
+      ]
+    },
+    "delivery_message_id": {
+      "type": "string"
+    },
+    "last_delivery_attempt_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "delivery_error": {
+      "type": "string",
+      "rls": {
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
     "accepted_by_user_id": {
       "type": "string"
     },
