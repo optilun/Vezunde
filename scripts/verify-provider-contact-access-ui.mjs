@@ -20,15 +20,18 @@ assert.doesNotMatch(panel, /original_message|detailed_message|access_token_hash|
 assert.doesNotMatch(panel, /useEffect\([\s\S]{0,500}providerLeadContactAccessOps/);
 
 assert.match(inbox, /import ProviderLeadContactAccess from "\.\/ProviderLeadContactAccess"/);
+assert.match(inbox, /import ProviderLeadChat from "\.\/ProviderLeadChat"/);
 assert.match(inbox, /provider_contact\.access_after_consent/);
+assert.match(inbox, /provider_chat\.access/);
 assert.match(inbox, /<ProviderLeadContactAccess/);
+assert.match(inbox, /<ProviderLeadChat/);
 assert.match(inbox, /leadId=\{lead\.id\}/);
 assert.match(inbox, /locationId=\{locationId\}/);
 assert.match(inbox, /phone_available_for_request/);
 assert.match(inbox, /Detalii Pro · Top 3/);
-assert.match(inbox, /Telefonul rămâne ascuns/);
-assert.match(inbox, /Chatul urmează într-o etapă distinctă/);
+assert.match(inbox, /Telefonul rămâne separat/);
+assert.match(inbox, /deschiderea explicită de către client/);
 assert.doesNotMatch(inbox, /contact_phone\s*:/);
 assert.doesNotMatch(inbox, /original_message|access_token_hash/);
 
-console.log('Provider phone access UI checks passed.');
+console.log('Provider phone access and controlled chat UI checks passed.');
