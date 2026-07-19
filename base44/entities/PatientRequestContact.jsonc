@@ -12,21 +12,15 @@
       "enum": ["email", "phone", "either"],
       "default": "email"
     },
-    "processing_consent": {
-      "type": "boolean",
-      "default": false
-    },
+    "processing_consent": { "type": "boolean", "default": false },
     "processing_consent_version": { "type": "string" },
     "processing_consent_at": { "type": "string", "format": "date-time" },
-    "provider_contact_sharing_consent": {
-      "type": "boolean",
-      "default": false
-    },
+    "provider_request_distribution_consent": { "type": "boolean", "default": false },
+    "provider_request_distribution_consent_version": { "type": "string" },
+    "provider_request_distribution_consent_at": { "type": "string", "format": "date-time" },
+    "provider_contact_sharing_consent": { "type": "boolean", "default": false },
     "provider_contact_sharing_consent_at": { "type": "string", "format": "date-time" },
-    "contact_email_verified": {
-      "type": "boolean",
-      "default": false
-    },
+    "contact_email_verified": { "type": "boolean", "default": false },
     "contact_email_verified_at": { "type": "string", "format": "date-time" },
     "access_token_hash": { "type": "string" },
     "retention_policy_key": { "type": "string" },
