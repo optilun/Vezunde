@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { BookmarkPlus, CheckCircle2, LockKeyhole, Send, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import PatientRequestEmailVerification from "./PatientRequestEmailVerification";
 import PatientRequestResponseStatus from "./PatientRequestResponseStatus";
 import {
   authorizePatientRequestDistribution,
@@ -35,6 +36,7 @@ export default function PatientRequestSubmission({ results, meta }) {
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(null);
+  const [emailVerified, setEmailVerified] = useState(false);
   const [distributionConsent, setDistributionConsent] = useState(false);
   const [isDistributing, setIsDistributing] = useState(false);
   const [distributionError, setDistributionError] = useState("");
@@ -42,6 +44,7 @@ export default function PatientRequestSubmission({ results, meta }) {
   const [detailedMessage, setDetailedMessage] = useState("");
   const [contact, setContact] = useState({ name: "", email: "", phone: "", preference: "email" });
   const idempotencyKeyRef = useRef(createPatientRequestIdempotencyKey());
+  const hasEmail = Boolean(contact.email.trim());
 
   const openForm = () => {
     setIsOpen(true);
@@ -83,10 +86,12 @@ export default function PatientRequestSubmission({ results, meta }) {
         meta,
       });
       setSuccess(data);
+      setEmailVerified(false);
       track("patient_request_saved", {
         idempotent_replay: data.idempotent_replay === true,
         match_count: Number(data.match_count) || 0,
         top3_count: Number(data.top3_count) || 0,
+        contact_channel: hasEmail ? (contact.phone.trim() ? "email_and_phone" : "email") : "phone",
       });
     } catch (submissionError) {
       setError(errorMessage(submissionError));
@@ -114,6 +119,7 @@ export default function PatientRequestSubmission({ results, meta }) {
       track("patient_request_distribution_authorized", {
         lead_count: Number(data.lead_count) || 0,
         top3_full_detail_count: Number(data.top3_full_detail_count) || 0,
+        email_verified: emailVerified,
       });
     } catch (distributionFailure) {
       setDistributionError(errorMessage(distributionFailure));
@@ -137,12 +143,29 @@ export default function PatientRequestSubmission({ results, meta }) {
               Telefonul nu a fost transmis niciunui furnizor.
             </p>
 
+            {hasEmail ? (
+              <PatientRequestEmailVerification
+                requestId={success.request_id}
+                accessToken={success.request_access_token || ""}
+                onVerified={setEmailVerified}
+              />
+            ) : (
+              <div className="mt-5 rounded-xl border border-border bg-background p-4 text-xs leading-relaxed text-muted-foreground">
+                Ai ales să continui doar cu telefonul. Adresa de email nu va fi afișată locațiilor. Telefonul rămâne ascuns până la acordul tău separat pentru fiecare locație.
+              </div>
+            )}
+
             {!distributionResult ? (
               <div className="mt-5 border-t border-primary/15 pt-5">
                 <h4 className="text-sm font-bold text-foreground">Trimite cererea către locațiile relevante</h4>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                   Toate locațiile eligibile văd un rezumat anonim. Doar locațiile Pro din Top 3 pot vedea numele, mesajul detaliat și emailul verificat. Telefonul rămâne ascuns și poate fi oferit ulterior numai cu acord separat pentru locația care îl solicită.
                 </p>
+                {hasEmail && !emailVerified && (
+                  <p className="mt-3 rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900">
+                    Poți trimite cererea și înainte de confirmarea emailului, dar adresa va rămâne ascunsă locațiilor până când o verifici.
+                  </p>
+                )}
                 <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background p-4">
                   <input
                     type="checkbox"
