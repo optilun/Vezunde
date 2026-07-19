@@ -14,6 +14,7 @@ on:
       - "src/pages/ForgotPassword.jsx"
       - "src/pages/ResetPassword.jsx"
       - "src/pages/MyAccount.jsx"
+      - "scripts/verify-account-workspace-loading.mjs"
       - "src/lib/postLoginRedirect.js"
       - "src/lib/workspaceNav.js"
       - "shared/providerOpeningHours.js"
@@ -69,6 +70,8 @@ jobs:
         run: npm run test:provider-logo-review
       - name: Provider account workflow contract E2E
         run: npm run test:provider-account-e2e
+      - name: Account workspace loading checks
+        run: npm run test:account-loading
       - name: Dead code cleanup regression checks
         run: node scripts/verify-dead-code-cleanup.mjs
       - name: Frontend dead code audit report
