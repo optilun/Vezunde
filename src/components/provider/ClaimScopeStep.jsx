@@ -37,6 +37,7 @@ export default function ClaimScopeStep({
   const organizationName = options?.organization?.name || "organizatia";
 
   const scopeChoices = useMemo(() => {
+    /** @type {Array<{ value: string }>} */
     const choices = [{ value: CLAIM_SCOPE.LOCATION }];
     if (options?.supports_selected_locations) choices.push({ value: CLAIM_SCOPE.SELECTED_LOCATIONS });
     if (canRequestOrganization) choices.push({ value: CLAIM_SCOPE.ORGANIZATION });
