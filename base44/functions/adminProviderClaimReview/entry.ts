@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
+const LOCATION_MEMBER_ROLES = ['location_manager', 'location_staff'];
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];
 const ROLE_BY_RELATIONSHIP = {
   owner: 'organization_owner',
@@ -125,16 +126,25 @@ Deno.serve(async (req) => {
     const location = await svc.entities.ProviderLocation.get(claim.location_id).catch(() => null);
     if (!location) return Response.json({ error: 'Locatia nu exista' }, { status: 404 });
     const submitted = parseJSON(claim.submitted_payload);
-    const requestedRole = clean(
+    const isLocationScopedClaim = claim.mode === 'claim' || submitted.claim_scope === 'location';
+    const rawRequestedRole = clean(
       submitted.requested_membership_role ||
       ROLE_BY_RELATIONSHIP[claim.claimant_relationship] ||
       'location_staff'
     );
+    const requestedRole = isLocationScopedClaim && rawRequestedRole === 'organization_owner'
+      ? 'location_manager'
+      : rawRequestedRole;
     const isAccessRequest = submitted.request_type === 'access_request_existing_claimed_profile';
     const safeDefaultRole = isAccessRequest ? 'location_staff' : requestedRole;
     const approvedRole = clean(p.approved_role || safeDefaultRole);
     if (!MEMBER_ROLES.includes(approvedRole)) {
       return Response.json({ error: 'Rolul aprobat este invalid' }, { status: 400 });
+    }
+    if (isLocationScopedClaim && !LOCATION_MEMBER_ROLES.includes(approvedRole)) {
+      return Response.json({
+        error: 'Revendicarea unei locatii nu poate acorda rol de owner al organizatiei. Administrarea organizatiei necesita o solicitare separata.',
+      }, { status: 400 });
     }
 
     const isNewLocation = claim.mode === 'new_location';
@@ -148,6 +158,8 @@ Deno.serve(async (req) => {
     await svc.entities.ProviderLocation.update(location.id, locationUpdates);
     const updatedSubmitted = {
       ...submitted,
+      claim_scope: isLocationScopedClaim ? 'location' : (submitted.claim_scope || ''),
+      ...(rawRequestedRole !== requestedRole ? { original_requested_membership_role: rawRequestedRole } : {}),
       requested_membership_role: requestedRole,
       approved_membership_role: approvedRole,
     };
@@ -160,7 +172,7 @@ Deno.serve(async (req) => {
 
     const organizationId = location.organization_id || claim.organization_id || null;
     const membershipLocationIds = new Set([location.id]);
-    if (approvedRole === 'organization_owner' && organizationId) {
+    if (!isLocationScopedClaim && approvedRole === 'organization_owner' && organizationId) {
       const organizationLocations = await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, '-created_date', 500);
       for (const organizationLocation of organizationLocations) membershipLocationIds.add(organizationLocation.id);
     }
@@ -197,6 +209,7 @@ Deno.serve(async (req) => {
       { status: claim.status, profile_control_status: location.profile_control_status },
       {
         status: 'aprobata',
+        claim_scope: isLocationScopedClaim ? 'location' : (submitted.claim_scope || ''),
         requested_membership_role: requestedRole,
         approved_membership_role: approvedRole,
         membership_location_count: membershipLocationIds.size,
@@ -208,6 +221,7 @@ Deno.serve(async (req) => {
 
     return Response.json({
       success: true,
+      claim_scope: isLocationScopedClaim ? 'location' : (submitted.claim_scope || ''),
       requested_membership_role: requestedRole,
       approved_membership_role: approvedRole,
       membership_ids: membershipIds,
