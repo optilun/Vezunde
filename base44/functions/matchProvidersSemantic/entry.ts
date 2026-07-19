@@ -19,6 +19,10 @@ import {
 import { getRecommendationCoverageStatus } from './coverage.js';
 import { getPublicLocationDisclosure } from './providerPublicTrust.js';
 import { getGenericRepairEligibility } from './genericRepairPolicy.js';
+import {
+  loadPublicLocationsForLocality,
+  loadRowsForLocationIds,
+} from '../../../shared/locationScopedEntityQuery.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const PATIENT_FACING_PROFILE_TYPES = new Set([
@@ -196,8 +200,17 @@ Deno.serve(async (request) => {
       });
     }
 
+    const providerTypes = new Set(Array.isArray(payload.provider_types) ? payload.provider_types.filter(Boolean) : []);
+    const localityLocations = await loadPublicLocationsForLocality(svc, sirutaCode);
+    const localLocations = localityLocations.filter((location) => (
+      active(location)
+      && location.profile_control_status !== 'suspended'
+      && PATIENT_FACING_PROFILE_TYPES.has(location.provider_profile_type)
+      && (providerTypes.size === 0 || providerTypes.has(location.provider_type))
+    ));
+    const locationIds = localLocations.map((location) => location.id).filter(Boolean);
+
     const [
-      locations,
       services,
       assignments,
       equipment,
@@ -205,13 +218,12 @@ Deno.serve(async (request) => {
       functionalUnits,
       capabilities,
     ] = await Promise.all([
-      svc.entities.ProviderLocation.filter({ status: 'publicata' }, null, 1000),
-      svc.entities.LocationService.list(null, 5000),
-      svc.entities.ProfessionalLocationAssignment.filter({ active_status: 'activ' }, null, 3000).catch(() => []),
-      svc.entities.LocationEquipment.list(null, 3000).catch(() => []),
-      svc.entities.LocationFacility.list(null, 3000).catch(() => []),
-      svc.entities.LocationFunctionalUnit?.list(null, 1000).catch(() => []) || [],
-      svc.entities.LocationCapability?.list(null, 1000).catch(() => []) || [],
+      loadRowsForLocationIds(svc.entities.LocationService, locationIds, { perLocationLimit: 500 }),
+      loadRowsForLocationIds(svc.entities.ProfessionalLocationAssignment, locationIds, { query: { active_status: 'activ' }, perLocationLimit: 200 }),
+      loadRowsForLocationIds(svc.entities.LocationEquipment, locationIds, { perLocationLimit: 300 }),
+      loadRowsForLocationIds(svc.entities.LocationFacility, locationIds, { perLocationLimit: 300 }),
+      loadRowsForLocationIds(svc.entities.LocationFunctionalUnit, locationIds, { perLocationLimit: 200 }),
+      loadRowsForLocationIds(svc.entities.LocationCapability, locationIds, { perLocationLimit: 300 }),
     ]);
 
     const professionalIds = [...new Set(
@@ -232,19 +244,10 @@ Deno.serve(async (request) => {
     const requestedSet = new Set(requestedKeys);
     const needLevel = requestNeedLevel(requestedKeys);
     const intent = clean(payload.intent);
-    const providerTypes = new Set(Array.isArray(payload.provider_types) ? payload.provider_types.filter(Boolean) : []);
-    const localLocations = locations.filter((location) => (
-      active(location)
-      && location.profile_control_status !== 'suspended'
-      && PATIENT_FACING_PROFILE_TYPES.has(location.provider_profile_type)
-      && (providerTypes.size === 0 || providerTypes.has(location.provider_type))
-      && clean(location.locality_siruta_code) === sirutaCode
-    ));
     let configuredMatchingProviderCount = 0;
     const results = [];
 
     for (const location of localLocations) {
-
       const locationRows = servicesByLocation[location.id] || [];
       const candidateRows = locationRows.filter((row) => {
         const canonicalKey = normalizeServiceKey(row.service_key).canonicalKey;
@@ -363,6 +366,7 @@ Deno.serve(async (request) => {
       need_level: needLevel,
       resolved_intent: intent || null,
       routing_mode: 'locality',
+      query_scope: 'locality',
       routing_reason: 'Potrivire dupa localitatea selectata.',
       coverage_status: coverageStatus,
       coverage_counts: coverageCounts,
