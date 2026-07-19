@@ -1,5 +1,6 @@
 import React from "react";
 import { ArrowLeft, CheckCircle2, MapPin, Search } from "lucide-react";
+import { storePatientRequestDraft } from "@/lib/patientRequestPersistenceClient";
 
 function detailRows(draft) {
   const excluded = new Set(["categorie", "locatie"]);
@@ -8,6 +9,10 @@ function detailRows(draft) {
 
 export default function PatientRequestReview({ draft, onConfirm, onEdit }) {
   const rows = detailRows(draft);
+  const handleConfirm = () => {
+    storePatientRequestDraft(draft);
+    onConfirm?.();
+  };
 
   return (
     <div className="py-1 sm:py-3">
@@ -61,7 +66,7 @@ export default function PatientRequestReview({ draft, onConfirm, onEdit }) {
       <div className="mt-7 flex flex-col gap-3 sm:flex-row">
         <button
           type="button"
-          onClick={onConfirm}
+          onClick={handleConfirm}
           className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
         >
           <Search className="h-4 w-4" />
