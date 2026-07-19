@@ -1,4 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import {
+  acquireProfessionalLifecycleLock,
+  releaseProfessionalLifecycleLock,
+} from '../../../shared/professionalLifecycleLock.js';
 
 const ALLOWED_FIELDS = [
   'public_display_name',
@@ -228,53 +232,73 @@ Deno.serve(async (req) => {
       const checkedName = plain(payload.full_name, 'Numele complet', 120, true);
       if (checkedName.error) return res({ error: checkedName.error }, 400);
 
-      const draft = {
-        public_display_name: checkedName.value,
-        professional_bio: '',
-        specializations: [],
-        profile_photo_url: '',
-        public_website_url: '',
-        linkedin_url: '',
-        facebook_url: '',
-        instagram_url: '',
-        public_phone: '',
-        public_email: '',
-        accepts_independent_requests: false,
-      };
-      const now = new Date().toISOString();
-      const created = await svc.entities.ProfessionalProfile.create({
-        user_id: user.id,
-        full_name: checkedName.value,
-        public_display_name: checkedName.value,
-        role: ROLE_BY_TYPE[professionalType],
-        professional_type: professionalType,
-        specializations: [],
-        professional_bio: '',
-        public_email: '',
-        accepts_independent_requests: false,
-        verification_status: 'unverified',
-        public_visibility_status: 'draft',
-        profile_review_status: 'draft',
-        pending_profile_json: JSON.stringify(draft),
-        profile_completeness: completeness(draft, professionalType),
-        profile_updated_at: now,
-        is_public: false,
-      });
-      await audit(
-        svc,
-        user,
-        created.id,
-        'create_professional_profile',
-        {},
-        { professional_type: professionalType, profile_review_status: 'draft' },
-        'Utilizatorul si-a creat profilul profesional independent. Nu au fost create organizatii, acces administrativ sau asocieri la locatii.'
-      );
-      return res({
-        success: true,
-        professional_id: created.id,
-        professional_type: professionalType,
-        profile_review_status: 'draft',
-      }, 201);
+      const lifecycleLock = await acquireProfessionalLifecycleLock(svc, user);
+      if (!lifecycleLock) {
+        return res({ error: 'Profilul profesional este deja procesat intr-o alta solicitare. Reincearca.' }, 409);
+      }
+
+      try {
+        const lockedProfiles = await svc.entities.ProfessionalProfile.filter({ user_id: user.id }, '-created_date', 5);
+        const lockedProfile = lockedProfiles[0] || null;
+        if (lockedProfile) {
+          return res({
+            success: true,
+            already_exists: true,
+            professional_id: lockedProfile.id,
+            professional_type: lockedProfile.professional_type,
+          });
+        }
+
+        const draft = {
+          public_display_name: checkedName.value,
+          professional_bio: '',
+          specializations: [],
+          profile_photo_url: '',
+          public_website_url: '',
+          linkedin_url: '',
+          facebook_url: '',
+          instagram_url: '',
+          public_phone: '',
+          public_email: '',
+          accepts_independent_requests: false,
+        };
+        const now = new Date().toISOString();
+        const created = await svc.entities.ProfessionalProfile.create({
+          user_id: user.id,
+          full_name: checkedName.value,
+          public_display_name: checkedName.value,
+          role: ROLE_BY_TYPE[professionalType],
+          professional_type: professionalType,
+          specializations: [],
+          professional_bio: '',
+          public_email: '',
+          accepts_independent_requests: false,
+          verification_status: 'unverified',
+          public_visibility_status: 'draft',
+          profile_review_status: 'draft',
+          pending_profile_json: JSON.stringify(draft),
+          profile_completeness: completeness(draft, professionalType),
+          profile_updated_at: now,
+          is_public: false,
+        });
+        await audit(
+          svc,
+          user,
+          created.id,
+          'create_professional_profile',
+          {},
+          { professional_type: professionalType, profile_review_status: 'draft' },
+          'Utilizatorul si-a creat profilul profesional independent. Nu au fost create organizatii, acces administrativ sau asocieri la locatii.'
+        );
+        return res({
+          success: true,
+          professional_id: created.id,
+          professional_type: professionalType,
+          profile_review_status: 'draft',
+        }, 201);
+      } finally {
+        await releaseProfessionalLifecycleLock(svc, lifecycleLock);
+      }
     }
 
     if (!profile) return res({ error: 'Nu exista un profil profesional asociat acestui cont' }, 404);
