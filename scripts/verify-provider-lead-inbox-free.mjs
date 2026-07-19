@@ -38,6 +38,7 @@ assert.equal(safe.access_tier, 'free_preview');
 for (const forbidden of ['request_id', 'contact_name', 'contact_email', 'contact_phone', 'original_message', 'detailed_message', 'full_details']) {
   assert.equal(Object.hasOwn(safe, forbidden), false, `${forbidden} nu trebuie returnat in inboxul Free`);
 }
+assert.equal(safe.conversation_access_state, 'locked');
 
 const entitlement = { plan_code: 'pro', feature_keys: ['provider_leads.full_details'] };
 const request = { persistence_state: 'complete', detailed_message: 'Am nevoie de reparatie la balama.' };
@@ -70,6 +71,7 @@ assert.deepEqual(summarizeProviderLeadInbox([{ status: 'new' }, { status: 'viewe
 
 const backend = await readFile(new URL('../base44/functions/providerLeadInboxOps/entry.ts', import.meta.url), 'utf8');
 const component = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInbox.jsx', import.meta.url), 'utf8');
+const chatComponent = await readFile(new URL('../src/components/workspace/provider/ProviderLeadChat.jsx', import.meta.url), 'utf8');
 assert.match(backend, /resolveProviderEntitlement/);
 assert.match(backend, /providerLeadFullDetailsEligibility/);
 assert.match(backend, /ProviderLeadContactAccessAudit\.create/);
@@ -77,8 +79,12 @@ assert.match(backend, /PatientRequestContact\.filter/);
 assert.match(backend, /access_contract_version: PROVIDER_LEAD_FULL_DETAILS_CONTRACT_VERSION/);
 assert.doesNotMatch(backend, /contact_phone:/);
 assert.match(component, /Detalii Pro · Top 3/);
-assert.match(component, /Telefonul rămâne ascuns/);
+assert.match(component, /Telefonul rămâne separat/);
 assert.match(component, /phone_available_for_request/);
+assert.match(component, /provider_chat\.access/);
+assert.match(component, /enabled=\{canChat && lead\.access_tier === "pro_full"\}/);
 assert.doesNotMatch(component, /base44\.entities\.ProviderLead/);
+assert.match(chatComponent, /Locația nu poate iniția chatul unilateral/);
+assert.doesNotMatch(chatComponent, /base44\.entities\.PatientRequestMessage|base44\.entities\.PatientRequestConversation/);
 
-console.log('Provider inbox Free isolation and Top 3 Pro detail checks passed.');
+console.log('Provider inbox Free isolation and Top 3 Pro controlled access checks passed.');
