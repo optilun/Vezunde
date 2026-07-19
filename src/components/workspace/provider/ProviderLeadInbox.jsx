@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Clock3, HelpCircle, Inbox, Loader2, LockKeyhole, MapPin, RefreshCw, Sparkles, XCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import ProviderLeadContactAccess from "./ProviderLeadContactAccess";
 
 const FILTERS = [
   { key: "all", label: "Toate" },
@@ -42,7 +43,17 @@ function serviceLabel(value) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function LeadCard({ lead, response, canRespond, onMarkViewed, onRespond, marking, responding }) {
+function LeadCard({
+  lead,
+  response,
+  locationId,
+  canRespond,
+  canAccessContact,
+  onMarkViewed,
+  onRespond,
+  marking,
+  responding,
+}) {
   const services = lead.matched_service_keys?.length ? lead.matched_service_keys : lead.service_keys;
   return (
     <article className="rounded-2xl border border-border bg-card p-5 shadow-[0_12px_36px_rgba(23,23,23,0.035)]">
@@ -106,14 +117,21 @@ function LeadCard({ lead, response, canRespond, onMarkViewed, onRespond, marking
             })}
           </div>
           <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-            Acesta este un răspuns structurat. Nu trimite date de contact și nu deschide conversația.
+            Acesta este un răspuns structurat. Nu trimite automat date de contact și nu deschide conversația.
           </p>
         </div>
       )}
 
+      <ProviderLeadContactAccess
+        leadId={lead.id}
+        locationId={locationId}
+        enabled={canAccessContact}
+        responseType={response?.response_type || ""}
+      />
+
       <div className="mt-5 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
         <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-          <LockKeyhole className="h-3.5 w-3.5" /> Contactul și conversația sunt blocate
+          <LockKeyhole className="h-3.5 w-3.5" /> Conversația rămâne blocată. Contactul se deschide numai după acordul clientului.
         </span>
         {lead.status === "new" && !response && (
           <button
@@ -143,6 +161,8 @@ export default function ProviderLeadInbox({ locationId, location }) {
 
   const canRespond = entitlement?.plan_code === "pro"
     && entitlement?.feature_keys?.includes("provider_leads.respond");
+  const canAccessContact = entitlement?.plan_code === "pro"
+    && entitlement?.feature_keys?.includes("provider_contact.access_after_consent");
 
   const load = useCallback(async () => {
     if (!locationId) return;
@@ -286,7 +306,7 @@ export default function ProviderLeadInbox({ locationId, location }) {
       <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4 text-sm text-foreground">
         <div className="flex items-start gap-3">
           <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-          <p><strong>Date protejate.</strong> Numele, emailul, telefonul, mesajul original și conversația nu sunt incluse în acest inbox.</p>
+          <p><strong>Date protejate.</strong> Contactul nu este încărcat automat. Poate fi deschis numai în planul Pro, după răspunsul locației, confirmarea emailului și acordul separat al clientului.</p>
         </div>
       </div>
 
@@ -322,7 +342,9 @@ export default function ProviderLeadInbox({ locationId, location }) {
               key={lead.id}
               lead={lead}
               response={responsesByLead[lead.id] || null}
+              locationId={locationId}
               canRespond={canRespond}
+              canAccessContact={canAccessContact}
               onMarkViewed={markViewed}
               onRespond={submitResponse}
               marking={markingId === lead.id}
@@ -340,7 +362,7 @@ export default function ProviderLeadInbox({ locationId, location }) {
               {canRespond ? "Răspunsurile structurate sunt active" : "Răspunsurile sunt disponibile în planul Pro"}
             </h2>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Chatul, mesajele libere și accesul la datele de contact vor fi adăugate separat și vor necesita în continuare acordul clientului.
+              Contactul aprobat poate fi verificat și deschis separat în planul Pro, cu audit la fiecare citire. Chatul și mesajele libere rămân dezactivate.
             </p>
           </div>
         </div>
