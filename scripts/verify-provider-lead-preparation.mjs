@@ -98,6 +98,7 @@ assert.ok(contactSchema.properties.provider_request_distribution_consent);
 assert.ok(contactSchema.properties.provider_contact_sharing_consent);
 
 const functionSource = await readFile(new URL('../base44/functions/authorizePatientRequestDistribution/entry.ts', import.meta.url), 'utf8');
+const eligibilitySource = await readFile(new URL('../shared/providerLeadEligibility.js', import.meta.url), 'utf8');
 const clientSource = await readFile(new URL('../src/lib/patientRequestPersistenceClient.js', import.meta.url), 'utf8');
 const submissionSource = await readFile(new URL('../src/components/intake2/PatientRequestSubmission.jsx', import.meta.url), 'utf8');
 
@@ -107,7 +108,7 @@ assert.match(functionSource, /provider_contact_sharing_consent: false/);
 assert.match(functionSource, /contact_access_state: 'hidden'/);
 assert.match(functionSource, /conversation_access_state: 'locked'/);
 assert.match(functionSource, /access_tier: 'free_preview'/);
-assert.match(functionSource, /request_intake_status/);
+assert.match(eligibilitySource, /request_intake_status/);
 assert.match(functionSource, /PatientRequestContact\.filter/);
 assert.doesNotMatch(functionSource, /contact_email:/);
 assert.doesNotMatch(functionSource, /contact_phone:/);
