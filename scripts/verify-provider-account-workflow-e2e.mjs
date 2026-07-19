@@ -85,7 +85,8 @@ hasAll(publicProviderProfile, [
 ], 'profil public');
 assert.doesNotMatch(publicProviderProfile, /pending_changes/, 'profilul public nu trebuie sa citeasca drafturi');
 assert.doesNotMatch(publicOrganization, /pending_changes/, 'brandul public nu trebuie sa citeasca drafturi');
-hasAll(browseDirectory, [/status:\s*'publicata'/, /public_visibility_status/], 'director public');
+hasAll(browseDirectory, [/loadPublicLocationsForLocality/, /public_visibility_status/, /paginateRows/], 'director public localizat si paginat');
+assert.doesNotMatch(browseDirectory, /ProviderLocation\.filter\(\{ status: 'publicata' \}, null, 500\)/, 'directorul nu trebuie sa revina la limita globala de 500');
 
 const accessInvite = await source('base44/functions/createProviderMemberInvitation/entry.ts');
 const accessAccept = await source('base44/functions/acceptProviderMemberInvitation/entry.ts');
