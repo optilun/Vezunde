@@ -83,7 +83,7 @@ const verifiedSpecialized = evaluateProviderLeadEligibility({
 });
 assert.equal(verifiedSpecialized.eligible, true);
 
-assert.equal(buildProviderLeadPreview(request), 'Reparatii sau reglaje · Timisoara · cat_mai_repede');
+assert.equal(buildProviderLeadPreview(request), 'Reparatii sau reglaje · Timisoara · Cat mai repede');
 assert.equal(PROVIDER_LEAD_CONTRACT_VERSION, 'provider-lead-v1');
 assert.equal(PROVIDER_LEAD_ELIGIBILITY_POLICY_VERSION, 'provider-lead-eligibility-v1');
 assert.equal(PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION, 'patient-request-distribution-v1');
