@@ -96,7 +96,7 @@ export default function PatientRequestResponseStatus({ requestId, accessToken })
             const Icon = presentation.icon;
             const content = (
               <div className="flex items-start gap-3">
-                <Icon className="mt-0.5 h-5 w-5 shrink--0 text-primary" />
+                <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-sm font-bold text-foreground">{response.location_name}</p>
