@@ -18,7 +18,8 @@
     "test:provider-hours": "node scripts/verify-provider-opening-hours.mjs",
     "test:provider-location-identity": "node scripts/verify-provider-location-identity-resolution.mjs",
     "test:provider-invitation-delivery": "node scripts/verify-provider-invitation-delivery.mjs",
-    "test:provider-logo-review": "node scripts/verify-provider-logo-review-status.mjs"
+    "test:provider-logo-review": "node scripts/verify-provider-logo-review-status.mjs",
+    "test:provider-account-e2e": "node scripts/verify-provider-account-workflow-e2e.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.39",
