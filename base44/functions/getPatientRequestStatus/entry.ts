@@ -1,0 +1,72 @@
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import {
+  PATIENT_REQUEST_STATUS_CONTRACT_VERSION,
+  sanitizePatientProviderResponse,
+  sanitizePatientRequestStatus,
+} from '../../../shared/patientRequestStatusPolicy.js';
+
+function res(body, status = 200) {
+  return Response.json(body, { status });
+}
+
+function clean(value, maxLength = 160) {
+  return String(value || '').trim().slice(0, maxLength);
+}
+
+async function sha256(value) {
+  const bytes = new TextEncoder().encode(String(value || ''));
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function authorizeRequest(svc, requestId, accessToken) {
+  const request = await svc.entities.PatientRequest.get(requestId).catch(() => null);
+  if (!request) return { error: 'Cererea nu a fost gasita.', status: 404 };
+  const tokenHash = await sha256(accessToken);
+  const contacts = await svc.entities.PatientRequestContact.filter({
+    request_id: requestId,
+    access_token_hash: tokenHash,
+    status: 'active',
+  }, null, 2);
+  if (!contacts[0]) return { error: 'Accesul la cerere nu este valid.', status: 403 };
+  return { request };
+}
+
+Deno.serve(async (req) => {
+  try {
+    const base44 = createClientFromRequest(req);
+    const svc = base44.asServiceRole;
+    const input = await req.json().catch(() => ({}));
+    const requestId = clean(input.request_id, 120);
+    const accessToken = clean(input.request_access_token, 160);
+    if (!requestId || !accessToken) return res({ error: 'request_id si tokenul de acces sunt obligatorii.' }, 400);
+
+    const authorized = await authorizeRequest(svc, requestId, accessToken);
+    if (authorized.error) return res({ error: authorized.error }, authorized.status);
+
+    const rows = await svc.entities.ProviderLeadResponse.filter({
+      request_id: requestId,
+      status: 'active',
+    }, '-updated_date', 100);
+    const responses = [];
+    const seenLocations = new Set();
+    for (const row of rows) {
+      if (!row.location_id || seenLocations.has(row.location_id)) continue;
+      const location = await svc.entities.ProviderLocation.get(row.location_id).catch(() => null);
+      if (!location) continue;
+      seenLocations.add(row.location_id);
+      responses.push(sanitizePatientProviderResponse(row, location));
+    }
+
+    return res({
+      contract_version: PATIENT_REQUEST_STATUS_CONTRACT_VERSION,
+      request: sanitizePatientRequestStatus(authorized.request),
+      response_count: responses.length,
+      responses,
+      contact_sharing_enabled: false,
+      conversation_enabled: false,
+    });
+  } catch (_error) {
+    return res({ error: 'Statusul cererii nu a putut fi incarcat.' }, 500);
+  }
+});
