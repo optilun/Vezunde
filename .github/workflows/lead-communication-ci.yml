@@ -1,0 +1,56 @@
+name: Lead Communication Events
+
+on:
+  pull_request:
+    paths:
+      - "shared/communicationEventCatalog.js"
+      - "shared/communicationDelivery.js"
+      - "shared/leadCommunicationNotifications.js"
+      - "base44/entities/CommunicationDelivery.jsonc"
+      - "base44/functions/authorizePatientRequestDistribution/entry.ts"
+      - "base44/functions/providerLeadResponseOps/entry.ts"
+      - "scripts/verify-lead-communication-events.mjs"
+      - "docs/email-notification-events.md"
+      - "jsconfig.services.json"
+      - "package.json"
+      - ".github/workflows/lead-communication-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify lead communication events
+        run: node scripts/verify-lead-communication-events.mjs
+      - name: Verify existing service regressions
+        run: npm run test:services
+      - name: Typecheck service scope
+        run: npm run typecheck:services
+      - name: Lint communication scope
+        run: >-
+          npx eslint
+          shared/communicationEventCatalog.js
+          shared/communicationDelivery.js
+          shared/leadCommunicationNotifications.js
+          base44/functions/authorizePatientRequestDistribution/entry.ts
+          base44/functions/providerLeadResponseOps/entry.ts
+          scripts/verify-lead-communication-events.mjs
+          --quiet
+      - name: Repository typecheck
+        run: npm run typecheck
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
