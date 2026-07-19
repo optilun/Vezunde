@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
+  acquirePatientRequestDistributionLock,
+  releasePatientRequestDistributionLock,
+} from '../shared/patientRequestDistributionLock.js';
+import {
   PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION,
   PROVIDER_LEAD_CONTRACT_VERSION,
   PROVIDER_LEAD_ELIGIBILITY_POLICY_VERSION,
@@ -88,27 +92,65 @@ assert.equal(PROVIDER_LEAD_CONTRACT_VERSION, 'provider-lead-v1');
 assert.equal(PROVIDER_LEAD_ELIGIBILITY_POLICY_VERSION, 'provider-lead-eligibility-v1');
 assert.equal(PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION, 'patient-request-distribution-v1');
 
+const lockState = { token: '', at: '' };
+const lockSvc = {
+  entities: {
+    PatientRequest: {
+      async updateMany(query, update) {
+        if (update?.$set) {
+          if (lockState.token) return { updated: 0 };
+          lockState.token = update.$set.distribution_lock_token;
+          lockState.at = update.$set.distribution_lock_at;
+          return { updated: 1 };
+        }
+        if (update?.$unset && query?.distribution_lock_token === lockState.token) {
+          lockState.token = '';
+          lockState.at = '';
+          return { updated: 1 };
+        }
+        return { updated: 0 };
+      },
+    },
+  },
+};
+const firstLock = await acquirePatientRequestDistributionLock(lockSvc, request.id);
+assert.ok(firstLock?.token);
+const competingLock = await acquirePatientRequestDistributionLock(lockSvc, request.id);
+assert.equal(competingLock, null);
+assert.equal(await releasePatientRequestDistributionLock(lockSvc, firstLock), true);
+const lockAfterRelease = await acquirePatientRequestDistributionLock(lockSvc, request.id);
+assert.ok(lockAfterRelease?.token);
+assert.equal(await releasePatientRequestDistributionLock(lockSvc, lockAfterRelease), true);
+
 const leadSchema = JSON.parse(await readFile(new URL('../base44/entities/ProviderLead.jsonc', import.meta.url), 'utf8'));
 const contactSchema = JSON.parse(await readFile(new URL('../base44/entities/PatientRequestContact.jsonc', import.meta.url), 'utf8'));
+const requestSchema = JSON.parse(await readFile(new URL('../base44/entities/PatientRequest.jsonc', import.meta.url), 'utf8'));
 for (const forbiddenField of ['contact_name', 'contact_email', 'contact_phone', 'original_message']) {
   assert.equal(leadSchema.properties[forbiddenField], undefined, `${forbiddenField} nu trebuie sa existe in ProviderLead`);
 }
 assert.equal(leadSchema.rls.read.user_condition.role, 'admin');
 assert.ok(contactSchema.properties.provider_request_distribution_consent);
 assert.ok(contactSchema.properties.provider_contact_sharing_consent);
+assert.ok(requestSchema.properties.distribution_lock_token);
+assert.ok(requestSchema.properties.distribution_lock_at);
 
 const functionSource = await readFile(new URL('../base44/functions/authorizePatientRequestDistribution/entry.ts', import.meta.url), 'utf8');
 const eligibilitySource = await readFile(new URL('../shared/providerLeadEligibility.js', import.meta.url), 'utf8');
+const lockSource = await readFile(new URL('../shared/patientRequestDistributionLock.js', import.meta.url), 'utf8');
 const clientSource = await readFile(new URL('../src/lib/patientRequestPersistenceClient.js', import.meta.url), 'utf8');
 const submissionSource = await readFile(new URL('../src/components/intake2/PatientRequestSubmission.jsx', import.meta.url), 'utf8');
 
 assert.match(functionSource, /evaluateProviderLeadEligibility/);
 assert.match(functionSource, /ProviderLead\.bulkCreate/);
+assert.match(functionSource, /acquirePatientRequestDistributionLock/);
+assert.match(functionSource, /releasePatientRequestDistributionLock/);
 assert.match(functionSource, /provider_contact_sharing_consent: false/);
 assert.match(functionSource, /contact_access_state: 'hidden'/);
 assert.match(functionSource, /conversation_access_state: 'locked'/);
 assert.match(functionSource, /access_tier: 'free_preview'/);
 assert.match(eligibilitySource, /request_intake_status/);
+assert.match(lockSource, /PatientRequest\.updateMany/);
+assert.match(lockSource, /distribution_lock_token/);
 assert.match(functionSource, /PatientRequestContact\.filter/);
 assert.doesNotMatch(functionSource, /contact_email:/);
 assert.doesNotMatch(functionSource, /contact_phone:/);
