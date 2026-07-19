@@ -1,6 +1,6 @@
 import React from "react";
 import ProviderLogoReviewStatus from "./ProviderLogoReviewStatus";
-import ProviderProfilePublic from "./ProviderProfilePublic";
+import ProviderProfilePublic from "./ProviderProfilePublic.jsx";
 
 export default function ProviderProfilePublicWithLogoStatus(props) {
   const organizationId = props.overview?.organization?.id
