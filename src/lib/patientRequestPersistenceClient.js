@@ -1,7 +1,7 @@
 import { base44 } from "@/api/base44Client";
 
 export const PATIENT_REQUEST_PROCESSING_CONSENT_VERSION = "patient-request-processing-v1";
-export const PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION = "patient-request-distribution-v1";
+export const PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION = "patient-request-distribution-top3-pro-v2";
 const DRAFT_STORAGE_KEY = "viasee.patient_request_draft.v1";
 const ACCESS_STORAGE_PREFIX = "viasee.patient_request_access.";
 
@@ -65,6 +65,7 @@ function resolveRequestAccessToken(requestId, explicitAccessToken = "") {
 export async function persistPatientRequest({
   idempotencyKey,
   requestDraft,
+  detailedMessage,
   contact,
   results,
   meta,
@@ -72,6 +73,7 @@ export async function persistPatientRequest({
   const response = await base44.functions.invoke("createPatientRequest", {
     idempotency_key: idempotencyKey,
     request_draft: requestDraft,
+    detailed_message: detailedMessage,
     contact,
     consent: {
       processing: true,

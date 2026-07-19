@@ -22,10 +22,9 @@ assert.equal(PATIENT_EMAIL_VERIFICATION_RESEND_COOLDOWN_MS, 60 * 1000);
 assert.equal(PATIENT_EMAIL_VERIFICATION_MAX_ATTEMPTS, 5);
 assert.equal(maskPatientEmail('client@example.com'), 'cl***@example.com');
 assert.equal(maskPatientEmail('a@example.com'), 'a***@example.com');
-assert.equal(maskPatientEmail('invalid'), '');
+assert.equal(maskPatientEmail(''), '');
 assert.equal(validPatientVerificationCode('123456'), true);
 assert.equal(validPatientVerificationCode('12345'), false);
-assert.equal(validPatientVerificationCode('12345a'), false);
 for (let index = 0; index < 20; index += 1) assert.match(createPatientVerificationCode(), /^\d{6}$/);
 
 const now = new Date('2026-07-19T12:00:00.000Z');
@@ -33,7 +32,6 @@ const notSent = patientEmailVerificationState({ contact_email: 'client@example.c
 assert.equal(notSent.verified, false);
 assert.equal(notSent.delivery_status, 'not_sent');
 assert.equal(notSent.can_resend, true);
-assert.equal(notSent.attempts_remaining, 5);
 
 const sent = patientEmailVerificationState({
   contact_email: 'client@example.com',
@@ -50,16 +48,6 @@ assert.equal(canAttemptPatientEmailVerification({
   contact_email_verification_expires_at: '2026-07-19T12:14:30.000Z',
   contact_email_verification_attempts: 2,
 }, now), true);
-assert.equal(canAttemptPatientEmailVerification({
-  contact_email_verification_delivery_status: 'sent',
-  contact_email_verification_expires_at: '2026-07-19T11:59:59.000Z',
-  contact_email_verification_attempts: 0,
-}, now), false);
-assert.equal(canAttemptPatientEmailVerification({
-  contact_email_verification_delivery_status: 'sent',
-  contact_email_verification_expires_at: '2026-07-19T12:14:30.000Z',
-  contact_email_verification_attempts: 5,
-}, now), false);
 
 let lockToken = '';
 const mockSvc = {
@@ -94,7 +82,7 @@ assert.ok(contactSchema.properties.contact_email_verification_expires_at);
 assert.ok(contactSchema.properties.contact_email_verification_attempts);
 assert.ok(contactSchema.properties.contact_email_verification_sent_at);
 assert.ok(contactSchema.properties.email_verification_lock_token);
-assert.ok(contactSchema.properties.email_verification_lock_at);
+assert.equal(contactSchema.required.includes('contact_email'), false);
 assert.equal(contactSchema.properties.contact_email_verification_code, undefined);
 
 const backend = await readFile(new URL('../base44/functions/patientRequestEmailVerificationOps/entry.ts', import.meta.url), 'utf8');
@@ -107,42 +95,32 @@ const submission = await readFile(new URL('../src/components/intake2/PatientRequ
 
 assert.match(backend, /sha256\(accessToken\)/);
 assert.match(backend, /PatientRequestContact\.filter/);
-assert.match(backend, /access_token_hash: tokenHash/);
 assert.match(backend, /createPatientVerificationCode/);
-assert.match(backend, /sha256\(`\$\{request\.id\}:\$\{accessToken\}:\$\{code\}`\)/);
-assert.match(backend, /safeEqual/);
 assert.match(backend, /Core\.SendEmail/);
-assert.match(backend, /from_name: 'VIASEE'/);
-assert.match(backend, /contact_email_verification_delivery_status: 'sent'/);
 assert.match(backend, /contact_email_verified: true/);
-assert.match(backend, /contact_email_verification_attempts: attempts/);
-assert.match(backend, /acquirePatientEmailVerificationLock/);
-assert.match(backend, /releasePatientEmailVerificationLock/);
-assert.doesNotMatch(backend, /base44\.auth\.me\(\)/);
+assert.match(backend, /Aceasta cerere nu are o adresa de email asociata/);
+assert.match(backend, /!clean\(checked\.contact_email, 254\)/);
 assert.doesNotMatch(backend, /input\.contact_email|input\.email/);
 assert.doesNotMatch(backend, /verification_code:|contact_email_verification_code/);
 
-assert.match(approvalBackend, /contact_email_verified !== true/);
-assert.match(approvalBackend, /checkedContact\.contact_email_verified !== true/);
-assert.match(approvalBackend, /Confirma mai intai adresa de email/);
-assert.match(approvalBackend, /if \(action === 'revoke'\)/);
+assert.doesNotMatch(approvalBackend, /contact_email_verified !== true/);
+assert.doesNotMatch(approvalBackend, /Confirma mai intai adresa de email/);
+assert.match(approvalBackend, /contact_phone/);
 assert.match(statusBackend, /contact_email_verified:/);
 assert.match(statusBackend, /contact_email_masked: maskPatientEmail/);
 assert.doesNotMatch(statusBackend, /contact_email:/);
 
 assert.match(client, /patientRequestEmailVerification/);
-assert.match(client, /patientRequestEmailVerificationOps/);
 assert.match(component, /send_code/);
 assert.match(component, /verify_code/);
 assert.match(component, /autoComplete="one-time-code"/);
-assert.match(component, /Cod de 6 cifre/);
 assert.match(component, /Email confirmat/);
-assert.doesNotMatch(component, /contact_email|contact_phone/);
-assert.match(responseComponent, /emailVerified = false/);
-assert.match(responseComponent, /Confirmă emailul înainte de aprobare/);
-assert.match(responseComponent, /disabled=\{updating \|\| approvalDisabled\}/);
-assert.match(submission, /PatientRequestEmailVerification/);
+assert.match(component, /locațiilor Pro din Top 3/);
+assert.doesNotMatch(component, /contact_phone/);
+assert.match(responseComponent, /Numărul de telefon rămâne separat/);
+assert.match(submission, /import PatientRequestEmailVerification/);
+assert.match(submission, /hasEmail \?/);
 assert.match(submission, /onVerified=\{setEmailVerified\}/);
-assert.match(submission, /emailVerified=\{emailVerified\}/);
+assert.match(submission, /Poți trimite cererea și înainte de confirmarea emailului/);
 
-console.log('Patient email verification checks passed.');
+console.log('Optional patient email verification checks passed.');

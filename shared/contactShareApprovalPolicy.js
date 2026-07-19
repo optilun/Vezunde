@@ -1,10 +1,7 @@
-export const CONTACT_SHARE_APPROVAL_CONTRACT_VERSION = 'patient-contact-share-v1';
+export const CONTACT_SHARE_APPROVAL_CONTRACT_VERSION = 'patient-phone-share-v2';
 
 export const CONTACT_SHARE_ALLOWED_FIELDS = Object.freeze([
-  'contact_name',
-  'contact_email',
   'contact_phone',
-  'contact_preference',
 ]);
 
 const APPROVABLE_RESPONSE_TYPES = new Set(['can_help', 'needs_details']);

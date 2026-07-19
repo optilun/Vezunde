@@ -52,8 +52,8 @@ function canonicalServiceKeys(values) {
 }
 
 function normalizeEmail(value) {
-  const email = required(value, 'contact.email', 254).toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  const email = clean(value, 254).toLowerCase();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new PatientRequestValidationError('Adresa de email nu este valida.', 'contact.email');
   }
   return email;
@@ -158,17 +158,31 @@ export function sanitizePatientRequestSubmission(input = {}) {
     throw new PatientRequestValidationError('Codul SIRUTA nu este valid.', 'request_draft.locality_siruta_code');
   }
 
+  const detailedMessage = required(input.detailed_message || draft.detailed_message, 'detailed_message', 2000);
+  if (detailedMessage.length < 10) {
+    throw new PatientRequestValidationError('Descrierea detaliata trebuie sa aiba cel putin 10 caractere.', 'detailed_message');
+  }
+
   const contact = input.contact || {};
   const contactName = required(contact.name || contact.contact_name, 'contact.name', 120);
   if (contactName.length < 2) throw new PatientRequestValidationError('Numele este prea scurt.', 'contact.name');
   const contactEmail = normalizeEmail(contact.email || contact.contact_email);
   const contactPhone = normalizePhone(contact.phone || contact.contact_phone);
-  const contactPreference = CONTACT_PREFERENCES.has(contact.preference || contact.contact_preference)
+  if (!contactEmail && !contactPhone) {
+    throw new PatientRequestValidationError('Completeaza cel putin emailul sau numarul de telefon.', 'contact');
+  }
+  const requestedPreference = CONTACT_PREFERENCES.has(contact.preference || contact.contact_preference)
     ? (contact.preference || contact.contact_preference)
-    : 'email';
-  if (['phone', 'either'].includes(contactPreference) && !contactPhone) {
+    : (contactEmail ? 'email' : 'phone');
+  if (requestedPreference === 'email' && !contactEmail) {
+    throw new PatientRequestValidationError('Emailul este necesar pentru preferinta aleasa.', 'contact.email');
+  }
+  if (requestedPreference === 'phone' && !contactPhone) {
     throw new PatientRequestValidationError('Telefonul este necesar pentru preferinta aleasa.', 'contact.phone');
   }
+  const contactPreference = requestedPreference === 'either' && (!contactEmail || !contactPhone)
+    ? (contactEmail ? 'email' : 'phone')
+    : requestedPreference;
 
   const consent = input.consent || {};
   if (consent.processing !== true) {
@@ -192,6 +206,7 @@ export function sanitizePatientRequestSubmission(input = {}) {
       questionnaire_key: questionnaireKey,
       intent,
       original_message: clean(draft.original_message, 800),
+      detailed_message: detailedMessage,
       service_keys: canonicalServiceKeys(draft.service_keys),
       location_scope: ['locality', 'geo', 'city', 'national'].includes(draft.location_scope) ? draft.location_scope : 'locality',
       city: required(draft.city, 'request_draft.city', 120),
@@ -221,7 +236,7 @@ export function sanitizePatientRequestSubmission(input = {}) {
       contact_preference: contactPreference,
       processing_consent: true,
       processing_consent_version: consent.version,
-      provider_contact_sharing_consent: consent.provider_contact_sharing === true,
+      provider_contact_sharing_consent: false,
     },
     answers: normalizeAnswers(draft.answers, draft.questionnaire_version, questionnaireKey),
     matches,

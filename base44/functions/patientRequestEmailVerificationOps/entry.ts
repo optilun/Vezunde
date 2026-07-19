@@ -79,6 +79,9 @@ async function sendCode(base44, svc, request, contact, accessToken) {
     const checked = await reloadContact(svc, contact.id);
     if (!checked || checked.status !== 'active') return { error: 'Datele de contact nu mai sunt active.', status: 409 };
     const state = patientEmailVerificationState(checked);
+    if (!clean(checked.contact_email, 254)) {
+      return { error: 'Aceasta cerere nu are o adresa de email asociata.', status: 409, state };
+    }
     if (state.verified) return { state, idempotent_replay: true };
     if (!state.can_resend) {
       return { error: 'Un cod a fost trimis recent. Asteapta inainte sa soliciti altul.', status: 429, state };
@@ -140,6 +143,9 @@ async function verifyCode(svc, request, contact, accessToken, submittedCode) {
     const checked = await reloadContact(svc, contact.id);
     if (!checked || checked.status !== 'active') return { error: 'Datele de contact nu mai sunt active.', status: 409 };
     const state = patientEmailVerificationState(checked);
+    if (!clean(checked.contact_email, 254)) {
+      return { error: 'Aceasta cerere nu are o adresa de email asociata.', status: 409, state };
+    }
     if (state.verified) return { state, idempotent_replay: true };
     if (!canAttemptPatientEmailVerification(checked)) {
       const message = state.attempts >= PATIENT_EMAIL_VERIFICATION_MAX_ATTEMPTS

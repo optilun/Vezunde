@@ -12,6 +12,7 @@
     "shared/locationOperationalRegistry.js",
     "shared/locationScopedEntityQuery.js",
     "shared/providerContactAccessPolicy.js",
+    "shared/providerLeadFullDetailsPolicy.js",
     "shared/serviceOperationalTaxonomy.js",
     "shared/serviceOperationalTaxonomyExtended.js",
     "shared/serviceSemanticSearch.js",

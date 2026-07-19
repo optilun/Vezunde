@@ -45,7 +45,6 @@ async function loadAuthorizedRequest(svc, requestId, accessToken) {
 async function eligibleLeadPlans(svc, request) {
   const matches = await svc.entities.RequestMatch.filter({ request_id: request.id }, 'rank', 30);
   const plans = [];
-
   for (const match of matches) {
     const location = await svc.entities.ProviderLocation.get(match.location_id).catch(() => null);
     if (!location) continue;
@@ -54,14 +53,16 @@ async function eligibleLeadPlans(svc, request) {
     if (!eligibility.eligible) continue;
     plans.push({ match, location, eligibility });
   }
-
   return plans;
+}
+
+function isTop3FullDetailLead(lead) {
+  return lead?.access_tier === 'pro_full' && lead?.result_bucket_snapshot === 'top3';
 }
 
 Deno.serve(async (httpRequest) => {
   let distributionLock = null;
   let svc = null;
-
   try {
     const base44 = createClientFromRequest(httpRequest);
     svc = base44.asServiceRole;
@@ -80,7 +81,6 @@ Deno.serve(async (httpRequest) => {
     const authorized = await loadAuthorizedRequest(svc, requestId, accessToken);
     if (authorized.error) return Response.json({ error: authorized.error }, { status: authorized.status });
     const { request, contact } = authorized;
-
     if (request.persistence_state !== 'complete') {
       return Response.json({ error: 'Cererea nu este pregatita pentru distribuire.' }, { status: 409 });
     }
@@ -104,7 +104,8 @@ Deno.serve(async (httpRequest) => {
 
     const existingLeads = await svc.entities.ProviderLead.filter({ request_id: lockedRequest.id }, null, 100);
     if (existingLeads.length > 0) {
-      if (contact.provider_request_distribution_consent !== true) {
+      if (contact.provider_request_distribution_consent !== true
+        || contact.provider_request_distribution_consent_version !== consentVersion) {
         await svc.entities.PatientRequestContact.update(contact.id, {
           provider_request_distribution_consent: true,
           provider_request_distribution_consent_version: consentVersion,
@@ -115,6 +116,7 @@ Deno.serve(async (httpRequest) => {
         success: true,
         idempotent_replay: true,
         lead_count: existingLeads.filter((lead) => lead.delivery_state === 'available').length,
+        top3_full_detail_count: existingLeads.filter(isTop3FullDetailLead).length,
         contact_sharing_enabled: false,
         conversation_enabled: false,
       });
@@ -142,7 +144,7 @@ Deno.serve(async (httpRequest) => {
       profile_control_status_snapshot: location.profile_control_status || '',
       matched_service_keys: eligibility.matched_service_keys,
       preview_summary: buildProviderLeadPreview(lockedRequest),
-      access_tier: 'free_preview',
+      access_tier: match.result_bucket === 'top3' ? 'pro_full' : 'free_preview',
       contact_access_state: 'hidden',
       conversation_access_state: 'locked',
       delivery_state: 'available',
@@ -150,7 +152,11 @@ Deno.serve(async (httpRequest) => {
       eligible_at: now,
       last_revalidated_at: now,
       expires_at: lockedRequest.expires_at || null,
-      eligibility_reasons: ['request_distribution_consent', 'server_revalidated'],
+      eligibility_reasons: [
+        'request_distribution_consent',
+        'server_revalidated',
+        ...(match.result_bucket === 'top3' ? ['top3_pro_full_details_eligible'] : []),
+      ],
     }));
 
     if (leadRows.length > 0) await svc.entities.ProviderLead.bulkCreate(leadRows);
@@ -177,14 +183,16 @@ Deno.serve(async (httpRequest) => {
       }));
     }
 
+    const top3FullDetailCount = leadRows.filter(isTop3FullDetailLead).length;
     return Response.json({
       success: true,
       idempotent_replay: false,
       lead_count: leadRows.length,
+      top3_full_detail_count: top3FullDetailCount,
       contact_sharing_enabled: false,
       conversation_enabled: false,
       message: leadRows.length > 0
-        ? 'Cererea redactionata este disponibila locatiilor eligibile. Datele de contact raman ascunse.'
+        ? 'Rezumatul este disponibil locatiilor eligibile. Locatiile Pro din Top 3 pot vedea numele, mesajul detaliat si emailul verificat. Telefonul ramane ascuns.'
         : 'Cererea a fost salvata, dar momentan nu exista locatii eligibile pentru distribuire.',
     });
   } catch (_error) {

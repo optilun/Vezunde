@@ -7,6 +7,7 @@
     "questionnaire_key": { "type": "string" },
     "intent": { "type": "string" },
     "original_message": { "type": "string" },
+    "detailed_message": { "type": "string" },
     "service_keys": {
       "type": "array",
       "items": { "type": "string" }
@@ -44,6 +45,7 @@
     "requester_user_id": { "type": "string" },
     "contact_record_id": { "type": "string" },
     "contact_email_hash": { "type": "string" },
+    "contact_identity_hash": { "type": "string" },
     "idempotency_key": { "type": "string" },
     "public_reference": { "type": "string" },
     "interpretation_version": { "type": "string" },
