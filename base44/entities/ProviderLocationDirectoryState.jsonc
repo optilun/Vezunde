@@ -77,6 +77,7 @@
       "enum": ["low", "medium", "high"]
     },
     "organization_link_review_note": { "type": "string" },
+    "source_checked_at": { "type": "string", "format": "date-time" },
     "normalized_at": { "type": "string", "format": "date-time" },
     "state_status": {
       "type": "string",
