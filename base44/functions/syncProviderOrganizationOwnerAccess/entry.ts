@@ -1,14 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import {
+  loadOrganizationOwnerScopeResolution,
+  membershipHasOrganizationWideAccess,
+} from '../../../shared/providerOrganizationOwnerScope.js';
 
 function res(body, status = 200) { return Response.json(body, { status }); }
 function normalizeRole(value) {
   if (value === 'owner') return 'organization_owner';
   return ['organization_owner', 'location_manager', 'location_staff'].includes(value) ? value : '';
-}
-function hasOrganizationWideAccess(membership) {
-  return normalizeRole(membership?.role) === 'organization_owner'
-    && membership?.status === 'active'
-    && membership?.organization_wide_access !== false;
 }
 
 async function audit(svc, user, organizationId, created, reactivated, promoted) {
@@ -36,9 +35,16 @@ Deno.serve(async (req) => {
     const payload = await req.json().catch(() => ({}));
 
     const ownMemberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' }, '-created_date', 500);
-    const ownedOrganizationIds = [...new Set(ownMemberships
-      .filter((membership) => hasOrganizationWideAccess(membership) && membership.organization_id)
-      .map((membership) => membership.organization_id))];
+    const ownOrganizationIds = [...new Set(ownMemberships.map((membership) => membership.organization_id).filter(Boolean))];
+    const ownedOrganizationIds = [];
+    for (const organizationId of ownOrganizationIds) {
+      const resolution = await loadOrganizationOwnerScopeResolution(svc, organizationId);
+      if (ownMemberships.some((membership) => membership.organization_id === organizationId
+        && membershipHasOrganizationWideAccess(membership, resolution))) {
+        ownedOrganizationIds.push(organizationId);
+      }
+    }
+
     const requestedOrganizationId = String(payload.organization_id || '').trim();
     const organizationIds = requestedOrganizationId ? [requestedOrganizationId] : ownedOrganizationIds;
     if (user.role !== 'admin' && organizationIds.some((id) => !ownedOrganizationIds.includes(id))) {
@@ -51,8 +57,9 @@ Deno.serve(async (req) => {
     for (const organizationId of organizationIds) {
       const locations = await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, '-created_date', 500);
       const membershipRows = await svc.entities.ProviderMembership.filter({ organization_id: organizationId }, '-created_date', 1000);
+      const resolution = await loadOrganizationOwnerScopeResolution(svc, organizationId);
       const activeOwnerUserIds = [...new Set(membershipRows
-        .filter(hasOrganizationWideAccess)
+        .filter((membership) => membershipHasOrganizationWideAccess(membership, resolution))
         .map((membership) => membership.user_id))];
       const created = [];
       const reactivated = [];
