@@ -104,7 +104,7 @@ export default function PatientRequestEmailVerification({ requestId, accessToken
           <div>
             <p className="text-sm font-bold text-foreground">Email confirmat</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Adresa {verification.email_masked || "asociată cererii"} este verificată. Poți aproba separat accesul la contact pentru fiecare locație care răspunde.
+              Adresa {verification.email_masked || "asociată cererii"} este verificată și poate fi afișată locațiilor Pro din Top 3 care primesc cererea. Telefonul rămâne separat.
             </p>
           </div>
         </div>
@@ -122,7 +122,7 @@ export default function PatientRequestEmailVerification({ requestId, accessToken
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-foreground">Confirmă adresa de email</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Trimitem un cod la {verification?.email_masked || "adresa introdusă"}. Confirmarea este necesară numai înainte să permiți unei locații accesul la datele tale de contact.
+            Trimitem un cod la {verification?.email_masked || "adresa introdusă"}. Până la confirmare, locațiile Pro din Top 3 pot vedea numele și mesajul detaliat, dar emailul rămâne ascuns.
           </p>
 
           {error && (
