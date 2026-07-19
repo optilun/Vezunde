@@ -1,0 +1,52 @@
+{
+  "name": "ProviderSubscription",
+  "type": "object",
+  "properties": {
+    "organization_id": { "type": "string" },
+    "location_id": { "type": "string" },
+    "plan_code": {
+      "type": "string",
+      "enum": ["free", "pro"],
+      "default": "free"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "trialing", "grace_period", "past_due", "canceled", "suspended", "incomplete"],
+      "default": "active"
+    },
+    "billing_mode": {
+      "type": "string",
+      "enum": ["manual", "stripe"],
+      "default": "manual"
+    },
+    "billing_owner_user_id": { "type": "string" },
+    "entitlement_version": { "type": "string" },
+    "feature_keys": { "type": "array", "items": { "type": "string" } },
+    "current_period_start": { "type": "string", "format": "date-time" },
+    "current_period_end": { "type": "string", "format": "date-time" },
+    "trial_ends_at": { "type": "string", "format": "date-time" },
+    "cancel_at_period_end": { "type": "boolean", "default": false },
+    "canceled_at": { "type": "string", "format": "date-time" },
+    "activated_at": { "type": "string", "format": "date-time" },
+    "deactivated_at": { "type": "string", "format": "date-time" },
+    "activated_by_user_id": { "type": "string" },
+    "status_reason": { "type": "string" },
+    "source_reference": { "type": "string" },
+    "stripe_customer_id": { "type": "string" },
+    "stripe_subscription_id": { "type": "string" },
+    "stripe_price_id": { "type": "string" }
+  },
+  "required": [
+    "location_id",
+    "plan_code",
+    "status",
+    "billing_mode",
+    "entitlement_version"
+  ],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}
