@@ -7,6 +7,11 @@ const ROLE_BY_TYPE = {
   optometrist: 'optometrist',
   optician: 'optician',
 };
+const PROFESSIONAL_TYPE_LABELS = {
+  ophthalmologist: 'Medic oftalmolog',
+  optometrist: 'Optometrist',
+  optician: 'Optician',
+};
 
 function response(body, status = 200) {
   return Response.json(body, { status });
@@ -58,6 +63,9 @@ function safeInvitation(invitation) {
     expires_at: invitation.expires_at || null,
     accepted_at: invitation.accepted_at || null,
     professional_id: invitation.professional_id || null,
+    delivery_status: invitation.delivery_status || 'pending',
+    delivery_provider: invitation.delivery_provider || '',
+    last_delivery_attempt_at: invitation.last_delivery_attempt_at || null,
     created_date: invitation.created_date || null,
   };
 }
@@ -99,6 +107,46 @@ async function writeAudit(svc, user, record) {
   });
 }
 
+function invitationEmail({ locationName, professionalType, invitationLink, expiresAt }) {
+  const professionalLabel = PROFESSIONAL_TYPE_LABELS[professionalType] || 'Specialist';
+  const expiryText = new Date(expiresAt).toLocaleDateString('ro-RO');
+  return {
+    subject: `Invitatie profesionala VIASEE - ${locationName}`,
+    body: [
+      'Buna ziua,',
+      '',
+      `Ai fost invitat ca ${professionalLabel} sa confirmi asocierea profesionala cu locatia ${locationName}.`,
+      '',
+      'Accepta invitatia folosind linkul de mai jos:',
+      invitationLink,
+      '',
+      `Invitatia este valabila pana la ${expiryText}.`,
+      'Acceptarea nu acorda acces administrativ si nu publica automat profilul.',
+      'Trebuie sa folosesti un cont cu aceeasi adresa de email.',
+      '',
+      'Echipa VIASEE',
+    ].join('\n'),
+  };
+}
+
+async function deliverInvitation(base44, { to, subject, body }) {
+  try {
+    await base44.integrations.Core.SendEmail({
+      to,
+      subject,
+      body,
+      from_name: 'VIASEE',
+    });
+    return { sent: true, provider: 'base44', error: '' };
+  } catch (error) {
+    return {
+      sent: false,
+      provider: 'manual',
+      error: cleanString(error?.message || 'Trimiterea invitatiei prin Base44 a esuat').slice(0, 500),
+    };
+  }
+}
+
 async function listInvitations(svc, user, payload) {
   const locationId = cleanString(payload.location_id);
   if (!locationId) return response({ error: 'location_id este obligatoriu' }, 400);
@@ -118,7 +166,7 @@ async function listInvitations(svc, user, payload) {
   return response({ invitations: invitations.map(safeInvitation) });
 }
 
-async function createInvitation(svc, user, payload, req) {
+async function createInvitation(base44, svc, user, payload, req) {
   const locationId = cleanString(payload.location_id);
   const invitedEmail = normalizeEmail(payload.invited_email || payload.email);
   const professionalType = cleanString(payload.professional_type);
@@ -143,6 +191,7 @@ async function createInvitation(svc, user, payload, req) {
 
   const rawToken = createToken();
   const expiresInDays = Math.min(Math.max(Number(payload.expires_in_days || 14), 1), 30);
+  const expiresAt = new Date(Date.now() + expiresInDays * 86400000).toISOString();
   const invitation = await svc.entities.ProfessionalInvitation.create({
     organization_id: access.location.organization_id || null,
     location_id: locationId,
@@ -151,28 +200,60 @@ async function createInvitation(svc, user, payload, req) {
     invited_by_user_id: user.id,
     status: 'pending',
     secure_token_hash: await hashToken(rawToken),
-    expires_at: new Date(Date.now() + expiresInDays * 86400000).toISOString(),
+    expires_at: expiresAt,
+    delivery_status: 'pending',
   });
+
+  const baseUrl = cleanString(payload.invitation_base_url || payload.app_base_url || new URL(req.url).origin).replace(/\/$/, '');
+  const invitationLink = `${baseUrl}/accept-professional-invitation?token=${encodeURIComponent(rawToken)}`;
+  const locationName = access.location.public_display_name || access.location.name || 'locatia VIASEE';
+  const copy = invitationEmail({
+    locationName,
+    professionalType,
+    invitationLink,
+    expiresAt,
+  });
+  const delivery = await deliverInvitation(base44, {
+    to: invitedEmail,
+    ...copy,
+  });
+  const attemptedAt = new Date().toISOString();
+  const deliveryUpdate = {
+    delivery_status: delivery.sent ? 'sent' : 'manual_required',
+    delivery_provider: delivery.provider,
+    last_delivery_attempt_at: attemptedAt,
+    delivery_error: delivery.sent ? '' : delivery.error,
+  };
+  await svc.entities.ProfessionalInvitation.update(invitation.id, deliveryUpdate);
+  const updatedInvitation = { ...invitation, ...deliveryUpdate };
 
   await writeAudit(svc, user, {
     entity_type: 'ProfessionalInvitation',
     entity_id: invitation.id,
     action_type: 'create_professional_invitation',
-    changed_fields: ['status', 'location_id', 'professional_type'],
+    changed_fields: ['status', 'location_id', 'professional_type', 'delivery_status', 'delivery_provider'],
     next: {
       status: 'pending',
       location_id: locationId,
       professional_type: professionalType,
       invited_email_masked: maskEmail(invitedEmail),
+      delivery_status: deliveryUpdate.delivery_status,
+      delivery_provider: deliveryUpdate.delivery_provider,
     },
-    note: 'Invitatie profesionala creata. Nu acorda acces operational la locatie.',
+    note: delivery.sent
+      ? 'Invitatie profesionala creata si trimisa prin infrastructura Base44. Nu acorda acces operational la locatie.'
+      : 'Invitatie profesionala creata, dar trimiterea a esuat. Linkul trebuie transmis manual.',
   });
 
-  const baseUrl = cleanString(payload.invitation_base_url || payload.app_base_url || new URL(req.url).origin).replace(/\/$/, '');
   return response({
-    invitation: safeInvitation(invitation),
-    invitation_link: `${baseUrl}/accept-professional-invitation?token=${encodeURIComponent(rawToken)}`,
-    email_sent: false,
+    invitation: safeInvitation(updatedInvitation),
+    invitation_link: invitationLink,
+    email_sent: delivery.sent,
+    delivery_status: deliveryUpdate.delivery_status,
+    delivery_provider: deliveryUpdate.delivery_provider,
+    delivery_message: delivery.sent
+      ? 'Invitatia profesionala a fost trimisa prin email.'
+      : 'Invitatia a fost creata. Trimite manual linkul afisat.',
   });
 }
 
@@ -349,7 +430,7 @@ Deno.serve(async (req) => {
     const action = cleanString(payload.action);
 
     if (action === 'list') return await listInvitations(svc, user, payload);
-    if (action === 'create') return await createInvitation(svc, user, payload, req);
+    if (action === 'create') return await createInvitation(base44, svc, user, payload, req);
     if (action === 'revoke') return await revokeInvitation(svc, user, payload);
     if (action === 'accept') return await acceptInvitation(svc, user, payload, req);
 

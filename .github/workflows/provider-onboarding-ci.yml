@@ -14,6 +14,7 @@ on:
       - "src/pages/ForgotPassword.jsx"
       - "src/pages/ResetPassword.jsx"
       - "src/pages/MyAccount.jsx"
+      - "src/pages/AcceptProfessionalInvitation.jsx"
       - "scripts/verify-account-workspace-loading.mjs"
       - "src/lib/postLoginRedirect.js"
       - "src/lib/workspaceNav.js"
@@ -23,6 +24,7 @@ on:
       - "shared/providerLocationIdentityResolution.js"
       - "shared/providerAccountWorkflowContract.js"
       - "base44/entities/ProviderMemberInvitation.jsonc"
+      - "base44/entities/ProfessionalInvitation.jsonc"
       - "base44/entities/ProviderOrganization.jsonc"
       - "base44/functions/submitProviderClaim/**"
       - "base44/functions/getClaimableProviderLocations/**"
@@ -31,6 +33,7 @@ on:
       - "base44/functions/saveProviderRoutineProfile/**"
       - "base44/functions/providerLocationIdentityResolutionOps/**"
       - "base44/functions/createProviderMemberInvitation/**"
+      - "base44/functions/professionalInvitationOps/**"
       - "base44/functions/getMyProviderMembers/**"
       - "base44/functions/submitProviderLogoForReview/**"
       - "base44/functions/getProviderLogoReviewStatus/**"
@@ -39,6 +42,7 @@ on:
       - "scripts/verify-provider-opening-hours.mjs"
       - "scripts/verify-provider-location-identity-resolution.mjs"
       - "scripts/verify-provider-invitation-delivery.mjs"
+      - "scripts/verify-professional-invitation-delivery.mjs"
       - "scripts/verify-provider-logo-review-status.mjs"
       - "scripts/verify-provider-account-workflow-e2e.mjs"
       - "scripts/verify-provider-location-access-scope.mjs"
@@ -70,6 +74,8 @@ jobs:
         run: npm run test:provider-location-identity
       - name: Provider invitation delivery checks
         run: npm run test:provider-invitation-delivery
+      - name: Professional invitation delivery checks
+        run: node scripts/verify-professional-invitation-delivery.mjs
       - name: Provider logo review checks
         run: npm run test:provider-logo-review
       - name: Provider account workflow contract E2E
