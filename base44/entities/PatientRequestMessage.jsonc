@@ -1,0 +1,43 @@
+{
+  "name": "PatientRequestMessage",
+  "type": "object",
+  "properties": {
+    "message_contract_version": { "type": "string" },
+    "conversation_id": { "type": "string" },
+    "request_id": { "type": "string" },
+    "lead_id": { "type": "string" },
+    "organization_id": { "type": "string" },
+    "location_id": { "type": "string" },
+    "sender_type": {
+      "type": "string",
+      "enum": ["patient", "provider"]
+    },
+    "sender_user_id": { "type": "string" },
+    "client_message_id": { "type": "string" },
+    "body": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["active", "removed"],
+      "default": "active"
+    },
+    "sent_at": { "type": "string", "format": "date-time" }
+  },
+  "required": [
+    "message_contract_version",
+    "conversation_id",
+    "request_id",
+    "lead_id",
+    "location_id",
+    "sender_type",
+    "client_message_id",
+    "body",
+    "status",
+    "sent_at"
+  ],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

@@ -68,6 +68,7 @@ assert.equal(declined.contact_share_status, 'not_approved');
 const backend = await readFile(new URL('../base44/functions/getPatientRequestStatus/entry.ts', import.meta.url), 'utf8');
 const client = await readFile(new URL('../src/lib/patientRequestPersistenceClient.js', import.meta.url), 'utf8');
 const component = await readFile(new URL('../src/components/intake2/PatientRequestResponseStatus.jsx', import.meta.url), 'utf8');
+const chatComponent = await readFile(new URL('../src/components/intake2/PatientRequestChat.jsx', import.meta.url), 'utf8');
 const submission = await readFile(new URL('../src/components/intake2/PatientRequestSubmission.jsx', import.meta.url), 'utf8');
 
 assert.match(backend, /sha256\(accessToken\)/);
@@ -81,13 +82,18 @@ assert.doesNotMatch(backend, /base44\.auth\.me\(\)/);
 assert.doesNotMatch(backend, /contact_phone:|original_message:|detailed_message:|responder_user_id:/);
 
 assert.match(client, /getPatientRequestStatus/);
+assert.match(client, /patientControlledChat/);
 assert.match(component, /Verifică răspunsurile/);
-assert.match(component, /Numărul de telefon rămâne separat/);
+assert.match(component, /controlezi separat telefonul și deschiderea chatului/);
 assert.match(component, /Permite acestei locații accesul la telefon/);
 assert.match(component, /Retrage accesul la telefon/);
 assert.match(component, /status\.contact_phone_available === true/);
+assert.match(component, /<PatientRequestChat/);
 assert.doesNotMatch(component, /response\.contact_phone|contact_phone\s*:|original_message|detailed_message|responder_user_id/);
+assert.match(chatComponent, /Deschide conversația/);
+assert.match(chatComponent, /Nu introduce telefon, email sau linkuri/);
+assert.doesNotMatch(chatComponent, /base44\.entities\.PatientRequestMessage|base44\.entities\.PatientRequestConversation/);
 assert.match(submission, /PatientRequestResponseStatus/);
 assert.match(submission, /requestId=\{success\.request_id\}/);
 
-console.log('Patient request status and phone sharing checks passed.');
+console.log('Patient request status, phone sharing and controlled chat checks passed.');

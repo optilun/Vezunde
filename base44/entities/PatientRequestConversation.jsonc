@@ -1,0 +1,50 @@
+{
+  "name": "PatientRequestConversation",
+  "type": "object",
+  "properties": {
+    "conversation_contract_version": { "type": "string" },
+    "request_id": { "type": "string" },
+    "lead_id": { "type": "string" },
+    "organization_id": { "type": "string" },
+    "location_id": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["open", "closed"],
+      "default": "open"
+    },
+    "opened_by": {
+      "type": "string",
+      "enum": ["patient"],
+      "default": "patient"
+    },
+    "opened_at": { "type": "string", "format": "date-time" },
+    "reopened_at": { "type": "string", "format": "date-time" },
+    "closed_at": { "type": "string", "format": "date-time" },
+    "closed_by": {
+      "type": "string",
+      "enum": ["patient", "provider", "system"]
+    },
+    "last_message_at": { "type": "string", "format": "date-time" },
+    "patient_last_message_at": { "type": "string", "format": "date-time" },
+    "provider_last_message_at": { "type": "string", "format": "date-time" },
+    "patient_last_read_at": { "type": "string", "format": "date-time" },
+    "provider_last_read_at": { "type": "string", "format": "date-time" },
+    "patient_unread_count": { "type": "number", "default": 0 },
+    "provider_unread_count": { "type": "number", "default": 0 },
+    "message_lock_token": { "type": "string" },
+    "message_lock_at": { "type": "string", "format": "date-time" }
+  },
+  "required": [
+    "conversation_contract_version",
+    "request_id",
+    "lead_id",
+    "location_id",
+    "status"
+  ],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

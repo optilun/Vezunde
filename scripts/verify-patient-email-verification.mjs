@@ -91,6 +91,7 @@ const statusBackend = await readFile(new URL('../base44/functions/getPatientRequ
 const client = await readFile(new URL('../src/lib/patientRequestPersistenceClient.js', import.meta.url), 'utf8');
 const component = await readFile(new URL('../src/components/intake2/PatientRequestEmailVerification.jsx', import.meta.url), 'utf8');
 const responseComponent = await readFile(new URL('../src/components/intake2/PatientRequestResponseStatus.jsx', import.meta.url), 'utf8');
+const chatComponent = await readFile(new URL('../src/components/intake2/PatientRequestChat.jsx', import.meta.url), 'utf8');
 const submission = await readFile(new URL('../src/components/intake2/PatientRequestSubmission.jsx', import.meta.url), 'utf8');
 
 assert.match(backend, /sha256\(accessToken\)/);
@@ -117,10 +118,12 @@ assert.match(component, /autoComplete="one-time-code"/);
 assert.match(component, /Email confirmat/);
 assert.match(component, /locațiilor Pro din Top 3/);
 assert.doesNotMatch(component, /contact_phone/);
-assert.match(responseComponent, /Numărul de telefon rămâne separat/);
+assert.match(responseComponent, /controlezi separat telefonul și deschiderea chatului/);
+assert.match(responseComponent, /<PatientRequestChat/);
+assert.match(chatComponent, /Nu introduce telefon, email sau linkuri/);
 assert.match(submission, /import PatientRequestEmailVerification/);
 assert.match(submission, /hasEmail \?/);
 assert.match(submission, /onVerified=\{setEmailVerified\}/);
 assert.match(submission, /Poți trimite cererea și înainte de confirmarea emailului/);
 
-console.log('Optional patient email verification checks passed.');
+console.log('Optional patient email verification and controlled chat checks passed.');
