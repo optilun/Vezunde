@@ -32,3 +32,10 @@ export function requestedRoleForRelationship(relationship) {
 export function requestedLocationRoleForRelationship(relationship) {
   return LOCATION_REQUESTED_ROLE_BY_RELATIONSHIP[relationship] || "location_staff";
 }
+
+export function requestedRoleForClaimScope(relationship, claimScope) {
+  if (claimScope === "organization" && ["owner", "organization_representative"].includes(relationship)) {
+    return "organization_owner";
+  }
+  return requestedLocationRoleForRelationship(relationship);
+}
