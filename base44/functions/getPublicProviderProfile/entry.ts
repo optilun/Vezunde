@@ -127,7 +127,15 @@ Deno.serve(async (req) => {
     if (!locationId) return Response.json({ error: 'location_id este obligatoriu' }, { status: 400 });
 
     const location = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
-    const publicDisclosure = location ? getPublicLocationDisclosure(location) : null;
+    const directoryStates = location
+      ? await svc.entities.ProviderLocationDirectoryState.filter(
+        { location_id: location.id, state_status: 'active' },
+        '-normalized_at',
+        1,
+      ).catch(() => [])
+      : [];
+    const directoryRecord = location ? { ...location, ...(directoryStates[0] || {}) } : null;
+    const publicDisclosure = directoryRecord ? getPublicLocationDisclosure(directoryRecord) : null;
     const controlStatus = publicDisclosure?.profile_control_status || null;
     if (
       !location
