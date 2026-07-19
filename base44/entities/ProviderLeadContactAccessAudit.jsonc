@@ -1,0 +1,38 @@
+{
+  "name": "ProviderLeadContactAccessAudit",
+  "type": "object",
+  "properties": {
+    "lead_id": { "type": "string" },
+    "request_id": { "type": "string" },
+    "organization_id": { "type": "string" },
+    "location_id": { "type": "string" },
+    "accessor_user_id": { "type": "string" },
+    "access_contract_version": { "type": "string" },
+    "outcome": {
+      "type": "string",
+      "enum": ["granted", "denied"]
+    },
+    "reason": { "type": "string" },
+    "accessed_fields": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "entitlement_plan_code": { "type": "string" },
+    "approval_contract_version": { "type": "string" },
+    "accessed_at": { "type": "string", "format": "date-time" }
+  },
+  "required": [
+    "lead_id",
+    "location_id",
+    "accessor_user_id",
+    "access_contract_version",
+    "outcome",
+    "accessed_at"
+  ],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}
