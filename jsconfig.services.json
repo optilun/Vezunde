@@ -10,7 +10,6 @@
     "shared/serviceOperationalTaxonomy.js",
     "shared/serviceOperationalTaxonomyExtended.js",
     "shared/serviceSemanticSearch.js",
-    "shared/patientNeedInterpretation.js",
     "shared/serviceConfigurationPayload.js",
     "shared/serviceConfigurationPayloadExtended.js",
     "shared/servicePrerequisiteEngine.js",
@@ -22,12 +21,8 @@
     "src/lib/providerLocationFunctionalUnits.js",
     "src/lib/serviceOperationalTaxonomy.js",
     "src/lib/serviceSemanticSearch.js",
-    "src/lib/providerSemanticSearch.js",
     "src/lib/patientIntentConfirmation.js",
-    "src/lib/intentRegistry.js",
-    "src/lib/vezunde.js",
-    "src/components/intake2/ConversationalCard.jsx",
-    "src/components/intake2/PatientIntentConfirmation.jsx"
+    "src/lib/vezunde.js"
   ],
   "exclude": [
     "node_modules",
