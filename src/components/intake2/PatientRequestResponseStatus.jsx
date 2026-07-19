@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Clock3, ExternalLink, HelpCircle, Loader2, Phone, RefreshCw, Store, UserCheck, UserX, XCircle } from "lucide-react";
 import { getPatientRequestStatus, managePatientContactShareApproval } from "@/lib/patientRequestPersistenceClient";
+import PatientRequestChat from "./PatientRequestChat";
 
 const RESPONSE_PRESENTATION = {
   can_help: { icon: CheckCircle2, title: "Locația poate ajuta", description: "Locația a confirmat că poate analiza cererea ta." },
@@ -55,7 +56,7 @@ export default function PatientRequestResponseStatus({ requestId, accessToken })
         <div>
           <h4 className="text-sm font-bold text-foreground">Răspunsurile locațiilor</h4>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Locațiile Pro din Top 3 pot vedea numele, mesajul și emailul verificat conform acordului de distribuire. Numărul de telefon rămâne separat și îl poți aproba pentru fiecare locație.
+            Locațiile Pro din Top 3 pot vedea numele, mesajul și emailul verificat. Tu controlezi separat telefonul și deschiderea chatului pentru fiecare locație.
           </p>
         </div>
         <button type="button" onClick={() => void load()} disabled={loading || Boolean(updatingLocationId)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-60">
@@ -98,7 +99,7 @@ export default function PatientRequestResponseStatus({ requestId, accessToken })
                             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                               {approved
                                 ? "Doar această locație poate vedea numărul tău de telefon. Îl poți retrage oricând."
-                                : "Aprobarea oferă numai acestei locații acces la numărul de telefon. Numele și emailul nu sunt controlate de acest acord."}
+                                : "Aprobarea oferă numai acestei locații acces la numărul de telefon. Chatul nu primește automat această informație."}
                             </p>
                             <button type="button" onClick={() => void updatePhoneShare(response.location_id, approved ? "revoke" : "approve")} disabled={updating} className={`mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full px-4 text-xs font-bold disabled:opacity-60 sm:w-auto ${approved ? "border border-border bg-background text-foreground hover:bg-secondary" : "bg-foreground text-background hover:opacity-90"}`}>
                               {updating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Phone className="h-3.5 w-3.5" />}
@@ -108,6 +109,14 @@ export default function PatientRequestResponseStatus({ requestId, accessToken })
                         </div>
                       </div>
                     )}
+
+                    <PatientRequestChat
+                      requestId={requestId}
+                      accessToken={accessToken || ""}
+                      locationId={response.location_id}
+                      locationName={response.location_name}
+                      responseType={response.response_type}
+                    />
 
                     {response.profile_available && <a href={`/furnizor/${response.location_id}`} className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">Vezi profilul public <ExternalLink className="h-3.5 w-3.5" /></a>}
                   </div>
