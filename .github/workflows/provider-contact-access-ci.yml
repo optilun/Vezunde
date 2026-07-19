@@ -1,0 +1,45 @@
+name: Provider Approved Contact Access
+
+on:
+  pull_request:
+    paths:
+      - "shared/providerContactAccessPolicy.js"
+      - "base44/entities/ProviderLeadContactAccessAudit.jsonc"
+      - "base44/functions/providerLeadContactAccessOps/entry.ts"
+      - "scripts/verify-provider-contact-access.mjs"
+      - ".github/workflows/provider-contact-access-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify provider contact access contract
+        run: node scripts/verify-provider-contact-access.mjs
+      - name: Verify existing service regressions
+        run: npm run test:services
+      - name: Lint contact access scope
+        run: >-
+          npx eslint
+          shared/providerContactAccessPolicy.js
+          base44/functions/providerLeadContactAccessOps/entry.ts
+          scripts/verify-provider-contact-access.mjs
+          --quiet
+      - name: Repository typecheck
+        run: npm run typecheck
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
