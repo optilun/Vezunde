@@ -10,5 +10,7 @@ assert.match(source, /Account workspace load failed/, "Workspace failures must b
 assert.match(source, /Nu am putut încărca contul/, "The account must expose a recoverable error state");
 assert.match(source, /onClick=\{\(\) => void load\(\)\}/, "The recoverable state must provide retry");
 assert.match(source, /loadRequestRef/, "Overlapping workspace refreshes must ignore stale responses");
+assert.match(source, /hasWorkspaceDataRef/, "Refreshes must preserve the loaded workspace instead of remounting the account");
+assert.match(source, /if \(initialRequest\) setLoading\(true\)/, "Only the initial account load may show the full-page loading state");
 
 console.log("Account workspace loading regression checks passed.");
