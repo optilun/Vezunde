@@ -15,6 +15,10 @@ import {
   acquireContactShareApprovalLock,
   releaseContactShareApprovalLock,
 } from '../../../shared/contactShareApprovalLock.js';
+import {
+  acquireControlledChatMessageLock,
+  releaseControlledChatMessageLock,
+} from '../../../shared/controlledChatLock.js';
 import { notifyPatientProviderResponse } from '../../../shared/leadCommunicationNotifications.js';
 
 function res(body, status = 200) {
@@ -82,14 +86,10 @@ Deno.serve(async (req) => {
         location_id: locationId,
         status: 'active',
       }, '-updated_date', 500);
-      return res({
-        entitlement: access.entitlement,
-        responses: rows.map(sanitizeProviderLeadResponse),
-      });
+      return res({ entitlement: access.entitlement, responses: rows.map(sanitizeProviderLeadResponse) });
     }
 
     if (action !== 'submit') return res({ error: 'Actiune necunoscuta.' }, 400);
-
     const leadId = clean(input.lead_id, 120);
     const responseType = normalizeProviderLeadResponseType(input.response_type);
     if (!leadId) return res({ error: 'lead_id este obligatoriu.' }, 400);
@@ -97,18 +97,29 @@ Deno.serve(async (req) => {
 
     const initialLead = await loadLead(svc, leadId, locationId);
     if (initialLead.error) return res({ error: initialLead.error }, initialLead.status);
-
     const lock = await acquireProviderLeadResponseLock(svc, leadId);
     if (!lock) return res({ error: 'Raspunsul este actualizat in alta sesiune. Reincearca.' }, 409);
     let contactLock = null;
+    let conversationLock = null;
 
     try {
       const checked = await loadLead(svc, leadId, locationId);
       if (checked.error) return res({ error: checked.error }, checked.status);
       const lead = checked.lead;
+      let openConversation = null;
       if (responseType === 'cannot_help') {
         contactLock = await acquireContactShareApprovalLock(svc, lead.id);
         if (!contactLock) return res({ error: 'Acordul pentru contact este actualizat in alta sesiune. Reincearca.' }, 409);
+        const conversations = await svc.entities.PatientRequestConversation.filter({
+          lead_id: lead.id,
+          location_id: locationId,
+          status: 'open',
+        }, '-updated_date', 5);
+        openConversation = conversations[0] || null;
+        if (openConversation) {
+          conversationLock = await acquireControlledChatMessageLock(svc, openConversation.id);
+          if (!conversationLock) return res({ error: 'Conversatia este actualizata in alta sesiune. Reincearca.' }, 409);
+        }
       }
 
       const now = new Date().toISOString();
@@ -134,8 +145,7 @@ Deno.serve(async (req) => {
         ? await svc.entities.ProviderLeadResponse.update(existing.id, payload)
         : await svc.entities.ProviderLeadResponse.create(payload);
 
-      const duplicates = activeRows.slice(1);
-      await Promise.all(duplicates.map((row) => svc.entities.ProviderLeadResponse.update(row.id, {
+      await Promise.all(activeRows.slice(1).map((row) => svc.entities.ProviderLeadResponse.update(row.id, {
         status: 'withdrawn',
         withdrawn_at: now,
         withdrawn_by_user_id: user.id,
@@ -152,6 +162,13 @@ Deno.serve(async (req) => {
           allowed_contact_fields: [],
           revoked_at: now,
         })));
+        if (openConversation) {
+          await svc.entities.PatientRequestConversation.update(openConversation.id, {
+            status: 'closed',
+            closed_at: now,
+            closed_by: 'system',
+          });
+        }
       }
 
       await svc.entities.ProviderLead.update(lead.id, {
@@ -161,6 +178,7 @@ Deno.serve(async (req) => {
           contact_access_state: 'revoked',
           conversation_access_state: 'locked',
           last_contact_approval_at: now,
+          last_conversation_at: now,
         } : {}),
       });
 
@@ -182,12 +200,11 @@ Deno.serve(async (req) => {
         entitlement: access.entitlement,
         response: sanitizeProviderLeadResponse(response),
         lead_status: providerLeadStatusForResponse(responseType),
-        contact_access_state: responseType === 'cannot_help'
-          ? 'revoked'
-          : (lead.contact_access_state || 'hidden'),
-        conversation_access_state: 'locked',
+        contact_access_state: responseType === 'cannot_help' ? 'revoked' : (lead.contact_access_state || 'hidden'),
+        conversation_access_state: responseType === 'cannot_help' ? 'locked' : (lead.conversation_access_state || 'locked'),
       });
     } finally {
+      if (conversationLock) await releaseControlledChatMessageLock(svc, conversationLock);
       if (contactLock) await releaseContactShareApprovalLock(svc, contactLock);
       await releaseProviderLeadResponseLock(svc, lock);
     }
