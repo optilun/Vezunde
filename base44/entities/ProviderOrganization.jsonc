@@ -26,6 +26,110 @@
         "future_b2b_distributor"
       ]
     },
+    "directory_external_key": {
+      "type": "string",
+      "rls": {
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
+    "directory_source_version": {
+      "type": "string",
+      "rls": {
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
+    "organization_type_code": {
+      "type": "string",
+      "enum": [
+        "independent_optical_store",
+        "optical_chain",
+        "ophthalmology_clinic",
+        "ophthalmology_office",
+        "healthcare_network",
+        "multi_specialty_healthcare_provider",
+        "public_healthcare_institution",
+        "independent_professional",
+        "optical_laboratory",
+        "b2b_distributor",
+        "other"
+      ]
+    },
+    "control_status": {
+      "type": "string",
+      "enum": [
+        "directory",
+        "claimed",
+        "verified",
+        "suspended"
+      ],
+      "default": "directory"
+    },
+    "publication_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "published",
+        "hidden",
+        "archived"
+      ],
+      "default": "draft"
+    },
+    "data_quality_status": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low",
+        "conflict"
+      ],
+      "default": "low",
+      "rls": {
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
+    "source_checked_at": {
+      "type": "string",
+      "format": "date-time",
+      "rls": {
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
     "public_display_name": {
       "type": "string"
     },
