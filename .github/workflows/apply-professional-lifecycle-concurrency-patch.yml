@@ -30,7 +30,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add \
+            base44/entities/User.jsonc \
+            base44/functions/professionalInvitationOps/entry.ts \
+            base44/functions/manageMyProfessionalProfile/entry.ts \
+            shared/professionalLifecycleLock.js \
+            scripts/verify-professional-lifecycle-concurrency.mjs
           if git diff --cached --quiet; then
             exit 0
           fi
