@@ -1,0 +1,59 @@
+name: Patient Email Verification
+
+on:
+  pull_request:
+    paths:
+      - "shared/patientEmailVerificationPolicy.js"
+      - "shared/patientEmailVerificationLock.js"
+      - "base44/entities/PatientRequestContact.jsonc"
+      - "base44/functions/patientRequestEmailVerificationOps/entry.ts"
+      - "base44/functions/managePatientContactShareApproval/entry.ts"
+      - "base44/functions/getPatientRequestStatus/entry.ts"
+      - "src/lib/patientRequestPersistenceClient.js"
+      - "src/components/intake2/PatientRequestEmailVerification.jsx"
+      - "src/components/intake2/PatientRequestResponseStatus.jsx"
+      - "src/components/intake2/PatientRequestSubmission.jsx"
+      - "scripts/verify-patient-email-verification.mjs"
+      - ".github/workflows/patient-email-verification-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify patient email verification contract
+        run: node scripts/verify-patient-email-verification.mjs
+      - name: Verify existing service regressions
+        run: npm run test:services
+      - name: Lint changed verification scope
+        run: >-
+          npx eslint
+          shared/patientEmailVerificationPolicy.js
+          shared/patientEmailVerificationLock.js
+          base44/functions/patientRequestEmailVerificationOps/entry.ts
+          base44/functions/managePatientContactShareApproval/entry.ts
+          base44/functions/getPatientRequestStatus/entry.ts
+          src/lib/patientRequestPersistenceClient.js
+          src/components/intake2/PatientRequestEmailVerification.jsx
+          src/components/intake2/PatientRequestResponseStatus.jsx
+          src/components/intake2/PatientRequestSubmission.jsx
+          scripts/verify-patient-email-verification.mjs
+          --quiet
+      - name: Repository typecheck
+        run: npm run typecheck
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
