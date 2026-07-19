@@ -103,7 +103,8 @@ assert.match(component, /getProviderEntitlement/);
 assert.match(component, /providerLeadResponseOps/);
 assert.match(component, /provider_leads\.respond/);
 assert.match(component, /response_type: responseType/);
-assert.match(component, /Contactul și conversația sunt blocate/);
+assert.match(component, /Conversația rămâne blocată/);
+assert.match(component, /Contactul se deschide numai după acordul clientului/);
 assert.doesNotMatch(component, /<textarea|contentEditable/);
 assert.doesNotMatch(component, /contact_email|contact_phone|original_message|PatientRequestContact/);
 
