@@ -5,9 +5,9 @@ const DRAFT_STORAGE_KEY = "viasee.patient_request_draft.v1";
 const ACCESS_STORAGE_PREFIX = "viasee.patient_request_access.";
 
 export function createPatientRequestIdempotencyKey() {
-  if (typeof crypto?.randomUUID === "function") return `patient:${crypto.randomUUID()}`;
+  if (typeof globalThis.crypto?.randomUUID === "function") return `patient:${globalThis.crypto.randomUUID()}`;
   const bytes = new Uint8Array(24);
-  crypto.getRandomValues(bytes);
+  globalThis.crypto.getRandomValues(bytes);
   return `patient:${Array.from(bytes).map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 }
 
@@ -62,9 +62,7 @@ export async function persistPatientRequest({
   });
   const data = response?.data || {};
   if (data.error) {
-    const error = new Error(data.error);
-    error.field = data.field || "";
-    throw error;
+    throw Object.assign(new Error(data.error), { field: data.field || "" });
   }
   storePatientRequestAccess(data.request_id, data.request_access_token);
   return data;
