@@ -1,6 +1,6 @@
 export const PROVIDER_LEAD_CONTRACT_VERSION = 'provider-lead-v1';
 export const PROVIDER_LEAD_ELIGIBILITY_POLICY_VERSION = 'provider-lead-eligibility-v1';
-export const PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION = 'patient-request-distribution-v1';
+export const PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION = 'patient-request-distribution-top3-pro-v2';
 
 const SPECIALIZED_CONFIRMATION_LEVELS = new Set(['vezunde_verified']);
 const GENERAL_CONFIRMATION_LEVELS = new Set(['provider_confirmed', 'vezunde_verified']);
