@@ -1,16 +1,26 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Clock3, Inbox, Loader2, LockKeyhole, MapPin, RefreshCw, Sparkles } from "lucide-react";
+import { CheckCircle2, Clock3, HelpCircle, Inbox, Loader2, LockKeyhole, MapPin, RefreshCw, Sparkles, XCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const FILTERS = [
   { key: "all", label: "Toate" },
   { key: "new", label: "Noi" },
   { key: "viewed", label: "Văzute" },
+  { key: "interested", label: "Putem ajuta" },
+  { key: "needs_details", label: "Detalii necesare" },
 ];
+
+const RESPONSE_OPTIONS = [
+  { key: "can_help", label: "Putem ajuta", icon: CheckCircle2 },
+  { key: "needs_details", label: "Avem nevoie de detalii", icon: HelpCircle },
+  { key: "cannot_help", label: "Nu putem ajuta", icon: XCircle },
+];
+
+const FREE_ENTITLEMENT = { plan_code: "free", status: "free", feature_keys: [] };
 
 function responseData(response) {
   const data = response?.data || {};
-  if (data.error) throw new Error(data.error);
+  if (data.error) throw Object.assign(new Error(data.error), { status: response?.status || 0 });
   return data;
 }
 
@@ -32,7 +42,7 @@ function serviceLabel(value) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function LeadCard({ lead, onMarkViewed, marking }) {
+function LeadCard({ lead, response, canRespond, onMarkViewed, onRespond, marking, responding }) {
   const services = lead.matched_service_keys?.length ? lead.matched_service_keys : lead.service_keys;
   return (
     <article className="rounded-2xl border border-border bg-card p-5 shadow-[0_12px_36px_rgba(23,23,23,0.035)]">
@@ -44,6 +54,9 @@ function LeadCard({ lead, onMarkViewed, marking }) {
             </h3>
             {lead.status === "new" && (
               <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">Nou</span>
+            )}
+            {response?.response_label && (
+              <span className="rounded-full bg-foreground px-2.5 py-1 text-[11px] font-bold text-background">{response.response_label}</span>
             )}
           </div>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
@@ -71,11 +84,38 @@ function LeadCard({ lead, onMarkViewed, marking }) {
         <span>{lead.for_whom === "copil" ? "Pentru copil" : "Pentru adult"}</span>
       </div>
 
+      {canRespond && (
+        <div className="mt-5 border-t border-border pt-4">
+          <p className="text-xs font-bold text-foreground">Răspunsul locației</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {RESPONSE_OPTIONS.map((option) => {
+              const Icon = option.icon;
+              const selected = response?.response_type === option.key;
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => onRespond(lead.id, option.key)}
+                  disabled={responding}
+                  className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-bold transition-colors disabled:opacity-60 ${selected ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground hover:bg-secondary"}`}
+                >
+                  {responding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className="h-3.5 w-3.5" />}
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+            Acesta este un răspuns structurat. Nu trimite date de contact și nu deschide conversația.
+          </p>
+        </div>
+      )}
+
       <div className="mt-5 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
         <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
           <LockKeyhole className="h-3.5 w-3.5" /> Contactul și conversația sunt blocate
         </span>
-        {lead.status === "new" && (
+        {lead.status === "new" && !response && (
           <button
             type="button"
             onClick={() => onMarkViewed(lead.id)}
@@ -93,23 +133,50 @@ function LeadCard({ lead, onMarkViewed, marking }) {
 
 export default function ProviderLeadInbox({ locationId, location }) {
   const [data, setData] = useState(null);
+  const [entitlement, setEntitlement] = useState(FREE_ENTITLEMENT);
+  const [responsesByLead, setResponsesByLead] = useState({});
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [markingId, setMarkingId] = useState("");
+  const [respondingId, setRespondingId] = useState("");
+
+  const canRespond = entitlement?.plan_code === "pro"
+    && entitlement?.feature_keys?.includes("provider_leads.respond");
 
   const load = useCallback(async () => {
     if (!locationId) return;
     setLoading(true);
     setError("");
     try {
-      const response = await base44.functions.invoke("providerLeadInboxOps", {
+      const inboxResponse = await base44.functions.invoke("providerLeadInboxOps", {
         action: "list",
         location_id: locationId,
         status: filter === "all" ? "" : filter,
         limit: 100,
       });
-      setData(responseData(response));
+      const inboxData = responseData(inboxResponse);
+      setData(inboxData);
+
+      let resolvedEntitlement = FREE_ENTITLEMENT;
+      try {
+        const entitlementResponse = await base44.functions.invoke("getProviderEntitlement", { location_id: locationId });
+        resolvedEntitlement = responseData(entitlementResponse).entitlement || FREE_ENTITLEMENT;
+      } catch (_entitlementError) {
+        resolvedEntitlement = FREE_ENTITLEMENT;
+      }
+      setEntitlement(resolvedEntitlement);
+
+      if (resolvedEntitlement.plan_code === "pro" && resolvedEntitlement.feature_keys?.includes("provider_leads.respond")) {
+        const responsesResponse = await base44.functions.invoke("providerLeadResponseOps", {
+          action: "list",
+          location_id: locationId,
+        });
+        const responseRows = responseData(responsesResponse).responses || [];
+        setResponsesByLead(Object.fromEntries(responseRows.map((row) => [row.lead_id, row])));
+      } else {
+        setResponsesByLead({});
+      }
     } catch (loadError) {
       setError(loadError?.message || "Leadurile nu au putut fi încărcate.");
     } finally {
@@ -153,6 +220,31 @@ export default function ProviderLeadInbox({ locationId, location }) {
     }
   };
 
+  const submitResponse = async (leadId, responseType) => {
+    setRespondingId(leadId);
+    setError("");
+    try {
+      const response = await base44.functions.invoke("providerLeadResponseOps", {
+        action: "submit",
+        location_id: locationId,
+        lead_id: leadId,
+        response_type: responseType,
+      });
+      const result = responseData(response);
+      setResponsesByLead((current) => ({ ...current, [leadId]: result.response }));
+      setData((current) => current ? {
+        ...current,
+        leads: current.leads
+          .map((lead) => (lead.id === leadId ? { ...lead, status: result.lead_status } : lead))
+          .filter((lead) => filter === "all" || lead.status === filter),
+      } : current);
+    } catch (responseError) {
+      setError(responseError?.message || "Răspunsul nu a putut fi salvat.");
+    } finally {
+      setRespondingId("");
+    }
+  };
+
   const locationName = data?.location?.name || location?.public_display_name || location?.name || "Locația selectată";
   const leads = useMemo(() => data?.leads || [], [data?.leads]);
 
@@ -164,9 +256,14 @@ export default function ProviderLeadInbox({ locationId, location }) {
             <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary">
               <Inbox className="h-4 w-4" /> Inbox furnizor
             </div>
-            <h1 className="mt-2 font-heading text-2xl font-extrabold tracking-tight text-foreground">Leaduri</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <h1 className="font-heading text-2xl font-extrabold tracking-tight text-foreground">Leaduri</h1>
+              <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${entitlement?.plan_code === "pro" ? "bg-foreground text-background" : "bg-secondary text-foreground"}`}>
+                Plan {entitlement?.plan_code === "pro" ? "Pro" : "Free"}
+              </span>
+            </div>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              Cereri relevante pentru {locationName}. În varianta Free vezi doar informațiile redacționate aprobate pentru această locație.
+              Cereri relevante pentru {locationName}. Datele de contact rămân ascunse până la acordul separat al clientului.
             </p>
           </div>
           <button
@@ -220,7 +317,18 @@ export default function ProviderLeadInbox({ locationId, location }) {
         </div>
       ) : (
         <div className="space-y-4">
-          {leads.map((lead) => <LeadCard key={lead.id} lead={lead} onMarkViewed={markViewed} marking={markingId === lead.id} />)}
+          {leads.map((lead) => (
+            <LeadCard
+              key={lead.id}
+              lead={lead}
+              response={responsesByLead[lead.id] || null}
+              canRespond={canRespond}
+              onMarkViewed={markViewed}
+              onRespond={submitResponse}
+              marking={markingId === lead.id}
+              responding={respondingId === lead.id}
+            />
+          ))}
         </div>
       )}
 
@@ -228,8 +336,12 @@ export default function ProviderLeadInbox({ locationId, location }) {
         <div className="flex items-start gap-3">
           <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <div>
-            <h2 className="text-sm font-bold text-foreground">Funcții Pro pregătite pentru etapa următoare</h2>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Răspunsul către client, solicitarea de informații, chatul și accesul la contact vor fi adăugate separat, cu verificare backend a abonamentului și acordului clientului.</p>
+            <h2 className="text-sm font-bold text-foreground">
+              {canRespond ? "Răspunsurile structurate sunt active" : "Răspunsurile sunt disponibile în planul Pro"}
+            </h2>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Chatul, mesajele libere și accesul la datele de contact vor fi adăugate separat și vor necesita în continuare acordul clientului.
+            </p>
           </div>
         </div>
       </div>
