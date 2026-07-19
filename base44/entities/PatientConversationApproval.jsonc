@@ -1,0 +1,37 @@
+{
+  "name": "PatientConversationApproval",
+  "type": "object",
+  "properties": {
+    "request_id": { "type": "string" },
+    "lead_id": { "type": "string" },
+    "provider_response_id": { "type": "string" },
+    "organization_id": { "type": "string" },
+    "location_id": { "type": "string" },
+    "approval_contract_version": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["approved", "revoked"],
+      "default": "approved"
+    },
+    "approved_at": { "type": "string", "format": "date-time" },
+    "revoked_at": { "type": "string", "format": "date-time" },
+    "consent_source": {
+      "type": "string",
+      "enum": ["patient_request_status"],
+      "default": "patient_request_status"
+    }
+  },
+  "required": [
+    "request_id",
+    "lead_id",
+    "location_id",
+    "approval_contract_version",
+    "status"
+  ],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}
