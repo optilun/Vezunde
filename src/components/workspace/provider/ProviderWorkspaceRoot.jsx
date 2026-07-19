@@ -5,6 +5,7 @@ import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
 import { getProviderNav } from "@/lib/workspaceNav";
 import { PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 import { readAccountPreferences, rememberProviderLocation } from "@/lib/accountPreferences";
+import { resolveProviderLocationAccess } from "@/lib/providerWorkspaceAccess";
 import LocationSwitcher from "./LocationSwitcher";
 const ProviderOverview = lazy(() => import("./ProviderOverview"));
 const ProviderProfilePublic = lazy(() => import("./ProviderProfilePublic"));
@@ -144,36 +145,49 @@ export default function ProviderWorkspaceRoot({
   const selectedOrganizationId = selectedContext?.organization?.id || "";
   const locations = selectedContext ? (selectedContext.locations || []) : allLocations;
   const memberships = selectedContext ? (selectedContext.memberships || []) : (workspace.memberships || []);
-  const capabilities = new Set(selectedContext?.capabilities || []);
-  const canManageOrganizationProfile = capabilities.has("organization.manage_profile");
-  const canViewLocations = capabilities.has("location.view");
-  const canManageLocationProfile = capabilities.has("location.manage_profile");
-  const canManageLocationContent = capabilities.has("location.manage_content");
-  const canManageSpecialists = capabilities.has("location.manage_specialists");
-  const canManageOperationalStatus = capabilities.has("location.manage_operational_status");
+  const selectedLocationAccess = useMemo(
+    () => resolveProviderLocationAccess(selectedContext || workspace, selectedLocationId),
+    [selectedContext, workspace, selectedLocationId],
+  );
+  const organizationCapabilityList = (selectedContext?.capabilities || [])
+    .filter((capability) => capability.startsWith("organization."));
+  const locationCapabilityList = selectedLocationAccess.capabilities || [];
+  const organizationCapabilities = new Set(organizationCapabilityList);
+  const locationCapabilities = new Set(locationCapabilityList);
+  const scopedCapabilities = [...new Set([...organizationCapabilityList, ...locationCapabilityList])];
+  const canManageOrganizationProfile = organizationCapabilities.has("organization.manage_profile");
+  const canViewLocations = locationCapabilities.has("location.view");
+  const canManageLocationProfile = locationCapabilities.has("location.manage_profile");
+  const canManageLocationContent = locationCapabilities.has("location.manage_content");
+  const canManageSpecialists = locationCapabilities.has("location.manage_specialists");
+  const canManageOperationalStatus = locationCapabilities.has("location.manage_operational_status");
   const canManageAnyLocation = canManageLocationProfile
     || canManageLocationContent
     || canManageSpecialists
     || canManageOperationalStatus;
-  const canManageMembers = Boolean(selectedContext?.can_manage_members || capabilities.has("organization.manage_members"));
-  const canManageSettings = Boolean(selectedContext?.can_manage_settings || capabilities.has("organization.manage_settings"));
+  const canManageMembers = Boolean(selectedContext?.can_manage_members || organizationCapabilities.has("organization.manage_members"));
+  const canManageSettings = Boolean(selectedContext?.can_manage_settings || organizationCapabilities.has("organization.manage_settings"));
   const activeLocationModule = requestedLocationModule
-    && capabilities.has(LOCATION_MODULE_CAPABILITIES[requestedLocationModule])
+    && locationCapabilities.has(LOCATION_MODULE_CAPABILITIES[requestedLocationModule])
     ? requestedLocationModule
     : null;
   const deniedLocationModule = Boolean(requestedLocationModule && !activeLocationModule);
   const hasOwnerAccess = organizationContexts.some((context) => (
     context.can_manage_members || context.can_manage_settings || context.current_user_role === "organization_owner"
   ));
-  const scopedWorkspace = useMemo(() => ({
+  const scopedWorkspace = {
     ...workspace,
     organizations: selectedContext?.organization ? [selectedContext.organization] : workspace.organizations,
     locations,
     memberships,
-    current_user_role: selectedContext?.current_user_role || workspace.current_user_role,
-    current_user_capabilities: selectedContext?.capabilities || workspace.current_user_capabilities || [],
+    current_user_role: selectedLocationAccess.role || workspace.current_user_role,
+    current_organization_role: selectedContext?.current_user_role || "",
+    current_location_role: selectedLocationAccess.role || "",
+    current_user_capabilities: scopedCapabilities,
+    organization_capabilities: organizationCapabilityList,
+    location_capabilities: locationCapabilityList,
     can_manage_members: canManageMembers,
-  }), [workspace, selectedContext, locations, memberships, canManageMembers]);
+  };
 
   const loadOverview = async (locationId, options = {}) => {
     if (!locationId) return;
@@ -237,10 +251,25 @@ export default function ProviderWorkspaceRoot({
     routerNavigate(`/contul-meu?s=${key}`);
   };
 
+  const accessForLocation = (locationId) => {
+    const targetContext = organizationContexts.find((context) => (
+      context.locations?.some((location) => location.id === locationId)
+      || context.memberships?.some((membership) => membership.location_id === locationId)
+    ));
+    return resolveProviderLocationAccess(targetContext || workspace, locationId);
+  };
+
   const selectLocation = (locationId) => {
     setSelectedLocationId(locationId);
     rememberProviderLocation(user?.id, locationId);
-    if (activeLocationModule) routerNavigate(`/contul-meu/locatii/${locationId}/${activeLocationModule}`);
+    if (activeLocationModule) {
+      const targetAccess = accessForLocation(locationId);
+      if (targetAccess.capabilities.includes(LOCATION_MODULE_CAPABILITIES[activeLocationModule])) {
+        routerNavigate(`/contul-meu/locatii/${locationId}/${activeLocationModule}`);
+      } else {
+        routerNavigate("/contul-meu?s=locations");
+      }
+    }
   };
 
   const selectOrganization = (organizationId) => {
@@ -250,7 +279,9 @@ export default function ProviderWorkspaceRoot({
   };
 
   const openLocationModule = (moduleKey, locationId = selectedLocationId) => {
-    if (!LOCATION_MODULES.has(moduleKey) || !locationId || !capabilities.has(LOCATION_MODULE_CAPABILITIES[moduleKey])) return;
+    if (!LOCATION_MODULES.has(moduleKey) || !locationId) return;
+    const targetAccess = accessForLocation(locationId);
+    if (!targetAccess.capabilities.includes(LOCATION_MODULE_CAPABILITIES[moduleKey])) return;
     setSelectedLocationId(locationId);
     routerNavigate(`/contul-meu/locatii/${locationId}/${moduleKey}`);
   };

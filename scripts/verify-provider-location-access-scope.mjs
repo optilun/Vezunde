@@ -61,4 +61,11 @@ const modulePage = await readFile(new URL("../src/components/workspace/provider/
 assert.match(modulePage, /resolveProviderLocationAccess\(workspace, locationId\)/);
 assert.doesNotMatch(modulePage, /workspace\.current_user_capabilities/, "Location modules must not use organization-wide merged capabilities");
 
+const workspaceRoot = await readFile(new URL("../src/components/workspace/provider/ProviderWorkspaceRoot.jsx", import.meta.url), "utf8");
+assert.match(workspaceRoot, /resolveProviderLocationAccess\(selectedContext \|\| workspace, selectedLocationId\)/, "Workspace root must derive permissions for the selected location");
+assert.match(workspaceRoot, /locationCapabilities\.has\(LOCATION_MODULE_CAPABILITIES\[requestedLocationModule\]\)/, "Route access must use selected-location capabilities");
+assert.match(workspaceRoot, /const targetAccess = accessForLocation\(locationId\)/, "Opening or switching a location module must re-check the target location");
+assert.match(workspaceRoot, /current_location_role: selectedLocationAccess\.role/, "Scoped workspace must expose the selected location role");
+assert.doesNotMatch(workspaceRoot, /const capabilities = new Set\(selectedContext\?\.capabilities \|\| \[\]\)/, "Organization-wide capabilities must not drive location controls");
+
 console.log("Provider location access scope checks passed.");
