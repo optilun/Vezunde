@@ -8,6 +8,8 @@ on:
       - "src/components/workspace/applicant/**"
       - "src/components/workspace/provider/**"
       - "src/components/admin/directory/**"
+      - "src/pages/AdminDirectoryOps.jsx"
+      - "src/lib/adminNavConfig.js"
       - "src/pages/AddOrClaim.jsx"
       - "src/pages/Login.jsx"
       - "src/pages/Register.jsx"
@@ -26,6 +28,7 @@ on:
       - "shared/professionalLifecycleLock.js"
       - "base44/entities/ProviderMemberInvitation.jsonc"
       - "base44/entities/ProfessionalInvitation.jsonc"
+      - "base44/entities/DirectoryCorrectionRequest.jsonc"
       - "base44/entities/User.jsonc"
       - "base44/entities/ProviderOrganization.jsonc"
       - "base44/functions/submitProviderClaim/**"
@@ -41,6 +44,8 @@ on:
       - "base44/functions/submitProviderLogoForReview/**"
       - "base44/functions/getProviderLogoReviewStatus/**"
       - "base44/functions/reviewProfileChanges/**"
+      - "base44/functions/submitDirectoryCorrection/**"
+      - "base44/functions/adminDirectoryCorrectionReview/**"
       - "scripts/verify-provider-onboarding-continuity.mjs"
       - "scripts/verify-provider-opening-hours.mjs"
       - "scripts/verify-provider-location-identity-resolution.mjs"
@@ -49,6 +54,7 @@ on:
       - "scripts/verify-professional-invitation-acceptance.mjs"
       - "scripts/verify-professional-lifecycle-concurrency.mjs"
       - "scripts/verify-professional-identity-ownership.mjs"
+      - "scripts/verify-directory-correction-workflow.mjs"
       - "scripts/verify-provider-logo-review-status.mjs"
       - "scripts/verify-provider-account-workflow-e2e.mjs"
       - "scripts/verify-provider-location-access-scope.mjs"
@@ -74,6 +80,8 @@ jobs:
       - run: npm ci --silent
       - name: Onboarding regression checks
         run: node scripts/verify-provider-onboarding-continuity.mjs
+      - name: Directory correction workflow checks
+        run: node scripts/verify-directory-correction-workflow.mjs
       - name: Provider hours regression checks
         run: npm run test:provider-hours
       - name: Provider location identity checks

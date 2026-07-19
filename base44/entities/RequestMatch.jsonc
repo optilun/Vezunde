@@ -2,94 +2,58 @@
   "name": "RequestMatch",
   "type": "object",
   "properties": {
-    "request_id": {
-      "type": "string"
+    "request_id": { "type": "string" },
+    "location_id": { "type": "string" },
+    "rank": { "type": "number" },
+    "bucket_rank": { "type": "number" },
+    "recommendation_contract_version": { "type": "string" },
+    "snapshot_source": {
+      "type": "string",
+      "enum": ["client_confirmed_search", "server_revalidated"],
+      "default": "client_confirmed_search"
     },
-    "location_id": {
-      "type": "string"
-    },
-    "rank": {
-      "type": "number"
+    "recommendation_score": { "type": "number" },
+    "semantic_match_score": { "type": "number" },
+    "matched_service_keys": {
+      "type": "array",
+      "items": { "type": "string" }
     },
     "match_reasons": {
       "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "items": { "type": "string" }
+    },
+    "recommendation_explanations": {
+      "type": "array",
+      "items": { "type": "string" }
     },
     "expansion_tier": {
       "type": "string",
-      "enum": [
-        "oras",
-        "apropiere",
-        "judet",
-        "national"
-      ]
+      "enum": ["oras", "apropiere", "judet", "national"]
     },
     "status": {
       "type": "string",
-      "enum": [
-        "matched",
-        "viewed",
-        "profile_opened",
-        "called",
-        "request_started",
-        "request_sent",
-        "dismissed"
-      ],
+      "enum": ["matched", "viewed", "profile_opened", "called", "request_started", "request_sent", "dismissed"],
       "default": "matched"
     },
     "result_bucket": {
       "type": "string",
-      "enum": [
-        "top3",
-        "extended_confirmed",
-        "extended_directory",
-        "excluded"
-      ]
+      "enum": ["top3", "extended_confirmed", "extended_directory", "excluded"]
     },
     "need_level_snapshot": {
       "type": "string",
-      "enum": [
-        "general",
-        "technical",
-        "specialized_medical"
-      ]
+      "enum": ["general", "technical", "specialized_medical"]
     },
-    "profile_control_status_snapshot": {
-      "type": "string"
-    },
-    "service_confirmation_level_snapshot": {
-      "type": "string"
-    },
-    "is_top3_eligible": {
-      "type": "boolean",
-      "default": false
-    },
+    "profile_control_status_snapshot": { "type": "string" },
+    "service_confirmation_level_snapshot": { "type": "string" },
+    "is_top3_eligible": { "type": "boolean", "default": false },
     "exclusion_reasons": {
       "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "bucket_rank": {
-      "type": "number"
+      "items": { "type": "string" }
     }
   },
-  "required": [
-    "request_id",
-    "location_id"
-  ],
+  "required": ["request_id", "location_id"],
   "rls": {
-    "read": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "write": {
-      "user_condition": {
-        "role": "admin"
-      }
-    }
+    "read": { "user_condition": { "role": "admin" } },
+    "write": { "user_condition": { "role": "admin" } }
   }
 }

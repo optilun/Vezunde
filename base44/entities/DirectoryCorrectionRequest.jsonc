@@ -1,0 +1,96 @@
+{
+  "name": "DirectoryCorrectionRequest",
+  "type": "object",
+  "properties": {
+    "location_id": { "type": "string" },
+    "organization_id": { "type": "string" },
+    "requester_user_id": { "type": "string" },
+    "request_type": {
+      "type": "string",
+      "enum": [
+        "incorrect_information",
+        "location_closed",
+        "location_moved",
+        "duplicate_profile",
+        "wrong_organization",
+        "personal_data_removal",
+        "other"
+      ]
+    },
+    "relationship": {
+      "type": "string",
+      "enum": [
+        "customer",
+        "owner",
+        "organization_representative",
+        "employee",
+        "professional",
+        "other"
+      ]
+    },
+    "contact_name": { "type": "string" },
+    "contact_email_normalized": { "type": "string" },
+    "explanation": { "type": "string" },
+    "proposed_changes_json": { "type": "string" },
+    "evidence_urls": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "source_snapshot_json": { "type": "string" },
+    "public_reference": { "type": "string" },
+    "priority": {
+      "type": "string",
+      "enum": ["normal", "high"],
+      "default": "normal"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "submitted",
+        "in_review",
+        "needs_more_info",
+        "approved",
+        "rejected",
+        "resolved",
+        "withdrawn"
+      ],
+      "default": "submitted"
+    },
+    "resolution_action": {
+      "type": "string",
+      "enum": [
+        "none",
+        "manual_update",
+        "hide_profile",
+        "close_location",
+        "merge_duplicate",
+        "reassign_organization",
+        "no_change"
+      ],
+      "default": "none"
+    },
+    "submitted_at": { "type": "string", "format": "date-time" },
+    "reviewed_at": { "type": "string", "format": "date-time" },
+    "reviewed_by_user_id": { "type": "string" },
+    "admin_note": { "type": "string" },
+    "resolved_at": { "type": "string", "format": "date-time" },
+    "applied_entity_id": { "type": "string" }
+  },
+  "required": [
+    "location_id",
+    "request_type",
+    "relationship",
+    "contact_name",
+    "contact_email_normalized",
+    "explanation",
+    "public_reference",
+    "status",
+    "submitted_at"
+  ],
+  "rls": {
+    "read": { "user_condition": { "role": "admin" } },
+    "create": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

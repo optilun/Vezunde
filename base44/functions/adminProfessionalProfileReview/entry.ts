@@ -151,6 +151,9 @@ async function assignmentRows(svc, professionalId) {
       location_id: assignment.location_id,
       active_status: assignment.active_status || 'activ',
       public_status: assignment.public_status || 'privat',
+      visibility_consent_status: assignment.visibility_consent_status || 'not_requested',
+      visibility_requested_at: assignment.visibility_requested_at || null,
+      visibility_decided_at: assignment.visibility_decided_at || null,
       location: location ? {
         id: location.id,
         name: location.public_display_name || location.name || 'Locatie',
@@ -197,33 +200,44 @@ function eligibleLocation(location) {
   return true;
 }
 
-async function publishEligibleAssignments(svc, user, profile) {
+async function reconcileAssignmentsAfterApproval(svc, user, profile) {
   const assignments = await svc.entities.ProfessionalLocationAssignment.filter({ professional_id: profile.id }, '-created_date', 100);
   const published = [];
   const privateIds = [];
+  const awaitingConsent = [];
   for (const assignment of assignments) {
-    if (assignment.active_status !== 'activ') {
-      if (assignment.public_status !== 'privat') await svc.entities.ProfessionalLocationAssignment.update(assignment.id, { public_status: 'privat' });
-      privateIds.push(assignment.id);
-      continue;
-    }
-    const location = await svc.entities.ProviderLocation.get(assignment.location_id).catch(() => null);
-    const nextStatus = eligibleLocation(location) ? 'public' : 'privat';
+    const consentStatus = assignment.visibility_consent_status || 'not_requested';
+    const location = assignment.active_status === 'activ'
+      ? await svc.entities.ProviderLocation.get(assignment.location_id).catch(() => null)
+      : null;
+    const nextStatus = assignment.active_status === 'activ'
+      && consentStatus === 'accepted'
+      && eligibleLocation(location)
+      ? 'public'
+      : 'privat';
+
     if (assignment.public_status !== nextStatus) {
       await svc.entities.ProfessionalLocationAssignment.update(assignment.id, { public_status: nextStatus });
       await audit(svc, user, {
         entity_type: 'ProfessionalLocationAssignment',
         entity_id: assignment.id,
-        action_type: nextStatus === 'public' ? 'publish_professional_assignment' : 'keep_professional_assignment_private',
+        action_type: nextStatus === 'public' ? 'preserve_consented_professional_assignment' : 'keep_professional_assignment_private',
         changed_fields: ['public_status'],
         previous: { public_status: assignment.public_status || 'privat' },
-        next: { public_status: nextStatus },
-        note: nextStatus === 'public' ? 'Asociere publicata dupa aprobarea profilului profesional.' : 'Asociere pastrata privata deoarece locatia nu este eligibila pentru afisare publica.',
+        next: { public_status: nextStatus, visibility_consent_status: consentStatus },
+        note: nextStatus === 'public'
+          ? 'Asocierea a ramas publica deoarece specialistul isi exprimase deja acordul.'
+          : 'Aprobarea profilului nu publica automat asocierea. Este necesar acordul separat al specialistului pentru aceasta locatie.',
       });
     }
-    if (nextStatus === 'public') published.push(assignment.id); else privateIds.push(assignment.id);
+
+    if (nextStatus === 'public') published.push(assignment.id);
+    else {
+      privateIds.push(assignment.id);
+      if (assignment.active_status === 'activ' && consentStatus !== 'declined' && consentStatus !== 'revoked') awaitingConsent.push(assignment.id);
+    }
   }
-  return { published, private: privateIds };
+  return { published, private: privateIds, awaiting_consent: awaitingConsent };
 }
 
 async function decide(svc, user, payload) {
@@ -262,15 +276,15 @@ async function decide(svc, user, payload) {
       profile_updated_at: now,
     };
     await svc.entities.ProfessionalProfile.update(profile.id, updates);
-    const assignments = await publishEligibleAssignments(svc, user, profile);
+    const assignments = await reconcileAssignmentsAfterApproval(svc, user, profile);
     await audit(svc, user, {
       entity_type: 'ProfessionalProfile',
       entity_id: profile.id,
       action_type: 'approve_professional_profile',
       changed_fields: [...ALLOWED_FIELDS, 'profile_review_status', 'verification_status', 'public_visibility_status', 'is_public'],
       previous: { ...previous, profile_review_status: profile.profile_review_status, verification_status: profile.verification_status, public_visibility_status: profile.public_visibility_status, is_public: profile.is_public },
-      next: { ...checked.value, profile_review_status: 'approved', verification_status: 'verified', public_visibility_status: 'approved', is_public: true, published_assignment_ids: assignments.published, private_assignment_ids: assignments.private },
-      note: note || 'Profil profesional aprobat de administratorul Vezunde.',
+      next: { ...checked.value, profile_review_status: 'approved', verification_status: 'verified', public_visibility_status: 'approved', is_public: true, published_assignment_ids: assignments.published, private_assignment_ids: assignments.private, awaiting_consent_assignment_ids: assignments.awaiting_consent },
+      note: note || 'Profil profesional aprobat de administratorul VIASEE. Asocierile necesita acord separat pentru publicare.',
     });
     return res({ success: true, status: 'approved', assignments });
   }
@@ -327,7 +341,7 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return res({ error: 'Autentificare necesara' }, 401);
-    if (user.role !== 'admin') return res({ error: 'Acces permis doar administratorilor Vezunde' }, 403);
+    if (user.role !== 'admin') return res({ error: 'Acces permis doar administratorilor VIASEE' }, 403);
 
     const svc = base44.asServiceRole;
     const payload = await req.json().catch(() => ({}));

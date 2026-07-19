@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Check, Copy, Trash2, UserPlus, Send, Eye, EyeOff } from "lucide-react";
+import { Check, Copy, Trash2, UserPlus, Send, Eye, EyeOff, Clock3 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-foreground/40";
@@ -15,6 +15,7 @@ const INVITE_STATUS_LABELS = {
   accepted: "Acceptată",
   expired: "Expirată",
   revoked: "Revocată",
+  declined: "Refuzată",
 };
 
 function roleLabel(key) {
@@ -28,7 +29,12 @@ function formatDate(value) {
 
 function assignmentStatus(item) {
   if (item.active_status === "inactiv") return { label: "Eliminat", className: "bg-red-50 text-red-700" };
-  if (item.public_status === "public" && item.is_public && item.verification_status === "verified") return { label: "Public", className: "bg-green-100 text-green-800" };
+  if (item.public_status === "public" && item.visibility_consent_status === "accepted" && item.is_public && item.verification_status === "verified") {
+    return { label: "Public", className: "bg-green-100 text-green-800" };
+  }
+  if (item.visibility_consent_status === "pending") return { label: "Așteaptă acordul", className: "bg-blue-50 text-blue-800" };
+  if (item.visibility_consent_status === "declined") return { label: "Afișare refuzată", className: "bg-amber-50 text-amber-800" };
+  if (item.visibility_consent_status === "revoked") return { label: "Acord retras", className: "bg-amber-50 text-amber-800" };
   if (item.profile_review_status === "pending_review") return { label: "În verificare", className: "bg-amber-50 text-amber-800" };
   if (item.profile_review_status === "needs_more_info") return { label: "Necesită completări", className: "bg-amber-50 text-amber-800" };
   return { label: "Privat", className: "bg-secondary text-muted-foreground" };
@@ -50,6 +56,7 @@ export default function ProviderTeam({ locationId }) {
 
   const activeAssignments = useMemo(() => assignments.filter((item) => item.active_status === "activ"), [assignments]);
   const pendingInvitations = useMemo(() => invitations.filter((item) => item.status === "pending"), [invitations]);
+  const pendingVisibility = useMemo(() => assignments.filter((item) => item.active_status === "activ" && item.visibility_consent_status === "pending"), [assignments]);
 
   const load = async () => {
     if (!locationId) return;
@@ -145,18 +152,20 @@ export default function ProviderTeam({ locationId }) {
     await load();
   };
 
-  const setAssignmentVisibility = async (assignment, publicStatus) => {
-    const actionLabel = publicStatus === "public" ? "publici" : "ascunzi";
-    const confirmed = window.confirm(`Sigur vrei sa ${actionLabel} acest specialist pe profilul public al locatiei?`);
+  const changeAssignmentVisibility = async (assignment, nextAction) => {
+    const requesting = nextAction === "request_visibility";
+    const confirmed = window.confirm(requesting
+      ? "Trimiți specialistului solicitarea de a apărea public la această locație? Publicarea se face numai după acordul lui."
+      : "Ascunzi specialistul de pe profilul public? O republicare va necesita un nou acord al specialistului.");
     if (!confirmed) return;
 
     setSaving(true);
     setMsg("");
     const response = await base44.functions.invoke("manageProfessionalAssignment", {
-      action: "set_visibility",
+      action: requesting ? "request_visibility" : "set_visibility",
       location_id: locationId,
       professional_id: assignment.professional_id,
-      public_status: publicStatus,
+      ...(requesting ? {} : { public_status: "privat" }),
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
     setSaving(false);
 
@@ -164,9 +173,9 @@ export default function ProviderTeam({ locationId }) {
       setMsg(response.data.error);
       return;
     }
-    setMsg(publicStatus === "public"
-      ? "Specialistul este acum vizibil pe profilul public al locatiei."
-      : "Specialistul a fost ascuns de pe profilul public al locatiei.");
+    setMsg(requesting
+      ? "Solicitarea a fost înregistrată. Specialistul trebuie să accepte afișarea din contul său."
+      : "Specialistul a fost ascuns. O nouă afișare va necesita acordul lui.");
     await load();
   };
 
@@ -183,7 +192,7 @@ export default function ProviderTeam({ locationId }) {
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-bold">Specialiști asociați</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Poți elimina asocierea cu locația, dar nu poți modifica identitatea profesională a specialistului.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Poți solicita afișarea sau poți ascunde asocierea. Specialistul decide dacă profilul său devine public la această locație.</p>
             </div>
             <span className="rounded-full bg-secondary px-3 py-1 text-[11px] font-semibold">{activeAssignments.length} activi · {publicTeam.length} publici</span>
           </div>
@@ -192,29 +201,38 @@ export default function ProviderTeam({ locationId }) {
             <ul className="space-y-2">
               {assignments.map((assignment) => {
                 const status = assignmentStatus(assignment);
+                const isPublic = assignment.public_status === "public";
+                const isPending = assignment.visibility_consent_status === "pending";
                 return (
                   <li key={assignment.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border px-3 py-3 text-xs">
                     <div className="min-w-0">
                       <div className="font-bold">{assignment.full_name}</div>
                       <div className="mt-0.5 text-muted-foreground">{roleLabel(assignment.professional_type)}</div>
-                      {assignment.active_status === "activ" && assignment.public_status !== "public" && !assignment.can_publish && assignment.publish_block_reason && (
+                      {assignment.active_status === "activ" && !isPublic && !isPending && !assignment.can_publish && assignment.publish_block_reason && (
                         <div className="mt-1 max-w-xl text-[11px] leading-relaxed text-amber-700">{assignment.publish_block_reason}</div>
                       )}
+                      {isPending && <div className="mt-1 max-w-xl text-[11px] leading-relaxed text-blue-700">Așteptăm decizia specialistului. Până atunci asocierea rămâne privată.</div>}
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${status.className}`}>{status.label}</span>
                       {assignment.active_status === "activ" && (
                         <>
-                          <button
-                            type="button"
-                            disabled={saving || (assignment.public_status !== "public" && !assignment.can_publish)}
-                            title={assignment.public_status !== "public" && !assignment.can_publish ? assignment.publish_block_reason : ""}
-                            onClick={() => setAssignmentVisibility(assignment, assignment.public_status === "public" ? "privat" : "public")}
-                            className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {assignment.public_status === "public" ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                            {assignment.public_status === "public" ? "Ascunde" : "Publica"}
-                          </button>
+                          {isPending ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 px-2.5 py-1.5 text-xs font-semibold text-blue-700">
+                              <Clock3 className="h-3.5 w-3.5" /> În așteptare
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={saving || (!isPublic && !assignment.can_publish)}
+                              title={!isPublic && !assignment.can_publish ? assignment.publish_block_reason : ""}
+                              onClick={() => changeAssignmentVisibility(assignment, isPublic ? "hide" : "request_visibility")}
+                              className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1.5 text-xs font-semibold hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {isPublic ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                              {isPublic ? "Ascunde" : "Solicită afișarea"}
+                            </button>
+                          )}
                           <button type="button" disabled={saving} onClick={() => deactivateAssignment(assignment.professional_id)} className="inline-flex items-center gap-1 rounded-full border border-red-200 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">
                             <Trash2 className="h-3.5 w-3.5" /> Elimină
                           </button>
@@ -277,8 +295,8 @@ export default function ProviderTeam({ locationId }) {
               <div className="mt-1 text-xl font-extrabold">{publicTeam.length}</div>
             </div>
             <div className="rounded-xl bg-secondary/45 p-3">
-              <div className="text-[10px] font-semibold leading-tight text-muted-foreground">În așteptare</div>
-              <div className="mt-1 text-xl font-extrabold">{pendingInvitations.length}</div>
+              <div className="text-[10px] font-semibold leading-tight text-muted-foreground">Acord în așteptare</div>
+              <div className="mt-1 text-xl font-extrabold">{pendingVisibility.length}</div>
             </div>
           </div>
         </section>
@@ -290,7 +308,7 @@ export default function ProviderTeam({ locationId }) {
             </div>
             <div>
               <h2 className="text-sm font-bold">Invită un specialist</h2>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Invită medicii oftalmologi, optometriștii și opticienii asociați acestei locații. Specialistul acceptă cu propriul cont. Asocierea rămâne privată până când profilul profesional este completat și aprobat de VIASEE.</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Invită medicii oftalmologi, optometriștii și opticienii asociați acestei locații. Specialistul acceptă cu propriul cont. Asocierea rămâne privată până când profilul este aprobat și specialistul acceptă separat afișarea la această locație.</p>
             </div>
           </div>
 
@@ -326,7 +344,7 @@ export default function ProviderTeam({ locationId }) {
 
           <div className="mt-4 rounded-2xl border border-border bg-secondary/25 p-3">
             <div className="text-[11px] font-bold text-foreground">Separat de Acces și utilizatori</div>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Invitația nu le acordă acces administrativ și nu publică automat profilul. Profilul specialistului devine public doar după completare și aprobarea VIASEE. Asocierea cu locația nu acordă acces administrativ.</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Invitația nu acordă acces administrativ și nu publică automat profilul. Organizația poate solicita afișarea, iar specialistul decide din contul său dacă acceptă.</p>
           </div>
         </section>
       </aside>
