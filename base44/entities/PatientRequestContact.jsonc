@@ -1,0 +1,53 @@
+{
+  "name": "PatientRequestContact",
+  "type": "object",
+  "properties": {
+    "request_id": { "type": "string" },
+    "requester_user_id": { "type": "string" },
+    "contact_name": { "type": "string" },
+    "contact_email": { "type": "string" },
+    "contact_phone": { "type": "string" },
+    "contact_preference": {
+      "type": "string",
+      "enum": ["email", "phone", "either"],
+      "default": "email"
+    },
+    "processing_consent": {
+      "type": "boolean",
+      "default": false
+    },
+    "processing_consent_version": { "type": "string" },
+    "processing_consent_at": { "type": "string", "format": "date-time" },
+    "provider_contact_sharing_consent": {
+      "type": "boolean",
+      "default": false
+    },
+    "provider_contact_sharing_consent_at": { "type": "string", "format": "date-time" },
+    "contact_email_verified": {
+      "type": "boolean",
+      "default": false
+    },
+    "contact_email_verified_at": { "type": "string", "format": "date-time" },
+    "access_token_hash": { "type": "string" },
+    "retention_policy_key": { "type": "string" },
+    "retention_until": { "type": "string", "format": "date-time" },
+    "status": {
+      "type": "string",
+      "enum": ["active", "anonymized", "deleted"],
+      "default": "active"
+    }
+  },
+  "required": [
+    "request_id",
+    "contact_name",
+    "contact_email",
+    "processing_consent",
+    "processing_consent_version"
+  ],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}
