@@ -17,6 +17,13 @@ const INTENT_LABELS = Object.freeze({
   unknown: 'Nevoie nespecificata',
 });
 
+const TIMING_LABELS = Object.freeze({
+  cat_mai_repede: 'Cat mai repede',
+  zilele_urmatoare: 'In zilele urmatoare',
+  saptamana_aceasta: 'Saptamana aceasta',
+  nu_e_urgent: 'Nu este urgent',
+});
+
 function clean(value, maxLength = 160) {
   return String(value || '').trim().slice(0, maxLength);
 }
@@ -71,10 +78,11 @@ export function evaluateProviderLeadEligibility({ request, match, location, serv
 }
 
 export function buildProviderLeadPreview(request) {
+  const timingKey = clean(request?.timing_key);
   const parts = [
     INTENT_LABELS[request?.intent] || INTENT_LABELS.unknown,
     clean(request?.city),
-    clean(request?.timing_key),
+    TIMING_LABELS[timingKey] || timingKey,
   ].filter(Boolean);
   return parts.join(' · ').slice(0, 240);
 }
