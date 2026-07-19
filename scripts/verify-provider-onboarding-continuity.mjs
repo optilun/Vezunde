@@ -22,6 +22,11 @@ expect('src/pages/Register.jsx', 'getAuthRoute("/login")', 'Register pastreaza d
 expect('src/lib/postLoginRedirect.js', 'viasee.auth.return_to', 'Destinatia este memorata pe durata autentificarii');
 reject('src/components/provider/ProviderSearch.jsx', 'redirectToLogin', 'Cautarea nu cere autentificare prematur');
 expect('src/components/provider/ClaimForm.jsx', 'continueAfterRelation', 'Revendicarea cere autentificare dupa relatie');
+expect('src/components/provider/ClaimForm.jsx', 'persistClaimResumeState(location, contact, step || "relation")', 'Locatia si pasul curent sunt salvate imediat pentru reluare');
+expect('src/components/provider/ClaimForm.jsx', 'getSessionStorage', 'Revendicarea ramane functionala cand sessionStorage este indisponibil');
+expect('src/pages/AddOrClaim.jsx', 'getResumeClaimStep', 'Reluarea valideaza relatia si datele de contact inainte de pasul final');
+expect('src/pages/AddOrClaim.jsx', 'returnFromClaim', 'Intoarcerea la cautare curata revendicarea abandonata');
+expect('src/pages/AddOrClaim.jsx', 'onClaimExisting={(loc) => {\n            clearResumeState();', 'Trecerea din locatie noua la profil existent elimina draftul vechi');
 expect('src/components/provider/NewLocationWizard.jsx', 'currentKey === "relation"', 'Locatia noua cere autentificare dupa relatie');
 reject('src/components/provider/NewLocationWizard.jsx', 'pendingSubmit', 'Locatia noua nu se trimite automat dupa login');
 expect('src/pages/AddOrClaim.jsx', '/contul-meu?mode=applicant&onboarding=submitted', 'Trimiterea intra direct in Pregatire profil');
@@ -37,8 +42,11 @@ expect('src/pages/Partners.jsx', 'mailto:contact@viasee.ro', 'Partenerii B2B nu 
 reject('src/pages/Partners.jsx', 'to="/adauga-sau-revendica"', 'CTA-ul B2B nu deschide wizardul locatiei');
 
 expect('src/components/provider/ContactIdentityFields.jsx', 'requestedLocationRoleForRelationship', 'Revendicarea locatiei foloseste o mapare separata de roluri');
-expect('src/components/provider/steps/WizClaimRelation.jsx', 'requestedLocationRoleForRelationship', 'Wizardul afiseaza rolul limitat la locatie');
-expect('src/components/provider/steps/WizClaimRelation.jsx', 'Administrarea intregii organizatii se verifica separat', 'Wizardul explica separarea dintre locatie si organizatie');
+expect('src/components/provider/ClaimRelationStep.jsx', 'requestedLocationRoleForRelationship', 'Pasul real de revendicare afiseaza rolul limitat la locatie');
+expect('src/components/provider/ClaimRelationStep.jsx', 'Administrarea intregii organizatii se verifica separat', 'Pasul real explica separarea dintre locatie si organizatie');
+expect('src/components/provider/ClaimReviewStep.jsx', 'requestedLocationRoleForRelationship', 'Revizuirea afiseaza acelasi rol limitat la locatie');
+reject('src/components/provider/ClaimReviewStep.jsx', 'requestedRoleForRelationship', 'Revizuirea nu mai afiseaza rol de owner pentru un claim de locatie');
+expect('src/components/provider/steps/WizClaimRelation.jsx', 'requestedLocationRoleForRelationship', 'Wizardul de locatie noua pastreaza maparea explicita');
 expect('base44/functions/submitProviderClaim/entry.ts', "claim_scope: 'location'", 'Backendul marcheaza revendicarea profilului existent ca fiind limitata la locatie');
 expect('base44/functions/submitProviderClaim/entry.ts', 'LOCATION_ROLE_BY_RELATIONSHIP', 'Backendul nu transforma relatia cu afacerea in owner de organizatie pentru un claim de locatie');
 expect('base44/functions/adminProviderClaimReview/entry.ts', "const isLocationScopedClaim = claim.mode === 'claim' || submitted.claim_scope === 'location'", 'Review-ul recunoaste inclusiv cererile vechi ca revendicari de locatie');
