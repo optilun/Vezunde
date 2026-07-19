@@ -9,6 +9,10 @@ function clean(value, maxLength = 300) {
   return String(value || '').trim().slice(0, maxLength);
 }
 
+function singleLine(value, maxLength = 180) {
+  return clean(value, maxLength).replace(/[\r\n]+/g, ' ').replace(/\s{2,}/g, ' ');
+}
+
 function normalizeEmail(value) {
   return clean(value, 254).toLowerCase();
 }
@@ -76,7 +80,7 @@ function baseDeliveryRecord({
     organization_id: organizationId || '',
     location_id: locationId || '',
     idempotency_key: idempotencyKey,
-    subject_preview: clean(subject, 180),
+    subject_preview: singleLine(subject, 180),
     queued_at: now,
   };
 }
@@ -209,7 +213,7 @@ export async function deliverCommunicationEmail({
   try {
     await base44.integrations.Core.SendEmail({
       to: email,
-      subject: clean(subject, 180),
+      subject: singleLine(subject, 180),
       body: clean(body, 6000),
       from_name: 'VIASEE',
     });
