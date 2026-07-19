@@ -11,6 +11,7 @@ const ROLE_OPTIONS = [
   { value: "location_manager", label: "Manager locatie" },
   { value: "location_staff", label: "Membru locatie" },
 ];
+const LOCATION_ROLE_OPTIONS = ROLE_OPTIONS.filter((item) => item.value !== "organization_owner");
 const ROLE_LABELS = Object.fromEntries(ROLE_OPTIONS.map((item) => [item.value, item.label]));
 const ROLE_BY_RELATIONSHIP = {
   owner: "organization_owner",
@@ -24,11 +25,18 @@ function parsePayload(value) {
   try { return value ? JSON.parse(value) : {}; } catch (_error) { return {}; }
 }
 
+function isLocationScopedClaim(claim, payload = parsePayload(claim.submitted_payload)) {
+  return claim.mode === "claim" || payload.claim_scope === "location";
+}
+
 function requestedRoleForClaim(claim) {
   const payload = parsePayload(claim.submitted_payload);
-  return payload.requested_membership_role
+  const requestedRole = payload.requested_membership_role
     || ROLE_BY_RELATIONSHIP[claim.claimant_relationship]
     || "location_staff";
+  return isLocationScopedClaim(claim, payload) && requestedRole === "organization_owner"
+    ? "location_manager"
+    : requestedRole;
 }
 
 function approvalDefaultForClaim(claim, requestedRole) {
@@ -80,11 +88,14 @@ export default function DirOpsClaims() {
               const payload = parsePayload(claim.submitted_payload);
               const isDuplicateReview = claim.mode === "new_location_duplicate_review";
               const isAccessRequest = payload.request_type === "access_request_existing_claimed_profile";
+              const locationScoped = isLocationScopedClaim(claim, payload);
               const modeLabel = isDuplicateReview
                 ? "locatie noua — verificare duplicat"
                 : isAccessRequest
-                  ? "solicitare acces profil administrat"
-                  : claim.mode || "claim";
+                  ? "solicitare acces la locatie administrata"
+                  : locationScoped
+                    ? "revendicare locatie"
+                    : claim.mode || "claim";
               const requestedRole = requestedRoleForClaim(claim);
               const approvedRole = payload.approved_membership_role || "";
               const defaultApprovedRole = approvalDefaultForClaim(claim, requestedRole);
@@ -100,6 +111,11 @@ export default function DirOpsClaims() {
                       <div className="mt-1 break-words text-xs leading-relaxed text-muted-foreground">
                         Mod: {modeLabel} · Relatie: {claim.claimant_relationship || "—"} · Acces solicitat: {ROLE_LABELS[requestedRole] || requestedRole}
                       </div>
+                      {locationScoped && (
+                        <div className="mt-1 text-xs font-medium text-amber-800">
+                          Cererea este limitata la locatia selectata si nu poate acorda administrarea organizatiei.
+                        </div>
+                      )}
                       {approvedRole && (
                         <div className="mt-1 text-xs text-muted-foreground">Acces aprobat: {ROLE_LABELS[approvedRole] || approvedRole}</div>
                       )}
@@ -119,6 +135,7 @@ export default function DirOpsClaims() {
                                 requestedRole,
                                 approvedRole: defaultApprovedRole,
                                 isAccessRequest,
+                                locationScoped,
                               })}
                               className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground sm:min-h-9 sm:rounded-md sm:px-3"
                             >
@@ -160,7 +177,10 @@ export default function DirOpsClaims() {
                 <div className="rounded-lg bg-secondary/50 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
                   Acces solicitat: <span className="font-semibold text-foreground">{ROLE_LABELS[action.requestedRole]}</span>
                   {action.isAccessRequest && (
-                    <span className="mt-1 block">Profilul este deja administrat, de aceea rolul implicit este limitat. Acordarea rolului de owner trebuie aleasa explicit.</span>
+                    <span className="mt-1 block">Profilul este deja administrat, de aceea rolul implicit este limitat.</span>
+                  )}
+                  {action.locationScoped && (
+                    <span className="mt-1 block font-medium text-amber-800">Aceasta aprobare este strict pentru locatie. Rolul de owner al organizatiei nu este disponibil in acest flux.</span>
                   )}
                 </div>
                 <label htmlFor="approved-role" className="mt-3 block text-xs font-semibold text-muted-foreground">Rol acordat dupa aprobare</label>
@@ -170,9 +190,9 @@ export default function DirOpsClaims() {
                   onChange={(event) => setAction((current) => ({ ...current, approvedRole: event.target.value }))}
                   className="mt-2 min-h-11 w-full rounded-xl border border-input bg-card px-3 py-2 text-base sm:min-h-10 sm:rounded-md sm:text-sm"
                 >
-                  {ROLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  {(action.locationScoped ? LOCATION_ROLE_OPTIONS : ROLE_OPTIONS).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Adminul confirma rolul solicitat sau acorda un nivel diferit pe baza verificarii.</p>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Adminul confirma rolul solicitat sau acorda un nivel diferit in limitele acestui tip de cerere.</p>
               </div>
             )}
           </DirOpsActionNote>
