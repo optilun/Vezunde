@@ -6,6 +6,10 @@ import {
   normalizeServiceKey,
 } from './sharedDependencies.js';
 import { getPublicLocationDisclosure } from './providerPublicTrust.js';
+import {
+  loadPublicLocationsForLocality,
+  loadRowsForLocationIds,
+} from '../../../shared/locationScopedEntityQuery.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Safety rules remain disabled until reviewed by a qualified ophthalmologist.
@@ -202,13 +206,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    const [locations, services, specializations, assignments, facilities, equipment] = await Promise.all([
-      svc.entities.ProviderLocation.filter({ status: 'publicata' }, null, 500),
-      svc.entities.LocationService.list(null, 2000),
-      svc.entities.LocationSpecialization.list(null, 2000),
-      svc.entities.ProfessionalLocationAssignment.filter({ active_status: 'activ' }, null, 2000),
-      svc.entities.LocationFacility.list(null, 2000),
-      svc.entities.LocationEquipment.list(null, 2000).catch(() => []),
+    const localityLocations = await loadPublicLocationsForLocality(svc, sirutaCode);
+    const locations = localityLocations.filter((loc) => (
+      loc.active_status !== 'inactiva'
+      && loc.provider_profile_type
+      && PATIENT_FACING_PROFILE_TYPES.includes(loc.provider_profile_type)
+      && (providerTypes.length === 0 || providerTypes.includes(loc.provider_type))
+    ));
+    const locationIds = locations.map((location) => location.id).filter(Boolean);
+
+    const [services, specializations, assignments, facilities, equipment] = await Promise.all([
+      loadRowsForLocationIds(svc.entities.LocationService, locationIds, { perLocationLimit: 500 }),
+      loadRowsForLocationIds(svc.entities.LocationSpecialization, locationIds, { perLocationLimit: 200 }),
+      loadRowsForLocationIds(svc.entities.ProfessionalLocationAssignment, locationIds, { query: { active_status: 'activ' }, perLocationLimit: 200 }),
+      loadRowsForLocationIds(svc.entities.LocationFacility, locationIds, { perLocationLimit: 300 }),
+      loadRowsForLocationIds(svc.entities.LocationEquipment, locationIds, { perLocationLimit: 300 }),
     ]);
 
     const professionalIds = [...new Set(assignments.map((assignment) => assignment.professional_id).filter(Boolean))];
@@ -256,11 +268,6 @@ Deno.serve(async (req) => {
     const excludedList = [];
 
     for (const loc of locations) {
-      if (loc.active_status === 'inactiva') continue;
-      if (!loc.provider_profile_type || !PATIENT_FACING_PROFILE_TYPES.includes(loc.provider_profile_type)) continue;
-      if (providerTypes.length > 0 && !providerTypes.includes(loc.provider_type)) continue;
-      if (String(loc.locality_siruta_code || '').trim() !== sirutaCode) continue;
-
       const locRows = serviceRowsByLocation[loc.id] || [];
       const locFacilities = facilitiesByLocation[loc.id] || [];
       const locAssignments = assignmentsByLocation[loc.id] || [];
@@ -400,8 +407,10 @@ Deno.serve(async (req) => {
       need_level: needLevel,
       safety_message_keys: SAFETY_RULES.filter((rule) => rule.enabled).map((rule) => rule.key),
       routing_mode: 'locality',
+      query_scope: 'locality',
       coverage_status: results.length > 0 ? 'results_found' : 'no_local_results',
       selected_locality_siruta_code: sirutaCode,
+      local_location_count: locations.length,
       service_key_statuses: requestKeys.statuses,
     });
   } catch (error) {
