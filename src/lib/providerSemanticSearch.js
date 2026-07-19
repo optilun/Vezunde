@@ -1,6 +1,9 @@
 import { base44 } from "@/api/base44Client";
 import { resolveServiceSearchQuery } from "@/lib/serviceSemanticSearch";
 
+const CONFIRMATION_REUSE_TTL_MS = 2 * 60 * 1000;
+const completedConfirmationBySignature = new Map();
+
 function searchTextFromPayload(payload = {}) {
   return String(
     payload.search_text
@@ -57,6 +60,36 @@ function interpretationRequest(payload = {}) {
   };
 }
 
+function interpretationSignature(request) {
+  const firstPatientPhrase = String(request?.searchText || "")
+    .split(". ")[0]
+    .trim()
+    .toLowerCase();
+  return `${firstPatientPhrase}::${request?.deterministicIntent || "unknown"}`;
+}
+
+function rememberCompletedConfirmation(request, data) {
+  if (data?.status !== "completed") return;
+  const signature = interpretationSignature(request);
+  if (!signature) return;
+  completedConfirmationBySignature.set(signature, Date.now());
+  if (completedConfirmationBySignature.size > 50) {
+    const oldest = completedConfirmationBySignature.keys().next().value;
+    if (oldest) completedConfirmationBySignature.delete(oldest);
+  }
+}
+
+function hasRecentCompletedConfirmation(request) {
+  const signature = interpretationSignature(request);
+  const completedAt = completedConfirmationBySignature.get(signature);
+  if (!completedAt) return false;
+  if (Date.now() - completedAt > CONFIRMATION_REUSE_TTL_MS) {
+    completedConfirmationBySignature.delete(signature);
+    return false;
+  }
+  return true;
+}
+
 function interpretationAnalytics(data, request) {
   const interpretation = data?.interpretation;
   return {
@@ -100,6 +133,7 @@ export async function interpretPatientNeedForConfirmation(payload = {}) {
   try {
     const response = await base44.functions.invoke("matchProvidersSemantic", request.body);
     const data = response?.data || { status: "unavailable", reason: "empty_interpretation_response" };
+    rememberCompletedConfirmation(request, data);
     trackInterpretation("patient_need_interpretation_confirmation", interpretationAnalytics(data, request));
     return data;
   } catch (_error) {
@@ -114,6 +148,14 @@ export async function interpretPatientNeedForConfirmation(payload = {}) {
 export async function interpretPatientNeedInShadow(payload = {}) {
   const request = interpretationRequest(payload);
   if (!request) return null;
+
+  if (hasRecentCompletedConfirmation(request)) {
+    trackInterpretation("patient_need_interpretation_shadow", {
+      status: "skipped_duplicate_confirmation",
+      deterministic_intent: request.deterministicIntent,
+    });
+    return null;
+  }
 
   try {
     const response = await base44.functions.invoke("matchProvidersSemantic", request.body);
