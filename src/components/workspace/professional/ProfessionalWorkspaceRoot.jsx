@@ -6,11 +6,14 @@ import {
   CheckCircle2,
   Circle,
   Clock3,
+  Eye,
+  EyeOff,
   LayoutDashboard,
   LockKeyhole,
   Settings,
   Unlink,
   UserRound,
+  XCircle,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
@@ -90,7 +93,7 @@ function professionalChecklist(professional, assignments) {
     {
       key: "locations",
       label: "Locații asociate",
-      detail: "Optional pentru specialistul independent",
+      detail: "Opțional pentru specialistul independent",
       done: assignments.length > 0,
       required: false,
     },
@@ -112,8 +115,8 @@ function reviewPresentation(reviewStatus, professional, missingRequiredCount) {
       icon: CheckCircle2,
       title: professional.is_public ? "Profil profesional public" : "Profil profesional aprobat",
       description: professional.is_public
-        ? "Profilul este verificat și poate apărea în VIASEE și la locațiile publice asociate."
-        : "Profilul a fost verificat. Publicarea depinde de setările profilului și ale locațiilor asociate.",
+        ? "Profilul este verificat. Tu alegi separat locațiile la care accepți să fii afișat public."
+        : "Profilul a fost verificat. Publicarea depinde de setările profilului și de acordul tău pentru fiecare locație.",
       tone: "border-green-200 bg-green-50 text-green-950",
       actionLabel: "Actualizează profilul",
     };
@@ -167,7 +170,7 @@ function Overview({ workspace, onNavigate }) {
       <div className="grid gap-3 sm:grid-cols-3">
         <InfoCard label="Tip profesional" value={PROFESSIONAL_TYPE_LABELS[professional.professional_type] || "Specialist"} hint="Tipul profesional nu poate fi schimbat de o clinică sau optică." />
         <InfoCard label="Status profil" value={PROFESSIONAL_REVIEW_STATUS_LABELS[reviewStatus] || reviewStatus} hint="Profilul devine public numai după completare și verificare." />
-        <InfoCard label="Locații asociate" value={assignments.length} hint={`${workspace.public_assignment_count || 0} publice · ${workspace.private_assignment_count || 0} private`} />
+        <InfoCard label="Locații asociate" value={assignments.length} hint={`${workspace.public_assignment_count || 0} publice · ${workspace.pending_visibility_count || 0} solicitări de afișare`} />
       </div>
 
       <section className={`rounded-3xl border p-5 shadow-sm ${presentation.tone}`}>
@@ -243,7 +246,7 @@ function Overview({ workspace, onNavigate }) {
           <ul className="mt-4 space-y-2 text-xs leading-relaxed text-muted-foreground">
             <li>Asocierea cu o locație nu oferă acces la administrarea organizației.</li>
             <li>Poți avea zero, una sau mai multe locații asociate.</li>
-            <li>Organizația gestionează doar asocierea și afișarea la locația sa.</li>
+            <li>Organizația poate solicita afișarea, dar tu accepți, refuzi sau retragi acordul.</li>
           </ul>
           <button
             type="button"
@@ -258,11 +261,53 @@ function Overview({ workspace, onNavigate }) {
   );
 }
 
+function consentPresentation(assignment) {
+  if (assignment.public_status === "public" && assignment.visibility_consent_status === "accepted") {
+    return { label: "Public", className: "bg-green-100 text-green-800" };
+  }
+  if (assignment.visibility_consent_status === "pending") {
+    return { label: "Așteaptă decizia ta", className: "bg-blue-50 text-blue-800" };
+  }
+  if (assignment.visibility_consent_status === "declined") {
+    return { label: "Afișare refuzată", className: "bg-amber-50 text-amber-800" };
+  }
+  if (assignment.visibility_consent_status === "revoked") {
+    return { label: "Acord retras", className: "bg-amber-50 text-amber-800" };
+  }
+  return { label: "Privat", className: "bg-secondary text-muted-foreground" };
+}
+
 function Locations({ workspace, onRefresh }) {
   const assignments = workspace.assignments || [];
   const [savingId, setSavingId] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  const updateVisibility = async (assignment, action) => {
+    setSavingId(assignment.id);
+    setMessage("");
+    setError("");
+    const response = await base44.functions.invoke("manageProfessionalAssignment", {
+      action,
+      location_id: assignment.location_id,
+    }).catch((requestError) => ({
+      data: { error: requestError.response?.data?.error || requestError.message },
+    }));
+    setSavingId("");
+
+    if (response.data?.error) {
+      setError(response.data.error);
+      return;
+    }
+
+    const messages = {
+      accept_visibility: "Ai acceptat afișarea profilului la această locație.",
+      decline_visibility: "Ai refuzat afișarea profilului la această locație. Asocierea profesională rămâne activă și privată.",
+      hide_visibility: "Ai retras acordul de afișare. Profilul nu mai apare public la această locație.",
+    };
+    setMessage(messages[action] || "Setarea a fost actualizată.");
+    await onRefresh?.();
+  };
 
   const withdrawAssignment = async (assignment) => {
     const locationName = assignment.location?.name || "această locație";
@@ -295,37 +340,71 @@ function Locations({ workspace, onRefresh }) {
     <div className="space-y-5">
       <div>
         <h1 className="font-heading text-2xl font-extrabold tracking-tight">Locații asociate</h1>
-        <p className="mt-1 text-xs text-muted-foreground">Asocierile sunt confirmate de tine. Publicarea la o locație este un pas separat.</p>
+        <p className="mt-1 text-xs text-muted-foreground">Confirmarea asocierii și acceptarea afișării publice sunt două decizii separate. Tu controlezi unde apare profilul tău.</p>
       </div>
       {message && <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-xs leading-relaxed text-green-900">{message}</div>}
       {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs leading-relaxed text-red-800">{error}</div>}
       <div className="space-y-3">
         {assignments.length === 0 && <div className="rounded-3xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">Nu există locații asociate.</div>}
-        {assignments.map((assignment) => (
-          <section key={assignment.id} className="rounded-3xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-bold">{assignment.location?.name || "Locație"}</h2>
-                <p className="mt-1 text-xs text-muted-foreground">{[assignment.location?.city, assignment.location?.address].filter(Boolean).join(" · ") || "Adresa necompletată"}</p>
-                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Asocierea confirmă faptul că activezi aici. Nu oferă acces la administrarea clinicii sau opticii.</p>
+        {assignments.map((assignment) => {
+          const status = consentPresentation(assignment);
+          const isPending = assignment.visibility_consent_status === "pending";
+          const isPublic = assignment.public_status === "public" && assignment.visibility_consent_status === "accepted";
+          return (
+            <section key={assignment.id} className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-bold">{assignment.location?.name || "Locație"}</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">{[assignment.location?.city, assignment.location?.address].filter(Boolean).join(" · ") || "Adresa necompletată"}</p>
+                  <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Asocierea confirmă faptul că activezi aici. Nu oferă acces la administrarea clinicii sau opticii.</p>
+                  {isPending && <p className="mt-2 text-[11px] leading-relaxed text-blue-700">Locația a solicitat să afișeze profilul tău. Poți accepta sau refuza fără să închei asocierea profesională.</p>}
+                </div>
+                <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
+                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${status.className}`}>{status.label}</span>
+                  {isPending && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={savingId === assignment.id}
+                        onClick={() => updateVisibility(assignment, "accept_visibility")}
+                        className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-green-200 px-3 text-[11px] font-semibold text-green-700 hover:bg-green-50 disabled:opacity-50"
+                      >
+                        <Eye className="h-3.5 w-3.5" /> Acceptă afișarea
+                      </button>
+                      <button
+                        type="button"
+                        disabled={savingId === assignment.id}
+                        onClick={() => updateVisibility(assignment, "decline_visibility")}
+                        className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-amber-200 px-3 text-[11px] font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                      >
+                        <XCircle className="h-3.5 w-3.5" /> Refuză
+                      </button>
+                    </>
+                  )}
+                  {isPublic && (
+                    <button
+                      type="button"
+                      disabled={savingId === assignment.id}
+                      onClick={() => updateVisibility(assignment, "hide_visibility")}
+                      className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-border px-3 text-[11px] font-semibold hover:bg-secondary disabled:opacity-50"
+                    >
+                      <EyeOff className="h-3.5 w-3.5" /> Ascunde profilul
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={savingId === assignment.id}
+                    onClick={() => withdrawAssignment(assignment)}
+                    className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-red-200 px-3 text-[11px] font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    <Unlink className="h-3.5 w-3.5" />
+                    {savingId === assignment.id ? "Se salvează..." : "Retrage asocierea"}
+                  </button>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${assignment.public_status === "public" ? "bg-green-100 text-green-800" : "bg-secondary text-muted-foreground"}`}>
-                  {assignment.public_status === "public" ? "Public" : "Privat"}
-                </span>
-                <button
-                  type="button"
-                  disabled={savingId === assignment.id}
-                  onClick={() => withdrawAssignment(assignment)}
-                  className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-red-200 px-3 text-[11px] font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
-                >
-                  <Unlink className="h-3.5 w-3.5" />
-                  {savingId === assignment.id ? "Se retrage..." : "Retrage asocierea"}
-                </button>
-              </div>
-            </div>
-          </section>
-        ))}
+            </section>
+          );
+        })}
       </div>
     </div>
   );
@@ -364,19 +443,19 @@ export default function ProfessionalWorkspaceRoot({
       statusBadge={<span className="hidden rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold sm:inline-flex">{PROFESSIONAL_REVIEW_STATUS_LABELS[reviewStatus] || reviewStatus}</span>}
     >
       <Suspense fallback={<WorkspaceSectionLoading />}>
-      {safeSection === "overview" && <Overview workspace={workspace} onNavigate={navigate} />}
-      {safeSection === "profile" && <ProfessionalProfileEditor workspace={workspace} onRefresh={onRefresh} />}
-      {safeSection === "locations" && <Locations workspace={workspace} onRefresh={onRefresh} />}
-      {safeSection === "settings" && (
-        <AccountSettings
-          user={user}
-          accountModes={accountModes}
-          activeMode={activeMode}
-          onSwitchMode={onSwitchMode}
-          onRefresh={onRefresh}
-          onLogout={onLogout}
-        />
-      )}
+        {safeSection === "overview" && <Overview workspace={workspace} onNavigate={navigate} />}
+        {safeSection === "profile" && <ProfessionalProfileEditor workspace={workspace} onRefresh={onRefresh} />}
+        {safeSection === "locations" && <Locations workspace={workspace} onRefresh={onRefresh} />}
+        {safeSection === "settings" && (
+          <AccountSettings
+            user={user}
+            accountModes={accountModes}
+            activeMode={activeMode}
+            onSwitchMode={onSwitchMode}
+            onRefresh={onRefresh}
+            onLogout={onLogout}
+          />
+        )}
       </Suspense>
     </ProviderAppShell>
   );
