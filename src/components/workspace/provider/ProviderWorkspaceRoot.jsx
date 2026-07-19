@@ -114,6 +114,7 @@ export default function ProviderWorkspaceRoot({
   const requestedLocationId = params.get("location") || "";
   const ownerSyncStarted = useRef(false);
   const overviewRequestRef = useRef(0);
+  const previousSectionRef = useRef(requestedSection);
 
   const allLocations = useMemo(() => workspace.locations || [], [workspace.locations]);
   const organizationContexts = useMemo(() => organizationContextsFor(workspace), [workspace]);
@@ -185,7 +186,10 @@ export default function ProviderWorkspaceRoot({
     if (!silent) setLoadingOverview(false);
   };
 
-  const refreshOverviewInPlace = () => loadOverview(selectedLocationId, { silent: true });
+  const refreshOverviewInPlace = async () => {
+    await loadOverview(selectedLocationId, { silent: true });
+    await onRefresh?.();
+  };
 
   useEffect(() => {
     if (ownerSyncStarted.current || !hasOwnerAccess) return;
@@ -229,6 +233,7 @@ export default function ProviderWorkspaceRoot({
   }, [canManageMembers, canManageOrganizationProfile, canManageSettings, canViewLocations, deniedLocationModule, requestedSection, routerNavigate]);
 
   const goToSection = (key) => {
+    if (key === "overview") void refreshOverviewInPlace();
     routerNavigate(`/contul-meu?s=${key}`);
   };
 
@@ -285,6 +290,21 @@ export default function ProviderWorkspaceRoot({
     || overview?.location?.organization_name
     || overview?.location?.name
     || "Spațiu furnizor";
+
+  useEffect(() => {
+    const previousSection = previousSectionRef.current;
+    previousSectionRef.current = safeSection;
+    if (safeSection === "overview" && previousSection !== "overview" && selectedLocationId) {
+      void refreshOverviewInPlace();
+    }
+  }, [safeSection, selectedLocationId]);
+
+  useEffect(() => {
+    if (safeSection !== "overview" || !selectedLocationId) return undefined;
+    const refreshOnFocus = () => { void refreshOverviewInPlace(); };
+    window.addEventListener("focus", refreshOnFocus);
+    return () => window.removeEventListener("focus", refreshOnFocus);
+  }, [safeSection, selectedLocationId]);
 
   return (
     <ProviderAppShell
@@ -361,7 +381,7 @@ export default function ProviderWorkspaceRoot({
               onOpenModule={openLocationModule}
             />
           )}
-          {safeSection === "access" && canManageMembers && <ProviderAccess organizationId={selectedOrganizationId} locations={locations} />}
+          {safeSection === "access" && canManageMembers && <ProviderAccess organizationId={selectedOrganizationId} locations={locations} onRefresh={refreshOverviewInPlace} />}
           {safeSection === "settings" && canManageSettings && (
             <ProviderSettings
               user={user}
@@ -371,6 +391,7 @@ export default function ProviderWorkspaceRoot({
               onSelectLocation={selectLocation}
               onSwitchMode={onSwitchMode}
               onNavigate={goToSection}
+              onRefresh={refreshOverviewInPlace}
             />
           )}
           </>
