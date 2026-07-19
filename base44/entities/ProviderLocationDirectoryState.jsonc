@@ -1,0 +1,92 @@
+{
+  "name": "ProviderLocationDirectoryState",
+  "type": "object",
+  "properties": {
+    "location_id": { "type": "string" },
+    "directory_external_key": { "type": "string" },
+    "directory_source_version": { "type": "string" },
+    "address_fingerprint": { "type": "string" },
+    "location_type_code": {
+      "type": "string",
+      "enum": [
+        "optical_store",
+        "optometry_office",
+        "ophthalmology_office",
+        "ophthalmology_clinic",
+        "multi_specialty_clinic",
+        "hospital_department",
+        "hospital_outpatient_unit",
+        "optical_laboratory",
+        "independent_professional_office",
+        "other"
+      ]
+    },
+    "care_setting_code": {
+      "type": "string",
+      "enum": [
+        "retail",
+        "outpatient",
+        "hospital_outpatient",
+        "hospital_inpatient",
+        "mixed",
+        "laboratory",
+        "other"
+      ]
+    },
+    "ownership_type_code": {
+      "type": "string",
+      "enum": ["private", "public", "nonprofit", "unknown"],
+      "default": "unknown"
+    },
+    "operational_status": {
+      "type": "string",
+      "enum": ["active", "temporarily_closed", "closed", "unknown"],
+      "default": "unknown"
+    },
+    "publication_status": {
+      "type": "string",
+      "enum": ["draft", "published", "hidden", "archived"],
+      "default": "draft"
+    },
+    "control_status": {
+      "type": "string",
+      "enum": ["directory", "claimed", "verified", "suspended"],
+      "default": "directory"
+    },
+    "data_quality_status": {
+      "type": "string",
+      "enum": ["high", "medium", "low", "conflict"],
+      "default": "low"
+    },
+    "directory_detail_level": {
+      "type": "string",
+      "enum": ["summary", "basic", "full"],
+      "default": "summary"
+    },
+    "directory_basic_details_approved": {
+      "type": "boolean",
+      "default": false
+    },
+    "organization_link_status": {
+      "type": "string",
+      "enum": ["confirmed", "probable", "conflict", "rejected", "unassigned"],
+      "default": "unassigned"
+    },
+    "organization_link_confidence": {
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    },
+    "organization_link_review_note": { "type": "string" },
+    "normalized_at": { "type": "string", "format": "date-time" },
+    "state_status": {
+      "type": "string",
+      "enum": ["active", "superseded"],
+      "default": "active"
+    }
+  },
+  "required": ["location_id", "state_status"],
+  "rls": {
+    "read": { "user_condition": { "role": "admin" } },
+    "write": { "user_condition": { "role": "admin" } }
+  }
+}
