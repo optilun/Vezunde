@@ -39,27 +39,17 @@ async function authorizeRequest(svc, requestId, accessToken) {
 }
 
 async function findLead(svc, requestId, locationId) {
-  const rows = await svc.entities.ProviderLead.filter({
-    request_id: requestId,
-    location_id: locationId,
-  }, '-created_date', 10);
+  const rows = await svc.entities.ProviderLead.filter({ request_id: requestId, location_id: locationId }, '-created_date', 10);
   return rows[0] || null;
 }
 
 async function findApproval(svc, requestId, locationId) {
-  const rows = await svc.entities.ContactShareApproval.filter({
-    request_id: requestId,
-    location_id: locationId,
-  }, '-updated_date', 10);
+  const rows = await svc.entities.ContactShareApproval.filter({ request_id: requestId, location_id: locationId }, '-updated_date', 10);
   return rows[0] || null;
 }
 
 async function findActiveResponse(svc, requestId, locationId) {
-  const rows = await svc.entities.ProviderLeadResponse.filter({
-    request_id: requestId,
-    location_id: locationId,
-    status: 'active',
-  }, '-updated_date', 10);
+  const rows = await svc.entities.ProviderLeadResponse.filter({ request_id: requestId, location_id: locationId, status: 'active' }, '-updated_date', 10);
   return rows[0] || null;
 }
 
@@ -70,12 +60,12 @@ function leadAllowsContactApproval(lead) {
 }
 
 async function approve(svc, request, contact, locationId) {
-  if (contact?.contact_email_verified !== true) {
-    return { error: 'Confirma mai intai adresa de email asociata cererii.', status: 409 };
+  if (!clean(contact?.contact_phone, 32)) {
+    return { error: 'Nu exista un numar de telefon asociat acestei cereri.', status: 409 };
   }
   const lead = await findLead(svc, request.id, locationId);
   if (!leadAllowsContactApproval(lead)) {
-    return { error: 'Locatia nu mai poate primi acces la contact pentru aceasta cerere.', status: 409 };
+    return { error: 'Locatia nu mai poate primi numarul de telefon pentru aceasta cerere.', status: 409 };
   }
   const response = await findActiveResponse(svc, request.id, locationId);
   if (!canApproveContactShareForResponse(response)) {
@@ -90,14 +80,14 @@ async function approve(svc, request, contact, locationId) {
       findActiveResponse(svc, request.id, locationId),
       svc.entities.PatientRequestContact.get(contact.id).catch(() => null),
     ]);
-    if (!checkedContact || checkedContact.status !== 'active' || checkedContact.contact_email_verified !== true) {
-      return { error: 'Adresa de email nu mai este confirmata.', status: 409 };
+    if (!checkedContact || checkedContact.status !== 'active' || !clean(checkedContact.contact_phone, 32)) {
+      return { error: 'Numarul de telefon nu mai este disponibil.', status: 409 };
     }
     if (!checkedLead || checkedLead.id !== lead.id || !leadAllowsContactApproval(checkedLead)) {
-      return { error: 'Locatia nu mai poate primi acces la contact pentru aceasta cerere.', status: 409 };
+      return { error: 'Locatia nu mai poate primi numarul de telefon pentru aceasta cerere.', status: 409 };
     }
     if (!canApproveContactShareForResponse(checkedResponse)) {
-      return { error: 'Raspunsul locatiei nu mai permite distribuirea contactului.', status: 409 };
+      return { error: 'Raspunsul locatiei nu mai permite distribuirea numarului de telefon.', status: 409 };
     }
     const existing = await findApproval(svc, request.id, locationId);
     const now = new Date().toISOString();
@@ -189,6 +179,7 @@ Deno.serve(async (req) => {
       return res({
         contract_version: CONTACT_SHARE_APPROVAL_CONTRACT_VERSION,
         contact_email_verified: authorized.contact.contact_email_verified === true,
+        contact_phone_available: Boolean(clean(authorized.contact.contact_phone, 32)),
         approvals: rows.map((row) => sanitizeContactShareApproval(row)),
       });
     }
@@ -206,6 +197,6 @@ Deno.serve(async (req) => {
     }
     return res({ error: 'Actiune necunoscuta.' }, 400);
   } catch (_error) {
-    return res({ error: 'Acordul pentru contact nu a putut fi actualizat.' }, 500);
+    return res({ error: 'Acordul pentru telefon nu a putut fi actualizat.' }, 500);
   }
 });
