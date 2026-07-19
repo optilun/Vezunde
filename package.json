@@ -15,7 +15,8 @@
     "audit:services": "node scripts/audit-service-registry-data.mjs",
     "preview": "vite preview",
     "test:provider-submissions": "node scripts/verify-provider-submission-comparison.mjs && node scripts/verify-provider-submission-backend.mjs",
-    "test:provider-hours": "node scripts/verify-provider-opening-hours.mjs"
+    "test:provider-hours": "node scripts/verify-provider-opening-hours.mjs",
+    "test:provider-location-identity": "node scripts/verify-provider-location-identity-resolution.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.39",

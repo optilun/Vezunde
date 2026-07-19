@@ -2,7 +2,7 @@ import React from "react";
 import { Inbox } from "lucide-react";
 
 // UI-1 PART 4: premium, honest empty states — no fake charts or dummy rows.
-export default function EmptyState({ title, subtitle, ctaLabel, onCta, icon: Icon = Inbox }) {
+export default function EmptyState({ title, subtitle = "", ctaLabel = "", onCta = undefined, icon: Icon = Inbox }) {
   return (
     <div className="text-center py-8 px-4">
       <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center mx-auto">

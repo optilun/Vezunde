@@ -17,13 +17,16 @@ on:
       - "src/lib/postLoginRedirect.js"
       - "src/lib/workspaceNav.js"
       - "shared/providerOpeningHours.js"
+      - "shared/providerLocationIdentityResolution.js"
       - "base44/functions/submitProviderClaim/**"
       - "base44/functions/getClaimableProviderLocations/**"
       - "base44/functions/getMyProviderOnboardingWorkspace/**"
       - "base44/functions/adminProviderClaimReview/**"
       - "base44/functions/saveProviderRoutineProfile/**"
+      - "base44/functions/providerLocationIdentityResolutionOps/**"
       - "scripts/verify-provider-onboarding-continuity.mjs"
       - "scripts/verify-provider-opening-hours.mjs"
+      - "scripts/verify-provider-location-identity-resolution.mjs"
       - "scripts/compare-typecheck-baseline.mjs"
       - ".github/workflows/provider-onboarding-ci.yml"
 
@@ -45,6 +48,8 @@ jobs:
         run: node scripts/verify-provider-onboarding-continuity.mjs
       - name: Provider hours regression checks
         run: npm run test:provider-hours
+      - name: Provider location identity checks
+        run: npm run test:provider-location-identity
       - name: Typecheck current branch
         shell: bash
         run: |
