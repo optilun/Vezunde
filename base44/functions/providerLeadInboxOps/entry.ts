@@ -5,6 +5,13 @@ import {
   sanitizeProviderLeadForFreeInbox,
   summarizeProviderLeadInbox,
 } from '../../../shared/providerLeadInboxPolicy.js';
+import { resolveProviderEntitlement } from '../../../shared/providerEntitlementPolicy.js';
+import {
+  PROVIDER_LEAD_FULL_DETAILS_CONTRACT_VERSION,
+  buildProviderLeadFullDetails,
+  providerLeadFullDetailsEligibility,
+  sanitizeProviderLeadFullDetailsStatus,
+} from '../../../shared/providerLeadFullDetailsPolicy.js';
 
 const LIST_STATUSES = new Set(['new', 'viewed', 'interested', 'needs_details', 'declined', 'closed', 'expired']);
 
@@ -26,7 +33,6 @@ async function authorizeLocation(svc, user, locationId) {
   const location = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
   if (!location) return { error: 'Locatia nu a fost gasita.', status: 404 };
   if (user.role === 'admin') return { location, role: 'admin' };
-
   const memberships = await svc.entities.ProviderMembership.filter({
     user_id: user.id,
     location_id: locationId,
@@ -43,6 +49,58 @@ function safeLocation(location) {
     name: location.public_display_name || location.name || 'Locatie',
     city: location.locality_name || location.city || '',
     county: location.county_name || location.county || '',
+  };
+}
+
+async function entitlementForLocation(svc, locationId) {
+  const rows = await svc.entities.ProviderSubscription.filter({ location_id: locationId }, '-created_date', 100);
+  return resolveProviderEntitlement(rows);
+}
+
+async function auditFullDetailsRead(svc, lead, user, entitlement, fields) {
+  await svc.entities.ProviderLeadContactAccessAudit.create({
+    lead_id: lead.id,
+    request_id: lead.request_id || '',
+    organization_id: lead.organization_id || '',
+    location_id: lead.location_id || '',
+    accessor_user_id: user.id,
+    access_contract_version: PROVIDER_LEAD_FULL_DETAILS_CONTRACT_VERSION,
+    outcome: 'granted',
+    reason: 'top3_pro_full_details',
+    accessed_fields: fields,
+    entitlement_plan_code: entitlement.plan_code || 'free',
+    approval_contract_version: '',
+    accessed_at: new Date().toISOString(),
+  });
+}
+
+async function enrichLeadForInbox(svc, lead, user, entitlement) {
+  const safe = sanitizeProviderLeadForFreeInbox(lead);
+  if (lead.access_tier !== 'pro_full' || lead.result_bucket_snapshot !== 'top3') {
+    return {
+      ...safe,
+      full_details_status: sanitizeProviderLeadFullDetailsStatus({ eligible: false, reasons: ['lead_not_top3'] }),
+    };
+  }
+
+  const [request, contacts] = await Promise.all([
+    svc.entities.PatientRequest.get(lead.request_id).catch(() => null),
+    svc.entities.PatientRequestContact.filter({ request_id: lead.request_id, status: 'active' }, '-updated_date', 2),
+  ]);
+  const contact = contacts[0] || null;
+  const eligibility = providerLeadFullDetailsEligibility({ lead, request, contact, entitlement });
+  const status = sanitizeProviderLeadFullDetailsStatus(eligibility);
+  if (!eligibility.eligible) return { ...safe, full_details_status: status };
+
+  const fullDetails = buildProviderLeadFullDetails({ request, contact });
+  const accessedFields = ['contact_name', 'detailed_message'];
+  if (fullDetails.client_email) accessedFields.push('contact_email');
+  await auditFullDetailsRead(svc, lead, user, entitlement, accessedFields);
+  return {
+    ...safe,
+    access_tier: 'pro_full',
+    full_details_status: status,
+    full_details: fullDetails,
   };
 }
 
@@ -66,37 +124,35 @@ Deno.serve(async (req) => {
       const lead = await svc.entities.ProviderLead.get(leadId).catch(() => null);
       if (!lead || lead.location_id !== locationId) return res({ error: 'Leadul nu a fost gasit.' }, 404);
       if (lead.delivery_state !== 'available') return res({ error: 'Leadul nu mai este disponibil.' }, 409);
-
       const updated = lead.status === 'new'
         ? await svc.entities.ProviderLead.update(lead.id, { status: 'viewed' })
         : lead;
-      return res({
-        contract_version: PROVIDER_LEAD_INBOX_CONTRACT_VERSION,
-        lead: sanitizeProviderLeadForFreeInbox(updated),
-      });
+      return res({ contract_version: PROVIDER_LEAD_INBOX_CONTRACT_VERSION, lead: sanitizeProviderLeadForFreeInbox(updated) });
     }
 
     if (action !== 'list') return res({ error: 'Actiune necunoscuta.' }, 400);
-
     const requestedStatus = clean(input.status, 80);
     const filter = {
       location_id: locationId,
       delivery_state: 'available',
       ...(LIST_STATUSES.has(requestedStatus) ? { status: requestedStatus } : {}),
     };
-    const [rows, allRows] = await Promise.all([
+    const [rows, allRows, entitlement] = await Promise.all([
       svc.entities.ProviderLead.filter(filter, '-created_date', boundedLimit(input.limit)),
       svc.entities.ProviderLead.filter({ location_id: locationId, delivery_state: 'available' }, '-created_date', 500),
+      entitlementForLocation(svc, locationId),
     ]);
+    const leads = await Promise.all(rows.map((lead) => enrichLeadForInbox(svc, lead, user, entitlement)));
 
     return res({
       contract_version: PROVIDER_LEAD_INBOX_CONTRACT_VERSION,
-      access_tier: 'free_preview',
-      contact_access_state: 'hidden',
+      entitlement,
+      access_tier: entitlement.plan_code === 'pro' ? 'pro_full_when_top3' : 'free_preview',
+      contact_access_state: 'phone_hidden_until_patient_approval',
       conversation_access_state: 'locked',
       location: safeLocation(authorized.location),
       counters: summarizeProviderLeadInbox(allRows),
-      leads: rows.map(sanitizeProviderLeadForFreeInbox),
+      leads,
     });
   } catch (_error) {
     return res({ error: 'Leadurile nu au putut fi incarcate.' }, 500);
