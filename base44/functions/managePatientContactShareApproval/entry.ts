@@ -33,8 +33,9 @@ async function authorizeRequest(svc, requestId, accessToken) {
     access_token_hash: tokenHash,
     status: 'active',
   }, null, 2);
-  if (!contacts[0]) return { error: 'Accesul la cerere nu este valid.', status: 403 };
-  return { request };
+  const contact = contacts[0];
+  if (!contact) return { error: 'Accesul la cerere nu este valid.', status: 403 };
+  return { request, contact };
 }
 
 async function findLead(svc, requestId, locationId) {
@@ -68,7 +69,10 @@ function leadAllowsContactApproval(lead) {
     && !['declined', 'closed', 'expired'].includes(lead.status);
 }
 
-async function approve(svc, request, locationId) {
+async function approve(svc, request, contact, locationId) {
+  if (contact?.contact_email_verified !== true) {
+    return { error: 'Confirma mai intai adresa de email asociata cererii.', status: 409 };
+  }
   const lead = await findLead(svc, request.id, locationId);
   if (!leadAllowsContactApproval(lead)) {
     return { error: 'Locatia nu mai poate primi acces la contact pentru aceasta cerere.', status: 409 };
@@ -81,10 +85,14 @@ async function approve(svc, request, locationId) {
   const lock = await acquireContactShareApprovalLock(svc, lead.id);
   if (!lock) return { error: 'Acordul este actualizat in alta sesiune. Reincearca.', status: 409 };
   try {
-    const [checkedLead, checkedResponse] = await Promise.all([
+    const [checkedLead, checkedResponse, checkedContact] = await Promise.all([
       findLead(svc, request.id, locationId),
       findActiveResponse(svc, request.id, locationId),
+      svc.entities.PatientRequestContact.get(contact.id).catch(() => null),
     ]);
+    if (!checkedContact || checkedContact.status !== 'active' || checkedContact.contact_email_verified !== true) {
+      return { error: 'Adresa de email nu mai este confirmata.', status: 409 };
+    }
     if (!checkedLead || checkedLead.id !== lead.id || !leadAllowsContactApproval(checkedLead)) {
       return { error: 'Locatia nu mai poate primi acces la contact pentru aceasta cerere.', status: 409 };
     }
@@ -180,13 +188,14 @@ Deno.serve(async (req) => {
       const rows = await svc.entities.ContactShareApproval.filter({ request_id: requestId }, '-updated_date', 100);
       return res({
         contract_version: CONTACT_SHARE_APPROVAL_CONTRACT_VERSION,
+        contact_email_verified: authorized.contact.contact_email_verified === true,
         approvals: rows.map((row) => sanitizeContactShareApproval(row)),
       });
     }
 
     if (!locationId) return res({ error: 'location_id este obligatoriu.' }, 400);
     if (action === 'approve') {
-      const result = await approve(svc, authorized.request, locationId);
+      const result = await approve(svc, authorized.request, authorized.contact, locationId);
       if (result.error) return res({ error: result.error }, result.status);
       return res({ contract_version: CONTACT_SHARE_APPROVAL_CONTRACT_VERSION, ...result });
     }
