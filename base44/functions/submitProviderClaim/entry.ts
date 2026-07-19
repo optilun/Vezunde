@@ -13,6 +13,12 @@ const ROLE_BY_RELATIONSHIP = {
   location_manager: 'location_manager',
   authorized_staff: 'location_staff',
 };
+const LOCATION_ROLE_BY_RELATIONSHIP = {
+  owner: 'location_manager',
+  organization_representative: 'location_manager',
+  location_manager: 'location_manager',
+  authorized_staff: 'location_staff',
+};
 
 Deno.serve(async (req) => {
   try {
@@ -33,7 +39,7 @@ Deno.serve(async (req) => {
     if (!RELATIONSHIPS.includes(claimantRelationship)) {
       return Response.json({ error: 'Selecteaza relatia ta cu aceasta locatie' }, { status: 400 });
     }
-    const requestedMembershipRole = ROLE_BY_RELATIONSHIP[claimantRelationship] || 'location_staff';
+    let requestedMembershipRole = ROLE_BY_RELATIONSHIP[claimantRelationship] || 'location_staff';
 
     let locationId = p.location_id || null;
     let organizationId = null;
@@ -53,6 +59,7 @@ Deno.serve(async (req) => {
       }
       organizationId = loc.organization_id || null;
       businessName = loc.name;
+      requestedMembershipRole = LOCATION_ROLE_BY_RELATIONSHIP[claimantRelationship] || 'location_staff';
 
       const previousUserClaims = await svc.entities.ProviderClaimRequest
         .filter({ location_id: locationId, user_id: user.id }, '-created_date', 20)
@@ -87,8 +94,10 @@ Deno.serve(async (req) => {
       }
       submittedPayload = JSON.stringify({
         mode: 'claim',
+        claim_scope: 'location',
         request_type: requestType,
         location_id: locationId,
+        organization_id: organizationId,
         claimant_relationship: claimantRelationship,
         requested_membership_role: requestedMembershipRole,
         existing_active_membership_count: activeMemberships.length,

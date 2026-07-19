@@ -12,6 +12,13 @@ export const REQUESTED_ROLE_BY_RELATIONSHIP = {
   authorized_staff: "location_staff",
 };
 
+export const LOCATION_REQUESTED_ROLE_BY_RELATIONSHIP = {
+  owner: "location_manager",
+  organization_representative: "location_manager",
+  location_manager: "location_manager",
+  authorized_staff: "location_staff",
+};
+
 export const REQUESTED_ROLE_LABELS = {
   organization_owner: "Owner organizatie",
   location_manager: "Manager locatie",
@@ -20,4 +27,8 @@ export const REQUESTED_ROLE_LABELS = {
 
 export function requestedRoleForRelationship(relationship) {
   return REQUESTED_ROLE_BY_RELATIONSHIP[relationship] || "location_staff";
+}
+
+export function requestedLocationRoleForRelationship(relationship) {
+  return LOCATION_REQUESTED_ROLE_BY_RELATIONSHIP[relationship] || "location_staff";
 }

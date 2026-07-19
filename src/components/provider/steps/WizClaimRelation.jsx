@@ -1,11 +1,11 @@
 import React from "react";
 import ChoiceCard from "@/components/intake/ChoiceCard";
 import ContinueButton from "@/components/intake/ContinueButton";
-import { CLAIMANT_RELATIONSHIPS, REQUESTED_ROLE_LABELS, requestedRoleForRelationship } from "@/components/provider/ContactIdentityFields";
+import { CLAIMANT_RELATIONSHIPS, REQUESTED_ROLE_LABELS, requestedLocationRoleForRelationship } from "@/components/provider/ContactIdentityFields";
 
 const RELATION_HINTS = {
-  owner: "Soliciti administrarea organizatiei si, dupa verificare, a locatiilor sale.",
-  organization_representative: "Soliciti administrarea in numele organizatiei, pe baza autorizarii declarate.",
+  owner: "Confirmi relatia cu afacerea, dar aceasta cerere acorda acces doar la locatia selectata.",
+  organization_representative: "Soliciti acces pentru locatia selectata. Administrarea intregii organizatii se verifica separat.",
   location_manager: "Soliciti administrarea locatiei selectate, fara control asupra intregii organizatii.",
   authorized_staff: "Soliciti acces operational limitat pentru actualizarea locatiei.",
 };
@@ -13,7 +13,7 @@ const RELATION_HINTS = {
 export default function WizClaimRelation({ data, update, next, loading = false }) {
   const contact = data.contact;
   const setContact = (patch) => update({ contact: { ...contact, ...patch } });
-  const requestedRole = requestedRoleForRelationship(contact.claimant_relationship);
+  const requestedRole = requestedLocationRoleForRelationship(contact.claimant_relationship);
   const valid = Boolean(contact.claimant_relationship && contact.representation_confirmed);
 
   return (
@@ -32,7 +32,7 @@ export default function WizClaimRelation({ data, update, next, loading = false }
 
       {contact.claimant_relationship && (
         <div className="rounded-xl border border-border bg-secondary/40 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-          Acces solicitat: <span className="font-semibold text-foreground">{REQUESTED_ROLE_LABELS[requestedRole]}</span>. Rolul final este confirmat de VIASEE la verificare.
+          Acces solicitat pentru aceasta locatie: <span className="font-semibold text-foreground">{REQUESTED_ROLE_LABELS[requestedRole]}</span>. Rolul final este confirmat de VIASEE la verificare.
         </div>
       )}
 
