@@ -1,0 +1,57 @@
+{
+  "name": "ProviderClaimLocationSelection",
+  "type": "object",
+  "properties": {
+    "claim_request_id": { "type": "string" },
+    "organization_id": { "type": "string" },
+    "location_id": { "type": "string" },
+    "decision": {
+      "type": "string",
+      "enum": ["included", "excluded"]
+    },
+    "request_status": {
+      "type": "string",
+      "enum": ["pending", "not_requested", "approved", "rejected"],
+      "default": "pending"
+    },
+    "claim_action": {
+      "type": "string",
+      "enum": ["claim_profile", "request_access"]
+    },
+    "was_controlled": { "type": "boolean", "default": false },
+    "organization_link_status": {
+      "type": "string",
+      "enum": ["confirmed", "probable", "conflict", "rejected", "unassigned"]
+    },
+    "requested_role": {
+      "type": "string",
+      "enum": ["organization_owner", "location_manager", "location_staff"]
+    },
+    "approved_role": {
+      "type": "string",
+      "enum": ["organization_owner", "location_manager", "location_staff"]
+    },
+    "location_snapshot_json": { "type": "string" },
+    "reviewed_by_user_id": { "type": "string" },
+    "reviewed_at": { "type": "string", "format": "date-time" },
+    "review_note": { "type": "string" },
+    "selection_status": {
+      "type": "string",
+      "enum": ["active", "superseded"],
+      "default": "active"
+    }
+  },
+  "required": [
+    "claim_request_id",
+    "location_id",
+    "decision",
+    "request_status",
+    "claim_action",
+    "requested_role",
+    "selection_status"
+  ],
+  "rls": {
+    "read": { "user_condition": { "role": "admin" } },
+    "write": { "user_condition": { "role": "admin" } }
+  }
+}
