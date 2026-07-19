@@ -62,12 +62,14 @@ export default function MyAccount() {
   const [loadError, setLoadError] = useState("");
   const [activeMode, setActiveMode] = useState(null);
   const loadRequestRef = useRef(0);
+  const hasWorkspaceDataRef = useRef(false);
   const { user, logout } = useAuth();
 
   const load = useCallback(async () => {
     const requestId = ++loadRequestRef.current;
+    const initialRequest = !hasWorkspaceDataRef.current;
     setLoadError("");
-    setLoading(true);
+    if (initialRequest) setLoading(true);
 
     try {
       const [providerResult, professionalResult, onboardingResult] = await Promise.all([
@@ -80,12 +82,15 @@ export default function MyAccount() {
       setProviderWorkspace(providerResult.data);
       setProfessionalWorkspace(professionalResult.data);
       setOnboardingWorkspace(onboardingResult.data);
+      hasWorkspaceDataRef.current = true;
     } catch (error) {
       if (requestId !== loadRequestRef.current) return;
       console.error("Account workspace load failed:", error);
-      setLoadError("Sesiunea este activă, dar datele contului nu au putut fi încărcate.");
+      if (initialRequest) {
+        setLoadError("Sesiunea este activă, dar datele contului nu au putut fi încărcate.");
+      }
     } finally {
-      if (requestId === loadRequestRef.current) setLoading(false);
+      if (requestId === loadRequestRef.current && initialRequest) setLoading(false);
     }
   }, []);
 
