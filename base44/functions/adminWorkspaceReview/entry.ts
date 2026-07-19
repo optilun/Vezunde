@@ -702,6 +702,11 @@ Deno.serve(async (req) => {
       const submission = await svc.entities.ProviderWorkspaceSubmission.get(payload.submission_id).catch(() => null);
       if (!submission) return Response.json({ error: 'Submission nu a fost gasit' }, { status: 404 });
       if (submission.status !== 'pending_review') return Response.json({ error: 'Submission nu este in asteptare' }, { status: 400 });
+      if (submission.section === 'team') {
+        return Response.json({
+          error: 'Sectiunea legacy pentru echipa nu mai poate modifica identitatea profesionala. Foloseste invitatiile profesionale si administrarea assignmenturilor dedicate.',
+        }, { status: 409 });
+      }
       let parsedPayload = null;
       try { parsedPayload = JSON.parse(submission.payload_json || '{}'); } catch (_error) { parsedPayload = null; }
       const validation = validatePayload(submission.section, parsedPayload);
