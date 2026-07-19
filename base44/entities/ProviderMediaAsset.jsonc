@@ -8,6 +8,9 @@
     "location_id": {
       "type": "string"
     },
+    "submission_id": {
+      "type": "string"
+    },
     "uploaded_by_user_id": {
       "type": "string"
     },
@@ -20,7 +23,8 @@
         "logo",
         "cover",
         "gallery",
-        "team_photo"
+        "team_photo",
+        "location_photo"
       ]
     },
     "caption": {
@@ -39,6 +43,27 @@
         "withdrawn"
       ],
       "default": "draft"
+    },
+    "cleanup_status": {
+      "type": "string",
+      "enum": [
+        "pending_attachment",
+        "active",
+        "pending_cleanup",
+        "cleaned"
+      ],
+      "default": "active"
+    },
+    "cleanup_reason": {
+      "type": "string"
+    },
+    "cleanup_requested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cleanup_completed_at": {
+      "type": "string",
+      "format": "date-time"
     },
     "sort_order": {
       "type": "number",

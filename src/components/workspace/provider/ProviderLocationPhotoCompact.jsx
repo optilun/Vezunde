@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { CheckCircle2, ImagePlus, Loader2 } from "lucide-react";
+import { CheckCircle2, ImagePlus, Loader2, Send, Trash2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const ACTIVE_SUBMISSION_STATUSES = ["draft", "pending_review", "needs_more_info"];
+const EDITABLE_SUBMISSION_STATUSES = ["draft", "needs_more_info"];
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
 const MAX_OPTIMIZED_BYTES = 2 * 1024 * 1024;
 
@@ -83,14 +84,24 @@ async function optimizeLocationPhoto(file, locationId) {
   throw new Error("Fotografia ramane prea mare dupa optimizare.");
 }
 
-export default function ProviderLocationPhotoCompact({ locationId }) {
+export default function ProviderLocationPhotoCompact({ locationId, onRefresh }) {
   const [currentPhoto, setCurrentPhoto] = useState("");
   const [submission, setSubmission] = useState(null);
   const [preview, setPreview] = useState("");
+  const [stagedFile, setStagedFile] = useState(null);
+  const [stagedPreview, setStagedPreview] = useState("");
+  const [uploadedAsset, setUploadedAsset] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState("");
   const legacyMigrationAttempted = useRef(false);
+
+  const clearStaged = () => {
+    if (stagedPreview.startsWith("blob:")) URL.revokeObjectURL(stagedPreview);
+    setStagedFile(null);
+    setStagedPreview("");
+    setUploadedAsset(null);
+  };
 
   const load = async () => {
     if (!locationId) return;
@@ -127,11 +138,16 @@ export default function ProviderLocationPhotoCompact({ locationId }) {
   useEffect(() => {
     setMessage("");
     legacyMigrationAttempted.current = false;
+    clearStaged();
     load();
+    return () => {
+      if (stagedPreview.startsWith("blob:")) URL.revokeObjectURL(stagedPreview);
+    };
   }, [locationId]);
 
   const pending = submission?.status === "pending_review";
-  const shownPhoto = preview || currentPhoto;
+  const editableDraft = EDITABLE_SUBMISSION_STATUSES.includes(submission?.status);
+  const shownPhoto = stagedPreview || preview || currentPhoto;
 
   const choosePhoto = async (file) => {
     if (!file) return;
@@ -146,50 +162,131 @@ export default function ProviderLocationPhotoCompact({ locationId }) {
       return;
     }
 
-    const previousPreview = preview;
-    let localPreviewUrl = "";
-    setSaving(true);
+    setProcessing(true);
+    try {
+      const optimizedFile = await optimizeLocationPhoto(file, locationId);
+      if (stagedPreview.startsWith("blob:")) URL.revokeObjectURL(stagedPreview);
+      const localPreviewUrl = URL.createObjectURL(optimizedFile);
+      setStagedFile(optimizedFile);
+      setStagedPreview(localPreviewUrl);
+      setUploadedAsset(null);
+      setMessage("Verifica fotografia. Fisierul nu este trimis pana nu salvezi draftul.");
+    } catch (error) {
+      setMessage(error.message || "Fotografia nu a putut fi pregatita.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const saveDraft = async () => {
+    if (!stagedFile && !uploadedAsset?.url) return;
+    setProcessing(true);
+    setMessage("");
 
     try {
-      setMessage("Fotografia se optimizeaza si se incarca...");
-      const optimizedFile = await optimizeLocationPhoto(file, locationId);
-      localPreviewUrl = URL.createObjectURL(optimizedFile);
-      setPreview(localPreviewUrl);
+      let asset = uploadedAsset;
+      if (!asset?.url || !asset?.id) {
+        setMessage("Fotografia se incarca si se inregistreaza...");
+        const uploadResponse = await base44.integrations.Core.UploadFile({ file: stagedFile });
+        const photoUrl = String(uploadResponse?.file_url || "").trim();
+        if (!photoUrl) throw new Error("Incarcarea fotografiei nu a returnat un URL valid.");
 
-      const uploadResponse = await base44.integrations.Core.UploadFile({ file: optimizedFile });
-      const photoUrl = String(uploadResponse?.file_url || "").trim();
-      if (!photoUrl) throw new Error("Incarcarea fotografiei nu a returnat un URL valid.");
+        const registerResponse = await base44.functions.invoke("providerPhotoUploadLifecycleOps", {
+          action: "register_upload",
+          location_id: locationId,
+          storage_reference: photoUrl,
+        });
+        if (registerResponse.data?.error) throw new Error(registerResponse.data.error);
+        asset = { id: registerResponse.data?.asset?.id, url: photoUrl };
+        if (!asset.id) throw new Error("Fisierul incarcat nu a putut fi inregistrat.");
+        setUploadedAsset(asset);
+      }
 
       const saveResponse = await base44.functions.invoke("locationPhotoOps", {
         action: "save_draft",
         location_id: locationId,
         photo: {
           kind: "location_photo",
-          photo_url: photoUrl,
+          photo_url: asset.url,
           remove_photo: false,
         },
       });
       if (saveResponse.data?.error) throw new Error(saveResponse.data.error);
+      const nextSubmission = saveResponse.data?.submission;
+      if (!nextSubmission?.id) throw new Error("Draftul fotografiei nu a putut fi creat.");
 
-      const submissionId = saveResponse.data?.submission?.id;
-      if (!submissionId) throw new Error("Draftul fotografiei nu a putut fi creat.");
+      const attachResponse = await base44.functions.invoke("providerPhotoUploadLifecycleOps", {
+        action: "attach_upload",
+        location_id: locationId,
+        asset_id: asset.id,
+        submission_id: nextSubmission.id,
+      });
+      if (attachResponse.data?.error) throw new Error(attachResponse.data.error);
 
+      setSubmission(nextSubmission);
+      setPreview(asset.url);
+      clearStaged();
+      setMessage("Draftul fotografiei a fost salvat. Verifica imaginea si trimite-o separat spre aprobare.");
+      onRefresh?.();
+    } catch (error) {
+      setMessage(error.response?.data?.error || error.message || "Draftul fotografiei nu a putut fi salvat.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const submitReview = async () => {
+    if (!submission?.id || !editableDraft) return;
+    setProcessing(true);
+    setMessage("");
+    try {
       const submitResponse = await base44.functions.invoke("locationPhotoOps", {
         action: "submit_review",
         location_id: locationId,
-        submission_id: submissionId,
+        submission_id: submission.id,
       });
       if (submitResponse.data?.error) throw new Error(submitResponse.data.error);
 
-      setPreview(photoUrl);
+      await base44.functions.invoke("providerPhotoUploadLifecycleOps", {
+        action: "sync_submission_status",
+        location_id: locationId,
+        submission_id: submission.id,
+      }).catch(() => null);
+
       setMessage("Fotografia locatiei a fost trimisa spre verificare.");
       await load();
+      onRefresh?.();
     } catch (error) {
-      setPreview(previousPreview);
       setMessage(error.response?.data?.error || error.message || "Fotografia nu a putut fi trimisa.");
     } finally {
-      if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
-      setSaving(false);
+      setProcessing(false);
+    }
+  };
+
+  const discardDraft = async () => {
+    if (stagedFile || stagedPreview) {
+      clearStaged();
+      setMessage("Fotografia selectata a fost eliminata. Niciun fisier nu a fost incarcat.");
+      return;
+    }
+    if (!submission?.id || !editableDraft) return;
+    setProcessing(true);
+    setMessage("");
+    try {
+      const response = await base44.functions.invoke("providerPhotoUploadLifecycleOps", {
+        action: "discard_draft",
+        location_id: locationId,
+        submission_id: submission.id,
+      });
+      if (response.data?.error) throw new Error(response.data.error);
+      setSubmission(null);
+      setPreview("");
+      setMessage("Draftul fotografiei a fost retras. Fisierul a fost adaugat in coada de curatare.");
+      onRefresh?.();
+    } catch (error) {
+      setMessage(error.response?.data?.error || error.message || "Draftul nu a putut fi retras.");
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -207,7 +304,7 @@ export default function ProviderLocationPhotoCompact({ locationId }) {
         <div className="mb-2">
           <div className="text-sm font-bold">Fotografie principala a locatiei</div>
           <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-            Adauga o fotografie clara din exteriorul sau interiorul punctului de lucru. Logo-ul se gestioneaza separat din Profil public.
+            Alege fotografia, verifica previzualizarea, salveaza draftul si trimite-l separat spre aprobare.
           </p>
         </div>
 
@@ -234,28 +331,50 @@ export default function ProviderLocationPhotoCompact({ locationId }) {
           Fotografia locatiei este in verificare. Fotografia publica actuala ramane neschimbata pana la aprobare.
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-3">
-          <label className={`inline-flex cursor-pointer items-center gap-2 rounded-full ${currentPhoto ? "border border-border bg-background text-foreground" : "bg-foreground text-background"} px-4 py-2.5 text-sm font-semibold hover:opacity-90 ${saving ? "pointer-events-none opacity-50" : ""}`}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-            {saving ? "Se incarca..." : currentPhoto ? "Schimba fotografia locatiei" : "Alege fotografia locatiei"}
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              className="hidden"
-              disabled={saving}
-              onChange={(event) => {
-                choosePhoto(event.target.files?.[0]);
-                event.target.value = "";
-              }}
-            />
-          </label>
-          {currentPhoto && <span className="text-xs text-muted-foreground">Fotografie aprobata si publicata</span>}
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className={`inline-flex cursor-pointer items-center gap-2 rounded-full ${currentPhoto || editableDraft ? "border border-border bg-background text-foreground" : "bg-foreground text-background"} px-4 py-2.5 text-sm font-semibold hover:opacity-90 ${processing ? "pointer-events-none opacity-50" : ""}`}>
+              {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+              {stagedFile ? "Alege alta fotografie" : editableDraft ? "Schimba fotografia din draft" : currentPhoto ? "Schimba fotografia locatiei" : "Alege fotografia locatiei"}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                disabled={processing}
+                onChange={(event) => {
+                  choosePhoto(event.target.files?.[0]);
+                  event.target.value = "";
+                }}
+              />
+            </label>
+            {currentPhoto && !preview && !stagedPreview && <span className="text-xs text-muted-foreground">Fotografie aprobata si publicata</span>}
+            {editableDraft && !stagedFile && <span className="text-xs font-semibold text-amber-800">Draft nestrimis</span>}
+            {stagedFile && <span className="text-xs font-semibold text-blue-800">Previzualizare locala, neincarcata</span>}
+          </div>
+
+          {(stagedFile || editableDraft) && (
+            <div className="flex flex-wrap gap-2 border-t border-border/70 pt-3">
+              {stagedFile && (
+                <button type="button" disabled={processing} onClick={saveDraft} className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-40">
+                  {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} Salveaza ca draft
+                </button>
+              )}
+              {editableDraft && !stagedFile && (
+                <button type="button" disabled={processing} onClick={submitReview} className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-40">
+                  {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Trimite spre verificare
+                </button>
+              )}
+              <button type="button" disabled={processing} onClick={discardDraft} className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-destructive hover:bg-red-50 disabled:opacity-40">
+                <Trash2 className="h-4 w-4" /> {stagedFile ? "Renunta la selectie" : "Retrage draftul"}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       {submission?.admin_note && ["needs_more_info", "rejected"].includes(submission.status) && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
-          <b>Mesaj Vezunde:</b> {submission.admin_note}
+          <b>Mesaj VIASEE:</b> {submission.admin_note}
         </div>
       )}
 
