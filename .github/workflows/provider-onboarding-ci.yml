@@ -18,6 +18,7 @@ on:
       - "src/lib/workspaceNav.js"
       - "shared/providerOpeningHours.js"
       - "shared/providerLocationIdentityResolution.js"
+      - "shared/providerAccountWorkflowContract.js"
       - "base44/entities/ProviderMemberInvitation.jsonc"
       - "base44/entities/ProviderOrganization.jsonc"
       - "base44/functions/submitProviderClaim/**"
@@ -36,6 +37,7 @@ on:
       - "scripts/verify-provider-location-identity-resolution.mjs"
       - "scripts/verify-provider-invitation-delivery.mjs"
       - "scripts/verify-provider-logo-review-status.mjs"
+      - "scripts/verify-provider-account-workflow-e2e.mjs"
       - "scripts/compare-typecheck-baseline.mjs"
       - ".github/workflows/provider-onboarding-ci.yml"
 
@@ -63,6 +65,8 @@ jobs:
         run: npm run test:provider-invitation-delivery
       - name: Provider logo review checks
         run: npm run test:provider-logo-review
+      - name: Provider account workflow contract E2E
+        run: npm run test:provider-account-e2e
       - name: Typecheck current branch
         shell: bash
         run: |
