@@ -19,6 +19,9 @@ assert.ok(scopeCheck > -1, 'acceptance scope check is missing');
 assert.ok(profileLookup > scopeCheck, 'profile lookup must happen after location and organization revalidation');
 assert.ok(assignmentWrite > scopeCheck, 'assignment creation must happen after location and organization revalidation');
 
+assert.match(source, /user\.is_verified === false/);
+assert.match(source, /user\.email_verified === false/);
+assert.match(source, /user\.email_verified === 'false'/);
 assert.match(source, /invitation\.status === 'accepted'/);
 assert.match(source, /invitation\.accepted_by_user_id !== user\.id/);
 assert.match(source, /normalizeEmail\(user\.email\) !== invitation\.invited_email_normalized/);
