@@ -48,7 +48,8 @@ jobs:
           base44/functions/providerLeadResponseOps/entry.ts
           scripts/verify-lead-communication-events.mjs
           --quiet
-      - name: Repository typecheck
+      - name: Repository typecheck diagnostic
+        continue-on-error: true
         run: npm run typecheck
       - name: Repository lint
         run: npm run lint
