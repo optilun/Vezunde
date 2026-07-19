@@ -49,7 +49,10 @@
     "eligible_at": { "type": "string", "format": "date-time" },
     "last_revalidated_at": { "type": "string", "format": "date-time" },
     "expires_at": { "type": "string", "format": "date-time" },
-    "eligibility_reasons": { "type": "array", "items": { "type": "string" } }
+    "eligibility_reasons": { "type": "array", "items": { "type": "string" } },
+    "response_lock_token": { "type": "string" },
+    "response_lock_at": { "type": "string", "format": "date-time" },
+    "last_response_at": { "type": "string", "format": "date-time" }
   },
   "required": [
     "request_id",
