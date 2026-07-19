@@ -1,19 +1,48 @@
-# Email notification events — Vezunde
+# Email notification events — VIASEE
 
-Acest document marcheaza evenimentele unde trebuie conectate notificari email mai tarziu. Pentru MVP-ul curent, fluxurile raman functionale fara email automat.
+Acest document este catalogul operational al evenimentelor de comunicare VIASEE.
+
+Fundatia centralizata `communication-events-v1` este implementata initial pentru doua evenimente legate de cererile pacientilor. Celelalte evenimente din acest document raman planificate pana cand sunt conectate explicit la catalog, jurnal si reguli de livrare.
 
 ## Regula de lucru pentru dezvoltare
 
-Cand implementam sau modificam un flux si apare o actiune care ar trebui sa trimita email mai tarziu, actiunea trebuie adaugata aici imediat, chiar daca integrarea de email nu este inca instalata.
-
-Pentru fiecare actiune noua se noteaza minimum:
+Pentru fiecare eveniment se definesc minimum:
 
 - `event_key` stabil;
 - momentul declansarii;
 - destinatarul;
-- scopul emailului;
+- canalul;
+- scopul mesajului;
 - prioritatea;
+- versiunea template-ului;
+- cheia de idempotenta;
+- jurnalul livrarii;
 - datele minime necesare pentru template.
+
+Emailurile nu sunt sursa de adevar. Starea cererii, leadului, raspunsului si acordului ramane in entitatile operationale VIASEE.
+
+## Cereri pacient si leaduri
+
+| Event key | Status | Cand se declanseaza | Catre cine | Scop | Prioritate |
+|---|---|---|---|---|---|
+| `provider_lead_available` | implementat | Dupa crearea unui lead eligibil si redactionat | ownerii si managerii activi ai locatiei, maximum 20 destinatari | Anunta ca exista o cerere relevanta in Inbox furnizor, fara date de contact | mare |
+| `patient_provider_response_received` | implementat | Cand o locatie schimba raspunsul structurat la un lead | contactul pacientului, numai daca emailul este verificat | Anunta ca exista un raspuns nou si cere revenirea in pagina cererii | mare |
+| `patient_request_received` | planificat | Dupa salvarea completa a cererii | pacient | Confirma primirea cererii | mare |
+| `patient_no_results` | planificat | Cand nu exista suficiente variante eligibile | pacient | Explica urmatorii pasi fara a prezenta rezultate slabe ca potriviri | medie |
+| `patient_contact_share_changed` | planificat | Dupa aprobarea sau revocarea acordului de contact | pacient si locatia vizata | Confirma schimbarea accesului la contact | mare |
+| `patient_request_closed` | planificat | La inchiderea sau expirarea cererii | pacient | Confirma inchiderea si efectele asupra accesului | medie |
+
+### Reguli implementate pentru primele doua evenimente
+
+- jurnal admin-only in `CommunicationDelivery`;
+- emailul destinatarului este stocat numai ca hash in jurnal;
+- corpul emailului si valorile de contact nu sunt stocate in jurnal;
+- livrarea este idempotenta per eveniment, sursa si destinatar;
+- erorile de email nu anuleaza leadul sau raspunsul;
+- adresele lipsa sau neverificate sunt marcate `skipped`;
+- mesajele nu includ textul original al pacientului, date medicale, telefon sau alte date sensibile;
+- niciun email nu confirma o programare si nu ofera diagnostic sau recomandare medicala;
+- chatul si distribuirea contactului raman fluxuri separate.
 
 ## Claim si acces furnizor
 
@@ -31,11 +60,11 @@ Pentru fiecare actiune noua se noteaza minimum:
 
 | Event key | Cand se declanseaza | Catre cine | Scop | Prioritate |
 |---|---|---|---|---|
-| `provider_workspace_draft_submitted` | Furnizor trimite modificari spre review | admin Vezunde | Notificare ca exista modificari de verificat | medie |
+| `provider_workspace_draft_submitted` | Furnizor trimite modificari spre review | admin VIASEE | Notificare ca exista modificari de verificat | medie |
 | `provider_workspace_draft_approved` | Admin aproba modificari profil | furnizor | Anunt ca modificarile au fost aprobate/publicate | medie |
 | `provider_workspace_draft_rejected` | Admin respinge modificari profil | furnizor | Anunt respingere + motiv | medie |
 | `provider_workspace_draft_needs_more_info` | Admin cere completari pe draft | furnizor | Cere informatii suplimentare | medie |
-| `provider_logo_submitted_for_review` | Furnizor incarca logo/imagine profil | admin Vezunde | Notificare ca exista un logo de verificat | medie |
+| `provider_logo_submitted_for_review` | Furnizor incarca logo/imagine profil | admin VIASEE | Notificare ca exista un logo de verificat | medie |
 | `provider_logo_approved` | Admin aproba logo/imagine profil | furnizor | Anunt ca logo-ul este public | medie |
 | `provider_logo_rejected` | Admin respinge logo/imagine profil | furnizor | Anunt respingere + motiv | medie |
 
@@ -70,13 +99,14 @@ Pentru fiecare actiune noua se noteaza minimum:
 | `auth_password_setup_requested` | Utilizatorul cere setare/recuperare parola pentru cont existent | utilizator | Permite acces prin email fara cont duplicat | medie |
 | `billing_subscription_started` | Abonament activat pentru organizatie/locatie | billing owner | Confirmare plata si activare | mare |
 | `billing_subscription_failed_payment` | Plata recurenta esueaza | billing owner | Cere actualizarea metodei de plata | mare |
-| `billing_subscription_cancelled` | Abonament anulat | billing owner | Confirmare anulare si efecte | mare |
+| `billing_subscription_cancelled` | Abonament anulat | billing owner | Confirmare anulare si efecte | medie |
 | `billing_owner_changed` | Persoana responsabila de plata se schimba | vechiul si noul billing owner | Confirmare schimbare responsabil plata | medie |
 
 ## Reguli de siguranta
 
-- Emailurile nu trebuie sa contina informatii sensibile inutile.
-- Pentru profil deja administrat, notificarea catre owner trebuie sa permita ignorare/raportare.
+- Emailurile nu contin informatii sensibile inutile.
+- Emailurile nu includ niciodata coduri interne, hashuri, tokenuri sau mesajul original al pacientului.
+- Pentru profil deja administrat, notificarea catre owner trebuie sa permita ignorare sau raportare.
 - Aprobarea accesului ramane manuala in MVP.
-- Niciun email nu trebuie sa inlocuiasca audit trail-ul din `DirectoryAuditRecord`.
-- Date minime necesare: `user_id`, `claim_id`, `location_id`, `request_type`, `status`, `review_notes`, `email`.
+- Niciun email nu inlocuieste audit trail-ul entitatii operationale.
+- Esecul livrarii este vizibil in jurnal, dar nu inverseaza tranzactia de produs deja finalizata.
