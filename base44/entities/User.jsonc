@@ -17,6 +17,39 @@
       "type": "string",
       "maxLength": 500,
       "description": "Descrierea scurta a profilului personal, separata de profilul profesional public"
+    },
+    "professional_lifecycle_lock_token": {
+      "type": "string",
+      "description": "Blocare interna pentru operatiile atomice ale profilului profesional",
+      "rls": {
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
+    "professional_lifecycle_lock_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Momentul blocarii interne pentru operatiile profilului profesional",
+      "rls": {
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "write": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
     }
   },
   "required": [

@@ -1,4 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import {
+  acquireProfessionalLifecycleLock,
+  releaseProfessionalLifecycleLock,
+} from '../../../shared/professionalLifecycleLock.js';
 
 const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
 const PROVIDER_ROLES = ['organization_owner', 'location_manager'];
@@ -335,106 +339,136 @@ async function acceptInvitation(svc, user, payload, req) {
     return response({ error: 'Invitatia este destinata altui email' }, 403);
   }
 
-  const locationContext = await loadAcceptableInvitationLocation(svc, invitation);
-  if (locationContext.error) return response({ error: locationContext.error }, locationContext.status);
-  const location = locationContext.location;
-
-  const profiles = await svc.entities.ProfessionalProfile.filter({ user_id: user.id }, '-created_date', 5);
-  let profile = profiles[0] || null;
-  const displayName = cleanString(user.full_name || user.name) || normalizeEmail(user.email).split('@')[0];
-
-  if (profile && profile.professional_type && profile.professional_type !== invitation.professional_type) {
-    return response({
-      error: 'Contul are deja un alt tip profesional. Modificarea identitatii profesionale necesita verificare Vezunde.',
-    }, 409);
+  const lifecycleLock = await acquireProfessionalLifecycleLock(svc, user);
+  if (!lifecycleLock) {
+    return response({ error: 'Profilul profesional este deja procesat intr-o alta solicitare. Reincearca.' }, 409);
   }
 
-  if (!profile) {
-    profile = await svc.entities.ProfessionalProfile.create({
-      user_id: user.id,
-      full_name: displayName,
-      public_display_name: displayName,
-      professional_type: invitation.professional_type,
-      role: ROLE_BY_TYPE[invitation.professional_type],
-      specializations: [],
-      professional_bio: '',
-      public_email: '',
-      accepts_independent_requests: false,
-      verification_status: 'unverified',
-      public_visibility_status: 'draft',
-      profile_completeness: 20,
-      profile_updated_at: new Date().toISOString(),
-      is_public: false,
-    });
-  } else if (!profile.user_id) {
-    profile = await svc.entities.ProfessionalProfile.update(profile.id, { user_id: user.id });
-  }
+  try {
+    const currentInvitation = await svc.entities.ProfessionalInvitation.get(invitation.id).catch(() => null);
+    if (!currentInvitation) return response({ error: 'Invitatia nu mai exista' }, 404);
+    if (currentInvitation.status === 'accepted') {
+      if (currentInvitation.accepted_by_user_id !== user.id) {
+        return response({ error: 'Invitatia a fost acceptata de alt cont' }, 403);
+      }
+      return response({
+        success: true,
+        already_accepted: true,
+        professional_id: currentInvitation.professional_id || null,
+      });
+    }
+    if (currentInvitation.status !== 'pending') return response({ error: 'Invitatia nu mai este activa' }, 400);
+    if (new Date(currentInvitation.expires_at).getTime() <= Date.now()) {
+      await svc.entities.ProfessionalInvitation.update(currentInvitation.id, { status: 'expired' });
+      return response({ error: 'Invitatia a expirat' }, 400);
+    }
+    if (normalizeEmail(user.email) !== currentInvitation.invited_email_normalized) {
+      return response({ error: 'Invitatia este destinata altui email' }, 403);
+    }
 
-  const existingAssignments = await svc.entities.ProfessionalLocationAssignment.filter({
-    professional_id: profile.id,
-    location_id: invitation.location_id,
-  }, '-created_date', 10);
-  const assignmentData = {
-    professional_id: profile.id,
-    location_id: invitation.location_id,
-    professional_type: profile.professional_type || invitation.professional_type,
-    source_invitation_id: invitation.id,
-    confirmed_by_professional_at: new Date().toISOString(),
-    active_status: 'activ',
-    public_status: 'privat',
-  };
+    const locationContext = await loadAcceptableInvitationLocation(svc, currentInvitation);
+    if (locationContext.error) return response({ error: locationContext.error }, locationContext.status);
+    const location = locationContext.location;
 
-  let assignment;
-  if (existingAssignments[0]) {
-    assignment = await svc.entities.ProfessionalLocationAssignment.update(existingAssignments[0].id, assignmentData);
-  } else {
-    assignment = await svc.entities.ProfessionalLocationAssignment.create(assignmentData);
-  }
+    const profiles = await svc.entities.ProfessionalProfile.filter({ user_id: user.id }, '-created_date', 5);
+    let profile = profiles[0] || null;
+    const displayName = cleanString(user.full_name || user.name) || normalizeEmail(user.email).split('@')[0];
 
-  const acceptedAt = new Date().toISOString();
-  await svc.entities.ProfessionalInvitation.update(invitation.id, {
-    status: 'accepted',
-    accepted_by_user_id: user.id,
-    accepted_at: acceptedAt,
-    professional_id: profile.id,
-  });
+    if (profile && profile.professional_type && profile.professional_type !== currentInvitation.professional_type) {
+      return response({
+        error: 'Contul are deja un alt tip profesional. Modificarea identitatii profesionale necesita verificare VIASEE.',
+      }, 409);
+    }
 
-  await writeAudit(svc, user, {
-    entity_type: 'ProfessionalInvitation',
-    entity_id: invitation.id,
-    action_type: 'accept_professional_invitation',
-    changed_fields: ['status', 'accepted_by_user_id', 'professional_id'],
-    previous: { status: invitation.status },
-    next: {
-      status: 'accepted',
+    if (!profile) {
+      profile = await svc.entities.ProfessionalProfile.create({
+        user_id: user.id,
+        full_name: displayName,
+        public_display_name: displayName,
+        professional_type: currentInvitation.professional_type,
+        role: ROLE_BY_TYPE[currentInvitation.professional_type],
+        specializations: [],
+        professional_bio: '',
+        public_email: '',
+        accepts_independent_requests: false,
+        verification_status: 'unverified',
+        public_visibility_status: 'draft',
+        profile_completeness: 20,
+        profile_updated_at: new Date().toISOString(),
+        is_public: false,
+      });
+    } else if (!profile.user_id) {
+      profile = await svc.entities.ProfessionalProfile.update(profile.id, { user_id: user.id });
+    }
+
+    const existingAssignments = await svc.entities.ProfessionalLocationAssignment.filter({
       professional_id: profile.id,
-      location_id: invitation.location_id,
-      assignment_public_status: 'privat',
-    },
-    note: 'Specialistul a confirmat asocierea. Nu s-a creat ProviderMembership si profilul nu a fost publicat.',
-  });
+      location_id: currentInvitation.location_id,
+    }, '-created_date', 10);
+    const assignmentData = {
+      professional_id: profile.id,
+      location_id: currentInvitation.location_id,
+      professional_type: profile.professional_type || currentInvitation.professional_type,
+      source_invitation_id: currentInvitation.id,
+      confirmed_by_professional_at: new Date().toISOString(),
+      active_status: 'activ',
+      public_status: 'privat',
+    };
 
-  return response({
-    success: true,
-    professional: {
-      id: profile.id,
-      full_name: profile.full_name,
-      professional_type: profile.professional_type,
-      public_visibility_status: profile.public_visibility_status || 'draft',
-      verification_status: profile.verification_status || 'unverified',
-    },
-    assignment: {
-      id: assignment.id,
-      location_id: assignment.location_id,
-      active_status: assignment.active_status,
-      public_status: assignment.public_status,
-    },
-    location: {
-      id: location.id,
-      name: location.public_display_name || location.name,
-      city: location.locality_name || location.city || '',
-    },
-  });
+    let assignment;
+    if (existingAssignments[0]) {
+      assignment = await svc.entities.ProfessionalLocationAssignment.update(existingAssignments[0].id, assignmentData);
+    } else {
+      assignment = await svc.entities.ProfessionalLocationAssignment.create(assignmentData);
+    }
+
+    const acceptedAt = new Date().toISOString();
+    await svc.entities.ProfessionalInvitation.update(currentInvitation.id, {
+      status: 'accepted',
+      accepted_by_user_id: user.id,
+      accepted_at: acceptedAt,
+      professional_id: profile.id,
+    });
+
+    await writeAudit(svc, user, {
+      entity_type: 'ProfessionalInvitation',
+      entity_id: currentInvitation.id,
+      action_type: 'accept_professional_invitation',
+      changed_fields: ['status', 'accepted_by_user_id', 'professional_id'],
+      previous: { status: currentInvitation.status },
+      next: {
+        status: 'accepted',
+        professional_id: profile.id,
+        location_id: currentInvitation.location_id,
+        assignment_public_status: 'privat',
+      },
+      note: 'Specialistul a confirmat asocierea. Nu s-a creat ProviderMembership si profilul nu a fost publicat.',
+    });
+
+    return response({
+      success: true,
+      professional: {
+        id: profile.id,
+        full_name: profile.full_name,
+        professional_type: profile.professional_type,
+        public_visibility_status: profile.public_visibility_status || 'draft',
+        verification_status: profile.verification_status || 'unverified',
+      },
+      assignment: {
+        id: assignment.id,
+        location_id: assignment.location_id,
+        active_status: assignment.active_status,
+        public_status: assignment.public_status,
+      },
+      location: {
+        id: location.id,
+        name: location.public_display_name || location.name,
+        city: location.locality_name || location.city || '',
+      },
+    });
+  } finally {
+    await releaseProfessionalLifecycleLock(svc, lifecycleLock);
+  }
 }
 
 Deno.serve(async (req) => {
