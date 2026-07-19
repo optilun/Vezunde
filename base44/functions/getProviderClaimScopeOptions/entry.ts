@@ -23,7 +23,7 @@ function isClaimCandidate(location) {
   return state.is_publicly_available === true && state.control_status !== 'suspended';
 }
 
-function safeLocation(location, organizationLinkStatus, controlled) {
+function safeLocation(location, organizationLinkStatus, controlled, alreadyHasAccess) {
   const state = deriveCanonicalDirectoryState(location);
   return {
     id: location.id,
@@ -37,6 +37,7 @@ function safeLocation(location, organizationLinkStatus, controlled) {
     operational_status: state.operational_status,
     organization_link_status: organizationLinkStatus,
     controlled,
+    already_has_access: alreadyHasAccess,
     claim_action: controlled ? 'request_access' : 'claim_profile',
   };
 }
@@ -82,7 +83,7 @@ Deno.serve(async (req) => {
     const membershipRows = await Promise.all(candidates.map((location) => svc.entities.ProviderMembership.filter({
       location_id: location.id,
       status: 'active',
-    }, '-created_date', 1).catch(() => [])));
+    }, '-created_date', 100).catch(() => [])));
 
     const candidateLocations = candidates.map((location, index) => {
       const link = linkByLocationId.get(location.id);
@@ -90,7 +91,8 @@ Deno.serve(async (req) => {
       const controlled = membershipRows[index]?.length > 0
         || CONTROLLED_PROFILE_STATUSES.has(clean(location.profile_control_status))
         || clean(location.claim_verification_status) === 'approved';
-      return safeLocation(location, linkStatus, controlled);
+      const alreadyHasAccess = membershipRows[index]?.some((membership) => membership.user_id === user.id) || false;
+      return safeLocation(location, linkStatus, controlled, alreadyHasAccess);
     }).filter((location) => !['conflict', 'rejected'].includes(location.organization_link_status) || location.id === primaryLocationId);
 
     candidateLocations.sort((left, right) => {
@@ -108,7 +110,7 @@ Deno.serve(async (req) => {
         organization_type: organization.organization_type_code || organization.organization_type || null,
       } : null,
       candidate_locations: candidateLocations,
-      supports_selected_locations: candidateLocations.length > 1,
+      supports_selected_locations: candidateLocations.filter((location) => !location.already_has_access).length > 1,
       supports_organization_claim: Boolean(organization),
     });
   } catch (error) {
