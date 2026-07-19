@@ -52,11 +52,17 @@ export default function ProviderLeadContactAccess({ leadId, locationId, enabled,
 
   const contactRows = useMemo(() => {
     if (!contact) return [];
-    return [
-      contact.contact_name ? { key: "name", label: "Nume", value: contact.contact_name, icon: UserRound } : null,
-      contact.contact_email ? { key: "email", label: "Email", value: contact.contact_email, href: `mailto:${contact.contact_email}`, icon: Mail } : null,
-      contact.contact_phone ? { key: "phone", label: "Telefon", value: contact.contact_phone, href: `tel:${contact.contact_phone}`, icon: Phone } : null,
-    ].filter(Boolean);
+    const rows = [];
+    if (contact.contact_name) {
+      rows.push({ key: "name", label: "Nume", value: contact.contact_name, href: "", icon: UserRound });
+    }
+    if (contact.contact_email) {
+      rows.push({ key: "email", label: "Email", value: contact.contact_email, href: `mailto:${contact.contact_email}`, icon: Mail });
+    }
+    if (contact.contact_phone) {
+      rows.push({ key: "phone", label: "Telefon", value: contact.contact_phone, href: `tel:${contact.contact_phone}`, icon: Phone });
+    }
+    return rows;
   }, [contact]);
 
   if (!enabled) return null;
@@ -106,8 +112,8 @@ export default function ProviderLeadContactAccess({ leadId, locationId, enabled,
       setContact(data.contact || null);
     } catch (accessError) {
       setContact(null);
+      setAccessStatus({ available: false, state: "locked", reason: "contact_locked" });
       setError(accessError?.message || "Datele aprobate nu au putut fi deschise.");
-      await checkAccess();
     } finally {
       setReading(false);
     }
