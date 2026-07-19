@@ -11,6 +11,7 @@ const ProviderOverview = lazy(() => import("./ProviderOverview"));
 const ProviderProfilePublic = lazy(() => import("./ProviderProfilePublic"));
 const ProviderLocationsWithPhoto = lazy(() => import("./ProviderLocationsWithPhoto"));
 const ProviderLocationModulePage = lazy(() => import("./ProviderLocationModulePage"));
+const ProviderLeadInbox = lazy(() => import("./ProviderLeadInbox"));
 const ProviderAccess = lazy(() => import("./ProviderAccess"));
 const ProviderSettings = lazy(() => import("./ProviderSettings"));
 
@@ -160,6 +161,7 @@ export default function ProviderWorkspaceRoot({
   const canManageLocationProfile = locationCapabilities.has("location.manage_profile");
   const canManageLocationContent = locationCapabilities.has("location.manage_content");
   const canManageSpecialists = locationCapabilities.has("location.manage_specialists");
+  const canManageRequests = locationCapabilities.has("location.manage_requests");
   const canManageOperationalStatus = locationCapabilities.has("location.manage_operational_status");
   const canManageAnyLocation = canManageLocationProfile
     || canManageLocationContent
@@ -239,12 +241,13 @@ export default function ProviderWorkspaceRoot({
     const denied = deniedLocationModule
       || (requestedSection === "profile" && !canManageOrganizationProfile)
       || (requestedSection === "locations" && !canViewLocations)
+      || (requestedSection === "leads" && !canManageRequests)
       || (requestedSection === "settings" && !canManageSettings)
       || (requestedSection === "access" && !canManageMembers);
     if (denied) {
       routerNavigate(deniedLocationModule ? "/contul-meu?s=locations" : "/contul-meu?s=overview", { replace: true });
     }
-  }, [canManageMembers, canManageOrganizationProfile, canManageSettings, canViewLocations, deniedLocationModule, requestedSection, routerNavigate]);
+  }, [canManageMembers, canManageOrganizationProfile, canManageRequests, canManageSettings, canViewLocations, deniedLocationModule, requestedSection, routerNavigate]);
 
   const goToSection = (key) => {
     if (key === "overview") void refreshOverviewInPlace();
@@ -293,6 +296,7 @@ export default function ProviderWorkspaceRoot({
   const navItems = getProviderNav({
     canManageOrganizationProfile,
     canViewLocations,
+    canManageRequests,
     canManageMembers,
     canManageSettings,
   });
@@ -300,6 +304,7 @@ export default function ProviderWorkspaceRoot({
     "overview",
     ...(canManageOrganizationProfile ? ["profile"] : []),
     ...(canViewLocations ? ["locations"] : []),
+    ...(canManageRequests ? ["leads"] : []),
     ...(canManageMembers ? ["access"] : []),
     ...(canManageSettings ? ["settings"] : []),
   ];
@@ -321,6 +326,7 @@ export default function ProviderWorkspaceRoot({
     || overview?.location?.organization_name
     || overview?.location?.name
     || "Spațiu furnizor";
+  const selectedLocation = locations.find((location) => location.id === selectedLocationId) || null;
 
   useEffect(() => {
     const previousSection = previousSectionRef.current;
@@ -411,6 +417,9 @@ export default function ProviderWorkspaceRoot({
               onRefresh={refreshOverviewInPlace}
               onOpenModule={openLocationModule}
             />
+          )}
+          {safeSection === "leads" && canManageRequests && (
+            <ProviderLeadInbox locationId={selectedLocationId} location={selectedLocation} />
           )}
           {safeSection === "access" && canManageMembers && <ProviderAccess organizationId={selectedOrganizationId} locations={locations} onRefresh={refreshOverviewInPlace} />}
           {safeSection === "settings" && canManageSettings && (
