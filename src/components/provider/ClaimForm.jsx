@@ -18,31 +18,62 @@ const DEFAULT_CONTACT = {
   representation_confirmed: false,
 };
 
+function getSessionStorage() {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.sessionStorage;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function readSessionJson(key) {
+  const storage = getSessionStorage();
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_error) {
+    return null;
+  }
+}
+
 const clearClaimResumeState = () => {
-  sessionStorage.removeItem(CONTACT_RESUME_KEY);
-  sessionStorage.removeItem(LOCATION_RESUME_KEY);
-  sessionStorage.removeItem(STEP_RESUME_KEY);
+  const storage = getSessionStorage();
+  if (!storage) return;
+  try {
+    storage.removeItem(CONTACT_RESUME_KEY);
+    storage.removeItem(LOCATION_RESUME_KEY);
+    storage.removeItem(STEP_RESUME_KEY);
+  } catch (_error) {
+    // Revendicarea ramane utilizabila chiar daca stocarea temporara este indisponibila.
+  }
 };
 
 const persistClaimResumeState = (location, contact, step = "review") => {
-  if (location) sessionStorage.setItem(LOCATION_RESUME_KEY, JSON.stringify(location));
-  sessionStorage.setItem(CONTACT_RESUME_KEY, JSON.stringify({ ...DEFAULT_CONTACT, ...contact }));
-  sessionStorage.setItem(STEP_RESUME_KEY, step);
+  const storage = getSessionStorage();
+  if (!storage) return;
+  try {
+    if (location) storage.setItem(LOCATION_RESUME_KEY, JSON.stringify(location));
+    storage.setItem(CONTACT_RESUME_KEY, JSON.stringify({ ...DEFAULT_CONTACT, ...contact }));
+    storage.setItem(STEP_RESUME_KEY, step);
+  } catch (_error) {
+    // Autentificarea si trimiterea continua chiar daca browserul blocheaza sessionStorage.
+  }
 };
 
 export default function ClaimForm({ location, step, onStepChange, onDone }) {
-  const [contact, setContactState] = useState(() => {
-    try {
-      const raw = sessionStorage.getItem(CONTACT_RESUME_KEY);
-      if (raw) return { ...DEFAULT_CONTACT, ...JSON.parse(raw) };
-    } catch (_error) {
-      // Ignoram starea temporara invalida.
-    }
-    return DEFAULT_CONTACT;
-  });
+  const [contact, setContactState] = useState(() => ({
+    ...DEFAULT_CONTACT,
+    ...(readSessionJson(CONTACT_RESUME_KEY) || {}),
+  }));
   const [submitting, setSubmitting] = useState(false);
   const [authChecking, setAuthChecking] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    persistClaimResumeState(location, contact, step || "relation");
+  }, [location, step]);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,8 +157,8 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="text-xs text-muted-foreground">{PROVIDER_TYPES[location.provider_type] || location.provider_type}</div>
       <div className="font-semibold">{location.name}</div>
-      <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
-        <MapPin className="w-3.5 h-3.5" />
+      <div className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground">
+        <MapPin className="h-3.5 w-3.5" />
         {location.city}{location.address ? `, ${location.address}` : ""}
       </div>
     </div>
