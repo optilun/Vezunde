@@ -92,3 +92,13 @@ export async function authorizePatientRequestDistribution(requestId, explicitAcc
   });
   return responseData(response);
 }
+
+export async function getPatientRequestStatus(requestId, explicitAccessToken = "") {
+  const requestAccessToken = explicitAccessToken || readPatientRequestAccess(requestId);
+  if (!requestAccessToken) throw new Error("Tokenul local al cererii nu mai este disponibil.");
+  const response = await base44.functions.invoke("getPatientRequestStatus", {
+    request_id: requestId,
+    request_access_token: requestAccessToken,
+  });
+  return responseData(response);
+}
