@@ -94,7 +94,7 @@ const firstDelivery = await deliverCommunicationEmail({
   leadId: 'lead-1',
   organizationId: 'org-1',
   locationId: 'location-1',
-  subject: providerEmail.subject,
+  subject: `${providerEmail.subject}\r\nInjected: value`,
   body: providerEmail.body,
 });
 assert.equal(firstDelivery.status, 'sent');
@@ -103,6 +103,8 @@ assert.equal(rows[0].status, 'sent');
 assert.ok(rows[0].recipient_email_hash);
 assert.equal(Object.hasOwn(rows[0], 'recipient_email'), false);
 assert.equal(Object.hasOwn(rows[0], 'body'), false);
+assert.doesNotMatch(sentEmails[0].subject, /[\r\n]/);
+assert.doesNotMatch(rows[0].subject_preview, /[\r\n]/);
 
 const replay = await deliverCommunicationEmail({
   base44,
@@ -133,7 +135,7 @@ const skipped = await deliverCommunicationEmail({
   requestId: 'request-1',
   leadId: 'lead-1',
   locationId: 'location-1',
-  variant: 'can_help',
+  variant: 'can_help:2026-07-19T12:00:00.000Z',
   subject: patientEmail.subject,
   body: patientEmail.body,
 });
@@ -153,9 +155,12 @@ const responseBackend = await readFile(new URL('../base44/functions/providerLead
 
 assert.match(notifier, /ProviderMembership\.filter/);
 assert.match(notifier, /canReceiveProviderLeadEmail/);
+assert.match(notifier, /MAX_PROVIDER_LEAD_EMAIL_RECIPIENTS = 20/);
+assert.match(notifier, /\.slice\(0, MAX_PROVIDER_LEAD_EMAIL_RECIPIENTS\)/);
 assert.match(notifier, /svc\.entities\.User\.get/);
 assert.match(notifier, /contact\.contact_email_verified !== true/);
 assert.match(notifier, /patient_email_not_verified/);
+assert.match(notifier, /response\.submitted_at/);
 assert.match(notifier, /deliverCommunicationEmail/);
 assert.doesNotMatch(notifier, /original_message|contact_phone:/);
 
