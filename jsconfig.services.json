@@ -10,8 +10,6 @@
     "shared/serviceOperationalTaxonomy.js",
     "shared/serviceOperationalTaxonomyExtended.js",
     "shared/serviceSemanticSearch.js",
-    "shared/patientNeedInterpretation.js",
-    "shared/patientRequestPersistence.js",
     "shared/serviceConfigurationPayload.js",
     "shared/serviceConfigurationPayloadExtended.js",
     "shared/servicePrerequisiteEngine.js",
@@ -25,7 +23,6 @@
     "src/lib/serviceSemanticSearch.js",
     "src/lib/patientIntentConfirmation.js",
     "src/lib/patientRequestDraft.js",
-    "src/lib/patientRequestPersistenceClient.js",
     "src/lib/vezunde.js"
   ],
   "exclude": [
