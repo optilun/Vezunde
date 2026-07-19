@@ -95,7 +95,8 @@ assert.doesNotMatch(backend, /base44\.auth\.me\(\)/);
 assert.doesNotMatch(backend, /contact_email:|contact_phone:|original_message:|responder_user_id:/);
 
 assert.match(client, /getPatientRequestStatus/);
-assert.match(client, /request_access_token: requestAccessToken/);
+assert.match(client, /const token = resolveRequestAccessToken\(requestId, explicitAccessToken\)/);
+assert.match(client, /request_access_token: token/);
 assert.match(component, /getPatientRequestStatus/);
 assert.match(component, /Verifică răspunsurile/);
 assert.match(component, /Datele de contact și conversația rămân blocate/);
