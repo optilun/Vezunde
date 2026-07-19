@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Clock3, HelpCircle, Inbox, Loader2, LockKeyhole, Mail, MapPin, MessageSquareText, RefreshCw, Sparkles, UserRound, XCircle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import ProviderLeadContactAccess from "./ProviderLeadContactAccess";
+import ProviderLeadChat from "./ProviderLeadChat";
 
 const FILTERS = [
   { key: "all", label: "Toate" },
@@ -62,7 +63,7 @@ function FullDetails({ lead }) {
         <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
           {details.phone_available_for_request
             ? "Clientul a lăsat și un număr de telefon. Numărul rămâne ascuns și poate fi solicitat separat."
-            : "Clientul nu a lăsat un număr de telefon. Comunicarea se face prin email și, după activare, prin chatul VIASEE."}
+            : "Clientul nu a lăsat un număr de telefon. Comunicarea poate continua prin email și prin chatul VIASEE deschis de client."}
         </p>
       </div>
     );
@@ -71,12 +72,12 @@ function FullDetails({ lead }) {
     <div className="mt-5 rounded-xl border border-border bg-secondary/35 p-4 text-xs leading-relaxed text-muted-foreground">
       {lead.access_tier === "pro_full"
         ? "Acest lead este în Top 3, dar detaliile complete necesită plan Pro activ și acordul actual al clientului."
-        : "Acest lead este disponibil ca rezumat anonim. Detaliile complete sunt rezervate locațiilor Pro din Top 3."}
+        : "Acest lead este disponibil ca rezumat anonim. Detaliile complete și chatul sunt rezervate locațiilor Pro din Top 3."}
     </div>
   );
 }
 
-function LeadCard({ lead, response, locationId, canRespond, canAccessContact, onMarkViewed, onRespond, marking, responding }) {
+function LeadCard({ lead, response, locationId, canRespond, canAccessContact, canChat, onMarkViewed, onRespond, marking, responding }) {
   const services = lead.matched_service_keys?.length ? lead.matched_service_keys : lead.service_keys;
   return (
     <article className="rounded-2xl border border-border bg-card p-5 shadow-[0_12px_36px_rgba(23,23,23,0.035)]">
@@ -117,14 +118,21 @@ function LeadCard({ lead, response, locationId, canRespond, canAccessContact, on
               );
             })}
           </div>
-          <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Răspunsul nu distribuie automat telefonul clientului.</p>
+          <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Răspunsul nu distribuie automat telefonul și nu deschide unilateral chatul.</p>
         </div>
       )}
 
       <ProviderLeadContactAccess leadId={lead.id} locationId={locationId} enabled={canAccessContact && lead.full_details?.phone_available_for_request === true} responseType={response?.response_type || ""} />
 
+      <ProviderLeadChat
+        leadId={lead.id}
+        locationId={locationId}
+        enabled={canChat && lead.access_tier === "pro_full"}
+        responseType={response?.response_type || ""}
+      />
+
       <div className="mt-5 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <span className="inline-flex items-center gap-2 text-xs text-muted-foreground"><LockKeyhole className="h-3.5 w-3.5" /> Telefonul rămâne ascuns până la acordul separat al clientului. Chatul urmează într-o etapă distinctă.</span>
+        <span className="inline-flex items-center gap-2 text-xs text-muted-foreground"><LockKeyhole className="h-3.5 w-3.5" /> Telefonul rămâne separat. Chatul devine activ numai după deschiderea explicită de către client.</span>
         {lead.status === "new" && !response && (
           <button type="button" onClick={() => onMarkViewed(lead.id)} disabled={marking} className="inline-flex min-h-10 items-center justify-center rounded-full border border-border bg-background px-4 text-xs font-bold text-foreground transition-colors hover:bg-secondary disabled:opacity-60">
             {marking ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}Marchează ca văzut
@@ -147,6 +155,7 @@ export default function ProviderLeadInbox({ locationId, location }) {
 
   const canRespond = entitlement?.plan_code === "pro" && entitlement?.feature_keys?.includes("provider_leads.respond");
   const canAccessContact = entitlement?.plan_code === "pro" && entitlement?.feature_keys?.includes("provider_contact.access_after_consent");
+  const canChat = entitlement?.plan_code === "pro" && entitlement?.feature_keys?.includes("provider_chat.access");
 
   const load = useCallback(async () => {
     if (!locationId) return;
@@ -218,7 +227,7 @@ export default function ProviderLeadInbox({ locationId, location }) {
           <div>
             <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary"><Inbox className="h-4 w-4" /> Inbox furnizor</div>
             <div className="mt-2 flex flex-wrap items-center gap-3"><h1 className="font-heading text-2xl font-extrabold tracking-tight text-foreground">Leaduri</h1><span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${entitlement?.plan_code === "pro" ? "bg-foreground text-background" : "bg-secondary text-foreground"}`}>Plan {entitlement?.plan_code === "pro" ? "Pro" : "Free"}</span></div>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Cereri relevante pentru {locationName}. Pro vede detaliile complete numai pentru leadurile din Top 3. Telefonul nu este afișat automat.</p>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Cereri relevante pentru {locationName}. Pro vede detaliile complete și poate conversa numai pentru leadurile din Top 3, după deschiderea chatului de către client.</p>
           </div>
           <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-60"><RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Actualizează</button>
         </div>
@@ -230,7 +239,7 @@ export default function ProviderLeadInbox({ locationId, location }) {
         <div className="rounded-2xl border border-border bg-card p-4"><p className="text-xs font-semibold text-muted-foreground">Total disponibile</p><p className="mt-1 text-2xl font-extrabold text-foreground">{data?.counters?.total || 0}</p></div>
       </div>
 
-      <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4 text-sm text-foreground"><div className="flex items-start gap-3"><LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><p><strong>Acces controlat.</strong> Free vede doar rezumatul anonim. Pro vede numele, mesajul și emailul verificat numai în Top 3. Telefonul necesită acord separat.</p></div></div>
+      <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4 text-sm text-foreground"><div className="flex items-start gap-3"><LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><p><strong>Acces controlat.</strong> Free vede rezumatul anonim. Pro primește detaliile și chatul numai în Top 3. Clientul deschide conversația, iar datele de contact rămân separate.</p></div></div>
 
       <div className="flex flex-wrap gap-2">{FILTERS.map((item) => <button key={item.key} type="button" onClick={() => setFilter(item.key)} className={`rounded-full px-4 py-2 text-xs font-bold transition-colors ${filter === item.key ? "bg-foreground text-background" : "border border-border bg-card text-foreground hover:bg-secondary"}`}>{item.label}</button>)}</div>
       {error && <p role="alert" className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}
@@ -240,10 +249,10 @@ export default function ProviderLeadInbox({ locationId, location }) {
       ) : leads.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card p-8 text-center"><Inbox className="mx-auto h-8 w-8 text-muted-foreground" /><h2 className="mt-3 font-heading text-lg font-extrabold text-foreground">Nu există leaduri în această categorie</h2><p className="mt-2 text-sm text-muted-foreground">Leadurile eligibile vor apărea aici după acordul clientului.</p></div>
       ) : (
-        <div className="space-y-4">{leads.map((lead) => <LeadCard key={lead.id} lead={lead} response={responsesByLead[lead.id] || null} locationId={locationId} canRespond={canRespond} canAccessContact={canAccessContact} onMarkViewed={markViewed} onRespond={submitResponse} marking={markingId === lead.id} responding={respondingId === lead.id} />)}</div>
+        <div className="space-y-4">{leads.map((lead) => <LeadCard key={lead.id} lead={lead} response={responsesByLead[lead.id] || null} locationId={locationId} canRespond={canRespond} canAccessContact={canAccessContact} canChat={canChat} onMarkViewed={markViewed} onRespond={submitResponse} marking={markingId === lead.id} responding={respondingId === lead.id} />)}</div>
       )}
 
-      <div className="rounded-2xl border border-border bg-secondary/35 p-5"><div className="flex items-start gap-3"><Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><div><h2 className="text-sm font-bold text-foreground">{canRespond ? "Răspunsurile structurate sunt active" : "Răspunsurile sunt disponibile în planul Pro"}</h2><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Numărul de telefon poate fi deschis numai după solicitarea locației și aprobarea separată a clientului. Chatul va fi implementat separat.</p></div></div></div>
+      <div className="rounded-2xl border border-border bg-secondary/35 p-5"><div className="flex items-start gap-3"><Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><div><h2 className="text-sm font-bold text-foreground">{canChat ? "Chatul controlat este activ" : "Răspunsurile și chatul sunt disponibile în planul Pro"}</h2><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Mesajele rămân în VIASEE, sunt limitate și nu pot conține telefon, email sau linkuri. Numărul de telefon se deschide numai prin acordul separat al clientului.</p></div></div></div>
     </section>
   );
 }
