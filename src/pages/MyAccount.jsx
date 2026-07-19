@@ -1,8 +1,9 @@
-import React, { lazy, Suspense, useEffect, useState } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { readAccountPreferences, rememberAccountMode } from "@/lib/accountPreferences";
+import { AlertTriangle, LogOut, RefreshCw } from "lucide-react";
 const PersonalAccountWorkspace = lazy(() => import("@/components/workspace/personal/PersonalAccountWorkspace"));
 const ApplicantWorkspaceRoot = lazy(() => import("@/components/workspace/applicant/ApplicantWorkspaceRoot"));
 const ProviderWorkspaceRoot = lazy(() => import("@/components/workspace/provider/ProviderWorkspaceRoot"));
@@ -54,37 +55,82 @@ function providerOrganizationContexts(workspace) {
 
 export default function MyAccount() {
   const [params, setParams] = useSearchParams();
-  const [user, setUser] = useState(null);
   const [providerWorkspace, setProviderWorkspace] = useState(null);
   const [professionalWorkspace, setProfessionalWorkspace] = useState(null);
   const [onboardingWorkspace, setOnboardingWorkspace] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [activeMode, setActiveMode] = useState(null);
-  const { logout } = useAuth();
+  const loadRequestRef = useRef(0);
+  const { user, logout } = useAuth();
 
-  const load = async () => {
-    const [currentUser, providerResult, professionalResult, onboardingResult] = await Promise.all([
-      base44.auth.me(),
-      base44.functions.invoke("getMyProviderWorkspace", {}),
-      base44.functions.invoke("getMyProfessionalWorkspace", {}).catch(() => ({ data: { mode: "none", professional: null, assignments: [] } })),
-      base44.functions.invoke("getMyProviderOnboardingWorkspace", {}).catch(() => ({ data: { mode: "none" } })),
-    ]);
-    setUser(currentUser);
-    setProviderWorkspace(providerResult.data);
-    setProfessionalWorkspace(professionalResult.data);
-    setOnboardingWorkspace(onboardingResult.data);
-    setLoading(false);
-  };
+  const load = useCallback(async () => {
+    const requestId = ++loadRequestRef.current;
+    setLoadError("");
+    setLoading(true);
 
-  useEffect(() => {
-    load().catch(() => base44.auth.redirectToLogin(window.location.href));
+    try {
+      const [providerResult, professionalResult, onboardingResult] = await Promise.all([
+        base44.functions.invoke("getMyProviderWorkspace", {}),
+        base44.functions.invoke("getMyProfessionalWorkspace", {}),
+        base44.functions.invoke("getMyProviderOnboardingWorkspace", {}),
+      ]);
+
+      if (requestId !== loadRequestRef.current) return;
+      setProviderWorkspace(providerResult.data);
+      setProfessionalWorkspace(professionalResult.data);
+      setOnboardingWorkspace(onboardingResult.data);
+    } catch (error) {
+      if (requestId !== loadRequestRef.current) return;
+      console.error("Account workspace load failed:", error);
+      setLoadError("Sesiunea este activă, dar datele contului nu au putut fi încărcate.");
+    } finally {
+      if (requestId === loadRequestRef.current) setLoading(false);
+    }
   }, []);
 
-  if (loading || !user || !providerWorkspace || !professionalWorkspace || !onboardingWorkspace) {
-    return <WorkspaceLoading />;
-  }
+  useEffect(() => {
+    if (user?.id) void load();
+    return () => { loadRequestRef.current += 1; };
+  }, [load, user?.id]);
 
   const onLogout = () => logout(true);
+
+  if (loading) return <WorkspaceLoading />;
+
+  if (loadError || !user || !providerWorkspace || !professionalWorkspace || !onboardingWorkspace) {
+    return (
+      <main className="flex min-h-[60vh] items-center justify-center bg-background px-4 py-10">
+        <section className="w-full max-w-lg rounded-[22px] border border-border bg-card p-6 shadow-sm sm:p-8">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-100 text-amber-800">
+            <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <h1 className="mt-4 font-heading text-2xl font-bold tracking-tight">Nu am putut încărca contul</h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            {loadError || "Datele contului nu sunt disponibile momentan."} Nu te-am deconectat. Poți reîncerca sau poți ieși din cont.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background hover:opacity-90"
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+              Încearcă din nou
+            </button>
+            <button
+              type="button"
+              onClick={onLogout}
+              className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-semibold hover:bg-secondary"
+            >
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              Ieși din cont
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
   const hasProviderWorkspace = providerWorkspace.mode === "provider_workspace";
   const hasProfessionalWorkspace = professionalWorkspace.mode === "professional_workspace";
   const hasApplicantWorkspace = onboardingWorkspace.mode === "applicant_preparation";
@@ -286,4 +332,3 @@ export default function MyAccount() {
     </Suspense>
   );
 }
-
