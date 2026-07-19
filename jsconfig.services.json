@@ -13,6 +13,8 @@
     "shared/locationScopedEntityQuery.js",
     "shared/providerContactAccessPolicy.js",
     "shared/providerLeadFullDetailsPolicy.js",
+    "shared/controlledChatPolicy.js",
+    "shared/controlledChatLock.js",
     "shared/serviceOperationalTaxonomy.js",
     "shared/serviceOperationalTaxonomyExtended.js",
     "shared/serviceSemanticSearch.js",
