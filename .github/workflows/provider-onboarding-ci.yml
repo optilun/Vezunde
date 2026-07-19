@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - "src/components/provider/**"
+      - "src/components/account/ClaimStatusRow.jsx"
       - "src/components/specialists/**"
       - "src/components/workspace/applicant/**"
       - "src/components/workspace/provider/**"
       - "src/components/admin/directory/**"
       - "src/pages/AdminDirectoryOps.jsx"
       - "src/lib/adminNavConfig.js"
+      - "src/lib/providerClaimScope.js"
       - "src/pages/AddOrClaim.jsx"
       - "src/pages/Login.jsx"
       - "src/pages/Register.jsx"
@@ -25,13 +27,22 @@ on:
       - "shared/providerOpeningHours.js"
       - "shared/providerLocationIdentityResolution.js"
       - "shared/providerAccountWorkflowContract.js"
+      - "shared/providerClaimScopePolicy.js"
+      - "shared/providerOrganizationOwnerScope.js"
       - "shared/professionalLifecycleLock.js"
       - "base44/entities/ProviderMemberInvitation.jsonc"
+      - "base44/entities/ProviderMembership.jsonc"
+      - "base44/entities/ProviderClaimScopeSelection.jsonc"
+      - "base44/entities/ProviderClaimLocationSelection.jsonc"
       - "base44/entities/ProfessionalInvitation.jsonc"
       - "base44/entities/DirectoryCorrectionRequest.jsonc"
       - "base44/entities/User.jsonc"
       - "base44/entities/ProviderOrganization.jsonc"
       - "base44/functions/submitProviderClaim/**"
+      - "base44/functions/getProviderClaimScopeOptions/**"
+      - "base44/functions/submitProviderScopedClaim/**"
+      - "base44/functions/adminProviderScopedClaimReview/**"
+      - "base44/functions/syncProviderOrganizationOwnerAccess/**"
       - "base44/functions/getClaimableProviderLocations/**"
       - "base44/functions/getMyProviderOnboardingWorkspace/**"
       - "base44/functions/adminProviderClaimReview/**"
@@ -47,6 +58,7 @@ on:
       - "base44/functions/submitDirectoryCorrection/**"
       - "base44/functions/adminDirectoryCorrectionReview/**"
       - "scripts/verify-provider-onboarding-continuity.mjs"
+      - "scripts/verify-provider-claim-scope.mjs"
       - "scripts/verify-provider-opening-hours.mjs"
       - "scripts/verify-provider-location-identity-resolution.mjs"
       - "scripts/verify-provider-invitation-delivery.mjs"
@@ -62,6 +74,7 @@ on:
       - "scripts/verify-dead-code-cleanup.mjs"
       - "scripts/audit-frontend-dead-code.mjs"
       - "scripts/compare-typecheck-baseline.mjs"
+      - "package.json"
       - ".github/workflows/provider-onboarding-ci.yml"
 
 jobs:
@@ -80,6 +93,8 @@ jobs:
       - run: npm ci --silent
       - name: Onboarding regression checks
         run: node scripts/verify-provider-onboarding-continuity.mjs
+      - name: Scoped provider claim checks
+        run: npm run test:provider-claim-scope
       - name: Directory correction workflow checks
         run: node scripts/verify-directory-correction-workflow.mjs
       - name: Provider hours regression checks
