@@ -19,6 +19,7 @@ on:
       - "shared/providerOpeningHours.js"
       - "shared/providerLocationIdentityResolution.js"
       - "base44/entities/ProviderMemberInvitation.jsonc"
+      - "base44/entities/ProviderOrganization.jsonc"
       - "base44/functions/submitProviderClaim/**"
       - "base44/functions/getClaimableProviderLocations/**"
       - "base44/functions/getMyProviderOnboardingWorkspace/**"
@@ -27,10 +28,14 @@ on:
       - "base44/functions/providerLocationIdentityResolutionOps/**"
       - "base44/functions/createProviderMemberInvitation/**"
       - "base44/functions/getMyProviderMembers/**"
+      - "base44/functions/submitProviderLogoForReview/**"
+      - "base44/functions/getProviderLogoReviewStatus/**"
+      - "base44/functions/reviewProfileChanges/**"
       - "scripts/verify-provider-onboarding-continuity.mjs"
       - "scripts/verify-provider-opening-hours.mjs"
       - "scripts/verify-provider-location-identity-resolution.mjs"
       - "scripts/verify-provider-invitation-delivery.mjs"
+      - "scripts/verify-provider-logo-review-status.mjs"
       - "scripts/compare-typecheck-baseline.mjs"
       - ".github/workflows/provider-onboarding-ci.yml"
 
@@ -56,6 +61,8 @@ jobs:
         run: npm run test:provider-location-identity
       - name: Provider invitation delivery checks
         run: npm run test:provider-invitation-delivery
+      - name: Provider logo review checks
+        run: npm run test:provider-logo-review
       - name: Typecheck current branch
         shell: bash
         run: |
