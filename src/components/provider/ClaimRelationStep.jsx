@@ -8,10 +8,10 @@ import {
 } from "@/components/provider/ContactIdentityFields";
 
 const RELATION_HINTS = {
-  owner: "Confirmi relatia cu afacerea, dar aceasta cerere acorda acces doar la locatia selectata.",
-  organization_representative: "Soliciti acces pentru locatia selectata. Administrarea intregii organizatii se verifica separat.",
-  location_manager: "Soliciti administrarea locatiei selectate, fara control asupra intregii organizatii.",
-  authorized_staff: "Soliciti acces operational limitat pentru actualizarea locatiei.",
+  owner: "In pasul urmator poti solicita o locatie, mai multe locatii sau intreaga organizatie existenta.",
+  organization_representative: "Poti solicita administrarea organizatiei numai pentru locatiile pe care le confirmi explicit.",
+  location_manager: "Poti solicita una sau mai multe locatii, fara rol de owner al organizatiei.",
+  authorized_staff: "Poti solicita acces operational limitat pentru una sau mai multe locatii.",
 };
 
 export default function ClaimRelationStep({ locationCard, contact, onChange, onContinue, loading = false }) {
@@ -35,7 +35,7 @@ export default function ClaimRelationStep({ locationCard, contact, onChange, onC
 
       {contact.claimant_relationship && (
         <div className="mt-4 rounded-xl border border-border bg-secondary/40 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-          Acces solicitat pentru aceasta locatie: <span className="font-semibold text-foreground">{REQUESTED_ROLE_LABELS[requestedRole]}</span>. Rolul final este confirmat de VIASEE la verificare.
+          Pentru o singura locatie, accesul solicitat este <span className="font-semibold text-foreground">{REQUESTED_ROLE_LABELS[requestedRole]}</span>. Daca reprezinti organizatia, vei putea alege scope-ul complet in pasul urmator. Rolul final este confirmat de VIASEE.
         </div>
       )}
 
@@ -46,13 +46,13 @@ export default function ClaimRelationStep({ locationCard, contact, onChange, onC
           checked={contact.representation_confirmed}
           onChange={(event) => onChange({ ...contact, representation_confirmed: event.target.checked })}
         />
-        <span>Confirm ca sunt autorizat sa solicit acces pentru aceasta locatie si ca informatiile transmise sunt corecte.</span>
+        <span>Confirm ca sunt autorizat sa solicit acces si ca informatiile transmise sunt corecte.</span>
       </label>
       <ContinueButton onClick={onContinue} disabled={!valid} loading={loading}>
         Continua
       </ContinueButton>
       <p className="mt-3 text-center text-xs text-muted-foreground">
-        In pasul urmator te autentifici sau iti creezi contul VIASEE, apoi revii automat aici.
+        In pasul urmator te autentifici sau iti creezi contul VIASEE, apoi confirmi locatiile solicitate.
       </p>
     </div>
   );
