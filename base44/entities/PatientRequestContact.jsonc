@@ -47,7 +47,6 @@
   "required": [
     "request_id",
     "contact_name",
-    "contact_email",
     "processing_consent",
     "processing_consent_version"
   ],
