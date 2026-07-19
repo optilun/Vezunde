@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import { buildProviderContextSearch } from "@/lib/providerContextSearch";
 
 function organizationName(context) {
   return context?.organization?.public_display_name || context?.organization?.name || "Organizație";
@@ -23,10 +25,20 @@ export default function LocationSwitcher({
   onSelectOrganization,
   onSelect,
 }) {
+  const [params, setParams] = useSearchParams();
+  const currentSearch = params.toString();
   const activeContext = organizationContexts.find((context) => context.organization?.id === selectedOrganizationId)
     || organizationContexts[0]
     || null;
   const locations = contextLocations(activeContext, memberships);
+
+  useEffect(() => {
+    const nextSearch = buildProviderContextSearch(currentSearch, {
+      organizationId: selectedOrganizationId,
+      locationId: selectedLocationId || "",
+    });
+    if (nextSearch !== currentSearch) setParams(nextSearch, { replace: true });
+  }, [currentSearch, selectedLocationId, selectedOrganizationId, setParams]);
 
   return (
     <div className="mb-6 space-y-3 rounded-[18px] border border-foreground/10 bg-card p-3 shadow-[0_10px_30px_rgba(23,23,23,0.03)] sm:p-4">
