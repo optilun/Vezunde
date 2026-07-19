@@ -21,6 +21,7 @@
     "src/lib/providerLocationFunctionalUnits.js",
     "src/lib/serviceOperationalTaxonomy.js",
     "src/lib/serviceSemanticSearch.js",
+    "src/lib/patientIntentConfirmation.js",
     "src/lib/vezunde.js"
   ],
   "exclude": [

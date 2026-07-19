@@ -1,6 +1,9 @@
 import { base44 } from "@/api/base44Client";
 import { resolveServiceSearchQuery } from "@/lib/serviceSemanticSearch";
 
+const CONFIRMATION_REUSE_TTL_MS = 2 * 60 * 1000;
+const completedConfirmationBySignature = new Map();
+
 function searchTextFromPayload(payload = {}) {
   return String(
     payload.search_text
@@ -18,18 +21,89 @@ function functionUnavailable(error) {
   return status === 404 || /not found|not deployed|backend function|404/.test(message);
 }
 
-function trackShadowInterpretation(properties) {
+function trackInterpretation(eventName, properties) {
   try {
     base44.analytics.track({
-      eventName: "patient_need_interpretation_shadow",
+      eventName,
       properties: {
         analytics_version: "patient-search-v1",
         ...properties,
       },
     });
   } catch (_error) {
-    // Shadow analytics must never affect deterministic search.
+    // Interpretation analytics must never affect deterministic search.
   }
+}
+
+function interpretationRequest(payload = {}) {
+  const searchText = searchTextFromPayload(payload);
+  if (!searchText) return null;
+
+  const localResolution = resolveServiceSearchQuery(searchText, {
+    limit: payload.semantic_limit || 15,
+    minScore: payload.semantic_min_score || 0.34,
+  });
+  const explicitKeys = Array.isArray(payload.service_keys) ? payload.service_keys.filter(Boolean) : [];
+  const deterministicServiceKeys = [...new Set([...explicitKeys, ...localResolution.service_keys])];
+
+  return {
+    searchText,
+    deterministicIntent: payload.deterministic_intent || payload.intent || "unknown",
+    deterministicServiceKeys,
+    body: {
+      mode: "interpret_only",
+      search_text: searchText,
+      deterministic_intent: payload.deterministic_intent || payload.intent || "unknown",
+      service_keys: deterministicServiceKeys,
+      answers: Array.isArray(payload.answers) ? payload.answers : [],
+    },
+  };
+}
+
+function interpretationSignature(request) {
+  const firstPatientPhrase = String(request?.searchText || "")
+    .split(". ")[0]
+    .trim()
+    .toLowerCase();
+  return `${firstPatientPhrase}::${request?.deterministicIntent || "unknown"}`;
+}
+
+function rememberCompletedConfirmation(request, data) {
+  if (data?.status !== "completed") return;
+  const signature = interpretationSignature(request);
+  if (!signature) return;
+  completedConfirmationBySignature.set(signature, Date.now());
+  if (completedConfirmationBySignature.size > 50) {
+    const oldest = completedConfirmationBySignature.keys().next().value;
+    if (oldest) completedConfirmationBySignature.delete(oldest);
+  }
+}
+
+function hasRecentCompletedConfirmation(request) {
+  const signature = interpretationSignature(request);
+  const completedAt = completedConfirmationBySignature.get(signature);
+  if (!completedAt) return false;
+  if (Date.now() - completedAt > CONFIRMATION_REUSE_TTL_MS) {
+    completedConfirmationBySignature.delete(signature);
+    return false;
+  }
+  return true;
+}
+
+function interpretationAnalytics(data, request) {
+  const interpretation = data?.interpretation;
+  return {
+    status: data?.status || "unknown",
+    reason: data?.reason || null,
+    version: interpretation?.version || "unknown",
+    deterministic_intent: request?.deterministicIntent || "unknown",
+    ai_intent: interpretation?.intent || "unknown",
+    agreement_status: interpretation?.agreement_status || "unknown",
+    confidence_band: interpretation?.confidence_band || "low",
+    clarification_required: interpretation?.clarification_required === true,
+    safety_flag_count: interpretation?.possible_safety_flags?.length || 0,
+    service_key_count: interpretation?.service_keys?.length || 0,
+  };
 }
 
 function normalizeRecommendationResponse(data = {}) {
@@ -52,44 +126,46 @@ function normalizeRecommendationResponse(data = {}) {
   };
 }
 
-export async function interpretPatientNeedInShadow(payload = {}) {
-  const searchText = searchTextFromPayload(payload);
-  if (!searchText) return null;
-
-  const localResolution = resolveServiceSearchQuery(searchText, {
-    limit: payload.semantic_limit || 15,
-    minScore: payload.semantic_min_score || 0.34,
-  });
-  const explicitKeys = Array.isArray(payload.service_keys) ? payload.service_keys.filter(Boolean) : [];
-  const deterministicServiceKeys = [...new Set([...explicitKeys, ...localResolution.service_keys])];
+export async function interpretPatientNeedForConfirmation(payload = {}) {
+  const request = interpretationRequest(payload);
+  if (!request) return { status: "skipped", reason: "search_text_required" };
 
   try {
-    const response = await base44.functions.invoke("matchProvidersSemantic", {
-      mode: "interpret_only",
-      search_text: searchText,
-      deterministic_intent: payload.deterministic_intent || payload.intent || "unknown",
-      service_keys: deterministicServiceKeys,
-      answers: Array.isArray(payload.answers) ? payload.answers : [],
-    });
-    const data = response?.data || null;
-    const interpretation = data?.interpretation;
-    trackShadowInterpretation({
-      status: data?.status || "unknown",
-      reason: data?.reason || null,
-      version: interpretation?.version || "unknown",
-      deterministic_intent: payload.deterministic_intent || payload.intent || "unknown",
-      ai_intent: interpretation?.intent || "unknown",
-      agreement_status: interpretation?.agreement_status || "unknown",
-      confidence_band: interpretation?.confidence_band || "low",
-      clarification_required: interpretation?.clarification_required === true,
-      safety_flag_count: interpretation?.possible_safety_flags?.length || 0,
-      service_key_count: interpretation?.service_keys?.length || 0,
-    });
+    const response = await base44.functions.invoke("matchProvidersSemantic", request.body);
+    const data = response?.data || { status: "unavailable", reason: "empty_interpretation_response" };
+    rememberCompletedConfirmation(request, data);
+    trackInterpretation("patient_need_interpretation_confirmation", interpretationAnalytics(data, request));
     return data;
   } catch (_error) {
-    trackShadowInterpretation({
+    trackInterpretation("patient_need_interpretation_confirmation", {
       status: "request_failed",
-      deterministic_intent: payload.deterministic_intent || payload.intent || "unknown",
+      deterministic_intent: request.deterministicIntent,
+    });
+    return { status: "unavailable", reason: "ai_interpretation_unavailable" };
+  }
+}
+
+export async function interpretPatientNeedInShadow(payload = {}) {
+  const request = interpretationRequest(payload);
+  if (!request) return null;
+
+  if (hasRecentCompletedConfirmation(request)) {
+    trackInterpretation("patient_need_interpretation_shadow", {
+      status: "skipped_duplicate_confirmation",
+      deterministic_intent: request.deterministicIntent,
+    });
+    return null;
+  }
+
+  try {
+    const response = await base44.functions.invoke("matchProvidersSemantic", request.body);
+    const data = response?.data || null;
+    trackInterpretation("patient_need_interpretation_shadow", interpretationAnalytics(data, request));
+    return data;
+  } catch (_error) {
+    trackInterpretation("patient_need_interpretation_shadow", {
+      status: "request_failed",
+      deterministic_intent: request.deterministicIntent,
     });
     return null;
   }
