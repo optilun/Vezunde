@@ -1,14 +1,20 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { interpretPatientNeedInShadow, matchProvidersWithSemanticFallback } from "@/lib/providerSemanticSearch";
+import {
+  interpretPatientNeedForConfirmation,
+  interpretPatientNeedInShadow,
+  matchProvidersWithSemanticFallback,
+} from "@/lib/providerSemanticSearch";
+import { buildIntentConfirmationProposal } from "@/lib/patientIntentConfirmation";
 import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill } from "@/lib/intentRegistry";
 import QuestionChoice from "./QuestionChoice";
 import QuestionText from "./QuestionText";
 import QuestionLocation from "./QuestionLocation";
 import MatchResults from "./MatchResults";
 import SearchingTransition from "./SearchingTransition";
+import PatientIntentConfirmation from "./PatientIntentConfirmation";
 
 function resolveOptionServiceKeys(currentKeys = [], option = {}) {
   const optionKeys = Array.isArray(option.service_keys) ? option.service_keys.filter(Boolean) : [];
@@ -83,15 +89,18 @@ function trackPatientSearchEvent(eventName, properties = {}) {
 
 export default function ConversationalCard({ initialMessage = "", initialIntent = null }) {
   const reduceMotion = useReducedMotion();
+  const shouldInterpretInitialMessage = Boolean(String(initialMessage || "").trim() && !initialIntent);
   const [state, setState] = useState(() => initState(initialIntent, initialMessage));
   const [history, setHistory] = useState([]);
-  const [phase, setPhase] = useState("questions"); // questions | submitting | results | error
+  const [phase, setPhase] = useState(() => (shouldInterpretInitialMessage ? "interpreting" : "questions"));
   const [results, setResults] = useState(null);
   const [matchMeta, setMatchMeta] = useState(null);
+  const [intentProposal, setIntentProposal] = useState(null);
+  const interpretationAttemptedRef = useRef(false);
   const analyticsSessionRef = useRef({
     started: false,
     completed: false,
-    phase: "questions",
+    phase: shouldInterpretInitialMessage ? "interpreting" : "questions",
     intent: null,
     answeredCount: 0,
   });
@@ -166,6 +175,34 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     }));
   };
 
+  const handleConfirmInterpretation = () => {
+    if (!intentProposal?.intent || !INTENTS[intentProposal.intent]) return;
+    const confirmedState = initState(intentProposal.intent, initialMessage);
+    setState(confirmedState);
+    setHistory([]);
+    markSearchStarted(intentProposal.intent);
+    trackPatientSearchEvent("patient_search_ai_intent_confirmed", {
+      intent: intentProposal.intent,
+      confidence_band: intentProposal.confidence_band,
+      agreement_status: intentProposal.agreement_status,
+      interpretation_version: intentProposal.version || "unknown",
+      safety_flag_count: intentProposal.possible_safety_flags?.length || 0,
+    });
+    setPhase("questions");
+  };
+
+  const handleCorrectInterpretation = () => {
+    setState(initState(null, ""));
+    setHistory([]);
+    markSearchStarted(intentProposal?.intent || state.intent);
+    trackPatientSearchEvent("patient_search_ai_intent_corrected", {
+      proposed_intent: intentProposal?.intent || "unknown",
+      confidence_band: intentProposal?.confidence_band || "low",
+      agreement_status: intentProposal?.agreement_status || "unknown",
+    });
+    setPhase("questions");
+  };
+
   const goBack = () => {
     const prev = history[history.length - 1];
     if (!prev) return;
@@ -194,6 +231,40 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       answered_count: session.answeredCount,
     });
   }, []);
+
+  useEffect(() => {
+    if (phase !== "interpreting" || interpretationAttemptedRef.current) return;
+    interpretationAttemptedRef.current = true;
+
+    (async () => {
+      const interpretationResponse = await interpretPatientNeedForConfirmation({
+        search_text: initialMessage,
+        deterministic_intent: state.intent || "unknown",
+        service_keys: state.serviceKeys,
+        answers: [],
+      });
+      const proposal = buildIntentConfirmationProposal(interpretationResponse, {
+        allowedIntents: Object.keys(INTENTS),
+        deterministicIntent: state.intent,
+      });
+
+      trackPatientSearchEvent("patient_search_ai_interpretation_resolved", {
+        outcome: proposal.status,
+        proposed_intent: proposal.intent || "unknown",
+        confidence_band: proposal.confidence_band,
+        agreement_status: proposal.agreement_status,
+        safety_flag_count: proposal.possible_safety_flags?.length || 0,
+      });
+
+      if (proposal.status === "fallback") {
+        setPhase("questions");
+        return;
+      }
+
+      setIntentProposal(proposal);
+      setPhase("confirm_intent");
+    })();
+  }, [phase, initialMessage, state.intent, state.serviceKeys]);
 
   useEffect(() => {
     if (phase !== "questions" || !state.intent || current) return;
@@ -264,19 +335,46 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         </p>
       )}
 
+      {phase === "interpreting" && (
+        <div className="py-8 text-center sm:py-12">
+          <motion.div
+            animate={reduceMotion ? undefined : { rotate: [0, 8, -8, 0] }}
+            transition={reduceMotion ? undefined : { duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+            className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary"
+          >
+            <Sparkles className="h-5 w-5" />
+          </motion.div>
+          <h2 className="mt-5 font-heading text-xl font-bold text-foreground sm:text-2xl">
+            Intelegem ce cauti
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Interpretam cererea, apoi iti cerem confirmarea inainte de chestionar.
+          </p>
+        </div>
+      )}
+
+      {phase === "confirm_intent" && intentProposal && (
+        <PatientIntentConfirmation
+          proposal={intentProposal}
+          intentLabel={intentProposal.intent ? INTENTS[intentProposal.intent]?.label : ""}
+          onConfirm={handleConfirmInterpretation}
+          onCorrect={handleCorrectInterpretation}
+        />
+      )}
+
       {phase === "questions" && current && (
         <>
-          <div className="flex items-center gap-4 mb-6">
+          <div className="mb-6 flex items-center gap-4">
             {history.length > 0 ? (
               <button
                 type="button"
                 onClick={goBack}
                 className="inline-flex min-h-11 items-center gap-1 rounded-lg pr-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
-                <ArrowLeft className="w-3.5 h-3.5" /> Înapoi
+                <ArrowLeft className="h-3.5 w-3.5" /> Inapoi
               </button>
             ) : <span />}
-            <div className="flex-1 h-1 rounded-full bg-secondary overflow-hidden">
+            <div className="h-1 flex-1 overflow-hidden rounded-full bg-secondary">
               <motion.div
                 className="h-full rounded-full bg-primary"
                 animate={{ width: `${Math.max(progress, 4)}%` }}
@@ -293,7 +391,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
               exit={reduceMotion ? undefined : { opacity: 0, x: -14 }}
               transition={{ duration: reduceMotion ? 0 : 0.2 }}
             >
-              <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              <h2 className="font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl">
                 {current.title}
               </h2>
               {current.type === "choice" && <QuestionChoice question={current} onSelect={handleChoice} />}
@@ -314,13 +412,13 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
 
       {phase === "error" && (
         <div className="py-6">
-          <p className="text-sm text-muted-foreground">Ceva nu a funcționat. Încearcă din nou.</p>
+          <p className="text-sm text-muted-foreground">Ceva nu a functionat. Incearca din nou.</p>
           <button
             type="button"
             onClick={retrySearch}
-            className="mt-4 px-5 py-2.5 rounded-full text-sm font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+            className="mt-4 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
-            Încearcă din nou
+            Incearca din nou
           </button>
         </div>
       )}
