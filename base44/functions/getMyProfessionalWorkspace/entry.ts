@@ -50,6 +50,10 @@ function sanitizeAssignment(assignment, location) {
     professional_type: assignment.professional_type || '',
     active_status: assignment.active_status || 'activ',
     public_status: assignment.public_status || 'privat',
+    visibility_consent_status: assignment.visibility_consent_status || 'not_requested',
+    visibility_requested_at: assignment.visibility_requested_at || null,
+    visibility_decided_at: assignment.visibility_decided_at || null,
+    visibility_revoked_at: assignment.visibility_revoked_at || null,
     confirmed_by_professional_at: assignment.confirmed_by_professional_at || null,
     location: location ? {
       id: location.id,
@@ -106,6 +110,7 @@ Deno.serve(async (req) => {
       assignments: rows,
       public_assignment_count: rows.filter((item) => item.public_status === 'public').length,
       private_assignment_count: rows.filter((item) => item.public_status !== 'public').length,
+      pending_visibility_count: rows.filter((item) => item.visibility_consent_status === 'pending').length,
     });
   } catch (error) {
     return Response.json({ error: error?.message || 'Eroare neasteptata' }, { status: 500 });
