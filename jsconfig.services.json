@@ -7,6 +7,7 @@
     "shared/canonicalServiceRegistry.js",
     "shared/canonicalServiceRegistryExtended.js",
     "shared/locationOperationalRegistry.js",
+    "shared/locationScopedEntityQuery.js",
     "shared/serviceOperationalTaxonomy.js",
     "shared/serviceOperationalTaxonomyExtended.js",
     "shared/serviceSemanticSearch.js",
