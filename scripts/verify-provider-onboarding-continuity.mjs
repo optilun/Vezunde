@@ -36,6 +36,16 @@ expect('src/components/specialists/SpecialistsHero.jsx', 'claim_action === "requ
 expect('src/pages/Partners.jsx', 'mailto:contact@viasee.ro', 'Partenerii B2B nu intra in onboardingul organizatiilor');
 reject('src/pages/Partners.jsx', 'to="/adauga-sau-revendica"', 'CTA-ul B2B nu deschide wizardul locatiei');
 
+expect('src/components/provider/ContactIdentityFields.jsx', 'requestedLocationRoleForRelationship', 'Revendicarea locatiei foloseste o mapare separata de roluri');
+expect('src/components/provider/steps/WizClaimRelation.jsx', 'requestedLocationRoleForRelationship', 'Wizardul afiseaza rolul limitat la locatie');
+expect('src/components/provider/steps/WizClaimRelation.jsx', 'Administrarea intregii organizatii se verifica separat', 'Wizardul explica separarea dintre locatie si organizatie');
+expect('base44/functions/submitProviderClaim/entry.ts', "claim_scope: 'location'", 'Backendul marcheaza revendicarea profilului existent ca fiind limitata la locatie');
+expect('base44/functions/submitProviderClaim/entry.ts', 'LOCATION_ROLE_BY_RELATIONSHIP', 'Backendul nu transforma relatia cu afacerea in owner de organizatie pentru un claim de locatie');
+expect('base44/functions/adminProviderClaimReview/entry.ts', "const isLocationScopedClaim = claim.mode === 'claim' || submitted.claim_scope === 'location'", 'Review-ul recunoaste inclusiv cererile vechi ca revendicari de locatie');
+expect('base44/functions/adminProviderClaimReview/entry.ts', '!isLocationScopedClaim && approvedRole === \'organization_owner\'', 'Accesul pe toate locatiile este rezervat cererilor de organizatie');
+expect('base44/functions/adminProviderClaimReview/entry.ts', 'Revendicarea unei locatii nu poate acorda rol de owner al organizatiei', 'Backendul blocheaza escaladarea unui claim de locatie la owner organizatie');
+expect('src/components/admin/directory/DirOpsClaims.jsx', 'LOCATION_ROLE_OPTIONS', 'Adminul poate selecta doar roluri de locatie pentru un claim de locatie');
+
 const failures = checks.filter((check) => !check.pass);
 for (const check of checks) {
   console.log(`${check.pass ? 'PASS' : 'FAIL'} ${check.message} (${check.file})`);
