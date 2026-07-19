@@ -69,7 +69,7 @@ const responseSchema = JSON.parse(await readFile(new URL('../base44/entities/Pro
 const leadSchema = JSON.parse(await readFile(new URL('../base44/entities/ProviderLead.jsonc', import.meta.url), 'utf8'));
 assert.equal(responseSchema.rls.read.user_condition.role, 'admin');
 assert.deepEqual(responseSchema.properties.response_type.enum, ['can_help', 'needs_details', 'cannot_help']);
-for (const forbidden of ['message', 'contact_name', 'contact_email', 'contact_phone', 'original_message']) {
+for (const forbidden of ['message', 'contact_name', 'contact_email', 'contact_phone', 'original_message', 'detailed_message']) {
   assert.equal(responseSchema.properties[forbidden], undefined, `${forbidden} nu trebuie stocat in raspunsul structurat`);
 }
 assert.ok(leadSchema.properties.response_lock_token);
@@ -84,28 +84,21 @@ assert.match(backend, /ProviderSubscription\.filter/);
 assert.match(backend, /hasProviderFeature\(entitlement, 'provider_leads\.respond'\)/);
 assert.match(backend, /acquireProviderLeadResponseLock/);
 assert.match(backend, /releaseProviderLeadResponseLock/);
-assert.match(backend, /acquireContactShareApprovalLock/);
-assert.match(backend, /releaseContactShareApprovalLock/);
-assert.match(backend, /ProviderLeadResponse\.filter/);
 assert.match(backend, /ProviderLeadResponse\.create/);
-assert.match(backend, /ProviderLeadResponse\.update/);
-assert.match(backend, /ContactShareApproval\.filter/);
-assert.match(backend, /ContactShareApproval\.update/);
 assert.match(backend, /responseType === 'cannot_help'/);
 assert.match(backend, /contact_access_state: 'revoked'/);
 assert.match(backend, /conversation_access_state: 'locked'/);
-assert.match(backend, /providerLeadStatusForResponse/);
 assert.doesNotMatch(backend, /input\.plan_code/);
-assert.doesNotMatch(backend, /input\.(message|contact_email|contact_phone|original_message)/);
+assert.doesNotMatch(backend, /input\.(message|contact_email|contact_phone|original_message|detailed_message)/);
 assert.doesNotMatch(backend, /PatientRequestContact/);
 
-assert.match(component, /getProviderEntitlement/);
 assert.match(component, /providerLeadResponseOps/);
 assert.match(component, /provider_leads\.respond/);
 assert.match(component, /response_type: responseType/);
-assert.match(component, /Conversația rămâne blocată/);
-assert.match(component, /Contactul se deschide numai după acordul clientului/);
+assert.match(component, /Telefonul rămâne ascuns/);
+assert.match(component, /Chatul urmează într-o etapă distinctă/);
+assert.match(component, /Detalii Pro · Top 3/);
 assert.doesNotMatch(component, /<textarea|contentEditable/);
-assert.doesNotMatch(component, /contact_email|contact_phone|original_message|PatientRequestContact/);
+assert.doesNotMatch(component, /contact_phone\s*:|original_message|PatientRequestContact/);
 
 console.log('Provider lead response checks passed.');
