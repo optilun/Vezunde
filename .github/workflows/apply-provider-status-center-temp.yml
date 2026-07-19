@@ -1,0 +1,32 @@
+name: Apply provider status center patch
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/apply-provider-status-center-temp.yml"
+      - ".github/patches/provider-status-center.patch.b64"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Apply implementation
+        shell: bash
+        run: |
+          base64 --decode .github/patches/provider-status-center.patch.b64 > /tmp/provider-status-center.patch
+          git apply --check /tmp/provider-status-center.patch
+          git apply /tmp/provider-status-center.patch
+          rm -f .github/patches/provider-status-center.patch.b64 .github/workflows/apply-provider-status-center-temp.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add provider status center and canonical completeness"
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
