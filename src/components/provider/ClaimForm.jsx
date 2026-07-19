@@ -1,13 +1,21 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { MapPin } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
 import ClaimRelationStep from "@/components/provider/ClaimRelationStep";
+import ClaimScopeStep from "@/components/provider/ClaimScopeStep";
 import ClaimContactStep from "@/components/provider/ClaimContactStep";
 import ClaimReviewStep from "@/components/provider/ClaimReviewStep";
+import {
+  CLAIM_SCOPE,
+  normalizeClaimScopeDraft,
+  scopeDraftForChoice,
+  validateClaimScopeDraft,
+} from "@/lib/providerClaimScope";
 
 const CONTACT_RESUME_KEY = "pending_claim_contact";
 const LOCATION_RESUME_KEY = "pending_claim_location";
+const SCOPE_RESUME_KEY = "pending_claim_scope";
 const STEP_RESUME_KEY = "pending_claim_step";
 
 const DEFAULT_CONTACT = {
@@ -16,6 +24,13 @@ const DEFAULT_CONTACT = {
   email: "",
   phone: "",
   representation_confirmed: false,
+};
+
+const DEFAULT_SCOPE = {
+  claim_scope: CLAIM_SCOPE.LOCATION,
+  requested_location_ids: [],
+  excluded_location_ids: [],
+  reported_missing_location: "",
 };
 
 function getSessionStorage() {
@@ -44,18 +59,20 @@ const clearClaimResumeState = () => {
   try {
     storage.removeItem(CONTACT_RESUME_KEY);
     storage.removeItem(LOCATION_RESUME_KEY);
+    storage.removeItem(SCOPE_RESUME_KEY);
     storage.removeItem(STEP_RESUME_KEY);
   } catch (_error) {
     // Revendicarea ramane utilizabila chiar daca stocarea temporara este indisponibila.
   }
 };
 
-const persistClaimResumeState = (location, contact, step = "review") => {
+const persistClaimResumeState = (location, contact, scope, step = "review") => {
   const storage = getSessionStorage();
   if (!storage) return;
   try {
     if (location) storage.setItem(LOCATION_RESUME_KEY, JSON.stringify(location));
     storage.setItem(CONTACT_RESUME_KEY, JSON.stringify({ ...DEFAULT_CONTACT, ...contact }));
+    storage.setItem(SCOPE_RESUME_KEY, JSON.stringify({ ...DEFAULT_SCOPE, ...scope }));
     storage.setItem(STEP_RESUME_KEY, step);
   } catch (_error) {
     // Autentificarea si trimiterea continua chiar daca browserul blocheaza sessionStorage.
@@ -67,12 +84,19 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
     ...DEFAULT_CONTACT,
     ...(readSessionJson(CONTACT_RESUME_KEY) || {}),
   }));
+  const [scope, setScopeState] = useState(() => normalizeClaimScopeDraft({
+    ...DEFAULT_SCOPE,
+    ...(readSessionJson(SCOPE_RESUME_KEY) || {}),
+  }, location?.id));
+  const [scopeOptions, setScopeOptions] = useState(null);
+  const [scopeLoading, setScopeLoading] = useState(false);
+  const [scopeError, setScopeError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [authChecking, setAuthChecking] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    persistClaimResumeState(location, contact, step || "relation");
+    persistClaimResumeState(location, contact, scope, step || "relation");
   }, [location, step]);
 
   useEffect(() => {
@@ -87,26 +111,62 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
           contact_name: current.contact_name || user.full_name || user.name || "",
           email: current.email || user.email || "",
         };
-        persistClaimResumeState(location, next, step || "contact");
+        persistClaimResumeState(location, next, scope, step || "contact");
         return next;
       });
     });
     return () => { cancelled = true; };
   }, [location, step]);
 
+  const loadScopeOptions = useCallback(async () => {
+    if (!location?.id || scopeLoading) return;
+    setScopeLoading(true);
+    setScopeError("");
+    const response = await base44.functions.invoke("getProviderClaimScopeOptions", {
+      location_id: location.id,
+    }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }));
+    setScopeLoading(false);
+    if (response.data?.error) {
+      setScopeError(response.data.error);
+      return;
+    }
+    const options = response.data || null;
+    setScopeOptions(options);
+    setScopeState((current) => {
+      const availableScope = current.claim_scope === CLAIM_SCOPE.ORGANIZATION && !options?.supports_organization_claim
+        ? CLAIM_SCOPE.LOCATION
+        : current.claim_scope === CLAIM_SCOPE.SELECTED_LOCATIONS && !options?.supports_selected_locations
+          ? CLAIM_SCOPE.LOCATION
+          : current.claim_scope;
+      const next = scopeDraftForChoice(availableScope, options, current);
+      persistClaimResumeState(location, contact, next, step || "scope");
+      return next;
+    });
+  }, [contact, location, scopeLoading, step]);
+
+  useEffect(() => {
+    if (["scope", "contact", "review"].includes(step) && !scopeOptions && !scopeLoading) loadScopeOptions();
+  }, [loadScopeOptions, scopeLoading, scopeOptions, step]);
+
   const setContact = (nextContact) => {
     const normalizedContact = { ...DEFAULT_CONTACT, ...nextContact };
     setContactState(normalizedContact);
-    persistClaimResumeState(location, normalizedContact, step || "relation");
+    persistClaimResumeState(location, normalizedContact, scope, step || "relation");
+  };
+
+  const setScope = (nextScope) => {
+    const normalizedScope = normalizeClaimScopeDraft(nextScope, location?.id);
+    setScopeState(normalizedScope);
+    persistClaimResumeState(location, contact, normalizedScope, step || "scope");
   };
 
   const goToStep = (nextStep) => {
-    persistClaimResumeState(location, contact, nextStep);
+    persistClaimResumeState(location, contact, scope, nextStep);
     onStepChange(nextStep);
   };
 
   const continueAfterRelation = async () => {
-    persistClaimResumeState(location, contact, "contact");
+    persistClaimResumeState(location, contact, scope, "scope");
     setAuthChecking(true);
     const authenticated = await base44.auth.isAuthenticated().catch(() => false);
     setAuthChecking(false);
@@ -114,14 +174,35 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
       base44.auth.redirectToLogin(window.location.href);
       return;
     }
-    onStepChange("contact");
+    onStepChange("scope");
+  };
+
+  const continueAfterScope = () => {
+    const validationError = validateClaimScopeDraft(scope, scopeOptions);
+    if (validationError) {
+      setScopeError(validationError);
+      return;
+    }
+    setScopeError("");
+    goToStep("contact");
   };
 
   const submit = async () => {
-    persistClaimResumeState(location, contact, "review");
+    persistClaimResumeState(location, contact, scope, "review");
     if (!contact.claimant_relationship || !contact.representation_confirmed) {
-      setError("Confirma relatia cu locatia inainte de trimitere.");
+      setError("Confirma relatia inainte de trimitere.");
       onStepChange("relation");
+      return;
+    }
+    if (!scopeOptions) {
+      setError("Locatiile asociate trebuie incarcate din nou.");
+      onStepChange("scope");
+      return;
+    }
+    const scopeValidationError = validateClaimScopeDraft(scope, scopeOptions);
+    if (scopeValidationError) {
+      setError(scopeValidationError);
+      onStepChange("scope");
       return;
     }
     if (!String(contact.contact_name || "").trim() || !String(contact.email || "").trim()) {
@@ -137,14 +218,18 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
     setSubmitting(true);
     setError("");
     const res = await base44.functions
-      .invoke("submitProviderClaim", {
+      .invoke("submitProviderScopedClaim", {
         mode: "claim",
         location_id: location.id,
+        claim_scope: scope.claim_scope,
+        requested_location_ids: scope.requested_location_ids,
+        excluded_location_ids: scope.excluded_location_ids,
+        reported_missing_location: scope.reported_missing_location,
         contact,
         claimant_relationship: contact.claimant_relationship,
         representation_confirmed: contact.representation_confirmed,
       })
-      .catch((e) => ({ data: { error: e.response?.data?.error || e.message } }));
+      .catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }));
     setSubmitting(false);
     if (res.data?.error) setError(res.data.error);
     else {
@@ -164,12 +249,28 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
     </div>
   );
 
+  if (step === "scope") {
+    return (
+      <ClaimScopeStep
+        locationCard={locationCard}
+        options={scopeOptions}
+        scope={scope}
+        contact={contact}
+        loading={scopeLoading}
+        error={scopeError}
+        onChange={setScope}
+        onRetry={loadScopeOptions}
+        onContinue={continueAfterScope}
+      />
+    );
+  }
+
   if (step === "contact") {
     return <ClaimContactStep locationCard={locationCard} contact={contact} onChange={setContact} onContinue={() => goToStep("review")} />;
   }
 
   if (step === "review") {
-    return <ClaimReviewStep locationCard={locationCard} contact={contact} error={error} submitting={submitting} onSubmit={submit} />;
+    return <ClaimReviewStep locationCard={locationCard} contact={contact} scope={scope} options={scopeOptions} error={error} submitting={submitting} onSubmit={submit} />;
   }
 
   return (
