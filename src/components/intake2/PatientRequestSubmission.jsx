@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { BookmarkPlus, CheckCircle2, LockKeyhole, Send, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import PatientRequestResponseStatus from "./PatientRequestResponseStatus";
 import {
   authorizePatientRequestDistribution,
   createPatientRequestIdempotencyKey,
@@ -178,6 +179,10 @@ export default function PatientRequestSubmission({ results, meta }) {
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                   Datele de contact și conversația rămân blocate.
                 </p>
+                <PatientRequestResponseStatus
+                  requestId={success.request_id}
+                  accessToken={success.request_access_token || ""}
+                />
               </div>
             )}
           </div>
