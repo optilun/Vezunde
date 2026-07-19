@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import MatchResultCard from "./MatchResultCard";
+import PatientRequestSubmission from "./PatientRequestSubmission";
 
 const EMPTY_RECOMMENDATION_STATES = {
   no_local_providers: {
@@ -177,6 +178,8 @@ export default function MatchResults({ results, meta }) {
       <p className="mt-6 text-xs text-muted-foreground/80">
         Ordinea reflectă serviciile confirmate, relevanța căutării și verificarea profilului. VIASEE nu oferă diagnostic medical.
       </p>
+
+      <PatientRequestSubmission results={list} meta={meta} />
 
       <div className="mt-5 flex flex-col items-stretch gap-2 border-t border-border pt-4 sm:flex-row sm:items-center">
         {feedback === null ? (
