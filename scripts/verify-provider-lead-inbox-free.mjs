@@ -68,7 +68,8 @@ assert.doesNotMatch(backend, /PatientRequest\.get/);
 assert.match(component, /providerLeadInboxOps/);
 assert.match(component, /action: "list"/);
 assert.match(component, /action: "mark_viewed"/);
-assert.match(component, /Contactul și conversația sunt blocate/);
+assert.match(component, /Contactul nu este încărcat automat/);
+assert.match(component, /Conversația rămâne blocată/);
 assert.doesNotMatch(component, /base44\.entities\.ProviderLead/);
 assert.doesNotMatch(component, /contact_email|contact_phone|original_message|PatientRequestContact/);
 
