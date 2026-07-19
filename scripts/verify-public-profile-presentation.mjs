@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import {
   buildClaimLocationState,
-  buildDirectoryReportHref,
   getPublicProfilePresentation,
 } from "../src/lib/providerPublicPresentation.js";
 
-assert.equal(getPublicProfilePresentation("directory").label, "Profil din director");
+assert.equal(getPublicProfilePresentation("directory").label, "Profil nerevendicat");
 assert.equal(getPublicProfilePresentation("claimed").label, "Profil revendicat");
 assert.equal(getPublicProfilePresentation("verified").label, "Profil verificat de VIASEE");
+assert.match(getPublicProfilePresentation("directory").description, /nu este administrat inca de furnizor/);
 
 const privateLocation = {
   id: "location-1",
@@ -28,11 +28,5 @@ assert.equal(claimState.selectedLocation.city, privateLocation.city);
 assert.equal(claimState.selectedLocation.address, undefined);
 assert.equal(claimState.selectedLocation.phone, undefined);
 assert.equal(claimState.selectedLocation.website, undefined);
-
-const reportHref = decodeURIComponent(buildDirectoryReportHref(privateLocation));
-assert.match(reportHref, /contact@viasee\.ro/);
-assert.match(reportHref, /location-1/);
-assert.doesNotMatch(reportHref, /Strada privata/);
-assert.doesNotMatch(reportHref, /0700000000/);
 
 console.log("Public profile presentation checks passed.");

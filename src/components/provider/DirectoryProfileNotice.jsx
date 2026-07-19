@@ -1,16 +1,16 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Building2, Flag } from "lucide-react";
+import DirectoryCorrectionForm from "@/components/provider/DirectoryCorrectionForm";
 import {
   buildClaimLocationState,
-  buildDirectoryReportHref,
   getPublicProfilePresentation,
 } from "@/lib/providerPublicPresentation";
 
 export default function DirectoryProfileNotice({ location, compact = false }) {
+  const [reportOpen, setReportOpen] = useState(false);
   const presentation = getPublicProfilePresentation("directory");
   const claimState = buildClaimLocationState(location);
-  const reportHref = buildDirectoryReportHref(location);
 
   return (
     <div className={compact
@@ -25,8 +25,8 @@ export default function DirectoryProfileNotice({ location, compact = false }) {
           <div className="text-sm font-bold text-foreground">{presentation.label}</div>
           <p className={`mt-1 leading-relaxed text-muted-foreground ${compact ? "text-xs" : "text-sm"}`}>
             {compact
-              ? "Informatii de baza din surse publice, neconfirmate inca de furnizor."
-              : "VIASEE afiseaza momentan doar numele, tipul si localitatea. Adresa exacta, contactul, programul si serviciile nu sunt publicate pana cand profilul este revendicat."
+              ? "Informatii de baza din surse publice. Profilul nu este administrat inca de furnizor."
+              : "Acest profil informativ foloseste date din surse publice si nu este administrat inca de furnizor. Afisarea nu reprezinta un parteneriat sau o recomandare VIASEE."
             }
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -37,15 +37,18 @@ export default function DirectoryProfileNotice({ location, compact = false }) {
             >
               Revendica acest profil
             </Link>
-            <a
-              href={reportHref}
+            <button
+              type="button"
+              onClick={() => setReportOpen((current) => !current)}
+              aria-expanded={reportOpen}
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
             >
-              <Flag className="h-3.5 w-3.5" /> Semnaleaza informatii incorecte
-            </a>
+              <Flag className="h-3.5 w-3.5" /> {reportOpen ? "Inchide formularul" : "Semnaleaza informatii incorecte"}
+            </button>
           </div>
         </div>
       </div>
+      {reportOpen && <DirectoryCorrectionForm location={location} onClose={() => setReportOpen(false)} />}
     </div>
   );
 }
