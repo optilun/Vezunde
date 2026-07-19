@@ -43,6 +43,7 @@ on:
       - "scripts/verify-provider-location-identity-resolution.mjs"
       - "scripts/verify-provider-invitation-delivery.mjs"
       - "scripts/verify-professional-invitation-delivery.mjs"
+      - "scripts/verify-professional-invitation-acceptance.mjs"
       - "scripts/verify-provider-logo-review-status.mjs"
       - "scripts/verify-provider-account-workflow-e2e.mjs"
       - "scripts/verify-provider-location-access-scope.mjs"
@@ -76,6 +77,8 @@ jobs:
         run: npm run test:provider-invitation-delivery
       - name: Professional invitation delivery checks
         run: node scripts/verify-professional-invitation-delivery.mjs
+      - name: Professional invitation acceptance checks
+        run: node scripts/verify-professional-invitation-acceptance.mjs
       - name: Provider logo review checks
         run: npm run test:provider-logo-review
       - name: Provider account workflow contract E2E
