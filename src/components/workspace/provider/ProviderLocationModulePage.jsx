@@ -1,5 +1,6 @@
 import React from "react";
 import { ArrowLeft, Clock, Info, MapPin, Users, Wrench } from "lucide-react";
+import { resolveProviderLocationAccess } from "@/lib/providerWorkspaceAccess";
 import ProviderServices from "./ProviderServices";
 import ProviderHours from "./ProviderHours";
 import ProviderTeam from "./ProviderTeam";
@@ -38,7 +39,8 @@ export default function ProviderLocationModulePage({
 }) {
   const location = (workspace.locations || []).find((item) => item.id === locationId) || null;
   const config = MODULES[moduleKey];
-  const capabilities = new Set(workspace.current_user_capabilities || []);
+  const locationAccess = resolveProviderLocationAccess(workspace, locationId);
+  const capabilities = new Set(locationAccess.capabilities);
   const hasModuleAccess = Boolean(config && capabilities.has(config.capability));
 
   if (!location || !config || !hasModuleAccess) {
