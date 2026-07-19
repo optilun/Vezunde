@@ -6,6 +6,9 @@
   "include": [
     "shared/canonicalServiceRegistry.js",
     "shared/canonicalServiceRegistryExtended.js",
+    "shared/communicationEventCatalog.js",
+    "shared/communicationDelivery.js",
+    "shared/leadCommunicationNotifications.js",
     "shared/locationOperationalRegistry.js",
     "shared/locationScopedEntityQuery.js",
     "shared/providerContactAccessPolicy.js",
