@@ -2,118 +2,85 @@
   "name": "PatientRequest",
   "type": "object",
   "properties": {
-    "intent": {
-      "type": "string"
-    },
-    "original_message": {
-      "type": "string"
-    },
+    "contract_version": { "type": "string" },
+    "questionnaire_version": { "type": "string" },
+    "questionnaire_key": { "type": "string" },
+    "intent": { "type": "string" },
+    "original_message": { "type": "string" },
     "service_keys": {
       "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "items": { "type": "string" }
     },
     "location_scope": {
       "type": "string",
-      "enum": [
-        "geo",
-        "city",
-        "national"
-      ],
-      "default": "city"
+      "enum": ["locality", "geo", "city", "national"],
+      "default": "locality"
     },
-    "city": {
-      "type": "string"
-    },
-    "county": {
-      "type": "string"
-    },
+    "city": { "type": "string" },
+    "county": { "type": "string" },
+    "locality_siruta_code": { "type": "string" },
+    "client_address_text": { "type": "string" },
     "for_whom": {
       "type": "string",
-      "enum": [
-        "adult",
-        "copil"
-      ]
+      "enum": ["adult", "copil"]
     },
+    "age_group": { "type": "string" },
     "urgency": {
       "type": "string",
-      "enum": [
-        "normala",
-        "urgenta"
-      ],
+      "enum": ["normala", "urgenta"],
       "default": "normala"
     },
-    "timing_key": {
-      "type": "string"
-    },
+    "timing_key": { "type": "string" },
     "preferences": {
       "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "items": { "type": "string" }
     },
-    "selected_location_id": {
-      "type": "string"
-    },
-    "contact_name": {
-      "type": "string"
-    },
-    "contact_email": {
-      "type": "string"
-    },
-    "contact_phone": {
-      "type": "string"
-    },
-    "contact_preference": {
-      "type": "string"
-    },
-    "consent": {
-      "type": "boolean",
-      "default": false
-    },
-    "precise_location_consent": {
-      "type": "boolean",
-      "default": false
-    },
-    "expires_at": {
+    "selected_location_id": { "type": "string" },
+    "request_source": {
       "type": "string",
-      "format": "date-time"
+      "enum": ["patient_search", "admin", "legacy"],
+      "default": "patient_search"
+    },
+    "requester_user_id": { "type": "string" },
+    "contact_record_id": { "type": "string" },
+    "contact_email_hash": { "type": "string" },
+    "idempotency_key": { "type": "string" },
+    "public_reference": { "type": "string" },
+    "interpretation_version": { "type": "string" },
+    "interpretation_confidence_band": { "type": "string" },
+    "interpretation_agreement_status": { "type": "string" },
+    "possible_safety_flags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "recommendation_contract_version": { "type": "string" },
+    "matching_coverage_status": { "type": "string" },
+    "matching_need_level": { "type": "string" },
+    "match_count": { "type": "number", "default": 0 },
+    "top3_count": { "type": "number", "default": 0 },
+    "submitted_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "persistence_state": {
+      "type": "string",
+      "enum": ["creating", "complete", "partial_failure"],
+      "default": "creating"
     },
     "status": {
       "type": "string",
-      "enum": [
-        "noua",
-        "procesata",
-        "inchisa",
-        "expirata"
-      ],
-      "default": "noua"
+      "enum": ["noua", "salvata", "pregatita_pentru_distribuire", "procesata", "retrasa", "inchisa", "expirata"],
+      "default": "salvata"
     }
   },
   "required": [
-    "intent"
+    "contract_version",
+    "questionnaire_version",
+    "intent",
+    "idempotency_key"
   ],
   "rls": {
-    "create": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "read": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "update": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "delete": {
-      "user_condition": {
-        "role": "admin"
-      }
-    }
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
   }
 }
