@@ -11,6 +11,15 @@ import {
   summarizeInAppNotifications,
 } from '../../../shared/inAppNotificationPolicy.js';
 import { ensurePatientInAppNotifications } from '../../../shared/inAppNotificationProjection.js';
+import {
+  PATIENT_REQUEST_LIFECYCLE_STATES,
+  sanitizePatientRequestLifecycle,
+} from '../../../shared/patientRequestLifecyclePolicy.js';
+import {
+  deriveStoredPatientRequestLifecycle,
+  reconcilePatientRequestExpiration,
+  transitionPatientRequestLifecycle,
+} from '../../../shared/patientRequestLifecycleOps.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -97,6 +106,63 @@ async function markAllPatientNotificationsRead(svc, requestId) {
   return { updated: rows.length };
 }
 
+async function buildStatusPayload(svc, request, contact) {
+  const expiration = await reconcilePatientRequestExpiration(svc, request.id);
+  const currentRequest = expiration.request || request;
+  const lifecycleSnapshot = expiration.lifecycle
+    ? { lifecycle: expiration.lifecycle }
+    : await deriveStoredPatientRequestLifecycle(svc, currentRequest);
+  const lifecycle = lifecycleSnapshot.lifecycle;
+
+  if (
+    currentRequest.lifecycle_state !== lifecycle.state
+    || currentRequest.lifecycle_stage !== lifecycle.stage
+    || !currentRequest.lifecycle_contract_version
+  ) {
+    await svc.entities.PatientRequest.update(currentRequest.id, {
+      lifecycle_contract_version: 'patient-request-lifecycle-v1',
+      lifecycle_state: lifecycle.state,
+      lifecycle_stage: lifecycle.stage,
+      lifecycle_updated_at: new Date().toISOString(),
+    }).catch(() => null);
+  }
+
+  const [rows, approvalRows, openConversations] = await Promise.all([
+    svc.entities.ProviderLeadResponse.filter({ request_id: currentRequest.id, status: 'active' }, '-updated_date', 100),
+    svc.entities.ContactShareApproval.filter({ request_id: currentRequest.id }, '-updated_date', 100),
+    svc.entities.PatientRequestConversation.filter({ request_id: currentRequest.id, status: 'open' }, '-updated_date', 100),
+  ]);
+  const approvalByLocation = new Map();
+  for (const approval of approvalRows) {
+    if (!approval.location_id || approvalByLocation.has(approval.location_id)) continue;
+    approvalByLocation.set(approval.location_id, approval);
+  }
+
+  const responses = [];
+  const seenLocations = new Set();
+  for (const row of rows) {
+    if (!row.location_id || seenLocations.has(row.location_id)) continue;
+    const location = await svc.entities.ProviderLocation.get(row.location_id).catch(() => null);
+    if (!location) continue;
+    seenLocations.add(row.location_id);
+    responses.push(sanitizePatientProviderResponse(row, location, approvalByLocation.get(row.location_id) || null));
+  }
+
+  return {
+    contract_version: PATIENT_REQUEST_STATUS_CONTRACT_VERSION,
+    request: sanitizePatientRequestStatus({ ...currentRequest, lifecycle_state: lifecycle.state, lifecycle_stage: lifecycle.stage }),
+    lifecycle: sanitizePatientRequestLifecycle(lifecycle),
+    response_count: responses.length,
+    responses,
+    contact_email_verified: contact.contact_email_verified === true,
+    contact_email_masked: maskPatientEmail(contact.contact_email),
+    contact_phone_available: Boolean(clean(contact.contact_phone, 32)),
+    phone_sharing_enabled: responses.some((response) => response.contact_share_status === 'approved'),
+    contact_sharing_enabled: responses.some((response) => response.contact_share_status === 'approved'),
+    conversation_enabled: lifecycle.state === PATIENT_REQUEST_LIFECYCLE_STATES.ACTIVE && openConversations.length > 0,
+  };
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -110,7 +176,26 @@ Deno.serve(async (req) => {
     const authorized = await authorizeRequest(svc, requestId, accessToken);
     if (authorized.error) return res({ error: authorized.error }, authorized.status);
 
+    if (action === 'resolve' || action === 'close') {
+      const targetState = action === 'resolve'
+        ? PATIENT_REQUEST_LIFECYCLE_STATES.RESOLVED
+        : PATIENT_REQUEST_LIFECYCLE_STATES.CLOSED;
+      const transitioned = await transitionPatientRequestLifecycle({
+        svc,
+        requestId,
+        targetState,
+        actor: 'patient',
+      });
+      if (transitioned.error) return res({ error: transitioned.error }, transitioned.status);
+      await ensurePatientInAppNotifications({ svc, requestId }).catch(() => []);
+      return res({
+        ...(await buildStatusPayload(svc, transitioned.request, authorized.contact)),
+        idempotent_replay: transitioned.idempotent_replay,
+      });
+    }
+
     if (action === 'notifications_list') {
+      await reconcilePatientRequestExpiration(svc, requestId).catch(() => null);
       await ensurePatientInAppNotifications({ svc, requestId }).catch(() => []);
       return res(await listPatientNotifications(svc, requestId, input.limit));
     }
@@ -129,39 +214,7 @@ Deno.serve(async (req) => {
     }
     if (action !== 'status') return res({ error: 'Actiune necunoscuta.' }, 400);
 
-    const [rows, approvalRows, openConversations] = await Promise.all([
-      svc.entities.ProviderLeadResponse.filter({ request_id: requestId, status: 'active' }, '-updated_date', 100),
-      svc.entities.ContactShareApproval.filter({ request_id: requestId }, '-updated_date', 100),
-      svc.entities.PatientRequestConversation.filter({ request_id: requestId, status: 'open' }, '-updated_date', 100),
-    ]);
-    const approvalByLocation = new Map();
-    for (const approval of approvalRows) {
-      if (!approval.location_id || approvalByLocation.has(approval.location_id)) continue;
-      approvalByLocation.set(approval.location_id, approval);
-    }
-
-    const responses = [];
-    const seenLocations = new Set();
-    for (const row of rows) {
-      if (!row.location_id || seenLocations.has(row.location_id)) continue;
-      const location = await svc.entities.ProviderLocation.get(row.location_id).catch(() => null);
-      if (!location) continue;
-      seenLocations.add(row.location_id);
-      responses.push(sanitizePatientProviderResponse(row, location, approvalByLocation.get(row.location_id) || null));
-    }
-
-    return res({
-      contract_version: PATIENT_REQUEST_STATUS_CONTRACT_VERSION,
-      request: sanitizePatientRequestStatus(authorized.request),
-      response_count: responses.length,
-      responses,
-      contact_email_verified: authorized.contact.contact_email_verified === true,
-      contact_email_masked: maskPatientEmail(authorized.contact.contact_email),
-      contact_phone_available: Boolean(clean(authorized.contact.contact_phone, 32)),
-      phone_sharing_enabled: responses.some((response) => response.contact_share_status === 'approved'),
-      contact_sharing_enabled: responses.some((response) => response.contact_share_status === 'approved'),
-      conversation_enabled: openConversations.length > 0,
-    });
+    return res(await buildStatusPayload(svc, authorized.request, authorized.contact));
   } catch (_error) {
     return res({ error: 'Statusul cererii nu a putut fi incarcat.' }, 500);
   }
