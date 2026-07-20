@@ -4,7 +4,7 @@ import {
   PATIENT_COUNTY_EXPANSION_VERSION,
   countyExpansionDraft,
   patientSearchTextFromDraft,
-} from "../src/lib/patientSearchExpansion.js";
+} from "../shared/patientSearchExpansion.js";
 
 assert.equal(PATIENT_COUNTY_EXPANSION_VERSION, "patient-county-expansion-v1");
 assert.equal(
@@ -53,7 +53,7 @@ assert.match(client, /data\.query_scope !== "county"/);
 assert.doesNotMatch(client, /matchProviders"/);
 assert.doesNotMatch(client, /query_scope: "national"/);
 
-assert.match(results, /onClick=\{onExpandCounty\}/);
+assert.match(emptyFlow, /onClick=\{onExpandCounty\}/);
 assert.match(results, /matchProvidersInSelectedCounty\(draft\)/);
 assert.match(results, /storePatientRequestDraft\(nextDraft\)/);
 assert.match(results, /queryScope === "county"/);
