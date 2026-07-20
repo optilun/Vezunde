@@ -1,0 +1,36 @@
+name: Directory Mapping
+
+on:
+  pull_request:
+    paths:
+      - "shared/directoryMappingPolicy.js"
+      - "base44/entities/DirectoryLocationIdentityLink.jsonc"
+      - "base44/functions/directoryMappingOps/**"
+      - "src/components/admin/directory/DirOpsMapping.jsx"
+      - "src/lib/adminNavConfig.js"
+      - "src/pages/AdminDirectoryOps.jsx"
+      - "scripts/verify-directory-mapping.mjs"
+      - ".github/workflows/directory-mapping-ci.yml"
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --silent
+      - name: Verify directory mapping contract
+        run: node scripts/verify-directory-mapping.mjs
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint mapping scope
+        run: npx eslint shared/directoryMappingPolicy.js base44/functions/directoryMappingOps/entry.ts src/components/admin/directory/DirOpsMapping.jsx src/lib/adminNavConfig.js src/pages/AdminDirectoryOps.jsx scripts/verify-directory-mapping.mjs
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
