@@ -5,12 +5,18 @@ import AdminNewLocationReview from "@/components/admin/directory/AdminNewLocatio
 import AdminProfessionalProfileReview from "@/components/admin/directory/AdminProfessionalProfileReview";
 import AdminLocationLifecycleReview from "@/components/admin/directory/AdminLocationLifecycleReview";
 import AdminPhotoCleanupQueue from "@/components/admin/directory/AdminPhotoCleanupQueue";
+import AdminPatientRequestRecoveryQueue from "./AdminPatientRequestRecoveryQueue";
 
 const TABS = [
   {
     key: "workspace",
     label: "Profil si continut",
     description: "Profil organizational, date locatie, servicii, fotografii, program, echipa si articole.",
+  },
+  {
+    key: "patient_requests",
+    label: "Cereri fara rezultate",
+    description: "Cereri salvate de pacienti dupa o cautare fara rezultate, trimise separat pentru verificarea criteriilor si a datelor directorului.",
   },
   {
     key: "lifecycle",
@@ -63,6 +69,7 @@ export default function AdminReviewQueue() {
       </AdminCard>
 
       {tab === "workspace" && <AdminWorkspaceSubmissionsReview />}
+      {tab === "patient_requests" && <AdminPatientRequestRecoveryQueue />}
       {tab === "lifecycle" && <AdminLocationLifecycleReview />}
       {tab === "locations" && <AdminNewLocationReview />}
       {tab === "professionals" && <AdminProfessionalProfileReview />}
