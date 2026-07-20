@@ -26,6 +26,10 @@ import {
   buildPatientRequestRecoveryRecord,
   sanitizePatientRequestRecovery,
 } from '../../../shared/patientRequestRecovery.js';
+import {
+  derivePatientNoResponseReview,
+  patientNoResponseKeepWaitingPatch,
+} from '../../../shared/patientNoResponseReview.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -157,6 +161,7 @@ function sanitizeWorkspaceResult(match, location) {
     provider_type: clean(location.provider_type, 80),
     profile_control_status: clean(location.profile_control_status || match?.profile_control_status_snapshot || 'directory', 40),
     result_bucket: clean(match?.result_bucket, 40),
+    expansion_tier: clean(match?.expansion_tier || 'oras', 40),
     rank: Number(match?.rank) || 0,
     bucket_rank: Number(match?.bucket_rank) || 0,
     matched_service_keys: cleanList(match?.matched_service_keys, 30, 120),
@@ -174,14 +179,26 @@ async function buildWorkspacePayload(svc, request) {
     const location = await svc.entities.ProviderLocation.get(match.location_id).catch(() => null);
     return sanitizeWorkspaceResult(match, location);
   }));
+  const queryScope = request.location_scope === 'county' || matches.some((match) => match.expansion_tier === 'judet')
+    ? 'county'
+    : 'locality';
 
   return {
     detailed_message: clean(request.detailed_message || request.original_message, 2000),
     request_draft: {
+      contract_version: clean(request.contract_version, 120),
+      questionnaire_version: clean(request.questionnaire_version, 120),
+      questionnaire_key: clean(request.questionnaire_key, 120),
       intent: clean(request.intent, 120),
+      original_message: clean(request.original_message, 800),
+      service_keys: cleanList(request.service_keys, 30, 120),
+      location_scope: queryScope,
       city: clean(request.city, 120),
       county: clean(request.county, 120),
+      locality_siruta_code: clean(request.locality_siruta_code, 40),
+      client_address_text: clean(request.client_address_text, 240),
       for_whom: clean(request.for_whom, 40),
+      age_group: clean(request.age_group, 40),
       timing_key: clean(request.timing_key, 120),
       preferences: cleanList(request.preferences, 30, 160),
       answers: answers.map(sanitizeWorkspaceAnswer),
@@ -193,6 +210,7 @@ async function buildWorkspacePayload(svc, request) {
       recommendation_contract_version: clean(request.recommendation_contract_version, 120),
       coverage_status: clean(request.matching_coverage_status, 80),
       need_level: clean(request.matching_need_level, 80),
+      query_scope: queryScope,
     },
     results: resolvedResults.filter(Boolean),
   };
@@ -236,6 +254,33 @@ async function createRecoveryCase(svc, request, input) {
   }
 }
 
+async function acknowledgeNoResponseReview(svc, request) {
+  const [snapshot, leads, responses, matches] = await Promise.all([
+    deriveStoredPatientRequestLifecycle(svc, request),
+    svc.entities.ProviderLead.filter({ request_id: request.id }, '-created_date', 500),
+    svc.entities.ProviderLeadResponse.filter({ request_id: request.id, status: 'active' }, '-updated_date', 500),
+    svc.entities.RequestMatch.filter({ request_id: request.id }, 'rank', 100),
+  ]);
+  const queryScope = request.location_scope === 'county' || matches.some((match) => match.expansion_tier === 'judet')
+    ? 'county'
+    : 'locality';
+  const review = derivePatientNoResponseReview({
+    request,
+    leads,
+    activeResponseCount: responses.length,
+    lifecycle: snapshot.lifecycle,
+    queryScope,
+  });
+  if (!review.can_keep_waiting) {
+    return { error: 'Continuarea asteptarii nu este disponibila pentru starea actuala a cererii.', status: 409 };
+  }
+  const updated = await svc.entities.PatientRequest.update(
+    request.id,
+    patientNoResponseKeepWaitingPatch(request),
+  );
+  return { request: updated };
+}
+
 async function buildStatusPayload(svc, request, contact) {
   const expiration = await reconcilePatientRequestExpiration(svc, request.id);
   const currentRequest = expiration.request || request;
@@ -257,8 +302,9 @@ async function buildStatusPayload(svc, request, contact) {
     }).catch(() => null);
   }
 
-  const [rows, approvalRows, openConversations, workspace, recovery] = await Promise.all([
+  const [rows, leadRows, approvalRows, openConversations, workspace, recovery] = await Promise.all([
     svc.entities.ProviderLeadResponse.filter({ request_id: currentRequest.id, status: 'active' }, '-updated_date', 100),
+    svc.entities.ProviderLead.filter({ request_id: currentRequest.id }, '-created_date', 500),
     svc.entities.ContactShareApproval.filter({ request_id: currentRequest.id }, '-updated_date', 100),
     svc.entities.PatientRequestConversation.filter({ request_id: currentRequest.id, status: 'open' }, '-updated_date', 100),
     buildWorkspacePayload(svc, currentRequest),
@@ -279,12 +325,20 @@ async function buildStatusPayload(svc, request, contact) {
     seenLocations.add(row.location_id);
     responses.push(sanitizePatientProviderResponse(row, location, approvalByLocation.get(row.location_id) || null));
   }
+  const noResponseReview = derivePatientNoResponseReview({
+    request: currentRequest,
+    leads: leadRows,
+    activeResponseCount: responses.length,
+    lifecycle,
+    queryScope: workspace?.meta?.query_scope || 'locality',
+  });
 
   return {
     contract_version: PATIENT_REQUEST_STATUS_CONTRACT_VERSION,
     request: sanitizePatientRequestStatus({ ...currentRequest, lifecycle_state: lifecycle.state, lifecycle_stage: lifecycle.stage }),
     lifecycle: sanitizePatientRequestLifecycle(lifecycle),
     workspace,
+    no_response_review: noResponseReview,
     distribution_authorized: contact.provider_request_distribution_consent === true,
     recovery_allowed: lifecycle.state === PATIENT_REQUEST_LIFECYCLE_STATES.ACTIVE && Number(currentRequest.match_count || 0) === 0,
     recovery: sanitizePatientRequestRecovery(recovery),
@@ -323,6 +377,12 @@ Deno.serve(async (req) => {
         ...(await buildStatusPayload(svc, authorized.request, authorized.contact)),
         idempotent_replay: result.idempotent_replay,
       });
+    }
+
+    if (action === 'no_response_keep_waiting') {
+      const result = await acknowledgeNoResponseReview(svc, authorized.request);
+      if (result.error) return res({ error: result.error }, result.status);
+      return res(await buildStatusPayload(svc, result.request, authorized.contact));
     }
 
     if (action === 'resolve' || action === 'close') {
