@@ -2,13 +2,18 @@ import React from "react";
 import ConversationalCard from "@/components/intake2/ConversationalCard";
 import PatientRequestResume from "@/pages/PatientRequestResume";
 import { INTENTS, LEGACY_CATEGORY_TO_INTENT } from "@/lib/intentRegistry";
+import { readPatientRequestReformulation } from "@/lib/patientNoResponseReviewClient";
 
 export default function RequestFlow() {
   const urlParams = new URLSearchParams(window.location.search);
   const publicReference = urlParams.get("ref") || "";
   const q = urlParams.get("q") || "";
   const cat = urlParams.get("categorie") || "";
-  const intent = INTENTS[cat] ? cat : LEGACY_CATEGORY_TO_INTENT[cat] || null;
+  const reformulationId = urlParams.get("reformulation") || "";
+  const reformulation = reformulationId ? readPatientRequestReformulation(reformulationId) : null;
+  const intent = reformulation?.request_draft?.intent
+    || (INTENTS[cat] ? cat : LEGACY_CATEGORY_TO_INTENT[cat] || null);
+  const initialMessage = reformulation?.detailed_message || q;
 
   return (
     <div
@@ -19,7 +24,11 @@ export default function RequestFlow() {
         {publicReference ? (
           <PatientRequestResume publicReference={publicReference} />
         ) : (
-          <ConversationalCard initialMessage={q} initialIntent={intent} />
+          <ConversationalCard
+            initialMessage={initialMessage}
+            initialIntent={intent}
+            reformulation={reformulation}
+          />
         )}
       </div>
     </div>
