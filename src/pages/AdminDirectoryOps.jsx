@@ -26,6 +26,9 @@ const DirOpsAddLocation = lazy(
 const DirOpsMapping = lazy(
   () => import("@/components/admin/directory/DirOpsMapping"),
 );
+const DirOpsImportPipeline = lazy(
+  () => import("@/components/admin/directory/DirOpsImportPipeline"),
+);
 const DirOpsServices = lazy(
   () => import("@/components/admin/directory/DirOpsServices"),
 );
@@ -58,6 +61,8 @@ const SIMPLE_HEADERS = {
     "Gestioneaza locatiile din director, statusul de incredere si eventualele revizuiri de migrare.",
   mapping:
     "Clarifica relatiile organizatie-locatie, tipurile canonice, conflictele, dublurile, rebrandingul si unitatile distincte de la aceeasi adresa.",
+  import_directory:
+    "Incarca snapshoturi imuabile, valideaza randurile, genereaza dry-run, executa loturi idempotente si retrage in siguranta modificarile aplicate.",
   workspace_reviews:
     "Analizeaza intr-un singur loc cererile trimise de furnizori, locatiile noi si profilurile specialistilor.",
   corectii:
@@ -105,6 +110,7 @@ export default function AdminDirectoryOps() {
     "corectii",
     "support_tickets",
     "mapping",
+    "import_directory",
     "servicii",
     "revendicari",
     "geografie",
@@ -159,6 +165,7 @@ export default function AdminDirectoryOps() {
               {tab === "corectii" && <DirOpsCorrections />}
               {tab === "support_tickets" && <AdminSupportCenter adminUser={user} />}
               {tab === "mapping" && <DirOpsMapping />}
+              {tab === "import_directory" && <DirOpsImportPipeline />}
               {tab === "servicii" && <DirOpsServices />}
               {tab === "revendicari" && <DirOpsClaims />}
               {tab === "geografie" && <GeoImport />}
