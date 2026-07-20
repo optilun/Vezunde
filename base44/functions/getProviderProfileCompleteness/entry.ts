@@ -92,6 +92,7 @@ Deno.serve(async (req) => {
       locationCompletions: locationRows.map((item) => item.completion),
     });
     return res({
+      selected_location_id: location.id,
       summary,
       organization: organizationCompletion,
       location: selectedRow?.completion || computeLocationCompleteness({ location, content: {} }),
