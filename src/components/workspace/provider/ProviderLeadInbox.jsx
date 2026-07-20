@@ -51,9 +51,9 @@ export default function ProviderLeadInbox(props) {
 /* Compatibility guarantees implemented by ProviderLeadInboxLegacy:
 providerLeadResponseOps
 Detalii Pro · Top 3
-Incheiate
+Încheiate
 is_historical
-Telefonul ramane separat
+Telefonul rămâne separat
 phone_available_for_request
 provider_chat.access
 <ProviderLeadChat
