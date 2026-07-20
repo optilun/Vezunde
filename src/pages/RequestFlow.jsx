@@ -11,9 +11,8 @@ export default function RequestFlow() {
   const q = urlParams.get("q") || "";
   const cat = urlParams.get("categorie") || "";
   const reformulationId = urlParams.get("reformulation") || "";
-  const reformulation = reformulationId ? readPatientRequestReformulation(reformulationId) : null;
-  const intent = reformulation?.request_draft?.intent
-    || (INTENTS[cat] ? cat : LEGACY_CATEGORY_TO_INTENT[cat] || null);
+  const [reformulation] = React.useState(() => reformulationId ? readPatientRequestReformulation(reformulationId) : null);
+  const intent = reformulation?.request_draft?.intent || (INTENTS[cat] ? cat : LEGACY_CATEGORY_TO_INTENT[cat] || null);
   const initialMessage = reformulation?.detailed_message || q;
 
   let content = <ConversationalCard initialMessage={initialMessage} initialIntent={intent} />;
