@@ -1,0 +1,31 @@
+name: Provider Profile Completeness
+
+on:
+  pull_request:
+    paths:
+      - shared/providerProfileCompleteness.js
+      - base44/functions/getProviderProfileCompleteness/entry.ts
+      - src/components/workspace/provider/ProviderCompletenessPanel.jsx
+      - src/components/workspace/provider/ProviderLeadInbox.jsx
+      - scripts/verify-provider-profile-completeness.mjs
+      - .github/workflows/provider-profile-completeness-ci.yml
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: node scripts/verify-provider-profile-completeness.mjs
+      - run: node scripts/verify-provider-status-center.mjs
+      - run: node scripts/verify-provider-lead-inbox-free.mjs
+      - run: npm run test:services
+      - run: npm run typecheck:services
+      - run: npx eslint shared/providerProfileCompleteness.js base44/functions/getProviderProfileCompleteness/entry.ts src/components/workspace/provider/ProviderCompletenessPanel.jsx src/components/workspace/provider/ProviderLeadInbox.jsx scripts/verify-provider-profile-completeness.mjs
+      - run: npm run lint
+      - run: npm run build
