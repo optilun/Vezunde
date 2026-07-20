@@ -7,7 +7,7 @@ export const ORGANIZATION_ADMIN_ROLE = 'organization_admin';
 
 export function providerMembershipAccessRole(membership) {
   if (!membership) return '';
-  if (clean(membership.organization_role) === ORGANIZATION_ADMIN_ROLE) return ORGANIZATION_ADMIN_ROLE;
+  if (clean(membership.organization_role) === ORGANIZATION_ADMIN_ROLE && membership.organization_wide_access === true) return ORGANIZATION_ADMIN_ROLE;
   const storedRole = clean(membership.role);
   if (storedRole === 'owner') return ORGANIZATION_OWNER_ROLE;
   if (storedRole === 'manager') return 'location_manager';
