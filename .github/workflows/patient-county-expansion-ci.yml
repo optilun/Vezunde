@@ -44,7 +44,19 @@ jobs:
       - name: Typecheck service scope
         run: npm run typecheck:services
       - name: Typecheck county expansion scope
-        run: npx tsc -p scripts/tsconfig-patient-county-expansion.json
+        run: |
+          set +e
+          npx tsc -p scripts/tsconfig-patient-county-expansion.json > county-expansion-typecheck.log 2>&1
+          code=$?
+          cat county-expansion-typecheck.log
+          exit $code
+      - name: Upload county expansion typecheck diagnostic
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: county-expansion-typecheck
+          path: county-expansion-typecheck.log
+          retention-days: 1
       - name: Lint county expansion scope
         run: >-
           npx eslint
