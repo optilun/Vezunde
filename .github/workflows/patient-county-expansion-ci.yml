@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "base44/functions/matchProvidersSemantic/entry.ts"
+      - "shared/patientSearchExpansion.js"
       - "src/lib/patientSearchExpansion.js"
       - "src/lib/patientRequestDraft.js"
       - "src/components/intake2/QuestionLocation.jsx"
@@ -48,6 +49,7 @@ jobs:
         run: >-
           npx eslint
           base44/functions/matchProvidersSemantic/entry.ts
+          shared/patientSearchExpansion.js
           src/lib/patientSearchExpansion.js
           src/lib/patientRequestDraft.js
           src/components/intake2/QuestionLocation.jsx
