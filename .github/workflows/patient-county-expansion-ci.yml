@@ -1,0 +1,75 @@
+name: Patient County Expansion
+
+on:
+  pull_request:
+    paths:
+      - "base44/functions/matchProvidersSemantic/entry.ts"
+      - "shared/patientSearchExpansion.js"
+      - "src/lib/patientSearchExpansion.js"
+      - "src/lib/patientRequestDraft.js"
+      - "src/components/intake2/QuestionLocation.jsx"
+      - "src/components/intake2/NoResultsFlow.jsx"
+      - "src/components/intake2/MatchResults.jsx"
+      - "scripts/verify-patient-county-expansion.mjs"
+      - "scripts/tsconfig-patient-county-expansion.json"
+      - ".github/workflows/patient-county-expansion-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify county expansion contract
+        run: node scripts/verify-patient-county-expansion.mjs
+      - name: Verify no-results regressions
+        run: node scripts/verify-no-results-flow.mjs
+      - name: Verify patient search regressions
+        run: node scripts/verify-patient-search-flow.mjs
+      - name: Verify patient recovery regressions
+        run: node scripts/verify-patient-request-recovery.mjs
+      - name: Verify service regressions
+        run: npm run test:services
+      - name: Typecheck service scope
+        run: npm run typecheck:services
+      - name: Typecheck county expansion scope
+        run: |
+          set +e
+          npx tsc -p scripts/tsconfig-patient-county-expansion.json > county-expansion-typecheck.log 2>&1
+          code=$?
+          cat county-expansion-typecheck.log
+          exit $code
+      - name: Upload county expansion typecheck diagnostic
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: county-expansion-typecheck
+          path: county-expansion-typecheck.log
+          retention-days: 1
+      - name: Lint county expansion scope
+        run: >-
+          npx eslint
+          base44/functions/matchProvidersSemantic/entry.ts
+          shared/patientSearchExpansion.js
+          src/lib/patientSearchExpansion.js
+          src/lib/patientRequestDraft.js
+          src/components/intake2/QuestionLocation.jsx
+          src/components/intake2/NoResultsFlow.jsx
+          src/components/intake2/MatchResults.jsx
+          scripts/verify-patient-county-expansion.mjs
+          --quiet
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build

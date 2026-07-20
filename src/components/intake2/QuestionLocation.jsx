@@ -47,8 +47,7 @@ export default function QuestionLocation({ onAnswer }) {
         />
       </div>
       <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-        Selectează localitatea din lista oficială. VIASEE caută numai locații
-        din localitatea aleasă.
+        Selectează localitatea din lista oficială. VIASEE caută mai întâi numai în localitatea aleasă și extinde aria doar dacă soliciți explicit acest lucru.
       </p>
       <div className="mt-3 max-h-[min(16rem,42dvh)] space-y-2 overflow-y-auto overscroll-contain pr-1">
         {results?.map((locality) => (

@@ -61,15 +61,12 @@ const semanticFunctionSource = readFileSync(
   new URL('../base44/functions/matchProvidersSemantic/entry.ts', import.meta.url),
   'utf8',
 );
-for (const field of [
-  'recommendation_explanations: explanations',
-  "routing_reason: 'Potrivire dupa localitatea selectata.'",
-]) {
-  assert.ok(
-    semanticFunctionSource.includes(field),
-    `matchProvidersSemantic trebuie sa returneze ${field}`,
-  );
-}
+assert.ok(semanticFunctionSource.includes('recommendation_explanations: explanations'));
+assert.ok(semanticFunctionSource.includes('routing_reason: resultRoutingReason(tier, countyName)'));
+assert.ok(semanticFunctionSource.includes("if (tier === 'oras') return 'Potrivire din localitatea selectata.'"));
+assert.ok(semanticFunctionSource.includes('Potrivire din alta localitate din judetul'));
+assert.ok(semanticFunctionSource.includes("value === 'county' ? 'county' : 'locality'"));
+assert.ok(!semanticFunctionSource.includes("query_scope: 'national'"));
 
 const resultCardSource = readFileSync(
   new URL('../src/components/results/ResultCard.jsx', import.meta.url),

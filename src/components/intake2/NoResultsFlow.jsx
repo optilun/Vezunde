@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, MapPin, SearchX, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { BookOpen, Expand, MapPin, SearchX, ShieldCheck, SlidersHorizontal } from "lucide-react";
 
 const EMPTY_STATES = {
   no_local_providers: {
@@ -38,14 +38,16 @@ const DEFAULT_EMPTY_STATE = {
   description: "Poți modifica localitatea sau criteriile și relua căutarea.",
 };
 
-function coverageFacts(meta) {
+function coverageFacts(meta, countyExpanded) {
   const counts = meta?.coverage_counts || {};
   const facts = [];
   const localCount = Number(counts.local_provider_count);
+  const scopeCount = Number(counts.scope_provider_count);
   const configuredCount = Number(counts.configured_matching_provider_count);
   const eligibleCount = Number(counts.eligible_provider_count);
 
-  if (Number.isFinite(localCount)) facts.push(`${localCount} profiluri publice găsite în localitate`);
+  if (countyExpanded && Number.isFinite(scopeCount)) facts.push(`${scopeCount} profiluri publice găsite în aria județului`);
+  else if (Number.isFinite(localCount)) facts.push(`${localCount} profiluri publice găsite în localitate`);
   if (Number.isFinite(configuredCount)) facts.push(`${configuredCount} profiluri cu date pentru serviciul căutat`);
   if (Number.isFinite(eligibleCount)) facts.push(`${eligibleCount} profiluri eligibile pentru recomandare`);
   return facts;
@@ -56,22 +58,41 @@ export default function NoResultsFlow({
   meta,
   top3Count = 0,
   directoryCount = 0,
+  countyName = "",
+  onExpandCounty,
   onChangeLocation,
   onReviewCriteria,
+  isExpandingCounty = false,
+  actionError = "",
 }) {
   const emptyState = EMPTY_STATES[meta?.coverage_status] || DEFAULT_EMPTY_STATE;
   const insufficient = mode === "insufficient";
-  const title = insufficient
-    ? (top3Count > 0
-      ? `Am găsit doar ${top3Count} ${top3Count === 1 ? "opțiune confirmată" : "opțiuni confirmate"}`
-      : "Nu avem încă opțiuni confirmate pentru această nevoie")
-    : emptyState.title;
-  const description = insufficient
-    ? (directoryCount > 0
-      ? "Profilurile suplimentare de mai jos provin din director și nu au toate informațiile confirmate."
-      : "Poți modifica localitatea sau criteriile pentru a verifica alte variante.")
-    : emptyState.description;
-  const facts = coverageFacts(meta);
+  const countyExpanded = meta?.query_scope === "county" || meta?.routing_mode === "county";
+  const resolvedCountyName = meta?.selected_county_name || countyName;
+  const title = countyExpanded
+    ? (insufficient
+      ? (top3Count > 0
+        ? `Am găsit doar ${top3Count} ${top3Count === 1 ? "opțiune confirmată" : "opțiuni confirmate"} în aria extinsă`
+        : `Nu avem opțiuni confirmate nici în județul ${resolvedCountyName || "selectat"}`)
+      : `Nu avem rezultate eligibile nici în județul ${resolvedCountyName || "selectat"}`)
+    : (insufficient
+      ? (top3Count > 0
+        ? `Am găsit doar ${top3Count} ${top3Count === 1 ? "opțiune confirmată" : "opțiuni confirmate"}`
+        : "Nu avem încă opțiuni confirmate pentru această nevoie")
+      : emptyState.title);
+  const description = countyExpanded
+    ? (insufficient
+      ? (directoryCount > 0
+        ? "Rezultatele includ localitatea selectată și celelalte localități din județ. Profilurile suplimentare din director nu au toate informațiile confirmate."
+        : "VIASEE a verificat localitatea selectată și celelalte localități din județ, fără să completeze lista cu potriviri slabe.")
+      : "VIASEE a verificat localitatea selectată și celelalte localități din județ. Cererea nu a fost extinsă în afara județului.")
+    : (insufficient
+      ? (directoryCount > 0
+        ? "Profilurile suplimentare de mai jos provin din director și nu au toate informațiile confirmate."
+        : "Poți extinde căutarea în județ, modifica localitatea sau revizui criteriile.")
+      : emptyState.description);
+  const facts = coverageFacts(meta, countyExpanded);
+  const canExpandCounty = Boolean(onExpandCounty && !countyExpanded && resolvedCountyName);
 
   return (
     <section className={`rounded-2xl border p-5 sm:p-6 ${insufficient ? "border-amber-200/80 bg-amber-50/60" : "border-border bg-secondary/25"}`}>
@@ -83,10 +104,12 @@ export default function NoResultsFlow({
           <h2 className="font-heading text-lg font-bold tracking-tight text-foreground sm:text-xl">{title}</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
 
-          {meta?.client_address_text && (
+          {(meta?.client_address_text || resolvedCountyName) && (
             <p className="mt-3 inline-flex items-start gap-2 text-xs text-muted-foreground">
               <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              Căutare în: {meta.client_address_text}
+              {countyExpanded
+                ? `Arie verificată: județul ${resolvedCountyName || "selectat"}, pornind de la ${meta?.client_address_text || "localitatea aleasă"}`
+                : `Căutare în: ${meta?.client_address_text || "localitatea aleasă"}`}
             </p>
           )}
 
@@ -99,11 +122,22 @@ export default function NoResultsFlow({
             </div>
           )}
 
-          <div className="mt-5 grid gap-2 sm:grid-cols-2">
+          <div className={`mt-5 grid gap-2 ${canExpandCounty ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+            {canExpandCounty && (
+              <button
+                type="button"
+                onClick={onExpandCounty}
+                disabled={isExpandingCounty}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Expand className="h-4 w-4" />
+                {isExpandingCounty ? "Extindem căutarea..." : `Extinde în județul ${resolvedCountyName}`}
+              </button>
+            )}
             <button
               type="button"
               onClick={onChangeLocation}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors ${canExpandCounty ? "border border-border bg-background text-foreground hover:bg-secondary" : "bg-primary text-primary-foreground transition-opacity hover:opacity-90"}`}
             >
               <MapPin className="h-4 w-4" /> Schimbă localitatea
             </button>
@@ -115,6 +149,12 @@ export default function NoResultsFlow({
               <SlidersHorizontal className="h-4 w-4" /> Revizuiește criteriile
             </button>
           </div>
+
+          {actionError && (
+            <p role="alert" className="mt-3 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-xs text-destructive">
+              {actionError}
+            </p>
+          )}
 
           <Link
             to="/cauta"
