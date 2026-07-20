@@ -10,6 +10,10 @@ export const IN_APP_NOTIFICATION_EVENT_KEYS = Object.freeze({
   PROVIDER_PHONE_REVOKED: 'provider_phone_revoked',
   PROVIDER_CONVERSATION_CLOSED: 'provider_conversation_closed',
   PATIENT_CONVERSATION_CLOSED: 'patient_conversation_closed',
+  PROVIDER_REQUEST_RESOLVED: 'provider_request_resolved',
+  PROVIDER_REQUEST_CLOSED: 'provider_request_closed',
+  PROVIDER_REQUEST_EXPIRED: 'provider_request_expired',
+  PATIENT_REQUEST_EXPIRED: 'patient_request_expired',
 });
 
 const EVENT_KEYS = new Set(Object.values(IN_APP_NOTIFICATION_EVENT_KEYS));
