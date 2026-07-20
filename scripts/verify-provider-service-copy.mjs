@@ -14,7 +14,8 @@ assert.match(backend, /duplicate_skipped/, 'copy operation must be idempotent');
 assert.match(backend, /copies_resources: false/, 'specialists, equipment and facilities must not be copied');
 assert.match(backend, /raw_removal_keys: \[\]/, 'legacy service keys must not be removed automatically');
 assert.doesNotMatch(backend, /LocationService\.update|LocationService\.create/, 'copy must not publish or directly mutate LocationService rows');
-assert.doesNotMatch(backend, /opening_hours|phone|email|website/, 'copy must not alter schedule or contact fields');
+assert.doesNotMatch(backend, /ProviderLocation\.update/, 'copy must not alter target profile fields');
+assert.doesNotMatch(backend, /opening_hours|public_phone|public_email|website_url|contact_phone|contact_email/, 'copy must not alter schedule or contact fields');
 
 const panel = readFileSync(new URL('../src/components/workspace/provider/ProviderServicesCopyPanel.jsx', import.meta.url), 'utf8');
 assert.match(panel, /location\.manage_content/, 'UI must filter locations by content-management permission');
