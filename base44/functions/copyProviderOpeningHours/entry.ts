@@ -60,19 +60,28 @@ function locationPlace(location) {
 }
 
 function isEligibleLocation(location) {
-  return location && location.profile_control_status !== 'suspended' && location.status !== 'suspendata';
+  return Boolean(
+    location &&
+      location.profile_control_status !== 'suspended' &&
+      location.status !== 'suspendata' &&
+      location.claim_verification_status === 'approved',
+  );
 }
 
 function hasExistingSchedule(location) {
   return Boolean(String(location.opening_hours_json || '').trim() || String(location.opening_hours || '').trim());
 }
 
-async function findOperationAudit(svc, locationId, operationId) {
+function auditNote(operationId, sourceId) {
+  return `copy_operation:${operationId};source:${sourceId}`;
+}
+
+async function findOperationAudit(svc, locationId, operationId, sourceId) {
   const rows = await svc.entities.DirectoryAuditRecord.filter({
     entity_type: 'ProviderLocation',
     entity_id: locationId,
     action_type: 'provider_copy_opening_hours',
-    note: `copy_operation:${operationId}`,
+    note: auditNote(operationId, sourceId),
   }, '-performed_at', 1).catch(() => []);
   return rows[0] || null;
 }
@@ -87,10 +96,8 @@ async function createAudit(svc, user, location, source, previous, next, operatio
     new_values: JSON.stringify(next),
     admin_user_id: user.id,
     admin_email: user.email,
-    note: `copy_operation:${operationId}`,
+    note: auditNote(operationId, source.id),
     performed_at: new Date().toISOString(),
-    source_entity_type: 'ProviderLocation',
-    source_entity_id: source.id,
   });
 }
 
@@ -117,7 +124,7 @@ Deno.serve(async (req) => {
     if (inaccessibleTargetIds.length > 0) return reject('Nu ai permisiunea necesara pentru toate locatiile tinta.', 403, { location_ids: inaccessibleTargetIds });
 
     const source = await svc.entities.ProviderLocation.get(sourceId).catch(() => null);
-    if (!source || !isEligibleLocation(source)) return reject('Locatia sursa nu este eligibila.', 404);
+    if (!source || !isEligibleLocation(source)) return reject('Locatia sursa nu este eligibila.', 403);
     const targets = [];
     for (const targetId of targetIds) {
       const target = await svc.entities.ProviderLocation.get(targetId).catch(() => null);
@@ -133,7 +140,7 @@ Deno.serve(async (req) => {
     }
     const ineligibleTargets = targets.filter((target) => !isEligibleLocation(target));
     if (ineligibleTargets.length > 0) {
-      return reject('Una dintre locatiile tinta este suspendata sau indisponibila.', 403, {
+      return reject('Una dintre locatiile tinta nu este aprobata sau este suspendata.', 403, {
         location_ids: ineligibleTargets.map((target) => target.id),
       });
     }
@@ -161,9 +168,8 @@ Deno.serve(async (req) => {
 
     if (action === 'preview') return Response.json({ success: true, preview });
 
-    const confirmedReplace = payload.confirm_replace_existing === true;
     const targetsWithSchedule = targets.filter(hasExistingSchedule);
-    if (targetsWithSchedule.length > 0 && !confirmedReplace) {
+    if (targetsWithSchedule.length > 0 && payload.confirm_replace_existing !== true) {
       return reject('Confirma inlocuirea programului existent pentru locatiile indicate.', 409, {
         confirmation_required: true,
         location_ids: targetsWithSchedule.map((target) => target.id),
@@ -181,19 +187,24 @@ Deno.serve(async (req) => {
     };
     const results = [];
     for (const target of targets) {
+      const previous = {
+        opening_hours_json: target.opening_hours_json || '',
+        opening_hours: target.opening_hours || '',
+        saturday_hours: target.saturday_hours || '',
+      };
       try {
-        const existingAudit = await findOperationAudit(svc, target.id, operationId);
+        const existingAudit = await findOperationAudit(svc, target.id, operationId, source.id);
         if (existingAudit) {
           results.push({ location_id: target.id, name: locationLabel(target), status: 'duplicate_skipped' });
           continue;
         }
-        const previous = {
-          opening_hours_json: target.opening_hours_json || '',
-          opening_hours: target.opening_hours || '',
-          saturday_hours: target.saturday_hours || '',
-        };
         await svc.entities.ProviderLocation.update(target.id, next);
-        await createAudit(svc, user, target, source, previous, next, operationId);
+        try {
+          await createAudit(svc, user, target, source, previous, next, operationId);
+        } catch (auditError) {
+          await svc.entities.ProviderLocation.update(target.id, previous).catch(() => null);
+          throw new Error(`Auditul nu a putut fi salvat: ${auditError.message}`);
+        }
         results.push({ location_id: target.id, name: locationLabel(target), status: 'success' });
       } catch (error) {
         results.push({ location_id: target.id, name: locationLabel(target), status: 'error', error: error.message });
