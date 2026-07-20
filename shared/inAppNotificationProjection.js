@@ -17,33 +17,81 @@ async function locationName(svc, locationId) {
   return location?.public_display_name || location?.name || 'Locatie';
 }
 
+function providerLifecycleNotification(lead) {
+  if (lead?.closure_reason === 'request_resolved') {
+    return {
+      eventKey: IN_APP_NOTIFICATION_EVENT_KEYS.PROVIDER_REQUEST_RESOLVED,
+      title: 'Cererea a fost rezolvata',
+      body: 'Clientul a marcat cererea ca rezolvata. Conversatiile si accesul la telefon sunt inchise.',
+    };
+  }
+  if (lead?.closure_reason === 'request_closed') {
+    return {
+      eventKey: IN_APP_NOTIFICATION_EVENT_KEYS.PROVIDER_REQUEST_CLOSED,
+      title: 'Cererea a fost inchisa',
+      body: 'Clientul a inchis cererea. Nu mai pot fi trimise mesaje sau accesate date noi.',
+    };
+  }
+  if (lead?.closure_reason === 'request_expired') {
+    return {
+      eventKey: IN_APP_NOTIFICATION_EVENT_KEYS.PROVIDER_REQUEST_EXPIRED,
+      title: 'Cererea a expirat',
+      body: 'Perioada activa a cererii s-a incheiat automat.',
+    };
+  }
+  return null;
+}
+
 export async function ensureProviderInAppNotifications({ svc, userId, locationId }) {
   if (!svc || !userId || !locationId) return [];
-  const [leads, conversations, messages, approvals] = await Promise.all([
-    svc.entities.ProviderLead.filter({ location_id: locationId, delivery_state: 'available' }, '-created_date', 300),
+  const [allLeads, conversations, messages, approvals] = await Promise.all([
+    svc.entities.ProviderLead.filter({ location_id: locationId }, '-created_date', 500),
     svc.entities.PatientRequestConversation.filter({ location_id: locationId }, '-updated_date', 300),
     svc.entities.PatientRequestMessage.filter({ location_id: locationId, sender_type: 'patient', status: 'active' }, '-created_date', 300),
     svc.entities.ContactShareApproval.filter({ location_id: locationId }, '-updated_date', 300),
   ]);
   const results = [];
 
-  for (const lead of leads) {
-    results.push(await createInAppNotification({
-      svc,
-      eventKey: IN_APP_NOTIFICATION_EVENT_KEYS.PROVIDER_LEAD_AVAILABLE,
-      recipientType: 'provider_user',
-      recipientRefId: userId,
-      sourceEntityType: 'ProviderLead',
-      sourceEntityId: lead.id,
-      requestId: lead.request_id || '',
-      leadId: lead.id,
-      organizationId: lead.organization_id || '',
-      locationId,
-      title: 'Cerere noua relevanta',
-      body: [lead.intent_label || 'Cerere client', lead.city || ''].filter(Boolean).join(' · '),
-      actionKind: 'lead',
-      actionTargetId: lead.id,
-    }));
+  for (const lead of allLeads) {
+    if (lead.delivery_state === 'available') {
+      results.push(await createInAppNotification({
+        svc,
+        eventKey: IN_APP_NOTIFICATION_EVENT_KEYS.PROVIDER_LEAD_AVAILABLE,
+        recipientType: 'provider_user',
+        recipientRefId: userId,
+        sourceEntityType: 'ProviderLead',
+        sourceEntityId: lead.id,
+        requestId: lead.request_id || '',
+        leadId: lead.id,
+        organizationId: lead.organization_id || '',
+        locationId,
+        title: 'Cerere noua relevanta',
+        body: [lead.intent_label || 'Cerere client', lead.city || ''].filter(Boolean).join(' · '),
+        actionKind: 'lead',
+        actionTargetId: lead.id,
+      }));
+    }
+
+    const lifecycleNotification = providerLifecycleNotification(lead);
+    if (lifecycleNotification && lead.closed_at) {
+      results.push(await createInAppNotification({
+        svc,
+        eventKey: lifecycleNotification.eventKey,
+        recipientType: 'provider_user',
+        recipientRefId: userId,
+        sourceEntityType: 'ProviderLead',
+        sourceEntityId: lead.id,
+        requestId: lead.request_id || '',
+        leadId: lead.id,
+        organizationId: lead.organization_id || '',
+        locationId,
+        title: lifecycleNotification.title,
+        body: lifecycleNotification.body,
+        actionKind: 'lead',
+        actionTargetId: lead.id,
+        variant: `${lead.closure_reason}:${clean(lead.closed_at, 80)}`,
+      }));
+    }
   }
 
   for (const conversation of conversations) {
@@ -141,12 +189,30 @@ export async function ensureProviderInAppNotifications({ svc, userId, locationId
 
 export async function ensurePatientInAppNotifications({ svc, requestId }) {
   if (!svc || !requestId) return [];
-  const [responses, messages, conversations] = await Promise.all([
+  const [request, responses, messages, conversations] = await Promise.all([
+    svc.entities.PatientRequest.get(requestId).catch(() => null),
     svc.entities.ProviderLeadResponse.filter({ request_id: requestId, status: 'active' }, '-updated_date', 100),
     svc.entities.PatientRequestMessage.filter({ request_id: requestId, sender_type: 'provider', status: 'active' }, '-created_date', 300),
     svc.entities.PatientRequestConversation.filter({ request_id: requestId }, '-updated_date', 100),
   ]);
   const results = [];
+
+  if (request?.lifecycle_state === 'expired' && request.expiration_processed_at) {
+    results.push(await createInAppNotification({
+      svc,
+      eventKey: IN_APP_NOTIFICATION_EVENT_KEYS.PATIENT_REQUEST_EXPIRED,
+      recipientType: 'patient_request',
+      recipientRefId: requestId,
+      sourceEntityType: 'PatientRequest',
+      sourceEntityId: requestId,
+      requestId,
+      title: 'Cererea a expirat',
+      body: 'Perioada activa s-a incheiat. Istoricul raspunsurilor si conversatiilor ramane vizibil.',
+      actionKind: 'request',
+      actionTargetId: '',
+      variant: clean(request.expiration_processed_at, 80),
+    }));
+  }
 
   for (const response of responses) {
     const name = await locationName(svc, response.location_id);
