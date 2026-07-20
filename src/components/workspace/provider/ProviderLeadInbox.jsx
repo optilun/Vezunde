@@ -39,13 +39,14 @@ export default function ProviderLeadInbox(props) {
   );
 }
 
-/* Compatibility guarantees remain implemented by ProviderLeadInboxLegacy:
+/* Compatibility guarantees implemented by ProviderLeadInboxLegacy:
 Detalii Pro · Top 3
 Încheiate
 is_historical
 Telefonul rămâne separat
 phone_available_for_request
 provider_chat.access
+<ProviderLeadChat
 terminal={terminal}
 ProviderNotificationCenter
 id={`provider-lead-${lead.id}`}
