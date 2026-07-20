@@ -4,6 +4,8 @@ export const PATIENT_REQUEST_PROCESSING_CONSENT_VERSION = "patient-request-proce
 export const PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION = "patient-request-distribution-top3-pro-v2";
 const DRAFT_STORAGE_KEY = "viasee.patient_request_draft.v1";
 const ACCESS_STORAGE_PREFIX = "viasee.patient_request_access.";
+const RESUME_REFERENCE_PREFIX = "viasee.patient_request_resume.reference.";
+const RESUME_REQUEST_PREFIX = "viasee.patient_request_resume.request.";
 
 export function createPatientRequestIdempotencyKey() {
   if (typeof globalThis.crypto?.randomUUID === "function") return `patient:${globalThis.crypto.randomUUID()}`;
@@ -17,6 +19,23 @@ export function createControlledChatMessageId() {
   const bytes = new Uint8Array(24);
   globalThis.crypto.getRandomValues(bytes);
   return `chat:${Array.from(bytes).map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function storageValue(storage, key) {
+  try {
+    const value = storage?.getItem(key);
+    return value ? JSON.parse(value) : null;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function writeStorageValue(storage, key, value) {
+  try {
+    storage?.setItem(key, JSON.stringify(value));
+  } catch (_error) {
+    // Request persistence must remain usable when browser storage is unavailable.
+  }
 }
 
 export function storePatientRequestDraft(draft) {
@@ -36,22 +55,64 @@ export function readPatientRequestDraft() {
   }
 }
 
-export function storePatientRequestAccess(requestId, accessToken) {
+export function storePatientRequestResumeAccess({ requestId = "", publicReference = "", accessToken = "" }) {
+  if (!accessToken || (!requestId && !publicReference)) return;
+  const snapshot = {
+    request_id: requestId,
+    public_reference: publicReference,
+    access_token: accessToken,
+    stored_at: new Date().toISOString(),
+  };
+  if (publicReference) writeStorageValue(globalThis.localStorage, `${RESUME_REFERENCE_PREFIX}${publicReference}`, snapshot);
+  if (requestId) writeStorageValue(globalThis.localStorage, `${RESUME_REQUEST_PREFIX}${requestId}`, snapshot);
+}
+
+export function readPatientRequestResumeAccess(publicReference) {
+  if (!publicReference) return null;
+  return storageValue(globalThis.localStorage, `${RESUME_REFERENCE_PREFIX}${publicReference}`);
+}
+
+export function readPatientRequestResumeAccessByRequestId(requestId) {
+  if (!requestId) return null;
+  return storageValue(globalThis.localStorage, `${RESUME_REQUEST_PREFIX}${requestId}`);
+}
+
+export function storePatientRequestAccess(requestId, accessToken, publicReference = "") {
   if (!requestId || !accessToken) return;
   try {
     sessionStorage.setItem(`${ACCESS_STORAGE_PREFIX}${requestId}`, accessToken);
   } catch (_error) {
-    // The public reference remains available even without local storage.
+    // The public reference remains available even without session storage.
   }
+  storePatientRequestResumeAccess({ requestId, publicReference, accessToken });
 }
 
 export function readPatientRequestAccess(requestId) {
   if (!requestId) return "";
   try {
-    return sessionStorage.getItem(`${ACCESS_STORAGE_PREFIX}${requestId}`) || "";
+    const sessionToken = sessionStorage.getItem(`${ACCESS_STORAGE_PREFIX}${requestId}`) || "";
+    if (sessionToken) return sessionToken;
   } catch (_error) {
-    return "";
+    // Fall through to durable resume storage.
   }
+  return readPatientRequestResumeAccessByRequestId(requestId)?.access_token || "";
+}
+
+export function buildPatientRequestResumeUrl(publicReference, accessToken, baseUrl = "") {
+  if (!publicReference || !accessToken) return "";
+  const fallbackBase = typeof window !== "undefined" ? window.location.origin : "";
+  const resolvedBase = String(baseUrl || fallbackBase).replace(/\/$/, "");
+  if (!resolvedBase) return "";
+  const query = new URLSearchParams({ ref: publicReference });
+  const hash = new URLSearchParams({ access: accessToken });
+  return `${resolvedBase}/cerere?${query.toString()}#${hash.toString()}`;
+}
+
+function replaceWithPatientRequestResumeRoute(publicReference) {
+  if (typeof window === "undefined" || !publicReference) return;
+  const query = new URLSearchParams({ ref: publicReference });
+  window.history.replaceState(null, "", `/cerere?${query.toString()}`);
+  window.dispatchEvent(new PopStateEvent("popstate"));
 }
 
 function responseData(response) {
@@ -96,8 +157,9 @@ export async function persistPatientRequest({
     },
   });
   const data = responseData(response);
-  storePatientRequestAccess(data.request_id, data.request_access_token);
-  return data;
+  const replayToken = data.request_access_token || readPatientRequestAccess(data.request_id);
+  storePatientRequestAccess(data.request_id, replayToken, data.public_reference || "");
+  return { ...data, request_access_token: replayToken };
 }
 
 export async function authorizePatientRequestDistribution(requestId, explicitAccessToken = "") {
@@ -108,7 +170,10 @@ export async function authorizePatientRequestDistribution(requestId, explicitAcc
     distribution_consent: true,
     consent_version: PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION,
   });
-  return responseData(response);
+  const data = responseData(response);
+  const resume = readPatientRequestResumeAccessByRequestId(requestId);
+  if (resume?.public_reference) replaceWithPatientRequestResumeRoute(resume.public_reference);
+  return data;
 }
 
 export async function getPatientRequestStatus(requestId, explicitAccessToken = "") {
@@ -119,6 +184,20 @@ export async function getPatientRequestStatus(requestId, explicitAccessToken = "
     request_access_token: token,
   });
   return responseData(response);
+}
+
+export async function getPatientRequestStatusByReference(publicReference, explicitAccessToken = "") {
+  const stored = readPatientRequestResumeAccess(publicReference);
+  const token = explicitAccessToken || stored?.access_token || "";
+  if (!token) throw new Error("Linkul securizat al cererii nu mai este disponibil in acest browser.");
+  const response = await base44.functions.invoke("getPatientRequestStatus", {
+    action: "status",
+    public_reference: publicReference,
+    request_access_token: token,
+  });
+  const data = responseData(response);
+  if (data?.request?.id) storePatientRequestAccess(data.request.id, token, data.request.public_reference || publicReference);
+  return data;
 }
 
 export async function updatePatientRequestLifecycle({
@@ -143,11 +222,13 @@ export async function patientRequestEmailVerification({
   explicitAccessToken = "",
 }) {
   const token = resolveRequestAccessToken(requestId, explicitAccessToken);
+  const resume = readPatientRequestResumeAccessByRequestId(requestId);
   const response = await base44.functions.invoke("patientRequestEmailVerificationOps", {
     action,
     request_id: requestId,
     request_access_token: token,
     code,
+    resume_url: buildPatientRequestResumeUrl(resume?.public_reference || "", token),
   });
   return responseData(response);
 }

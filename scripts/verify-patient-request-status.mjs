@@ -6,7 +6,7 @@ import {
   sanitizePatientRequestStatus,
 } from '../shared/patientRequestStatusPolicy.js';
 
-assert.equal(PATIENT_REQUEST_STATUS_CONTRACT_VERSION, 'patient-request-status-v3');
+assert.equal(PATIENT_REQUEST_STATUS_CONTRACT_VERSION, 'patient-request-status-v4');
 
 const request = sanitizePatientRequestStatus({
   id: 'request-1',
@@ -27,7 +27,7 @@ assert.equal(request.public_reference, 'VIA-123');
 assert.equal(request.lifecycle_state, 'active');
 assert.equal(request.lifecycle_stage, 'waiting_responses');
 for (const forbidden of ['original_message', 'detailed_message', 'requester_user_id', 'contact_email_hash', 'contact_identity_hash']) {
-  assert.equal(Object.hasOwn(request, forbidden), false, `${forbidden} nu trebuie returnat in status`);
+  assert.equal(Object.hasOwn(request, forbidden), false, `${forbidden} nu trebuie returnat in rezumatul public al statusului`);
 }
 
 const response = sanitizePatientProviderResponse({
@@ -79,10 +79,16 @@ const notificationComponent = await readFile(new URL('../src/components/notifica
 const submission = await readFile(new URL('../src/components/intake2/PatientRequestSubmission.jsx', import.meta.url), 'utf8');
 
 assert.match(backend, /sha256\(accessToken\)/);
+assert.match(backend, /public_reference: publicReference/);
+assert.match(backend, /retentionExpired/);
 assert.match(backend, /PatientRequestContact\.filter/);
 assert.match(backend, /ProviderLeadResponse\.filter/);
 assert.match(backend, /ContactShareApproval\.filter/);
 assert.match(backend, /PatientRequestConversation\.filter/);
+assert.match(backend, /PatientRequestAnswer\.filter/);
+assert.match(backend, /RequestMatch\.filter/);
+assert.match(backend, /workspace,/);
+assert.match(backend, /distribution_authorized/);
 assert.match(backend, /contact_phone_available/);
 assert.match(backend, /phone_sharing_enabled/);
 assert.match(backend, /conversation_enabled: lifecycle\.state === PATIENT_REQUEST_LIFECYCLE_STATES\.ACTIVE/);
@@ -93,9 +99,11 @@ assert.match(backend, /notifications_list/);
 assert.match(backend, /notification_mark_read/);
 assert.match(backend, /notifications_mark_all_read/);
 assert.doesNotMatch(backend, /base44\.auth\.me\(\)/);
-assert.doesNotMatch(backend, /contact_phone:|original_message:|detailed_message:|responder_user_id:/);
+assert.doesNotMatch(backend, /contact_phone:|responder_user_id:/);
 
 assert.match(client, /getPatientRequestStatus/);
+assert.match(client, /getPatientRequestStatusByReference/);
+assert.match(client, /buildPatientRequestResumeUrl/);
 assert.match(client, /updatePatientRequestLifecycle/);
 assert.match(client, /patientControlledChat/);
 assert.match(component, /Verifică răspunsurile/);
@@ -123,4 +131,4 @@ assert.doesNotMatch(notificationComponent, /base44\.entities\.InAppNotification/
 assert.match(submission, /RequestWorkspace/);
 assert.match(submission, /requestId=\{success\.request_id\}/);
 
-console.log('Patient request status, lifecycle, phone sharing, controlled chat, notifications and workspace checks passed.');
+console.log('Patient request status v4, lifecycle, phone sharing, controlled chat, notifications and workspace checks passed.');
