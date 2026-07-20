@@ -26,7 +26,7 @@ function errorMessage(error) {
     error?.response?.data?.error
     || error?.data?.error
     || error?.message
-    || "Cererea nu a putut fi salvata.",
+    || "Cererea nu a putut fi salvată.",
   );
 }
 
@@ -59,15 +59,15 @@ export default function PatientRequestSubmission({ results, meta }) {
     event.preventDefault();
     const draft = readPatientRequestDraft();
     if (!draft) {
-      setError("Rezumatul cererii nu mai este disponibil. Reia cautarea.");
+      setError("Rezumatul cererii nu mai este disponibil. Reia căutarea.");
       return;
     }
     if (!contact.email.trim() && !contact.phone.trim()) {
-      setError("Completeaza cel putin emailul sau numarul de telefon.");
+      setError("Completează cel puțin emailul sau numărul de telefon.");
       return;
     }
     if (detailedMessage.trim().length < 10) {
-      setError("Descrie mai detaliat ce ai nevoie, in minimum 10 caractere.");
+      setError("Descrie mai detaliat ce ai nevoie, în minimum 10 caractere.");
       return;
     }
     if (!consent) {
@@ -138,9 +138,9 @@ export default function PatientRequestSubmission({ results, meta }) {
           <div className="flex items-start gap-3">
             <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-bold text-foreground">Cererea a fost salvata</h3>
+              <h3 className="text-sm font-bold text-foreground">Cererea a fost salvată</h3>
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                Referinta: <span className="font-semibold text-foreground">{success.public_reference || "indisponibila"}</span>
+                Referință: <span className="font-semibold text-foreground">{success.public_reference || "indisponibilă"}</span>
               </p>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                 Telefonul nu a fost transmis niciunui furnizor.
@@ -154,19 +154,19 @@ export default function PatientRequestSubmission({ results, meta }) {
                 />
               ) : (
                 <div className="mt-5 rounded-xl border border-border bg-background p-4 text-xs leading-relaxed text-muted-foreground">
-                  Ai ales sa continui doar cu telefonul. Adresa de email nu va fi afisata locatiilor. Telefonul ramane ascuns pana la acordul tau separat pentru fiecare locatie.
+                  Ai ales să continui doar cu telefonul. Adresa de email nu va fi afișată locațiilor. Telefonul rămâne ascuns până la acordul tău separat pentru fiecare locație.
                 </div>
               )}
 
               {!distributionResult ? (
                 <div className="mt-5 border-t border-primary/15 pt-5">
-                  <h4 className="text-sm font-bold text-foreground">Trimite cererea catre locatiile relevante</h4>
+                  <h4 className="text-sm font-bold text-foreground">Trimite cererea către locațiile relevante</h4>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    Toate locatiile eligibile vad un rezumat anonim. Doar locatiile Pro din Top 3 pot vedea numele, mesajul detaliat si emailul verificat. Telefonul ramane ascuns si poate fi oferit ulterior numai cu acord separat pentru locatia care il solicita.
+                    Toate locațiile eligibile văd un rezumat anonim. Doar locațiile Pro din Top 3 pot vedea numele, mesajul detaliat și emailul verificat. Telefonul rămâne ascuns și poate fi oferit ulterior numai cu acord separat pentru locația care îl solicită.
                   </p>
                   {hasEmail && !emailVerified && (
                     <p className="mt-3 rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900">
-                      Poti trimite cererea si inainte de confirmarea emailului, dar adresa va ramane ascunsa locatiilor pana cand o verifici.
+                      Poți trimite cererea și înainte de confirmarea emailului, dar adresa va rămâne ascunsă locațiilor până când o verifici.
                     </p>
                   )}
                   <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background p-4">
@@ -177,7 +177,7 @@ export default function PatientRequestSubmission({ results, meta }) {
                       className="mt-0.5 h-4 w-4 rounded border-border"
                     />
                     <span className="text-xs leading-relaxed text-muted-foreground">
-                      Sunt de acord ca VIASEE sa distribuie rezumatul cererii locatiilor eligibile si sa permita locatiilor Pro din Top 3 accesul la numele meu, mesajul detaliat si emailul verificat. Numarul de telefon ramane ascuns.
+                      Sunt de acord ca VIASEE să distribuie rezumatul cererii locațiilor eligibile și să permită locațiilor Pro din Top 3 accesul la numele meu, mesajul detaliat și emailul verificat. Numărul de telefon rămâne ascuns.
                     </span>
                   </label>
                   {distributionError && (
@@ -192,18 +192,18 @@ export default function PatientRequestSubmission({ results, meta }) {
                     className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                   >
                     <Send className="h-4 w-4" />
-                    {isDistributing ? "Pregatim cererea..." : "Trimite cererea"}
+                    {isDistributing ? "Pregătim cererea..." : "Trimite cererea"}
                   </button>
                 </div>
               ) : (
                 <div className="mt-5 rounded-xl border border-primary/20 bg-background p-4">
                   <p className="text-sm font-semibold text-foreground">
                     {Number(distributionResult.lead_count) > 0
-                      ? `Cererea este disponibila pentru ${distributionResult.lead_count} locatii eligibile.`
-                      : "Momentan nu exista locatii eligibile pentru distribuire."}
+                      ? `Cererea este disponibilă pentru ${distributionResult.lead_count} locații eligibile.`
+                      : "Momentan nu există locații eligibile pentru distribuire."}
                   </p>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    Locatiile sunt vizibile mai jos imediat. Raspunsurile si conversatiile apar separat pentru fiecare locatie. Telefonul ramane ascuns.
+                    Locațiile sunt vizibile mai jos imediat. Răspunsurile și conversațiile apar separat pentru fiecare locație. Telefonul rămâne ascuns.
                   </p>
                 </div>
               )}
@@ -232,16 +232,16 @@ export default function PatientRequestSubmission({ results, meta }) {
         <div className="flex items-start gap-3">
           <BookmarkPlus className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-bold text-foreground">Continua cu o cerere</h3>
+            <h3 className="text-sm font-bold text-foreground">Continuă cu o cerere</h3>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Adauga un mesaj detaliat si datele prin care poti primi raspunsuri de la locatiile relevante.
+              Adaugă un mesaj detaliat și datele prin care poți primi răspunsuri de la locațiile relevante.
             </p>
             <button
               type="button"
               onClick={openForm}
               className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
             >
-              Continua cererea
+              Continuă cererea
             </button>
           </div>
         </div>
@@ -256,7 +256,7 @@ export default function PatientRequestSubmission({ results, meta }) {
         <div>
           <h3 className="text-sm font-bold text-foreground">Detaliile cererii</h3>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Completeaza numele si cel putin emailul sau telefonul. Telefonul nu este afisat automat niciunei locatii.
+            Completează numele și cel puțin emailul sau telefonul. Telefonul nu este afișat automat niciunei locații.
           </p>
         </div>
       </div>
@@ -269,15 +269,15 @@ export default function PatientRequestSubmission({ results, meta }) {
           onChange={(event) => setDetailedMessage(event.target.value)}
           maxLength={2000}
           rows={5}
-          placeholder="De exemplu: ce problema ai, ce produs sau serviciu cauti si orice detaliu util pentru locatie."
+          placeholder="De exemplu: ce problemă ai, ce produs sau serviciu cauți și orice detaliu util pentru locație."
           className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-3 text-sm font-normal outline-none transition-colors focus:border-primary"
         />
-        <span className="mt-1 block text-[11px] font-normal text-muted-foreground">Acest mesaj este vizibil numai locatiilor Pro din Top 3.</span>
+        <span className="mt-1 block text-[11px] font-normal text-muted-foreground">Acest mesaj este vizibil numai locațiilor Pro din Top 3.</span>
       </label>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <label className="text-xs font-semibold text-foreground">
-          Nume si prenume
+          Nume și prenume
           <input required value={contact.name} onChange={(event) => setContact((current) => ({ ...current, name: event.target.value }))} autoComplete="name" maxLength={120} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-primary" />
         </label>
         <label className="text-xs font-semibold text-foreground">
@@ -289,7 +289,7 @@ export default function PatientRequestSubmission({ results, meta }) {
           <input type="tel" value={contact.phone} onChange={(event) => setContact((current) => ({ ...current, phone: event.target.value }))} autoComplete="tel" maxLength={32} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-primary" />
         </label>
         <label className="text-xs font-semibold text-foreground">
-          Preferinta de contact
+          Preferință de contact
           <select value={contact.preference} onChange={(event) => setContact((current) => ({ ...current, preference: event.target.value }))} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-primary">
             <option value="email">Email</option>
             <option value="phone">Telefon</option>
@@ -301,7 +301,7 @@ export default function PatientRequestSubmission({ results, meta }) {
       <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background p-4">
         <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-border" />
         <span className="text-xs leading-relaxed text-muted-foreground">
-          Sunt de acord ca VIASEE sa prelucreze datele si raspunsurile mele pentru a salva cererea. Distribuirea catre locatii se face numai dupa confirmarea separata din pasul urmator.
+          Sunt de acord ca VIASEE să prelucreze datele și răspunsurile mele pentru a salva cererea. Distribuirea către locații se face numai după confirmarea separată din pasul următor.
         </span>
       </label>
 
@@ -312,10 +312,10 @@ export default function PatientRequestSubmission({ results, meta }) {
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
         <button type="submit" disabled={isSubmitting} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">
           <ShieldCheck className="h-4 w-4" />
-          {isSubmitting ? "Salvam cererea..." : "Confirma si salveaza"}
+          {isSubmitting ? "Salvăm cererea..." : "Confirmă și salvează"}
         </button>
         <button type="button" disabled={isSubmitting} onClick={() => { setIsOpen(false); setError(""); }} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-border bg-background px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary disabled:opacity-60">
-          Renunta
+          Renunță
         </button>
       </div>
     </form>
