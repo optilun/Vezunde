@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Clock3, ExternalLink, HelpCircle, Loader2, Phone, RefreshCw, Store, UserCheck, UserX, XCircle } from "lucide-react";
 import { getPatientRequestStatus, managePatientContactShareApproval } from "@/lib/patientRequestPersistenceClient";
 import PatientRequestChat from "./PatientRequestChat";
+import PatientNotificationCenter from "@/components/notifications/PatientNotificationCenter";
 
 const RESPONSE_PRESENTATION = {
   can_help: { icon: CheckCircle2, title: "Locația poate ajuta", description: "Locația a confirmat că poate analiza cererea ta." },
@@ -59,9 +60,12 @@ export default function PatientRequestResponseStatus({ requestId, accessToken })
             Locațiile Pro din Top 3 pot vedea numele, mesajul și emailul verificat. Tu controlezi separat telefonul și deschiderea chatului pentru fiecare locație.
           </p>
         </div>
-        <button type="button" onClick={() => void load()} disabled={loading || Boolean(updatingLocationId)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-60">
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Verifică răspunsurile
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <PatientNotificationCenter requestId={requestId} accessToken={accessToken || ""} />
+          <button type="button" onClick={() => void load()} disabled={loading || Boolean(updatingLocationId)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-60">
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Verifică răspunsurile
+          </button>
+        </div>
       </div>
 
       {error && <p role="alert" className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-xs text-destructive">{error}</p>}
@@ -79,7 +83,7 @@ export default function PatientRequestResponseStatus({ requestId, accessToken })
             const updating = updatingLocationId === response.location_id;
             const canManagePhone = response.contact_share_allowed && status.contact_phone_available === true;
             return (
-              <article key={response.location_id} className="rounded-xl border border-border bg-background p-4">
+              <article id={`patient-response-${response.location_id}`} key={response.location_id} className="scroll-mt-24 rounded-xl border border-border bg-background p-4">
                 <div className="flex items-start gap-3">
                   <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
                   <div className="min-w-0 flex-1">
