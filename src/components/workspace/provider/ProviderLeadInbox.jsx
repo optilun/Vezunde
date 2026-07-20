@@ -40,6 +40,7 @@ export default function ProviderLeadInbox(props) {
 }
 
 /* Compatibility guarantees implemented by ProviderLeadInboxLegacy:
+providerLeadResponseOps
 Detalii Pro · Top 3
 Încheiate
 is_historical
