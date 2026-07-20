@@ -1,8 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Settings, Users } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ROLE_LABELS } from "@/lib/workspaceStatusLabels";
 
 function initials(value = "") {
@@ -44,9 +42,10 @@ function roleLabel(group) {
 }
 
 export default function ProviderTeamHeaderAccess() {
-  const navigate = useNavigate();
+  const rootRef = useRef(null);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -64,79 +63,95 @@ export default function ProviderTeamHeaderAccess() {
     return () => { mounted = false; };
   }, []);
 
+  useEffect(() => {
+    if (!open) return undefined;
+    const closeOutside = (event) => {
+      if (!rootRef.current?.contains(event.target)) setOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
   const members = useMemo(() => groupMembers(data?.members || []), [data?.members]);
   const visibleMembers = members.slice(0, 3);
   const pendingInvitations = data?.invitations?.length || 0;
 
   if (!loading && !data?.can_manage_members) return null;
 
-  const openSettings = () => navigate("/contul-meu?s=settings");
-
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex min-h-10 items-center rounded-full px-1.5 transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15"
-          aria-label="Utilizatori si acces"
-          title="Utilizatori si acces"
-        >
-          <span className="hidden items-center -space-x-2 sm:flex">
-            {loading && <span className="h-8 w-8 animate-pulse rounded-full border-2 border-card bg-secondary" />}
-            {!loading && visibleMembers.map((member, index) => (
-              <span
-                key={member.user_id || member.user_email_masked || index}
-                className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-card bg-foreground text-[10px] font-bold text-background shadow-sm"
-                title={member.user_name || member.user_email_masked || "Utilizator"}
-              >
-                {initials(member.user_name || member.user_email_masked)}
-              </span>
-            ))}
-            {!loading && members.length > 3 && (
-              <span className="flex h-8 min-w-8 items-center justify-center rounded-full border-2 border-card bg-secondary px-1.5 text-[10px] font-bold text-foreground shadow-sm">+{members.length - 3}</span>
-            )}
-          </span>
-          <span className="ml-0 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm sm:ml-1" aria-hidden="true">
-            <Plus className="h-4 w-4" />
-          </span>
-        </button>
-      </PopoverTrigger>
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="inline-flex min-h-10 items-center rounded-full px-1.5 transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15"
+        aria-label="Utilizatori și acces"
+        aria-expanded={open}
+        title="Utilizatori și acces"
+      >
+        <span className="hidden items-center -space-x-2 sm:flex">
+          {loading && <span className="h-8 w-8 animate-pulse rounded-full border-2 border-card bg-secondary" />}
+          {!loading && visibleMembers.map((member, index) => (
+            <span
+              key={member.user_id || member.user_email_masked || index}
+              className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-card bg-foreground text-[10px] font-bold text-background shadow-sm"
+              title={member.user_name || member.user_email_masked || "Utilizator"}
+            >
+              {initials(member.user_name || member.user_email_masked)}
+            </span>
+          ))}
+          {!loading && members.length > 3 && (
+            <span className="flex h-8 min-w-8 items-center justify-center rounded-full border-2 border-card bg-secondary px-1.5 text-[10px] font-bold text-foreground shadow-sm">+{members.length - 3}</span>
+          )}
+        </span>
+        <span className="ml-0 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm sm:ml-1" aria-hidden="true">
+          <Plus className="h-4 w-4" />
+        </span>
+      </button>
 
-      <PopoverContent align="end" sideOffset={8} className="w-[min(22rem,calc(100vw-1rem))] rounded-2xl p-0 shadow-xl">
-        <div className="border-b border-border px-4 py-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-bold">Utilizatori si acces</h2>
-              <p className="mt-1 text-xs text-muted-foreground">{members.length} {members.length === 1 ? "utilizator activ" : "utilizatori activi"}</p>
+      {open && (
+        <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-[min(22rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-xl">
+          <div className="border-b border-border px-4 py-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold">Utilizatori și acces</h2>
+                <p className="mt-1 text-xs text-muted-foreground">{members.length} {members.length === 1 ? "utilizator activ" : "utilizatori activi"}</p>
+              </div>
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary"><Users className="h-4 w-4" /></span>
             </div>
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary"><Users className="h-4 w-4" /></span>
+          </div>
+
+          <div className="max-h-72 overflow-y-auto px-2 py-2">
+            {loading && <div className="px-3 py-5 text-sm text-muted-foreground">Se încarcă utilizatorii...</div>}
+            {!loading && members.length === 0 && <div className="px-3 py-5 text-sm text-muted-foreground">Nu există alți utilizatori activi.</div>}
+            {!loading && members.slice(0, 6).map((member) => (
+              <div key={member.user_id || member.user_email_masked} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-secondary/45">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-[10px] font-bold text-background">
+                  {initials(member.user_name || member.user_email_masked)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold">{member.user_name || member.user_email_masked || "Utilizator"}</div>
+                  <div className="mt-0.5 truncate text-xs text-muted-foreground">{roleLabel(member)}</div>
+                </div>
+                <span className="shrink-0 text-[11px] font-medium text-muted-foreground">{member.memberships.length} {member.memberships.length === 1 ? "locație" : "locații"}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-border bg-secondary/20 p-3">
+            {pendingInvitations > 0 && <p className="mb-2 px-1 text-xs text-muted-foreground">{pendingInvitations} {pendingInvitations === 1 ? "invitație în așteptare" : "invitații în așteptare"}</p>}
+            <a href="/contul-meu?s=settings" className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-foreground px-4 text-sm font-semibold text-background hover:opacity-90">
+              <Settings className="h-4 w-4" /> Gestionează din Setări
+            </a>
           </div>
         </div>
-
-        <div className="max-h-72 overflow-y-auto px-2 py-2">
-          {loading && <div className="px-3 py-5 text-sm text-muted-foreground">Se incarca utilizatorii...</div>}
-          {!loading && members.length === 0 && <div className="px-3 py-5 text-sm text-muted-foreground">Nu exista alti utilizatori activi.</div>}
-          {!loading && members.slice(0, 6).map((member) => (
-            <div key={member.user_id || member.user_email_masked} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-secondary/45">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-[10px] font-bold text-background">
-                {initials(member.user_name || member.user_email_masked)}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold">{member.user_name || member.user_email_masked || "Utilizator"}</div>
-                <div className="mt-0.5 truncate text-xs text-muted-foreground">{roleLabel(member)}</div>
-              </div>
-              <span className="shrink-0 text-[11px] font-medium text-muted-foreground">{member.memberships.length} {member.memberships.length === 1 ? "locatie" : "locatii"}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="border-t border-border bg-secondary/20 p-3">
-          {pendingInvitations > 0 && <p className="mb-2 px-1 text-xs text-muted-foreground">{pendingInvitations} {pendingInvitations === 1 ? "invitatie in asteptare" : "invitatii in asteptare"}</p>}
-          <button type="button" onClick={openSettings} className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-foreground px-4 text-sm font-semibold text-background hover:opacity-90">
-            <Settings className="h-4 w-4" /> Gestioneaza din Setari
-          </button>
-        </div>
-      </PopoverContent>
-    </Popover>
+      )}
+    </div>
   );
 }
