@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 import {
   PROVIDER_LEAD_INBOX_CONTRACT_VERSION,
   canAccessProviderLeadInbox,
+  filterProviderLeadInbox,
+  providerLeadIsHistorical,
   sanitizeProviderLeadForFreeInbox,
   summarizeProviderLeadInbox,
 } from '../shared/providerLeadInboxPolicy.js';
@@ -11,7 +13,7 @@ import {
   providerLeadFullDetailsEligibility,
 } from '../shared/providerLeadFullDetailsPolicy.js';
 
-assert.equal(PROVIDER_LEAD_INBOX_CONTRACT_VERSION, 'provider-lead-inbox-free-v1');
+assert.equal(PROVIDER_LEAD_INBOX_CONTRACT_VERSION, 'provider-lead-inbox-v2');
 assert.equal(canAccessProviderLeadInbox('organization_owner'), true);
 assert.equal(canAccessProviderLeadInbox('location_manager'), true);
 assert.equal(canAccessProviderLeadInbox('location_staff'), true);
@@ -35,6 +37,7 @@ const rawLead = {
 };
 const safe = sanitizeProviderLeadForFreeInbox(rawLead);
 assert.equal(safe.access_tier, 'free_preview');
+assert.equal(safe.is_historical, false);
 for (const forbidden of ['request_id', 'contact_name', 'contact_email', 'contact_phone', 'original_message', 'detailed_message', 'full_details']) {
   assert.equal(Object.hasOwn(safe, forbidden), false, `${forbidden} nu trebuie returnat in inboxul Free`);
 }
@@ -67,24 +70,50 @@ const extendedEligibility = providerLeadFullDetailsEligibility({ lead: { ...rawL
 assert.equal(extendedEligibility.eligible, false);
 assert.ok(extendedEligibility.reasons.includes('lead_not_top3'));
 
-assert.deepEqual(summarizeProviderLeadInbox([{ status: 'new' }, { status: 'viewed' }, { status: 'closed' }]), { total: 3, new: 1, viewed: 1, active: 2 });
+const historicalLead = {
+  ...rawLead,
+  id: 'lead-history',
+  delivery_state: 'withdrawn',
+  status: 'closed',
+  closure_reason: 'request_resolved',
+  closed_at: '2026-07-20T12:00:00.000Z',
+};
+assert.equal(providerLeadIsHistorical(historicalLead), true);
+assert.equal(filterProviderLeadInbox([rawLead, historicalLead], { scope: 'active' })[0].id, 'lead-1');
+assert.equal(filterProviderLeadInbox([rawLead, historicalLead], { scope: 'history' })[0].id, 'lead-history');
+const counters = summarizeProviderLeadInbox([rawLead, { ...rawLead, id: 'lead-viewed', status: 'viewed' }, historicalLead]);
+assert.deepEqual(counters, {
+  total: 3,
+  available: 2,
+  history: 1,
+  new: 1,
+  viewed: 1,
+  active: 2,
+  closed: 1,
+  expired: 0,
+});
 
 const backend = await readFile(new URL('../base44/functions/providerLeadInboxOps/entry.ts', import.meta.url), 'utf8');
 const component = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInbox.jsx', import.meta.url), 'utf8');
 const chatComponent = await readFile(new URL('../src/components/workspace/provider/ProviderLeadChat.jsx', import.meta.url), 'utf8');
 assert.match(backend, /resolveProviderEntitlement/);
 assert.match(backend, /providerLeadFullDetailsEligibility/);
+assert.match(backend, /filterProviderLeadInbox/);
 assert.match(backend, /ProviderLeadContactAccessAudit\.create/);
 assert.match(backend, /PatientRequestContact\.filter/);
 assert.match(backend, /access_contract_version: PROVIDER_LEAD_FULL_DETAILS_CONTRACT_VERSION/);
 assert.doesNotMatch(backend, /contact_phone:/);
 assert.match(component, /Detalii Pro · Top 3/);
+assert.match(component, /Încheiate/);
+assert.match(component, /is_historical/);
 assert.match(component, /Telefonul rămâne separat/);
 assert.match(component, /phone_available_for_request/);
 assert.match(component, /provider_chat\.access/);
-assert.match(component, /enabled=\{canChat && lead\.access_tier === "pro_full"\}/);
+assert.match(component, /terminal=\{terminal\}/);
 assert.doesNotMatch(component, /base44\.entities\.ProviderLead/);
+assert.match(chatComponent, /Istoric chat VIASEE · Pro/);
+assert.match(chatComponent, /Istoricul rămâne numai pentru consultare/);
 assert.match(chatComponent, /Locația nu poate iniția chatul unilateral/);
 assert.doesNotMatch(chatComponent, /base44\.entities\.PatientRequestMessage|base44\.entities\.PatientRequestConversation/);
 
-console.log('Provider inbox Free isolation and Top 3 Pro controlled access checks passed.');
+console.log('Provider inbox active/history isolation and Top 3 Pro controlled access checks passed.');

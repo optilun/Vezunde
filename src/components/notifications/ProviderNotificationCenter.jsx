@@ -8,7 +8,7 @@ function responseData(response) {
   return data;
 }
 
-export default function ProviderNotificationCenter({ locationId }) {
+export default function ProviderNotificationCenter({ locationId, onOpenTarget }) {
   const loadNotifications = useCallback(async () => {
     const response = await base44.functions.invoke("providerLeadInboxOps", {
       action: "notifications_list",
@@ -37,9 +37,13 @@ export default function ProviderNotificationCenter({ locationId }) {
 
   const openTarget = useCallback((notification) => {
     if (!notification?.action_target_id) return;
+    if (onOpenTarget) {
+      onOpenTarget(notification);
+      return;
+    }
     const target = document.getElementById(`provider-lead-${notification.action_target_id}`);
     target?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+  }, [onOpenTarget]);
 
   return (
     <NotificationCenter

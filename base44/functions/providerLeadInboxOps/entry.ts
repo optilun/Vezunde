@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   PROVIDER_LEAD_INBOX_CONTRACT_VERSION,
   canAccessProviderLeadInbox,
+  filterProviderLeadInbox,
   sanitizeProviderLeadForFreeInbox,
   summarizeProviderLeadInbox,
 } from '../../../shared/providerLeadInboxPolicy.js';
@@ -19,8 +20,6 @@ import {
 } from '../../../shared/inAppNotificationPolicy.js';
 import { ensureProviderInAppNotifications } from '../../../shared/inAppNotificationProjection.js';
 import { reconcilePatientRequestExpiration } from '../../../shared/patientRequestLifecycleOps.js';
-
-const LIST_STATUSES = new Set(['new', 'viewed', 'interested', 'needs_details', 'declined', 'closed', 'expired']);
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -112,7 +111,14 @@ async function enrichLeadForInbox(svc, lead, user, entitlement) {
   const contact = contacts[0] || null;
   const eligibility = providerLeadFullDetailsEligibility({ lead, request, contact, entitlement });
   const status = sanitizeProviderLeadFullDetailsStatus(eligibility);
-  if (!eligibility.eligible) return { ...safe, full_details_status: status };
+  if (!eligibility.eligible) {
+    const preserveProHistoryScope = safe.is_historical && entitlement?.plan_code === 'pro';
+    return {
+      ...safe,
+      ...(preserveProHistoryScope ? { access_tier: 'pro_full' } : {}),
+      full_details_status: status,
+    };
+  }
 
   const fullDetails = buildProviderLeadFullDetails({ request, contact });
   const accessedFields = ['contact_name', 'detailed_message'];
@@ -224,21 +230,22 @@ Deno.serve(async (req) => {
 
     if (action !== 'list') return res({ error: 'Actiune necunoscuta.' }, 400);
     await reconcileLocationExpirations(svc, locationId).catch(() => null);
+    const requestedScope = clean(input.scope, 40) === 'history' ? 'history' : 'active';
     const requestedStatus = clean(input.status, 80);
-    const filter = {
-      location_id: locationId,
-      delivery_state: 'available',
-      ...(LIST_STATUSES.has(requestedStatus) ? { status: requestedStatus } : {}),
-    };
-    const [rows, allRows, entitlement] = await Promise.all([
-      svc.entities.ProviderLead.filter(filter, '-created_date', boundedLimit(input.limit)),
-      svc.entities.ProviderLead.filter({ location_id: locationId, delivery_state: 'available' }, '-created_date', 500),
+    const [allRows, entitlement] = await Promise.all([
+      svc.entities.ProviderLead.filter({ location_id: locationId }, '-created_date', 500),
       entitlementForLocation(svc, locationId),
     ]);
+    const rows = filterProviderLeadInbox(allRows, {
+      scope: requestedScope,
+      status: requestedStatus,
+      limit: input.limit,
+    });
     const leads = await Promise.all(rows.map((lead) => enrichLeadForInbox(svc, lead, user, entitlement)));
 
     return res({
       contract_version: PROVIDER_LEAD_INBOX_CONTRACT_VERSION,
+      scope: requestedScope,
       entitlement,
       access_tier: entitlement.plan_code === 'pro' ? 'pro_full_when_top3' : 'free_preview',
       contact_access_state: 'phone_hidden_until_patient_approval',
