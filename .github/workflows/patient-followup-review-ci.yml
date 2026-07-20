@@ -41,7 +41,7 @@ jobs:
       - name: Verify request recovery
         run: node scripts/verify-patient-request-recovery.mjs
       - name: Verify request resume
-        run: node scripts/verify-patient-request-resume.mjs
+        run: node scripts/verify-request-workspace-resume.mjs
       - name: Verify county expansion
         run: node scripts/verify-patient-county-expansion.mjs
       - name: Verify services
