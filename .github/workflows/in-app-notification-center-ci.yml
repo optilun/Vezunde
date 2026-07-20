@@ -1,0 +1,69 @@
+name: In-App Notification Center
+
+on:
+  pull_request:
+    paths:
+      - "base44/entities/InAppNotification.jsonc"
+      - "shared/inAppNotificationPolicy.js"
+      - "shared/inAppNotificationDelivery.js"
+      - "shared/inAppNotificationProjection.js"
+      - "shared/leadCommunicationNotifications.js"
+      - "base44/functions/providerLeadInboxOps/entry.ts"
+      - "base44/functions/getPatientRequestStatus/entry.ts"
+      - "base44/functions/managePatientContactShareApproval/entry.ts"
+      - "src/components/notifications/NotificationCenter.jsx"
+      - "src/components/notifications/ProviderNotificationCenter.jsx"
+      - "src/components/notifications/PatientNotificationCenter.jsx"
+      - "src/components/workspace/provider/ProviderLeadInbox.jsx"
+      - "src/components/intake2/PatientRequestResponseStatus.jsx"
+      - "scripts/verify-in-app-notification-center.mjs"
+      - "jsconfig.services.json"
+      - ".github/workflows/in-app-notification-center-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify in-app notification center
+        run: node scripts/verify-in-app-notification-center.mjs
+      - name: Verify existing service regressions
+        run: npm run test:services
+      - name: Typecheck service scope
+        run: npm run typecheck:services
+      - name: Lint notification scope
+        run: >-
+          npx eslint
+          shared/inAppNotificationPolicy.js
+          shared/inAppNotificationDelivery.js
+          shared/inAppNotificationProjection.js
+          shared/leadCommunicationNotifications.js
+          base44/functions/providerLeadInboxOps/entry.ts
+          base44/functions/getPatientRequestStatus/entry.ts
+          base44/functions/managePatientContactShareApproval/entry.ts
+          src/components/notifications/NotificationCenter.jsx
+          src/components/notifications/ProviderNotificationCenter.jsx
+          src/components/notifications/PatientNotificationCenter.jsx
+          src/components/workspace/provider/ProviderLeadInbox.jsx
+          src/components/intake2/PatientRequestResponseStatus.jsx
+          scripts/verify-in-app-notification-center.mjs
+          --quiet
+      - name: Repository typecheck diagnostic
+        continue-on-error: true
+        run: npm run typecheck
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build

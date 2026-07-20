@@ -1,0 +1,64 @@
+{
+  "name": "InAppNotification",
+  "type": "object",
+  "properties": {
+    "notification_contract_version": { "type": "string" },
+    "event_key": {
+      "type": "string",
+      "enum": [
+        "provider_lead_available",
+        "patient_provider_response_received",
+        "provider_chat_opened",
+        "provider_chat_message_received",
+        "patient_chat_message_received",
+        "provider_phone_approved",
+        "provider_phone_revoked",
+        "provider_conversation_closed",
+        "patient_conversation_closed"
+      ]
+    },
+    "recipient_type": {
+      "type": "string",
+      "enum": ["provider_user", "patient_request"]
+    },
+    "recipient_ref_id": { "type": "string" },
+    "source_entity_type": { "type": "string" },
+    "source_entity_id": { "type": "string" },
+    "request_id": { "type": "string" },
+    "lead_id": { "type": "string" },
+    "organization_id": { "type": "string" },
+    "location_id": { "type": "string" },
+    "title": { "type": "string" },
+    "body": { "type": "string" },
+    "action_kind": {
+      "type": "string",
+      "enum": ["lead", "chat", "request", "contact"]
+    },
+    "action_target_id": { "type": "string" },
+    "variant": { "type": "string" },
+    "idempotency_key": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["unread", "read"],
+      "default": "unread"
+    },
+    "read_at": { "type": "string", "format": "date-time" }
+  },
+  "required": [
+    "notification_contract_version",
+    "event_key",
+    "recipient_type",
+    "recipient_ref_id",
+    "source_entity_type",
+    "source_entity_id",
+    "title",
+    "body",
+    "status"
+  ],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

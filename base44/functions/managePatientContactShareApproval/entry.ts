@@ -108,13 +108,12 @@ async function approve(svc, request, contact, locationId) {
       : await svc.entities.ContactShareApproval.create(payload);
     await svc.entities.ProviderLead.update(checkedLead.id, {
       contact_access_state: 'patient_approved',
-      conversation_access_state: 'locked',
       last_contact_approval_at: now,
     });
     return {
       approval: sanitizeContactShareApproval(approval, locationId),
       contact_access_state: 'patient_approved',
-      conversation_access_state: 'locked',
+      conversation_access_state: checkedLead.conversation_access_state || 'locked',
     };
   } finally {
     await releaseContactShareApprovalLock(svc, lock);
@@ -123,16 +122,16 @@ async function approve(svc, request, contact, locationId) {
 
 async function revoke(svc, request, locationId) {
   const approval = await findApproval(svc, request.id, locationId);
+  const lead = await findLead(svc, request.id, locationId);
   if (!approval || approval.status !== 'approved') {
     return {
       approval: sanitizeContactShareApproval({ location_id: locationId, status: 'revoked' }, locationId),
       contact_access_state: 'revoked',
-      conversation_access_state: 'locked',
+      conversation_access_state: lead?.conversation_access_state || 'locked',
       idempotent_replay: true,
     };
   }
 
-  const lead = await findLead(svc, request.id, locationId);
   const lock = lead ? await acquireContactShareApprovalLock(svc, lead.id) : null;
   if (lead && !lock) return { error: 'Acordul este actualizat in alta sesiune. Reincearca.', status: 409 };
   try {
@@ -145,14 +144,13 @@ async function revoke(svc, request, locationId) {
     if (lead) {
       await svc.entities.ProviderLead.update(lead.id, {
         contact_access_state: 'revoked',
-        conversation_access_state: 'locked',
         last_contact_approval_at: now,
       });
     }
     return {
       approval: sanitizeContactShareApproval(updated, locationId),
       contact_access_state: 'revoked',
-      conversation_access_state: 'locked',
+      conversation_access_state: lead?.conversation_access_state || 'locked',
       idempotent_replay: false,
     };
   } finally {
