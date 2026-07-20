@@ -17,6 +17,7 @@ import {
   sanitizeInAppNotification,
   summarizeInAppNotifications,
 } from '../../../shared/inAppNotificationPolicy.js';
+import { ensureProviderInAppNotifications } from '../../../shared/inAppNotificationProjection.js';
 
 const LIST_STATUSES = new Set(['new', 'viewed', 'interested', 'needs_details', 'declined', 'closed', 'expired']);
 
@@ -175,6 +176,7 @@ Deno.serve(async (req) => {
     if (authorized.error) return res({ error: authorized.error }, authorized.status);
 
     if (action === 'notifications_list') {
+      await ensureProviderInAppNotifications({ svc, userId: user.id, locationId }).catch(() => []);
       return res(await listProviderNotifications(svc, user.id, locationId, input.limit));
     }
     if (action === 'notification_mark_read') {
