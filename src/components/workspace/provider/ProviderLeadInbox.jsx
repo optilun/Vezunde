@@ -3,6 +3,7 @@ import { CheckCircle2, Clock3, HelpCircle, Inbox, Loader2, LockKeyhole, Mail, Ma
 import { base44 } from "@/api/base44Client";
 import ProviderLeadContactAccess from "./ProviderLeadContactAccess";
 import ProviderLeadChat from "./ProviderLeadChat";
+import ProviderNotificationCenter from "@/components/notifications/ProviderNotificationCenter";
 
 const FILTERS = [
   { key: "all", label: "Toate" },
@@ -80,7 +81,7 @@ function FullDetails({ lead }) {
 function LeadCard({ lead, response, locationId, canRespond, canAccessContact, canChat, onMarkViewed, onRespond, marking, responding }) {
   const services = lead.matched_service_keys?.length ? lead.matched_service_keys : lead.service_keys;
   return (
-    <article className="rounded-2xl border border-border bg-card p-5 shadow-[0_12px_36px_rgba(23,23,23,0.035)]">
+    <article id={`provider-lead-${lead.id}`} className="scroll-mt-24 rounded-2xl border border-border bg-card p-5 shadow-[0_12px_36px_rgba(23,23,23,0.035)]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -229,7 +230,10 @@ export default function ProviderLeadInbox({ locationId, location }) {
             <div className="mt-2 flex flex-wrap items-center gap-3"><h1 className="font-heading text-2xl font-extrabold tracking-tight text-foreground">Leaduri</h1><span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${entitlement?.plan_code === "pro" ? "bg-foreground text-background" : "bg-secondary text-foreground"}`}>Plan {entitlement?.plan_code === "pro" ? "Pro" : "Free"}</span></div>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Cereri relevante pentru {locationName}. Pro vede detaliile complete și poate conversa numai pentru leadurile din Top 3, după deschiderea chatului de către client.</p>
           </div>
-          <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-60"><RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Actualizează</button>
+          <div className="flex flex-wrap items-center gap-2">
+            <ProviderNotificationCenter locationId={locationId} />
+            <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-60"><RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Actualizează</button>
+          </div>
         </div>
       </header>
 
