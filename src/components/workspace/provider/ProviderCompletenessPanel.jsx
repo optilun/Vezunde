@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, ArrowRight, CheckCircle2, Circle, ListChecks } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Circle, ListChecks, MapPin } from "lucide-react";
 
 function StatusIcon({ done }) {
   return done
@@ -51,10 +51,51 @@ function Item({ item, locationId }) {
   );
 }
 
+function LocationComparison({ locations, selectedLocationId }) {
+  if (!Array.isArray(locations) || locations.length < 2) return null;
+  return (
+    <details className="mt-5 rounded-2xl border border-border bg-background/60 p-4">
+      <summary className="cursor-pointer text-sm font-bold text-foreground">Compara locatiile ({locations.length})</summary>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {locations.map((location) => {
+          const percentage = Number(location.completion?.percentage || 0);
+          const selected = location.id === selectedLocationId;
+          const missing = Number(location.completion?.missing_count || 0);
+          return (
+            <Link
+              key={location.id}
+              to={`/contul-meu?s=locations&location=${location.id}`}
+              className={`rounded-2xl border p-4 transition hover:border-foreground/35 hover:bg-secondary/40 ${selected ? "border-foreground/35 bg-secondary/45" : "border-border bg-background"}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-foreground">{location.name}</p>
+                  <p className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground"><MapPin className="h-3.5 w-3.5 shrink-0" />{location.locality || "Localitate necompletata"}</p>
+                </div>
+                {selected && <span className="rounded-full bg-foreground px-2 py-1 text-[10px] font-bold text-background">Selectata</span>}
+              </div>
+              <div className="mt-4 flex items-end justify-between gap-3">
+                <div>
+                  <div className="text-2xl font-extrabold text-foreground">{percentage}%</div>
+                  <div className="text-[11px] text-muted-foreground">{missing ? `${missing} elemente lipsa` : "Profil complet"}</div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary">
+                <div className="h-full rounded-full bg-foreground" style={{ width: `${Math.max(0, Math.min(100, percentage))}%` }} />
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </details>
+  );
+}
+
 export default function ProviderCompletenessPanel({ data }) {
   if (!data?.summary) return null;
   const missing = [...(data.organization?.missing_items || []), ...(data.location?.missing_items || [])];
-  const locationId = data.location?.location_id || data.location?.id || "";
+  const locationId = data.selected_location_id || "";
   return (
     <section className="rounded-[20px] border border-foreground/10 bg-card p-5 shadow-[0_14px_40px_rgba(23,23,23,0.04)] sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -78,7 +119,7 @@ export default function ProviderCompletenessPanel({ data }) {
           <p className="mt-1 text-xl font-extrabold text-foreground">{data.summary.organization_percentage}%</p>
         </div>
         <div className="rounded-2xl border border-border bg-background/70 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Locatie selectata</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Media locatiilor accesibile</p>
           <p className="mt-1 text-xl font-extrabold text-foreground">{data.summary.average_location_percentage}%</p>
         </div>
       </div>
@@ -90,8 +131,10 @@ export default function ProviderCompletenessPanel({ data }) {
         </div>
       )}
 
+      <LocationComparison locations={data.locations} selectedLocationId={locationId} />
+
       <details className="mt-5 rounded-2xl border border-border bg-background/60 p-4">
-        <summary className="cursor-pointer text-sm font-bold text-foreground">Vezi ce lipseste ({missing.length})</summary>
+        <summary className="cursor-pointer text-sm font-bold text-foreground">Vezi ce lipseste la locatia selectata ({missing.length})</summary>
         <div className="mt-3">
           {missing.length
             ? missing.map((item) => <Item key={item.key} item={item} locationId={locationId} />)
