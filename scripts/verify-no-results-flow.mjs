@@ -26,7 +26,6 @@ assert.match(noResults, /Schimbă localitatea/);
 assert.match(noResults, /Revizuiește criteriile/);
 assert.match(noResults, /Explorează directorul complet/);
 assert.match(noResults, /nu completează lista cu profiluri slab potrivite/);
-assert.match(noResults, /VIASEE nu a confirmat toate informațiile/);
 assert.doesNotMatch(noResults.toLowerCase(), /asistență umană|concierge|extindere națională|garantăm/);
 
 assert.match(matchResults, /import NoResultsFlow/);
@@ -41,6 +40,7 @@ assert.match(matchResults, /window\.location\.assign/);
 assert.match(matchResults, /params\.delete\("ref"\)/);
 assert.match(matchResults, /result_bucket === "top3"/);
 assert.match(matchResults, /result_bucket === "extended_directory"/);
+assert.match(matchResults, /VIASEE nu a confirmat toate informațiile/);
 assert.doesNotMatch(matchResults.toLowerCase(), /cel mai bun furnizor|rezultat garantat/);
 
 console.log('No-results and insufficient-results recovery checks passed.');
