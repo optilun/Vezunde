@@ -42,11 +42,13 @@ assert.equal(suspended.capabilities.find((item) => item.key === 'directory_visib
 
 const policy = await readFile(new URL('../shared/providerStatusCenter.js', import.meta.url), 'utf8');
 const panel = await readFile(new URL('../src/components/workspace/provider/ProviderStatusCenter.jsx', import.meta.url), 'utf8');
-const inbox = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInbox.jsx', import.meta.url), 'utf8');
+const wrapper = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInbox.jsx', import.meta.url), 'utf8');
+const inbox = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInboxLegacy.jsx', import.meta.url), 'utf8');
 
 assert.match(panel, /Nu modifica planul, eligibilitatea Top 3, acordul clientului sau starea profilului/);
-assert.match(inbox, /ProviderStatusCenter/);
-assert.match(inbox, /providerLeadInboxOps/);
+assert.match(wrapper, /ProviderStatusCenter/);
+assert.match(wrapper, /ProviderLeadInboxLegacy/);
+assert.match(wrapper, /providerLeadInboxOps/);
 assert.match(inbox, /providerLeadResponseOps/);
 assert.match(inbox, /ProviderNotificationCenter/);
 assert.match(inbox, /id=\{`provider-lead-\$\{lead\.id\}`\}/);
