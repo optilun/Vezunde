@@ -3,6 +3,7 @@ import { ArrowLeft, Clock, Info, MapPin, Users, Wrench } from "lucide-react";
 import { resolveProviderLocationAccess } from "@/lib/providerWorkspaceAccess";
 import ProviderServices from "./ProviderServices";
 import ProviderHours from "./ProviderHours";
+import ProviderHoursCopyPanel from "./ProviderHoursCopyPanel";
 import ProviderTeam from "./ProviderTeam";
 
 const MODULES = {
@@ -138,11 +139,18 @@ export default function ProviderLocationModulePage({
           />
         )}
         {moduleKey === "program" && (
-          <ProviderHours
-            locationId={location.id}
-            location={location}
-            onRefresh={onRefresh || (() => {})}
-          />
+          <>
+            <ProviderHoursCopyPanel
+              workspace={workspace}
+              currentLocationId={location.id}
+              onRefresh={onRefresh || (() => {})}
+            />
+            <ProviderHours
+              locationId={location.id}
+              location={location}
+              onRefresh={onRefresh || (() => {})}
+            />
+          </>
         )}
         {moduleKey === "specialisti" && <ProviderTeam locationId={location.id} />}
       </div>

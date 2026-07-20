@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   formatProviderSaturdayHours,
   formatProviderWeeklyHours,
@@ -73,4 +74,19 @@ const unknownField = validateProviderOpeningHours({
 assert.equal(unknownField.valid, false);
 assert.match(unknownField.error, /campuri nepermise/i);
 
-console.log('Provider opening-hours validation: PASS');
+const copyBackend = readFileSync(new URL('../base44/functions/copyProviderOpeningHours/entry.ts', import.meta.url), 'utf8');
+assert.match(copyBackend, /targetIds\.includes\(sourceId\)/, 'source location must be excluded from targets');
+assert.match(copyBackend, /target\.organization_id !== source\.organization_id/, 'copy must remain inside one organization');
+assert.match(copyBackend, /confirm_replace_existing/, 'existing schedules require explicit replacement confirmation');
+assert.match(copyBackend, /provider_copy_opening_hours/, 'copy operation must be audited');
+assert.match(copyBackend, /duplicate_skipped/, 'duplicate operations must be idempotent');
+assert.doesNotMatch(copyBackend, /availability_status:\s*schedule/, 'copy must not change access mode');
+assert.doesNotMatch(copyBackend, /services|specialists|public_visibility_status\s*:/, 'copy payload must not affect unrelated provider data');
+
+const copyPanel = readFileSync(new URL('../src/components/workspace/provider/ProviderHoursCopyPanel.jsx', import.meta.url), 'utf8');
+assert.match(copyPanel, /location\.manage_operational_status/, 'UI must filter locations by operational permission');
+assert.match(copyPanel, /Vezi preview-ul/, 'UI must require preview before copy');
+assert.match(copyPanel, /Confirm inlocuirea/, 'UI must show an explicit overwrite confirmation');
+assert.match(copyPanel, /sm:w-auto/, 'primary action must remain usable on mobile');
+
+console.log('Provider opening-hours validation and copy contract: PASS');
