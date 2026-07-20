@@ -29,10 +29,21 @@ function clean(value, maxLength = 160) {
   return String(value || '').trim().slice(0, maxLength);
 }
 
+function cleanList(values, maxItems = 20, maxLength = 180) {
+  return Array.isArray(values)
+    ? values.map((value) => clean(value, maxLength)).filter(Boolean).slice(0, maxItems)
+    : [];
+}
+
 function boundedLimit(value) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return 50;
   return Math.max(1, Math.min(100, Math.floor(parsed)));
+}
+
+function retentionExpired(contact) {
+  const retentionUntil = Date.parse(String(contact?.retention_until || ''));
+  return Number.isFinite(retentionUntil) && retentionUntil <= Date.now();
 }
 
 async function sha256(value) {
@@ -41,17 +52,24 @@ async function sha256(value) {
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-async function authorizeRequest(svc, requestId, accessToken) {
-  const request = await svc.entities.PatientRequest.get(requestId).catch(() => null);
+async function resolveRequest(svc, requestId, publicReference) {
+  if (requestId) return svc.entities.PatientRequest.get(requestId).catch(() => null);
+  if (!publicReference) return null;
+  const rows = await svc.entities.PatientRequest.filter({ public_reference: publicReference }, '-created_date', 2);
+  return rows[0] || null;
+}
+
+async function authorizeRequest(svc, requestId, publicReference, accessToken) {
+  const request = await resolveRequest(svc, requestId, publicReference);
   if (!request) return { error: 'Cererea nu a fost gasita.', status: 404 };
   const tokenHash = await sha256(accessToken);
   const contacts = await svc.entities.PatientRequestContact.filter({
-    request_id: requestId,
+    request_id: request.id,
     access_token_hash: tokenHash,
     status: 'active',
   }, null, 2);
   const contact = contacts[0];
-  if (!contact) return { error: 'Accesul la cerere nu este valid.', status: 403 };
+  if (!contact || retentionExpired(contact)) return { error: 'Accesul la cerere nu este valid sau a expirat.', status: 403 };
   return { request, contact };
 }
 
@@ -106,6 +124,74 @@ async function markAllPatientNotificationsRead(svc, requestId) {
   return { updated: rows.length };
 }
 
+function sanitizeWorkspaceAnswer(answer) {
+  return {
+    question_key: clean(answer?.question_key, 120),
+    question_label: clean(answer?.question_label, 240),
+    answer_value: clean(answer?.answer_value, 500),
+    answer_label: clean(answer?.answer_label, 500),
+  };
+}
+
+function publicLocation(location) {
+  return location?.status === 'publicata'
+    && location?.active_status !== 'inactiva'
+    && location?.is_active !== false
+    && location?.profile_control_status !== 'suspended';
+}
+
+function sanitizeWorkspaceResult(match, location) {
+  if (!location || !publicLocation(location)) return null;
+  return {
+    id: clean(location.id, 120),
+    public_display_name: clean(location.public_display_name || location.name || 'Locatie', 180),
+    name: clean(location.name || location.public_display_name || 'Locatie', 180),
+    locality_name: clean(location.locality_name || location.city, 120),
+    city: clean(location.city || location.locality_name, 120),
+    provider_type: clean(location.provider_type, 80),
+    profile_control_status: clean(location.profile_control_status || match?.profile_control_status_snapshot || 'directory', 40),
+    result_bucket: clean(match?.result_bucket, 40),
+    rank: Number(match?.rank) || 0,
+    bucket_rank: Number(match?.bucket_rank) || 0,
+    matched_service_keys: cleanList(match?.matched_service_keys, 30, 120),
+    match_reasons: cleanList(match?.match_reasons, 20, 240),
+    recommendation_explanations: cleanList(match?.recommendation_explanations, 20, 240),
+  };
+}
+
+async function buildWorkspacePayload(svc, request) {
+  const [answers, matches] = await Promise.all([
+    svc.entities.PatientRequestAnswer.filter({ request_id: request.id }, 'position', 100),
+    svc.entities.RequestMatch.filter({ request_id: request.id }, 'rank', 100),
+  ]);
+  const resolvedResults = await Promise.all(matches.map(async (match) => {
+    const location = await svc.entities.ProviderLocation.get(match.location_id).catch(() => null);
+    return sanitizeWorkspaceResult(match, location);
+  }));
+
+  return {
+    detailed_message: clean(request.detailed_message || request.original_message, 2000),
+    request_draft: {
+      intent: clean(request.intent, 120),
+      city: clean(request.city, 120),
+      county: clean(request.county, 120),
+      for_whom: clean(request.for_whom, 40),
+      timing_key: clean(request.timing_key, 120),
+      preferences: cleanList(request.preferences, 30, 160),
+      answers: answers.map(sanitizeWorkspaceAnswer),
+      interpretation: {
+        possible_safety_flags: cleanList(request.possible_safety_flags, 20, 160),
+      },
+    },
+    meta: {
+      recommendation_contract_version: clean(request.recommendation_contract_version, 120),
+      coverage_status: clean(request.matching_coverage_status, 80),
+      need_level: clean(request.matching_need_level, 80),
+    },
+    results: resolvedResults.filter(Boolean),
+  };
+}
+
 async function buildStatusPayload(svc, request, contact) {
   const expiration = await reconcilePatientRequestExpiration(svc, request.id);
   const currentRequest = expiration.request || request;
@@ -127,10 +213,11 @@ async function buildStatusPayload(svc, request, contact) {
     }).catch(() => null);
   }
 
-  const [rows, approvalRows, openConversations] = await Promise.all([
+  const [rows, approvalRows, openConversations, workspace] = await Promise.all([
     svc.entities.ProviderLeadResponse.filter({ request_id: currentRequest.id, status: 'active' }, '-updated_date', 100),
     svc.entities.ContactShareApproval.filter({ request_id: currentRequest.id }, '-updated_date', 100),
     svc.entities.PatientRequestConversation.filter({ request_id: currentRequest.id, status: 'open' }, '-updated_date', 100),
+    buildWorkspacePayload(svc, currentRequest),
   ]);
   const approvalByLocation = new Map();
   for (const approval of approvalRows) {
@@ -152,6 +239,8 @@ async function buildStatusPayload(svc, request, contact) {
     contract_version: PATIENT_REQUEST_STATUS_CONTRACT_VERSION,
     request: sanitizePatientRequestStatus({ ...currentRequest, lifecycle_state: lifecycle.state, lifecycle_stage: lifecycle.stage }),
     lifecycle: sanitizePatientRequestLifecycle(lifecycle),
+    workspace,
+    distribution_authorized: contact.provider_request_distribution_consent === true,
     response_count: responses.length,
     responses,
     contact_email_verified: contact.contact_email_verified === true,
@@ -170,11 +259,15 @@ Deno.serve(async (req) => {
     const input = await req.json().catch(() => ({}));
     const action = clean(input.action || 'status', 40);
     const requestId = clean(input.request_id, 120);
+    const publicReference = clean(input.public_reference, 120);
     const accessToken = clean(input.request_access_token, 160);
-    if (!requestId || !accessToken) return res({ error: 'request_id si tokenul de acces sunt obligatorii.' }, 400);
+    if ((!requestId && !publicReference) || !accessToken) {
+      return res({ error: 'Referinta cererii si tokenul de acces sunt obligatorii.' }, 400);
+    }
 
-    const authorized = await authorizeRequest(svc, requestId, accessToken);
+    const authorized = await authorizeRequest(svc, requestId, publicReference, accessToken);
     if (authorized.error) return res({ error: authorized.error }, authorized.status);
+    const authorizedRequestId = authorized.request.id;
 
     if (action === 'resolve' || action === 'close') {
       const targetState = action === 'resolve'
@@ -182,12 +275,12 @@ Deno.serve(async (req) => {
         : PATIENT_REQUEST_LIFECYCLE_STATES.CLOSED;
       const transitioned = await transitionPatientRequestLifecycle({
         svc,
-        requestId,
+        requestId: authorizedRequestId,
         targetState,
         actor: 'patient',
       });
       if (transitioned.error) return res({ error: transitioned.error }, transitioned.status);
-      await ensurePatientInAppNotifications({ svc, requestId }).catch(() => []);
+      await ensurePatientInAppNotifications({ svc, requestId: authorizedRequestId }).catch(() => []);
       return res({
         ...(await buildStatusPayload(svc, transitioned.request, authorized.contact)),
         idempotent_replay: transitioned.idempotent_replay,
@@ -195,21 +288,21 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'notifications_list') {
-      await reconcilePatientRequestExpiration(svc, requestId).catch(() => null);
-      await ensurePatientInAppNotifications({ svc, requestId }).catch(() => []);
-      return res(await listPatientNotifications(svc, requestId, input.limit));
+      await reconcilePatientRequestExpiration(svc, authorizedRequestId).catch(() => null);
+      await ensurePatientInAppNotifications({ svc, requestId: authorizedRequestId }).catch(() => []);
+      return res(await listPatientNotifications(svc, authorizedRequestId, input.limit));
     }
     if (action === 'notification_mark_read') {
       const notificationId = clean(input.notification_id, 120);
       if (!notificationId) return res({ error: 'notification_id este obligatoriu.' }, 400);
-      const result = await markPatientNotificationRead(svc, requestId, notificationId);
+      const result = await markPatientNotificationRead(svc, authorizedRequestId, notificationId);
       if (result.error) return res({ error: result.error }, result.status);
       return res({ notification_contract_version: IN_APP_NOTIFICATION_CONTRACT_VERSION, ...result });
     }
     if (action === 'notifications_mark_all_read') {
       return res({
         notification_contract_version: IN_APP_NOTIFICATION_CONTRACT_VERSION,
-        ...(await markAllPatientNotificationsRead(svc, requestId)),
+        ...(await markAllPatientNotificationsRead(svc, authorizedRequestId)),
       });
     }
     if (action !== 'status') return res({ error: 'Actiune necunoscuta.' }, 400);
