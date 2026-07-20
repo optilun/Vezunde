@@ -1,3 +1,9 @@
+import {
+  PATIENT_REQUEST_LIFECYCLE_STATES,
+  patientRequestHasExpired,
+  persistedPatientRequestLifecycleState,
+} from './patientRequestLifecyclePolicy.js';
+
 export const CONTROLLED_CHAT_CONTRACT_VERSION = 'controlled-pro-chat-v1';
 export const CONTROLLED_CHAT_MESSAGE_CONTRACT_VERSION = 'controlled-chat-message-v1';
 export const CONTROLLED_CHAT_REQUIRED_DISTRIBUTION_CONSENT_VERSION = 'patient-request-distribution-top3-pro-v2';
@@ -36,8 +42,12 @@ export function validateControlledChatMessage(value) {
   return { valid: reasons.length === 0, reasons, body };
 }
 
-export function controlledChatEligibility({ lead, response, entitlement, contact, conversation = null }) {
+export function controlledChatEligibility({ request, lead, response, entitlement, contact, conversation = null }) {
   const reasons = [];
+  const lifecycleState = persistedPatientRequestLifecycleState(request);
+  if (!request || lifecycleState !== PATIENT_REQUEST_LIFECYCLE_STATES.ACTIVE || patientRequestHasExpired(request)) {
+    reasons.push('request_lifecycle_not_active');
+  }
   if (!lead || lead.delivery_state !== 'available') reasons.push('lead_not_available');
   if (lead && CLOSED_LEAD_STATUSES.has(lead.status)) reasons.push('lead_status_not_eligible');
   if (lead?.result_bucket_snapshot !== 'top3' || lead?.access_tier !== 'pro_full') reasons.push('lead_not_top3');
