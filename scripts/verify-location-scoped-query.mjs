@@ -66,12 +66,23 @@ const semanticSource = await readFile(new URL('../base44/functions/matchProvider
 const browseSource = await readFile(new URL('../base44/functions/browseDirectoryProviders/entry.ts', import.meta.url), 'utf8');
 const coverageSource = await readFile(new URL('../base44/functions/getPublicLocationsForSearch/entry.ts', import.meta.url), 'utf8');
 
-for (const source of [deterministicSource, semanticSource, browseSource]) {
+for (const source of [deterministicSource, browseSource]) {
   assert.match(source, /loadPublicLocationsForLocality/);
   assert.match(source, /loadRowsForLocationIds/);
   assert.match(source, /query_scope: 'locality'/);
   assert.doesNotMatch(source, /ProviderLocation\.filter\(\{ status: 'publicata' \}, null, (?:500|1000)\)/);
 }
+
+assert.match(semanticSource, /loadPublicLocationsForLocality/);
+assert.match(semanticSource, /loadRowsForLocationIds/);
+assert.match(semanticSource, /function patientSearchScope\(value\)/);
+assert.match(semanticSource, /value === 'county' \? 'county' : 'locality'/);
+assert.match(semanticSource, /query_scope: queryScope/);
+assert.match(semanticSource, /queryScope !== 'county'/);
+assert.match(semanticSource, /county_code: countyCode/);
+assert.match(semanticSource, /svc\.entities\.GeographicLocality\.filter/);
+assert.doesNotMatch(semanticSource, /ProviderLocation\.filter\(\{ status: 'publicata' \}, null, (?:500|1000|5000)\)/);
+assert.doesNotMatch(semanticSource, /query_scope: 'national'/);
 
 assert.doesNotMatch(deterministicSource, /LocationService\.list\(null, 2000\)/);
 assert.doesNotMatch(semanticSource, /LocationService\.list\(null, 5000\)/);
