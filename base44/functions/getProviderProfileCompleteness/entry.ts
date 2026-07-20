@@ -18,10 +18,12 @@ function normalizeRole(role) {
 async function authorize(svc, user, locationId) {
   const location = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
   if (!location) return { error: 'Locatia nu a fost gasita.', status: 404 };
-  if (user.role === 'admin') return { location };
-  const memberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, location_id: locationId, status: 'active' }, '-created_date', 20);
-  if (!memberships.some((membership) => normalizeRole(membership.role))) return { error: 'Nu ai acces la aceasta locatie.', status: 403 };
-  return { location };
+  if (user.role === 'admin') return { location, memberships: [] };
+  const memberships = await svc.entities.ProviderMembership.filter({ user_id: user.id, status: 'active' }, '-created_date', 500);
+  if (!memberships.some((membership) => membership.location_id === locationId && normalizeRole(membership.role))) {
+    return { error: 'Nu ai acces la aceasta locatie.', status: 403 };
+  }
+  return { location, memberships };
 }
 
 async function contentSummary(svc, location) {
@@ -40,6 +42,10 @@ async function contentSummary(svc, location) {
   };
 }
 
+function locationLabel(location) {
+  return location.public_display_name || location.name || 'Locatie';
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -55,17 +61,42 @@ Deno.serve(async (req) => {
     const organization = location.organization_id
       ? await svc.entities.ProviderOrganization.get(location.organization_id).catch(() => null)
       : null;
-    const content = await contentSummary(svc, location);
+
+    const organizationLocations = location.organization_id
+      ? await svc.entities.ProviderLocation.filter({ organization_id: location.organization_id }, 'public_display_name', 200)
+      : [location];
+    const accessibleLocationIds = user.role === 'admin'
+      ? new Set(organizationLocations.map((item) => item.id))
+      : new Set((authorized.memberships || [])
+        .filter((membership) => normalizeRole(membership.role))
+        .map((membership) => membership.location_id));
+    const accessibleLocations = organizationLocations.filter((item) => accessibleLocationIds.has(item.id));
+    if (!accessibleLocations.some((item) => item.id === location.id)) accessibleLocations.unshift(location);
+
+    const locationRows = await Promise.all(accessibleLocations.map(async (item) => {
+      const content = await contentSummary(svc, item);
+      const completion = computeLocationCompleteness({ location: item, content });
+      return {
+        id: item.id,
+        name: locationLabel(item),
+        locality: item.locality_name || item.city || '',
+        profile_control_status: item.profile_control_status || item.verification_state || '',
+        completion,
+      };
+    }));
+
+    const selectedRow = locationRows.find((item) => item.id === location.id) || locationRows[0];
     const organizationCompletion = computeOrganizationCompleteness(organization || {});
-    const locationCompletion = computeLocationCompleteness({ location, content });
     const summary = summarizeProviderCompleteness({
       organizationCompletion,
-      locationCompletions: [locationCompletion],
+      locationCompletions: locationRows.map((item) => item.completion),
     });
     return res({
+      selected_location_id: location.id,
       summary,
       organization: organizationCompletion,
-      location: locationCompletion,
+      location: selectedRow?.completion || computeLocationCompleteness({ location, content: {} }),
+      locations: locationRows,
     });
   } catch (_error) {
     return res({ error: 'Completarea profilului nu a putut fi calculata.' }, 500);
