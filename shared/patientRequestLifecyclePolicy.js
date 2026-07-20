@@ -70,6 +70,15 @@ export function persistedPatientRequestLifecycleState(request) {
   return PATIENT_REQUEST_LIFECYCLE_STATES.ACTIVE;
 }
 
+/**
+ * @param {{
+ *   request?: any,
+ *   leadCount?: number,
+ *   activeResponseCount?: number,
+ *   openConversationCount?: number,
+ *   now?: Date
+ * }} [options]
+ */
 export function derivePatientRequestLifecycle({
   request,
   leadCount = 0,
@@ -88,6 +97,7 @@ export function derivePatientRequestLifecycle({
     return { state: PATIENT_REQUEST_LIFECYCLE_STATES.EXPIRED, stage: PATIENT_REQUEST_LIFECYCLE_STAGES.EXPIRED, terminal: true };
   }
 
+  /** @type {string} */
   let stage = PATIENT_REQUEST_LIFECYCLE_STAGES.SUBMITTED;
   if (Number(openConversationCount) > 0) stage = PATIENT_REQUEST_LIFECYCLE_STAGES.CONVERSATION_ACTIVE;
   else if (Number(activeResponseCount) > 0) stage = PATIENT_REQUEST_LIFECYCLE_STAGES.HAS_RESPONSES;
