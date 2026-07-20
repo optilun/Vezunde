@@ -9,6 +9,11 @@ import {
   acquireContactShareApprovalLock,
   releaseContactShareApprovalLock,
 } from '../../../shared/contactShareApprovalLock.js';
+import {
+  PATIENT_REQUEST_LIFECYCLE_STATES,
+  patientRequestHasExpired,
+  persistedPatientRequestLifecycleState,
+} from '../../../shared/patientRequestLifecyclePolicy.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -22,6 +27,11 @@ async function sha256(value) {
   const bytes = new TextEncoder().encode(String(value || ''));
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function requestAllowsPhoneApproval(request) {
+  return persistedPatientRequestLifecycleState(request) === PATIENT_REQUEST_LIFECYCLE_STATES.ACTIVE
+    && !patientRequestHasExpired(request);
 }
 
 async function authorizeRequest(svc, requestId, accessToken) {
@@ -60,6 +70,9 @@ function leadAllowsContactApproval(lead) {
 }
 
 async function approve(svc, request, contact, locationId) {
+  if (!requestAllowsPhoneApproval(request)) {
+    return { error: 'Cererea nu mai permite aprobarea numarului de telefon.', status: 409 };
+  }
   if (!clean(contact?.contact_phone, 32)) {
     return { error: 'Nu exista un numar de telefon asociat acestei cereri.', status: 409 };
   }
@@ -75,11 +88,15 @@ async function approve(svc, request, contact, locationId) {
   const lock = await acquireContactShareApprovalLock(svc, lead.id);
   if (!lock) return { error: 'Acordul este actualizat in alta sesiune. Reincearca.', status: 409 };
   try {
-    const [checkedLead, checkedResponse, checkedContact] = await Promise.all([
+    const [checkedRequest, checkedLead, checkedResponse, checkedContact] = await Promise.all([
+      svc.entities.PatientRequest.get(request.id).catch(() => null),
       findLead(svc, request.id, locationId),
       findActiveResponse(svc, request.id, locationId),
       svc.entities.PatientRequestContact.get(contact.id).catch(() => null),
     ]);
+    if (!checkedRequest || !requestAllowsPhoneApproval(checkedRequest)) {
+      return { error: 'Cererea nu mai permite aprobarea numarului de telefon.', status: 409 };
+    }
     if (!checkedContact || checkedContact.status !== 'active' || !clean(checkedContact.contact_phone, 32)) {
       return { error: 'Numarul de telefon nu mai este disponibil.', status: 409 };
     }
