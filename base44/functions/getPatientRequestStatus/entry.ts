@@ -5,6 +5,11 @@ import {
   sanitizePatientRequestStatus,
 } from '../../../shared/patientRequestStatusPolicy.js';
 import { maskPatientEmail } from '../../../shared/patientEmailVerificationPolicy.js';
+import {
+  IN_APP_NOTIFICATION_CONTRACT_VERSION,
+  sanitizeInAppNotification,
+  summarizeInAppNotifications,
+} from '../../../shared/inAppNotificationPolicy.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -12,6 +17,12 @@ function res(body, status = 200) {
 
 function clean(value, maxLength = 160) {
   return String(value || '').trim().slice(0, maxLength);
+}
+
+function boundedLimit(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 50;
+  return Math.max(1, Math.min(100, Math.floor(parsed)));
 }
 
 async function sha256(value) {
@@ -34,11 +45,63 @@ async function authorizeRequest(svc, requestId, accessToken) {
   return { request, contact };
 }
 
+function patientNotificationFilter(requestId) {
+  return {
+    recipient_type: 'patient_request',
+    recipient_ref_id: requestId,
+    request_id: requestId,
+  };
+}
+
+async function listPatientNotifications(svc, requestId, limit) {
+  const filter = patientNotificationFilter(requestId);
+  const [rows, allRows] = await Promise.all([
+    svc.entities.InAppNotification.filter(filter, '-created_date', boundedLimit(limit)),
+    svc.entities.InAppNotification.filter(filter, '-created_date', 500),
+  ]);
+  return {
+    notification_contract_version: IN_APP_NOTIFICATION_CONTRACT_VERSION,
+    counters: summarizeInAppNotifications(allRows),
+    notifications: rows.map(sanitizeInAppNotification),
+  };
+}
+
+async function markPatientNotificationRead(svc, requestId, notificationId) {
+  const notification = await svc.entities.InAppNotification.get(notificationId).catch(() => null);
+  if (!notification
+    || notification.recipient_type !== 'patient_request'
+    || notification.recipient_ref_id !== requestId
+    || notification.request_id !== requestId) {
+    return { error: 'Notificarea nu a fost gasita.', status: 404 };
+  }
+  const updated = notification.status === 'read'
+    ? notification
+    : await svc.entities.InAppNotification.update(notification.id, {
+      status: 'read',
+      read_at: new Date().toISOString(),
+    });
+  return { notification: sanitizeInAppNotification(updated) };
+}
+
+async function markAllPatientNotificationsRead(svc, requestId) {
+  const rows = await svc.entities.InAppNotification.filter({
+    ...patientNotificationFilter(requestId),
+    status: 'unread',
+  }, '-created_date', 500);
+  const now = new Date().toISOString();
+  await Promise.all(rows.map((row) => svc.entities.InAppNotification.update(row.id, {
+    status: 'read',
+    read_at: now,
+  })));
+  return { updated: rows.length };
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const svc = base44.asServiceRole;
     const input = await req.json().catch(() => ({}));
+    const action = clean(input.action || 'status', 40);
     const requestId = clean(input.request_id, 120);
     const accessToken = clean(input.request_access_token, 160);
     if (!requestId || !accessToken) return res({ error: 'request_id si tokenul de acces sunt obligatorii.' }, 400);
@@ -46,9 +109,28 @@ Deno.serve(async (req) => {
     const authorized = await authorizeRequest(svc, requestId, accessToken);
     if (authorized.error) return res({ error: authorized.error }, authorized.status);
 
-    const [rows, approvalRows] = await Promise.all([
+    if (action === 'notifications_list') {
+      return res(await listPatientNotifications(svc, requestId, input.limit));
+    }
+    if (action === 'notification_mark_read') {
+      const notificationId = clean(input.notification_id, 120);
+      if (!notificationId) return res({ error: 'notification_id este obligatoriu.' }, 400);
+      const result = await markPatientNotificationRead(svc, requestId, notificationId);
+      if (result.error) return res({ error: result.error }, result.status);
+      return res({ notification_contract_version: IN_APP_NOTIFICATION_CONTRACT_VERSION, ...result });
+    }
+    if (action === 'notifications_mark_all_read') {
+      return res({
+        notification_contract_version: IN_APP_NOTIFICATION_CONTRACT_VERSION,
+        ...(await markAllPatientNotificationsRead(svc, requestId)),
+      });
+    }
+    if (action !== 'status') return res({ error: 'Actiune necunoscuta.' }, 400);
+
+    const [rows, approvalRows, openConversations] = await Promise.all([
       svc.entities.ProviderLeadResponse.filter({ request_id: requestId, status: 'active' }, '-updated_date', 100),
       svc.entities.ContactShareApproval.filter({ request_id: requestId }, '-updated_date', 100),
+      svc.entities.PatientRequestConversation.filter({ request_id: requestId, status: 'open' }, '-updated_date', 100),
     ]);
     const approvalByLocation = new Map();
     for (const approval of approvalRows) {
@@ -76,7 +158,7 @@ Deno.serve(async (req) => {
       contact_phone_available: Boolean(clean(authorized.contact.contact_phone, 32)),
       phone_sharing_enabled: responses.some((response) => response.contact_share_status === 'approved'),
       contact_sharing_enabled: responses.some((response) => response.contact_share_status === 'approved'),
-      conversation_enabled: false,
+      conversation_enabled: openConversations.length > 0,
     });
   } catch (_error) {
     return res({ error: 'Statusul cererii nu a putut fi incarcat.' }, 500);
