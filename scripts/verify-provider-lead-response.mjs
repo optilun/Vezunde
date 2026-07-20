@@ -78,7 +78,7 @@ assert.ok(leadSchema.properties.last_response_at);
 assert.ok(leadSchema.properties.conversation_lock_token);
 
 const backend = await readFile(new URL('../base44/functions/providerLeadResponseOps/entry.ts', import.meta.url), 'utf8');
-const component = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInbox.jsx', import.meta.url), 'utf8');
+const component = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInboxLegacy.jsx', import.meta.url), 'utf8');
 const chatComponent = await readFile(new URL('../src/components/workspace/provider/ProviderLeadChat.jsx', import.meta.url), 'utf8');
 assert.match(backend, /base44\.auth\.me\(\)/);
 assert.match(backend, /ProviderMembership\.filter/);

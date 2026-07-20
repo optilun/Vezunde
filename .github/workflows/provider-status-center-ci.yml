@@ -1,0 +1,42 @@
+name: Provider Status Center
+
+on:
+  pull_request:
+    paths:
+      - 'shared/providerStatusCenter.js'
+      - 'src/components/workspace/provider/ProviderStatusCenter.jsx'
+      - 'src/components/workspace/provider/ProviderLeadInbox.jsx'
+      - 'scripts/verify-provider-status-center.mjs'
+      - '.github/workflows/provider-status-center-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Verify provider status center
+        run: node scripts/verify-provider-status-center.mjs
+      - name: Verify provider lead inbox
+        run: node scripts/verify-provider-lead-inbox-free.mjs
+      - name: Verify provider contact access
+        run: node scripts/verify-provider-contact-access-ui.mjs
+      - name: Verify controlled chat
+        run: node scripts/verify-controlled-pro-chat.mjs
+      - name: Verify in-app notifications
+        run: node scripts/verify-in-app-notification-center.mjs
+      - name: Verify services
+        run: npm run test:services
+      - name: Typecheck services
+        run: npm run typecheck:services
+      - name: Lint feature scope
+        run: npx eslint shared/providerStatusCenter.js src/components/workspace/provider/ProviderStatusCenter.jsx src/components/workspace/provider/ProviderLeadInbox.jsx scripts/verify-provider-status-center.mjs
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
