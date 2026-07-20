@@ -1,0 +1,51 @@
+name: Patient Intake Safety
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/patientSafety.js"
+      - "src/components/intake2/UrgencyInterruption.jsx"
+      - "src/components/intake2/QuestionText.jsx"
+      - "scripts/verify-patient-intake-safety.mjs"
+      - ".github/workflows/patient-intake-safety-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify patient intake safety
+        run: node scripts/verify-patient-intake-safety.mjs
+      - name: Verify patient search regressions
+        run: node scripts/verify-patient-search-flow.mjs
+      - name: Verify service regressions
+        run: npm run test:services
+      - name: Typecheck service scope
+        run: npm run typecheck:services
+      - name: Lint intake safety scope
+        run: >-
+          npx eslint
+          src/lib/patientSafety.js
+          src/components/intake2/UrgencyInterruption.jsx
+          src/components/intake2/QuestionText.jsx
+          scripts/verify-patient-intake-safety.mjs
+          --quiet
+      - name: Repository typecheck diagnostic
+        continue-on-error: true
+        run: npm run typecheck
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
