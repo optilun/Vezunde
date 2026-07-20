@@ -4,6 +4,7 @@
     "noEmit": true
   },
   "include": [
+    "../shared/patientSearchExpansion.js",
     "../src/lib/patientSearchExpansion.js",
     "../src/lib/patientRequestDraft.js",
     "../src/components/intake2/NoResultsFlow.jsx",
