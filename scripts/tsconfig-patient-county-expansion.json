@@ -1,0 +1,19 @@
+{
+  "extends": "../jsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "../src/lib/patientSearchExpansion.js",
+    "../src/lib/patientRequestDraft.js",
+    "../src/components/intake2/NoResultsFlow.jsx",
+    "../src/components/intake2/MatchResults.jsx",
+    "../src/components/intake2/QuestionLocation.jsx"
+  ],
+  "exclude": [
+    "../node_modules",
+    "../dist",
+    "../src/vite-plugins",
+    "../src/components/ui"
+  ]
+}
