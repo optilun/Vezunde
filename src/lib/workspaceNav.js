@@ -19,8 +19,10 @@ export function getProviderNav({
   canManageOrganizationProfile,
   canViewLocations,
   canManageRequests,
+  canManageMembers,
   canManageSettings,
 }) {
+  void canManageMembers;
   const nav = [
     { key: "overview", label: "Prezentare generala", icon: LayoutDashboard },
   ];
