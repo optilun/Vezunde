@@ -10,6 +10,7 @@ import LocationSwitcher from "./LocationSwitcher";
 const ProviderOverview = lazy(() => import("./ProviderOverview"));
 const ProviderProfilePublic = lazy(() => import("./ProviderProfilePublic"));
 const ProviderLocationsWithPhoto = lazy(() => import("./ProviderLocationsWithPhoto"));
+const ProviderLocationComparisonPanel = lazy(() => import("./ProviderLocationComparisonPanel"));
 const ProviderLocationModulePage = lazy(() => import("./ProviderLocationModulePage"));
 const ProviderLeadInbox = lazy(() => import("./ProviderLeadInbox"));
 const ProviderAccess = lazy(() => import("./ProviderAccess"));
@@ -409,14 +410,20 @@ export default function ProviderWorkspaceRoot({
             />
           )}
           {safeSection === "locations" && !activeLocationModule && (
-            <ProviderLocationsWithPhoto
-              workspace={scopedWorkspace}
-              selectedLocationId={selectedLocationId}
-              onSelect={selectLocation}
-              overview={overview}
-              onRefresh={refreshOverviewInPlace}
-              onOpenModule={openLocationModule}
-            />
+            <div className="space-y-8">
+              <ProviderLocationComparisonPanel
+                workspace={scopedWorkspace}
+                selectedLocationId={selectedLocationId}
+              />
+              <ProviderLocationsWithPhoto
+                workspace={scopedWorkspace}
+                selectedLocationId={selectedLocationId}
+                onSelect={selectLocation}
+                overview={overview}
+                onRefresh={refreshOverviewInPlace}
+                onOpenModule={openLocationModule}
+              />
+            </div>
           )}
           {safeSection === "leads" && canManageRequests && (
             <ProviderLeadInbox locationId={selectedLocationId} location={selectedLocation} />
