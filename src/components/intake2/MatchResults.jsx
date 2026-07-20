@@ -1,5 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
+import {
+  countyExpansionDraft,
+  matchProvidersInSelectedCounty,
+} from "@/lib/patientSearchExpansion";
+import {
+  readPatientRequestDraft,
+  storePatientRequestDraft,
+} from "@/lib/patientRequestPersistenceClient";
 import MatchResultCard from "./MatchResultCard";
 import NoResultsFlow from "./NoResultsFlow";
 import PatientRecoverySubmission from "./PatientRecoverySubmission";
@@ -7,6 +15,13 @@ import PatientRequestSubmission from "./PatientRequestSubmission";
 
 function RoutingNotice({ meta }) {
   if (!meta?.routing_mode) return null;
+  if (meta.routing_mode === "county" || meta.query_scope === "county") {
+    return (
+      <div className="mt-4 rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
+        Căutarea a fost extinsă la județul {meta.selected_county_name || "selectat"}, la cererea ta. Rezultatele din localitatea inițială și cele din restul județului sunt marcate separat.
+      </div>
+    );
+  }
   if (meta.routing_mode === "locality") {
     return (
       <div className="mt-4 rounded-2xl border border-border bg-secondary/40 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
@@ -24,24 +39,98 @@ function restartGuidedSearch() {
   window.location.assign(`/cerere${query ? `?${query}` : ""}`);
 }
 
+function metaFromExpandedResponse(data, previousMeta) {
+  return {
+    ...previousMeta,
+    recommendation_contract_version: data.recommendation_contract_version || previousMeta?.recommendation_contract_version || "legacy",
+    routing_mode: data.routing_mode || "county",
+    query_scope: data.query_scope || "county",
+    routing_reason: data.routing_reason || "",
+    coverage_status: data.coverage_status || null,
+    coverage_counts: data.coverage_counts || null,
+    need_level: data.need_level || previousMeta?.need_level || null,
+    resolved_intent: data.resolved_intent || previousMeta?.resolved_intent || null,
+    selected_locality_siruta_code: data.selected_locality_siruta_code || null,
+    selected_locality_name: data.selected_locality_name || null,
+    selected_county_code: data.selected_county_code || null,
+    selected_county_name: data.selected_county_name || null,
+    client_address_text: data.client_address_text || previousMeta?.client_address_text || "",
+    used_semantic_fallback: false,
+  };
+}
+
+function ResultScopeGroups({ items, queryScope, selectedCity, countyName }) {
+  if (queryScope !== "county") {
+    return (
+      <div className="space-y-3">
+        {items.map((location) => <MatchResultCard key={location.id} location={location} />)}
+      </div>
+    );
+  }
+
+  const local = items.filter((item) => item.expansion_tier === "oras");
+  const county = items.filter((item) => item.expansion_tier === "judet");
+  const other = items.filter((item) => !["oras", "judet"].includes(item.expansion_tier));
+
+  return (
+    <div className="space-y-6">
+      {local.length > 0 && (
+        <section>
+          <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.13em] text-muted-foreground">
+            În {selectedCity || "localitatea selectată"}
+          </div>
+          <div className="space-y-3">
+            {local.map((location) => <MatchResultCard key={location.id} location={location} />)}
+          </div>
+        </section>
+      )}
+      {county.length > 0 && (
+        <section>
+          <div className="mb-3 text-[11px] font-bold uppercase tracking-[0.13em] text-muted-foreground">
+            În restul județului {countyName || "selectat"}
+          </div>
+          <div className="space-y-3">
+            {county.map((location) => <MatchResultCard key={location.id} location={location} />)}
+          </div>
+        </section>
+      )}
+      {other.length > 0 && (
+        <div className="space-y-3">
+          {other.map((location) => <MatchResultCard key={location.id} location={location} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Module 3E: sections are driven STRICTLY by result_bucket from the backend.
 // Top 3 = result_bucket === "top3" only — never a positional slice.
 export default function MatchResults({ results, meta, onChangeLocation, onReviewCriteria }) {
   const [showMore, setShowMore] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [expandedSnapshot, setExpandedSnapshot] = useState(null);
+  const [isExpandingCounty, setIsExpandingCounty] = useState(false);
+  const [expansionError, setExpansionError] = useState("");
   const lastImpressionKey = useRef("");
-  const list = Array.isArray(results) ? results : [];
+  const activeMeta = expandedSnapshot?.meta || meta || {};
+  const list = Array.isArray(expandedSnapshot?.results)
+    ? expandedSnapshot.results
+    : (Array.isArray(results) ? results : []);
   const top3 = list.filter((result) => result.result_bucket === "top3");
   const confirmed = list.filter((result) => result.result_bucket === "extended_confirmed");
   const directory = list.filter((result) => result.result_bucket === "extended_directory");
   const moreCount = confirmed.length + directory.length;
   const recommendationState = top3.length === 0 && moreCount === 0 ? "empty" : (top3.length < 3 ? "insufficient" : "sufficient");
+  const queryScope = activeMeta.query_scope || activeMeta.routing_mode || "locality";
+  const storedDraft = readPatientRequestDraft();
+  const countyName = activeMeta.selected_county_name || storedDraft?.county || "";
+  const selectedCity = activeMeta.selected_locality_name || storedDraft?.city || "";
 
   useEffect(() => {
-    if (list.length === 0 && !meta?.coverage_status) return;
+    if (list.length === 0 && !activeMeta?.coverage_status) return;
     const impressionKey = list.length > 0
-      ? list.map((item) => `${item.id}:${item.result_bucket}:${item.bucket_rank}`).join("|")
-      : `empty:${meta?.coverage_status || "unknown"}`;
+      ? list.map((item) => `${item.id}:${item.result_bucket}:${item.bucket_rank}:${item.expansion_tier || "oras"}`).join("|")
+      : `empty:${activeMeta?.coverage_status || "unknown"}:${queryScope}`;
     if (!impressionKey || impressionKey === lastImpressionKey.current) return;
     lastImpressionKey.current = impressionKey;
     setFeedback(null);
@@ -50,25 +139,27 @@ export default function MatchResults({ results, meta, onChangeLocation, onReview
         eventName: "provider_recommendation_results_viewed",
         properties: {
           analytics_version: "patient-search-v1",
-          contract_version: meta?.recommendation_contract_version || list[0]?.recommendation_contract_version || "legacy",
-          coverage_status: meta?.coverage_status || "unknown",
+          contract_version: activeMeta?.recommendation_contract_version || list[0]?.recommendation_contract_version || "legacy",
+          coverage_status: activeMeta?.coverage_status || "unknown",
           recommendation_state: recommendationState,
-          need_level: meta?.need_level || "unknown",
-          resolved_intent: meta?.resolved_intent || "unknown",
-          used_semantic_fallback: meta?.used_semantic_fallback === true,
+          query_scope: queryScope,
+          need_level: activeMeta?.need_level || "unknown",
+          resolved_intent: activeMeta?.resolved_intent || "unknown",
+          used_semantic_fallback: activeMeta?.used_semantic_fallback === true,
           result_count: list.length,
           top3_count: top3.length,
           confirmed_count: confirmed.length,
           directory_count: directory.length,
-          local_provider_count: Number(meta?.coverage_counts?.local_provider_count) || 0,
-          configured_matching_provider_count: Number(meta?.coverage_counts?.configured_matching_provider_count) || 0,
-          eligible_provider_count: Number(meta?.coverage_counts?.eligible_provider_count) || 0,
+          local_provider_count: Number(activeMeta?.coverage_counts?.local_provider_count) || 0,
+          scope_provider_count: Number(activeMeta?.coverage_counts?.scope_provider_count) || 0,
+          configured_matching_provider_count: Number(activeMeta?.coverage_counts?.configured_matching_provider_count) || 0,
+          eligible_provider_count: Number(activeMeta?.coverage_counts?.eligible_provider_count) || 0,
         },
       });
     } catch (_error) {
       // Recommendation display must not depend on analytics.
     }
-  }, [confirmed.length, directory.length, list, meta, recommendationState, top3.length]);
+  }, [activeMeta, confirmed.length, directory.length, list, queryScope, recommendationState, top3.length]);
 
   const submitFeedback = (useful) => {
     if (feedback !== null) return;
@@ -78,9 +169,10 @@ export default function MatchResults({ results, meta, onChangeLocation, onReview
         eventName: "provider_recommendation_feedback_submitted",
         properties: {
           analytics_version: "patient-search-v1",
-          contract_version: meta?.recommendation_contract_version || list[0]?.recommendation_contract_version || "legacy",
-          coverage_status: meta?.coverage_status || "unknown",
-          resolved_intent: meta?.resolved_intent || "unknown",
+          contract_version: activeMeta?.recommendation_contract_version || list[0]?.recommendation_contract_version || "legacy",
+          coverage_status: activeMeta?.coverage_status || "unknown",
+          resolved_intent: activeMeta?.resolved_intent || "unknown",
+          query_scope: queryScope,
           result_count: list.length,
           useful,
         },
@@ -98,7 +190,8 @@ export default function MatchResults({ results, meta, onChangeLocation, onReview
           analytics_version: "patient-search-v1",
           action,
           recommendation_state: recommendationState,
-          coverage_status: meta?.coverage_status || "unknown",
+          query_scope: queryScope,
+          coverage_status: activeMeta?.coverage_status || "unknown",
           result_count: list.length,
           top3_count: top3.length,
         },
@@ -110,18 +203,91 @@ export default function MatchResults({ results, meta, onChangeLocation, onReview
     else restartGuidedSearch();
   };
 
+  const expandCounty = async () => {
+    if (isExpandingCounty || queryScope === "county") return;
+    const draft = readPatientRequestDraft();
+    if (!draft) {
+      setExpansionError("Rezumatul cererii nu mai este disponibil. Reia căutarea.");
+      return;
+    }
+
+    setIsExpandingCounty(true);
+    setExpansionError("");
+    try {
+      base44.analytics.track({
+        eventName: "patient_search_county_expansion_started",
+        properties: {
+          analytics_version: "patient-search-v1",
+          expansion_version: "patient-county-expansion-v1",
+          original_coverage_status: activeMeta?.coverage_status || "unknown",
+          original_result_count: list.length,
+          county_code: draft.county_code || "unknown",
+        },
+      });
+    } catch (_error) {
+      // Expansion must not depend on analytics.
+    }
+
+    try {
+      const data = await matchProvidersInSelectedCounty(draft);
+      const nextDraft = countyExpansionDraft(draft, data);
+      storePatientRequestDraft(nextDraft);
+      const nextMeta = metaFromExpandedResponse(data, activeMeta);
+      setExpandedSnapshot({ results: Array.isArray(data.results) ? data.results : [], meta: nextMeta });
+      setShowMore(false);
+      try {
+        base44.analytics.track({
+          eventName: "patient_search_county_expansion_completed",
+          properties: {
+            analytics_version: "patient-search-v1",
+            expansion_version: "patient-county-expansion-v1",
+            coverage_status: data.coverage_status || "unknown",
+            result_count: data.results?.length || 0,
+            local_result_count: Number(data.coverage_counts?.local_eligible_provider_count) || 0,
+            county_result_count: Number(data.coverage_counts?.county_eligible_provider_count) || 0,
+          },
+        });
+      } catch (_error) {
+        // Expansion must not depend on analytics.
+      }
+    } catch (error) {
+      setExpansionError(error?.message || "Căutarea nu a putut fi extinsă în județ.");
+      try {
+        base44.analytics.track({
+          eventName: "patient_search_county_expansion_failed",
+          properties: {
+            analytics_version: "patient-search-v1",
+            expansion_version: "patient-county-expansion-v1",
+          },
+        });
+      } catch (_error) {
+        // Expansion must not depend on analytics.
+      }
+    } finally {
+      setIsExpandingCounty(false);
+    }
+  };
+
+  const expansionProps = {
+    countyName,
+    onExpandCounty: queryScope === "county" || !countyName ? undefined : expandCounty,
+    isExpandingCounty,
+    actionError: expansionError,
+  };
+
   if (top3.length === 0 && moreCount === 0) {
     return (
       <div>
         <NoResultsFlow
           mode="empty"
-          meta={meta}
+          meta={activeMeta}
           top3Count={0}
           directoryCount={0}
           onChangeLocation={() => runRecoveryAction("change_location", onChangeLocation)}
           onReviewCriteria={() => runRecoveryAction("review_criteria", onReviewCriteria)}
+          {...expansionProps}
         />
-        <PatientRecoverySubmission meta={meta} />
+        <PatientRecoverySubmission meta={activeMeta} />
       </div>
     );
   }
@@ -134,11 +300,11 @@ export default function MatchResults({ results, meta, onChangeLocation, onReview
         <>
           <h2 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">Cele mai potrivite opțiuni</h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Selectate pe baza serviciilor confirmate, relevanței căutării și verificării profilului în localitatea aleasă.
+            Selectate pe baza serviciilor confirmate, relevanței căutării și verificării profilului în aria aleasă.
           </p>
-          <RoutingNotice meta={meta} />
-          <div className="mt-5 space-y-3">
-            {top3.map((location) => <MatchResultCard key={location.id} location={location} />)}
+          <RoutingNotice meta={activeMeta} />
+          <div className="mt-5">
+            <ResultScopeGroups items={top3} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} />
           </div>
         </>
       )}
@@ -147,11 +313,12 @@ export default function MatchResults({ results, meta, onChangeLocation, onReview
         <div className={top3.length > 0 ? "mt-6" : ""}>
           <NoResultsFlow
             mode="insufficient"
-            meta={meta}
+            meta={activeMeta}
             top3Count={top3.length}
             directoryCount={directory.length}
             onChangeLocation={() => runRecoveryAction("change_location", onChangeLocation)}
             onReviewCriteria={() => runRecoveryAction("review_criteria", onReviewCriteria)}
+            {...expansionProps}
           />
         </div>
       )}
@@ -169,8 +336,8 @@ export default function MatchResults({ results, meta, onChangeLocation, onReview
       {expanded && confirmed.length > 0 && (
         <div className="mt-8">
           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Mai multe opțiuni relevante</div>
-          <div className="mt-3 space-y-3">
-            {confirmed.map((location) => <MatchResultCard key={location.id} location={location} />)}
+          <div className="mt-3">
+            <ResultScopeGroups items={confirmed} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} />
           </div>
         </div>
       )}
@@ -181,17 +348,17 @@ export default function MatchResults({ results, meta, onChangeLocation, onReview
           <p className="mt-1.5 text-xs text-muted-foreground">
             Aceste profiluri provin din surse publice. VIASEE nu a confirmat toate informațiile afișate.
           </p>
-          <div className="mt-3 space-y-3">
-            {directory.map((location) => <MatchResultCard key={location.id} location={location} />)}
+          <div className="mt-3">
+            <ResultScopeGroups items={directory} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} />
           </div>
         </div>
       )}
 
       <p className="mt-6 text-xs text-muted-foreground/80">
-        Ordinea reflectă serviciile confirmate, relevanța căutării și verificarea profilului. VIASEE nu oferă diagnostic medical.
+        Ordinea reflectă serviciile confirmate, relevanța căutării și verificarea profilului. Extinderea geografică nu modifică regulile de eligibilitate și VIASEE nu oferă diagnostic medical.
       </p>
 
-      <PatientRequestSubmission results={list} meta={meta} />
+      <PatientRequestSubmission results={list} meta={activeMeta} />
 
       <div className="mt-5 flex flex-col items-stretch gap-2 border-t border-border pt-4 sm:flex-row sm:items-center">
         {feedback === null ? (
