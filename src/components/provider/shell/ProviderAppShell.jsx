@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Menu, ExternalLink } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import ProviderSidebarContent from "./ProviderSidebarContent";
+import ProviderTeamHeaderAccess from "./ProviderTeamHeaderAccess";
 import "@/styles/workspace-mobile.css";
 
 export default function ProviderAppShell({
@@ -23,6 +24,7 @@ export default function ProviderAppShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const initials = (user?.full_name || "U").trim().charAt(0).toUpperCase();
   const profilePhotoUrl = user?.profile_photo_url || "";
+  const providerLocationId = publicProfileUrl.match(/^\/furnizor\/([^/?#]+)/)?.[1] || "";
   const activeLabel =
     navItems.find((item) => item.key === activeKey)?.label ||
     navItems[0]?.label ||
@@ -114,6 +116,12 @@ export default function ProviderAppShell({
             </div>
 
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+              {subtitle === "Spațiu furnizor" && (
+                <ProviderTeamHeaderAccess
+                  userId={user?.id || ""}
+                  locationId={providerLocationId}
+                />
+              )}
               {publicProfileUrl && (
                 <Link
                   to={publicProfileUrl}
