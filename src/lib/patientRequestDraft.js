@@ -75,6 +75,8 @@ export function buildPatientRequestDraft({
     service_keys: unique(safeState.serviceKeys),
     location_scope: clean(safeState.scope, 40) || "locality",
     city: clean(safeState.city, 120),
+    county: clean(safeState.locality?.county_name, 120),
+    county_code: clean(safeState.locality?.county_code, 10),
     locality_siruta_code: clean(safeState.locality?.siruta_code, 40),
     client_address_text: clean(safeState.clientAddressText, 240),
     for_whom: clean(answerByKey.pentru_cine, 40) || null,
