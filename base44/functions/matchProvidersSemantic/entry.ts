@@ -104,6 +104,43 @@ function toPublicService(row) {
   };
 }
 
+function patientSearchScope(value) {
+  return value === 'county' ? 'county' : 'locality';
+}
+
+function locationSirutaCode(location) {
+  return clean(location?.locality_siruta_code);
+}
+
+function expansionTier(location, selectedSirutaCode) {
+  return locationSirutaCode(location) === selectedSirutaCode ? 'oras' : 'judet';
+}
+
+function resultRoutingReason(tier, countyName) {
+  if (tier === 'oras') return 'Potrivire din localitatea selectata.';
+  return countyName
+    ? `Potrivire din alta localitate din judetul ${countyName}.`
+    : 'Potrivire din alta localitate din acelasi judet.';
+}
+
+async function resolveSelectedLocality(svc, sirutaCode) {
+  const rows = await svc.entities.GeographicLocality.filter({
+    siruta_code: sirutaCode,
+    is_active: true,
+  }, null, 2);
+  return rows[0] || null;
+}
+
+async function loadPublicLocationsForScope(svc, scope, selectedLocality, sirutaCode) {
+  if (scope !== 'county') return loadPublicLocationsForLocality(svc, sirutaCode);
+  const countyCode = clean(selectedLocality?.county_code);
+  if (!countyCode) return [];
+  return svc.entities.ProviderLocation.filter({
+    status: 'publicata',
+    county_code: countyCode,
+  }, 'name', 5000);
+}
+
 async function interpretPatientNeed(base44, payload, searchText, deterministicServiceKeys) {
   if (!searchText) {
     return {
@@ -186,6 +223,7 @@ Deno.serve(async (request) => {
 
     const sirutaCode = clean(payload.locality_siruta_code);
     const limit = Math.max(1, Math.min(Number(payload.limit) || 20, 50));
+    const queryScope = patientSearchScope(payload.query_scope);
 
     if (!sirutaCode) {
       return Response.json({
@@ -194,21 +232,54 @@ Deno.serve(async (request) => {
         resolved_service_keys: requestedKeys,
         semantic_resolution: semantic,
         need_level: requestNeedLevel(requestedKeys),
-        routing_mode: 'locality',
+        routing_mode: queryScope,
+        query_scope: queryScope,
         coverage_status: 'canonical_locality_required',
         selected_locality_siruta_code: null,
       });
     }
 
+    const selectedLocality = await resolveSelectedLocality(svc, sirutaCode);
+    if (!selectedLocality) {
+      return Response.json({
+        recommendation_contract_version: PROVIDER_RECOMMENDATION_CONTRACT_VERSION,
+        results: [],
+        resolved_service_keys: requestedKeys,
+        semantic_resolution: semantic,
+        need_level: requestNeedLevel(requestedKeys),
+        routing_mode: queryScope,
+        query_scope: queryScope,
+        coverage_status: 'canonical_locality_required',
+        selected_locality_siruta_code: sirutaCode,
+      });
+    }
+
+    const countyCode = clean(selectedLocality.county_code);
+    const countyName = clean(selectedLocality.county_name);
+    if (queryScope === 'county' && !countyCode) {
+      return Response.json({
+        recommendation_contract_version: PROVIDER_RECOMMENDATION_CONTRACT_VERSION,
+        results: [],
+        resolved_service_keys: requestedKeys,
+        semantic_resolution: semantic,
+        need_level: requestNeedLevel(requestedKeys),
+        routing_mode: 'county',
+        query_scope: 'county',
+        coverage_status: 'canonical_locality_required',
+        selected_locality_siruta_code: sirutaCode,
+      });
+    }
+
     const providerTypes = new Set(Array.isArray(payload.provider_types) ? payload.provider_types.filter(Boolean) : []);
-    const localityLocations = await loadPublicLocationsForLocality(svc, sirutaCode);
-    const localLocations = localityLocations.filter((location) => (
+    const scopeLocationRows = await loadPublicLocationsForScope(svc, queryScope, selectedLocality, sirutaCode);
+    const scopedLocations = scopeLocationRows.filter((location) => (
       active(location)
       && location.profile_control_status !== 'suspended'
       && PATIENT_FACING_PROFILE_TYPES.has(location.provider_profile_type)
       && (providerTypes.size === 0 || providerTypes.has(location.provider_type))
     ));
-    const locationIds = localLocations.map((location) => location.id).filter(Boolean);
+    const localLocations = scopedLocations.filter((location) => locationSirutaCode(location) === sirutaCode);
+    const locationIds = scopedLocations.map((location) => location.id).filter(Boolean);
 
     const [
       services,
@@ -245,9 +316,10 @@ Deno.serve(async (request) => {
     const needLevel = requestNeedLevel(requestedKeys);
     const intent = clean(payload.intent);
     let configuredMatchingProviderCount = 0;
+    let localConfiguredMatchingProviderCount = 0;
     const results = [];
 
-    for (const location of localLocations) {
+    for (const location of scopedLocations) {
       const locationRows = servicesByLocation[location.id] || [];
       const candidateRows = locationRows.filter((row) => {
         const canonicalKey = normalizeServiceKey(row.service_key).canonicalKey;
@@ -255,6 +327,7 @@ Deno.serve(async (request) => {
       });
       if (candidateRows.length === 0) continue;
       configuredMatchingProviderCount += 1;
+      if (locationSirutaCode(location) === sirutaCode) localConfiguredMatchingProviderCount += 1;
 
       const locationAssignments = assignmentsByLocation[location.id] || [];
       const locationProfessionals = locationAssignments
@@ -301,14 +374,15 @@ Deno.serve(async (request) => {
         profileControlStatus,
         availability: publicDisclosure.expose_full_details ? availability : null,
       });
+      const tier = expansionTier(location, sirutaCode);
 
       results.push({
         id: location.id,
         name: location.public_display_name || location.name,
         provider_type: location.provider_type,
         provider_profile_type: location.provider_profile_type,
-        city: location.city || null,
-        county: location.county || null,
+        city: location.locality_name || location.city || null,
+        county: location.county_name || location.county || null,
         address: publicDisclosure.address,
         phone: publicDisclosure.phone,
         website: publicDisclosure.website,
@@ -339,24 +413,34 @@ Deno.serve(async (request) => {
         }),
         recommendation_explanations: explanations,
         match_reasons: explanations.map((item) => item.label),
-        expansion_tier: 'oras',
-        routing_reason: 'Potrivire dupa localitatea selectata.',
+        expansion_tier: tier,
+        routing_reason: resultRoutingReason(tier, countyName),
         score: score.total,
       });
     }
 
     const bucketedResults = assignRecommendationBuckets(results, limit);
+    const localEligibleProviderCount = results.filter((result) => result.expansion_tier === 'oras').length;
+    const countyEligibleProviderCount = results.filter((result) => result.expansion_tier === 'judet').length;
     const coverageCounts = {
       local_provider_count: localLocations.length,
+      scope_provider_count: scopedLocations.length,
+      county_provider_count: queryScope === 'county' ? scopedLocations.length : 0,
       configured_matching_provider_count: configuredMatchingProviderCount,
+      local_configured_matching_provider_count: localConfiguredMatchingProviderCount,
       eligible_provider_count: results.length,
+      local_eligible_provider_count: localEligibleProviderCount,
+      county_eligible_provider_count: countyEligibleProviderCount,
       result_count: bucketedResults.length,
     };
     const coverageStatus = getRecommendationCoverageStatus({
       resultCount: coverageCounts.result_count,
-      localProviderCount: coverageCounts.local_provider_count,
+      localProviderCount: coverageCounts.scope_provider_count,
       configuredMatchingProviderCount: coverageCounts.configured_matching_provider_count,
     });
+    const routingReason = queryScope === 'county'
+      ? `Cautare extinsa explicit in judetul ${countyName || 'selectat'}.`
+      : 'Potrivire dupa localitatea selectata.';
 
     return Response.json({
       recommendation_contract_version: PROVIDER_RECOMMENDATION_CONTRACT_VERSION,
@@ -365,12 +449,16 @@ Deno.serve(async (request) => {
       semantic_resolution: semantic,
       need_level: needLevel,
       resolved_intent: intent || null,
-      routing_mode: 'locality',
-      query_scope: 'locality',
-      routing_reason: 'Potrivire dupa localitatea selectata.',
+      routing_mode: queryScope,
+      query_scope: queryScope,
+      routing_reason: routingReason,
       coverage_status: coverageStatus,
       coverage_counts: coverageCounts,
       selected_locality_siruta_code: sirutaCode,
+      selected_locality_name: clean(selectedLocality.name),
+      selected_county_code: countyCode || null,
+      selected_county_name: countyName || null,
+      client_address_text: clean(payload.client_address_text),
     });
   } catch (error) {
     return Response.json({
