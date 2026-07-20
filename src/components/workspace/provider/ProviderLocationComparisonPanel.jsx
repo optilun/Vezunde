@@ -212,7 +212,7 @@ export default function ProviderLocationComparisonPanel({ workspace, selectedLoc
                 Prima locație selectată este folosită ca reper vizual.
               </p>
             </div>
-            <span className="text-xs font-semibold text-muted-foreground">{selectedIds.length} selectate</span>
+            <span className="text-xs font-semibold text-muted-foreground">{selectedLocations.length} selectate</span>
           </div>
 
           <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
