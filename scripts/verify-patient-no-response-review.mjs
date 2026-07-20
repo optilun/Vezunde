@@ -88,6 +88,7 @@ assert.equal(waitingPatch.no_response_next_review_at, "2026-07-05T10:00:00.000Z"
 assert.equal(Object.hasOwn(waitingPatch, "lifecycle_state"), false);
 assert.equal(Object.hasOwn(waitingPatch, "status"), false);
 
+const policy = await readFile(new URL("../shared/patientNoResponseReview.js", import.meta.url), "utf8");
 const backend = await readFile(new URL("../base44/functions/getPatientRequestStatus/entry.ts", import.meta.url), "utf8");
 const entity = await readFile(new URL("../base44/entities/PatientRequest.jsonc", import.meta.url), "utf8");
 const panel = await readFile(new URL("../src/components/intake2/PatientNoResponseReviewPanel.jsx", import.meta.url), "utf8");
@@ -100,8 +101,8 @@ assert.match(backend, /no_response_review: noResponseReview/);
 assert.match(backend, /action === 'no_response_keep_waiting'/);
 assert.match(backend, /ProviderLead\.filter/);
 assert.match(backend, /patientNoResponseKeepWaitingPatch/);
-assert.doesNotMatch(backend, /no_response_keep_waiting[\s\S]{0,500}authorizePatientRequestDistribution/);
-assert.doesNotMatch(backend, /no_response_keep_waiting[\s\S]{0,500}transitionPatientRequestLifecycle/);
+assert.match(policy, /automatic_transition: false/);
+assert.doesNotMatch(policy, /authorizePatientRequestDistribution|transitionPatientRequestLifecycle|ProviderLead\.create/);
 
 assert.match(entity, /no_response_review_contract_version/);
 assert.match(entity, /no_response_next_review_at/);
@@ -119,7 +120,7 @@ assert.match(client, /sessionStorage/);
 assert.match(client, /no_response_keep_waiting/);
 assert.match(client, /patient-request-reformulation-v1/);
 assert.doesNotMatch(client, /contact_email|contact_phone|access_token/);
-assert.match(flow, /React\.useState\(\(\) => reformulationId/);
+assert.match(flow, /React\.useState\(\(\) =>[\s\S]{0,100}readPatientRequestReformulation/);
 assert.match(flow, /PatientCountyReformulation/);
 assert.match(countyFlow, /query_scope: "county"/);
 assert.match(countyFlow, /data\.query_scope !== "county"/);
