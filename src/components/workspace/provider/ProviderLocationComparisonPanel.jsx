@@ -16,14 +16,12 @@ import { base44 } from "@/api/base44Client";
 import { SERVICE_GROUPS } from "@/lib/canonicalServiceCatalog";
 
 const MAX_LOCATIONS = 6;
-
 const CONTROL_LABELS = {
   directory: "Nerevendicată",
   claimed: "Revendicată",
   verified: "Verificată",
   suspended: "Suspendată",
 };
-
 const SUBMISSION_LABELS = {
   draft: "Draft",
   pending_review: "În verificare",
@@ -44,18 +42,15 @@ function initialSelection(locations, selectedLocationId) {
   return [first, second].filter(Boolean);
 }
 
-function metricTone(value, empty = false) {
-  if (empty) return "border-amber-200 bg-amber-50 text-amber-900";
-  if (Number(value) > 0) return "border-green-200 bg-green-50 text-green-900";
-  return "border-border bg-secondary/40 text-foreground";
-}
-
-function Metric({ icon: Icon, label, value, helper, empty = false }) {
+function Metric({ icon: Icon, label, value, helper = "", empty = false }) {
+  const tone = empty
+    ? "border-amber-200 bg-amber-50 text-amber-900"
+    : Number(value) > 0
+      ? "border-green-200 bg-green-50 text-green-900"
+      : "border-border bg-secondary/40 text-foreground";
   return (
-    <div className={`rounded-2xl border p-3 ${metricTone(value, empty)}`}>
-      <div className="flex items-center gap-2 text-[11px] font-semibold opacity-75">
-        <Icon className="h-3.5 w-3.5" /> {label}
-      </div>
+    <div className={`rounded-2xl border p-3 ${tone}`}>
+      <div className="flex items-center gap-2 text-[11px] font-semibold opacity-75"><Icon className="h-3.5 w-3.5" /> {label}</div>
       <div className="mt-1 text-lg font-extrabold">{value}</div>
       {helper && <div className="mt-0.5 text-[10px] leading-relaxed opacity-75">{helper}</div>}
     </div>
@@ -64,13 +59,9 @@ function Metric({ icon: Icon, label, value, helper, empty = false }) {
 
 function AvailabilityMark({ available }) {
   return available ? (
-    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-green-800" aria-label="Disponibil">
-      <Check className="h-3.5 w-3.5" />
-    </span>
+    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-green-800" aria-label="Disponibil"><Check className="h-3.5 w-3.5" /></span>
   ) : (
-    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-muted-foreground" aria-label="Lipsește">
-      <Minus className="h-3.5 w-3.5" />
-    </span>
+    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-muted-foreground" aria-label="Lipsește"><Minus className="h-3.5 w-3.5" /></span>
   );
 }
 
@@ -103,19 +94,12 @@ export default function ProviderLocationComparisonPanel({ workspace, selectedLoc
     () => Object.fromEntries(locations.map((location) => [location.id, location])),
     [locations],
   );
-
-  const selectedLocations = selectedIds
-    .map((id) => locations.find((location) => location.id === id))
-    .filter(Boolean);
-
   const resultLocations = useMemo(() => {
-    const rows = comparison?.locations || [];
-    const byId = Object.fromEntries(rows.map((location) => [location.id, location]));
+    const byId = Object.fromEntries((comparison?.locations || []).map((location) => [location.id, location]));
     return selectedIds.map((id) => {
       const remote = byId[id];
       if (!remote) return null;
-      const local = workspaceLocationById[id] || {};
-      const localCompleteness = Number(local.profile_completeness);
+      const localCompleteness = Number(workspaceLocationById[id]?.profile_completeness);
       return {
         ...remote,
         profile_completeness: Number.isFinite(localCompleteness)
@@ -126,26 +110,16 @@ export default function ProviderLocationComparisonPanel({ workspace, selectedLoc
   }, [comparison, selectedIds, workspaceLocationById]);
 
   const serviceRows = useMemo(() => {
-    const map = new Map();
-    for (const location of resultLocations) {
-      for (const service of location.service_entries || []) {
-        if (!map.has(service.key)) map.set(service.key, service);
-      }
-    }
-    return [...map.values()]
-      .map((service) => {
-        const availability = Object.fromEntries(resultLocations.map((location) => [
-          location.id,
-          (location.service_entries || []).some((entry) => entry.key === service.key),
-        ]));
-        const values = Object.values(availability);
-        return {
-          ...service,
-          availability,
-          differs: values.some(Boolean) && values.some((value) => !value),
-        };
-      })
-      .filter((service) => !onlyDifferences || service.differs)
+    const services = new Map();
+    resultLocations.forEach((location) => (location.service_entries || []).forEach((service) => services.set(service.key, service)));
+    return [...services.values()].map((service) => {
+      const availability = Object.fromEntries(resultLocations.map((location) => [
+        location.id,
+        (location.service_entries || []).some((entry) => entry.key === service.key),
+      ]));
+      const values = Object.values(availability);
+      return { ...service, availability, differs: values.some(Boolean) && values.some((value) => !value) };
+    }).filter((service) => !onlyDifferences || service.differs)
       .sort((a, b) => `${a.group}:${a.label}`.localeCompare(`${b.group}:${b.label}`, "ro"));
   }, [onlyDifferences, resultLocations]);
 
@@ -160,8 +134,7 @@ export default function ProviderLocationComparisonPanel({ workspace, selectedLoc
     resetResult();
     setSelectedIds((current) => {
       if (current.includes(locationId)) return current.filter((id) => id !== locationId);
-      if (current.length >= MAX_LOCATIONS) return current;
-      return [...current, locationId];
+      return current.length >= MAX_LOCATIONS ? current : [...current, locationId];
     });
   };
 
@@ -171,9 +144,7 @@ export default function ProviderLocationComparisonPanel({ workspace, selectedLoc
     setError("");
     const response = await base44.functions.invoke("getProviderLocationComparison", {
       location_ids: selectedIds,
-    }).catch((requestError) => ({
-      data: { error: requestError.response?.data?.error || requestError.message },
-    }));
+    }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }));
     setLoading(false);
     if (response.data?.error) {
       setError(response.data.error);
@@ -184,20 +155,12 @@ export default function ProviderLocationComparisonPanel({ workspace, selectedLoc
 
   return (
     <section className="rounded-[22px] border border-foreground/15 bg-card shadow-[0_14px_40px_rgba(23,23,23,0.035)]">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-start justify-between gap-4 px-4 py-4 text-left sm:px-5"
-      >
+      <button type="button" onClick={() => setOpen((value) => !value)} className="flex w-full items-start justify-between gap-4 px-4 py-4 text-left sm:px-5">
         <span className="flex min-w-0 items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary">
-            <ArrowLeftRight className="h-4 w-4" />
-          </span>
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary"><ArrowLeftRight className="h-4 w-4" /></span>
           <span className="min-w-0">
             <strong className="block text-sm">Compară locațiile</strong>
-            <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-              Vezi diferențele de program, servicii, specialiști, fotografii și configurare. Instrumentul nu modifică datele.
-            </span>
+            <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Vezi diferențele de program, servicii, specialiști, fotografii și configurare. Instrumentul nu modifică datele.</span>
           </span>
         </span>
         <ChevronDown className={`mt-2 h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
@@ -208,11 +171,9 @@ export default function ProviderLocationComparisonPanel({ workspace, selectedLoc
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h3 className="text-sm font-bold">Alege între 2 și {MAX_LOCATIONS} locații</h3>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Prima locație selectată este folosită ca reper vizual.
-              </p>
+              <p className="mt-1 text-xs text-muted-foreground">Prima locație selectată este folosită ca reper vizual.</p>
             </div>
-            <span className="text-xs font-semibold text-muted-foreground">{selectedLocations.length} selectate</span>
+            <span className="text-xs font-semibold text-muted-foreground">{selectedIds.length} selectate</span>
           </div>
 
           <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -220,24 +181,14 @@ export default function ProviderLocationComparisonPanel({ workspace, selectedLoc
               const checked = selectedIds.includes(location.id);
               const index = selectedIds.indexOf(location.id);
               return (
-                <label
-                  key={location.id}
-                  className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-3.5 py-3 transition ${checked ? "border-foreground/35 bg-secondary/45" : "border-border bg-background hover:bg-secondary/20"}`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleLocation(location.id)}
-                    className="mt-0.5 h-4 w-4"
-                  />
+                <label key={location.id} className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-3.5 py-3 transition ${checked ? "border-foreground/35 bg-secondary/45" : "border-border bg-background hover:bg-secondary/20"}`}>
+                  <input type="checkbox" checked={checked} onChange={() => toggleLocation(location.id)} className="mt-0.5 h-4 w-4" />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
                       <strong className="truncate text-sm">{locationName(location)}</strong>
                       {index === 0 && <span className="rounded-full bg-foreground px-2 py-0.5 text-[9px] font-bold text-background">Reper</span>}
                     </span>
-                    <span className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground">
-                      <MapPin className="h-3 w-3 shrink-0" /> {locationPlace(location) || "Localitate necompletată"}
-                    </span>
+                    <span className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground"><MapPin className="h-3 w-3 shrink-0" /> {locationPlace(location) || "Localitate necompletată"}</span>
                   </span>
                 </label>
               );
@@ -245,32 +196,15 @@ export default function ProviderLocationComparisonPanel({ workspace, selectedLoc
           </div>
 
           {selectedIds.length < 2 && (
-            <div className="mt-4 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-900">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> Selectează cel puțin două locații pentru comparație.
-            </div>
+            <div className="mt-4 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-900"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> Selectează cel puțin două locații pentru comparație.</div>
           )}
 
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            <button
-              type="button"
-              onClick={loadComparison}
-              disabled={loading || selectedIds.length < 2}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-40 sm:w-auto"
-            >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeftRight className="h-4 w-4" />}
-              Generează comparația
+            <button type="button" onClick={loadComparison} disabled={loading || selectedIds.length < 2} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-40 sm:w-auto">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeftRight className="h-4 w-4" />} Generează comparația
             </button>
-            {comparison && (
-              <button
-                type="button"
-                onClick={resetResult}
-                className="min-h-11 rounded-full border border-border px-5 text-sm font-semibold hover:bg-secondary"
-              >
-                Modifică selecția
-              </button>
-            )}
+            {comparison && <button type="button" onClick={resetResult} className="min-h-11 rounded-full border border-border px-5 text-sm font-semibold hover:bg-secondary">Modifică selecția</button>}
           </div>
-
           {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 
           {comparison && resultLocations.length >= 2 && (
@@ -282,15 +216,10 @@ export default function ProviderLocationComparisonPanel({ workspace, selectedLoc
                     <article key={location.id} className="min-w-0 rounded-[22px] border border-border bg-background p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h4 className="truncate text-base font-extrabold">{location.name}</h4>
-                            {index === 0 && <span className="rounded-full bg-foreground px-2 py-0.5 text-[9px] font-bold text-background">Reper</span>}
-                          </div>
+                          <div className="flex flex-wrap items-center gap-2"><h4 className="truncate text-base font-extrabold">{location.name}</h4>{index === 0 && <span className="rounded-full bg-foreground px-2 py-0.5 text-[9px] font-bold text-background">Reper</span>}</div>
                           <p className="mt-1 truncate text-xs text-muted-foreground">{location.locality || "Localitate necompletată"}</p>
                         </div>
-                        <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold">
-                          {CONTROL_LABELS[location.profile_control_status] || location.profile_control_status}
-                        </span>
+                        <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold">{CONTROL_LABELS[location.profile_control_status] || location.profile_control_status}</span>
                       </div>
 
                       <div className="mt-4 grid grid-cols-2 gap-2">
@@ -301,28 +230,19 @@ export default function ProviderLocationComparisonPanel({ workspace, selectedLoc
                       </div>
 
                       <div className="mt-4 rounded-2xl border border-border px-3 py-3">
-                        <div className="flex items-center justify-between gap-3 text-xs font-semibold">
-                          <span>Completitudine profil</span>
-                          <span>{location.profile_completeness}%</span>
-                        </div>
-                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary">
-                          <div className="h-full rounded-full bg-foreground" style={{ width: `${Math.max(0, Math.min(100, location.profile_completeness))}%` }} />
-                        </div>
+                        <div className="flex items-center justify-between gap-3 text-xs font-semibold"><span>Completitudine profil</span><span>{location.profile_completeness}%</span></div>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-foreground" style={{ width: `${Math.max(0, Math.min(100, location.profile_completeness))}%` }} /></div>
                       </div>
 
                       <div className="mt-4 rounded-2xl border border-border px-3 py-3">
                         <div className="flex items-center gap-2 text-xs font-bold"><Clock3 className="h-3.5 w-3.5" /> Program public</div>
-                        <p className={`mt-2 text-xs leading-relaxed ${location.has_opening_hours ? "text-foreground" : "text-amber-800"}`}>
-                          {location.opening_hours || "Programul nu este configurat."}
-                        </p>
+                        <p className={`mt-2 text-xs leading-relaxed ${location.has_opening_hours ? "text-foreground" : "text-amber-800"}`}>{location.opening_hours || "Programul nu este configurat."}</p>
                       </div>
 
                       {missing.length > 0 && (
                         <div className="mt-4">
                           <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Lipsește din acoperirea comparată</div>
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {missing.map((item) => <span key={item.key} className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-900">{item.label}</span>)}
-                          </div>
+                          <div className="mt-2 flex flex-wrap gap-1.5">{missing.map((item) => <span key={item.key} className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-900">{item.label}</span>)}</div>
                         </div>
                       )}
                     </article>
@@ -332,22 +252,12 @@ export default function ProviderLocationComparisonPanel({ workspace, selectedLoc
 
               <section className="rounded-[22px] border border-border bg-background">
                 <div className="flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h4 className="text-sm font-extrabold">Diferențe între servicii</h4>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {comparison.service_summary.differing_count} diferențe · {comparison.service_summary.common_count} servicii comune
-                    </p>
-                  </div>
-                  <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold">
-                    <input type="checkbox" checked={onlyDifferences} onChange={(event) => setOnlyDifferences(event.target.checked)} className="h-4 w-4" />
-                    Doar diferențele
-                  </label>
+                  <div><h4 className="text-sm font-extrabold">Diferențe între servicii</h4><p className="mt-1 text-xs text-muted-foreground">{comparison.service_summary.differing_count} diferențe · {comparison.service_summary.common_count} servicii comune</p></div>
+                  <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={onlyDifferences} onChange={(event) => setOnlyDifferences(event.target.checked)} className="h-4 w-4" /> Doar diferențele</label>
                 </div>
 
                 {serviceRows.length === 0 ? (
-                  <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-                    {onlyDifferences ? "Locațiile au aceleași servicii canonice active." : "Nu există servicii canonice active de comparat."}
-                  </p>
+                  <p className="px-4 py-8 text-center text-sm text-muted-foreground">{onlyDifferences ? "Locațiile au aceleași servicii canonice active." : "Nu există servicii canonice active de comparat."}</p>
                 ) : (
                   <>
                     <div className="divide-y divide-border md:hidden">
@@ -355,50 +265,21 @@ export default function ProviderLocationComparisonPanel({ workspace, selectedLoc
                         <div key={service.key} className="px-4 py-4">
                           <div className="text-sm font-bold">{service.label}</div>
                           <div className="mt-1 text-[10px] text-muted-foreground">{SERVICE_GROUPS[service.group]?.label || service.group}</div>
-                          <div className="mt-3 grid gap-2">
-                            {resultLocations.map((location) => (
-                              <div key={location.id} className="flex items-center justify-between gap-3 rounded-xl bg-secondary/35 px-3 py-2">
-                                <span className="min-w-0 truncate text-xs font-semibold">{location.name}</span>
-                                <AvailabilityMark available={service.availability[location.id]} />
-                              </div>
-                            ))}
-                          </div>
+                          <div className="mt-3 grid gap-2">{resultLocations.map((location) => <div key={location.id} className="flex items-center justify-between gap-3 rounded-xl bg-secondary/35 px-3 py-2"><span className="min-w-0 truncate text-xs font-semibold">{location.name}</span><AvailabilityMark available={service.availability[location.id]} /></div>)}</div>
                         </div>
                       ))}
                     </div>
-
                     <div className="hidden overflow-x-auto md:block">
-                      <table className="min-w-[760px] w-full border-collapse text-left">
-                        <thead>
-                          <tr className="border-b border-border bg-secondary/25 text-[11px] text-muted-foreground">
-                            <th className="px-4 py-3 font-semibold">Serviciu</th>
-                            {resultLocations.map((location) => <th key={location.id} className="px-3 py-3 text-center font-semibold">{location.name}</th>)}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                          {serviceRows.map((service) => (
-                            <tr key={service.key}>
-                              <td className="px-4 py-3">
-                                <div className="text-sm font-semibold">{service.label}</div>
-                                <div className="mt-0.5 text-[10px] text-muted-foreground">{SERVICE_GROUPS[service.group]?.label || service.group}</div>
-                              </td>
-                              {resultLocations.map((location) => (
-                                <td key={location.id} className="px-3 py-3 text-center">
-                                  <AvailabilityMark available={service.availability[location.id]} />
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
+                      <table className="w-full min-w-[760px] border-collapse text-left">
+                        <thead><tr className="border-b border-border bg-secondary/25 text-[11px] text-muted-foreground"><th className="px-4 py-3 font-semibold">Serviciu</th>{resultLocations.map((location) => <th key={location.id} className="px-3 py-3 text-center font-semibold">{location.name}</th>)}</tr></thead>
+                        <tbody className="divide-y divide-border">{serviceRows.map((service) => <tr key={service.key}><td className="px-4 py-3"><div className="text-sm font-semibold">{service.label}</div><div className="mt-0.5 text-[10px] text-muted-foreground">{SERVICE_GROUPS[service.group]?.label || service.group}</div></td>{resultLocations.map((location) => <td key={location.id} className="px-3 py-3 text-center"><AvailabilityMark available={service.availability[location.id]} /></td>)}</tr>)}</tbody>
                       </table>
                     </div>
                   </>
                 )}
               </section>
 
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                Comparația este informativă și reflectă datele disponibile la momentul generării. Nu publică, nu copiază și nu modifică nicio locație.
-              </p>
+              <p className="text-xs leading-relaxed text-muted-foreground">Comparația este informativă și reflectă datele disponibile la momentul generării. Nu publică, nu copiază și nu modifică nicio locație.</p>
             </div>
           )}
         </div>
