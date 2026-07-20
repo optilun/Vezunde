@@ -1,0 +1,22 @@
+{
+  "extends": "../jsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "../shared/communicationEventCatalog.js",
+    "../shared/communicationDelivery.js",
+    "../shared/patientCommunicationNotifications.js",
+    "../shared/patientCommunicationProjection.js",
+    "../shared/inAppNotificationPolicy.js",
+    "../shared/inAppNotificationDelivery.js",
+    "../shared/inAppNotificationProjection.js",
+    "../shared/patientRequestLifecycleOps.js"
+  ],
+  "exclude": [
+    "../node_modules",
+    "../dist",
+    "../src/vite-plugins",
+    "../src/components/ui"
+  ]
+}
