@@ -68,8 +68,13 @@ assert.match(endpoint, /computeLocationCompleteness/);
 assert.match(endpoint, /ProviderMembership\.filter/);
 assert.match(panel, /nu modifica automat publicarea sau accesul locatiei/i);
 assert.match(panel, /Completarea profilului/);
+assert.match(panel, /\/contul-meu\?s=profile/);
+assert.match(panel, /\/contul-meu\?s=locations&location=/);
+assert.match(panel, /\/servicii/);
+assert.match(panel, /\/program/);
+assert.match(panel, /\/specialisti/);
 assert.match(inbox, /getProviderProfileCompleteness/);
 assert.match(inbox, /ProviderCompletenessPanel/);
 assert.doesNotMatch(endpoint, /ProviderLocation\.update|ProviderOrganization\.update/);
 
-console.log('Unified provider profile completeness contract verified.');
+console.log('Unified provider profile completeness contract and workspace links verified.');
