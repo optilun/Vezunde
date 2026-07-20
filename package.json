@@ -21,7 +21,7 @@
     "test:provider-location-identity": "node scripts/verify-provider-location-identity-resolution.mjs",
     "test:provider-invitation-delivery": "node scripts/verify-provider-invitation-delivery.mjs",
     "test:provider-logo-review": "node scripts/verify-provider-logo-review-status.mjs",
-    "test:provider-account-e2e": "node scripts/verify-provider-account-workflow-e2e.mjs",
+    "test:provider-account-e2e": "node scripts/verify-provider-account-workflow-e2e.mjs && node scripts/verify-provider-team-header-access.mjs",
     "test:account-loading": "node scripts/verify-account-workspace-loading.mjs",
     "test:provider-location-access": "node scripts/verify-provider-location-access-scope.mjs",
     "test:provider-context-url": "node scripts/verify-provider-context-url.mjs"
