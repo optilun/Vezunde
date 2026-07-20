@@ -6,10 +6,7 @@
   "include": [
     "../shared/patientSearchExpansion.js",
     "../src/lib/patientSearchExpansion.js",
-    "../src/lib/patientRequestDraft.js",
-    "../src/components/intake2/NoResultsFlow.jsx",
-    "../src/components/intake2/MatchResults.jsx",
-    "../src/components/intake2/QuestionLocation.jsx"
+    "../src/lib/patientRequestDraft.js"
   ],
   "exclude": [
     "../node_modules",
