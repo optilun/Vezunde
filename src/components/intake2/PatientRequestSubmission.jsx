@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import { BookmarkPlus, CheckCircle2, LockKeyhole, Send, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import PatientRequestEmailVerification from "./PatientRequestEmailVerification";
-import PatientRequestResponseStatus from "./PatientRequestResponseStatus";
+import RequestWorkspace from "./RequestWorkspace";
 import {
   authorizePatientRequestDistribution,
   createPatientRequestIdempotencyKey,
@@ -36,6 +36,7 @@ export default function PatientRequestSubmission({ results, meta }) {
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(null);
+  const [submittedDraft, setSubmittedDraft] = useState(null);
   const [emailVerified, setEmailVerified] = useState(false);
   const [distributionConsent, setDistributionConsent] = useState(false);
   const [isDistributing, setIsDistributing] = useState(false);
@@ -85,6 +86,7 @@ export default function PatientRequestSubmission({ results, meta }) {
         results,
         meta,
       });
+      setSubmittedDraft(draft);
       setSuccess(data);
       setEmailVerified(false);
       track("patient_request_saved", {
@@ -131,89 +133,96 @@ export default function PatientRequestSubmission({ results, meta }) {
 
   if (success) {
     return (
-      <div className="mt-7 rounded-2xl border border-primary/20 bg-primary/5 p-5">
-        <div className="flex items-start gap-3">
-          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-          <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-bold text-foreground">Cererea a fost salvată</h3>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-              Referință: <span className="font-semibold text-foreground">{success.public_reference || "indisponibilă"}</span>
-            </p>
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Telefonul nu a fost transmis niciunui furnizor.
-            </p>
+      <>
+        <div className="mt-7 rounded-2xl border border-primary/20 bg-primary/5 p-5">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-bold text-foreground">Cererea a fost salvată</h3>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                Referință: <span className="font-semibold text-foreground">{success.public_reference || "indisponibilă"}</span>
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                Telefonul nu a fost transmis niciunui furnizor.
+              </p>
 
-            {hasEmail ? (
-              <PatientRequestEmailVerification
-                requestId={success.request_id}
-                accessToken={success.request_access_token || ""}
-                onVerified={setEmailVerified}
-              />
-            ) : (
-              <div className="mt-5 rounded-xl border border-border bg-background p-4 text-xs leading-relaxed text-muted-foreground">
-                Ai ales să continui doar cu telefonul. Adresa de email nu va fi afișată locațiilor. Telefonul rămâne ascuns până la acordul tău separat pentru fiecare locație.
-              </div>
-            )}
-
-            {!distributionResult ? (
-              <div className="mt-5 border-t border-primary/15 pt-5">
-                <h4 className="text-sm font-bold text-foreground">Trimite cererea către locațiile relevante</h4>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  Toate locațiile eligibile văd un rezumat anonim. Doar locațiile Pro din Top 3 pot vedea numele, mesajul detaliat și emailul verificat. Telefonul rămâne ascuns și poate fi oferit ulterior numai cu acord separat pentru locația care îl solicită.
-                </p>
-                {hasEmail && !emailVerified && (
-                  <p className="mt-3 rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900">
-                    Poți trimite cererea și înainte de confirmarea emailului, dar adresa va rămâne ascunsă locațiilor până când o verifici.
-                  </p>
-                )}
-                <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background p-4">
-                  <input
-                    type="checkbox"
-                    checked={distributionConsent}
-                    onChange={(event) => setDistributionConsent(event.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-border"
-                  />
-                  <span className="text-xs leading-relaxed text-muted-foreground">
-                    Sunt de acord ca VIASEE să distribuie rezumatul cererii locațiilor eligibile și să permită locațiilor Pro din Top 3 accesul la numele meu, mesajul detaliat și emailul verificat. Numărul de telefon rămâne ascuns.
-                  </span>
-                </label>
-                {distributionError && (
-                  <p role="alert" className="mt-3 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-xs text-destructive">
-                    {distributionError}
-                  </p>
-                )}
-                <button
-                  type="button"
-                  disabled={isDistributing}
-                  onClick={distribute}
-                  className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-                >
-                  <Send className="h-4 w-4" />
-                  {isDistributing ? "Pregătim cererea..." : "Trimite cererea"}
-                </button>
-              </div>
-            ) : (
-              <div className="mt-5 rounded-xl border border-primary/20 bg-background p-4">
-                <p className="text-sm font-semibold text-foreground">
-                  {Number(distributionResult.lead_count) > 0
-                    ? `Cererea este disponibilă pentru ${distributionResult.lead_count} locații eligibile.`
-                    : "Momentan nu există locații eligibile pentru distribuire."}
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  {Number(distributionResult.top3_full_detail_count) > 0
-                    ? `${distributionResult.top3_full_detail_count} locații din Top 3 pot primi detaliile complete dacă au plan Pro.`
-                    : "Nicio locație din lotul actual nu are acces la detaliile complete."}
-                  {" "}Telefonul rămâne ascuns.
-                </p>
-                <PatientRequestResponseStatus
+              {hasEmail ? (
+                <PatientRequestEmailVerification
                   requestId={success.request_id}
                   accessToken={success.request_access_token || ""}
+                  onVerified={setEmailVerified}
                 />
-              </div>
-            )}
+              ) : (
+                <div className="mt-5 rounded-xl border border-border bg-background p-4 text-xs leading-relaxed text-muted-foreground">
+                  Ai ales să continui doar cu telefonul. Adresa de email nu va fi afișată locațiilor. Telefonul rămâne ascuns până la acordul tău separat pentru fiecare locație.
+                </div>
+              )}
+
+              {!distributionResult ? (
+                <div className="mt-5 border-t border-primary/15 pt-5">
+                  <h4 className="text-sm font-bold text-foreground">Trimite cererea către locațiile relevante</h4>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Toate locațiile eligibile văd un rezumat anonim. Doar locațiile Pro din Top 3 pot vedea numele, mesajul detaliat și emailul verificat. Telefonul rămâne ascuns și poate fi oferit ulterior numai cu acord separat pentru locația care îl solicită.
+                  </p>
+                  {hasEmail && !emailVerified && (
+                    <p className="mt-3 rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900">
+                      Poți trimite cererea și înainte de confirmarea emailului, dar adresa va rămâne ascunsă locațiilor până când o verifici.
+                    </p>
+                  )}
+                  <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-background p-4">
+                    <input
+                      type="checkbox"
+                      checked={distributionConsent}
+                      onChange={(event) => setDistributionConsent(event.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-border"
+                    />
+                    <span className="text-xs leading-relaxed text-muted-foreground">
+                      Sunt de acord ca VIASEE să distribuie rezumatul cererii locațiilor eligibile și să permită locațiilor Pro din Top 3 accesul la numele meu, mesajul detaliat și emailul verificat. Numărul de telefon rămâne ascuns.
+                    </span>
+                  </label>
+                  {distributionError && (
+                    <p role="alert" className="mt-3 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-xs text-destructive">
+                      {distributionError}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    disabled={isDistributing}
+                    onClick={distribute}
+                    className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                  >
+                    <Send className="h-4 w-4" />
+                    {isDistributing ? "Pregătim cererea..." : "Trimite cererea"}
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-5 rounded-xl border border-primary/20 bg-background p-4">
+                  <p className="text-sm font-semibold text-foreground">
+                    {Number(distributionResult.lead_count) > 0
+                      ? `Cererea este disponibilă pentru ${distributionResult.lead_count} locații eligibile.`
+                      : "Momentan nu există locații eligibile pentru distribuire."}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Locațiile sunt vizibile mai jos imediat. Răspunsurile și conversațiile apar separat pentru fiecare locație. Telefonul rămâne ascuns.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+
+        {distributionResult && (
+          <RequestWorkspace
+            requestId={success.request_id}
+            accessToken={success.request_access_token || ""}
+            publicReference={success.public_reference || ""}
+            results={Array.isArray(results) ? results : []}
+            meta={meta}
+            requestDraft={submittedDraft}
+            detailedMessage={detailedMessage}
+          />
+        )}
+      </>
     );
   }
 
