@@ -14,6 +14,7 @@ on:
       - "src/components/admin/review/AdminPatientRequestRecoveryQueue.jsx"
       - "src/components/admin/review/AdminReviewQueue.jsx"
       - "scripts/verify-patient-request-recovery.mjs"
+      - "scripts/tsconfig-recovery.json"
       - ".github/workflows/patient-request-recovery-ci.yml"
 
 permissions:
@@ -41,6 +42,8 @@ jobs:
         run: npm run test:services
       - name: Typecheck service scope
         run: npm run typecheck:services
+      - name: Typecheck recovery policy
+        run: npx tsc -p scripts/tsconfig-recovery.json
       - name: Lint recovery scope
         run: >-
           npx eslint
@@ -55,8 +58,6 @@ jobs:
           src/components/admin/review/AdminReviewQueue.jsx
           scripts/verify-patient-request-recovery.mjs
           --quiet
-      - name: Repository typecheck
-        run: npm run typecheck
       - name: Repository lint
         run: npm run lint
       - name: Build
