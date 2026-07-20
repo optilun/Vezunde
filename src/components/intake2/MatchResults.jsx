@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import MatchResultCard from "./MatchResultCard";
 import NoResultsFlow from "./NoResultsFlow";
+import PatientRecoverySubmission from "./PatientRecoverySubmission";
 import PatientRequestSubmission from "./PatientRequestSubmission";
 
 function RoutingNotice({ meta }) {
@@ -111,14 +112,17 @@ export default function MatchResults({ results, meta, onChangeLocation, onReview
 
   if (top3.length === 0 && moreCount === 0) {
     return (
-      <NoResultsFlow
-        mode="empty"
-        meta={meta}
-        top3Count={0}
-        directoryCount={0}
-        onChangeLocation={() => runRecoveryAction("change_location", onChangeLocation)}
-        onReviewCriteria={() => runRecoveryAction("review_criteria", onReviewCriteria)}
-      />
+      <div>
+        <NoResultsFlow
+          mode="empty"
+          meta={meta}
+          top3Count={0}
+          directoryCount={0}
+          onChangeLocation={() => runRecoveryAction("change_location", onChangeLocation)}
+          onReviewCriteria={() => runRecoveryAction("review_criteria", onReviewCriteria)}
+        />
+        <PatientRecoverySubmission meta={meta} />
+      </div>
     );
   }
 

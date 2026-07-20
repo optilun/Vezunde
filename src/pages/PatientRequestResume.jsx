@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Clipboard, KeyRound, Loader2, RefreshCw, Send, ShieldCheck } from "lucide-react";
+import { Check, Clipboard, KeyRound, Loader2, RefreshCw, SearchCheck, Send, ShieldCheck } from "lucide-react";
+import PatientRecoveryStatusCard from "@/components/intake2/PatientRecoveryStatusCard";
 import PatientRequestEmailVerification from "@/components/intake2/PatientRequestEmailVerification";
 import RequestWorkspace from "@/components/intake2/RequestWorkspace";
 import {
@@ -7,6 +8,7 @@ import {
   buildPatientRequestResumeUrl,
   getPatientRequestStatusByReference,
   readPatientRequestResumeAccess,
+  requestPatientRequestRecovery,
   storePatientRequestAccess,
   storePatientRequestResumeAccess,
 } from "@/lib/patientRequestPersistenceClient";
@@ -30,7 +32,9 @@ export default function PatientRequestResume({ publicReference }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [distributionConsent, setDistributionConsent] = useState(false);
+  const [recoveryConsent, setRecoveryConsent] = useState(false);
   const [distributing, setDistributing] = useState(false);
+  const [recovering, setRecovering] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
@@ -73,6 +77,8 @@ export default function PatientRequestResume({ publicReference }) {
 
   const requestId = snapshot?.request?.id || "";
   const workspace = snapshot?.workspace || {};
+  const results = Array.isArray(workspace.results) ? workspace.results : [];
+  const noResults = results.length === 0;
   const resumeUrl = useMemo(
     () => buildPatientRequestResumeUrl(publicReference, accessToken),
     [accessToken, publicReference],
@@ -92,6 +98,26 @@ export default function PatientRequestResume({ publicReference }) {
       setError(distributionError?.message || "Cererea nu a putut fi trimisa.");
     } finally {
       setDistributing(false);
+    }
+  };
+
+  const recover = async () => {
+    if (!recoveryConsent) {
+      setError("Este necesar acordul separat pentru verificarea interna.");
+      return;
+    }
+    setRecovering(true);
+    setError("");
+    try {
+      const data = await requestPatientRequestRecovery({
+        requestId,
+        explicitAccessToken: accessToken,
+      });
+      setSnapshot(data);
+    } catch (recoveryError) {
+      setError(recoveryError?.message || "Verificarea cererii nu a putut fi solicitata.");
+    } finally {
+      setRecovering(false);
     }
   };
 
@@ -132,6 +158,18 @@ export default function PatientRequestResume({ publicReference }) {
     );
   }
 
+  const workspaceView = (
+    <RequestWorkspace
+      requestId={requestId}
+      accessToken={accessToken}
+      publicReference={publicReference}
+      results={results}
+      meta={workspace.meta || null}
+      requestDraft={workspace.request_draft || null}
+      detailedMessage={workspace.detailed_message || ""}
+    />
+  );
+
   return (
     <div className="space-y-4">
       <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
@@ -160,7 +198,38 @@ export default function PatientRequestResume({ publicReference }) {
         />
       )}
 
-      {!snapshot.distribution_authorized ? (
+      {snapshot.recovery ? (
+        <>
+          <PatientRecoveryStatusCard recovery={snapshot.recovery} />
+          {workspaceView}
+        </>
+      ) : !snapshot.distribution_authorized && noResults ? (
+        <section className="rounded-[28px] border border-primary/20 bg-card p-5 sm:p-7">
+          <div className="flex items-start gap-3">
+            <SearchCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+            <div>
+              <h1 className="font-heading text-xl font-extrabold text-foreground">Solicita o verificare VIASEE</h1>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Cererea este salvata, dar cautarea automata nu a identificat rezultate. Poti solicita verificarea criteriilor si a datelor disponibile fara sa refaci formularul.
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                Cererea nu este trimisa automat furnizorilor, iar verificarea nu promite identificarea unei locatii sau un termen de raspuns.
+              </p>
+            </div>
+          </div>
+          <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+            <input type="checkbox" checked={recoveryConsent} onChange={(event) => setRecoveryConsent(event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-border" />
+            <span className="text-xs leading-relaxed text-muted-foreground">
+              Solicit verificarea interna a cererii si a datelor din director. Inteleg ca nicio locatie nu primeste automat cererea.
+            </span>
+          </label>
+          {error && <p role="alert" className="mt-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-xs text-destructive">{error}</p>}
+          <button type="button" disabled={recovering} onClick={() => void recover()} className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-60">
+            {recovering ? <Loader2 className="h-4 w-4 animate-spin" /> : <SearchCheck className="h-4 w-4" />}
+            {recovering ? "Solicitam verificarea..." : "Solicita verificarea"}
+          </button>
+        </section>
+      ) : !snapshot.distribution_authorized ? (
         <section className="rounded-[28px] border border-primary/20 bg-card p-5 sm:p-7">
           <div className="flex items-start gap-3">
             <Send className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
@@ -183,17 +252,7 @@ export default function PatientRequestResume({ publicReference }) {
             {distributing ? "Pregatim cererea..." : "Trimite cererea"}
           </button>
         </section>
-      ) : (
-        <RequestWorkspace
-          requestId={requestId}
-          accessToken={accessToken}
-          publicReference={publicReference}
-          results={Array.isArray(workspace.results) ? workspace.results : []}
-          meta={workspace.meta || null}
-          requestDraft={workspace.request_draft || null}
-          detailedMessage={workspace.detailed_message || ""}
-        />
-      )}
+      ) : workspaceView}
     </div>
   );
 }

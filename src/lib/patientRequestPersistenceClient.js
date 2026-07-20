@@ -2,6 +2,7 @@ import { base44 } from "@/api/base44Client";
 
 export const PATIENT_REQUEST_PROCESSING_CONSENT_VERSION = "patient-request-processing-v1";
 export const PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION = "patient-request-distribution-top3-pro-v2";
+export const PATIENT_REQUEST_RECOVERY_CONSENT_VERSION = "patient-request-recovery-review-v1";
 const DRAFT_STORAGE_KEY = "viasee.patient_request_draft.v1";
 const ACCESS_STORAGE_PREFIX = "viasee.patient_request_access.";
 const RESUME_REFERENCE_PREFIX = "viasee.patient_request_resume.reference.";
@@ -169,6 +170,26 @@ export async function authorizePatientRequestDistribution(requestId, explicitAcc
     request_access_token: token,
     distribution_consent: true,
     consent_version: PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION,
+  });
+  const data = responseData(response);
+  const resume = readPatientRequestResumeAccessByRequestId(requestId);
+  if (resume?.public_reference) replaceWithPatientRequestResumeRoute(resume.public_reference);
+  return data;
+}
+
+export async function requestPatientRequestRecovery({
+  requestId,
+  coverageCounts = {},
+  explicitAccessToken = "",
+}) {
+  const token = resolveRequestAccessToken(requestId, explicitAccessToken);
+  const response = await base44.functions.invoke("getPatientRequestStatus", {
+    action: "recovery_request",
+    request_id: requestId,
+    request_access_token: token,
+    recovery_consent: true,
+    recovery_consent_version: PATIENT_REQUEST_RECOVERY_CONSENT_VERSION,
+    coverage_counts: coverageCounts,
   });
   const data = responseData(response);
   const resume = readPatientRequestResumeAccessByRequestId(requestId);

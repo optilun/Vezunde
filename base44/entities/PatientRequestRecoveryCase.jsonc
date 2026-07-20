@@ -1,0 +1,36 @@
+{
+  "name": "PatientRequestRecoveryCase",
+  "type": "object",
+  "properties": {
+    "contract_version": { "type": "string" },
+    "request_id": { "type": "string" },
+    "public_reference": { "type": "string" },
+    "trigger": { "type": "string" },
+    "reason": { "type": "string" },
+    "status": { "type": "string", "default": "queued" },
+    "outcome": { "type": "string", "default": "pending" },
+    "intent": { "type": "string" },
+    "service_keys": { "type": "array", "items": { "type": "string" } },
+    "city": { "type": "string" },
+    "county": { "type": "string" },
+    "coverage_status": { "type": "string" },
+    "local_provider_count": { "type": "number", "default": 0 },
+    "configured_matching_provider_count": { "type": "number", "default": 0 },
+    "eligible_provider_count": { "type": "number", "default": 0 },
+    "consent_version": { "type": "string" },
+    "consent_at": { "type": "string", "format": "date-time" },
+    "queued_at": { "type": "string", "format": "date-time" },
+    "review_started_at": { "type": "string", "format": "date-time" },
+    "completed_at": { "type": "string", "format": "date-time" },
+    "reviewed_by_user_id": { "type": "string" },
+    "patient_update": { "type": "string" },
+    "internal_note": { "type": "string" }
+  },
+  "required": ["contract_version", "request_id", "public_reference", "status", "consent_version"],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

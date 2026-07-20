@@ -1,0 +1,72 @@
+name: Patient Request Recovery
+
+on:
+  pull_request:
+    paths:
+      - "shared/patientRequestRecovery.js"
+      - "base44/entities/PatientRequestRecoveryCase.jsonc"
+      - "base44/functions/getPatientRequestStatus/entry.ts"
+      - "src/lib/patientRequestPersistenceClient.js"
+      - "src/components/intake2/PatientRecoveryStatusCard.jsx"
+      - "src/components/intake2/PatientRecoverySubmission.jsx"
+      - "src/components/intake2/MatchResults.jsx"
+      - "src/pages/PatientRequestResume.jsx"
+      - "src/components/admin/review/AdminPatientRequestRecoveryQueue.jsx"
+      - "src/components/admin/review/AdminReviewQueue.jsx"
+      - "scripts/verify-patient-request-recovery.mjs"
+      - "scripts/tsconfig-recovery.json"
+      - ".github/workflows/patient-request-recovery-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify patient request recovery
+        run: node scripts/verify-patient-request-recovery.mjs
+      - name: Verify patient search regressions
+        run: node scripts/verify-patient-search-flow.mjs
+      - name: Verify service regressions
+        run: npm run test:services
+      - name: Typecheck service scope
+        run: npm run typecheck:services
+      - name: Typecheck recovery policy
+        run: npx tsc -p scripts/tsconfig-recovery.json > recovery-typecheck.log 2>&1 || (cat recovery-typecheck.log && exit 1)
+      - name: Upload recovery typecheck diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recovery-typecheck
+          path: recovery-typecheck.log
+          if-no-files-found: ignore
+          retention-days: 1
+      - name: Lint recovery scope
+        run: >-
+          npx eslint
+          shared/patientRequestRecovery.js
+          base44/functions/getPatientRequestStatus/entry.ts
+          src/lib/patientRequestPersistenceClient.js
+          src/components/intake2/PatientRecoveryStatusCard.jsx
+          src/components/intake2/PatientRecoverySubmission.jsx
+          src/components/intake2/MatchResults.jsx
+          src/pages/PatientRequestResume.jsx
+          src/components/admin/review/AdminPatientRequestRecoveryQueue.jsx
+          src/components/admin/review/AdminReviewQueue.jsx
+          scripts/verify-patient-request-recovery.mjs
+          --quiet
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
