@@ -1,0 +1,57 @@
+name: Request Workspace Resume
+
+on:
+  pull_request:
+    paths:
+      - "src/pages/RequestFlow.jsx"
+      - "src/pages/PatientRequestResume.jsx"
+      - "src/lib/patientRequestPersistenceClient.js"
+      - "shared/patientRequestStatusPolicy.js"
+      - "base44/functions/getPatientRequestStatus/entry.ts"
+      - "base44/functions/patientRequestEmailVerificationOps/entry.ts"
+      - "scripts/verify-patient-request-status.mjs"
+      - "scripts/verify-request-workspace-resume.mjs"
+      - ".github/workflows/request-workspace-resume-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify workspace resume
+        run: node scripts/verify-request-workspace-resume.mjs
+      - name: Verify existing service regressions
+        run: npm run test:services
+      - name: Typecheck service scope
+        run: npm run typecheck:services
+      - name: Lint resume scope
+        run: >-
+          npx eslint
+          src/pages/RequestFlow.jsx
+          src/pages/PatientRequestResume.jsx
+          src/lib/patientRequestPersistenceClient.js
+          shared/patientRequestStatusPolicy.js
+          base44/functions/getPatientRequestStatus/entry.ts
+          base44/functions/patientRequestEmailVerificationOps/entry.ts
+          scripts/verify-patient-request-status.mjs
+          scripts/verify-request-workspace-resume.mjs
+          --quiet
+      - name: Repository typecheck diagnostic
+        continue-on-error: true
+        run: npm run typecheck
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
