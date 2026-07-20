@@ -18,12 +18,18 @@ export const PATIENT_REQUEST_LIFECYCLE_STAGES = Object.freeze({
   EXPIRED: 'expired',
 });
 
+/** @type {Set<string>} */
+const LIFECYCLE_STATE_VALUES = new Set(Object.values(PATIENT_REQUEST_LIFECYCLE_STATES));
+/** @type {Set<string>} */
+const LIFECYCLE_STAGE_VALUES = new Set(Object.values(PATIENT_REQUEST_LIFECYCLE_STAGES));
+/** @type {Set<string>} */
 const TERMINAL_STATES = new Set([
   PATIENT_REQUEST_LIFECYCLE_STATES.RESOLVED,
   PATIENT_REQUEST_LIFECYCLE_STATES.CLOSED,
   PATIENT_REQUEST_LIFECYCLE_STATES.EXPIRED,
 ]);
 
+/** @type {Record<string, string>} */
 const STATE_LABELS = Object.freeze({
   active: 'Activa',
   resolved: 'Rezolvata',
@@ -31,6 +37,7 @@ const STATE_LABELS = Object.freeze({
   expired: 'Expirata',
 });
 
+/** @type {Record<string, string>} */
 const STAGE_LABELS = Object.freeze({
   submitted: 'Trimisa',
   distributed: 'Distribuita',
@@ -57,7 +64,7 @@ export function patientRequestHasExpired(request, now = new Date()) {
 
 export function persistedPatientRequestLifecycleState(request) {
   const explicit = clean(request?.lifecycle_state, 40);
-  if (Object.values(PATIENT_REQUEST_LIFECYCLE_STATES).includes(explicit)) return explicit;
+  if (LIFECYCLE_STATE_VALUES.has(explicit)) return explicit;
   if (request?.status === 'expirata') return PATIENT_REQUEST_LIFECYCLE_STATES.EXPIRED;
   if (request?.status === 'inchisa') return PATIENT_REQUEST_LIFECYCLE_STATES.CLOSED;
   return PATIENT_REQUEST_LIFECYCLE_STATES.ACTIVE;
@@ -93,7 +100,7 @@ export function derivePatientRequestLifecycle({
 export function canTransitionPatientRequestLifecycle(currentState, targetState) {
   const current = clean(currentState, 40) || PATIENT_REQUEST_LIFECYCLE_STATES.ACTIVE;
   const target = clean(targetState, 40);
-  if (!Object.values(PATIENT_REQUEST_LIFECYCLE_STATES).includes(target)) return false;
+  if (!LIFECYCLE_STATE_VALUES.has(target)) return false;
   if (current === target) return true;
   return current === PATIENT_REQUEST_LIFECYCLE_STATES.ACTIVE
     && TERMINAL_STATES.has(target);
@@ -121,10 +128,10 @@ export function patientRequestLifecyclePatch(targetState, actor = 'patient', now
 }
 
 export function sanitizePatientRequestLifecycle(lifecycle) {
-  const state = Object.values(PATIENT_REQUEST_LIFECYCLE_STATES).includes(lifecycle?.state)
+  const state = LIFECYCLE_STATE_VALUES.has(lifecycle?.state)
     ? lifecycle.state
     : PATIENT_REQUEST_LIFECYCLE_STATES.ACTIVE;
-  const stage = Object.values(PATIENT_REQUEST_LIFECYCLE_STAGES).includes(lifecycle?.stage)
+  const stage = LIFECYCLE_STAGE_VALUES.has(lifecycle?.stage)
     ? lifecycle.stage
     : PATIENT_REQUEST_LIFECYCLE_STAGES.SUBMITTED;
   return {
