@@ -8,7 +8,7 @@ function responseData(response) {
   return data;
 }
 
-export default function PatientNotificationCenter({ requestId, accessToken }) {
+export default function PatientNotificationCenter({ requestId, accessToken, onOpenTarget, onDataChange }) {
   const invoke = useCallback(async (action, notificationId = "") => {
     const response = await base44.functions.invoke("getPatientRequestStatus", {
       action,
@@ -25,10 +25,14 @@ export default function PatientNotificationCenter({ requestId, accessToken }) {
   const markAllNotificationsRead = useCallback(() => invoke("notifications_mark_all_read"), [invoke]);
 
   const openTarget = useCallback((notification) => {
+    if (onOpenTarget) {
+      onOpenTarget(notification);
+      return;
+    }
     if (!notification?.action_target_id) return;
     const target = document.getElementById(`patient-response-${notification.action_target_id}`);
     target?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+  }, [onOpenTarget]);
 
   return (
     <NotificationCenter
@@ -37,6 +41,7 @@ export default function PatientNotificationCenter({ requestId, accessToken }) {
       markNotificationRead={markNotificationRead}
       markAllNotificationsRead={markAllNotificationsRead}
       onOpenTarget={openTarget}
+      onDataChange={onDataChange}
     />
   );
 }
