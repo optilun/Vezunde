@@ -14,6 +14,8 @@ import {
   acquireControlledChatMessageLock,
   releaseControlledChatMessageLock,
 } from './controlledChatLock.js';
+import { createInAppNotification } from './inAppNotificationDelivery.js';
+import { IN_APP_NOTIFICATION_EVENT_KEYS } from './inAppNotificationPolicy.js';
 
 function closureMetadata(targetState, now) {
   if (targetState === PATIENT_REQUEST_LIFECYCLE_STATES.EXPIRED) {
@@ -23,6 +25,31 @@ function closureMetadata(targetState, now) {
     return { leadStatus: 'closed', deliveryState: 'withdrawn', reason: 'request_resolved', closedBy: 'patient', now };
   }
   return { leadStatus: 'closed', deliveryState: 'withdrawn', reason: 'request_closed', closedBy: 'patient', now };
+}
+
+function patientLifecycleNotification(targetState) {
+  if (targetState === PATIENT_REQUEST_LIFECYCLE_STATES.RESOLVED) {
+    return {
+      eventKey: IN_APP_NOTIFICATION_EVENT_KEYS.PATIENT_REQUEST_RESOLVED,
+      title: 'Cererea a fost rezolvata',
+      body: 'Ai marcat cererea ca rezolvata. Istoricul ramane disponibil.',
+    };
+  }
+  if (targetState === PATIENT_REQUEST_LIFECYCLE_STATES.CLOSED) {
+    return {
+      eventKey: IN_APP_NOTIFICATION_EVENT_KEYS.PATIENT_REQUEST_CLOSED,
+      title: 'Cererea a fost inchisa',
+      body: 'Cererea nu mai poate primi raspunsuri sau mesaje noi.',
+    };
+  }
+  if (targetState === PATIENT_REQUEST_LIFECYCLE_STATES.EXPIRED) {
+    return {
+      eventKey: IN_APP_NOTIFICATION_EVENT_KEYS.PATIENT_REQUEST_EXPIRED,
+      title: 'Cererea a expirat',
+      body: 'Perioada activa s-a incheiat. Istoricul ramane disponibil.',
+    };
+  }
+  return null;
 }
 
 async function loadRelatedRows(svc, requestId) {
@@ -124,6 +151,24 @@ export async function transitionPatientRequestLifecycle({ svc, requestId, target
       last_contact_approval_at: nowIso,
       last_conversation_at: nowIso,
     })));
+
+    const patientNotification = patientLifecycleNotification(effectiveTarget);
+    if (patientNotification) {
+      await createInAppNotification({
+        svc,
+        eventKey: patientNotification.eventKey,
+        recipientType: 'patient_request',
+        recipientRefId: requestId,
+        sourceEntityType: 'PatientRequest',
+        sourceEntityId: requestId,
+        requestId,
+        title: patientNotification.title,
+        body: patientNotification.body,
+        actionKind: 'request',
+        actionTargetId: '',
+        variant: `${effectiveTarget}:${nowIso}`,
+      }).catch(() => null);
+    }
 
     return {
       request: updatedRequest,

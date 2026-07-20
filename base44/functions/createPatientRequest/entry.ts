@@ -6,6 +6,7 @@ import {
   PatientRequestValidationError,
   sanitizePatientRequestSubmission,
 } from '../../../shared/patientRequestPersistence.js';
+import { notifyPatientRequestReceived } from '../../../shared/patientCommunicationNotifications.js';
 
 const MAX_REQUESTS_PER_CONTACT_PER_HOUR = 5;
 const IDEMPOTENCY_SETTLE_MS = 90;
@@ -198,7 +199,7 @@ Deno.serve(async (request) => {
       );
     }
 
-    await svc.entities.PatientRequest.update(requestRecord.id, {
+    const completedRequest = await svc.entities.PatientRequest.update(requestRecord.id, {
       contact_record_id: contactRecord.id,
       match_count: validMatches.length,
       top3_count: validMatches.filter((match) => match.result_bucket === 'top3').length,
@@ -210,6 +211,13 @@ Deno.serve(async (request) => {
       await rollbackPartial(svc, requestRecord.id);
       return replayResponse(finalWinner, finalWinner.persistence_state === 'complete' ? 200 : 202);
     }
+
+    await notifyPatientRequestReceived({
+      base44,
+      svc,
+      request: completedRequest || requestRecord,
+      contact: contactRecord,
+    }).catch(() => null);
 
     return Response.json({
       success: true,

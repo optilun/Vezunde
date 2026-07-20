@@ -12,6 +12,7 @@ import {
   patientIntentLabel,
 } from '../../../shared/providerLeadEligibility.js';
 import { notifyProviderLeadAvailable } from '../../../shared/leadCommunicationNotifications.js';
+import { notifyPatientRequestDistributed } from '../../../shared/patientCommunicationNotifications.js';
 
 function clean(value, maxLength = 240) {
   return String(value || '').trim().slice(0, maxLength);
@@ -58,6 +59,13 @@ async function eligibleLeadPlans(svc, request) {
 
 function isTop3FullDetailLead(lead) {
   return lead?.access_tier === 'pro_full' && lead?.result_bucket_snapshot === 'top3';
+}
+
+function leadDistributionAt(leads) {
+  return [...(leads || [])]
+    .map((lead) => clean(lead?.eligible_at || lead?.created_date, 80))
+    .filter(Boolean)
+    .sort()[0] || new Date().toISOString();
 }
 
 Deno.serve(async (httpRequest) => {
@@ -112,10 +120,19 @@ Deno.serve(async (httpRequest) => {
           provider_request_distribution_consent_at: new Date().toISOString(),
         });
       }
+      const availableExistingLeads = existingLeads.filter((lead) => lead.delivery_state === 'available');
+      await notifyPatientRequestDistributed({
+        base44,
+        svc,
+        request: lockedRequest,
+        contact,
+        leadCount: availableExistingLeads.length,
+        distributedAt: leadDistributionAt(availableExistingLeads),
+      }).catch(() => null);
       return Response.json({
         success: true,
         idempotent_replay: true,
-        lead_count: existingLeads.filter((lead) => lead.delivery_state === 'available').length,
+        lead_count: availableExistingLeads.length,
         top3_full_detail_count: existingLeads.filter(isTop3FullDetailLead).length,
         contact_sharing_enabled: false,
         conversation_enabled: false,
@@ -181,6 +198,14 @@ Deno.serve(async (httpRequest) => {
         if (!location) return Promise.resolve(null);
         return notifyProviderLeadAvailable({ base44, svc, lead, location });
       }));
+      await notifyPatientRequestDistributed({
+        base44,
+        svc,
+        request: lockedRequest,
+        contact,
+        leadCount: leadRows.length,
+        distributedAt: now,
+      }).catch(() => null);
     }
 
     const top3FullDetailCount = leadRows.filter(isTop3FullDetailLead).length;

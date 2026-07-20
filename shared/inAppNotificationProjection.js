@@ -1,5 +1,6 @@
 import { createInAppNotification } from './inAppNotificationDelivery.js';
 import { IN_APP_NOTIFICATION_EVENT_KEYS } from './inAppNotificationPolicy.js';
+import { ensurePatientCommunicationNotifications } from './patientCommunicationProjection.js';
 
 function clean(value, maxLength = 180) {
   return String(value || '').trim().slice(0, maxLength);
@@ -189,13 +190,14 @@ export async function ensureProviderInAppNotifications({ svc, userId, locationId
 
 export async function ensurePatientInAppNotifications({ svc, requestId }) {
   if (!svc || !requestId) return [];
+  const communicationResults = await ensurePatientCommunicationNotifications({ svc, requestId }).catch(() => []);
   const [request, responses, messages, conversations] = await Promise.all([
     svc.entities.PatientRequest.get(requestId).catch(() => null),
     svc.entities.ProviderLeadResponse.filter({ request_id: requestId, status: 'active' }, '-updated_date', 100),
     svc.entities.PatientRequestMessage.filter({ request_id: requestId, sender_type: 'provider', status: 'active' }, '-created_date', 300),
     svc.entities.PatientRequestConversation.filter({ request_id: requestId }, '-updated_date', 100),
   ]);
-  const results = [];
+  const results = [...communicationResults];
 
   if (request?.lifecycle_state === 'expired' && request.expiration_processed_at) {
     results.push(await createInAppNotification({

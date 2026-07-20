@@ -1,0 +1,58 @@
+name: Patient Communication Center
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify communication events
+        run: node scripts/verify-lead-communication-events.mjs
+      - name: Verify in-app notification center
+        run: node scripts/verify-in-app-notification-center.mjs
+      - name: Verify request persistence
+        run: node scripts/verify-patient-request-persistence.mjs
+      - name: Verify lead preparation
+        run: node scripts/verify-provider-lead-preparation.mjs
+      - name: Verify request status
+        run: node scripts/verify-patient-request-status.mjs
+      - name: Verify request lifecycle
+        run: node scripts/verify-patient-request-lifecycle.mjs
+      - name: Verify services
+        run: npm run test:services
+      - name: Typecheck services
+        run: npm run typecheck:services
+      - name: Typecheck patient communication
+        run: npx tsc -p scripts/tsconfig-patient-communication-center.json
+      - name: Lint feature scope
+        run: >-
+          npx eslint
+          shared/communicationEventCatalog.js
+          shared/patientCommunicationNotifications.js
+          shared/patientCommunicationProjection.js
+          shared/inAppNotificationPolicy.js
+          shared/inAppNotificationProjection.js
+          shared/patientRequestLifecycleOps.js
+          base44/functions/createPatientRequest/entry.ts
+          base44/functions/authorizePatientRequestDistribution/entry.ts
+          scripts/verify-lead-communication-events.mjs
+          scripts/verify-in-app-notification-center.mjs
+          --quiet
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build

@@ -4,6 +4,9 @@ import {
   COMMUNICATION_EVENT_CATALOG_VERSION,
   COMMUNICATION_EVENT_KEYS,
   buildPatientProviderResponseEmail,
+  buildPatientRequestDistributedEmail,
+  buildPatientRequestLifecycleEmail,
+  buildPatientRequestReceivedEmail,
   buildProviderLeadAvailableEmail,
   canReceiveProviderLeadEmail,
   communicationEventDefinition,
@@ -13,9 +16,13 @@ import {
   deliverCommunicationEmail,
 } from '../shared/communicationDelivery.js';
 
-assert.equal(COMMUNICATION_EVENT_CATALOG_VERSION, 'communication-events-v1');
+assert.equal(COMMUNICATION_EVENT_CATALOG_VERSION, 'communication-events-v2');
 assert.equal(communicationEventDefinition(COMMUNICATION_EVENT_KEYS.PROVIDER_LEAD_AVAILABLE)?.template_version, 'provider-lead-available-v1');
+assert.equal(communicationEventDefinition(COMMUNICATION_EVENT_KEYS.PATIENT_REQUEST_RECEIVED)?.template_version, 'patient-request-received-v1');
+assert.equal(communicationEventDefinition(COMMUNICATION_EVENT_KEYS.PATIENT_REQUEST_DISTRIBUTED)?.template_version, 'patient-request-distributed-v1');
 assert.equal(communicationEventDefinition(COMMUNICATION_EVENT_KEYS.PATIENT_PROVIDER_RESPONSE_RECEIVED)?.template_version, 'patient-provider-response-v1');
+assert.equal(communicationEventDefinition(COMMUNICATION_EVENT_KEYS.PATIENT_REQUEST_RESOLVED)?.template_version, 'patient-request-resolved-v1');
+assert.equal(communicationEventDefinition(COMMUNICATION_EVENT_KEYS.PATIENT_REQUEST_CLOSED)?.template_version, 'patient-request-closed-v1');
 assert.equal(communicationEventDefinition('unknown'), null);
 assert.equal(canReceiveProviderLeadEmail('organization_owner'), true);
 assert.equal(canReceiveProviderLeadEmail('location_manager'), true);
@@ -30,6 +37,14 @@ assert.match(providerEmail.subject, /Optica Test/);
 assert.match(providerEmail.body, /Datele de contact ale clientului nu sunt incluse/);
 assert.doesNotMatch(providerEmail.body, /client@example\.com|0712345678|Mesaj privat/);
 
+const receivedEmail = buildPatientRequestReceivedEmail({ publicReference: 'VS-TEST', city: 'Timisoara' });
+assert.match(receivedEmail.subject, /VS-TEST/);
+assert.match(receivedEmail.body, /nu este trimisa locatiilor/);
+
+const distributedEmail = buildPatientRequestDistributedEmail({ publicReference: 'VS-TEST', leadCount: 3 });
+assert.match(distributedEmail.body, /3 locatii eligibile/);
+assert.match(distributedEmail.body, /telefonul raman protejate/);
+
 const patientEmail = buildPatientProviderResponseEmail({
   publicReference: 'VS-TEST',
   locationName: 'Optica Test',
@@ -39,6 +54,11 @@ assert.match(patientEmail.subject, /VS-TEST/);
 assert.match(patientEmail.body, /Optica Test poate ajuta/);
 assert.match(patientEmail.body, /acord separat pentru fiecare locatie/);
 assert.doesNotMatch(patientEmail.body, /contact_name|contact_email|contact_phone|original_message/);
+
+const resolvedEmail = buildPatientRequestLifecycleEmail({ publicReference: 'VS-TEST', state: 'resolved' });
+const closedEmail = buildPatientRequestLifecycleEmail({ publicReference: 'VS-TEST', state: 'closed' });
+assert.match(resolvedEmail.body, /marcat cererea ca rezolvata/);
+assert.match(closedEmail.body, /inchis cererea/);
 
 assert.equal(
   communicationDeliveryIdempotencyKey({
@@ -150,7 +170,9 @@ for (const forbidden of ['recipient_email', 'body', 'contact_name', 'contact_pho
 }
 
 const notifier = await readFile(new URL('../shared/leadCommunicationNotifications.js', import.meta.url), 'utf8');
+const patientNotifier = await readFile(new URL('../shared/patientCommunicationNotifications.js', import.meta.url), 'utf8');
 const distributionBackend = await readFile(new URL('../base44/functions/authorizePatientRequestDistribution/entry.ts', import.meta.url), 'utf8');
+const createBackend = await readFile(new URL('../base44/functions/createPatientRequest/entry.ts', import.meta.url), 'utf8');
 const responseBackend = await readFile(new URL('../base44/functions/providerLeadResponseOps/entry.ts', import.meta.url), 'utf8');
 
 assert.match(notifier, /ProviderMembership\.filter/);
@@ -164,7 +186,14 @@ assert.match(notifier, /response\.submitted_at/);
 assert.match(notifier, /deliverCommunicationEmail/);
 assert.doesNotMatch(notifier, /original_message|contact_phone:/);
 
+assert.match(patientNotifier, /notifyPatientRequestReceived/);
+assert.match(patientNotifier, /notifyPatientRequestDistributed/);
+assert.match(patientNotifier, /notifyPatientRequestLifecycle/);
+assert.match(patientNotifier, /patient_email_not_verified/);
+assert.doesNotMatch(patientNotifier, /contact_phone|original_message/);
+assert.match(createBackend, /notifyPatientRequestReceived/);
 assert.match(distributionBackend, /notifyProviderLeadAvailable/);
+assert.match(distributionBackend, /notifyPatientRequestDistributed/);
 assert.match(distributionBackend, /Promise\.allSettled/);
 assert.match(distributionBackend, /ProviderLead\.bulkCreate/);
 assert.match(responseBackend, /notifyPatientProviderResponse/);
