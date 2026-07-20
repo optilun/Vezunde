@@ -23,6 +23,9 @@ const DirOpsCorrections = lazy(
 const DirOpsAddLocation = lazy(
   () => import("@/components/admin/directory/DirOpsAddLocation"),
 );
+const DirOpsMapping = lazy(
+  () => import("@/components/admin/directory/DirOpsMapping"),
+);
 const DirOpsServices = lazy(
   () => import("@/components/admin/directory/DirOpsServices"),
 );
@@ -53,6 +56,8 @@ const SIMPLE_HEADERS = {
     "Creeaza o organizatie si prima locatie sau adauga manual un profil nou in director, cu provenienta obligatorie.",
   profiluri:
     "Gestioneaza locatiile din director, statusul de incredere si eventualele revizuiri de migrare.",
+  mapping:
+    "Clarifica relatiile organizatie-locatie, tipurile canonice, conflictele, dublurile, rebrandingul si unitatile distincte de la aceeasi adresa.",
   workspace_reviews:
     "Analizeaza intr-un singur loc cererile trimise de furnizori, locatiile noi si profilurile specialistilor.",
   corectii:
@@ -99,6 +104,7 @@ export default function AdminDirectoryOps() {
     "workspace_reviews",
     "corectii",
     "support_tickets",
+    "mapping",
     "servicii",
     "revendicari",
     "geografie",
@@ -152,6 +158,7 @@ export default function AdminDirectoryOps() {
               {tab === "workspace_reviews" && <AdminReviewQueue />}
               {tab === "corectii" && <DirOpsCorrections />}
               {tab === "support_tickets" && <AdminSupportCenter adminUser={user} />}
+              {tab === "mapping" && <DirOpsMapping />}
               {tab === "servicii" && <DirOpsServices />}
               {tab === "revendicari" && <DirOpsClaims />}
               {tab === "geografie" && <GeoImport />}
