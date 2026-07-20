@@ -1,5 +1,17 @@
 {
   "name": "PatientRequestRecoveryCase",
   "type": "object",
-  "properties": {}
+  "properties": {
+    "contract_version": { "type": "string" },
+    "request_id": { "type": "string" },
+    "public_reference": { "type": "string" },
+    "status": { "type": "string", "enum": ["queued", "in_review", "completed", "closed"], "default": "queued" }
+  },
+  "required": ["contract_version", "request_id", "public_reference", "status"],
+  "rls": {
+    "create": { "user_condition": { "role": "admin" } },
+    "read": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
 }
