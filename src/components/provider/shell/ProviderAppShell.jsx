@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Menu, ExternalLink } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import ProviderSidebarContent from "./ProviderSidebarContent";
+import ProviderTeamHeaderAccess from "./ProviderTeamHeaderAccess";
 import "@/styles/workspace-mobile.css";
 
 export default function ProviderAppShell({
@@ -114,6 +115,7 @@ export default function ProviderAppShell({
             </div>
 
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+              {subtitle === "Spațiu furnizor" && <ProviderTeamHeaderAccess />}
               {publicProfileUrl && (
                 <Link
                   to={publicProfileUrl}
