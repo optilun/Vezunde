@@ -7,6 +7,7 @@ import { PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 import { readAccountPreferences, rememberProviderLocation } from "@/lib/accountPreferences";
 import { resolveProviderLocationAccess } from "@/lib/providerWorkspaceAccess";
 import LocationSwitcher from "./LocationSwitcher";
+
 const ProviderOverview = lazy(() => import("./ProviderOverview"));
 const ProviderProfilePublic = lazy(() => import("./ProviderProfilePublic"));
 const ProviderLocationsWithPhoto = lazy(() => import("./ProviderLocationsWithPhoto"));
@@ -43,6 +44,16 @@ const ROLE_CAPABILITIES = {
     "location.archive",
     "location.request_closure",
   ],
+  organization_admin: [
+    "organization.view",
+    "organization.manage_members",
+    "location.view",
+    "location.manage_profile",
+    "location.manage_content",
+    "location.manage_specialists",
+    "location.manage_requests",
+    "location.manage_operational_status",
+  ],
   location_manager: [
     "organization.view",
     "location.view",
@@ -63,6 +74,7 @@ const ROLE_CAPABILITIES = {
 function highestRole(memberships = []) {
   const roles = memberships.map((membership) => membership.role);
   if (roles.includes("organization_owner")) return "organization_owner";
+  if (roles.includes("organization_admin")) return "organization_admin";
   if (roles.includes("location_manager")) return "location_manager";
   if (roles.includes("location_staff")) return "location_staff";
   return "";
@@ -92,7 +104,7 @@ function organizationContextsFor(workspace) {
       organization,
       current_user_role: currentUserRole,
       capabilities: ROLE_CAPABILITIES[currentUserRole] || [],
-      can_manage_members: currentUserRole === "organization_owner",
+      can_manage_members: currentUserRole === "organization_owner" || currentUserRole === "organization_admin",
       can_manage_settings: currentUserRole === "organization_owner",
       memberships,
       locations: contextLocations,
@@ -115,8 +127,9 @@ export default function ProviderWorkspaceRoot({
   const requestedSection = params.get("s") || "overview";
   const requestedOrganizationId = params.get("organization") || "";
   const requestedLocationId = params.get("location") || "";
-  const ownerSyncStarted = useRef(false);
+  const wideAccessSyncStarted = useRef(new Set());
   const overviewRequestRef = useRef(0);
+  const accessMetaRequestRef = useRef(0);
   const previousSectionRef = useRef(requestedSection);
 
   const allLocations = useMemo(() => workspace.locations || [], [workspace.locations]);
@@ -140,6 +153,8 @@ export default function ProviderWorkspaceRoot({
   const [selectedLocationId, setSelectedLocationId] = useState(initialLocationId);
   const [overview, setOverview] = useState(null);
   const [loadingOverview, setLoadingOverview] = useState(true);
+  const [accessMeta, setAccessMeta] = useState(null);
+
   const selectedContext = useMemo(() => organizationContexts.find((context) => (
     context.locations?.some((location) => location.id === selectedLocationId)
     || context.memberships?.some((membership) => membership.location_id === selectedLocationId)
@@ -151,12 +166,40 @@ export default function ProviderWorkspaceRoot({
     () => resolveProviderLocationAccess(selectedContext || workspace, selectedLocationId),
     [selectedContext, workspace, selectedLocationId],
   );
+
+  useEffect(() => {
+    const requestId = ++accessMetaRequestRef.current;
+    if (!selectedOrganizationId) {
+      setAccessMeta(null);
+      return undefined;
+    }
+    base44.functions.invoke("getMyProviderMembers", { organization_id: selectedOrganizationId })
+      .then((response) => {
+        if (requestId !== accessMetaRequestRef.current) return;
+        setAccessMeta(response.data?.error ? null : response.data);
+      })
+      .catch(() => {
+        if (requestId === accessMetaRequestRef.current) setAccessMeta(null);
+      });
+    return () => { accessMetaRequestRef.current += 1; };
+  }, [selectedOrganizationId, workspace]);
+
+  const organizationActorRole = accessMeta?.current_actor_role || selectedContext?.current_user_role || "";
+  const isOrganizationOwner = organizationActorRole === "organization_owner";
+  const isOrganizationAdmin = organizationActorRole === "organization_admin";
   const organizationCapabilityList = (selectedContext?.capabilities || [])
     .filter((capability) => capability.startsWith("organization."));
   const locationCapabilityList = selectedLocationAccess.capabilities || [];
-  const organizationCapabilities = new Set(organizationCapabilityList);
-  const locationCapabilities = new Set(locationCapabilityList);
-  const scopedCapabilities = [...new Set([...organizationCapabilityList, ...locationCapabilityList])];
+  const roleCapabilities = ROLE_CAPABILITIES[organizationActorRole] || [];
+  const organizationCapabilities = new Set([
+    ...organizationCapabilityList,
+    ...roleCapabilities.filter((capability) => capability.startsWith("organization.")),
+  ]);
+  const locationCapabilities = new Set([
+    ...locationCapabilityList,
+    ...roleCapabilities.filter((capability) => capability.startsWith("location.")),
+  ]);
+  const scopedCapabilities = [...new Set([...organizationCapabilities, ...locationCapabilities])];
   const canManageOrganizationProfile = organizationCapabilities.has("organization.manage_profile");
   const canViewLocations = locationCapabilities.has("location.view");
   const canManageLocationProfile = locationCapabilities.has("location.manage_profile");
@@ -168,28 +211,27 @@ export default function ProviderWorkspaceRoot({
     || canManageLocationContent
     || canManageSpecialists
     || canManageOperationalStatus;
-  const canManageMembers = Boolean(selectedContext?.can_manage_members || organizationCapabilities.has("organization.manage_members"));
-  const canManageSettings = Boolean(selectedContext?.can_manage_settings || organizationCapabilities.has("organization.manage_settings"));
+  const canManageMembers = Boolean(accessMeta?.can_manage_members || selectedContext?.can_manage_members || organizationCapabilities.has("organization.manage_members"));
+  const canManageSettings = Boolean(isOrganizationOwner && (selectedContext?.can_manage_settings || organizationCapabilities.has("organization.manage_settings")));
   const activeLocationModule = requestedLocationModule
     && locationCapabilities.has(LOCATION_MODULE_CAPABILITIES[requestedLocationModule])
     ? requestedLocationModule
     : null;
   const deniedLocationModule = Boolean(requestedLocationModule && !activeLocationModule);
-  const hasOwnerAccess = organizationContexts.some((context) => (
-    context.can_manage_members || context.can_manage_settings || context.current_user_role === "organization_owner"
-  ));
+  const hasWideOrganizationAccess = isOrganizationOwner || isOrganizationAdmin;
   const scopedWorkspace = {
     ...workspace,
     organizations: selectedContext?.organization ? [selectedContext.organization] : workspace.organizations,
     locations,
     memberships,
     current_user_role: selectedLocationAccess.role || workspace.current_user_role,
-    current_organization_role: selectedContext?.current_user_role || "",
+    current_organization_role: organizationActorRole,
     current_location_role: selectedLocationAccess.role || "",
     current_user_capabilities: scopedCapabilities,
-    organization_capabilities: organizationCapabilityList,
-    location_capabilities: locationCapabilityList,
+    organization_capabilities: [...organizationCapabilities],
+    location_capabilities: [...locationCapabilities],
     can_manage_members: canManageMembers,
+    can_manage_privileged_roles: Boolean(accessMeta?.can_manage_privileged_roles),
   };
 
   const loadOverview = async (locationId, options = {}) => {
@@ -209,12 +251,12 @@ export default function ProviderWorkspaceRoot({
   };
 
   useEffect(() => {
-    if (ownerSyncStarted.current || !hasOwnerAccess) return;
-    ownerSyncStarted.current = true;
-    base44.functions.invoke("syncProviderOrganizationOwnerAccess", {})
+    if (!selectedOrganizationId || !hasWideOrganizationAccess || wideAccessSyncStarted.current.has(selectedOrganizationId)) return;
+    wideAccessSyncStarted.current.add(selectedOrganizationId);
+    base44.functions.invoke("syncProviderOrganizationOwnerAccess", { organization_id: selectedOrganizationId })
       .then((response) => { if (response.data?.changed) onRefresh?.(); })
       .catch(() => null);
-  }, [hasOwnerAccess, onRefresh]);
+  }, [hasWideOrganizationAccess, onRefresh, selectedOrganizationId]);
 
   useEffect(() => {
     const routeLocationExists = allLocations.some((location) => location.id === routeLocationId);
@@ -245,9 +287,7 @@ export default function ProviderWorkspaceRoot({
       || (requestedSection === "leads" && !canManageRequests)
       || (requestedSection === "settings" && !canManageSettings)
       || (requestedSection === "access" && !canManageMembers);
-    if (denied) {
-      routerNavigate(deniedLocationModule ? "/contul-meu?s=locations" : "/contul-meu?s=overview", { replace: true });
-    }
+    if (denied) routerNavigate(deniedLocationModule ? "/contul-meu?s=locations" : "/contul-meu?s=overview", { replace: true });
   }, [canManageMembers, canManageOrganizationProfile, canManageRequests, canManageSettings, canViewLocations, deniedLocationModule, requestedSection, routerNavigate]);
 
   const goToSection = (key) => {
@@ -268,11 +308,8 @@ export default function ProviderWorkspaceRoot({
     rememberProviderLocation(user?.id, locationId);
     if (activeLocationModule) {
       const targetAccess = accessForLocation(locationId);
-      if (targetAccess.capabilities.includes(LOCATION_MODULE_CAPABILITIES[activeLocationModule])) {
-        routerNavigate(`/contul-meu/locatii/${locationId}/${activeLocationModule}`);
-      } else {
-        routerNavigate("/contul-meu?s=locations");
-      }
+      if (targetAccess.capabilities.includes(LOCATION_MODULE_CAPABILITIES[activeLocationModule])) routerNavigate(`/contul-meu/locatii/${locationId}/${activeLocationModule}`);
+      else routerNavigate("/contul-meu?s=locations");
     }
   };
 
@@ -290,17 +327,8 @@ export default function ProviderWorkspaceRoot({
     routerNavigate(`/contul-meu/locatii/${locationId}/${moduleKey}`);
   };
 
-  const closeLocationModule = () => {
-    routerNavigate("/contul-meu?s=locations");
-  };
-
-  const navItems = getProviderNav({
-    canManageOrganizationProfile,
-    canViewLocations,
-    canManageRequests,
-    canManageMembers,
-    canManageSettings,
-  });
+  const closeLocationModule = () => routerNavigate("/contul-meu?s=locations");
+  const navItems = getProviderNav({ canManageOrganizationProfile, canViewLocations, canManageRequests, canManageMembers, canManageSettings });
   const allowedSections = [
     "overview",
     ...(canManageOrganizationProfile ? ["profile"] : []),
@@ -310,11 +338,7 @@ export default function ProviderWorkspaceRoot({
     ...(canManageSettings ? ["settings"] : []),
   ];
   const normalizedSection = ["services", "team", "hours", "photos"].includes(requestedSection) ? "locations" : requestedSection;
-  const safeSection = activeLocationModule
-    ? "locations"
-    : allowedSections.includes(normalizedSection)
-      ? normalizedSection
-      : "overview";
+  const safeSection = activeLocationModule ? "locations" : (allowedSections.includes(normalizedSection) ? normalizedSection : "overview");
   const selectedStatus = overview?.location?.id === selectedLocationId ? overview.location.profile_control_status : "";
   const statusLabel = selectedStatus ? (PROFILE_CONTROL_LABELS[selectedStatus] || selectedStatus) : "";
   const statusGreen = ["verified", "claimed"].includes(selectedStatus);
@@ -332,9 +356,7 @@ export default function ProviderWorkspaceRoot({
   useEffect(() => {
     const previousSection = previousSectionRef.current;
     previousSectionRef.current = safeSection;
-    if (safeSection === "overview" && previousSection !== "overview" && selectedLocationId) {
-      void refreshOverviewInPlace();
-    }
+    if (safeSection === "overview" && previousSection !== "overview" && selectedLocationId) void refreshOverviewInPlace();
   }, [safeSection, selectedLocationId]);
 
   useEffect(() => {
@@ -379,68 +401,28 @@ export default function ProviderWorkspaceRoot({
       ) : (
         <Suspense fallback={<WorkspaceSectionLoading />}>
           <>
-          {safeSection === "overview" && (
-            <ProviderOverview
-              overview={overview}
-              onNavigate={goToSection}
-              canManageOrganizationProfile={canManageOrganizationProfile}
-              canManageLocations={canManageAnyLocation}
-            />
-          )}
-          {safeSection === "profile" && (
-            <div className="[&>div>header:first-child]:hidden">
-              <ProviderProfilePublic
-                locationId={selectedLocationId}
-                overview={overview}
-                workspace={scopedWorkspace}
-                onNavigate={goToSection}
-                onSelectLocation={selectLocation}
-                onRefresh={refreshOverviewInPlace}
-              />
-            </div>
-          )}
-          {safeSection === "locations" && activeLocationModule && (
-            <ProviderLocationModulePage
-              workspace={scopedWorkspace}
-              locationId={selectedLocationId}
-              moduleKey={activeLocationModule}
-              overview={overview}
-              onBack={closeLocationModule}
-              onRefresh={refreshOverviewInPlace}
-            />
-          )}
-          {safeSection === "locations" && !activeLocationModule && (
-            <div className="space-y-8">
-              <ProviderLocationComparisonPanel
-                workspace={scopedWorkspace}
-                selectedLocationId={selectedLocationId}
-              />
-              <ProviderLocationsWithPhoto
-                workspace={scopedWorkspace}
-                selectedLocationId={selectedLocationId}
-                onSelect={selectLocation}
-                overview={overview}
-                onRefresh={refreshOverviewInPlace}
-                onOpenModule={openLocationModule}
-              />
-            </div>
-          )}
-          {safeSection === "leads" && canManageRequests && (
-            <ProviderLeadInbox locationId={selectedLocationId} location={selectedLocation} />
-          )}
-          {safeSection === "access" && canManageMembers && <ProviderAccess organizationId={selectedOrganizationId} locations={locations} onRefresh={refreshOverviewInPlace} />}
-          {safeSection === "settings" && canManageSettings && (
-            <ProviderSettings
-              user={user}
-              workspace={scopedWorkspace}
-              overview={overview}
-              selectedLocationId={selectedLocationId}
-              onSelectLocation={selectLocation}
-              onSwitchMode={onSwitchMode}
-              onNavigate={goToSection}
-              onRefresh={refreshOverviewInPlace}
-            />
-          )}
+            {safeSection === "overview" && (
+              <ProviderOverview overview={overview} onNavigate={goToSection} canManageOrganizationProfile={canManageOrganizationProfile} canManageLocations={canManageAnyLocation} />
+            )}
+            {safeSection === "profile" && (
+              <div className="[&>div>header:first-child]:hidden">
+                <ProviderProfilePublic locationId={selectedLocationId} overview={overview} workspace={scopedWorkspace} onNavigate={goToSection} onSelectLocation={selectLocation} onRefresh={refreshOverviewInPlace} />
+              </div>
+            )}
+            {safeSection === "locations" && activeLocationModule && (
+              <ProviderLocationModulePage workspace={scopedWorkspace} locationId={selectedLocationId} moduleKey={activeLocationModule} overview={overview} onBack={closeLocationModule} onRefresh={refreshOverviewInPlace} />
+            )}
+            {safeSection === "locations" && !activeLocationModule && (
+              <div className="space-y-8">
+                <ProviderLocationComparisonPanel workspace={scopedWorkspace} selectedLocationId={selectedLocationId} />
+                <ProviderLocationsWithPhoto workspace={scopedWorkspace} selectedLocationId={selectedLocationId} onSelect={selectLocation} overview={overview} onRefresh={refreshOverviewInPlace} onOpenModule={openLocationModule} />
+              </div>
+            )}
+            {safeSection === "leads" && canManageRequests && <ProviderLeadInbox locationId={selectedLocationId} location={selectedLocation} />}
+            {safeSection === "access" && canManageMembers && <ProviderAccess organizationId={selectedOrganizationId} locations={locations} onRefresh={refreshOverviewInPlace} />}
+            {safeSection === "settings" && canManageSettings && (
+              <ProviderSettings user={user} workspace={scopedWorkspace} overview={overview} selectedLocationId={selectedLocationId} onSelectLocation={selectLocation} onSwitchMode={onSwitchMode} onNavigate={goToSection} onRefresh={refreshOverviewInPlace} />
+            )}
           </>
         </Suspense>
       )}
