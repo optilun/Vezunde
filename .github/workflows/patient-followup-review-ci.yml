@@ -1,0 +1,69 @@
+name: Patient Followup Review
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify followup contract
+        run: |
+          set +e
+          node scripts/verify-patient-no-response-review.mjs > followup-contract.log 2>&1
+          code=$?
+          cat followup-contract.log
+          exit $code
+      - name: Upload followup diagnostic
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: followup-contract-diagnostic
+          path: followup-contract.log
+          retention-days: 1
+      - name: Verify request status
+        run: node scripts/verify-patient-request-status.mjs
+      - name: Verify request lifecycle
+        run: node scripts/verify-patient-request-lifecycle.mjs
+      - name: Verify request recovery
+        run: node scripts/verify-patient-request-recovery.mjs
+      - name: Verify request resume
+        run: node scripts/verify-request-workspace-resume.mjs
+      - name: Verify county expansion
+        run: node scripts/verify-patient-county-expansion.mjs
+      - name: Verify services
+        run: npm run test:services
+      - name: Typecheck services
+        run: npm run typecheck:services
+      - name: Typecheck followup policy
+        run: npx tsc -p scripts/tsconfig-patient-no-response-review.json
+      - name: Lint feature scope
+        run: >-
+          npx eslint
+          base44/functions/getPatientRequestStatus/entry.ts
+          shared/patientNoResponseReview.js
+          shared/patientRequestStatusPolicy.js
+          src/lib/patientNoResponseReviewClient.js
+          src/components/intake2/PatientNoResponseReviewPanel.jsx
+          src/components/intake2/PatientCountyReformulation.jsx
+          src/pages/PatientRequestResume.jsx
+          src/pages/RequestFlow.jsx
+          scripts/verify-patient-no-response-review.mjs
+          --quiet
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build

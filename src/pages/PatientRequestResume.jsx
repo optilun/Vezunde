@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Clipboard, KeyRound, Loader2, RefreshCw, SearchCheck, Send, ShieldCheck } from "lucide-react";
+import PatientNoResponseReviewPanel from "@/components/intake2/PatientNoResponseReviewPanel";
 import PatientRecoveryStatusCard from "@/components/intake2/PatientRecoveryStatusCard";
 import PatientRequestEmailVerification from "@/components/intake2/PatientRequestEmailVerification";
 import RequestWorkspace from "@/components/intake2/RequestWorkspace";
@@ -195,6 +196,17 @@ export default function PatientRequestResume({ publicReference }) {
           requestId={requestId}
           accessToken={accessToken}
           onVerified={() => void load()}
+        />
+      )}
+
+      {snapshot.distribution_authorized && (
+        <PatientNoResponseReviewPanel
+          review={snapshot.no_response_review}
+          request={snapshot.request}
+          workspace={workspace}
+          requestId={requestId}
+          accessToken={accessToken}
+          onStatusChange={setSnapshot}
         />
       )}
 

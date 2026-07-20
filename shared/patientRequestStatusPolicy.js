@@ -20,6 +20,7 @@ export function sanitizePatientRequestStatus(request) {
     lifecycle_state: clean(request?.lifecycle_state, 40),
     lifecycle_stage: clean(request?.lifecycle_stage, 60),
     intent: clean(request?.intent, 120),
+    location_scope: clean(request?.location_scope, 40) || 'locality',
     city: clean(request?.city, 120),
     county: clean(request?.county, 120),
     submitted_at: request?.submitted_at || null,

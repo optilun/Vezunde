@@ -1,14 +1,23 @@
 import React from "react";
 import ConversationalCard from "@/components/intake2/ConversationalCard";
+import PatientCountyReformulation from "@/components/intake2/PatientCountyReformulation";
 import PatientRequestResume from "@/pages/PatientRequestResume";
 import { INTENTS, LEGACY_CATEGORY_TO_INTENT } from "@/lib/intentRegistry";
+import { readPatientRequestReformulation } from "@/lib/patientNoResponseReviewClient";
 
 export default function RequestFlow() {
   const urlParams = new URLSearchParams(window.location.search);
   const publicReference = urlParams.get("ref") || "";
   const q = urlParams.get("q") || "";
   const cat = urlParams.get("categorie") || "";
-  const intent = INTENTS[cat] ? cat : LEGACY_CATEGORY_TO_INTENT[cat] || null;
+  const reformulationId = urlParams.get("reformulation") || "";
+  const [reformulation] = React.useState(() => reformulationId ? readPatientRequestReformulation(reformulationId) : null);
+  const intent = reformulation?.request_draft?.intent || (INTENTS[cat] ? cat : LEGACY_CATEGORY_TO_INTENT[cat] || null);
+  const initialMessage = reformulation?.detailed_message || q;
+
+  let content = <ConversationalCard initialMessage={initialMessage} initialIntent={intent} />;
+  if (publicReference) content = <PatientRequestResume publicReference={publicReference} />;
+  else if (reformulation?.mode === "county") content = <PatientCountyReformulation seed={reformulation} />;
 
   return (
     <div
@@ -16,11 +25,12 @@ export default function RequestFlow() {
       style={{ background: "linear-gradient(180deg, #E9ECF4 0%, #F5F3EE 50%, #F7F2E8 100%)" }}
     >
       <div className={`w-full safe-area-bottom ${publicReference ? "max-w-7xl" : "max-w-3xl"}`}>
-        {publicReference ? (
-          <PatientRequestResume publicReference={publicReference} />
-        ) : (
-          <ConversationalCard initialMessage={q} initialIntent={intent} />
+        {reformulation?.mode === "criteria" && !publicReference && (
+          <div className="mx-auto mb-4 max-w-2xl rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
+            Pregatesti o cautare noua pe baza cererii anterioare. Cererea existenta ramane activa si nu este modificata automat.
+          </div>
         )}
+        {content}
       </div>
     </div>
   );
