@@ -43,7 +43,15 @@ jobs:
       - name: Typecheck service scope
         run: npm run typecheck:services
       - name: Typecheck recovery policy
-        run: npx tsc -p scripts/tsconfig-recovery.json
+        run: npx tsc -p scripts/tsconfig-recovery.json > recovery-typecheck.log 2>&1 || (cat recovery-typecheck.log && exit 1)
+      - name: Upload recovery typecheck diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recovery-typecheck
+          path: recovery-typecheck.log
+          if-no-files-found: ignore
+          retention-days: 1
       - name: Lint recovery scope
         run: >-
           npx eslint
