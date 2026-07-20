@@ -78,7 +78,7 @@ assert.match(semanticSource, /loadRowsForLocationIds/);
 assert.match(semanticSource, /function patientSearchScope\(value\)/);
 assert.match(semanticSource, /value === 'county' \? 'county' : 'locality'/);
 assert.match(semanticSource, /query_scope: queryScope/);
-assert.match(semanticSource, /queryScope !== 'county'/);
+assert.match(semanticSource, /scope !== 'county'/);
 assert.match(semanticSource, /county_code: countyCode/);
 assert.match(semanticSource, /svc\.entities\.GeographicLocality\.filter/);
 assert.doesNotMatch(semanticSource, /ProviderLocation\.filter\(\{ status: 'publicata' \}, null, (?:500|1000|5000)\)/);
