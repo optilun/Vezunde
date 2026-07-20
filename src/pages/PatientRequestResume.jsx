@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Clipboard, KeyRound, Loader2, RefreshCw, SearchCheck, Send, ShieldCheck } from "lucide-react";
+import PatientNoResponseReviewPanel from "@/components/intake2/PatientNoResponseReviewPanel";
 import PatientRecoveryStatusCard from "@/components/intake2/PatientRecoveryStatusCard";
 import PatientRequestEmailVerification from "@/components/intake2/PatientRequestEmailVerification";
 import RequestWorkspace from "@/components/intake2/RequestWorkspace";
@@ -198,6 +199,17 @@ export default function PatientRequestResume({ publicReference }) {
         />
       )}
 
+      {snapshot.distribution_authorized && (
+        <PatientNoResponseReviewPanel
+          review={snapshot.no_response_review}
+          request={snapshot.request}
+          workspace={workspace}
+          requestId={requestId}
+          accessToken={accessToken}
+          onStatusChange={setSnapshot}
+        />
+      )}
+
       {snapshot.recovery ? (
         <>
           <PatientRecoveryStatusCard recovery={snapshot.recovery} />
@@ -248,7 +260,7 @@ export default function PatientRequestResume({ publicReference }) {
           </label>
           {error && <p role="alert" className="mt-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-xs text-destructive">{error}</p>}
           <button type="button" disabled={distributing} onClick={() => void distribute()} className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-60">
-            {distributing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {distributing ? <Loader2 className="h-4 w-4" /> : <Send className="h-4 w-4" />}
             {distributing ? "Pregatim cererea..." : "Trimite cererea"}
           </button>
         </section>
