@@ -1,0 +1,71 @@
+name: Directory Mapping
+
+on:
+  pull_request:
+    paths:
+      - "shared/directoryMappingPolicy.js"
+      - "base44/entities/DirectoryLocationIdentityLink.jsonc"
+      - "base44/functions/directoryMappingOps/**"
+      - "src/components/admin/directory/DirOpsMapping.jsx"
+      - "src/lib/adminNavConfig.js"
+      - "src/pages/AdminDirectoryOps.jsx"
+      - "scripts/verify-directory-mapping.mjs"
+      - "scripts/compare-typecheck-baseline.mjs"
+      - ".github/workflows/directory-mapping-ci.yml"
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --silent
+      - name: Verify directory mapping contract
+        run: node scripts/verify-directory-mapping.mjs
+      - name: Typecheck current branch
+        shell: bash
+        run: |
+          set +e
+          npm run typecheck -- --pretty false > typecheck-head.log 2>&1
+          grep -E "error TS|Found [0-9]+ errors" typecheck-head.log || true
+          exit 0
+      - name: Typecheck main baseline
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set +e
+          git fetch origin "$BASE_SHA" --depth=1
+          rm -rf /tmp/vezunde-directory-mapping-base
+          git worktree add --detach /tmp/vezunde-directory-mapping-base "$BASE_SHA"
+          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/vezunde-directory-mapping-base/node_modules
+          cd /tmp/vezunde-directory-mapping-base
+          ./node_modules/.bin/tsc -p ./jsconfig.json --pretty false > "$GITHUB_WORKSPACE/typecheck-base.log" 2>&1
+          exit 0
+      - name: Reject new TypeScript errors
+        run: node scripts/compare-typecheck-baseline.mjs typecheck-base.log typecheck-head.log
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: directory-mapping-diagnostics
+          path: |
+            typecheck-head.log
+            typecheck-base.log
+      - name: Lint mapping scope
+        if: always()
+        run: npx eslint shared/directoryMappingPolicy.js base44/functions/directoryMappingOps/entry.ts src/components/admin/directory/DirOpsMapping.jsx src/lib/adminNavConfig.js src/pages/AdminDirectoryOps.jsx scripts/verify-directory-mapping.mjs
+      - name: Repository lint
+        if: always()
+        run: npm run lint
+      - name: Build
+        if: always()
+        run: npm run build

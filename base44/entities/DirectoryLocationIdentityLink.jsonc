@@ -1,0 +1,44 @@
+{
+  "name": "DirectoryLocationIdentityLink",
+  "type": "object",
+  "properties": {
+    "pair_key": { "type": "string" },
+    "primary_location_id": { "type": "string" },
+    "related_location_id": { "type": "string" },
+    "canonical_location_id": { "type": "string" },
+    "relationship_type": {
+      "type": "string",
+      "enum": [
+        "duplicate_same_entity",
+        "same_address_distinct_unit",
+        "rebrand_successor",
+        "unrelated"
+      ]
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["low", "medium", "high"],
+      "default": "medium"
+    },
+    "evidence_summary": { "type": "string" },
+    "review_note": { "type": "string" },
+    "reviewed_by_user_id": { "type": "string" },
+    "reviewed_at": { "type": "string", "format": "date-time" },
+    "record_status": {
+      "type": "string",
+      "enum": ["active", "superseded", "rejected"],
+      "default": "active"
+    }
+  },
+  "required": [
+    "pair_key",
+    "primary_location_id",
+    "related_location_id",
+    "relationship_type",
+    "record_status"
+  ],
+  "rls": {
+    "read": { "user_condition": { "role": "admin" } },
+    "write": { "user_condition": { "role": "admin" } }
+  }
+}

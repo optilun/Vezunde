@@ -12,6 +12,7 @@ import {
   DatabaseZap,
   LifeBuoy,
   Flag,
+  GitMerge,
 } from "lucide-react";
 
 export const ADMIN_NAV_PRIMARY = [
@@ -21,6 +22,7 @@ export const ADMIN_NAV_PRIMARY = [
   { key: "support_tickets", label: "Tichete suport", icon: LifeBuoy },
   { key: "revendicari", label: "Revendicari", icon: UserCheck },
   { key: "profiluri", label: "Profiluri si locatii", icon: Building2 },
+  { key: "mapping", label: "Mapare si identitate", icon: GitMerge },
   { key: "servicii", label: "Catalog si eligibilitate", icon: Wrench },
   { key: "research", label: "Research director", icon: Search },
   { key: "adauga", label: "Adauga organizatie / locatie", icon: PlusCircle },
