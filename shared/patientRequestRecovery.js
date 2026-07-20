@@ -86,6 +86,13 @@ export function sanitizePatientRequestRecoveryCoverageCounts(value = {}) {
   };
 }
 
+/**
+ * @param {{
+ *   request?: Record<string, any>,
+ *   consentVersion?: string,
+ *   coverageCounts?: Record<string, any>
+ * }} [options]
+ */
 export function buildPatientRequestRecoveryRecord({
   request,
   consentVersion,
