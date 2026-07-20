@@ -89,6 +89,26 @@ assert.match(copyPanel, /Vezi preview-ul/, 'UI must require preview before copy'
 assert.match(copyPanel, /Confirm inlocuirea/, 'UI must show an explicit overwrite confirmation');
 assert.match(copyPanel, /sm:w-auto/, 'primary action must remain usable on mobile');
 
-console.log('Provider opening-hours validation and copy contract: PASS');
+const comparisonBackend = readFileSync(new URL('../base44/functions/getProviderLocationComparison/entry.ts', import.meta.url), 'utf8');
+assert.match(comparisonBackend, /locationIds\.length < 2/, 'comparison must require at least two locations');
+assert.match(comparisonBackend, /MAX_LOCATIONS = 6/, 'comparison must cap the number of locations');
+assert.match(comparisonBackend, /ProviderMembership\.filter/, 'comparison must validate active membership access');
+assert.match(comparisonBackend, /locations\.some\(\(location\) => clean\(location\.organization_id\) !== organizationId\)/, 'comparison must remain inside one organization');
+assert.match(comparisonBackend, /read_only: true/, 'comparison response must be explicitly read-only');
+assert.match(comparisonBackend, /canonicalServiceEntries/, 'comparison must normalize canonical service differences');
+assert.doesNotMatch(comparisonBackend, /entities\.[A-Za-z]+\.(create|update|delete)\(/, 'comparison endpoint must not mutate entities');
+
+const comparisonPanel = readFileSync(new URL('../src/components/workspace/provider/ProviderLocationComparisonPanel.jsx', import.meta.url), 'utf8');
+assert.match(comparisonPanel, /getProviderLocationComparison/, 'comparison UI must use the protected comparison endpoint');
+assert.match(comparisonPanel, /Doar diferențele/, 'comparison UI must support filtering to differences');
+assert.match(comparisonPanel, /md:hidden/, 'comparison must have a dedicated mobile service view');
+assert.match(comparisonPanel, /hidden overflow-x-auto md:block/, 'comparison must retain a desktop matrix');
+assert.match(comparisonPanel, /Instrumentul nu modifică datele/, 'comparison UI must state its read-only boundary');
+
+const workspaceRoot = readFileSync(new URL('../src/components/workspace/provider/ProviderWorkspaceRoot.jsx', import.meta.url), 'utf8');
+assert.match(workspaceRoot, /ProviderLocationComparisonPanel/, 'comparison panel must be exposed in the locations workspace');
+assert.match(workspaceRoot, /safeSection === "locations" && !activeLocationModule/, 'comparison must stay at organization location level');
+
+console.log('Provider opening-hours and location comparison contracts: PASS');
 
 await import('./verify-provider-service-copy.mjs');
