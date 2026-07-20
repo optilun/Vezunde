@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Clock3, ExternalLink, HelpCircle, Loader2, Phone, RefreshCw, Store, UserCheck, UserX, XCircle } from "lucide-react";
-import { getPatientRequestStatus, managePatientContactShareApproval } from "@/lib/patientRequestPersistenceClient";
+import { getPatientRequestStatus, managePatientContactShareApproval, updatePatientRequestLifecycle } from "@/lib/patientRequestPersistenceClient";
 import PatientRequestChat from "./PatientRequestChat";
+import PatientRequestLifecyclePanel from "./PatientRequestLifecyclePanel";
 import PatientNotificationCenter from "@/components/notifications/PatientNotificationCenter";
 
 const RESPONSE_PRESENTATION = {
@@ -22,6 +23,7 @@ export default function PatientRequestResponseStatus({ requestId, accessToken })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingLocationId, setUpdatingLocationId] = useState("");
+  const [updatingLifecycle, setUpdatingLifecycle] = useState(false);
 
   const load = useCallback(async () => {
     if (!requestId) return;
@@ -38,6 +40,18 @@ export default function PatientRequestResponseStatus({ requestId, accessToken })
 
   useEffect(() => { void load(); }, [load]);
 
+  const updateLifecycle = async (action) => {
+    setUpdatingLifecycle(true);
+    setError("");
+    try {
+      setStatus(await updatePatientRequestLifecycle({ requestId, action, explicitAccessToken: accessToken || "" }));
+    } catch (updateError) {
+      setError(updateError?.message || "Starea cererii nu a putut fi actualizată.");
+    } finally {
+      setUpdatingLifecycle(false);
+    }
+  };
+
   const updatePhoneShare = async (locationId, action) => {
     setUpdatingLocationId(locationId);
     setError("");
@@ -51,6 +65,8 @@ export default function PatientRequestResponseStatus({ requestId, accessToken })
     }
   };
 
+  const requestActive = status?.lifecycle?.state === "active";
+
   return (
     <section className="mt-5 border-t border-primary/15 pt-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -62,7 +78,7 @@ export default function PatientRequestResponseStatus({ requestId, accessToken })
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <PatientNotificationCenter requestId={requestId} accessToken={accessToken || ""} />
-          <button type="button" onClick={() => void load()} disabled={loading || Boolean(updatingLocationId)} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-60">
+          <button type="button" onClick={() => void load()} disabled={loading || Boolean(updatingLocationId) || updatingLifecycle} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-60">
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Verifică răspunsurile
           </button>
         </div>
@@ -72,63 +88,76 @@ export default function PatientRequestResponseStatus({ requestId, accessToken })
 
       {loading ? (
         <div className="mt-4 flex min-h-24 items-center justify-center rounded-xl border border-border bg-background text-xs text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verificăm răspunsurile...</div>
-      ) : !status?.responses?.length ? (
-        <div className="mt-4 rounded-xl border border-dashed border-border bg-background p-4 text-center"><Store className="mx-auto h-6 w-6 text-muted-foreground" /><p className="mt-2 text-sm font-semibold text-foreground">Nicio locație nu a răspuns încă</p><p className="mt-1 text-xs text-muted-foreground">Poți reveni și apăsa „Verifică răspunsurile”.</p></div>
       ) : (
-        <div className="mt-4 space-y-3">
-          {status.responses.map((response) => {
-            const presentation = RESPONSE_PRESENTATION[response.response_type] || RESPONSE_PRESENTATION.needs_details;
-            const Icon = presentation.icon;
-            const approved = response.contact_share_status === "approved";
-            const updating = updatingLocationId === response.location_id;
-            const canManagePhone = response.contact_share_allowed && status.contact_phone_available === true;
-            return (
-              <article id={`patient-response-${response.location_id}`} key={response.location_id} className="scroll-mt-24 rounded-xl border border-border bg-background p-4">
-                <div className="flex items-start gap-3">
-                  <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm font-bold text-foreground">{response.location_name}</p>
-                      {formatDate(response.submitted_at) && <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground"><Clock3 className="h-3 w-3" /> {formatDate(response.submitted_at)}</span>}
-                    </div>
-                    <p className="mt-1 text-xs font-semibold text-foreground">{presentation.title}</p>
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{presentation.description}</p>
+        <>
+          <div className="mt-4">
+            <PatientRequestLifecyclePanel
+              lifecycle={status?.lifecycle}
+              request={status?.request}
+              updating={updatingLifecycle}
+              onAction={updateLifecycle}
+            />
+          </div>
 
-                    {canManagePhone && (
-                      <div className={`mt-4 rounded-xl border p-3 ${approved ? "border-primary/20 bg-primary/5" : "border-border bg-secondary/35"}`}>
-                        <div className="flex items-start gap-2">
-                          {approved ? <UserCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> : <UserX className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />}
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-bold text-foreground">{approved ? "Telefonul este aprobat" : "Telefonul este încă ascuns"}</p>
-                            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                              {approved
-                                ? "Doar această locație poate vedea numărul tău de telefon. Îl poți retrage oricând."
-                                : "Aprobarea oferă numai acestei locații acces la numărul de telefon. Chatul nu primește automat această informație."}
-                            </p>
-                            <button type="button" onClick={() => void updatePhoneShare(response.location_id, approved ? "revoke" : "approve")} disabled={updating} className={`mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full px-4 text-xs font-bold disabled:opacity-60 sm:w-auto ${approved ? "border border-border bg-background text-foreground hover:bg-secondary" : "bg-foreground text-background hover:opacity-90"}`}>
-                              {updating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Phone className="h-3.5 w-3.5" />}
-                              {approved ? "Retrage accesul la telefon" : "Permite acestei locații accesul la telefon"}
-                            </button>
-                          </div>
+          {!status?.responses?.length ? (
+            <div className="rounded-xl border border-dashed border-border bg-background p-4 text-center"><Store className="mx-auto h-6 w-6 text-muted-foreground" /><p className="mt-2 text-sm font-semibold text-foreground">Nicio locație nu a răspuns încă</p><p className="mt-1 text-xs text-muted-foreground">{requestActive ? "Poți reveni și apăsa „Verifică răspunsurile”." : "Cererea este finalizată și nu mai primește răspunsuri noi."}</p></div>
+          ) : (
+            <div className="space-y-3">
+              {status.responses.map((response) => {
+                const presentation = RESPONSE_PRESENTATION[response.response_type] || RESPONSE_PRESENTATION.needs_details;
+                const Icon = presentation.icon;
+                const approved = response.contact_share_status === "approved";
+                const updating = updatingLocationId === response.location_id;
+                const canManagePhone = requestActive && response.contact_share_allowed && status.contact_phone_available === true;
+                return (
+                  <article id={`patient-response-${response.location_id}`} key={response.location_id} className="scroll-mt-24 rounded-xl border border-border bg-background p-4">
+                    <div className="flex items-start gap-3">
+                      <Icon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-sm font-bold text-foreground">{response.location_name}</p>
+                          {formatDate(response.submitted_at) && <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground"><Clock3 className="h-3 w-3" /> {formatDate(response.submitted_at)}</span>}
                         </div>
+                        <p className="mt-1 text-xs font-semibold text-foreground">{presentation.title}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{presentation.description}</p>
+
+                        {canManagePhone && (
+                          <div className={`mt-4 rounded-xl border p-3 ${approved ? "border-primary/20 bg-primary/5" : "border-border bg-secondary/35"}`}>
+                            <div className="flex items-start gap-2">
+                              {approved ? <UserCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> : <UserX className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />}
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-bold text-foreground">{approved ? "Telefonul este aprobat" : "Telefonul este încă ascuns"}</p>
+                                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                                  {approved
+                                    ? "Doar această locație poate vedea numărul tău de telefon. Îl poți retrage oricând."
+                                    : "Aprobarea oferă numai acestei locații acces la numărul de telefon. Chatul nu primește automat această informație."}
+                                </p>
+                                <button type="button" onClick={() => void updatePhoneShare(response.location_id, approved ? "revoke" : "approve")} disabled={updating} className={`mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full px-4 text-xs font-bold disabled:opacity-60 sm:w-auto ${approved ? "border border-border bg-background text-foreground hover:bg-secondary" : "bg-foreground text-background hover:opacity-90"}`}>
+                                  {updating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Phone className="h-3.5 w-3.5" />}
+                                  {approved ? "Retrage accesul la telefon" : "Permite acestei locații accesul la telefon"}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <PatientRequestChat
+                          requestId={requestId}
+                          accessToken={accessToken || ""}
+                          locationId={response.location_id}
+                          locationName={response.location_name}
+                          responseType={response.response_type}
+                        />
+
+                        {response.profile_available && <a href={`/furnizor/${response.location_id}`} className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">Vezi profilul public <ExternalLink className="h-3.5 w-3.5" /></a>}
                       </div>
-                    )}
-
-                    <PatientRequestChat
-                      requestId={requestId}
-                      accessToken={accessToken || ""}
-                      locationId={response.location_id}
-                      locationName={response.location_name}
-                      responseType={response.response_type}
-                    />
-
-                    {response.profile_available && <a href={`/furnizor/${response.location_id}`} className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">Vezi profilul public <ExternalLink className="h-3.5 w-3.5" /></a>}
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </section>
   );
