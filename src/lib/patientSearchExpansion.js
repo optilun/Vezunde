@@ -1,6 +1,15 @@
 import { base44 } from "@/api/base44Client";
+import {
+  PATIENT_COUNTY_EXPANSION_VERSION,
+  countyExpansionDraft,
+  patientSearchTextFromDraft,
+} from "../../shared/patientSearchExpansion.js";
 
-export const PATIENT_COUNTY_EXPANSION_VERSION = "patient-county-expansion-v1";
+export {
+  PATIENT_COUNTY_EXPANSION_VERSION,
+  countyExpansionDraft,
+  patientSearchTextFromDraft,
+};
 
 function clean(value, maxLength = 800) {
   return String(value || "").trim().slice(0, maxLength);
@@ -13,23 +22,6 @@ function responseData(response) {
     throw new Error("Extinderea cautarii nu a returnat aria solicitata.");
   }
   return data;
-}
-
-export function patientSearchTextFromDraft(draft = {}) {
-  const descriptions = (Array.isArray(draft.answers) ? draft.answers : [])
-    .filter((answer) => answer?.question_key === "descriere")
-    .map((answer) => clean(answer?.answer_value, 800))
-    .filter(Boolean);
-  return [...new Set([clean(draft.original_message, 800), ...descriptions].filter(Boolean))].join(". ");
-}
-
-export function countyExpansionDraft(draft = {}, data = {}) {
-  return {
-    ...draft,
-    location_scope: "county",
-    county: clean(data.selected_county_name || draft.county, 120),
-    county_code: clean(data.selected_county_code || draft.county_code, 10),
-  };
 }
 
 export async function matchProvidersInSelectedCounty(draft = {}) {
