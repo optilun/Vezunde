@@ -56,9 +56,9 @@ const completeLocation = computeLocationCompleteness({
 assert.equal(completeLocation.percentage, 100);
 assert.equal(completeLocation.publication_ready, true);
 
-const summary = summarizeProviderCompleteness({ organizationCompletion: organization, locationCompletions: [completeLocation] });
-assert.equal(summary.required_missing_count, 0);
-assert.equal(summary.publication_ready, true);
+const summary = summarizeProviderCompleteness({ organizationCompletion: organization, locationCompletions: [completeLocation, incompleteLocation] });
+assert.equal(summary.active_location_count, 2);
+assert.equal(summary.average_location_percentage, Math.round((completeLocation.percentage + incompleteLocation.percentage) / 2));
 
 const endpoint = await readFile(new URL('../base44/functions/getProviderProfileCompleteness/entry.ts', import.meta.url), 'utf8');
 const panel = await readFile(new URL('../src/components/workspace/provider/ProviderCompletenessPanel.jsx', import.meta.url), 'utf8');
@@ -66,15 +66,16 @@ const inbox = await readFile(new URL('../src/components/workspace/provider/Provi
 assert.match(endpoint, /computeOrganizationCompleteness/);
 assert.match(endpoint, /computeLocationCompleteness/);
 assert.match(endpoint, /ProviderMembership\.filter/);
+assert.match(endpoint, /ProviderLocation\.filter\(\{ organization_id:/);
+assert.match(endpoint, /selected_location_id/);
+assert.match(endpoint, /locations: locationRows/);
 assert.match(panel, /nu modifica automat publicarea sau accesul locatiei/i);
 assert.match(panel, /Completarea profilului/);
-assert.match(panel, /\/contul-meu\?s=profile/);
-assert.match(panel, /\/contul-meu\?s=locations&location=/);
-assert.match(panel, /\/servicii/);
-assert.match(panel, /\/program/);
-assert.match(panel, /\/specialisti/);
+assert.match(panel, /Compara locatiile/);
+assert.match(panel, /Media locatiilor accesibile/);
+assert.match(panel, /selected_location_id/);
 assert.match(inbox, /getProviderProfileCompleteness/);
 assert.match(inbox, /ProviderCompletenessPanel/);
 assert.doesNotMatch(endpoint, /ProviderLocation\.update|ProviderOrganization\.update/);
 
-console.log('Unified provider profile completeness contract and workspace links verified.');
+console.log('Unified provider profile completeness and multi-location overview verified.');
