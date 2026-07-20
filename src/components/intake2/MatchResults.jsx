@@ -1,28 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import MatchResultCard from "./MatchResultCard";
+import NoResultsFlow from "./NoResultsFlow";
 import PatientRequestSubmission from "./PatientRequestSubmission";
-
-const EMPTY_RECOMMENDATION_STATES = {
-  no_local_providers: {
-    title: "Nu avem încă furnizori publicați pentru filtrele alese.",
-    description: "VIASEE a căutat corect în localitatea selectată, dar directorul nu conține încă profiluri publicate care să corespundă filtrelor.",
-  },
-  local_service_data_missing: {
-    title: "Există furnizori în localitate, dar nu avem suficiente date despre serviciul căutat.",
-    description: "Nu putem confirma momentan cine oferă acest serviciu. Asta descrie datele disponibile în VIASEE, nu înseamnă că serviciul nu există în localitate.",
-  },
-  no_eligible_local_results: {
-    title: "Nu avem momentan un rezultat eligibil pentru această nevoie.",
-    description: "Există furnizori și date locale, dar niciun profil nu îndeplinește toate condițiile de serviciu, verificare sau specializare.",
-  },
-};
-
-const DEFAULT_EMPTY_RECOMMENDATION_STATE = {
-  title: "Nu avem încă profiluri relevante în zona ta.",
-  description: "VIASEE a căutat strict în localitatea selectată. Poți alege manual altă localitate și încerca din nou.",
-};
 
 function RoutingNotice({ meta }) {
   if (!meta?.routing_mode) return null;
@@ -36,17 +16,25 @@ function RoutingNotice({ meta }) {
   return null;
 }
 
+function restartGuidedSearch() {
+  const params = new URLSearchParams(window.location.search);
+  params.delete("ref");
+  const query = params.toString();
+  window.location.assign(`/cerere${query ? `?${query}` : ""}`);
+}
+
 // Module 3E: sections are driven STRICTLY by result_bucket from the backend.
 // Top 3 = result_bucket === "top3" only — never a positional slice.
-export default function MatchResults({ results, meta }) {
+export default function MatchResults({ results, meta, onChangeLocation, onReviewCriteria }) {
   const [showMore, setShowMore] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const lastImpressionKey = useRef("");
-  const list = results || [];
-  const top3 = list.filter((r) => r.result_bucket === "top3");
-  const confirmed = list.filter((r) => r.result_bucket === "extended_confirmed");
-  const directory = list.filter((r) => r.result_bucket === "extended_directory");
+  const list = Array.isArray(results) ? results : [];
+  const top3 = list.filter((result) => result.result_bucket === "top3");
+  const confirmed = list.filter((result) => result.result_bucket === "extended_confirmed");
+  const directory = list.filter((result) => result.result_bucket === "extended_directory");
   const moreCount = confirmed.length + directory.length;
+  const recommendationState = top3.length === 0 && moreCount === 0 ? "empty" : (top3.length < 3 ? "insufficient" : "sufficient");
 
   useEffect(() => {
     if (list.length === 0 && !meta?.coverage_status) return;
@@ -63,6 +51,7 @@ export default function MatchResults({ results, meta }) {
           analytics_version: "patient-search-v1",
           contract_version: meta?.recommendation_contract_version || list[0]?.recommendation_contract_version || "legacy",
           coverage_status: meta?.coverage_status || "unknown",
+          recommendation_state: recommendationState,
           need_level: meta?.need_level || "unknown",
           resolved_intent: meta?.resolved_intent || "unknown",
           used_semantic_fallback: meta?.used_semantic_fallback === true,
@@ -78,7 +67,7 @@ export default function MatchResults({ results, meta }) {
     } catch (_error) {
       // Recommendation display must not depend on analytics.
     }
-  }, [confirmed.length, directory.length, list, meta, top3.length]);
+  }, [confirmed.length, directory.length, list, meta, recommendationState, top3.length]);
 
   const submitFeedback = (useful) => {
     if (feedback !== null) return;
@@ -100,20 +89,36 @@ export default function MatchResults({ results, meta }) {
     }
   };
 
+  const runRecoveryAction = (action, callback) => {
+    try {
+      base44.analytics.track({
+        eventName: "patient_search_recovery_action_clicked",
+        properties: {
+          analytics_version: "patient-search-v1",
+          action,
+          recommendation_state: recommendationState,
+          coverage_status: meta?.coverage_status || "unknown",
+          result_count: list.length,
+          top3_count: top3.length,
+        },
+      });
+    } catch (_error) {
+      // Recovery actions must remain available without analytics.
+    }
+    if (callback) callback();
+    else restartGuidedSearch();
+  };
+
   if (top3.length === 0 && moreCount === 0) {
-    const emptyState = EMPTY_RECOMMENDATION_STATES[meta?.coverage_status]
-      || DEFAULT_EMPTY_RECOMMENDATION_STATE;
     return (
-      <div>
-        <h2 className="font-heading text-xl font-bold tracking-tight">{emptyState.title}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {emptyState.description}
-        </p>
-        <RoutingNotice meta={meta} />
-        <Link to="/cauta" className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4">
-          Explorează toți furnizorii
-        </Link>
-      </div>
+      <NoResultsFlow
+        mode="empty"
+        meta={meta}
+        top3Count={0}
+        directoryCount={0}
+        onChangeLocation={() => runRecoveryAction("change_location", onChangeLocation)}
+        onReviewCriteria={() => runRecoveryAction("review_criteria", onReviewCriteria)}
+      />
     );
   }
 
@@ -121,7 +126,7 @@ export default function MatchResults({ results, meta }) {
 
   return (
     <div>
-      {top3.length > 0 ? (
+      {top3.length > 0 && (
         <>
           <h2 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">Cele mai potrivite opțiuni</h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
@@ -129,19 +134,22 @@ export default function MatchResults({ results, meta }) {
           </p>
           <RoutingNotice meta={meta} />
           <div className="mt-5 space-y-3">
-            {top3.map((loc) => <MatchResultCard key={loc.id} location={loc} />)}
+            {top3.map((location) => <MatchResultCard key={location.id} location={location} />)}
           </div>
         </>
-      ) : (
-        <>
-          <h2 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">Nu avem încă opțiuni confirmate pentru această nevoie în zona ta</h2>
-          {directory.length > 0 && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              Poți vedea mai jos câteva profiluri din director.
-            </p>
-          )}
-          <RoutingNotice meta={meta} />
-        </>
+      )}
+
+      {top3.length < 3 && (
+        <div className={top3.length > 0 ? "mt-6" : ""}>
+          <NoResultsFlow
+            mode="insufficient"
+            meta={meta}
+            top3Count={top3.length}
+            directoryCount={directory.length}
+            onChangeLocation={() => runRecoveryAction("change_location", onChangeLocation)}
+            onReviewCriteria={() => runRecoveryAction("review_criteria", onReviewCriteria)}
+          />
+        </div>
       )}
 
       {moreCount > 0 && !expanded && (
@@ -158,7 +166,7 @@ export default function MatchResults({ results, meta }) {
         <div className="mt-8">
           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Mai multe opțiuni relevante</div>
           <div className="mt-3 space-y-3">
-            {confirmed.map((loc) => <MatchResultCard key={loc.id} location={loc} />)}
+            {confirmed.map((location) => <MatchResultCard key={location.id} location={location} />)}
           </div>
         </div>
       )}
@@ -170,7 +178,7 @@ export default function MatchResults({ results, meta }) {
             Aceste profiluri provin din surse publice. VIASEE nu a confirmat toate informațiile afișate.
           </p>
           <div className="mt-3 space-y-3">
-            {directory.map((loc) => <MatchResultCard key={loc.id} location={loc} />)}
+            {directory.map((location) => <MatchResultCard key={location.id} location={location} />)}
           </div>
         </div>
       )}
