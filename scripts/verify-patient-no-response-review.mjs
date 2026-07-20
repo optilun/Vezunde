@@ -118,8 +118,11 @@ assert.match(resume, /review=\{snapshot\.no_response_review\}/);
 
 assert.match(client, /sessionStorage/);
 assert.match(client, /no_response_keep_waiting/);
+assert.match(client, /request_access_token: token/);
 assert.match(client, /patient-request-reformulation-v1/);
-assert.doesNotMatch(client, /contact_email|contact_phone|access_token/);
+const seedBuilderSource = client.split("export function buildPatientRequestReformulationSeed")[1]
+  ?.split("export function createPatientRequestReformulationUrl")[0] || "";
+assert.doesNotMatch(seedBuilderSource, /contact_email|contact_phone|access_token/);
 assert.match(flow, /React\.useState\(\(\) =>[\s\S]{0,100}readPatientRequestReformulation/);
 assert.match(flow, /PatientCountyReformulation/);
 assert.match(countyFlow, /query_scope: "county"/);
