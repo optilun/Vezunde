@@ -1,4 +1,4 @@
-export const PATIENT_REQUEST_STATUS_CONTRACT_VERSION = 'patient-request-status-v5';
+export const PATIENT_REQUEST_STATUS_CONTRACT_VERSION = 'patient-request-status-v4';
 
 const RESPONSE_LABELS = Object.freeze({
   can_help: 'Poate ajuta',
