@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Settings, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { ROLE_LABELS } from "@/lib/workspaceStatusLabels";
@@ -41,30 +41,49 @@ function roleLabel(group) {
   return "Utilizator";
 }
 
-export default function ProviderTeamHeaderAccess() {
+function selectedOrganizationIdFor(data, userId, locationId) {
+  const rows = data?.members || [];
+  const ownLocationMembership = rows.find((membership) => (
+    membership.user_id === userId
+    && membership.location_id === locationId
+    && membership.organization_id
+  ));
+  if (ownLocationMembership?.organization_id) return ownLocationMembership.organization_id;
+
+  const locationMembership = rows.find((membership) => (
+    membership.location_id === locationId && membership.organization_id
+  ));
+  if (locationMembership?.organization_id) return locationMembership.organization_id;
+
+  const manageableOrganizationIds = data?.manageable_organization_ids || [];
+  return manageableOrganizationIds.length === 1 ? manageableOrganizationIds[0] : "";
+}
+
+export default function ProviderTeamHeaderAccess({ userId = "", locationId = "" }) {
   const rootRef = useRef(null);
+  const requestRef = useRef(0);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
-    base44.functions.invoke("getMyProviderMembers", {})
-      .then((response) => {
-        if (!mounted) return;
-        setData(response.data?.error ? null : response.data);
-      })
-      .catch(() => {
-        if (mounted) setData(null);
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
-    return () => { mounted = false; };
+  const load = useCallback(async ({ silent = false } = {}) => {
+    const requestId = ++requestRef.current;
+    if (!silent) setLoading(true);
+    const response = await base44.functions.invoke("getMyProviderMembers", {})
+      .catch(() => ({ data: null }));
+    if (requestId !== requestRef.current) return;
+    setData(response.data?.error ? null : response.data);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
+    void load();
+    return () => { requestRef.current += 1; };
+  }, [load]);
+
+  useEffect(() => {
     if (!open) return undefined;
+    void load({ silent: true });
     const closeOutside = (event) => {
       if (!rootRef.current?.contains(event.target)) setOpen(false);
     };
@@ -77,13 +96,33 @@ export default function ProviderTeamHeaderAccess() {
       document.removeEventListener("pointerdown", closeOutside);
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [open]);
+  }, [load, open]);
 
-  const members = useMemo(() => groupMembers(data?.members || []), [data?.members]);
+  const selectedOrganizationId = useMemo(
+    () => selectedOrganizationIdFor(data, userId, locationId),
+    [data, locationId, userId],
+  );
+  const manageableOrganizationIds = data?.manageable_organization_ids || [];
+  const canManageCurrentOrganization = Boolean(
+    data?.can_manage_members
+    && selectedOrganizationId
+    && manageableOrganizationIds.includes(selectedOrganizationId),
+  );
+  const scopedMemberships = useMemo(() => (
+    selectedOrganizationId
+      ? (data?.members || []).filter((membership) => membership.organization_id === selectedOrganizationId)
+      : []
+  ), [data?.members, selectedOrganizationId]);
+  const scopedInvitations = useMemo(() => (
+    selectedOrganizationId
+      ? (data?.invitations || []).filter((invitation) => invitation.organization_id === selectedOrganizationId)
+      : []
+  ), [data?.invitations, selectedOrganizationId]);
+  const members = useMemo(() => groupMembers(scopedMemberships), [scopedMemberships]);
   const visibleMembers = members.slice(0, 3);
-  const pendingInvitations = data?.invitations?.length || 0;
+  const pendingInvitations = scopedInvitations.length;
 
-  if (!loading && !data?.can_manage_members) return null;
+  if (!loading && !canManageCurrentOrganization) return null;
 
   return (
     <div ref={rootRef} className="relative">
@@ -93,6 +132,8 @@ export default function ProviderTeamHeaderAccess() {
         className="inline-flex min-h-10 items-center rounded-full px-1.5 transition hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15"
         aria-label="Utilizatori și acces"
         aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-controls="provider-team-header-panel"
         title="Utilizatori și acces"
       >
         <span className="hidden items-center -space-x-2 sm:flex">
@@ -116,7 +157,12 @@ export default function ProviderTeamHeaderAccess() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-[min(22rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-xl">
+        <div
+          id="provider-team-header-panel"
+          role="dialog"
+          aria-label="Utilizatorii organizației"
+          className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-[min(22rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-xl"
+        >
           <div className="border-b border-border px-4 py-4">
             <div className="flex items-center justify-between gap-3">
               <div>
