@@ -16,6 +16,7 @@ const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
 const URL_PATTERN = /(?:https?:\/\/|www\.)\S+/i;
 const PHONE_CANDIDATE_PATTERN = /(?:\+?\d[\d\s().-]{7,}\d)/g;
 
+/** @param {unknown} value @param {number} [maxLength] */
 function clean(value, maxLength = CONTROLLED_CHAT_MAX_MESSAGE_LENGTH + 1) {
   return String(value || '')
     .replace(/\r\n?/g, '\n')
@@ -26,7 +27,9 @@ function clean(value, maxLength = CONTROLLED_CHAT_MAX_MESSAGE_LENGTH + 1) {
     .slice(0, maxLength);
 }
 
+/** @param {unknown} value */
 function containsPhone(value) {
+  /** @type {string[]} */
   const matches = String(value || '').match(PHONE_CANDIDATE_PATTERN) || [];
   return matches.some((candidate) => candidate.replace(/\D/g, '').length >= 9);
 }
