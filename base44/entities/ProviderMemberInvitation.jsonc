@@ -18,9 +18,14 @@
       "type": "string",
       "enum": [
         "organization_owner",
+        "organization_admin",
         "location_manager",
         "location_staff"
       ]
+    },
+    "organization_wide_access": {
+      "type": "boolean",
+      "default": false
     },
     "invited_by_user_id": {
       "type": "string"
