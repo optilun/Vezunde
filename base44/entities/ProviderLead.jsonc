@@ -46,6 +46,11 @@
       "enum": ["new", "viewed", "interested", "needs_details", "declined", "closed", "expired"],
       "default": "new"
     },
+    "closure_reason": {
+      "type": "string",
+      "enum": ["request_resolved", "request_closed", "request_expired"]
+    },
+    "closed_at": { "type": "string", "format": "date-time" },
     "eligible_at": { "type": "string", "format": "date-time" },
     "last_revalidated_at": { "type": "string", "format": "date-time" },
     "expires_at": { "type": "string", "format": "date-time" },

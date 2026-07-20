@@ -18,6 +18,7 @@ import {
   summarizeInAppNotifications,
 } from '../../../shared/inAppNotificationPolicy.js';
 import { ensureProviderInAppNotifications } from '../../../shared/inAppNotificationProjection.js';
+import { reconcilePatientRequestExpiration } from '../../../shared/patientRequestLifecycleOps.js';
 
 const LIST_STATUSES = new Set(['new', 'viewed', 'interested', 'needs_details', 'declined', 'closed', 'expired']);
 
@@ -61,6 +62,21 @@ function safeLocation(location) {
 async function entitlementForLocation(svc, locationId) {
   const rows = await svc.entities.ProviderSubscription.filter({ location_id: locationId }, '-created_date', 100);
   return resolveProviderEntitlement(rows);
+}
+
+async function reconcileLocationExpirations(svc, locationId) {
+  const rows = await svc.entities.ProviderLead.filter({
+    location_id: locationId,
+    delivery_state: 'available',
+  }, '-created_date', 500);
+  const now = Date.now();
+  const requestIds = [...new Set(rows
+    .filter((lead) => {
+      const expiresAt = Date.parse(String(lead?.expires_at || ''));
+      return lead?.request_id && Number.isFinite(expiresAt) && expiresAt <= now;
+    })
+    .map((lead) => lead.request_id))];
+  await Promise.allSettled(requestIds.map((requestId) => reconcilePatientRequestExpiration(svc, requestId)));
 }
 
 async function auditFullDetailsRead(svc, lead, user, entitlement, fields) {
@@ -176,6 +192,7 @@ Deno.serve(async (req) => {
     if (authorized.error) return res({ error: authorized.error }, authorized.status);
 
     if (action === 'notifications_list') {
+      await reconcileLocationExpirations(svc, locationId).catch(() => null);
       await ensureProviderInAppNotifications({ svc, userId: user.id, locationId }).catch(() => []);
       return res(await listProviderNotifications(svc, user.id, locationId, input.limit));
     }
@@ -206,6 +223,7 @@ Deno.serve(async (req) => {
     }
 
     if (action !== 'list') return res({ error: 'Actiune necunoscuta.' }, 400);
+    await reconcileLocationExpirations(svc, locationId).catch(() => null);
     const requestedStatus = clean(input.status, 80);
     const filter = {
       location_id: locationId,

@@ -19,6 +19,11 @@ assert.ok(validateControlledChatMessage('Telefon 0712 345 678').reasons.includes
 assert.ok(validateControlledChatMessage('Detalii pe https://example.com').reasons.includes('link_not_allowed'));
 assert.ok(validateControlledChatMessage('a'.repeat(1201)).reasons.includes('message_too_long'));
 
+const request = {
+  lifecycle_state: 'active',
+  status: 'pregatita_pentru_distribuire',
+  expires_at: '2099-01-01T00:00:00.000Z',
+};
 const lead = {
   id: 'lead-1',
   delivery_state: 'available',
@@ -32,12 +37,13 @@ const contact = {
   provider_request_distribution_consent: true,
   provider_request_distribution_consent_version: 'patient-request-distribution-top3-pro-v2',
 };
-assert.equal(controlledChatEligibility({ lead, response, entitlement, contact }).eligible, true);
-assert.ok(controlledChatEligibility({ lead: { ...lead, result_bucket_snapshot: 'extended_confirmed' }, response, entitlement, contact }).reasons.includes('lead_not_top3'));
-assert.ok(controlledChatEligibility({ lead, response, entitlement: { plan_code: 'free', feature_keys: [] }, contact }).reasons.includes('provider_chat_entitlement_required'));
-assert.ok(controlledChatEligibility({ lead, response: { status: 'active', response_type: 'cannot_help' }, entitlement, contact }).reasons.includes('provider_response_not_eligible'));
-assert.ok(controlledChatEligibility({ lead, response, entitlement, contact: { ...contact, provider_request_distribution_consent: false } }).reasons.includes('distribution_consent_missing'));
-assert.ok(controlledChatEligibility({ lead, response, entitlement, contact, conversation: { status: 'closed' } }).reasons.includes('conversation_closed'));
+assert.equal(controlledChatEligibility({ request, lead, response, entitlement, contact }).eligible, true);
+assert.ok(controlledChatEligibility({ request: { ...request, lifecycle_state: 'closed' }, lead, response, entitlement, contact }).reasons.includes('request_lifecycle_not_active'));
+assert.ok(controlledChatEligibility({ request, lead: { ...lead, result_bucket_snapshot: 'extended_confirmed' }, response, entitlement, contact }).reasons.includes('lead_not_top3'));
+assert.ok(controlledChatEligibility({ request, lead, response, entitlement: { plan_code: 'free', feature_keys: [] }, contact }).reasons.includes('provider_chat_entitlement_required'));
+assert.ok(controlledChatEligibility({ request, lead, response: { status: 'active', response_type: 'cannot_help' }, entitlement, contact }).reasons.includes('provider_response_not_eligible'));
+assert.ok(controlledChatEligibility({ request, lead, response, entitlement, contact: { ...contact, provider_request_distribution_consent: false } }).reasons.includes('distribution_consent_missing'));
+assert.ok(controlledChatEligibility({ request, lead, response, entitlement, contact, conversation: { status: 'closed' } }).reasons.includes('conversation_closed'));
 
 const safeMessage = sanitizeControlledChatMessage({
   id: 'message-1',
@@ -92,6 +98,8 @@ assert.match(backend, /actor === 'patient'/);
 assert.match(backend, /actor === 'provider'/);
 assert.match(backend, /sha256\(accessToken\)/);
 assert.match(backend, /ProviderMembership\.filter/);
+assert.match(backend, /PatientRequest\.get\(lead\.request_id\)/);
+assert.match(backend, /request: checked\.request/);
 assert.match(backend, /provider_chat\.access/);
 assert.match(backend, /PatientRequestConversation\.create/);
 assert.match(backend, /PatientRequestMessage\.create/);

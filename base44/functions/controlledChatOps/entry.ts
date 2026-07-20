@@ -139,18 +139,20 @@ async function loadProviderContext(base44, svc, input) {
   const membership = memberships.find((row) => canAccessProviderLeadInbox(row?.role));
   if (!membership) return { error: 'Nu ai acces la conversatiile acestei locatii.', status: 403 };
 
-  const [contacts, response, entitlement, conversation] = await Promise.all([
+  const [request, contacts, response, entitlement, conversation] = await Promise.all([
+    svc.entities.PatientRequest.get(lead.request_id).catch(() => null),
     svc.entities.PatientRequestContact.filter({ request_id: lead.request_id, status: 'active' }, '-updated_date', 2),
     findActiveResponse(svc, lead),
     resolveEntitlement(svc, locationId),
     findConversation(svc, lead),
   ]);
   const contact = contacts[0] || null;
+  if (!request) return { error: 'Cererea nu mai este disponibila.', status: 409 };
   if (!contact) return { error: 'Datele cererii nu mai sunt disponibile.', status: 409 };
 
   return {
     actor: 'provider',
-    request: null,
+    request,
     contact,
     lead,
     location,
@@ -163,6 +165,7 @@ async function loadProviderContext(base44, svc, input) {
 
 function eligibilityWithoutClosedConversation(context) {
   return controlledChatEligibility({
+    request: context.request,
     lead: context.lead,
     response: context.response,
     entitlement: context.entitlement,
@@ -271,6 +274,7 @@ async function sendMessage(base44, svc, context, input) {
   const conversation = context.conversation;
   if (!conversation || conversation.status !== 'open') return { error: 'Conversatia nu este deschisa.', status: 409 };
   const eligibility = controlledChatEligibility({
+    request: context.request,
     lead: context.lead,
     response: context.response,
     entitlement: context.entitlement,
@@ -316,6 +320,7 @@ async function sendMessage(base44, svc, context, input) {
       return { error: 'Conversatia nu mai este deschisa.', status: 409 };
     }
     const checkedEligibility = controlledChatEligibility({
+      request: checked.request,
       lead: checked.lead,
       response: checked.response,
       entitlement: checked.entitlement,

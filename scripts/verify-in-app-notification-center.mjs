@@ -12,6 +12,8 @@ import { createInAppNotification } from '../shared/inAppNotificationDelivery.js'
 assert.equal(IN_APP_NOTIFICATION_CONTRACT_VERSION, 'in-app-notification-v1');
 assert.equal(IN_APP_NOTIFICATION_EVENT_KEYS.PROVIDER_LEAD_AVAILABLE, 'provider_lead_available');
 assert.equal(IN_APP_NOTIFICATION_EVENT_KEYS.PATIENT_CHAT_MESSAGE_RECEIVED, 'patient_chat_message_received');
+assert.equal(IN_APP_NOTIFICATION_EVENT_KEYS.PROVIDER_REQUEST_RESOLVED, 'provider_request_resolved');
+assert.equal(IN_APP_NOTIFICATION_EVENT_KEYS.PATIENT_REQUEST_EXPIRED, 'patient_request_expired');
 
 const key = buildInAppNotificationIdempotencyKey({
   eventKey: 'provider_chat_message_received',
@@ -122,13 +124,15 @@ assert.match(patientBackend, /recipient_type: 'patient_request'/);
 assert.match(patientBackend, /notification\.request_id !== requestId/);
 assert.match(patientBackend, /ensurePatientInAppNotifications/);
 assert.doesNotMatch(patientBackend, /base44\.auth\.me\(\)/);
-assert.match(patientBackend, /conversation_enabled: openConversations\.length > 0/);
+assert.match(patientBackend, /conversation_enabled: lifecycle\.state === PATIENT_REQUEST_LIFECYCLE_STATES\.ACTIVE/);
 
 assert.match(projection, /PROVIDER_CHAT_MESSAGE_RECEIVED/);
 assert.match(projection, /PATIENT_CHAT_MESSAGE_RECEIVED/);
 assert.match(projection, /PROVIDER_PHONE_APPROVED/);
 assert.match(projection, /PROVIDER_PHONE_REVOKED/);
 assert.match(projection, /PATIENT_CONVERSATION_CLOSED/);
+assert.match(projection, /PROVIDER_REQUEST_RESOLVED/);
+assert.match(projection, /PATIENT_REQUEST_EXPIRED/);
 assert.match(delivery, /idempotency_key: idempotencyKey/);
 assert.match(communication, /notifyProviderUsersInApp/);
 assert.match(communication, /notifyPatientRequestInApp/);

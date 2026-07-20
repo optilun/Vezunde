@@ -114,6 +114,22 @@ export async function authorizePatientRequestDistribution(requestId, explicitAcc
 export async function getPatientRequestStatus(requestId, explicitAccessToken = "") {
   const token = resolveRequestAccessToken(requestId, explicitAccessToken);
   const response = await base44.functions.invoke("getPatientRequestStatus", {
+    action: "status",
+    request_id: requestId,
+    request_access_token: token,
+  });
+  return responseData(response);
+}
+
+export async function updatePatientRequestLifecycle({
+  requestId,
+  action,
+  explicitAccessToken = "",
+}) {
+  if (!["resolve", "close"].includes(action)) throw new Error("Actiunea de lifecycle nu este valida.");
+  const token = resolveRequestAccessToken(requestId, explicitAccessToken);
+  const response = await base44.functions.invoke("getPatientRequestStatus", {
+    action,
     request_id: requestId,
     request_access_token: token,
   });

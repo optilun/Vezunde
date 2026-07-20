@@ -1,0 +1,75 @@
+name: Patient Request Lifecycle
+
+on:
+  pull_request:
+    paths:
+      - "base44/entities/PatientRequest.jsonc"
+      - "base44/entities/ProviderLead.jsonc"
+      - "base44/functions/getPatientRequestStatus/entry.ts"
+      - "base44/functions/managePatientContactShareApproval/entry.ts"
+      - "base44/functions/providerLeadInboxOps/entry.ts"
+      - "base44/functions/controlledChatOps/entry.ts"
+      - "shared/patientRequestLifecyclePolicy.js"
+      - "shared/patientRequestLifecycleLock.js"
+      - "shared/patientRequestLifecycleOps.js"
+      - "shared/patientRequestStatusPolicy.js"
+      - "shared/controlledChatPolicy.js"
+      - "shared/inAppNotificationPolicy.js"
+      - "shared/inAppNotificationProjection.js"
+      - "src/lib/patientRequestPersistenceClient.js"
+      - "src/components/intake2/PatientRequestResponseStatus.jsx"
+      - "src/components/intake2/PatientRequestLifecyclePanel.jsx"
+      - "scripts/verify-patient-request-lifecycle.mjs"
+      - "package.json"
+      - "jsconfig.services.json"
+      - ".github/workflows/patient-request-lifecycle-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify patient request lifecycle
+        run: node scripts/verify-patient-request-lifecycle.mjs
+      - name: Verify existing service regressions
+        run: npm run test:services
+      - name: Typecheck service scope
+        run: npm run typecheck:services
+      - name: Lint lifecycle scope
+        run: >-
+          npx eslint
+          shared/patientRequestLifecyclePolicy.js
+          shared/patientRequestLifecycleLock.js
+          shared/patientRequestLifecycleOps.js
+          shared/patientRequestStatusPolicy.js
+          shared/controlledChatPolicy.js
+          shared/inAppNotificationPolicy.js
+          shared/inAppNotificationProjection.js
+          base44/functions/getPatientRequestStatus/entry.ts
+          base44/functions/managePatientContactShareApproval/entry.ts
+          base44/functions/providerLeadInboxOps/entry.ts
+          base44/functions/controlledChatOps/entry.ts
+          src/lib/patientRequestPersistenceClient.js
+          src/components/intake2/PatientRequestResponseStatus.jsx
+          src/components/intake2/PatientRequestLifecyclePanel.jsx
+          scripts/verify-patient-request-lifecycle.mjs
+          --quiet
+      - name: Repository typecheck diagnostic
+        continue-on-error: true
+        run: npm run typecheck
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build

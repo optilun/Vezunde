@@ -6,12 +6,14 @@ import {
   sanitizePatientRequestStatus,
 } from '../shared/patientRequestStatusPolicy.js';
 
-assert.equal(PATIENT_REQUEST_STATUS_CONTRACT_VERSION, 'patient-request-status-v2');
+assert.equal(PATIENT_REQUEST_STATUS_CONTRACT_VERSION, 'patient-request-status-v3');
 
 const request = sanitizePatientRequestStatus({
   id: 'request-1',
   public_reference: 'VIA-123',
   status: 'pregatita_pentru_distribuire',
+  lifecycle_state: 'active',
+  lifecycle_stage: 'waiting_responses',
   intent: 'reparatii_ochelari',
   city: 'Timisoara',
   county: 'Timis',
@@ -22,6 +24,8 @@ const request = sanitizePatientRequestStatus({
   contact_identity_hash: 'identity-secret',
 });
 assert.equal(request.public_reference, 'VIA-123');
+assert.equal(request.lifecycle_state, 'active');
+assert.equal(request.lifecycle_stage, 'waiting_responses');
 for (const forbidden of ['original_message', 'detailed_message', 'requester_user_id', 'contact_email_hash', 'contact_identity_hash']) {
   assert.equal(Object.hasOwn(request, forbidden), false, `${forbidden} nu trebuie returnat in status`);
 }
@@ -68,6 +72,7 @@ assert.equal(declined.contact_share_status, 'not_approved');
 const backend = await readFile(new URL('../base44/functions/getPatientRequestStatus/entry.ts', import.meta.url), 'utf8');
 const client = await readFile(new URL('../src/lib/patientRequestPersistenceClient.js', import.meta.url), 'utf8');
 const component = await readFile(new URL('../src/components/intake2/PatientRequestResponseStatus.jsx', import.meta.url), 'utf8');
+const lifecycleComponent = await readFile(new URL('../src/components/intake2/PatientRequestLifecyclePanel.jsx', import.meta.url), 'utf8');
 const chatComponent = await readFile(new URL('../src/components/intake2/PatientRequestChat.jsx', import.meta.url), 'utf8');
 const notificationComponent = await readFile(new URL('../src/components/notifications/PatientNotificationCenter.jsx', import.meta.url), 'utf8');
 const submission = await readFile(new URL('../src/components/intake2/PatientRequestSubmission.jsx', import.meta.url), 'utf8');
@@ -79,7 +84,10 @@ assert.match(backend, /ContactShareApproval\.filter/);
 assert.match(backend, /PatientRequestConversation\.filter/);
 assert.match(backend, /contact_phone_available/);
 assert.match(backend, /phone_sharing_enabled/);
-assert.match(backend, /conversation_enabled: openConversations\.length > 0/);
+assert.match(backend, /conversation_enabled: lifecycle\.state === PATIENT_REQUEST_LIFECYCLE_STATES\.ACTIVE/);
+assert.match(backend, /action === 'resolve' \|\| action === 'close'/);
+assert.match(backend, /transitionPatientRequestLifecycle/);
+assert.match(backend, /reconcilePatientRequestExpiration/);
 assert.match(backend, /notifications_list/);
 assert.match(backend, /notification_mark_read/);
 assert.match(backend, /notifications_mark_all_read/);
@@ -87,6 +95,7 @@ assert.doesNotMatch(backend, /base44\.auth\.me\(\)/);
 assert.doesNotMatch(backend, /contact_phone:|original_message:|detailed_message:|responder_user_id:/);
 
 assert.match(client, /getPatientRequestStatus/);
+assert.match(client, /updatePatientRequestLifecycle/);
 assert.match(client, /patientControlledChat/);
 assert.match(component, /Verifică răspunsurile/);
 assert.match(component, /controlezi separat telefonul și deschiderea chatului/);
@@ -94,7 +103,10 @@ assert.match(component, /Permite acestei locații accesul la telefon/);
 assert.match(component, /Retrage accesul la telefon/);
 assert.match(component, /status\.contact_phone_available === true/);
 assert.match(component, /<PatientRequestChat/);
+assert.match(component, /<PatientRequestLifecyclePanel/);
 assert.match(component, /<PatientNotificationCenter/);
+assert.match(lifecycleComponent, /Cererea a fost rezolvata/);
+assert.match(lifecycleComponent, /Inchide cererea/);
 assert.doesNotMatch(component, /response\.contact_phone|contact_phone\s*:|original_message|detailed_message|responder_user_id/);
 assert.match(chatComponent, /Deschide conversația/);
 assert.match(chatComponent, /Nu introduce telefon, email sau linkuri/);
@@ -105,4 +117,4 @@ assert.doesNotMatch(notificationComponent, /base44\.entities\.InAppNotification/
 assert.match(submission, /PatientRequestResponseStatus/);
 assert.match(submission, /requestId=\{success\.request_id\}/);
 
-console.log('Patient request status, phone sharing, controlled chat and notification checks passed.');
+console.log('Patient request status, lifecycle, phone sharing, controlled chat and notification checks passed.');

@@ -1,4 +1,4 @@
-export const PATIENT_REQUEST_STATUS_CONTRACT_VERSION = 'patient-request-status-v2';
+export const PATIENT_REQUEST_STATUS_CONTRACT_VERSION = 'patient-request-status-v3';
 
 const RESPONSE_LABELS = Object.freeze({
   can_help: 'Poate ajuta',
@@ -17,11 +17,15 @@ export function sanitizePatientRequestStatus(request) {
     id: clean(request?.id, 120),
     public_reference: clean(request?.public_reference, 120),
     status: clean(request?.status, 80),
+    lifecycle_state: clean(request?.lifecycle_state, 40),
+    lifecycle_stage: clean(request?.lifecycle_stage, 60),
     intent: clean(request?.intent, 120),
     city: clean(request?.city, 120),
     county: clean(request?.county, 120),
     submitted_at: request?.submitted_at || null,
     expires_at: request?.expires_at || null,
+    resolved_at: request?.resolved_at || null,
+    closed_at: request?.closed_at || null,
   };
 }
 

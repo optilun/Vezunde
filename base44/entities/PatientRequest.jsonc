@@ -64,6 +64,27 @@
     "distribution_lock_at": { "type": "string", "format": "date-time" },
     "submitted_at": { "type": "string", "format": "date-time" },
     "expires_at": { "type": "string", "format": "date-time" },
+    "lifecycle_contract_version": { "type": "string" },
+    "lifecycle_state": {
+      "type": "string",
+      "enum": ["active", "resolved", "closed", "expired"],
+      "default": "active"
+    },
+    "lifecycle_stage": {
+      "type": "string",
+      "enum": ["submitted", "distributed", "waiting_responses", "has_responses", "conversation_active", "resolved", "closed", "expired"],
+      "default": "submitted"
+    },
+    "lifecycle_updated_at": { "type": "string", "format": "date-time" },
+    "resolved_at": { "type": "string", "format": "date-time" },
+    "closed_at": { "type": "string", "format": "date-time" },
+    "closed_by": {
+      "type": "string",
+      "enum": ["patient", "system", "admin"]
+    },
+    "expiration_processed_at": { "type": "string", "format": "date-time" },
+    "lifecycle_lock_token": { "type": "string" },
+    "lifecycle_lock_at": { "type": "string", "format": "date-time" },
     "persistence_state": {
       "type": "string",
       "enum": ["creating", "complete", "partial_failure"],
