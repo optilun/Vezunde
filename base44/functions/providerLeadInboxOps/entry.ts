@@ -12,6 +12,11 @@ import {
   providerLeadFullDetailsEligibility,
   sanitizeProviderLeadFullDetailsStatus,
 } from '../../../shared/providerLeadFullDetailsPolicy.js';
+import {
+  IN_APP_NOTIFICATION_CONTRACT_VERSION,
+  sanitizeInAppNotification,
+  summarizeInAppNotifications,
+} from '../../../shared/inAppNotificationPolicy.js';
 
 const LIST_STATUSES = new Set(['new', 'viewed', 'interested', 'needs_details', 'declined', 'closed', 'expired']);
 
@@ -104,6 +109,57 @@ async function enrichLeadForInbox(svc, lead, user, entitlement) {
   };
 }
 
+function providerNotificationFilter(userId, locationId) {
+  return {
+    recipient_type: 'provider_user',
+    recipient_ref_id: userId,
+    location_id: locationId,
+  };
+}
+
+async function listProviderNotifications(svc, userId, locationId, limit) {
+  const filter = providerNotificationFilter(userId, locationId);
+  const [rows, allRows] = await Promise.all([
+    svc.entities.InAppNotification.filter(filter, '-created_date', boundedLimit(limit)),
+    svc.entities.InAppNotification.filter(filter, '-created_date', 500),
+  ]);
+  return {
+    notification_contract_version: IN_APP_NOTIFICATION_CONTRACT_VERSION,
+    counters: summarizeInAppNotifications(allRows),
+    notifications: rows.map(sanitizeInAppNotification),
+  };
+}
+
+async function markProviderNotificationRead(svc, userId, locationId, notificationId) {
+  const notification = await svc.entities.InAppNotification.get(notificationId).catch(() => null);
+  if (!notification
+    || notification.recipient_type !== 'provider_user'
+    || notification.recipient_ref_id !== userId
+    || notification.location_id !== locationId) {
+    return { error: 'Notificarea nu a fost gasita.', status: 404 };
+  }
+  const updated = notification.status === 'read'
+    ? notification
+    : await svc.entities.InAppNotification.update(notification.id, {
+      status: 'read',
+      read_at: new Date().toISOString(),
+    });
+  return { notification: sanitizeInAppNotification(updated) };
+}
+
+async function markAllProviderNotificationsRead(svc, userId, locationId) {
+  const rows = await svc.entities.InAppNotification.filter({
+    ...providerNotificationFilter(userId, locationId),
+    status: 'unread',
+  }, '-created_date', 500);
+  const now = new Date().toISOString();
+  await Promise.all(rows.map((row) => svc.entities.InAppNotification.update(row.id, {
+    status: 'read',
+    read_at: now,
+  })));
+  return { updated: rows.length };
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -117,6 +173,23 @@ Deno.serve(async (req) => {
 
     const authorized = await authorizeLocation(svc, user, locationId);
     if (authorized.error) return res({ error: authorized.error }, authorized.status);
+
+    if (action === 'notifications_list') {
+      return res(await listProviderNotifications(svc, user.id, locationId, input.limit));
+    }
+    if (action === 'notification_mark_read') {
+      const notificationId = clean(input.notification_id, 120);
+      if (!notificationId) return res({ error: 'notification_id este obligatoriu.' }, 400);
+      const result = await markProviderNotificationRead(svc, user.id, locationId, notificationId);
+      if (result.error) return res({ error: result.error }, result.status);
+      return res({ notification_contract_version: IN_APP_NOTIFICATION_CONTRACT_VERSION, ...result });
+    }
+    if (action === 'notifications_mark_all_read') {
+      return res({
+        notification_contract_version: IN_APP_NOTIFICATION_CONTRACT_VERSION,
+        ...(await markAllProviderNotificationsRead(svc, user.id, locationId)),
+      });
+    }
 
     if (action === 'mark_viewed') {
       const leadId = clean(input.lead_id, 120);
