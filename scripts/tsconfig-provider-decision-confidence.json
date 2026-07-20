@@ -1,0 +1,15 @@
+{
+  "extends": "../jsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "../shared/providerDecisionConfidence.js"
+  ],
+  "exclude": [
+    "../node_modules",
+    "../dist",
+    "../src/vite-plugins",
+    "../src/components/ui"
+  ]
+}

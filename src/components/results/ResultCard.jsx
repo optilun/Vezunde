@@ -1,10 +1,12 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle2, Clock, MapPin, Phone, Route } from "lucide-react";
+import { Clock, MapPin, Phone, Route } from "lucide-react";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
 import { summarizePublicServices } from "@/lib/servicePresentation";
+import { buildProviderDecisionConfidence } from "../../../shared/providerDecisionConfidence.js";
 import TrustBadge from "@/components/results/TrustBadge";
 import ServiceChip from "@/components/results/ServiceChip";
+import DecisionConfidencePanel from "@/components/results/DecisionConfidencePanel";
 import DirectoryProfileNotice from "@/components/provider/DirectoryProfileNotice";
 
 const TIER_LABELS = {
@@ -21,6 +23,17 @@ const VARIANT_STYLES = {
   neutral: "bg-card border border-border",
 };
 
+function confidenceForLocation(location) {
+  return buildProviderDecisionConfidence({
+    matchedServiceKeys: location.matched_service_keys || [],
+    profileControlStatus: location.profile_control_status || "directory",
+    availability: location.availability_label ? { label: location.availability_label } : null,
+    expansionTier: location.expansion_tier || "oras",
+    professionalCount: Number(location.professional_count) || 0,
+    needLevel: location.need_level_snapshot || location.need_level || "general",
+  });
+}
+
 export default function ResultCard({ location, variant = "neutral", onProfileClick, onPhoneClick }) {
   const isDirectoryProfile = location.profile_control_status === "directory";
   const allServices = location.public_services || [];
@@ -29,10 +42,7 @@ export default function ResultCard({ location, variant = "neutral", onProfileCli
   const shown = serviceSummaries.slice(0, 3);
   const extra = Math.max(0, serviceSummaries.length - shown.length);
   const hasDistance = !isDirectoryProfile && Number.isFinite(Number(location.distance_km));
-  const explanationLabels = (location.recommendation_explanations || location.match_reasons || [])
-    .map((item) => typeof item === "string" ? item : item?.label)
-    .filter((label) => label && label !== "service_alias_match")
-    .slice(0, 3);
+  const confidence = confidenceForLocation(location);
 
   return (
     <div className={`rounded-2xl p-5 transition-all ${VARIANT_STYLES[variant] || VARIANT_STYLES.neutral}`}>
@@ -67,19 +77,7 @@ export default function ResultCard({ location, variant = "neutral", onProfileCli
         </div>
       )}
 
-      {explanationLabels.length > 0 && (
-        <div className="mt-3">
-          <div className="text-xs font-semibold text-foreground">De ce se potriveste</div>
-          <ul className="mt-1.5 space-y-1">
-            {explanationLabels.map((label) => (
-              <li key={label} className="flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
-                <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
-                <span>{label}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <DecisionConfidencePanel confidence={confidence} contextLabel="De ce se potriveste" />
 
       {location.routing_reason && (
         <p className="mt-3 rounded-2xl bg-secondary/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">{location.routing_reason}</p>
