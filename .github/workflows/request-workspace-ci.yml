@@ -1,0 +1,62 @@
+name: Request Workspace
+
+on:
+  pull_request:
+    paths:
+      - "src/components/intake2/PatientRequestSubmission.jsx"
+      - "src/components/intake2/RequestWorkspace.jsx"
+      - "src/components/intake2/RequestWorkspaceLocationCard.jsx"
+      - "src/components/intake2/RequestWorkspaceTimeline.jsx"
+      - "src/components/intake2/PatientRequestLifecyclePanel.jsx"
+      - "src/components/intake2/PatientRequestChat.jsx"
+      - "src/components/notifications/NotificationCenter.jsx"
+      - "src/components/notifications/PatientNotificationCenter.jsx"
+      - "src/lib/patientRequestPersistenceClient.js"
+      - "scripts/verify-request-workspace.mjs"
+      - "scripts/verify-patient-request-status.mjs"
+      - ".github/workflows/request-workspace-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify request workspace
+        run: node scripts/verify-request-workspace.mjs
+      - name: Verify existing service regressions
+        run: npm run test:services
+      - name: Typecheck service scope
+        run: npm run typecheck:services
+      - name: Lint request workspace scope
+        run: >-
+          npx eslint
+          src/components/intake2/PatientRequestSubmission.jsx
+          src/components/intake2/RequestWorkspace.jsx
+          src/components/intake2/RequestWorkspaceLocationCard.jsx
+          src/components/intake2/RequestWorkspaceTimeline.jsx
+          src/components/intake2/PatientRequestLifecyclePanel.jsx
+          src/components/intake2/PatientRequestChat.jsx
+          src/components/notifications/NotificationCenter.jsx
+          src/components/notifications/PatientNotificationCenter.jsx
+          scripts/verify-request-workspace.mjs
+          scripts/verify-patient-request-status.mjs
+          --quiet
+      - name: Repository typecheck diagnostic
+        continue-on-error: true
+        run: npm run typecheck
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
