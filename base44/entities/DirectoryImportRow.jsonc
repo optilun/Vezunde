@@ -2,8 +2,12 @@
   "name": "DirectoryImportRow",
   "type": "object",
   "properties": {
+    "snapshot_id": { "type": "string" },
     "batch_id": { "type": "string" },
+    "row_number": { "type": "number" },
     "source_row_key": { "type": "string" },
+    "row_hash": { "type": "string" },
+    "idempotency_key": { "type": "string" },
     "organization_external_key": { "type": "string" },
     "location_external_key": { "type": "string" },
     "address_fingerprint": { "type": "string" },
@@ -12,26 +16,37 @@
     "planned_action": {
       "type": "string",
       "enum": [
-        "create_organization",
-        "create_location",
-        "update_location",
-        "link_organization_location",
+        "create_organization_and_location",
+        "create_location_use_existing_organization",
+        "create_location_without_organization",
+        "update_existing_location",
+        "link_existing_location",
+        "skip_unchanged",
         "skip_duplicate",
         "block_conflict",
         "reject_invalid"
       ]
     },
+    "planned_actions_json": { "type": "string" },
     "status": {
       "type": "string",
-      "enum": ["pending", "valid", "blocked", "applied", "skipped", "rejected", "rolled_back"],
-      "default": "pending"
+      "enum": ["raw", "valid", "blocked", "ready", "applied", "skipped", "failed", "rolled_back"],
+      "default": "raw"
     },
     "validation_codes": {
       "type": "array",
       "items": { "type": "string" }
     },
+    "validation_errors_json": { "type": "string" },
+    "validation_warnings_json": { "type": "string" },
+    "match_strategy": { "type": "string" },
+    "match_confidence": { "type": "string", "enum": ["none", "low", "medium", "high"] },
+    "candidate_matches_json": { "type": "string" },
     "target_organization_id": { "type": "string" },
     "target_location_id": { "type": "string" },
+    "admin_override_json": { "type": "string" },
+    "before_snapshot_json": { "type": "string" },
+    "result_json": { "type": "string" },
     "error_message": { "type": "string" },
     "applied_at": { "type": "string", "format": "date-time" },
     "rollback_status": {
@@ -40,7 +55,14 @@
       "default": "not_required"
     }
   },
-  "required": ["batch_id", "source_row_key", "status"],
+  "required": [
+    "snapshot_id",
+    "row_number",
+    "source_row_key",
+    "row_hash",
+    "idempotency_key",
+    "status"
+  ],
   "rls": {
     "read": { "user_condition": { "role": "admin" } },
     "write": { "user_condition": { "role": "admin" } }
