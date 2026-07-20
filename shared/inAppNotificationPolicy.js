@@ -1,7 +1,10 @@
-export const IN_APP_NOTIFICATION_CONTRACT_VERSION = 'in-app-notification-v1';
+export const IN_APP_NOTIFICATION_CONTRACT_VERSION = 'in-app-notification-v2';
 
 export const IN_APP_NOTIFICATION_EVENT_KEYS = Object.freeze({
   PROVIDER_LEAD_AVAILABLE: 'provider_lead_available',
+  PATIENT_REQUEST_RECEIVED: 'patient_request_received',
+  PATIENT_REQUEST_DISTRIBUTED: 'patient_request_distributed',
+  PATIENT_NO_RESPONSE_REVIEW_AVAILABLE: 'patient_no_response_review_available',
   PATIENT_PROVIDER_RESPONSE_RECEIVED: 'patient_provider_response_received',
   PROVIDER_CHAT_OPENED: 'provider_chat_opened',
   PROVIDER_CHAT_MESSAGE_RECEIVED: 'provider_chat_message_received',
@@ -13,6 +16,8 @@ export const IN_APP_NOTIFICATION_EVENT_KEYS = Object.freeze({
   PROVIDER_REQUEST_RESOLVED: 'provider_request_resolved',
   PROVIDER_REQUEST_CLOSED: 'provider_request_closed',
   PROVIDER_REQUEST_EXPIRED: 'provider_request_expired',
+  PATIENT_REQUEST_RESOLVED: 'patient_request_resolved',
+  PATIENT_REQUEST_CLOSED: 'patient_request_closed',
   PATIENT_REQUEST_EXPIRED: 'patient_request_expired',
 });
 
