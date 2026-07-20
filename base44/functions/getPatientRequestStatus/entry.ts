@@ -20,6 +20,12 @@ import {
   reconcilePatientRequestExpiration,
   transitionPatientRequestLifecycle,
 } from '../../../shared/patientRequestLifecycleOps.js';
+import {
+  PATIENT_REQUEST_RECOVERY_CONSENT_VERSION,
+  PatientRequestRecoveryValidationError,
+  buildPatientRequestRecoveryRecord,
+  sanitizePatientRequestRecovery,
+} from '../../../shared/patientRequestRecovery.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -192,6 +198,44 @@ async function buildWorkspacePayload(svc, request) {
   };
 }
 
+async function findRecoveryCase(svc, requestId) {
+  const rows = await svc.entities.PatientRequestRecoveryCase.filter({ request_id: requestId }, '-created_date', 5);
+  return rows[0] || null;
+}
+
+async function createRecoveryCase(svc, request, input) {
+  if (input.recovery_consent !== true
+    || clean(input.recovery_consent_version, 120) !== PATIENT_REQUEST_RECOVERY_CONSENT_VERSION) {
+    return { error: 'Acordul pentru verificarea cererii nu este valid.', status: 400 };
+  }
+
+  const lifecycleSnapshot = await deriveStoredPatientRequestLifecycle(svc, request);
+  if (lifecycleSnapshot.lifecycle?.state !== PATIENT_REQUEST_LIFECYCLE_STATES.ACTIVE) {
+    return { error: 'Cererea nu mai poate fi trimisa pentru verificare.', status: 409 };
+  }
+  if (Number(request.match_count || 0) > 0) {
+    return { error: 'Verificarea interna este disponibila numai pentru cererile fara rezultate.', status: 409 };
+  }
+
+  const existing = await findRecoveryCase(svc, request.id);
+  if (existing) return { recovery: existing, idempotent_replay: true };
+
+  try {
+    const record = buildPatientRequestRecoveryRecord({
+      request,
+      consentVersion: clean(input.recovery_consent_version, 120),
+      coverageCounts: input.coverage_counts || {},
+    });
+    const recovery = await svc.entities.PatientRequestRecoveryCase.create(record);
+    return { recovery, idempotent_replay: false };
+  } catch (error) {
+    if (error instanceof PatientRequestRecoveryValidationError) {
+      return { error: error.message, status: 400 };
+    }
+    throw error;
+  }
+}
+
 async function buildStatusPayload(svc, request, contact) {
   const expiration = await reconcilePatientRequestExpiration(svc, request.id);
   const currentRequest = expiration.request || request;
@@ -213,11 +257,12 @@ async function buildStatusPayload(svc, request, contact) {
     }).catch(() => null);
   }
 
-  const [rows, approvalRows, openConversations, workspace] = await Promise.all([
+  const [rows, approvalRows, openConversations, workspace, recovery] = await Promise.all([
     svc.entities.ProviderLeadResponse.filter({ request_id: currentRequest.id, status: 'active' }, '-updated_date', 100),
     svc.entities.ContactShareApproval.filter({ request_id: currentRequest.id }, '-updated_date', 100),
     svc.entities.PatientRequestConversation.filter({ request_id: currentRequest.id, status: 'open' }, '-updated_date', 100),
     buildWorkspacePayload(svc, currentRequest),
+    findRecoveryCase(svc, currentRequest.id),
   ]);
   const approvalByLocation = new Map();
   for (const approval of approvalRows) {
@@ -241,6 +286,8 @@ async function buildStatusPayload(svc, request, contact) {
     lifecycle: sanitizePatientRequestLifecycle(lifecycle),
     workspace,
     distribution_authorized: contact.provider_request_distribution_consent === true,
+    recovery_allowed: lifecycle.state === PATIENT_REQUEST_LIFECYCLE_STATES.ACTIVE && Number(currentRequest.match_count || 0) === 0,
+    recovery: sanitizePatientRequestRecovery(recovery),
     response_count: responses.length,
     responses,
     contact_email_verified: contact.contact_email_verified === true,
@@ -268,6 +315,15 @@ Deno.serve(async (req) => {
     const authorized = await authorizeRequest(svc, requestId, publicReference, accessToken);
     if (authorized.error) return res({ error: authorized.error }, authorized.status);
     const authorizedRequestId = authorized.request.id;
+
+    if (action === 'recovery_request') {
+      const result = await createRecoveryCase(svc, authorized.request, input);
+      if (result.error) return res({ error: result.error }, result.status);
+      return res({
+        ...(await buildStatusPayload(svc, authorized.request, authorized.contact)),
+        idempotent_replay: result.idempotent_replay,
+      });
+    }
 
     if (action === 'resolve' || action === 'close') {
       const targetState = action === 'resolve'
