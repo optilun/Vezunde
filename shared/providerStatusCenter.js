@@ -1,14 +1,53 @@
 export const PROVIDER_STATUS_CENTER_CONTRACT_VERSION = 'provider-status-center-v1';
 
+/**
+ * @typedef {Object} ProviderStatusLocation
+ * @property {string=} status
+ * @property {boolean=} is_active
+ * @property {string=} profile_control_status
+ * @property {string=} verification_state
+ */
+
+/**
+ * @typedef {Object} ProviderStatusEntitlement
+ * @property {string=} plan_code
+ * @property {string=} status
+ * @property {string[]=} feature_keys
+ */
+
+/**
+ * @typedef {Object} ProviderStatusCounters
+ * @property {number=} active
+ * @property {number=} new
+ * @property {number=} history
+ */
+
+/** @param {unknown} value */
 function clean(value) {
   return String(value || '').trim();
 }
 
+/**
+ * @param {ProviderStatusEntitlement} entitlement
+ * @param {string} featureKey
+ */
 function hasFeature(entitlement, featureKey) {
-  return Array.isArray(entitlement?.feature_keys) && entitlement.feature_keys.includes(featureKey);
+  return Array.isArray(entitlement.feature_keys) && entitlement.feature_keys.includes(featureKey);
 }
 
-export function buildProviderStatusCenter({ location = {}, entitlement = {}, counters = {} } = {}) {
+/**
+ * @param {{
+ *   location?: ProviderStatusLocation,
+ *   entitlement?: ProviderStatusEntitlement,
+ *   counters?: ProviderStatusCounters
+ * }=} input
+ */
+export function buildProviderStatusCenter(input = {}) {
+  const {
+    location = {},
+    entitlement = {},
+    counters = {},
+  } = input;
   const published = location.status === 'publicata' && location.is_active !== false;
   const suspended = location.profile_control_status === 'suspended';
   const controlled = ['claimed', 'verified'].includes(clean(location.profile_control_status));
