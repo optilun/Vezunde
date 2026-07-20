@@ -9,10 +9,15 @@ import {
 } from '../shared/inAppNotificationPolicy.js';
 import { createInAppNotification } from '../shared/inAppNotificationDelivery.js';
 
-assert.equal(IN_APP_NOTIFICATION_CONTRACT_VERSION, 'in-app-notification-v1');
+assert.equal(IN_APP_NOTIFICATION_CONTRACT_VERSION, 'in-app-notification-v2');
 assert.equal(IN_APP_NOTIFICATION_EVENT_KEYS.PROVIDER_LEAD_AVAILABLE, 'provider_lead_available');
+assert.equal(IN_APP_NOTIFICATION_EVENT_KEYS.PATIENT_REQUEST_RECEIVED, 'patient_request_received');
+assert.equal(IN_APP_NOTIFICATION_EVENT_KEYS.PATIENT_REQUEST_DISTRIBUTED, 'patient_request_distributed');
+assert.equal(IN_APP_NOTIFICATION_EVENT_KEYS.PATIENT_NO_RESPONSE_REVIEW_AVAILABLE, 'patient_no_response_review_available');
 assert.equal(IN_APP_NOTIFICATION_EVENT_KEYS.PATIENT_CHAT_MESSAGE_RECEIVED, 'patient_chat_message_received');
 assert.equal(IN_APP_NOTIFICATION_EVENT_KEYS.PROVIDER_REQUEST_RESOLVED, 'provider_request_resolved');
+assert.equal(IN_APP_NOTIFICATION_EVENT_KEYS.PATIENT_REQUEST_RESOLVED, 'patient_request_resolved');
+assert.equal(IN_APP_NOTIFICATION_EVENT_KEYS.PATIENT_REQUEST_CLOSED, 'patient_request_closed');
 assert.equal(IN_APP_NOTIFICATION_EVENT_KEYS.PATIENT_REQUEST_EXPIRED, 'patient_request_expired');
 
 const key = buildInAppNotificationIdempotencyKey({
@@ -105,8 +110,11 @@ for (const forbidden of ['contact_email', 'contact_phone', 'message_body', 'deta
 const providerBackend = await readFile(new URL('../base44/functions/providerLeadInboxOps/entry.ts', import.meta.url), 'utf8');
 const patientBackend = await readFile(new URL('../base44/functions/getPatientRequestStatus/entry.ts', import.meta.url), 'utf8');
 const projection = await readFile(new URL('../shared/inAppNotificationProjection.js', import.meta.url), 'utf8');
+const patientProjection = await readFile(new URL('../shared/patientCommunicationProjection.js', import.meta.url), 'utf8');
+const lifecycleOps = await readFile(new URL('../shared/patientRequestLifecycleOps.js', import.meta.url), 'utf8');
 const delivery = await readFile(new URL('../shared/inAppNotificationDelivery.js', import.meta.url), 'utf8');
 const communication = await readFile(new URL('../shared/leadCommunicationNotifications.js', import.meta.url), 'utf8');
+const patientCommunication = await readFile(new URL('../shared/patientCommunicationNotifications.js', import.meta.url), 'utf8');
 const phoneBackend = await readFile(new URL('../base44/functions/managePatientContactShareApproval/entry.ts', import.meta.url), 'utf8');
 const center = await readFile(new URL('../src/components/notifications/NotificationCenter.jsx', import.meta.url), 'utf8');
 const providerCenter = await readFile(new URL('../src/components/notifications/ProviderNotificationCenter.jsx', import.meta.url), 'utf8');
@@ -133,9 +141,18 @@ assert.match(projection, /PROVIDER_PHONE_REVOKED/);
 assert.match(projection, /PATIENT_CONVERSATION_CLOSED/);
 assert.match(projection, /PROVIDER_REQUEST_RESOLVED/);
 assert.match(projection, /PATIENT_REQUEST_EXPIRED/);
+assert.match(patientProjection, /PATIENT_REQUEST_RECEIVED/);
+assert.match(patientProjection, /PATIENT_REQUEST_DISTRIBUTED/);
+assert.match(patientProjection, /PATIENT_NO_RESPONSE_REVIEW_AVAILABLE/);
+assert.match(patientProjection, /derivePatientNoResponseReview/);
+assert.match(lifecycleOps, /PATIENT_REQUEST_RESOLVED/);
+assert.match(lifecycleOps, /PATIENT_REQUEST_CLOSED/);
+assert.match(lifecycleOps, /PATIENT_REQUEST_EXPIRED/);
 assert.match(delivery, /idempotency_key: idempotencyKey/);
 assert.match(communication, /notifyProviderUsersInApp/);
 assert.match(communication, /notifyPatientRequestInApp/);
+assert.match(patientCommunication, /notifyPatientRequestReceived/);
+assert.match(patientCommunication, /notifyPatientRequestDistributed/);
 
 assert.doesNotMatch(phoneBackend, /conversation_access_state: 'locked'/);
 assert.match(phoneBackend, /conversation_access_state: checkedLead\.conversation_access_state/);
