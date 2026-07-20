@@ -21,6 +21,28 @@ function clean(value, maxLength = 500) {
   return String(value || '').trim().slice(0, maxLength);
 }
 
+function safeResumeUrl(value) {
+  const raw = clean(value, 2000);
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.toLowerCase();
+    const allowedHost = host === 'viasee.ro'
+      || host === 'www.viasee.ro'
+      || host === 'localhost'
+      || host === '127.0.0.1'
+      || host.endsWith('.base44.app');
+    const localHttp = (host === 'localhost' || host === '127.0.0.1') && url.protocol === 'http:';
+    if (!allowedHost || (url.protocol !== 'https:' && !localHttp)) return '';
+    if (url.pathname !== '/cerere' || !url.searchParams.get('ref')) return '';
+    const accessToken = new URLSearchParams(url.hash.replace(/^#/, '')).get('access') || '';
+    if (!accessToken) return '';
+    return url.toString();
+  } catch (_error) {
+    return '';
+  }
+}
+
 async function sha256(value) {
   const bytes = new TextEncoder().encode(String(value || ''));
   const digest = await crypto.subtle.digest('SHA-256', bytes);
@@ -54,25 +76,38 @@ async function reloadContact(svc, contactId) {
   return svc.entities.PatientRequestContact.get(contactId).catch(() => null);
 }
 
-function verificationEmail({ code, publicReference }) {
+function verificationEmail({ code, publicReference, resumeUrl }) {
+  const lines = [
+    'Buna ziua,',
+    '',
+    'Foloseste codul de mai jos pentru a confirma adresa de email asociata cererii tale VIASEE:',
+    '',
+    code,
+    '',
+    'Codul este valabil 15 minute.',
+  ];
+  if (resumeUrl) {
+    lines.push(
+      '',
+      'Poti reveni la cerere de pe orice dispozitiv folosind linkul securizat:',
+      resumeUrl,
+      '',
+      'Linkul contine cheia privata de acces. Nu il publica si nu il transmite unei persoane necunoscute.',
+    );
+  }
+  lines.push(
+    '',
+    'Nu transmite codul unei alte persoane. VIASEE nu iti va cere codul prin telefon sau chat.',
+    '',
+    'Echipa VIASEE',
+  );
   return {
     subject: `Cod de verificare VIASEE${publicReference ? ` - ${publicReference}` : ''}`,
-    body: [
-      'Buna ziua,',
-      '',
-      'Foloseste codul de mai jos pentru a confirma adresa de email asociata cererii tale VIASEE:',
-      '',
-      code,
-      '',
-      'Codul este valabil 15 minute.',
-      'Nu transmite acest cod unei alte persoane. VIASEE nu iti va cere codul prin telefon sau chat.',
-      '',
-      'Echipa VIASEE',
-    ].join('\n'),
+    body: lines.join('\n'),
   };
 }
 
-async function sendCode(base44, svc, request, contact, accessToken) {
+async function sendCode(base44, svc, request, contact, accessToken, resumeUrl) {
   const lock = await acquirePatientEmailVerificationLock(svc, contact.id);
   if (!lock) return { error: 'Verificarea emailului este actualizata in alta sesiune. Reincearca.', status: 409 };
   try {
@@ -102,7 +137,11 @@ async function sendCode(base44, svc, request, contact, accessToken) {
       contact_email_verification_error: '',
     });
 
-    const email = verificationEmail({ code, publicReference: request.public_reference || '' });
+    const email = verificationEmail({
+      code,
+      publicReference: request.public_reference || '',
+      resumeUrl,
+    });
     try {
       await base44.integrations.Core.SendEmail({
         to: checked.contact_email,
@@ -210,7 +249,14 @@ Deno.serve(async (req) => {
       });
     }
     if (action === 'send_code') {
-      const result = await sendCode(base44, svc, authorized.request, authorized.contact, accessToken);
+      const result = await sendCode(
+        base44,
+        svc,
+        authorized.request,
+        authorized.contact,
+        accessToken,
+        safeResumeUrl(input.resume_url),
+      );
       if (result.error) return res({ error: result.error, verification: result.state || null }, result.status);
       return res({
         contract_version: PATIENT_EMAIL_VERIFICATION_CONTRACT_VERSION,
