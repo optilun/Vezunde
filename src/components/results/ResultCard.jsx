@@ -77,7 +77,7 @@ export default function ResultCard({ location, variant = "neutral", onProfileCli
         </div>
       )}
 
-      <DecisionConfidencePanel confidence={confidence} />
+      <DecisionConfidencePanel confidence={confidence} contextLabel="De ce se potriveste" />
 
       {location.routing_reason && (
         <p className="mt-3 rounded-2xl bg-secondary/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">{location.routing_reason}</p>
