@@ -90,3 +90,5 @@ assert.match(copyPanel, /Confirm inlocuirea/, 'UI must show an explicit overwrit
 assert.match(copyPanel, /sm:w-auto/, 'primary action must remain usable on mobile');
 
 console.log('Provider opening-hours validation and copy contract: PASS');
+
+await import('./verify-provider-service-copy.mjs');
