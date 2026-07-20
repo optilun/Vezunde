@@ -19,6 +19,7 @@ export default function NotificationCenter({
   markNotificationRead,
   markAllNotificationsRead,
   onOpenTarget,
+  onDataChange,
 }) {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState({ notifications: [], counters: { total: 0, unread: 0 } });
@@ -46,6 +47,10 @@ export default function NotificationCenter({
     const interval = window.setInterval(() => void load(), 60000);
     return () => window.clearInterval(interval);
   }, [load]);
+
+  useEffect(() => {
+    onDataChange?.(data);
+  }, [data, onDataChange]);
 
   const openNotification = async (notification) => {
     if (notification.status === "unread") {
