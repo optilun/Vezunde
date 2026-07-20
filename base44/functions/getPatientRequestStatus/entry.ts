@@ -10,6 +10,7 @@ import {
   sanitizeInAppNotification,
   summarizeInAppNotifications,
 } from '../../../shared/inAppNotificationPolicy.js';
+import { ensurePatientInAppNotifications } from '../../../shared/inAppNotificationProjection.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -110,6 +111,7 @@ Deno.serve(async (req) => {
     if (authorized.error) return res({ error: authorized.error }, authorized.status);
 
     if (action === 'notifications_list') {
+      await ensurePatientInAppNotifications({ svc, requestId }).catch(() => []);
       return res(await listPatientNotifications(svc, requestId, input.limit));
     }
     if (action === 'notification_mark_read') {
