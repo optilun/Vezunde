@@ -16,6 +16,13 @@ function RoutingNotice({ meta }) {
   return null;
 }
 
+function restartGuidedSearch() {
+  const params = new URLSearchParams(window.location.search);
+  params.delete("ref");
+  const query = params.toString();
+  window.location.assign(`/cerere${query ? `?${query}` : ""}`);
+}
+
 // Module 3E: sections are driven STRICTLY by result_bucket from the backend.
 // Top 3 = result_bucket === "top3" only — never a positional slice.
 export default function MatchResults({ results, meta, onChangeLocation, onReviewCriteria }) {
@@ -98,7 +105,8 @@ export default function MatchResults({ results, meta, onChangeLocation, onReview
     } catch (_error) {
       // Recovery actions must remain available without analytics.
     }
-    callback?.();
+    if (callback) callback();
+    else restartGuidedSearch();
   };
 
   if (top3.length === 0 && moreCount === 0) {
