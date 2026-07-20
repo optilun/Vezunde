@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { ArrowLeft, Clock, Info, MapPin, Users, Wrench } from "lucide-react";
 import { resolveProviderLocationAccess } from "@/lib/providerWorkspaceAccess";
 import ProviderServices from "./ProviderServices";
+import ProviderServicesCopyPanel from "./ProviderServicesCopyPanel";
 import ProviderHours from "./ProviderHours";
 import ProviderHoursCopyPanel from "./ProviderHoursCopyPanel";
 import ProviderTeam from "./ProviderTeam";
@@ -38,6 +39,7 @@ export default function ProviderLocationModulePage({
   onBack,
   onRefresh,
 }) {
+  const [servicesRevision, setServicesRevision] = useState(0);
   const location = (workspace.locations || []).find((item) => item.id === locationId) || null;
   const config = MODULES[moduleKey];
   const locationAccess = resolveProviderLocationAccess(workspace, locationId);
@@ -131,12 +133,21 @@ export default function ProviderLocationModulePage({
 
       <div className={moduleKey === "servicii" ? "" : "provider-location-module-page__content"} key={`${location.id}:${moduleKey}`}>
         {moduleKey === "servicii" && (
-          <ProviderServices
-            locationId={location.id}
-            location={location}
-            overview={overview || { content_summary: { approved_service_count: 0 } }}
-            onRefresh={onRefresh || (() => {})}
-          />
+          <>
+            <ProviderServicesCopyPanel
+              workspace={workspace}
+              currentLocationId={location.id}
+              onRefresh={onRefresh || (() => {})}
+              onCopied={() => setServicesRevision((value) => value + 1)}
+            />
+            <ProviderServices
+              key={`${location.id}:${servicesRevision}`}
+              locationId={location.id}
+              location={location}
+              overview={overview || { content_summary: { approved_service_count: 0 } }}
+              onRefresh={onRefresh || (() => {})}
+            />
+          </>
         )}
         {moduleKey === "program" && (
           <>
