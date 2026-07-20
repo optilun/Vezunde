@@ -1,0 +1,53 @@
+name: Provider Decision Confidence
+
+on:
+  pull_request:
+    paths:
+      - "shared/providerDecisionConfidence.js"
+      - "src/components/results/DecisionConfidencePanel.jsx"
+      - "src/components/results/ResultCard.jsx"
+      - "scripts/verify-provider-decision-confidence.mjs"
+      - "scripts/tsconfig-provider-decision-confidence.json"
+      - ".github/workflows/provider-decision-confidence-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify confidence contract
+        run: node scripts/verify-provider-decision-confidence.mjs
+      - name: Verify recommendation contract
+        run: node scripts/verify-provider-recommendation.mjs
+      - name: Verify patient search
+        run: node scripts/verify-patient-search-flow.mjs
+      - name: Verify services
+        run: npm run test:services
+      - name: Typecheck services
+        run: npm run typecheck:services
+      - name: Typecheck confidence policy
+        run: npx tsc -p scripts/tsconfig-provider-decision-confidence.json
+      - name: Lint feature scope
+        run: >-
+          npx eslint
+          shared/providerDecisionConfidence.js
+          src/components/results/DecisionConfidencePanel.jsx
+          src/components/results/ResultCard.jsx
+          scripts/verify-provider-decision-confidence.mjs
+          --quiet
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
