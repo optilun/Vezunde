@@ -9,14 +9,17 @@ const settings = await readFile(new URL('../src/components/workspace/provider/Pr
 assert.match(shell, /ProviderTeamHeaderAccess/);
 assert.match(shell, /subtitle === "Spațiu furnizor"/);
 assert.match(header, /getMyProviderMembers/);
-assert.match(header, /Utilizatori si acces/);
+assert.match(header, /Utilizatori și acces/);
 assert.match(header, /\/contul-meu\?s=settings/);
-assert.match(header, /PopoverContent/);
+assert.match(header, /aria-expanded=\{open\}/);
+assert.match(header, /document\.addEventListener\("pointerdown"/);
 assert.doesNotMatch(header, /createProviderMemberInvitation|setProviderMemberAccess|revokeProviderMemberInvitation/);
+assert.doesNotMatch(header, /react-router-dom|PopoverContent/);
 
 assert.doesNotMatch(navigation, /key:\s*"access"/);
 assert.doesNotMatch(navigation, /Acces si utilizatori/);
 assert.match(navigation, /key:\s*"settings"/);
+assert.match(navigation, /canManageMembers/);
 
 assert.match(settings, /title="Acces și utilizatori"/);
 assert.match(settings, /onNavigate\?\.\("access"\)/);
