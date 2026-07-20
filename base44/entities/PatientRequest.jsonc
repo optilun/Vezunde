@@ -14,7 +14,7 @@
     },
     "location_scope": {
       "type": "string",
-      "enum": ["locality", "geo", "city", "national"],
+      "enum": ["locality", "county", "geo", "city", "national"],
       "default": "locality"
     },
     "city": { "type": "string" },
@@ -64,6 +64,14 @@
     "distribution_lock_at": { "type": "string", "format": "date-time" },
     "submitted_at": { "type": "string", "format": "date-time" },
     "expires_at": { "type": "string", "format": "date-time" },
+    "no_response_review_contract_version": { "type": "string" },
+    "no_response_review_action": {
+      "type": "string",
+      "enum": ["keep_waiting"]
+    },
+    "no_response_reviewed_at": { "type": "string", "format": "date-time" },
+    "no_response_next_review_at": { "type": "string", "format": "date-time" },
+    "no_response_review_count": { "type": "number", "default": 0 },
     "lifecycle_contract_version": { "type": "string" },
     "lifecycle_state": {
       "type": "string",
