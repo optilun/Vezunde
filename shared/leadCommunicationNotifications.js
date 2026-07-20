@@ -8,6 +8,11 @@ import {
   deliverCommunicationEmail,
   recordSkippedCommunication,
 } from './communicationDelivery.js';
+import {
+  notifyPatientRequestInApp,
+  notifyProviderUsersInApp,
+} from './inAppNotificationDelivery.js';
+import { IN_APP_NOTIFICATION_EVENT_KEYS } from './inAppNotificationPolicy.js';
 
 const MAX_PROVIDER_LEAD_EMAIL_RECIPIENTS = 20;
 
@@ -25,6 +30,12 @@ function uniqueProviderRecipients(memberships) {
   return [...byUser.values()];
 }
 
+function patientResponseBody(responseType) {
+  if (responseType === 'can_help') return 'Locatia a confirmat ca poate analiza cererea ta.';
+  if (responseType === 'needs_details') return 'Locatia are nevoie de informatii suplimentare.';
+  return 'Locatia a transmis ca nu poate ajuta momentan.';
+}
+
 export async function notifyProviderLeadAvailable({ base44, svc, lead, location }) {
   if (!lead?.id || !location?.id) return { sent: 0, failed: 0, skipped: 0 };
   const memberships = await svc.entities.ProviderMembership.filter({
@@ -37,6 +48,21 @@ export async function notifyProviderLeadAvailable({ base44, svc, lead, location 
     city: lead.city || location.locality_name || location.city || '',
     intentLabel: lead.intent_label || '',
   });
+
+  await notifyProviderUsersInApp({
+    svc,
+    locationId: location.id,
+    eventKey: IN_APP_NOTIFICATION_EVENT_KEYS.PROVIDER_LEAD_AVAILABLE,
+    sourceEntityType: 'ProviderLead',
+    sourceEntityId: lead.id,
+    requestId: lead.request_id || '',
+    leadId: lead.id,
+    organizationId: lead.organization_id || location.organization_id || '',
+    title: 'Cerere noua relevanta',
+    body: [lead.intent_label || 'Cerere client', lead.city || location.locality_name || location.city || ''].filter(Boolean).join(' · '),
+    actionKind: 'lead',
+    actionTargetId: lead.id,
+  }).catch(() => []);
 
   if (recipients.length === 0) {
     await recordSkippedCommunication({
@@ -95,12 +121,29 @@ export async function notifyPatientProviderResponse({ base44, svc, lead, respons
     status: 'active',
   }, '-updated_date', 2);
   const contact = contacts[0] || null;
+  const locationName = location.public_display_name || location.name || 'O locatie';
   const email = buildPatientProviderResponseEmail({
     publicReference: request.public_reference || '',
-    locationName: location.public_display_name || location.name || 'O locatie',
+    locationName,
     responseType: response.response_type || '',
   });
   const variant = `${clean(response.response_type, 80)}:${clean(response.submitted_at, 80)}`;
+
+  await notifyPatientRequestInApp({
+    svc,
+    requestId: request.id,
+    eventKey: IN_APP_NOTIFICATION_EVENT_KEYS.PATIENT_PROVIDER_RESPONSE_RECEIVED,
+    sourceEntityType: 'ProviderLeadResponse',
+    sourceEntityId: response.id,
+    leadId: lead.id,
+    organizationId: lead.organization_id || location.organization_id || '',
+    locationId: location.id,
+    title: `Raspuns nou de la ${locationName}`,
+    body: patientResponseBody(response.response_type),
+    actionKind: 'request',
+    actionTargetId: location.id,
+    variant,
+  }).catch(() => null);
 
   if (!contact) {
     await recordSkippedCommunication({
