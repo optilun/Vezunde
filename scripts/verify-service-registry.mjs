@@ -154,16 +154,16 @@ copy.aliases.push("test-local-copy");
 assert.equal(getCanonicalServiceDefinition("eyeglasses").aliases.includes("test-local-copy"), false, "Helperul trebuie să returneze copii defensive");
 
 const consumers = {
-  directoryOps: "base44/functions/directoryOps/entry.ts",
+  directoryOps: "base44/function_modules/directoryOps.ts",
   publicProfile: "base44/functions/getPublicProviderProfile/entry.ts",
   browseDirectory: "base44/functions/browseDirectoryProviders/entry.ts",
   matching: "base44/functions/matchProviders/entry.ts",
-  providerRead: "base44/functions/getProviderServiceConfiguration/entry.ts",
-  adminServiceConfiguration: "base44/functions/adminServiceConfigurationReview/entry.ts",
-  matchingBackfill: "base44/functions/backfillLocationServiceMatching/entry.ts",
-  legacyWorkspaceSubmit: "base44/functions/submitProviderWorkspaceChange/entry.ts",
-  adminWorkspaceReview: "base44/functions/adminWorkspaceReview/entry.ts",
-  profileFoundation: "base44/functions/profileFoundationOps/entry.ts",
+  providerRead: "base44/function_modules/getProviderServiceConfiguration.ts",
+  adminServiceConfiguration: "base44/function_modules/adminServiceConfigurationReview.ts",
+  matchingBackfill: "base44/function_modules/backfillLocationServiceMatching.ts",
+  legacyWorkspaceSubmit: "base44/function_modules/submitProviderWorkspaceChange.ts",
+  adminWorkspaceReview: "base44/function_modules/adminWorkspaceReview.ts",
+  profileFoundation: "base44/function_modules/profileFoundationOps.ts",
 };
 for (const [name, relativePath] of Object.entries(consumers)) {
   const source = await readFile(sourcePath(relativePath), "utf8");
@@ -177,11 +177,11 @@ for (const [name, relativePath] of Object.entries(consumers)) {
   assert.match(bundledSource, /shared\/canonicalServiceRegistryExtended\.js/, `${name} are un bundle local fără registrul semantic V2`);
 }
 
-const providerOpsSource = await readFile(sourcePath("base44/functions/providerServiceConfigurationOps/entry.ts"), "utf8");
+const providerOpsSource = await readFile(sourcePath("base44/function_modules/providerServiceConfigurationOps.ts"), "utf8");
 assert.match(providerOpsSource, /serviceConfigurationPayloadExtended\.js/, "Fluxul provider trebuie să folosească validatorul semantic V2");
 assert.match(providerOpsSource, /Serviciile publice pot fi modificate numai de owner sau manager/, "Stafful trebuie blocat explicit");
 
-const providerReadSource = await readFile(sourcePath("base44/functions/getProviderServiceConfiguration/entry.ts"), "utf8");
+const providerReadSource = await readFile(sourcePath("base44/function_modules/getProviderServiceConfiguration.ts"), "utf8");
 assert.match(providerReadSource, /normalized\.status === 'canonical'/, "Citirea providerului trebuie să filtreze explicit doar cheile canonice fără remapare implicită");
 assert.match(providerReadSource, /LocationFunctionalUnit/, "Read modelul trebuie să încarce unitățile persistente");
 

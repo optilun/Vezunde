@@ -73,8 +73,8 @@ assert.ok(recoveredLock, 'stale locks must be recoverable');
 assert.notEqual(recoveredLock.token, 'stale-token');
 await releaseProfessionalLifecycleLock(svc, recoveredLock);
 
-const invitationSource = await readFile(new URL('../base44/functions/professionalInvitationOps/entry.ts', import.meta.url), 'utf8');
-const profileSource = await readFile(new URL('../base44/functions/manageMyProfessionalProfile/entry.ts', import.meta.url), 'utf8');
+const invitationSource = await readFile(new URL('../base44/function_modules/professionalInvitationOps.ts', import.meta.url), 'utf8');
+const profileSource = await readFile(new URL('../base44/function_modules/manageMyProfessionalProfile.ts', import.meta.url), 'utf8');
 const userSchema = JSON.parse(await readFile(new URL('../base44/entities/User.jsonc', import.meta.url), 'utf8'));
 
 for (const source of [invitationSource, profileSource]) {

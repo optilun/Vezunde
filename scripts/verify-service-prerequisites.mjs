@@ -92,11 +92,11 @@ assert.equal(unknown.status, 'unknown_service');
 
 const source = async (relativePath) => readFile(new URL('../' + relativePath, import.meta.url), 'utf8');
 for (const relativePath of [
-  'base44/functions/getProviderServiceConfiguration/entry.ts',
+  'base44/function_modules/getProviderServiceConfiguration.ts',
   'base44/functions/getPublicProviderProfile/entry.ts',
   'base44/functions/browseDirectoryProviders/entry.ts',
   'base44/functions/matchProviders/entry.ts',
-  'base44/functions/adminServiceConfigurationReview/entry.ts',
+  'base44/function_modules/adminServiceConfigurationReview.ts',
 ]) {
   const entrySource = await source(relativePath);
   if (/servicePrerequisiteEngine\.js/.test(entrySource)) continue;
@@ -119,12 +119,12 @@ assert.match(providerUiSource, /configurationComplete: true/);
 assert.doesNotMatch(providerUiSource, /disabled=\{disabled \|\| !capabilityActive\}/);
 assert.doesNotMatch(providerUiSource, /Activează mai întâi capabilitatea/);
 
-const providerOpsSource = await source('base44/functions/providerServiceConfigurationOps/entry.ts');
+const providerOpsSource = await source('base44/function_modules/providerServiceConfigurationOps.ts');
 assert.match(providerOpsSource, /function validateSubmissionReadiness\(\)/);
 assert.match(providerOpsSource, /units, capabilities and resources are optional/);
 assert.doesNotMatch(providerOpsSource, /necesită activitatea asociată/);
 
-const adminSource = await source('base44/functions/adminServiceConfigurationReview/entry.ts');
+const adminSource = await source('base44/function_modules/adminServiceConfigurationReview.ts');
 assert.match(adminSource, /provider_declared_services/);
 assert.doesNotMatch(adminSource, /location_not_verified/);
 assert.doesNotMatch(adminSource, /verifiedKeys/);
@@ -138,7 +138,7 @@ const semanticMatchingSource = await source('base44/functions/matchProvidersSema
 assert.doesNotMatch(semanticMatchingSource, /requiredRoles/);
 assert.doesNotMatch(semanticMatchingSource, /matching_allowed !== true/);
 
-const backfillSource = await source('base44/functions/backfillLocationServiceMatching/entry.ts');
+const backfillSource = await source('base44/function_modules/backfillLocationServiceMatching.ts');
 assert.doesNotMatch(backfillSource, /Serviciul medical nu este verificat individual/);
 assert.match(backfillSource, /declarat si confirmat de furnizor/);
 

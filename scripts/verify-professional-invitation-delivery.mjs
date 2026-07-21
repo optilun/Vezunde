@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const source = await readFile(new URL('../base44/functions/professionalInvitationOps/entry.ts', import.meta.url), 'utf8');
+const source = await readFile(new URL('../base44/function_modules/professionalInvitationOps.ts', import.meta.url), 'utf8');
 const schema = await readFile(new URL('../base44/entities/ProfessionalInvitation.jsonc', import.meta.url), 'utf8');
 const team = await readFile(new URL('../src/components/workspace/provider/ProviderTeam.jsx', import.meta.url), 'utf8');
 const acceptPage = await readFile(new URL('../src/pages/AcceptProfessionalInvitation.jsx', import.meta.url), 'utf8');

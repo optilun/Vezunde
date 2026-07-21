@@ -60,7 +60,7 @@ const summary = summarizeProviderCompleteness({ organizationCompletion: organiza
 assert.equal(summary.active_location_count, 2);
 assert.equal(summary.average_location_percentage, Math.round((completeLocation.percentage + incompleteLocation.percentage) / 2));
 
-const endpoint = await readFile(new URL('../base44/functions/getProviderProfileCompleteness/entry.ts', import.meta.url), 'utf8');
+const endpoint = await readFile(new URL('../base44/function_modules/getProviderProfileCompleteness.ts', import.meta.url), 'utf8');
 const panel = await readFile(new URL('../src/components/workspace/provider/ProviderCompletenessPanel.jsx', import.meta.url), 'utf8');
 const inbox = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInbox.jsx', import.meta.url), 'utf8');
 assert.match(endpoint, /computeOrganizationCompleteness/);
