@@ -74,7 +74,7 @@ const unknownField = validateProviderOpeningHours({
 assert.equal(unknownField.valid, false);
 assert.match(unknownField.error, /campuri nepermise/i);
 
-const copyBackend = readFileSync(new URL('../base44/functions/copyProviderOpeningHours/entry.ts', import.meta.url), 'utf8');
+const copyBackend = readFileSync(new URL('../base44/function_modules/copyProviderOpeningHours.ts', import.meta.url), 'utf8');
 assert.match(copyBackend, /targetIds\.includes\(sourceId\)/, 'source location must be excluded from targets');
 assert.match(copyBackend, /target\.organization_id !== source\.organization_id/, 'copy must remain inside one organization');
 assert.match(copyBackend, /confirm_replace_existing/, 'existing schedules require explicit replacement confirmation');
@@ -89,7 +89,7 @@ assert.match(copyPanel, /Vezi preview-ul/, 'UI must require preview before copy'
 assert.match(copyPanel, /Confirm inlocuirea/, 'UI must show an explicit overwrite confirmation');
 assert.match(copyPanel, /sm:w-auto/, 'primary action must remain usable on mobile');
 
-const comparisonBackend = readFileSync(new URL('../base44/functions/getProviderLocationComparison/entry.ts', import.meta.url), 'utf8');
+const comparisonBackend = readFileSync(new URL('../base44/function_modules/getProviderLocationComparison.ts', import.meta.url), 'utf8');
 assert.match(comparisonBackend, /locationIds\.length < 2/, 'comparison must require at least two locations');
 assert.match(comparisonBackend, /MAX_LOCATIONS = 6/, 'comparison must cap the number of locations');
 assert.match(comparisonBackend, /ProviderMembership\.filter/, 'comparison must validate active membership access');

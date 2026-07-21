@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 
-const submit = fs.readFileSync('base44/functions/submitProviderClaim/entry.ts', 'utf8');
-const review = fs.readFileSync('base44/functions/adminProviderClaimReview/entry.ts', 'utf8');
+const submit = fs.readFileSync('base44/function_modules/submitProviderClaim.ts', 'utf8');
+const review = fs.readFileSync('base44/function_modules/adminProviderClaimReview.ts', 'utf8');
 
 const failures = [];
 const reject = (condition, message) => { if (condition) failures.push(message); };

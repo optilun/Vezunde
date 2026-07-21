@@ -95,7 +95,7 @@ assert.equal(mutationSchema.properties.rollback_status.enum.includes('failed'), 
 assert.deepEqual(snapshotSchema.rls.read.user_condition, { role: 'admin' });
 assert.deepEqual(mutationSchema.rls.write.user_condition, { role: 'admin' });
 
-const backend = await readFile(new URL('../base44/functions/directoryImportOps/entry.ts', import.meta.url), 'utf8');
+const backend = await readFile(new URL('../base44/function_modules/directoryImportOps.ts', import.meta.url), 'utf8');
 const ui = await readFile(new URL('../src/components/admin/directory/DirOpsImportPipeline.jsx', import.meta.url), 'utf8');
 const parser = await readFile(new URL('../src/lib/directoryImportFileParser.js', import.meta.url), 'utf8');
 const nav = await readFile(new URL('../src/lib/adminNavConfig.js', import.meta.url), 'utf8');

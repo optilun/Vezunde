@@ -18,16 +18,16 @@ function hasAll(text, patterns, label) {
 }
 
 const workflowFiles = {
-  manageProviderOrganizationProfile: 'base44/functions/manageProviderOrganizationProfile/entry.ts',
-  adminOrganizationProfileReview: 'base44/functions/adminOrganizationProfileReview/entry.ts',
-  submitProviderWorkspaceChange: 'base44/functions/submitProviderWorkspaceChange/entry.ts',
-  adminWorkspaceReview: 'base44/functions/adminWorkspaceReview/entry.ts',
-  providerServiceConfigurationOps: 'base44/functions/providerServiceConfigurationOps/entry.ts',
-  adminServiceConfigurationReview: 'base44/functions/adminServiceConfigurationReview/entry.ts',
-  locationPhotoOps: 'base44/functions/locationPhotoOps/entry.ts',
-  providerLocationLifecycleOps: 'base44/functions/providerLocationLifecycleOps/entry.ts',
-  providerLocationExpansionOps: 'base44/functions/providerLocationExpansionOps/entry.ts',
-  providerLocationIdentityResolutionOps: 'base44/functions/providerLocationIdentityResolutionOps/entry.ts',
+  manageProviderOrganizationProfile: 'base44/function_modules/manageProviderOrganizationProfile.ts',
+  adminOrganizationProfileReview: 'base44/function_modules/adminOrganizationProfileReview.ts',
+  submitProviderWorkspaceChange: 'base44/function_modules/submitProviderWorkspaceChange.ts',
+  adminWorkspaceReview: 'base44/function_modules/adminWorkspaceReview.ts',
+  providerServiceConfigurationOps: 'base44/function_modules/providerServiceConfigurationOps.ts',
+  adminServiceConfigurationReview: 'base44/function_modules/adminServiceConfigurationReview.ts',
+  locationPhotoOps: 'base44/function_modules/locationPhotoOps.ts',
+  providerLocationLifecycleOps: 'base44/function_modules/providerLocationLifecycleOps.ts',
+  providerLocationExpansionOps: 'base44/function_modules/providerLocationExpansionOps.ts',
+  providerLocationIdentityResolutionOps: 'base44/function_modules/providerLocationIdentityResolutionOps.ts',
 };
 
 const loaded = {};
@@ -89,9 +89,9 @@ assert.doesNotMatch(publicOrganization, /pending_changes/, 'brandul public nu tr
 hasAll(browseDirectory, [/loadPublicLocationsForLocality/, /public_visibility_status/, /paginateRows/], 'director public localizat si paginat');
 assert.doesNotMatch(browseDirectory, /ProviderLocation\.filter\(\{ status: 'publicata' \}, null, 500\)/, 'directorul nu trebuie sa revina la limita globala de 500');
 
-const accessInvite = await source('base44/functions/createProviderMemberInvitation/entry.ts');
-const accessAccept = await source('base44/functions/acceptProviderMemberInvitation/entry.ts');
-const accessManage = await source('base44/functions/setProviderMemberAccess/entry.ts');
+const accessInvite = await source('base44/function_modules/createProviderMemberInvitation.ts');
+const accessAccept = await source('base44/function_modules/acceptProviderMemberInvitation.ts');
+const accessManage = await source('base44/function_modules/setProviderMemberAccess.ts');
 hasAll(accessInvite, [/secure_token_hash/, /delivery_status/, /ProviderMemberInvitation/], 'invitatie membru');
 hasAll(accessAccept, [/secure_token_hash/, /ProviderMembership/, /accepted/], 'acceptare invitatie');
 hasAll(accessManage, [/organization_owner|ORGANIZATION_OWNER_ROLE/, /ProviderMembership/, /DirectoryAuditRecord/], 'administrare acces');
@@ -114,7 +114,7 @@ const lifecycleUi = await source('src/components/workspace/provider/ProviderSett
 assert.doesNotMatch(lifecycleUi, /mailto:/, 'solicitarile de stare nu trebuie trimise prin mailto');
 assert.match(lifecycleUi, /providerLocationLifecycleOps/);
 
-const logoStatus = await source('base44/functions/getProviderLogoReviewStatus/entry.ts');
+const logoStatus = await source('base44/function_modules/getProviderLogoReviewStatus.ts');
 hasAll(logoStatus, [/profile_review_is_separate/, /logo_review_status/], 'status logo');
 
 console.log('Provider account workflow contract E2E checks passed.');

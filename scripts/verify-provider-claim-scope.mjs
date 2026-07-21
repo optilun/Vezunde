@@ -86,10 +86,10 @@ assert.equal(membershipHasOrganizationWideAccess({ user_id: 'user-1', role: 'org
 const scopeEntity = await source('base44/entities/ProviderClaimScopeSelection.jsonc');
 const locationEntity = await source('base44/entities/ProviderClaimLocationSelection.jsonc');
 const membershipEntity = await source('base44/entities/ProviderMembership.jsonc');
-const optionsFunction = await source('base44/functions/getProviderClaimScopeOptions/entry.ts');
-const submitFunction = await source('base44/functions/submitProviderScopedClaim/entry.ts');
-const reviewFunction = await source('base44/functions/adminProviderScopedClaimReview/entry.ts');
-const syncFunction = await source('base44/functions/syncProviderOrganizationOwnerAccess/entry.ts');
+const optionsFunction = await source('base44/function_modules/getProviderClaimScopeOptions.ts');
+const submitFunction = await source('base44/function_modules/submitProviderScopedClaim.ts');
+const reviewFunction = await source('base44/function_modules/adminProviderScopedClaimReview.ts');
+const syncFunction = await source('base44/function_modules/syncProviderOrganizationOwnerAccess.ts');
 const claimForm = await source('src/components/provider/ClaimForm.jsx');
 const claimScopeStep = await source('src/components/provider/ClaimScopeStep.jsx');
 const addOrClaim = await source('src/pages/AddOrClaim.jsx');

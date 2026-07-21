@@ -6,11 +6,11 @@ import path from "node:path";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const updateSource = await readFile(
-  path.join(root, "base44/functions/updateProviderLocation/entry.ts"),
+  path.join(root, "base44/function_modules/updateProviderLocation.ts"),
   "utf8",
 );
 const reviewSource = await readFile(
-  path.join(root, "base44/functions/reviewProfileChanges/entry.ts"),
+  path.join(root, "base44/function_modules/reviewProfileChanges.ts"),
   "utf8",
 );
 

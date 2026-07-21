@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const source = await readFile(new URL('../base44/functions/createProviderMemberInvitation/entry.ts', import.meta.url), 'utf8');
-const acceptSource = await readFile(new URL('../base44/functions/acceptProviderMemberInvitation/entry.ts', import.meta.url), 'utf8');
+const source = await readFile(new URL('../base44/function_modules/createProviderMemberInvitation.ts', import.meta.url), 'utf8');
+const acceptSource = await readFile(new URL('../base44/function_modules/acceptProviderMemberInvitation.ts', import.meta.url), 'utf8');
 const schema = await readFile(new URL('../base44/entities/ProviderMemberInvitation.jsonc', import.meta.url), 'utf8');
-const membersSource = await readFile(new URL('../base44/functions/getMyProviderMembers/entry.ts', import.meta.url), 'utf8');
+const membersSource = await readFile(new URL('../base44/function_modules/getMyProviderMembers.ts', import.meta.url), 'utf8');
 const acceptPage = await readFile(new URL('../src/pages/AcceptProviderInvitation.jsx', import.meta.url), 'utf8');
 const postLogin = await readFile(new URL('../src/pages/PostLogin.jsx', import.meta.url), 'utf8');
 

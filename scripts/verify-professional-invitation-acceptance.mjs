@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const source = await readFile(new URL('../base44/functions/professionalInvitationOps/entry.ts', import.meta.url), 'utf8');
+const source = await readFile(new URL('../base44/function_modules/professionalInvitationOps.ts', import.meta.url), 'utf8');
 
 assert.match(source, /async function loadAcceptableInvitationLocation\(svc, invitation\)/);
 assert.match(source, /location\.organization_id !== invitation\.organization_id/);
