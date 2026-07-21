@@ -56,6 +56,9 @@ on:
       - "base44/entities/ProviderOrganization.jsonc"
       - "base44/entities/ProviderEvidence.jsonc"
       - "base44/functions/**"
+      - "base44/shared/serviceConfigurationFunctionRouting.js"
+      - "src/api/base44FunctionRouting.js"
+      - "scripts/verify-service-configuration-function-router.mjs"
       - "scripts/verify-directory-canonical-model.mjs"
       - "scripts/verify-service-registry.mjs"
       - "scripts/verify-service-legacy-flows.mjs"
@@ -132,6 +135,9 @@ on:
       - "base44/entities/ProviderOrganization.jsonc"
       - "base44/entities/ProviderEvidence.jsonc"
       - "base44/functions/**"
+      - "base44/shared/serviceConfigurationFunctionRouting.js"
+      - "src/api/base44FunctionRouting.js"
+      - "scripts/verify-service-configuration-function-router.mjs"
       - "scripts/verify-directory-canonical-model.mjs"
       - "scripts/verify-service-registry.mjs"
       - "scripts/verify-service-legacy-flows.mjs"
@@ -175,6 +181,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Verify service configuration routing
+        run: npm run test:service-configuration-router
       - name: Verify service registry and prerequisites
         id: service_tests
         continue-on-error: true

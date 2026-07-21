@@ -1,32 +1,24 @@
-name: Base44 Directory Router
+name: Base44 Service Configuration Router
 
 on:
   pull_request:
     paths:
-      - "base44/functions/directoryOps/**"
       - "base44/functions/providerServiceConfigurationOps/**"
       - "base44/shared/serviceConfigurationFunctionRouting.js"
-      - "scripts/verify-service-configuration-function-router.mjs"
-      - "base44/shared/directoryFunctionRouting.js"
       - "src/api/base44Client.js"
       - "src/api/base44FunctionRouting.js"
+      - "scripts/verify-service-configuration-function-router.mjs"
       - "scripts/verify-directory-function-router.mjs"
-      - "scripts/verify-directory-import-pipeline.mjs"
-      - "scripts/verify-directory-mapping.mjs"
-      - "scripts/verify-directory-correction-workflow.mjs"
-      - "scripts/verify-provider-account-workflow-e2e.mjs"
-      - "scripts/verify-provider-claim-scope.mjs"
-      - "scripts/verify-professional-identity-ownership.mjs"
-      - "scripts/verify-provider-submission-backend.mjs"
-      - "scripts/verify-provider-onboarding-continuity.mjs"
-      - "scripts/verify-onboarding-schema-compatibility.mjs"
-      - "scripts/verify-service-prerequisites.mjs"
       - "scripts/verify-service-registry.mjs"
-      - "scripts/verify-service-legacy-flows.mjs"
+      - "scripts/verify-service-prerequisites.mjs"
+      - "scripts/verify-provider-service-copy.mjs"
+      - "scripts/verify-provider-opening-hours.mjs"
+      - "scripts/verify-provider-submission-backend.mjs"
+      - "scripts/verify-provider-account-workflow-e2e.mjs"
       - "scripts/verify-provider-logo-review-status.mjs"
       - "scripts/compare-typecheck-baseline.mjs"
       - "package.json"
-      - ".github/workflows/base44-directory-router-ci.yml"
+      - ".github/workflows/base44-service-configuration-router-ci.yml"
   workflow_dispatch:
 
 permissions:
@@ -48,26 +40,30 @@ jobs:
       - run: npm ci --silent
       - name: Parse router sources
         run: |
-          node --check base44/shared/directoryFunctionRouting.js
+          node --check base44/shared/serviceConfigurationFunctionRouting.js
           node --check src/api/base44FunctionRouting.js
-          node --check scripts/verify-directory-function-router.mjs
-          find base44/functions/directoryOps -name '*.ts' -print0 | xargs -0 -n1 node --check
-      - name: Verify physical surface and directory routes
-        run: npm run test:directory-router
-      - name: Verify service configuration routes
+          node --check scripts/verify-service-configuration-function-router.mjs
+          find base44/functions/providerServiceConfigurationOps -name '*.ts' -print0 | xargs -0 -n1 node --check
+      - name: Verify physical surface and service configuration routes
         run: npm run test:service-configuration-router
-      - name: Verify directory import
-        run: node scripts/verify-directory-import-pipeline.mjs
-      - name: Verify directory mapping and preview tokens
-        run: node scripts/verify-directory-mapping.mjs
-      - name: Verify directory correction review
-        run: node scripts/verify-directory-correction-workflow.mjs
-      - name: Verify provider account review contracts
+      - name: Verify directory routes remain valid
+        run: npm run test:directory-router
+      - name: Verify provider service configuration and prerequisites
+        run: npm run test:services
+      - name: Verify service copy
+        run: node scripts/verify-provider-service-copy.mjs
+      - name: Verify opening hours
+        run: npm run test:provider-hours
+      - name: Verify workspace submissions and organization profile
+        run: npm run test:provider-submissions
+      - name: Verify provider account and photographs
         run: npm run test:provider-account-e2e
-      - name: Verify provider claim scope
-        run: npm run test:provider-claim-scope
-      - name: Verify professional review ownership
-        run: node scripts/verify-professional-identity-ownership.mjs
+      - name: Verify logo review
+        run: npm run test:provider-logo-review
+      - name: Verify owner manager staff matrix
+        run: |
+          npm run test:provider-organization-admin
+          npm run test:provider-location-access
       - name: Typecheck services
         run: npm run typecheck:services
       - name: Capture current typecheck
@@ -85,10 +81,10 @@ jobs:
         run: |
           set +e
           git fetch origin "$BASE_SHA" --depth=1
-          rm -rf /tmp/vezunde-directory-router-base
-          git worktree add --detach /tmp/vezunde-directory-router-base "$BASE_SHA"
-          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/vezunde-directory-router-base/node_modules
-          cd /tmp/vezunde-directory-router-base
+          rm -rf /tmp/vezunde-service-router-base
+          git worktree add --detach /tmp/vezunde-service-router-base "$BASE_SHA"
+          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/vezunde-service-router-base/node_modules
+          cd /tmp/vezunde-service-router-base
           ./node_modules/.bin/tsc -p ./jsconfig.json --pretty false > "$GITHUB_WORKSPACE/typecheck-base.log" 2>&1
           exit 0
       - name: Reject TypeScript regressions against current main
@@ -104,7 +100,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: base44-directory-router-typecheck
+          name: base44-service-configuration-router-typecheck
           path: |
             typecheck-head.log
             typecheck-base.log

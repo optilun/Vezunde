@@ -158,12 +158,12 @@ const consumers = {
   publicProfile: "base44/functions/getPublicProviderProfile/entry.ts",
   browseDirectory: "base44/functions/browseDirectoryProviders/entry.ts",
   matching: "base44/functions/matchProviders/entry.ts",
-  providerRead: "base44/functions/getProviderServiceConfiguration/entry.ts",
+  providerRead: "base44/functions/providerServiceConfigurationOps/getProviderServiceConfiguration.ts",
   adminServiceConfiguration: "base44/functions/directoryOps/adminServiceConfigurationReview.ts",
   matchingBackfill: "base44/functions/directoryOps/backfillLocationServiceMatching.ts",
-  legacyWorkspaceSubmit: "base44/functions/submitProviderWorkspaceChange/entry.ts",
+  legacyWorkspaceSubmit: "base44/functions/providerServiceConfigurationOps/submitProviderWorkspaceChange.ts",
   adminWorkspaceReview: "base44/functions/directoryOps/adminWorkspaceReview.ts",
-  profileFoundation: "base44/functions/profileFoundationOps/entry.ts",
+  profileFoundation: "base44/functions/providerServiceConfigurationOps/profileFoundationOps.ts",
 };
 for (const [name, relativePath] of Object.entries(consumers)) {
   const source = await readFile(sourcePath(relativePath), "utf8");
@@ -177,11 +177,11 @@ for (const [name, relativePath] of Object.entries(consumers)) {
   assert.match(bundledSource, /shared\/canonicalServiceRegistryExtended\.js/, `${name} are un bundle local fără registrul semantic V2`);
 }
 
-const providerOpsSource = await readFile(sourcePath("base44/functions/providerServiceConfigurationOps/entry.ts"), "utf8");
+const providerOpsSource = await readFile(sourcePath("base44/functions/providerServiceConfigurationOps/providerServiceConfigurationOps.ts"), "utf8");
 assert.match(providerOpsSource, /serviceConfigurationPayloadExtended\.js/, "Fluxul provider trebuie să folosească validatorul semantic V2");
 assert.match(providerOpsSource, /Serviciile publice pot fi modificate numai de owner sau manager/, "Stafful trebuie blocat explicit");
 
-const providerReadSource = await readFile(sourcePath("base44/functions/getProviderServiceConfiguration/entry.ts"), "utf8");
+const providerReadSource = await readFile(sourcePath("base44/functions/providerServiceConfigurationOps/getProviderServiceConfiguration.ts"), "utf8");
 assert.match(providerReadSource, /normalized\.status === 'canonical'/, "Citirea providerului trebuie să filtreze explicit doar cheile canonice fără remapare implicită");
 assert.match(providerReadSource, /LocationFunctionalUnit/, "Read modelul trebuie să încarce unitățile persistente");
 
