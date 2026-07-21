@@ -55,6 +55,7 @@ assert.match(createInvitation, /scope\.adminOrganizationIds/);
 assert.match(createInvitation, /scope\.wideOwnerOrganizationIds/);
 
 assert.match(acceptInvitation, /storedProviderRoleForAccessRole\(accessRole\)/);
+assert.match(acceptInvitation, /organization_role: organizationRole \|\| 'none'/);
 assert.match(acceptInvitation, /organization_wide_access: organizationWide/);
 assert.match(acceptInvitation, /ProviderLocation\.filter\(\{ organization_id: organization\.id \}/);
 
@@ -70,6 +71,7 @@ assert.match(members, /organization_admins_count/);
 assert.match(members, /global_owners_count/);
 assert.match(members, /can_manage_privileged_roles/);
 assert.match(members, /can_grant_organization_admin/);
+assert.match(members, /current_actor_wide_access/);
 assert.match(members, /available_invitation_roles/);
 
 assert.match(revokeInvitation, /nu poate revoca invitatii pentru owneri sau administratori/);
@@ -82,8 +84,11 @@ assert.match(expansion, /storedProviderRoleForAccessRole\(accessRole\)/);
 assert.match(workspace, /organization_admin:/);
 assert.match(workspace, /"organization\.manage_members"/);
 assert.doesNotMatch(workspace.match(/organization_admin:\s*\[[\s\S]*?\],/s)?.[0] || '', /organization\.manage_settings|organization\.manage_locations|location\.archive|location\.request_closure/);
-assert.match(workspace, /canManageSettings = Boolean\(isOrganizationOwner/);
-assert.match(workspace, /current_actor_role/);
+assert.match(workspace, /actorHasWideOrganizationAccess/);
+assert.match(workspace, /current_actor_wide_access/);
+assert.match(workspace, /OWNER_SENSITIVE_ORGANIZATION_CAPABILITIES/);
+assert.match(workspace, /isOrganizationOwner[\s\S]*actorHasWideOrganizationAccess[\s\S]*organization\.manage_settings/);
+assert.match(workspace, /scopedLocationIds/);
 assert.match(workspace, /syncProviderOrganizationOwnerAccess/);
 
 assert.match(accessUi, /Administrator organizație/);
@@ -94,7 +99,8 @@ assert.match(accessUi, /Gestionat de ownerul global/);
 assert.match(accessUi, /Toate locațiile actuale și viitoare/);
 assert.doesNotMatch(accessUi, /manager regional/i);
 assert.match(labels, /organization_admin: "Administrator organizație"/);
-assert.match(invitationUi, /organization_admin/);
-assert.match(invitationUi, /locațiilor actuale și viitoare/);
+assert.match(invitationUi, /invitationIsOrganizationWide/);
+assert.match(invitationUi, /invitation\?\.proposed_role === "organization_admin"/);
+assert.match(invitationUi, /nu se extinde automat la locațiile viitoare/);
 
 console.log('Provider organization administrator access checks passed.');
