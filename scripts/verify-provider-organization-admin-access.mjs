@@ -24,7 +24,7 @@ const [
   read('base44/functions/createProviderMemberInvitation/entry.ts'),
   read('base44/functions/acceptProviderMemberInvitation/entry.ts'),
   read('base44/functions/setProviderMemberAccess/entry.ts'),
-  read('base44/functions/getMyProviderMembers/entry.ts'),
+  read('base44/functions/getMyProviderWorkspace/getMyProviderMembers.ts'),
   read('base44/functions/revokeProviderMemberInvitation/entry.ts'),
   read('base44/functions/syncProviderOrganizationOwnerAccess/entry.ts'),
   read('base44/functions/providerLocationExpansionOps/entry.ts'),

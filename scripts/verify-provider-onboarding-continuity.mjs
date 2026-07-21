@@ -34,7 +34,7 @@ reject('src/components/provider/NewLocationWizard.jsx', 'pendingSubmit', 'Locati
 expect('src/pages/AddOrClaim.jsx', '/contul-meu?mode=applicant&onboarding=submitted', 'Trimiterea intra direct in Pregatire profil');
 expect('src/pages/AddOrClaim.jsx', 'result.duplicate_review', 'Clarificarea unui duplicat nu intra intr-un workspace fara locatie');
 expect('src/pages/MyAccount.jsx', 'getMyProviderOnboardingWorkspace', 'Contul incarca onboardingul separat de membershipuri');
-expect('base44/functions/getMyProviderOnboardingWorkspace/entry.ts', "claim.mode !== 'new_location_duplicate_review'", 'Pregatirea exclude cererile care nu au o locatie creata');
+expect('base44/functions/getMyProviderWorkspace/getMyProviderOnboardingWorkspace.ts', "claim.mode !== 'new_location_duplicate_review'", 'Pregatirea exclude cererile care nu au o locatie creata');
 expect('base44/functions/submitProviderClaim/entry.ts', 'requested_membership_role: requestedMembershipRole', 'Fluxul legacy salveaza rolul solicitat');
 expect('base44/functions/directoryOps/adminProviderClaimReview.ts', "approved_membership_role: approvedRole", 'Review-ul legacy salveaza rolul aprobat');
 expect('base44/functions/directoryOps/adminProviderClaimReview.ts', "status: 'draft', public_visibility_status: 'draft'", 'Locatia noua ramane draft dupa aprobare');

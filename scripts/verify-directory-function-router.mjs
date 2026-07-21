@@ -7,6 +7,7 @@ import {
   DIRECTORY_FUNCTION_ROUTES,
 } from '../base44/shared/directoryFunctionRouting.js';
 import { SERVICE_CONFIGURATION_FUNCTION_ROUTES } from '../base44/shared/serviceConfigurationFunctionRouting.js';
+import { PROVIDER_WORKSPACE_FUNCTION_ROUTES } from '../base44/shared/providerWorkspaceFunctionRouting.js';
 import { installBase44FunctionRouting } from '../src/api/base44FunctionRouting.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -33,7 +34,7 @@ const physicalEndpoints = readdirSync(functionsRoot, { withFileTypes: true })
   .map((entry) => entry.name)
   .sort();
 
-assert.equal(physicalEndpoints.length, 56, 'Suprafata Base44 trebuie sa contina exact 56 de functii fizice dupa PR 2');
+assert.equal(physicalEndpoints.length, 48, 'Suprafata Base44 trebuie sa contina exact 48 de functii fizice dupa PR 3');
 assert.equal(logicalNames.length, 18, 'Contractul directory trebuie sa pastreze exact cele 18 nume logice consolidate');
 assert.ok(physicalEndpoints.includes(DIRECTORY_FUNCTION_ENDPOINT), 'Endpointul fizic directoryOps trebuie sa existe');
 
@@ -91,7 +92,7 @@ for (const absolute of scannedFiles) {
   const invocationPattern = /\.functions\.invoke\(\s*['"]([^'"]+)['"]/g;
   for (const match of content.matchAll(invocationPattern)) {
     const logicalName = match[1];
-    if (!physicalEndpoints.includes(logicalName) && !DIRECTORY_FUNCTION_ROUTES[logicalName] && !SERVICE_CONFIGURATION_FUNCTION_ROUTES[logicalName]) {
+    if (!physicalEndpoints.includes(logicalName) && !DIRECTORY_FUNCTION_ROUTES[logicalName] && !SERVICE_CONFIGURATION_FUNCTION_ROUTES[logicalName] && !PROVIDER_WORKSPACE_FUNCTION_ROUTES[logicalName]) {
       missingRoutes.push(`${relative}:${logicalName}`);
     }
     if (relative.startsWith('base44/functions/') && !relative.startsWith('base44/functions/directoryOps/') && DIRECTORY_FUNCTION_ROUTES[logicalName]) {

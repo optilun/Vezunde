@@ -114,7 +114,7 @@ const lifecycleUi = await source('src/components/workspace/provider/ProviderSett
 assert.doesNotMatch(lifecycleUi, /mailto:/, 'solicitarile de stare nu trebuie trimise prin mailto');
 assert.match(lifecycleUi, /providerLocationLifecycleOps/);
 
-const logoStatus = await source('base44/functions/getProviderLogoReviewStatus/entry.ts');
+const logoStatus = await source('base44/functions/getMyProviderWorkspace/getProviderLogoReviewStatus.ts');
 hasAll(logoStatus, [/profile_review_is_separate/, /logo_review_status/], 'status logo');
 
 console.log('Provider account workflow contract E2E checks passed.');
