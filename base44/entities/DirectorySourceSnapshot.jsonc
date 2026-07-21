@@ -1,0 +1,48 @@
+{
+  "name": "DirectorySourceSnapshot",
+  "type": "object",
+  "properties": {
+    "snapshot_key": { "type": "string" },
+    "contract_version": { "type": "string" },
+    "source_name": { "type": "string" },
+    "source_version": { "type": "string" },
+    "source_sha256": { "type": "string" },
+    "source_format": {
+      "type": "string",
+      "enum": ["json", "ndjson", "csv", "markdown"]
+    },
+    "original_filename": { "type": "string" },
+    "column_map_json": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "uploading", "validating", "ready", "blocked", "imported", "archived"],
+      "default": "draft"
+    },
+    "total_rows": { "type": "number", "default": 0 },
+    "uploaded_rows": { "type": "number", "default": 0 },
+    "valid_rows": { "type": "number", "default": 0 },
+    "blocked_rows": { "type": "number", "default": 0 },
+    "duplicate_rows": { "type": "number", "default": 0 },
+    "warning_rows": { "type": "number", "default": 0 },
+    "summary_json": { "type": "string" },
+    "created_by_user_id": { "type": "string" },
+    "created_by_email": { "type": "string" },
+    "created_at_source": { "type": "string", "format": "date-time" },
+    "finalized_at": { "type": "string", "format": "date-time" },
+    "immutable_at": { "type": "string", "format": "date-time" },
+    "notes": { "type": "string" }
+  },
+  "required": [
+    "snapshot_key",
+    "contract_version",
+    "source_name",
+    "source_version",
+    "source_sha256",
+    "source_format",
+    "status"
+  ],
+  "rls": {
+    "read": { "user_condition": { "role": "admin" } },
+    "write": { "user_condition": { "role": "admin" } }
+  }
+}

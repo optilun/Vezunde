@@ -1,0 +1,75 @@
+name: Directory Import Pipeline
+
+on:
+  pull_request:
+    paths:
+      - "shared/directoryImportPipeline.js"
+      - "base44/entities/DirectorySourceSnapshot.jsonc"
+      - "base44/entities/DirectoryImportBatch.jsonc"
+      - "base44/entities/DirectoryImportRow.jsonc"
+      - "base44/entities/DirectoryImportMutation.jsonc"
+      - "base44/functions/directoryImportOps/**"
+      - "src/lib/directoryImportFileParser.js"
+      - "src/components/admin/directory/DirOpsImportPipeline.jsx"
+      - "src/lib/adminNavConfig.js"
+      - "src/pages/AdminDirectoryOps.jsx"
+      - "scripts/verify-directory-import-pipeline.mjs"
+      - "scripts/compare-typecheck-baseline.mjs"
+      - ".github/workflows/directory-import-pipeline-ci.yml"
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --silent
+      - name: Verify import contract
+        run: node scripts/verify-directory-import-pipeline.mjs
+      - name: Typecheck current branch
+        shell: bash
+        run: |
+          set +e
+          npm run typecheck -- --pretty false > typecheck-head.log 2>&1
+          grep -E "error TS|Found [0-9]+ errors" typecheck-head.log || true
+          exit 0
+      - name: Typecheck main baseline
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set +e
+          git fetch origin "$BASE_SHA" --depth=1
+          rm -rf /tmp/vezunde-directory-import-base
+          git worktree add --detach /tmp/vezunde-directory-import-base "$BASE_SHA"
+          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/vezunde-directory-import-base/node_modules
+          cd /tmp/vezunde-directory-import-base
+          ./node_modules/.bin/tsc -p ./jsconfig.json --pretty false > "$GITHUB_WORKSPACE/typecheck-base.log" 2>&1
+          exit 0
+      - name: Reject new TypeScript errors
+        run: node scripts/compare-typecheck-baseline.mjs typecheck-base.log typecheck-head.log
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: directory-import-diagnostics
+          path: |
+            typecheck-head.log
+            typecheck-base.log
+      - name: Lint import scope
+        if: always()
+        run: npx eslint shared/directoryImportPipeline.js base44/functions/directoryImportOps/entry.ts src/lib/directoryImportFileParser.js src/components/admin/directory/DirOpsImportPipeline.jsx src/lib/adminNavConfig.js src/pages/AdminDirectoryOps.jsx scripts/verify-directory-import-pipeline.mjs
+      - name: Repository lint
+        if: always()
+        run: npm run lint
+      - name: Build
+        if: always()
+        run: npm run build

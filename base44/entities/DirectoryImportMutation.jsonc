@@ -1,0 +1,49 @@
+{
+  "name": "DirectoryImportMutation",
+  "type": "object",
+  "properties": {
+    "batch_id": { "type": "string" },
+    "row_id": { "type": "string" },
+    "sequence": { "type": "number" },
+    "mutation_key": { "type": "string" },
+    "entity_type": {
+      "type": "string",
+      "enum": [
+        "ProviderOrganization",
+        "ProviderLocation",
+        "ProviderLocationDirectoryState",
+        "DirectoryOrganizationLocationLink",
+        "ProviderEvidence"
+      ]
+    },
+    "entity_id": { "type": "string" },
+    "operation": {
+      "type": "string",
+      "enum": ["create", "update"]
+    },
+    "before_json": { "type": "string" },
+    "after_json": { "type": "string" },
+    "rollback_status": {
+      "type": "string",
+      "enum": ["pending", "not_required", "completed", "failed"],
+      "default": "pending"
+    },
+    "rollback_error": { "type": "string" },
+    "applied_at": { "type": "string", "format": "date-time" },
+    "rolled_back_at": { "type": "string", "format": "date-time" }
+  },
+  "required": [
+    "batch_id",
+    "row_id",
+    "sequence",
+    "mutation_key",
+    "entity_type",
+    "entity_id",
+    "operation",
+    "rollback_status"
+  ],
+  "rls": {
+    "read": { "user_condition": { "role": "admin" } },
+    "write": { "user_condition": { "role": "admin" } }
+  }
+}
