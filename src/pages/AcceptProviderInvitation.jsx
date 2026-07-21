@@ -15,25 +15,28 @@ import ViaseeBrand from "@/components/brand/ViaseeBrand";
 const ROLE_DETAILS = {
   organization_owner: {
     label: "Owner organizație",
-    description: "Vei avea control complet asupra organizației și tuturor locațiilor sale, inclusiv utilizatori și setări sensibile.",
-    organizationWide: true,
+    description: "Vei avea control de owner numai asupra scope-ului indicat: toate locațiile sau locațiile selectate.",
   },
   organization_admin: {
     label: "Administrator organizație",
     description: "Vei putea gestiona activitatea tuturor locațiilor actuale și viitoare, fără drepturile sensibile rezervate ownerului.",
-    organizationWide: true,
   },
   location_manager: {
     label: "Manager locație",
     description: "Vei putea gestiona conținutul și operațiunile locațiilor menționate în invitație.",
-    organizationWide: false,
   },
   location_staff: {
     label: "Membru locație",
     description: "Vei avea acces operațional limitat la locațiile menționate în invitație.",
-    organizationWide: false,
   },
 };
+
+function invitationIsOrganizationWide(invitation) {
+  return Boolean(
+    invitation?.organization_wide_access
+    || invitation?.proposed_role === "organization_admin",
+  );
+}
 
 function formatDate(value) {
   if (!value) return "";
@@ -105,7 +108,7 @@ export default function AcceptProviderInvitation() {
 
   const login = () => base44.auth.redirectToLogin(window.location.href);
   const role = invitation ? ROLE_DETAILS[invitation.proposed_role] : null;
-  const organizationWide = Boolean(invitation?.organization_wide_access || role?.organizationWide);
+  const organizationWide = invitationIsOrganizationWide(invitation);
 
   return (
     <div className="min-h-screen min-h-dvh bg-[#F8F7F3] px-4 pb-[calc(3rem+env(safe-area-inset-bottom))] pt-[calc(2rem+env(safe-area-inset-top))] sm:pt-[calc(3rem+env(safe-area-inset-top))]">
@@ -131,7 +134,7 @@ export default function AcceptProviderInvitation() {
               {pendingInvitations.map((item) => (
                 <button key={item.id} type="button" onClick={() => setInvitation(item)} className="flex w-full items-center gap-3 rounded-2xl border border-border bg-secondary/20 p-4 text-left transition hover:bg-secondary/40">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-card"><Building2 className="h-4 w-4" /></div>
-                  <div className="min-w-0 flex-1"><div className="truncate text-sm font-bold">{item.organization?.name || "Organizație VIASEE"}</div><div className="mt-1 text-xs text-muted-foreground">{ROLE_DETAILS[item.proposed_role]?.label || item.proposed_role} · {(item.organization_wide_access || ROLE_DETAILS[item.proposed_role]?.organizationWide) ? "toată organizația" : `${(item.locations || []).length} ${(item.locations || []).length === 1 ? "locație" : "locații"}`}</div></div>
+                  <div className="min-w-0 flex-1"><div className="truncate text-sm font-bold">{item.organization?.name || "Organizație VIASEE"}</div><div className="mt-1 text-xs text-muted-foreground">{ROLE_DETAILS[item.proposed_role]?.label || item.proposed_role} · {invitationIsOrganizationWide(item) ? "toată organizația" : `${(item.locations || []).length} ${(item.locations || []).length === 1 ? "locație" : "locații"}`}</div></div>
                   <ChevronRight className="h-4 w-4 shrink-0" />
                 </button>
               ))}
@@ -150,6 +153,7 @@ export default function AcceptProviderInvitation() {
               <section className="rounded-2xl border border-border p-4 sm:p-5">
                 <h2 className="text-sm font-bold">{organizationWide ? "Acces organizațional" : "Locații incluse"}</h2>
                 {organizationWide && <p className="mt-2 rounded-xl bg-secondary/35 p-3 text-xs leading-relaxed text-muted-foreground">Accesul se aplică tuturor locațiilor actuale și va fi acordat automat și locațiilor viitoare ale organizației.</p>}
+                {!organizationWide && invitation.proposed_role === "organization_owner" && <p className="mt-2 rounded-xl bg-secondary/35 p-3 text-xs leading-relaxed text-muted-foreground">Rolul de owner se aplică numai locațiilor enumerate mai jos și nu se extinde automat la locațiile viitoare.</p>}
                 <div className="mt-3 space-y-2.5">{(invitation.locations || []).map((location) => <div key={location.id} className="flex items-start gap-3 rounded-xl bg-secondary/30 p-3"><MapPin className="mt-0.5 h-4 w-4 shrink-0" /><div className="min-w-0"><p className="text-sm font-semibold">{location.name}</p><p className="mt-0.5 text-xs text-muted-foreground">{[location.city, location.county, location.address].filter(Boolean).join(" · ") || "Adresa nu este afișată"}</p></div></div>)}</div>
                 {formatDate(invitation.expires_at) && <p className="mt-3 text-[11px] text-muted-foreground">Invitația este valabilă până la {formatDate(invitation.expires_at)}.</p>}
               </section>
