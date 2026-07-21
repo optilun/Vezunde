@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   ORGANIZATION_ADMIN_ROLE,
   ORGANIZATION_OWNER_ROLE,
-  isOrganizationWideProviderRole,
+  isPrivilegedProviderRole,
   providerMembershipAccessRole,
 } from '../../../shared/providerOrganizationOwnerScope.js';
 
@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
     if (![ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, 'platform_admin'].includes(actorRole)) {
       return res({ error: 'Nu poti revoca aceasta invitatie' }, 403);
     }
-    if (actorRole === ORGANIZATION_ADMIN_ROLE && isOrganizationWideProviderRole(invitation.proposed_role)) {
+    if (actorRole === ORGANIZATION_ADMIN_ROLE && isPrivilegedProviderRole(invitation.proposed_role)) {
       return res({ error: 'Administratorul organizatiei nu poate revoca invitatii pentru owneri sau administratori' }, 403);
     }
 
