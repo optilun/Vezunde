@@ -1,0 +1,89 @@
+name: Base44 Function Consolidation
+
+permissions:
+  contents: write
+
+on:
+  pull_request:
+    paths:
+      - "scripts/generate-base44-function-consolidation.mjs"
+      - "scripts/audit-base44-function-surface.mjs"
+      - "base44/functions/**"
+      - "base44/function_modules/**"
+      - "src/api/base44Client.js"
+      - "src/api/base44FunctionRouting.js"
+      - ".github/workflows/base44-function-consolidation.yml"
+  workflow_dispatch:
+
+jobs:
+  consolidate:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 2
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --silent
+      - name: Capture baseline typecheck
+        shell: bash
+        run: |
+          set +e
+          npm run typecheck -- --pretty false > typecheck-base.log 2>&1
+          exit 0
+      - name: Generate consolidation
+        if: hashFiles('base44/function_modules/runtime.ts') == ''
+        run: node scripts/generate-base44-function-consolidation.mjs
+      - name: Audit consolidated surface
+        run: node scripts/audit-base44-function-surface.mjs
+      - name: Typecheck consolidated branch
+        shell: bash
+        run: |
+          set +e
+          npm run typecheck -- --pretty false > typecheck-head.log 2>&1
+          grep -E "error TS|Found [0-9]+ errors" typecheck-head.log || true
+          exit 0
+      - name: Reject new TypeScript errors
+        run: node scripts/compare-typecheck-baseline.mjs typecheck-base.log typecheck-head.log
+      - name: Directory import regression
+        run: node scripts/verify-directory-import-pipeline.mjs
+      - name: Directory mapping regression
+        run: node scripts/verify-directory-mapping.mjs
+      - name: Provider account regression
+        run: node scripts/verify-provider-account-workflow-e2e.mjs
+      - name: Provider role regression
+        run: node scripts/verify-provider-organization-admin-access.mjs
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Commit generated consolidation
+        if: github.event_name == 'pull_request' && hashFiles('base44/function_modules/runtime.ts') != ''
+        shell: bash
+        env:
+          HEAD_BRANCH: ${{ github.head_ref }}
+        run: |
+          if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+            echo "No generated changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add base44/function_modules base44/functions src/api/base44Client.js src/api/base44FunctionRouting.js
+          git commit -m "Consolidate Base44 function deployment surface"
+          git push origin "HEAD:${HEAD_BRANCH}"
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: base44-function-consolidation-diagnostics
+          path: |
+            artifacts/base44-function-surface.json
+            typecheck-base.log
+            typecheck-head.log
