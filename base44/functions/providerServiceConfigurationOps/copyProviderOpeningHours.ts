@@ -101,7 +101,7 @@ async function createAudit(svc, user, location, source, previous, next, operatio
   });
 }
 
-Deno.serve(async (req) => {
+export async function handle(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -224,4 +224,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

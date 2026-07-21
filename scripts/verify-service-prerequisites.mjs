@@ -92,7 +92,7 @@ assert.equal(unknown.status, 'unknown_service');
 
 const source = async (relativePath) => readFile(new URL('../' + relativePath, import.meta.url), 'utf8');
 for (const relativePath of [
-  'base44/functions/getProviderServiceConfiguration/entry.ts',
+  'base44/functions/providerServiceConfigurationOps/getProviderServiceConfiguration.ts',
   'base44/functions/getPublicProviderProfile/entry.ts',
   'base44/functions/browseDirectoryProviders/entry.ts',
   'base44/functions/matchProviders/entry.ts',
@@ -119,7 +119,7 @@ assert.match(providerUiSource, /configurationComplete: true/);
 assert.doesNotMatch(providerUiSource, /disabled=\{disabled \|\| !capabilityActive\}/);
 assert.doesNotMatch(providerUiSource, /Activează mai întâi capabilitatea/);
 
-const providerOpsSource = await source('base44/functions/providerServiceConfigurationOps/entry.ts');
+const providerOpsSource = await source('base44/functions/providerServiceConfigurationOps/providerServiceConfigurationOps.ts');
 assert.match(providerOpsSource, /function validateSubmissionReadiness\(\)/);
 assert.match(providerOpsSource, /units, capabilities and resources are optional/);
 assert.doesNotMatch(providerOpsSource, /necesită activitatea asociată/);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const backend = readFileSync(new URL('../base44/functions/copyProviderServiceConfiguration/entry.ts', import.meta.url), 'utf8');
+const backend = readFileSync(new URL('../base44/functions/providerServiceConfigurationOps/copyProviderServiceConfiguration.ts', import.meta.url), 'utf8');
 assert.match(backend, /targetIds\.includes\(sourceId\)/, 'source location must be excluded from targets');
 assert.match(backend, /target\.organization_id !== source\.organization_id/, 'copy must remain inside one organization');
 assert.match(backend, /EDITOR_ROLES = \['organization_owner', 'location_manager'\]/, 'only owners and location managers may copy services');

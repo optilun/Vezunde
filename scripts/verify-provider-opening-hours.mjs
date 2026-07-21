@@ -74,7 +74,7 @@ const unknownField = validateProviderOpeningHours({
 assert.equal(unknownField.valid, false);
 assert.match(unknownField.error, /campuri nepermise/i);
 
-const copyBackend = readFileSync(new URL('../base44/functions/copyProviderOpeningHours/entry.ts', import.meta.url), 'utf8');
+const copyBackend = readFileSync(new URL('../base44/functions/providerServiceConfigurationOps/copyProviderOpeningHours.ts', import.meta.url), 'utf8');
 assert.match(copyBackend, /targetIds\.includes\(sourceId\)/, 'source location must be excluded from targets');
 assert.match(copyBackend, /target\.organization_id !== source\.organization_id/, 'copy must remain inside one organization');
 assert.match(copyBackend, /confirm_replace_existing/, 'existing schedules require explicit replacement confirmation');

@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import { resolveProviderTeamLocationScope } from '../shared/providerTeamLocationScope.js';
 
 const read = (path) => fs.readFileSync(path, 'utf8');
-const submit = read('base44/functions/submitProviderWorkspaceChange/entry.ts');
-const organization = read('base44/functions/manageProviderOrganizationProfile/entry.ts');
+const submit = read('base44/functions/providerServiceConfigurationOps/submitProviderWorkspaceChange.ts');
+const organization = read('base44/functions/providerServiceConfigurationOps/manageProviderOrganizationProfile.ts');
 const adminLocation = read('base44/functions/directoryOps/adminWorkspaceReview.ts');
 const adminOrganization = read('base44/functions/directoryOps/adminOrganizationProfileReview.ts');
 const client = read('src/api/base44Client.js');

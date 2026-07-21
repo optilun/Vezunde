@@ -49,7 +49,9 @@ on:
       - "base44/functions/syncProviderOrganizationOwnerAccess/**"
       - "base44/functions/getClaimableProviderLocations/**"
       - "base44/functions/getMyProviderOnboardingWorkspace/**"
-      - "base44/functions/saveProviderRoutineProfile/**"
+      - "base44/functions/providerServiceConfigurationOps/**"
+      - "base44/shared/serviceConfigurationFunctionRouting.js"
+      - "scripts/verify-service-configuration-function-router.mjs"
       - "base44/functions/providerLocationIdentityResolutionOps/**"
       - "base44/functions/createProviderMemberInvitation/**"
       - "base44/functions/acceptProviderMemberInvitation/**"
@@ -59,7 +61,6 @@ on:
       - "base44/functions/manageMyProfessionalProfile/**"
       - "base44/functions/getMyProviderMembers/**"
       - "base44/functions/providerLocationExpansionOps/**"
-      - "base44/functions/submitProviderLogoForReview/**"
       - "base44/functions/getProviderLogoReviewStatus/**"
       - "base44/functions/submitDirectoryCorrection/**"
       - "scripts/verify-provider-onboarding-continuity.mjs"
@@ -101,6 +102,8 @@ jobs:
       - run: npm ci --silent
       - name: Directory routing contract checks
         run: npm run test:directory-router
+      - name: Service configuration routing contract checks
+        run: npm run test:service-configuration-router
       - name: Onboarding regression checks
         run: node scripts/verify-provider-onboarding-continuity.mjs
       - name: Scoped provider claim checks

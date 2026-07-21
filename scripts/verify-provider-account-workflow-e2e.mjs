@@ -18,13 +18,13 @@ function hasAll(text, patterns, label) {
 }
 
 const workflowFiles = {
-  manageProviderOrganizationProfile: 'base44/functions/manageProviderOrganizationProfile/entry.ts',
+  manageProviderOrganizationProfile: 'base44/functions/providerServiceConfigurationOps/manageProviderOrganizationProfile.ts',
   adminOrganizationProfileReview: 'base44/functions/directoryOps/adminOrganizationProfileReview.ts',
-  submitProviderWorkspaceChange: 'base44/functions/submitProviderWorkspaceChange/entry.ts',
+  submitProviderWorkspaceChange: 'base44/functions/providerServiceConfigurationOps/submitProviderWorkspaceChange.ts',
   adminWorkspaceReview: 'base44/functions/directoryOps/adminWorkspaceReview.ts',
-  providerServiceConfigurationOps: 'base44/functions/providerServiceConfigurationOps/entry.ts',
+  providerServiceConfigurationOps: 'base44/functions/providerServiceConfigurationOps/providerServiceConfigurationOps.ts',
   adminServiceConfigurationReview: 'base44/functions/directoryOps/adminServiceConfigurationReview.ts',
-  locationPhotoOps: 'base44/functions/locationPhotoOps/entry.ts',
+  locationPhotoOps: 'base44/functions/providerServiceConfigurationOps/locationPhotoOps.ts',
   providerLocationLifecycleOps: 'base44/functions/providerLocationLifecycleOps/entry.ts',
   providerLocationExpansionOps: 'base44/functions/providerLocationExpansionOps/entry.ts',
   providerLocationIdentityResolutionOps: 'base44/functions/providerLocationIdentityResolutionOps/entry.ts',
