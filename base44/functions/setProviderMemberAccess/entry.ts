@@ -20,6 +20,14 @@ function normalizeRole(value) {
   if (value === 'staff') return 'location_staff';
   return ACCESS_ROLES.includes(value) ? value : '';
 }
+function uniqueRows(rows) {
+  const byId = new Map();
+  for (const row of rows) {
+    const key = row?.id || `${row?.user_id || ''}:${row?.location_id || ''}:${row?.created_date || ''}`;
+    if (key) byId.set(key, row);
+  }
+  return [...byId.values()];
+}
 
 async function audit(svc, user, record) {
   await svc.entities.DirectoryAuditRecord.create({
@@ -39,13 +47,17 @@ async function audit(svc, user, record) {
 async function organizationScope(svc, organizationId) {
   const locations = await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, '-created_date', 500);
   const locationIds = new Set(locations.map((location) => location.id));
-  const rows = await svc.entities.ProviderMembership.filter({ organization_id: organizationId }, '-created_date', 1500);
+  const collected = await svc.entities.ProviderMembership.filter({ organization_id: organizationId }, '-created_date', 1500).catch(() => []);
+  for (const location of locations) {
+    const locationRows = await svc.entities.ProviderMembership.filter({ location_id: location.id }, '-created_date', 500).catch(() => []);
+    collected.push(...locationRows);
+  }
   const resolution = await loadOrganizationOwnerScopeResolution(svc, organizationId);
   return {
     locations,
     locationIds,
     resolution,
-    rows: rows.filter((row) => row.organization_id === organizationId || locationIds.has(row.location_id)),
+    rows: uniqueRows(collected).filter((row) => row.organization_id === organizationId || locationIds.has(row.location_id)),
   };
 }
 
@@ -109,6 +121,8 @@ Deno.serve(async (req) => {
       return res({ error: 'Nu ai dreptul sa modifici accesul utilizatorilor' }, 403);
     }
 
+    const actorCanManageAllLocations = actor.role === 'platform_admin' || actor.wideOwner || actor.organizationAdmin;
+    const mutableLocationIds = actorCanManageAllLocations ? scope.locationIds : actor.manageableLocationIds;
     const currentTargetRole = targetRole(scope.rows, targetUserId);
     const currentTargetWide = targetHasWideAccess(scope.rows, targetUserId, scope.resolution);
     if (actor.role === ORGANIZATION_ADMIN_ROLE && isPrivilegedProviderRole(currentTargetRole)) {
@@ -129,10 +143,21 @@ Deno.serve(async (req) => {
       const accessRole = normalizeRole(assignment?.role);
       if (!locationId || !accessRole || seen.has(locationId)) return res({ error: 'Configuratie de acces invalida' }, 400);
       if (!scope.locationIds.has(locationId)) return res({ error: 'Locatie invalida sau din alta organizatie' }, 403);
+      if (!mutableLocationIds.has(locationId)) return res({ error: 'Nu poti modifica accesul pentru aceasta locatie' }, 403);
       if (selectedRole && selectedRole !== accessRole) return res({ error: 'Un utilizator trebuie sa aiba un singur rol clar in organizatie' }, 400);
       selectedRole = accessRole;
       seen.add(locationId);
       normalized.push({ location_id: locationId, role: accessRole });
+    }
+
+    const targetRows = scope.rows.filter((row) => row.user_id === targetUserId);
+    const activeOutsideScopeRows = targetRows.filter((row) => row.status === 'active' && row.location_id && !mutableLocationIds.has(row.location_id));
+    const outsideRoles = [...new Set(activeOutsideScopeRows.map(providerMembershipAccessRole).filter(Boolean))];
+    if (!actorCanManageAllLocations && selectedRole && outsideRoles.some((outsideRole) => outsideRole !== selectedRole)) {
+      return res({ error: 'Utilizatorul are un alt rol in locatii din afara accesului tau. Modificarea trebuie facuta de un owner global.' }, 409);
+    }
+    if (!actorCanManageAllLocations && activeOutsideScopeRows.some((row) => membershipHasOrganizationWideAccess(row, scope.resolution))) {
+      return res({ error: 'Accesul organizational al utilizatorului poate fi modificat numai de un owner global.' }, 403);
     }
 
     const requiresWide = roleRequiresOrganizationWideAccess(selectedRole);
@@ -157,9 +182,15 @@ Deno.serve(async (req) => {
       return res({ error: 'Numai ownerul global poate acorda rol de administrator' }, 403);
     }
 
-    const targetRows = scope.rows.filter((row) => row.user_id === targetUserId);
-    const resultingOwnerLocationIds = new Set(selectedRole === ORGANIZATION_OWNER_ROLE ? normalized.map((assignment) => assignment.location_id) : []);
+    const preservedOwnerLocationIds = new Set(activeOutsideScopeRows
+      .filter((row) => providerMembershipAccessRole(row) === ORGANIZATION_OWNER_ROLE)
+      .map((row) => row.location_id));
+    const resultingOwnerLocationIds = new Set([
+      ...preservedOwnerLocationIds,
+      ...(selectedRole === ORGANIZATION_OWNER_ROLE ? normalized.map((assignment) => assignment.location_id) : []),
+    ]);
     for (const location of scope.locations) {
+      if (!mutableLocationIds.has(location.id)) continue;
       const currentOwners = new Set(scope.rows
         .filter((row) => row.location_id === location.id && row.status === 'active' && providerMembershipAccessRole(row) === ORGANIZATION_OWNER_ROLE)
         .map((row) => row.user_id));
@@ -167,7 +198,9 @@ Deno.serve(async (req) => {
         return res({ error: `Nu poti elimina ultimul owner activ al locatiei ${location.public_display_name || location.name || ''}`.trim() }, 400);
       }
     }
-    if (targetUserId === user.id && normalized.length === 0) return res({ error: 'Nu iti poti elimina propriul acces' }, 403);
+    if (targetUserId === user.id && normalized.length === 0 && activeOutsideScopeRows.length === 0) {
+      return res({ error: 'Nu iti poti elimina propriul acces' }, 403);
+    }
 
     const currentByLocation = new Map();
     for (const row of targetRows) if (row.location_id && !currentByLocation.has(row.location_id)) currentByLocation.set(row.location_id, row);
@@ -202,7 +235,7 @@ Deno.serve(async (req) => {
 
     const selectedIds = new Set(normalized.map((assignment) => assignment.location_id));
     for (const row of targetRows) {
-      if (!row.location_id || selectedIds.has(row.location_id) || row.status !== 'active') continue;
+      if (!row.location_id || !mutableLocationIds.has(row.location_id) || selectedIds.has(row.location_id) || row.status !== 'active') continue;
       await svc.entities.ProviderMembership.update(row.id, {
         status: 'inactive',
         organization_wide_access: false,
@@ -211,7 +244,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const next = normalized.map((assignment) => ({ ...assignment, status: 'active', organization_wide_access: organizationWide }));
+    const next = [
+      ...activeOutsideScopeRows.map((row) => ({
+        location_id: row.location_id,
+        role: providerMembershipAccessRole(row),
+        status: 'active',
+        organization_wide_access: membershipHasOrganizationWideAccess(row, scope.resolution),
+        preserved_outside_actor_scope: true,
+      })),
+      ...normalized.map((assignment) => ({ ...assignment, status: 'active', organization_wide_access: organizationWide })),
+    ];
     await audit(svc, user, {
       entity_type: 'ProviderMembership',
       entity_id: targetUserId,
@@ -219,10 +261,16 @@ Deno.serve(async (req) => {
       changed_fields: ['role', 'organization_role', 'status', 'location_id', 'organization_wide_access'],
       previous,
       next,
-      note: `Acces actualizat de ${actor.role} pentru utilizator in organizatia ${organizationId}`,
+      note: `Acces actualizat de ${actor.role} pentru utilizator in organizatia ${organizationId}. Randurile din afara scope-ului actorului au fost pastrate.`,
     });
 
-    return res({ success: true, assignments: next, actor_role: actor.role, organization_wide_access: organizationWide });
+    return res({
+      success: true,
+      assignments: next,
+      actor_role: actor.role,
+      organization_wide_access: organizationWide,
+      preserved_outside_scope_count: activeOutsideScopeRows.length,
+    });
   } catch (error) {
     return res({ error: error?.message || 'Eroare neasteptata' }, 500);
   }
