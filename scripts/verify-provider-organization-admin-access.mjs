@@ -42,29 +42,35 @@ assert.match(invitationSchema, /"organization_wide_access"/);
 
 assert.match(roleScope, /ORGANIZATION_ADMIN_ROLE/);
 assert.match(roleScope, /storedProviderRoleForAccessRole/);
-assert.match(roleScope, /organization_admin.*location_manager/s);
+assert.match(roleScope, /isPrivilegedProviderRole/);
+assert.match(roleScope, /roleRequiresOrganizationWideAccess/);
 assert.match(roleScope, /membership\.organization_wide_access === true/);
 
-assert.match(createInvitation, /Doar ownerul organizatiei poate acorda rol de owner sau administrator/);
-assert.match(createInvitation, /current\/future|actuale si viitoare|locatiile actuale si viitoare/i);
+assert.match(createInvitation, /Doar un owner cu acces la intreaga organizatie poate acorda acest rol/);
+assert.match(createInvitation, /Doar ownerul poate acorda rol de owner pentru locatiile selectate/);
+assert.match(createInvitation, /roleRequiresOrganizationWideAccess\(proposedRole\)/);
+assert.match(createInvitation, /payload\.organization_wide_access === true/);
 assert.match(createInvitation, /organization_wide_access: organizationWide/);
 assert.match(createInvitation, /scope\.adminOrganizationIds/);
+assert.match(createInvitation, /scope\.wideOwnerOrganizationIds/);
 
-assert.match(acceptInvitation, /organization_role: organizationRole/);
 assert.match(acceptInvitation, /storedProviderRoleForAccessRole\(accessRole\)/);
 assert.match(acceptInvitation, /organization_wide_access: organizationWide/);
 assert.match(acceptInvitation, /ProviderLocation\.filter\(\{ organization_id: organization\.id \}/);
 
 assert.match(setAccess, /Administratorul organizatiei nu poate modifica owneri sau alti administratori/);
-assert.match(setAccess, /Numai ownerul poate acorda rol de owner sau administrator/);
-assert.match(setAccess, /Nu poti elimina ultimul owner activ al organizatiei/);
+assert.match(setAccess, /Numai ownerul poate acorda rol de owner/);
+assert.match(setAccess, /Administratorul organizatiei trebuie sa primeasca toate locatiile actuale si viitoare/);
+assert.match(setAccess, /Doar un owner global poate acorda acces la intreaga organizatie/);
+assert.match(setAccess, /Nu poti elimina ultimul owner activ al locatiei/);
 assert.match(setAccess, /organization_role: assignment\.role === ORGANIZATION_ADMIN_ROLE/);
 assert.match(setAccess, /organization_wide_access: organizationWide/);
 
 assert.match(members, /organization_admins_count/);
+assert.match(members, /global_owners_count/);
 assert.match(members, /can_manage_privileged_roles/);
+assert.match(members, /can_grant_organization_admin/);
 assert.match(members, /available_invitation_roles/);
-assert.match(members, /ORGANIZATION_ADMIN_ROLE.*location_manager.*location_staff/s);
 
 assert.match(revokeInvitation, /nu poate revoca invitatii pentru owneri sau administratori/);
 assert.match(syncAccess, /Ownerii si administratorii/);
@@ -81,8 +87,10 @@ assert.match(workspace, /current_actor_role/);
 assert.match(workspace, /syncProviderOrganizationOwnerAccess/);
 
 assert.match(accessUi, /Administrator organizație/);
-assert.match(accessUi, /Gestionat de owner/);
-assert.match(accessUi, /Numai ownerul poate acorda sau retrage roluri organizaționale/);
+assert.match(accessUi, /Ownerul poate fi global sau selectiv/);
+assert.match(accessUi, /Toată organizația/);
+assert.match(accessUi, /Locații selectate/);
+assert.match(accessUi, /Gestionat de ownerul global/);
 assert.match(accessUi, /Toate locațiile actuale și viitoare/);
 assert.doesNotMatch(accessUi, /manager regional/i);
 assert.match(labels, /organization_admin: "Administrator organizație"/);
