@@ -18,7 +18,9 @@ for (const entry of fs.readdirSync(scriptsDir, { withFileTypes: true })) {
   const original = fs.readFileSync(file, 'utf8');
   let next = original;
   for (const name of consolidatedNames) {
-    next = next.replaceAll(`../base44/functions/${name}/entry.ts`, `../base44/function_modules/${name}.ts`);
+    next = next
+      .replaceAll(`../base44/functions/${name}/entry.ts`, `../base44/function_modules/${name}.ts`)
+      .replaceAll(`base44/functions/${name}/entry.ts`, `base44/function_modules/${name}.ts`);
   }
   if (next !== original) {
     fs.writeFileSync(file, next);
