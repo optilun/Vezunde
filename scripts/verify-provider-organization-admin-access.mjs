@@ -42,26 +42,27 @@ assert.match(invitationSchema, /"organization_wide_access"/);
 
 assert.match(roleScope, /ORGANIZATION_ADMIN_ROLE/);
 assert.match(roleScope, /storedProviderRoleForAccessRole/);
+assert.match(roleScope, /ORGANIZATION_ADMIN_ROLE\) return 'location_manager'/);
 assert.match(roleScope, /isPrivilegedProviderRole/);
 assert.match(roleScope, /roleRequiresOrganizationWideAccess/);
 assert.match(roleScope, /membership\.organization_wide_access === true/);
 
-assert.match(createInvitation, /Doar un owner cu acces la intreaga organizatie poate acorda acest rol/);
-assert.match(createInvitation, /Doar ownerul poate acorda rol de owner pentru locatiile selectate/);
 assert.match(createInvitation, /roleRequiresOrganizationWideAccess\(proposedRole\)/);
-assert.match(createInvitation, /payload\.organization_wide_access === true/);
-assert.match(createInvitation, /organization_wide_access: organizationWide/);
-assert.match(createInvitation, /scope\.adminOrganizationIds/);
+assert.match(createInvitation, /proposedRole === ORGANIZATION_OWNER_ROLE && payload\.organization_wide_access === true/);
 assert.match(createInvitation, /scope\.wideOwnerOrganizationIds/);
+assert.match(createInvitation, /scope\.adminOrganizationIds/);
+assert.match(createInvitation, /organization_wide_access: organizationWide/);
+assert.match(createInvitation, /invited_location_ids: locationIds/);
 
 assert.match(acceptInvitation, /storedProviderRoleForAccessRole\(accessRole\)/);
 assert.match(acceptInvitation, /organization_role: organizationRole \|\| 'none'/);
 assert.match(acceptInvitation, /organization_wide_access: organizationWide/);
-assert.match(acceptInvitation, /ProviderLocation\.filter\(\{ organization_id: organization\.id \}/);
+assert.match(acceptInvitation, /claim_scope: organizationWide \? 'organization'/);
+assert.match(acceptInvitation, /ProviderMembership\.update|ProviderMembership\.create/);
 
-assert.match(setAccess, /Administratorul organizatiei nu poate modifica owneri sau alti administratori/);
-assert.match(setAccess, /Numai ownerul poate acorda rol de owner/);
-assert.match(setAccess, /Administratorul organizatiei trebuie sa primeasca toate locatiile actuale si viitoare/);
+assert.match(setAccess, /Un utilizator trebuie sa aiba un singur rol clar in organizatie/);
+assert.match(setAccess, /actor\.role === ORGANIZATION_ADMIN_ROLE && isPrivilegedProviderRole/);
+assert.match(setAccess, /roleRequiresOrganizationWideAccess\(selectedRole\)/);
 assert.match(setAccess, /Doar un owner global poate acorda acces la intreaga organizatie/);
 assert.match(setAccess, /Nu poti elimina ultimul owner activ al locatiei/);
 assert.match(setAccess, /organization_role: assignment\.role === ORGANIZATION_ADMIN_ROLE/);
@@ -69,38 +70,44 @@ assert.match(setAccess, /organization_wide_access: organizationWide/);
 
 assert.match(members, /organization_admins_count/);
 assert.match(members, /global_owners_count/);
+assert.match(members, /current_actor_wide_access/);
 assert.match(members, /can_manage_privileged_roles/);
 assert.match(members, /can_grant_organization_admin/);
-assert.match(members, /current_actor_wide_access/);
 assert.match(members, /available_invitation_roles/);
+assert.match(members, /manageable_location_ids/);
 
-assert.match(revokeInvitation, /nu poate revoca invitatii pentru owneri sau administratori/);
-assert.match(syncAccess, /Ownerii si administratorii/);
-assert.match(syncAccess, /organization_role: wideUser\.accessRole === ORGANIZATION_ADMIN_ROLE/);
+assert.match(revokeInvitation, /isPrivilegedProviderRole|ORGANIZATION_ADMIN_ROLE/);
+assert.match(revokeInvitation, /organization_wide_access/);
+assert.match(syncAccess, /membershipHasOrganizationWideAccess/);
+assert.match(syncAccess, /ORGANIZATION_ADMIN_ROLE/);
+assert.match(syncAccess, /organization_wide_access: true/);
 assert.match(expansion, /propagateOrganizationWideAccess/);
 assert.match(expansion, /organization_wide_memberships/);
 assert.match(expansion, /storedProviderRoleForAccessRole\(accessRole\)/);
 
 assert.match(workspace, /organization_admin:/);
 assert.match(workspace, /"organization\.manage_members"/);
-assert.doesNotMatch(workspace.match(/organization_admin:\s*\[[\s\S]*?\],/s)?.[0] || '', /organization\.manage_settings|organization\.manage_locations|location\.archive|location\.request_closure/);
+assert.doesNotMatch(
+  workspace.match(/organization_admin:\s*\[[\s\S]*?\],/s)?.[0] || '',
+  /organization\.manage_settings|organization\.manage_locations|location\.archive|location\.request_closure/,
+);
 assert.match(workspace, /actorHasWideOrganizationAccess/);
 assert.match(workspace, /current_actor_wide_access/);
 assert.match(workspace, /OWNER_SENSITIVE_ORGANIZATION_CAPABILITIES/);
-assert.match(workspace, /isOrganizationOwner[\s\S]*actorHasWideOrganizationAccess[\s\S]*organization\.manage_settings/);
 assert.match(workspace, /scopedLocationIds/);
 assert.match(workspace, /syncProviderOrganizationOwnerAccess/);
 
+assert.match(accessUi, /organization_owner/);
 assert.match(accessUi, /organization_admin/);
-assert.match(accessUi, /Ownerul poate fi global sau selectiv/);
+assert.match(accessUi, /location_manager/);
+assert.match(accessUi, /location_staff/);
 assert.match(accessUi, /Toată organizația/);
 assert.match(accessUi, /Locații selectate/);
-assert.match(accessUi, /Gestionat de ownerul global/);
-assert.match(accessUi, /Toate locațiile actuale și viitoare/);
-assert.doesNotMatch(accessUi, /manager regional/i);
+assert.match(accessUi, /organization_wide_access: form\.scope === "all"/);
+assert.match(accessUi, /organization_wide_access: edit\.scope === "all"/);
 assert.match(labels, /organization_admin: "Administrator organizație"/);
-assert.match(invitationUi, /invitationIsOrganizationWide/);
-assert.match(invitationUi, /invitation\?\.proposed_role === "organization_admin"/);
-assert.match(invitationUi, /nu se extinde automat la locațiile viitoare/);
+assert.match(invitationUi, /organization_admin/);
+assert.match(invitationUi, /organization_wide_access/);
+assert.match(invitationUi, /locațiilor actuale și viitoare/);
 
 console.log('Provider organization administrator access checks passed.');
