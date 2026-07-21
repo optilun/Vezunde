@@ -27,6 +27,11 @@ const LOCATION_MODULE_CAPABILITIES = {
   program: "location.manage_operational_status",
   specialisti: "location.manage_specialists",
 };
+const OWNER_SENSITIVE_ORGANIZATION_CAPABILITIES = new Set([
+  "organization.manage_profile",
+  "organization.manage_locations",
+  "organization.manage_settings",
+]);
 
 const ROLE_CAPABILITIES = {
   organization_owner: [
@@ -160,19 +165,13 @@ export default function ProviderWorkspaceRoot({
     || context.memberships?.some((membership) => membership.location_id === selectedLocationId)
   )) || organizationContexts[0] || null, [organizationContexts, selectedLocationId]);
   const selectedOrganizationId = selectedContext?.organization?.id || "";
-  const locations = selectedContext ? (selectedContext.locations || []) : allLocations;
-  const memberships = selectedContext ? (selectedContext.memberships || []) : (workspace.memberships || []);
-  const selectedLocationAccess = useMemo(
-    () => resolveProviderLocationAccess(selectedContext || workspace, selectedLocationId),
-    [selectedContext, workspace, selectedLocationId],
-  );
+  const baseContextLocations = selectedContext ? (selectedContext.locations || []) : allLocations;
+  const baseContextMemberships = selectedContext ? (selectedContext.memberships || []) : (workspace.memberships || []);
 
   useEffect(() => {
     const requestId = ++accessMetaRequestRef.current;
-    if (!selectedOrganizationId) {
-      setAccessMeta(null);
-      return undefined;
-    }
+    setAccessMeta(null);
+    if (!selectedOrganizationId) return undefined;
     base44.functions.invoke("getMyProviderMembers", { organization_id: selectedOrganizationId })
       .then((response) => {
         if (requestId !== accessMetaRequestRef.current) return;
@@ -184,9 +183,38 @@ export default function ProviderWorkspaceRoot({
     return () => { accessMetaRequestRef.current += 1; };
   }, [selectedOrganizationId, workspace]);
 
-  const organizationActorRole = accessMeta?.current_actor_role || selectedContext?.current_user_role || "";
+  const accessMetaMatchesOrganization = accessMeta?.current_organization_id === selectedOrganizationId;
+  const scopedLocationIds = useMemo(() => {
+    if (!accessMetaMatchesOrganization) return new Set(baseContextMemberships.map((membership) => membership.location_id).filter(Boolean));
+    const ids = accessMeta?.manageable_location_ids?.length
+      ? accessMeta.manageable_location_ids
+      : accessMeta?.assigned_location_ids || [];
+    return new Set(ids);
+  }, [accessMeta?.assigned_location_ids, accessMeta?.manageable_location_ids, accessMetaMatchesOrganization, baseContextMemberships]);
+  const locations = useMemo(
+    () => baseContextLocations.filter((location) => scopedLocationIds.has(location.id)),
+    [baseContextLocations, scopedLocationIds],
+  );
+  const memberships = useMemo(
+    () => baseContextMemberships.filter((membership) => scopedLocationIds.has(membership.location_id)),
+    [baseContextMemberships, scopedLocationIds],
+  );
+  const scopedContext = useMemo(() => selectedContext ? {
+    ...selectedContext,
+    locations,
+    memberships,
+  } : workspace, [locations, memberships, selectedContext, workspace]);
+  const selectedLocationAccess = useMemo(
+    () => resolveProviderLocationAccess(scopedContext, selectedLocationId),
+    [scopedContext, selectedLocationId],
+  );
+
+  const organizationActorRole = accessMetaMatchesOrganization ? (accessMeta?.current_actor_role || "") : "";
   const isOrganizationOwner = organizationActorRole === "organization_owner";
   const isOrganizationAdmin = organizationActorRole === "organization_admin";
+  const actorHasWideOrganizationAccess = Boolean(
+    isOrganizationAdmin || (isOrganizationOwner && accessMeta?.current_actor_wide_access === true),
+  );
   const organizationCapabilityList = (selectedContext?.capabilities || [])
     .filter((capability) => capability.startsWith("organization."));
   const locationCapabilityList = selectedLocationAccess.capabilities || [];
@@ -195,12 +223,24 @@ export default function ProviderWorkspaceRoot({
     ...organizationCapabilityList,
     ...roleCapabilities.filter((capability) => capability.startsWith("organization.")),
   ]);
+  if (!actorHasWideOrganizationAccess) {
+    for (const capability of OWNER_SENSITIVE_ORGANIZATION_CAPABILITIES) organizationCapabilities.delete(capability);
+  }
+  if (!isOrganizationOwner) {
+    organizationCapabilities.delete("organization.manage_profile");
+    organizationCapabilities.delete("organization.manage_locations");
+    organizationCapabilities.delete("organization.manage_settings");
+  }
   const locationCapabilities = new Set([
     ...locationCapabilityList,
     ...roleCapabilities.filter((capability) => capability.startsWith("location.")),
   ]);
+  if (isOrganizationOwner && !actorHasWideOrganizationAccess) {
+    locationCapabilities.delete("location.archive");
+    locationCapabilities.delete("location.request_closure");
+  }
   const scopedCapabilities = [...new Set([...organizationCapabilities, ...locationCapabilities])];
-  const canManageOrganizationProfile = organizationCapabilities.has("organization.manage_profile");
+  const canManageOrganizationProfile = Boolean(isOrganizationOwner && actorHasWideOrganizationAccess && organizationCapabilities.has("organization.manage_profile"));
   const canViewLocations = locationCapabilities.has("location.view");
   const canManageLocationProfile = locationCapabilities.has("location.manage_profile");
   const canManageLocationContent = locationCapabilities.has("location.manage_content");
@@ -211,14 +251,18 @@ export default function ProviderWorkspaceRoot({
     || canManageLocationContent
     || canManageSpecialists
     || canManageOperationalStatus;
-  const canManageMembers = Boolean(accessMeta?.can_manage_members || selectedContext?.can_manage_members || organizationCapabilities.has("organization.manage_members"));
-  const canManageSettings = Boolean(isOrganizationOwner && (selectedContext?.can_manage_settings || organizationCapabilities.has("organization.manage_settings")));
+  const canManageMembers = Boolean(accessMetaMatchesOrganization && accessMeta?.can_manage_members);
+  const canManageSettings = Boolean(
+    isOrganizationOwner
+    && actorHasWideOrganizationAccess
+    && organizationCapabilities.has("organization.manage_settings"),
+  );
   const activeLocationModule = requestedLocationModule
     && locationCapabilities.has(LOCATION_MODULE_CAPABILITIES[requestedLocationModule])
     ? requestedLocationModule
     : null;
   const deniedLocationModule = Boolean(requestedLocationModule && !activeLocationModule);
-  const hasWideOrganizationAccess = isOrganizationOwner || isOrganizationAdmin;
+  const hasWideOrganizationAccess = actorHasWideOrganizationAccess;
   const scopedWorkspace = {
     ...workspace,
     organizations: selectedContext?.organization ? [selectedContext.organization] : workspace.organizations,
@@ -232,6 +276,8 @@ export default function ProviderWorkspaceRoot({
     location_capabilities: [...locationCapabilities],
     can_manage_members: canManageMembers,
     can_manage_privileged_roles: Boolean(accessMeta?.can_manage_privileged_roles),
+    can_grant_organization_admin: Boolean(accessMeta?.can_grant_organization_admin),
+    current_actor_wide_access: actorHasWideOrganizationAccess,
   };
 
   const loadOverview = async (locationId, options = {}) => {
@@ -257,6 +303,11 @@ export default function ProviderWorkspaceRoot({
       .then((response) => { if (response.data?.changed) onRefresh?.(); })
       .catch(() => null);
   }, [hasWideOrganizationAccess, onRefresh, selectedOrganizationId]);
+
+  useEffect(() => {
+    if (!accessMetaMatchesOrganization || locations.length === 0 || locations.some((location) => location.id === selectedLocationId)) return;
+    setSelectedLocationId(locations[0].id);
+  }, [accessMetaMatchesOrganization, locations, selectedLocationId]);
 
   useEffect(() => {
     const routeLocationExists = allLocations.some((location) => location.id === routeLocationId);
@@ -304,6 +355,7 @@ export default function ProviderWorkspaceRoot({
   };
 
   const selectLocation = (locationId) => {
+    if (accessMetaMatchesOrganization && !scopedLocationIds.has(locationId)) return;
     setSelectedLocationId(locationId);
     rememberProviderLocation(user?.id, locationId);
     if (activeLocationModule) {
@@ -320,7 +372,7 @@ export default function ProviderWorkspaceRoot({
   };
 
   const openLocationModule = (moduleKey, locationId = selectedLocationId) => {
-    if (!LOCATION_MODULES.has(moduleKey) || !locationId) return;
+    if (!LOCATION_MODULES.has(moduleKey) || !locationId || !scopedLocationIds.has(locationId)) return;
     const targetAccess = accessForLocation(locationId);
     if (!targetAccess.capabilities.includes(LOCATION_MODULE_CAPABILITIES[moduleKey])) return;
     setSelectedLocationId(locationId);
