@@ -4,6 +4,7 @@ import {
   evaluateServicePrerequisites,
   servicePrerequisiteStatusLabel,
 } from '../../../shared/servicePrerequisiteEngine.js';
+import { invokeDirectoryFunction } from '../../shared/directoryFunctionRouting.js';
 
 function clean(value) {
   return String(value || '').trim();
@@ -92,7 +93,7 @@ function reviewPayload(evaluation) {
 }
 
 async function delegate(base44, action, payload) {
-  const result = await base44.functions.invoke('adminWorkspaceReview', {
+  const result = await invokeDirectoryFunction(base44, 'adminWorkspaceReview', {
     action,
     submission_id: payload.submission_id,
     status: payload.status,
@@ -104,7 +105,7 @@ async function delegate(base44, action, payload) {
   return result?.data || result || {};
 }
 
-Deno.serve(async (req) => {
+export async function handle(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -172,4 +173,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return Response.json({ error: error?.message || 'Eroare neasteptata' }, { status: 500 });
   }
-});
+}

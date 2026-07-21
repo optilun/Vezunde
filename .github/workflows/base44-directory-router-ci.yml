@@ -1,0 +1,105 @@
+name: Base44 Directory Router
+
+on:
+  pull_request:
+    paths:
+      - "base44/functions/directoryOps/**"
+      - "base44/shared/directoryFunctionRouting.js"
+      - "src/api/base44Client.js"
+      - "src/api/base44FunctionRouting.js"
+      - "scripts/verify-directory-function-router.mjs"
+      - "scripts/verify-directory-import-pipeline.mjs"
+      - "scripts/verify-directory-mapping.mjs"
+      - "scripts/verify-directory-correction-workflow.mjs"
+      - "scripts/verify-provider-account-workflow-e2e.mjs"
+      - "scripts/verify-provider-claim-scope.mjs"
+      - "scripts/verify-professional-identity-ownership.mjs"
+      - "scripts/verify-provider-submission-backend.mjs"
+      - "scripts/verify-provider-onboarding-continuity.mjs"
+      - "scripts/verify-onboarding-schema-compatibility.mjs"
+      - "scripts/verify-service-prerequisites.mjs"
+      - "scripts/verify-service-registry.mjs"
+      - "scripts/verify-service-legacy-flows.mjs"
+      - "scripts/verify-provider-logo-review-status.mjs"
+      - "scripts/compare-typecheck-baseline.mjs"
+      - "package.json"
+      - ".github/workflows/base44-directory-router-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --silent
+      - name: Parse router sources
+        run: |
+          node --check base44/shared/directoryFunctionRouting.js
+          node --check src/api/base44FunctionRouting.js
+          node --check scripts/verify-directory-function-router.mjs
+          find base44/functions/directoryOps -name '*.ts' -print0 | xargs -0 -n1 node --check
+      - name: Verify physical surface and routes
+        run: npm run test:directory-router
+      - name: Verify directory import
+        run: node scripts/verify-directory-import-pipeline.mjs
+      - name: Verify directory mapping and preview tokens
+        run: node scripts/verify-directory-mapping.mjs
+      - name: Verify directory correction review
+        run: node scripts/verify-directory-correction-workflow.mjs
+      - name: Verify provider account review contracts
+        run: npm run test:provider-account-e2e
+      - name: Verify provider claim scope
+        run: npm run test:provider-claim-scope
+      - name: Verify professional review ownership
+        run: node scripts/verify-professional-identity-ownership.mjs
+      - name: Typecheck services
+        run: npm run typecheck:services
+      - name: Capture current typecheck
+        shell: bash
+        run: |
+          set +e
+          npm run typecheck -- --pretty false > typecheck-head.log 2>&1
+          grep -E "error TS|Found [0-9]+ errors" typecheck-head.log || true
+          exit 0
+      - name: Capture current main typecheck
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set +e
+          git fetch origin "$BASE_SHA" --depth=1
+          rm -rf /tmp/vezunde-directory-router-base
+          git worktree add --detach /tmp/vezunde-directory-router-base "$BASE_SHA"
+          ln -s "$GITHUB_WORKSPACE/node_modules" /tmp/vezunde-directory-router-base/node_modules
+          cd /tmp/vezunde-directory-router-base
+          ./node_modules/.bin/tsc -p ./jsconfig.json --pretty false > "$GITHUB_WORKSPACE/typecheck-base.log" 2>&1
+          exit 0
+      - name: Reject TypeScript regressions against current main
+        if: github.event_name == 'pull_request'
+        run: node scripts/compare-typecheck-baseline.mjs typecheck-base.log typecheck-head.log
+      - name: Services lint
+        run: npm run lint:services
+      - name: Repository lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Upload typecheck diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: base44-directory-router-typecheck
+          path: |
+            typecheck-head.log
+            typecheck-base.log

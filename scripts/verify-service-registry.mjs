@@ -154,15 +154,15 @@ copy.aliases.push("test-local-copy");
 assert.equal(getCanonicalServiceDefinition("eyeglasses").aliases.includes("test-local-copy"), false, "Helperul trebuie să returneze copii defensive");
 
 const consumers = {
-  directoryOps: "base44/functions/directoryOps/entry.ts",
+  directoryOps: "base44/functions/directoryOps/directoryOps.ts",
   publicProfile: "base44/functions/getPublicProviderProfile/entry.ts",
   browseDirectory: "base44/functions/browseDirectoryProviders/entry.ts",
   matching: "base44/functions/matchProviders/entry.ts",
   providerRead: "base44/functions/getProviderServiceConfiguration/entry.ts",
-  adminServiceConfiguration: "base44/functions/adminServiceConfigurationReview/entry.ts",
-  matchingBackfill: "base44/functions/backfillLocationServiceMatching/entry.ts",
+  adminServiceConfiguration: "base44/functions/directoryOps/adminServiceConfigurationReview.ts",
+  matchingBackfill: "base44/functions/directoryOps/backfillLocationServiceMatching.ts",
   legacyWorkspaceSubmit: "base44/functions/submitProviderWorkspaceChange/entry.ts",
-  adminWorkspaceReview: "base44/functions/adminWorkspaceReview/entry.ts",
+  adminWorkspaceReview: "base44/functions/directoryOps/adminWorkspaceReview.ts",
   profileFoundation: "base44/functions/profileFoundationOps/entry.ts",
 };
 for (const [name, relativePath] of Object.entries(consumers)) {

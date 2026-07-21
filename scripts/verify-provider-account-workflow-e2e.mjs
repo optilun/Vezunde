@@ -19,11 +19,11 @@ function hasAll(text, patterns, label) {
 
 const workflowFiles = {
   manageProviderOrganizationProfile: 'base44/functions/manageProviderOrganizationProfile/entry.ts',
-  adminOrganizationProfileReview: 'base44/functions/adminOrganizationProfileReview/entry.ts',
+  adminOrganizationProfileReview: 'base44/functions/directoryOps/adminOrganizationProfileReview.ts',
   submitProviderWorkspaceChange: 'base44/functions/submitProviderWorkspaceChange/entry.ts',
-  adminWorkspaceReview: 'base44/functions/adminWorkspaceReview/entry.ts',
+  adminWorkspaceReview: 'base44/functions/directoryOps/adminWorkspaceReview.ts',
   providerServiceConfigurationOps: 'base44/functions/providerServiceConfigurationOps/entry.ts',
-  adminServiceConfigurationReview: 'base44/functions/adminServiceConfigurationReview/entry.ts',
+  adminServiceConfigurationReview: 'base44/functions/directoryOps/adminServiceConfigurationReview.ts',
   locationPhotoOps: 'base44/functions/locationPhotoOps/entry.ts',
   providerLocationLifecycleOps: 'base44/functions/providerLocationLifecycleOps/entry.ts',
   providerLocationExpansionOps: 'base44/functions/providerLocationExpansionOps/entry.ts',
@@ -118,3 +118,4 @@ const logoStatus = await source('base44/functions/getProviderLogoReviewStatus/en
 hasAll(logoStatus, [/profile_review_is_separate/, /logo_review_status/], 'status logo');
 
 console.log('Provider account workflow contract E2E checks passed.');
+

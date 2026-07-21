@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const adminReview = await readFile(new URL('../base44/functions/adminWorkspaceReview/entry.ts', import.meta.url), 'utf8');
-const professionalReview = await readFile(new URL('../base44/functions/adminProfessionalProfileReview/entry.ts', import.meta.url), 'utf8');
+const adminReview = await readFile(new URL('../base44/functions/directoryOps/adminWorkspaceReview.ts', import.meta.url), 'utf8');
+const professionalReview = await readFile(new URL('../base44/functions/directoryOps/adminProfessionalProfileReview.ts', import.meta.url), 'utf8');
 const providerTeam = await readFile(new URL('../src/components/workspace/provider/ProviderTeam.jsx', import.meta.url), 'utf8');
 const professionalWorkspace = await readFile(new URL('../src/components/workspace/professional/ProfessionalWorkspaceRoot.jsx', import.meta.url), 'utf8');
 const assignmentOps = await readFile(new URL('../base44/functions/manageProfessionalAssignment/entry.ts', import.meta.url), 'utf8');

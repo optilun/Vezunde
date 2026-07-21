@@ -9,6 +9,7 @@ import {
 } from '../../../shared/servicePrerequisiteEngine.js';
 import { validateServiceConfigurationPayload } from '../../../shared/serviceConfigurationPayloadExtended.js';
 import { getServiceOperationalContext } from '../../../shared/serviceOperationalTaxonomyExtended.js';
+import { invokeDirectoryFunction } from '../../shared/directoryFunctionRouting.js';
 
 function clean(value) {
   return String(value || '').trim();
@@ -420,7 +421,7 @@ async function persistSuggestions(svc, user, submission, payload) {
 }
 
 async function delegate(base44, action, payload) {
-  const result = await base44.functions.invoke('adminWorkspaceReview', {
+  const result = await invokeDirectoryFunction(base44, 'adminWorkspaceReview', {
     action,
     submission_id: payload.submission_id,
     status: payload.status,
@@ -432,7 +433,7 @@ async function delegate(base44, action, payload) {
   return result?.data || result || {};
 }
 
-Deno.serve(async (req) => {
+export async function handle(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -545,4 +546,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return Response.json({ error: error?.message || 'Eroare neașteptată' }, { status: 500 });
   }
-});
+}

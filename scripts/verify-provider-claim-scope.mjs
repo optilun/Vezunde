@@ -88,7 +88,7 @@ const locationEntity = await source('base44/entities/ProviderClaimLocationSelect
 const membershipEntity = await source('base44/entities/ProviderMembership.jsonc');
 const optionsFunction = await source('base44/functions/getProviderClaimScopeOptions/entry.ts');
 const submitFunction = await source('base44/functions/submitProviderScopedClaim/entry.ts');
-const reviewFunction = await source('base44/functions/adminProviderScopedClaimReview/entry.ts');
+const reviewFunction = await source('base44/functions/directoryOps/adminProviderScopedClaimReview.ts');
 const syncFunction = await source('base44/functions/syncProviderOrganizationOwnerAccess/entry.ts');
 const claimForm = await source('src/components/provider/ClaimForm.jsx');
 const claimScopeStep = await source('src/components/provider/ClaimScopeStep.jsx');
@@ -135,3 +135,4 @@ assert.match(claimStatus, /approved_location_ids/);
 assert.match(claimStatus, /Aprobarea este partiala/);
 
 console.log('Provider claim scope checks passed.');
+

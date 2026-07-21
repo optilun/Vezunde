@@ -5,11 +5,15 @@ on:
     paths:
       - "shared/directoryMappingPolicy.js"
       - "base44/entities/DirectoryLocationIdentityLink.jsonc"
-      - "base44/functions/directoryMappingOps/**"
+      - "base44/functions/directoryOps/**"
+      - "base44/shared/directoryFunctionRouting.js"
+      - "src/api/base44Client.js"
+      - "src/api/base44FunctionRouting.js"
       - "src/components/admin/directory/DirOpsMapping.jsx"
       - "src/lib/adminNavConfig.js"
       - "src/pages/AdminDirectoryOps.jsx"
       - "scripts/verify-directory-mapping.mjs"
+      - "scripts/verify-directory-function-router.mjs"
       - "scripts/compare-typecheck-baseline.mjs"
       - ".github/workflows/directory-mapping-ci.yml"
   workflow_dispatch:
@@ -30,6 +34,10 @@ jobs:
       - run: npm ci --silent
       - name: Verify directory mapping contract
         run: node scripts/verify-directory-mapping.mjs
+      - name: Verify directory routing contract
+        run: npm run test:directory-router
+      - name: Typecheck services
+        run: npm run typecheck:services
       - name: Typecheck current branch
         shell: bash
         run: |
@@ -62,7 +70,10 @@ jobs:
             typecheck-base.log
       - name: Lint mapping scope
         if: always()
-        run: npx eslint shared/directoryMappingPolicy.js base44/functions/directoryMappingOps/entry.ts src/components/admin/directory/DirOpsMapping.jsx src/lib/adminNavConfig.js src/pages/AdminDirectoryOps.jsx scripts/verify-directory-mapping.mjs
+        run: npx eslint shared/directoryMappingPolicy.js base44/functions/directoryOps/directoryMappingOps.ts src/components/admin/directory/DirOpsMapping.jsx src/lib/adminNavConfig.js src/pages/AdminDirectoryOps.jsx scripts/verify-directory-mapping.mjs scripts/verify-directory-function-router.mjs
+      - name: Services lint
+        if: always()
+        run: npm run lint:services
       - name: Repository lint
         if: always()
         run: npm run lint

@@ -1137,7 +1137,7 @@ async function getBatchDetail(svc, input) {
   return response({ success: true, batch, rows, mutation_summary: summary, approval_confirmation: batchApprovalToken(batch.batch_key, batch.source_sha256, batch.ready_rows), rollback_confirmation: rollbackApprovalToken(batch.batch_key, batch.applied_rows) });
 }
 
-Deno.serve(async (req) => {
+export async function handle(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
     const auth = await requireAdmin(base44);
@@ -1161,4 +1161,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return response({ error: error?.message || 'Eroare neasteptata in pipeline-ul directorului.' }, 500);
   }
-});
+}

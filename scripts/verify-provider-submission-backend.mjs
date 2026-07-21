@@ -5,8 +5,8 @@ import { resolveProviderTeamLocationScope } from '../shared/providerTeamLocation
 const read = (path) => fs.readFileSync(path, 'utf8');
 const submit = read('base44/functions/submitProviderWorkspaceChange/entry.ts');
 const organization = read('base44/functions/manageProviderOrganizationProfile/entry.ts');
-const adminLocation = read('base44/functions/adminWorkspaceReview/entry.ts');
-const adminOrganization = read('base44/functions/adminOrganizationProfileReview/entry.ts');
+const adminLocation = read('base44/functions/directoryOps/adminWorkspaceReview.ts');
+const adminOrganization = read('base44/functions/directoryOps/adminOrganizationProfileReview.ts');
 const client = read('src/api/base44Client.js');
 
 const checks = [
@@ -64,3 +64,4 @@ assert.deepEqual(
 );
 
 console.log(`provider submission backend: ${checks.length} source checks and 4 scope checks passed`);
+

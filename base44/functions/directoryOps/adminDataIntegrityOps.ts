@@ -369,7 +369,7 @@ async function applyCandidate(svc, user, candidate) {
   throw new Error('Tip de reparatie necunoscut');
 }
 
-Deno.serve(async (req) => {
+export async function handle(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -405,4 +405,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return response({ error: error.message || 'Eroare neasteptata' }, 500);
   }
-});
+}

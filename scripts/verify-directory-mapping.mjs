@@ -46,7 +46,7 @@ const duplicate = validateIdentityRelationship({
 assert.equal(duplicate.ok, true);
 assert.equal(mappingConfirmationToken(['identity', duplicate.pair_key]).startsWith('directory-mapping-v1:'), true);
 
-const backend = await readFile(new URL('../base44/functions/directoryMappingOps/entry.ts', import.meta.url), 'utf8');
+const backend = await readFile(new URL('../base44/functions/directoryOps/directoryMappingOps.ts', import.meta.url), 'utf8');
 const panel = await readFile(new URL('../src/components/admin/directory/DirOpsMapping.jsx', import.meta.url), 'utf8');
 const page = await readFile(new URL('../src/pages/AdminDirectoryOps.jsx', import.meta.url), 'utf8');
 const nav = await readFile(new URL('../src/lib/adminNavConfig.js', import.meta.url), 'utf8');
@@ -59,6 +59,8 @@ assert.match(backend, /action === 'preview_canonical_type'/);
 assert.match(backend, /action === 'apply_canonical_type'/);
 assert.match(backend, /action === 'preview_identity_relation'/);
 assert.match(backend, /action === 'apply_identity_relation'/);
+assert.match(backend, /clean\(input\.confirmation_token, 500\) !== previewPayload\.confirmation_token/);
+assert.match(backend, /Preview-ul nu mai este valid[\s\S]*status: 409|Preview-ul nu mai este valid[\s\S]*, 409/);
 assert.match(backend, /link_record_status: 'superseded'/);
 assert.match(backend, /record_status: 'superseded'/);
 assert.match(backend, /DirectoryAuditRecord\.create/);

@@ -321,7 +321,7 @@ async function resolveRequest(base44: any, svc: any, user: any, payload: any) {
   });
 }
 
-Deno.serve(async (req) => {
+export async function handle(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -342,4 +342,4 @@ Deno.serve(async (req) => {
     console.error('adminDirectoryCorrectionReview failed', error);
     return response({ error: 'Coada de corectii nu a putut fi procesata' }, 500);
   }
-});
+}
