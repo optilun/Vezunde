@@ -336,7 +336,7 @@ async function decide(svc, user, payload) {
   return res({ success: true, status: 'rejected' });
 }
 
-Deno.serve(async (req) => {
+export async function handle(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -351,4 +351,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return res({ error: error?.message || 'Eroare neasteptata' }, 500);
   }
-});
+}

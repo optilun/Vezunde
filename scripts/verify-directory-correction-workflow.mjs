@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 
 const entity = await readFile(new URL("../base44/entities/DirectoryCorrectionRequest.jsonc", import.meta.url), "utf8");
 const submit = await readFile(new URL("../base44/functions/submitDirectoryCorrection/entry.ts", import.meta.url), "utf8");
-const admin = await readFile(new URL("../base44/functions/adminDirectoryCorrectionReview/entry.ts", import.meta.url), "utf8");
+const admin = await readFile(new URL("../base44/functions/directoryOps/adminDirectoryCorrectionReview.ts", import.meta.url), "utf8");
 const notice = await readFile(new URL("../src/components/provider/DirectoryProfileNotice.jsx", import.meta.url), "utf8");
 const form = await readFile(new URL("../src/components/provider/DirectoryCorrectionForm.jsx", import.meta.url), "utf8");
 const adminQueue = await readFile(new URL("../src/components/admin/directory/DirOpsCorrections.jsx", import.meta.url), "utf8");
@@ -83,3 +83,4 @@ assert.match(presentation, /label: "Profil nerevendicat"/);
 assert.doesNotMatch(presentation, /buildDirectoryReportHref/);
 
 console.log("Directory correction workflow checks passed.");
+

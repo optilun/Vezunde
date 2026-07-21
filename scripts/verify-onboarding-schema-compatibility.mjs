@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 
 const submit = fs.readFileSync('base44/functions/submitProviderClaim/entry.ts', 'utf8');
-const review = fs.readFileSync('base44/functions/adminProviderClaimReview/entry.ts', 'utf8');
+const review = fs.readFileSync('base44/functions/directoryOps/adminProviderClaimReview.ts', 'utf8');
 
 const failures = [];
 const reject = (condition, message) => { if (condition) failures.push(message); };
@@ -19,3 +19,4 @@ if (failures.length) {
 }
 
 console.log('PASS onboarding schema compatibility');
+

@@ -8,12 +8,16 @@ on:
       - "base44/entities/DirectoryImportBatch.jsonc"
       - "base44/entities/DirectoryImportRow.jsonc"
       - "base44/entities/DirectoryImportMutation.jsonc"
-      - "base44/functions/directoryImportOps/**"
+      - "base44/functions/directoryOps/**"
+      - "base44/shared/directoryFunctionRouting.js"
+      - "src/api/base44Client.js"
+      - "src/api/base44FunctionRouting.js"
       - "src/lib/directoryImportFileParser.js"
       - "src/components/admin/directory/DirOpsImportPipeline.jsx"
       - "src/lib/adminNavConfig.js"
       - "src/pages/AdminDirectoryOps.jsx"
       - "scripts/verify-directory-import-pipeline.mjs"
+      - "scripts/verify-directory-function-router.mjs"
       - "scripts/compare-typecheck-baseline.mjs"
       - ".github/workflows/directory-import-pipeline-ci.yml"
   workflow_dispatch:
@@ -34,6 +38,10 @@ jobs:
       - run: npm ci --silent
       - name: Verify import contract
         run: node scripts/verify-directory-import-pipeline.mjs
+      - name: Verify directory routing contract
+        run: npm run test:directory-router
+      - name: Typecheck services
+        run: npm run typecheck:services
       - name: Typecheck current branch
         shell: bash
         run: |
@@ -66,7 +74,10 @@ jobs:
             typecheck-base.log
       - name: Lint import scope
         if: always()
-        run: npx eslint shared/directoryImportPipeline.js base44/functions/directoryImportOps/entry.ts src/lib/directoryImportFileParser.js src/components/admin/directory/DirOpsImportPipeline.jsx src/lib/adminNavConfig.js src/pages/AdminDirectoryOps.jsx scripts/verify-directory-import-pipeline.mjs
+        run: npx eslint shared/directoryImportPipeline.js base44/functions/directoryOps/directoryImportOps.ts src/lib/directoryImportFileParser.js src/components/admin/directory/DirOpsImportPipeline.jsx src/lib/adminNavConfig.js src/pages/AdminDirectoryOps.jsx scripts/verify-directory-import-pipeline.mjs scripts/verify-directory-function-router.mjs
+      - name: Services lint
+        if: always()
+        run: npm run lint:services
       - name: Repository lint
         if: always()
         run: npm run lint

@@ -20,7 +20,7 @@ function computeCompleteness(organization, locations) {
   return Math.round((items.filter(Boolean).length / items.length) * 100);
 }
 
-Deno.serve(async (req) => {
+export async function handle(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -86,4 +86,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return res({ error: error.message }, 500);
   }
-});
+}

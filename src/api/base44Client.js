@@ -1,9 +1,10 @@
 import { createClient } from '@base44/sdk';
 import { appParams } from '@/lib/app-params';
+import { installBase44FunctionRouting } from '@/api/base44FunctionRouting';
 
 const { appId, token, functionsVersion, appBaseUrl } = appParams;
 
-export const base44 = createClient({
+const rawBase44 = createClient({
   appId,
   token,
   functionsVersion,
@@ -11,3 +12,5 @@ export const base44 = createClient({
   requiresAuth: false,
   appBaseUrl,
 });
+
+export const base44 = installBase44FunctionRouting(rawBase44);

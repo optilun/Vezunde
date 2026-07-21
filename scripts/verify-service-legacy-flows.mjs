@@ -10,7 +10,7 @@ const updateSource = await readFile(
   "utf8",
 );
 const reviewSource = await readFile(
-  path.join(root, "base44/functions/reviewProfileChanges/entry.ts"),
+  path.join(root, "base44/functions/directoryOps/reviewProfileChanges.ts"),
   "utf8",
 );
 
@@ -28,3 +28,4 @@ assert.doesNotMatch(reviewSource, /KNOWN_LEVELS/, "Fluxul legacy nu trebuie sa p
 assert.doesNotMatch(updateSource, /Object\.freeze\s*\(/, "Adaptorul legacy nu trebuie sa extinda obiecte inghetate");
 
 console.log("Legacy service flow compatibility: PASS");
+

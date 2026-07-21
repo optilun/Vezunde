@@ -42,11 +42,13 @@ on:
       - "base44/functions/submitProviderClaim/**"
       - "base44/functions/getProviderClaimScopeOptions/**"
       - "base44/functions/submitProviderScopedClaim/**"
-      - "base44/functions/adminProviderScopedClaimReview/**"
+      - "base44/functions/directoryOps/**"
+      - "base44/shared/directoryFunctionRouting.js"
+      - "src/api/base44Client.js"
+      - "src/api/base44FunctionRouting.js"
       - "base44/functions/syncProviderOrganizationOwnerAccess/**"
       - "base44/functions/getClaimableProviderLocations/**"
       - "base44/functions/getMyProviderOnboardingWorkspace/**"
-      - "base44/functions/adminProviderClaimReview/**"
       - "base44/functions/saveProviderRoutineProfile/**"
       - "base44/functions/providerLocationIdentityResolutionOps/**"
       - "base44/functions/createProviderMemberInvitation/**"
@@ -59,9 +61,7 @@ on:
       - "base44/functions/providerLocationExpansionOps/**"
       - "base44/functions/submitProviderLogoForReview/**"
       - "base44/functions/getProviderLogoReviewStatus/**"
-      - "base44/functions/reviewProfileChanges/**"
       - "base44/functions/submitDirectoryCorrection/**"
-      - "base44/functions/adminDirectoryCorrectionReview/**"
       - "scripts/verify-provider-onboarding-continuity.mjs"
       - "scripts/verify-provider-claim-scope.mjs"
       - "scripts/verify-provider-opening-hours.mjs"
@@ -72,6 +72,7 @@ on:
       - "scripts/verify-professional-lifecycle-concurrency.mjs"
       - "scripts/verify-professional-identity-ownership.mjs"
       - "scripts/verify-directory-correction-workflow.mjs"
+      - "scripts/verify-directory-function-router.mjs"
       - "scripts/verify-provider-logo-review-status.mjs"
       - "scripts/verify-provider-account-workflow-e2e.mjs"
       - "scripts/verify-provider-team-header-access.mjs"
@@ -98,6 +99,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --silent
+      - name: Directory routing contract checks
+        run: npm run test:directory-router
       - name: Onboarding regression checks
         run: node scripts/verify-provider-onboarding-continuity.mjs
       - name: Scoped provider claim checks

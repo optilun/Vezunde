@@ -96,7 +96,7 @@ for (const relativePath of [
   'base44/functions/getPublicProviderProfile/entry.ts',
   'base44/functions/browseDirectoryProviders/entry.ts',
   'base44/functions/matchProviders/entry.ts',
-  'base44/functions/adminServiceConfigurationReview/entry.ts',
+  'base44/functions/directoryOps/adminServiceConfigurationReview.ts',
 ]) {
   const entrySource = await source(relativePath);
   if (/servicePrerequisiteEngine\.js/.test(entrySource)) continue;
@@ -124,7 +124,7 @@ assert.match(providerOpsSource, /function validateSubmissionReadiness\(\)/);
 assert.match(providerOpsSource, /units, capabilities and resources are optional/);
 assert.doesNotMatch(providerOpsSource, /necesită activitatea asociată/);
 
-const adminSource = await source('base44/functions/adminServiceConfigurationReview/entry.ts');
+const adminSource = await source('base44/functions/directoryOps/adminServiceConfigurationReview.ts');
 assert.match(adminSource, /provider_declared_services/);
 assert.doesNotMatch(adminSource, /location_not_verified/);
 assert.doesNotMatch(adminSource, /verifiedKeys/);
@@ -138,9 +138,10 @@ const semanticMatchingSource = await source('base44/functions/matchProvidersSema
 assert.doesNotMatch(semanticMatchingSource, /requiredRoles/);
 assert.doesNotMatch(semanticMatchingSource, /matching_allowed !== true/);
 
-const backfillSource = await source('base44/functions/backfillLocationServiceMatching/entry.ts');
+const backfillSource = await source('base44/functions/directoryOps/backfillLocationServiceMatching.ts');
 assert.doesNotMatch(backfillSource, /Serviciul medical nu este verificat individual/);
 assert.match(backfillSource, /declarat si confirmat de furnizor/);
 
 console.log('Provider-declared, non-blocking service launch policy: PASS');
+
 

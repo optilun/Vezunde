@@ -95,13 +95,15 @@ assert.equal(mutationSchema.properties.rollback_status.enum.includes('failed'), 
 assert.deepEqual(snapshotSchema.rls.read.user_condition, { role: 'admin' });
 assert.deepEqual(mutationSchema.rls.write.user_condition, { role: 'admin' });
 
-const backend = await readFile(new URL('../base44/functions/directoryImportOps/entry.ts', import.meta.url), 'utf8');
+const backend = await readFile(new URL('../base44/functions/directoryOps/directoryImportOps.ts', import.meta.url), 'utf8');
 const ui = await readFile(new URL('../src/components/admin/directory/DirOpsImportPipeline.jsx', import.meta.url), 'utf8');
 const parser = await readFile(new URL('../src/lib/directoryImportFileParser.js', import.meta.url), 'utf8');
 const nav = await readFile(new URL('../src/lib/adminNavConfig.js', import.meta.url), 'utf8');
 const page = await readFile(new URL('../src/pages/AdminDirectoryOps.jsx', import.meta.url), 'utf8');
 
 assert.match(backend, /user\.role !== 'admin'/);
+assert.match(backend, /batchApprovalToken/);
+assert.match(backend, /clean\(input\.confirmation, 240\) !== expected/);
 assert.match(backend, /immutable_at/);
 assert.match(backend, /DIRECTORY_IMPORT_MAX_CHUNK_SIZE/);
 assert.match(backend, /planBatch/);
