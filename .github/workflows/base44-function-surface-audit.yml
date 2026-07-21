@@ -1,0 +1,31 @@
+name: Base44 Function Surface Audit
+
+on:
+  pull_request:
+    paths:
+      - "base44/functions/**"
+      - "src/**"
+      - "scripts/audit-base44-function-surface.mjs"
+      - ".github/workflows/base44-function-surface-audit.yml"
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Audit function surface
+        run: node scripts/audit-base44-function-surface.mjs
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: base44-function-surface
+          path: artifacts/base44-function-surface.json
