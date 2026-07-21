@@ -98,23 +98,19 @@ function write(file, content) {
 
 function routeServerInvocations(source) {
   let changed = false;
-  const names = Object.keys(ROUTE_MAP).sort((a, b) => b.length - a.length).map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
-  if (!names) return source;
-  const pattern = new RegExp(`([A-Za-z_$][\\w$]*)\\.functions\\s*\\.\\s*invoke\\s*\\(\\s*(['"])(?:${names})\\2\\s*,`, 'g');
-  const output = source.replace(pattern, (full, client, quote) => {
-    const nameMatch = full.match(new RegExp(`(['"])(?:${names})\\1`));
-    const name = nameMatch?.[0]?.slice(1, -1);
-    if (!name || !ROUTE_MAP[name]) return full;
+  const escapedNames = Object.keys(ROUTE_MAP)
+    .sort((a, b) => b.length - a.length)
+    .map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|');
+  if (!escapedNames) return source;
+  const pattern = new RegExp(`([A-Za-z_$][\\w$]*)\\.functions\\s*\\.\\s*invoke\\s*\\(\\s*(['"])(${escapedNames})\\2\\s*,`, 'g');
+  const output = source.replace(pattern, (_full, client, quote, name) => {
+    if (!ROUTE_MAP[name]) return _full;
     changed = true;
     return `invokeConsolidatedFunction(${client}, ${quote}${name}${quote},`;
   });
-  if (!changed) return output;
-  if (output.includes("from './runtime.ts'")) return output;
-  const lines = output.split('\n');
-  let insertAt = 0;
-  while (insertAt < lines.length && lines[insertAt].startsWith('import ')) insertAt += 1;
-  lines.splice(insertAt, 0, "import { invokeConsolidatedFunction } from './runtime.ts';");
-  return lines.join('\n');
+  if (!changed || output.includes("from './runtime.ts'")) return output;
+  return `import { invokeConsolidatedFunction } from './runtime.ts';\n${output}`;
 }
 
 function transformEntryToModule(name, source) {
@@ -125,8 +121,7 @@ function transformEntryToModule(name, source) {
   if (!servePattern.test(output)) throw new Error(`Nu pot transforma Deno.serve pentru ${name}`);
   output = output.replace(servePattern, 'export async function handle(req: Request) {');
   if (!/\}\);\s*$/.test(output)) throw new Error(`Final Deno.serve neasteptat pentru ${name}`);
-  output = output.replace(/\}\);\s*$/, '}\n');
-  return output;
+  return output.replace(/\}\);\s*$/, '}\n');
 }
 
 function identifier(name) {
@@ -161,15 +156,13 @@ for (const [router, names] of Object.entries(GROUPS)) {
     if (consolidated.has(name)) throw new Error(`Functie duplicata in grupuri: ${name}`);
     consolidated.add(name);
     const entry = path.join(FUNCTIONS_ROOT, name, 'entry.ts');
-    const moduleSource = transformEntryToModule(name, read(entry));
-    write(path.join(MODULES_ROOT, `${name}.ts`), moduleSource);
+    write(path.join(MODULES_ROOT, `${name}.ts`), transformEntryToModule(name, read(entry)));
   }
   write(path.join(FUNCTIONS_ROOT, router, 'entry.ts'), routerSource(router, names));
 }
 
 for (const name of consolidated) {
-  const router = Object.keys(GROUPS).find((candidate) => candidate === name);
-  if (router) continue;
+  if (Object.hasOwn(GROUPS, name)) continue;
   fs.rmSync(path.join(FUNCTIONS_ROOT, name, 'entry.ts'), { force: true });
 }
 
