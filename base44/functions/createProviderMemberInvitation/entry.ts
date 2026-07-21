@@ -173,6 +173,18 @@ async function findExistingAppUser(svc, invitedEmail) {
   return rows.find((row) => email(row.email) === invitedEmail) || null;
 }
 
+async function userHasActiveOrganizationMembership(svc, userId, organizationId) {
+  if (!userId || !organizationId) return false;
+  const memberships = await svc.entities.ProviderMembership.filter({ user_id: userId, status: 'active' }, '-created_date', 500).catch(() => []);
+  for (const membership of memberships) {
+    if (membership.organization_id === organizationId) return true;
+    if (!membership.location_id) continue;
+    const location = await svc.entities.ProviderLocation.get(membership.location_id).catch(() => null);
+    if (location?.organization_id === organizationId) return true;
+  }
+  return false;
+}
+
 async function notifyExistingUser(base44, { to, subject, body }) {
   try {
     await base44.integrations.Core.SendEmail({ to, subject, body, from_name: 'VIASEE' });
@@ -191,8 +203,7 @@ async function inviteNewAppUser(base44, invitedEmail) {
   }
 }
 
-async function deliverInvitation(base44, svc, params) {
-  const existingUser = await findExistingAppUser(svc, params.to);
+async function deliverInvitation(base44, existingUser, params) {
   const delivery = existingUser ? await notifyExistingUser(base44, params) : await inviteNewAppUser(base44, params.to);
   if (delivery.sent) return delivery;
   return { ...delivery, sent: false, provider: 'manual', error: delivery.error || 'Invitatia a fost creata, dar trebuie trimis manual linkul de acces.' };
@@ -249,6 +260,11 @@ Deno.serve(async (req) => {
       }
     }
 
+    const existingUser = await findExistingAppUser(svc, invitedEmail);
+    if (existingUser && await userHasActiveOrganizationMembership(svc, existingUser.id, organizationId)) {
+      return res({ error: 'Utilizatorul este deja membru activ al organizatiei. Modifica accesul existent din Utilizatori si acces.' }, 409);
+    }
+
     const existing = await svc.entities.ProviderMemberInvitation.filter({ invited_email_normalized: invitedEmail, status: 'pending' }, '-created_date', 50);
     if (existing.some((invitation) => invitation.proposed_role === proposedRole
       && invitation.organization_id === organizationId
@@ -279,7 +295,7 @@ Deno.serve(async (req) => {
     const organizationName = organization?.public_display_name || organization?.name || 'organizatia ta';
     const locationNames = loaded.locations.map((location) => location.public_display_name || location.name || 'Locatie');
     const copy = invitationCopy({ organizationName, locationNames, proposedRole, invitationLink, expiresAt, organizationWide });
-    const delivery = await deliverInvitation(base44, svc, { to: invitedEmail, ...copy });
+    const delivery = await deliverInvitation(base44, existingUser, { to: invitedEmail, ...copy });
     const attemptedAt = new Date().toISOString();
     const deliveryUpdate = {
       delivery_status: delivery.sent ? 'sent' : 'manual_required',
