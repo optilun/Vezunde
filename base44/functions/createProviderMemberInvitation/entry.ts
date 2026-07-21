@@ -2,8 +2,11 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   ORGANIZATION_ADMIN_ROLE,
   ORGANIZATION_OWNER_ROLE,
-  isOrganizationWideProviderRole,
+  isPrivilegedProviderRole,
+  loadOrganizationOwnerScopeResolution,
+  membershipHasOrganizationWideAccess,
   providerMembershipAccessRole,
+  roleRequiresOrganizationWideAccess,
 } from '../../../shared/providerOrganizationOwnerScope.js';
 
 const ROLES = [ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, 'location_manager', 'location_staff'];
@@ -70,7 +73,10 @@ async function actorScope(svc, userId) {
   const ownerLocationIds = new Set();
   const adminLocationIds = new Set();
   const ownerOrganizationIds = new Set();
+  const wideOwnerOrganizationIds = new Set();
   const adminOrganizationIds = new Set();
+  const resolutionByOrganization = new Map();
+
   for (const membership of memberships) {
     const accessRole = providerMembershipAccessRole(membership);
     let organizationId = clean(membership.organization_id, 200);
@@ -78,23 +84,27 @@ async function actorScope(svc, userId) {
       const location = await svc.entities.ProviderLocation.get(membership.location_id).catch(() => null);
       organizationId = clean(location?.organization_id, 200);
     }
+    if (!organizationId) continue;
     if (accessRole === ORGANIZATION_OWNER_ROLE) {
+      ownerOrganizationIds.add(organizationId);
       if (membership.location_id) ownerLocationIds.add(membership.location_id);
-      if (organizationId) ownerOrganizationIds.add(organizationId);
+      if (!resolutionByOrganization.has(organizationId)) resolutionByOrganization.set(organizationId, await loadOrganizationOwnerScopeResolution(svc, organizationId));
+      if (membershipHasOrganizationWideAccess(membership, resolutionByOrganization.get(organizationId))) wideOwnerOrganizationIds.add(organizationId);
     }
     if (accessRole === ORGANIZATION_ADMIN_ROLE && membership.organization_wide_access === true) {
+      adminOrganizationIds.add(organizationId);
       if (membership.location_id) adminLocationIds.add(membership.location_id);
-      if (organizationId) adminOrganizationIds.add(organizationId);
     }
   }
-  for (const organizationId of new Set([...ownerOrganizationIds, ...adminOrganizationIds])) {
+
+  for (const organizationId of new Set([...wideOwnerOrganizationIds, ...adminOrganizationIds])) {
     const locations = await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, '-created_date', 500);
     for (const location of locations) {
-      if (ownerOrganizationIds.has(organizationId)) ownerLocationIds.add(location.id);
+      if (wideOwnerOrganizationIds.has(organizationId)) ownerLocationIds.add(location.id);
       if (adminOrganizationIds.has(organizationId)) adminLocationIds.add(location.id);
     }
   }
-  return { ownerLocationIds, adminLocationIds, ownerOrganizationIds, adminOrganizationIds };
+  return { ownerLocationIds, adminLocationIds, ownerOrganizationIds, wideOwnerOrganizationIds, adminOrganizationIds };
 }
 
 async function loadLocations(svc, locationIds) {
@@ -204,14 +214,15 @@ Deno.serve(async (req) => {
 
     const scope = await actorScope(svc, user.id);
     const isPlatformAdmin = user.role === 'admin';
-    const organizationWide = isOrganizationWideProviderRole(proposedRole);
+    const organizationWide = roleRequiresOrganizationWideAccess(proposedRole)
+      || (proposedRole === ORGANIZATION_OWNER_ROLE && payload.organization_wide_access === true);
     let organizationId = requestedOrganizationId;
     let loaded;
 
     if (organizationWide) {
-      if (!organizationId) return res({ error: 'organization_id este obligatoriu pentru rolurile organizationale' }, 400);
-      if (!isPlatformAdmin && !scope.ownerOrganizationIds.has(organizationId)) {
-        return res({ error: 'Doar ownerul organizatiei poate acorda rol de owner sau administrator' }, 403);
+      if (!organizationId) return res({ error: 'organization_id este obligatoriu pentru accesul la intreaga organizatie' }, 400);
+      if (!isPlatformAdmin && !scope.wideOwnerOrganizationIds.has(organizationId)) {
+        return res({ error: 'Doar un owner cu acces la intreaga organizatie poate acorda acest rol' }, 403);
       }
       loaded = await loadOrganizationLocations(svc, organizationId);
       if (loaded.error) return res({ error: loaded.error }, loaded.status);
@@ -224,15 +235,26 @@ Deno.serve(async (req) => {
       if (organizationIds.length !== 1 || !organizationIds[0]) return res({ error: 'Locatiile trebuie sa apartina aceleiasi organizatii' }, 400);
       organizationId = organizationIds[0];
       if (requestedOrganizationId && requestedOrganizationId !== organizationId) return res({ error: 'Organizatia nu corespunde locatiilor' }, 403);
-      const actorLocationIds = new Set([...scope.ownerLocationIds, ...scope.adminLocationIds]);
-      const actorOrganizationIds = new Set([...scope.ownerOrganizationIds, ...scope.adminOrganizationIds]);
-      if (!isPlatformAdmin && (!actorOrganizationIds.has(organizationId) || !includesAll(actorLocationIds, locationIds))) {
-        return res({ error: 'Nu poti invita utilizatori pentru aceste locatii' }, 403);
+
+      if (isPrivilegedProviderRole(proposedRole)) {
+        if (!isPlatformAdmin && (!scope.ownerOrganizationIds.has(organizationId) || !includesAll(scope.ownerLocationIds, locationIds))) {
+          return res({ error: 'Doar ownerul poate acorda rol de owner pentru locatiile selectate' }, 403);
+        }
+      } else {
+        const actorLocationIds = new Set([...scope.ownerLocationIds, ...scope.adminLocationIds]);
+        const actorOrganizationIds = new Set([...scope.ownerOrganizationIds, ...scope.adminOrganizationIds]);
+        if (!isPlatformAdmin && (!actorOrganizationIds.has(organizationId) || !includesAll(actorLocationIds, locationIds))) {
+          return res({ error: 'Nu poti invita utilizatori pentru aceste locatii' }, 403);
+        }
       }
     }
 
     const existing = await svc.entities.ProviderMemberInvitation.filter({ invited_email_normalized: invitedEmail, status: 'pending' }, '-created_date', 50);
-    if (existing.some((invitation) => invitation.proposed_role === proposedRole && invitation.organization_id === organizationId && sameSet(invLocIds(invitation), locationIds) && new Date(invitation.expires_at).getTime() > Date.now())) {
+    if (existing.some((invitation) => invitation.proposed_role === proposedRole
+      && invitation.organization_id === organizationId
+      && invitation.organization_wide_access === organizationWide
+      && sameSet(invLocIds(invitation), locationIds)
+      && new Date(invitation.expires_at).getTime() > Date.now())) {
       return res({ error: 'Exista deja o invitatie activa pentru acest email si acest acces' }, 409);
     }
 
