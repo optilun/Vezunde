@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 const schema = await readFile(new URL('../base44/entities/ProviderOrganization.jsonc', import.meta.url), 'utf8');
 const submit = await readFile(new URL('../base44/functions/providerServiceConfigurationOps/submitProviderLogoForReview.ts', import.meta.url), 'utf8');
 const review = await readFile(new URL('../base44/functions/directoryOps/reviewProfileChanges.ts', import.meta.url), 'utf8');
-const getter = await readFile(new URL('../base44/functions/getProviderLogoReviewStatus/entry.ts', import.meta.url), 'utf8');
+const getter = await readFile(new URL('../base44/functions/getMyProviderWorkspace/getProviderLogoReviewStatus.ts', import.meta.url), 'utf8');
 const notice = await readFile(new URL('../src/components/workspace/provider/ProviderLogoReviewStatus.jsx', import.meta.url), 'utf8');
 const adapter = await readFile(new URL('../src/components/workspace/provider/ProviderProfilePublic.js', import.meta.url), 'utf8');
 

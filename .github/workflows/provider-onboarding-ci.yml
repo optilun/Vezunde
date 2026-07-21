@@ -48,7 +48,9 @@ on:
       - "src/api/base44FunctionRouting.js"
       - "base44/functions/syncProviderOrganizationOwnerAccess/**"
       - "base44/functions/getClaimableProviderLocations/**"
-      - "base44/functions/getMyProviderOnboardingWorkspace/**"
+      - "base44/functions/getMyProviderWorkspace/**"
+      - "base44/shared/providerWorkspaceFunctionRouting.js"
+      - "scripts/verify-provider-workspace-function-router.mjs"
       - "base44/functions/providerServiceConfigurationOps/**"
       - "base44/shared/serviceConfigurationFunctionRouting.js"
       - "scripts/verify-service-configuration-function-router.mjs"
@@ -59,9 +61,7 @@ on:
       - "base44/functions/setProviderMemberAccess/**"
       - "base44/functions/professionalInvitationOps/**"
       - "base44/functions/manageMyProfessionalProfile/**"
-      - "base44/functions/getMyProviderMembers/**"
       - "base44/functions/providerLocationExpansionOps/**"
-      - "base44/functions/getProviderLogoReviewStatus/**"
       - "base44/functions/submitDirectoryCorrection/**"
       - "scripts/verify-provider-onboarding-continuity.mjs"
       - "scripts/verify-provider-claim-scope.mjs"
@@ -104,6 +104,8 @@ jobs:
         run: npm run test:directory-router
       - name: Service configuration routing contract checks
         run: npm run test:service-configuration-router
+      - name: Provider workspace routing contract checks
+        run: npm run test:provider-workspace-router
       - name: Onboarding regression checks
         run: node scripts/verify-provider-onboarding-continuity.mjs
       - name: Scoped provider claim checks

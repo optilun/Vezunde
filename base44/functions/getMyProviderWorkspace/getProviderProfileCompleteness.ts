@@ -46,7 +46,7 @@ function locationLabel(location) {
   return location.public_display_name || location.name || 'Locatie';
 }
 
-Deno.serve(async (req) => {
+export async function handle(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -101,4 +101,5 @@ Deno.serve(async (req) => {
   } catch (_error) {
     return res({ error: 'Completarea profilului nu a putut fi calculata.' }, 500);
   }
-});
+}
+

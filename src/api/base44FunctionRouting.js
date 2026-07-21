@@ -6,6 +6,10 @@ import {
   SERVICE_CONFIGURATION_FUNCTION_ROUTES,
   invokeServiceConfigurationFunction,
 } from '../../base44/shared/serviceConfigurationFunctionRouting.js';
+import {
+  PROVIDER_WORKSPACE_FUNCTION_ROUTES,
+  invokeProviderWorkspaceFunction,
+} from '../../base44/shared/providerWorkspaceFunctionRouting.js';
 
 export function installBase44FunctionRouting(client) {
   const rawFunctions = client.functions;
@@ -19,6 +23,9 @@ export function installBase44FunctionRouting(client) {
           }
           if (SERVICE_CONFIGURATION_FUNCTION_ROUTES[logicalName]) {
             return invokeServiceConfigurationFunction(client, logicalName, payload);
+          }
+          if (PROVIDER_WORKSPACE_FUNCTION_ROUTES[logicalName]) {
+            return invokeProviderWorkspaceFunction(client, logicalName, payload);
           }
           return rawInvoke(logicalName, payload);
         };

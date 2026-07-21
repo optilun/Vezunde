@@ -69,7 +69,7 @@ assert.ok(schema.properties.billing_mode.enum.includes('stripe'));
 assert.equal(schema.properties.price_amount, undefined);
 assert.equal(schema.properties.currency, undefined);
 
-const backend = await readFile(new URL('../base44/functions/getProviderEntitlement/entry.ts', import.meta.url), 'utf8');
+const backend = await readFile(new URL('../base44/functions/getMyProviderWorkspace/getProviderEntitlement.ts', import.meta.url), 'utf8');
 assert.match(backend, /base44\.auth\.me\(\)/);
 assert.match(backend, /ProviderMembership\.filter/);
 assert.match(backend, /user_id: user\.id/);

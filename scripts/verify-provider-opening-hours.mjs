@@ -89,7 +89,7 @@ assert.match(copyPanel, /Vezi preview-ul/, 'UI must require preview before copy'
 assert.match(copyPanel, /Confirm inlocuirea/, 'UI must show an explicit overwrite confirmation');
 assert.match(copyPanel, /sm:w-auto/, 'primary action must remain usable on mobile');
 
-const comparisonBackend = readFileSync(new URL('../base44/functions/getProviderLocationComparison/entry.ts', import.meta.url), 'utf8');
+const comparisonBackend = readFileSync(new URL('../base44/functions/getMyProviderWorkspace/getProviderLocationComparison.ts', import.meta.url), 'utf8');
 assert.match(comparisonBackend, /locationIds\.length < 2/, 'comparison must require at least two locations');
 assert.match(comparisonBackend, /MAX_LOCATIONS = 6/, 'comparison must cap the number of locations');
 assert.match(comparisonBackend, /ProviderMembership\.filter/, 'comparison must validate active membership access');

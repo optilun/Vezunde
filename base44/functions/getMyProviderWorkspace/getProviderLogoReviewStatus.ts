@@ -23,7 +23,7 @@ function parseJson(value: unknown) {
   }
 }
 
-Deno.serve(async (req) => {
+export async function handle(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me().catch(() => null);
@@ -87,4 +87,5 @@ Deno.serve(async (req) => {
   } catch (error) {
     return res({ error: error instanceof Error ? error.message : 'Eroare neasteptata' }, 500);
   }
-});
+}
+

@@ -4,10 +4,12 @@ on:
   pull_request:
     paths:
       - shared/providerProfileCompleteness.js
-      - base44/functions/getProviderProfileCompleteness/entry.ts
+      - base44/functions/getMyProviderWorkspace/**
+      - base44/shared/providerWorkspaceFunctionRouting.js
       - src/components/workspace/provider/ProviderCompletenessPanel.jsx
       - src/components/workspace/provider/ProviderLeadInbox.jsx
       - scripts/verify-provider-profile-completeness.mjs
+      - scripts/verify-provider-workspace-function-router.mjs
       - .github/workflows/provider-profile-completeness-ci.yml
   workflow_dispatch:
 
@@ -21,11 +23,13 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npm run test:provider-workspace-router
       - run: node scripts/verify-provider-profile-completeness.mjs
       - run: node scripts/verify-provider-status-center.mjs
       - run: node scripts/verify-provider-lead-inbox-free.mjs
       - run: npm run test:services
       - run: npm run typecheck:services
-      - run: npx eslint shared/providerProfileCompleteness.js base44/functions/getProviderProfileCompleteness/entry.ts src/components/workspace/provider/ProviderCompletenessPanel.jsx src/components/workspace/provider/ProviderLeadInbox.jsx scripts/verify-provider-profile-completeness.mjs
+      - run: npx eslint shared/providerProfileCompleteness.js base44/functions/getMyProviderWorkspace/getProviderProfileCompleteness.ts base44/functions/getMyProviderWorkspace/entry.ts base44/functions/getMyProviderWorkspace/router.ts base44/shared/providerWorkspaceFunctionRouting.js src/components/workspace/provider/ProviderCompletenessPanel.jsx src/components/workspace/provider/ProviderLeadInbox.jsx scripts/verify-provider-profile-completeness.mjs
       - run: npm run lint
       - run: npm run build
+
