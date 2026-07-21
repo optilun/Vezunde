@@ -1,4 +1,4 @@
-const ROLE_PRIORITY = ["organization_owner", "location_manager", "location_staff"];
+const ROLE_PRIORITY = ["organization_owner", "organization_admin", "location_manager", "location_staff"];
 
 function highestRole(memberships = []) {
   const roles = memberships.map((membership) => membership?.role).filter(Boolean);

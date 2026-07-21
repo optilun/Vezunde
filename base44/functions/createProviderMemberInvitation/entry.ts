@@ -1,14 +1,30 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import {
+  ORGANIZATION_ADMIN_ROLE,
+  ORGANIZATION_OWNER_ROLE,
+  isPrivilegedProviderRole,
+  loadOrganizationOwnerScopeResolution,
+  membershipHasOrganizationWideAccess,
+  providerMembershipAccessRole,
+  roleRequiresOrganizationWideAccess,
+} from '../../../shared/providerOrganizationOwnerScope.js';
 
-const ROLES = ['organization_owner', 'location_manager', 'location_staff'];
+const ROLES = [ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, 'location_manager', 'location_staff'];
 const ROLE_LABELS = {
   organization_owner: 'Owner organizatie',
+  organization_admin: 'Administrator organizatie',
   location_manager: 'Manager locatie',
-  location_staff: 'Membru echipa',
+  location_staff: 'Membru locatie',
 };
 
 function res(body, status = 200) { return Response.json(body, { status }); }
-function role(value) { if (value === 'owner') return 'organization_owner'; if (value === 'staff') return 'location_staff'; return ROLES.includes(value) ? value : ''; }
+function role(value) {
+  if (value === 'owner') return ORGANIZATION_OWNER_ROLE;
+  if (value === 'admin') return ORGANIZATION_ADMIN_ROLE;
+  if (value === 'manager') return 'location_manager';
+  if (value === 'staff') return 'location_staff';
+  return ROLES.includes(value) ? value : '';
+}
 function email(value) { return String(value || '').trim().toLowerCase(); }
 function ids(value) { return [...new Set((Array.isArray(value) ? value : (value ? [value] : [])).map((item) => String(item || '').trim()).filter(Boolean))]; }
 function includesAll(set, values) { return values.every((id) => set.has(id)); }
@@ -16,6 +32,13 @@ function sameSet(a, b) { const aa = ids(a).sort(); const bb = ids(b).sort(); ret
 function invLocIds(invitation) { return ids(invitation.invited_location_ids); }
 function mask(value) { const [user, domain] = String(value || '').split('@'); return user && domain ? `${user.slice(0, 2)}***@${domain}` : ''; }
 function clean(value, max = 1000) { return String(value || '').trim().slice(0, max); }
+function eligibleLocation(location) {
+  return location
+    && location.claim_verification_status === 'approved'
+    && location.profile_control_status !== 'suspended'
+    && location.status !== 'suspendata'
+    && location.active_status !== 'inactiva';
+}
 function safe(invitation) {
   return {
     id: invitation.id,
@@ -23,6 +46,7 @@ function safe(invitation) {
     invited_location_ids: invLocIds(invitation),
     invited_email_masked: mask(invitation.invited_email_normalized),
     proposed_role: invitation.proposed_role,
+    organization_wide_access: invitation.organization_wide_access === true,
     invited_by_user_id: invitation.invited_by_user_id || '',
     status: invitation.status,
     expires_at: invitation.expires_at || null,
@@ -44,20 +68,43 @@ function token() {
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-async function ownerScope(svc, userId) {
+async function actorScope(svc, userId) {
   const memberships = await svc.entities.ProviderMembership.filter({ user_id: userId, status: 'active' }, '-created_date', 500);
   const ownerLocationIds = new Set();
+  const adminLocationIds = new Set();
   const ownerOrganizationIds = new Set();
+  const wideOwnerOrganizationIds = new Set();
+  const adminOrganizationIds = new Set();
+  const resolutionByOrganization = new Map();
+
   for (const membership of memberships) {
-    if (role(membership.role) !== 'organization_owner') continue;
-    if (membership.location_id) ownerLocationIds.add(membership.location_id);
-    if (membership.organization_id) ownerOrganizationIds.add(membership.organization_id);
+    const accessRole = providerMembershipAccessRole(membership);
+    let organizationId = clean(membership.organization_id, 200);
+    if (!organizationId && membership.location_id) {
+      const location = await svc.entities.ProviderLocation.get(membership.location_id).catch(() => null);
+      organizationId = clean(location?.organization_id, 200);
+    }
+    if (!organizationId) continue;
+    if (accessRole === ORGANIZATION_OWNER_ROLE) {
+      ownerOrganizationIds.add(organizationId);
+      if (membership.location_id) ownerLocationIds.add(membership.location_id);
+      if (!resolutionByOrganization.has(organizationId)) resolutionByOrganization.set(organizationId, await loadOrganizationOwnerScopeResolution(svc, organizationId));
+      if (membershipHasOrganizationWideAccess(membership, resolutionByOrganization.get(organizationId))) wideOwnerOrganizationIds.add(organizationId);
+    }
+    if (accessRole === ORGANIZATION_ADMIN_ROLE && membership.organization_wide_access === true) {
+      adminOrganizationIds.add(organizationId);
+      if (membership.location_id) adminLocationIds.add(membership.location_id);
+    }
   }
-  for (const organizationId of ownerOrganizationIds) {
+
+  for (const organizationId of new Set([...wideOwnerOrganizationIds, ...adminOrganizationIds])) {
     const locations = await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, '-created_date', 500);
-    for (const location of locations) ownerLocationIds.add(location.id);
+    for (const location of locations) {
+      if (wideOwnerOrganizationIds.has(organizationId)) ownerLocationIds.add(location.id);
+      if (adminOrganizationIds.has(organizationId)) adminLocationIds.add(location.id);
+    }
   }
-  return { ownerLocationIds, ownerOrganizationIds };
+  return { ownerLocationIds, adminLocationIds, ownerOrganizationIds, wideOwnerOrganizationIds, adminOrganizationIds };
 }
 
 async function loadLocations(svc, locationIds) {
@@ -66,9 +113,16 @@ async function loadLocations(svc, locationIds) {
     const location = await svc.entities.ProviderLocation.get(id).catch(() => null);
     if (!location) return { error: 'Locatie invalida', status: 404 };
     if (location.claim_verification_status !== 'approved') return { error: 'Invitatiile sunt disponibile doar dupa aprobarea revendicarii', status: 403 };
-    if ((location.profile_control_status || '') === 'suspended' || location.status === 'suspendata') return { error: 'Locatia este suspendata', status: 403 };
+    if (location.profile_control_status === 'suspended' || location.status === 'suspendata' || location.active_status === 'inactiva') return { error: 'Locatia nu este activa', status: 403 };
     locations.push(location);
   }
+  return { locations };
+}
+
+async function loadOrganizationLocations(svc, organizationId) {
+  const all = await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, '-created_date', 500);
+  const locations = all.filter(eligibleLocation);
+  if (locations.length === 0) return { error: 'Organizatia nu are locatii active eligibile pentru acces', status: 409 };
   return { locations };
 }
 
@@ -87,9 +141,11 @@ async function audit(svc, user, record) {
   });
 }
 
-function invitationCopy({ organizationName, locationNames, proposedRole, invitationLink, expiresAt }) {
+function invitationCopy({ organizationName, locationNames, proposedRole, invitationLink, expiresAt, organizationWide }) {
   const roleLabel = ROLE_LABELS[proposedRole] || proposedRole;
-  const locationsText = locationNames.length === 1 ? locationNames[0] : locationNames.map((name) => `- ${name}`).join('\n');
+  const locationsText = organizationWide
+    ? `Toate locatiile actuale si viitoare ale organizatiei. Locatii active acum:\n${locationNames.map((name) => `- ${name}`).join('\n')}`
+    : (locationNames.length === 1 ? locationNames[0] : locationNames.map((name) => `- ${name}`).join('\n'));
   const expiryText = new Date(expiresAt).toLocaleDateString('ro-RO');
   const subject = `Invitatie VIASEE pentru ${organizationName}`;
   const body = [
@@ -98,7 +154,7 @@ function invitationCopy({ organizationName, locationNames, proposedRole, invitat
     `Ai fost invitat sa colaborezi in contul VIASEE al organizatiei ${organizationName}.`,
     `Rol propus: ${roleLabel}.`,
     '',
-    'Locatii:',
+    'Acces:',
     locationsText,
     '',
     'Accepta invitatia folosind linkul de mai jos:',
@@ -117,70 +173,40 @@ async function findExistingAppUser(svc, invitedEmail) {
   return rows.find((row) => email(row.email) === invitedEmail) || null;
 }
 
+async function userHasActiveOrganizationMembership(svc, userId, organizationId) {
+  if (!userId || !organizationId) return false;
+  const memberships = await svc.entities.ProviderMembership.filter({ user_id: userId, status: 'active' }, '-created_date', 500).catch(() => []);
+  for (const membership of memberships) {
+    if (membership.organization_id === organizationId) return true;
+    if (!membership.location_id) continue;
+    const location = await svc.entities.ProviderLocation.get(membership.location_id).catch(() => null);
+    if (location?.organization_id === organizationId) return true;
+  }
+  return false;
+}
+
 async function notifyExistingUser(base44, { to, subject, body }) {
   try {
-    await base44.integrations.Core.SendEmail({
-      to,
-      subject,
-      body,
-      from_name: 'VIASEE',
-    });
-    return {
-      attempted: true,
-      sent: true,
-      provider: 'base44',
-      deliveryKind: 'existing_user_email',
-      messageId: '',
-      error: '',
-    };
+    await base44.integrations.Core.SendEmail({ to, subject, body, from_name: 'VIASEE' });
+    return { attempted: true, sent: true, provider: 'base44', deliveryKind: 'existing_user_email', messageId: '', error: '' };
   } catch (error) {
-    return {
-      attempted: true,
-      sent: false,
-      provider: 'manual',
-      deliveryKind: 'existing_user_email',
-      messageId: '',
-      error: clean(error?.message || 'Notificarea Base44 a esuat', 500),
-    };
+    return { attempted: true, sent: false, provider: 'manual', deliveryKind: 'existing_user_email', messageId: '', error: clean(error?.message || 'Notificarea Base44 a esuat', 500) };
   }
 }
 
 async function inviteNewAppUser(base44, invitedEmail) {
   try {
     await base44.auth.inviteUser(invitedEmail, 'user');
-    return {
-      attempted: true,
-      sent: true,
-      provider: 'base44',
-      deliveryKind: 'app_invitation',
-      messageId: '',
-      error: '',
-    };
+    return { attempted: true, sent: true, provider: 'base44', deliveryKind: 'app_invitation', messageId: '', error: '' };
   } catch (error) {
-    return {
-      attempted: true,
-      sent: false,
-      provider: 'manual',
-      deliveryKind: 'app_invitation',
-      messageId: '',
-      error: clean(error?.message || 'Invitatia Base44 a esuat', 500),
-    };
+    return { attempted: true, sent: false, provider: 'manual', deliveryKind: 'app_invitation', messageId: '', error: clean(error?.message || 'Invitatia Base44 a esuat', 500) };
   }
 }
 
-async function deliverInvitation(base44, svc, params) {
-  const existingUser = await findExistingAppUser(svc, params.to);
-  const delivery = existingUser
-    ? await notifyExistingUser(base44, params)
-    : await inviteNewAppUser(base44, params.to);
-
+async function deliverInvitation(base44, existingUser, params) {
+  const delivery = existingUser ? await notifyExistingUser(base44, params) : await inviteNewAppUser(base44, params.to);
   if (delivery.sent) return delivery;
-  return {
-    ...delivery,
-    sent: false,
-    provider: 'manual',
-    error: delivery.error || 'Invitatia a fost creata, dar trebuie trimis manual linkul de acces.',
-  };
+  return { ...delivery, sent: false, provider: 'manual', error: delivery.error || 'Invitatia a fost creata, dar trebuie trimis manual linkul de acces.' };
 }
 
 Deno.serve(async (req) => {
@@ -192,36 +218,71 @@ Deno.serve(async (req) => {
     const payload = await req.json().catch(() => ({}));
     const proposedRole = role(payload.proposed_role);
     const invitedEmail = email(payload.invited_email || payload.email || payload.invited_email_normalized);
-    const locationIds = ids(payload.invited_location_ids || payload.location_ids || payload.location_id);
+    const requestedOrganizationId = clean(payload.organization_id, 200);
+    let locationIds = ids(payload.invited_location_ids || payload.location_ids || payload.location_id);
     if (!proposedRole) return res({ error: 'Rol invalid' }, 400);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(invitedEmail)) return res({ error: 'Email invalid' }, 400);
-    if (locationIds.length === 0) return res({ error: 'Cel putin o locatie este obligatorie' }, 400);
 
-    const scope = await ownerScope(svc, user.id);
-    if (user.role !== 'admin' && !includesAll(scope.ownerLocationIds, locationIds)) {
-      return res({ error: 'Doar ownerul organizatiei poate invita utilizatori' }, 403);
+    const scope = await actorScope(svc, user.id);
+    const isPlatformAdmin = user.role === 'admin';
+    const organizationWide = roleRequiresOrganizationWideAccess(proposedRole)
+      || (proposedRole === ORGANIZATION_OWNER_ROLE && payload.organization_wide_access === true);
+    let organizationId = requestedOrganizationId;
+    let loaded;
+
+    if (organizationWide) {
+      if (!organizationId) return res({ error: 'organization_id este obligatoriu pentru accesul la intreaga organizatie' }, 400);
+      if (!isPlatformAdmin && !scope.wideOwnerOrganizationIds.has(organizationId)) {
+        return res({ error: 'Doar un owner cu acces la intreaga organizatie poate acorda acest rol' }, 403);
+      }
+      loaded = await loadOrganizationLocations(svc, organizationId);
+      if (loaded.error) return res({ error: loaded.error }, loaded.status);
+      locationIds = loaded.locations.map((location) => location.id);
+    } else {
+      if (locationIds.length === 0) return res({ error: 'Cel putin o locatie este obligatorie' }, 400);
+      loaded = await loadLocations(svc, locationIds);
+      if (loaded.error) return res({ error: loaded.error }, loaded.status);
+      const organizationIds = [...new Set(loaded.locations.map((location) => location.organization_id || ''))];
+      if (organizationIds.length !== 1 || !organizationIds[0]) return res({ error: 'Locatiile trebuie sa apartina aceleiasi organizatii' }, 400);
+      organizationId = organizationIds[0];
+      if (requestedOrganizationId && requestedOrganizationId !== organizationId) return res({ error: 'Organizatia nu corespunde locatiilor' }, 403);
+
+      if (isPrivilegedProviderRole(proposedRole)) {
+        if (!isPlatformAdmin && (!scope.ownerOrganizationIds.has(organizationId) || !includesAll(scope.ownerLocationIds, locationIds))) {
+          return res({ error: 'Doar ownerul poate acorda rol de owner pentru locatiile selectate' }, 403);
+        }
+      } else {
+        const actorLocationIds = new Set([...scope.ownerLocationIds, ...scope.adminLocationIds]);
+        const actorOrganizationIds = new Set([...scope.ownerOrganizationIds, ...scope.adminOrganizationIds]);
+        if (!isPlatformAdmin && (!actorOrganizationIds.has(organizationId) || !includesAll(actorLocationIds, locationIds))) {
+          return res({ error: 'Nu poti invita utilizatori pentru aceste locatii' }, 403);
+        }
+      }
     }
 
-    const loaded = await loadLocations(svc, locationIds);
-    if (loaded.error) return res({ error: loaded.error }, loaded.status);
-    const organizationIds = [...new Set(loaded.locations.map((location) => location.organization_id || ''))];
-    if (organizationIds.length !== 1 || !organizationIds[0]) return res({ error: 'Locatiile trebuie sa apartina aceleiasi organizatii' }, 400);
-    if (payload.organization_id && payload.organization_id !== organizationIds[0]) return res({ error: 'Organizatia nu corespunde locatiilor' }, 403);
-    if (user.role !== 'admin' && !scope.ownerOrganizationIds.has(organizationIds[0])) return res({ error: 'Nu administrezi aceasta organizatie' }, 403);
+    const existingUser = await findExistingAppUser(svc, invitedEmail);
+    if (existingUser && await userHasActiveOrganizationMembership(svc, existingUser.id, organizationId)) {
+      return res({ error: 'Utilizatorul este deja membru activ al organizatiei. Modifica accesul existent din Utilizatori si acces.' }, 409);
+    }
 
     const existing = await svc.entities.ProviderMemberInvitation.filter({ invited_email_normalized: invitedEmail, status: 'pending' }, '-created_date', 50);
-    if (existing.some((invitation) => invitation.proposed_role === proposedRole && sameSet(invLocIds(invitation), locationIds) && new Date(invitation.expires_at).getTime() > Date.now())) {
-      return res({ error: 'Exista deja o invitatie activa pentru acest email si aceste locatii' }, 409);
+    if (existing.some((invitation) => invitation.proposed_role === proposedRole
+      && invitation.organization_id === organizationId
+      && invitation.organization_wide_access === organizationWide
+      && sameSet(invLocIds(invitation), locationIds)
+      && new Date(invitation.expires_at).getTime() > Date.now())) {
+      return res({ error: 'Exista deja o invitatie activa pentru acest email si acest acces' }, 409);
     }
 
     const rawToken = token();
     const days = Math.min(Math.max(Number(payload.expires_in_days || 7), 1), 30);
     const expiresAt = new Date(Date.now() + days * 86400000).toISOString();
     const invitation = await svc.entities.ProviderMemberInvitation.create({
-      organization_id: organizationIds[0],
+      organization_id: organizationId,
       invited_location_ids: locationIds,
       invited_email_normalized: invitedEmail,
       proposed_role: proposedRole,
+      organization_wide_access: organizationWide,
       invited_by_user_id: user.id,
       status: 'pending',
       secure_token_hash: await hash(rawToken),
@@ -230,14 +291,11 @@ Deno.serve(async (req) => {
     });
     const base = String(payload.invitation_base_url || payload.app_base_url || new URL(req.url).origin).replace(/\/$/, '');
     const invitationLink = `${base}/accept-provider-invitation?token=${encodeURIComponent(rawToken)}`;
-    const organization = await svc.entities.ProviderOrganization.get(organizationIds[0]).catch(() => null);
+    const organization = await svc.entities.ProviderOrganization.get(organizationId).catch(() => null);
     const organizationName = organization?.public_display_name || organization?.name || 'organizatia ta';
     const locationNames = loaded.locations.map((location) => location.public_display_name || location.name || 'Locatie');
-    const copy = invitationCopy({ organizationName, locationNames, proposedRole, invitationLink, expiresAt });
-    const delivery = await deliverInvitation(base44, svc, {
-      to: invitedEmail,
-      ...copy,
-    });
+    const copy = invitationCopy({ organizationName, locationNames, proposedRole, invitationLink, expiresAt, organizationWide });
+    const delivery = await deliverInvitation(base44, existingUser, { to: invitedEmail, ...copy });
     const attemptedAt = new Date().toISOString();
     const deliveryUpdate = {
       delivery_status: delivery.sent ? 'sent' : 'manual_required',
@@ -253,11 +311,12 @@ Deno.serve(async (req) => {
       entity_type: 'ProviderMemberInvitation',
       entity_id: invitation.id,
       action_type: 'create_provider_member_invitation',
-      changed_fields: ['status', 'expires_at', 'delivery_status', 'delivery_provider'],
+      changed_fields: ['status', 'expires_at', 'delivery_status', 'delivery_provider', 'organization_wide_access'],
       next: {
-        organization_id: organizationIds[0],
+        organization_id: organizationId,
         location_ids: locationIds,
         proposed_role: proposedRole,
+        organization_wide_access: organizationWide,
         status: 'pending',
         expires_at: expiresAt,
         delivery_status: deliveryUpdate.delivery_status,

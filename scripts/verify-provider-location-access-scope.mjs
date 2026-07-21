@@ -30,6 +30,16 @@ const context = {
         "location.manage_operational_status",
       ],
     },
+    {
+      id: "organization-admin",
+      current_user_role: "organization_admin",
+      capabilities: [
+        "organization.view",
+        "location.view",
+        "location.manage_content",
+        "location.manage_requests",
+      ],
+    },
   ],
   memberships: [
     {
@@ -41,6 +51,11 @@ const context = {
       location_id: "location-staff",
       role: "location_staff",
       capabilities: ["location.manage_requests"],
+    },
+    {
+      location_id: "organization-admin",
+      role: "organization_admin",
+      capabilities: ["location.manage_content", "location.manage_requests"],
     },
   ],
 };
@@ -54,6 +69,10 @@ assert.equal(staffAccess.role, "location_staff");
 assert.equal(staffAccess.capabilities.includes("location.manage_content"), false, "Capabilities from another location must not leak into the selected location");
 assert.equal(staffAccess.capabilities.includes("location.manage_requests"), true);
 
+const adminAccess = resolveProviderLocationAccess(context, "organization-admin");
+assert.equal(adminAccess.role, "organization_admin");
+assert.equal(adminAccess.capabilities.includes("location.manage_content"), true);
+
 const missingAccess = resolveProviderLocationAccess(context, "missing-location");
 assert.deepEqual(missingAccess, { role: "", capabilities: [] });
 
@@ -62,7 +81,9 @@ assert.match(modulePage, /resolveProviderLocationAccess\(workspace, locationId\)
 assert.doesNotMatch(modulePage, /workspace\.current_user_capabilities/, "Location modules must not use organization-wide merged capabilities");
 
 const workspaceRoot = await readFile(new URL("../src/components/workspace/provider/ProviderWorkspaceRoot.jsx", import.meta.url), "utf8");
-assert.match(workspaceRoot, /resolveProviderLocationAccess\(selectedContext \|\| workspace, selectedLocationId\)/, "Workspace root must derive permissions for the selected location");
+assert.match(workspaceRoot, /resolveProviderLocationAccess\(scopedContext, selectedLocationId\)/, "Workspace root must derive permissions from the filtered selected-location context");
+assert.match(workspaceRoot, /scopedLocationIds/);
+assert.match(workspaceRoot, /baseContextLocations\.filter\(\(location\) => scopedLocationIds\.has\(location\.id\)\)/, "Workspace must hide locations outside the actor scope");
 assert.match(workspaceRoot, /locationCapabilities\.has\(LOCATION_MODULE_CAPABILITIES\[requestedLocationModule\]\)/, "Route access must use selected-location capabilities");
 assert.match(workspaceRoot, /const targetAccess = accessForLocation\(locationId\)/, "Opening or switching a location module must re-check the target location");
 assert.match(workspaceRoot, /current_location_role: selectedLocationAccess\.role/, "Scoped workspace must expose the selected location role");

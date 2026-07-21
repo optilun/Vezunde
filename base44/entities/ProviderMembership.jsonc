@@ -9,6 +9,11 @@
       "type": "string",
       "enum": ["organization_owner", "location_manager", "location_staff"]
     },
+    "organization_role": {
+      "type": "string",
+      "enum": ["organization_admin", "none"],
+      "default": "none"
+    },
     "status": {
       "type": "string",
       "enum": ["active", "inactive"],

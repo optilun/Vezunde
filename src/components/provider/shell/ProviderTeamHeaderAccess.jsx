@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Settings, Users } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { ROLE_LABELS } from "@/lib/workspaceStatusLabels";
 
@@ -36,6 +36,7 @@ function groupMembers(rows = []) {
 function roleLabel(group) {
   const roles = [...new Set(group.memberships.map((membership) => membership.role).filter(Boolean))];
   if (roles.includes("organization_owner")) return ROLE_LABELS.organization_owner;
+  if (roles.includes("organization_admin")) return ROLE_LABELS.organization_admin;
   if (roles.includes("location_manager")) return ROLE_LABELS.location_manager;
   if (roles.includes("location_staff")) return ROLE_LABELS.location_staff;
   return "Utilizator";
@@ -192,8 +193,8 @@ export default function ProviderTeamHeaderAccess({ userId = "", locationId = "" 
 
           <div className="border-t border-border bg-secondary/20 p-3">
             {pendingInvitations > 0 && <p className="mb-2 px-1 text-xs text-muted-foreground">{pendingInvitations} {pendingInvitations === 1 ? "invitație în așteptare" : "invitații în așteptare"}</p>}
-            <a href="/contul-meu?s=settings" className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-foreground px-4 text-sm font-semibold text-background hover:opacity-90">
-              <Settings className="h-4 w-4" /> Gestionează din Setări
+            <a href="/contul-meu?s=access" className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-foreground px-4 text-sm font-semibold text-background hover:opacity-90">
+              <Users className="h-4 w-4" /> Gestionează accesul
             </a>
           </div>
         </div>

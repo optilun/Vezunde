@@ -14,7 +14,9 @@ assert.match(shell, /publicProfileUrl\.match\(\/\^\\\/furnizor/);
 
 assert.match(header, /getMyProviderMembers/);
 assert.match(header, /Utilizatori și acces/);
-assert.match(header, /\/contul-meu\?s=settings/);
+assert.match(header, /\/contul-meu\?s=access/);
+assert.match(header, /Gestionează accesul/);
+assert.match(header, /organization_admin/);
 assert.match(header, /aria-expanded=\{open\}/);
 assert.match(header, /aria-haspopup="dialog"/);
 assert.match(header, /document\.addEventListener\("pointerdown"/);

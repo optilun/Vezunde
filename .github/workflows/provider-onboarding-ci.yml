@@ -19,6 +19,7 @@ on:
       - "src/pages/ResetPassword.jsx"
       - "src/pages/MyAccount.jsx"
       - "src/pages/AcceptProfessionalInvitation.jsx"
+      - "src/pages/AcceptProviderInvitation.jsx"
       - "scripts/verify-account-workspace-loading.mjs"
       - "src/lib/postLoginRedirect.js"
       - "src/lib/workspaceNav.js"
@@ -49,9 +50,13 @@ on:
       - "base44/functions/saveProviderRoutineProfile/**"
       - "base44/functions/providerLocationIdentityResolutionOps/**"
       - "base44/functions/createProviderMemberInvitation/**"
+      - "base44/functions/acceptProviderMemberInvitation/**"
+      - "base44/functions/revokeProviderMemberInvitation/**"
+      - "base44/functions/setProviderMemberAccess/**"
       - "base44/functions/professionalInvitationOps/**"
       - "base44/functions/manageMyProfessionalProfile/**"
       - "base44/functions/getMyProviderMembers/**"
+      - "base44/functions/providerLocationExpansionOps/**"
       - "base44/functions/submitProviderLogoForReview/**"
       - "base44/functions/getProviderLogoReviewStatus/**"
       - "base44/functions/reviewProfileChanges/**"
@@ -69,6 +74,8 @@ on:
       - "scripts/verify-directory-correction-workflow.mjs"
       - "scripts/verify-provider-logo-review-status.mjs"
       - "scripts/verify-provider-account-workflow-e2e.mjs"
+      - "scripts/verify-provider-team-header-access.mjs"
+      - "scripts/verify-provider-organization-admin-access.mjs"
       - "scripts/verify-provider-location-access-scope.mjs"
       - "scripts/verify-provider-context-url.mjs"
       - "scripts/verify-dead-code-cleanup.mjs"
@@ -115,6 +122,10 @@ jobs:
         run: npm run test:provider-logo-review
       - name: Provider account workflow contract E2E
         run: npm run test:provider-account-e2e
+      - name: Provider team header access checks
+        run: npm run test:provider-team-header
+      - name: Provider organization roles checks
+        run: npm run test:provider-organization-admin
       - name: Account workspace loading checks
         run: npm run test:account-loading
       - name: Provider location access scope checks
