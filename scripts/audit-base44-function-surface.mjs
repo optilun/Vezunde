@@ -9,7 +9,7 @@ function walk(dir) {
   if (!fs.existsSync(dir)) return [];
   const out = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (['node_modules', '.git', 'dist', 'build'].includes(entry.name)) continue;
+    if (['node_modules', '.git', 'dist', 'build', 'artifacts'].includes(entry.name)) continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) out.push(...walk(full));
     else out.push(full);
@@ -26,8 +26,8 @@ const functionDirs = fs.existsSync(FUNCTIONS_ROOT)
 
 const references = new Map();
 const patterns = [
-  /\.functions\.invoke\(\s*['"]([^'"]+)['"]/g,
-  /functions\.invoke\(\s*['"]([^'"]+)['"]/g,
+  /\.functions\s*\.\s*invoke\s*\(\s*['"]([^'"]+)['"]/g,
+  /\bfunctions\s*\.\s*invoke\s*\(\s*['"]([^'"]+)['"]/g,
 ];
 
 for (const file of SCAN_ROOTS.flatMap(walk)) {
