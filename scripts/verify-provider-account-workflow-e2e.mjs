@@ -94,7 +94,7 @@ const accessAccept = await source('base44/functions/acceptProviderMemberInvitati
 const accessManage = await source('base44/functions/setProviderMemberAccess/entry.ts');
 hasAll(accessInvite, [/secure_token_hash/, /delivery_status/, /ProviderMemberInvitation/], 'invitatie membru');
 hasAll(accessAccept, [/secure_token_hash/, /ProviderMembership/, /accepted/], 'acceptare invitatie');
-hasAll(accessManage, [/organization_owner/, /ProviderMembership/, /DirectoryAuditRecord/], 'administrare acces');
+hasAll(accessManage, [/organization_owner|ORGANIZATION_OWNER_ROLE/, /ProviderMembership/, /DirectoryAuditRecord/], 'administrare acces');
 
 const overviewRoot = await source('src/components/workspace/provider/ProviderWorkspaceRoot.jsx');
 hasAll(overviewRoot, [
