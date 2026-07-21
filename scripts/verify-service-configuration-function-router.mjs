@@ -55,7 +55,7 @@ assert.ok(physicalEndpoints.includes(SERVICE_CONFIGURATION_FUNCTION_ENDPOINT), '
 const routerSource = source('base44/functions/providerServiceConfigurationOps/router.ts');
 for (const logicalName of logicalNames) {
   assert.equal(SERVICE_CONFIGURATION_FUNCTION_ROUTES[logicalName], SERVICE_CONFIGURATION_FUNCTION_ENDPOINT);
-  assert.ok(existsSync(path.join(routerRoot, `${logicalName}.ts`), `Modul local lipsa pentru ${logicalName}`);
+  assert.ok(existsSync(path.join(routerRoot, `${logicalName}.ts`)), `Modul local lipsa pentru ${logicalName}`);
   assert.ok(!existsSync(path.join(functionsRoot, logicalName, 'entry.ts')), `Endpointul vechi ${logicalName} nu a fost eliminat`);
   assert.match(routerSource, new RegExp(`${logicalName}:\\s*${logicalName}Handle`), `Handlerul ${logicalName} nu este in router`);
   const moduleSource = source(`base44/functions/providerServiceConfigurationOps/${logicalName}.ts`);
