@@ -9,6 +9,7 @@ on:
       - "scripts/generate-base44-function-consolidation.mjs"
       - "scripts/adjust-consolidated-function-tests.mjs"
       - "scripts/audit-base44-function-surface.mjs"
+      - "scripts/verify-base44-function-consolidation.mjs"
       - "base44/functions/**"
       - "base44/function_modules/**"
       - "src/api/base44Client.js"
@@ -45,6 +46,8 @@ jobs:
         run: node scripts/adjust-consolidated-function-tests.mjs
       - name: Audit consolidated surface
         run: node scripts/audit-base44-function-surface.mjs
+      - name: Verify consolidation contract
+        run: node scripts/verify-base44-function-consolidation.mjs
       - name: Typecheck consolidated branch
         shell: bash
         run: |
