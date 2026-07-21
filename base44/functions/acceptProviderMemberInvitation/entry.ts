@@ -186,12 +186,12 @@ Deno.serve(async (req) => {
       const common = {
         organization_id: context.organization.id,
         role: storedRole,
+        organization_role: organizationRole || 'none',
         status: 'active',
         invitation_id: invitation.id,
         access_origin: 'invitation',
         claim_scope: organizationWide ? 'organization' : (context.locations.length > 1 ? 'selected_locations' : 'location'),
         organization_wide_access: organizationWide,
-        ...(organizationRole ? { organization_role: organizationRole } : {}),
       };
       if (existing[0]) {
         const updates = {
