@@ -91,7 +91,7 @@ assert.match(workspace, /isOrganizationOwner[\s\S]*actorHasWideOrganizationAcces
 assert.match(workspace, /scopedLocationIds/);
 assert.match(workspace, /syncProviderOrganizationOwnerAccess/);
 
-assert.match(accessUi, /Administrator organizație/);
+assert.match(accessUi, /organization_admin/);
 assert.match(accessUi, /Ownerul poate fi global sau selectiv/);
 assert.match(accessUi, /Toată organizația/);
 assert.match(accessUi, /Locații selectate/);
