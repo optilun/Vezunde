@@ -1,10 +1,14 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
+  ORGANIZATION_ADMIN_ROLE,
+  ORGANIZATION_OWNER_ROLE,
   loadOrganizationOwnerScopeResolution,
   membershipHasOrganizationWideAccess,
+  providerMembershipAccessRole,
+  storedProviderRoleForAccessRole,
 } from '../../../shared/providerOrganizationOwnerScope.js';
 
-const PROVIDER_ROLES = ['organization_owner'];
+const PROVIDER_ROLES = [ORGANIZATION_OWNER_ROLE];
 const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
 
 function res(body: Record<string, unknown>, status = 200) {
@@ -47,7 +51,7 @@ function tokenSimilarity(a: unknown, b: unknown) {
 
 function role(value: unknown) {
   const raw = text(value, 80);
-  return raw === 'owner' ? 'organization_owner' : raw;
+  return raw === 'owner' ? ORGANIZATION_OWNER_ROLE : raw;
 }
 
 function safeNumber(value: unknown, min: number, max: number) {
@@ -75,7 +79,6 @@ function validateLocation(raw: unknown) {
     lng: safeNumber(input.lng, -180, 180),
     place_id: text(input.place_id, 300),
   };
-
   if (!clean.public_display_name || !clean.address || !clean.city || !clean.county) return { error: 'Numele, adresa, localitatea si judetul sunt obligatorii' };
   if ((clean.lat === null) !== (clean.lng === null)) return { error: 'Completeaza si latitudinea, si longitudinea' };
   if (clean.public_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean.public_email)) return { error: 'Email public invalid' };
@@ -114,11 +117,7 @@ function scoreCandidate(search: ReturnType<typeof normalizeSearch>, location: an
   const locationAddress = location.address || '';
   const locationCity = location.locality_name || location.city || '';
   const locationPhone = location.public_phone || location.phone_public || '';
-
-  if (search.phone && digits(search.phone).length >= 7 && digits(search.phone) === digits(locationPhone)) {
-    score += 55;
-    reasons.push('telefon identic');
-  }
+  if (search.phone && digits(search.phone).length >= 7 && digits(search.phone) === digits(locationPhone)) { score += 55; reasons.push('telefon identic'); }
   if (search.address) {
     const exactAddress = normalize(search.address) === normalize(locationAddress);
     const similarity = tokenSimilarity(search.address, locationAddress);
@@ -212,15 +211,15 @@ async function providerSave(svc: any, user: any, payload: Record<string, unknown
   const submission = existing
     ? await svc.entities.ProviderWorkspaceSubmission.update(existing.id, data)
     : await svc.entities.ProviderWorkspaceSubmission.create({
-        organization_id: context.organizationId,
-        location_id: context.anchor.id,
-        access_origin: 'provider_workspace',
-        section: 'location_create',
-        item_key: 'new_location',
-        payload_json: JSON.stringify(payloadValue),
-        status: 'draft',
-        submitted_by_user_id: user.id,
-      });
+      organization_id: context.organizationId,
+      location_id: context.anchor.id,
+      access_origin: 'provider_workspace',
+      section: 'location_create',
+      item_key: 'new_location',
+      payload_json: JSON.stringify(payloadValue),
+      status: 'draft',
+      submitted_by_user_id: user.id,
+    });
   return res({ success: true, submission: { id: submission.id, status: submission.status, payload: payloadValue } });
 }
 
@@ -252,45 +251,49 @@ async function adminList(svc: any, user: any) {
   return res({ submissions: items });
 }
 
-async function propagateOwners(svc: any, organizationId: string, locationId: string, actorId: string, requesterUserId: string) {
-  const memberships = await svc.entities.ProviderMembership.filter({ organization_id: organizationId }, '-created_date', 1000);
+async function propagateOrganizationWideAccess(svc: any, organizationId: string, locationId: string, actorId: string, requesterUserId: string) {
+  const memberships = await svc.entities.ProviderMembership.filter({ organization_id: organizationId }, '-created_date', 1500);
   const resolution = await loadOrganizationOwnerScopeResolution(svc, organizationId);
-  const wideOwnerUserIds = new Set(memberships
-    .filter((membership: any) => membershipHasOrganizationWideAccess(membership, resolution))
-    .map((membership: any) => membership.user_id));
+  const rolesByUser = new Map<string, string[]>();
+  for (const membership of memberships) {
+    if (!membershipHasOrganizationWideAccess(membership, resolution)) continue;
+    const userId = text(membership.user_id, 200);
+    if (!userId) continue;
+    const roles = rolesByUser.get(userId) || [];
+    roles.push(providerMembershipAccessRole(membership));
+    rolesByUser.set(userId, roles);
+  }
   const requesterHasOwnerMembership = memberships.some((membership: any) => membership.user_id === requesterUserId
     && membership.status === 'active'
-    && role(membership.role) === 'organization_owner');
-  const ownerUserIds = [...wideOwnerUserIds];
-  if (requesterUserId && requesterHasOwnerMembership && !wideOwnerUserIds.has(requesterUserId)) ownerUserIds.push(requesterUserId);
+    && role(membership.role) === ORGANIZATION_OWNER_ROLE);
+  if (requesterUserId && requesterHasOwnerMembership && !rolesByUser.has(requesterUserId)) rolesByUser.set(requesterUserId, [ORGANIZATION_OWNER_ROLE]);
 
-  const created: string[] = [];
-  for (const ownerUserId of ownerUserIds) {
-    const wideAccess = wideOwnerUserIds.has(ownerUserId);
-    const existing = memberships.find((membership: any) => membership.user_id === ownerUserId && membership.location_id === locationId);
+  const changed: Array<Record<string, unknown>> = [];
+  for (const [userId, roles] of rolesByUser.entries()) {
+    const accessRole = roles.includes(ORGANIZATION_OWNER_ROLE) ? ORGANIZATION_OWNER_ROLE : ORGANIZATION_ADMIN_ROLE;
+    const existing = memberships.find((membership: any) => membership.user_id === userId && membership.location_id === locationId);
+    const desired = {
+      organization_id: organizationId,
+      role: storedProviderRoleForAccessRole(accessRole),
+      organization_role: accessRole === ORGANIZATION_ADMIN_ROLE ? ORGANIZATION_ADMIN_ROLE : 'none',
+      status: 'active',
+      access_origin: existing?.access_origin || 'organization_sync',
+      claim_scope: 'organization',
+      organization_wide_access: true,
+    };
     if (!existing) {
-      const row = await svc.entities.ProviderMembership.create({
-        user_id: ownerUserId,
-        organization_id: organizationId,
-        location_id: locationId,
-        role: 'organization_owner',
-        status: 'active',
-        access_origin: 'admin',
-        claim_scope: 'organization',
-        organization_wide_access: wideAccess,
-      });
-      created.push(row.id);
-    } else if (existing.status !== 'active' || role(existing.role) !== 'organization_owner') {
+      const row = await svc.entities.ProviderMembership.create({ user_id: userId, location_id: locationId, ...desired });
+      changed.push({ id: row.id, user_id: userId, role: accessRole, action: 'created' });
+    } else if (existing.status !== 'active' || providerMembershipAccessRole(existing) !== accessRole || existing.organization_wide_access !== true) {
       await svc.entities.ProviderMembership.update(existing.id, {
-        role: 'organization_owner',
-        status: 'active',
-        organization_wide_access: wideAccess || existing.organization_wide_access === true,
+        ...desired,
         reactivated_by_user_id: actorId,
         reactivated_at: new Date().toISOString(),
       });
+      changed.push({ id: existing.id, user_id: userId, role: accessRole, action: 'updated' });
     }
   }
-  return created;
+  return changed;
 }
 
 async function adminDecide(svc: any, user: any, payload: Record<string, unknown>) {
@@ -342,15 +345,15 @@ async function adminDecide(svc: any, user: any, payload: Record<string, unknown>
     verification_state: 'verified',
   });
 
-  const ownerMembershipIds = await propagateOwners(svc, submission.organization_id, location.id, user.id, submission.submitted_by_user_id || '');
+  const wideMembershipChanges = await propagateOrganizationWideAccess(svc, submission.organization_id, location.id, user.id, submission.submitted_by_user_id || '');
   await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'approved', reviewed_by_user_id: user.id, reviewed_at: new Date().toISOString(), admin_note: note, applied_entity_id: location.id });
   await svc.entities.DirectoryAuditRecord.create({
     entity_type: 'ProviderLocation',
     entity_id: location.id,
     action_type: 'approve_new_organization_location',
-    changed_fields: ['organization_id', 'identity', 'address', 'status', 'owner_memberships'],
+    changed_fields: ['organization_id', 'identity', 'address', 'status', 'organization_wide_memberships'],
     previous_values: '{}',
-    new_values: JSON.stringify({ organization_id: submission.organization_id, location_id: location.id, owner_membership_ids: ownerMembershipIds }),
+    new_values: JSON.stringify({ organization_id: submission.organization_id, location_id: location.id, organization_wide_memberships: wideMembershipChanges }),
     admin_user_id: user.id,
     admin_email: user.email,
     note: note || 'Locatie noua aprobata pentru organizatie existenta',
