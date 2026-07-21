@@ -28,9 +28,17 @@ export function organizationRoleMarkerForAccessRole(role) {
   return clean(role) === ORGANIZATION_ADMIN_ROLE ? ORGANIZATION_ADMIN_ROLE : '';
 }
 
-export function isOrganizationWideProviderRole(role) {
+export function isPrivilegedProviderRole(role) {
   const normalized = clean(role);
   return normalized === ORGANIZATION_OWNER_ROLE || normalized === ORGANIZATION_ADMIN_ROLE;
+}
+
+export function roleRequiresOrganizationWideAccess(role) {
+  return clean(role) === ORGANIZATION_ADMIN_ROLE;
+}
+
+export function isOrganizationWideProviderRole(role) {
+  return roleRequiresOrganizationWideAccess(role);
 }
 
 function isFullOrganizationApproval(scope) {
@@ -73,7 +81,7 @@ export async function loadOrganizationOwnerScopeResolution(svc, organizationId) 
 export function membershipHasOrganizationWideAccess(membership, resolution = {}) {
   if (!membership || clean(membership.status) !== 'active') return false;
   const accessRole = providerMembershipAccessRole(membership);
-  if (!isOrganizationWideProviderRole(accessRole)) return false;
+  if (!isPrivilegedProviderRole(accessRole)) return false;
   if (membership.organization_wide_access === true) return true;
   if (membership.organization_wide_access === false) return false;
   if (accessRole === ORGANIZATION_ADMIN_ROLE) return false;
