@@ -9,6 +9,7 @@ on:
       - "base44/shared/patientGuidanceQuestionCatalog.js"
       - "base44/shared/patientGuidanceRouting.js"
       - "base44/shared/patientGuidancePlanner.js"
+      - "base44/shared/patientSafety.js"
       - "base44/functions/matchProvidersSemantic/entry.ts"
       - "src/lib/providerSemanticSearch.js"
       - "src/lib/patientIntentConfirmation.js"
@@ -20,6 +21,7 @@ on:
       - "src/components/intake2/QuestionChoice.jsx"
       - "scripts/verify-patient-guidance-routing.mjs"
       - "scripts/verify-patient-guidance-adaptive-question-selection.mjs"
+      - "scripts/verify-patient-guidance-question-selection-hardening.mjs"
       - "scripts/verify-patient-ai-intent-confirmation.mjs"
       - "scripts/verify-patient-intake-session-hardening.mjs"
       - "scripts/verify-patient-intake-safety.mjs"
@@ -55,6 +57,8 @@ jobs:
         run: node scripts/verify-patient-guidance-runtime-shadow.mjs
       - name: Verify adaptive patient guidance question selection
         run: node scripts/verify-patient-guidance-adaptive-question-selection.mjs
+      - name: Verify adaptive question selection hardening
+        run: node scripts/verify-patient-guidance-question-selection-hardening.mjs
       - name: Base44 router and physical function checks
         run: |
           node scripts/verify-directory-function-router.mjs
@@ -112,6 +116,7 @@ jobs:
           base44/shared/patientGuidanceQuestionCatalog.js
           base44/shared/patientGuidanceRouting.js
           base44/shared/patientGuidancePlanner.js
+          base44/shared/patientSafety.js
           base44/functions/matchProvidersSemantic/entry.ts
           src/lib/providerSemanticSearch.js
           src/lib/patientIntentConfirmation.js
@@ -125,6 +130,7 @@ jobs:
           scripts/verify-patient-guidance-planner.mjs
           scripts/verify-patient-guidance-runtime-shadow.mjs
           scripts/verify-patient-guidance-adaptive-question-selection.mjs
+          scripts/verify-patient-guidance-question-selection-hardening.mjs
           scripts/verify-patient-ai-intent-confirmation.mjs
           scripts/verify-patient-intake-session-hardening.mjs
           scripts/verify-patient-intake-safety.mjs
