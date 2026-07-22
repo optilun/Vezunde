@@ -195,17 +195,16 @@ function factsFromGuidedAnswers(answers) {
   return facts;
 }
 
-function validEvidencePhrase(value, normalizedText) {
+function validEvidencePhrase(value, sourceText) {
   const evidencePhrase = clean(value, 120);
   if (!evidencePhrase) return null;
-  const normalizedPhrase = normalizePatientGuidanceText(evidencePhrase);
-  return normalizedPhrase && normalizedText.includes(normalizedPhrase)
-    ? evidencePhrase
-    : null;
+  const normalizedSource = clean(sourceText, 1200).toLocaleLowerCase("ro-RO");
+  const normalizedPhrase = evidencePhrase.toLocaleLowerCase("ro-RO");
+  return normalizedSource.includes(normalizedPhrase) ? evidencePhrase : null;
 }
 
 function sanitizeAICandidateFacts(extractedFacts, text) {
-  const normalizedText = normalizePatientGuidanceText(text);
+  const sourceText = clean(text, 1200);
   const facts = [];
   let rejectedFactCount = 0;
   let unsupportedFactCount = 0;
@@ -228,7 +227,7 @@ function sanitizeAICandidateFacts(extractedFacts, text) {
     }
 
     const suppliedEvidencePhrase = clean(item.evidence_phrase, 120);
-    const evidencePhrase = validEvidencePhrase(suppliedEvidencePhrase, normalizedText);
+    const evidencePhrase = validEvidencePhrase(suppliedEvidencePhrase, sourceText);
     if (suppliedEvidencePhrase && !evidencePhrase) rejectedEvidencePhraseCount += 1;
     const status = evidencePhrase ? "supported" : "unsupported";
     if (status === "unsupported") unsupportedFactCount += 1;
