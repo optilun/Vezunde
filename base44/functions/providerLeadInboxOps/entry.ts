@@ -183,6 +183,9 @@ async function markAllProviderNotificationsRead(svc, userId, locationId) {
   return { updated: rows.length };
 }
 
+const FUNCTION_DEPLOY_REVISION = 'viasee-runtime-resync-2026-07-22-providerLeadInboxOps-1';
+console.info(`[VIASEE] providerLeadInboxOps ${FUNCTION_DEPLOY_REVISION}`);
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
