@@ -29,6 +29,7 @@ import {
   isApprovedPatientGuidanceQuestionKey,
 } from '../../shared/patientGuidanceQuestionCatalog.js';
 import { buildPatientSafetyAssessment } from '../../shared/patientSafety.js';
+import { detectPatientGuidanceSignals } from '../../shared/patientGuidanceRouting.js';
 import {
   loadPublicLocationsForLocality,
   loadRowsForLocationIds,
@@ -265,10 +266,13 @@ function canonicalGuidanceQuestionKey(rawKey: unknown) {
   return null;
 }
 
-function sanitizeControlledGuidanceAnswer(rawAnswer: any) {
+function sanitizeControlledGuidanceAnswer(rawAnswer: any, historyKeySet: Set<string>) {
   if (!rawAnswer || typeof rawAnswer !== 'object') return null;
   const canonicalKey = canonicalGuidanceQuestionKey(rawAnswer.question_key);
   if (!canonicalKey) return null;
+  // Never accept an answer for a question the server never actually offered.
+  // A canonicalized key must be present in the controlled question_history.
+  if (!historyKeySet.has(canonicalKey)) return null;
   const question = (PATIENT_GUIDANCE_QUESTION_CATALOG as any)[canonicalKey];
   const rawValue = rawAnswer.answer_value;
 
@@ -305,11 +309,29 @@ function explicitGuidanceServiceKeysFromAnswers(validatedAnswers: any[]) {
   return [...new Set(keys)];
 }
 
-function guidanceSafetyStateFromAssessment(assessment: any) {
+function guidanceSafetyStateFromAssessment(assessment: any, hasExplicitSafetyNone: boolean) {
   if (assessment.blocking) return 'blocking';
   if ((assessment.advisory_flags || []).length > 0) return 'advisory';
-  if (['guided_answer', 'explicit_text', 'none'].includes(assessment.source)) return 'clear';
+  // "none" (no signal detected in text) is not the same as an explicit, controlled
+  // safety clearance. Only a validated safety_targeted_check="niciuna" answer,
+  // actually offered and present in question_history, counts as clear.
+  if (hasExplicitSafetyNone) return 'clear';
   return 'unchecked';
+}
+
+function deriveControlledIntentFromAnswers(validatedAnswers: any[]) {
+  for (const answer of validatedAnswers) {
+    if (answer.question_key === 'routine_vs_symptom' && answer.answer_value === 'symptom') return 'simptome_oftalmologice';
+    if (answer.question_key === 'investigation_type') return 'investigatii';
+    if (answer.question_key === 'optical_product_type') {
+      return answer.answer_value === 'contact_lenses' ? 'lentile_contact' : 'ochelari_lentile';
+    }
+    if (answer.question_key === 'contact_lens_experience') return 'lentile_contact';
+    if (answer.question_key === 'repair_type') return 'reparatii_ochelari';
+    if (answer.question_key === 'for_whom' && answer.answer_value === 'child') return 'control_copil';
+    if (answer.question_key === 'child_age_group') return 'control_copil';
+  }
+  return '';
 }
 
 // Controlled, deterministic-only question selection. Never calls Core.InvokeLLM.
@@ -318,14 +340,20 @@ function handleQuestionOnlyMode(payload: any) {
   const searchText = cleanQuestionOnlyText(
     payload.search_text || payload.query || payload.free_text || payload.search_query,
   );
+
+  // question_history is the controlled list of question keys the server actually
+  // offered to this session. An answer is only accepted if its canonicalized key
+  // appears here — this blocks answers submitted directly without ever being asked.
+  const rawHistory = Array.isArray(payload.question_history) ? payload.question_history.slice(0, 30) : [];
+  const historyKeySet = new Set(
+    rawHistory.map((key: unknown) => canonicalGuidanceQuestionKey(key)).filter(Boolean) as string[],
+  );
+
   const rawAnswers = Array.isArray(payload.answers) ? payload.answers.slice(0, 30) : [];
   const validatedAnswers = rawAnswers
-    .map(sanitizeControlledGuidanceAnswer)
+    .map((answer: any) => sanitizeControlledGuidanceAnswer(answer, historyKeySet))
     .filter(Boolean)
     .slice(0, 30);
-
-  const explicitIntentRaw = cleanQuestionOnlyText(payload.explicit_primary_intent, 80);
-  const explicitPrimaryIntent = QUESTION_ONLY_INTENT_KEYS.has(explicitIntentRaw) ? explicitIntentRaw : '';
 
   const guidedAnswersForPlanner = validatedAnswers.map((answer: any) => ({
     question_key: answer.question_key,
@@ -341,13 +369,24 @@ function handleQuestionOnlyMode(payload: any) {
     text: searchText,
     answers: adaptedSafetyAnswers,
   });
-  const deterministicSafetyState = guidanceSafetyStateFromAssessment(safetyAssessment);
+  const hasExplicitSafetyNone = validatedAnswers.some(
+    (answer: any) => answer.question_key === 'safety_targeted_check' && answer.answer_value === 'niciuna',
+  );
+  const deterministicSafetyState = guidanceSafetyStateFromAssessment(safetyAssessment, hasExplicitSafetyNone);
+
+  // The browser's claimed explicit_primary_intent is never trusted as authority and is
+  // not read at all. Intent is derived only from deterministic server-side text
+  // detection and from controlled, history-validated wizard answers.
+  const textDetectedIntentRaw = detectPatientGuidanceSignals(searchText)?.proposed_intent || '';
+  const textDetectedIntent = QUESTION_ONLY_INTENT_KEYS.has(textDetectedIntentRaw) ? textDetectedIntentRaw : '';
+  const controlledIntent = deriveControlledIntentFromAnswers(validatedAnswers);
+  const serverConfirmedIntent = controlledIntent || textDetectedIntent || '';
 
   let profile: any = null;
   try {
     profile = buildPatientGuidancePlannerProfile({
       text: searchText,
-      explicitPrimaryIntent,
+      explicitPrimaryIntent: serverConfirmedIntent,
       explicitConfirmedServiceKeys,
       guidedAnswers: guidedAnswersForPlanner,
       deterministicSafetyState,

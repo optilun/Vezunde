@@ -22,8 +22,9 @@ import { abandonAllPatientRequestIdempotency } from "@/lib/patientRequestIdempot
 import { buildIntentConfirmationProposal } from "@/lib/patientIntentConfirmation";
 import { buildPatientRequestDraft } from "@/lib/patientRequestDraft";
 import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill, isQuestionApplicable } from "@/lib/intentRegistry";
-import { GUIDANCE_KEY_TO_LEGACY_QUESTION_KEY, toGuidanceAnswers } from "@/lib/patientGuidanceQuestionKeyMap";
+import { GUIDANCE_KEY_TO_LEGACY_QUESTION_KEY, LEGACY_QUESTION_KEY_TO_GUIDANCE_KEY, toGuidanceAnswers } from "@/lib/patientGuidanceQuestionKeyMap";
 import { fetchAdaptiveNextQuestionKey } from "@/lib/patientGuidanceAdaptiveQuestion";
+import { buildPatientSafetyAssessment } from "@/lib/patientSafety";
 import QuestionChoice from "./QuestionChoice";
 import QuestionText from "./QuestionText";
 import QuestionLocation from "./QuestionLocation";
@@ -31,11 +32,21 @@ import MatchResults from "./MatchResults";
 import SearchingTransition from "./SearchingTransition";
 import PatientIntentConfirmation from "./PatientIntentConfirmation";
 import PatientRequestReview from "./PatientRequestReview";
+import UrgencyInterruption from "./UrgencyInterruption";
 
 function resolveOptionServiceKeys(currentKeys = [], option = {}) {
   const optionKeys = Array.isArray(option.service_keys) ? option.service_keys.filter(Boolean) : [];
   if (option.replace_service_keys === true) return [...new Set(optionKeys)];
   return [...new Set([...currentKeys, ...optionKeys])];
+}
+
+// Appends the approved guidance-catalog key for a legacy question to the controlled
+// question history. Never appends anything for questions with no catalog mapping
+// (e.g. "categorie", which is not part of patient-guidance-question-selection-v1).
+function appendQuestionHistory(history, legacyKey) {
+  const guidanceKey = LEGACY_QUESTION_KEY_TO_GUIDANCE_KEY[legacyKey];
+  if (!guidanceKey) return history;
+  return history.includes(guidanceKey) ? history : [...history, guidanceKey].slice(-30);
 }
 
 const initState = (initialIntent, initialMessage) => {
@@ -44,6 +55,8 @@ const initState = (initialIntent, initialMessage) => {
     : detectIntentFromText(initialMessage);
 
   const answers = [];
+  let questionHistory = [];
+  const explicitServiceKeys = [];
   let serviceKeys = intent ? [...INTENTS[intent].service_keys] : [];
 
   if (intent) {
@@ -53,7 +66,11 @@ const initState = (initialIntent, initialMessage) => {
       const option = question?.options?.find((o) => o.key === prefill.option_key);
       if (option) {
         answers.push({ question_key: prefill.question_key, answer_value: option.key });
-        if (option.service_keys) serviceKeys = resolveOptionServiceKeys(serviceKeys, option);
+        questionHistory = appendQuestionHistory(questionHistory, prefill.question_key);
+        if (option.service_keys) {
+          serviceKeys = resolveOptionServiceKeys(serviceKeys, option);
+          explicitServiceKeys.push(...option.service_keys);
+        }
       }
     }
   }
@@ -66,6 +83,8 @@ const initState = (initialIntent, initialMessage) => {
     scope: "",
     locality: null,
     clientAddressText: "",
+    questionHistory,
+    explicitServiceKeys: [...new Set(explicitServiceKeys)],
   };
 };
 
@@ -133,10 +152,12 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const [requestDraft, setRequestDraft] = useState(() => restoredSession?.requestDraft || null);
   const [matchError, setMatchError] = useState(null);
   const [adaptiveLegacyKey, setAdaptiveLegacyKey] = useState(null);
+  const [adaptiveSafetyAssessment, setAdaptiveSafetyAssessment] = useState(null);
   const interpretationAttemptedRef = useRef(false);
   const interpretationRequestRef = useRef(createPatientOperationGuard());
   const matchingRequestRef = useRef(createPatientOperationGuard());
   const adaptiveRequestRef = useRef(createPatientOperationGuard());
+  const adaptiveSafetyAcknowledgedRef = useRef(false);
   const analyticsSessionRef = useRef({
     started: false,
     completed: false,
@@ -191,8 +212,15 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       return;
     }
     setState((s) => {
-      const next = { ...s, answers: [...s.answers, { question_key: question.key, answer_value: option.key }] };
-      if (option.service_keys) next.serviceKeys = resolveOptionServiceKeys(next.serviceKeys, option);
+      const next = {
+        ...s,
+        answers: [...s.answers, { question_key: question.key, answer_value: option.key }],
+        questionHistory: appendQuestionHistory(s.questionHistory, question.key),
+      };
+      if (option.service_keys) {
+        next.serviceKeys = resolveOptionServiceKeys(next.serviceKeys, option);
+        next.explicitServiceKeys = [...new Set([...s.explicitServiceKeys, ...option.service_keys])];
+      }
       if (option.next_intent && INTENTS[option.next_intent]) {
         next.intent = option.next_intent;
         next.serviceKeys = [...INTENTS[option.next_intent].service_keys];
@@ -212,7 +240,11 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       text_length_band: textLengthBand(value),
     });
     pushHistory();
-    setState((s) => ({ ...s, answers: [...s.answers, { question_key: question.key, answer_value: value }] }));
+    setState((s) => ({
+      ...s,
+      answers: [...s.answers, { question_key: question.key, answer_value: value }],
+      questionHistory: appendQuestionHistory(s.questionHistory, question.key),
+    }));
   };
 
   const handleLocation = ({ city, locality, clientAddressText }) => {
@@ -227,7 +259,16 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       locality: locality || null,
       clientAddressText: clientAddressText || "",
       answers: [...s.answers, { question_key: "locatie", answer_value: city }],
+      questionHistory: appendQuestionHistory(s.questionHistory, "locatie"),
     }));
+  };
+
+  const handleCorrectAdaptiveSafety = () => {
+    // Controlled return: acknowledges the adaptive safety interruption for this
+    // session so the wizard can continue. This never bypasses the deterministic,
+    // submission-time safety screening still enforced in QuestionText.
+    adaptiveSafetyAcknowledgedRef.current = true;
+    setAdaptiveSafetyAssessment(null);
   };
 
   const handleConfirmInterpretation = () => {
@@ -254,6 +295,8 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     interpretationRequestRef.current.invalidate();
     matchingRequestRef.current.invalidate();
     adaptiveRequestRef.current.invalidate();
+    adaptiveSafetyAcknowledgedRef.current = false;
+    setAdaptiveSafetyAssessment(null);
     setState(initState(null, ""));
     setHistory([]);
     setRequestDraft(null);
@@ -383,8 +426,16 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       searchText: initialMessage,
       explicitPrimaryIntent: state.intent,
       answers: guidanceAnswers,
+      questionHistory: state.questionHistory,
     }, { requestId }).then((result) => {
       if (!adaptiveRequestRef.current.isCurrent(requestId)) return;
+      if (result.status === "safety_interruption") {
+        setAdaptiveLegacyKey(null);
+        if (adaptiveSafetyAcknowledgedRef.current) return;
+        setAdaptiveSafetyAssessment(buildPatientSafetyAssessment({ text: initialMessage }));
+        return;
+      }
+      setAdaptiveSafetyAssessment(null);
       if (result.status !== "ok" || !result.nextQuestionKey) {
         setAdaptiveLegacyKey(null);
         return;
@@ -442,7 +493,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   }, [phase, initialMessage, state.intent, state.serviceKeys]);
 
   useEffect(() => {
-    if (phase !== "questions" || !state.intent || current) return;
+    if (phase !== "questions" || !state.intent || current || adaptiveSafetyAssessment) return;
     const draft = buildPatientRequestDraft({
       state,
       originalMessage: initialMessage,
@@ -457,7 +508,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       service_key_count: draft.service_keys.length,
     });
     setPhase("review");
-  }, [phase, state, current, initialMessage, intentProposal]);
+  }, [phase, state, current, initialMessage, intentProposal, adaptiveSafetyAssessment]);
 
   useEffect(() => {
     if (phase !== "submitting" || !requestDraft) return;
@@ -586,7 +637,17 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         />
       )}
 
-      {phase === "questions" && current && (
+      {phase === "questions" && adaptiveSafetyAssessment && (
+        <div className="py-2">
+          <UrgencyInterruption
+            assessment={adaptiveSafetyAssessment}
+            mode="blocking"
+            onCorrect={handleCorrectAdaptiveSafety}
+          />
+        </div>
+      )}
+
+      {phase === "questions" && !adaptiveSafetyAssessment && current && (
         <>
           <div className="mb-6 flex items-center gap-4">
             {history.length > 0 ? (
