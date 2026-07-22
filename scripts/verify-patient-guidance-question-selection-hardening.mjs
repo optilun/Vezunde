@@ -42,6 +42,7 @@ scenario("question-only mode ignores browser deterministic authority", () => {
   assert.doesNotMatch(questionOnlyBlock, /payload\.deterministic_service_keys/);
   assert.doesNotMatch(questionOnlyBlock, /payload\.deterministic_facts/);
   assert.doesNotMatch(questionOnlyBlock, /payload\.deterministic_safety_state/);
+  assert.doesNotMatch(questionOnlyBlock, /payload\.explicit_primary_intent/);
   assert.match(questionOnlyBlock, /deterministicIntent: 'unknown'/);
   assert.match(questionOnlyBlock, /deterministicFacts: \{\}/);
 });
@@ -54,11 +55,26 @@ scenario("question-only services come from server semantics and controlled answe
 
 scenario("guided answers must exist in controlled history", () => {
   const helperStart = entry.indexOf("function controlledGuidedAnswers");
-  const helperEnd = entry.indexOf("function explicitIntentFromPayload", helperStart);
+  const helperEnd = entry.indexOf("function controlledCategoryIntent", helperStart);
   const helper = entry.slice(helperStart, helperEnd);
+  assert.ok(helperStart >= 0 && helperEnd > helperStart);
   assert.match(helper, /const history = new Set\(questionHistory\)/);
   assert.match(helper, /!history\.has\(questionKey\)/);
   assert.match(helper, /canonicalAnswerValue/);
+});
+
+scenario("wizard intent comes only from controlled category and guided answers", () => {
+  const intentStart = entry.indexOf("function controlledCategoryIntent");
+  const intentEnd = entry.indexOf("function confirmedServiceKeysFromAnswers", intentStart);
+  const intentBlock = entry.slice(intentStart, intentEnd);
+  assert.ok(intentStart >= 0 && intentEnd > intentStart);
+  assert.match(intentBlock, /history\.has\('categorie'\)/);
+  assert.match(intentBlock, /question_key\) === 'categorie'/);
+  assert.match(intentBlock, /PATIENT_GUIDANCE_INTENTS\.has\(intent\)/);
+  assert.match(intentBlock, /routine_vs_symptom === 'symptom'/);
+  assert.match(intentBlock, /optical_product_type === 'contact_lenses'/);
+  assert.match(questionOnlyBlock, /explicitPrimaryIntent: controlledIntentFromAnswers\(payload, guidedAnswers\)/);
+  assert.doesNotMatch(intentBlock, /explicit_primary_intent/);
 });
 
 scenario("legacy question keys and values are canonicalized", () => {
@@ -154,7 +170,7 @@ scenario("physical Base44 function count remains 48", () => {
   assert.equal(physicalFunctions.length, 48);
 });
 
-assert.ok(scenarioCount >= 14);
+assert.ok(scenarioCount >= 15);
 console.log(JSON.stringify({
   contract: "patient-guidance-question-selection-hardening-v1",
   scenarios: scenarioCount,
