@@ -16,6 +16,22 @@ const moduleSource = fs.readFileSync(
   new URL("../shared/patientConversationAgent.js", import.meta.url),
   "utf8",
 );
+const base44ModuleSource = fs.readFileSync(
+  new URL("../base44/shared/patientConversationAgent.js", import.meta.url),
+  "utf8",
+);
+const shadowRunnerSource = fs.readFileSync(
+  new URL("../base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts", import.meta.url),
+  "utf8",
+);
+
+assert.equal(base44ModuleSource, moduleSource);
+assert.equal((shadowRunnerSource.match(/Core\.InvokeLLM/g) || []).length, 1);
+assert(shadowRunnerSource.includes("add_context_from_internet: false"));
+assert(shadowRunnerSource.includes("response_json_schema: getPatientConversationAgentResponseSchema()"));
+assert(!shadowRunnerSource.includes("assignRecommendationBuckets"));
+assert(!shadowRunnerSource.includes("buildRecommendationScore"));
+assert(!shadowRunnerSource.includes("recommendation_score"));
 
 assert.equal(fixtures.contract_version, PATIENT_CONVERSATION_AGENT_VERSION);
 assert(fixtures.cases.length >= 50);
