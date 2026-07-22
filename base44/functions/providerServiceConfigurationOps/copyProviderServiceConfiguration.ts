@@ -3,16 +3,16 @@ import {
   getCanonicalServiceDefinition,
   getServiceGroupLayout,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistryExtended.js';
+} from '../../shared/canonicalServiceRegistryExtended.js';
 import {
   getFunctionalUnitDefinition,
   getFunctionalUnitLayout,
   isCapabilityParentAllowed,
   profileAllowsCapability,
   profileAllowsFunctionalUnit,
-} from '../../../shared/locationOperationalRegistry.js';
-import { getServiceOperationalContext } from '../../../shared/serviceOperationalTaxonomyExtended.js';
-import { validateServiceConfigurationPayload } from '../../../shared/serviceConfigurationPayloadExtended.js';
+} from '../../shared/locationOperationalRegistry.js';
+import { getServiceOperationalContext } from '../../shared/serviceOperationalTaxonomyExtended.js';
+import { validateServiceConfigurationPayload } from '../../shared/serviceConfigurationPayloadExtended.js';
 
 const EDITOR_ROLES = ['organization_owner', 'location_manager'];
 const ACTIVE_DRAFT_STATUSES = ['draft', 'pending_review', 'needs_more_info'];

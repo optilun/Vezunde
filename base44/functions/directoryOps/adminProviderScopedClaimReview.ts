@@ -3,7 +3,7 @@ import {
   allowedRolesForClaimScope,
   isApprovedRoleAllowed,
   uniqueClaimLocationIds,
-} from '../../../shared/providerClaimScopePolicy.js';
+} from '../../shared/providerClaimScopePolicy.js';
 
 const REVIEWABLE_STATUSES = new Set(['in_asteptare', 'needs_more_info']);
 const CONTROLLED_PROFILE_STATUSES = new Set(['claimed', 'verified']);

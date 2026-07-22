@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { isServicePubliclyEligible } from '../../../shared/canonicalServiceRegistryExtended.js';
+import { isServicePubliclyEligible } from '../../shared/canonicalServiceRegistryExtended.js';
 
 // MODULE 3H.1A — Provider Profile Foundation operations.
 // Cross-role contract:

@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { canAccessProviderLeadInbox } from '../../../shared/providerLeadInboxPolicy.js';
-import { resolveProviderEntitlement } from '../../../shared/providerEntitlementPolicy.js';
+import { canAccessProviderLeadInbox } from '../../shared/providerLeadInboxPolicy.js';
+import { resolveProviderEntitlement } from '../../shared/providerEntitlementPolicy.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -55,4 +55,3 @@ export async function handle(req: Request) {
     return res({ error: 'Planul locatiei nu a putut fi verificat.' }, 500);
   }
 }
-

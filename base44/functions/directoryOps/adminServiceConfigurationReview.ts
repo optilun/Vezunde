@@ -2,13 +2,13 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   getCanonicalServiceDefinition,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistryExtended.js';
+} from '../../shared/canonicalServiceRegistryExtended.js';
 import {
   evaluateServicePrerequisites,
   servicePrerequisiteStatusLabel,
-} from '../../../shared/servicePrerequisiteEngine.js';
-import { validateServiceConfigurationPayload } from '../../../shared/serviceConfigurationPayloadExtended.js';
-import { getServiceOperationalContext } from '../../../shared/serviceOperationalTaxonomyExtended.js';
+} from '../../shared/servicePrerequisiteEngine.js';
+import { validateServiceConfigurationPayload } from '../../shared/serviceConfigurationPayloadExtended.js';
+import { getServiceOperationalContext } from '../../shared/serviceOperationalTaxonomyExtended.js';
 import { invokeDirectoryFunction } from '../../shared/directoryFunctionRouting.js';
 
 function clean(value) {

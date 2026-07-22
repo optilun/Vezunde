@@ -12,7 +12,7 @@ import {
   normalizeIdentityText,
   stableLocationPairKey,
   validateIdentityRelationship,
-} from '../../../shared/directoryMappingPolicy.js';
+} from '../../shared/directoryMappingPolicy.js';
 
 const MAX_PAGE_SIZE = 250;
 const DEFAULT_PAGE_SIZE = 100;

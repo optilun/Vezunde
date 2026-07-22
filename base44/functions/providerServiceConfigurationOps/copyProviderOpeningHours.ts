@@ -3,7 +3,7 @@ import {
   formatProviderSaturdayHours,
   formatProviderWeeklyHours,
   validateProviderOpeningHours,
-} from '../../../shared/providerOpeningHours.js';
+} from '../../shared/providerOpeningHours.js';
 
 const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
 const MAX_TARGETS = 50;

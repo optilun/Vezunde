@@ -65,6 +65,7 @@ export default function ProviderTeamHeaderAccess({ userId = "", locationId = "" 
   const requestRef = useRef(0);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [open, setOpen] = useState(false);
 
   const load = useCallback(async ({ silent = false } = {}) => {
@@ -73,7 +74,8 @@ export default function ProviderTeamHeaderAccess({ userId = "", locationId = "" 
     const response = await base44.functions.invoke("getMyProviderMembers", {})
       .catch(() => ({ data: null }));
     if (requestId !== requestRef.current) return;
-    setData(response.data?.error ? null : response.data);
+    if (response.data?.error) { setData(null); setLoadError(true); }
+    else { setData(response.data); setLoadError(false); }
     setLoading(false);
   }, []);
 
@@ -123,7 +125,7 @@ export default function ProviderTeamHeaderAccess({ userId = "", locationId = "" 
   const visibleMembers = members.slice(0, 3);
   const pendingInvitations = scopedInvitations.length;
 
-  if (!loading && !canManageCurrentOrganization) return null;
+  if (!loading && !loadError && !canManageCurrentOrganization) return null;
 
   return (
     <div ref={rootRef} className="relative">
@@ -176,7 +178,13 @@ export default function ProviderTeamHeaderAccess({ userId = "", locationId = "" 
 
           <div className="max-h-72 overflow-y-auto px-2 py-2">
             {loading && <div className="px-3 py-5 text-sm text-muted-foreground">Se încarcă utilizatorii...</div>}
-            {!loading && members.length === 0 && <div className="px-3 py-5 text-sm text-muted-foreground">Nu există alți utilizatori activi.</div>}
+            {!loading && loadError && (
+              <div className="flex flex-col gap-2 px-3 py-5 text-sm text-muted-foreground">
+                <span>Datele de acces nu au putut fi încărcate.</span>
+                <button type="button" onClick={() => void load()} className="inline-flex h-8 items-center justify-center rounded-full border border-border bg-background px-3 text-xs font-semibold hover:bg-secondary">Reîncearcă</button>
+              </div>
+            )}
+            {!loading && !loadError && members.length === 0 && <div className="px-3 py-5 text-sm text-muted-foreground">Nu există alți utilizatori activi.</div>}
             {!loading && members.slice(0, 6).map((member) => (
               <div key={member.user_id || member.user_email_masked} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-secondary/45">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-[10px] font-bold text-background">

@@ -3,7 +3,7 @@ import {
   formatProviderSaturdayHours,
   formatProviderWeeklyHours,
   validateProviderOpeningHours,
-} from '../../../shared/providerOpeningHours.js';
+} from '../../shared/providerOpeningHours.js';
 
 // Fast-path provider routine updates.
 // Only operational schedule/access-mode fields are allowed here.

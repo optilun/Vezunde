@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   hasPublishedSectionChanges,
   sameSubmissionPayload,
-} from '../../../shared/providerWorkspaceSubmissionComparison.js';
+} from '../../shared/providerWorkspaceSubmissionComparison.js';
 
 // Deployment revision: provider-location-noop-2026-07-12
 const ACTIVE_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
