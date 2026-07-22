@@ -104,6 +104,19 @@ const DETERMINISTIC_SERVICE_FACTS = Object.freeze({
   eyeglasses_adjustment: Object.freeze({ repair_type: "frame_adjustment" }),
 });
 
+const DETERMINISTIC_SERVICE_INTENTS = Object.freeze({
+  oct: "investigatii",
+  visual_field_analyzer: "investigatii",
+  tonometry: "investigatii",
+  fundus_exam: "investigatii",
+  corneal_topography: "investigatii",
+  contact_lenses: "lentile_contact",
+  frame_repair: "reparatii_ochelari",
+  eyeglasses_adjustment: "reparatii_ochelari",
+  ophthalmology_consultation: "control_vedere",
+  optometry_consultation: "control_vedere",
+});
+
 function clean(value, maxLength = 240) {
   return String(value ?? "").trim().slice(0, maxLength);
 }
@@ -258,6 +271,18 @@ function derivedFactsForServices(serviceKeys) {
   return facts;
 }
 
+function deterministicFactConflictsForServices(serviceKeys) {
+  return canonicalServiceKeys(serviceKeys).flatMap((serviceKey) => (
+    Object.entries(DETERMINISTIC_SERVICE_FACTS[serviceKey] || {})
+      .map(([factKey, value]) => ({
+        fact_key: factKey,
+        value,
+        source_service_key: serviceKey,
+        reason: "deterministic_service_conflict",
+      }))
+  ));
+}
+
 function deterministicSignalsForText(text) {
   const base = detectPatientGuidanceSignals(text);
   const normalized = normalizePatientGuidanceText(text);
@@ -316,12 +341,18 @@ function deterministicSignalsForText(text) {
   }
 
   const canonicalExactServiceKeys = canonicalServiceKeys(exactServiceKeys);
+  const deterministicServiceFacts = derivedFactsForServices(canonicalExactServiceKeys);
+  const intentServiceKeys = canonicalExactServiceKeys
+    .filter((serviceKey) => DETERMINISTIC_SERVICE_INTENTS[serviceKey] === intent);
   return {
     ...base,
     proposed_intent: intent,
     exact_service_keys: canonicalExactServiceKeys,
+    intent_service_keys: intentServiceKeys,
+    deterministic_service_facts: deterministicServiceFacts,
+    deterministic_text_facts: { ...facts },
     deterministic_facts: {
-      ...derivedFactsForServices(canonicalExactServiceKeys),
+      ...deterministicServiceFacts,
       ...facts,
     },
   };
@@ -586,10 +617,44 @@ export function buildPatientGuidancePlannerProfile(input = {}, aiEnvelope = {}) 
   const suppliedDeterministicIntent = normalizeIntent(input.deterministicIntent);
   const signalIntent = normalizeIntent(signals.proposed_intent);
   const aiProposedPrimaryIntent = normalizeIntent(proposal?.primary_intent);
+
+  const explicitConfirmedServiceKeys = canonicalServiceKeys(input.explicitConfirmedServiceKeys);
+  const deterministicServiceKeys = canonicalServiceKeys([
+    ...(Array.isArray(input.deterministicServiceKeys) ? input.deterministicServiceKeys : []),
+    ...signals.exact_service_keys,
+  ]);
+  const eligibleDeterministicServiceKeys = explicitConfirmedServiceKeys.length > 0
+    ? deterministicServiceKeys.filter((key) => explicitConfirmedServiceKeys.includes(key))
+    : deterministicServiceKeys;
+  const deterministicServiceConflicts = explicitConfirmedServiceKeys.length > 0
+    ? deterministicServiceKeys.filter((key) => !explicitConfirmedServiceKeys.includes(key))
+    : [];
+  const deterministicFactConflicts = deterministicFactConflictsForServices(
+    deterministicServiceConflicts,
+  );
+  const signalIntentHasExplicitServiceMatch = explicitConfirmedServiceKeys.length === 0
+    || signals.intent_service_keys.some((key) => explicitConfirmedServiceKeys.includes(key));
+  const deterministicIntentConflict = explicitConfirmedServiceKeys.length > 0
+    && signalIntent !== "unknown"
+    && !signalIntentHasExplicitServiceMatch
+    ? {
+      proposed_intent: signalIntent,
+      source: "text_detection",
+      explicit_confirmed_service_keys: explicitConfirmedServiceKeys,
+      detected_service_keys: signals.exact_service_keys,
+      intent_service_keys: signals.intent_service_keys,
+      conflicting_service_keys: signals.exact_service_keys
+        .filter((key) => !explicitConfirmedServiceKeys.includes(key)),
+      reason: "no_matching_explicit_confirmed_service",
+    }
+    : null;
+  const eligibleSignalIntent = signalIntentHasExplicitServiceMatch
+    ? signalIntent
+    : "unknown";
   const confirmedPrimaryIntent = [
     explicitIntent,
     suppliedDeterministicIntent,
-    signalIntent,
+    eligibleSignalIntent,
   ].find((intent) => intent !== "unknown") || "unknown";
   const candidateIntents = unique([
     ...(Array.isArray(input.alternativeIntents) ? input.alternativeIntents : []),
@@ -601,14 +666,6 @@ export function buildPatientGuidancePlannerProfile(input = {}, aiEnvelope = {}) 
     .map(normalizeIntent)
     .filter((intent) => intent !== "unknown" && intent !== confirmedPrimaryIntent);
 
-  const explicitConfirmedServiceKeys = canonicalServiceKeys(input.explicitConfirmedServiceKeys);
-  const deterministicServiceKeys = canonicalServiceKeys([
-    ...(Array.isArray(input.deterministicServiceKeys) ? input.deterministicServiceKeys : []),
-    ...signals.exact_service_keys,
-  ]);
-  const deterministicServiceConflicts = explicitConfirmedServiceKeys.length > 0
-    ? deterministicServiceKeys.filter((key) => !explicitConfirmedServiceKeys.includes(key))
-    : [];
   const confirmedServiceKeys = explicitConfirmedServiceKeys.length > 0
     ? explicitConfirmedServiceKeys
     : deterministicServiceKeys;
@@ -618,8 +675,8 @@ export function buildPatientGuidancePlannerProfile(input = {}, aiEnvelope = {}) 
     ...aiCandidateServiceKeys,
   ]).filter((key) => !confirmedServiceKeys.includes(key));
   const signalFacts = {
-    ...derivedFactsForServices(deterministicServiceKeys),
-    ...signals.deterministic_facts,
+    ...derivedFactsForServices(eligibleDeterministicServiceKeys),
+    ...signals.deterministic_text_facts,
   };
   const {
     explicitConfirmedFacts,
@@ -676,6 +733,8 @@ export function buildPatientGuidancePlannerProfile(input = {}, aiEnvelope = {}) 
     candidate_service_keys: candidateServiceKeys,
     confirmed_service_keys: routingProfile.confirmed_service_keys,
     deterministic_service_conflicts: deterministicServiceConflicts,
+    deterministic_intent_conflict: deterministicIntentConflict,
+    deterministic_fact_conflicts: deterministicFactConflicts,
     candidate_care_paths: routingProfile.candidate_care_paths,
     care_path: routingProfile.care_path,
     request_clarity: routingProfile.request_clarity,
@@ -693,6 +752,8 @@ export function buildPatientGuidancePlannerProfile(input = {}, aiEnvelope = {}) 
     ai_validation: {
       ...sanitizedAI.diagnostics,
       deterministic_service_conflict: deterministicServiceConflicts.length > 0,
+      deterministic_intent_conflict: Boolean(deterministicIntentConflict),
+      deterministic_fact_conflict: deterministicFactConflicts.length > 0,
     },
     routing_profile: routingProfile,
   };
