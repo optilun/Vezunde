@@ -120,6 +120,9 @@ function organizationContextsFor(workspace) {
 export default function ProviderWorkspaceRoot({
   user,
   workspace,
+  workspaceError = "",
+  workspaceRefreshing = false,
+  onRetryWorkspace,
   onLogout,
   onRefresh,
   onSwitchMode,
@@ -512,6 +515,19 @@ export default function ProviderWorkspaceRoot({
             className="inline-flex h-9 items-center justify-center rounded-full border border-amber-300 bg-background px-4 text-xs font-semibold hover:bg-amber-100"
           >
             Reîncearcă
+          </button>
+        </div>
+      )}
+      {workspaceError && (
+        <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+          <span>{workspaceError} Datele existente au fost păstrate.</span>
+          <button
+            type="button"
+            disabled={workspaceRefreshing}
+            onClick={() => void onRetryWorkspace?.()}
+            className="inline-flex h-9 items-center justify-center rounded-full border border-amber-300 bg-background px-4 text-xs font-semibold hover:bg-amber-100 disabled:opacity-50"
+          >
+            {workspaceRefreshing ? "Se reîncearcă..." : "Reîncearcă"}
           </button>
         </div>
       )}
