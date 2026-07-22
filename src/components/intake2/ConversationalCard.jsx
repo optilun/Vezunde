@@ -98,6 +98,17 @@ function patientLanguageText(initialMessage, answers) {
   return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))].join(". ");
 }
 
+// Local, synchronous, deterministic safety check. Runs on every render, needs no
+// network call and no backend, and does not depend on state.intent being set.
+// This is the primary safety gate — the question_only backend check (if reachable)
+// is only a second layer on top of this, never a replacement for it.
+function computeLocalSafetyAssessment(initialMessage, answers) {
+  const text = patientLanguageText(initialMessage, answers);
+  if (!text) return null;
+  const assessment = buildPatientSafetyAssessment({ text });
+  return assessment.blocking ? assessment : null;
+}
+
 const PATIENT_SEARCH_ANALYTICS_VERSION = "patient-search-v1";
 
 function textLengthBand(value) {
@@ -140,7 +151,15 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   }
   const restoredSession = restoredSessionRef.current;
   const shouldInterpretInitialMessage = Boolean(String(initialMessage || "").trim() && !initialIntent);
-  const initialPhase = restoredSession?.phase || (shouldInterpretInitialMessage ? "interpreting" : "questions");
+  const initialAnswersForSafetyCheck = restoredSession
+    ? patientIntakeStateFromSnapshot(restoredSession).answers
+    : [];
+  // A blocking local safety result must win from the very first render — it must never
+  // show the AI interpretation spinner or the category question, even for one frame.
+  const initialLocalSafetyAssessment = computeLocalSafetyAssessment(initialMessage, initialAnswersForSafetyCheck);
+  const initialPhase = initialLocalSafetyAssessment
+    ? "questions"
+    : (restoredSession?.phase || (shouldInterpretInitialMessage ? "interpreting" : "questions"));
   const [state, setState] = useState(() => (
     restoredSession ? patientIntakeStateFromSnapshot(restoredSession) : initState(initialIntent, initialMessage)
   ));
@@ -152,7 +171,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const [requestDraft, setRequestDraft] = useState(() => restoredSession?.requestDraft || null);
   const [matchError, setMatchError] = useState(null);
   const [adaptiveLegacyKey, setAdaptiveLegacyKey] = useState(null);
-  const [adaptiveSafetyAssessment, setAdaptiveSafetyAssessment] = useState(null);
+  const [adaptiveSafetyAssessment, setAdaptiveSafetyAssessment] = useState(initialLocalSafetyAssessment);
   const interpretationAttemptedRef = useRef(false);
   const interpretationRequestRef = useRef(createPatientOperationGuard());
   const matchingRequestRef = useRef(createPatientOperationGuard());
@@ -164,6 +183,10 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     intent: null,
     answeredCount: 0,
   });
+
+  // Recomputed every render from the current initialMessage + free-text answers.
+  // Never waits on a render/effect cycle to exist — used directly to gate effects below.
+  const localSafetyAssessment = computeLocalSafetyAssessment(initialMessage, state.answers);
 
   const intentDef = state.intent ? INTENTS[state.intent] : null;
   const answeredKeys = state.answers.map((a) => a.question_key);
@@ -405,11 +428,32 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     writePatientIntakeSession(snapshot);
   }, [history, initialIntent, initialMessage, phase, requestDraft, state]);
 
+  // Local safety must win over everything, regardless of phase/intent, and it never
+  // waits for a render cycle: it forces phase to "questions" (so the interruption is
+  // shown), blocks the AI interpretation effect from ever firing, and invalidates any
+  // in-flight interpretation/matching/adaptive requests. This never calls the backend.
+  useEffect(() => {
+    if (!localSafetyAssessment) return;
+    interpretationAttemptedRef.current = true;
+    interpretationRequestRef.current.invalidate();
+    matchingRequestRef.current.invalidate();
+    adaptiveRequestRef.current.invalidate();
+    setAdaptiveLegacyKey(null);
+    setAdaptiveSafetyAssessment(localSafetyAssessment);
+    setPhase((p) => (p === "questions" ? p : "questions"));
+  }, [localSafetyAssessment]);
+
   // Selectia adaptiva a urmatoarei intrebari: apeleaza modul controlat "question_only".
   // Poate influenta EXCLUSIV care intrebare deja aprobata este afisata acum; nu schimba
   // niciodata matchingul, serviciile confirmate sau ordinea rezultatelor. La orice esec,
   // timeout sau raspuns invalid, ramane pe ordinea legacy (adaptiveLegacyKey=null).
+  // The local safety check (above) always runs first and is never overridden by the
+  // backend: if it is blocking, question_only is never called at all.
   useEffect(() => {
+    if (localSafetyAssessment) {
+      setAdaptiveLegacyKey(null);
+      return;
+    }
     if (phase !== "questions" || !state.intent) {
       setAdaptiveLegacyKey(null);
       return;
@@ -450,9 +494,10 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       setAdaptiveLegacyKey(stillValid ? legacyKey : null);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, state.intent, state.answers.length, state.city, state.locality]);
+  }, [phase, state.intent, state.answers.length, state.city, state.locality, localSafetyAssessment]);
 
   useEffect(() => {
+    if (localSafetyAssessment) return;
     if (phase !== "interpreting" || interpretationAttemptedRef.current) return;
     interpretationAttemptedRef.current = true;
     const requestId = interpretationRequestRef.current.begin();
@@ -493,10 +538,10 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       if (!interpretationRequestRef.current.isCurrent(requestId)) return;
       setPhase("questions");
     });
-  }, [phase, initialMessage, state.intent, state.serviceKeys]);
+  }, [phase, initialMessage, state.intent, state.serviceKeys, localSafetyAssessment]);
 
   useEffect(() => {
-    if (phase !== "questions" || !state.intent || current || adaptiveSafetyAssessment) return;
+    if (phase !== "questions" || !state.intent || current || adaptiveSafetyAssessment || localSafetyAssessment) return;
     const draft = buildPatientRequestDraft({
       state,
       originalMessage: initialMessage,
@@ -511,7 +556,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       service_key_count: draft.service_keys.length,
     });
     setPhase("review");
-  }, [phase, state, current, initialMessage, intentProposal, adaptiveSafetyAssessment]);
+  }, [phase, state, current, initialMessage, intentProposal, adaptiveSafetyAssessment, localSafetyAssessment]);
 
   useEffect(() => {
     if (phase !== "submitting" || !requestDraft) return;
