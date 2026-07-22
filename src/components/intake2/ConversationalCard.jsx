@@ -3,10 +3,13 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import {
+  PATIENT_INTERPRETATION_TIMEOUT_MS,
+  PATIENT_MATCHING_TIMEOUT_MS,
   interpretPatientNeedForConfirmation,
   interpretPatientNeedInShadow,
   matchProvidersWithSemanticFallback,
 } from "@/lib/providerSemanticSearch";
+import { createPatientOperationGuard, isPatientOperationTimeout } from "@/lib/patientOperationControl";
 import { buildIntentConfirmationProposal } from "@/lib/patientIntentConfirmation";
 import { buildPatientRequestDraft } from "@/lib/patientRequestDraft";
 import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill } from "@/lib/intentRegistry";
@@ -99,7 +102,10 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const [matchMeta, setMatchMeta] = useState(null);
   const [intentProposal, setIntentProposal] = useState(null);
   const [requestDraft, setRequestDraft] = useState(null);
+  const [matchError, setMatchError] = useState(null);
   const interpretationAttemptedRef = useRef(false);
+  const interpretationRequestRef = useRef(createPatientOperationGuard());
+  const matchingRequestRef = useRef(createPatientOperationGuard());
   const analyticsSessionRef = useRef({
     started: false,
     completed: false,
@@ -132,6 +138,8 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const pushHistory = () => setHistory((h) => [...h, state]);
 
   const handleChoice = (question, option) => {
+    interpretationRequestRef.current.invalidate();
+    matchingRequestRef.current.invalidate();
     markSearchStarted(state.intent || option.key);
     pushHistory();
     if (!state.intent) {
@@ -155,6 +163,8 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   };
 
   const handleText = (question, value) => {
+    interpretationRequestRef.current.invalidate();
+    matchingRequestRef.current.invalidate();
     markSearchStarted(state.intent);
     trackPatientSearchEvent("patient_search_free_text_submitted", {
       intent: state.intent || "unknown",
@@ -166,6 +176,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   };
 
   const handleLocation = ({ city, locality, clientAddressText }) => {
+    matchingRequestRef.current.invalidate();
     markSearchStarted(state.intent);
     pushHistory();
     setState((s) => ({
@@ -179,6 +190,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   };
 
   const handleConfirmInterpretation = () => {
+    interpretationRequestRef.current.invalidate();
     if (!intentProposal?.intent || !INTENTS[intentProposal.intent]) return;
     const confirmedState = initState(intentProposal.intent, initialMessage);
     setState(confirmedState);
@@ -196,6 +208,8 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   };
 
   const handleCorrectInterpretation = () => {
+    interpretationRequestRef.current.invalidate();
+    matchingRequestRef.current.invalidate();
     setState(initState(null, ""));
     setHistory([]);
     setRequestDraft(null);
@@ -210,6 +224,8 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   };
 
   const goBack = () => {
+    interpretationRequestRef.current.invalidate();
+    matchingRequestRef.current.invalidate();
     const prev = history[history.length - 1];
     if (!prev) return;
     trackPatientSearchEvent("patient_search_reformulation_started", {
@@ -223,6 +239,8 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
 
   const handleReviewConfirm = () => {
     if (!requestDraft) return;
+    matchingRequestRef.current.invalidate();
+    setMatchError(null);
     trackPatientSearchEvent("patient_search_request_review_confirmed", {
       intent: requestDraft.intent,
       questionnaire_version: requestDraft.questionnaire_version,
@@ -234,6 +252,8 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   };
 
   const handleReviewEdit = () => {
+    matchingRequestRef.current.invalidate();
+    setMatchError(null);
     const prev = history[history.length - 1];
     trackPatientSearchEvent("patient_search_request_review_edited", {
       intent: requestDraft?.intent || state.intent || "unknown",
@@ -250,23 +270,34 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const retrySearch = () => {
     trackPatientSearchEvent("patient_search_retry_clicked", {
       intent: state.intent || "unknown",
+      failure_kind: matchError?.kind || "unknown",
     });
-    setPhase(requestDraft ? "review" : "questions");
+    matchingRequestRef.current.invalidate();
+    setMatchError(null);
+    setPhase(requestDraft ? "submitting" : "questions");
   };
 
-  useEffect(() => () => {
-    const session = analyticsSessionRef.current;
-    if (!session.started || session.completed) return;
-    trackPatientSearchEvent("patient_search_abandoned", {
-      intent: session.intent || "unknown",
-      last_phase: session.phase,
-      answered_count: session.answeredCount,
-    });
+  useEffect(() => {
+    interpretationRequestRef.current.activate();
+    matchingRequestRef.current.activate();
+    return () => {
+      interpretationAttemptedRef.current = false;
+      interpretationRequestRef.current.dispose();
+      matchingRequestRef.current.dispose();
+      const session = analyticsSessionRef.current;
+      if (!session.started || session.completed) return;
+      trackPatientSearchEvent("patient_search_abandoned", {
+        intent: session.intent || "unknown",
+        last_phase: session.phase,
+        answered_count: session.answeredCount,
+      });
+    };
   }, []);
 
   useEffect(() => {
     if (phase !== "interpreting" || interpretationAttemptedRef.current) return;
     interpretationAttemptedRef.current = true;
+    const requestId = interpretationRequestRef.current.begin();
 
     (async () => {
       const interpretationResponse = await interpretPatientNeedForConfirmation({
@@ -274,7 +305,12 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         deterministic_intent: state.intent || "unknown",
         service_keys: state.serviceKeys,
         answers: [],
+      }, {
+        timeoutMs: PATIENT_INTERPRETATION_TIMEOUT_MS,
+        requestId,
       });
+      if (!interpretationRequestRef.current.isCurrent(requestId)) return;
+
       const proposal = buildIntentConfirmationProposal(interpretationResponse, {
         allowedIntents: Object.keys(INTENTS),
         deterministicIntent: state.intent,
@@ -295,7 +331,10 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
 
       setIntentProposal(proposal);
       setPhase("confirm_intent");
-    })();
+    })().catch(() => {
+      if (!interpretationRequestRef.current.isCurrent(requestId)) return;
+      setPhase("questions");
+    });
   }, [phase, initialMessage, state.intent, state.serviceKeys]);
 
   useEffect(() => {
@@ -318,6 +357,9 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
 
   useEffect(() => {
     if (phase !== "submitting" || !requestDraft) return;
+    const requestId = matchingRequestRef.current.begin();
+    setMatchError(null);
+
     (async () => {
       try {
         const languageText = patientLanguageText(initialMessage, state.answers);
@@ -341,8 +383,16 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
               question_key: answer.question_key,
               answer_value: answer.answer_value,
             })),
+        }, {
+          timeoutMs: PATIENT_INTERPRETATION_TIMEOUT_MS,
+          requestId: `shadow:${requestId}`,
         });
-        const res = await matchProvidersWithSemanticFallback(matchPayload);
+        const res = await matchProvidersWithSemanticFallback(matchPayload, {
+          timeoutMs: PATIENT_MATCHING_TIMEOUT_MS,
+          requestId,
+        });
+        if (!matchingRequestRef.current.isCurrent(requestId)) return;
+
         setResults(res.data.results || []);
         setMatchMeta({
           recommendation_contract_version: res.data.recommendation_contract_version || "legacy",
@@ -370,15 +420,25 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
           used_semantic_fallback: res.usedSemanticFallback === true,
         });
         setPhase("results");
-      } catch (_error) {
+      } catch (error) {
+        if (!matchingRequestRef.current.isCurrent(requestId)) return;
+        const timedOut = isPatientOperationTimeout(error);
         trackPatientSearchEvent("patient_search_failed", {
           intent: requestDraft.intent || state.intent || "unknown",
           stage: "provider_matching",
+          failure_kind: timedOut ? "timeout" : "technical",
+        });
+        setMatchError({
+          kind: timedOut ? "timeout" : "technical",
+          message: timedOut
+            ? "Căutarea a durat prea mult. Cererea ta a fost păstrată."
+            : "A apărut o eroare tehnică. Cererea ta a fost păstrată.",
         });
         setPhase("error");
       }
     })();
   }, [phase, requestDraft, initialMessage, state.answers, state.intent]);
+
 
   return (
     <motion.div
@@ -479,13 +539,15 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
 
       {phase === "error" && (
         <div className="py-6">
-          <p className="text-sm text-muted-foreground">Ceva nu a functionat. Incearca din nou.</p>
+          <p role="alert" className="text-sm text-muted-foreground">
+            {matchError?.message || "A apărut o eroare tehnică. Cererea ta a fost păstrată."}
+          </p>
           <button
             type="button"
             onClick={retrySearch}
             className="mt-4 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
-            Incearca din nou
+            Reîncearcă
           </button>
         </div>
       )}
