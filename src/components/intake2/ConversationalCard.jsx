@@ -459,7 +459,10 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         requestId,
       });
       if (!questionSelectionRequestRef.current.isCurrent(requestId)) return;
-      setQuestionSelection(controlledQuestionSelection(response, state));
+      setQuestionSelection(controlledQuestionSelection(response, {
+        answers: state.answers,
+        questionHistory: state.questionHistory,
+      }));
     })().catch(() => {
       if (!questionSelectionRequestRef.current.isCurrent(requestId)) return;
       setQuestionSelection(fallbackQuestionSelection());
