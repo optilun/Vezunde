@@ -266,13 +266,14 @@ function canonicalGuidanceQuestionKey(rawKey: unknown) {
   return null;
 }
 
-function sanitizeControlledGuidanceAnswer(rawAnswer: any, historyKeySet: Set<string>) {
+// This endpoint is stateless (no server-side session). It cannot verify that a
+// question was actually shown to this browser before this answer arrived — the
+// only check possible here is schema/type validation against the approved
+// question catalog. This is not an authorization or trust check.
+function sanitizeControlledGuidanceAnswer(rawAnswer: any) {
   if (!rawAnswer || typeof rawAnswer !== 'object') return null;
   const canonicalKey = canonicalGuidanceQuestionKey(rawAnswer.question_key);
   if (!canonicalKey) return null;
-  // Never accept an answer for a question the server never actually offered.
-  // A canonicalized key must be present in the controlled question_history.
-  if (!historyKeySet.has(canonicalKey)) return null;
   const question = (PATIENT_GUIDANCE_QUESTION_CATALOG as any)[canonicalKey];
   const rawValue = rawAnswer.answer_value;
 
@@ -313,8 +314,8 @@ function guidanceSafetyStateFromAssessment(assessment: any, hasExplicitSafetyNon
   if (assessment.blocking) return 'blocking';
   if ((assessment.advisory_flags || []).length > 0) return 'advisory';
   // "none" (no signal detected in text) is not the same as an explicit, controlled
-  // safety clearance. Only a validated safety_targeted_check="niciuna" answer,
-  // actually offered and present in question_history, counts as clear.
+  // safety clearance. Only a schema-valid safety_targeted_check="niciuna" answer
+  // counts as clear — computed from text plus that answer, server-side.
   if (hasExplicitSafetyNone) return 'clear';
   return 'unchecked';
 }
@@ -336,22 +337,24 @@ function deriveControlledIntentFromAnswers(validatedAnswers: any[]) {
 
 // Controlled, deterministic-only question selection. Never calls Core.InvokeLLM.
 // Can only influence next_question_key — matching, ranking, Top3 and results are untouched.
+//
+// Limitation: question_history is sent by the browser as client-side bookkeeping only
+// (so the wizard does not re-ask a question it already showed locally). It is NOT
+// server-confirmed and is never treated as proof that the server actually offered a
+// question — this function is stateless and holds no server-side session for this
+// request. It is not read or used to gate answer acceptance below; only used, if
+// present, as an informational hint. Answers are accepted purely on schema/type
+// validation against the approved question catalog (see sanitizeControlledGuidanceAnswer),
+// and only ever affect which question is shown next — never matching, ranking, Top3,
+// or live service data.
 function handleQuestionOnlyMode(payload: any) {
   const searchText = cleanQuestionOnlyText(
     payload.search_text || payload.query || payload.free_text || payload.search_query,
   );
 
-  // question_history is the controlled list of question keys the server actually
-  // offered to this session. An answer is only accepted if its canonicalized key
-  // appears here — this blocks answers submitted directly without ever being asked.
-  const rawHistory = Array.isArray(payload.question_history) ? payload.question_history.slice(0, 30) : [];
-  const historyKeySet = new Set(
-    rawHistory.map((key: unknown) => canonicalGuidanceQuestionKey(key)).filter(Boolean) as string[],
-  );
-
   const rawAnswers = Array.isArray(payload.answers) ? payload.answers.slice(0, 30) : [];
   const validatedAnswers = rawAnswers
-    .map((answer: any) => sanitizeControlledGuidanceAnswer(answer, historyKeySet))
+    .map((answer: any) => sanitizeControlledGuidanceAnswer(answer))
     .filter(Boolean)
     .slice(0, 30);
 
@@ -376,7 +379,7 @@ function handleQuestionOnlyMode(payload: any) {
 
   // The browser's claimed explicit_primary_intent is never trusted as authority and is
   // not read at all. Intent is derived only from deterministic server-side text
-  // detection and from controlled, history-validated wizard answers.
+  // detection and from schema-validated wizard answers.
   const textDetectedIntentRaw = detectPatientGuidanceSignals(searchText)?.proposed_intent || '';
   const textDetectedIntent = QUESTION_ONLY_INTENT_KEYS.has(textDetectedIntentRaw) ? textDetectedIntentRaw : '';
   const controlledIntent = deriveControlledIntentFromAnswers(validatedAnswers);

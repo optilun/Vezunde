@@ -157,7 +157,6 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const interpretationRequestRef = useRef(createPatientOperationGuard());
   const matchingRequestRef = useRef(createPatientOperationGuard());
   const adaptiveRequestRef = useRef(createPatientOperationGuard());
-  const adaptiveSafetyAcknowledgedRef = useRef(false);
   const analyticsSessionRef = useRef({
     started: false,
     completed: false,
@@ -264,11 +263,17 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   };
 
   const handleCorrectAdaptiveSafety = () => {
-    // Controlled return: acknowledges the adaptive safety interruption for this
-    // session so the wizard can continue. This never bypasses the deterministic,
-    // submission-time safety screening still enforced in QuestionText.
-    adaptiveSafetyAcknowledgedRef.current = true;
-    setAdaptiveSafetyAssessment(null);
+    // A safety interruption can never be dismissed to continue with the same urgent
+    // text — there is no acknowledgement bypass. This performs a full, hard reset:
+    // invalidates in-flight requests, clears the saved intake session, and reloads
+    // the wizard on a clean URL (no q/categorie params), so initialMessage cannot
+    // carry the same urgent text forward. The user must reformulate or start over.
+    interpretationRequestRef.current.invalidate();
+    matchingRequestRef.current.invalidate();
+    adaptiveRequestRef.current.invalidate();
+    clearPatientIntakeSession();
+    abandonAllPatientRequestIdempotency();
+    window.location.href = "/cerere";
   };
 
   const handleConfirmInterpretation = () => {
@@ -295,7 +300,6 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     interpretationRequestRef.current.invalidate();
     matchingRequestRef.current.invalidate();
     adaptiveRequestRef.current.invalidate();
-    adaptiveSafetyAcknowledgedRef.current = false;
     setAdaptiveSafetyAssessment(null);
     setState(initState(null, ""));
     setHistory([]);
@@ -431,7 +435,6 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       if (!adaptiveRequestRef.current.isCurrent(requestId)) return;
       if (result.status === "safety_interruption") {
         setAdaptiveLegacyKey(null);
-        if (adaptiveSafetyAcknowledgedRef.current) return;
         setAdaptiveSafetyAssessment(buildPatientSafetyAssessment({ text: initialMessage }));
         return;
       }
