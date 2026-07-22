@@ -5,7 +5,9 @@ on:
     paths:
       - "shared/patientGuidanceQuestionCatalog.js"
       - "shared/patientGuidanceRouting.js"
+      - "shared/patientGuidancePlanner.js"
       - "scripts/verify-patient-guidance-routing.mjs"
+      - "scripts/verify-patient-guidance-planner.mjs"
       - ".github/workflows/patient-guidance-routing-ci.yml"
 
 permissions:
@@ -30,6 +32,12 @@ jobs:
         run: npm ci
       - name: Verify patient guidance routing contract
         run: node scripts/verify-patient-guidance-routing.mjs
+      - name: Verify patient guidance planner
+        run: node scripts/verify-patient-guidance-planner.mjs
+      - name: Patient need interpretation
+        run: node scripts/verify-patient-need-interpretation.mjs
+      - name: Patient AI intent confirmation
+        run: node scripts/verify-patient-ai-intent-confirmation.mjs
       - name: Service Registry and Prerequisites
         run: npm run test:services
       - name: Patient Request Lifecycle
@@ -74,7 +82,9 @@ jobs:
           npx eslint
           shared/patientGuidanceQuestionCatalog.js
           shared/patientGuidanceRouting.js
+          shared/patientGuidancePlanner.js
           scripts/verify-patient-guidance-routing.mjs
+          scripts/verify-patient-guidance-planner.mjs
           --quiet
       - name: Lint complete
         run: npm run lint
