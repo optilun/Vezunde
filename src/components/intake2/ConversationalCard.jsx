@@ -10,6 +10,14 @@ import {
   matchProvidersWithSemanticFallback,
 } from "@/lib/providerSemanticSearch";
 import { createPatientOperationGuard, isPatientOperationTimeout } from "@/lib/patientOperationControl";
+import {
+  clearPatientIntakeSession,
+  createPatientIntakeEntrySignature,
+  createPatientIntakeSnapshot,
+  patientIntakeStateFromSnapshot,
+  readPatientIntakeSession,
+  writePatientIntakeSession,
+} from "@/lib/patientIntakeSession";
 import { buildIntentConfirmationProposal } from "@/lib/patientIntentConfirmation";
 import { buildPatientRequestDraft } from "@/lib/patientRequestDraft";
 import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill } from "@/lib/intentRegistry";
@@ -94,14 +102,32 @@ function trackPatientSearchEvent(eventName, properties = {}) {
 
 export default function ConversationalCard({ initialMessage = "", initialIntent = null }) {
   const reduceMotion = useReducedMotion();
+  const entrySignatureRef = useRef("");
+  if (!entrySignatureRef.current) {
+    entrySignatureRef.current = createPatientIntakeEntrySignature({
+      initialMessage,
+      initialIntent,
+      search: typeof window !== "undefined" ? window.location.search : "",
+    });
+  }
+  const restoredSessionRef = useRef(undefined);
+  if (restoredSessionRef.current === undefined) {
+    restoredSessionRef.current = readPatientIntakeSession({
+      entrySignature: entrySignatureRef.current,
+    });
+  }
+  const restoredSession = restoredSessionRef.current;
   const shouldInterpretInitialMessage = Boolean(String(initialMessage || "").trim() && !initialIntent);
-  const [state, setState] = useState(() => initState(initialIntent, initialMessage));
-  const [history, setHistory] = useState([]);
-  const [phase, setPhase] = useState(() => (shouldInterpretInitialMessage ? "interpreting" : "questions"));
+  const initialPhase = restoredSession?.phase || (shouldInterpretInitialMessage ? "interpreting" : "questions");
+  const [state, setState] = useState(() => (
+    restoredSession ? patientIntakeStateFromSnapshot(restoredSession) : initState(initialIntent, initialMessage)
+  ));
+  const [history, setHistory] = useState(() => restoredSession?.history || []);
+  const [phase, setPhase] = useState(initialPhase);
   const [results, setResults] = useState(null);
   const [matchMeta, setMatchMeta] = useState(null);
   const [intentProposal, setIntentProposal] = useState(null);
-  const [requestDraft, setRequestDraft] = useState(null);
+  const [requestDraft, setRequestDraft] = useState(() => restoredSession?.requestDraft || null);
   const [matchError, setMatchError] = useState(null);
   const interpretationAttemptedRef = useRef(false);
   const interpretationRequestRef = useRef(createPatientOperationGuard());
@@ -109,7 +135,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const analyticsSessionRef = useRef({
     started: false,
     completed: false,
-    phase: shouldInterpretInitialMessage ? "interpreting" : "questions",
+    phase: initialPhase,
     intent: null,
     answeredCount: 0,
   });
@@ -143,6 +169,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     markSearchStarted(state.intent || option.key);
     pushHistory();
     if (!state.intent) {
+      clearPatientIntakeSession();
       setState((s) => ({
         ...s,
         intent: option.key,
@@ -208,6 +235,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   };
 
   const handleCorrectInterpretation = () => {
+    clearPatientIntakeSession();
     interpretationRequestRef.current.invalidate();
     matchingRequestRef.current.invalidate();
     setState(initState(null, ""));
@@ -267,6 +295,10 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     setPhase("questions");
   };
 
+  const handleRequestCreated = () => {
+    clearPatientIntakeSession();
+  };
+
   const retrySearch = () => {
     trackPatientSearchEvent("patient_search_retry_clicked", {
       intent: state.intent || "unknown",
@@ -293,6 +325,19 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       });
     };
   }, []);
+
+  useEffect(() => {
+    const snapshot = createPatientIntakeSnapshot({
+      entrySignature: entrySignatureRef.current,
+      initialMessage,
+      initialIntent,
+      state,
+      history,
+      phase,
+      requestDraft,
+    });
+    writePatientIntakeSession(snapshot);
+  }, [history, initialIntent, initialMessage, phase, requestDraft, state]);
 
   useEffect(() => {
     if (phase !== "interpreting" || interpretationAttemptedRef.current) return;
@@ -535,7 +580,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
 
       {phase === "submitting" && <SearchingTransition />}
 
-      {phase === "results" && <MatchResults results={results} meta={matchMeta} />}
+      {phase === "results" && <MatchResults results={results} meta={matchMeta} onRequestCreated={handleRequestCreated} />}
 
       {phase === "error" && (
         <div className="py-6">

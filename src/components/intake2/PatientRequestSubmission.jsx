@@ -30,7 +30,7 @@ function errorMessage(error) {
   );
 }
 
-export default function PatientRequestSubmission({ results, meta }) {
+export default function PatientRequestSubmission({ results, meta, onRequestCreated }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [consent, setConsent] = useState(false);
@@ -86,6 +86,7 @@ export default function PatientRequestSubmission({ results, meta }) {
         results,
         meta,
       });
+      onRequestCreated?.(data);
       setSubmittedDraft(draft);
       setSuccess(data);
       setEmailVerified(false);

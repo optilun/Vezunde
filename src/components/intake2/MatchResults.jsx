@@ -8,6 +8,7 @@ import {
   readPatientRequestDraft,
   storePatientRequestDraft,
 } from "@/lib/patientRequestPersistenceClient";
+import { clearPatientIntakeSession } from "@/lib/patientIntakeSession";
 import MatchResultCard from "./MatchResultCard";
 import NoResultsFlow from "./NoResultsFlow";
 import PatientRecoverySubmission from "./PatientRecoverySubmission";
@@ -33,6 +34,7 @@ function RoutingNotice({ meta }) {
 }
 
 function restartGuidedSearch() {
+  clearPatientIntakeSession();
   const params = new URLSearchParams(window.location.search);
   params.delete("ref");
   const query = params.toString();
@@ -105,7 +107,7 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName }) {
 
 // Module 3E: sections are driven STRICTLY by result_bucket from the backend.
 // Top 3 = result_bucket === "top3" only — never a positional slice.
-export default function MatchResults({ results, meta, onChangeLocation, onReviewCriteria }) {
+export default function MatchResults({ results, meta, onChangeLocation, onReviewCriteria, onRequestCreated }) {
   const [showMore, setShowMore] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [expandedSnapshot, setExpandedSnapshot] = useState(null);
@@ -358,7 +360,7 @@ export default function MatchResults({ results, meta, onChangeLocation, onReview
         Ordinea reflectă serviciile confirmate, relevanța căutării și verificarea profilului. Extinderea geografică nu modifică regulile de eligibilitate și VIASEE nu oferă diagnostic medical.
       </p>
 
-      <PatientRequestSubmission results={list} meta={activeMeta} />
+      <PatientRequestSubmission results={list} meta={activeMeta} onRequestCreated={onRequestCreated} />
 
       <div className="mt-5 flex flex-col items-stretch gap-2 border-t border-border pt-4 sm:flex-row sm:items-center">
         {feedback === null ? (
