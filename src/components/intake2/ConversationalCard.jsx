@@ -679,7 +679,10 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       )}
 
       {phase === "questions" && questionSelection.status === "blocked" && (
-        <UrgencyInterruption assessment={{ blocking: true, blocking_flags: [] }} />
+        <UrgencyInterruption
+          assessment={{ blocking: true, blocking_flags: [] }}
+          onCorrect={goBack}
+        />
       )}
 
       {phase === "questions" && current && (
