@@ -129,21 +129,34 @@ export default function MyAccount() {
 
     const nextErrors = { provider: "", professional: "", onboarding: "" };
     let usableWorkspaceCount = 0;
-    const entries = [
-      ["provider", results[0], updateProviderWorkspace],
-      ["professional", results[1], updateProfessionalWorkspace],
-      ["onboarding", results[2], updateOnboardingWorkspace],
-    ];
-    entries.forEach(([workspaceKey, result, updateWorkspace]) => {
-      const data = result.status === "fulfilled" ? result.value?.data : null;
-      if (data && !data.error) {
-        updateWorkspace(data);
-        usableWorkspaceCount += 1;
-      } else {
-        nextErrors[workspaceKey] = workspaceErrorMessage(result);
-      }
-    });
+
+    const providerData = results[0].status === "fulfilled" ? results[0].value?.data : null;
+    if (providerData && !providerData.error) {
+      updateProviderWorkspace(providerData);
+      usableWorkspaceCount += 1;
+    } else {
+      nextErrors.provider = workspaceErrorMessage(results[0]);
+    }
+
+    const professionalData = results[1].status === "fulfilled" ? results[1].value?.data : null;
+    if (professionalData && !professionalData.error) {
+      updateProfessionalWorkspace(professionalData);
+      usableWorkspaceCount += 1;
+    } else {
+      nextErrors.professional = workspaceErrorMessage(results[1]);
+    }
+
+    const onboardingData = results[2].status === "fulfilled" ? results[2].value?.data : null;
+    if (onboardingData && !onboardingData.error) {
+      updateOnboardingWorkspace(onboardingData);
+      usableWorkspaceCount += 1;
+    } else {
+      nextErrors.onboarding = workspaceErrorMessage(results[2]);
+    }
     setWorkspaceErrors(nextErrors);
+    if (Object.values(nextErrors).some(Boolean)) {
+      console.error("Account workspace load failed:", nextErrors);
+    }
 
     if (usableWorkspaceCount > 0) {
       hasWorkspaceDataRef.current = true;

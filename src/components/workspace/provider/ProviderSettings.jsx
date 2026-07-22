@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
   CheckCircle2,
@@ -198,6 +198,8 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
   const [lifecycleLoading, setLifecycleLoading] = useState(false);
   const [lifecycleMessage, setLifecycleMessage] = useState("");
   const [lifecycleError, setLifecycleError] = useState("");
+  const lifecycleRequestRef = useRef(0);
+  const lifecycleLocationRef = useRef("");
   const locations = workspace?.locations || [];
   const roleByLocation = workspace?.member_summary?.current_user_role_by_location || {};
   const ownerLocations = useMemo(() => {
@@ -221,26 +223,33 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
   const locationClosed = selectedLocation?.active_status === "inactiva";
   const lifecycleActive = ["pending_review", "needs_more_info"].includes(lifecycleSubmission?.status);
 
-  useEffect(() => {
-    let mounted = true;
-    if (!selectedLocation?.id) {
+  const loadLifecycle = useCallback(async () => {
+    const locationId = selectedLocation?.id || "";
+    const locationChanged = lifecycleLocationRef.current !== locationId;
+    lifecycleLocationRef.current = locationId;
+    const requestId = ++lifecycleRequestRef.current;
+
+    if (!locationId) {
       setLifecycleSubmission(null);
-      return undefined;
+      setLifecycleLoading(false);
+      return;
     }
+    if (locationChanged) setLifecycleSubmission(null);
     setLifecycleLoading(true);
     setLifecycleError("");
-    base44.functions.invoke("providerLocationLifecycleOps", { action: "get", location_id: selectedLocation.id })
-      .then((response) => {
-        if (!mounted) return;
-        if (response.data?.error) setLifecycleError(response.data.error);
-        else setLifecycleSubmission(response.data?.submission || null);
-      })
-      .catch((error) => {
-        if (mounted) setLifecycleError(error.response?.data?.error || error.message || "Nu am putut încărca solicitările locației.");
-      })
-      .finally(() => mounted && setLifecycleLoading(false));
-    return () => { mounted = false; };
+    const response = await base44.functions.invoke("providerLocationLifecycleOps", { action: "get", location_id: locationId })
+      .catch((error) => ({ data: { error: error.response?.data?.error || error.message || "Nu am putut încărca solicitările locației." } }));
+    if (requestId !== lifecycleRequestRef.current) return;
+
+    if (response.data?.error) setLifecycleError(response.data.error);
+    else setLifecycleSubmission(response.data?.submission || null);
+    setLifecycleLoading(false);
   }, [selectedLocation?.id]);
+
+  useEffect(() => {
+    void loadLifecycle();
+    return () => { lifecycleRequestRef.current += 1; };
+  }, [loadLifecycle]);
 
   const fixedLocationId = locations.some((location) => location.id === preferences.fixedProviderLocationId)
     ? preferences.fixedProviderLocationId
@@ -449,7 +458,12 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
               </div>
             )}
             {!lifecycleLoading && lifecycleMessage && <p className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">{lifecycleMessage}</p>}
-            {!lifecycleLoading && lifecycleError && <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{lifecycleError}</p>}
+            {!lifecycleLoading && lifecycleError && (
+              <div className="flex flex-col gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between">
+                <span>{lifecycleError}</span>
+                <button type="button" onClick={() => void loadLifecycle()} className="inline-flex h-8 items-center justify-center rounded-full border border-red-300 bg-background px-3 text-xs font-semibold hover:bg-red-100">Reîncearcă</button>
+              </div>
+            )}
           </div>
         )}
 

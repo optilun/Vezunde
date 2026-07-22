@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Check, ChevronRight, Copy, Mail, MapPin, Search, Send, ShieldCheck, UserPlus, Users, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { ROLE_LABELS } from "@/lib/workspaceStatusLabels";
+import { useProviderAccessState } from "./ProviderAccessContext";
 
 const inputCls = "w-full rounded-xl border border-foreground/15 bg-background px-4 py-3 text-[15px] outline-none transition focus:border-foreground/40 focus:ring-2 focus:ring-foreground/5";
 const ALL_ROLES = ["organization_owner", "organization_admin", "location_manager", "location_staff"];
@@ -94,8 +95,12 @@ function UserAccessSummary({ group, allIds, locationById }) {
 }
 
 export default function ProviderAccess({ organizationId = "", locations = [], onRefresh }) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const {
+    data,
+    loading,
+    error: accessError,
+    onRetry: onRetryAccess,
+  } = useProviderAccessState();
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [query, setQuery] = useState("");
@@ -105,28 +110,18 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
   const [copied, setCopied] = useState(false);
   const [form, setForm] = useState({ email: "", role: "location_staff", scope: "selected", location_ids: [] });
   const [edit, setEdit] = useState({ role: "location_staff", scope: "selected", location_ids: [] });
-  const loadRequestRef = useRef(0);
   const locationById = useMemo(() => Object.fromEntries(locations.map((location) => [location.id, location])), [locations]);
 
-  const load = useCallback(async () => {
-    const requestId = ++loadRequestRef.current;
-    setLoading(true);
-    const response = await base44.functions.invoke("getMyProviderMembers", { organization_id: organizationId }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
-    if (requestId !== loadRequestRef.current) return;
-    setLoading(false);
-    if (response.data?.error) {
-      setMessage(response.data.error);
-      setData((prev) => prev || { members: [], invitations: [], manageable_location_ids: [], counters: {} });
-      return;
-    }
-    setData(response.data || {});
+  useEffect(() => {
     setMessage("");
+    setInviteOpen(false);
+    setMemberOpen(null);
+    setQuery("");
   }, [organizationId]);
 
-  useEffect(() => {
-    setMessage(""); setInviteOpen(false); setMemberOpen(null); setQuery(""); void load();
-    return () => { loadRequestRef.current += 1; };
-  }, [load]);
+  const refreshAfterMutation = async () => {
+    await Promise.all([onRetryAccess?.(), onRefresh?.()]);
+  };
 
   const groups = useMemo(() => groupMembers(data?.members || []), [data?.members]);
   const invitations = data?.invitations || [];
@@ -167,7 +162,7 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
     if (response.data?.error) { setMessage(response.data.error); return; }
     setNewLink(response.data?.invitation_link || "");
     setMessage(response.data?.email_sent ? "Invitația a fost trimisă." : "Invitația a fost creată. Copiază linkul și trimite-l utilizatorului.");
-    await load(); await onRefresh?.();
+    await refreshAfterMutation();
   };
 
   const revoke = async (id) => {
@@ -176,7 +171,7 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
     const response = await base44.functions.invoke("revokeProviderMemberInvitation", { invitation_id: id }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
     setSaving(false);
     if (response.data?.error) { setMessage(response.data.error); return; }
-    await load(); await onRefresh?.();
+    await refreshAfterMutation();
   };
 
   const openMember = (group) => {
@@ -202,7 +197,7 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
     }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
     setSaving(false);
     if (response.data?.error) { setMessage(response.data.error); return; }
-    setMemberOpen(null); await load(); await onRefresh?.();
+    setMemberOpen(null); await refreshAfterMutation();
   };
 
   const currentMemberRole = memberOpen ? groupRole(memberOpen) : "";
@@ -214,7 +209,7 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
 
   if (loading && !data) return <div className="rounded-[20px] border border-foreground/10 bg-card px-5 py-8 text-sm text-muted-foreground">Se încarcă utilizatorii și accesul...</div>;
 
-  const accessError = Boolean(message && !data?.members?.length && !data?.invitations?.length);
+  const accessLoadError = Boolean(accessError);
 
   return (
     <div className="space-y-6">
@@ -223,13 +218,13 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[["Membri activi", data?.counters?.active_members_total || 0], ["Owneri globali", data?.counters?.global_owners_count || 0], ["Administratori", data?.counters?.organization_admins_count || 0], ["Invitații", invitations.length]].map(([label, value]) => <div key={label} className="rounded-[18px] bg-[#f8f4ec]/70 px-4 py-4"><div className="text-sm text-muted-foreground">{label}</div><div className="mt-1 text-2xl font-extrabold">{value}</div></div>)}</div>
         <div className="relative mt-4"><Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input className={`${inputCls} pl-10`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Caută după nume, email, rol sau locație..." /></div>
       </section>
-      {accessError && (
+      {accessLoadError && (
         <div className="flex flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
           <span>Unele date de acces nu au putut fi încărcate. Utilizatorii existenți nu au fost șterși.</span>
-          <button type="button" onClick={() => void load()} className="inline-flex h-9 items-center justify-center rounded-full border border-amber-300 bg-background px-4 text-xs font-semibold hover:bg-amber-100">Reîncearcă</button>
+          <button type="button" onClick={() => void onRetryAccess?.()} className="inline-flex h-9 items-center justify-center rounded-full border border-amber-300 bg-background px-4 text-xs font-semibold hover:bg-amber-100">Reîncearcă</button>
         </div>
       )}
-      {message && !accessError && !inviteOpen && !memberOpen && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{message}</div>}
+      {message && !inviteOpen && !memberOpen && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{message}</div>}
 
       <section className="overflow-hidden rounded-[20px] border border-foreground/10 bg-card shadow-sm">
         <div className="flex justify-between border-b border-border px-5 py-4"><div><div className="flex items-center gap-2"><Users className="h-5 w-5" /><h2 className="text-lg font-bold">Membrii organizației</h2></div><p className="mt-1 text-sm text-muted-foreground">Rol și scope clar pentru fiecare utilizator.</p></div><span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold">{groups.length}</span></div>

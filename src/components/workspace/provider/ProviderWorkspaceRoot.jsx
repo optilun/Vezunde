@@ -2,10 +2,16 @@ import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useStat
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
+import { ProviderAccessStateProvider } from "./ProviderAccessContext";
 import { getProviderNav } from "@/lib/workspaceNav";
 import { PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 import { readAccountPreferences, rememberProviderLocation } from "@/lib/accountPreferences";
 import { resolveProviderLocationAccess } from "@/lib/providerWorkspaceAccess";
+import {
+  providerLocationModuleUrl,
+  providerSectionUrl,
+  shouldRedirectProviderRoute,
+} from "@/lib/providerWorkspaceLifecycle";
 import LocationSwitcher from "./LocationSwitcher";
 
 const ProviderOverview = lazy(() => import("./ProviderOverview"));
@@ -32,6 +38,25 @@ const OWNER_SENSITIVE_ORGANIZATION_CAPABILITIES = new Set([
   "organization.manage_locations",
   "organization.manage_settings",
 ]);
+const OWNER_ACCESS_SYNC_SESSION_PREFIX = "viasee:provider-owner-access-sync:";
+
+function ownerAccessSyncCompleted(organizationId) {
+  if (!organizationId || typeof window === "undefined") return false;
+  try {
+    return window.sessionStorage.getItem(`${OWNER_ACCESS_SYNC_SESSION_PREFIX}${organizationId}`) === "1";
+  } catch (_error) {
+    return false;
+  }
+}
+
+function markOwnerAccessSyncCompleted(organizationId) {
+  if (!organizationId || typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(`${OWNER_ACCESS_SYNC_SESSION_PREFIX}${organizationId}`, "1");
+  } catch (_error) {
+    // A blocked sessionStorage must not block the workspace.
+  }
+}
 
 const ROLE_CAPABILITIES = {
   organization_owner: [
@@ -356,11 +381,20 @@ export default function ProviderWorkspaceRoot({
 
   useEffect(() => {
     if (!selectedOrganizationId || !hasWideOrganizationAccess || wideAccessSyncStarted.current.has(selectedOrganizationId)) return;
+    if (ownerAccessSyncCompleted(selectedOrganizationId)) {
+      wideAccessSyncStarted.current.add(selectedOrganizationId);
+      return;
+    }
+
     wideAccessSyncStarted.current.add(selectedOrganizationId);
+    markOwnerAccessSyncCompleted(selectedOrganizationId);
     base44.functions.invoke("syncProviderOrganizationOwnerAccess", { organization_id: selectedOrganizationId })
-      .then((response) => { if (response.data?.changed) onRefresh?.(); })
+      .then((response) => {
+        if (!response.data?.changed) return null;
+        return Promise.all([loadAccessMeta(), onRefresh?.()]);
+      })
       .catch(() => null);
-  }, [hasWideOrganizationAccess, onRefresh, selectedOrganizationId]);
+  }, [hasWideOrganizationAccess, loadAccessMeta, onRefresh, selectedOrganizationId]);
 
   useEffect(() => {
     if (!accessMetaMatchesOrganization || locations.length === 0 || locations.some((location) => location.id === selectedLocationId)) return;
@@ -389,30 +423,28 @@ export default function ProviderWorkspaceRoot({
     if (selectedLocationId) rememberProviderLocation(user?.id, selectedLocationId);
   }, [selectedLocationId]);
 
-  const accessDecisionPending = Boolean(
-    accessMetaLoading
-    || !accessMetaResolved
-    || !accessMetaMatchesOrganization
-    || accessMetaError,
-  );
+  const routeAccessDenied = deniedLocationModule
+    || (requestedSection === "profile" && !canManageOrganizationProfile)
+    || (requestedSection === "locations" && !canViewLocations)
+    || (requestedSection === "leads" && !canManageRequests)
+    || (requestedSection === "settings" && !canManageSettings)
+    || (requestedSection === "access" && !canManageMembers);
+  const shouldRedirectDeniedRoute = shouldRedirectProviderRoute({
+    denied: routeAccessDenied,
+    accessMetaLoading,
+    accessMetaResolved,
+    accessMetaMatchesOrganization,
+    accessMetaError,
+  });
 
   useEffect(() => {
-    const denied = deniedLocationModule
-      || (requestedSection === "profile" && !canManageOrganizationProfile)
-      || (requestedSection === "locations" && !canViewLocations)
-      || (requestedSection === "leads" && !canManageRequests)
-      || (requestedSection === "settings" && !canManageSettings)
-      || (requestedSection === "access" && !canManageMembers);
-    if (!denied || accessDecisionPending) return;
+    if (!shouldRedirectDeniedRoute) return;
     routerNavigate(deniedLocationModule ? "/contul-meu?s=locations" : "/contul-meu?s=overview", { replace: true });
-  }, [accessDecisionPending, canManageMembers, canManageOrganizationProfile, canManageRequests, canManageSettings, canViewLocations, deniedLocationModule, requestedSection, routerNavigate]);
+  }, [deniedLocationModule, routerNavigate, shouldRedirectDeniedRoute]);
 
   const goToSection = (key) => {
     if (key === "overview") void refreshOverviewInPlace();
-    const next = new URLSearchParams(params);
-    next.set("s", key);
-    next.delete("ps");
-    routerNavigate(`/contul-meu?${next.toString()}`);
+    routerNavigate(providerSectionUrl(params, key));
   };
 
   const accessForLocation = (locationId) => {
@@ -429,7 +461,7 @@ export default function ProviderWorkspaceRoot({
     rememberProviderLocation(user?.id, locationId);
     if (activeLocationModule) {
       const targetAccess = accessForLocation(locationId);
-      if (targetAccess.capabilities.includes(LOCATION_MODULE_CAPABILITIES[activeLocationModule])) routerNavigate(`/contul-meu/locatii/${locationId}/${activeLocationModule}`);
+      if (targetAccess.capabilities.includes(LOCATION_MODULE_CAPABILITIES[activeLocationModule])) routerNavigate(providerLocationModuleUrl(locationId, activeLocationModule));
       else routerNavigate("/contul-meu?s=locations");
     }
   };
@@ -445,7 +477,7 @@ export default function ProviderWorkspaceRoot({
     const targetAccess = accessForLocation(locationId);
     if (!targetAccess.capabilities.includes(LOCATION_MODULE_CAPABILITIES[moduleKey])) return;
     setSelectedLocationId(locationId);
-    routerNavigate(`/contul-meu/locatii/${locationId}/${moduleKey}`);
+    routerNavigate(providerLocationModuleUrl(locationId, moduleKey));
   };
 
   const closeLocationModule = () => routerNavigate("/contul-meu?s=locations");
@@ -488,6 +520,16 @@ export default function ProviderWorkspaceRoot({
   }, [safeSection, selectedLocationId]);
 
   return (
+    <ProviderAccessStateProvider
+      value={{
+        data: accessMeta,
+        loading: accessMetaLoading,
+        resolved: accessMetaResolved,
+        error: accessMetaError,
+        organizationId: selectedOrganizationId,
+        onRetry: loadAccessMeta,
+      }}
+    >
     <ProviderAppShell
       navItems={navItems}
       activeKey={safeSection}
@@ -578,7 +620,13 @@ export default function ProviderWorkspaceRoot({
               </div>
             )}
             {safeSection === "leads" && canManageRequests && <ProviderLeadInbox locationId={selectedLocationId} location={selectedLocation} />}
-            {safeSection === "access" && canManageMembers && <ProviderAccess organizationId={selectedOrganizationId} locations={locations} onRefresh={refreshOverviewInPlace} />}
+            {safeSection === "access" && canManageMembers && (
+              <ProviderAccess
+                organizationId={selectedOrganizationId}
+                locations={locations}
+                onRefresh={refreshOverviewInPlace}
+              />
+            )}
             {safeSection === "settings" && canManageSettings && (
               <ProviderSettings user={user} workspace={scopedWorkspace} overview={overview} selectedLocationId={selectedLocationId} onSelectLocation={selectLocation} onSwitchMode={onSwitchMode} onNavigate={goToSection} onRefresh={refreshOverviewInPlace} />
             )}
@@ -586,5 +634,6 @@ export default function ProviderWorkspaceRoot({
         </Suspense>
       )}
     </ProviderAppShell>
+    </ProviderAccessStateProvider>
   );
 }

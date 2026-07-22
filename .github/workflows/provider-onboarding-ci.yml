@@ -25,6 +25,8 @@ on:
       - "src/lib/workspaceNav.js"
       - "src/lib/providerWorkspaceAccess.js"
       - "src/lib/providerContextSearch.js"
+      - "src/lib/accountWorkspaceLifecycle.js"
+      - "src/lib/providerWorkspaceLifecycle.js"
       - "shared/providerOpeningHours.js"
       - "shared/providerLocationIdentityResolution.js"
       - "shared/providerAccountWorkflowContract.js"
@@ -80,6 +82,7 @@ on:
       - "scripts/verify-provider-organization-admin-access.mjs"
       - "scripts/verify-provider-location-access-scope.mjs"
       - "scripts/verify-provider-context-url.mjs"
+      - "scripts/verify-provider-account-workspace-hardening.mjs"
       - "scripts/verify-dead-code-cleanup.mjs"
       - "scripts/audit-frontend-dead-code.mjs"
       - "scripts/compare-typecheck-baseline.mjs"
@@ -130,6 +133,8 @@ jobs:
         run: npm run test:provider-logo-review
       - name: Provider account workflow contract E2E
         run: npm run test:provider-account-e2e
+      - name: Provider account workspace hardening checks
+        run: npm run test:provider-account-hardening
       - name: Provider team header access checks
         run: npm run test:provider-team-header
       - name: Provider organization roles checks
