@@ -13,6 +13,7 @@ import {
   SEARCH_EXPANSION_POLICY_VALUES,
   TOP3_ELIGIBILITY_VALUES,
   buildPatientGuidanceRoutingProfile,
+  buildPatientTop3EligibilityPolicy,
   canActivateNationalPatientSearch,
   classifyPatientRequestClarity,
   derivePatientCarePath,
@@ -20,6 +21,7 @@ import {
   detectPatientGuidanceSignals,
   evaluatePatientTop3Eligibility,
   getPatientGuidanceCompletenessPolicy,
+  isPatientGuidanceClinicalRuleApproved,
 } from "../shared/patientGuidanceRouting.js";
 
 let scenarioCount = 0;
@@ -225,6 +227,7 @@ const octProfile = buildPatientGuidanceRoutingProfile({
     locality: { siruta_code: "54984", city: "Cluj-Napoca" },
   },
   safetyState: "clear",
+  clinicalValidationApprovals: ["specialized_service_trust_threshold"],
 });
 
 scenario("OCT locality sufficient for search", () => {
@@ -351,6 +354,7 @@ scenario("symptom safety clear enables search before provider request", () => {
       locality: "Oradea",
     },
     safetyState: "clear",
+    clinicalValidationApprovals: ["symptom_safety_completion"],
   });
   assert.equal(profile.sufficient_for_search, true);
   assert.equal(profile.sufficient_for_provider_request, false);
@@ -370,6 +374,7 @@ scenario("symptom provider request completeness", () => {
       timing: "cat_mai_repede",
     },
     safetyState: "clear",
+    clinicalValidationApprovals: ["symptom_safety_completion"],
   });
   assert.equal(profile.sufficient_for_provider_request, true);
 });
@@ -471,10 +476,12 @@ scenario("exact pediatric ophthalmology can skip routine clarification", () => {
       locality: "Alba Iulia",
     },
     safetyState: "clear",
+    clinicalValidationApprovals: ["pediatric_age_to_care_path"],
   });
   assert.equal(profile.care_path, "specialized_ophthalmology");
   assert.ok(!profile.missing_required_facts.includes("routine_vs_symptom"));
   assert.equal(profile.sufficient_for_search, true);
+  assert.ok(profile.approved_validation_rule_keys.includes("pediatric_age_to_care_path"));
 });
 
 scenario("ambiguous pediatric exam stays unresolved", () => {
@@ -597,6 +604,8 @@ scenario("safety blocking interrupts care path", () => {
       locality: "Bucuresti",
     },
     safetyState: "blocking",
+    clinicalValidationApprovals: PATIENT_GUIDANCE_CLINICAL_VALIDATION_RULES
+      .map((rule) => rule.rule_key),
   });
   assert.equal(profile.care_path, "emergency_interruption");
   assert.equal(profile.sufficient_for_search, false);
@@ -899,6 +908,10 @@ scenario("routing profile minimum fields", () => {
     "sufficient_for_provider_request",
     "next_question_key",
     "next_question_reason",
+    "clinical_validation_approvals",
+    "clinical_validation_status",
+    "blocking_validation_rule_keys",
+    "approved_validation_rule_keys",
     "search_expansion_policy",
     "top3_eligibility_policy",
     "fallback_mode",
@@ -940,5 +953,207 @@ scenario("unresolved care path can never be sufficient for search", () => {
   assert.equal(profile.sufficient_for_provider_request, false);
 });
 
-assert.ok(scenarioCount >= 65, `Expected at least 65 pure scenarios, received ${scenarioCount}`);
+
+scenario("clinical approvals default to empty", () => {
+  const profile = buildPatientGuidanceRoutingProfile({
+    primaryIntent: "reparatii_ochelari",
+    confirmedServiceKeys: ["frame_repair"],
+    confirmedFacts: {
+      repair_type: "broken_frame",
+      locality: "Sibiu",
+    },
+    safetyState: "clear",
+  });
+  assert.deepEqual(profile.clinical_validation_approvals, []);
+  assert.deepEqual(profile.approved_validation_rule_keys, []);
+  assert.equal(profile.clinical_validation_status, "clear");
+});
+
+scenario("invented clinical rule approval is rejected", () => {
+  assert.equal(
+    isPatientGuidanceClinicalRuleApproved("invented_rule", ["invented_rule"]),
+    false,
+  );
+  const profile = buildPatientGuidanceRoutingProfile({
+    primaryIntent: "simptome_oftalmologice",
+    confirmedFacts: {
+      symptom_description: "roseata",
+      safety_targeted_check: "niciuna",
+      locality: "Oradea",
+    },
+    safetyState: "clear",
+    clinical_validation_approvals: ["invented_rule"],
+  });
+  assert.deepEqual(profile.approved_validation_rule_keys, []);
+});
+
+scenario("complete symptom remains blocked without explicit approval", () => {
+  const profile = buildPatientGuidanceRoutingProfile({
+    primaryIntent: "simptome_oftalmologice",
+    confirmedFacts: {
+      symptom_description: "roseata persistenta",
+      safety_targeted_check: "niciuna",
+      locality: "Oradea",
+    },
+    safetyState: "clear",
+  });
+  assert.equal(profile.sufficient_for_search, false);
+  assert.equal(profile.sufficient_for_provider_request, false);
+  assert.equal(profile.clinical_validation_status, "blocked");
+  assert.ok(profile.blocking_validation_rule_keys.includes("symptom_safety_completion"));
+  assert.equal(profile.next_question_reason, "clinical_validation_required");
+});
+
+scenario("complete symptom can pass search completeness after explicit approval", () => {
+  const profile = buildPatientGuidanceRoutingProfile({
+    primaryIntent: "simptome_oftalmologice",
+    confirmedFacts: {
+      symptom_description: "roseata persistenta",
+      safety_targeted_check: "niciuna",
+      locality: "Oradea",
+    },
+    safetyState: "clear",
+    clinicalValidationApprovals: ["symptom_safety_completion"],
+  });
+  assert.equal(profile.care_path, "ophthalmology");
+  assert.equal(profile.sufficient_for_search, true);
+  assert.ok(!profile.blocking_validation_rule_keys.includes("symptom_safety_completion"));
+});
+
+scenario("specialized Top 3 policy is blocked without explicit approval", () => {
+  const policy = buildPatientTop3EligibilityPolicy({ serviceKeys: ["oct"] });
+  assert.equal(policy.activation_status, "blocked");
+  assert.deepEqual(
+    policy.blocking_validation_rule_keys,
+    ["specialized_service_trust_threshold"],
+  );
+  assert.deepEqual(policy.required_trust_levels, []);
+  assert.deepEqual(policy.required_service_confirmation_levels, []);
+});
+
+scenario("specialized service cannot be exact Top 3 without approval", () => {
+  const unapprovedProfile = buildPatientGuidanceRoutingProfile({
+    primaryIntent: "investigatii",
+    confirmedServiceKeys: ["oct"],
+    confirmedFacts: {
+      investigation_type: "oct",
+      locality: "Cluj-Napoca",
+    },
+    safetyState: "clear",
+  });
+  const result = evaluatePatientTop3Eligibility({
+    ...exactOctCandidate,
+    routingProfile: unapprovedProfile,
+  });
+  assert.equal(result.eligibility, "extended_relevant");
+  assert.ok(result.reasons.includes("clinical_validation_required"));
+});
+
+scenario("approved specialized policy applies verified thresholds", () => {
+  const policy = buildPatientTop3EligibilityPolicy({
+    serviceKeys: ["oct"],
+    clinical_validation_approvals: ["specialized_service_trust_threshold"],
+  });
+  assert.equal(policy.activation_status, "clear");
+  assert.deepEqual(policy.blocking_validation_rule_keys, []);
+  assert.deepEqual(policy.required_trust_levels, ["verified"]);
+  assert.deepEqual(policy.required_service_confirmation_levels, ["vezunde_verified"]);
+});
+
+scenario("exact pediatric service is blocked without pediatric approval", () => {
+  const profile = buildPatientGuidanceRoutingProfile({
+    primaryIntent: "control_copil",
+    confirmedServiceKeys: ["pediatric_ophthalmology"],
+    confirmedFacts: {
+      child_age_group: "7_12",
+      locality: "Alba Iulia",
+    },
+    safetyState: "clear",
+  });
+  assert.equal(profile.care_path, "unresolved");
+  assert.equal(profile.sufficient_for_search, false);
+  assert.ok(profile.blocking_validation_rule_keys.includes("pediatric_age_to_care_path"));
+});
+
+scenario("approved pediatric route follows existing canonical rules", () => {
+  const profile = buildPatientGuidanceRoutingProfile({
+    primaryIntent: "control_copil",
+    confirmedServiceKeys: ["pediatric_ophthalmology"],
+    confirmedFacts: {
+      child_age_group: "7_12",
+      locality: "Alba Iulia",
+    },
+    safetyState: "clear",
+    clinical_validation_approvals: ["pediatric_age_to_care_path"],
+  });
+  assert.equal(profile.care_path, "specialized_ophthalmology");
+  assert.equal(profile.sufficient_for_search, true);
+});
+
+scenario("first contact lens fitting stays unresolved without approval", () => {
+  const profile = buildPatientGuidanceRoutingProfile({
+    primaryIntent: "lentile_contact",
+    confirmedServiceKeys: ["contact_lens_fitting"],
+    confirmedFacts: {
+      contact_lens_experience: "first_time",
+      locality: "Iasi",
+    },
+    safetyState: "clear",
+  });
+  assert.equal(profile.care_path, "unresolved");
+  assert.ok(profile.blocking_validation_rule_keys.includes("contact_lens_first_time_path"));
+});
+
+scenario("blocks activation metadata alone never grants approval", () => {
+  const rule = PATIENT_GUIDANCE_CLINICAL_VALIDATION_RULES
+    .find((item) => item.rule_key === "symptom_safety_completion");
+  assert.equal(rule.blocks_activation, true);
+  assert.equal(
+    isPatientGuidanceClinicalRuleApproved(rule.rule_key, []),
+    false,
+  );
+  assert.equal(
+    isPatientGuidanceClinicalRuleApproved(rule.rule_key, [rule.rule_key]),
+    true,
+  );
+});
+
+scenario("directory candidate stays directory only while specialized activation is blocked", () => {
+  const unapprovedProfile = buildPatientGuidanceRoutingProfile({
+    primaryIntent: "investigatii",
+    confirmedServiceKeys: ["oct"],
+    confirmedFacts: {
+      investigation_type: "oct",
+      locality: "Cluj-Napoca",
+    },
+    safetyState: "clear",
+  });
+  const result = evaluatePatientTop3Eligibility({
+    ...exactOctCandidate,
+    routingProfile: unapprovedProfile,
+    trust_level: "directory",
+  });
+  assert.equal(result.eligibility, "directory_only");
+  assert.ok(result.reasons.includes("clinical_validation_required"));
+});
+
+scenario("safety interruption wins even when every clinical rule is approved", () => {
+  const profile = buildPatientGuidanceRoutingProfile({
+    primaryIntent: "simptome_oftalmologice",
+    confirmedServiceKeys: ["ophthalmology_consultation"],
+    confirmedFacts: {
+      symptom_description: "pierdere brusca a vederii",
+      safety_targeted_check: "pierdere_brusca_vedere",
+      locality: "Bucuresti",
+    },
+    safetyState: "blocking",
+    clinicalValidationApprovals: PATIENT_GUIDANCE_CLINICAL_VALIDATION_RULES
+      .map((rule) => rule.rule_key),
+  });
+  assert.equal(profile.care_path, "emergency_interruption");
+  assert.equal(profile.sufficient_for_search, false);
+  assert.equal(profile.sufficient_for_provider_request, false);
+});
+
+assert.ok(scenarioCount >= 97, `Expected at least 97 pure scenarios, received ${scenarioCount}`);
 console.log(`Patient guidance routing contract verified with ${scenarioCount} pure scenarios.`);
