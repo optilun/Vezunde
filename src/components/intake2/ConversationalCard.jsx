@@ -23,7 +23,10 @@ import { abandonAllPatientRequestIdempotency } from "@/lib/patientRequestIdempot
 import { buildIntentConfirmationProposal } from "@/lib/patientIntentConfirmation";
 import { buildPatientRequestDraft } from "@/lib/patientRequestDraft";
 import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill } from "@/lib/intentRegistry";
-import { getApprovedPatientGuidanceQuestion } from "../../../shared/patientGuidanceQuestionCatalog.js";
+import {
+  PATIENT_GUIDANCE_QUESTION_CATALOG,
+  getApprovedPatientGuidanceQuestion,
+} from "../../../shared/patientGuidanceQuestionCatalog.js";
 import QuestionChoice from "./QuestionChoice";
 import QuestionText from "./QuestionText";
 import QuestionLocation from "./QuestionLocation";
@@ -86,6 +89,17 @@ function patientLanguageText(initialMessage, answers) {
   return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))].join(". ");
 }
 
+function expandedAnsweredQuestionKeys(values = []) {
+  const keys = new Set((Array.isArray(values) ? values : []).filter(Boolean));
+  for (const question of Object.values(PATIENT_GUIDANCE_QUESTION_CATALOG)) {
+    const aliases = [question.key, ...(question.legacy_question_keys || [])];
+    if (aliases.some((key) => keys.has(key))) {
+      for (const key of aliases) keys.add(key);
+    }
+  }
+  return keys;
+}
+
 function fallbackQuestionSelection() {
   return { status: "fallback", question: null };
 }
@@ -99,7 +113,7 @@ function controlledQuestionSelection(response, state) {
     return fallbackQuestionSelection();
   }
 
-  const alreadySeen = new Set([
+  const alreadySeen = expandedAnsweredQuestionKeys([
     ...(Array.isArray(state.answers) ? state.answers.map((answer) => answer.question_key) : []),
     ...(Array.isArray(state.questionHistory) ? state.questionHistory : []),
   ]);
@@ -181,14 +195,15 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
 
   const intentDef = state.intent ? INTENTS[state.intent] : null;
   const questions = intentDef ? intentDef.questions : [CATEGORY_QUESTION];
-  const answeredKeys = state.answers.map((a) => a.question_key);
-  const legacyCurrent = questions.find((q) => !answeredKeys.includes(q.key));
+  const answeredKeys = expandedAnsweredQuestionKeys(state.answers.map((answer) => answer.question_key));
+  const legacyCurrent = questions.find((question) => !answeredKeys.has(question.key));
   const current = !state.intent
     ? CATEGORY_QUESTION
     : (questionSelection.status === "selected"
       ? questionSelection.question
       : (["fallback", "idle"].includes(questionSelection.status) ? legacyCurrent : null));
-  const total = state.answers.length + questions.filter((q) => !answeredKeys.includes(q.key)).length;
+  const remainingLegacyQuestionCount = questions.filter((question) => !answeredKeys.has(question.key)).length;
+  const total = state.answers.length + remainingLegacyQuestionCount;
   const progress = total > 0 ? Math.round((state.answers.length / total) * 100) : 0;
 
   analyticsSessionRef.current.phase = phase;
@@ -442,18 +457,12 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     (async () => {
       const response = await selectPatientGuidanceNextQuestion({
         search_text: patientLanguageText(initialMessage, state.answers),
-        intent: state.intent,
-        deterministic_intent: state.intent,
-        explicit_primary_intent: state.intent,
-        service_keys: state.serviceKeys,
-        explicit_confirmed_service_keys: state.explicitServiceKeys,
         answers: state.answers,
         question_history: state.questionHistory,
         locality_siruta_code: state.locality?.siruta_code || "",
         locality_name: state.city || state.locality?.city_name || "",
         county_code: state.locality?.county_code || "",
         county_name: state.locality?.county_name || "",
-        deterministic_safety_state: "unchecked",
       }, {
         timeoutMs: PATIENT_INTERPRETATION_TIMEOUT_MS,
         requestId,
@@ -474,8 +483,6 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     initialMessage,
     state.intent,
     state.answers,
-    state.serviceKeys,
-    state.explicitServiceKeys,
     state.questionHistory,
     state.locality,
     state.city,
