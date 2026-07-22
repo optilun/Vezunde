@@ -3,6 +3,10 @@ import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { readAccountPreferences, rememberAccountMode } from "@/lib/accountPreferences";
+import {
+  accountWorkspaceFunction,
+  keepWorkspaceIdentity,
+} from "@/lib/accountWorkspaceLifecycle";
 import { AlertTriangle, LogOut, RefreshCw } from "lucide-react";
 const PersonalAccountWorkspace = lazy(() => import("@/components/workspace/personal/PersonalAccountWorkspace"));
 const ApplicantWorkspaceRoot = lazy(() => import("@/components/workspace/applicant/ApplicantWorkspaceRoot"));
@@ -62,8 +66,19 @@ export default function MyAccount() {
   const [loadError, setLoadError] = useState("");
   const [activeMode, setActiveMode] = useState(null);
   const loadRequestRef = useRef(0);
+  const refreshRequestRef = useRef({ provider: 0, professional: 0, onboarding: 0 });
   const hasWorkspaceDataRef = useRef(false);
   const { user, logout } = useAuth();
+
+  const updateProviderWorkspace = useCallback((next) => {
+    setProviderWorkspace((current) => keepWorkspaceIdentity(current, next));
+  }, []);
+  const updateProfessionalWorkspace = useCallback((next) => {
+    setProfessionalWorkspace((current) => keepWorkspaceIdentity(current, next));
+  }, []);
+  const updateOnboardingWorkspace = useCallback((next) => {
+    setOnboardingWorkspace((current) => keepWorkspaceIdentity(current, next));
+  }, []);
 
   const load = useCallback(async () => {
     const requestId = ++loadRequestRef.current;
@@ -79,9 +94,9 @@ export default function MyAccount() {
       ]);
 
       if (requestId !== loadRequestRef.current) return;
-      setProviderWorkspace(providerResult.data);
-      setProfessionalWorkspace(professionalResult.data);
-      setOnboardingWorkspace(onboardingResult.data);
+      updateProviderWorkspace(providerResult.data);
+      updateProfessionalWorkspace(professionalResult.data);
+      updateOnboardingWorkspace(onboardingResult.data);
       hasWorkspaceDataRef.current = true;
     } catch (error) {
       if (requestId !== loadRequestRef.current) return;
@@ -92,11 +107,46 @@ export default function MyAccount() {
     } finally {
       if (requestId === loadRequestRef.current && initialRequest) setLoading(false);
     }
-  }, []);
+  }, [updateOnboardingWorkspace, updateProfessionalWorkspace, updateProviderWorkspace]);
+
+  const refreshWorkspace = useCallback(async (workspaceKey) => {
+    const requestId = ++refreshRequestRef.current[workspaceKey];
+    const response = await base44.functions.invoke(accountWorkspaceFunction(workspaceKey), {})
+      .catch((error) => ({ data: { error: error.response?.data?.error || error.message || "Workspace-ul nu a putut fi actualizat." } }));
+    if (requestId !== refreshRequestRef.current[workspaceKey]) return null;
+    if (!response.data || response.data.error) {
+      console.error(`Account ${workspaceKey} workspace refresh failed:`, response.data?.error || "Răspuns indisponibil");
+      return null;
+    }
+
+    if (workspaceKey === "provider") updateProviderWorkspace(response.data);
+    else if (workspaceKey === "professional") updateProfessionalWorkspace(response.data);
+    else updateOnboardingWorkspace(response.data);
+    hasWorkspaceDataRef.current = true;
+    return response.data;
+  }, [updateOnboardingWorkspace, updateProfessionalWorkspace, updateProviderWorkspace]);
+
+  const refreshProviderWorkspace = useCallback(
+    () => refreshWorkspace("provider"),
+    [refreshWorkspace],
+  );
+  const refreshProfessionalWorkspace = useCallback(
+    () => refreshWorkspace("professional"),
+    [refreshWorkspace],
+  );
+  const refreshOnboardingWorkspace = useCallback(
+    () => refreshWorkspace("onboarding"),
+    [refreshWorkspace],
+  );
 
   useEffect(() => {
     if (user?.id) void load();
-    return () => { loadRequestRef.current += 1; };
+    return () => {
+      loadRequestRef.current += 1;
+      refreshRequestRef.current.provider += 1;
+      refreshRequestRef.current.professional += 1;
+      refreshRequestRef.current.onboarding += 1;
+    };
   }, [load, user?.id]);
 
   const onLogout = () => logout(true);
@@ -294,7 +344,7 @@ export default function MyAccount() {
   if (resolvedMode === "provider" && hasProviderWorkspace) {
     return (
       <Suspense fallback={<WorkspaceLoading />}>
-        <ProviderWorkspaceRoot user={user} workspace={providerWorkspace} onLogout={onLogout} onRefresh={load} {...sharedAccountProps} />
+        <ProviderWorkspaceRoot user={user} workspace={providerWorkspace} onLogout={onLogout} onRefresh={refreshProviderWorkspace} {...sharedAccountProps} />
       </Suspense>
     );
   }
@@ -302,7 +352,7 @@ export default function MyAccount() {
   if (resolvedMode === "professional" && hasProfessionalWorkspace) {
     return (
       <Suspense fallback={<WorkspaceLoading />}>
-        <ProfessionalWorkspaceRoot user={user} workspace={professionalWorkspace} onLogout={onLogout} onRefresh={load} {...sharedAccountProps} />
+        <ProfessionalWorkspaceRoot user={user} workspace={professionalWorkspace} onLogout={onLogout} onRefresh={refreshProfessionalWorkspace} {...sharedAccountProps} />
       </Suspense>
     );
   }
@@ -314,7 +364,7 @@ export default function MyAccount() {
         user={user}
         workspace={onboardingWorkspace}
         onLogout={onLogout}
-        onRefresh={load}
+        onRefresh={refreshOnboardingWorkspace}
         modeSwitches={modeSwitches}
         />
       </Suspense>
