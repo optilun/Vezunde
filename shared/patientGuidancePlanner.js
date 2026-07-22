@@ -4,6 +4,7 @@ import {
   normalizeServiceKey,
 } from "./canonicalServiceRegistryExtended.js";
 import {
+  PATIENT_GUIDANCE_QUESTION_CATALOG,
   PATIENT_GUIDANCE_QUESTION_KEYS,
   isApprovedPatientGuidanceQuestionKey,
 } from "./patientGuidanceQuestionCatalog.js";
@@ -46,6 +47,39 @@ const AI_CARE_PATH_SET = new Set(
   CARE_PATH_VALUES.filter((value) => !["unresolved", "emergency_interruption"].includes(value)),
 );
 const AI_FIELD_SET = new Set(PATIENT_GUIDANCE_PLANNER_AI_FIELDS);
+const PATIENT_FACING_SERVICE_KEY_SET = new Set(
+  CANONICAL_SERVICE_KEYS.filter((key) => {
+    const definition = getCanonicalServiceDefinition(key);
+    return definition?.patient_facing !== false && definition?.b2b_only !== true;
+  }),
+);
+const CONTROLLED_FACT_KEYS = Object.freeze([
+  "routine_vs_symptom",
+  "for_whom",
+  "child_age_group",
+  "investigation_type",
+  "optical_product_type",
+  "contact_lens_experience",
+  "repair_type",
+  "symptom_timing_or_acuity",
+  "timing",
+  "safety_targeted_check",
+]);
+const CONTROLLED_FACT_VALUE_SETS = Object.freeze(Object.fromEntries(
+  CONTROLLED_FACT_KEYS.map((factKey) => [
+    factKey,
+    new Set(
+      (PATIENT_GUIDANCE_QUESTION_CATALOG[factKey]?.options || [])
+        .map((option) => option.key),
+    ),
+  ]),
+));
+const AI_FREE_TEXT_FACT_KEYS = new Set([
+  "locality",
+  "symptom_description",
+  "investigation_reference_text",
+  "repair_details",
+]);
 
 const REQUIRED_AI_FIELD_TYPES = Object.freeze({
   primary_intent: "string",
@@ -94,26 +128,48 @@ function canonicalServiceKeys(values, limit = 12) {
   )].slice(0, limit);
 }
 
+function canonicalAIServiceKeys(values, limit = 12) {
+  return [...new Set(
+    (Array.isArray(values) ? values : [])
+      .map((value) => clean(value, 160))
+      .filter((value) => PATIENT_FACING_SERVICE_KEY_SET.has(value)),
+  )].slice(0, limit);
+}
+
 function normalizeIntent(value) {
   const intent = clean(value, 80);
   return INTENT_SET.has(intent) ? intent : "unknown";
 }
 
 function sanitizeLocality(value) {
-  if (!isPlainObject(value)) return clean(value, 160);
+  if (!isPlainObject(value)) {
+    const locality = clean(value, 160);
+    return locality || undefined;
+  }
   const locality = {
     siruta_code: clean(value.siruta_code, 40),
     city: clean(value.city || value.name, 120),
     county_code: clean(value.county_code, 40),
     county: clean(value.county || value.county_name, 120),
   };
-  return Object.fromEntries(Object.entries(locality).filter(([, item]) => Boolean(item)));
+  const sanitized = Object.fromEntries(
+    Object.entries(locality).filter(([, item]) => Boolean(item)),
+  );
+  return Object.keys(sanitized).length > 0 ? sanitized : undefined;
 }
 
 function sanitizeFactValue(key, value) {
   if (key === "locality") return sanitizeLocality(value);
+
+  const allowedValues = CONTROLLED_FACT_VALUE_SETS[key];
+  if (allowedValues) {
+    const controlledValue = clean(value, 160);
+    return allowedValues.has(controlledValue) ? controlledValue : undefined;
+  }
+
   if (typeof value === "boolean" || typeof value === "number") return value;
-  return clean(value, 800);
+  const textValue = clean(value, 800);
+  return textValue || undefined;
 }
 
 function sanitizeFactObject(value) {
@@ -123,11 +179,7 @@ function sanitizeFactObject(value) {
       .filter(([key]) => FACT_KEY_SET.has(key))
       .slice(0, 24)
       .map(([key, fact]) => [key, sanitizeFactValue(key, fact)])
-      .filter(([, fact]) => (
-        typeof fact === "boolean"
-        || typeof fact === "number"
-        || (isPlainObject(fact) ? Object.keys(fact).length > 0 : Boolean(fact))
-      )),
+      .filter(([, fact]) => fact !== undefined),
   );
 }
 
@@ -138,22 +190,65 @@ function factsFromGuidedAnswers(answers) {
     const key = clean(answer?.question_key, 80);
     if (!QUESTION_KEY_SET.has(key) || !FACT_KEY_SET.has(key)) continue;
     const value = sanitizeFactValue(key, answer?.answer_value);
-    if (isPlainObject(value) ? Object.keys(value).length > 0 : Boolean(value)) facts[key] = value;
+    if (value !== undefined) facts[key] = value;
   }
   return facts;
 }
 
-function factsFromAIProposal(extractedFacts) {
-  if (!Array.isArray(extractedFacts)) return {};
-  const facts = {};
-  for (const item of extractedFacts.slice(0, 16)) {
-    if (!isPlainObject(item)) continue;
-    const key = clean(item.fact_key, 80);
-    if (!FACT_KEY_SET.has(key) || typeof item.value !== "string") continue;
-    const value = clean(item.value, 800);
-    if (value) facts[key] = value;
+function validEvidencePhrase(value, normalizedText) {
+  const evidencePhrase = clean(value, 120);
+  if (!evidencePhrase) return null;
+  const normalizedPhrase = normalizePatientGuidanceText(evidencePhrase);
+  return normalizedPhrase && normalizedText.includes(normalizedPhrase)
+    ? evidencePhrase
+    : null;
+}
+
+function sanitizeAICandidateFacts(extractedFacts, text) {
+  const normalizedText = normalizePatientGuidanceText(text);
+  const facts = [];
+  let rejectedFactCount = 0;
+  let unsupportedFactCount = 0;
+  let rejectedEvidencePhraseCount = 0;
+
+  for (const item of (Array.isArray(extractedFacts) ? extractedFacts : []).slice(0, 16)) {
+    if (!isPlainObject(item)) {
+      rejectedFactCount += 1;
+      continue;
+    }
+    const factKey = clean(item.fact_key, 80);
+    if (!FACT_KEY_SET.has(factKey) || typeof item.value !== "string") {
+      rejectedFactCount += 1;
+      continue;
+    }
+    const factValue = sanitizeFactValue(factKey, item.value);
+    if (factValue === undefined) {
+      rejectedFactCount += 1;
+      continue;
+    }
+
+    const suppliedEvidencePhrase = clean(item.evidence_phrase, 120);
+    const evidencePhrase = validEvidencePhrase(suppliedEvidencePhrase, normalizedText);
+    if (suppliedEvidencePhrase && !evidencePhrase) rejectedEvidencePhraseCount += 1;
+    const status = evidencePhrase ? "supported" : "unsupported";
+    if (status === "unsupported") unsupportedFactCount += 1;
+
+    facts.push({
+      fact_key: factKey,
+      value: factValue,
+      evidence_phrase: evidencePhrase,
+      status,
+      confirmation_eligible: false,
+      free_text_candidate: AI_FREE_TEXT_FACT_KEYS.has(factKey),
+    });
   }
-  return facts;
+
+  return {
+    facts,
+    rejectedFactCount,
+    unsupportedFactCount,
+    rejectedEvidencePhraseCount,
+  };
 }
 
 function derivedFactsForServices(serviceKeys) {
@@ -276,6 +371,12 @@ export function getPatientGuidancePlannerResponseSchema() {
           properties: {
             fact_key: { type: "string", enum: [...PATIENT_GUIDANCE_FACT_KEYS] },
             value: { type: "string", maxLength: 800 },
+            evidence_phrase: {
+              anyOf: [
+                { type: "string", maxLength: 120 },
+                { type: "null" },
+              ],
+            },
           },
           required: ["fact_key", "value"],
         },
@@ -331,7 +432,7 @@ export function buildPatientGuidancePlannerPrompt(input = {}) {
     "Never diagnose, give medical advice, give emergency instructions, choose providers, rank providers, produce Top 3, approve clinical rules, set a final care path, or decide final search sufficiency.",
     "Do not override guided answers, an explicit locality, deterministic safety state, confirmed services, or internal clinical approvals.",
     "Possible safety flags are advisory proposals only. Never declare the case safe.",
-    "Evidence phrases must be short phrases found verbatim in the supplied patient text.",
+    "Every extracted fact may include evidence_phrase. It must be a short phrase found verbatim in the supplied patient text. Without valid evidence the fact remains unsupported.",
     "PATIENT_TEXT=" + JSON.stringify(text),
     "DETERMINISTIC_CONTEXT_JSON=" + JSON.stringify(deterministicContext),
     "APPROVED_QUESTION_KEYS_JSON=" + JSON.stringify(PATIENT_GUIDANCE_QUESTION_KEYS),
@@ -352,6 +453,8 @@ export function sanitizePatientGuidancePlannerProposal(raw, options = {}) {
         rejected_intent_count: 0,
         rejected_service_count: 0,
         rejected_fact_count: 0,
+        unsupported_fact_count: 0,
+        rejected_evidence_phrase_count: 0,
         rejected_care_path_count: 0,
         question_key_rejected: false,
       },
@@ -362,19 +465,8 @@ export function sanitizePatientGuidancePlannerProposal(raw, options = {}) {
   const alternativeIntents = unique(raw.alternative_intents, 3)
     .map(normalizeIntent)
     .filter((intent) => intent !== "unknown" && intent !== primaryIntent);
-  const candidateServiceKeys = canonicalServiceKeys(raw.candidate_service_keys);
-  const extractedFacts = raw.extracted_facts
-    .slice(0, 16)
-    .filter((item) => (
-      isPlainObject(item)
-      && FACT_KEY_SET.has(clean(item.fact_key, 80))
-      && typeof item.value === "string"
-      && Boolean(clean(item.value, 800))
-    ))
-    .map((item) => ({
-      fact_key: clean(item.fact_key, 80),
-      value: clean(item.value, 800),
-    }));
+  const candidateServiceKeys = canonicalAIServiceKeys(raw.candidate_service_keys);
+  const candidateFactValidation = sanitizeAICandidateFacts(raw.extracted_facts, options.text);
   const candidateCarePaths = unique(raw.candidate_care_paths, 5)
     .filter((value) => AI_CARE_PATH_SET.has(value));
   const proposedQuestionKey = clean(raw.next_question_key, 80);
@@ -400,7 +492,7 @@ export function sanitizePatientGuidancePlannerProposal(raw, options = {}) {
       primary_intent: primaryIntent,
       alternative_intents: alternativeIntents,
       candidate_service_keys: candidateServiceKeys,
-      extracted_facts: extractedFacts,
+      extracted_facts: candidateFactValidation.facts,
       candidate_care_paths: candidateCarePaths,
       next_question_key: nextQuestionKey,
       confidence_band: confidenceBand,
@@ -417,7 +509,9 @@ export function sanitizePatientGuidancePlannerProposal(raw, options = {}) {
         0,
         unique(raw.candidate_service_keys, 40).length - candidateServiceKeys.length,
       ),
-      rejected_fact_count: Math.max(0, raw.extracted_facts.slice(0, 16).length - extractedFacts.length),
+      rejected_fact_count: candidateFactValidation.rejectedFactCount,
+      unsupported_fact_count: candidateFactValidation.unsupportedFactCount,
+      rejected_evidence_phrase_count: candidateFactValidation.rejectedEvidencePhraseCount,
       rejected_care_path_count: Math.max(
         0,
         unique(raw.candidate_care_paths, 20).length - candidateCarePaths.length,
@@ -427,26 +521,34 @@ export function sanitizePatientGuidancePlannerProposal(raw, options = {}) {
   };
 }
 
-function mergeFactsByPriority(input, proposal) {
-  const aiFacts = factsFromAIProposal(proposal?.extracted_facts);
+function mergeConfirmedFacts(input) {
   const deterministicFacts = sanitizeFactObject(input.deterministicFacts);
   const signalFacts = sanitizeFactObject(input.signalFacts);
   const guidedFacts = factsFromGuidedAnswers(input.guidedAnswers);
   const explicitFacts = sanitizeFactObject(input.explicitFacts);
-  const knownFacts = {
-    ...aiFacts,
+  const deterministicConfirmedFacts = {
     ...signalFacts,
     ...deterministicFacts,
+  };
+  const explicitConfirmedFacts = {
     ...guidedFacts,
     ...explicitFacts,
   };
+  const confirmedFacts = {
+    ...deterministicConfirmedFacts,
+    ...explicitConfirmedFacts,
+  };
   const factSources = {};
-  for (const key of Object.keys(aiFacts)) factSources[key] = "ai_proposal";
   for (const key of Object.keys(signalFacts)) factSources[key] = "deterministic";
   for (const key of Object.keys(deterministicFacts)) factSources[key] = "deterministic";
-  for (const key of Object.keys(guidedFacts)) factSources[key] = "explicit_user";
+  for (const key of Object.keys(guidedFacts)) factSources[key] = "guided_answer";
   for (const key of Object.keys(explicitFacts)) factSources[key] = "explicit_user";
-  return { knownFacts, factSources };
+  return {
+    explicitConfirmedFacts,
+    deterministicConfirmedFacts,
+    confirmedFacts,
+    factSources,
+  };
 }
 
 function plannerFallbackReason(aiStatus) {
@@ -470,6 +572,8 @@ export function buildPatientGuidancePlannerProfile(input = {}, aiEnvelope = {}) 
         rejected_intent_count: 0,
         rejected_service_count: 0,
         rejected_fact_count: 0,
+        unsupported_fact_count: 0,
+        rejected_evidence_phrase_count: 0,
         rejected_care_path_count: 0,
         question_key_rejected: false,
       },
@@ -482,61 +586,70 @@ export function buildPatientGuidancePlannerProfile(input = {}, aiEnvelope = {}) 
   const explicitIntent = normalizeIntent(input.explicitPrimaryIntent);
   const suppliedDeterministicIntent = normalizeIntent(input.deterministicIntent);
   const signalIntent = normalizeIntent(signals.proposed_intent);
-  const aiIntent = normalizeIntent(proposal?.primary_intent);
-  const primaryIntent = [
+  const aiProposedPrimaryIntent = normalizeIntent(proposal?.primary_intent);
+  const confirmedPrimaryIntent = [
     explicitIntent,
     suppliedDeterministicIntent,
     signalIntent,
-    aiIntent,
   ].find((intent) => intent !== "unknown") || "unknown";
+  const candidateIntents = unique([
+    ...(Array.isArray(input.alternativeIntents) ? input.alternativeIntents : []),
+    suppliedDeterministicIntent !== confirmedPrimaryIntent ? suppliedDeterministicIntent : null,
+    signalIntent !== confirmedPrimaryIntent ? signalIntent : null,
+    aiProposedPrimaryIntent,
+    ...(proposal?.alternative_intents || []),
+  ], 8)
+    .map(normalizeIntent)
+    .filter((intent) => intent !== "unknown" && intent !== confirmedPrimaryIntent);
 
   const explicitConfirmedServiceKeys = canonicalServiceKeys(input.explicitConfirmedServiceKeys);
   const deterministicServiceKeys = canonicalServiceKeys([
     ...(Array.isArray(input.deterministicServiceKeys) ? input.deterministicServiceKeys : []),
     ...signals.exact_service_keys,
   ]);
-  const confirmedServiceKeys = canonicalServiceKeys([
-    ...explicitConfirmedServiceKeys,
-    ...deterministicServiceKeys,
-  ]);
+  const deterministicServiceConflicts = explicitConfirmedServiceKeys.length > 0
+    ? deterministicServiceKeys.filter((key) => !explicitConfirmedServiceKeys.includes(key))
+    : [];
+  const confirmedServiceKeys = explicitConfirmedServiceKeys.length > 0
+    ? explicitConfirmedServiceKeys
+    : deterministicServiceKeys;
+  const aiCandidateServiceKeys = canonicalAIServiceKeys(proposal?.candidate_service_keys);
   const candidateServiceKeys = canonicalServiceKeys([
-    ...confirmedServiceKeys,
-    ...(proposal?.candidate_service_keys || []),
-  ]);
+    ...deterministicServiceConflicts,
+    ...aiCandidateServiceKeys,
+  ]).filter((key) => !confirmedServiceKeys.includes(key));
   const signalFacts = {
     ...derivedFactsForServices(deterministicServiceKeys),
     ...signals.deterministic_facts,
   };
-  const { knownFacts, factSources } = mergeFactsByPriority({
+  const {
+    explicitConfirmedFacts,
+    deterministicConfirmedFacts,
+    confirmedFacts,
+    factSources,
+  } = mergeConfirmedFacts({
     explicitFacts: input.explicitFacts,
     guidedAnswers: input.guidedAnswers,
     deterministicFacts: input.deterministicFacts,
     signalFacts,
-  }, proposal);
-  const alternativeIntents = unique([
-    ...(Array.isArray(input.alternativeIntents) ? input.alternativeIntents : []),
-    suppliedDeterministicIntent !== primaryIntent ? suppliedDeterministicIntent : null,
-    signalIntent !== primaryIntent ? signalIntent : null,
-    aiIntent !== primaryIntent ? aiIntent : null,
-    ...(proposal?.alternative_intents || []),
-  ], 5)
-    .map(normalizeIntent)
-    .filter((intent) => intent !== "unknown" && intent !== primaryIntent);
-  const candidateCarePaths = unique(proposal?.candidate_care_paths || [], 5)
-    .filter((value) => AI_CARE_PATH_SET.has(value));
+  });
+  const proposedCandidateCarePaths = unique([
+    ...(Array.isArray(input.candidateCarePaths) ? input.candidateCarePaths : []),
+    ...(proposal?.candidate_care_paths || []),
+  ], 5).filter((value) => AI_CARE_PATH_SET.has(value));
   const deterministicSafetyState = SAFETY_STATES.has(input.deterministicSafetyState)
     ? input.deterministicSafetyState
     : "unchecked";
 
   const routingProfile = buildPatientGuidanceRoutingProfile({
     text,
-    primaryIntent,
-    alternativeIntents,
+    primaryIntent: confirmedPrimaryIntent,
+    alternativeIntents: candidateIntents,
     candidateServiceKeys,
     confirmedServiceKeys,
-    confirmedFacts: knownFacts,
+    confirmedFacts,
     safetyState: deterministicSafetyState,
-    candidateCarePaths,
+    candidateCarePaths: proposedCandidateCarePaths,
     clinicalValidationApprovals: PATIENT_GUIDANCE_PLANNER_INTERNAL_CLINICAL_VALIDATION_APPROVALS,
   });
 
@@ -550,12 +663,20 @@ export function buildPatientGuidancePlannerProfile(input = {}, aiEnvelope = {}) 
     status: proposal ? "completed" : "fallback",
     ai_status: proposal ? "completed" : aiStatus,
     fallback_reason: proposal ? null : plannerFallbackReason(aiStatus),
+    confirmed_primary_intent: confirmedPrimaryIntent,
+    ai_proposed_primary_intent: aiProposedPrimaryIntent,
+    candidate_intents: candidateIntents,
     primary_intent: routingProfile.primary_intent,
     alternative_intents: routingProfile.alternative_intents,
+    explicit_confirmed_facts: explicitConfirmedFacts,
+    deterministic_confirmed_facts: deterministicConfirmedFacts,
+    confirmed_facts: routingProfile.confirmed_facts,
+    ai_candidate_facts: proposal?.extracted_facts || [],
     known_facts: routingProfile.confirmed_facts,
     fact_sources: factSources,
-    candidate_service_keys: routingProfile.candidate_service_keys,
+    candidate_service_keys: candidateServiceKeys,
     confirmed_service_keys: routingProfile.confirmed_service_keys,
+    deterministic_service_conflicts: deterministicServiceConflicts,
     candidate_care_paths: routingProfile.candidate_care_paths,
     care_path: routingProfile.care_path,
     request_clarity: routingProfile.request_clarity,
@@ -563,15 +684,22 @@ export function buildPatientGuidancePlannerProfile(input = {}, aiEnvelope = {}) 
     sufficient_for_search: routingProfile.sufficient_for_search,
     sufficient_for_provider_request: routingProfile.sufficient_for_provider_request,
     next_question_key: finalQuestionKey,
+    ai_proposed_next_question_key: proposal?.next_question_key || null,
     confidence_band: proposal?.confidence_band || "low",
     possible_safety_flags: proposal?.possible_safety_flags || [],
     evidence_phrases: proposal?.evidence_phrases || [],
     safety_state: routingProfile.safety_state,
     clinical_validation_approvals: [],
     ai_proposal: proposal,
-    ai_validation: sanitizedAI.diagnostics,
+    ai_validation: {
+      ...sanitizedAI.diagnostics,
+      deterministic_service_conflict: deterministicServiceConflicts.length > 0,
+    },
     routing_profile: routingProfile,
   };
+}
+
+function withTimeout
 }
 
 function withTimeout(promise, timeoutMs) {
