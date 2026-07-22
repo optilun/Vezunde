@@ -86,14 +86,6 @@ function safeState(state = {}) {
     scope: clean(state.scope, 40),
     locality: safeLocality(state.locality),
     clientAddressText: clean(state.clientAddressText, 240),
-    questionHistory: [...new Set((Array.isArray(state.questionHistory) ? state.questionHistory : [])
-      .map((value) => clean(value, 80))
-      .filter(Boolean))]
-      .slice(0, 30),
-    explicitServiceKeys: [...new Set((Array.isArray(state.explicitServiceKeys) ? state.explicitServiceKeys : [])
-      .map((value) => clean(value, 120))
-      .filter(Boolean))]
-      .slice(0, 60),
   };
 }
 

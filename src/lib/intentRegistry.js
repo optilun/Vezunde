@@ -18,14 +18,6 @@ export const INTENTS = {
     service_keys: ["control_vedere_adulti"],
     questions: [
       {
-        key: "routine_vs_symptom", type: "choice", title: "Cauti un control de rutina sau ai o problema la ochi?",
-        options: [
-          { key: "routine", label: "Control de rutina" },
-          { key: "symptom", label: "Am o problema sau un simptom la ochi", next_intent: "simptome_oftalmologice" },
-          { key: "not_sure", label: "Nu sunt sigur" },
-        ],
-      },
-      {
         key: "pentru_cine", type: "choice", title: "Este pentru tine sau pentru un copil?",
         options: [
           { key: "adult", label: "Pentru mine" },
@@ -171,12 +163,6 @@ export const INTENTS = {
           { key: "nu_sunt_sigur", label: "Nu sunt sigur", service_keys: ["consult_oftalmologic"] },
         ],
       },
-      {
-        key: "recomandare_investigatie", type: "text",
-        title: "Scrie ce apare pe recomandare sau pe biletul primit.",
-        placeholder: "Ex: OCT macula ochi drept",
-        showIf: { question_key: "investigatie", answer_value: "nu_sunt_sigur" },
-      },
       LOCATION_QUESTION,
       TIMING_QUESTION,
     ],
@@ -321,14 +307,6 @@ const SUB_INTENT_PREFILL = {
   investigatii: [
     { question_key: "investigatie", option_key: "oct", keywords: ["oct"] },
   ],
-  lentile_contact: [
-    { question_key: "prima_data", option_key: "da", keywords: ["prima data", "prima oara", "nu am purtat", "n-am purtat", "nu am mai purtat"] },
-  ],
-  reparatii_ochelari: [
-    { question_key: "ce_deteriorat", option_key: "rama_rupta", keywords: ["rama rupta", "ochelari rupti", "mi s-au rupt ochelarii"] },
-    { question_key: "ce_deteriorat", option_key: "reglaj_rama", keywords: ["reglaj rama"] },
-    { question_key: "ce_deteriorat", option_key: "balama_surub", keywords: ["balama", "surub"] },
-  ],
 };
 
 export function detectSubIntentPrefill(intentKey, text) {
@@ -342,12 +320,4 @@ export function detectSubIntentPrefill(intentKey, text) {
     }
   }
   return null;
-}
-
-// O intrebare cu showIf este afisata doar daca raspunsul controlat corespunzator a fost deja dat.
-// Folosita pentru clarificari conditionate (ex: "recomandare_investigatie" doar dupa "nu sunt sigur").
-export function isQuestionApplicable(question, answers) {
-  if (!question?.showIf) return true;
-  const matchingAnswer = (answers || []).find((a) => a.question_key === question.showIf.question_key);
-  return matchingAnswer?.answer_value === question.showIf.answer_value;
 }

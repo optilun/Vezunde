@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -21,10 +21,7 @@ import {
 import { abandonAllPatientRequestIdempotency } from "@/lib/patientRequestIdempotency";
 import { buildIntentConfirmationProposal } from "@/lib/patientIntentConfirmation";
 import { buildPatientRequestDraft } from "@/lib/patientRequestDraft";
-import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill, isQuestionApplicable } from "@/lib/intentRegistry";
-import { GUIDANCE_KEY_TO_LEGACY_QUESTION_KEY, LEGACY_QUESTION_KEY_TO_GUIDANCE_KEY, toGuidanceAnswers } from "@/lib/patientGuidanceQuestionKeyMap";
-import { fetchAdaptiveNextQuestionKey } from "@/lib/patientGuidanceAdaptiveQuestion";
-import { buildPatientSafetyAssessment } from "@/lib/patientSafety";
+import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill } from "@/lib/intentRegistry";
 import QuestionChoice from "./QuestionChoice";
 import QuestionText from "./QuestionText";
 import QuestionLocation from "./QuestionLocation";
@@ -32,21 +29,11 @@ import MatchResults from "./MatchResults";
 import SearchingTransition from "./SearchingTransition";
 import PatientIntentConfirmation from "./PatientIntentConfirmation";
 import PatientRequestReview from "./PatientRequestReview";
-import UrgencyInterruption from "./UrgencyInterruption";
 
 function resolveOptionServiceKeys(currentKeys = [], option = {}) {
   const optionKeys = Array.isArray(option.service_keys) ? option.service_keys.filter(Boolean) : [];
   if (option.replace_service_keys === true) return [...new Set(optionKeys)];
   return [...new Set([...currentKeys, ...optionKeys])];
-}
-
-// Appends the approved guidance-catalog key for a legacy question to the controlled
-// question history. Never appends anything for questions with no catalog mapping
-// (e.g. "categorie", which is not part of patient-guidance-question-selection-v1).
-function appendQuestionHistory(history, legacyKey) {
-  const guidanceKey = LEGACY_QUESTION_KEY_TO_GUIDANCE_KEY[legacyKey];
-  if (!guidanceKey) return history;
-  return history.includes(guidanceKey) ? history : [...history, guidanceKey].slice(-30);
 }
 
 const initState = (initialIntent, initialMessage) => {
@@ -55,8 +42,6 @@ const initState = (initialIntent, initialMessage) => {
     : detectIntentFromText(initialMessage);
 
   const answers = [];
-  let questionHistory = [];
-  const explicitServiceKeys = [];
   let serviceKeys = intent ? [...INTENTS[intent].service_keys] : [];
 
   if (intent) {
@@ -66,11 +51,7 @@ const initState = (initialIntent, initialMessage) => {
       const option = question?.options?.find((o) => o.key === prefill.option_key);
       if (option) {
         answers.push({ question_key: prefill.question_key, answer_value: option.key });
-        questionHistory = appendQuestionHistory(questionHistory, prefill.question_key);
-        if (option.service_keys) {
-          serviceKeys = resolveOptionServiceKeys(serviceKeys, option);
-          explicitServiceKeys.push(...option.service_keys);
-        }
+        if (option.service_keys) serviceKeys = resolveOptionServiceKeys(serviceKeys, option);
       }
     }
   }
@@ -83,8 +64,6 @@ const initState = (initialIntent, initialMessage) => {
     scope: "",
     locality: null,
     clientAddressText: "",
-    questionHistory,
-    explicitServiceKeys: [...new Set(explicitServiceKeys)],
   };
 };
 
@@ -96,20 +75,6 @@ function patientLanguageText(initialMessage, answers) {
       .map((answer) => answer.answer_value),
   ];
   return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))].join(". ");
-}
-
-// Local, synchronous, deterministic safety check. Runs on every render, needs no
-// network call and no backend, and does not depend on state.intent being set.
-// This is the primary safety gate — the question_only backend check (if reachable)
-// is only a second layer on top of this, never a replacement for it.
-function computeLocalSafetyAssessmentFromText(text) {
-  if (!text) return null;
-  const assessment = buildPatientSafetyAssessment({ text });
-  return assessment.blocking ? assessment : null;
-}
-
-function computeLocalSafetyAssessment(initialMessage, answers) {
-  return computeLocalSafetyAssessmentFromText(patientLanguageText(initialMessage, answers));
 }
 
 const PATIENT_SEARCH_ANALYTICS_VERSION = "patient-search-v1";
@@ -154,15 +119,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   }
   const restoredSession = restoredSessionRef.current;
   const shouldInterpretInitialMessage = Boolean(String(initialMessage || "").trim() && !initialIntent);
-  const initialAnswersForSafetyCheck = restoredSession
-    ? patientIntakeStateFromSnapshot(restoredSession).answers
-    : [];
-  // A blocking local safety result must win from the very first render — it must never
-  // show the AI interpretation spinner or the category question, even for one frame.
-  const initialLocalSafetyAssessment = computeLocalSafetyAssessment(initialMessage, initialAnswersForSafetyCheck);
-  const initialPhase = initialLocalSafetyAssessment
-    ? "questions"
-    : (restoredSession?.phase || (shouldInterpretInitialMessage ? "interpreting" : "questions"));
+  const initialPhase = restoredSession?.phase || (shouldInterpretInitialMessage ? "interpreting" : "questions");
   const [state, setState] = useState(() => (
     restoredSession ? patientIntakeStateFromSnapshot(restoredSession) : initState(initialIntent, initialMessage)
   ));
@@ -173,12 +130,9 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const [intentProposal, setIntentProposal] = useState(null);
   const [requestDraft, setRequestDraft] = useState(() => restoredSession?.requestDraft || null);
   const [matchError, setMatchError] = useState(null);
-  const [adaptiveLegacyKey, setAdaptiveLegacyKey] = useState(null);
-  const [adaptiveSafetyAssessment, setAdaptiveSafetyAssessment] = useState(initialLocalSafetyAssessment);
   const interpretationAttemptedRef = useRef(false);
   const interpretationRequestRef = useRef(createPatientOperationGuard());
   const matchingRequestRef = useRef(createPatientOperationGuard());
-  const adaptiveRequestRef = useRef(createPatientOperationGuard());
   const analyticsSessionRef = useRef({
     started: false,
     completed: false,
@@ -187,26 +141,10 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     answeredCount: 0,
   });
 
-  // Stable text derived every render (cheap string ops), but the assessment object
-  // itself is memoized on that text so its reference does not change across renders
-  // unless the underlying text actually changes. This prevents the safety useEffect
-  // below (which depends on localSafetyAssessment) from re-firing every render and
-  // causing a render -> effect -> setState -> render loop for urgent messages.
-  const localSafetyText = patientLanguageText(initialMessage, state.answers);
-  const localSafetyAssessment = useMemo(
-    () => computeLocalSafetyAssessmentFromText(localSafetyText),
-    [localSafetyText],
-  );
-
   const intentDef = state.intent ? INTENTS[state.intent] : null;
+  const questions = intentDef ? intentDef.questions : [CATEGORY_QUESTION];
   const answeredKeys = state.answers.map((a) => a.question_key);
-  const questions = (intentDef ? intentDef.questions : [CATEGORY_QUESTION])
-    .filter((q) => isQuestionApplicable(q, state.answers));
-  const legacyCurrent = questions.find((q) => !answeredKeys.includes(q.key));
-  const adaptiveQuestion = adaptiveLegacyKey
-    ? questions.find((q) => q.key === adaptiveLegacyKey && !answeredKeys.includes(q.key))
-    : null;
-  const current = adaptiveQuestion || legacyCurrent;
+  const current = questions.find((q) => !answeredKeys.includes(q.key));
   const total = state.answers.length + questions.filter((q) => !answeredKeys.includes(q.key)).length;
   const progress = total > 0 ? Math.round((state.answers.length / total) * 100) : 0;
 
@@ -229,7 +167,6 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const handleChoice = (question, option) => {
     interpretationRequestRef.current.invalidate();
     matchingRequestRef.current.invalidate();
-    adaptiveRequestRef.current.invalidate();
     markSearchStarted(state.intent || option.key);
     pushHistory();
     if (!state.intent) {
@@ -244,15 +181,8 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       return;
     }
     setState((s) => {
-      const next = {
-        ...s,
-        answers: [...s.answers, { question_key: question.key, answer_value: option.key }],
-        questionHistory: appendQuestionHistory(s.questionHistory, question.key),
-      };
-      if (option.service_keys) {
-        next.serviceKeys = resolveOptionServiceKeys(next.serviceKeys, option);
-        next.explicitServiceKeys = [...new Set([...s.explicitServiceKeys, ...option.service_keys])];
-      }
+      const next = { ...s, answers: [...s.answers, { question_key: question.key, answer_value: option.key }] };
+      if (option.service_keys) next.serviceKeys = resolveOptionServiceKeys(next.serviceKeys, option);
       if (option.next_intent && INTENTS[option.next_intent]) {
         next.intent = option.next_intent;
         next.serviceKeys = [...INTENTS[option.next_intent].service_keys];
@@ -264,7 +194,6 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const handleText = (question, value) => {
     interpretationRequestRef.current.invalidate();
     matchingRequestRef.current.invalidate();
-    adaptiveRequestRef.current.invalidate();
     markSearchStarted(state.intent);
     trackPatientSearchEvent("patient_search_free_text_submitted", {
       intent: state.intent || "unknown",
@@ -272,16 +201,11 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       text_length_band: textLengthBand(value),
     });
     pushHistory();
-    setState((s) => ({
-      ...s,
-      answers: [...s.answers, { question_key: question.key, answer_value: value }],
-      questionHistory: appendQuestionHistory(s.questionHistory, question.key),
-    }));
+    setState((s) => ({ ...s, answers: [...s.answers, { question_key: question.key, answer_value: value }] }));
   };
 
   const handleLocation = ({ city, locality, clientAddressText }) => {
     matchingRequestRef.current.invalidate();
-    adaptiveRequestRef.current.invalidate();
     markSearchStarted(state.intent);
     pushHistory();
     setState((s) => ({
@@ -291,22 +215,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       locality: locality || null,
       clientAddressText: clientAddressText || "",
       answers: [...s.answers, { question_key: "locatie", answer_value: city }],
-      questionHistory: appendQuestionHistory(s.questionHistory, "locatie"),
     }));
-  };
-
-  const handleCorrectAdaptiveSafety = () => {
-    // A safety interruption can never be dismissed to continue with the same urgent
-    // text — there is no acknowledgement bypass. This performs a full, hard reset:
-    // invalidates in-flight requests, clears the saved intake session, and reloads
-    // the wizard on a clean URL (no q/categorie params), so initialMessage cannot
-    // carry the same urgent text forward. The user must reformulate or start over.
-    interpretationRequestRef.current.invalidate();
-    matchingRequestRef.current.invalidate();
-    adaptiveRequestRef.current.invalidate();
-    clearPatientIntakeSession();
-    abandonAllPatientRequestIdempotency();
-    window.location.href = "/cerere";
   };
 
   const handleConfirmInterpretation = () => {
@@ -332,8 +241,6 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     abandonAllPatientRequestIdempotency();
     interpretationRequestRef.current.invalidate();
     matchingRequestRef.current.invalidate();
-    adaptiveRequestRef.current.invalidate();
-    setAdaptiveSafetyAssessment(null);
     setState(initState(null, ""));
     setHistory([]);
     setRequestDraft(null);
@@ -350,7 +257,6 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const goBack = () => {
     interpretationRequestRef.current.invalidate();
     matchingRequestRef.current.invalidate();
-    adaptiveRequestRef.current.invalidate();
     const prev = history[history.length - 1];
     if (!prev) return;
     trackPatientSearchEvent("patient_search_reformulation_started", {
@@ -409,12 +315,10 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   useEffect(() => {
     interpretationRequestRef.current.activate();
     matchingRequestRef.current.activate();
-    adaptiveRequestRef.current.activate();
     return () => {
       interpretationAttemptedRef.current = false;
       interpretationRequestRef.current.dispose();
       matchingRequestRef.current.dispose();
-      adaptiveRequestRef.current.dispose();
       const session = analyticsSessionRef.current;
       if (!session.started || session.completed) return;
       trackPatientSearchEvent("patient_search_abandoned", {
@@ -438,76 +342,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     writePatientIntakeSession(snapshot);
   }, [history, initialIntent, initialMessage, phase, requestDraft, state]);
 
-  // Local safety must win over everything, regardless of phase/intent, and it never
-  // waits for a render cycle: it forces phase to "questions" (so the interruption is
-  // shown), blocks the AI interpretation effect from ever firing, and invalidates any
-  // in-flight interpretation/matching/adaptive requests. This never calls the backend.
   useEffect(() => {
-    if (!localSafetyAssessment) return;
-    interpretationAttemptedRef.current = true;
-    interpretationRequestRef.current.invalidate();
-    matchingRequestRef.current.invalidate();
-    adaptiveRequestRef.current.invalidate();
-    setAdaptiveLegacyKey(null);
-    setAdaptiveSafetyAssessment(localSafetyAssessment);
-    setPhase((p) => (p === "questions" ? p : "questions"));
-  }, [localSafetyAssessment]);
-
-  // Selectia adaptiva a urmatoarei intrebari: apeleaza modul controlat "question_only".
-  // Poate influenta EXCLUSIV care intrebare deja aprobata este afisata acum; nu schimba
-  // niciodata matchingul, serviciile confirmate sau ordinea rezultatelor. La orice esec,
-  // timeout sau raspuns invalid, ramane pe ordinea legacy (adaptiveLegacyKey=null).
-  // The local safety check (above) always runs first and is never overridden by the
-  // backend: if it is blocking, question_only is never called at all.
-  useEffect(() => {
-    if (localSafetyAssessment) {
-      setAdaptiveLegacyKey(null);
-      return;
-    }
-    if (phase !== "questions" || !state.intent) {
-      setAdaptiveLegacyKey(null);
-      return;
-    }
-    const answeredKeysNow = state.answers.map((a) => a.question_key);
-    const legacyCurrentNow = questions.find((q) => !answeredKeysNow.includes(q.key));
-    if (!legacyCurrentNow) {
-      setAdaptiveLegacyKey(null);
-      return;
-    }
-    const requestId = adaptiveRequestRef.current.begin();
-    const guidanceAnswers = toGuidanceAnswers({
-      answers: state.answers,
-      locality: state.locality,
-      city: state.city,
-    });
-    fetchAdaptiveNextQuestionKey({
-      searchText: initialMessage,
-      explicitPrimaryIntent: state.intent,
-      answers: guidanceAnswers,
-      questionHistory: state.questionHistory,
-    }, { requestId }).then((result) => {
-      if (!adaptiveRequestRef.current.isCurrent(requestId)) return;
-      if (result.status === "safety_interruption") {
-        setAdaptiveLegacyKey(null);
-        setAdaptiveSafetyAssessment(buildPatientSafetyAssessment({ text: initialMessage }));
-        return;
-      }
-      setAdaptiveSafetyAssessment(null);
-      if (result.status !== "ok" || !result.nextQuestionKey) {
-        setAdaptiveLegacyKey(null);
-        return;
-      }
-      const legacyKey = GUIDANCE_KEY_TO_LEGACY_QUESTION_KEY[result.nextQuestionKey];
-      const stillValid = Boolean(legacyKey)
-        && questions.some((q) => q.key === legacyKey)
-        && !answeredKeysNow.includes(legacyKey);
-      setAdaptiveLegacyKey(stillValid ? legacyKey : null);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, state.intent, state.answers.length, state.city, state.locality, localSafetyAssessment]);
-
-  useEffect(() => {
-    if (localSafetyAssessment) return;
     if (phase !== "interpreting" || interpretationAttemptedRef.current) return;
     interpretationAttemptedRef.current = true;
     const requestId = interpretationRequestRef.current.begin();
@@ -548,10 +383,10 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       if (!interpretationRequestRef.current.isCurrent(requestId)) return;
       setPhase("questions");
     });
-  }, [phase, initialMessage, state.intent, state.serviceKeys, localSafetyAssessment]);
+  }, [phase, initialMessage, state.intent, state.serviceKeys]);
 
   useEffect(() => {
-    if (phase !== "questions" || !state.intent || current || adaptiveSafetyAssessment || localSafetyAssessment) return;
+    if (phase !== "questions" || !state.intent || current) return;
     const draft = buildPatientRequestDraft({
       state,
       originalMessage: initialMessage,
@@ -566,7 +401,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       service_key_count: draft.service_keys.length,
     });
     setPhase("review");
-  }, [phase, state, current, initialMessage, intentProposal, adaptiveSafetyAssessment, localSafetyAssessment]);
+  }, [phase, state, current, initialMessage, intentProposal]);
 
   useEffect(() => {
     if (phase !== "submitting" || !requestDraft) return;
@@ -695,17 +530,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         />
       )}
 
-      {phase === "questions" && adaptiveSafetyAssessment && (
-        <div className="py-2">
-          <UrgencyInterruption
-            assessment={adaptiveSafetyAssessment}
-            mode="blocking"
-            onCorrect={handleCorrectAdaptiveSafety}
-          />
-        </div>
-      )}
-
-      {phase === "questions" && !adaptiveSafetyAssessment && current && (
+      {phase === "questions" && current && (
         <>
           <div className="mb-6 flex items-center gap-4">
             {history.length > 0 ? (

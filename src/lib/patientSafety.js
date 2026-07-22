@@ -76,8 +76,6 @@ export function deterministicSafetyFlagsFromText(value) {
     "durere insuportabila la ochi",
     "ochi rosu durere mare si greata",
     "durere oculara severa",
-    "ma doare foarte tare ochiul",
-    "doare foarte tare ochiul",
   ])) flags.push("severe_eye_pain");
 
   if (includesAny(text, [
