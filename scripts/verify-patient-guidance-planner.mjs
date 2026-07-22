@@ -968,5 +968,174 @@ await scenario("clinical validation approvals remain empty", () => {
   assert.equal(profile.sufficient_for_search, false);
 });
 
-assert.ok(scenarioCount >= 62);
+
+await scenario("explicit contact lenses exclude conflicting OCT facts", () => {
+  const profile = buildPatientGuidancePlannerProfile({
+    text: "Caut OCT in Cluj.",
+    explicitConfirmedServiceKeys: ["contact_lenses"],
+    explicitFacts: { locality: locality() },
+    deterministicSafetyState: "clear",
+  });
+  assert.deepEqual(profile.confirmed_service_keys, ["contact_lenses"]);
+  assert.deepEqual(profile.candidate_service_keys, ["oct"]);
+  assert.equal(Object.hasOwn(profile.deterministic_confirmed_facts, "investigation_type"), false);
+  assert.equal(Object.hasOwn(profile.confirmed_facts, "investigation_type"), false);
+  assert.deepEqual(profile.deterministic_service_conflicts, ["oct"]);
+  assert.deepEqual(profile.deterministic_fact_conflicts, [{
+    fact_key: "investigation_type",
+    value: "oct",
+    source_service_key: "oct",
+    reason: "deterministic_service_conflict",
+  }]);
+});
+
+await scenario("explicit optometry excludes conflicting frame repair facts", () => {
+  const profile = buildPatientGuidancePlannerProfile({
+    text: "Mi s-a rupt rama.",
+    explicitConfirmedServiceKeys: ["optometry_consultation"],
+    explicitFacts: { locality: locality() },
+    deterministicSafetyState: "clear",
+  });
+  assert.deepEqual(profile.confirmed_service_keys, ["optometry_consultation"]);
+  assert.deepEqual(profile.candidate_service_keys, ["frame_repair"]);
+  assert.equal(Object.hasOwn(profile.deterministic_confirmed_facts, "repair_type"), false);
+  assert.equal(Object.hasOwn(profile.confirmed_facts, "repair_type"), false);
+  assert.ok(
+    profile.deterministic_fact_conflicts
+      .some((conflict) => conflict.fact_key === "repair_type"
+        && conflict.source_service_key === "frame_repair"),
+  );
+});
+
+await scenario("matching explicit OCT keeps deterministic fact confirmed", () => {
+  const profile = buildPatientGuidancePlannerProfile({
+    text: "Caut OCT in Cluj.",
+    explicitConfirmedServiceKeys: ["oct"],
+    explicitFacts: { locality: locality() },
+    deterministicSafetyState: "clear",
+  });
+  assert.deepEqual(profile.confirmed_service_keys, ["oct"]);
+  assert.deepEqual(profile.candidate_service_keys, []);
+  assert.equal(profile.deterministic_confirmed_facts.investigation_type, "oct");
+  assert.equal(profile.confirmed_facts.investigation_type, "oct");
+  assert.equal(profile.confirmed_primary_intent, "investigatii");
+  assert.equal(profile.sufficient_for_search, true);
+  assert.deepEqual(profile.deterministic_fact_conflicts, []);
+});
+
+await scenario("intent detected only from conflicting service stays candidate", () => {
+  const profile = buildPatientGuidancePlannerProfile({
+    text: "Mi s-a rupt rama.",
+    explicitConfirmedServiceKeys: ["contact_lenses"],
+    explicitFacts: { locality: locality() },
+    deterministicSafetyState: "clear",
+  });
+  assert.equal(profile.confirmed_primary_intent, "unknown");
+  assert.ok(profile.candidate_intents.includes("reparatii_ochelari"));
+  assert.equal(profile.primary_intent, "unknown");
+  assert.equal(profile.deterministic_intent_conflict.proposed_intent, "reparatii_ochelari");
+  assert.equal(profile.ai_validation.deterministic_intent_conflict, true);
+});
+
+await scenario("explicit primary intent remains authoritative over conflict", () => {
+  const profile = buildPatientGuidancePlannerProfile({
+    text: "Caut OCT.",
+    explicitPrimaryIntent: "control_vedere",
+    deterministicIntent: "investigatii",
+    explicitConfirmedServiceKeys: ["optometry_consultation"],
+    explicitFacts: {
+      locality: locality(),
+      routine_vs_symptom: "routine",
+    },
+    deterministicSafetyState: "clear",
+  });
+  assert.equal(profile.confirmed_primary_intent, "control_vedere");
+  assert.equal(profile.primary_intent, "control_vedere");
+  assert.ok(profile.candidate_intents.includes("investigatii"));
+  assert.equal(profile.care_path, "optometry");
+});
+
+await scenario("caller deterministic intent remains authoritative over text conflict", () => {
+  const profile = buildPatientGuidancePlannerProfile({
+    text: "Caut OCT.",
+    deterministicIntent: "lentile_contact",
+    explicitConfirmedServiceKeys: ["contact_lenses"],
+    explicitFacts: {
+      locality: locality(),
+      contact_lens_experience: "experienced",
+    },
+    deterministicSafetyState: "clear",
+  });
+  assert.equal(profile.confirmed_primary_intent, "lentile_contact");
+  assert.equal(profile.primary_intent, "lentile_contact");
+  assert.ok(profile.candidate_intents.includes("investigatii"));
+  assert.equal(profile.care_path, "optical_store");
+});
+
+await scenario("without explicit services deterministic facts keep prior behavior", () => {
+  const profile = buildPatientGuidancePlannerProfile({
+    text: "Mi s-a rupt rama.",
+    explicitFacts: { locality: locality() },
+    deterministicSafetyState: "clear",
+  });
+  assert.deepEqual(profile.confirmed_service_keys, ["frame_repair"]);
+  assert.equal(profile.deterministic_confirmed_facts.repair_type, "broken_frame");
+  assert.equal(profile.confirmed_facts.repair_type, "broken_frame");
+  assert.equal(profile.confirmed_primary_intent, "reparatii_ochelari");
+  assert.deepEqual(profile.deterministic_service_conflicts, []);
+});
+
+await scenario("conflicting service facts cannot complete search", () => {
+  const profile = buildPatientGuidancePlannerProfile({
+    text: "Caut OCT in Cluj.",
+    explicitPrimaryIntent: "investigatii",
+    explicitConfirmedServiceKeys: ["contact_lenses"],
+    explicitFacts: { locality: locality() },
+    deterministicSafetyState: "clear",
+  });
+  assert.equal(Object.hasOwn(profile.confirmed_facts, "investigation_type"), false);
+  assert.ok(profile.missing_required_facts.includes("investigation_type"));
+  assert.equal(profile.sufficient_for_search, false);
+  assert.equal(profile.sufficient_for_provider_request, false);
+});
+
+await scenario("AI candidate fact stays unconfirmed during deterministic conflict", () => {
+  const profile = buildPatientGuidancePlannerProfile({
+    text: "Caut OCT in Cluj.",
+    explicitConfirmedServiceKeys: ["contact_lenses"],
+    explicitFacts: { locality: locality() },
+    deterministicSafetyState: "clear",
+  }, {
+    status: "completed",
+    raw: validAI({
+      primary_intent: "investigatii",
+      extracted_facts: [{
+        fact_key: "investigation_type",
+        value: "oct",
+        evidence_phrase: "OCT",
+      }],
+    }),
+  });
+  assert.equal(Object.hasOwn(profile.confirmed_facts, "investigation_type"), false);
+  assert.equal(profile.ai_candidate_facts[0].fact_key, "investigation_type");
+  assert.equal(profile.ai_candidate_facts[0].status, "supported");
+  assert.equal(profile.ai_candidate_facts[0].confirmation_eligible, false);
+  assert.equal(profile.sufficient_for_search, false);
+});
+
+await scenario("safety blocking remains prioritary with matching explicit service", () => {
+  const profile = buildPatientGuidancePlannerProfile({
+    text: "Caut OCT in Cluj.",
+    explicitConfirmedServiceKeys: ["oct"],
+    explicitFacts: { locality: locality() },
+    deterministicSafetyState: "blocking",
+  });
+  assert.equal(profile.confirmed_facts.investigation_type, "oct");
+  assert.equal(profile.care_path, "emergency_interruption");
+  assert.equal(profile.sufficient_for_search, false);
+  assert.equal(profile.sufficient_for_provider_request, false);
+  assert.equal(profile.routing_profile.fallback_mode, "safety_interruption");
+});
+
+assert.ok(scenarioCount >= 72);
 console.log("Patient guidance planner checks passed: " + scenarioCount + " scenarios.");
