@@ -239,8 +239,25 @@ function controlledGuidedAnswers(payload, questionHistory) {
     .filter(Boolean);
 }
 
-function explicitIntentFromPayload(payload) {
-  const intent = clean(payload.explicit_primary_intent);
+function controlledCategoryIntent(payload) {
+  const history = new Set(Array.isArray(payload.question_history) ? payload.question_history : []);
+  if (!history.has('categorie')) return 'unknown';
+  const answer = (Array.isArray(payload.answers) ? payload.answers : [])
+    .find((item) => clean(item?.question_key) === 'categorie');
+  const intent = clean(answer?.answer_value);
+  return PATIENT_GUIDANCE_INTENTS.has(intent) ? intent : 'unknown';
+}
+
+function controlledIntentFromAnswers(payload, answers) {
+  let intent = controlledCategoryIntent(payload);
+  const answerByKey = Object.fromEntries((answers || [])
+    .map((answer) => [answer.question_key, answer.answer_value]));
+
+  if (answerByKey.routine_vs_symptom === 'symptom') intent = 'simptome_oftalmologice';
+  if (answerByKey.routine_vs_symptom === 'routine') intent = 'control_vedere';
+  if (answerByKey.for_whom === 'child' && intent === 'control_vedere') intent = 'control_copil';
+  if (answerByKey.optical_product_type === 'contact_lenses') intent = 'lentile_contact';
+
   return PATIENT_GUIDANCE_INTENTS.has(intent) ? intent : 'unknown';
 }
 
@@ -315,7 +332,7 @@ function selectPatientGuidanceQuestion(payload, searchText, deterministicService
     legacyStatus: 'not_requested',
     legacyInterpretation: null,
     explicitLocality: explicitLocalityFromPayload(payload),
-    explicitPrimaryIntent: explicitIntentFromPayload(payload),
+    explicitPrimaryIntent: controlledIntentFromAnswers(payload, guidedAnswers),
     explicitConfirmedServiceKeys: confirmedServiceKeysFromAnswers(guidedAnswers),
     guidedAnswers,
     questionHistory,
