@@ -163,7 +163,42 @@ function observePatientGuidanceShadow(context) {
     PATIENT_GUIDANCE_SHADOW_EVENT,
     JSON.stringify({ ...observation.summary, ...observation.comparison }),
   );
-  return observation.live_result;
+  return {
+    ...observation.live_result,
+    patient_guidance_question_selection: observation.question_selection,
+  };
+}
+
+function selectPatientGuidanceQuestion(payload, searchText, deterministicServiceKeys) {
+  const liveResult = { mode: 'question_only', status: 'completed' };
+  const observation = runPatientGuidanceRuntimeShadow({
+    liveResult,
+    text: searchText,
+    legacyStatus: 'not_requested',
+    legacyInterpretation: null,
+    explicitLocality: explicitLocalityFromPayload(payload),
+    explicitPrimaryIntent: clean(payload.explicit_primary_intent),
+    explicitConfirmedServiceKeys: Array.isArray(payload.explicit_confirmed_service_keys)
+      ? payload.explicit_confirmed_service_keys
+      : [],
+    guidedAnswers: Array.isArray(payload.answers) ? payload.answers : [],
+    questionHistory: Array.isArray(payload.question_history) ? payload.question_history : [],
+    deterministicIntent: clean(payload.deterministic_intent || payload.intent),
+    deterministicServiceKeys: Array.isArray(payload.deterministic_service_keys)
+      ? payload.deterministic_service_keys
+      : deterministicServiceKeys,
+    deterministicFacts: payload.deterministic_facts,
+    deterministicSafetyState: clean(payload.deterministic_safety_state),
+  });
+
+  const selection = observation.question_selection;
+  const completed = ['selected', 'complete', 'safety_blocked'].includes(selection?.status);
+  return {
+    mode: 'question_only',
+    status: completed ? 'completed' : 'unavailable',
+    reason: completed ? null : (selection?.fallback_reason || 'planner_unavailable'),
+    patient_guidance_question_selection: selection,
+  };
 }
 
 async function interpretPatientNeed(
@@ -252,6 +287,14 @@ Deno.serve(async (request) => {
       semantic.matches.map((match) => [match.service_key, Number(match.score) || 0]),
     );
 
+    if (payload.mode === 'question_only') {
+      return Response.json(selectPatientGuidanceQuestion(
+        payload,
+        searchText,
+        requestedKeys,
+      ));
+    }
+
     if (payload.mode === 'interpret_only') {
       return Response.json(await interpretPatientNeed(
         base44,
@@ -265,6 +308,7 @@ Deno.serve(async (request) => {
             ? payload.explicit_confirmed_service_keys
             : [],
           guidedAnswers: Array.isArray(payload.answers) ? payload.answers : [],
+          questionHistory: Array.isArray(payload.question_history) ? payload.question_history : [],
           deterministicIntent: clean(payload.deterministic_intent || payload.intent),
           deterministicServiceKeys: Array.isArray(payload.deterministic_service_keys)
             ? payload.deterministic_service_keys
