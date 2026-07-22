@@ -24,11 +24,11 @@ assert(
   'the shadow route must be limited to administrators',
 );
 assert(
-  entrySource.includes("status: 401"),
+  entrySource.includes('status: 401'),
   'unauthenticated shadow requests must return 401',
 );
 assert(
-  entrySource.includes("status: 403"),
+  entrySource.includes('status: 403'),
   'non-admin shadow requests must return 403',
 );
 assert(
@@ -77,6 +77,50 @@ assert.equal(
 assert(
   runnerSource.includes('add_context_from_internet: false'),
   'the isolated runner must not use internet context',
+);
+assert(
+  runnerSource.includes('sanitizePriorState(payload?.prior_state)'),
+  'prior conversational state must be bounded and field-selected before entering the prompt',
+);
+assert(
+  runnerSource.includes('const searchReady = urgencyLevel === \'none\''),
+  'search readiness must be recomputed server-side',
+);
+assert(
+  runnerSource.includes("interpretation.primary_intent !== 'unknown'"),
+  'an unknown need must never start provider search',
+);
+assert(
+  runnerSource.includes('&& hasServices'),
+  'provider search must require canonical services',
+);
+assert(
+  runnerSource.includes('&& hasLocality(interpretation.facts.locality)'),
+  'provider search must require a locality',
+);
+assert(
+  runnerSource.includes("interpretation.next_action = 'ask_locality';"),
+  'missing locality must return to a locality question instead of matching',
+);
+assert(
+  runnerSource.includes("interpretation.next_action = 'ask_clarifying_question';"),
+  'ambiguous or incomplete meaning must return to clarification',
+);
+assert(
+  runnerSource.includes("if (urgencyLevel === 'possible')"),
+  'possible urgency must remain a clarification state',
+);
+assert(
+  runnerSource.includes("if (urgencyLevel === 'confirmed')"),
+  'confirmed urgency must have a separate enforced path',
+);
+assert(
+  runnerSource.includes("interpretation.next_action = 'show_emergency_guidance';"),
+  'only the confirmed branch may enforce emergency guidance',
+);
+assert(
+  runnerSource.includes('redactContactDetails(interpretation.specialist_summary)'),
+  'contact details must be removed from specialist summaries before consent',
 );
 assert(
   !runnerSource.includes('assignRecommendationBuckets'),
