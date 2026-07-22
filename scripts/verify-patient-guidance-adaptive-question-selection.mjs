@@ -58,13 +58,13 @@ await scenario("complete OCT request asks no unnecessary question", () => {
   assert.equal(result.next_question_key, null);
 });
 
-await scenario("simple control skips the already confirmed routine question", () => {
+await scenario("simple control continues with the mandatory routine question", () => {
   const result = select({
     text: "Vreau control oftalmologic",
     explicitPrimaryIntent: "control_vedere",
   });
   assert.equal(result.status, "selected");
-  assert.equal(result.next_question_key, "for_whom");
+  assert.equal(result.next_question_key, "routine_vs_symptom");
 });
 
 await scenario("first pair of lenses follows contact lens flow", () => {
@@ -92,10 +92,10 @@ await scenario("unknown investigation asks for investigation type", () => {
   assert.equal(result.next_question_key, "investigation_type");
 });
 
-await scenario("child request asks the mandatory age group first", () => {
+await scenario("child request preserves mandatory clarification order", () => {
   const result = select({ text: "Vreau un control pentru copil" });
   assert.equal(result.status, "selected");
-  assert.equal(result.next_question_key, "child_age_group");
+  assert.equal(result.next_question_key, "routine_vs_symptom");
 });
 
 await scenario("safety blocking remains prioritary", () => {
