@@ -117,5 +117,6 @@ assert.match(lifecycleUi, /providerLocationLifecycleOps/);
 const logoStatus = await source('base44/functions/getMyProviderWorkspace/getProviderLogoReviewStatus.ts');
 hasAll(logoStatus, [/profile_review_is_separate/, /logo_review_status/], 'status logo');
 
-console.log('Provider account workflow contract E2E checks passed.');
+await import('./verify-home-development-banner.mjs');
 
+console.log('Provider account workflow contract E2E checks passed.');
