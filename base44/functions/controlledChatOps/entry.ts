@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { canAccessProviderLeadInbox } from '../../../shared/providerLeadInboxPolicy.js';
-import { resolveProviderEntitlement } from '../../../shared/providerEntitlementPolicy.js';
+import { canAccessProviderLeadInbox } from '../../shared/providerLeadInboxPolicy.js';
+import { resolveProviderEntitlement } from '../../shared/providerEntitlementPolicy.js';
 import {
   CONTROLLED_CHAT_CONTRACT_VERSION,
   CONTROLLED_CHAT_MESSAGE_CONTRACT_VERSION,
@@ -9,13 +9,13 @@ import {
   sanitizeControlledChatConversation,
   sanitizeControlledChatMessage,
   validateControlledChatMessage,
-} from '../../../shared/controlledChatPolicy.js';
+} from '../../shared/controlledChatPolicy.js';
 import {
   acquireControlledChatMessageLock,
   acquireControlledChatOpenLock,
   releaseControlledChatMessageLock,
   releaseControlledChatOpenLock,
-} from '../../../shared/controlledChatLock.js';
+} from '../../shared/controlledChatLock.js';
 
 const ACTORS = new Set(['patient', 'provider']);
 const ACTIONS = new Set(['status', 'open', 'send', 'mark_read', 'close']);

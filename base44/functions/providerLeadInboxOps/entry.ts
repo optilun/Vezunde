@@ -183,7 +183,7 @@ async function markAllProviderNotificationsRead(svc, userId, locationId) {
   return { updated: rows.length };
 }
 
-const FUNCTION_DEPLOY_REVISION = 'viasee-runtime-resync-2026-07-22-providerLeadInboxOps-2';
+const FUNCTION_DEPLOY_REVISION = 'viasee-runtime-resync-2026-07-22-providerLeadInboxOps-3';
 console.info(`[VIASEE] providerLeadInboxOps ${FUNCTION_DEPLOY_REVISION}`);
 
 Deno.serve(async (req) => {

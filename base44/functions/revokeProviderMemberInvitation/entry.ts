@@ -6,7 +6,7 @@ import {
   loadOrganizationOwnerScopeResolution,
   membershipHasOrganizationWideAccess,
   providerMembershipAccessRole,
-} from '../../../shared/providerOrganizationOwnerScope.js';
+} from '../../shared/providerOrganizationOwnerScope.js';
 
 function res(body, status = 200) { return Response.json(body, { status }); }
 function clean(value) { return String(value || '').trim(); }

@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   candidateRelation,
   validateLocationResolution,
-} from '../../../shared/providerLocationIdentityResolution.js';
+} from '../../shared/providerLocationIdentityResolution.js';
 
 const SECTION = 'location_create';
 const EXISTING_ITEM_KEY = 'existing_location';

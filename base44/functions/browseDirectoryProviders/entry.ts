@@ -8,7 +8,7 @@ import {
   loadPublicLocationsForLocality,
   loadRowsForLocationIds,
   paginateRows,
-} from '../../../shared/locationScopedEntityQuery.js';
+} from '../../shared/locationScopedEntityQuery.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Read-only locality browse. It does not score or match by service.

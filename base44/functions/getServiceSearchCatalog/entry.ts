@@ -3,11 +3,11 @@ import {
   SERVICE_GROUPS,
   getCanonicalServiceDefinition,
   getServiceGroupLayout,
-} from '../../../shared/canonicalServiceRegistryExtended.js';
+} from '../../shared/canonicalServiceRegistryExtended.js';
 import {
   getProviderServiceSections,
   getPublicNeedSections,
-} from '../../../shared/serviceOperationalTaxonomyExtended.js';
+} from '../../shared/serviceOperationalTaxonomyExtended.js';
 
 function clean(value) {
   return String(value || '').trim();

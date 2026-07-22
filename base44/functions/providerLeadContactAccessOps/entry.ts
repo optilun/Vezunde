@@ -1,16 +1,16 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { canAccessProviderLeadInbox } from '../../../shared/providerLeadInboxPolicy.js';
-import { hasProviderFeature, resolveProviderEntitlement } from '../../../shared/providerEntitlementPolicy.js';
+import { canAccessProviderLeadInbox } from '../../shared/providerLeadInboxPolicy.js';
+import { hasProviderFeature, resolveProviderEntitlement } from '../../shared/providerEntitlementPolicy.js';
 import {
   PROVIDER_CONTACT_ACCESS_CONTRACT_VERSION,
   buildApprovedProviderContact,
   providerContactAccessEligibility,
   sanitizeProviderContactAccessStatus,
-} from '../../../shared/providerContactAccessPolicy.js';
+} from '../../shared/providerContactAccessPolicy.js';
 import {
   acquireContactShareApprovalLock,
   releaseContactShareApprovalLock,
-} from '../../../shared/contactShareApprovalLock.js';
+} from '../../shared/contactShareApprovalLock.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });

@@ -1,25 +1,25 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { canAccessProviderLeadInbox } from '../../../shared/providerLeadInboxPolicy.js';
-import { hasProviderFeature, resolveProviderEntitlement } from '../../../shared/providerEntitlementPolicy.js';
+import { canAccessProviderLeadInbox } from '../../shared/providerLeadInboxPolicy.js';
+import { hasProviderFeature, resolveProviderEntitlement } from '../../shared/providerEntitlementPolicy.js';
 import {
   PROVIDER_LEAD_RESPONSE_CONTRACT_VERSION,
   normalizeProviderLeadResponseType,
   providerLeadStatusForResponse,
   sanitizeProviderLeadResponse,
-} from '../../../shared/providerLeadResponsePolicy.js';
+} from '../../shared/providerLeadResponsePolicy.js';
 import {
   acquireProviderLeadResponseLock,
   releaseProviderLeadResponseLock,
-} from '../../../shared/providerLeadResponseLock.js';
+} from '../../shared/providerLeadResponseLock.js';
 import {
   acquireContactShareApprovalLock,
   releaseContactShareApprovalLock,
-} from '../../../shared/contactShareApprovalLock.js';
+} from '../../shared/contactShareApprovalLock.js';
 import {
   acquireControlledChatMessageLock,
   releaseControlledChatMessageLock,
-} from '../../../shared/controlledChatLock.js';
-import { notifyPatientProviderResponse } from '../../../shared/leadCommunicationNotifications.js';
+} from '../../shared/controlledChatLock.js';
+import { notifyPatientProviderResponse } from '../../shared/leadCommunicationNotifications.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });

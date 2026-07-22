@@ -4,16 +4,16 @@ import {
   CONTACT_SHARE_APPROVAL_CONTRACT_VERSION,
   canApproveContactShareForResponse,
   sanitizeContactShareApproval,
-} from '../../../shared/contactShareApprovalPolicy.js';
+} from '../../shared/contactShareApprovalPolicy.js';
 import {
   acquireContactShareApprovalLock,
   releaseContactShareApprovalLock,
-} from '../../../shared/contactShareApprovalLock.js';
+} from '../../shared/contactShareApprovalLock.js';
 import {
   PATIENT_REQUEST_LIFECYCLE_STATES,
   patientRequestHasExpired,
   persistedPatientRequestLifecycleState,
-} from '../../../shared/patientRequestLifecyclePolicy.js';
+} from '../../shared/patientRequestLifecyclePolicy.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });

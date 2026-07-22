@@ -22,7 +22,7 @@ import { getGenericRepairEligibility } from './genericRepairPolicy.js';
 import {
   loadPublicLocationsForLocality,
   loadRowsForLocationIds,
-} from '../../../shared/locationScopedEntityQuery.js';
+} from '../../shared/locationScopedEntityQuery.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const PATIENT_FACING_PROFILE_TYPES = new Set([

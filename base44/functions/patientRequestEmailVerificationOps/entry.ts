@@ -7,11 +7,11 @@ import {
   createPatientVerificationCode,
   patientEmailVerificationState,
   validPatientVerificationCode,
-} from '../../../shared/patientEmailVerificationPolicy.js';
+} from '../../shared/patientEmailVerificationPolicy.js';
 import {
   acquirePatientEmailVerificationLock,
   releasePatientEmailVerificationLock,
-} from '../../../shared/patientEmailVerificationLock.js';
+} from '../../shared/patientEmailVerificationLock.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
