@@ -1,14 +1,20 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { BookmarkPlus, CheckCircle2, LockKeyhole, Send, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import PatientRequestEmailVerification from "./PatientRequestEmailVerification";
 import RequestWorkspace from "./RequestWorkspace";
 import {
+  PATIENT_REQUEST_CREATE_TIMEOUT_MS,
   authorizePatientRequestDistribution,
-  createPatientRequestIdempotencyKey,
   persistPatientRequest,
   readPatientRequestDraft,
 } from "@/lib/patientRequestPersistenceClient";
+import { createPatientOperationGuard, isPatientOperationTimeout } from "@/lib/patientOperationControl";
+import {
+  abandonPatientRequestIdempotency,
+  completePatientRequestIdempotency,
+  getOrCreatePatientRequestIdempotency,
+} from "@/lib/patientRequestIdempotency";
 
 function track(eventName, properties = {}) {
   try {
@@ -44,8 +50,15 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
   const [distributionResult, setDistributionResult] = useState(null);
   const [detailedMessage, setDetailedMessage] = useState("");
   const [contact, setContact] = useState({ name: "", email: "", phone: "", preference: "email" });
-  const idempotencyKeyRef = useRef(createPatientRequestIdempotencyKey());
+  const submissionGuardRef = useRef(createPatientOperationGuard());
+  const submissionInFlightRef = useRef(false);
+  const activeIdempotencyRef = useRef(null);
   const hasEmail = Boolean(contact.email.trim());
+
+  useEffect(() => {
+    submissionGuardRef.current.activate();
+    return () => submissionGuardRef.current.dispose();
+  }, []);
 
   const openForm = () => {
     setIsOpen(true);
@@ -57,6 +70,7 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
 
   const submit = async (event) => {
     event.preventDefault();
+    if (submissionInFlightRef.current) return;
     const draft = readPatientRequestDraft();
     if (!draft) {
       setError("Rezumatul cererii nu mai este disponibil. Reia căutarea.");
@@ -75,17 +89,30 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
       return;
     }
 
+    const idempotency = getOrCreatePatientRequestIdempotency({
+      requestDraft: draft,
+      detailedMessage,
+      contact,
+    });
+    activeIdempotencyRef.current = idempotency;
+    const requestId = submissionGuardRef.current.begin();
+    submissionInFlightRef.current = true;
     setIsSubmitting(true);
     setError("");
     try {
       const data = await persistPatientRequest({
-        idempotencyKey: idempotencyKeyRef.current,
+        idempotencyKey: idempotency.idempotencyKey,
         requestDraft: draft,
         detailedMessage,
         contact,
         results,
         meta,
+        requestId,
+        timeoutMs: PATIENT_REQUEST_CREATE_TIMEOUT_MS,
       });
+      if (!submissionGuardRef.current.isCurrent(requestId)) return;
+      completePatientRequestIdempotency({ fingerprint: idempotency.fingerprint });
+      activeIdempotencyRef.current = null;
       onRequestCreated?.(data);
       setSubmittedDraft(draft);
       setSuccess(data);
@@ -97,12 +124,18 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
         contact_channel: hasEmail ? (contact.phone.trim() ? "email_and_phone" : "email") : "phone",
       });
     } catch (submissionError) {
-      setError(errorMessage(submissionError));
+      if (!submissionGuardRef.current.isCurrent(requestId)) return;
+      const timedOut = isPatientOperationTimeout(submissionError);
+      setError(timedOut
+        ? "Salvarea a durat prea mult. Datele au rămas în formular și poți reîncerca în siguranță."
+        : errorMessage(submissionError));
       track("patient_request_save_failed", {
         field: submissionError?.field || submissionError?.response?.data?.field || "unknown",
+        failure_kind: timedOut ? "timeout" : "technical",
       });
     } finally {
-      setIsSubmitting(false);
+      submissionInFlightRef.current = false;
+      if (submissionGuardRef.current.isCurrent(requestId)) setIsSubmitting(false);
     }
   };
 
@@ -315,7 +348,12 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
           <ShieldCheck className="h-4 w-4" />
           {isSubmitting ? "Salvăm cererea..." : "Confirmă și salvează"}
         </button>
-        <button type="button" disabled={isSubmitting} onClick={() => { setIsOpen(false); setError(""); }} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-border bg-background px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary disabled:opacity-60">
+        <button type="button" disabled={isSubmitting} onClick={() => {
+          abandonPatientRequestIdempotency({ fingerprint: activeIdempotencyRef.current?.fingerprint || "" });
+          activeIdempotencyRef.current = null;
+          setIsOpen(false);
+          setError("");
+        }} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-border bg-background px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary disabled:opacity-60">
           Renunță
         </button>
       </div>

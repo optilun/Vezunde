@@ -9,6 +9,7 @@ import {
   storePatientRequestDraft,
 } from "@/lib/patientRequestPersistenceClient";
 import { clearPatientIntakeSession } from "@/lib/patientIntakeSession";
+import { abandonAllPatientRequestIdempotency } from "@/lib/patientRequestIdempotency";
 import MatchResultCard from "./MatchResultCard";
 import NoResultsFlow from "./NoResultsFlow";
 import PatientRecoverySubmission from "./PatientRecoverySubmission";
@@ -35,6 +36,7 @@ function RoutingNotice({ meta }) {
 
 function restartGuidedSearch() {
   clearPatientIntakeSession();
+  abandonAllPatientRequestIdempotency();
   const params = new URLSearchParams(window.location.search);
   params.delete("ref");
   const query = params.toString();

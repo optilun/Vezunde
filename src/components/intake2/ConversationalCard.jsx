@@ -18,6 +18,7 @@ import {
   readPatientIntakeSession,
   writePatientIntakeSession,
 } from "@/lib/patientIntakeSession";
+import { abandonAllPatientRequestIdempotency } from "@/lib/patientRequestIdempotency";
 import { buildIntentConfirmationProposal } from "@/lib/patientIntentConfirmation";
 import { buildPatientRequestDraft } from "@/lib/patientRequestDraft";
 import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill } from "@/lib/intentRegistry";
@@ -170,6 +171,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     pushHistory();
     if (!state.intent) {
       clearPatientIntakeSession();
+      abandonAllPatientRequestIdempotency();
       setState((s) => ({
         ...s,
         intent: option.key,
@@ -236,6 +238,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
 
   const handleCorrectInterpretation = () => {
     clearPatientIntakeSession();
+    abandonAllPatientRequestIdempotency();
     interpretationRequestRef.current.invalidate();
     matchingRequestRef.current.invalidate();
     setState(initState(null, ""));
