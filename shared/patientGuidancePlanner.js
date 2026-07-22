@@ -699,9 +699,6 @@ export function buildPatientGuidancePlannerProfile(input = {}, aiEnvelope = {}) 
   };
 }
 
-function withTimeout
-}
-
 function withTimeout(promise, timeoutMs) {
   let timeoutId;
   const timeout = new Promise((_, reject) => {
