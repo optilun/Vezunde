@@ -100,7 +100,7 @@ export function deterministicSafetyFlagsFromText(value) {
 export function guidedSafetyFlagsFromAnswers(answers) {
   const rows = Array.isArray(answers) ? answers : [];
   return uniqueFlags(rows
-    .filter((answer) => answer?.question_key === "safety_screening")
+    .filter((answer) => ["safety_screening", "safety_targeted_check"].includes(answer?.question_key))
     .map((answer) => GUIDED_ANSWER_TO_FLAG[answer?.answer_value])
     .filter(Boolean));
 }
