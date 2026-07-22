@@ -8,6 +8,7 @@ import {
   interpretPatientNeedForConfirmation,
   interpretPatientNeedInShadow,
   matchProvidersWithSemanticFallback,
+  selectPatientGuidanceNextQuestion,
 } from "@/lib/providerSemanticSearch";
 import { createPatientOperationGuard, isPatientOperationTimeout } from "@/lib/patientOperationControl";
 import {
@@ -22,6 +23,7 @@ import { abandonAllPatientRequestIdempotency } from "@/lib/patientRequestIdempot
 import { buildIntentConfirmationProposal } from "@/lib/patientIntentConfirmation";
 import { buildPatientRequestDraft } from "@/lib/patientRequestDraft";
 import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill } from "@/lib/intentRegistry";
+import { getApprovedPatientGuidanceQuestion } from "../../../shared/patientGuidanceQuestionCatalog.js";
 import QuestionChoice from "./QuestionChoice";
 import QuestionText from "./QuestionText";
 import QuestionLocation from "./QuestionLocation";
@@ -29,6 +31,7 @@ import MatchResults from "./MatchResults";
 import SearchingTransition from "./SearchingTransition";
 import PatientIntentConfirmation from "./PatientIntentConfirmation";
 import PatientRequestReview from "./PatientRequestReview";
+import UrgencyInterruption from "./UrgencyInterruption";
 
 function resolveOptionServiceKeys(currentKeys = [], option = {}) {
   const optionKeys = Array.isArray(option.service_keys) ? option.service_keys.filter(Boolean) : [];
@@ -43,6 +46,7 @@ const initState = (initialIntent, initialMessage) => {
 
   const answers = [];
   let serviceKeys = intent ? [...INTENTS[intent].service_keys] : [];
+  let explicitServiceKeys = [];
 
   if (intent) {
     const prefill = detectSubIntentPrefill(intent, initialMessage);
@@ -51,7 +55,10 @@ const initState = (initialIntent, initialMessage) => {
       const option = question?.options?.find((o) => o.key === prefill.option_key);
       if (option) {
         answers.push({ question_key: prefill.question_key, answer_value: option.key });
-        if (option.service_keys) serviceKeys = resolveOptionServiceKeys(serviceKeys, option);
+        if (option.service_keys) {
+          serviceKeys = resolveOptionServiceKeys(serviceKeys, option);
+          explicitServiceKeys = resolveOptionServiceKeys(explicitServiceKeys, option);
+        }
       }
     }
   }
@@ -59,7 +66,9 @@ const initState = (initialIntent, initialMessage) => {
   return {
     intent,
     answers,
+    questionHistory: answers.map((answer) => answer.question_key),
     serviceKeys,
+    explicitServiceKeys,
     city: "",
     scope: "",
     locality: null,
@@ -71,10 +80,35 @@ function patientLanguageText(initialMessage, answers) {
   const values = [
     initialMessage,
     ...(answers || [])
-      .filter((answer) => answer.question_key === "descriere")
+      .filter((answer) => ["descriere", "symptom_description"].includes(answer.question_key))
       .map((answer) => answer.answer_value),
   ];
   return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))].join(". ");
+}
+
+function fallbackQuestionSelection() {
+  return { status: "fallback", question: null };
+}
+
+function controlledQuestionSelection(response, state) {
+  const selection = response?.patient_guidance_question_selection;
+  if (response?.status !== "completed" || !selection) return fallbackQuestionSelection();
+  if (selection.status === "complete") return { status: "complete", question: null };
+  if (selection.status === "safety_blocked") return { status: "blocked", question: null };
+  if (selection.status !== "selected" || !selection.next_question_key) {
+    return fallbackQuestionSelection();
+  }
+
+  const alreadySeen = new Set([
+    ...(Array.isArray(state.answers) ? state.answers.map((answer) => answer.question_key) : []),
+    ...(Array.isArray(state.questionHistory) ? state.questionHistory : []),
+  ]);
+  if (alreadySeen.has(selection.next_question_key)) return fallbackQuestionSelection();
+
+  const question = getApprovedPatientGuidanceQuestion(selection.next_question_key);
+  return question
+    ? { status: "selected", question }
+    : fallbackQuestionSelection();
 }
 
 const PATIENT_SEARCH_ANALYTICS_VERSION = "patient-search-v1";
@@ -129,9 +163,13 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const [matchMeta, setMatchMeta] = useState(null);
   const [intentProposal, setIntentProposal] = useState(null);
   const [requestDraft, setRequestDraft] = useState(() => restoredSession?.requestDraft || null);
+  const [questionSelection, setQuestionSelection] = useState(() => (
+    state.intent ? { status: "pending", question: null } : { status: "idle", question: null }
+  ));
   const [matchError, setMatchError] = useState(null);
   const interpretationAttemptedRef = useRef(false);
   const interpretationRequestRef = useRef(createPatientOperationGuard());
+  const questionSelectionRequestRef = useRef(createPatientOperationGuard());
   const matchingRequestRef = useRef(createPatientOperationGuard());
   const analyticsSessionRef = useRef({
     started: false,
@@ -144,7 +182,12 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const intentDef = state.intent ? INTENTS[state.intent] : null;
   const questions = intentDef ? intentDef.questions : [CATEGORY_QUESTION];
   const answeredKeys = state.answers.map((a) => a.question_key);
-  const current = questions.find((q) => !answeredKeys.includes(q.key));
+  const legacyCurrent = questions.find((q) => !answeredKeys.includes(q.key));
+  const current = !state.intent
+    ? CATEGORY_QUESTION
+    : (questionSelection.status === "selected"
+      ? questionSelection.question
+      : (["fallback", "idle"].includes(questionSelection.status) ? legacyCurrent : null));
   const total = state.answers.length + questions.filter((q) => !answeredKeys.includes(q.key)).length;
   const progress = total > 0 ? Math.round((state.answers.length / total) * 100) : 0;
 
@@ -163,12 +206,17 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   };
 
   const pushHistory = () => setHistory((h) => [...h, state]);
+  const prepareAdaptiveSelection = () => {
+    questionSelectionRequestRef.current.invalidate();
+    setQuestionSelection({ status: "pending", question: null });
+  };
 
   const handleChoice = (question, option) => {
     interpretationRequestRef.current.invalidate();
     matchingRequestRef.current.invalidate();
     markSearchStarted(state.intent || option.key);
     pushHistory();
+    prepareAdaptiveSelection();
     if (!state.intent) {
       clearPatientIntakeSession();
       abandonAllPatientRequestIdempotency();
@@ -176,16 +224,46 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         ...s,
         intent: option.key,
         serviceKeys: [...INTENTS[option.key].service_keys],
+        explicitServiceKeys: [],
         answers: [...s.answers, { question_key: "categorie", answer_value: option.key }],
+        questionHistory: [...new Set([...(s.questionHistory || []), "categorie"])],
       }));
       return;
     }
     setState((s) => {
-      const next = { ...s, answers: [...s.answers, { question_key: question.key, answer_value: option.key }] };
-      if (option.service_keys) next.serviceKeys = resolveOptionServiceKeys(next.serviceKeys, option);
+      const next = {
+        ...s,
+        answers: [...s.answers, { question_key: question.key, answer_value: option.key }],
+        questionHistory: [...new Set([...(s.questionHistory || []), question.key])],
+      };
+      if (option.service_keys) {
+        next.serviceKeys = resolveOptionServiceKeys(next.serviceKeys, option);
+        next.explicitServiceKeys = resolveOptionServiceKeys(next.explicitServiceKeys, option);
+      }
       if (option.next_intent && INTENTS[option.next_intent]) {
         next.intent = option.next_intent;
         next.serviceKeys = [...INTENTS[option.next_intent].service_keys];
+        next.explicitServiceKeys = [];
+      }
+      if (question.key === "routine_vs_symptom" && option.key === "symptom") {
+        next.intent = "simptome_oftalmologice";
+        next.serviceKeys = [...INTENTS.simptome_oftalmologice.service_keys];
+        next.explicitServiceKeys = [];
+      }
+      if (question.key === "routine_vs_symptom" && option.key === "routine") {
+        next.intent = "control_vedere";
+        next.serviceKeys = [...INTENTS.control_vedere.service_keys];
+        next.explicitServiceKeys = [];
+      }
+      if (question.key === "for_whom" && option.key === "child" && next.intent === "control_vedere") {
+        next.intent = "control_copil";
+        next.serviceKeys = [...INTENTS.control_copil.service_keys];
+        next.explicitServiceKeys = [];
+      }
+      if (question.key === "optical_product_type" && option.key === "contact_lenses") {
+        next.intent = "lentile_contact";
+        next.serviceKeys = resolveOptionServiceKeys(INTENTS.lentile_contact.service_keys, option);
+        next.explicitServiceKeys = resolveOptionServiceKeys([], option);
       }
       return next;
     });
@@ -201,20 +279,28 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       text_length_band: textLengthBand(value),
     });
     pushHistory();
-    setState((s) => ({ ...s, answers: [...s.answers, { question_key: question.key, answer_value: value }] }));
+    prepareAdaptiveSelection();
+    setState((s) => ({
+      ...s,
+      answers: [...s.answers, { question_key: question.key, answer_value: value }],
+      questionHistory: [...new Set([...(s.questionHistory || []), question.key])],
+    }));
   };
 
-  const handleLocation = ({ city, locality, clientAddressText }) => {
+  const handleLocation = (question, { city, locality, clientAddressText }) => {
     matchingRequestRef.current.invalidate();
     markSearchStarted(state.intent);
     pushHistory();
+    prepareAdaptiveSelection();
+    const questionKey = question?.key || "locatie";
     setState((s) => ({
       ...s,
       scope: "locality",
       city: city || "",
       locality: locality || null,
       clientAddressText: clientAddressText || "",
-      answers: [...s.answers, { question_key: "locatie", answer_value: city }],
+      answers: [...s.answers, { question_key: questionKey, answer_value: city }],
+      questionHistory: [...new Set([...(s.questionHistory || []), questionKey])],
     }));
   };
 
@@ -225,6 +311,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     setState(confirmedState);
     setHistory([]);
     setRequestDraft(null);
+    prepareAdaptiveSelection();
     markSearchStarted(intentProposal.intent);
     trackPatientSearchEvent("patient_search_ai_intent_confirmed", {
       intent: intentProposal.intent,
@@ -251,6 +338,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       agreement_status: intentProposal?.agreement_status || "unknown",
     });
     setIntentProposal(null);
+    setQuestionSelection({ status: "idle", question: null });
     setPhase("questions");
   };
 
@@ -265,6 +353,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       answered_count: state.answers.length,
     });
     setHistory((h) => h.slice(0, -1));
+    prepareAdaptiveSelection();
     setState(prev);
   };
 
@@ -291,6 +380,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       questionnaire_version: requestDraft?.questionnaire_version || "unknown",
     });
     setRequestDraft(null);
+    prepareAdaptiveSelection();
     if (prev) {
       setHistory((items) => items.slice(0, -1));
       setState(prev);
@@ -314,10 +404,12 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
 
   useEffect(() => {
     interpretationRequestRef.current.activate();
+    questionSelectionRequestRef.current.activate();
     matchingRequestRef.current.activate();
     return () => {
       interpretationAttemptedRef.current = false;
       interpretationRequestRef.current.dispose();
+      questionSelectionRequestRef.current.dispose();
       matchingRequestRef.current.dispose();
       const session = analyticsSessionRef.current;
       if (!session.started || session.completed) return;
@@ -343,6 +435,50 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   }, [history, initialIntent, initialMessage, phase, requestDraft, state]);
 
   useEffect(() => {
+    if (phase !== "questions" || !state.intent) return undefined;
+    const requestId = questionSelectionRequestRef.current.begin();
+    setQuestionSelection({ status: "pending", question: null });
+
+    (async () => {
+      const response = await selectPatientGuidanceNextQuestion({
+        search_text: patientLanguageText(initialMessage, state.answers),
+        intent: state.intent,
+        deterministic_intent: state.intent,
+        explicit_primary_intent: state.intent,
+        service_keys: state.serviceKeys,
+        explicit_confirmed_service_keys: state.explicitServiceKeys,
+        answers: state.answers,
+        question_history: state.questionHistory,
+        locality_siruta_code: state.locality?.siruta_code || "",
+        locality_name: state.city || state.locality?.city_name || "",
+        county_code: state.locality?.county_code || "",
+        county_name: state.locality?.county_name || "",
+        deterministic_safety_state: "unchecked",
+      }, {
+        timeoutMs: PATIENT_INTERPRETATION_TIMEOUT_MS,
+        requestId,
+      });
+      if (!questionSelectionRequestRef.current.isCurrent(requestId)) return;
+      setQuestionSelection(controlledQuestionSelection(response, state));
+    })().catch(() => {
+      if (!questionSelectionRequestRef.current.isCurrent(requestId)) return;
+      setQuestionSelection(fallbackQuestionSelection());
+    });
+
+    return () => questionSelectionRequestRef.current.invalidate();
+  }, [
+    phase,
+    initialMessage,
+    state.intent,
+    state.answers,
+    state.serviceKeys,
+    state.explicitServiceKeys,
+    state.questionHistory,
+    state.locality,
+    state.city,
+  ]);
+
+  useEffect(() => {
     if (phase !== "interpreting" || interpretationAttemptedRef.current) return;
     interpretationAttemptedRef.current = true;
     const requestId = interpretationRequestRef.current.begin();
@@ -352,6 +488,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         search_text: initialMessage,
         deterministic_intent: state.intent || "unknown",
         service_keys: state.serviceKeys,
+        explicit_confirmed_service_keys: state.explicitServiceKeys,
         answers: [],
       }, {
         timeoutMs: PATIENT_INTERPRETATION_TIMEOUT_MS,
@@ -386,7 +523,12 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   }, [phase, initialMessage, state.intent, state.serviceKeys]);
 
   useEffect(() => {
-    if (phase !== "questions" || !state.intent || current) return;
+    if (
+      phase !== "questions"
+      || !state.intent
+      || current
+      || ["pending", "blocked"].includes(questionSelection.status)
+    ) return;
     const draft = buildPatientRequestDraft({
       state,
       originalMessage: initialMessage,
@@ -401,7 +543,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       service_key_count: draft.service_keys.length,
     });
     setPhase("review");
-  }, [phase, state, current, initialMessage, intentProposal]);
+  }, [phase, state, current, initialMessage, intentProposal, questionSelection.status]);
 
   useEffect(() => {
     if (phase !== "submitting" || !requestDraft) return;
@@ -426,7 +568,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
           ...matchPayload,
           deterministic_intent: requestDraft.intent,
           answers: requestDraft.answers
-            .filter((answer) => answer.question_key !== "locatie")
+            .filter((answer) => !["locatie", "locality"].includes(answer.question_key))
             .map((answer) => ({
               question_key: answer.question_key,
               answer_value: answer.answer_value,
@@ -530,6 +672,16 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         />
       )}
 
+      {phase === "questions" && state.intent && questionSelection.status === "pending" && (
+        <div className="py-8 text-center text-sm text-muted-foreground">
+          Alegem urmatoarea intrebare relevanta...
+        </div>
+      )}
+
+      {phase === "questions" && questionSelection.status === "blocked" && (
+        <UrgencyInterruption assessment={{ blocking: true, blocking_flags: [] }} />
+      )}
+
       {phase === "questions" && current && (
         <>
           <div className="mb-6 flex items-center gap-4">
@@ -564,7 +716,9 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
               </h2>
               {current.type === "choice" && <QuestionChoice question={current} onSelect={handleChoice} />}
               {current.type === "text" && <QuestionText question={current} onSubmit={handleText} />}
-              {current.type === "location" && <QuestionLocation onAnswer={handleLocation} />}
+              {current.type === "location" && (
+                <QuestionLocation onAnswer={(answer) => handleLocation(current, answer)} />
+              )}
             </motion.div>
           </AnimatePresence>
 
