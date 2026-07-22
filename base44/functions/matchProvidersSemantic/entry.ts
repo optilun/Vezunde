@@ -19,6 +19,7 @@ import {
 import { getRecommendationCoverageStatus } from './coverage.js';
 import { getPublicLocationDisclosure } from './providerPublicTrust.js';
 import { getGenericRepairEligibility } from './genericRepairPolicy.js';
+import { runPatientGuidanceRuntimeShadow } from '../../shared/patientGuidancePlanner.js';
 import {
   loadPublicLocationsForLocality,
   loadRowsForLocationIds,
@@ -141,7 +142,37 @@ async function loadPublicLocationsForScope(svc, scope, selectedLocality, sirutaC
   }, 'name', 5000);
 }
 
-async function interpretPatientNeed(base44, payload, searchText, deterministicServiceKeys) {
+const PATIENT_GUIDANCE_SHADOW_EVENT = "patient_guidance_shadow_summary";
+
+function explicitLocalityFromPayload(payload) {
+  const locality = {
+    siruta_code: clean(payload.locality_siruta_code),
+    city: clean(payload.locality_name || payload.locality_city),
+    county_code: clean(payload.county_code),
+    county: clean(payload.county_name),
+  };
+  const controlled = Object.fromEntries(
+    Object.entries(locality).filter(([, value]) => Boolean(value)),
+  );
+  return Object.keys(controlled).length > 0 ? controlled : null;
+}
+
+function observePatientGuidanceShadow(context) {
+  const observation = runPatientGuidanceRuntimeShadow(context);
+  console.info(
+    PATIENT_GUIDANCE_SHADOW_EVENT,
+    JSON.stringify({ ...observation.summary, ...observation.comparison }),
+  );
+  return observation.live_result;
+}
+
+async function interpretPatientNeed(
+  base44,
+  payload,
+  searchText,
+  deterministicServiceKeys,
+  shadowContext = {},
+) {
   if (!searchText) {
     return {
       mode: 'shadow',
@@ -164,21 +195,36 @@ async function interpretPatientNeed(base44, payload, searchText, deterministicSe
       add_context_from_internet: false,
       response_json_schema: getPatientNeedResponseSchema(),
     });
-    return {
+    const interpretation = sanitizePatientNeedInterpretation(raw, {
+      deterministicIntent,
+      deterministicServiceKeys,
+    });
+    const liveResult = {
       mode: 'shadow',
       status: 'completed',
-      interpretation: sanitizePatientNeedInterpretation(raw, {
-        deterministicIntent,
-        deterministicServiceKeys,
-      }),
+      interpretation,
     };
+    return observePatientGuidanceShadow({
+      liveResult,
+      text: searchText,
+      legacyStatus: 'completed',
+      legacyInterpretation: interpretation,
+      ...shadowContext,
+    });
   } catch (_error) {
     // AI is advisory in shadow mode. Its failure must never block deterministic search.
-    return {
+    const liveResult = {
       mode: 'shadow',
       status: 'unavailable',
       reason: 'ai_interpretation_unavailable',
     };
+    return observePatientGuidanceShadow({
+      liveResult,
+      text: searchText,
+      legacyStatus: 'unavailable',
+      legacyInterpretation: null,
+      ...shadowContext,
+    });
   }
 }
 
@@ -207,7 +253,26 @@ Deno.serve(async (request) => {
     );
 
     if (payload.mode === 'interpret_only') {
-      return Response.json(await interpretPatientNeed(base44, payload, searchText, requestedKeys));
+      return Response.json(await interpretPatientNeed(
+        base44,
+        payload,
+        searchText,
+        requestedKeys,
+        {
+          explicitLocality: explicitLocalityFromPayload(payload),
+          explicitPrimaryIntent: clean(payload.explicit_primary_intent),
+          explicitConfirmedServiceKeys: Array.isArray(payload.explicit_confirmed_service_keys)
+            ? payload.explicit_confirmed_service_keys
+            : [],
+          guidedAnswers: Array.isArray(payload.answers) ? payload.answers : [],
+          deterministicIntent: clean(payload.deterministic_intent || payload.intent),
+          deterministicServiceKeys: Array.isArray(payload.deterministic_service_keys)
+            ? payload.deterministic_service_keys
+            : semantic.service_keys,
+          deterministicFacts: payload.deterministic_facts,
+          deterministicSafetyState: clean(payload.deterministic_safety_state),
+        },
+      ));
     }
 
     if (requestedKeys.length === 0) {

@@ -61,7 +61,8 @@ function interpretationRequest(payload = {}) {
     minScore: payload.semantic_min_score || 0.34,
   });
   const explicitKeys = Array.isArray(payload.service_keys) ? payload.service_keys.filter(Boolean) : [];
-  const deterministicServiceKeys = [...new Set([...explicitKeys, ...localResolution.service_keys])];
+  const detectedServiceKeys = localResolution.service_keys;
+  const deterministicServiceKeys = [...new Set([...explicitKeys, ...detectedServiceKeys])];
 
   return {
     searchText,
@@ -73,6 +74,15 @@ function interpretationRequest(payload = {}) {
       deterministic_intent: payload.deterministic_intent || payload.intent || "unknown",
       service_keys: deterministicServiceKeys,
       answers: Array.isArray(payload.answers) ? payload.answers : [],
+      explicit_primary_intent: payload.explicit_primary_intent || "",
+      explicit_confirmed_service_keys: explicitKeys,
+      deterministic_service_keys: detectedServiceKeys,
+      deterministic_facts: payload.deterministic_facts || {},
+      deterministic_safety_state: payload.deterministic_safety_state || "unchecked",
+      locality_siruta_code: payload.locality_siruta_code || "",
+      locality_name: payload.locality_name || payload.locality_city || "",
+      county_code: payload.county_code || "",
+      county_name: payload.county_name || "",
     },
   };
 }

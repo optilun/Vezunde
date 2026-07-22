@@ -6,8 +6,14 @@ on:
       - "shared/patientGuidanceQuestionCatalog.js"
       - "shared/patientGuidanceRouting.js"
       - "shared/patientGuidancePlanner.js"
+      - "base44/shared/patientGuidanceQuestionCatalog.js"
+      - "base44/shared/patientGuidanceRouting.js"
+      - "base44/shared/patientGuidancePlanner.js"
+      - "base44/functions/matchProvidersSemantic/entry.ts"
+      - "src/lib/providerSemanticSearch.js"
       - "scripts/verify-patient-guidance-routing.mjs"
       - "scripts/verify-patient-guidance-planner.mjs"
+      - "scripts/verify-patient-guidance-runtime-shadow.mjs"
       - ".github/workflows/patient-guidance-routing-ci.yml"
 
 permissions:
@@ -34,6 +40,13 @@ jobs:
         run: node scripts/verify-patient-guidance-routing.mjs
       - name: Verify patient guidance planner
         run: node scripts/verify-patient-guidance-planner.mjs
+      - name: Verify patient guidance runtime shadow
+        run: node scripts/verify-patient-guidance-runtime-shadow.mjs
+      - name: Base44 router and physical function checks
+        run: |
+          node scripts/verify-directory-function-router.mjs
+          node scripts/verify-service-configuration-function-router.mjs
+          node scripts/verify-provider-workspace-function-router.mjs
       - name: Patient need interpretation
         run: node scripts/verify-patient-need-interpretation.mjs
       - name: Patient AI intent confirmation
@@ -83,8 +96,14 @@ jobs:
           shared/patientGuidanceQuestionCatalog.js
           shared/patientGuidanceRouting.js
           shared/patientGuidancePlanner.js
+          base44/shared/patientGuidanceQuestionCatalog.js
+          base44/shared/patientGuidanceRouting.js
+          base44/shared/patientGuidancePlanner.js
+          base44/functions/matchProvidersSemantic/entry.ts
+          src/lib/providerSemanticSearch.js
           scripts/verify-patient-guidance-routing.mjs
           scripts/verify-patient-guidance-planner.mjs
+          scripts/verify-patient-guidance-runtime-shadow.mjs
           --quiet
       - name: Lint complete
         run: npm run lint
