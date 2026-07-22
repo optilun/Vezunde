@@ -606,13 +606,22 @@ await scenario("planner prompt forbids uncontrolled outputs", async () => {
   );
 });
 
-await scenario("planner is not wired into live Base44 function", async () => {
+await scenario("planner is wired only into interpretation shadow mode", async () => {
   const source = await readFile(
     new URL("../base44/functions/matchProvidersSemantic/entry.ts", import.meta.url),
     "utf8",
   );
-  assert.doesNotMatch(source, /patientGuidancePlanner/);
-  assert.doesNotMatch(source, /patient-guidance-planner-v1/);
+  assert.match(
+    source,
+    /runPatientGuidanceRuntimeShadow.*patientGuidancePlanner\.js/s,
+  );
+  assert.equal((source.match(/Core\.InvokeLLM\(/g) || []).length, 1);
+  assert.match(source, /if \(payload\.mode === 'interpret_only'\)/);
+  assert.match(source, /return observation\.live_result;/);
+  assert.doesNotMatch(
+    source,
+    /Response\.json\([^;]*patient_guidance_shadow_profile/s,
+  );
 });
 
 
