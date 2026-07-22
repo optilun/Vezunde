@@ -196,6 +196,13 @@ function deterministicSignalsForText(text) {
     exactServiceKeys.push("eyeglasses_adjustment");
     intent = "reparatii_ochelari";
   }
+  if (
+    normalized.includes("ochii foarte rosii")
+    || normalized.includes("ochi foarte rosu")
+    || normalized.includes("ochi foarte rosii")
+  ) {
+    intent = "simptome_oftalmologice";
+  }
   if (normalized.includes("lentile de contact")) {
     intent = "lentile_contact";
     if (
