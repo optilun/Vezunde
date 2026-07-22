@@ -158,6 +158,11 @@ const PATIENT_GUIDANCE_INTENTS = new Set([
   'reparatii_ochelari',
   'unknown',
 ]);
+const PATIENT_GUIDANCE_QUESTION_SELECTION_BLOCKING_RULES = new Set([
+  'pediatric_age_to_care_path',
+  'symptom_safety_completion',
+  'contact_lens_first_time_path',
+]);
 const LEGACY_ANSWER_VALUE_ALIASES = Object.freeze({
   for_whom: Object.freeze({ copil: 'child' }),
   child_age_group: Object.freeze({
@@ -287,9 +292,11 @@ function observePatientGuidanceShadow(context) {
 function activatedQuestionSelection(observation) {
   const selection = observation.question_selection;
   if (selection?.status === 'safety_blocked') return selection;
-  const clinicalBlocks = observation.patient_guidance_shadow_profile
-    ?.routing_profile?.blocking_validation_rule_keys;
-  if (!Array.isArray(clinicalBlocks) || clinicalBlocks.length === 0) return selection;
+  const clinicalBlocks = (
+    observation.patient_guidance_shadow_profile
+      ?.routing_profile?.blocking_validation_rule_keys || []
+  ).filter((ruleKey) => PATIENT_GUIDANCE_QUESTION_SELECTION_BLOCKING_RULES.has(ruleKey));
+  if (clinicalBlocks.length === 0) return selection;
   return {
     ...selection,
     status: 'fallback',
