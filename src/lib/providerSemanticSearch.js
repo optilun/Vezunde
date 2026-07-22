@@ -1,8 +1,25 @@
 import { base44 } from "@/api/base44Client";
 import { resolveServiceSearchQuery } from "@/lib/serviceSemanticSearch";
+import { isPatientOperationTimeout, withPatientOperationTimeout } from "./patientOperationControl.js";
+import { planPatientShadowInterpretation } from "./patientShadowInterpretation.js";
 
 const CONFIRMATION_REUSE_TTL_MS = 2 * 60 * 1000;
 const completedConfirmationBySignature = new Map();
+
+export const PATIENT_INTERPRETATION_TIMEOUT_MS = 8_000;
+export const PATIENT_MATCHING_TIMEOUT_MS = 15_000;
+
+/**
+ * @param {string} functionName
+ * @param {any} payload
+ * @param {{ timeoutMs: number, operation: string, requestId?: any }} options
+ */
+function invokePatientFunction(functionName, payload, { timeoutMs, operation, requestId = null } = /** @type {any} */ ({})) {
+  return withPatientOperationTimeout(
+    () => base44.functions.invoke(functionName, payload),
+    { timeoutMs, operation, requestId },
+  );
+}
 
 function searchTextFromPayload(payload = {}) {
   return String(
@@ -126,28 +143,63 @@ function normalizeRecommendationResponse(data = {}) {
   };
 }
 
-export async function interpretPatientNeedForConfirmation(payload = {}) {
+/**
+ * @param {any} payload
+ * @param {{ timeoutMs?: number, requestId?: any }} options
+ */
+export async function interpretPatientNeedForConfirmation(payload = {}, options = {}) {
   const request = interpretationRequest(payload);
   if (!request) return { status: "skipped", reason: "search_text_required" };
 
   try {
-    const response = await base44.functions.invoke("matchProvidersSemantic", request.body);
+    const response = await invokePatientFunction("matchProvidersSemantic", request.body, {
+      timeoutMs: options.timeoutMs || PATIENT_INTERPRETATION_TIMEOUT_MS,
+      operation: "patient_need_interpretation",
+      requestId: options.requestId || null,
+    });
     const data = response?.data || { status: "unavailable", reason: "empty_interpretation_response" };
     rememberCompletedConfirmation(request, data);
     trackInterpretation("patient_need_interpretation_confirmation", interpretationAnalytics(data, request));
     return data;
-  } catch (_error) {
-    trackInterpretation("patient_need_interpretation_confirmation", {
-      status: "request_failed",
-      deterministic_intent: request.deterministicIntent,
-    });
-    return { status: "unavailable", reason: "ai_interpretation_unavailable" };
+  } catch (error) {
+    const timedOut = isPatientOperationTimeout(error);
+    trackInterpretation("patient_need_interpretation_confirmation", timedOut
+      ? {
+        status: "timeout",
+        deterministic_intent: request.deterministicIntent,
+      }
+      : {
+        status: "request_failed",
+        deterministic_intent: request.deterministicIntent,
+      });
+    return {
+      status: "unavailable",
+      reason: timedOut ? "ai_interpretation_timeout" : "ai_interpretation_unavailable",
+    };
   }
 }
 
-export async function interpretPatientNeedInShadow(payload = {}) {
+/**
+ * @param {any} payload
+ * @param {{ timeoutMs?: number, requestId?: any, completedInterpretation?: any }} options
+ */
+export async function interpretPatientNeedInShadow(payload = {}, options = {}) {
   const request = interpretationRequest(payload);
   if (!request) return null;
+
+  const reusePlan = planPatientShadowInterpretation(options.completedInterpretation);
+  if (!reusePlan.shouldRequest) {
+    trackInterpretation("patient_need_interpretation_shadow", {
+      status: reusePlan.analyticsStatus,
+      deterministic_intent: request.deterministicIntent,
+      ai_intent: reusePlan.data?.intent || "unknown",
+      agreement_status: reusePlan.data?.agreement_status || "unknown",
+      confidence_band: reusePlan.data?.confidence_band || "low",
+      safety_flag_count: reusePlan.data?.possible_safety_flags?.length || 0,
+      service_key_count: reusePlan.data?.service_keys?.length || 0,
+    });
+    return reusePlan.data;
+  }
 
   if (hasRecentCompletedConfirmation(request)) {
     trackInterpretation("patient_need_interpretation_shadow", {
@@ -158,20 +210,33 @@ export async function interpretPatientNeedInShadow(payload = {}) {
   }
 
   try {
-    const response = await base44.functions.invoke("matchProvidersSemantic", request.body);
+    const response = await invokePatientFunction("matchProvidersSemantic", request.body, {
+      timeoutMs: options.timeoutMs || PATIENT_INTERPRETATION_TIMEOUT_MS,
+      operation: "patient_need_shadow_interpretation",
+      requestId: options.requestId || null,
+    });
     const data = response?.data || null;
     trackInterpretation("patient_need_interpretation_shadow", interpretationAnalytics(data, request));
     return data;
-  } catch (_error) {
-    trackInterpretation("patient_need_interpretation_shadow", {
-      status: "request_failed",
-      deterministic_intent: request.deterministicIntent,
-    });
+  } catch (error) {
+    trackInterpretation("patient_need_interpretation_shadow", isPatientOperationTimeout(error)
+      ? {
+        status: "timeout",
+        deterministic_intent: request.deterministicIntent,
+      }
+      : {
+        status: "request_failed",
+        deterministic_intent: request.deterministicIntent,
+      });
     return null;
   }
 }
 
-export async function matchProvidersWithSemanticFallback(payload = {}) {
+/**
+ * @param {any} payload
+ * @param {{ timeoutMs?: number, requestId?: any }} options
+ */
+export async function matchProvidersWithSemanticFallback(payload = {}, options = {}) {
   const searchText = searchTextFromPayload(payload);
   const localResolution = resolveServiceSearchQuery(searchText, {
     limit: payload.semantic_limit || 15,
@@ -196,9 +261,14 @@ export async function matchProvidersWithSemanticFallback(payload = {}) {
     search_text: searchText,
     service_keys: serviceKeys,
   };
+  const timeoutMs = options.timeoutMs || PATIENT_MATCHING_TIMEOUT_MS;
 
   try {
-    const response = await base44.functions.invoke("matchProvidersSemantic", semanticPayload);
+    const response = await invokePatientFunction("matchProvidersSemantic", semanticPayload, {
+      timeoutMs,
+      operation: "patient_provider_matching_semantic",
+      requestId: options.requestId || null,
+    });
     if (response?.data?.error) {
       const error = Object.assign(new Error(response.data.error), { data: response.data });
       if (!functionUnavailable(error)) throw error;
@@ -211,9 +281,13 @@ export async function matchProvidersWithSemanticFallback(payload = {}) {
     };
   } catch (error) {
     if (!functionUnavailable(error)) throw error;
-    const response = await base44.functions.invoke("matchProviders", {
+    const response = await invokePatientFunction("matchProviders", {
       ...payload,
       service_keys: serviceKeys,
+    }, {
+      timeoutMs,
+      operation: "patient_provider_matching_deterministic",
+      requestId: options.requestId || null,
     });
     return {
       data: normalizeRecommendationResponse({

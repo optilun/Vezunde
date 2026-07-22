@@ -1,4 +1,6 @@
 import { base44 } from "@/api/base44Client";
+import { withPatientOperationTimeout } from "./patientOperationControl.js";
+import { createPatientRequestIdempotencyKey as createDurablePatientRequestIdempotencyKey } from "./patientRequestIdempotency.js";
 
 export const PATIENT_REQUEST_PROCESSING_CONSENT_VERSION = "patient-request-processing-v1";
 export const PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION = "patient-request-distribution-top3-pro-v2";
@@ -7,12 +9,10 @@ const DRAFT_STORAGE_KEY = "viasee.patient_request_draft.v1";
 const ACCESS_STORAGE_PREFIX = "viasee.patient_request_access.";
 const RESUME_REFERENCE_PREFIX = "viasee.patient_request_resume.reference.";
 const RESUME_REQUEST_PREFIX = "viasee.patient_request_resume.request.";
+export const PATIENT_REQUEST_CREATE_TIMEOUT_MS = 20_000;
 
 export function createPatientRequestIdempotencyKey() {
-  if (typeof globalThis.crypto?.randomUUID === "function") return `patient:${globalThis.crypto.randomUUID()}`;
-  const bytes = new Uint8Array(24);
-  globalThis.crypto.getRandomValues(bytes);
-  return `patient:${Array.from(bytes).map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+  return createDurablePatientRequestIdempotencyKey();
 }
 
 export function createControlledChatMessageId() {
@@ -139,8 +139,11 @@ export async function persistPatientRequest({
   contact,
   results,
   meta,
+  requestId = null,
+  timeoutMs = PATIENT_REQUEST_CREATE_TIMEOUT_MS,
 }) {
-  const response = await base44.functions.invoke("createPatientRequest", {
+  const response = await withPatientOperationTimeout(
+    () => base44.functions.invoke("createPatientRequest", {
     idempotency_key: idempotencyKey,
     request_draft: requestDraft,
     detailed_message: detailedMessage,
@@ -156,7 +159,13 @@ export async function persistPatientRequest({
       need_level: meta?.need_level || "",
       results: Array.isArray(results) ? results : [],
     },
-  });
+    }),
+    {
+      timeoutMs,
+      operation: "create_patient_request",
+      requestId,
+    },
+  );
   const data = responseData(response);
   const replayToken = data.request_access_token || readPatientRequestAccess(data.request_id);
   storePatientRequestAccess(data.request_id, replayToken, data.public_reference || "");
