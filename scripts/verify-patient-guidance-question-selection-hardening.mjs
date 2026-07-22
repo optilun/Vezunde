@@ -84,7 +84,18 @@ scenario("clinical validation blocks adaptive activation but not safety interrup
   const activationBlock = entry.slice(activationStart, activationEnd);
   assert.match(activationBlock, /selection\?\.status === 'safety_blocked'/);
   assert.match(activationBlock, /blocking_validation_rule_keys/);
+  assert.match(activationBlock, /PATIENT_GUIDANCE_QUESTION_SELECTION_BLOCKING_RULES\.has\(ruleKey\)/);
   assert.match(activationBlock, /fallback_reason: 'clinical_validation_required'/);
+});
+
+scenario("Top 3 trust validation cannot disable adaptive question selection", () => {
+  const setStart = entry.indexOf("const PATIENT_GUIDANCE_QUESTION_SELECTION_BLOCKING_RULES");
+  const setEnd = entry.indexOf("const LEGACY_ANSWER_VALUE_ALIASES", setStart);
+  const blockerSet = entry.slice(setStart, setEnd);
+  assert.match(blockerSet, /pediatric_age_to_care_path/);
+  assert.match(blockerSet, /symptom_safety_completion/);
+  assert.match(blockerSet, /contact_lens_first_time_path/);
+  assert.doesNotMatch(blockerSet, /specialized_service_trust_threshold/);
 });
 
 scenario("urgent patient text is detected server-side", () => {
@@ -143,7 +154,7 @@ scenario("physical Base44 function count remains 48", () => {
   assert.equal(physicalFunctions.length, 48);
 });
 
-assert.ok(scenarioCount >= 13);
+assert.ok(scenarioCount >= 14);
 console.log(JSON.stringify({
   contract: "patient-guidance-question-selection-hardening-v1",
   scenarios: scenarioCount,
