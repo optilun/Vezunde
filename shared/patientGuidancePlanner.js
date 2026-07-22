@@ -290,10 +290,6 @@ function deterministicSignalsForText(text) {
   const facts = {};
   let intent = normalizeIntent(base.proposed_intent);
 
-  if (/(^|\s)control(\s|$)/.test(normalized)) {
-    facts.routine_vs_symptom = "routine";
-    if (intent === "unknown") intent = "control_vedere";
-  }
   if (/(^|\s)copil(\s|$)/.test(normalized)) {
     facts.for_whom = "child";
   }
