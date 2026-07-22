@@ -21,7 +21,9 @@ import {
 import { abandonAllPatientRequestIdempotency } from "@/lib/patientRequestIdempotency";
 import { buildIntentConfirmationProposal } from "@/lib/patientIntentConfirmation";
 import { buildPatientRequestDraft } from "@/lib/patientRequestDraft";
-import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill } from "@/lib/intentRegistry";
+import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill, isQuestionApplicable } from "@/lib/intentRegistry";
+import { GUIDANCE_KEY_TO_LEGACY_QUESTION_KEY, toGuidanceAnswers } from "@/lib/patientGuidanceQuestionKeyMap";
+import { fetchAdaptiveNextQuestionKey } from "@/lib/patientGuidanceAdaptiveQuestion";
 import QuestionChoice from "./QuestionChoice";
 import QuestionText from "./QuestionText";
 import QuestionLocation from "./QuestionLocation";
@@ -130,9 +132,11 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const [intentProposal, setIntentProposal] = useState(null);
   const [requestDraft, setRequestDraft] = useState(() => restoredSession?.requestDraft || null);
   const [matchError, setMatchError] = useState(null);
+  const [adaptiveLegacyKey, setAdaptiveLegacyKey] = useState(null);
   const interpretationAttemptedRef = useRef(false);
   const interpretationRequestRef = useRef(createPatientOperationGuard());
   const matchingRequestRef = useRef(createPatientOperationGuard());
+  const adaptiveRequestRef = useRef(createPatientOperationGuard());
   const analyticsSessionRef = useRef({
     started: false,
     completed: false,
@@ -142,9 +146,14 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   });
 
   const intentDef = state.intent ? INTENTS[state.intent] : null;
-  const questions = intentDef ? intentDef.questions : [CATEGORY_QUESTION];
   const answeredKeys = state.answers.map((a) => a.question_key);
-  const current = questions.find((q) => !answeredKeys.includes(q.key));
+  const questions = (intentDef ? intentDef.questions : [CATEGORY_QUESTION])
+    .filter((q) => isQuestionApplicable(q, state.answers));
+  const legacyCurrent = questions.find((q) => !answeredKeys.includes(q.key));
+  const adaptiveQuestion = adaptiveLegacyKey
+    ? questions.find((q) => q.key === adaptiveLegacyKey && !answeredKeys.includes(q.key))
+    : null;
+  const current = adaptiveQuestion || legacyCurrent;
   const total = state.answers.length + questions.filter((q) => !answeredKeys.includes(q.key)).length;
   const progress = total > 0 ? Math.round((state.answers.length / total) * 100) : 0;
 
@@ -167,6 +176,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const handleChoice = (question, option) => {
     interpretationRequestRef.current.invalidate();
     matchingRequestRef.current.invalidate();
+    adaptiveRequestRef.current.invalidate();
     markSearchStarted(state.intent || option.key);
     pushHistory();
     if (!state.intent) {
@@ -194,6 +204,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const handleText = (question, value) => {
     interpretationRequestRef.current.invalidate();
     matchingRequestRef.current.invalidate();
+    adaptiveRequestRef.current.invalidate();
     markSearchStarted(state.intent);
     trackPatientSearchEvent("patient_search_free_text_submitted", {
       intent: state.intent || "unknown",
@@ -206,6 +217,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
 
   const handleLocation = ({ city, locality, clientAddressText }) => {
     matchingRequestRef.current.invalidate();
+    adaptiveRequestRef.current.invalidate();
     markSearchStarted(state.intent);
     pushHistory();
     setState((s) => ({
@@ -241,6 +253,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     abandonAllPatientRequestIdempotency();
     interpretationRequestRef.current.invalidate();
     matchingRequestRef.current.invalidate();
+    adaptiveRequestRef.current.invalidate();
     setState(initState(null, ""));
     setHistory([]);
     setRequestDraft(null);
@@ -257,6 +270,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const goBack = () => {
     interpretationRequestRef.current.invalidate();
     matchingRequestRef.current.invalidate();
+    adaptiveRequestRef.current.invalidate();
     const prev = history[history.length - 1];
     if (!prev) return;
     trackPatientSearchEvent("patient_search_reformulation_started", {
@@ -315,10 +329,12 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   useEffect(() => {
     interpretationRequestRef.current.activate();
     matchingRequestRef.current.activate();
+    adaptiveRequestRef.current.activate();
     return () => {
       interpretationAttemptedRef.current = false;
       interpretationRequestRef.current.dispose();
       matchingRequestRef.current.dispose();
+      adaptiveRequestRef.current.dispose();
       const session = analyticsSessionRef.current;
       if (!session.started || session.completed) return;
       trackPatientSearchEvent("patient_search_abandoned", {
@@ -341,6 +357,46 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     });
     writePatientIntakeSession(snapshot);
   }, [history, initialIntent, initialMessage, phase, requestDraft, state]);
+
+  // Selectia adaptiva a urmatoarei intrebari: apeleaza modul controlat "question_only".
+  // Poate influenta EXCLUSIV care intrebare deja aprobata este afisata acum; nu schimba
+  // niciodata matchingul, serviciile confirmate sau ordinea rezultatelor. La orice esec,
+  // timeout sau raspuns invalid, ramane pe ordinea legacy (adaptiveLegacyKey=null).
+  useEffect(() => {
+    if (phase !== "questions" || !state.intent) {
+      setAdaptiveLegacyKey(null);
+      return;
+    }
+    const answeredKeysNow = state.answers.map((a) => a.question_key);
+    const legacyCurrentNow = questions.find((q) => !answeredKeysNow.includes(q.key));
+    if (!legacyCurrentNow) {
+      setAdaptiveLegacyKey(null);
+      return;
+    }
+    const requestId = adaptiveRequestRef.current.begin();
+    const guidanceAnswers = toGuidanceAnswers({
+      answers: state.answers,
+      locality: state.locality,
+      city: state.city,
+    });
+    fetchAdaptiveNextQuestionKey({
+      searchText: initialMessage,
+      explicitPrimaryIntent: state.intent,
+      answers: guidanceAnswers,
+    }, { requestId }).then((result) => {
+      if (!adaptiveRequestRef.current.isCurrent(requestId)) return;
+      if (result.status !== "ok" || !result.nextQuestionKey) {
+        setAdaptiveLegacyKey(null);
+        return;
+      }
+      const legacyKey = GUIDANCE_KEY_TO_LEGACY_QUESTION_KEY[result.nextQuestionKey];
+      const stillValid = Boolean(legacyKey)
+        && questions.some((q) => q.key === legacyKey)
+        && !answeredKeysNow.includes(legacyKey);
+      setAdaptiveLegacyKey(stillValid ? legacyKey : null);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, state.intent, state.answers.length, state.city, state.locality]);
 
   useEffect(() => {
     if (phase !== "interpreting" || interpretationAttemptedRef.current) return;

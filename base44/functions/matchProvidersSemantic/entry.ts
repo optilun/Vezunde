@@ -19,7 +19,16 @@ import {
 import { getRecommendationCoverageStatus } from './coverage.js';
 import { getPublicLocationDisclosure } from './providerPublicTrust.js';
 import { getGenericRepairEligibility } from './genericRepairPolicy.js';
-import { runPatientGuidanceRuntimeShadow } from '../../shared/patientGuidancePlanner.js';
+import {
+  buildPatientGuidancePlannerProfile,
+  runPatientGuidanceRuntimeShadow,
+} from '../../shared/patientGuidancePlanner.js';
+import {
+  PATIENT_GUIDANCE_QUESTION_CATALOG,
+  PATIENT_GUIDANCE_QUESTION_KEYS,
+  isApprovedPatientGuidanceQuestionKey,
+} from '../../shared/patientGuidanceQuestionCatalog.js';
+import { buildPatientSafetyAssessment } from '../../shared/patientSafety.js';
 import {
   loadPublicLocationsForLocality,
   loadRowsForLocationIds,
@@ -228,11 +237,149 @@ async function interpretPatientNeed(
   }
 }
 
+const QUESTION_ONLY_CONTRACT_VERSION = 'patient-guidance-question-selection-v1';
+
+const QUESTION_ONLY_INTENT_KEYS = new Set([
+  'control_vedere',
+  'control_copil',
+  'simptome_oftalmologice',
+  'investigatii',
+  'ochelari_lentile',
+  'lentile_contact',
+  'reparatii_ochelari',
+  'unknown',
+]);
+
+function cleanQuestionOnlyText(value: unknown, maxLength = 1200) {
+  return String(value ?? '').trim().slice(0, maxLength);
+}
+
+function canonicalGuidanceQuestionKey(rawKey: unknown) {
+  const key = cleanQuestionOnlyText(rawKey, 80);
+  if (!key) return null;
+  if (isApprovedPatientGuidanceQuestionKey(key)) return key;
+  for (const canonicalKey of PATIENT_GUIDANCE_QUESTION_KEYS) {
+    const question = (PATIENT_GUIDANCE_QUESTION_CATALOG as any)[canonicalKey];
+    if ((question.legacy_question_keys || []).includes(key)) return canonicalKey;
+  }
+  return null;
+}
+
+function sanitizeControlledGuidanceAnswer(rawAnswer: any) {
+  if (!rawAnswer || typeof rawAnswer !== 'object') return null;
+  const canonicalKey = canonicalGuidanceQuestionKey(rawAnswer.question_key);
+  if (!canonicalKey) return null;
+  const question = (PATIENT_GUIDANCE_QUESTION_CATALOG as any)[canonicalKey];
+  const rawValue = rawAnswer.answer_value;
+
+  if (question.type === 'choice') {
+    const value = cleanQuestionOnlyText(rawValue, 160);
+    const validOption = (question.options || []).some((option: any) => option.key === value);
+    return validOption ? { question_key: canonicalKey, answer_value: value } : null;
+  }
+  if (question.type === 'text') {
+    const value = cleanQuestionOnlyText(rawValue, 800);
+    return value ? { question_key: canonicalKey, answer_value: value } : null;
+  }
+  if (question.type === 'location') {
+    if (!rawValue || typeof rawValue !== 'object') return null;
+    const value = {
+      siruta_code: cleanQuestionOnlyText(rawValue.siruta_code, 40),
+      city: cleanQuestionOnlyText(rawValue.city || rawValue.name, 120),
+      county_code: cleanQuestionOnlyText(rawValue.county_code, 40),
+      county: cleanQuestionOnlyText(rawValue.county || rawValue.county_name, 120),
+    };
+    return (value.siruta_code || value.city) ? { question_key: canonicalKey, answer_value: value } : null;
+  }
+  return null;
+}
+
+function explicitGuidanceServiceKeysFromAnswers(validatedAnswers: any[]) {
+  const keys: string[] = [];
+  for (const answer of validatedAnswers) {
+    const question = (PATIENT_GUIDANCE_QUESTION_CATALOG as any)[answer.question_key];
+    if (question?.type !== 'choice') continue;
+    const option = (question.options || []).find((item: any) => item.key === answer.answer_value);
+    if (option?.service_keys) keys.push(...option.service_keys);
+  }
+  return [...new Set(keys)];
+}
+
+function guidanceSafetyStateFromAssessment(assessment: any) {
+  if (assessment.blocking) return 'blocking';
+  if ((assessment.advisory_flags || []).length > 0) return 'advisory';
+  if (['guided_answer', 'explicit_text', 'none'].includes(assessment.source)) return 'clear';
+  return 'unchecked';
+}
+
+// Controlled, deterministic-only question selection. Never calls Core.InvokeLLM.
+// Can only influence next_question_key — matching, ranking, Top3 and results are untouched.
+function handleQuestionOnlyMode(payload: any) {
+  const searchText = cleanQuestionOnlyText(
+    payload.search_text || payload.query || payload.free_text || payload.search_query,
+  );
+  const rawAnswers = Array.isArray(payload.answers) ? payload.answers.slice(0, 30) : [];
+  const validatedAnswers = rawAnswers
+    .map(sanitizeControlledGuidanceAnswer)
+    .filter(Boolean)
+    .slice(0, 30);
+
+  const explicitIntentRaw = cleanQuestionOnlyText(payload.explicit_primary_intent, 80);
+  const explicitPrimaryIntent = QUESTION_ONLY_INTENT_KEYS.has(explicitIntentRaw) ? explicitIntentRaw : '';
+
+  const guidedAnswersForPlanner = validatedAnswers.map((answer: any) => ({
+    question_key: answer.question_key,
+    answer_value: answer.answer_value,
+  }));
+  const explicitConfirmedServiceKeys = explicitGuidanceServiceKeysFromAnswers(validatedAnswers);
+
+  const safetyAnswerEntry = validatedAnswers.find((answer: any) => answer.question_key === 'safety_targeted_check');
+  const adaptedSafetyAnswers = safetyAnswerEntry
+    ? [{ question_key: 'safety_screening', answer_value: (safetyAnswerEntry as any).answer_value }]
+    : [];
+  const safetyAssessment = buildPatientSafetyAssessment({
+    text: searchText,
+    answers: adaptedSafetyAnswers,
+  });
+  const deterministicSafetyState = guidanceSafetyStateFromAssessment(safetyAssessment);
+
+  let profile: any = null;
+  try {
+    profile = buildPatientGuidancePlannerProfile({
+      text: searchText,
+      explicitPrimaryIntent,
+      explicitConfirmedServiceKeys,
+      guidedAnswers: guidedAnswersForPlanner,
+      deterministicSafetyState,
+    }, { status: 'not_requested' });
+  } catch (_error) {
+    profile = null;
+  }
+
+  const safetyInterruption = safetyAssessment.blocking === true || profile?.safety_state === 'blocking';
+  const nextQuestionKey = !safetyInterruption && isApprovedPatientGuidanceQuestionKey(profile?.next_question_key)
+    ? profile.next_question_key
+    : null;
+
+  return {
+    envelope: 'patient_guidance_question_selection',
+    contract_version: QUESTION_ONLY_CONTRACT_VERSION,
+    status: profile ? 'ok' : 'fallback',
+    next_question_key: nextQuestionKey,
+    safety_interruption: safetyInterruption,
+    fallback_reason: profile ? null : 'planner_unavailable',
+  };
+}
+
 Deno.serve(async (request) => {
   try {
     const base44 = createClientFromRequest(request);
     const svc = base44.asServiceRole;
     const payload = await request.json().catch(() => ({}));
+
+    if (payload.mode === 'question_only') {
+      return Response.json(handleQuestionOnlyMode(payload));
+    }
 
     const searchText = clean(
       payload.search_text
