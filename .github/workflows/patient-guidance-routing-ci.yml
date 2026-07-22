@@ -11,7 +11,18 @@ on:
       - "base44/shared/patientGuidancePlanner.js"
       - "base44/functions/matchProvidersSemantic/entry.ts"
       - "src/lib/providerSemanticSearch.js"
+      - "src/lib/patientIntentConfirmation.js"
+      - "src/lib/patientIntakeSession.js"
+      - "src/lib/patientRequestDraft.js"
+      - "src/lib/patientSafety.js"
+      - "src/components/intake2/ConversationalCard.jsx"
+      - "src/components/intake2/PatientIntentConfirmation.jsx"
+      - "src/components/intake2/QuestionChoice.jsx"
       - "scripts/verify-patient-guidance-routing.mjs"
+      - "scripts/verify-patient-guidance-adaptive-question-selection.mjs"
+      - "scripts/verify-patient-ai-intent-confirmation.mjs"
+      - "scripts/verify-patient-intake-session-hardening.mjs"
+      - "scripts/verify-patient-intake-safety.mjs"
       - "scripts/verify-patient-guidance-planner.mjs"
       - "scripts/verify-patient-guidance-runtime-shadow.mjs"
       - ".github/workflows/patient-guidance-routing-ci.yml"
@@ -42,6 +53,8 @@ jobs:
         run: node scripts/verify-patient-guidance-planner.mjs
       - name: Verify patient guidance runtime shadow
         run: node scripts/verify-patient-guidance-runtime-shadow.mjs
+      - name: Verify adaptive patient guidance question selection
+        run: node scripts/verify-patient-guidance-adaptive-question-selection.mjs
       - name: Base44 router and physical function checks
         run: |
           node scripts/verify-directory-function-router.mjs
@@ -101,9 +114,20 @@ jobs:
           base44/shared/patientGuidancePlanner.js
           base44/functions/matchProvidersSemantic/entry.ts
           src/lib/providerSemanticSearch.js
+          src/lib/patientIntentConfirmation.js
+          src/lib/patientIntakeSession.js
+          src/lib/patientRequestDraft.js
+          src/lib/patientSafety.js
+          src/components/intake2/ConversationalCard.jsx
+          src/components/intake2/PatientIntentConfirmation.jsx
+          src/components/intake2/QuestionChoice.jsx
           scripts/verify-patient-guidance-routing.mjs
           scripts/verify-patient-guidance-planner.mjs
           scripts/verify-patient-guidance-runtime-shadow.mjs
+          scripts/verify-patient-guidance-adaptive-question-selection.mjs
+          scripts/verify-patient-ai-intent-confirmation.mjs
+          scripts/verify-patient-intake-session-hardening.mjs
+          scripts/verify-patient-intake-safety.mjs
           --quiet
       - name: Lint complete
         run: npm run lint
