@@ -58,13 +58,13 @@ await scenario("complete OCT request asks no unnecessary question", () => {
   assert.equal(result.next_question_key, null);
 });
 
-await scenario("simple control continues with the missing routine question", () => {
+await scenario("simple control skips the already confirmed routine question", () => {
   const result = select({
     text: "Vreau control oftalmologic",
     explicitPrimaryIntent: "control_vedere",
   });
   assert.equal(result.status, "selected");
-  assert.equal(result.next_question_key, "routine_vs_symptom");
+  assert.equal(result.next_question_key, "for_whom");
 });
 
 await scenario("first pair of lenses follows contact lens flow", () => {
