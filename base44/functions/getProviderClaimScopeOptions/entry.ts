@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { deriveCanonicalDirectoryState } from '../../../shared/directoryCanonicalModel.js';
+import { deriveCanonicalDirectoryState } from '../../shared/directoryCanonicalModel.js';
 
 const PATIENT_FACING_PROFILE_TYPES = new Set([
   'independent_optical_store',

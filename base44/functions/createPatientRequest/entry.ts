@@ -5,8 +5,8 @@ import {
   PATIENT_REQUEST_RETENTION_POLICY_KEY,
   PatientRequestValidationError,
   sanitizePatientRequestSubmission,
-} from '../../../shared/patientRequestPersistence.js';
-import { notifyPatientRequestReceived } from '../../../shared/patientCommunicationNotifications.js';
+} from '../../shared/patientRequestPersistence.js';
+import { notifyPatientRequestReceived } from '../../shared/patientCommunicationNotifications.js';
 
 const MAX_REQUESTS_PER_CONTACT_PER_HOUR = 5;
 const IDEMPOTENCY_SETTLE_MS = 90;

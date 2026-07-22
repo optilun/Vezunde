@@ -5,21 +5,21 @@ import {
   filterProviderLeadInbox,
   sanitizeProviderLeadForFreeInbox,
   summarizeProviderLeadInbox,
-} from '../../../shared/providerLeadInboxPolicy.js';
-import { resolveProviderEntitlement } from '../../../shared/providerEntitlementPolicy.js';
+} from '../../shared/providerLeadInboxPolicy.js';
+import { resolveProviderEntitlement } from '../../shared/providerEntitlementPolicy.js';
 import {
   PROVIDER_LEAD_FULL_DETAILS_CONTRACT_VERSION,
   buildProviderLeadFullDetails,
   providerLeadFullDetailsEligibility,
   sanitizeProviderLeadFullDetailsStatus,
-} from '../../../shared/providerLeadFullDetailsPolicy.js';
+} from '../../shared/providerLeadFullDetailsPolicy.js';
 import {
   IN_APP_NOTIFICATION_CONTRACT_VERSION,
   sanitizeInAppNotification,
   summarizeInAppNotifications,
-} from '../../../shared/inAppNotificationPolicy.js';
-import { ensureProviderInAppNotifications } from '../../../shared/inAppNotificationProjection.js';
-import { reconcilePatientRequestExpiration } from '../../../shared/patientRequestLifecycleOps.js';
+} from '../../shared/inAppNotificationPolicy.js';
+import { ensureProviderInAppNotifications } from '../../shared/inAppNotificationProjection.js';
+import { reconcilePatientRequestExpiration } from '../../shared/patientRequestLifecycleOps.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -183,7 +183,7 @@ async function markAllProviderNotificationsRead(svc, userId, locationId) {
   return { updated: rows.length };
 }
 
-const FUNCTION_DEPLOY_REVISION = 'viasee-runtime-resync-2026-07-22-providerLeadInboxOps-1';
+const FUNCTION_DEPLOY_REVISION = 'viasee-runtime-resync-2026-07-22-providerLeadInboxOps-3';
 console.info(`[VIASEE] providerLeadInboxOps ${FUNCTION_DEPLOY_REVISION}`);
 
 Deno.serve(async (req) => {

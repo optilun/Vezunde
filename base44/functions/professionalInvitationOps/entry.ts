@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   acquireProfessionalLifecycleLock,
   releaseProfessionalLifecycleLock,
-} from '../../../shared/professionalLifecycleLock.js';
+} from '../../shared/professionalLifecycleLock.js';
 
 const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
 const PROVIDER_ROLES = ['organization_owner', 'location_manager'];

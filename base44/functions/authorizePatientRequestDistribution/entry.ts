@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   acquirePatientRequestDistributionLock,
   releasePatientRequestDistributionLock,
-} from '../../../shared/patientRequestDistributionLock.js';
+} from '../../shared/patientRequestDistributionLock.js';
 import {
   PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION,
   PROVIDER_LEAD_CONTRACT_VERSION,
@@ -10,9 +10,9 @@ import {
   buildProviderLeadPreview,
   evaluateProviderLeadEligibility,
   patientIntentLabel,
-} from '../../../shared/providerLeadEligibility.js';
-import { notifyProviderLeadAvailable } from '../../../shared/leadCommunicationNotifications.js';
-import { notifyPatientRequestDistributed } from '../../../shared/patientCommunicationNotifications.js';
+} from '../../shared/providerLeadEligibility.js';
+import { notifyProviderLeadAvailable } from '../../shared/leadCommunicationNotifications.js';
+import { notifyPatientRequestDistributed } from '../../shared/patientCommunicationNotifications.js';
 
 function clean(value, maxLength = 240) {
   return String(value || '').trim().slice(0, maxLength);

@@ -1,10 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { deriveCanonicalDirectoryState } from '../../../shared/directoryCanonicalModel.js';
+import { deriveCanonicalDirectoryState } from '../../shared/directoryCanonicalModel.js';
 import {
   PROVIDER_CLAIM_SCOPE_CONTRACT_VERSION,
   claimLocationIdsFromPayload,
   normalizeClaimScopeSelection,
-} from '../../../shared/providerClaimScopePolicy.js';
+} from '../../shared/providerClaimScopePolicy.js';
 
 const ACTIVE_OR_APPROVED_CLAIM_STATUSES = new Set(['in_asteptare', 'needs_more_info', 'aprobata']);
 const CONTROLLED_PROFILE_STATUSES = new Set(['claimed', 'verified']);

@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   acquireProfessionalLifecycleLock,
   releaseProfessionalLifecycleLock,
-} from '../../../shared/professionalLifecycleLock.js';
+} from '../../shared/professionalLifecycleLock.js';
 
 const ALLOWED_FIELDS = [
   'public_display_name',

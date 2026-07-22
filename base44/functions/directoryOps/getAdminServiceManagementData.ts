@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { normalizeServiceKey } from '../../../shared/canonicalServiceRegistryExtended.js';
+import { normalizeServiceKey } from '../../shared/canonicalServiceRegistryExtended.js';
 
 function cleanString(value) {
   return String(value || '').trim();

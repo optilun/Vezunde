@@ -3,7 +3,7 @@ import {
   getCanonicalServiceDefinition,
   isServiceMatchingEligible,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistryExtended.js';
+} from '../../shared/canonicalServiceRegistryExtended.js';
 
 const STAGED_FIELDS = ['name', 'address', 'phone_public', 'public_email', 'website', 'description', 'provider_type', 'photo_url'];
 

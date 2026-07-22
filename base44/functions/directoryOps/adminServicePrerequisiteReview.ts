@@ -1,9 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { getCanonicalServiceDefinition } from '../../../shared/canonicalServiceRegistryExtended.js';
+import { getCanonicalServiceDefinition } from '../../shared/canonicalServiceRegistryExtended.js';
 import {
   evaluateServicePrerequisites,
   servicePrerequisiteStatusLabel,
-} from '../../../shared/servicePrerequisiteEngine.js';
+} from '../../shared/servicePrerequisiteEngine.js';
 import { invokeDirectoryFunction } from '../../shared/directoryFunctionRouting.js';
 
 function clean(value) {

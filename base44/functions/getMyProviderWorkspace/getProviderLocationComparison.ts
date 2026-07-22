@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   getCanonicalServiceDefinition,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistryExtended.js';
+} from '../../shared/canonicalServiceRegistryExtended.js';
 
 const MEMBER_ROLES = ['organization_owner', 'location_manager', 'location_staff'];
 const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
@@ -227,4 +227,3 @@ export async function handle(req: Request) {
     return Response.json({ error: error?.message || 'Eroare neasteptata.' }, { status: 500 });
   }
 }
-

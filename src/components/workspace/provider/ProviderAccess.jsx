@@ -114,8 +114,13 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
     const response = await base44.functions.invoke("getMyProviderMembers", { organization_id: organizationId }).catch((error) => ({ data: { error: error.response?.data?.error || error.message } }));
     if (requestId !== loadRequestRef.current) return;
     setLoading(false);
-    if (response.data?.error) { setMessage(response.data.error); setData({ members: [], invitations: [], manageable_location_ids: [], counters: {} }); return; }
+    if (response.data?.error) {
+      setMessage(response.data.error);
+      setData((prev) => prev || { members: [], invitations: [], manageable_location_ids: [], counters: {} });
+      return;
+    }
     setData(response.data || {});
+    setMessage("");
   }, [organizationId]);
 
   useEffect(() => {
@@ -209,6 +214,8 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
 
   if (loading && !data) return <div className="rounded-[20px] border border-foreground/10 bg-card px-5 py-8 text-sm text-muted-foreground">Se încarcă utilizatorii și accesul...</div>;
 
+  const accessError = Boolean(message && !data?.members?.length && !data?.invitations?.length);
+
   return (
     <div className="space-y-6">
       <section className="rounded-[20px] border border-foreground/10 bg-card p-5 shadow-sm sm:p-6">
@@ -216,7 +223,13 @@ export default function ProviderAccess({ organizationId = "", locations = [], on
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[["Membri activi", data?.counters?.active_members_total || 0], ["Owneri globali", data?.counters?.global_owners_count || 0], ["Administratori", data?.counters?.organization_admins_count || 0], ["Invitații", invitations.length]].map(([label, value]) => <div key={label} className="rounded-[18px] bg-[#f8f4ec]/70 px-4 py-4"><div className="text-sm text-muted-foreground">{label}</div><div className="mt-1 text-2xl font-extrabold">{value}</div></div>)}</div>
         <div className="relative mt-4"><Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input className={`${inputCls} pl-10`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Caută după nume, email, rol sau locație..." /></div>
       </section>
-      {message && !inviteOpen && !memberOpen && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{message}</div>}
+      {accessError && (
+        <div className="flex flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+          <span>Unele date de acces nu au putut fi încărcate. Utilizatorii existenți nu au fost șterși.</span>
+          <button type="button" onClick={() => void load()} className="inline-flex h-9 items-center justify-center rounded-full border border-amber-300 bg-background px-4 text-xs font-semibold hover:bg-amber-100">Reîncearcă</button>
+        </div>
+      )}
+      {message && !accessError && !inviteOpen && !memberOpen && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{message}</div>}
 
       <section className="overflow-hidden rounded-[20px] border border-foreground/10 bg-card shadow-sm">
         <div className="flex justify-between border-b border-border px-5 py-4"><div><div className="flex items-center gap-2"><Users className="h-5 w-5" /><h2 className="text-lg font-bold">Membrii organizației</h2></div><p className="mt-1 text-sm text-muted-foreground">Rol și scope clar pentru fiecare utilizator.</p></div><span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold">{groups.length}</span></div>

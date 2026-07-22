@@ -3,8 +3,8 @@ import {
   getCanonicalServiceDefinition,
   getCanonicalServiceGroupIds,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistryExtended.js';
-import { hasPublishedSectionChanges } from '../../../shared/providerWorkspaceSubmissionComparison.js';
+} from '../../shared/canonicalServiceRegistryExtended.js';
+import { hasPublishedSectionChanges } from '../../shared/providerWorkspaceSubmissionComparison.js';
 
 // Deployment revision: provider-location-noop-2026-07-12
 // Admin review for ProviderWorkspaceSubmission.

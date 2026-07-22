@@ -1,4 +1,4 @@
-import { loadAllPublicLocationsByCounty } from '../../../shared/locationScopedEntityQuery.js';
+import { loadAllPublicLocationsByCounty } from '../../shared/locationScopedEntityQuery.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Module 3E.1: public whitelist endpoint for the search location selector.

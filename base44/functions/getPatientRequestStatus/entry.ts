@@ -3,33 +3,33 @@ import {
   PATIENT_REQUEST_STATUS_CONTRACT_VERSION,
   sanitizePatientProviderResponse,
   sanitizePatientRequestStatus,
-} from '../../../shared/patientRequestStatusPolicy.js';
-import { maskPatientEmail } from '../../../shared/patientEmailVerificationPolicy.js';
+} from '../../shared/patientRequestStatusPolicy.js';
+import { maskPatientEmail } from '../../shared/patientEmailVerificationPolicy.js';
 import {
   IN_APP_NOTIFICATION_CONTRACT_VERSION,
   sanitizeInAppNotification,
   summarizeInAppNotifications,
-} from '../../../shared/inAppNotificationPolicy.js';
-import { ensurePatientInAppNotifications } from '../../../shared/inAppNotificationProjection.js';
+} from '../../shared/inAppNotificationPolicy.js';
+import { ensurePatientInAppNotifications } from '../../shared/inAppNotificationProjection.js';
 import {
   PATIENT_REQUEST_LIFECYCLE_STATES,
   sanitizePatientRequestLifecycle,
-} from '../../../shared/patientRequestLifecyclePolicy.js';
+} from '../../shared/patientRequestLifecyclePolicy.js';
 import {
   deriveStoredPatientRequestLifecycle,
   reconcilePatientRequestExpiration,
   transitionPatientRequestLifecycle,
-} from '../../../shared/patientRequestLifecycleOps.js';
+} from '../../shared/patientRequestLifecycleOps.js';
 import {
   PATIENT_REQUEST_RECOVERY_CONSENT_VERSION,
   PatientRequestRecoveryValidationError,
   buildPatientRequestRecoveryRecord,
   sanitizePatientRequestRecovery,
-} from '../../../shared/patientRequestRecovery.js';
+} from '../../shared/patientRequestRecovery.js';
 import {
   derivePatientNoResponseReview,
   patientNoResponseKeepWaitingPatch,
-} from '../../../shared/patientNoResponseReview.js';
+} from '../../shared/patientNoResponseReview.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });

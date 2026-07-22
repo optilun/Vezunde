@@ -3,12 +3,12 @@ import {
   CLAIM_PREP_SERVICE_GROUPS as CANONICAL_CLAIM_PREP_SERVICE_GROUPS,
   getCanonicalServiceGroupIds,
   normalizeServiceKey,
-} from '../../../shared/canonicalServiceRegistryExtended.js';
+} from '../../shared/canonicalServiceRegistryExtended.js';
 import {
   hasPublishedSectionChanges,
   sameSubmissionPayload,
-} from '../../../shared/providerWorkspaceSubmissionComparison.js';
-import { resolveProviderTeamLocationScope } from '../../../shared/providerTeamLocationScope.js';
+} from '../../shared/providerWorkspaceSubmissionComparison.js';
+import { resolveProviderTeamLocationScope } from '../../shared/providerTeamLocationScope.js';
 
 // Deployment revision: provider-location-noop-2026-07-12
 // Provider Workspace draft/submit/withdraw.

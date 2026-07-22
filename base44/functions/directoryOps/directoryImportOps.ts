@@ -9,7 +9,7 @@ import {
   rowIdempotencyKey,
   stableTextHash,
   validateNormalizedDirectoryRow,
-} from '../../../shared/directoryImportPipeline.js';
+} from '../../shared/directoryImportPipeline.js';
 
 const MAX_ROWS = 5000;
 const EXECUTION_CHUNK = 20;

@@ -1,11 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { getCanonicalServiceDefinition } from '../../../shared/canonicalServiceRegistryExtended.js';
+import { getCanonicalServiceDefinition } from '../../shared/canonicalServiceRegistryExtended.js';
 import {
   getFunctionalUnitLayout,
   profileAllowsCapability,
   profileAllowsFunctionalUnit,
-} from '../../../shared/locationOperationalRegistry.js';
-import { validateServiceConfigurationPayload } from '../../../shared/serviceConfigurationPayloadExtended.js';
+} from '../../shared/locationOperationalRegistry.js';
+import { validateServiceConfigurationPayload } from '../../shared/serviceConfigurationPayloadExtended.js';
 
 const ACTIVE_STATUSES = ['draft', 'pending_review', 'needs_more_info'];
 const ACTIVE_CLAIM_STATUSES = ['in_asteptare', 'needs_more_info'];

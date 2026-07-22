@@ -6,7 +6,7 @@ import {
   membershipHasOrganizationWideAccess,
   providerMembershipAccessRole,
   storedProviderRoleForAccessRole,
-} from '../../../shared/providerOrganizationOwnerScope.js';
+} from '../../shared/providerOrganizationOwnerScope.js';
 
 const PROVIDER_ROLES = [ORGANIZATION_OWNER_ROLE];
 const ACTIVE_SUBMISSION_STATUSES = ['draft', 'pending_review', 'needs_more_info'];

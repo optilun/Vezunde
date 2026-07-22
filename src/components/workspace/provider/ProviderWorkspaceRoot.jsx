@@ -158,7 +158,9 @@ export default function ProviderWorkspaceRoot({
   const [selectedLocationId, setSelectedLocationId] = useState(initialLocationId);
   const [overview, setOverview] = useState(null);
   const [loadingOverview, setLoadingOverview] = useState(true);
+  const [overviewError, setOverviewError] = useState(false);
   const [accessMeta, setAccessMeta] = useState(null);
+  const [accessMetaError, setAccessMetaError] = useState(false);
 
   const selectedContext = useMemo(() => organizationContexts.find((context) => (
     context.locations?.some((location) => location.id === selectedLocationId)
@@ -171,14 +173,24 @@ export default function ProviderWorkspaceRoot({
   useEffect(() => {
     const requestId = ++accessMetaRequestRef.current;
     setAccessMeta(null);
+    setAccessMetaError(false);
     if (!selectedOrganizationId) return undefined;
     base44.functions.invoke("getMyProviderMembers", { organization_id: selectedOrganizationId })
       .then((response) => {
         if (requestId !== accessMetaRequestRef.current) return;
-        setAccessMeta(response.data?.error ? null : response.data);
+        if (response.data?.error) {
+          setAccessMeta(null);
+          setAccessMetaError(true);
+        } else {
+          setAccessMeta(response.data);
+          setAccessMetaError(false);
+        }
       })
       .catch(() => {
-        if (requestId === accessMetaRequestRef.current) setAccessMeta(null);
+        if (requestId === accessMetaRequestRef.current) {
+          setAccessMeta(null);
+          setAccessMetaError(true);
+        }
       });
     return () => { accessMetaRequestRef.current += 1; };
   }, [selectedOrganizationId, workspace]);
@@ -209,11 +221,16 @@ export default function ProviderWorkspaceRoot({
     [scopedContext, selectedLocationId],
   );
 
-  const organizationActorRole = accessMetaMatchesOrganization ? (accessMeta?.current_actor_role || "") : "";
+  const accessMetaUnavailable = !accessMeta && accessMetaError;
+  const fallbackOrganizationRole = accessMetaUnavailable ? (selectedContext?.current_user_role || "") : "";
+  const organizationActorRole = accessMetaMatchesOrganization
+    ? (accessMeta?.current_actor_role || "")
+    : fallbackOrganizationRole;
   const isOrganizationOwner = organizationActorRole === "organization_owner";
   const isOrganizationAdmin = organizationActorRole === "organization_admin";
   const actorHasWideOrganizationAccess = Boolean(
-    isOrganizationAdmin || (isOrganizationOwner && accessMeta?.current_actor_wide_access === true),
+    isOrganizationAdmin
+    || (isOrganizationOwner && (accessMeta?.current_actor_wide_access === true || accessMetaUnavailable)),
   );
   const organizationCapabilityList = (selectedContext?.capabilities || [])
     .filter((capability) => capability.startsWith("organization."));
@@ -251,7 +268,11 @@ export default function ProviderWorkspaceRoot({
     || canManageLocationContent
     || canManageSpecialists
     || canManageOperationalStatus;
-  const canManageMembers = Boolean(accessMetaMatchesOrganization && accessMeta?.can_manage_members);
+  const canManageMembers = Boolean(
+    accessMetaMatchesOrganization
+      ? accessMeta?.can_manage_members
+      : (accessMetaUnavailable ? selectedContext?.can_manage_members : false),
+  );
   const canManageSettings = Boolean(
     isOrganizationOwner
     && actorHasWideOrganizationAccess
@@ -284,10 +305,15 @@ export default function ProviderWorkspaceRoot({
     if (!locationId) return;
     const requestId = ++overviewRequestRef.current;
     const silent = options.silent === true;
-    if (!silent) setLoadingOverview(true);
+    if (!silent) { setLoadingOverview(true); setOverviewError(false); }
     const response = await base44.functions.invoke("getProviderWorkspaceOverview", { location_id: locationId }).catch(() => ({ data: null }));
     if (requestId !== overviewRequestRef.current) return;
-    if (response.data) setOverview(response.data);
+    if (response.data) {
+      setOverview(response.data);
+      setOverviewError(false);
+    } else if (!silent) {
+      setOverviewError(true);
+    }
     if (!silent) setLoadingOverview(false);
   };
 
@@ -437,6 +463,32 @@ export default function ProviderWorkspaceRoot({
         </span>
       ) : null}
     >
+      {accessMetaUnavailable && (
+        <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+          <span>Unele date de acces nu au putut fi încărcate. Datele organizației nu au fost șterse.</span>
+          <button
+            type="button"
+            onClick={() => {
+              if (!selectedOrganizationId) return;
+              const requestId = ++accessMetaRequestRef.current;
+              setAccessMeta(null);
+              setAccessMetaError(false);
+              base44.functions.invoke("getMyProviderMembers", { organization_id: selectedOrganizationId })
+                .then((response) => {
+                  if (requestId !== accessMetaRequestRef.current) return;
+                  if (response.data?.error) { setAccessMeta(null); setAccessMetaError(true); }
+                  else { setAccessMeta(response.data); setAccessMetaError(false); }
+                })
+                .catch(() => {
+                  if (requestId === accessMetaRequestRef.current) { setAccessMeta(null); setAccessMetaError(true); }
+                });
+            }}
+            className="inline-flex h-9 items-center justify-center rounded-full border border-amber-300 bg-background px-4 text-xs font-semibold hover:bg-amber-100"
+          >
+            Reîncearcă
+          </button>
+        </div>
+      )}
       {(organizationContexts.length > 1 || (memberships.length > 1 && safeSection !== "settings")) && (
         <LocationSwitcher
           organizationContexts={organizationContexts}
@@ -448,7 +500,20 @@ export default function ProviderWorkspaceRoot({
           onSelect={selectLocation}
         />
       )}
-      {loadingOverview || !overview ? (
+      {loadingOverview ? (
+        <WorkspaceSectionLoading />
+      ) : overviewError ? (
+        <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card px-5 py-8 text-center">
+          <p className="text-sm text-muted-foreground">Prezentarea generală nu a putut fi încărcată. Datele organizației nu au fost șterse.</p>
+          <button
+            type="button"
+            onClick={() => void loadOverview(selectedLocationId)}
+            className="inline-flex h-10 items-center justify-center rounded-full border border-border bg-background px-5 text-sm font-semibold hover:bg-secondary"
+          >
+            Reîncearcă
+          </button>
+        </div>
+      ) : !overview ? (
         <WorkspaceSectionLoading />
       ) : (
         <Suspense fallback={<WorkspaceSectionLoading />}>

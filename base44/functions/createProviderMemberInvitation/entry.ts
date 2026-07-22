@@ -7,7 +7,7 @@ import {
   membershipHasOrganizationWideAccess,
   providerMembershipAccessRole,
   roleRequiresOrganizationWideAccess,
-} from '../../../shared/providerOrganizationOwnerScope.js';
+} from '../../shared/providerOrganizationOwnerScope.js';
 
 const ROLES = [ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, 'location_manager', 'location_staff'];
 const ROLE_LABELS = {

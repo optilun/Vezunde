@@ -8,7 +8,7 @@ import {
   providerMembershipAccessRole,
   roleRequiresOrganizationWideAccess,
   storedProviderRoleForAccessRole,
-} from '../../../shared/providerOrganizationOwnerScope.js';
+} from '../../shared/providerOrganizationOwnerScope.js';
 
 const ACCESS_ROLES = [ORGANIZATION_OWNER_ROLE, ORGANIZATION_ADMIN_ROLE, 'location_manager', 'location_staff'];
 function res(body, status = 200) { return Response.json(body, { status }); }

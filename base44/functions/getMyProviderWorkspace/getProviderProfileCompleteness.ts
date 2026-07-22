@@ -3,7 +3,7 @@ import {
   computeLocationCompleteness,
   computeOrganizationCompleteness,
   summarizeProviderCompleteness,
-} from '../../../shared/providerProfileCompleteness.js';
+} from '../../shared/providerProfileCompleteness.js';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -102,4 +102,3 @@ export async function handle(req: Request) {
     return res({ error: 'Completarea profilului nu a putut fi calculata.' }, 500);
   }
 }
-
