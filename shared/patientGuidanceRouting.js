@@ -281,12 +281,34 @@ export const PATIENT_GUIDANCE_CLINICAL_VALIDATION_RULES = Object.freeze([
   }),
 ]);
 
+const CLINICAL_VALIDATION_RULE_KEY_SET = new Set(
+  PATIENT_GUIDANCE_CLINICAL_VALIDATION_RULES.map((rule) => rule.rule_key),
+);
+
 function clean(value, maxLength = 240) {
   return String(value ?? "").trim().slice(0, maxLength);
 }
 
 function unique(values) {
   return [...new Set((Array.isArray(values) ? values : []).map((value) => clean(value, 120)).filter(Boolean))];
+}
+
+export function normalizePatientGuidanceClinicalValidationApprovals(approvals = []) {
+  return unique(approvals).filter((ruleKey) => CLINICAL_VALIDATION_RULE_KEY_SET.has(ruleKey));
+}
+
+export function isPatientGuidanceClinicalRuleApproved(ruleKey, approvals = []) {
+  const normalizedRuleKey = clean(ruleKey, 120);
+  if (!CLINICAL_VALIDATION_RULE_KEY_SET.has(normalizedRuleKey)) return false;
+  return normalizePatientGuidanceClinicalValidationApprovals(approvals).includes(normalizedRuleKey);
+}
+
+function clinicalValidationApprovalsFrom(request) {
+  return normalizePatientGuidanceClinicalValidationApprovals(
+    request?.clinicalValidationApprovals
+      ?? request?.clinical_validation_approvals
+      ?? [],
+  );
 }
 
 function canonicalServiceKeys(values) {
@@ -489,7 +511,26 @@ export function derivePatientCarePath(input = {}) {
 
   const intent = normalizedIntent(request.intent);
   const facts = normalizedFacts(request.confirmedFacts);
-  if (intent === "lentile_contact" && facts.contact_lens_experience === "first_time") {
+  const clinicalValidationApprovals = clinicalValidationApprovalsFrom(request);
+
+  if (
+    intent === "control_copil"
+    && !isPatientGuidanceClinicalRuleApproved(
+      "pediatric_age_to_care_path",
+      clinicalValidationApprovals,
+    )
+  ) {
+    return "unresolved";
+  }
+
+  if (
+    intent === "lentile_contact"
+    && facts.contact_lens_experience === "first_time"
+    && !isPatientGuidanceClinicalRuleApproved(
+      "contact_lens_first_time_path",
+      clinicalValidationApprovals,
+    )
+  ) {
     return "unresolved";
   }
 
@@ -603,15 +644,30 @@ export function buildPatientTop3EligibilityPolicy(input = {}) {
   const request = /** @type {any} */ (input || {});
   const definitions = canonicalDefinitions(request.serviceKeys);
   const specialized = definitions.some((definition) => definition.service_need_level === "specialized_medical");
+  const clinicalValidationApprovals = clinicalValidationApprovalsFrom(request);
+  const specializedThresholdApproved = isPatientGuidanceClinicalRuleApproved(
+    "specialized_service_trust_threshold",
+    clinicalValidationApprovals,
+  );
+  const blockingValidationRuleKeys = specialized && !specializedThresholdApproved
+    ? ["specialized_service_trust_threshold"]
+    : [];
+
   return {
     version: PATIENT_GUIDANCE_TOP3_POLICY_VERSION,
+    activation_status: blockingValidationRuleKeys.length > 0 ? "blocked" : "clear",
+    clinical_validation_approvals: clinicalValidationApprovals,
+    approved_validation_rule_keys: clinicalValidationApprovals,
+    blocking_validation_rule_keys: blockingValidationRuleKeys,
     exact_bucket: "exact_top3",
     extended_bucket: "extended_relevant",
     directory_bucket: "directory_only",
     ineligible_bucket: "ineligible",
-    required_trust_levels: specialized ? ["verified"] : ["claimed", "verified"],
+    required_trust_levels: specialized
+      ? (specializedThresholdApproved ? ["verified"] : [])
+      : ["claimed", "verified"],
     required_service_confirmation_levels: specialized
-      ? ["vezunde_verified"]
+      ? (specializedThresholdApproved ? ["vezunde_verified"] : [])
       : ["publicly_listed", "provider_confirmed", "vezunde_verified"],
     requires_active_location: true,
     requires_published_location: true,
@@ -627,12 +683,24 @@ export function buildPatientTop3EligibilityPolicy(input = {}) {
 export function evaluatePatientTop3Eligibility(input = {}) {
   const candidate = /** @type {any} */ (input || {});
   const profile = /** @type {any} */ (candidate.routingProfile || {});
-  const policy = profile.top3_eligibility_policy
-    || buildPatientTop3EligibilityPolicy({ serviceKeys: profile.confirmed_service_keys || [] });
   const serviceKey = normalizeServiceKey(candidate.service_key).canonicalKey;
   if (!serviceKey) return { eligibility: "ineligible", reasons: ["unknown_service"] };
 
   const definition = getCanonicalServiceDefinition(serviceKey);
+  const clinicalValidationApprovals = normalizePatientGuidanceClinicalValidationApprovals(
+    candidate.clinicalValidationApprovals
+      ?? candidate.clinical_validation_approvals
+      ?? profile.approved_validation_rule_keys
+      ?? profile.clinical_validation_approvals
+      ?? [],
+  );
+  const policy = buildPatientTop3EligibilityPolicy({
+    serviceKeys: profile.confirmed_service_keys?.length > 0
+      ? profile.confirmed_service_keys
+      : [serviceKey],
+    clinicalValidationApprovals,
+  });
+  const activationBlocked = policy.activation_status === "blocked";
   const allowedProfileTypes = unique(profile.allowed_profile_types);
   const requiredProfessionals = unique(profile.required_professional_types);
   const candidateProfessionals = unique(candidate.professional_types);
@@ -648,26 +716,33 @@ export function evaluatePatientTop3Eligibility(input = {}) {
     candidate.mapping_conflict === true ? "mapping_conflict" : null,
     profileCompatible ? null : "incompatible_profile_type",
     candidate.in_search_area === true || candidate.in_expansion_area === true ? null : "outside_allowed_area",
+    activationBlocked ? "clinical_validation_required" : null,
   ].filter(Boolean);
-  if (structuralFailures.length > 0) {
+  const nonClinicalStructuralFailures = structuralFailures
+    .filter((reason) => reason !== "clinical_validation_required");
+  if (nonClinicalStructuralFailures.length > 0) {
     return { eligibility: "ineligible", reasons: structuralFailures };
   }
 
   const requestedExactService = canonicalServiceKeys(profile.confirmed_service_keys).includes(serviceKey);
-  const confirmationAccepted = policy.required_service_confirmation_levels
-    .includes(candidate.service_confirmation_level);
+  const confirmationAccepted = activationBlocked
+    ? candidate.service_confirmed === true
+    : policy.required_service_confirmation_levels.includes(candidate.service_confirmation_level);
   const exactServiceConfirmed = requestedExactService
     && candidate.service_confirmed === true
     && confirmationAccepted;
   const matchingEligible = candidate.service_matching_eligible === true
     && definition?.matching_allowed_when_provider_confirmed === true;
-  const trustAccepted = policy.required_trust_levels.includes(candidate.trust_level);
+  const trustAccepted = activationBlocked
+    ? true
+    : policy.required_trust_levels.includes(candidate.trust_level);
 
   if (candidate.trust_level === "directory") {
     return {
       eligibility: "directory_only",
       reasons: [
         "directory_trust_only",
+        activationBlocked ? "clinical_validation_required" : null,
         professionalCompatible ? null : "required_professional_type_missing",
         exactServiceConfirmed ? null : "exact_service_not_confirmed",
         matchingEligible ? null : "service_not_matching_eligible",
@@ -677,7 +752,8 @@ export function evaluatePatientTop3Eligibility(input = {}) {
   }
 
   if (
-    exactServiceConfirmed
+    !activationBlocked
+    && exactServiceConfirmed
     && matchingEligible
     && trustAccepted
     && professionalCompatible
@@ -689,6 +765,7 @@ export function evaluatePatientTop3Eligibility(input = {}) {
   return {
     eligibility: "extended_relevant",
     reasons: [
+      activationBlocked ? "clinical_validation_required" : null,
       professionalCompatible ? null : "required_professional_type_missing",
       exactServiceConfirmed ? null : "exact_service_not_confirmed",
       matchingEligible ? null : "service_not_matching_eligible",
@@ -715,6 +792,7 @@ export function buildPatientGuidanceRoutingProfile(input = {}) {
     ...(request.candidateServiceKeys || []),
     ...confirmedServiceKeys,
   ]);
+  const clinicalValidationApprovals = clinicalValidationApprovalsFrom(request);
   const safetyState = normalizedSafetyState(request.safetyState);
   const completeness = getPatientGuidanceCompletenessPolicy(primaryIntent);
   const carePath = derivePatientCarePath({
@@ -722,6 +800,7 @@ export function buildPatientGuidanceRoutingProfile(input = {}) {
     confirmedServiceKeys,
     confirmedFacts,
     safetyState,
+    clinicalValidationApprovals,
   });
   const confirmedDefinitions = canonicalDefinitions(confirmedServiceKeys);
   const exactServiceDeterminesPath = confirmedDefinitions.length > 0
@@ -770,21 +849,35 @@ export function buildPatientGuidanceRoutingProfile(input = {}) {
     carePath,
     candidateCarePaths: request.candidateCarePaths,
   });
-  const blockingValidationRuleKeys = [
-    primaryIntent === "control_copil" && carePath === "unresolved"
+  const applicableRoutingValidationRuleKeys = unique([
+    primaryIntent === "control_copil"
       ? "pediatric_age_to_care_path"
+      : null,
+    primaryIntent === "simptome_oftalmologice"
+      ? "symptom_safety_completion"
       : null,
     primaryIntent === "lentile_contact"
       && confirmedFacts.contact_lens_experience === "first_time"
-      && carePath === "unresolved"
       ? "contact_lens_first_time_path"
       : null,
-  ].filter(Boolean);
+  ]);
+  const routingBlockingValidationRuleKeys = applicableRoutingValidationRuleKeys
+    .filter((ruleKey) => (
+      !isPatientGuidanceClinicalRuleApproved(ruleKey, clinicalValidationApprovals)
+    ));
   const symptomSafetyComplete = primaryIntent !== "simptome_oftalmologice"
-    || (factPresent("safety_targeted_check", confirmedFacts) && ["clear", "advisory"].includes(safetyState));
+    || (
+      isPatientGuidanceClinicalRuleApproved(
+        "symptom_safety_completion",
+        clinicalValidationApprovals,
+      )
+      && factPresent("safety_targeted_check", confirmedFacts)
+      && ["clear", "advisory"].includes(safetyState)
+    );
   const investigationResolved = primaryIntent !== "investigatii"
     || (factPresent("investigation_type", confirmedFacts) && carePath !== "unresolved");
   const sufficientForSearch = missingRequiredFacts.length === 0
+    && routingBlockingValidationRuleKeys.length === 0
     && symptomSafetyComplete
     && investigationResolved
     && !["unresolved", "emergency_interruption"].includes(carePath);
@@ -808,7 +901,12 @@ export function buildPatientGuidanceRoutingProfile(input = {}) {
   });
   const top3Policy = buildPatientTop3EligibilityPolicy({
     serviceKeys: routingServiceKeys,
+    clinicalValidationApprovals,
   });
+  const blockingValidationRuleKeys = unique([
+    ...routingBlockingValidationRuleKeys,
+    ...top3Policy.blocking_validation_rule_keys,
+  ]);
 
   return {
     contract_version: PATIENT_GUIDANCE_ROUTING_VERSION,
@@ -833,7 +931,10 @@ export function buildPatientGuidanceRoutingProfile(input = {}) {
       : (blockingValidationRuleKeys.length > 0
         ? "clinical_validation_required"
         : (carePath === "unresolved" ? "intent_or_service_resolution_required" : null)),
+    clinical_validation_approvals: clinicalValidationApprovals,
+    clinical_validation_status: blockingValidationRuleKeys.length > 0 ? "blocked" : "clear",
     blocking_validation_rule_keys: blockingValidationRuleKeys,
+    approved_validation_rule_keys: clinicalValidationApprovals,
     search_expansion_policy: searchExpansionPolicy,
     top3_eligibility_policy: top3Policy,
     fallback_mode: safetyState === "blocking"
