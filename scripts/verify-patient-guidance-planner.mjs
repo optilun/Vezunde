@@ -575,7 +575,7 @@ await scenario("guided answer outranks deterministic and AI facts", () => {
     }),
   });
   assert.equal(profile.known_facts.routine_vs_symptom, "symptom");
-  assert.equal(profile.fact_sources.routine_vs_symptom, "explicit_user");
+  assert.equal(profile.fact_sources.routine_vs_symptom, "guided_answer");
   assert.equal(profile.care_path, "ophthalmology");
 });
 
