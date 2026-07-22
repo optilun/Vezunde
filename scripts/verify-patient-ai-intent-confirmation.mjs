@@ -42,7 +42,7 @@ const lowConfidence = buildIntentConfirmationProposal({
   },
 }, { allowedIntents, deterministicIntent: 'control_vedere' });
 assert.equal(lowConfidence.status, 'manual_choice');
-assert.equal(lowConfidence.clarification_question, 'Cauti un control de vedere sau o evaluare medicala?');
+assert.equal(Object.hasOwn(lowConfidence, 'clarification_question'), false);
 assert.deepEqual(lowConfidence.possible_safety_flags, ['severe_eye_pain']);
 
 const unavailable = buildIntentConfirmationProposal({
@@ -90,5 +90,7 @@ assert.match(semanticSource, /hasRecentCompletedConfirmation/);
 assert.match(semanticSource, /skipped_duplicate_confirmation/);
 assert.match(confirmationSource, /AI-ul nu alege furnizorii si nu stabileste ordinea rezultatelor/);
 assert.match(confirmationSource, /possible_safety_flags/);
+assert.doesNotMatch(confirmationSource, /clarification_question/);
+assert.doesNotMatch(cardSource, /proposal\?\.clarification_question/);
 
 console.log('Patient AI intent confirmation checks passed.');
