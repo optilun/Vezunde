@@ -801,3 +801,217 @@ export async function runPatientGuidancePlannerShadow(input = {}, options = {}) 
     return buildPatientGuidancePlannerProfile(input, { status });
   }
 }
+
+export const PATIENT_GUIDANCE_RUNTIME_SHADOW_VERSION = "patient-guidance-runtime-shadow-v1";
+
+export const PATIENT_GUIDANCE_NEW_AI_CANARY = Object.freeze({
+  enabled: false,
+  source: "server_constant",
+  approvals: Object.freeze([]),
+});
+
+const LEGACY_FOR_WHOM_FACT_VALUES = Object.freeze({
+  adult: "adult",
+  copil: "child",
+});
+
+const LEGACY_CHILD_AGE_GROUP_FACT_VALUES = Object.freeze({
+  sub_3_ani: "under_3",
+  "3_6_ani": "3_6",
+  "7_12_ani": "7_12",
+  "13_18_ani": "13_18",
+});
+
+function legacyCandidateFact(factKey, value) {
+  const normalizedValue = clean(value, 800);
+  return normalizedValue ? { fact_key: factKey, value: normalizedValue } : null;
+}
+
+function legacyCandidateFacts(legacyInterpretation = {}) {
+  const facts = [];
+  const forWhom = LEGACY_FOR_WHOM_FACT_VALUES[legacyInterpretation.for_whom];
+  const childAgeGroup = LEGACY_CHILD_AGE_GROUP_FACT_VALUES[legacyInterpretation.age_group];
+  const timing = clean(legacyInterpretation.timing_key, 80);
+  const locality = clean(legacyInterpretation.location_text, 160);
+
+  if (forWhom) facts.push(legacyCandidateFact("for_whom", forWhom));
+  if (childAgeGroup) facts.push(legacyCandidateFact("child_age_group", childAgeGroup));
+  if (timing && timing !== "unknown") facts.push(legacyCandidateFact("timing", timing));
+  if (locality) facts.push(legacyCandidateFact("locality", locality));
+
+  return facts.filter(Boolean);
+}
+
+export function adaptLegacyPatientNeedInterpretationToPlannerProposal(
+  legacyInterpretation = {},
+) {
+  return {
+    primary_intent: normalizeIntent(legacyInterpretation.intent),
+    alternative_intents: [],
+    candidate_service_keys: canonicalAIServiceKeys(legacyInterpretation.service_keys),
+    extracted_facts: legacyCandidateFacts(legacyInterpretation),
+    candidate_care_paths: [],
+    next_question_key: null,
+    confidence_band: CONFIDENCE_BANDS.includes(legacyInterpretation.confidence_band)
+      ? legacyInterpretation.confidence_band
+      : "low",
+    possible_safety_flags: unique(legacyInterpretation.possible_safety_flags, 6)
+      .filter((flag) => SAFETY_FLAG_SET.has(flag)),
+    evidence_phrases: unique(legacyInterpretation.evidence_phrases, 5),
+  };
+}
+
+function agreementForIntent(liveInterpretation, shadowProfile) {
+  const liveIntent = normalizeIntent(liveInterpretation?.intent);
+  if (liveIntent === "unknown") return "not_comparable";
+  const shadowIntent = normalizeIntent(shadowProfile?.confirmed_primary_intent);
+  return liveIntent === shadowIntent ? "agree" : "disagree";
+}
+
+function agreementForServices(liveInterpretation, shadowProfile) {
+  const liveServiceKeys = canonicalServiceKeys(liveInterpretation?.service_keys);
+  if (liveServiceKeys.length === 0) return "not_comparable";
+  const shadowServiceKeys = new Set(canonicalServiceKeys([
+    ...(shadowProfile?.confirmed_service_keys || []),
+    ...(shadowProfile?.candidate_service_keys || []),
+  ]));
+  const sharedCount = liveServiceKeys.filter((key) => shadowServiceKeys.has(key)).length;
+  if (sharedCount === liveServiceKeys.length) return "agree";
+  return sharedCount > 0 ? "partial" : "disagree";
+}
+
+function shadowConflictFlags(profile) {
+  const flags = [];
+  if ((profile?.deterministic_service_conflicts || []).length > 0) {
+    flags.push("deterministic_service_conflict");
+  }
+  if (profile?.deterministic_intent_conflict) {
+    flags.push("deterministic_intent_conflict");
+  }
+  if ((profile?.deterministic_fact_conflicts || []).length > 0) {
+    flags.push("deterministic_fact_conflict");
+  }
+  return flags;
+}
+
+export function comparePatientGuidanceLiveAndShadow(
+  liveInterpretation = {},
+  shadowProfile = {},
+) {
+  const conflictFlags = shadowConflictFlags(shadowProfile);
+  return {
+    intent_agreement: agreementForIntent(liveInterpretation, shadowProfile),
+    service_agreement: agreementForServices(liveInterpretation, shadowProfile),
+    care_path_shadow: clean(shadowProfile?.care_path, 80) || "unresolved",
+    next_question_shadow: clean(shadowProfile?.next_question_key, 80) || null,
+    shadow_sufficient_for_search: shadowProfile?.sufficient_for_search === true,
+    conflict_detected: conflictFlags.length > 0,
+    fallback_used: shadowProfile?.status !== "completed"
+      || Boolean(shadowProfile?.fallback_reason),
+  };
+}
+
+export function summarizePatientGuidanceShadowProfile(profile = {}) {
+  return {
+    contract_version: clean(profile.contract_version, 80) || PATIENT_GUIDANCE_PLANNER_VERSION,
+    runtime_contract_version: PATIENT_GUIDANCE_RUNTIME_SHADOW_VERSION,
+    status: clean(profile.status, 40) || "unavailable",
+    ai_status: clean(profile.ai_status, 40) || "unavailable",
+    confirmed_primary_intent: normalizeIntent(profile.confirmed_primary_intent),
+    candidate_intent_count: Array.isArray(profile.candidate_intents)
+      ? profile.candidate_intents.length
+      : 0,
+    confirmed_service_count: Array.isArray(profile.confirmed_service_keys)
+      ? profile.confirmed_service_keys.length
+      : 0,
+    candidate_service_count: Array.isArray(profile.candidate_service_keys)
+      ? profile.candidate_service_keys.length
+      : 0,
+    care_path: clean(profile.care_path, 80) || "unresolved",
+    sufficient_for_search: profile.sufficient_for_search === true,
+    next_question_key: clean(profile.next_question_key, 80) || null,
+    conflict_flags: shadowConflictFlags(profile),
+    fallback_reason: clean(profile.fallback_reason, 80) || null,
+    canary_status: PATIENT_GUIDANCE_NEW_AI_CANARY.enabled ? "enabled" : "disabled",
+  };
+}
+
+function unavailableShadowObservation(liveResult, fallbackReason) {
+  const profile = {
+    contract_version: PATIENT_GUIDANCE_PLANNER_VERSION,
+    status: fallbackReason === "planner_invalid" ? "invalid" : "unavailable",
+    ai_status: "unavailable",
+    confirmed_primary_intent: "unknown",
+    candidate_intents: [],
+    confirmed_service_keys: [],
+    candidate_service_keys: [],
+    care_path: "unresolved",
+    sufficient_for_search: false,
+    next_question_key: null,
+    deterministic_service_conflicts: [],
+    deterministic_intent_conflict: null,
+    deterministic_fact_conflicts: [],
+    fallback_reason: fallbackReason,
+  };
+  return {
+    live_result: liveResult,
+    patient_guidance_shadow_profile: null,
+    summary: summarizePatientGuidanceShadowProfile(profile),
+    comparison: comparePatientGuidanceLiveAndShadow(
+      liveResult?.interpretation || {},
+      profile,
+    ),
+  };
+}
+
+export function runPatientGuidanceRuntimeShadow(context = {}, options = {}) {
+  const liveResult = context.liveResult;
+  try {
+    const aiEnvelope = context.legacyStatus === "completed"
+      ? {
+        status: "completed",
+        raw: adaptLegacyPatientNeedInterpretationToPlannerProposal(
+          context.legacyInterpretation,
+        ),
+      }
+      : { status: clean(context.legacyStatus, 40) || "unavailable" };
+    const buildProfile = typeof options.buildProfile === "function"
+      ? options.buildProfile
+      : buildPatientGuidancePlannerProfile;
+    const explicitFacts = {
+      ...(isPlainObject(context.explicitFacts) ? context.explicitFacts : {}),
+      ...(context.explicitLocality ? { locality: context.explicitLocality } : {}),
+    };
+    const profile = buildProfile({
+      text: context.text,
+      explicitPrimaryIntent: context.explicitPrimaryIntent,
+      explicitConfirmedServiceKeys: context.explicitConfirmedServiceKeys,
+      explicitFacts,
+      guidedAnswers: context.guidedAnswers,
+      deterministicIntent: context.deterministicIntent,
+      deterministicServiceKeys: context.deterministicServiceKeys,
+      deterministicFacts: context.deterministicFacts,
+      deterministicSafetyState: context.deterministicSafetyState,
+    }, aiEnvelope);
+
+    if (!isPlainObject(profile) || !isPlainObject(profile.routing_profile)) {
+      return unavailableShadowObservation(liveResult, "planner_invalid");
+    }
+
+    return {
+      live_result: liveResult,
+      patient_guidance_shadow_profile: profile,
+      summary: summarizePatientGuidanceShadowProfile(profile),
+      comparison: comparePatientGuidanceLiveAndShadow(
+        context.legacyInterpretation,
+        profile,
+      ),
+    };
+  } catch (error) {
+    const fallbackReason = error?.code === "PATIENT_GUIDANCE_PLANNER_TIMEOUT"
+      ? "planner_timeout"
+      : "planner_unavailable";
+    return unavailableShadowObservation(liveResult, fallbackReason);
+  }
+}
+
