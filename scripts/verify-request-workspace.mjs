@@ -16,7 +16,7 @@ assert.match(submission, /<RequestWorkspace/);
 assert.match(submission, /results=\{Array\.isArray\(results\) \? results : \[\]\}/);
 assert.match(submission, /requestDraft=\{submittedDraft\}/);
 assert.doesNotMatch(submission, /<PatientRequestResponseStatus/);
-assert.match(matchResults, /<PatientRequestSubmission results=\{list\} meta=\{meta\}/);
+assert.match(matchResults, /<PatientRequestSubmission results=\{list\} meta=\{activeMeta\} onRequestCreated=\{onRequestCreated\}/);
 
 assert.match(workspace, /lg:grid-cols-\[minmax\(0,2fr\)_minmax\(320px,1fr\)\]/);
 assert.match(workspace, /sticky top-24/);

@@ -14,6 +14,11 @@ export function isPatientOperationTimeout(error) {
     || error instanceof PatientOperationTimeoutError;
 }
 
+/**
+ * @param {() => any | Promise<any>} execute
+ * @param {{ timeoutMs?: number, operation?: string, requestId?: any, onTimeout?: (requestId: any) => void }} options
+ * @returns {Promise<any>}
+ */
 export function withPatientOperationTimeout(execute, {
   timeoutMs,
   operation = "patient_operation",

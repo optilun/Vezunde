@@ -109,7 +109,13 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName }) {
 
 // Module 3E: sections are driven STRICTLY by result_bucket from the backend.
 // Top 3 = result_bucket === "top3" only — never a positional slice.
-export default function MatchResults({ results, meta, onChangeLocation, onReviewCriteria, onRequestCreated }) {
+export default function MatchResults({
+  results,
+  meta,
+  onChangeLocation = null,
+  onReviewCriteria = null,
+  onRequestCreated = null,
+}) {
   const [showMore, setShowMore] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [expandedSnapshot, setExpandedSnapshot] = useState(null);

@@ -17,6 +17,15 @@ on:
       - "shared/inAppNotificationPolicy.js"
       - "shared/inAppNotificationProjection.js"
       - "src/lib/patientRequestPersistenceClient.js"
+      - "src/lib/patientOperationControl.js"
+      - "src/lib/patientIntakeSession.js"
+      - "src/lib/patientRequestIdempotency.js"
+      - "src/lib/patientShadowInterpretation.js"
+      - "src/lib/providerSemanticSearch.js"
+      - "src/components/intake2/ConversationalCard.jsx"
+      - "src/components/intake2/MatchResults.jsx"
+      - "src/components/intake2/PatientRequestSubmission.jsx"
+      - "scripts/verify-patient-intake-session-hardening.mjs"
       - "src/components/intake2/PatientRequestResponseStatus.jsx"
       - "src/components/intake2/PatientRequestLifecyclePanel.jsx"
       - "scripts/verify-patient-request-lifecycle.mjs"
@@ -43,6 +52,8 @@ jobs:
         run: npm ci
       - name: Verify patient request lifecycle
         run: node scripts/verify-patient-request-lifecycle.mjs
+      - name: Verify patient intake session hardening
+        run: npm run test:patient-intake-session
       - name: Verify existing service regressions
         run: npm run test:services
       - name: Typecheck service scope
@@ -62,9 +73,18 @@ jobs:
           base44/functions/providerLeadInboxOps/entry.ts
           base44/functions/controlledChatOps/entry.ts
           src/lib/patientRequestPersistenceClient.js
+          src/lib/patientOperationControl.js
+          src/lib/patientIntakeSession.js
+          src/lib/patientRequestIdempotency.js
+          src/lib/patientShadowInterpretation.js
+          src/lib/providerSemanticSearch.js
+          src/components/intake2/ConversationalCard.jsx
+          src/components/intake2/MatchResults.jsx
+          src/components/intake2/PatientRequestSubmission.jsx
           src/components/intake2/PatientRequestResponseStatus.jsx
           src/components/intake2/PatientRequestLifecyclePanel.jsx
           scripts/verify-patient-request-lifecycle.mjs
+          scripts/verify-patient-intake-session-hardening.mjs
           --quiet
       - name: Repository typecheck diagnostic
         continue-on-error: true

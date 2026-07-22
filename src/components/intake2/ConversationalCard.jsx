@@ -434,6 +434,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         }, {
           timeoutMs: PATIENT_INTERPRETATION_TIMEOUT_MS,
           requestId: `shadow:${requestId}`,
+          completedInterpretation: intentProposal,
         });
         const res = await matchProvidersWithSemanticFallback(matchPayload, {
           timeoutMs: PATIENT_MATCHING_TIMEOUT_MS,

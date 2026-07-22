@@ -56,7 +56,12 @@ function normalizedContact(contact = {}) {
   };
 }
 
-function stableDraftIdentity({ requestDraft = {}, detailedMessage = "", contact = {} } = {}) {
+function stableDraftIdentity(input = {}) {
+  const {
+    requestDraft = {},
+    detailedMessage = "",
+    contact = {},
+  } = /** @type {any} */ (input);
   return {
     version: "patient-request-idempotency-fingerprint-v1",
     intent: clean(requestDraft.intent, 80),
@@ -166,11 +171,12 @@ export function fingerprintPatientRequestDraft(input = {}) {
   return `patient-draft-v1:${stableHash(JSON.stringify(stableDraftIdentity(input)))}`;
 }
 
-export function getOrCreatePatientRequestIdempotency(input = {}, {
-  storage,
-  createKey = createPatientRequestIdempotencyKey,
-  now = Date.now(),
-} = {}) {
+export function getOrCreatePatientRequestIdempotency(input = {}, options = {}) {
+  const {
+    storage,
+    createKey = createPatientRequestIdempotencyKey,
+    now = Date.now(),
+  } = /** @type {any} */ (options);
   const fingerprint = fingerprintPatientRequestDraft(input);
   const existing = memoryRecords.get(fingerprint) || readStoredRecord(fingerprint, storage);
   if (validRecord(existing, fingerprint)) {
@@ -197,15 +203,18 @@ export function getOrCreatePatientRequestIdempotency(input = {}, {
   };
 }
 
-export function completePatientRequestIdempotency({ fingerprint = "", storage } = {}) {
+export function completePatientRequestIdempotency(options = {}) {
+  const { fingerprint = "", storage } = /** @type {any} */ (options);
   removeFingerprint(fingerprint, storage);
 }
 
-export function abandonPatientRequestIdempotency({ fingerprint = "", storage } = {}) {
+export function abandonPatientRequestIdempotency(options = {}) {
+  const { fingerprint = "", storage } = /** @type {any} */ (options);
   removeFingerprint(fingerprint || activeFingerprint(storage), storage);
 }
 
-export function abandonAllPatientRequestIdempotency({ storage } = {}) {
+export function abandonAllPatientRequestIdempotency(options = {}) {
+  const { storage } = /** @type {any} */ (options);
   memoryRecords.clear();
   activeMemoryFingerprint = "";
   const target = storageOrNull(storage);

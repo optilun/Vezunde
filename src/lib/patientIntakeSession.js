@@ -176,16 +176,17 @@ export function restorablePatientIntakePhase(phase, requestDraft, {
   return "questions";
 }
 
-export function createPatientIntakeSnapshot({
-  entrySignature,
-  initialMessage = "",
-  initialIntent = null,
-  state = {},
-  history = [],
-  phase = "questions",
-  requestDraft = null,
-  timestamp = Date.now(),
-} = {}) {
+export function createPatientIntakeSnapshot(options = {}) {
+  const {
+    entrySignature,
+    initialMessage = "",
+    initialIntent = null,
+    state = {},
+    history = [],
+    phase = "questions",
+    requestDraft = null,
+    timestamp = Date.now(),
+  } = /** @type {any} */ (options);
   const safeMessage = clean(initialMessage, 800);
   const safeIntent = clean(initialIntent, 80) || null;
   const safeDraft = safeRequestDraft(requestDraft);
@@ -207,11 +208,12 @@ export function createPatientIntakeSnapshot({
   };
 }
 
-export function validatePatientIntakeSnapshot(snapshot, {
-  entrySignature,
-  now = Date.now(),
-  ttlMs = PATIENT_INTAKE_SESSION_TTL_MS,
-} = {}) {
+export function validatePatientIntakeSnapshot(snapshot, options = {}) {
+  const {
+    entrySignature,
+    now = Date.now(),
+    ttlMs = PATIENT_INTAKE_SESSION_TTL_MS,
+  } = /** @type {any} */ (options);
   if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) return null;
   if (snapshot.version !== PATIENT_INTAKE_SESSION_VERSION) return null;
   const timestamp = Number(snapshot.timestamp);
@@ -243,12 +245,13 @@ export function writePatientIntakeSession(snapshot, storage) {
   }
 }
 
-export function readPatientIntakeSession({
-  entrySignature,
-  storage,
-  now = Date.now(),
-  ttlMs = PATIENT_INTAKE_SESSION_TTL_MS,
-} = {}) {
+export function readPatientIntakeSession(options = {}) {
+  const {
+    entrySignature,
+    storage,
+    now = Date.now(),
+    ttlMs = PATIENT_INTAKE_SESSION_TTL_MS,
+  } = /** @type {any} */ (options);
   const target = storageOrNull(storage);
   if (!target) return null;
   try {
