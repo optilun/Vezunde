@@ -1,11 +1,17 @@
-import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import ProviderAppShell from "@/components/provider/shell/ProviderAppShell";
+import { ProviderAccessStateProvider } from "./ProviderAccessContext";
 import { getProviderNav } from "@/lib/workspaceNav";
 import { PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 import { readAccountPreferences, rememberProviderLocation } from "@/lib/accountPreferences";
 import { resolveProviderLocationAccess } from "@/lib/providerWorkspaceAccess";
+import {
+  providerLocationModuleUrl,
+  providerSectionUrl,
+  shouldRedirectProviderRoute,
+} from "@/lib/providerWorkspaceLifecycle";
 import LocationSwitcher from "./LocationSwitcher";
 
 const ProviderOverview = lazy(() => import("./ProviderOverview"));
@@ -32,6 +38,25 @@ const OWNER_SENSITIVE_ORGANIZATION_CAPABILITIES = new Set([
   "organization.manage_locations",
   "organization.manage_settings",
 ]);
+const OWNER_ACCESS_SYNC_SESSION_PREFIX = "viasee:provider-owner-access-sync:";
+
+function ownerAccessSyncCompleted(organizationId) {
+  if (!organizationId || typeof window === "undefined") return false;
+  try {
+    return window.sessionStorage.getItem(`${OWNER_ACCESS_SYNC_SESSION_PREFIX}${organizationId}`) === "1";
+  } catch (_error) {
+    return false;
+  }
+}
+
+function markOwnerAccessSyncCompleted(organizationId) {
+  if (!organizationId || typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(`${OWNER_ACCESS_SYNC_SESSION_PREFIX}${organizationId}`, "1");
+  } catch (_error) {
+    // A blocked sessionStorage must not block the workspace.
+  }
+}
 
 const ROLE_CAPABILITIES = {
   organization_owner: [
@@ -120,6 +145,9 @@ function organizationContextsFor(workspace) {
 export default function ProviderWorkspaceRoot({
   user,
   workspace,
+  workspaceError = "",
+  workspaceRefreshing = false,
+  onRetryWorkspace,
   onLogout,
   onRefresh,
   onSwitchMode,
@@ -135,6 +163,7 @@ export default function ProviderWorkspaceRoot({
   const wideAccessSyncStarted = useRef(new Set());
   const overviewRequestRef = useRef(0);
   const accessMetaRequestRef = useRef(0);
+  const accessMetaOrganizationRef = useRef("");
   const previousSectionRef = useRef(requestedSection);
 
   const allLocations = useMemo(() => workspace.locations || [], [workspace.locations]);
@@ -160,7 +189,9 @@ export default function ProviderWorkspaceRoot({
   const [loadingOverview, setLoadingOverview] = useState(true);
   const [overviewError, setOverviewError] = useState(false);
   const [accessMeta, setAccessMeta] = useState(null);
-  const [accessMetaError, setAccessMetaError] = useState(false);
+  const [accessMetaLoading, setAccessMetaLoading] = useState(false);
+  const [accessMetaResolved, setAccessMetaResolved] = useState(false);
+  const [accessMetaError, setAccessMetaError] = useState("");
 
   const selectedContext = useMemo(() => organizationContexts.find((context) => (
     context.locations?.some((location) => location.id === selectedLocationId)
@@ -170,30 +201,45 @@ export default function ProviderWorkspaceRoot({
   const baseContextLocations = selectedContext ? (selectedContext.locations || []) : allLocations;
   const baseContextMemberships = selectedContext ? (selectedContext.memberships || []) : (workspace.memberships || []);
 
-  useEffect(() => {
+  const loadAccessMeta = useCallback(async () => {
+    const organizationChanged = accessMetaOrganizationRef.current !== selectedOrganizationId;
+    accessMetaOrganizationRef.current = selectedOrganizationId;
     const requestId = ++accessMetaRequestRef.current;
-    setAccessMeta(null);
-    setAccessMetaError(false);
-    if (!selectedOrganizationId) return undefined;
-    base44.functions.invoke("getMyProviderMembers", { organization_id: selectedOrganizationId })
-      .then((response) => {
-        if (requestId !== accessMetaRequestRef.current) return;
-        if (response.data?.error) {
-          setAccessMeta(null);
-          setAccessMetaError(true);
-        } else {
-          setAccessMeta(response.data);
-          setAccessMetaError(false);
-        }
-      })
-      .catch(() => {
-        if (requestId === accessMetaRequestRef.current) {
-          setAccessMeta(null);
-          setAccessMetaError(true);
-        }
-      });
+
+    if (organizationChanged) {
+      setAccessMeta(null);
+      setAccessMetaResolved(false);
+      setAccessMetaError("");
+    }
+    if (!selectedOrganizationId) {
+      setAccessMetaLoading(false);
+      setAccessMetaResolved(false);
+      return;
+    }
+
+    setAccessMetaLoading(true);
+    setAccessMetaResolved(false);
+    setAccessMetaError("");
+    const response = await base44.functions.invoke("getMyProviderMembers", { organization_id: selectedOrganizationId })
+      .catch((error) => ({ data: { error: error.response?.data?.error || error.message || "Datele de acces nu au putut fi încărcate." } }));
+    if (requestId !== accessMetaRequestRef.current) return;
+
+    if (!response.data || response.data.error) {
+      setAccessMetaError(response.data?.error || "Datele de acces nu au putut fi încărcate.");
+      setAccessMetaLoading(false);
+      return;
+    }
+
+    setAccessMeta(response.data);
+    setAccessMetaResolved(true);
+    setAccessMetaError("");
+    setAccessMetaLoading(false);
+  }, [selectedOrganizationId]);
+
+  useEffect(() => {
+    void loadAccessMeta();
     return () => { accessMetaRequestRef.current += 1; };
-  }, [selectedOrganizationId, workspace]);
+  }, [loadAccessMeta]);
 
   const accessMetaMatchesOrganization = accessMeta?.current_organization_id === selectedOrganizationId;
   const scopedLocationIds = useMemo(() => {
@@ -221,16 +267,27 @@ export default function ProviderWorkspaceRoot({
     [scopedContext, selectedLocationId],
   );
 
-  const accessMetaUnavailable = !accessMeta && accessMetaError;
-  const fallbackOrganizationRole = accessMetaUnavailable ? (selectedContext?.current_user_role || "") : "";
+  const accessMetaUnavailable = Boolean(accessMetaError);
+  const fallbackOrganizationRole = !accessMetaMatchesOrganization
+    ? (selectedContext?.current_user_role || "")
+    : "";
   const organizationActorRole = accessMetaMatchesOrganization
     ? (accessMeta?.current_actor_role || "")
     : fallbackOrganizationRole;
   const isOrganizationOwner = organizationActorRole === "organization_owner";
   const isOrganizationAdmin = organizationActorRole === "organization_admin";
+  const fallbackWideOrganizationAccess = Boolean(
+    selectedContext?.current_actor_wide_access === true
+    || selectedContext?.current_user_wide_access === true
+    || selectedContext?.organization_wide_access === true,
+  );
   const actorHasWideOrganizationAccess = Boolean(
     isOrganizationAdmin
-    || (isOrganizationOwner && (accessMeta?.current_actor_wide_access === true || accessMetaUnavailable)),
+    || (isOrganizationOwner && (
+      accessMetaMatchesOrganization
+        ? accessMeta?.current_actor_wide_access === true
+        : fallbackWideOrganizationAccess
+    )),
   );
   const organizationCapabilityList = (selectedContext?.capabilities || [])
     .filter((capability) => capability.startsWith("organization."));
@@ -271,7 +328,7 @@ export default function ProviderWorkspaceRoot({
   const canManageMembers = Boolean(
     accessMetaMatchesOrganization
       ? accessMeta?.can_manage_members
-      : (accessMetaUnavailable ? selectedContext?.can_manage_members : false),
+      : selectedContext?.can_manage_members,
   );
   const canManageSettings = Boolean(
     isOrganizationOwner
@@ -324,11 +381,20 @@ export default function ProviderWorkspaceRoot({
 
   useEffect(() => {
     if (!selectedOrganizationId || !hasWideOrganizationAccess || wideAccessSyncStarted.current.has(selectedOrganizationId)) return;
+    if (ownerAccessSyncCompleted(selectedOrganizationId)) {
+      wideAccessSyncStarted.current.add(selectedOrganizationId);
+      return;
+    }
+
     wideAccessSyncStarted.current.add(selectedOrganizationId);
+    markOwnerAccessSyncCompleted(selectedOrganizationId);
     base44.functions.invoke("syncProviderOrganizationOwnerAccess", { organization_id: selectedOrganizationId })
-      .then((response) => { if (response.data?.changed) onRefresh?.(); })
+      .then((response) => {
+        if (!response.data?.changed) return null;
+        return Promise.all([loadAccessMeta(), onRefresh?.()]);
+      })
       .catch(() => null);
-  }, [hasWideOrganizationAccess, onRefresh, selectedOrganizationId]);
+  }, [hasWideOrganizationAccess, loadAccessMeta, onRefresh, selectedOrganizationId]);
 
   useEffect(() => {
     if (!accessMetaMatchesOrganization || locations.length === 0 || locations.some((location) => location.id === selectedLocationId)) return;
@@ -349,27 +415,36 @@ export default function ProviderWorkspaceRoot({
   useEffect(() => {
     const requestedLocationExists = allLocations.some((location) => location.id === requestedLocationId);
     const nextLocationId = requestedLocationExists ? requestedLocationId : requestedOrganizationLocationId;
-    if (nextLocationId) setSelectedLocationId(nextLocationId);
-  }, [requestedLocationId, requestedOrganizationId, requestedOrganizationLocationId, allLocations]);
+    if (nextLocationId && nextLocationId !== selectedLocationId) setSelectedLocationId(nextLocationId);
+  }, [requestedLocationId, requestedOrganizationId, requestedOrganizationLocationId, selectedLocationId, allLocations]);
 
   useEffect(() => {
     loadOverview(selectedLocationId);
     if (selectedLocationId) rememberProviderLocation(user?.id, selectedLocationId);
   }, [selectedLocationId]);
 
+  const routeAccessDenied = deniedLocationModule
+    || (requestedSection === "profile" && !canManageOrganizationProfile)
+    || (requestedSection === "locations" && !canViewLocations)
+    || (requestedSection === "leads" && !canManageRequests)
+    || (requestedSection === "settings" && !canManageSettings)
+    || (requestedSection === "access" && !canManageMembers);
+  const shouldRedirectDeniedRoute = shouldRedirectProviderRoute({
+    denied: routeAccessDenied,
+    accessMetaLoading,
+    accessMetaResolved,
+    accessMetaMatchesOrganization,
+    accessMetaError,
+  });
+
   useEffect(() => {
-    const denied = deniedLocationModule
-      || (requestedSection === "profile" && !canManageOrganizationProfile)
-      || (requestedSection === "locations" && !canViewLocations)
-      || (requestedSection === "leads" && !canManageRequests)
-      || (requestedSection === "settings" && !canManageSettings)
-      || (requestedSection === "access" && !canManageMembers);
-    if (denied) routerNavigate(deniedLocationModule ? "/contul-meu?s=locations" : "/contul-meu?s=overview", { replace: true });
-  }, [canManageMembers, canManageOrganizationProfile, canManageRequests, canManageSettings, canViewLocations, deniedLocationModule, requestedSection, routerNavigate]);
+    if (!shouldRedirectDeniedRoute) return;
+    routerNavigate(deniedLocationModule ? "/contul-meu?s=locations" : "/contul-meu?s=overview", { replace: true });
+  }, [deniedLocationModule, routerNavigate, shouldRedirectDeniedRoute]);
 
   const goToSection = (key) => {
     if (key === "overview") void refreshOverviewInPlace();
-    routerNavigate(`/contul-meu?s=${key}`);
+    routerNavigate(providerSectionUrl(params, key));
   };
 
   const accessForLocation = (locationId) => {
@@ -386,7 +461,7 @@ export default function ProviderWorkspaceRoot({
     rememberProviderLocation(user?.id, locationId);
     if (activeLocationModule) {
       const targetAccess = accessForLocation(locationId);
-      if (targetAccess.capabilities.includes(LOCATION_MODULE_CAPABILITIES[activeLocationModule])) routerNavigate(`/contul-meu/locatii/${locationId}/${activeLocationModule}`);
+      if (targetAccess.capabilities.includes(LOCATION_MODULE_CAPABILITIES[activeLocationModule])) routerNavigate(providerLocationModuleUrl(locationId, activeLocationModule));
       else routerNavigate("/contul-meu?s=locations");
     }
   };
@@ -402,7 +477,7 @@ export default function ProviderWorkspaceRoot({
     const targetAccess = accessForLocation(locationId);
     if (!targetAccess.capabilities.includes(LOCATION_MODULE_CAPABILITIES[moduleKey])) return;
     setSelectedLocationId(locationId);
-    routerNavigate(`/contul-meu/locatii/${locationId}/${moduleKey}`);
+    routerNavigate(providerLocationModuleUrl(locationId, moduleKey));
   };
 
   const closeLocationModule = () => routerNavigate("/contul-meu?s=locations");
@@ -445,6 +520,16 @@ export default function ProviderWorkspaceRoot({
   }, [safeSection, selectedLocationId]);
 
   return (
+    <ProviderAccessStateProvider
+      value={{
+        data: accessMeta,
+        loading: accessMetaLoading,
+        resolved: accessMetaResolved,
+        error: accessMetaError,
+        organizationId: selectedOrganizationId,
+        onRetry: loadAccessMeta,
+      }}
+    >
     <ProviderAppShell
       navItems={navItems}
       activeKey={safeSection}
@@ -468,24 +553,23 @@ export default function ProviderWorkspaceRoot({
           <span>Unele date de acces nu au putut fi încărcate. Datele organizației nu au fost șterse.</span>
           <button
             type="button"
-            onClick={() => {
-              if (!selectedOrganizationId) return;
-              const requestId = ++accessMetaRequestRef.current;
-              setAccessMeta(null);
-              setAccessMetaError(false);
-              base44.functions.invoke("getMyProviderMembers", { organization_id: selectedOrganizationId })
-                .then((response) => {
-                  if (requestId !== accessMetaRequestRef.current) return;
-                  if (response.data?.error) { setAccessMeta(null); setAccessMetaError(true); }
-                  else { setAccessMeta(response.data); setAccessMetaError(false); }
-                })
-                .catch(() => {
-                  if (requestId === accessMetaRequestRef.current) { setAccessMeta(null); setAccessMetaError(true); }
-                });
-            }}
+            onClick={() => void loadAccessMeta()}
             className="inline-flex h-9 items-center justify-center rounded-full border border-amber-300 bg-background px-4 text-xs font-semibold hover:bg-amber-100"
           >
             Reîncearcă
+          </button>
+        </div>
+      )}
+      {workspaceError && (
+        <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+          <span>{workspaceError} Datele existente au fost păstrate.</span>
+          <button
+            type="button"
+            disabled={workspaceRefreshing}
+            onClick={() => void onRetryWorkspace?.()}
+            className="inline-flex h-9 items-center justify-center rounded-full border border-amber-300 bg-background px-4 text-xs font-semibold hover:bg-amber-100 disabled:opacity-50"
+          >
+            {workspaceRefreshing ? "Se reîncearcă..." : "Reîncearcă"}
           </button>
         </div>
       )}
@@ -536,7 +620,13 @@ export default function ProviderWorkspaceRoot({
               </div>
             )}
             {safeSection === "leads" && canManageRequests && <ProviderLeadInbox locationId={selectedLocationId} location={selectedLocation} />}
-            {safeSection === "access" && canManageMembers && <ProviderAccess organizationId={selectedOrganizationId} locations={locations} onRefresh={refreshOverviewInPlace} />}
+            {safeSection === "access" && canManageMembers && (
+              <ProviderAccess
+                organizationId={selectedOrganizationId}
+                locations={locations}
+                onRefresh={refreshOverviewInPlace}
+              />
+            )}
             {safeSection === "settings" && canManageSettings && (
               <ProviderSettings user={user} workspace={scopedWorkspace} overview={overview} selectedLocationId={selectedLocationId} onSelectLocation={selectLocation} onSwitchMode={onSwitchMode} onNavigate={goToSection} onRefresh={refreshOverviewInPlace} />
             )}
@@ -544,5 +634,6 @@ export default function ProviderWorkspaceRoot({
         </Suspense>
       )}
     </ProviderAppShell>
+    </ProviderAccessStateProvider>
   );
 }

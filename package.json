@@ -29,7 +29,8 @@
     "test:provider-organization-admin": "node scripts/verify-provider-organization-admin-access.mjs",
     "test:account-loading": "node scripts/verify-account-workspace-loading.mjs",
     "test:provider-location-access": "node scripts/verify-provider-location-access-scope.mjs",
-    "test:provider-context-url": "node scripts/verify-provider-context-url.mjs"
+    "test:provider-context-url": "node scripts/verify-provider-context-url.mjs",
+    "test:provider-account-hardening": "node scripts/verify-provider-account-workspace-hardening.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.40",

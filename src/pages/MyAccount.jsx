@@ -3,6 +3,10 @@ import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import { readAccountPreferences, rememberAccountMode } from "@/lib/accountPreferences";
+import {
+  accountWorkspaceFunction,
+  keepWorkspaceIdentity,
+} from "@/lib/accountWorkspaceLifecycle";
 import { AlertTriangle, LogOut, RefreshCw } from "lucide-react";
 const PersonalAccountWorkspace = lazy(() => import("@/components/workspace/personal/PersonalAccountWorkspace"));
 const ApplicantWorkspaceRoot = lazy(() => import("@/components/workspace/applicant/ApplicantWorkspaceRoot"));
@@ -27,6 +31,38 @@ function WorkspaceLoading() {
     <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground" role="status">
       Se încarcă spațiul de lucru...
     </div>
+  );
+}
+
+function workspaceErrorMessage(result) {
+  if (result?.status === "fulfilled") {
+    return result.value?.data?.error || "Datele acestui modul nu au putut fi încărcate.";
+  }
+  return result?.reason?.response?.data?.error
+    || result?.reason?.message
+    || "Datele acestui modul nu au putut fi încărcate.";
+}
+
+function WorkspaceModuleError({ title, message, retrying = false, onRetry }) {
+  return (
+    <main className="flex min-h-[60vh] items-center justify-center bg-background px-4 py-10">
+      <section className="w-full max-w-lg rounded-[22px] border border-border bg-card p-6 shadow-sm sm:p-8">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-100 text-amber-800">
+          <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+        </div>
+        <h1 className="mt-4 font-heading text-2xl font-bold tracking-tight">{title}</h1>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{message}</p>
+        <button
+          type="button"
+          disabled={retrying}
+          onClick={() => void onRetry?.()}
+          className="mt-6 inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background hover:opacity-90 disabled:opacity-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${retrying ? "animate-spin" : ""}`} aria-hidden="true" />
+          Reîncearcă
+        </button>
+      </section>
+    </main>
   );
 }
 
@@ -60,10 +96,23 @@ export default function MyAccount() {
   const [onboardingWorkspace, setOnboardingWorkspace] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [workspaceErrors, setWorkspaceErrors] = useState({ provider: "", professional: "", onboarding: "" });
+  const [workspaceRefreshing, setWorkspaceRefreshing] = useState({ provider: false, professional: false, onboarding: false });
   const [activeMode, setActiveMode] = useState(null);
   const loadRequestRef = useRef(0);
+  const refreshRequestRef = useRef({ provider: 0, professional: 0, onboarding: 0 });
   const hasWorkspaceDataRef = useRef(false);
   const { user, logout } = useAuth();
+
+  const updateProviderWorkspace = useCallback((next) => {
+    setProviderWorkspace((current) => keepWorkspaceIdentity(current, next));
+  }, []);
+  const updateProfessionalWorkspace = useCallback((next) => {
+    setProfessionalWorkspace((current) => keepWorkspaceIdentity(current, next));
+  }, []);
+  const updateOnboardingWorkspace = useCallback((next) => {
+    setOnboardingWorkspace((current) => keepWorkspaceIdentity(current, next));
+  }, []);
 
   const load = useCallback(async () => {
     const requestId = ++loadRequestRef.current;
@@ -71,39 +120,106 @@ export default function MyAccount() {
     setLoadError("");
     if (initialRequest) setLoading(true);
 
-    try {
-      const [providerResult, professionalResult, onboardingResult] = await Promise.all([
-        base44.functions.invoke("getMyProviderWorkspace", {}),
-        base44.functions.invoke("getMyProfessionalWorkspace", {}),
-        base44.functions.invoke("getMyProviderOnboardingWorkspace", {}),
-      ]);
+    const results = await Promise.allSettled([
+      base44.functions.invoke("getMyProviderWorkspace", {}),
+      base44.functions.invoke("getMyProfessionalWorkspace", {}),
+      base44.functions.invoke("getMyProviderOnboardingWorkspace", {}),
+    ]);
+    if (requestId !== loadRequestRef.current) return;
 
-      if (requestId !== loadRequestRef.current) return;
-      setProviderWorkspace(providerResult.data);
-      setProfessionalWorkspace(professionalResult.data);
-      setOnboardingWorkspace(onboardingResult.data);
-      hasWorkspaceDataRef.current = true;
-    } catch (error) {
-      if (requestId !== loadRequestRef.current) return;
-      console.error("Account workspace load failed:", error);
-      if (initialRequest) {
-        setLoadError("Sesiunea este activă, dar datele contului nu au putut fi încărcate.");
-      }
-    } finally {
-      if (requestId === loadRequestRef.current && initialRequest) setLoading(false);
+    const nextErrors = { provider: "", professional: "", onboarding: "" };
+    let usableWorkspaceCount = 0;
+
+    const providerData = results[0].status === "fulfilled" ? results[0].value?.data : null;
+    if (providerData && !providerData.error) {
+      updateProviderWorkspace(providerData);
+      usableWorkspaceCount += 1;
+    } else {
+      nextErrors.provider = workspaceErrorMessage(results[0]);
     }
-  }, []);
+
+    const professionalData = results[1].status === "fulfilled" ? results[1].value?.data : null;
+    if (professionalData && !professionalData.error) {
+      updateProfessionalWorkspace(professionalData);
+      usableWorkspaceCount += 1;
+    } else {
+      nextErrors.professional = workspaceErrorMessage(results[1]);
+    }
+
+    const onboardingData = results[2].status === "fulfilled" ? results[2].value?.data : null;
+    if (onboardingData && !onboardingData.error) {
+      updateOnboardingWorkspace(onboardingData);
+      usableWorkspaceCount += 1;
+    } else {
+      nextErrors.onboarding = workspaceErrorMessage(results[2]);
+    }
+    setWorkspaceErrors(nextErrors);
+    if (Object.values(nextErrors).some(Boolean)) {
+      console.error("Account workspace load failed:", nextErrors);
+    }
+
+    if (usableWorkspaceCount > 0) {
+      hasWorkspaceDataRef.current = true;
+      setLoadError("");
+    } else if (initialRequest) {
+      setLoadError("Sesiunea este activă, dar datele contului nu au putut fi încărcate.");
+    }
+    if (initialRequest) setLoading(false);
+  }, [updateOnboardingWorkspace, updateProfessionalWorkspace, updateProviderWorkspace]);
+
+  const refreshWorkspace = useCallback(async (workspaceKey) => {
+    const requestId = ++refreshRequestRef.current[workspaceKey];
+    setWorkspaceRefreshing((current) => ({ ...current, [workspaceKey]: true }));
+    setWorkspaceErrors((current) => ({ ...current, [workspaceKey]: "" }));
+    const response = await base44.functions.invoke(accountWorkspaceFunction(workspaceKey), {})
+      .catch((error) => ({ data: { error: error.response?.data?.error || error.message || "Workspace-ul nu a putut fi actualizat." } }));
+    if (requestId !== refreshRequestRef.current[workspaceKey]) return null;
+
+    if (!response.data || response.data.error) {
+      const message = response.data?.error || "Workspace-ul nu a putut fi actualizat.";
+      console.error(`Account ${workspaceKey} workspace refresh failed:`, message);
+      setWorkspaceErrors((current) => ({ ...current, [workspaceKey]: message }));
+      setWorkspaceRefreshing((current) => ({ ...current, [workspaceKey]: false }));
+      return null;
+    }
+
+    if (workspaceKey === "provider") updateProviderWorkspace(response.data);
+    else if (workspaceKey === "professional") updateProfessionalWorkspace(response.data);
+    else updateOnboardingWorkspace(response.data);
+    hasWorkspaceDataRef.current = true;
+    setWorkspaceRefreshing((current) => ({ ...current, [workspaceKey]: false }));
+    return response.data;
+  }, [updateOnboardingWorkspace, updateProfessionalWorkspace, updateProviderWorkspace]);
+
+  const refreshProviderWorkspace = useCallback(
+    () => refreshWorkspace("provider"),
+    [refreshWorkspace],
+  );
+  const refreshProfessionalWorkspace = useCallback(
+    () => refreshWorkspace("professional"),
+    [refreshWorkspace],
+  );
+  const refreshOnboardingWorkspace = useCallback(
+    () => refreshWorkspace("onboarding"),
+    [refreshWorkspace],
+  );
 
   useEffect(() => {
     if (user?.id) void load();
-    return () => { loadRequestRef.current += 1; };
+    return () => {
+      loadRequestRef.current += 1;
+      refreshRequestRef.current.provider += 1;
+      refreshRequestRef.current.professional += 1;
+      refreshRequestRef.current.onboarding += 1;
+    };
   }, [load, user?.id]);
 
   const onLogout = () => logout(true);
 
   if (loading) return <WorkspaceLoading />;
 
-  if (loadError || !user || !providerWorkspace || !professionalWorkspace || !onboardingWorkspace) {
+  const hasAnyWorkspace = Boolean(providerWorkspace || professionalWorkspace || onboardingWorkspace);
+  if (!user || !hasAnyWorkspace) {
     return (
       <main className="flex min-h-[60vh] items-center justify-center bg-background px-4 py-10">
         <section className="w-full max-w-lg rounded-[22px] border border-border bg-card p-6 shadow-sm sm:p-8">
@@ -136,9 +252,9 @@ export default function MyAccount() {
       </main>
     );
   }
-  const hasProviderWorkspace = providerWorkspace.mode === "provider_workspace";
-  const hasProfessionalWorkspace = professionalWorkspace.mode === "professional_workspace";
-  const hasApplicantWorkspace = onboardingWorkspace.mode === "applicant_preparation";
+  const hasProviderWorkspace = providerWorkspace?.mode === "provider_workspace";
+  const hasProfessionalWorkspace = professionalWorkspace?.mode === "professional_workspace";
+  const hasApplicantWorkspace = onboardingWorkspace?.mode === "applicant_preparation";
 
   const accountModes = [
     { key: "personal", label: MODE_LABELS.personal },
@@ -153,6 +269,21 @@ export default function MyAccount() {
   const fallbackMode = [requestedMode, preferredMode, "provider", "professional", "applicant", "personal"]
     .find((mode) => availableModeKeys.has(mode)) || "personal";
   const resolvedMode = activeMode && availableModeKeys.has(activeMode) ? activeMode : fallbackMode;
+  const requestedWorkspaceIssue = {
+    provider: { workspace: providerWorkspace, error: workspaceErrors.provider, retrying: workspaceRefreshing.provider, retry: refreshProviderWorkspace, title: "Nu am putut încărca spațiul furnizorului" },
+    professional: { workspace: professionalWorkspace, error: workspaceErrors.professional, retrying: workspaceRefreshing.professional, retry: refreshProfessionalWorkspace, title: "Nu am putut încărca profilul profesional" },
+    applicant: { workspace: onboardingWorkspace, error: workspaceErrors.onboarding, retrying: workspaceRefreshing.onboarding, retry: refreshOnboardingWorkspace, title: "Nu am putut încărca pregătirea profilului" },
+  }[requestedMode];
+  if (requestedWorkspaceIssue?.error && !requestedWorkspaceIssue.workspace) {
+    return (
+      <WorkspaceModuleError
+        title={requestedWorkspaceIssue.title}
+        message={requestedWorkspaceIssue.error}
+        retrying={requestedWorkspaceIssue.retrying}
+        onRetry={requestedWorkspaceIssue.retry}
+      />
+    );
+  }
 
   const switchMode = (mode) => {
     if (!availableModeKeys.has(mode)) return;
@@ -294,7 +425,16 @@ export default function MyAccount() {
   if (resolvedMode === "provider" && hasProviderWorkspace) {
     return (
       <Suspense fallback={<WorkspaceLoading />}>
-        <ProviderWorkspaceRoot user={user} workspace={providerWorkspace} onLogout={onLogout} onRefresh={load} {...sharedAccountProps} />
+        <ProviderWorkspaceRoot
+          user={user}
+          workspace={providerWorkspace}
+          workspaceError={workspaceErrors.provider}
+          workspaceRefreshing={workspaceRefreshing.provider}
+          onRetryWorkspace={refreshProviderWorkspace}
+          onLogout={onLogout}
+          onRefresh={refreshProviderWorkspace}
+          {...sharedAccountProps}
+        />
       </Suspense>
     );
   }
@@ -302,7 +442,7 @@ export default function MyAccount() {
   if (resolvedMode === "professional" && hasProfessionalWorkspace) {
     return (
       <Suspense fallback={<WorkspaceLoading />}>
-        <ProfessionalWorkspaceRoot user={user} workspace={professionalWorkspace} onLogout={onLogout} onRefresh={load} {...sharedAccountProps} />
+        <ProfessionalWorkspaceRoot user={user} workspace={professionalWorkspace} onLogout={onLogout} onRefresh={refreshProfessionalWorkspace} {...sharedAccountProps} />
       </Suspense>
     );
   }
@@ -314,7 +454,7 @@ export default function MyAccount() {
         user={user}
         workspace={onboardingWorkspace}
         onLogout={onLogout}
-        onRefresh={load}
+        onRefresh={refreshOnboardingWorkspace}
         modeSwitches={modeSwitches}
         />
       </Suspense>

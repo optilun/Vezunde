@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Users } from "lucide-react";
-import { base44 } from "@/api/base44Client";
 import { ROLE_LABELS } from "@/lib/workspaceStatusLabels";
+import { useProviderAccessState } from "@/components/workspace/provider/ProviderAccessContext";
 
 function initials(value = "") {
   return String(value || "U")
@@ -62,31 +62,19 @@ function selectedOrganizationIdFor(data, userId, locationId) {
 
 export default function ProviderTeamHeaderAccess({ userId = "", locationId = "" }) {
   const rootRef = useRef(null);
-  const requestRef = useRef(0);
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
   const [open, setOpen] = useState(false);
-
-  const load = useCallback(async ({ silent = false } = {}) => {
-    const requestId = ++requestRef.current;
-    if (!silent) setLoading(true);
-    const response = await base44.functions.invoke("getMyProviderMembers", {})
-      .catch(() => ({ data: null }));
-    if (requestId !== requestRef.current) return;
-    if (response.data?.error) { setData(null); setLoadError(true); }
-    else { setData(response.data); setLoadError(false); }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    void load();
-    return () => { requestRef.current += 1; };
-  }, [load]);
+  const {
+    data,
+    loading,
+    error: accessError,
+    organizationId,
+    onRetry,
+  } = useProviderAccessState();
+  const loadError = Boolean(accessError);
+  const showInitialLoading = loading && !data;
 
   useEffect(() => {
     if (!open) return undefined;
-    void load({ silent: true });
     const closeOutside = (event) => {
       if (!rootRef.current?.contains(event.target)) setOpen(false);
     };
@@ -99,11 +87,11 @@ export default function ProviderTeamHeaderAccess({ userId = "", locationId = "" 
       document.removeEventListener("pointerdown", closeOutside);
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [load, open]);
+  }, [open]);
 
   const selectedOrganizationId = useMemo(
-    () => selectedOrganizationIdFor(data, userId, locationId),
-    [data, locationId, userId],
+    () => organizationId || selectedOrganizationIdFor(data, userId, locationId),
+    [data, locationId, organizationId, userId],
   );
   const manageableOrganizationIds = data?.manageable_organization_ids || [];
   const canManageCurrentOrganization = Boolean(
@@ -140,8 +128,8 @@ export default function ProviderTeamHeaderAccess({ userId = "", locationId = "" 
         title="Utilizatori și acces"
       >
         <span className="hidden items-center -space-x-2 sm:flex">
-          {loading && <span className="h-8 w-8 animate-pulse rounded-full border-2 border-card bg-secondary" />}
-          {!loading && visibleMembers.map((member, index) => (
+          {showInitialLoading && <span className="h-8 w-8 animate-pulse rounded-full border-2 border-card bg-secondary" />}
+          {!showInitialLoading && visibleMembers.map((member, index) => (
             <span
               key={member.user_id || member.user_email_masked || index}
               className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-card bg-foreground text-[10px] font-bold text-background shadow-sm"
@@ -150,7 +138,7 @@ export default function ProviderTeamHeaderAccess({ userId = "", locationId = "" 
               {initials(member.user_name || member.user_email_masked)}
             </span>
           ))}
-          {!loading && members.length > 3 && (
+          {!showInitialLoading && members.length > 3 && (
             <span className="flex h-8 min-w-8 items-center justify-center rounded-full border-2 border-card bg-secondary px-1.5 text-[10px] font-bold text-foreground shadow-sm">+{members.length - 3}</span>
           )}
         </span>
@@ -177,15 +165,15 @@ export default function ProviderTeamHeaderAccess({ userId = "", locationId = "" 
           </div>
 
           <div className="max-h-72 overflow-y-auto px-2 py-2">
-            {loading && <div className="px-3 py-5 text-sm text-muted-foreground">Se încarcă utilizatorii...</div>}
+            {showInitialLoading && <div className="px-3 py-5 text-sm text-muted-foreground">Se încarcă utilizatorii...</div>}
             {!loading && loadError && (
               <div className="flex flex-col gap-2 px-3 py-5 text-sm text-muted-foreground">
                 <span>Datele de acces nu au putut fi încărcate.</span>
-                <button type="button" onClick={() => void load()} className="inline-flex h-8 items-center justify-center rounded-full border border-border bg-background px-3 text-xs font-semibold hover:bg-secondary">Reîncearcă</button>
+                <button type="button" onClick={() => void onRetry?.()} className="inline-flex h-8 items-center justify-center rounded-full border border-border bg-background px-3 text-xs font-semibold hover:bg-secondary">Reîncearcă</button>
               </div>
             )}
-            {!loading && !loadError && members.length === 0 && <div className="px-3 py-5 text-sm text-muted-foreground">Nu există alți utilizatori activi.</div>}
-            {!loading && members.slice(0, 6).map((member) => (
+            {!showInitialLoading && !loadError && members.length === 0 && <div className="px-3 py-5 text-sm text-muted-foreground">Nu există alți utilizatori activi.</div>}
+            {!showInitialLoading && members.slice(0, 6).map((member) => (
               <div key={member.user_id || member.user_email_masked} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-secondary/45">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-foreground text-[10px] font-bold text-background">
                   {initials(member.user_name || member.user_email_masked)}
