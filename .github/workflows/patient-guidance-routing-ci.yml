@@ -12,6 +12,7 @@ on:
       - "base44/shared/patientGuidancePlanner.js"
       - "base44/shared/patientConversationAgent.js"
       - "base44/functions/matchProvidersSemantic/entry.ts"
+      - "base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts"
       - "src/lib/providerSemanticSearch.js"
       - "docs/patient-conversation-agent-v1.md"
       - "tests/fixtures/patient-conversation-agent-evaluations.json"
@@ -110,6 +111,7 @@ jobs:
           base44/shared/patientGuidancePlanner.js
           base44/shared/patientConversationAgent.js
           base44/functions/matchProvidersSemantic/entry.ts
+          base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts
           src/lib/providerSemanticSearch.js
           scripts/verify-patient-guidance-routing.mjs
           scripts/verify-patient-guidance-planner.mjs
