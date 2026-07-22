@@ -11,6 +11,24 @@ import SituationExplainer from "@/components/home/SituationExplainer";
 import HowItWorks from "@/components/home/HowItWorks";
 import ProCta from "@/components/home/ProCta";
 
+function DevelopmentBanner() {
+  return (
+    <aside
+      aria-label="Informație despre stadiul platformei"
+      className="relative z-40 border-b border-[#7a5b20]/15 bg-[#F3E6C8] px-4 py-3 text-[#3d321f]"
+    >
+      <div className="mx-auto flex max-w-7xl flex-col items-center justify-center gap-1 text-center sm:flex-row sm:gap-2">
+        <span className="rounded-full border border-[#7a5b20]/20 bg-white/45 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em]">
+          Versiune în dezvoltare
+        </span>
+        <p className="text-sm font-medium leading-relaxed">
+          VIASEE este în dezvoltare. Unele funcții și informații pot fi incomplete sau se pot modifica.
+        </p>
+      </div>
+    </aside>
+  );
+}
+
 function HomeCanvasBackground() {
   return (
     <>
@@ -187,6 +205,7 @@ export default function Home() {
 
   return (
     <div className="home-scroll-takeover relative">
+      <DevelopmentBanner />
       {prefersReducedMotion || !supportsPinnedTakeover ? (
         <StaticTakeover />
       ) : (
