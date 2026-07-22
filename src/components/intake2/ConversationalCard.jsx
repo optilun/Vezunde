@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -102,11 +102,14 @@ function patientLanguageText(initialMessage, answers) {
 // network call and no backend, and does not depend on state.intent being set.
 // This is the primary safety gate — the question_only backend check (if reachable)
 // is only a second layer on top of this, never a replacement for it.
-function computeLocalSafetyAssessment(initialMessage, answers) {
-  const text = patientLanguageText(initialMessage, answers);
+function computeLocalSafetyAssessmentFromText(text) {
   if (!text) return null;
   const assessment = buildPatientSafetyAssessment({ text });
   return assessment.blocking ? assessment : null;
+}
+
+function computeLocalSafetyAssessment(initialMessage, answers) {
+  return computeLocalSafetyAssessmentFromText(patientLanguageText(initialMessage, answers));
 }
 
 const PATIENT_SEARCH_ANALYTICS_VERSION = "patient-search-v1";
@@ -184,9 +187,16 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     answeredCount: 0,
   });
 
-  // Recomputed every render from the current initialMessage + free-text answers.
-  // Never waits on a render/effect cycle to exist — used directly to gate effects below.
-  const localSafetyAssessment = computeLocalSafetyAssessment(initialMessage, state.answers);
+  // Stable text derived every render (cheap string ops), but the assessment object
+  // itself is memoized on that text so its reference does not change across renders
+  // unless the underlying text actually changes. This prevents the safety useEffect
+  // below (which depends on localSafetyAssessment) from re-firing every render and
+  // causing a render -> effect -> setState -> render loop for urgent messages.
+  const localSafetyText = patientLanguageText(initialMessage, state.answers);
+  const localSafetyAssessment = useMemo(
+    () => computeLocalSafetyAssessmentFromText(localSafetyText),
+    [localSafetyText],
+  );
 
   const intentDef = state.intent ? INTENTS[state.intent] : null;
   const answeredKeys = state.answers.map((a) => a.question_key);
