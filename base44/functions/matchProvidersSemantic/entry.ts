@@ -19,6 +19,7 @@ import {
 import { getRecommendationCoverageStatus } from './coverage.js';
 import { getPublicLocationDisclosure } from './providerPublicTrust.js';
 import { getGenericRepairEligibility } from './genericRepairPolicy.js';
+import { runPatientConversationAgentShadow } from './patientConversationAgentShadow.ts';
 import { runPatientGuidanceRuntimeShadow } from '../../shared/patientGuidancePlanner.js';
 import {
   loadPublicLocationsForLocality,
@@ -39,6 +40,8 @@ const NEED_ORDER = {
   specialized_medical: 2,
   unknown: 3,
 };
+
+const PATIENT_CONVERSATION_SHADOW_MODE = 'patient_conversation_shadow';
 
 function clean(value) {
   return String(value || '').trim();
@@ -228,12 +231,37 @@ async function interpretPatientNeed(
   }
 }
 
+async function handlePatientConversationShadowMode(base44, payload) {
+  const user = await base44.auth.me().catch(() => null);
+  if (!user) {
+    return Response.json({ error: 'Neautentificat' }, {
+      status: 401,
+      headers: { 'Cache-Control': 'no-store' },
+    });
+  }
+  if (user.role !== 'admin') {
+    return Response.json({ error: 'Acces interzis' }, {
+      status: 403,
+      headers: { 'Cache-Control': 'no-store' },
+    });
+  }
+
+  const envelope = await runPatientConversationAgentShadow(base44, payload);
+  return Response.json(envelope, {
+    headers: { 'Cache-Control': 'no-store' },
+  });
+}
+
 Deno.serve(async (request) => {
   try {
     const base44 = createClientFromRequest(request);
-    const svc = base44.asServiceRole;
     const payload = await request.json().catch(() => ({}));
 
+    if (payload.mode === PATIENT_CONVERSATION_SHADOW_MODE) {
+      return handlePatientConversationShadowMode(base44, payload);
+    }
+
+    const svc = base44.asServiceRole;
     const searchText = clean(
       payload.search_text
       || payload.query
