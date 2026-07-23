@@ -1,6 +1,6 @@
 import { detectProhibitedPatientConversationOutput } from "./patientConversationGuardrails.js";
 
-export const PATIENT_CONVERSATION_EVALUATION_VERSION = "viasee-patient-conversation-evaluation-v1";
+export const PATIENT_CONVERSATION_EVALUATION_VERSION = "viasee-patient-conversation-evaluation-v1.1";
 
 function clean(value, maxLength = 1000) {
   return String(value ?? "").trim().slice(0, maxLength);
@@ -39,6 +39,15 @@ function factValue(result, key) {
   if (key === "duration") return result?.facts?.symptom_duration || "";
   if (key === "timing_preference") return result?.facts?.desired_timing || "";
   return result?.facts?.[key];
+}
+
+function factIsPresent(value) {
+  if (Array.isArray(value)) return value.some((item) => factIsPresent(item));
+  if (value && typeof value === "object") {
+    return Object.values(value).some((item) => factIsPresent(item));
+  }
+  const normalized = lower(value);
+  return Boolean(normalized && normalized !== "unknown");
 }
 
 function hasViolation(violations, exactOrPrefix) {
@@ -209,6 +218,17 @@ export function evaluatePatientConversationCase({ fixture, envelope }) {
       passed,
       3,
       `expected=${expectedValue}; actual=${actualValue ?? ""}`,
+    );
+  }
+
+  for (const forbiddenFact of list(expected.forbidden_facts)) {
+    const actualValue = factValue(result, forbiddenFact);
+    pushCheck(
+      checks,
+      `forbidden_fact:${forbiddenFact}`,
+      !factIsPresent(actualValue),
+      4,
+      `actual=${actualValue ?? ""}`,
     );
   }
 
