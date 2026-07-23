@@ -13,6 +13,9 @@ import {
   runPatientConversationAgentShadow as runPatientConversationAgentShadowCore,
 } from './patientConversationAgentShadowCore.ts';
 
+const PATIENT_CONVERSATION_MODEL = 'gpt_5_4';
+const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.2';
+
 function createOperationalBase44(base44: any, controller: any) {
   const integrations = base44?.integrations || {};
   const core = integrations?.Core || {};
@@ -78,12 +81,16 @@ function requestHasUserMessage(payload: any = {}) {
   ).trim());
 }
 
+function boundedDuration(durationMs = 0) {
+  return Math.max(0, Math.round(Number(durationMs) || 0));
+}
+
 function noModelRuntimeMetadata(durationMs = 0) {
   return {
     model: null,
     prompt_version: null,
     model_invoked: false,
-    duration_ms: Math.max(0, Math.round(Number(durationMs) || 0)),
+    duration_ms: boundedDuration(durationMs),
     input_limits: {
       max_turns: PATIENT_CONVERSATION_MAX_TURNS,
       max_characters: PATIENT_CONVERSATION_MAX_CHARACTERS,
@@ -91,7 +98,20 @@ function noModelRuntimeMetadata(durationMs = 0) {
   };
 }
 
-function skippedWithoutUserMessage(payload: any = {}) {
+function modelRuntimeMetadata(durationMs = 0) {
+  return {
+    model: PATIENT_CONVERSATION_MODEL,
+    prompt_version: PATIENT_CONVERSATION_PROMPT_VERSION,
+    model_invoked: true,
+    duration_ms: boundedDuration(durationMs),
+    input_limits: {
+      max_turns: PATIENT_CONVERSATION_MAX_TURNS,
+      max_characters: PATIENT_CONVERSATION_MAX_CHARACTERS,
+    },
+  };
+}
+
+function skippedWithoutUserMessage(payload: any = {}, durationMs = 0) {
   const evaluationCaseId = normalizedEvaluationCaseId(payload);
   return {
     mode: 'shadow',
@@ -103,18 +123,25 @@ function skippedWithoutUserMessage(payload: any = {}) {
       evaluation_case_id: evaluationCaseId,
       evaluation_attempt: normalizedEvaluationAttempt(payload),
     } : {}),
-    runtime_metadata: noModelRuntimeMetadata(),
+    runtime_metadata: noModelRuntimeMetadata(durationMs),
   };
 }
 
-function unavailableBeforeModel() {
+function unavailableRuntime({ modelInvoked, durationMs }: {
+  modelInvoked: boolean;
+  durationMs: number;
+}) {
   return {
     mode: 'shadow',
     contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
     status: 'unavailable',
-    reason: 'conversation_runtime_unavailable',
+    reason: modelInvoked
+      ? 'conversation_model_unavailable'
+      : 'conversation_runtime_unavailable',
     interpretation: null,
-    runtime_metadata: noModelRuntimeMetadata(),
+    runtime_metadata: modelInvoked
+      ? modelRuntimeMetadata(durationMs)
+      : noModelRuntimeMetadata(durationMs),
   };
 }
 
@@ -134,6 +161,7 @@ function normalizeRuntimeIdentity(envelope: any, controller: any) {
 }
 
 export async function runPatientConversationAgentShadow(base44: any, payload: any = {}) {
+  const startedAt = Date.now();
   const runtimePayload = runtimePayloadFromRequest(payload);
   const controller = createPatientConversationOperationalController(runtimePayload, {
     audience: 'admin_shadow',
@@ -151,7 +179,7 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
 
   if (!requestHasUserMessage(runtimePayload)) {
     return finalizePatientConversationOperationalEnvelope(
-      skippedWithoutUserMessage(runtimePayload),
+      skippedWithoutUserMessage(runtimePayload, Date.now() - startedAt),
       controller,
     );
   }
@@ -166,8 +194,12 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
       controller,
     );
   } catch (_error) {
+    const snapshot = controller.snapshot();
     return finalizePatientConversationOperationalEnvelope(
-      unavailableBeforeModel(),
+      unavailableRuntime({
+        modelInvoked: snapshot.model_calls_used > 0,
+        durationMs: Date.now() - startedAt,
+      }),
       controller,
     );
   }
