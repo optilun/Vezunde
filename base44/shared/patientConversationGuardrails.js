@@ -56,9 +56,9 @@ function validateSchemaNode(value, schema, path, violations, depth = 0) {
 
   if (Array.isArray(schema.anyOf)) {
     const matched = schema.anyOf.some((candidateSchema) => {
-      const candidateViolations = [];
+      const candidateViolations = new Set();
       validateSchemaNode(value, candidateSchema, path, candidateViolations, depth + 1);
-      return candidateViolations.length === 0;
+      return candidateViolations.size === 0;
     });
     if (!matched) violations.add(`schema_any_of:${path}`);
     return;
