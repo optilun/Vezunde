@@ -8,8 +8,6 @@ const MODEL = 'gpt_5_4';
 const PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.1';
 const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'viasee-repeated-evaluation-'));
 const fixturesPath = path.join(tempDirectory, 'fixtures.json');
-const capturePath = path.join(tempDirectory, 'capture.json');
-const reportPath = path.join(tempDirectory, 'report.json');
 
 function interpretation(overrides = {}) {
   return {
