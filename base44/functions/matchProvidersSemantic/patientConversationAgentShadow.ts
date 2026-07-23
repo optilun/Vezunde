@@ -6,16 +6,29 @@ import {
 } from '../../shared/patientConversationAgent.js';
 
 const PATIENT_CONVERSATION_SHADOW_EVENT = 'patient_conversation_agent_shadow_summary';
+const PATIENT_CONVERSATION_MODEL = 'gpt_5_4';
+const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.1';
+const MAX_CONVERSATION_TURNS = 20;
+const MAX_CONVERSATION_CHARACTERS = 8000;
 
 function clean(value: unknown, maxLength = 1200) {
   return String(value ?? '').trim().slice(0, maxLength);
+}
+
+function redactSensitiveText(value: unknown, maxLength = 1200) {
+  return clean(value, maxLength)
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email eliminat]')
+    .replace(/(?:\+?40[\s.-]?)?(?:0?2\d{2}|0?3\d{2}|0?7\d{2})(?:[\s.-]?\d){6,7}/g, '[telefon eliminat]')
+    .replace(/\b\d{13}\b/g, '[identificator eliminat]')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
 
 function cleanList(value: unknown, limit = 12, maxLength = 160) {
   if (!Array.isArray(value)) return [];
   return [...new Set(
     value
-      .map((item) => clean(item, maxLength))
+      .map((item) => redactSensitiveText(item, maxLength))
       .filter(Boolean),
   )].slice(0, limit);
 }
@@ -33,15 +46,44 @@ function attachEvaluationCorrelation(envelope: any, evaluationCaseId: string) {
   return evaluationCaseId ? { ...envelope, evaluation_case_id: evaluationCaseId } : envelope;
 }
 
+function attachRuntimeMetadata(envelope: any, durationMs: number) {
+  return {
+    ...envelope,
+    runtime_metadata: {
+      model: PATIENT_CONVERSATION_MODEL,
+      prompt_version: PATIENT_CONVERSATION_PROMPT_VERSION,
+      duration_ms: Math.max(0, Math.round(durationMs)),
+    },
+  };
+}
+
 function conversationFromPayload(payload: any) {
-  if (Array.isArray(payload?.conversation)) return payload.conversation;
-  const fallbackText = clean(
+  const source = Array.isArray(payload?.conversation)
+    ? payload.conversation
+    : [];
+  const fallbackText = redactSensitiveText(
     payload?.search_text
     || payload?.query
     || payload?.free_text
     || payload?.search_query,
   );
-  return fallbackText ? [{ role: 'user', content: fallbackText }] : [];
+  const rows = (source.length > 0 ? source : (fallbackText ? [{ role: 'user', content: fallbackText }] : []))
+    .slice(-MAX_CONVERSATION_TURNS)
+    .map((turn: any) => ({
+      role: turn?.role === 'assistant' ? 'assistant' : (turn?.role === 'user' ? 'user' : ''),
+      content: redactSensitiveText(turn?.content),
+    }))
+    .filter((turn: any) => turn.role && turn.content);
+
+  let totalCharacters = 0;
+  const bounded = [];
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const row = rows[index];
+    if (totalCharacters + row.content.length > MAX_CONVERSATION_CHARACTERS) continue;
+    bounded.unshift(row);
+    totalCharacters += row.content.length;
+  }
+  return bounded;
 }
 
 function sanitizeLocality(value: any) {
@@ -86,7 +128,7 @@ function sanitizePriorState(value: any) {
 
   return {
     contract_version: clean(value.contract_version, 80),
-    need_summary: clean(value.need_summary, 500),
+    need_summary: redactSensitiveText(value.need_summary, 500),
     primary_intent: clean(value.primary_intent, 80),
     alternative_intents: cleanList(value.alternative_intents, 3, 80),
     care_path_candidates: cleanList(value.care_path_candidates, 4, 80),
@@ -96,20 +138,20 @@ function sanitizePriorState(value: any) {
       for_whom: clean(facts.for_whom, 40),
       age_group: clean(facts.age_group, 40),
       locality: sanitizeLocality(facts.locality),
-      symptom_onset: clean(facts.symptom_onset, 240),
-      symptom_duration: clean(facts.symptom_duration, 240),
-      symptom_pattern: clean(facts.symptom_pattern, 400),
-      desired_timing: clean(facts.desired_timing, 240),
+      symptom_onset: redactSensitiveText(facts.symptom_onset, 240),
+      symptom_duration: redactSensitiveText(facts.symptom_duration, 240),
+      symptom_pattern: redactSensitiveText(facts.symptom_pattern, 400),
+      desired_timing: redactSensitiveText(facts.desired_timing, 240),
       contact_lens_experience: clean(facts.contact_lens_experience, 40),
       prescription_status: clean(facts.prescription_status, 40),
-      investigation_reference_text: clean(facts.investigation_reference_text, 500),
-      repair_details: clean(facts.repair_details, 500),
+      investigation_reference_text: redactSensitiveText(facts.investigation_reference_text, 500),
+      repair_details: redactSensitiveText(facts.repair_details, 500),
       user_constraints: cleanList(facts.user_constraints, 8, 240),
     },
     urgency: {
       level: clean(urgency.level, 40),
       needs_clarification: urgency.needs_clarification === true,
-      reason: clean(urgency.reason, 400),
+      reason: redactSensitiveText(urgency.reason, 400),
     },
     understanding_confidence: clean(value.understanding_confidence, 40),
     information_status: {
@@ -126,11 +168,7 @@ function hasLocality(locality: any) {
 }
 
 function redactContactDetails(value: unknown) {
-  return clean(value, 1000)
-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email eliminat]')
-    .replace(/(?:\+?40[\s.-]?)?(?:0?2\d{2}|0?3\d{2}|0?7\d{2})(?:[\s.-]?\d){6,7}/g, '[telefon eliminat]')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
+  return redactSensitiveText(value, 1000);
 }
 
 function fallbackAssistantMessage(nextAction: string) {
@@ -202,7 +240,8 @@ function applyRuntimePolicy(envelope: any, runtimeContext: any) {
     interpretation.specialist_summary = null;
   }
 
-  if (!runtimeContext.contact_share_approved && interpretation.specialist_summary) {
+  interpretation.assistant_message = redactSensitiveText(interpretation.assistant_message, 700);
+  if (interpretation.specialist_summary) {
     interpretation.specialist_summary = redactContactDetails(interpretation.specialist_summary) || null;
   }
 
@@ -217,6 +256,9 @@ function emitShadowSummary(envelope: any) {
   const interpretation = envelope?.interpretation;
   console.info(PATIENT_CONVERSATION_SHADOW_EVENT, JSON.stringify({
     contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
+    prompt_version: envelope?.runtime_metadata?.prompt_version || PATIENT_CONVERSATION_PROMPT_VERSION,
+    model: envelope?.runtime_metadata?.model || PATIENT_CONVERSATION_MODEL,
+    duration_ms: envelope?.runtime_metadata?.duration_ms || 0,
     status: envelope?.status || 'unknown',
     evaluation_case_id_present: Boolean(envelope?.evaluation_case_id),
     primary_intent: interpretation?.primary_intent || 'unknown',
@@ -233,6 +275,7 @@ function emitShadowSummary(envelope: any) {
 }
 
 export async function runPatientConversationAgentShadow(base44: any, payload: any = {}) {
+  const startedAt = Date.now();
   const evaluationCaseId = evaluationCaseIdFromPayload(payload);
   const conversation = conversationFromPayload(payload);
   const hasUserMessage = conversation.some((turn: any) => (
@@ -240,10 +283,10 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
   ));
 
   if (!hasUserMessage) {
-    const skipped = attachEvaluationCorrelation(buildPatientConversationShadowEnvelope({
+    const skipped = attachRuntimeMetadata(attachEvaluationCorrelation(buildPatientConversationShadowEnvelope({
       status: 'skipped',
       reason: 'user_message_required',
-    }), evaluationCaseId);
+    }), evaluationCaseId), Date.now() - startedAt);
     emitShadowSummary(skipped);
     return skipped;
   }
@@ -258,22 +301,23 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
   try {
     const raw = await base44.integrations.Core.InvokeLLM({
       prompt,
+      model: PATIENT_CONVERSATION_MODEL,
       add_context_from_internet: false,
       response_json_schema: getPatientConversationAgentResponseSchema(),
     });
-    const completed = attachEvaluationCorrelation(applyRuntimePolicy(buildPatientConversationShadowEnvelope({
+    const completed = attachRuntimeMetadata(attachEvaluationCorrelation(applyRuntimePolicy(buildPatientConversationShadowEnvelope({
       status: 'completed',
       raw,
       conversation,
-    }), runtimeContext), evaluationCaseId);
+    }), runtimeContext), evaluationCaseId), Date.now() - startedAt);
     emitShadowSummary(completed);
     return completed;
   } catch (_error) {
-    const unavailable = attachEvaluationCorrelation(buildPatientConversationShadowEnvelope({
+    const unavailable = attachRuntimeMetadata(attachEvaluationCorrelation(buildPatientConversationShadowEnvelope({
       status: 'unavailable',
       conversation,
       reason: 'conversation_model_unavailable',
-    }), evaluationCaseId);
+    }), evaluationCaseId), Date.now() - startedAt);
     emitShadowSummary(unavailable);
     return unavailable;
   }
