@@ -51,6 +51,8 @@ assert.equal(normalizePatientAgeGroup('7_12'), '7_12_ani');
 assert.equal(normalizePatientAgeGroup('7_12_ani'), '7_12_ani');
 assert.equal(toGuidancePlannerAgeGroup('sub_3_ani'), 'under_3');
 assert.equal(toGuidancePlannerAgeGroup('13_18_ani'), '13_18');
+assert.equal(toGuidancePlannerAgeGroup('adult'), null);
+assert.equal(toGuidancePlannerAgeGroup('unknown'), null);
 
 const octProfiles = providerProfileTypesFromServiceKeys(['oct']);
 assert(octProfiles.includes('ophthalmology_clinic'));
