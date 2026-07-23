@@ -129,7 +129,7 @@ const invalidOutput = {
     preflightEnvelope(1, {
       runtime_metadata: {
         model: 'gpt_5_4',
-        prompt_version: 'viasee-patient-conversation-prompt-v1.1',
+        prompt_version: 'viasee-patient-conversation-prompt-v1.2',
         model_invoked: true,
       },
     }),
