@@ -8,15 +8,19 @@ on:
       - "shared/patientGuidancePlanner.js"
       - "shared/patientConversationAgent.js"
       - "shared/patientConversationEvaluation.js"
+      - "shared/patientConversationGuardrails.js"
       - "base44/shared/patientGuidanceQuestionCatalog.js"
       - "base44/shared/patientGuidanceRouting.js"
       - "base44/shared/patientGuidancePlanner.js"
       - "base44/shared/patientConversationAgent.js"
+      - "base44/shared/patientConversationGuardrails.js"
       - "base44/functions/matchProvidersSemantic/entry.ts"
       - "base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts"
       - "src/lib/providerSemanticSearch.js"
       - "docs/patient-conversation-agent-v1.md"
       - "tests/fixtures/patient-conversation-agent-evaluations.json"
+      - "tests/fixtures/patient-conversation-agent-adversarial-evaluations.json"
+      - "scripts/patient-conversation-fixture-loader.mjs"
       - "scripts/verify-patient-guidance-routing.mjs"
       - "scripts/verify-patient-guidance-planner.mjs"
       - "scripts/verify-patient-guidance-runtime-shadow.mjs"
@@ -59,7 +63,7 @@ jobs:
         run: node scripts/verify-patient-conversation-agent.mjs
       - name: Verify patient conversation shadow route
         run: node scripts/verify-patient-conversation-shadow-route.mjs
-      - name: Verify patient conversation evaluation scorer
+      - name: Verify patient conversation evaluation scorer and guardrails
         run: node scripts/verify-patient-conversation-evaluation.mjs
       - name: Verify patient conversation shadow harness
         run: node scripts/verify-patient-conversation-shadow-harness.mjs
@@ -119,13 +123,16 @@ jobs:
           shared/patientGuidancePlanner.js
           shared/patientConversationAgent.js
           shared/patientConversationEvaluation.js
+          shared/patientConversationGuardrails.js
           base44/shared/patientGuidanceQuestionCatalog.js
           base44/shared/patientGuidanceRouting.js
           base44/shared/patientGuidancePlanner.js
           base44/shared/patientConversationAgent.js
+          base44/shared/patientConversationGuardrails.js
           base44/functions/matchProvidersSemantic/entry.ts
           base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts
           src/lib/providerSemanticSearch.js
+          scripts/patient-conversation-fixture-loader.mjs
           scripts/verify-patient-guidance-routing.mjs
           scripts/verify-patient-guidance-planner.mjs
           scripts/verify-patient-guidance-runtime-shadow.mjs
