@@ -18,7 +18,7 @@ const base44GuardrailSource = fs.readFileSync(
   'utf8',
 );
 const runnerSource = fs.readFileSync(
-  new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts', import.meta.url),
+  new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts', import.meta.url),
   'utf8',
 );
 
