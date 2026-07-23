@@ -143,6 +143,34 @@ function validateSchemaNode(value, schema, path, violations, depth = 0) {
   }
 }
 
+function generatedOutputText(value) {
+  const strings = [];
+  const visited = new WeakSet();
+
+  function collect(node, depth = 0) {
+    if (typeof node === "string") {
+      strings.push(node);
+      return;
+    }
+    if (!node || typeof node !== "object" || depth > 8) return;
+    if (visited.has(node)) return;
+    visited.add(node);
+
+    if (Array.isArray(node)) {
+      node.forEach((item) => collect(item, depth + 1));
+      return;
+    }
+
+    for (const [key, child] of Object.entries(node)) {
+      if (normalizedFieldName(key) === "evidence_phrases") continue;
+      collect(child, depth + 1);
+    }
+  }
+
+  collect(value);
+  return strings.join("\n");
+}
+
 export function redactPatientConversationText(value, maxLength = 1200) {
   return clean(value, maxLength)
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email eliminat]")
@@ -215,13 +243,7 @@ export function detectProhibitedPatientConversationOutput(value) {
 
   visit(value);
 
-  const generatedText = [
-    value?.need_summary,
-    value?.assistant_message,
-    value?.specialist_summary,
-    value?.urgency?.reason,
-  ].filter((item) => typeof item === "string").join("\n");
-
+  const generatedText = generatedOutputText(value);
   if (RANKING_OR_PROVIDER_RECOMMENDATION_PATTERN.test(generatedText)) {
     violations.add("ranking_or_provider_recommendation_claim");
   }
