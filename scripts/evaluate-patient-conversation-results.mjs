@@ -14,7 +14,7 @@ import {
 
 const EXPECTED_MODEL = 'gpt_5_4';
 const EXPECTED_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.1';
-const EXPECTED_STATE_POLICY_VERSION = 'viasee-patient-conversation-state-policy-v1';
+const EXPECTED_STATE_POLICY_VERSION = 'viasee-patient-conversation-state-policy-v1.1';
 const MINIMUM_CRITICAL_REPEAT_COUNT = 3;
 const ACCEPTANCE_THRESHOLDS = Object.freeze({
   completed_attempt_rate: 100,
