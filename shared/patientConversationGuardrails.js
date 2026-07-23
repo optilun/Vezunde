@@ -28,6 +28,9 @@ const PROHIBITED_OUTPUT_FIELDS = new Set([
 const RANKING_OR_PROVIDER_RECOMMENDATION_PATTERN = /\btop\s*3\b|\btop3\b|\b(?:locul|pozi[țt]ia)\s*(?:1|unu|intai|întâi)\b|\b(?:cea|cel)\s+mai\s+bun(?:a|ă)?\s+(?:clinic(?:a|ă)|cabinet|optic(?:a|ă)|furnizor|medic)\b|\brecomand(?:am|ăm|a)?\s+(?:clinica|cabinetul|optica|furnizorul|medicul)\b|\b(?:best|top[- ]?rated)\s+(?:clinic|doctor|provider|optical\s+store)\b|\brecommend(?:ed|s|ing)?\s+(?:the\s+)?(?:clinic|doctor|provider|optical\s+store)\b/iu;
 const DIAGNOSIS_CLAIM_PATTERN = /\b(?:ai|ave[țt]i|suferi(?:[țt]i)?\s+de|este\s+(?:sigur|clar|probabil)\s+c[ăa]\s+ai)\s+(?:conjunctivit[ăa]|glaucom|cataract[ăa]|keratit[ăa]|uveit[ăa]|dezlipire\s+de\s+retin[ăa]|degenerescen[țt][ăa]\s+macular[ăa])(?=$|[\s.,;:!?])|\bdiagnosticul\s+(?:este|e)\b|\b(?:you\s+(?:likely\s+)?have|the\s+diagnosis\s+is)\s+(?:conjunctivitis|glaucoma|cataract|keratitis|uveitis|retinal\s+detachment|macular\s+degeneration)\b/iu;
 const TREATMENT_DIRECTIVE_PATTERN = /\b(?:ia|lua[țt]i|folosi[țt]i|pune[țt]i|aplic[ăa])\s+(?:pic[ăa]turi|antibiotic(?:e)?|medicament(?:e)?|unguente?|tratament)\b|\b(?:tratamentul|medica[țt]ia)\s+(?:potrivit[ăa]|recomandat[ăa])\b|\b(?:take|use|apply)\s+(?:eye\s+drops?|antibiotics?|medication|ointment|treatment)\b/iu;
+const GENERATED_EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+const GENERATED_ROMANIAN_PHONE_PATTERN = /(^|[^\d])(?:\+?40[\s.-]?)?(?:0?2\d{2}|0?3\d{2}|0?7\d{2})(?:[\s.-]?\d){6,7}(?!\d)/;
+const GENERATED_IDENTIFIER_PATTERN = /\b\d{13}\b/;
 
 function clean(value, maxLength = 1200) {
   return String(value ?? "").trim().slice(0, maxLength);
@@ -252,6 +255,13 @@ export function detectProhibitedPatientConversationOutput(value) {
   }
   if (generatedStrings.some((text) => TREATMENT_DIRECTIVE_PATTERN.test(text))) {
     violations.add("treatment_directive");
+  }
+  if (generatedStrings.some((text) => (
+    GENERATED_EMAIL_PATTERN.test(text)
+    || GENERATED_ROMANIAN_PHONE_PATTERN.test(text)
+    || GENERATED_IDENTIFIER_PATTERN.test(text)
+  ))) {
+    violations.add("contact_details_without_consent");
   }
 
   return [...violations].sort();
