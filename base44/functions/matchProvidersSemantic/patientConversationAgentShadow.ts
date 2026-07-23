@@ -24,14 +24,14 @@ function createOperationalBase44(base44: any, controller: any) {
       ...integrations,
       Core: {
         ...core,
-        InvokeLLM: (args: any) => controller.invoke(() => {
+        InvokeLLM: (args: any) => {
           if (typeof invokeModel !== 'function') {
             const error: any = new Error('Base44 Core.InvokeLLM is unavailable.');
             error.code = 'PATIENT_CONVERSATION_MODEL_INVOKER_UNAVAILABLE';
             throw error;
           }
-          return invokeModel.call(core, args);
-        }),
+          return controller.invoke(() => invokeModel.call(core, args));
+        },
       },
     },
     enumerable: true,
@@ -78,6 +78,19 @@ function requestHasUserMessage(payload: any = {}) {
   ).trim());
 }
 
+function noModelRuntimeMetadata(durationMs = 0) {
+  return {
+    model: null,
+    prompt_version: null,
+    model_invoked: false,
+    duration_ms: Math.max(0, Math.round(Number(durationMs) || 0)),
+    input_limits: {
+      max_turns: PATIENT_CONVERSATION_MAX_TURNS,
+      max_characters: PATIENT_CONVERSATION_MAX_CHARACTERS,
+    },
+  };
+}
+
 function skippedWithoutUserMessage(payload: any = {}) {
   const evaluationCaseId = normalizedEvaluationCaseId(payload);
   return {
@@ -90,15 +103,32 @@ function skippedWithoutUserMessage(payload: any = {}) {
       evaluation_case_id: evaluationCaseId,
       evaluation_attempt: normalizedEvaluationAttempt(payload),
     } : {}),
+    runtime_metadata: noModelRuntimeMetadata(),
+  };
+}
+
+function unavailableBeforeModel() {
+  return {
+    mode: 'shadow',
+    contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
+    status: 'unavailable',
+    reason: 'conversation_runtime_unavailable',
+    interpretation: null,
+    runtime_metadata: noModelRuntimeMetadata(),
+  };
+}
+
+function normalizeRuntimeIdentity(envelope: any, controller: any) {
+  const snapshot = controller?.snapshot?.();
+  if (snapshot?.model_calls_used !== 0) return envelope;
+  return {
+    ...envelope,
     runtime_metadata: {
+      ...noModelRuntimeMetadata(envelope?.runtime_metadata?.duration_ms),
+      ...(envelope?.runtime_metadata || {}),
       model: null,
       prompt_version: null,
       model_invoked: false,
-      duration_ms: 0,
-      input_limits: {
-        max_turns: PATIENT_CONVERSATION_MAX_TURNS,
-        max_characters: PATIENT_CONVERSATION_MAX_CHARACTERS,
-      },
     },
   };
 }
@@ -126,9 +156,19 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
     );
   }
 
-  const envelope = await runPatientConversationAgentShadowCore(
-    createOperationalBase44(base44, controller),
-    runtimePayload,
-  );
-  return finalizePatientConversationOperationalEnvelope(envelope, controller);
+  try {
+    const envelope = await runPatientConversationAgentShadowCore(
+      createOperationalBase44(base44, controller),
+      runtimePayload,
+    );
+    return finalizePatientConversationOperationalEnvelope(
+      normalizeRuntimeIdentity(envelope, controller),
+      controller,
+    );
+  } catch (_error) {
+    return finalizePatientConversationOperationalEnvelope(
+      unavailableBeforeModel(),
+      controller,
+    );
+  }
 }
