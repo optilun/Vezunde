@@ -13,6 +13,16 @@ const responsePaths = [
   path.join(tempDirectory, 'critical-response-2.json'),
   path.join(tempDirectory, 'critical-response-3.json'),
 ];
+const baseArguments = [
+  'scripts/prepare-patient-conversation-shadow-run.mjs',
+  '--fixtures', fixturesPath,
+  '--output', capturePath,
+  '--case', 'control-001',
+  '--case', 'control-001',
+  '--case', 'critical-001',
+  '--repeat', '1',
+  '--critical-repeat', '3',
+];
 
 function completedEnvelope(caseId, attempt, primaryIntent) {
   return {
@@ -25,6 +35,13 @@ function completedEnvelope(caseId, attempt, primaryIntent) {
     },
     contract_version: 'viasee-patient-conversation-agent-v1',
   };
+}
+
+function runHarness(extraArguments = []) {
+  return spawnSync(process.execPath, [...baseArguments, ...extraArguments], {
+    cwd: new URL('..', import.meta.url),
+    encoding: 'utf8',
+  });
 }
 
 try {
@@ -70,22 +87,30 @@ try {
     contract_version: 'viasee-patient-conversation-agent-v1',
   }));
 
-  const run = spawnSync(process.execPath, [
-    'scripts/prepare-patient-conversation-shadow-run.mjs',
-    '--fixtures', fixturesPath,
-    '--output', capturePath,
-    '--case', 'control-001',
-    '--case', 'control-001',
-    '--case', 'critical-001',
-    '--repeat', '1',
-    '--critical-repeat', '3',
-    ...responsePaths.flatMap((responsePath) => ['--response', responsePath]),
-  ], {
-    cwd: new URL('..', import.meta.url),
-    encoding: 'utf8',
-  });
+  const prepareRun = runHarness();
+  assert.equal(prepareRun.status, 0, prepareRun.stderr || prepareRun.stdout);
+  const prepared = JSON.parse(prepareRun.stdout);
+  assert.deepEqual(prepared.selected_cases, ['control-001', 'critical-001']);
+  assert.equal(prepared.default_repeat_count, 1);
+  assert.equal(prepared.critical_repeat_count, 3);
+  assert.equal(prepared.captured_attempts, 0);
+  assert.deepEqual(prepared.pending_attempts, [
+    'control-001#1',
+    'critical-001#1',
+    'critical-001#2',
+    'critical-001#3',
+  ]);
+  assert.equal(prepared.requests.length, 4);
+  assert.equal(prepared.requests[0].request.mode, 'patient_conversation_shadow');
+  assert.equal(prepared.requests[0].request.evaluation_attempt, 1);
+  const preparedCriticalRequests = prepared.requests
+    .filter((item) => item.evaluation_case_id === 'critical-001');
+  assert.deepEqual(preparedCriticalRequests.map((item) => item.evaluation_attempt), [1, 2, 3]);
 
-  assert.equal(run.status, 0, run.stderr || run.stdout);
+  const importRun = runHarness(
+    responsePaths.flatMap((responsePath) => ['--response', responsePath]),
+  );
+  assert.equal(importRun.status, 0, importRun.stderr || importRun.stdout);
   const capture = JSON.parse(fs.readFileSync(capturePath, 'utf8'));
   assert.deepEqual(capture.model_run.selected_case_ids, ['control-001', 'critical-001']);
   assert.equal(capture.model_run.default_repeat_count, 1);
@@ -101,28 +126,23 @@ try {
   assert.equal(capture.outputs['control-001'].attempts['1'].interpretation.primary_intent, 'control_vedere');
   assert.equal(capture.outputs['critical-001'].expected_attempts, 3);
   assert.equal(capture.outputs['critical-001'].critical, true);
-  assert.deepEqual(
-    Object.keys(capture.outputs['critical-001'].attempts),
-    ['1', '2', '3'],
-  );
+  assert.deepEqual(Object.keys(capture.outputs['critical-001'].attempts), ['1', '2', '3']);
   assert.equal(capture.outputs['critical-001'].attempts['1'].status, 'completed');
   assert.equal(capture.outputs['critical-001'].attempts['2'].status, 'completed');
   assert.equal(capture.outputs['critical-001'].attempts['3'].status, 'invalid');
   assert.equal(capture.outputs['critical-001'].attempts['3'].reason, 'prohibited_model_output');
   assert(capture.model_run.completed_at);
 
-  const printed = JSON.parse(run.stdout);
-  assert.deepEqual(printed.selected_cases, ['control-001', 'critical-001']);
-  assert.deepEqual(printed.pending_attempts, []);
-  assert.equal(printed.captured_attempts, 4);
-  assert.equal(printed.requests.length, 4);
-  assert.equal(printed.requests[0].request.mode, 'patient_conversation_shadow');
-  assert.equal(printed.requests[0].request.evaluation_attempt, 1);
-  const criticalRequests = printed.requests.filter((item) => item.evaluation_case_id === 'critical-001');
-  assert.deepEqual(criticalRequests.map((item) => item.evaluation_attempt), [1, 2, 3]);
-  assert.deepEqual(criticalRequests.map((item) => item.request.evaluation_attempt), [1, 2, 3]);
+  const imported = JSON.parse(importRun.stdout);
+  assert.deepEqual(imported.pending_attempts, []);
+  assert.equal(imported.captured_attempts, 4);
+  assert.deepEqual(imported.requests, []);
+
+  const duplicateRun = runHarness(['--response', responsePaths[0]]);
+  assert.notEqual(duplicateRun.status, 0);
+  assert((duplicateRun.stderr || duplicateRun.stdout).includes('deja capturat'));
 } finally {
   fs.rmSync(tempDirectory, { recursive: true, force: true });
 }
 
-console.log('Patient conversation repeated shadow capture harness verified.');
+console.log('Patient conversation incremental immutable shadow capture harness verified.');
