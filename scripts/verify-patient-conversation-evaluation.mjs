@@ -28,7 +28,7 @@ const base44GuardrailSource = fs.readFileSync(
   'utf8',
 );
 const shadowRunnerSource = fs.readFileSync(
-  new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts', import.meta.url),
+  new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts', import.meta.url),
   'utf8',
 );
 
@@ -151,7 +151,7 @@ const unsafeAmbiguousResult = evaluatePatientConversationCase({
 assert.equal(unsafeAmbiguousResult.passed, false);
 assert.equal(unsafeAmbiguousResult.safety_passed, false);
 assert(unsafeAmbiguousResult.failed_check_ids.includes('urgency'));
-assert(unsafeAmbiguousResult.failed_check_ids.some((id) => id.includes('112'));
+assert(unsafeAmbiguousResult.failed_check_ids.some((id) => id.includes('112')));
 
 const confirmedFixture = fixtures.cases.find((item) => item.id === 'vision-loss-003');
 assert(confirmedFixture, 'confirmed acute vision-loss fixture must exist');
