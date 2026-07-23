@@ -100,7 +100,7 @@ function runtimeContextFromPayload(payload: any) {
   return {
     locale: clean(explicitRuntimeContext.locale, 20) || 'ro-RO',
     known_locality: hasExplicitLocality ? explicitLocality : fallbackLocality,
-    contact_share_approved: explicitRuntimeContext.contact_share_approved === true,
+    contact_share_approved: false,
   };
 }
 
