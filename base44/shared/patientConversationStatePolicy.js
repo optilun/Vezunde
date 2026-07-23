@@ -49,11 +49,15 @@ function latestUserMessage(conversation) {
 export function detectPatientConversationStateSignals(conversation) {
   const latest = normalizeText(latestUserMessage(conversation));
   const genericCorrection = /\b(?:de fapt|corectez|am gresit|m am razgandit|nu mai vreau|vreau doar|nu caut|am zis .{0,80} dar)\b/.test(latest);
-  const intentReplacement = /\b(?:de fapt|m am razgandit|nu mai vreau|vreau doar|nu caut|am zis .{0,80} dar)\b/.test(latest);
   const localityCorrection = /\b(?:nu (?:mai )?(?:sunt|caut|vreau) in|nu in|am zis .{0,80} dar (?:sunt|caut) in)\b/.test(latest);
   const subjectCorrection = /\b(?:nu pentru mine|e pentru|este pentru|pentru mama|pentru tata|pentru copil|pentru fiul|pentru fiica|pentru sot|pentru sotie|pentru altcineva)\b/.test(latest);
   const timingCorrection = /\b(?:nu (?:mai )?(?:azi|maine|urgent)|de fapt (?:azi|maine|saptamana|luna)|nu e urgent|nu este urgent)\b/.test(latest);
   const symptomCorrection = /\b(?:nu (?:e|este) brusc|nu ma doare|nu doare|nu de azi|de fapt de (?:cateva|mai multe|[0-9]+))\b/.test(latest);
+  const intentReplacement = !localityCorrection
+    && !subjectCorrection
+    && !timingCorrection
+    && !symptomCorrection
+    && /\b(?:de fapt|m am razgandit|nu mai vreau|vreau doar)\b/.test(latest);
   const subjectTargetHint = /\b(?:pentru mama|pentru tata|pentru sot|pentru sotie|pentru bunica|pentru bunicul)\b/.test(latest)
     ? "adult"
     : (/\b(?:pentru copil|pentru fiul|pentru fiica)\b/.test(latest) ? "child" : null);
