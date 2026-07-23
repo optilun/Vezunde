@@ -258,7 +258,7 @@ Deno.serve(async (request) => {
     const payload = await request.json().catch(() => ({}));
 
     if (payload.mode === PATIENT_CONVERSATION_SHADOW_MODE) {
-      return handlePatientConversationShadowMode(base44, payload);
+      return await handlePatientConversationShadowMode(base44, payload);
     }
 
     const svc = base44.asServiceRole;
