@@ -139,6 +139,48 @@ assert.equal(intentReplacementPreserved.interpretation.facts.prescription_status
 assert(intentReplacementPreserved.diagnostics.replacement_preserved_fields.includes('primary_intent'));
 assert(intentReplacementPreserved.diagnostics.applied_fields.includes('prescription_status'));
 
+const staleConstraintsCleared = reducePatientConversationSemanticStateDelta({
+  interpretation: interpretation({
+    primary_intent: 'investigatii',
+    care_path_candidates: ['specialized_ophthalmology'],
+    service_keys: ['oct'],
+    facts: facts({ user_constraints: ['doar sambata'] }),
+  }),
+  priorState: priorState({
+    primary_intent: 'ochelari_lentile',
+    facts: facts({ user_constraints: ['doar sambata'] }),
+  }),
+  conversation: [{ role: 'user', content: 'De fapt am nevoie de OCT.' }],
+  semanticStateDelta: {
+    correction_detected: true,
+    clear_fields: ['user_constraints'],
+  },
+});
+assert.deepEqual(staleConstraintsCleared.interpretation.facts.user_constraints, []);
+assert.deepEqual(staleConstraintsCleared.diagnostics.applied_fields, ['user_constraints']);
+
+const constraintsClearRejectedWithoutIntentReplacement = reducePatientConversationSemanticStateDelta({
+  interpretation: interpretation({
+    facts: facts({ user_constraints: ['doar sambata'] }),
+  }),
+  priorState: priorState({
+    facts: facts({ user_constraints: ['doar sambata'] }),
+  }),
+  conversation: [{ role: 'user', content: 'Timisoara' }],
+  semanticStateDelta: {
+    correction_detected: true,
+    clear_fields: ['user_constraints'],
+  },
+});
+assert.deepEqual(
+  constraintsClearRejectedWithoutIntentReplacement.interpretation.facts.user_constraints,
+  ['doar sambata'],
+);
+assert.deepEqual(
+  constraintsClearRejectedWithoutIntentReplacement.diagnostics.rejected_fields,
+  ['user_constraints'],
+);
+
 const staleIntentCleared = reducePatientConversationSemanticStateDelta({
   interpretation: interpretation({
     primary_intent: 'ochelari_lentile',
