@@ -23,7 +23,7 @@ const base44AdapterSource = fs.readFileSync('base44/shared/patientConversationCa
 const sharedBoundarySource = fs.readFileSync('shared/patientConversationCanonicalBoundary.js', 'utf8');
 const base44BoundarySource = fs.readFileSync('base44/shared/patientConversationCanonicalBoundary.js', 'utf8');
 const runtimeSource = fs.readFileSync(
-  'base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts',
+  'base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts',
   'utf8',
 );
 
