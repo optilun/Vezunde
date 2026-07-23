@@ -38,8 +38,17 @@ function evaluationCaseIdFromPayload(payload: any) {
   return /^[a-z0-9][a-z0-9._-]{0,119}$/i.test(value) ? value : '';
 }
 
-function attachEvaluationCorrelation(envelope: any, evaluationCaseId: string) {
-  return evaluationCaseId ? { ...envelope, evaluation_case_id: evaluationCaseId } : envelope;
+function evaluationAttemptFromPayload(payload: any) {
+  const value = Number.parseInt(String(payload?.evaluation_attempt ?? ''), 10);
+  return Number.isInteger(value) && value >= 1 && value <= 5 ? value : 1;
+}
+
+function attachEvaluationCorrelation(envelope: any, evaluationCaseId: string, evaluationAttempt: number) {
+  return evaluationCaseId ? {
+    ...envelope,
+    evaluation_case_id: evaluationCaseId,
+    evaluation_attempt: evaluationAttempt,
+  } : envelope;
 }
 
 function attachRuntimeMetadata(envelope: any, durationMs: number) {
@@ -262,6 +271,7 @@ function emitShadowSummary(envelope: any) {
     duration_ms: envelope?.runtime_metadata?.duration_ms || 0,
     status: envelope?.status || 'unknown',
     evaluation_case_id_present: Boolean(envelope?.evaluation_case_id),
+    evaluation_attempt: envelope?.evaluation_attempt || null,
     prohibited_output_count: Array.isArray(envelope?.diagnostics?.prohibited_output_violations)
       ? envelope.diagnostics.prohibited_output_violations.length
       : 0,
@@ -281,6 +291,7 @@ function emitShadowSummary(envelope: any) {
 export async function runPatientConversationAgentShadow(base44: any, payload: any = {}) {
   const startedAt = Date.now();
   const evaluationCaseId = evaluationCaseIdFromPayload(payload);
+  const evaluationAttempt = evaluationAttemptFromPayload(payload);
   const conversation = conversationFromPayload(payload);
   const hasUserMessage = conversation.some((turn: any) => (
     turn?.role === 'user' && clean(turn?.content)
@@ -290,7 +301,7 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
     const skipped = attachRuntimeMetadata(attachEvaluationCorrelation(buildPatientConversationShadowEnvelope({
       status: 'skipped',
       reason: 'user_message_required',
-    }), evaluationCaseId), Date.now() - startedAt);
+    }), evaluationCaseId, evaluationAttempt), Date.now() - startedAt);
     emitShadowSummary(skipped);
     return skipped;
   }
@@ -314,6 +325,7 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
       const invalid = attachRuntimeMetadata(attachEvaluationCorrelation(
         prohibitedOutputEnvelope(prohibitedOutputViolations),
         evaluationCaseId,
+        evaluationAttempt,
       ), Date.now() - startedAt);
       emitShadowSummary(invalid);
       return invalid;
@@ -322,7 +334,7 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
       status: 'completed',
       raw,
       conversation,
-    }), runtimeContext), evaluationCaseId), Date.now() - startedAt);
+    }), runtimeContext), evaluationCaseId, evaluationAttempt), Date.now() - startedAt);
     emitShadowSummary(completed);
     return completed;
   } catch (_error) {
@@ -330,7 +342,7 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
       status: 'unavailable',
       conversation,
       reason: 'conversation_model_unavailable',
-    }), evaluationCaseId), Date.now() - startedAt);
+    }), evaluationCaseId, evaluationAttempt), Date.now() - startedAt);
     emitShadowSummary(unavailable);
     return unavailable;
   }
