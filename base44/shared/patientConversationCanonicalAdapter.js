@@ -115,7 +115,7 @@ export function toGuidancePlannerAgeGroup(value) {
     "3_6_ani": "3_6",
     "7_12_ani": "7_12",
     "13_18_ani": "13_18",
-  }[normalized] || normalized;
+  }[normalized] || null;
 }
 
 export function normalizeProviderProfileTypes(values, {
