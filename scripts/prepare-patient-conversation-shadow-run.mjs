@@ -99,8 +99,9 @@ function normalizeExistingCaseOutput(value, expectedAttempts, critical) {
 }
 
 function normalizeAttempt(value) {
-  const parsed = Number.parseInt(String(value ?? ''), 10);
-  return Number.isInteger(parsed) && parsed >= 1 && parsed <= 5 ? parsed : null;
+  const text = String(value ?? '').trim();
+  if (!/^[1-5]$/.test(text)) return null;
+  return Number.parseInt(text, 10);
 }
 
 const options = parseArgs(process.argv.slice(2));
@@ -148,6 +149,7 @@ for (const caseId of selectedCaseIds) {
   );
 }
 
+const importedAttemptIds = new Set();
 for (const responseFile of options.responseFiles) {
   const responsePayload = readJson(responseFile);
   const envelope = responseEnvelope(responsePayload);
@@ -168,11 +170,19 @@ for (const responseFile of options.responseFiles) {
   );
   const attempt = explicitAttempt || (expectedAttempts === 1 ? 1 : null);
   if (!attempt) {
-    throw new Error(`Raspunsul ${responseFile} necesita evaluation_attempt pentru cazul repetat ${caseId}.`);
+    throw new Error(`Raspunsul ${responseFile} necesita evaluation_attempt valid pentru cazul repetat ${caseId}.`);
   }
   if (attempt > expectedAttempts) {
     throw new Error(`Raspunsul ${responseFile} are attempt ${attempt}, peste limita ${expectedAttempts} pentru ${caseId}.`);
   }
+  const attemptId = `${caseId}#${attempt}`;
+  if (importedAttemptIds.has(attemptId)) {
+    throw new Error(`Mai multe fisiere de raspuns incearca sa completeze acelasi attempt ${attemptId}.`);
+  }
+  if (isCapturedAttempt(outputs[caseId]?.attempts?.[String(attempt)])) {
+    throw new Error(`Attemptul ${attemptId} este deja capturat si nu poate fi suprascris.`);
+  }
+  importedAttemptIds.add(attemptId);
   outputs[caseId].attempts[String(attempt)] = {
     ...envelope,
     evaluation_case_id: caseId,
@@ -219,9 +229,9 @@ writeJson(options.outputPath, capture);
 const requests = selectedCaseIds.flatMap((caseId) => {
   const fixture = fixtureById.get(caseId);
   const expectedAttempts = expectedAttemptCountByCase.get(caseId);
-  return Array.from({ length: expectedAttempts }, (_, index) => {
-    const attempt = index + 1;
-    return {
+  return Array.from({ length: expectedAttempts }, (_, index) => index + 1)
+    .filter((attempt) => !isCapturedAttempt(outputs[caseId]?.attempts?.[String(attempt)]))
+    .map((attempt) => ({
       evaluation_case_id: caseId,
       evaluation_attempt: attempt,
       request: {
@@ -232,8 +242,7 @@ const requests = selectedCaseIds.flatMap((caseId) => {
         prior_state: fixturePriorState(fixture),
         runtime_context: fixtureRuntimeContext(fixture),
       },
-    };
-  });
+    }));
 });
 
 console.log(JSON.stringify({
