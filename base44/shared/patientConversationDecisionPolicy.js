@@ -34,7 +34,8 @@ const SAFETY_PATTERNS = Object.freeze({
     /\bnu mai vad deloc\b/,
     /\bnu mai vad cu un ochi\b/,
     /\bmi am pierdut vederea\b/,
-    /\bpierd(?:ere|ut) brusca? (?:a )?vederii\b/,
+    /\bpierdere brusca (?:a )?vederii\b/,
+    /\bmi am pierdut brusc vederea\b/,
     /\bvederea (?:a disparut|s a dus) brusc\b/,
     /\borbire brusca\b/,
   ],
@@ -78,6 +79,38 @@ const SAFETY_PATTERNS = Object.freeze({
   ],
 });
 
+const SAFETY_CLEAR_PATTERNS = Object.freeze({
+  sudden_vision_loss: [
+    /\bnu (?:e|este) brusc\b/,
+    /\bnu am pierdut vederea\b/,
+    /\bvad mai slab de (?:cateva|mai multe|[0-9]+) (?:zile|saptamani|luni|ani)\b/,
+  ],
+  chemical_injury: [
+    /\bnu (?:a fost|este) substanta chimica\b/,
+    /\bnu mi a intrat nimic chimic in ochi\b/,
+  ],
+  penetrating_or_high_speed_trauma: [
+    /\bnu m am lovit la ochi\b/,
+    /\bnu (?:a fost|este) traumatism\b/,
+    /\bfara traumatism\b/,
+  ],
+  severe_eye_pain: [
+    /\bnu ma doare\b/,
+    /\bnu doare\b/,
+    /\bfara durere\b/,
+  ],
+  postoperative_red_eye_or_vision_change: [
+    /\bnu am fost operat(?:a)? la ochi\b/,
+    /\bnu este dupa operatie\b/,
+  ],
+  other_possible_urgent_eye_problem: [
+    /\bnu (?:e|este) brusc\b/,
+    /\bnu vad dublu\b/,
+    /\bnu (?:e|este) perdea\b/,
+    /\bfara fulgerari\b/,
+  ],
+});
+
 function clean(value, maxLength = 1200) {
   return String(value ?? "").trim().slice(0, maxLength);
 }
@@ -102,12 +135,17 @@ function normalizeText(value) {
     .trim();
 }
 
-function userConversationText(conversation) {
+function userConversationTurns(conversation) {
   return (Array.isArray(conversation) ? conversation : [])
     .filter((turn) => turn?.role === "user")
-    .map((turn) => clean(turn?.content, 1200))
-    .filter(Boolean)
-    .join(" ");
+    .map((turn) => normalizeText(turn?.content))
+    .filter(Boolean);
+}
+
+function matchingSafetyFlags(text, catalog) {
+  return Object.entries(catalog)
+    .filter(([, patterns]) => patterns.some((pattern) => pattern.test(text)))
+    .map(([flag]) => flag);
 }
 
 function hasLocality(locality) {
@@ -151,16 +189,25 @@ function deterministicAssistantMessage(nextAction) {
 }
 
 export function assessPatientConversationDeterministicSafety(conversation) {
-  const text = normalizeText(userConversationText(conversation));
-  const blockingFlags = Object.entries(SAFETY_PATTERNS)
-    .filter(([, patterns]) => patterns.some((pattern) => pattern.test(text)))
-    .map(([flag]) => flag);
+  let activeFlags = [];
+  const clearedFlags = [];
+
+  for (const text of userConversationTurns(conversation)) {
+    const turnClears = matchingSafetyFlags(text, SAFETY_CLEAR_PATTERNS);
+    if (turnClears.length > 0) {
+      activeFlags = activeFlags.filter((flag) => !turnClears.includes(flag));
+      clearedFlags.push(...turnClears);
+    }
+    const turnFlags = matchingSafetyFlags(text, SAFETY_PATTERNS);
+    activeFlags = [...new Set([...activeFlags, ...turnFlags])];
+  }
 
   return {
     policy_version: PATIENT_CONVERSATION_SAFETY_POLICY_VERSION,
-    blocking: blockingFlags.length > 0,
-    blocking_flags: blockingFlags,
-    source: blockingFlags.length > 0 ? "explicit_text" : "none",
+    blocking: activeFlags.length > 0,
+    blocking_flags: activeFlags,
+    cleared_flags: [...new Set(clearedFlags)],
+    source: activeFlags.length > 0 ? "explicit_text" : "none",
   };
 }
 
@@ -220,6 +267,7 @@ export function buildPatientConversationEmergencyInterpretation({
       safety_policy_version: safety.policy_version,
       deterministic_safety_preflight: true,
       deterministic_safety_flags: safety.blocking_flags,
+      deterministic_safety_cleared_flags: safety.cleared_flags,
       model_invoked: false,
       model_urgency_advisory: null,
       model_next_action_ignored: null,
@@ -347,6 +395,7 @@ export function applyPatientConversationDecisionPolicy({
       safety_policy_version: safety.policy_version,
       deterministic_safety_preflight: false,
       deterministic_safety_flags: safety.blocking_flags,
+      deterministic_safety_cleared_flags: safety.cleared_flags,
       model_invoked: true,
       model_urgency_advisory: modelUrgency,
       model_urgency_overridden: modelUrgency !== urgencyLevel,
