@@ -53,6 +53,14 @@ function normalizedEvaluationAttempt(payload: any = {}) {
   return /^[1-5]$/.test(value) ? Number.parseInt(value, 10) : 1;
 }
 
+function evaluationCorrelation(payload: any = {}) {
+  const evaluationCaseId = normalizedEvaluationCaseId(payload);
+  return evaluationCaseId ? {
+    evaluation_case_id: evaluationCaseId,
+    evaluation_attempt: normalizedEvaluationAttempt(payload),
+  } : {};
+}
+
 function runtimePayloadFromRequest(payload: any = {}) {
   const source = payload && typeof payload === 'object' && !Array.isArray(payload)
     ? payload
@@ -112,22 +120,19 @@ function modelRuntimeMetadata(durationMs = 0) {
 }
 
 function skippedWithoutUserMessage(payload: any = {}, durationMs = 0) {
-  const evaluationCaseId = normalizedEvaluationCaseId(payload);
   return {
     mode: 'shadow',
     contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
     status: 'skipped',
     reason: 'user_message_required',
     interpretation: null,
-    ...(evaluationCaseId ? {
-      evaluation_case_id: evaluationCaseId,
-      evaluation_attempt: normalizedEvaluationAttempt(payload),
-    } : {}),
+    ...evaluationCorrelation(payload),
     runtime_metadata: noModelRuntimeMetadata(durationMs),
   };
 }
 
-function unavailableRuntime({ modelInvoked, durationMs }: {
+function unavailableRuntime({ payload, modelInvoked, durationMs }: {
+  payload: any;
   modelInvoked: boolean;
   durationMs: number;
 }) {
@@ -139,6 +144,7 @@ function unavailableRuntime({ modelInvoked, durationMs }: {
       ? 'conversation_model_unavailable'
       : 'conversation_runtime_unavailable',
     interpretation: null,
+    ...evaluationCorrelation(payload),
     runtime_metadata: modelInvoked
       ? modelRuntimeMetadata(durationMs)
       : noModelRuntimeMetadata(durationMs),
@@ -174,6 +180,7 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
       status: 'skipped',
       reason: controller.reason,
       interpretation: null,
+      ...evaluationCorrelation(runtimePayload),
     }, controller);
   }
 
@@ -197,6 +204,7 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
     const snapshot = controller.snapshot();
     return finalizePatientConversationOperationalEnvelope(
       unavailableRuntime({
+        payload: runtimePayload,
         modelInvoked: snapshot.model_calls_used > 0,
         durationMs: Date.now() - startedAt,
       }),
