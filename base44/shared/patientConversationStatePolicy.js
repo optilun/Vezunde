@@ -11,6 +11,15 @@ const INTENT_SCOPED_FACT_FIELDS = Object.freeze([
   "repair_details",
 ]);
 const SUBJECT_FACT_FIELDS = Object.freeze(["for_whom", "age_group"]);
+const INTENT_FACT_COMPATIBILITY = Object.freeze({
+  symptom_onset: new Set(["control_vedere", "simptome_oftalmologice"]),
+  symptom_duration: new Set(["control_vedere", "simptome_oftalmologice"]),
+  symptom_pattern: new Set(["control_vedere", "simptome_oftalmologice"]),
+  contact_lens_experience: new Set(["lentile_contact"]),
+  prescription_status: new Set(["control_vedere", "ochelari_lentile"]),
+  investigation_reference_text: new Set(["investigatii"]),
+  repair_details: new Set(["reparatii_ochelari"]),
+});
 
 function clean(value, maxLength = 1200) {
   return String(value ?? "").trim().slice(0, maxLength);
@@ -144,6 +153,11 @@ function factsFrom(value) {
   };
 }
 
+function isFactCompatibleWithIntent(field, intent) {
+  const allowedIntents = INTENT_FACT_COMPATIBILITY[field];
+  return !allowedIntents || allowedIntents.has(intent);
+}
+
 function shouldBlockFactCarry(field, sameIntent, signals) {
   if (INTENT_SCOPED_FACT_FIELDS.includes(field) && !sameIntent) return true;
   if (SUBJECT_FACT_FIELDS.includes(field) && signals.subject_correction_detected) return true;
@@ -200,6 +214,13 @@ function reconcileFacts(currentFactsValue, priorFactsValue, context) {
     const currentHasValue = fieldHasValue(field, current[field]);
     const priorHasValue = fieldHasValue(field, prior[field]);
     if (currentHasValue) {
+      if (INTENT_SCOPED_FACT_FIELDS.includes(field)
+        && (context.unresolvedIntentReplacement
+          || !isFactCompatibleWithIntent(field, context.effectiveIntent))) {
+        current[field] = emptyFactValue(field);
+        clearedStale.push(field);
+        continue;
+      }
       if (shouldRejectCopiedStaleValue(field, current[field], prior[field], context.signals)) {
         current[field] = emptyFactValue(field);
         clearedStale.push(field);
@@ -372,6 +393,8 @@ export function reconcilePatientConversationState({
   const sameIntent = priorIntentKnown && effectiveIntent === priorIntent;
   const factResult = reconcileFacts(current.facts, prior.facts, {
     sameIntent,
+    effectiveIntent,
+    unresolvedIntentReplacement,
     signals,
   });
   current.facts = factResult.facts;
