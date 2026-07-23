@@ -72,13 +72,26 @@ For the shadow route, the server recomputes a bounded request state containing o
 - request-scoped identifier;
 - turn counts;
 - total bounded character count;
-- whether prior state was supplied;
+- whether approved evaluation prior state was supplied;
 - whether an evaluation case ID was supplied;
 - names of ignored client control fields.
 
 The request identifier is derived from structural metadata such as turn roles and lengths, not from patient text or text hashes. Raw patient content, emails, phone numbers and personal identifiers are not included in operational metadata.
 
+Normal shadow requests discard browser-provided `prior_state` before the semantic core runs. A sanitized `prior_state` is accepted only for administrator evaluation fixtures carrying a syntactically valid `evaluation_case_id`, so controlled memory and correction cases can be replayed. This fixture exception is not patient state authority, durable persistence or an activation path.
+
 Current persistence is explicitly `request_scoped_shadow`. There is no claim of durable server-owned conversation storage.
+
+## Truthful model identity
+
+Every envelope must report whether the model was actually invoked.
+
+- deterministic safety preflight records `model_invoked: false`, `model: null` and `prompt_version: null`;
+- a request without a user message records the same non-invoked identity;
+- operational rollout exclusions expose no interpretation;
+- completed semantic interpretation records the configured model and prompt identity.
+
+The operational model-call counter is the authority used to correct a pre-model skipped response at the public wrapper boundary.
 
 ## Safety preflight interaction
 
