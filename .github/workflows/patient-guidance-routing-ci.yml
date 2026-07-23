@@ -18,6 +18,7 @@ on:
       - "base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts"
       - "src/lib/providerSemanticSearch.js"
       - "docs/patient-conversation-agent-v1.md"
+      - "docs/patient-conversation-agent-acceptance.md"
       - "tests/fixtures/patient-conversation-agent-evaluations.json"
       - "tests/fixtures/patient-conversation-agent-adversarial-evaluations.json"
       - "scripts/patient-conversation-fixture-loader.mjs"
