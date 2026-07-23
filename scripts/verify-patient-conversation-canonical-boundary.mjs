@@ -116,10 +116,47 @@ assert.equal(canonical.interpretation.provider_type_candidates.includes('invalid
 assert.equal(canonical.diagnostics.canonical_subject, 'child');
 assert.equal(canonical.diagnostics.legacy_patient_need_subject, 'copil');
 assert.equal(canonical.diagnostics.guidance_planner_age_group, '7_12');
+assert.equal(canonical.diagnostics.emergency_service_key_added, false);
 assert.equal(canonical.diagnostics.compatibility_provider_type_alias, true);
 
 const base44Canonical = applyBase44PatientConversationCanonicalBoundary(interpretation);
 assert.deepEqual(base44Canonical, canonical);
+
+const emergencyInterpretation = {
+  primary_intent: 'simptome_oftalmologice',
+  care_path_candidates: ['emergency_interruption'],
+  service_keys: [],
+  provider_type_candidates: [],
+  facts: {
+    for_whom: 'unknown',
+    age_group: 'unknown',
+    locality: { city: '' },
+  },
+  urgency: { level: 'confirmed' },
+  information_status: {
+    sufficient_for_search: false,
+    sufficient_for_specialist_message: false,
+    missing_critical_fields: [],
+  },
+  next_action: 'show_emergency_guidance',
+};
+const canonicalEmergency = applyPatientConversationCanonicalBoundary(emergencyInterpretation);
+assert.deepEqual(canonicalEmergency.interpretation.service_keys, ['emergency_ophthalmology']);
+assert.equal(canonicalEmergency.interpretation.next_action, 'show_emergency_guidance');
+assert.equal(canonicalEmergency.interpretation.information_status.sufficient_for_search, false);
+assert.equal(canonicalEmergency.diagnostics.emergency_service_key_added, true);
+assert(canonicalEmergency.interpretation.provider_profile_type_candidates.length > 0);
+assert.deepEqual(
+  applyBase44PatientConversationCanonicalBoundary(emergencyInterpretation),
+  canonicalEmergency,
+);
+
+const existingEmergencyService = applyPatientConversationCanonicalBoundary({
+  ...emergencyInterpretation,
+  service_keys: ['emergency_ophthalmology'],
+});
+assert.deepEqual(existingEmergencyService.interpretation.service_keys, ['emergency_ophthalmology']);
+assert.equal(existingEmergencyService.diagnostics.emergency_service_key_added, false);
 
 assert(runtimeSource.includes(
   "from '../../shared/patientConversationCanonicalBoundary.js';",
@@ -135,4 +172,4 @@ const canonicalIndex = runtimeSource.indexOf(
 assert(decisionIndex >= 0 && canonicalIndex > decisionIndex);
 assert(runtimeSource.includes('canonical_boundary: canonical.diagnostics'));
 
-console.log('Canonical patient, profile-type, and location-provider-type boundaries verified.');
+console.log('Canonical patient, emergency service, profile-type, and location-provider-type boundaries verified.');
