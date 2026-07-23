@@ -7,6 +7,7 @@ on:
       - "shared/patientGuidanceRouting.js"
       - "shared/patientGuidancePlanner.js"
       - "shared/patientConversationAgent.js"
+      - "shared/patientConversationDecisionPolicy.js"
       - "shared/patientConversationEvaluation.js"
       - "shared/patientConversationGuardrails.js"
       - "shared/patientConversationStatePolicy.js"
@@ -14,6 +15,7 @@ on:
       - "base44/shared/patientGuidanceRouting.js"
       - "base44/shared/patientGuidancePlanner.js"
       - "base44/shared/patientConversationAgent.js"
+      - "base44/shared/patientConversationDecisionPolicy.js"
       - "base44/shared/patientConversationGuardrails.js"
       - "base44/shared/patientConversationStatePolicy.js"
       - "base44/functions/matchProvidersSemantic/entry.ts"
@@ -34,6 +36,8 @@ on:
       - "scripts/verify-patient-conversation-model-response-contract.mjs"
       - "scripts/verify-patient-conversation-repeated-evaluation.mjs"
       - "scripts/verify-patient-conversation-terminal-failure-gate.mjs"
+      - "scripts/verify-patient-conversation-decision-policy.mjs"
+      - "scripts/verify-patient-conversation-deterministic-preflight-evaluation.mjs"
       - "scripts/verify-patient-conversation-state-policy.mjs"
       - "scripts/verify-patient-conversation-state-compatibility.mjs"
       - "scripts/verify-patient-conversation-state-evaluation-contract.mjs"
@@ -81,6 +85,10 @@ jobs:
         run: node scripts/verify-patient-conversation-repeated-evaluation.mjs
       - name: Verify terminal model failure gate
         run: node scripts/verify-patient-conversation-terminal-failure-gate.mjs
+      - name: Verify deterministic patient conversation decisions
+        run: node scripts/verify-patient-conversation-decision-policy.mjs
+      - name: Verify deterministic safety preflight evaluation
+        run: node scripts/verify-patient-conversation-deterministic-preflight-evaluation.mjs
       - name: Verify patient conversation state policy
         run: node scripts/verify-patient-conversation-state-policy.mjs
       - name: Verify patient conversation state compatibility
@@ -144,6 +152,7 @@ jobs:
           shared/patientGuidanceRouting.js
           shared/patientGuidancePlanner.js
           shared/patientConversationAgent.js
+          shared/patientConversationDecisionPolicy.js
           shared/patientConversationEvaluation.js
           shared/patientConversationGuardrails.js
           shared/patientConversationStatePolicy.js
@@ -151,6 +160,7 @@ jobs:
           base44/shared/patientGuidanceRouting.js
           base44/shared/patientGuidancePlanner.js
           base44/shared/patientConversationAgent.js
+          base44/shared/patientConversationDecisionPolicy.js
           base44/shared/patientConversationGuardrails.js
           base44/shared/patientConversationStatePolicy.js
           base44/functions/matchProvidersSemantic/entry.ts
@@ -166,6 +176,8 @@ jobs:
           scripts/verify-patient-conversation-model-response-contract.mjs
           scripts/verify-patient-conversation-repeated-evaluation.mjs
           scripts/verify-patient-conversation-terminal-failure-gate.mjs
+          scripts/verify-patient-conversation-decision-policy.mjs
+          scripts/verify-patient-conversation-deterministic-preflight-evaluation.mjs
           scripts/verify-patient-conversation-state-policy.mjs
           scripts/verify-patient-conversation-state-compatibility.mjs
           scripts/verify-patient-conversation-state-evaluation-contract.mjs
