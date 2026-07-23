@@ -15,7 +15,7 @@ import { getCanonicalServiceDefinition } from '../shared/canonicalServiceRegistr
 const sharedSource = fs.readFileSync('shared/patientConversationDecisionPolicy.js', 'utf8');
 const base44Source = fs.readFileSync('base44/shared/patientConversationDecisionPolicy.js', 'utf8');
 const runtimeSource = fs.readFileSync(
-  'base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts',
+  'base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts',
   'utf8',
 );
 
@@ -261,7 +261,7 @@ const preflightIndex = runtimeSource.indexOf(
 const modelCallIndex = runtimeSource.indexOf('base44.integrations.Core.InvokeLLM({');
 assert(preflightIndex >= 0 && modelCallIndex > preflightIndex);
 assert(
-  runtimeSource.includes("{ modelInvoked: false }"),
+  runtimeSource.includes('{ modelInvoked: false }'),
   'Deterministic preflight must truthfully record that the model was not invoked.',
 );
 const statePolicyIndex = runtimeSource.indexOf(
