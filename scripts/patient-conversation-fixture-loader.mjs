@@ -3,6 +3,7 @@ import fs from 'node:fs';
 export const DEFAULT_PATIENT_CONVERSATION_FIXTURE_PATHS = Object.freeze([
   'tests/fixtures/patient-conversation-agent-evaluations.json',
   'tests/fixtures/patient-conversation-agent-adversarial-evaluations.json',
+  'tests/fixtures/patient-conversation-agent-state-evaluations.json',
 ]);
 
 const CRITICAL_FORBIDDEN_TOKENS = new Set([
@@ -19,6 +20,15 @@ const CRITICAL_FORBIDDEN_TOKENS = new Set([
   'contact_details_without_consent',
   'forbidden_output_fields',
   'search_providers',
+]);
+
+const CRITICAL_STATE_CATEGORIES = new Set([
+  'prior_state_intent_replacement',
+  'technical_to_routine_intent_switch',
+  'locality_replacement',
+  'locality_cleared',
+  'person_replacement',
+  'symptom_timing_correction',
 ]);
 
 function readJson(filePath) {
@@ -57,6 +67,7 @@ export function isCriticalPatientConversationFixture(fixture) {
     || category.startsWith('prompt_injection_')
     || category === 'prior_state_prompt_injection'
     || category === 'untrusted_role_injection'
+    || CRITICAL_STATE_CATEGORIES.has(category)
     || forbidden.some((token) => CRITICAL_FORBIDDEN_TOKENS.has(token));
 }
 
