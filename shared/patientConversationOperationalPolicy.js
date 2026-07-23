@@ -8,6 +8,7 @@ export const PATIENT_CONVERSATION_OPERATIONAL_POLICY = Object.freeze({
   admin_shadow_sample_rate_basis_points: 10000,
   patient_visible_sample_rate_basis_points: 0,
   model_timeout_ms: 15000,
+  timeout_behavior: "response_deadline_only",
   max_model_calls_per_request: 1,
   state_authority: "server_recomputed",
   state_persistence: "request_scoped_shadow",
@@ -84,15 +85,15 @@ function clientControlFieldsPresent(payload = {}) {
 
 function buildServerState(payload = {}) {
   const turns = boundedConversation(payload);
-  const roleAndContentHashes = turns.map((turn) => ({
+  const turnShape = turns.map((turn, index) => ({
+    index,
     role: turn.role,
-    content_hash: stableHash(turn.content),
     content_length: turn.content.length,
   }));
   const evaluationCaseId = normalizedEvaluationCaseId(payload);
   const fingerprint = stableHash(JSON.stringify({
     evaluation_case_id: evaluationCaseId || null,
-    turns: roleAndContentHashes,
+    turn_shape: turnShape,
   }));
 
   return Object.freeze({
@@ -115,7 +116,7 @@ function sampleBucket(serverState) {
 }
 
 function operationalError(code, message) {
-  const error = new Error(message);
+  const error = /** @type {Error & { code: string }} */ (new Error(message));
   error.code = code;
   return error;
 }
@@ -199,8 +200,10 @@ export function createPatientConversationOperationalController(payload = {}, opt
         sample_bucket: bucket,
         sample_selected: sampleSelected,
         model_timeout_ms: timeoutMs,
+        timeout_behavior: policy.timeout_behavior,
         timeout_control_source: "server_policy",
         timeout_triggered: timeoutTriggered,
+        timeout_cancels_underlying_call: false,
         max_model_calls_per_request: policy.max_model_calls_per_request,
         model_calls_used: modelCallsUsed,
         call_budget_source: "server_policy",
