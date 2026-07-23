@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
+  PATIENT_CONVERSATION_SEMANTIC_CONTRACT_VERSION,
   getPatientConversationAgentResponseSchema,
 } from '../shared/patientConversationAgent.js';
 import {
@@ -23,14 +24,12 @@ const runnerSource = fs.readFileSync(
 
 function validResponse() {
   return {
-    contract_version: 'viasee-patient-conversation-agent-v1',
+    contract_version: PATIENT_CONVERSATION_SEMANTIC_CONTRACT_VERSION,
     language: 'ro',
     need_summary: 'Control de vedere in Timisoara.',
     primary_intent: 'control_vedere',
     alternative_intents: [],
-    care_path_candidates: ['optometry'],
     service_keys: ['optometry_consultation'],
-    provider_type_candidates: ['independent_optometrist'],
     facts: {
       for_whom: 'adult',
       age_group: 'adult',
@@ -51,20 +50,13 @@ function validResponse() {
       repair_details: '',
       user_constraints: [],
     },
-    urgency: {
-      level: 'none',
-      needs_clarification: false,
-      reason: '',
-    },
     understanding_confidence: 'high',
-    information_status: {
-      sufficient_for_search: true,
-      sufficient_for_specialist_message: false,
-      missing_critical_fields: [],
+    ambiguity_fields: [],
+    possible_safety_flags: [],
+    state_delta: {
+      correction_detected: false,
+      clear_fields: [],
     },
-    next_action: 'search_providers',
-    assistant_message: 'Am inteles. Pot cauta servicii in Timisoara.',
-    specialist_summary: null,
     evidence_phrases: ['control de vedere in Timisoara'],
   };
 }
@@ -73,18 +65,40 @@ const schema = getPatientConversationAgentResponseSchema();
 assert.deepEqual(validatePatientConversationModelResponse(validResponse(), schema), []);
 assert.equal(sharedGuardrailSource, base44GuardrailSource);
 
-const missingField = validResponse();
-delete missingField.assistant_message;
-assert(validatePatientConversationModelResponse(missingField, schema)
-  .includes('schema_missing:$.assistant_message'));
+for (const forbiddenOperationalField of [
+  'care_path_candidates',
+  'provider_type_candidates',
+  'urgency',
+  'information_status',
+  'next_action',
+  'assistant_message',
+  'specialist_summary',
+]) {
+  const unexpected = {
+    ...validResponse(),
+    [forbiddenOperationalField]: forbiddenOperationalField === 'provider_type_candidates'
+      ? ['independent_optometrist']
+      : 'model_decision',
+  };
+  assert(
+    validatePatientConversationModelResponse(unexpected, schema)
+      .includes(`schema_unexpected:$.${forbiddenOperationalField}`),
+    `${forbiddenOperationalField} must be rejected from the model contract`,
+  );
+}
 
-const unexpectedField = {
+const missingField = validResponse();
+delete missingField.state_delta;
+assert(validatePatientConversationModelResponse(missingField, schema)
+  .includes('schema_missing:$.state_delta'));
+
+const unexpectedProviderField = {
   ...validResponse(),
   provider_id: 'provider-1',
 };
-assert(validatePatientConversationModelResponse(unexpectedField, schema)
+assert(validatePatientConversationModelResponse(unexpectedProviderField, schema)
   .includes('schema_unexpected:$.provider_id'));
-assert(detectProhibitedPatientConversationOutput(unexpectedField)
+assert(detectProhibitedPatientConversationOutput(unexpectedProviderField)
   .includes('forbidden_field:provider_id'));
 
 const invalidIntent = {
@@ -113,17 +127,32 @@ const tooManyAlternatives = {
 assert(validatePatientConversationModelResponse(tooManyAlternatives, schema)
   .includes('schema_max_items:$.alternative_intents'));
 
-const invalidSpecialistSummary = {
+const invalidSafetyFlag = {
   ...validResponse(),
-  specialist_summary: 42,
+  possible_safety_flags: ['model_says_safe'],
 };
-assert(validatePatientConversationModelResponse(invalidSpecialistSummary, schema)
-  .includes('schema_any_of:$.specialist_summary'));
+assert(validatePatientConversationModelResponse(invalidSafetyFlag, schema)
+  .includes('schema_enum:$.possible_safety_flags[0]'));
 
-const invalidNestedBoolean = validResponse();
-invalidNestedBoolean.information_status.sufficient_for_search = 'yes';
-assert(validatePatientConversationModelResponse(invalidNestedBoolean, schema)
-  .includes('schema_type_boolean:$.information_status.sufficient_for_search'));
+const invalidClearField = {
+  ...validResponse(),
+  state_delta: {
+    correction_detected: true,
+    clear_fields: ['provider_ranking'],
+  },
+};
+assert(validatePatientConversationModelResponse(invalidClearField, schema)
+  .includes('schema_enum:$.state_delta.clear_fields[0]'));
+
+const invalidCorrectionBoolean = {
+  ...validResponse(),
+  state_delta: {
+    correction_detected: 'yes',
+    clear_fields: [],
+  },
+};
+assert(validatePatientConversationModelResponse(invalidCorrectionBoolean, schema)
+  .includes('schema_type_boolean:$.state_delta.correction_detected'));
 
 assert(runnerSource.includes('validatePatientConversationModelResponse(raw, responseSchema)'));
 assert(runnerSource.includes("invalidModelOutputEnvelope('invalid_model_output_shape'"));
@@ -136,4 +165,4 @@ const buildIndex = runnerSource.indexOf('const builtEnvelope = buildPatientConve
 assert(prohibitedIndex >= 0 && schemaIndex > prohibitedIndex);
 assert(buildIndex > schemaIndex);
 
-console.log('Patient conversation model response contract verified fail closed.');
+console.log('Patient conversation semantic model response contract verified fail closed.');
