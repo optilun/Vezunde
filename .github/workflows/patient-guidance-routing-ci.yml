@@ -35,6 +35,7 @@ on:
       - "scripts/verify-patient-conversation-repeated-evaluation.mjs"
       - "scripts/verify-patient-conversation-terminal-failure-gate.mjs"
       - "scripts/verify-patient-conversation-state-policy.mjs"
+      - "scripts/verify-patient-conversation-state-compatibility.mjs"
       - "scripts/verify-patient-conversation-state-evaluation-contract.mjs"
       - "scripts/verify-patient-conversation-shadow-harness.mjs"
       - "scripts/prepare-patient-conversation-shadow-run.mjs"
@@ -82,6 +83,8 @@ jobs:
         run: node scripts/verify-patient-conversation-terminal-failure-gate.mjs
       - name: Verify patient conversation state policy
         run: node scripts/verify-patient-conversation-state-policy.mjs
+      - name: Verify patient conversation state compatibility
+        run: node scripts/verify-patient-conversation-state-compatibility.mjs
       - name: Verify patient conversation state evaluation contract
         run: node scripts/verify-patient-conversation-state-evaluation-contract.mjs
       - name: Verify patient conversation shadow harness
@@ -164,6 +167,7 @@ jobs:
           scripts/verify-patient-conversation-repeated-evaluation.mjs
           scripts/verify-patient-conversation-terminal-failure-gate.mjs
           scripts/verify-patient-conversation-state-policy.mjs
+          scripts/verify-patient-conversation-state-compatibility.mjs
           scripts/verify-patient-conversation-state-evaluation-contract.mjs
           scripts/verify-patient-conversation-shadow-harness.mjs
           scripts/prepare-patient-conversation-shadow-run.mjs
