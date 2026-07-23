@@ -36,6 +36,18 @@ function createOperationalBase44(base44: any, controller: any) {
   return controlled;
 }
 
+function runtimePayloadFromRequest(payload: any = {}) {
+  const source = payload && typeof payload === 'object' && !Array.isArray(payload)
+    ? payload
+    : {};
+  const evaluationCaseId = String(source.evaluation_case_id ?? '').trim();
+  if (/^[a-z0-9][a-z0-9._-]{0,119}$/i.test(evaluationCaseId)) return source;
+
+  const runtimePayload = { ...source };
+  delete runtimePayload.prior_state;
+  return runtimePayload;
+}
+
 function normalizeNonInvokedRuntimeIdentity(envelope: any, controller: any) {
   if (envelope?.reason !== 'user_message_required') return envelope;
   const operational = controller?.snapshot?.();
@@ -53,7 +65,8 @@ function normalizeNonInvokedRuntimeIdentity(envelope: any, controller: any) {
 }
 
 export async function runPatientConversationAgentShadow(base44: any, payload: any = {}) {
-  const controller = createPatientConversationOperationalController(payload, {
+  const runtimePayload = runtimePayloadFromRequest(payload);
+  const controller = createPatientConversationOperationalController(runtimePayload, {
     audience: 'admin_shadow',
   });
 
@@ -69,7 +82,7 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
 
   const envelope = await runPatientConversationAgentShadowCore(
     createOperationalBase44(base44, controller),
-    payload,
+    runtimePayload,
   );
   return finalizePatientConversationOperationalEnvelope(
     normalizeNonInvokedRuntimeIdentity(envelope, controller),
