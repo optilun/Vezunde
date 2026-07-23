@@ -11,6 +11,7 @@ on:
       - "shared/patientConversationEvaluation.js"
       - "shared/patientConversationGuardrails.js"
       - "shared/patientConversationStatePolicy.js"
+      - "shared/patientConversationStateDeltaReducer.js"
       - "base44/shared/patientGuidanceQuestionCatalog.js"
       - "base44/shared/patientGuidanceRouting.js"
       - "base44/shared/patientGuidancePlanner.js"
@@ -18,6 +19,7 @@ on:
       - "base44/shared/patientConversationDecisionPolicy.js"
       - "base44/shared/patientConversationGuardrails.js"
       - "base44/shared/patientConversationStatePolicy.js"
+      - "base44/shared/patientConversationStateDeltaReducer.js"
       - "base44/functions/matchProvidersSemantic/entry.ts"
       - "base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts"
       - "src/lib/providerSemanticSearch.js"
@@ -39,6 +41,7 @@ on:
       - "scripts/verify-patient-conversation-decision-policy.mjs"
       - "scripts/verify-patient-conversation-deterministic-preflight-evaluation.mjs"
       - "scripts/verify-patient-conversation-state-policy.mjs"
+      - "scripts/verify-patient-conversation-state-delta-reducer.mjs"
       - "scripts/verify-patient-conversation-state-compatibility.mjs"
       - "scripts/verify-patient-conversation-state-evaluation-contract.mjs"
       - "scripts/verify-patient-conversation-shadow-harness.mjs"
@@ -91,6 +94,8 @@ jobs:
         run: node scripts/verify-patient-conversation-deterministic-preflight-evaluation.mjs
       - name: Verify patient conversation state policy
         run: node scripts/verify-patient-conversation-state-policy.mjs
+      - name: Verify semantic state delta reducer
+        run: node scripts/verify-patient-conversation-state-delta-reducer.mjs
       - name: Verify patient conversation state compatibility
         run: node scripts/verify-patient-conversation-state-compatibility.mjs
       - name: Verify patient conversation state evaluation contract
@@ -156,6 +161,7 @@ jobs:
           shared/patientConversationEvaluation.js
           shared/patientConversationGuardrails.js
           shared/patientConversationStatePolicy.js
+          shared/patientConversationStateDeltaReducer.js
           base44/shared/patientGuidanceQuestionCatalog.js
           base44/shared/patientGuidanceRouting.js
           base44/shared/patientGuidancePlanner.js
@@ -163,6 +169,7 @@ jobs:
           base44/shared/patientConversationDecisionPolicy.js
           base44/shared/patientConversationGuardrails.js
           base44/shared/patientConversationStatePolicy.js
+          base44/shared/patientConversationStateDeltaReducer.js
           base44/functions/matchProvidersSemantic/entry.ts
           base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts
           src/lib/providerSemanticSearch.js
@@ -179,6 +186,7 @@ jobs:
           scripts/verify-patient-conversation-decision-policy.mjs
           scripts/verify-patient-conversation-deterministic-preflight-evaluation.mjs
           scripts/verify-patient-conversation-state-policy.mjs
+          scripts/verify-patient-conversation-state-delta-reducer.mjs
           scripts/verify-patient-conversation-state-compatibility.mjs
           scripts/verify-patient-conversation-state-evaluation-contract.mjs
           scripts/verify-patient-conversation-shadow-harness.mjs
