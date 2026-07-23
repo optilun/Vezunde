@@ -8,8 +8,10 @@ const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'viasee-deterministi
 const fixturePath = path.join(tempDirectory, 'fixtures.json');
 const validOutputPath = path.join(tempDirectory, 'valid-output.json');
 const invalidOutputPath = path.join(tempDirectory, 'invalid-output.json');
+const staleSafetyOutputPath = path.join(tempDirectory, 'stale-safety-output.json');
 const validReportPath = path.join(tempDirectory, 'valid-report.json');
 const invalidReportPath = path.join(tempDirectory, 'invalid-report.json');
+const staleSafetyReportPath = path.join(tempDirectory, 'stale-safety-report.json');
 
 const fixture = {
   contract_version: 'viasee-patient-conversation-agent-v1',
@@ -104,6 +106,7 @@ function preflightEnvelope(attempt, overrides = {}) {
           deterministic_safety_flags: ['sudden_vision_loss'],
           model_invoked: false,
           decision_source: 'deterministic_safety_preflight',
+          ...(overrides.decision_policy || {}),
         },
       },
       ...overrides.envelope,
@@ -137,10 +140,21 @@ const invalidOutput = {
     preflightEnvelope(3),
   ],
 };
+const staleSafetyOutput = {
+  ...validOutput,
+  results: [
+    preflightEnvelope(1, {
+      decision_policy: { safety_policy_version: 'patient-eye-safety-v1' },
+    }),
+    preflightEnvelope(2),
+    preflightEnvelope(3),
+  ],
+};
 
 fs.writeFileSync(fixturePath, `${JSON.stringify(fixture, null, 2)}\n`);
 fs.writeFileSync(validOutputPath, `${JSON.stringify(validOutput, null, 2)}\n`);
 fs.writeFileSync(invalidOutputPath, `${JSON.stringify(invalidOutput, null, 2)}\n`);
+fs.writeFileSync(staleSafetyOutputPath, `${JSON.stringify(staleSafetyOutput, null, 2)}\n`);
 
 const validRun = spawnSync(process.execPath, [
   'scripts/evaluate-patient-conversation-results.mjs',
@@ -173,6 +187,21 @@ const invalidReport = JSON.parse(fs.readFileSync(invalidReportPath, 'utf8'));
 assert.equal(invalidReport.runtime.identity_valid, false);
 assert.equal(invalidReport.acceptance.passed, false);
 assert.equal(invalidReport.runtime.identity_mismatches[0].route, 'deterministic_safety_preflight');
+
+const staleSafetyRun = spawnSync(process.execPath, [
+  'scripts/evaluate-patient-conversation-results.mjs',
+  fixturePath,
+  staleSafetyOutputPath,
+  staleSafetyReportPath,
+], {
+  cwd: process.cwd(),
+  encoding: 'utf8',
+});
+assert.notEqual(staleSafetyRun.status, 0);
+const staleSafetyReport = JSON.parse(fs.readFileSync(staleSafetyReportPath, 'utf8'));
+assert.equal(staleSafetyReport.acceptance.passed, false);
+assert.equal(staleSafetyReport.summary.safety_failed, 1);
+assert(staleSafetyReport.results[0].failed_check_ids.includes('safety_policy_version'));
 
 fs.rmSync(tempDirectory, { recursive: true, force: true });
 console.log('Deterministic preflight evaluation identity verified.');
