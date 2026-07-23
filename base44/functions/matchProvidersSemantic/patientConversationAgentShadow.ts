@@ -16,6 +16,7 @@ import {
   applyPatientConversationDecisionPolicy,
   buildPatientConversationEmergencyInterpretation,
 } from '../../shared/patientConversationDecisionPolicy.js';
+import { applyPatientConversationCanonicalBoundary } from '../../shared/patientConversationCanonicalBoundary.js';
 import { reconcilePatientConversationState } from '../../shared/patientConversationStatePolicy.js';
 import { reducePatientConversationSemanticStateDelta } from '../../shared/patientConversationStateDeltaReducer.js';
 
@@ -246,6 +247,19 @@ function applyDeterministicDecisionPolicy(
   };
 }
 
+function applyCanonicalBoundary(envelope: any) {
+  if (!envelope?.interpretation) return envelope;
+  const canonical = applyPatientConversationCanonicalBoundary(envelope.interpretation);
+  return {
+    ...envelope,
+    interpretation: canonical.interpretation,
+    diagnostics: {
+      ...(envelope.diagnostics || {}),
+      canonical_boundary: canonical.diagnostics,
+    },
+  };
+}
+
 function deterministicSafetyPreflight(conversation: any[], runtimeContext: any) {
   const decision = buildPatientConversationEmergencyInterpretation({
     contractVersion: PATIENT_CONVERSATION_AGENT_VERSION,
@@ -253,7 +267,7 @@ function deterministicSafetyPreflight(conversation: any[], runtimeContext: any) 
     runtimeContext,
   });
   if (!decision) return null;
-  return {
+  return applyCanonicalBoundary({
     mode: 'shadow',
     contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
     status: 'completed',
@@ -262,7 +276,7 @@ function deterministicSafetyPreflight(conversation: any[], runtimeContext: any) 
     diagnostics: {
       decision_policy: decision.diagnostics,
     },
-  };
+  });
 }
 
 function emitShadowSummary(envelope: any) {
@@ -302,6 +316,12 @@ function emitShadowSummary(envelope: any) {
     )
       ? envelope.diagnostics.state_delta_reducer.rejected_fields.length
       : 0,
+    canonical_boundary_version:
+      envelope?.diagnostics?.canonical_boundary?.boundary_version || null,
+    provider_profile_type_count:
+      envelope?.diagnostics?.canonical_boundary?.provider_profile_type_count || 0,
+    location_provider_type_count:
+      envelope?.diagnostics?.canonical_boundary?.location_provider_type_count || 0,
     prohibited_output_count: Array.isArray(envelope?.diagnostics?.prohibited_output_violations)
       ? envelope.diagnostics.prohibited_output_violations.length
       : 0,
@@ -442,8 +462,9 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
       conversation,
       runtimeContext,
     );
+    const canonicalEnvelope = applyCanonicalBoundary(deterministicEnvelope);
     const completed = attachRuntimeMetadata(attachEvaluationCorrelation(
-      deterministicEnvelope,
+      canonicalEnvelope,
       evaluationCaseId,
       evaluationAttempt,
     ), Date.now() - startedAt);
