@@ -40,12 +40,21 @@ function createOperationalBase44(base44: any, controller: any) {
   return controlled;
 }
 
+function normalizedEvaluationCaseId(payload: any = {}) {
+  const value = String(payload?.evaluation_case_id ?? '').trim();
+  return /^[a-z0-9][a-z0-9._-]{0,119}$/i.test(value) ? value : '';
+}
+
+function normalizedEvaluationAttempt(payload: any = {}) {
+  const value = String(payload?.evaluation_attempt ?? '').trim();
+  return /^[1-5]$/.test(value) ? Number.parseInt(value, 10) : 1;
+}
+
 function runtimePayloadFromRequest(payload: any = {}) {
   const source = payload && typeof payload === 'object' && !Array.isArray(payload)
     ? payload
     : {};
-  const evaluationCaseId = String(source.evaluation_case_id ?? '').trim();
-  if (/^[a-z0-9][a-z0-9._-]{0,119}$/i.test(evaluationCaseId)) return source;
+  if (normalizedEvaluationCaseId(source)) return source;
 
   const runtimePayload = { ...source };
   delete runtimePayload.prior_state;
@@ -69,13 +78,18 @@ function requestHasUserMessage(payload: any = {}) {
   ).trim());
 }
 
-function skippedWithoutUserMessage() {
+function skippedWithoutUserMessage(payload: any = {}) {
+  const evaluationCaseId = normalizedEvaluationCaseId(payload);
   return {
     mode: 'shadow',
     contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
     status: 'skipped',
     reason: 'user_message_required',
     interpretation: null,
+    ...(evaluationCaseId ? {
+      evaluation_case_id: evaluationCaseId,
+      evaluation_attempt: normalizedEvaluationAttempt(payload),
+    } : {}),
     runtime_metadata: {
       model: null,
       prompt_version: null,
@@ -107,7 +121,7 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
 
   if (!requestHasUserMessage(runtimePayload)) {
     return finalizePatientConversationOperationalEnvelope(
-      skippedWithoutUserMessage(),
+      skippedWithoutUserMessage(runtimePayload),
       controller,
     );
   }
