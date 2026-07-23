@@ -20,7 +20,7 @@ import { reconcilePatientConversationState } from '../../shared/patientConversat
 
 const PATIENT_CONVERSATION_SHADOW_EVENT = 'patient_conversation_agent_shadow_summary';
 const PATIENT_CONVERSATION_MODEL = 'gpt_5_4';
-const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.1';
+const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.2';
 
 function clean(value: unknown, maxLength = 1200) {
   return String(value ?? '').trim().slice(0, maxLength);
@@ -169,21 +169,6 @@ function sanitizePriorState(value: any) {
   };
 }
 
-function hasLocality(locality: any) {
-  return Boolean(locality?.siruta_code || locality?.city);
-}
-
-function redactContactDetails(value: unknown) {
-  return redactPatientConversationText(value, 1000);
-}
-
-function fallbackAssistantMessage(nextAction: string) {
-  if (nextAction === 'ask_locality') return 'In ce oras sau zona doresti sa cauti?';
-  if (nextAction === 'confirm_understanding') return 'Am inteles nevoia descrisa. Este corect?';
-  if (nextAction === 'ask_clarifying_question') return 'Poti sa imi spui putin mai clar ce ai nevoie sa rezolvi?';
-  return '';
-}
-
 function invalidModelOutputEnvelope(reason: string, diagnostics: Record<string, any>) {
   return {
     ...buildPatientConversationShadowEnvelope({
@@ -205,6 +190,7 @@ function applyConversationStatePolicy(envelope: any, priorState: any, conversati
     interpretation: envelope.interpretation,
     priorState,
     conversation,
+    semanticStateDelta: envelope?.diagnostics?.semantic_state_delta,
   });
   return {
     ...envelope,
@@ -214,85 +200,6 @@ function applyConversationStatePolicy(envelope: any, priorState: any, conversati
       state_policy: reconciled.diagnostics,
     },
   };
-}
-
-function applyRuntimePolicy(envelope: any, runtimeContext: any) {
-  if (!envelope?.interpretation) return envelope;
-
-  const interpretation = {
-    ...envelope.interpretation,
-    facts: {
-      ...envelope.interpretation.facts,
-      locality: { ...envelope.interpretation.facts?.locality },
-    },
-    urgency: { ...envelope.interpretation.urgency },
-    information_status: {
-      ...envelope.interpretation.information_status,
-      missing_critical_fields: [
-        ...(envelope.interpretation.information_status?.missing_critical_fields || []),
-      ],
-    },
-  };
-  const localityWasCleared = envelope?.diagnostics?.state_policy?.locality_correction_detected === true
-    && Array.isArray(envelope?.diagnostics?.state_policy?.cleared_stale_fields)
-    && envelope.diagnostics.state_policy.cleared_stale_fields.includes('locality');
-
-  if (!localityWasCleared
-    && !hasLocality(interpretation.facts.locality)
-    && hasLocality(runtimeContext.known_locality)) {
-    interpretation.facts.locality = { ...runtimeContext.known_locality };
-  }
-
-  const urgencyLevel = interpretation.urgency?.level || 'none';
-  const usableCarePath = (interpretation.care_path_candidates || []).some((path: string) => (
-    !['unresolved', 'emergency_interruption'].includes(path)
-  ));
-  const hasServices = Array.isArray(interpretation.service_keys)
-    && interpretation.service_keys.length > 0;
-  const searchReady = urgencyLevel === 'none'
-    && interpretation.primary_intent !== 'unknown'
-    && usableCarePath
-    && hasServices
-    && hasLocality(interpretation.facts.locality);
-
-  if (!searchReady) {
-    interpretation.information_status.sufficient_for_search = false;
-    if (interpretation.next_action === 'search_providers') {
-      if (!hasLocality(interpretation.facts.locality) && hasServices && usableCarePath) {
-        interpretation.next_action = 'ask_locality';
-        if (!interpretation.information_status.missing_critical_fields.includes('locality')) {
-          interpretation.information_status.missing_critical_fields.push('locality');
-        }
-      } else {
-        interpretation.next_action = 'ask_clarifying_question';
-      }
-    }
-  } else if (interpretation.next_action === 'search_providers') {
-    interpretation.information_status.sufficient_for_search = true;
-  }
-
-  if (urgencyLevel === 'possible') {
-    interpretation.next_action = 'ask_clarifying_question';
-    interpretation.information_status.sufficient_for_search = false;
-  }
-
-  if (urgencyLevel === 'confirmed') {
-    interpretation.next_action = 'show_emergency_guidance';
-    interpretation.information_status.sufficient_for_search = false;
-    interpretation.information_status.sufficient_for_specialist_message = false;
-    interpretation.specialist_summary = null;
-  }
-
-  interpretation.assistant_message = redactPatientConversationText(interpretation.assistant_message, 700);
-  if (interpretation.specialist_summary) {
-    interpretation.specialist_summary = redactContactDetails(interpretation.specialist_summary) || null;
-  }
-
-  if (!clean(interpretation.assistant_message, 700)) {
-    interpretation.assistant_message = fallbackAssistantMessage(interpretation.next_action);
-  }
-
-  return { ...envelope, interpretation };
 }
 
 function applyDeterministicDecisionPolicy(
@@ -348,6 +255,16 @@ function emitShadowSummary(envelope: any) {
     reason: envelope?.reason || null,
     evaluation_case_id_present: Boolean(envelope?.evaluation_case_id),
     evaluation_attempt: envelope?.evaluation_attempt || null,
+    semantic_contract_version: envelope?.diagnostics?.semantic_contract_version || null,
+    model_operational_authority:
+      envelope?.diagnostics?.model_operational_authority === true,
+    semantic_correction_detected:
+      envelope?.diagnostics?.semantic_state_delta?.correction_detected === true,
+    semantic_clear_field_count: Array.isArray(
+      envelope?.diagnostics?.semantic_state_delta?.clear_fields,
+    )
+      ? envelope.diagnostics.semantic_state_delta.clear_fields.length
+      : 0,
     prohibited_output_count: Array.isArray(envelope?.diagnostics?.prohibited_output_violations)
       ? envelope.diagnostics.prohibited_output_violations.length
       : 0,
@@ -463,14 +380,12 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
       raw,
       conversation,
     });
-    const noncanonicalOutputCount = Number(builtEnvelope?.diagnostics?.rejected_service_count || 0)
-      + Number(builtEnvelope?.diagnostics?.rejected_provider_type_count || 0);
+    const noncanonicalOutputCount = Number(builtEnvelope?.diagnostics?.rejected_service_count || 0);
     if (noncanonicalOutputCount > 0) {
       const invalid = attachRuntimeMetadata(attachEvaluationCorrelation(
         invalidModelOutputEnvelope('noncanonical_model_output', {
           noncanonical_output_count: noncanonicalOutputCount,
           rejected_service_count: builtEnvelope?.diagnostics?.rejected_service_count || 0,
-          rejected_provider_type_count: builtEnvelope?.diagnostics?.rejected_provider_type_count || 0,
         }),
         evaluationCaseId,
         evaluationAttempt,
@@ -480,9 +395,8 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
     }
 
     const stateEnvelope = applyConversationStatePolicy(builtEnvelope, priorState, conversation);
-    const legacyRuntimeEnvelope = applyRuntimePolicy(stateEnvelope, runtimeContext);
     const deterministicEnvelope = applyDeterministicDecisionPolicy(
-      legacyRuntimeEnvelope,
+      stateEnvelope,
       conversation,
       runtimeContext,
     );
