@@ -26,7 +26,7 @@ const PROHIBITED_OUTPUT_FIELDS = new Set([
 ]);
 
 const RANKING_OR_PROVIDER_RECOMMENDATION_PATTERN = /\btop\s*3\b|\btop3\b|\b(?:locul|pozi[țt]ia)\s*(?:1|unu|intai|întâi)\b|\b(?:cea|cel)\s+mai\s+bun(?:a|ă)?\s+(?:clinic(?:a|ă)|cabinet|optic(?:a|ă)|furnizor|medic)\b|\brecomand(?:am|ăm|a)?\s+(?:clinica|cabinetul|optica|furnizorul|medicul)\b/iu;
-const DIAGNOSIS_CLAIM_PATTERN = /\b(?:ai|ave[țt]i|suferi(?:[țt]i)?\s+de|este\s+(?:sigur|clar|probabil)\s+c[ăa]\s+ai|pare\s+s[ăa]\s+fie)\s+(?:conjunctivit[ăa]|glaucom|cataract[ăa]|keratit[ăa]|uveit[ăa]|dezlipire\s+de\s+retin[ăa]|degenerescen[țt][ăa]\s+macular[ăa])\b|\bdiagnosticul\s+(?:este|e)\b/iu;
+const DIAGNOSIS_CLAIM_PATTERN = /\b(?:ai|ave[țt]i|suferi(?:[țt]i)?\s+de|este\s+(?:sigur|clar|probabil)\s+c[ăa]\s+ai)\s+(?:conjunctivit[ăa]|glaucom|cataract[ăa]|keratit[ăa]|uveit[ăa]|dezlipire\s+de\s+retin[ăa]|degenerescen[țt][ăa]\s+macular[ăa])(?=$|[\s.,;:!?])|\bdiagnosticul\s+(?:este|e)\b/iu;
 const TREATMENT_DIRECTIVE_PATTERN = /\b(?:ia|lua[țt]i|folosi[țt]i|pune[țt]i|aplic[ăa])\s+(?:pic[ăa]turi|antibiotic(?:e)?|medicament(?:e)?|unguente?|tratament)\b|\b(?:tratamentul|medica[țt]ia)\s+(?:potrivit[ăa]|recomandat[ăa])\b/iu;
 
 function clean(value, maxLength = 1200) {
