@@ -28,6 +28,7 @@ on:
       - "scripts/verify-patient-conversation-agent.mjs"
       - "scripts/verify-patient-conversation-shadow-route.mjs"
       - "scripts/verify-patient-conversation-evaluation.mjs"
+      - "scripts/verify-patient-conversation-model-response-contract.mjs"
       - "scripts/verify-patient-conversation-repeated-evaluation.mjs"
       - "scripts/verify-patient-conversation-terminal-failure-gate.mjs"
       - "scripts/verify-patient-conversation-shadow-harness.mjs"
@@ -68,6 +69,8 @@ jobs:
         run: node scripts/verify-patient-conversation-shadow-route.mjs
       - name: Verify patient conversation evaluation scorer and guardrails
         run: node scripts/verify-patient-conversation-evaluation.mjs
+      - name: Verify strict patient conversation model response contract
+        run: node scripts/verify-patient-conversation-model-response-contract.mjs
       - name: Verify repeated patient conversation acceptance
         run: node scripts/verify-patient-conversation-repeated-evaluation.mjs
       - name: Verify terminal model failure gate
@@ -146,6 +149,7 @@ jobs:
           scripts/verify-patient-conversation-agent.mjs
           scripts/verify-patient-conversation-shadow-route.mjs
           scripts/verify-patient-conversation-evaluation.mjs
+          scripts/verify-patient-conversation-model-response-contract.mjs
           scripts/verify-patient-conversation-repeated-evaluation.mjs
           scripts/verify-patient-conversation-terminal-failure-gate.mjs
           scripts/verify-patient-conversation-shadow-harness.mjs
