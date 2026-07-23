@@ -22,7 +22,7 @@ const base44ModuleSource = fs.readFileSync(
   "utf8",
 );
 const shadowRunnerSource = fs.readFileSync(
-  new URL("../base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts", import.meta.url),
+  new URL("../base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts", import.meta.url),
   "utf8",
 );
 
