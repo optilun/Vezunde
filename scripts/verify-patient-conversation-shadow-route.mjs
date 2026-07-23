@@ -3,228 +3,121 @@ import fs from 'node:fs';
 
 const entryPath = new URL('../base44/functions/matchProvidersSemantic/entry.ts', import.meta.url);
 const runnerPath = new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts', import.meta.url);
+const agentPath = new URL('../base44/shared/patientConversationAgent.js', import.meta.url);
+const sharedAgentPath = new URL('../shared/patientConversationAgent.js', import.meta.url);
+const decisionPath = new URL('../base44/shared/patientConversationDecisionPolicy.js', import.meta.url);
+const sharedDecisionPath = new URL('../shared/patientConversationDecisionPolicy.js', import.meta.url);
 const guardrailPath = new URL('../base44/shared/patientConversationGuardrails.js', import.meta.url);
 const sharedGuardrailPath = new URL('../shared/patientConversationGuardrails.js', import.meta.url);
 
 const entrySource = fs.readFileSync(entryPath, 'utf8');
 const runnerSource = fs.readFileSync(runnerPath, 'utf8');
+const agentSource = fs.readFileSync(agentPath, 'utf8');
+const sharedAgentSource = fs.readFileSync(sharedAgentPath, 'utf8');
+const decisionSource = fs.readFileSync(decisionPath, 'utf8');
+const sharedDecisionSource = fs.readFileSync(sharedDecisionPath, 'utf8');
 const guardrailSource = fs.readFileSync(guardrailPath, 'utf8');
 const sharedGuardrailSource = fs.readFileSync(sharedGuardrailPath, 'utf8');
 
-assert.equal(
-  guardrailSource,
-  sharedGuardrailSource,
-  'Base44 and repository patient conversation guardrails must remain byte-identical',
-);
-assert(
-  entrySource.includes("import { runPatientConversationAgentShadow } from './patientConversationAgentShadow.ts';"),
-  'matchProvidersSemantic must import the isolated conversation shadow runner',
-);
-assert(
-  entrySource.includes("const PATIENT_CONVERSATION_SHADOW_MODE = 'patient_conversation_shadow';"),
-  'the developer-only conversation mode must use a dedicated explicit value',
-);
-assert(
-  entrySource.includes('const user = await base44.auth.me().catch(() => null);'),
-  'the shadow route must require an authenticated user',
-);
-assert(
-  entrySource.includes("if (user.role !== 'admin')"),
-  'the shadow route must be limited to administrators',
-);
-assert(
-  entrySource.includes('status: 401'),
-  'unauthenticated shadow requests must return 401',
-);
-assert(
-  entrySource.includes('status: 403'),
-  'non-admin shadow requests must return 403',
-);
-assert(
-  entrySource.includes("headers: { 'Cache-Control': 'no-store' }"),
-  'shadow responses must not be cached',
-);
-assert(
-  entrySource.includes('return Response.json(envelope'),
-  'the developer route must return only the isolated shadow envelope',
-);
+assert.equal(guardrailSource, sharedGuardrailSource);
+assert.equal(agentSource, sharedAgentSource);
+assert.equal(decisionSource, sharedDecisionSource);
+
+assert(entrySource.includes("import { runPatientConversationAgentShadow } from './patientConversationAgentShadow.ts';"));
+assert(entrySource.includes("const PATIENT_CONVERSATION_SHADOW_MODE = 'patient_conversation_shadow';"));
+assert(entrySource.includes('const user = await base44.auth.me().catch(() => null);'));
+assert(entrySource.includes("if (user.role !== 'admin')"));
+assert(entrySource.includes('status: 401'));
+assert(entrySource.includes('status: 403'));
+assert(entrySource.includes("headers: { 'Cache-Control': 'no-store' }"));
+assert(entrySource.includes('return Response.json(envelope'));
 
 const modeBranchIndex = entrySource.indexOf('payload.mode === PATIENT_CONVERSATION_SHADOW_MODE');
 const semanticResolutionIndex = entrySource.indexOf('const semantic = resolveServiceSearchQuery(searchText');
 const serviceRoleIndex = entrySource.indexOf('const svc = base44.asServiceRole;');
-assert(modeBranchIndex >= 0, 'the shadow mode branch must exist');
-assert(semanticResolutionIndex >= 0, 'the existing semantic matcher must remain present');
-assert(serviceRoleIndex >= 0, 'the existing service-role matcher path must remain present');
-assert(
-  modeBranchIndex < serviceRoleIndex && modeBranchIndex < semanticResolutionIndex,
-  'the admin-only shadow route must exit before service-role access or deterministic matching',
-);
-
+assert(modeBranchIndex >= 0);
+assert(semanticResolutionIndex >= 0);
+assert(serviceRoleIndex >= 0);
+assert(modeBranchIndex < serviceRoleIndex && modeBranchIndex < semanticResolutionIndex);
 const modeBlock = entrySource.slice(modeBranchIndex, serviceRoleIndex);
-assert(
-  modeBlock.includes('handlePatientConversationShadowMode(base44, payload)'),
-  'the dedicated mode must delegate to the isolated handler',
-);
-assert(
-  !modeBlock.includes('assignRecommendationBuckets'),
-  'the shadow branch must not perform provider recommendation bucketing',
-);
-assert(
-  !modeBlock.includes('buildRecommendationScore'),
-  'the shadow branch must not calculate provider scores',
-);
-assert(
-  !modeBlock.includes('resolveServiceSearchQuery'),
-  'the conversation model must receive the conversation before deterministic phrase matching',
-);
+assert(modeBlock.includes('handlePatientConversationShadowMode(base44, payload)'));
+assert(!modeBlock.includes('assignRecommendationBuckets'));
+assert(!modeBlock.includes('buildRecommendationScore'));
+assert(!modeBlock.includes('resolveServiceSearchQuery'));
 
-assert.equal(
-  (runnerSource.match(/Core\.InvokeLLM/g) || []).length,
-  1,
-  'the isolated runner must make exactly one LLM call',
-);
-assert(
-  runnerSource.includes("const PATIENT_CONVERSATION_MODEL = 'gpt_5_4';"),
-  'the shadow evaluator must use an explicitly versioned model selection',
-);
-assert(
-  runnerSource.includes("const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.1';"),
-  'the prompt contract must be versioned independently',
-);
-assert(
-  runnerSource.includes('model: PATIENT_CONVERSATION_MODEL'),
-  'the configured model must be passed to InvokeLLM',
-);
-assert(
-  runnerSource.includes('add_context_from_internet: false'),
-  'the isolated runner must not use internet context',
-);
-assert(
-  runnerSource.includes("from '../../shared/patientConversationGuardrails.js';"),
-  'the Base44 runner must import the shared privacy and output guardrails',
-);
-assert(
-  runnerSource.includes('sanitizePatientConversationTurns('),
-  'conversation roles, turn count, length, and sensitive text must be sanitized before the prompt',
-);
-assert(
-  runnerSource.includes('sanitizePriorState(payload?.prior_state)'),
-  'prior conversational state must be bounded and field-selected before entering the prompt',
-);
-assert(
-  runnerSource.includes('need_summary: redactPatientConversationText(value.need_summary, 500)'),
-  'prior-state narrative fields must be redacted before entering the prompt',
-);
-assert(
-  guardrailSource.includes('PATIENT_CONVERSATION_MAX_TURNS = 20'),
-  'conversation turn count must be bounded',
-);
-assert(
-  guardrailSource.includes('PATIENT_CONVERSATION_MAX_CHARACTERS = 8000'),
-  'conversation character count must be bounded',
-);
-assert(
-  guardrailSource.includes('.replace(/\\b\\d{13}\\b/g, "[identificator eliminat]")'),
-  '13-digit personal identifiers must be removed before model invocation',
-);
-assert(
-  guardrailSource.includes('[email eliminat]') && guardrailSource.includes('[telefon eliminat]'),
-  'email addresses and phone numbers must be removed before model invocation',
-);
-assert(
-  runnerSource.includes('runtime_metadata:'),
-  'shadow results must carry model, prompt, duration, and input-limit metadata',
-);
-assert(
-  runnerSource.includes('function evaluationAttemptFromPayload(payload: any)'),
-  'evaluation attempts must be validated separately from patient conversation data',
-);
-assert(
-  runnerSource.includes('evaluation_attempt: evaluationAttempt'),
-  'evaluation attempts must be preserved in the returned envelope',
-);
-const promptBuildStart = runnerSource.indexOf('const prompt = buildPatientConversationAgentPrompt({');
-const modelCallStart = runnerSource.indexOf('const raw = await base44.integrations.Core.InvokeLLM({');
-assert(promptBuildStart >= 0 && modelCallStart > promptBuildStart, 'the prompt and model-call blocks must exist');
-const promptBuildBlock = runnerSource.slice(promptBuildStart, modelCallStart);
-assert(
-  !promptBuildBlock.includes('evaluationAttempt') && !promptBuildBlock.includes('evaluation_attempt'),
-  'evaluation correlation metadata must never enter the model prompt',
-);
-assert(
-  runnerSource.includes('detectProhibitedPatientConversationOutput(raw)'),
-  'the complete raw model output must be checked before interpretation is built',
-);
-assert(
-  runnerSource.includes("reason: 'prohibited_model_output'"),
-  'prohibited model output must have a dedicated invalid reason',
-);
-assert(
-  runnerSource.includes("status: 'invalid'"),
-  'prohibited model output must fail closed instead of being repaired and forwarded',
-);
-assert(
-  runnerSource.includes('interpretation: null') || runnerSource.includes("status: 'unavailable'"),
-  'the prohibited-output envelope must not expose a model interpretation',
-);
-assert(
-  guardrailSource.includes('forbidden_field:')
-    && guardrailSource.includes('diagnosis_claim')
-    && guardrailSource.includes('treatment_directive')
-    && guardrailSource.includes('ranking_or_provider_recommendation_claim'),
-  'the guardrail must detect structural and generated prohibited output',
-);
-assert(
-  runnerSource.includes("const searchReady = urgencyLevel === 'none'"),
-  'search readiness must be recomputed server-side',
-);
-assert(
-  runnerSource.includes("interpretation.primary_intent !== 'unknown'"),
-  'an unknown need must never start provider search',
-);
-assert(
-  runnerSource.includes('&& hasServices'),
-  'provider search must require canonical services',
-);
-assert(
-  runnerSource.includes('&& hasLocality(interpretation.facts.locality)'),
-  'provider search must require a locality',
-);
-assert(
-  runnerSource.includes("interpretation.next_action = 'ask_locality';"),
-  'missing locality must return to a locality question instead of matching',
-);
-assert(
-  runnerSource.includes("interpretation.next_action = 'ask_clarifying_question';"),
-  'ambiguous or incomplete meaning must return to clarification',
-);
-assert(
-  runnerSource.includes("if (urgencyLevel === 'possible')"),
-  'possible urgency must remain a clarification state',
-);
-assert(
-  runnerSource.includes("if (urgencyLevel === 'confirmed')"),
-  'confirmed urgency must have a separate enforced path',
-);
-assert(
-  runnerSource.includes("interpretation.next_action = 'show_emergency_guidance';"),
-  'only the confirmed branch may enforce emergency guidance',
-);
-assert(
-  runnerSource.includes('redactContactDetails(interpretation.specialist_summary)'),
-  'contact details must be removed from specialist summaries',
-);
-assert(
-  !runnerSource.includes('assignRecommendationBuckets'),
-  'the isolated runner must not rank or bucket providers',
-);
-assert(
-  !runnerSource.includes('buildRecommendationScore'),
-  'the isolated runner must not calculate recommendation scores',
-);
-assert(
-  !runnerSource.includes('ProviderLocation'),
-  'the isolated runner must not load or choose concrete providers',
-);
+assert.equal((runnerSource.match(/Core\.InvokeLLM/g) || []).length, 1);
+assert(runnerSource.includes("const PATIENT_CONVERSATION_MODEL = 'gpt_5_4';"));
+assert(runnerSource.includes("const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.2';"));
+assert(runnerSource.includes('model: PATIENT_CONVERSATION_MODEL'));
+assert(runnerSource.includes('add_context_from_internet: false'));
+assert(runnerSource.includes('response_json_schema: responseSchema'));
+assert(runnerSource.includes("from '../../shared/patientConversationGuardrails.js';"));
+assert(runnerSource.includes("from '../../shared/patientConversationDecisionPolicy.js';"));
+assert(runnerSource.includes('sanitizePatientConversationTurns('));
+assert(runnerSource.includes('sanitizePriorState(payload?.prior_state)'));
+assert(runnerSource.includes('need_summary: redactPatientConversationText(value.need_summary, 500)'));
+assert(guardrailSource.includes('PATIENT_CONVERSATION_MAX_TURNS = 20'));
+assert(guardrailSource.includes('PATIENT_CONVERSATION_MAX_CHARACTERS = 8000'));
+assert(guardrailSource.includes('.replace(/\\b\\d{13}\\b/g, "[identificator eliminat]")'));
+assert(guardrailSource.includes('[email eliminat]') && guardrailSource.includes('[telefon eliminat]'));
 
-console.log('Patient conversation admin-only shadow route, correlation, and fail-closed guardrails verified.');
+const preflightIndex = runnerSource.indexOf('const preflightDecision = deterministicSafetyPreflight(conversation, runtimeContext);');
+const promptBuildIndex = runnerSource.indexOf('const prompt = buildPatientConversationAgentPrompt({');
+const modelCallIndex = runnerSource.indexOf('const raw = await base44.integrations.Core.InvokeLLM({');
+assert(preflightIndex >= 0 && promptBuildIndex > preflightIndex && modelCallIndex > promptBuildIndex);
+assert(runnerSource.includes('{ modelInvoked: false }'));
+assert(runnerSource.includes('model_invoked: modelInvoked'));
+
+const promptBuildBlock = runnerSource.slice(promptBuildIndex, modelCallIndex);
+assert(!promptBuildBlock.includes('evaluationAttempt'));
+assert(!promptBuildBlock.includes('evaluation_attempt'));
+
+assert(agentSource.includes('PATIENT_CONVERSATION_SEMANTIC_CONTRACT_VERSION'));
+assert(agentSource.includes('Extract semantic meaning only'));
+assert(agentSource.includes('Do not choose a care path, provider type'));
+assert(agentSource.includes('possible_safety_flags are advisory'));
+assert(!agentSource.includes('Only confirmed urgency may use show_emergency_guidance'));
+
+for (const forbiddenRawModelField of [
+  'care_path_candidates',
+  'provider_type_candidates',
+  'urgency',
+  'information_status',
+  'next_action',
+  'assistant_message',
+  'specialist_summary',
+]) {
+  const schemaStart = agentSource.indexOf('export function getPatientConversationAgentResponseSchema()');
+  const promptStart = agentSource.indexOf('export function buildPatientConversationAgentPrompt');
+  const schemaBlock = agentSource.slice(schemaStart, promptStart);
+  assert(!schemaBlock.includes(`${forbiddenRawModelField}: {`), `${forbiddenRawModelField} leaked into raw model schema`);
+}
+
+assert(runnerSource.includes('detectProhibitedPatientConversationOutput(raw)'));
+assert(runnerSource.includes('validatePatientConversationModelResponse(raw, responseSchema)'));
+assert(runnerSource.includes("invalidModelOutputEnvelope('prohibited_model_output'"));
+assert(runnerSource.includes("invalidModelOutputEnvelope('invalid_model_output_shape'"));
+assert(runnerSource.includes("invalidModelOutputEnvelope('noncanonical_model_output'"));
+const prohibitedIndex = runnerSource.indexOf('detectProhibitedPatientConversationOutput(raw)');
+const schemaIndex = runnerSource.indexOf('validatePatientConversationModelResponse(raw, responseSchema)');
+const envelopeIndex = runnerSource.indexOf('const builtEnvelope = buildPatientConversationShadowEnvelope({');
+const stateIndex = runnerSource.indexOf('const stateEnvelope = applyConversationStatePolicy(');
+const decisionIndex = runnerSource.indexOf('const deterministicEnvelope = applyDeterministicDecisionPolicy(');
+assert(prohibitedIndex >= 0 && schemaIndex > prohibitedIndex);
+assert(envelopeIndex > schemaIndex && stateIndex > envelopeIndex && decisionIndex > stateIndex);
+
+assert(decisionSource.includes('const providerTypes = derivedProviderProfileTypes(current.service_keys);'));
+assert(decisionSource.includes('current.provider_type_candidates = providerTypes;'));
+assert(decisionSource.includes('let nextAction = "ask_clarifying_question";'));
+assert(decisionSource.includes('current.assistant_message = deterministicAssistantMessage(nextAction);'));
+assert(decisionSource.includes('current.specialist_summary = null;'));
+assert(decisionSource.includes('if (safety.blocking)'));
+assert(decisionSource.includes('urgencyLevel = "confirmed";'));
+assert(decisionSource.includes('urgencyLevel = "possible";'));
+
+assert(!runnerSource.includes('assignRecommendationBuckets'));
+assert(!runnerSource.includes('buildRecommendationScore'));
+assert(!runnerSource.includes('ProviderLocation'));
+assert(!runnerSource.includes('asServiceRole'));
+
+console.log('Patient conversation semantic-only admin shadow route and deterministic authority verified.');
