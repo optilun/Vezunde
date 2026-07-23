@@ -23,6 +23,8 @@ on:
       - "scripts/verify-patient-conversation-agent.mjs"
       - "scripts/verify-patient-conversation-shadow-route.mjs"
       - "scripts/verify-patient-conversation-evaluation.mjs"
+      - "scripts/verify-patient-conversation-shadow-harness.mjs"
+      - "scripts/prepare-patient-conversation-shadow-run.mjs"
       - "scripts/evaluate-patient-conversation-results.mjs"
       - "package.json"
       - ".github/workflows/patient-guidance-routing-ci.yml"
@@ -59,6 +61,8 @@ jobs:
         run: node scripts/verify-patient-conversation-shadow-route.mjs
       - name: Verify patient conversation evaluation scorer
         run: node scripts/verify-patient-conversation-evaluation.mjs
+      - name: Verify patient conversation shadow harness
+        run: node scripts/verify-patient-conversation-shadow-harness.mjs
       - name: Base44 router and physical function checks
         run: |
           node scripts/verify-directory-function-router.mjs
@@ -128,6 +132,8 @@ jobs:
           scripts/verify-patient-conversation-agent.mjs
           scripts/verify-patient-conversation-shadow-route.mjs
           scripts/verify-patient-conversation-evaluation.mjs
+          scripts/verify-patient-conversation-shadow-harness.mjs
+          scripts/prepare-patient-conversation-shadow-run.mjs
           scripts/evaluate-patient-conversation-results.mjs
           --quiet
       - name: Lint complete
