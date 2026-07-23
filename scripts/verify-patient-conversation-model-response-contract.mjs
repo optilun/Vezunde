@@ -141,6 +141,34 @@ nestedEnglishProviderRecommendation.facts.repair_details = 'Recommend the best c
 assert(detectProhibitedPatientConversationOutput(nestedEnglishProviderRecommendation)
   .includes('ranking_or_provider_recommendation_claim'));
 
+const nestedGeneratedEmail = validResponse();
+nestedGeneratedEmail.facts.user_constraints = ['Trimite la model@example.com.'];
+assert(detectProhibitedPatientConversationOutput(nestedGeneratedEmail)
+  .includes('contact_details_without_consent'));
+
+const nestedGeneratedPhone = validResponse();
+nestedGeneratedPhone.facts.repair_details = 'Suna la 0722 123 456.';
+assert(detectProhibitedPatientConversationOutput(nestedGeneratedPhone)
+  .includes('contact_details_without_consent'));
+
+const nestedGeneratedIdentifier = validResponse();
+nestedGeneratedIdentifier.facts.investigation_reference_text = 'Identificator 1234567890123.';
+assert(detectProhibitedPatientConversationOutput(nestedGeneratedIdentifier)
+  .includes('contact_details_without_consent'));
+
+const redactionMarkersOnly = validResponse();
+redactionMarkersOnly.facts.user_constraints = [
+  '[email eliminat]',
+  '[telefon eliminat]',
+  '[identificator eliminat]',
+];
+assert.equal(
+  detectProhibitedPatientConversationOutput(redactionMarkersOnly)
+    .includes('contact_details_without_consent'),
+  false,
+  'Redaction markers must not be treated as generated contact details.',
+);
+
 const verbatimEvidenceOnly = validResponse();
 verbatimEvidenceOnly.evidence_phrases = ['ia picaturi antibiotice'];
 assert.equal(
