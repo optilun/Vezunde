@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { loadPatientConversationFixtures } from './patient-conversation-fixture-loader.mjs';
 
 const CONTRACT_VERSION = 'viasee-patient-conversation-agent-v1';
-const DEFAULT_FIXTURE_PATH = 'tests/fixtures/patient-conversation-agent-evaluations.json';
 const DEFAULT_OUTPUT_PATH = 'tmp/patient-conversation-shadow-run.json';
 
 function readJson(filePath) {
@@ -17,14 +17,14 @@ function writeJson(filePath, value) {
 
 function parseArgs(argv) {
   const options = {
-    fixturePath: DEFAULT_FIXTURE_PATH,
+    fixturePaths: [],
     outputPath: DEFAULT_OUTPUT_PATH,
     caseIds: [],
     responseFiles: [],
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
-    if (arg === '--fixtures') options.fixturePath = argv[++index];
+    if (arg === '--fixtures') options.fixturePaths.push(argv[++index]);
     else if (arg === '--output') options.outputPath = argv[++index];
     else if (arg === '--case') options.caseIds.push(argv[++index]);
     else if (arg === '--response') options.responseFiles.push(argv[++index]);
@@ -59,8 +59,10 @@ function responseEnvelope(payload) {
 }
 
 const options = parseArgs(process.argv.slice(2));
-const fixturePayload = readJson(options.fixturePath);
-const fixtures = Array.isArray(fixturePayload?.cases) ? fixturePayload.cases : [];
+const fixtureSuite = loadPatientConversationFixtures(
+  options.fixturePaths.length > 0 ? options.fixturePaths : undefined,
+);
+const fixtures = fixtureSuite.cases;
 
 if (options.caseIds.length === 0) {
   console.error('Selecteaza explicit cel putin un caz cu --case <evaluation_case_id>.');
@@ -114,8 +116,13 @@ for (const responseFile of options.responseFiles) {
 
 const pending = selectedCaseIds.filter((caseId) => outputs[caseId]?.status !== 'completed');
 const completed = selectedCaseIds.filter((caseId) => outputs[caseId]?.status === 'completed').length;
+const singleFixtureVersion = fixtureSuite.fixture_versions.length === 1
+  ? fixtureSuite.fixture_versions[0].fixture_version
+  : null;
 const capture = {
-  fixture_version: fixturePayload?.fixture_version || 'patient-conversation-agent-evaluations-v1',
+  fixture_version: singleFixtureVersion || 'patient-conversation-agent-evaluation-suite-v1',
+  fixture_versions: fixtureSuite.fixture_versions,
+  fixture_paths: fixtureSuite.fixture_paths,
   model_run: {
     started_at: startedAt,
     completed_at: pending.length === 0 ? new Date().toISOString() : '',
@@ -143,6 +150,7 @@ const requests = selectedCaseIds.map((caseId) => {
 
 console.log(JSON.stringify({
   fixture_version: capture.fixture_version,
+  fixture_versions: capture.fixture_versions,
   selected_cases: selectedCaseIds,
   completed_outputs: completed,
   pending_cases: pending,
