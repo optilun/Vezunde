@@ -10,6 +10,7 @@ import {
   detectProhibitedPatientConversationOutput,
   redactPatientConversationText,
   sanitizePatientConversationTurns,
+  validatePatientConversationModelResponse,
 } from '../../shared/patientConversationGuardrails.js';
 
 const PATIENT_CONVERSATION_SHADOW_EVENT = 'patient_conversation_agent_shadow_summary';
@@ -39,8 +40,8 @@ function evaluationCaseIdFromPayload(payload: any) {
 }
 
 function evaluationAttemptFromPayload(payload: any) {
-  const value = Number.parseInt(String(payload?.evaluation_attempt ?? ''), 10);
-  return Number.isInteger(value) && value >= 1 && value <= 5 ? value : 1;
+  const value = String(payload?.evaluation_attempt ?? '').trim();
+  return /^[1-5]$/.test(value) ? Number.parseInt(value, 10) : 1;
 }
 
 function attachEvaluationCorrelation(envelope: any, evaluationCaseId: string, evaluationAttempt: number) {
@@ -173,17 +174,17 @@ function fallbackAssistantMessage(nextAction: string) {
   return '';
 }
 
-function prohibitedOutputEnvelope(violations: string[]) {
+function invalidModelOutputEnvelope(reason: string, diagnostics: Record<string, any>) {
   return {
     ...buildPatientConversationShadowEnvelope({
       status: 'unavailable',
-      reason: 'prohibited_model_output',
+      reason,
     }),
     status: 'invalid',
-    reason: 'prohibited_model_output',
+    reason,
     diagnostics: {
-      invalid_response_shape: false,
-      prohibited_output_violations: violations,
+      invalid_response_shape: reason === 'invalid_model_output_shape',
+      ...diagnostics,
     },
   };
 }
@@ -270,11 +271,16 @@ function emitShadowSummary(envelope: any) {
     model: envelope?.runtime_metadata?.model || PATIENT_CONVERSATION_MODEL,
     duration_ms: envelope?.runtime_metadata?.duration_ms || 0,
     status: envelope?.status || 'unknown',
+    reason: envelope?.reason || null,
     evaluation_case_id_present: Boolean(envelope?.evaluation_case_id),
     evaluation_attempt: envelope?.evaluation_attempt || null,
     prohibited_output_count: Array.isArray(envelope?.diagnostics?.prohibited_output_violations)
       ? envelope.diagnostics.prohibited_output_violations.length
       : 0,
+    schema_violation_count: Array.isArray(envelope?.diagnostics?.schema_violations)
+      ? envelope.diagnostics.schema_violations.length
+      : 0,
+    noncanonical_output_count: Number(envelope?.diagnostics?.noncanonical_output_count) || 0,
     primary_intent: interpretation?.primary_intent || 'unknown',
     care_path_count: Array.isArray(interpretation?.care_path_candidates)
       ? interpretation.care_path_candidates.length
@@ -312,29 +318,67 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
     priorState: sanitizePriorState(payload?.prior_state),
     runtimeContext,
   });
+  const responseSchema = getPatientConversationAgentResponseSchema();
 
   try {
     const raw = await base44.integrations.Core.InvokeLLM({
       prompt,
       model: PATIENT_CONVERSATION_MODEL,
       add_context_from_internet: false,
-      response_json_schema: getPatientConversationAgentResponseSchema(),
+      response_json_schema: responseSchema,
     });
     const prohibitedOutputViolations = detectProhibitedPatientConversationOutput(raw);
     if (prohibitedOutputViolations.length > 0) {
       const invalid = attachRuntimeMetadata(attachEvaluationCorrelation(
-        prohibitedOutputEnvelope(prohibitedOutputViolations),
+        invalidModelOutputEnvelope('prohibited_model_output', {
+          prohibited_output_violations: prohibitedOutputViolations,
+        }),
         evaluationCaseId,
         evaluationAttempt,
       ), Date.now() - startedAt);
       emitShadowSummary(invalid);
       return invalid;
     }
-    const completed = attachRuntimeMetadata(attachEvaluationCorrelation(applyRuntimePolicy(buildPatientConversationShadowEnvelope({
+
+    const schemaViolations = validatePatientConversationModelResponse(raw, responseSchema);
+    if (schemaViolations.length > 0) {
+      const invalid = attachRuntimeMetadata(attachEvaluationCorrelation(
+        invalidModelOutputEnvelope('invalid_model_output_shape', {
+          schema_violations: schemaViolations,
+        }),
+        evaluationCaseId,
+        evaluationAttempt,
+      ), Date.now() - startedAt);
+      emitShadowSummary(invalid);
+      return invalid;
+    }
+
+    const builtEnvelope = buildPatientConversationShadowEnvelope({
       status: 'completed',
       raw,
       conversation,
-    }), runtimeContext), evaluationCaseId, evaluationAttempt), Date.now() - startedAt);
+    });
+    const noncanonicalOutputCount = Number(builtEnvelope?.diagnostics?.rejected_service_count || 0)
+      + Number(builtEnvelope?.diagnostics?.rejected_provider_type_count || 0);
+    if (noncanonicalOutputCount > 0) {
+      const invalid = attachRuntimeMetadata(attachEvaluationCorrelation(
+        invalidModelOutputEnvelope('noncanonical_model_output', {
+          noncanonical_output_count: noncanonicalOutputCount,
+          rejected_service_count: builtEnvelope?.diagnostics?.rejected_service_count || 0,
+          rejected_provider_type_count: builtEnvelope?.diagnostics?.rejected_provider_type_count || 0,
+        }),
+        evaluationCaseId,
+        evaluationAttempt,
+      ), Date.now() - startedAt);
+      emitShadowSummary(invalid);
+      return invalid;
+    }
+
+    const completed = attachRuntimeMetadata(attachEvaluationCorrelation(
+      applyRuntimePolicy(builtEnvelope, runtimeContext),
+      evaluationCaseId,
+      evaluationAttempt,
+    ), Date.now() - startedAt);
     emitShadowSummary(completed);
     return completed;
   } catch (_error) {
