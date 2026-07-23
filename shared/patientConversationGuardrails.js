@@ -143,7 +143,7 @@ function validateSchemaNode(value, schema, path, violations, depth = 0) {
   }
 }
 
-function generatedOutputText(value) {
+function generatedOutputStrings(value) {
   const strings = [];
   const visited = new WeakSet();
 
@@ -168,7 +168,7 @@ function generatedOutputText(value) {
   }
 
   collect(value);
-  return strings.join("\n");
+  return strings;
 }
 
 export function redactPatientConversationText(value, maxLength = 1200) {
@@ -243,14 +243,14 @@ export function detectProhibitedPatientConversationOutput(value) {
 
   visit(value);
 
-  const generatedText = generatedOutputText(value);
-  if (RANKING_OR_PROVIDER_RECOMMENDATION_PATTERN.test(generatedText)) {
+  const generatedStrings = generatedOutputStrings(value);
+  if (generatedStrings.some((text) => RANKING_OR_PROVIDER_RECOMMENDATION_PATTERN.test(text))) {
     violations.add("ranking_or_provider_recommendation_claim");
   }
-  if (DIAGNOSIS_CLAIM_PATTERN.test(generatedText)) {
+  if (generatedStrings.some((text) => DIAGNOSIS_CLAIM_PATTERN.test(text))) {
     violations.add("diagnosis_claim");
   }
-  if (TREATMENT_DIRECTIVE_PATTERN.test(generatedText)) {
+  if (generatedStrings.some((text) => TREATMENT_DIRECTIVE_PATTERN.test(text))) {
     violations.add("treatment_directive");
   }
 
