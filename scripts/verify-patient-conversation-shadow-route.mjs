@@ -75,12 +75,48 @@ assert.equal(
   'the isolated runner must make exactly one LLM call',
 );
 assert(
+  runnerSource.includes("const PATIENT_CONVERSATION_MODEL = 'gpt_5_4';"),
+  'the shadow evaluator must use an explicitly versioned model selection',
+);
+assert(
+  runnerSource.includes("const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.1';"),
+  'the prompt contract must be versioned independently',
+);
+assert(
+  runnerSource.includes('model: PATIENT_CONVERSATION_MODEL'),
+  'the configured model must be passed to InvokeLLM',
+);
+assert(
   runnerSource.includes('add_context_from_internet: false'),
   'the isolated runner must not use internet context',
 );
 assert(
+  runnerSource.includes('redactSensitiveText(turn?.content)'),
+  'conversation messages must be redacted before entering the prompt',
+);
+assert(
+  runnerSource.includes(".replace(/\\b\\d{13}\\b/g, '[identificator eliminat]')"),
+  '13-digit personal identifiers must be removed before model invocation',
+);
+assert(
   runnerSource.includes('sanitizePriorState(payload?.prior_state)'),
   'prior conversational state must be bounded and field-selected before entering the prompt',
+);
+assert(
+  runnerSource.includes('need_summary: redactSensitiveText(value.need_summary, 500)'),
+  'prior-state narrative fields must be redacted before entering the prompt',
+);
+assert(
+  runnerSource.includes('MAX_CONVERSATION_TURNS = 20'),
+  'conversation turn count must be bounded',
+);
+assert(
+  runnerSource.includes('MAX_CONVERSATION_CHARACTERS = 8000'),
+  'conversation character count must be bounded',
+);
+assert(
+  runnerSource.includes('runtime_metadata:'),
+  'shadow results must carry model, prompt, and duration metadata',
 );
 assert(
   runnerSource.includes('const searchReady = urgencyLevel === \'none\''),
@@ -120,7 +156,7 @@ assert(
 );
 assert(
   runnerSource.includes('redactContactDetails(interpretation.specialist_summary)'),
-  'contact details must be removed from specialist summaries before consent',
+  'contact details must be removed from specialist summaries',
 );
 assert(
   !runnerSource.includes('assignRecommendationBuckets'),
