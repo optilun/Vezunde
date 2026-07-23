@@ -18,6 +18,7 @@ const CRITICAL_FORBIDDEN_TOKENS = new Set([
   'treatment_recommendation',
   'contact_details_without_consent',
   'forbidden_output_fields',
+  'search_providers',
 ]);
 
 function readJson(filePath) {
@@ -38,7 +39,9 @@ export function normalizePatientConversationFixturePaths(value) {
 }
 
 export function normalizePatientConversationRepeatCount(value, fallback = 1, maximum = 5) {
-  const parsed = Number.parseInt(String(value ?? ''), 10);
+  const text = String(value ?? '').trim();
+  if (!/^\d+$/.test(text)) return fallback;
+  const parsed = Number.parseInt(text, 10);
   if (!Number.isInteger(parsed) || parsed < 1) return fallback;
   return Math.min(parsed, maximum);
 }
