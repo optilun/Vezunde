@@ -62,6 +62,7 @@ function clearAllowed(field, signals) {
   if (["for_whom", "age_group"].includes(field)) return signals.subject_correction_detected;
   if (field === "desired_timing") return signals.timing_correction_detected;
   if (field.startsWith("symptom_")) return signals.symptom_correction_detected;
+  if (field === "user_constraints") return signals.intent_replacement_detected;
   if ([
     "contact_lens_experience",
     "prescription_status",
