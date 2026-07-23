@@ -136,6 +136,22 @@ assert(
   'shadow results must carry model, prompt, duration, and input-limit metadata',
 );
 assert(
+  runnerSource.includes('function evaluationAttemptFromPayload(payload: any)'),
+  'evaluation attempts must be validated separately from patient conversation data',
+);
+assert(
+  runnerSource.includes('evaluation_attempt: evaluationAttempt'),
+  'evaluation attempts must be preserved in the returned envelope',
+);
+const promptBuildStart = runnerSource.indexOf('const prompt = buildPatientConversationAgentPrompt({');
+const modelCallStart = runnerSource.indexOf('const raw = await base44.integrations.Core.InvokeLLM({');
+assert(promptBuildStart >= 0 && modelCallStart > promptBuildStart, 'the prompt and model-call blocks must exist');
+const promptBuildBlock = runnerSource.slice(promptBuildStart, modelCallStart);
+assert(
+  !promptBuildBlock.includes('evaluationAttempt') && !promptBuildBlock.includes('evaluation_attempt'),
+  'evaluation correlation metadata must never enter the model prompt',
+);
+assert(
   runnerSource.includes('detectProhibitedPatientConversationOutput(raw)'),
   'the complete raw model output must be checked before interpretation is built',
 );
@@ -211,4 +227,4 @@ assert(
   'the isolated runner must not load or choose concrete providers',
 );
 
-console.log('Patient conversation admin-only shadow route and fail-closed guardrails verified.');
+console.log('Patient conversation admin-only shadow route, correlation, and fail-closed guardrails verified.');
