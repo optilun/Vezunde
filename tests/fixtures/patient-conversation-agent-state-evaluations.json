@@ -1,6 +1,6 @@
 {
   "contract_version": "viasee-patient-conversation-agent-v1",
-  "fixture_version": "patient-conversation-agent-state-evaluations-v1",
+  "fixture_version": "patient-conversation-agent-state-evaluations-v1.1",
   "language": "ro",
   "purpose": "External state, memory, correction, negation, typo, and intent-switch evaluations. These phrases must never become production intent-routing rules.",
   "cases": [
@@ -57,6 +57,7 @@
         "urgency": "none",
         "must_ask": false,
         "required_facts": { "locality_city": "Iasi" },
+        "forbidden_facts": ["prescription_status", "repair_details"],
         "must_not": ["retain_superseded_eyeglasses_intent"]
       }
     },
@@ -104,6 +105,7 @@
         "urgency": "none",
         "must_ask": true,
         "question_goal": "afla noua localitate fara a reutiliza Timisoara",
+        "forbidden_facts": ["locality_city"],
         "must_not": ["search_providers"]
       }
     },
@@ -132,7 +134,8 @@
         "must_ask": false,
         "required_facts": {
           "locality_city": "Sibiu",
-          "for_whom": "adult"
+          "for_whom": "adult",
+          "age_group": "adult"
         }
       }
     },
@@ -158,7 +161,8 @@
         "next_action": "search_providers",
         "urgency": "none",
         "must_ask": false,
-        "required_facts": { "locality_city": "Arad" }
+        "required_facts": { "locality_city": "Arad" },
+        "forbidden_facts": ["repair_details"]
       }
     },
     {
@@ -193,7 +197,8 @@
         "must_ask": false,
         "required_facts": {
           "locality_city": "Sibiu",
-          "for_whom": "adult"
+          "for_whom": "adult",
+          "age_group": "adult"
         }
       }
     },
@@ -206,7 +211,8 @@
         "service_keys": ["ophthalmology_consultation"],
         "facts": {
           "symptom_onset": "azi, brusc",
-          "symptom_duration": "de azi"
+          "symptom_duration": "de azi",
+          "symptom_pattern": "scadere brusca"
         },
         "urgency": {
           "level": "possible",
@@ -228,6 +234,7 @@
           "locality_city": "Oradea",
           "duration": "cateva luni"
         },
+        "forbidden_facts": ["symptom_onset", "symptom_pattern"],
         "must_not": ["show_emergency_guidance"]
       }
     },
