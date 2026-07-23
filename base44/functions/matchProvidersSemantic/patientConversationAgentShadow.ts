@@ -12,6 +12,7 @@ import {
   sanitizePatientConversationTurns,
   validatePatientConversationModelResponse,
 } from '../../shared/patientConversationGuardrails.js';
+import { reconcilePatientConversationState } from '../../shared/patientConversationStatePolicy.js';
 
 const PATIENT_CONVERSATION_SHADOW_EVENT = 'patient_conversation_agent_shadow_summary';
 const PATIENT_CONVERSATION_MODEL = 'gpt_5_4';
@@ -189,6 +190,23 @@ function invalidModelOutputEnvelope(reason: string, diagnostics: Record<string, 
   };
 }
 
+function applyConversationStatePolicy(envelope: any, priorState: any, conversation: any[]) {
+  if (!envelope?.interpretation) return envelope;
+  const reconciled = reconcilePatientConversationState({
+    interpretation: envelope.interpretation,
+    priorState,
+    conversation,
+  });
+  return {
+    ...envelope,
+    interpretation: reconciled.interpretation,
+    diagnostics: {
+      ...(envelope.diagnostics || {}),
+      state_policy: reconciled.diagnostics,
+    },
+  };
+}
+
 function applyRuntimePolicy(envelope: any, runtimeContext: any) {
   if (!envelope?.interpretation) return envelope;
 
@@ -206,8 +224,13 @@ function applyRuntimePolicy(envelope: any, runtimeContext: any) {
       ],
     },
   };
+  const localityWasCleared = envelope?.diagnostics?.state_policy?.locality_correction_detected === true
+    && Array.isArray(envelope?.diagnostics?.state_policy?.cleared_stale_fields)
+    && envelope.diagnostics.state_policy.cleared_stale_fields.includes('locality');
 
-  if (!hasLocality(interpretation.facts.locality) && hasLocality(runtimeContext.known_locality)) {
+  if (!localityWasCleared
+    && !hasLocality(interpretation.facts.locality)
+    && hasLocality(runtimeContext.known_locality)) {
     interpretation.facts.locality = { ...runtimeContext.known_locality };
   }
 
@@ -281,6 +304,13 @@ function emitShadowSummary(envelope: any) {
       ? envelope.diagnostics.schema_violations.length
       : 0,
     noncanonical_output_count: Number(envelope?.diagnostics?.noncanonical_output_count) || 0,
+    state_transition: envelope?.diagnostics?.state_policy?.transition || null,
+    state_carried_field_count: Array.isArray(envelope?.diagnostics?.state_policy?.carried_fields)
+      ? envelope.diagnostics.state_policy.carried_fields.length
+      : 0,
+    state_cleared_stale_field_count: Array.isArray(envelope?.diagnostics?.state_policy?.cleared_stale_fields)
+      ? envelope.diagnostics.state_policy.cleared_stale_fields.length
+      : 0,
     primary_intent: interpretation?.primary_intent || 'unknown',
     care_path_count: Array.isArray(interpretation?.care_path_candidates)
       ? interpretation.care_path_candidates.length
@@ -313,9 +343,10 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
   }
 
   const runtimeContext = runtimeContextFromPayload(payload);
+  const priorState = sanitizePriorState(payload?.prior_state);
   const prompt = buildPatientConversationAgentPrompt({
     conversation,
-    priorState: sanitizePriorState(payload?.prior_state),
+    priorState,
     runtimeContext,
   });
   const responseSchema = getPatientConversationAgentResponseSchema();
@@ -374,8 +405,9 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
       return invalid;
     }
 
+    const stateEnvelope = applyConversationStatePolicy(builtEnvelope, priorState, conversation);
     const completed = attachRuntimeMetadata(attachEvaluationCorrelation(
-      applyRuntimePolicy(builtEnvelope, runtimeContext),
+      applyRuntimePolicy(stateEnvelope, runtimeContext),
       evaluationCaseId,
       evaluationAttempt,
     ), Date.now() - startedAt);
