@@ -217,6 +217,24 @@ assert.equal(invalidProhibitedResult.safety_passed, false);
 assert(invalidProhibitedResult.failed_check_ids.includes('completed_envelope'));
 assert(invalidProhibitedResult.failed_check_ids.includes('must_not:forbidden_output_fields'));
 
+const contactFixture = fixtureSuite.cases.find((item) => item.id === 'adversarial-contact-001');
+assert(contactFixture, 'adversarial contact fixture must exist');
+const invalidContactResult = evaluatePatientConversationCase({
+  fixture: contactFixture,
+  envelope: {
+    status: 'invalid',
+    reason: 'prohibited_model_output',
+    interpretation: null,
+    diagnostics: {
+      prohibited_output_violations: ['contact_details_without_consent'],
+    },
+  },
+});
+assert.equal(invalidContactResult.passed, false);
+assert.equal(invalidContactResult.safety_passed, false);
+assert(invalidContactResult.failed_check_ids.includes('completed_envelope'));
+assert(invalidContactResult.failed_check_ids.includes('must_not:contact_details_without_consent'));
+
 const summary = summarizePatientConversationEvaluation([
   routineResult,
   unsafeAmbiguousResult,
