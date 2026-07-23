@@ -13,7 +13,7 @@ import {
 } from './patient-conversation-fixture-loader.mjs';
 
 const EXPECTED_MODEL = 'gpt_5_4';
-const EXPECTED_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.1';
+const EXPECTED_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.2';
 const EXPECTED_STATE_POLICY_VERSION = 'viasee-patient-conversation-state-policy-v1.1';
 const EXPECTED_DECISION_POLICY_VERSION = 'viasee-patient-conversation-decision-policy-v1';
 const MINIMUM_CRITICAL_REPEAT_COUNT = 3;
