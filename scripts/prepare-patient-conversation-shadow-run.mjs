@@ -7,6 +7,9 @@ import {
   normalizePatientConversationRepeatCount,
   patientConversationFixtureAttemptCount,
 } from './patient-conversation-fixture-loader.mjs';
+import {
+  assertPatientConversationFixtureContract,
+} from './patient-conversation-fixture-contract.mjs';
 
 const CONTRACT_VERSION = 'viasee-patient-conversation-agent-v1';
 const DEFAULT_OUTPUT_PATH = 'tmp/patient-conversation-shadow-run.json';
@@ -108,6 +111,7 @@ const options = parseArgs(process.argv.slice(2));
 const fixtureSuite = loadPatientConversationFixtures(
   options.fixturePaths.length > 0 ? options.fixturePaths : undefined,
 );
+assertPatientConversationFixtureContract(fixtureSuite.cases);
 const fixtures = fixtureSuite.cases;
 
 if (options.caseIds.length === 0) {
