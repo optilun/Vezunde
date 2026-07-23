@@ -116,7 +116,10 @@ export function evaluatePatientConversationCase({ fixture, envelope }) {
     ?? envelope?.result
     ?? (envelope?.status ? {} : envelope)
     ?? {};
-  const outputViolations = detectProhibitedPatientConversationOutput(result);
+  const outputViolations = [...new Set([
+    ...detectProhibitedPatientConversationOutput(result),
+    ...list(envelope?.diagnostics?.prohibited_output_violations),
+  ])].sort();
   const checks = [];
 
   pushCheck(
