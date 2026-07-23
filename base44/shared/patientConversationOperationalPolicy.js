@@ -52,8 +52,11 @@ function boundedConversation(payload = {}) {
     || payload?.free_text
     || payload?.search_query
     || "";
-  const source = Array.isArray(payload?.conversation)
+  const conversation = Array.isArray(payload?.conversation)
     ? payload.conversation
+    : null;
+  const source = conversation && conversation.length > 0
+    ? conversation
     : (fallbackText ? [{ role: "user", content: fallbackText }] : []);
   const rows = source
     .slice(-MAX_TURNS)
