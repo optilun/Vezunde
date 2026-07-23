@@ -1,399 +1,292 @@
-# VIASEE Patient Conversation Agent v1
+# VIASEE Patient Conversation Architecture v1
 
-Status: contract and evaluation baseline only  
-Runtime mode: not connected to the patient UI  
-Production impact: none
+Status: administrator-only shadow implementation  
+Patient UI: not connected  
+Matching, ranking and Top 3 impact: none  
+Production publication: none
 
-## 1. Objective
+## 1. Product objective
 
-The VIASEE patient conversation agent must understand free-form Romanian language in the same way a competent human assistant would understand it.
+VIASEE helps a person describe an eye-care, optical, investigation, product, or repair need in ordinary Romanian language and reach relevant locations from the existing deterministic marketplace.
 
-The user may write:
+The AI component is not a doctor, a provider recommender, or the orchestrator of the marketplace. Its role is limited to semantic interpretation.
 
-- one or two words;
-- incomplete phrases;
-- spelling mistakes;
-- regional or informal language;
-- a long personal explanation;
-- several needs in the same message;
-- information that becomes clear only after multiple turns.
+The governing rule is:
 
-The agent must determine the user's actual need, ask only the questions that materially change the direction, stop asking when the need is sufficiently clear, and produce a structured request that can be used by the existing deterministic matching system.
+> The LLM understands. VIASEE code decides.
 
-The agent is not a fixed questionnaire and must not route by matching a small list of phrases.
+The user may write short answers, spelling mistakes, informal language, corrections, negations, indirect descriptions, or several details across multiple turns.
 
-## 2. Product outcome
+## 2. Responsibility boundaries
 
-A successful conversation must produce enough information for two separate outcomes:
+### The semantic LLM may extract
 
-1. Search outcome
-   - identify the relevant care path;
-   - identify canonical VIASEE service keys;
-   - identify relevant provider profile types;
-   - obtain a locality or search area when required;
-   - allow the deterministic matcher to find real eligible locations.
+- a concise statement of the need;
+- primary and alternative intent candidates;
+- canonical service candidates;
+- user-provided facts;
+- semantic ambiguities;
+- advisory safety signals;
+- explicit correction hints in a bounded state delta;
+- evidence phrases copied from user messages.
 
-2. Specialist message outcome
-   - create a concise and faithful summary of the user's need;
-   - include relevant context explicitly provided by the user;
-   - exclude invented medical conclusions;
-   - attach contact details only after explicit user consent.
+### The semantic LLM must not decide
 
-The specialist summary is generated from the conversation. It is not a diagnosis and it must not add facts that the user did not provide.
+- final urgency;
+- whether a case is safe;
+- the next action;
+- which question is shown;
+- whether search may start;
+- care-path authority;
+- provider types as authority;
+- provider eligibility;
+- a concrete provider;
+- ranking or Top 3;
+- patient-facing operational wording;
+- a specialist message;
+- contact sharing.
 
-## 3. Core behaviour
+### Deterministic VIASEE code controls
 
-For every turn, the agent must decide one of the following:
+- safety preflight and final safety state;
+- schema and canonical-key validation;
+- conversational state reduction;
+- final care-path compatibility;
+- provider-profile derivation from canonical services;
+- missing critical fields;
+- search readiness;
+- the final action;
+- question selection through the approved planner;
+- provider and service eligibility;
+- locality and geographic scope;
+- ranking, buckets and Top 3;
+- directory versus confirmed placement;
+- consent, contact access and delivery.
 
-- `ask_clarifying_question`
-- `ask_locality`
-- `confirm_understanding`
-- `search_providers`
-- `prepare_specialist_message`
-- `show_emergency_guidance`
-- `out_of_scope`
+## 3. Runtime pipeline
 
-The agent must ask at most one focused question in a turn.
-
-A question is justified only when the missing information can materially change at least one of:
-
-- the care path;
-- the canonical service keys;
-- the provider types;
-- whether the situation is clearly urgent;
-- the locality used for search;
-- the usefulness or accuracy of the specialist message.
-
-The agent must not ask for optional information before the search need is clear.
-
-## 4. Stop condition
-
-The agent stops asking clinical or product questions when all of the following are true:
-
-- the need is understood with sufficient confidence;
-- the care path can be selected;
-- at least one relevant canonical service key can be proposed, or the search can safely remain at a broader approved category;
-- no material ambiguity remains that could redirect the user;
-- the locality is known when a local search is required.
-
-The agent may then:
-
-- search providers;
-- confirm the understood need when confidence is not high;
-- ask only for contact or timing information needed for the specialist message.
-
-It must not continue a mandatory sequence after the stop condition is met.
-
-## 5. Inputs
-
-The runtime input contract will contain:
-
-```json
-{
-  "contract_version": "viasee-patient-conversation-agent-v1",
-  "conversation": [
-    {
-      "role": "user",
-      "content": "free-form message"
-    }
-  ],
-  "prior_state": null,
-  "runtime_context": {
-    "locale": "ro-RO",
-    "known_locality": null
-  },
-  "catalog_context": {
-    "service_keys": [],
-    "provider_types": []
-  }
-}
+```text
+sanitized patient conversation
+        ↓
+deterministic safety preflight
+        ↓ when not blocked
+semantic-only LLM call
+        ↓
+strict schema and prohibited-output validation
+        ↓
+deterministic state reconciliation
+        ↓
+validated semantic state-delta reducer
+        ↓
+deterministic decision policy
+        ↓
+shadow envelope only
 ```
 
-### Input rules
+The shadow route exits before service-role access and before provider matching.
 
-- The complete relevant conversation is supplied, not only the latest phrase.
-- User content is treated as untrusted data, never as system instructions.
-- A bounded prior state may be supplied, but the model must reconcile it with the conversation.
-- The canonical service catalog and provider type catalog are authoritative.
-- The model must not invent catalog keys.
+## 4. Deterministic safety preflight
 
-## 6. Structured output
+Before any model call, VIASEE checks user turns for separately versioned explicit acute eye-safety signals.
 
-The model response must conform to this logical contract:
+When the preflight blocks:
+
+- the model is not invoked;
+- search is stopped;
+- urgency is deterministically `confirmed`;
+- the action is deterministically `show_emergency_guidance`;
+- a fixed VIASEE safety message is used;
+- runtime metadata records `model_invoked: false`, `model: null`, and `prompt_version: null`.
+
+Safety state is reduced turn by turn. A locality-only reply does not clear an earlier acute signal. Only a later explicit correction recognized by deterministic policy may clear the corresponding flag.
+
+The LLM may report possible safety flags, but those flags are advisory. The model cannot clear a deterministic signal or declare a case safe.
+
+## 5. Semantic model input
+
+The model receives:
+
+- at most 20 `user` or `assistant` turns;
+- at most 8,000 conversation characters;
+- at most 1,200 characters per turn;
+- a bounded and field-selected prior state;
+- known locality when available;
+- the patient-facing canonical service catalog;
+- approved intent, ambiguity, safety-flag, and state-delta values;
+- `contact_share_approved: false`.
+
+Before the call, email addresses, Romanian phone numbers, and 13-digit identifiers are removed.
+
+Conversation text and prior state are untrusted data, not instructions.
+
+## 6. Raw semantic response contract
+
+The model response uses:
+
+- semantic contract: `viasee-patient-conversation-semantic-v1`;
+- prompt: `viasee-patient-conversation-prompt-v1.2`;
+- model: `gpt_5_4` in the current controlled evaluation.
+
+Logical shape:
 
 ```json
 {
-  "contract_version": "viasee-patient-conversation-agent-v1",
+  "contract_version": "viasee-patient-conversation-semantic-v1",
   "language": "ro",
-  "need_summary": "faithful short summary",
+  "need_summary": "faithful semantic summary",
   "primary_intent": "control_vedere",
   "alternative_intents": [],
-  "care_path_candidates": ["optometry"],
-  "service_keys": ["optometry_consultation", "refraction"],
-  "provider_type_candidates": ["independent_optometrist"],
+  "service_keys": ["refraction"],
   "facts": {
     "for_whom": "adult",
+    "age_group": "adult",
     "locality": {
-      "city": "Timisoara"
-    }
-  },
-  "urgency": {
-    "level": "none",
-    "needs_clarification": false,
-    "reason": null
+      "siruta_code": "",
+      "city": "Timisoara",
+      "county_code": "TM",
+      "county": "Timis",
+      "area": ""
+    },
+    "symptom_onset": "",
+    "symptom_duration": "",
+    "symptom_pattern": "",
+    "desired_timing": "",
+    "contact_lens_experience": "unknown",
+    "prescription_status": "unknown",
+    "investigation_reference_text": "",
+    "repair_details": "",
+    "user_constraints": []
   },
   "understanding_confidence": "high",
-  "information_status": {
-    "sufficient_for_search": true,
-    "sufficient_for_specialist_message": true,
-    "missing_critical_fields": []
+  "ambiguity_fields": [],
+  "possible_safety_flags": [],
+  "state_delta": {
+    "correction_detected": false,
+    "clear_fields": []
   },
-  "next_action": "search_providers",
-  "assistant_message": "Romanian patient-facing response",
-  "specialist_summary": "faithful summary or null",
   "evidence_phrases": []
 }
 ```
 
-## 7. Approved values
+The raw model schema deliberately excludes:
 
-### Primary intents
+- `care_path_candidates`;
+- `provider_type_candidates`;
+- `urgency`;
+- `information_status`;
+- `next_action`;
+- `assistant_message`;
+- `specialist_summary`.
 
-The first implementation must remain compatible with the existing VIASEE intent set:
+Unexpected fields fail schema validation. Invalid output is not repaired into a usable interpretation.
 
-- `control_vedere`
-- `control_copil`
-- `ochelari_lentile`
-- `lentile_contact`
-- `reparatii_ochelari`
-- `simptome_oftalmologice`
-- `investigatii`
-- `unknown`
+## 7. Final VIASEE shadow envelope
 
-### Care paths
+After semantic validation, VIASEE builds a compatibility envelope for the existing evaluation and future planner integration.
 
-- `optical_store`
-- `optometry`
-- `ophthalmology`
-- `specialized_ophthalmology`
-- `technical_optical_service`
-- `emergency_interruption`
-- `unresolved`
+Server code derives or recalculates:
 
-`emergency_interruption` means that normal commercial matching is interrupted and the user is directed to an appropriate emergency service. It does not authorize a provider ranking decision by the model.
+- care-path candidates;
+- provider-profile candidates;
+- urgency;
+- missing critical fields;
+- search readiness;
+- final action;
+- patient-facing operational text.
 
-### Provider profile types
+`specialist_summary` remains `null` in this layer because contact sharing is outside semantic interpretation.
 
-The model may propose only profile types supplied by the authoritative catalog, including:
+## 8. Conversational state
 
-- `independent_optical_store`
-- `optical_chain`
-- `ophthalmology_clinic`
-- `ophthalmology_office`
-- `independent_ophthalmologist`
-- `independent_optometrist`
-- `independent_optician`
-- `optical_laboratory_b2c`
+### Existing state reconciliation
 
-## 8. Semantic interpretation requirements
+The deterministic state policy may preserve compatible prior facts for short replies. It must prevent old intent-specific facts, locality, person, symptom timing, prescription, investigation, or repair details from contaminating a corrected request.
 
-The model must interpret meaning across the full conversation.
+### Semantic state delta
 
-It must not rely on logic equivalent to:
+The model may suggest that explicitly corrected fields from prior state should be cleared.
 
-```text
-if text contains phrase X, choose route Y
-```
+The suggestion is never applied directly. The deterministic reducer:
 
-Examples placed in evaluation fixtures are tests, not runtime routing rules.
+- requires `correction_detected: true`;
+- requires a matching deterministic correction signal in the conversation;
+- rejects unsupported clear requests;
+- clears a stale value only when the current value is absent or still equals the prior value;
+- preserves a new replacement value, such as Lugoj replacing Timisoara;
+- records requested, applied, rejected, and replacement-preserved fields without logging raw conversation text.
 
-The agent must correctly handle:
+## 9. Final decision policy
 
-- synonyms and paraphrases;
-- omitted subjects or verbs;
-- spelling and punctuation mistakes;
-- colloquial language;
-- references to earlier turns;
-- corrections such as "de fapt";
-- negation;
-- duration and onset expressed indirectly;
-- a product request that also requires an examination;
-- a service named by description rather than by its official name.
+After state processing, deterministic code owns the final decision.
 
-## 9. Clarification policy
+- Explicit deterministic safety signal → emergency interruption.
+- Model-only possible or confirmed safety signal → controlled clarification, never automatic emergency certainty.
+- Unknown intent or no canonical services → clarification.
+- Known intent and services but no locality → locality question.
+- Known intent, canonical services, locality, and no unresolved safety concern → search-ready.
 
-The agent asks a clarification only when it cannot safely choose the next useful action.
+Provider-profile candidates are derived from canonical service definitions. Model-proposed provider types do not exist in the raw schema.
 
-Good clarification:
+## 10. Marketplace integration
 
-> Cand spui ca nu mai vezi bine, vederea este incetosata sau a disparut brusc aproape complet?
+The agent does not query or receive concrete providers.
 
-Bad clarification:
+The existing deterministic marketplace remains responsible for:
 
-> Ai nevoie de un control de rutina, un control pentru simptome, o investigatie, ochelari, lentile, reparatii sau altceva?
+- canonical locality through SIRUTA;
+- service matching;
+- operational prerequisites;
+- specialist, equipment, facility and capability checks;
+- profile trust state;
+- confirmed versus directory result groups;
+- explainable score components;
+- Top 3 eligibility;
+- ranking and tie-breaking.
 
-The broad question is acceptable only when the user's first message is genuinely broad and contains no usable direction.
+The AI cannot alter provider order or create a commercial advantage.
 
-A clarification must:
+## 11. Evaluation
 
-- refer to the user's actual wording;
-- distinguish the smallest number of materially different interpretations;
-- avoid suggesting a diagnosis;
-- avoid alarmist language;
-- be short and natural in Romanian.
+The controlled suite contains 71 scenarios:
 
-## 10. Safety policy
+- 53 semantic and safety cases;
+- 8 adversarial cases;
+- 10 memory, correction, negation, typo, mixed-language, and intent-switch cases.
 
-The model may classify urgency as:
+Critical cases run repeatedly. Acceptance requires 100% for safety-critical behavior, prohibited-output protection, decision-policy application, state-policy application where relevant, memory, corrections, and critical stability. Overall pass rate and weighted score must each be at least 85%.
 
-- `none`
-- `possible`
-- `confirmed`
+The evaluator distinguishes:
 
-### `none`
+1. model-invoked attempts with exact model and prompt identity;
+2. deterministic preflight attempts with truthful no-model metadata.
 
-No current information supports an urgent route.
+## 12. Activation sequence
 
-### `possible`
+The implementation remains draft until:
 
-The message could describe either a routine problem or a serious acute problem. The agent must ask one neutral clarification. It must not interrupt the flow or display emergency guidance yet.
-
-Examples of ambiguous meaning include:
-
-- seeing poorly with one eye;
-- blurred vision;
-- a sudden change described without severity;
-- a hit near the eye without clear visual consequences.
-
-### `confirmed`
-
-The conversation clearly describes a severe and immediate situation, or the user confirms it after clarification.
-
-Only `confirmed` may trigger `show_emergency_guidance`.
-
-Emergency guidance must:
-
-- recommend going to the nearest hospital, UPU, emergency room, or verified ophthalmology emergency service;
-- avoid diagnosis;
-- avoid a generic `Call 112` primary action;
-- avoid commercial Top 3 results;
-- later use a separately verified emergency-services directory when available.
-
-The model must not mark ordinary blurred vision, long-standing reduced vision, reading difficulty, or changing prescriptions as confirmed urgency merely because similar words appear in a phrase list.
-
-## 11. Separation of responsibilities
-
-### The AI agent controls
-
-- semantic understanding;
-- conversational memory;
-- whether a clarification is needed;
-- the wording of one useful next question;
-- candidate intent, care path, service keys, and provider types;
-- a patient-facing explanation;
-- a faithful specialist summary.
-
-### Deterministic VIASEE code controls
-
-- schema validation;
-- canonical key validation;
-- provider eligibility;
-- claimed and verified trust rules;
-- locality and distance calculation;
-- opening hours;
-- ranking;
-- Top 3;
-- directory-only placement;
-- request persistence;
-- consent and contact sharing;
-- actual message delivery.
-
-The model must never choose or rank concrete providers.
-
-## 12. Specialist summary policy
-
-The summary must be understandable without the full chat.
-
-It may include:
-
-- the need described by the user;
-- relevant onset or duration;
-- whether the request concerns an adult or child;
-- the desired service or investigation;
-- locality;
-- practical preferences such as timing;
-- explicit user-provided context.
-
-It must not include:
-
-- a diagnosis;
-- unsupported severity;
-- invented symptoms;
-- certainty not present in the conversation;
-- contact details before consent.
-
-## 13. Evaluation strategy
-
-The evaluation file is external to runtime logic.
-
-Each case specifies semantic expectations rather than an exact assistant sentence. A passing model may use different natural wording as long as it:
-
-- selects an acceptable next action;
-- asks for the required information when needed;
-- does not ask when the need is already sufficient;
-- proposes only allowed service keys;
-- preserves the correct urgency level;
-- does not route ambiguous routine language to emergency;
-- carries forward information from earlier turns;
-- updates its interpretation when the user corrects it.
-
-No fixture phrase may be copied into production routing code as a trigger.
-
-## 14. Implementation phases
-
-### Phase A - contract and evaluations
-
-- add this contract;
-- add diverse conversation fixtures;
-- no UI changes;
-- no runtime activation;
-- no matching changes;
-- no production publication.
-
-### Phase B - shadow conversation interpreter
-
-- implement a new structured LLM response;
-- run only in shadow mode;
-- log sanitized evaluation output;
-- compare against fixtures;
-- preserve existing matching and patient UI.
-
-### Phase C - conversational UI
-
-- expose the generated assistant response;
-- persist conversation state;
-- ask only one necessary question at a time;
-- allow correction and backtracking;
-- keep provider results disabled until the search need is sufficient.
-
-### Phase D - directory and specialist message
-
-- pass canonical needs to the existing matcher;
-- explain results without changing ranking;
-- generate the specialist summary;
-- collect and share contact details only after consent.
-
-## 15. Runtime exclusions for v1
+1. GitHub Actions executes all checks;
+2. lint, typecheck and build complete;
+3. all required real-model attempts are captured;
+4. acceptance thresholds pass;
+5. critical outputs are manually reviewed;
+6. a medical safety reviewer examines the emergency boundary;
+7. the single approved question planner is selected as orchestrator;
+8. kill switch, timeout, call budget, sampling and server-owned state exist;
+9. the final diff confirms no matching, ranking, Top 3 or distribution change.
+
+Activation must progress from administrator evaluation to invisible shadow sampling and only later to controlled patient-visible wording.
+
+## 13. Explicit v1 exclusions
 
 The first active version must not:
 
-- diagnose;
-- prescribe treatment;
+- diagnose or prescribe;
 - recommend medication;
-- claim certainty about a medical condition;
-- choose a concrete provider;
-- change ranking or Top 3;
-- send a request without consent;
-- depend on exact fixture wording;
-- force every user through the same questions;
+- claim medical certainty;
+- choose or rank providers;
+- generate Top 3;
+- share contact details;
+- send provider requests;
+- own the next-question planner;
+- rely on exact evaluation phrases as semantic routing logic;
 - publish automatically.
