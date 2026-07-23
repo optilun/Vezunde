@@ -165,6 +165,20 @@ assert.equal(patientEnvelope.reason, 'patient_conversation_rollout_disabled');
 assert.equal(patientEnvelope.interpretation, null);
 assert.equal(patientEnvelope.operational_metadata.sample_rate_basis_points, 0);
 
+const fallbackText = 'Control in Timisoara.';
+const fallbackState = createPatientConversationOperationalController({
+  conversation: [],
+  search_text: fallbackText,
+}).snapshot().server_state;
+const explicitState = createPatientConversationOperationalController({
+  conversation: [{ role: 'user', content: fallbackText }],
+}).snapshot().server_state;
+assert.equal(fallbackState.turn_count, 1);
+assert.equal(fallbackState.user_turn_count, 1);
+assert.equal(fallbackState.assistant_turn_count, 0);
+assert.equal(fallbackState.character_count, fallbackText.length);
+assert.equal(fallbackState.request_state_id, explicitState.request_state_id);
+
 const stableA = createPatientConversationOperationalController({
   conversation: [{ role: 'user', content: 'Control in Timisoara.' }],
 }).snapshot().server_state.request_state_id;
