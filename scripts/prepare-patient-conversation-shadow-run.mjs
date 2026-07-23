@@ -68,6 +68,10 @@ function responseEnvelope(payload) {
   return payload;
 }
 
+function isCapturedAttempt(value) {
+  return Boolean(value?.status) && value.status !== 'pending';
+}
+
 function normalizeExistingCaseOutput(value, expectedAttempts, critical) {
   const attempts = value?.attempts && typeof value.attempts === 'object' && !Array.isArray(value.attempts)
     ? { ...value.attempts }
@@ -178,12 +182,13 @@ for (const responseFile of options.responseFiles) {
 }
 
 const pendingAttempts = [];
-let completedAttempts = 0;
+let capturedAttempts = 0;
 for (const caseId of selectedCaseIds) {
   const expectedAttempts = expectedAttemptCountByCase.get(caseId);
   for (let attempt = 1; attempt <= expectedAttempts; attempt += 1) {
-    if (outputs[caseId]?.attempts?.[String(attempt)]?.status === 'completed') {
-      completedAttempts += 1;
+    const captured = outputs[caseId]?.attempts?.[String(attempt)];
+    if (isCapturedAttempt(captured)) {
+      capturedAttempts += 1;
     } else {
       pendingAttempts.push(`${caseId}#${attempt}`);
     }
@@ -237,7 +242,7 @@ console.log(JSON.stringify({
   selected_cases: selectedCaseIds,
   default_repeat_count: options.defaultRepeat,
   critical_repeat_count: options.criticalRepeat,
-  completed_attempts: completedAttempts,
+  captured_attempts: capturedAttempts,
   pending_attempts: pendingAttempts,
   capture_file: options.outputPath,
   requests,
