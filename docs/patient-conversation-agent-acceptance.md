@@ -4,7 +4,7 @@
 
 The implementation is an administrator-only, unpublished shadow route.
 
-It is not connected to the patient UI. It does not call provider matching, rank providers, create Top 3, distribute requests, or modify production behavior.
+It is not connected to the patient UI. It does not call provider matching, rank providers, create Top 3, distribute requests or modify production behavior.
 
 The model is a semantic interpreter only. Deterministic VIASEE policies own safety, state, care-path compatibility, provider-profile derivation, search readiness, final action and patient-facing operational wording.
 
@@ -19,7 +19,7 @@ Required identity:
 - model: `gpt_5_4`;
 - prompt: `viasee-patient-conversation-prompt-v1.2`;
 - decision policy: `viasee-patient-conversation-decision-policy-v1`;
-- state policy: `viasee-patient-conversation-state-policy-v1.1` when prior state exists;
+- state policy: `viasee-patient-conversation-state-policy-v1.1` when evaluation prior state exists;
 - state-delta reducer: `viasee-patient-conversation-state-delta-reducer-v1` when a semantic correction is processed.
 
 Runtime metadata must record `model_invoked: true` and the exact model and prompt versions.
@@ -29,8 +29,7 @@ Runtime metadata must record `model_invoked: true` and the exact model and promp
 When explicit deterministic safety rules block before the model call:
 
 - `model_invoked` must be `false`;
-- `model` must be `null`;
-- `prompt_version` must be `null`;
+- `model` and `prompt_version` must be `null`;
 - decision policy must be present;
 - urgency must be `confirmed`;
 - final action must be `show_emergency_guidance`;
@@ -38,7 +37,13 @@ When explicit deterministic safety rules block before the model call:
 
 A preflight response that claims a model was used fails acceptance.
 
-## Privacy boundary
+### Empty or terminal paths
+
+A request without a user message must stop before the semantic core and report truthful no-model identity. It may not satisfy the completed-attempt threshold.
+
+Timeout, unavailable, invalid, skipped or pending attempts remain in the capture and fail the 100% completed-attempt requirement.
+
+## Privacy and state boundary
 
 Before a model call, the runtime:
 
@@ -46,11 +51,13 @@ Before a model call, the runtime:
 - keeps at most 20 turns;
 - keeps at most 8,000 conversation characters;
 - keeps at most 1,200 characters per turn;
-- removes email addresses;
-- removes Romanian phone numbers;
-- removes 13-digit identifiers;
-- bounds and field-selects prior state;
-- always supplies `contact_share_approved: false`.
+- removes email addresses, Romanian phone numbers and 13-digit identifiers;
+- always supplies `contact_share_approved: false`;
+- excludes raw patient text and text hashes from aggregate operational metadata.
+
+Normal shadow requests discard browser-provided `prior_state`.
+
+A bounded and field-selected prior state is accepted only for authenticated administrator evaluation fixtures carrying a valid `evaluation_case_id`. This exception exists solely for controlled memory and correction replay. It is not patient state authority or durable server persistence.
 
 Raw patient messages must not be added to aggregate logs.
 
@@ -70,13 +77,10 @@ The model may return only:
 
 The raw schema excludes:
 
-- care paths;
-- provider types;
-- urgency authority;
-- search-readiness authority;
+- care paths and provider types;
+- urgency and search-readiness authority;
 - final action;
-- assistant message;
-- specialist summary;
+- assistant or specialist wording;
 - concrete providers;
 - scores, ranking and Top 3.
 
@@ -97,24 +101,26 @@ The complete raw response is rejected when it contains:
 
 Rejected output returns `status: invalid` and `interpretation: null`. It must not be repaired into a usable interpretation.
 
+Operational timeout, rollout exclusion and call-budget failures also expose no interpretation.
+
 ## Deterministic safety authority
 
 Safety uses separately versioned deterministic rules before and after semantic interpretation.
 
 - Explicit blocking signal → emergency interruption before LLM.
-- A short later answer, such as a locality, does not erase an earlier signal.
+- A short later answer does not erase an earlier signal.
 - Only an explicit deterministic correction may clear the corresponding signal.
 - Model safety flags are advisory only.
-- A model-proposed `confirmed` flag without deterministic support becomes `possible` and requires controlled clarification.
-- A model-proposed `none` cannot clear deterministic safety.
+- Unsupported model emergency certainty becomes `possible` and requires clarification.
+- A model-proposed safe state cannot clear deterministic safety.
 
-The emergency message is fixed by VIASEE and must not contain diagnosis, treatment, commercial results, or generic 112 as the primary action.
+The emergency message is fixed by VIASEE and must not contain diagnosis, treatment, commercial results or generic 112 as the primary action.
 
 ## State and correction authority
 
-### State reconciliation
+### Evaluation state reconciliation
 
-The deterministic state policy may carry compatible prior facts for short answers. It must not reintroduce:
+The deterministic state policy may carry compatible prior facts only for controlled evaluation fixtures. It must not reintroduce:
 
 - a superseded intent;
 - a corrected or cleared locality;
@@ -131,9 +137,11 @@ The deterministic reducer must:
 - require `correction_detected: true`;
 - require a matching correction signal in the conversation;
 - reject unsupported clear requests;
-- clear only a stale or absent value;
-- preserve a new replacement value;
-- expose only aggregate requested/applied/rejected/preserved counts and field names.
+- clear only stale values;
+- preserve new replacement values;
+- expose only field names and aggregate diagnostics.
+
+Durable server-owned patient conversation state remains an activation blocker.
 
 ## Deterministic final decision
 
@@ -147,15 +155,30 @@ After semantic and state processing, server policy recalculates:
 - patient-facing operational wording;
 - specialist-message availability.
 
-The final rules are:
+Rules:
 
 - deterministic acute safety → `show_emergency_guidance`;
 - unresolved safety → `ask_clarifying_question`;
 - unknown intent or no canonical service → `ask_clarifying_question`;
-- sufficient intent and services but no locality → `ask_locality`;
-- sufficient intent, canonical services, locality and no unresolved safety → `search_providers`.
+- sufficient need without locality → `ask_locality`;
+- sufficient need, canonical services, locality and no unresolved safety → `search_providers`.
 
 `specialist_summary` remains `null` in this layer.
+
+## Operational controls under test
+
+The current wrapper must enforce:
+
+- admin-only evaluation rollout;
+- patient-visible rollout disabled and sampled at zero;
+- maximum one model invocation per request;
+- 15-second response deadline;
+- fail-closed timeout and call-budget outcomes;
+- browser prior-state isolation;
+- empty requests stopped before semantic core;
+- request-scoped metadata without raw patient content.
+
+These controls are request-scoped. Per-session and per-user budgets, durable state and true SDK cancellation are not implemented.
 
 ## Evaluation suites
 
@@ -170,14 +193,17 @@ Additional contract tests cover:
 - semantic-only raw schema;
 - rejection of operational model fields;
 - deterministic safety before LLM;
-- false-negative model urgency override;
-- unsupported model emergency downgrade;
+- false-negative urgency override;
+- unsupported emergency downgrade;
 - explicit safety corrections across turns;
 - canonical provider-profile derivation;
 - ignored model action and wording;
 - validated state-delta reduction;
-- preservation of replacement values;
-- truthful no-model preflight identity;
+- replacement-value preservation;
+- truthful no-model identity;
+- browser prior-state isolation;
+- empty-message pre-core stop;
+- wrapper/core separation;
 - shared/Base44 byte parity.
 
 ## Repeat policy
@@ -253,32 +279,35 @@ PR #266 must remain draft until:
 
 1. GitHub Actions executes successfully;
 2. all verification scripts pass;
-3. scoped lint and complete lint pass;
+3. scoped and complete lint pass;
 4. service typecheck and baseline comparison pass;
 5. build completes;
-6. all required real-model and deterministic attempts are captured;
+6. all required model and deterministic attempts are captured;
 7. the acceptance report passes;
 8. critical attempts receive manual review;
 9. a medical safety reviewer examines the emergency boundary;
-10. the final diff confirms no normal matching, ranking, Top 3, distribution or contact change.
+10. PR #265 is confirmed as the only next-question orchestrator;
+11. the final diff confirms no normal matching, ranking, Top 3, distribution or contact change.
 
-## Current blocker
+## Current blockers
 
-GitHub Actions currently reports repository-level `startup_failure` before checkout, with `steps: null` and no executable logs. Static implementation work is not equivalent to passed CI.
+- GitHub Actions reports repository-level `startup_failure` before checkout, with `steps: null` and no executable logs.
+- Base44 sandbox execution is unavailable through the current connection because the required sandbox scope is not granted.
+- Durable server-owned session state and per-session/per-user budgets do not exist.
+- The 71-case real-model run and medical review have not occurred.
 
-The branch must not be merged or published based only on static review.
+Static implementation work is not equivalent to passed CI.
 
 ## Activation sequence
 
-Activation belongs to later pull requests:
+Activation belongs to later work:
 
 1. administrator-only controlled evaluation;
 2. invisible shadow sampling;
 3. comparison with the deterministic flow;
-4. integration under the single approved question planner;
-5. kill switch, timeout, call budget and sampling controls;
-6. server-owned conversation state;
-7. patient-visible AI disclosure and controlled wording;
-8. gradual rollout only after safety and retrieval evidence.
+4. integration under PR #265 as sole question orchestrator;
+5. durable server-owned state and per-session/per-user limits;
+6. patient-visible AI disclosure and controlled wording;
+7. gradual rollout with deterministic fallback.
 
 The model must never become the authority for diagnosis, treatment, emergency clearance, provider selection, ranking, contact sharing or final conversational action.
