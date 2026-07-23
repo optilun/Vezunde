@@ -58,9 +58,17 @@ try {
   fs.writeFileSync(responsePaths[2], JSON.stringify(
     completedEnvelope('critical-001', 2, 'unknown'),
   ));
-  fs.writeFileSync(responsePaths[3], JSON.stringify(
-    completedEnvelope('critical-001', 3, 'unknown'),
-  ));
+  fs.writeFileSync(responsePaths[3], JSON.stringify({
+    status: 'invalid',
+    reason: 'prohibited_model_output',
+    evaluation_case_id: 'critical-001',
+    evaluation_attempt: 3,
+    interpretation: null,
+    diagnostics: {
+      prohibited_output_violations: ['forbidden_field:provider_id'],
+    },
+    contract_version: 'viasee-patient-conversation-agent-v1',
+  }));
 
   const run = spawnSync(process.execPath, [
     'scripts/prepare-patient-conversation-shadow-run.mjs',
@@ -97,14 +105,16 @@ try {
     Object.keys(capture.outputs['critical-001'].attempts),
     ['1', '2', '3'],
   );
-  assert(Object.values(capture.outputs['critical-001'].attempts)
-    .every((attempt) => attempt.status === 'completed'));
+  assert.equal(capture.outputs['critical-001'].attempts['1'].status, 'completed');
+  assert.equal(capture.outputs['critical-001'].attempts['2'].status, 'completed');
+  assert.equal(capture.outputs['critical-001'].attempts['3'].status, 'invalid');
+  assert.equal(capture.outputs['critical-001'].attempts['3'].reason, 'prohibited_model_output');
   assert(capture.model_run.completed_at);
 
   const printed = JSON.parse(run.stdout);
   assert.deepEqual(printed.selected_cases, ['control-001', 'critical-001']);
   assert.deepEqual(printed.pending_attempts, []);
-  assert.equal(printed.completed_attempts, 4);
+  assert.equal(printed.captured_attempts, 4);
   assert.equal(printed.requests.length, 4);
   assert.equal(printed.requests[0].request.mode, 'patient_conversation_shadow');
   assert.equal(printed.requests[0].request.evaluation_attempt, 1);
