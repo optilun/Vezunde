@@ -9,11 +9,13 @@ on:
       - "shared/patientConversationAgent.js"
       - "shared/patientConversationEvaluation.js"
       - "shared/patientConversationGuardrails.js"
+      - "shared/patientConversationStatePolicy.js"
       - "base44/shared/patientGuidanceQuestionCatalog.js"
       - "base44/shared/patientGuidanceRouting.js"
       - "base44/shared/patientGuidancePlanner.js"
       - "base44/shared/patientConversationAgent.js"
       - "base44/shared/patientConversationGuardrails.js"
+      - "base44/shared/patientConversationStatePolicy.js"
       - "base44/functions/matchProvidersSemantic/entry.ts"
       - "base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts"
       - "src/lib/providerSemanticSearch.js"
@@ -21,6 +23,7 @@ on:
       - "docs/patient-conversation-agent-acceptance.md"
       - "tests/fixtures/patient-conversation-agent-evaluations.json"
       - "tests/fixtures/patient-conversation-agent-adversarial-evaluations.json"
+      - "tests/fixtures/patient-conversation-agent-state-evaluations.json"
       - "scripts/patient-conversation-fixture-loader.mjs"
       - "scripts/verify-patient-guidance-routing.mjs"
       - "scripts/verify-patient-guidance-planner.mjs"
@@ -31,6 +34,7 @@ on:
       - "scripts/verify-patient-conversation-model-response-contract.mjs"
       - "scripts/verify-patient-conversation-repeated-evaluation.mjs"
       - "scripts/verify-patient-conversation-terminal-failure-gate.mjs"
+      - "scripts/verify-patient-conversation-state-policy.mjs"
       - "scripts/verify-patient-conversation-shadow-harness.mjs"
       - "scripts/prepare-patient-conversation-shadow-run.mjs"
       - "scripts/evaluate-patient-conversation-results.mjs"
@@ -75,6 +79,8 @@ jobs:
         run: node scripts/verify-patient-conversation-repeated-evaluation.mjs
       - name: Verify terminal model failure gate
         run: node scripts/verify-patient-conversation-terminal-failure-gate.mjs
+      - name: Verify patient conversation state policy
+        run: node scripts/verify-patient-conversation-state-policy.mjs
       - name: Verify patient conversation shadow harness
         run: node scripts/verify-patient-conversation-shadow-harness.mjs
       - name: Base44 router and physical function checks
@@ -134,11 +140,13 @@ jobs:
           shared/patientConversationAgent.js
           shared/patientConversationEvaluation.js
           shared/patientConversationGuardrails.js
+          shared/patientConversationStatePolicy.js
           base44/shared/patientGuidanceQuestionCatalog.js
           base44/shared/patientGuidanceRouting.js
           base44/shared/patientGuidancePlanner.js
           base44/shared/patientConversationAgent.js
           base44/shared/patientConversationGuardrails.js
+          base44/shared/patientConversationStatePolicy.js
           base44/functions/matchProvidersSemantic/entry.ts
           base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts
           src/lib/providerSemanticSearch.js
@@ -152,6 +160,7 @@ jobs:
           scripts/verify-patient-conversation-model-response-contract.mjs
           scripts/verify-patient-conversation-repeated-evaluation.mjs
           scripts/verify-patient-conversation-terminal-failure-gate.mjs
+          scripts/verify-patient-conversation-state-policy.mjs
           scripts/verify-patient-conversation-shadow-harness.mjs
           scripts/prepare-patient-conversation-shadow-run.mjs
           scripts/evaluate-patient-conversation-results.mjs
