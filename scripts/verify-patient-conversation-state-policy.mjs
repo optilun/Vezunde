@@ -35,8 +35,6 @@ function facts(overrides = {}) {
 
 function interpretation(overrides = {}) {
   return {
-    contract_version: 'viasee-patient-conversation-agent-v1',
-    language: 'ro',
     need_summary: '',
     primary_intent: 'unknown',
     alternative_intents: [],
@@ -49,7 +47,6 @@ function interpretation(overrides = {}) {
       needs_clarification: false,
       reason: '',
     },
-    understanding_confidence: 'medium',
     information_status: {
       sufficient_for_search: false,
       sufficient_for_specialist_message: false,
@@ -58,14 +55,12 @@ function interpretation(overrides = {}) {
     next_action: 'ask_clarifying_question',
     assistant_message: 'Ce ai nevoie?',
     specialist_summary: null,
-    evidence_phrases: [],
     ...overrides,
   };
 }
 
 function priorState(overrides = {}) {
   return {
-    contract_version: 'viasee-patient-conversation-agent-v1',
     need_summary: 'Reparatie ochelari',
     primary_intent: 'reparatii_ochelari',
     alternative_intents: [],
@@ -87,7 +82,6 @@ function priorState(overrides = {}) {
       needs_clarification: false,
       reason: '',
     },
-    understanding_confidence: 'high',
     information_status: {
       sufficient_for_search: true,
       sufficient_for_specialist_message: false,
@@ -98,28 +92,50 @@ function priorState(overrides = {}) {
   };
 }
 
-assert.equal(PATIENT_CONVERSATION_STATE_POLICY_VERSION, 'viasee-patient-conversation-state-policy-v1');
+const sharedSource = fs.readFileSync('shared/patientConversationStatePolicy.js', 'utf8');
+const base44Source = fs.readFileSync('base44/shared/patientConversationStatePolicy.js', 'utf8');
+const runtimeSource = fs.readFileSync(
+  'base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts',
+  'utf8',
+);
+
 assert.equal(
-  fs.readFileSync('shared/patientConversationStatePolicy.js', 'utf8'),
-  fs.readFileSync('base44/shared/patientConversationStatePolicy.js', 'utf8'),
+  PATIENT_CONVERSATION_STATE_POLICY_VERSION,
+  'viasee-patient-conversation-state-policy-v1.1',
+);
+assert.equal(
+  base44Source,
+  sharedSource,
   'Shared and Base44 state policies must remain byte-identical.',
+);
+assert(
+  runtimeSource.includes("from '../../shared/patientConversationStatePolicy.js';"),
+  'The Base44 runtime must import the deterministic state policy.',
+);
+assert(
+  runtimeSource.includes('applyConversationStatePolicy(builtEnvelope, priorState, conversation)'),
+  'The validated model envelope must pass through state reconciliation.',
+);
+const statePolicyIndex = runtimeSource.indexOf(
+  'applyConversationStatePolicy(builtEnvelope, priorState, conversation)',
+);
+const runtimePolicyIndex = runtimeSource.indexOf('applyRuntimePolicy(stateEnvelope, runtimeContext)');
+assert(
+  statePolicyIndex >= 0 && runtimePolicyIndex > statePolicyIndex,
+  'Conversation state must be reconciled before deterministic search and safety policy.',
+);
+assert(
+  !runtimeSource.includes('state_latest_user_message:'),
+  'Aggregate state diagnostics must not log raw patient messages.',
 );
 
 const recovered = reconcilePatientConversationState({
   interpretation: interpretation({
     facts: facts({ repair_details: 'balamaua este rupta' }),
     next_action: 'ask_locality',
-    information_status: {
-      sufficient_for_search: false,
-      sufficient_for_specialist_message: false,
-      missing_critical_fields: ['need', 'locality'],
-    },
   }),
   priorState: priorState(),
-  conversation: [
-    { role: 'assistant', content: 'Ce anume s-a stricat?' },
-    { role: 'user', content: 'balamaua' },
-  ],
+  conversation: [{ role: 'user', content: 'balamaua' }],
 });
 assert.equal(recovered.interpretation.primary_intent, 'reparatii_ochelari');
 assert.deepEqual(recovered.interpretation.service_keys, ['eyeglasses_repair']);
@@ -131,7 +147,7 @@ assert.equal(recovered.diagnostics.recovered_prior_intent, true);
 assert.equal(recovered.diagnostics.search_readiness_recovered, true);
 assert(recovered.diagnostics.carried_fields.includes('locality'));
 
-const intentSwitch = reconcilePatientConversationState({
+const explicitIntentSwitch = reconcilePatientConversationState({
   interpretation: interpretation({
     primary_intent: 'investigatii',
     need_summary: 'OCT recomandat de medic',
@@ -149,11 +165,6 @@ const intentSwitch = reconcilePatientConversationState({
       investigation_reference_text: 'trimitere pentru OCT',
     }),
     next_action: 'search_providers',
-    information_status: {
-      sufficient_for_search: true,
-      sufficient_for_specialist_message: false,
-      missing_critical_fields: [],
-    },
   }),
   priorState: priorState({
     primary_intent: 'ochelari_lentile',
@@ -171,34 +182,61 @@ const intentSwitch = reconcilePatientConversationState({
       repair_details: 'informatie veche',
     }),
   }),
-  conversation: [
-    { role: 'user', content: 'vreau sa imi fac ochelari' },
-    { role: 'assistant', content: 'Ai deja reteta?' },
-    { role: 'user', content: 'de fapt medicul mi-a dat trimitere pentru OCT, in Iasi' },
-  ],
+  conversation: [{
+    role: 'user',
+    content: 'de fapt medicul mi-a dat trimitere pentru OCT, in Iasi',
+  }],
 });
-assert.equal(intentSwitch.interpretation.primary_intent, 'investigatii');
-assert.deepEqual(intentSwitch.interpretation.service_keys, ['oct']);
-assert.equal(intentSwitch.interpretation.facts.locality.city, 'Iasi');
-assert.equal(intentSwitch.interpretation.facts.prescription_status, 'unknown');
-assert.equal(intentSwitch.interpretation.facts.repair_details, '');
-assert.equal(intentSwitch.diagnostics.transition, 'intent_replaced');
-assert.equal(intentSwitch.diagnostics.intent_changed, true);
-assert(intentSwitch.diagnostics.cleared_stale_fields.includes('prescription_status'));
-assert(intentSwitch.diagnostics.cleared_stale_fields.includes('repair_details'));
+assert.equal(explicitIntentSwitch.interpretation.primary_intent, 'investigatii');
+assert.deepEqual(explicitIntentSwitch.interpretation.service_keys, ['oct']);
+assert.equal(explicitIntentSwitch.interpretation.facts.locality.city, 'Iasi');
+assert.equal(explicitIntentSwitch.interpretation.facts.prescription_status, 'unknown');
+assert.equal(explicitIntentSwitch.interpretation.facts.repair_details, '');
+assert.equal(explicitIntentSwitch.diagnostics.transition, 'intent_replaced');
+assert.equal(explicitIntentSwitch.diagnostics.intent_changed, true);
 
-const localityCleared = reconcilePatientConversationState({
+const staleIntentCopiedByModel = reconcilePatientConversationState({
+  interpretation: interpretation({
+    primary_intent: 'reparatii_ochelari',
+    need_summary: 'Reparatie ochelari',
+    care_path_candidates: ['technical_optical_service'],
+    service_keys: ['eyeglasses_repair'],
+    provider_type_candidates: ['independent_optical_store'],
+    facts: facts({
+      locality: {
+        siruta_code: '',
+        city: 'Brasov',
+        county_code: 'BV',
+        county: 'Brasov',
+        area: '',
+      },
+      repair_details: 'rama este slabita',
+    }),
+  }),
+  priorState: priorState(),
+  conversation: [{ role: 'user', content: 'de fapt vreau doar un control de vedere' }],
+});
+assert.equal(staleIntentCopiedByModel.interpretation.primary_intent, 'unknown');
+assert.deepEqual(staleIntentCopiedByModel.interpretation.service_keys, []);
+assert.deepEqual(staleIntentCopiedByModel.interpretation.care_path_candidates, []);
+assert.equal(staleIntentCopiedByModel.interpretation.next_action, 'ask_clarifying_question');
+assert.equal(staleIntentCopiedByModel.diagnostics.stale_intent_rejected, true);
+assert.equal(staleIntentCopiedByModel.diagnostics.transition, 'intent_replacement_unresolved');
+
+const staleLocalityCopiedByModel = reconcilePatientConversationState({
   interpretation: interpretation({
     primary_intent: 'control_vedere',
     care_path_candidates: ['optometry'],
     service_keys: ['refraction'],
-    facts: facts(),
-    next_action: 'ask_locality',
-    information_status: {
-      sufficient_for_search: false,
-      sufficient_for_specialist_message: false,
-      missing_critical_fields: ['locality'],
-    },
+    facts: facts({
+      locality: {
+        siruta_code: '',
+        city: 'Timisoara',
+        county_code: 'TM',
+        county: 'Timis',
+        area: '',
+      },
+    }),
   }),
   priorState: priorState({
     primary_intent: 'control_vedere',
@@ -216,17 +254,50 @@ const localityCleared = reconcilePatientConversationState({
   }),
   conversation: [{ role: 'user', content: 'nu mai caut in Timisoara, nu stiu inca orasul' }],
 });
-assert.equal(localityCleared.interpretation.facts.locality.city, '');
-assert.equal(localityCleared.interpretation.next_action, 'ask_locality');
-assert.equal(localityCleared.diagnostics.locality_correction_detected, true);
-assert(localityCleared.diagnostics.cleared_stale_fields.includes('locality'));
+assert.equal(staleLocalityCopiedByModel.interpretation.facts.locality.city, '');
+assert(staleLocalityCopiedByModel.diagnostics.cleared_stale_fields.includes('locality'));
+assert(staleLocalityCopiedByModel.interpretation.information_status.missing_critical_fields.includes('locality'));
+
+const replacedLocality = reconcilePatientConversationState({
+  interpretation: interpretation({
+    primary_intent: 'control_vedere',
+    care_path_candidates: ['optometry'],
+    service_keys: ['refraction'],
+    facts: facts({
+      locality: {
+        siruta_code: '',
+        city: 'Lugoj',
+        county_code: 'TM',
+        county: 'Timis',
+        area: '',
+      },
+    }),
+  }),
+  priorState: priorState({
+    primary_intent: 'control_vedere',
+    care_path_candidates: ['optometry'],
+    service_keys: ['refraction'],
+    facts: facts({
+      locality: {
+        siruta_code: '',
+        city: 'Timisoara',
+        county_code: 'TM',
+        county: 'Timis',
+        area: '',
+      },
+    }),
+  }),
+  conversation: [{ role: 'user', content: 'am zis Timisoara dar sunt in Lugoj' }],
+});
+assert.equal(replacedLocality.interpretation.facts.locality.city, 'Lugoj');
+assert(replacedLocality.diagnostics.overwritten_fields.includes('locality'));
 
 const subjectCorrection = reconcilePatientConversationState({
   interpretation: interpretation({
     primary_intent: 'control_vedere',
     care_path_candidates: ['optometry'],
     service_keys: ['optometry_consultation'],
-    facts: facts({ for_whom: 'adult' }),
+    facts: facts({ for_whom: 'child', age_group: '7_12_ani' }),
   }),
   priorState: priorState({
     primary_intent: 'control_vedere',
@@ -237,16 +308,19 @@ const subjectCorrection = reconcilePatientConversationState({
   conversation: [{ role: 'user', content: 'e pentru mama, nu pentru copil' }],
 });
 assert.equal(subjectCorrection.interpretation.facts.for_whom, 'adult');
-assert.equal(subjectCorrection.interpretation.facts.age_group, 'unknown');
-assert.equal(subjectCorrection.diagnostics.subject_correction_detected, true);
-assert(subjectCorrection.diagnostics.cleared_stale_fields.includes('age_group'));
+assert.equal(subjectCorrection.interpretation.facts.age_group, 'adult');
+assert.equal(subjectCorrection.diagnostics.subject_target_hint, 'adult');
 
-const symptomCorrection = reconcilePatientConversationState({
+const staleSymptomsCopiedByModel = reconcilePatientConversationState({
   interpretation: interpretation({
     primary_intent: 'simptome_oftalmologice',
     care_path_candidates: ['ophthalmology'],
     service_keys: ['ophthalmology_consultation'],
-    facts: facts({ symptom_duration: 'cateva luni' }),
+    facts: facts({
+      symptom_onset: 'azi, brusc',
+      symptom_duration: 'cateva luni',
+      symptom_pattern: 'scadere brusca',
+    }),
   }),
   priorState: priorState({
     primary_intent: 'simptome_oftalmologice',
@@ -260,22 +334,11 @@ const symptomCorrection = reconcilePatientConversationState({
   }),
   conversation: [{ role: 'user', content: 'nu e brusc, e de cateva luni' }],
 });
-assert.equal(symptomCorrection.interpretation.facts.symptom_onset, '');
-assert.equal(symptomCorrection.interpretation.facts.symptom_duration, 'cateva luni');
-assert.equal(symptomCorrection.interpretation.facts.symptom_pattern, '');
-assert.equal(symptomCorrection.diagnostics.symptom_correction_detected, true);
-assert(symptomCorrection.diagnostics.cleared_stale_fields.includes('symptom_onset'));
-assert(symptomCorrection.diagnostics.cleared_stale_fields.includes('symptom_pattern'));
-
-const uncertainReplacement = reconcilePatientConversationState({
-  interpretation: interpretation(),
-  priorState: priorState(),
-  conversation: [{ role: 'user', content: 'de fapt vreau doar un control de vedere' }],
-});
-assert.equal(uncertainReplacement.interpretation.primary_intent, 'unknown');
-assert.deepEqual(uncertainReplacement.interpretation.service_keys, []);
-assert.equal(uncertainReplacement.diagnostics.intent_replacement_detected, true);
-assert.equal(uncertainReplacement.diagnostics.recovered_prior_intent, false);
+assert.equal(staleSymptomsCopiedByModel.interpretation.facts.symptom_onset, '');
+assert.equal(staleSymptomsCopiedByModel.interpretation.facts.symptom_pattern, '');
+assert.equal(staleSymptomsCopiedByModel.interpretation.facts.symptom_duration, 'cateva luni');
+assert(staleSymptomsCopiedByModel.diagnostics.cleared_stale_fields.includes('symptom_onset'));
+assert(staleSymptomsCopiedByModel.diagnostics.cleared_stale_fields.includes('symptom_pattern'));
 
 const sharedResult = reconcilePatientConversationState({
   interpretation: interpretation(),
@@ -295,4 +358,4 @@ const signals = detectPatientConversationStateSignals([
 assert.equal(signals.generic_correction_detected, true);
 assert.equal(signals.locality_correction_detected, true);
 
-console.log('Patient conversation state reconciliation verified.');
+console.log('Patient conversation fail-closed state reconciliation verified.');
