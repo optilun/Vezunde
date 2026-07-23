@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
   PATIENT_CONVERSATION_DECISION_POLICY_VERSION,
+  PATIENT_CONVERSATION_SAFETY_POLICY_VERSION,
   PATIENT_CONVERSATION_SAFE_EMERGENCY_MESSAGE,
   applyPatientConversationDecisionPolicy,
   assessPatientConversationDeterministicSafety,
@@ -22,6 +23,10 @@ const runtimeSource = fs.readFileSync(
 assert.equal(
   PATIENT_CONVERSATION_DECISION_POLICY_VERSION,
   'viasee-patient-conversation-decision-policy-v1',
+);
+assert.equal(
+  PATIENT_CONVERSATION_SAFETY_POLICY_VERSION,
+  'patient-eye-safety-v1.1',
 );
 assert.equal(
   base44Source,
@@ -83,12 +88,47 @@ function interpretation(overrides = {}) {
   };
 }
 
+const ambiguousOneEye = assessPatientConversationDeterministicSafety([
+  { role: 'user', content: 'Nu mai vad cu un ochi.' },
+]);
+assert.equal(ambiguousOneEye.blocking, false);
+assert.deepEqual(ambiguousOneEye.blocking_flags, []);
+
 const explicitEmergencyConversation = [
   { role: 'user', content: 'Nu mai vad cu un ochi deodata.' },
 ];
 const explicitSafety = assessPatientConversationDeterministicSafety(explicitEmergencyConversation);
 assert.equal(explicitSafety.blocking, true);
 assert(explicitSafety.blocking_flags.includes('sudden_vision_loss'));
+assert.equal(explicitSafety.policy_version, PATIENT_CONVERSATION_SAFETY_POLICY_VERSION);
+
+const confirmedSafetyScenarios = [
+  ['a disparut brusc azi dimineata, aproape complet', 'sudden_vision_loss'],
+  ['Mi-a disparut brusc vederea aproape complet azi.', 'sudden_vision_loss'],
+  ['mi-a sarit spray de curatat cuptorul in ochi', 'chemical_injury'],
+  ['mi-a sarit o aschie de metal si a ramas infipta in ochi', 'penetrating_or_high_speed_trauma'],
+  ['m-a lovit ceva tare in ochi si acum aproape nu mai vad deloc', 'sudden_vision_loss'],
+  ['dupa operatia de ieri ochiul e rosu, ma doare si vad mai prost', 'postoperative_red_eye_or_vision_change'],
+  ['de azi vad fulgere si o perdea neagra intr-o parte', 'other_possible_urgent_eye_problem'],
+];
+for (const [content, expectedFlag] of confirmedSafetyScenarios) {
+  const assessment = assessPatientConversationDeterministicSafety([
+    { role: 'user', content },
+  ]);
+  assert.equal(assessment.blocking, true, content);
+  assert(assessment.blocking_flags.includes(expectedFlag), `${content}: ${expectedFlag}`);
+}
+
+for (const content of [
+  'nu mai vad cu un ochi',
+  'mi-a intrat sampon in ochi, am clatit si inca ma ustura putin',
+  'm-am lovit la ochi cu mingea si vad cam in ceata',
+]) {
+  const assessment = assessPatientConversationDeterministicSafety([
+    { role: 'user', content },
+  ]);
+  assert.equal(assessment.blocking, false, content);
+}
 
 const emergencyPreflight = buildPatientConversationEmergencyInterpretation({
   contractVersion: 'viasee-patient-conversation-agent-v1',
@@ -113,6 +153,10 @@ assert.equal(
 assert.equal(emergencyPreflight.interpretation.information_status.sufficient_for_search, false);
 assert.equal(emergencyPreflight.diagnostics.model_invoked, false);
 assert.equal(emergencyPreflight.diagnostics.decision_source, 'deterministic_safety_preflight');
+assert.equal(
+  emergencyPreflight.diagnostics.safety_policy_version,
+  PATIENT_CONVERSATION_SAFETY_POLICY_VERSION,
+);
 
 const emergencySurvivesShortFollowup = assessPatientConversationDeterministicSafety([
   { role: 'user', content: 'Vederea a disparut brusc.' },
