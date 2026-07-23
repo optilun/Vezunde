@@ -111,6 +111,16 @@ nestedDiagnosisClaim.facts.symptom_pattern = 'Ai glaucom.';
 assert(detectProhibitedPatientConversationOutput(nestedDiagnosisClaim)
   .includes('diagnosis_claim'));
 
+const splitDiagnosisFragments = validResponse();
+splitDiagnosisFragments.facts.symptom_onset = 'ai';
+splitDiagnosisFragments.facts.symptom_pattern = 'glaucom';
+assert.equal(
+  detectProhibitedPatientConversationOutput(splitDiagnosisFragments)
+    .includes('diagnosis_claim'),
+  false,
+  'Strings from separate semantic fields must not be concatenated into a diagnosis claim.',
+);
+
 const nestedProviderRecommendation = validResponse();
 nestedProviderRecommendation.facts.repair_details = 'Recomandam clinica pentru aceasta problema.';
 assert(detectProhibitedPatientConversationOutput(nestedProviderRecommendation)
