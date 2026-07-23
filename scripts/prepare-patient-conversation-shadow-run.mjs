@@ -1,7 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
-import { loadPatientConversationFixtures } from './patient-conversation-fixture-loader.mjs';
+import {
+  isCriticalPatientConversationFixture,
+  loadPatientConversationFixtures,
+  normalizePatientConversationRepeatCount,
+  patientConversationFixtureAttemptCount,
+} from './patient-conversation-fixture-loader.mjs';
 
 const CONTRACT_VERSION = 'viasee-patient-conversation-agent-v1';
 const DEFAULT_OUTPUT_PATH = 'tmp/patient-conversation-shadow-run.json';
@@ -21,6 +26,8 @@ function parseArgs(argv) {
     outputPath: DEFAULT_OUTPUT_PATH,
     caseIds: [],
     responseFiles: [],
+    defaultRepeat: 1,
+    criticalRepeat: 3,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -28,8 +35,11 @@ function parseArgs(argv) {
     else if (arg === '--output') options.outputPath = argv[++index];
     else if (arg === '--case') options.caseIds.push(argv[++index]);
     else if (arg === '--response') options.responseFiles.push(argv[++index]);
+    else if (arg === '--repeat') options.defaultRepeat = normalizePatientConversationRepeatCount(argv[++index], 1);
+    else if (arg === '--critical-repeat') options.criticalRepeat = normalizePatientConversationRepeatCount(argv[++index], 3);
     else throw new Error(`Argument necunoscut: ${arg}`);
   }
+  options.criticalRepeat = Math.max(options.defaultRepeat, options.criticalRepeat);
   return options;
 }
 
@@ -58,6 +68,37 @@ function responseEnvelope(payload) {
   return payload;
 }
 
+function normalizeExistingCaseOutput(value, expectedAttempts, critical) {
+  const attempts = value?.attempts && typeof value.attempts === 'object' && !Array.isArray(value.attempts)
+    ? { ...value.attempts }
+    : {};
+  if (Object.keys(attempts).length === 0 && value && typeof value === 'object' && value.status) {
+    attempts['1'] = {
+      ...value,
+      evaluation_attempt: 1,
+    };
+  }
+  for (let attempt = 1; attempt <= expectedAttempts; attempt += 1) {
+    if (!attempts[String(attempt)]) {
+      attempts[String(attempt)] = {
+        status: 'pending',
+        evaluation_attempt: attempt,
+        interpretation: null,
+      };
+    }
+  }
+  return {
+    expected_attempts: expectedAttempts,
+    critical,
+    attempts,
+  };
+}
+
+function normalizeAttempt(value) {
+  const parsed = Number.parseInt(String(value ?? ''), 10);
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= 5 ? parsed : null;
+}
+
 const options = parseArgs(process.argv.slice(2));
 const fixtureSuite = loadPatientConversationFixtures(
   options.fixturePaths.length > 0 ? options.fixturePaths : undefined,
@@ -77,22 +118,30 @@ if (unknownCaseIds.length > 0) {
   process.exit(2);
 }
 
+const expectedAttemptCountByCase = new Map(selectedCaseIds.map((caseId) => {
+  const fixture = fixtureById.get(caseId);
+  return [caseId, patientConversationFixtureAttemptCount(fixture, {
+    defaultRepeat: options.defaultRepeat,
+    criticalRepeat: options.criticalRepeat,
+  })];
+}));
+
 const existing = fs.existsSync(options.outputPath)
   ? readJson(options.outputPath)
   : null;
 const startedAt = existing?.model_run?.started_at || new Date().toISOString();
-const outputs = existing?.outputs && typeof existing.outputs === 'object'
-  ? { ...existing.outputs }
+const existingOutputs = existing?.outputs && typeof existing.outputs === 'object'
+  ? existing.outputs
   : {};
+const outputs = { ...existingOutputs };
 
 for (const caseId of selectedCaseIds) {
-  if (!outputs[caseId]) {
-    outputs[caseId] = {
-      status: 'pending',
-      evaluation_case_id: caseId,
-      interpretation: null,
-    };
-  }
+  const fixture = fixtureById.get(caseId);
+  outputs[caseId] = normalizeExistingCaseOutput(
+    existingOutputs[caseId],
+    expectedAttemptCountByCase.get(caseId),
+    isCriticalPatientConversationFixture(fixture),
+  );
 }
 
 for (const responseFile of options.responseFiles) {
@@ -107,15 +156,40 @@ for (const responseFile of options.responseFiles) {
   if (!selectedCaseIds.includes(caseId)) {
     throw new Error(`Raspunsul ${responseFile} apartine cazului neselectat ${caseId}.`);
   }
-  outputs[caseId] = {
+  const expectedAttempts = expectedAttemptCountByCase.get(caseId);
+  const explicitAttempt = normalizeAttempt(
+    responsePayload?.evaluation_attempt
+    || responsePayload?.attempt
+    || envelope?.evaluation_attempt,
+  );
+  const attempt = explicitAttempt || (expectedAttempts === 1 ? 1 : null);
+  if (!attempt) {
+    throw new Error(`Raspunsul ${responseFile} necesita evaluation_attempt pentru cazul repetat ${caseId}.`);
+  }
+  if (attempt > expectedAttempts) {
+    throw new Error(`Raspunsul ${responseFile} are attempt ${attempt}, peste limita ${expectedAttempts} pentru ${caseId}.`);
+  }
+  outputs[caseId].attempts[String(attempt)] = {
     ...envelope,
     evaluation_case_id: caseId,
+    evaluation_attempt: attempt,
     status: envelope?.status || 'completed',
   };
 }
 
-const pending = selectedCaseIds.filter((caseId) => outputs[caseId]?.status !== 'completed');
-const completed = selectedCaseIds.filter((caseId) => outputs[caseId]?.status === 'completed').length;
+const pendingAttempts = [];
+let completedAttempts = 0;
+for (const caseId of selectedCaseIds) {
+  const expectedAttempts = expectedAttemptCountByCase.get(caseId);
+  for (let attempt = 1; attempt <= expectedAttempts; attempt += 1) {
+    if (outputs[caseId]?.attempts?.[String(attempt)]?.status === 'completed') {
+      completedAttempts += 1;
+    } else {
+      pendingAttempts.push(`${caseId}#${attempt}`);
+    }
+  }
+}
+
 const singleFixtureVersion = fixtureSuite.fixture_versions.length === 1
   ? fixtureSuite.fixture_versions[0].fixture_version
   : null;
@@ -125,35 +199,46 @@ const capture = {
   fixture_paths: fixtureSuite.fixture_paths,
   model_run: {
     started_at: startedAt,
-    completed_at: pending.length === 0 ? new Date().toISOString() : '',
+    completed_at: pendingAttempts.length === 0 ? new Date().toISOString() : '',
     model_context: 'Base44 Core.InvokeLLM',
     contract_version: CONTRACT_VERSION,
     selected_case_ids: selectedCaseIds,
+    default_repeat_count: options.defaultRepeat,
+    critical_repeat_count: options.criticalRepeat,
+    expected_attempts_by_case: Object.fromEntries(expectedAttemptCountByCase),
   },
   outputs,
 };
 writeJson(options.outputPath, capture);
 
-const requests = selectedCaseIds.map((caseId) => {
+const requests = selectedCaseIds.flatMap((caseId) => {
   const fixture = fixtureById.get(caseId);
-  return {
-    evaluation_case_id: caseId,
-    request: {
-      mode: 'patient_conversation_shadow',
+  const expectedAttempts = expectedAttemptCountByCase.get(caseId);
+  return Array.from({ length: expectedAttempts }, (_, index) => {
+    const attempt = index + 1;
+    return {
       evaluation_case_id: caseId,
-      conversation: fixtureConversation(fixture),
-      prior_state: fixturePriorState(fixture),
-      runtime_context: fixtureRuntimeContext(fixture),
-    },
-  };
+      evaluation_attempt: attempt,
+      request: {
+        mode: 'patient_conversation_shadow',
+        evaluation_case_id: caseId,
+        evaluation_attempt: attempt,
+        conversation: fixtureConversation(fixture),
+        prior_state: fixturePriorState(fixture),
+        runtime_context: fixtureRuntimeContext(fixture),
+      },
+    };
+  });
 });
 
 console.log(JSON.stringify({
   fixture_version: capture.fixture_version,
   fixture_versions: capture.fixture_versions,
   selected_cases: selectedCaseIds,
-  completed_outputs: completed,
-  pending_cases: pending,
+  default_repeat_count: options.defaultRepeat,
+  critical_repeat_count: options.criticalRepeat,
+  completed_attempts: completedAttempts,
+  pending_attempts: pendingAttempts,
   capture_file: options.outputPath,
   requests,
 }, null, 2));
