@@ -36,6 +36,22 @@ function createOperationalBase44(base44: any, controller: any) {
   return controlled;
 }
 
+function normalizeNonInvokedRuntimeIdentity(envelope: any, controller: any) {
+  if (envelope?.reason !== 'user_message_required') return envelope;
+  const operational = controller?.snapshot?.();
+  if (operational?.model_calls_used !== 0) return envelope;
+
+  return {
+    ...envelope,
+    runtime_metadata: {
+      ...(envelope?.runtime_metadata || {}),
+      model: null,
+      prompt_version: null,
+      model_invoked: false,
+    },
+  };
+}
+
 export async function runPatientConversationAgentShadow(base44: any, payload: any = {}) {
   const controller = createPatientConversationOperationalController(payload, {
     audience: 'admin_shadow',
@@ -55,5 +71,8 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
     createOperationalBase44(base44, controller),
     payload,
   );
-  return finalizePatientConversationOperationalEnvelope(envelope, controller);
+  return finalizePatientConversationOperationalEnvelope(
+    normalizeNonInvokedRuntimeIdentity(envelope, controller),
+    controller,
+  );
 }
