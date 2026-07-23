@@ -289,7 +289,9 @@ const replacedLocality = reconcilePatientConversationState({
   }),
   conversation: [{ role: 'user', content: 'am zis Timisoara dar sunt in Lugoj' }],
 });
+assert.equal(replacedLocality.interpretation.primary_intent, 'control_vedere');
 assert.equal(replacedLocality.interpretation.facts.locality.city, 'Lugoj');
+assert.equal(replacedLocality.diagnostics.intent_replacement_detected, false);
 assert(replacedLocality.diagnostics.overwritten_fields.includes('locality'));
 
 const subjectCorrection = reconcilePatientConversationState({
@@ -357,5 +359,6 @@ const signals = detectPatientConversationStateSignals([
 ]);
 assert.equal(signals.generic_correction_detected, true);
 assert.equal(signals.locality_correction_detected, true);
+assert.equal(signals.intent_replacement_detected, false);
 
 console.log('Patient conversation fail-closed state reconciliation verified.');
