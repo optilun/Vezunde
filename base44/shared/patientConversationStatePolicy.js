@@ -1,4 +1,4 @@
-export const PATIENT_CONVERSATION_STATE_POLICY_VERSION = "viasee-patient-conversation-state-policy-v1";
+export const PATIENT_CONVERSATION_STATE_POLICY_VERSION = "viasee-patient-conversation-state-policy-v1.1";
 
 const UNKNOWN_VALUES = new Set(["", "unknown"]);
 const INTENT_SCOPED_FACT_FIELDS = Object.freeze([
@@ -54,6 +54,9 @@ export function detectPatientConversationStateSignals(conversation) {
   const subjectCorrection = /\b(?:nu pentru mine|e pentru|este pentru|pentru mama|pentru tata|pentru copil|pentru fiul|pentru fiica|pentru sot|pentru sotie|pentru altcineva)\b/.test(latest);
   const timingCorrection = /\b(?:nu (?:mai )?(?:azi|maine|urgent)|de fapt (?:azi|maine|saptamana|luna)|nu e urgent|nu este urgent)\b/.test(latest);
   const symptomCorrection = /\b(?:nu (?:e|este) brusc|nu ma doare|nu doare|nu de azi|de fapt de (?:cateva|mai multe|[0-9]+))\b/.test(latest);
+  const subjectTargetHint = /\b(?:pentru mama|pentru tata|pentru sot|pentru sotie|pentru bunica|pentru bunicul)\b/.test(latest)
+    ? "adult"
+    : (/\b(?:pentru copil|pentru fiul|pentru fiica)\b/.test(latest) ? "child" : null);
 
   return {
     generic_correction_detected: genericCorrection,
@@ -62,6 +65,7 @@ export function detectPatientConversationStateSignals(conversation) {
     subject_correction_detected: subjectCorrection,
     timing_correction_detected: timingCorrection,
     symptom_correction_detected: symptomCorrection,
+    subject_target_hint: subjectTargetHint,
   };
 }
 
@@ -88,6 +92,10 @@ function cloneLocality(value) {
   };
 }
 
+function emptyLocality() {
+  return cloneLocality(null);
+}
+
 function sameLocality(left, right) {
   const leftSiruta = clean(left?.siruta_code, 40);
   const rightSiruta = clean(right?.siruta_code, 40);
@@ -102,6 +110,12 @@ function fieldHasValue(field, value) {
     return hasEnumValue(value);
   }
   return hasStringValue(value);
+}
+
+function emptyFactValue(field) {
+  return ["for_whom", "age_group", "contact_lens_experience", "prescription_status"].includes(field)
+    ? "unknown"
+    : "";
 }
 
 function copyFactValue(value) {
@@ -135,12 +149,37 @@ function shouldBlockFactCarry(field, sameIntent, signals) {
   return false;
 }
 
+function shouldRejectCopiedStaleValue(field, currentValue, priorValue, signals) {
+  if (!fieldHasValue(field, currentValue) || !fieldHasValue(field, priorValue)) return false;
+  if (normalizeText(currentValue) !== normalizeText(priorValue)) return false;
+  if (field === "desired_timing" && signals.timing_correction_detected) return true;
+  if (field.startsWith("symptom_") && signals.symptom_correction_detected) return true;
+  if (INTENT_SCOPED_FACT_FIELDS.includes(field) && signals.intent_replacement_detected) return true;
+  return false;
+}
+
+function applySubjectTargetHint(current, prior, signals, overwritten, clearedStale) {
+  if (!signals.subject_target_hint) return;
+  const target = signals.subject_target_hint;
+  if (current.for_whom !== target) overwritten.push("for_whom");
+  current.for_whom = target;
+  if (target === "adult") {
+    if (current.age_group !== "adult" && hasEnumValue(current.age_group)) overwritten.push("age_group");
+    current.age_group = "adult";
+  } else if (current.age_group === "adult" || current.age_group === prior.age_group) {
+    current.age_group = "unknown";
+    clearedStale.push("age_group");
+  }
+}
+
 function reconcileFacts(currentFactsValue, priorFactsValue, context) {
   const current = factsFrom(currentFactsValue);
   const prior = factsFrom(priorFactsValue);
   const carried = [];
   const overwritten = [];
   const clearedStale = [];
+
+  applySubjectTargetHint(current, prior, context.signals, overwritten, clearedStale);
 
   for (const field of [
     "for_whom",
@@ -157,6 +196,11 @@ function reconcileFacts(currentFactsValue, priorFactsValue, context) {
     const currentHasValue = fieldHasValue(field, current[field]);
     const priorHasValue = fieldHasValue(field, prior[field]);
     if (currentHasValue) {
+      if (shouldRejectCopiedStaleValue(field, current[field], prior[field], context.signals)) {
+        current[field] = emptyFactValue(field);
+        clearedStale.push(field);
+        continue;
+      }
       if (priorHasValue && normalizeText(current[field]) !== normalizeText(prior[field])) {
         overwritten.push(field);
       }
@@ -175,9 +219,14 @@ function reconcileFacts(currentFactsValue, priorFactsValue, context) {
   const priorHasLocality = hasLocality(prior.locality);
   if (currentHasLocality) {
     if (priorHasLocality && sameLocality(current.locality, prior.locality)) {
-      for (const field of ["siruta_code", "city", "county_code", "county", "area"]) {
-        if (!current.locality[field] && prior.locality[field]) {
-          current.locality[field] = prior.locality[field];
+      if (context.signals.locality_correction_detected) {
+        current.locality = emptyLocality();
+        clearedStale.push("locality");
+      } else {
+        for (const field of ["siruta_code", "city", "county_code", "county", "area"]) {
+          if (!current.locality[field] && prior.locality[field]) {
+            current.locality[field] = prior.locality[field];
+          }
         }
       }
     } else if (priorHasLocality) {
@@ -216,6 +265,24 @@ function searchReady(interpretation) {
     && hasLocality(interpretation?.facts?.locality);
 }
 
+function rejectUnresolvedIntentReplacement(current) {
+  current.primary_intent = "unknown";
+  current.alternative_intents = [];
+  current.care_path_candidates = [];
+  current.service_keys = [];
+  current.provider_type_candidates = [];
+  current.need_summary = "";
+  current.information_status.sufficient_for_search = false;
+  current.information_status.sufficient_for_specialist_message = false;
+  current.information_status.missing_critical_fields = unique([
+    ...current.information_status.missing_critical_fields,
+    "need",
+  ], 8);
+  current.next_action = "ask_clarifying_question";
+  current.assistant_message = "Am inteles ca vrei sa corectezi cererea. Ce ai nevoie sa rezolvi acum?";
+  current.specialist_summary = null;
+}
+
 export function reconcilePatientConversationState({
   interpretation,
   priorState,
@@ -245,6 +312,7 @@ export function reconcilePatientConversationState({
         transition: prior ? "invalid_current_state" : "initialize",
         prior_state_present: Boolean(prior),
         intent_changed: false,
+        stale_intent_rejected: false,
         recovered_prior_intent: false,
         search_readiness_recovered: false,
         carried_fields: [],
@@ -256,17 +324,23 @@ export function reconcilePatientConversationState({
   }
 
   const priorIntent = clean(prior.primary_intent, 80) || "unknown";
-  const currentIntent = clean(current.primary_intent, 80) || "unknown";
+  const initialCurrentIntent = clean(current.primary_intent, 80) || "unknown";
   const priorIntentKnown = priorIntent !== "unknown";
-  const currentIntentKnown = currentIntent !== "unknown";
-  const intentChanged = priorIntentKnown && currentIntentKnown && priorIntent !== currentIntent;
+  const currentIntentKnown = initialCurrentIntent !== "unknown";
+  const intentChanged = priorIntentKnown && currentIntentKnown && priorIntent !== initialCurrentIntent;
+  const unresolvedIntentReplacement = priorIntentKnown
+    && signals.intent_replacement_detected
+    && (!currentIntentKnown || initialCurrentIntent === priorIntent);
   const canRecoverPriorCore = priorIntentKnown
     && !intentChanged
+    && !unresolvedIntentReplacement
     && !signals.intent_replacement_detected;
   let recoveredPriorIntent = false;
   const carriedCoreFields = [];
 
-  if (!currentIntentKnown && canRecoverPriorCore) {
+  if (unresolvedIntentReplacement) {
+    rejectUnresolvedIntentReplacement(current);
+  } else if (!currentIntentKnown && canRecoverPriorCore) {
     current.primary_intent = priorIntent;
     recoveredPriorIntent = true;
     carriedCoreFields.push("primary_intent");
@@ -301,6 +375,11 @@ export function reconcilePatientConversationState({
   if (hasLocality(current.facts.locality)) {
     current.information_status.missing_critical_fields = current.information_status.missing_critical_fields
       .filter((field) => field !== "locality");
+  } else if (!current.information_status.missing_critical_fields.includes("locality")) {
+    current.information_status.missing_critical_fields = unique([
+      ...current.information_status.missing_critical_fields,
+      "locality",
+    ], 8);
   }
 
   const ready = searchReady(current);
@@ -317,9 +396,11 @@ export function reconcilePatientConversationState({
   ])].sort();
   const transition = intentChanged
     ? "intent_replaced"
-    : (signals.generic_correction_detected || factResult.overwritten_fields.length > 0
-      ? "facts_corrected"
-      : "continue");
+    : (unresolvedIntentReplacement
+      ? "intent_replacement_unresolved"
+      : (signals.generic_correction_detected || factResult.overwritten_fields.length > 0
+        ? "facts_corrected"
+        : "continue"));
 
   return {
     interpretation: current,
@@ -328,6 +409,7 @@ export function reconcilePatientConversationState({
       transition,
       prior_state_present: true,
       intent_changed: intentChanged,
+      stale_intent_rejected: unresolvedIntentReplacement,
       recovered_prior_intent: recoveredPriorIntent,
       search_readiness_recovered: searchReadinessRecovered,
       carried_fields: allCarriedFields,
