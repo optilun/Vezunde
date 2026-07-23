@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import {
   PATIENT_CONVERSATION_SEMANTIC_CONTRACT_VERSION,
   getPatientConversationAgentResponseSchema,
+  sanitizePatientConversationAgentResult,
 } from '../shared/patientConversationAgent.js';
 import {
   detectProhibitedPatientConversationOutput,
@@ -178,6 +179,15 @@ assert.equal(
   'Verbatim evidence phrases are grounded separately and must not be treated as generated directives.',
 );
 
+const unsupportedEvidence = sanitizePatientConversationAgentResult({
+  ...validResponse(),
+  evidence_phrases: ['informatie inventata'],
+}, {
+  conversation: [{ role: 'user', content: 'Control de vedere in Timisoara.' }],
+});
+assert.deepEqual(unsupportedEvidence.result.evidence_phrases, []);
+assert.equal(unsupportedEvidence.diagnostics.rejected_evidence_phrase_count, 1);
+
 const invalidIntent = {
   ...validResponse(),
   primary_intent: 'invented_intent',
@@ -234,12 +244,18 @@ assert(validatePatientConversationModelResponse(invalidCorrectionBoolean, schema
 assert(runnerSource.includes('validatePatientConversationModelResponse(raw, responseSchema)'));
 assert(runnerSource.includes("invalidModelOutputEnvelope('invalid_model_output_shape'"));
 assert(runnerSource.includes("invalidModelOutputEnvelope('noncanonical_model_output'"));
+assert(runnerSource.includes('const rejectedServiceCount = Number('));
+assert(runnerSource.includes('const rejectedEvidencePhraseCount = Number('));
+assert(runnerSource.includes('const noncanonicalOutputCount = rejectedServiceCount + rejectedEvidencePhraseCount;'));
+assert(runnerSource.includes('rejected_evidence_phrase_count: rejectedEvidencePhraseCount'));
 assert(runnerSource.includes('noncanonicalOutputCount > 0'));
 
 const prohibitedIndex = runnerSource.indexOf('detectProhibitedPatientConversationOutput(raw)');
 const schemaIndex = runnerSource.indexOf('validatePatientConversationModelResponse(raw, responseSchema)');
 const buildIndex = runnerSource.indexOf('const builtEnvelope = buildPatientConversationShadowEnvelope({');
+const noncanonicalIndex = runnerSource.indexOf('const noncanonicalOutputCount = rejectedServiceCount + rejectedEvidencePhraseCount;');
+const stateIndex = runnerSource.indexOf('const stateEnvelope = applyConversationStatePolicy(');
 assert(prohibitedIndex >= 0 && schemaIndex > prohibitedIndex);
-assert(buildIndex > schemaIndex);
+assert(buildIndex > schemaIndex && noncanonicalIndex > buildIndex && stateIndex > noncanonicalIndex);
 
 console.log('Patient conversation semantic model response contract verified fail closed.');
