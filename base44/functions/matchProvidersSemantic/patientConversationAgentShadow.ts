@@ -12,6 +12,10 @@ import {
   sanitizePatientConversationTurns,
   validatePatientConversationModelResponse,
 } from '../../shared/patientConversationGuardrails.js';
+import {
+  applyPatientConversationDecisionPolicy,
+  buildPatientConversationEmergencyInterpretation,
+} from '../../shared/patientConversationDecisionPolicy.js';
 import { reconcilePatientConversationState } from '../../shared/patientConversationStatePolicy.js';
 
 const PATIENT_CONVERSATION_SHADOW_EVENT = 'patient_conversation_agent_shadow_summary';
@@ -53,12 +57,17 @@ function attachEvaluationCorrelation(envelope: any, evaluationCaseId: string, ev
   } : envelope;
 }
 
-function attachRuntimeMetadata(envelope: any, durationMs: number) {
+function attachRuntimeMetadata(
+  envelope: any,
+  durationMs: number,
+  { modelInvoked = true } = {},
+) {
   return {
     ...envelope,
     runtime_metadata: {
-      model: PATIENT_CONVERSATION_MODEL,
-      prompt_version: PATIENT_CONVERSATION_PROMPT_VERSION,
+      model: modelInvoked ? PATIENT_CONVERSATION_MODEL : null,
+      prompt_version: modelInvoked ? PATIENT_CONVERSATION_PROMPT_VERSION : null,
+      model_invoked: modelInvoked,
       duration_ms: Math.max(0, Math.round(durationMs)),
       input_limits: {
         max_turns: PATIENT_CONVERSATION_MAX_TURNS,
@@ -286,12 +295,54 @@ function applyRuntimePolicy(envelope: any, runtimeContext: any) {
   return { ...envelope, interpretation };
 }
 
+function applyDeterministicDecisionPolicy(
+  envelope: any,
+  conversation: any[],
+  runtimeContext: any,
+) {
+  if (!envelope?.interpretation) return envelope;
+  const decision = applyPatientConversationDecisionPolicy({
+    interpretation: envelope.interpretation,
+    conversation,
+    runtimeContext,
+    stateDiagnostics: envelope?.diagnostics?.state_policy,
+  });
+  return {
+    ...envelope,
+    interpretation: decision.interpretation,
+    diagnostics: {
+      ...(envelope.diagnostics || {}),
+      decision_policy: decision.diagnostics,
+    },
+  };
+}
+
+function deterministicSafetyPreflight(conversation: any[], runtimeContext: any) {
+  const decision = buildPatientConversationEmergencyInterpretation({
+    contractVersion: PATIENT_CONVERSATION_AGENT_VERSION,
+    conversation,
+    runtimeContext,
+  });
+  if (!decision) return null;
+  return {
+    mode: 'shadow',
+    contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
+    status: 'completed',
+    reason: null,
+    interpretation: decision.interpretation,
+    diagnostics: {
+      decision_policy: decision.diagnostics,
+    },
+  };
+}
+
 function emitShadowSummary(envelope: any) {
   const interpretation = envelope?.interpretation;
   console.info(PATIENT_CONVERSATION_SHADOW_EVENT, JSON.stringify({
     contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
-    prompt_version: envelope?.runtime_metadata?.prompt_version || PATIENT_CONVERSATION_PROMPT_VERSION,
-    model: envelope?.runtime_metadata?.model || PATIENT_CONVERSATION_MODEL,
+    prompt_version: envelope?.runtime_metadata?.prompt_version || null,
+    model: envelope?.runtime_metadata?.model || null,
+    model_invoked: envelope?.runtime_metadata?.model_invoked === true,
     duration_ms: envelope?.runtime_metadata?.duration_ms || 0,
     status: envelope?.status || 'unknown',
     reason: envelope?.reason || null,
@@ -311,6 +362,18 @@ function emitShadowSummary(envelope: any) {
     state_cleared_stale_field_count: Array.isArray(envelope?.diagnostics?.state_policy?.cleared_stale_fields)
       ? envelope.diagnostics.state_policy.cleared_stale_fields.length
       : 0,
+    decision_source: envelope?.diagnostics?.decision_policy?.decision_source || null,
+    deterministic_safety_preflight:
+      envelope?.diagnostics?.decision_policy?.deterministic_safety_preflight === true,
+    deterministic_safety_flag_count: Array.isArray(
+      envelope?.diagnostics?.decision_policy?.deterministic_safety_flags,
+    )
+      ? envelope.diagnostics.decision_policy.deterministic_safety_flags.length
+      : 0,
+    model_urgency_advisory:
+      envelope?.diagnostics?.decision_policy?.model_urgency_advisory || null,
+    model_next_action_ignored:
+      envelope?.diagnostics?.decision_policy?.model_next_action_ignored === true,
     primary_intent: interpretation?.primary_intent || 'unknown',
     care_path_count: Array.isArray(interpretation?.care_path_candidates)
       ? interpretation.care_path_candidates.length
@@ -344,6 +407,17 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
 
   const runtimeContext = runtimeContextFromPayload(payload);
   const priorState = sanitizePriorState(payload?.prior_state);
+  const preflightDecision = deterministicSafetyPreflight(conversation, runtimeContext);
+  if (preflightDecision) {
+    const completed = attachRuntimeMetadata(attachEvaluationCorrelation(
+      preflightDecision,
+      evaluationCaseId,
+      evaluationAttempt,
+    ), Date.now() - startedAt, { modelInvoked: false });
+    emitShadowSummary(completed);
+    return completed;
+  }
+
   const prompt = buildPatientConversationAgentPrompt({
     conversation,
     priorState,
@@ -406,8 +480,14 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
     }
 
     const stateEnvelope = applyConversationStatePolicy(builtEnvelope, priorState, conversation);
+    const legacyRuntimeEnvelope = applyRuntimePolicy(stateEnvelope, runtimeContext);
+    const deterministicEnvelope = applyDeterministicDecisionPolicy(
+      legacyRuntimeEnvelope,
+      conversation,
+      runtimeContext,
+    );
     const completed = attachRuntimeMetadata(attachEvaluationCorrelation(
-      applyRuntimePolicy(stateEnvelope, runtimeContext),
+      deterministicEnvelope,
       evaluationCaseId,
       evaluationAttempt,
     ), Date.now() - startedAt);
