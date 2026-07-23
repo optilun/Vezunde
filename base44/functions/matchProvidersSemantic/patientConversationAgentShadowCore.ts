@@ -437,12 +437,19 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
       raw,
       conversation,
     });
-    const noncanonicalOutputCount = Number(builtEnvelope?.diagnostics?.rejected_service_count || 0);
+    const rejectedServiceCount = Number(
+      builtEnvelope?.diagnostics?.rejected_service_count || 0,
+    );
+    const rejectedEvidencePhraseCount = Number(
+      builtEnvelope?.diagnostics?.rejected_evidence_phrase_count || 0,
+    );
+    const noncanonicalOutputCount = rejectedServiceCount + rejectedEvidencePhraseCount;
     if (noncanonicalOutputCount > 0) {
       const invalid = attachRuntimeMetadata(attachEvaluationCorrelation(
         invalidModelOutputEnvelope('noncanonical_model_output', {
           noncanonical_output_count: noncanonicalOutputCount,
-          rejected_service_count: builtEnvelope?.diagnostics?.rejected_service_count || 0,
+          rejected_service_count: rejectedServiceCount,
+          rejected_evidence_phrase_count: rejectedEvidencePhraseCount,
         }),
         evaluationCaseId,
         evaluationAttempt,
