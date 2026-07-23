@@ -101,6 +101,30 @@ assert(validatePatientConversationModelResponse(unexpectedProviderField, schema)
 assert(detectProhibitedPatientConversationOutput(unexpectedProviderField)
   .includes('forbidden_field:provider_id'));
 
+const nestedTreatmentDirective = validResponse();
+nestedTreatmentDirective.facts.user_constraints = ['Ia picaturi antibiotice.'];
+assert(detectProhibitedPatientConversationOutput(nestedTreatmentDirective)
+  .includes('treatment_directive'));
+
+const nestedDiagnosisClaim = validResponse();
+nestedDiagnosisClaim.facts.symptom_pattern = 'Ai glaucom.';
+assert(detectProhibitedPatientConversationOutput(nestedDiagnosisClaim)
+  .includes('diagnosis_claim'));
+
+const nestedProviderRecommendation = validResponse();
+nestedProviderRecommendation.facts.repair_details = 'Recomandam clinica pentru aceasta problema.';
+assert(detectProhibitedPatientConversationOutput(nestedProviderRecommendation)
+  .includes('ranking_or_provider_recommendation_claim'));
+
+const verbatimEvidenceOnly = validResponse();
+verbatimEvidenceOnly.evidence_phrases = ['ia picaturi antibiotice'];
+assert.equal(
+  detectProhibitedPatientConversationOutput(verbatimEvidenceOnly)
+    .includes('treatment_directive'),
+  false,
+  'Verbatim evidence phrases are grounded separately and must not be treated as generated directives.',
+);
+
 const invalidIntent = {
   ...validResponse(),
   primary_intent: 'invented_intent',
