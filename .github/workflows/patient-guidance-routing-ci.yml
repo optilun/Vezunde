@@ -7,6 +7,7 @@ on:
       - "shared/patientGuidanceRouting.js"
       - "shared/patientGuidancePlanner.js"
       - "shared/patientConversationAgent.js"
+      - "shared/patientConversationEvaluation.js"
       - "base44/shared/patientGuidanceQuestionCatalog.js"
       - "base44/shared/patientGuidanceRouting.js"
       - "base44/shared/patientGuidancePlanner.js"
@@ -21,6 +22,8 @@ on:
       - "scripts/verify-patient-guidance-runtime-shadow.mjs"
       - "scripts/verify-patient-conversation-agent.mjs"
       - "scripts/verify-patient-conversation-shadow-route.mjs"
+      - "scripts/verify-patient-conversation-evaluation.mjs"
+      - "scripts/evaluate-patient-conversation-results.mjs"
       - "package.json"
       - ".github/workflows/patient-guidance-routing-ci.yml"
 
@@ -54,6 +57,8 @@ jobs:
         run: node scripts/verify-patient-conversation-agent.mjs
       - name: Verify patient conversation shadow route
         run: node scripts/verify-patient-conversation-shadow-route.mjs
+      - name: Verify patient conversation evaluation scorer
+        run: node scripts/verify-patient-conversation-evaluation.mjs
       - name: Base44 router and physical function checks
         run: |
           node scripts/verify-directory-function-router.mjs
@@ -109,6 +114,7 @@ jobs:
           shared/patientGuidanceRouting.js
           shared/patientGuidancePlanner.js
           shared/patientConversationAgent.js
+          shared/patientConversationEvaluation.js
           base44/shared/patientGuidanceQuestionCatalog.js
           base44/shared/patientGuidanceRouting.js
           base44/shared/patientGuidancePlanner.js
@@ -121,6 +127,8 @@ jobs:
           scripts/verify-patient-guidance-runtime-shadow.mjs
           scripts/verify-patient-conversation-agent.mjs
           scripts/verify-patient-conversation-shadow-route.mjs
+          scripts/verify-patient-conversation-evaluation.mjs
+          scripts/evaluate-patient-conversation-results.mjs
           --quiet
       - name: Lint complete
         run: npm run lint
