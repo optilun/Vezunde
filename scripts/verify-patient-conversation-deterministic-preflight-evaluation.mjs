@@ -23,6 +23,7 @@ const fixture = {
     expected: {
       primary_intent: 'simptome_oftalmologice',
       care_paths_any: ['emergency_interruption'],
+      service_keys_any: ['emergency_ophthalmology'],
       next_action: 'show_emergency_guidance',
       urgency: 'confirmed',
       must_ask: false,
@@ -66,7 +67,7 @@ function preflightEnvelope(attempt, overrides = {}) {
         primary_intent: 'simptome_oftalmologice',
         alternative_intents: [],
         care_path_candidates: ['emergency_interruption'],
-        service_keys: [],
+        service_keys: ['emergency_ophthalmology'],
         provider_type_candidates: [],
         facts: {
           for_whom: 'unknown',
