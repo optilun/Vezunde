@@ -1,7 +1,7 @@
 import { getCanonicalServiceDefinition } from "./canonicalServiceRegistryExtended.js";
 
 export const PATIENT_CONVERSATION_DECISION_POLICY_VERSION = "viasee-patient-conversation-decision-policy-v1";
-export const PATIENT_CONVERSATION_SAFETY_POLICY_VERSION = "patient-eye-safety-v1";
+export const PATIENT_CONVERSATION_SAFETY_POLICY_VERSION = "patient-eye-safety-v1.1";
 
 export const PATIENT_CONVERSATION_SAFE_EMERGENCY_MESSAGE = [
   "Mergi cat mai repede la cel mai apropiat spital, UPU, camera de garda",
@@ -32,7 +32,11 @@ const SAFETY_FLAG_PRESENTATION = Object.freeze({
 const SAFETY_PATTERNS = Object.freeze({
   sudden_vision_loss: [
     /\bnu mai vad deloc\b/,
-    /\bnu mai vad cu un ochi\b/,
+    /\baproape nu mai vad deloc\b/,
+    /\bnu mai vad cu un ochi (?:brusc|deodata|dintr o data|de azi)\b/,
+    /\bnu mai vad brusc cu un ochi\b/,
+    /\bmi a disparut brusc vederea\b/,
+    /\ba disparut brusc\b.{0,80}\baproape complet\b/,
     /\bmi am pierdut vederea\b/,
     /\bpierdere brusca (?:a )?vederii\b/,
     /\bmi am pierdut brusc vederea\b/,
@@ -46,11 +50,14 @@ const SAFETY_PATTERNS = Object.freeze({
     /\binalbitor (?:in|la) ochi\b/,
     /\bdetergent puternic (?:in|la) ochi\b/,
     /\bsoda caustica (?:in|la) ochi\b/,
+    /\bspray de curatat (?:cuptorul|aragazul)\b.{0,40}\b(?:in|la) ochi\b/,
+    /\bsolutie de curatat (?:cuptorul|aragazul)\b.{0,40}\b(?:in|la) ochi\b/,
   ],
   penetrating_or_high_speed_trauma: [
     /\bobiect (?:infipt|patruns) in ochi\b/,
     /\bsticla in ochi\b/,
     /\baschie metalica in ochi\b/,
+    /\baschie de metal\b.{0,80}\binfipta in ochi\b/,
     /\bmetal in ochi dupa polizor\b/,
     /\blovitura puternica (?:in|la) ochi\b/,
   ],
@@ -68,12 +75,13 @@ const SAFETY_PATTERNS = Object.freeze({
     /\bdupa injectie in ochi nu mai vad\b/,
     /\bochi rosu si dureros dupa operatie\b/,
     /\bdurere dupa operatie la ochi\b/,
+    /\bdupa operati(?:a|e)\b.{0,120}\bochiul (?:e|este) rosu\b.{0,120}\b(?:ma doare|doare)\b.{0,120}\bvad mai prost\b/,
   ],
   other_possible_urgent_eye_problem: [
-    /\bfulgerari si perdea\b/,
-    /\bfulgere si perdea\b/,
+    /\bfulgerari si (?:o )?perdea\b/,
+    /\bfulgere si (?:o )?perdea\b/,
     /\bumbra ca o perdea\b/,
-    /\bmuste zburatoare si perdea\b/,
+    /\bmuste zburatoare si (?:o )?perdea\b/,
     /\bvedere dubla aparuta brusc\b/,
     /\bvad dublu deodata\b/,
   ],
