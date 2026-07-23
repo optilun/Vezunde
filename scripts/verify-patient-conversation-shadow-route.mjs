@@ -3,10 +3,19 @@ import fs from 'node:fs';
 
 const entryPath = new URL('../base44/functions/matchProvidersSemantic/entry.ts', import.meta.url);
 const runnerPath = new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts', import.meta.url);
+const guardrailPath = new URL('../base44/shared/patientConversationGuardrails.js', import.meta.url);
+const sharedGuardrailPath = new URL('../shared/patientConversationGuardrails.js', import.meta.url);
 
 const entrySource = fs.readFileSync(entryPath, 'utf8');
 const runnerSource = fs.readFileSync(runnerPath, 'utf8');
+const guardrailSource = fs.readFileSync(guardrailPath, 'utf8');
+const sharedGuardrailSource = fs.readFileSync(sharedGuardrailPath, 'utf8');
 
+assert.equal(
+  guardrailSource,
+  sharedGuardrailSource,
+  'Base44 and repository patient conversation guardrails must remain byte-identical',
+);
 assert(
   entrySource.includes("import { runPatientConversationAgentShadow } from './patientConversationAgentShadow.ts';"),
   'matchProvidersSemantic must import the isolated conversation shadow runner',
@@ -91,35 +100,66 @@ assert(
   'the isolated runner must not use internet context',
 );
 assert(
-  runnerSource.includes('redactSensitiveText(turn?.content)'),
-  'conversation messages must be redacted before entering the prompt',
+  runnerSource.includes("from '../../shared/patientConversationGuardrails.js';"),
+  'the Base44 runner must import the shared privacy and output guardrails',
 );
 assert(
-  runnerSource.includes(".replace(/\\b\\d{13}\\b/g, '[identificator eliminat]')"),
-  '13-digit personal identifiers must be removed before model invocation',
+  runnerSource.includes('sanitizePatientConversationTurns('),
+  'conversation roles, turn count, length, and sensitive text must be sanitized before the prompt',
 );
 assert(
   runnerSource.includes('sanitizePriorState(payload?.prior_state)'),
   'prior conversational state must be bounded and field-selected before entering the prompt',
 );
 assert(
-  runnerSource.includes('need_summary: redactSensitiveText(value.need_summary, 500)'),
+  runnerSource.includes('need_summary: redactPatientConversationText(value.need_summary, 500)'),
   'prior-state narrative fields must be redacted before entering the prompt',
 );
 assert(
-  runnerSource.includes('MAX_CONVERSATION_TURNS = 20'),
+  guardrailSource.includes('PATIENT_CONVERSATION_MAX_TURNS = 20'),
   'conversation turn count must be bounded',
 );
 assert(
-  runnerSource.includes('MAX_CONVERSATION_CHARACTERS = 8000'),
+  guardrailSource.includes('PATIENT_CONVERSATION_MAX_CHARACTERS = 8000'),
   'conversation character count must be bounded',
 );
 assert(
-  runnerSource.includes('runtime_metadata:'),
-  'shadow results must carry model, prompt, and duration metadata',
+  guardrailSource.includes('.replace(/\\b\\d{13}\\b/g, "[identificator eliminat]")'),
+  '13-digit personal identifiers must be removed before model invocation',
 );
 assert(
-  runnerSource.includes('const searchReady = urgencyLevel === \'none\''),
+  guardrailSource.includes('[email eliminat]') && guardrailSource.includes('[telefon eliminat]'),
+  'email addresses and phone numbers must be removed before model invocation',
+);
+assert(
+  runnerSource.includes('runtime_metadata:'),
+  'shadow results must carry model, prompt, duration, and input-limit metadata',
+);
+assert(
+  runnerSource.includes('detectProhibitedPatientConversationOutput(raw)'),
+  'the complete raw model output must be checked before interpretation is built',
+);
+assert(
+  runnerSource.includes("reason: 'prohibited_model_output'"),
+  'prohibited model output must have a dedicated invalid reason',
+);
+assert(
+  runnerSource.includes("status: 'invalid'"),
+  'prohibited model output must fail closed instead of being repaired and forwarded',
+);
+assert(
+  runnerSource.includes('interpretation: null') || runnerSource.includes("status: 'unavailable'"),
+  'the prohibited-output envelope must not expose a model interpretation',
+);
+assert(
+  guardrailSource.includes('forbidden_field:')
+    && guardrailSource.includes('diagnosis_claim')
+    && guardrailSource.includes('treatment_directive')
+    && guardrailSource.includes('ranking_or_provider_recommendation_claim'),
+  'the guardrail must detect structural and generated prohibited output',
+);
+assert(
+  runnerSource.includes("const searchReady = urgencyLevel === 'none'"),
   'search readiness must be recomputed server-side',
 );
 assert(
@@ -171,4 +211,4 @@ assert(
   'the isolated runner must not load or choose concrete providers',
 );
 
-console.log('Patient conversation admin-only shadow route verified.');
+console.log('Patient conversation admin-only shadow route and fail-closed guardrails verified.');
