@@ -106,9 +106,19 @@ nestedTreatmentDirective.facts.user_constraints = ['Ia picaturi antibiotice.'];
 assert(detectProhibitedPatientConversationOutput(nestedTreatmentDirective)
   .includes('treatment_directive'));
 
+const nestedEnglishTreatmentDirective = validResponse();
+nestedEnglishTreatmentDirective.facts.user_constraints = ['Use eye drops.'];
+assert(detectProhibitedPatientConversationOutput(nestedEnglishTreatmentDirective)
+  .includes('treatment_directive'));
+
 const nestedDiagnosisClaim = validResponse();
 nestedDiagnosisClaim.facts.symptom_pattern = 'Ai glaucom.';
 assert(detectProhibitedPatientConversationOutput(nestedDiagnosisClaim)
+  .includes('diagnosis_claim'));
+
+const nestedEnglishDiagnosisClaim = validResponse();
+nestedEnglishDiagnosisClaim.facts.symptom_pattern = 'You likely have glaucoma.';
+assert(detectProhibitedPatientConversationOutput(nestedEnglishDiagnosisClaim)
   .includes('diagnosis_claim'));
 
 const splitDiagnosisFragments = validResponse();
@@ -124,6 +134,11 @@ assert.equal(
 const nestedProviderRecommendation = validResponse();
 nestedProviderRecommendation.facts.repair_details = 'Recomandam clinica pentru aceasta problema.';
 assert(detectProhibitedPatientConversationOutput(nestedProviderRecommendation)
+  .includes('ranking_or_provider_recommendation_claim'));
+
+const nestedEnglishProviderRecommendation = validResponse();
+nestedEnglishProviderRecommendation.facts.repair_details = 'Recommend the best clinic.';
+assert(detectProhibitedPatientConversationOutput(nestedEnglishProviderRecommendation)
   .includes('ranking_or_provider_recommendation_claim'));
 
 const verbatimEvidenceOnly = validResponse();
