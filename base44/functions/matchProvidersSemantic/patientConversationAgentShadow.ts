@@ -2,6 +2,10 @@ import {
   PATIENT_CONVERSATION_AGENT_VERSION,
 } from '../../shared/patientConversationAgent.js';
 import {
+  PATIENT_CONVERSATION_MAX_CHARACTERS,
+  PATIENT_CONVERSATION_MAX_TURNS,
+} from '../../shared/patientConversationGuardrails.js';
+import {
   createPatientConversationOperationalController,
   finalizePatientConversationOperationalEnvelope,
 } from '../../shared/patientConversationOperationalPolicy.js';
@@ -48,18 +52,39 @@ function runtimePayloadFromRequest(payload: any = {}) {
   return runtimePayload;
 }
 
-function normalizeNonInvokedRuntimeIdentity(envelope: any, controller: any) {
-  if (envelope?.reason !== 'user_message_required') return envelope;
-  const operational = controller?.snapshot?.();
-  if (operational?.model_calls_used !== 0) return envelope;
+function requestHasUserMessage(payload: any = {}) {
+  const conversation = Array.isArray(payload?.conversation) ? payload.conversation : null;
+  if (conversation && conversation.length > 0) {
+    return conversation.some((turn: any) => (
+      turn?.role === 'user' && String(turn?.content ?? '').trim()
+    ));
+  }
 
+  return Boolean(String(
+    payload?.search_text
+    || payload?.query
+    || payload?.free_text
+    || payload?.search_query
+    || '',
+  ).trim());
+}
+
+function skippedWithoutUserMessage() {
   return {
-    ...envelope,
+    mode: 'shadow',
+    contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
+    status: 'skipped',
+    reason: 'user_message_required',
+    interpretation: null,
     runtime_metadata: {
-      ...(envelope?.runtime_metadata || {}),
       model: null,
       prompt_version: null,
       model_invoked: false,
+      duration_ms: 0,
+      input_limits: {
+        max_turns: PATIENT_CONVERSATION_MAX_TURNS,
+        max_characters: PATIENT_CONVERSATION_MAX_CHARACTERS,
+      },
     },
   };
 }
@@ -80,12 +105,16 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
     }, controller);
   }
 
+  if (!requestHasUserMessage(runtimePayload)) {
+    return finalizePatientConversationOperationalEnvelope(
+      skippedWithoutUserMessage(),
+      controller,
+    );
+  }
+
   const envelope = await runPatientConversationAgentShadowCore(
     createOperationalBase44(base44, controller),
     runtimePayload,
   );
-  return finalizePatientConversationOperationalEnvelope(
-    normalizeNonInvokedRuntimeIdentity(envelope, controller),
-    controller,
-  );
+  return finalizePatientConversationOperationalEnvelope(envelope, controller);
 }
