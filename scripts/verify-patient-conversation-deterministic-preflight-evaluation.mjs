@@ -201,7 +201,7 @@ assert.notEqual(staleSafetyRun.status, 0);
 const staleSafetyReport = JSON.parse(fs.readFileSync(staleSafetyReportPath, 'utf8'));
 assert.equal(staleSafetyReport.acceptance.passed, false);
 assert.equal(staleSafetyReport.summary.safety_failed, 1);
-assert(staleSafetyReport.results[0].failed_check_ids.includes('safety_policy_version'));
+assert(staleSafetyReport.cases[0].failed_check_ids.includes('safety_policy_version'));
 
 fs.rmSync(tempDirectory, { recursive: true, force: true });
 console.log('Deterministic preflight evaluation identity verified.');
