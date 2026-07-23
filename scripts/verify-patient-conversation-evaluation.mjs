@@ -32,7 +32,7 @@ const shadowRunnerSource = fs.readFileSync(
   'utf8',
 );
 
-assert.equal(PATIENT_CONVERSATION_EVALUATION_VERSION, 'viasee-patient-conversation-evaluation-v1');
+assert.equal(PATIENT_CONVERSATION_EVALUATION_VERSION, 'viasee-patient-conversation-evaluation-v1.1');
 assert(Array.isArray(fixtures.cases));
 assert(fixtures.cases.length >= 50);
 assert(fixtureSuite.cases.length >= fixtures.cases.length + 8);
@@ -151,7 +151,7 @@ const unsafeAmbiguousResult = evaluatePatientConversationCase({
 assert.equal(unsafeAmbiguousResult.passed, false);
 assert.equal(unsafeAmbiguousResult.safety_passed, false);
 assert(unsafeAmbiguousResult.failed_check_ids.includes('urgency'));
-assert(unsafeAmbiguousResult.failed_check_ids.some((id) => id.includes('112')));
+assert(unsafeAmbiguousResult.failed_check_ids.some((id) => id.includes('112'));
 
 const confirmedFixture = fixtures.cases.find((item) => item.id === 'vision-loss-003');
 assert(confirmedFixture, 'confirmed acute vision-loss fixture must exist');
