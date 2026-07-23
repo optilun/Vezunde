@@ -7,24 +7,20 @@ Production publication: none
 
 ## 1. Product objective
 
-VIASEE helps a person describe an eye-care, optical, investigation, product, or repair need in ordinary Romanian language and reach relevant locations from the existing deterministic marketplace.
+VIASEE helps a person describe an eye-care, optical, investigation, product or repair need in ordinary Romanian language and reach the existing deterministic marketplace.
 
-The AI component is not a doctor, a provider recommender, or the orchestrator of the marketplace. Its role is limited to semantic interpretation.
-
-The governing rule is:
+The AI component is not a doctor, a provider recommender or the marketplace orchestrator.
 
 > The LLM understands. VIASEE code decides.
-
-The user may write short answers, spelling mistakes, informal language, corrections, negations, indirect descriptions, or several details across multiple turns.
 
 ## 2. Responsibility boundaries
 
 ### The semantic LLM may extract
 
-- a concise statement of the need;
+- a concise need summary;
 - primary and alternative intent candidates;
 - canonical service candidates;
-- user-provided facts;
+- bounded user-provided facts;
 - semantic ambiguities;
 - advisory safety signals;
 - explicit correction hints in a bounded state delta;
@@ -32,41 +28,39 @@ The user may write short answers, spelling mistakes, informal language, correcti
 
 ### The semantic LLM must not decide
 
-- final urgency;
-- whether a case is safe;
-- the next action;
-- which question is shown;
+- final urgency or safety clearance;
+- the next action or next question;
 - whether search may start;
-- care-path authority;
 - provider types as authority;
-- provider eligibility;
-- a concrete provider;
+- provider eligibility, selection or order;
 - ranking or Top 3;
 - patient-facing operational wording;
-- a specialist message;
-- contact sharing.
+- specialist messaging or contact sharing.
 
 ### Deterministic VIASEE code controls
 
 - safety preflight and final safety state;
 - schema and canonical-key validation;
 - conversational state reduction;
-- final care-path compatibility;
+- care-path compatibility;
 - provider-profile derivation from canonical services;
-- missing critical fields;
-- search readiness;
-- the final action;
+- missing critical fields and search readiness;
+- final action and controlled wording;
 - question selection through the approved planner;
-- provider and service eligibility;
-- locality and geographic scope;
-- ranking, buckets and Top 3;
-- directory versus confirmed placement;
-- consent, contact access and delivery.
+- matching, ranking, buckets, Top 3 and trust placement;
+- consent, contact access and request distribution.
 
 ## 3. Runtime pipeline
 
 ```text
-sanitized patient conversation
+admin shadow request
+        ↓
+operational wrapper
+        ├─ rollout and sampling policy
+        ├─ browser prior-state isolation
+        ├─ empty-request stop
+        ├─ one-call budget
+        └─ response deadline
         ↓
 deterministic safety preflight
         ↓ when not blocked
@@ -80,52 +74,83 @@ validated semantic state-delta reducer
         ↓
 deterministic decision policy
         ↓
+canonical patient/provider boundary
+        ↓
 shadow envelope only
 ```
 
 The shadow route exits before service-role access and before provider matching.
 
-## 4. Deterministic safety preflight
+## 4. Operational wrapper
+
+The public runtime is `patientConversationAgentShadow.ts`. The semantic implementation is isolated in `patientConversationAgentShadowCore.ts`.
+
+The wrapper currently enforces:
+
+- `admin_evaluation_only` rollout mode;
+- patient-visible execution disabled;
+- patient-visible sampling set to zero;
+- maximum one model call per request;
+- 15-second response deadline;
+- fail-closed timeout and call-budget outcomes;
+- request-scoped operational metadata;
+- no raw patient text or text hashes in operational metadata.
+
+The Base44 integration does not expose cancellation. The timeout is therefore a response deadline and does not prove cancellation of the underlying SDK request.
+
+A request without a user message stops in the wrapper before the semantic core and before semantic shadow logging. It reports:
+
+- `model_invoked: false`;
+- `model: null`;
+- `prompt_version: null`;
+- zero operational model calls.
+
+Administrator evaluation correlation is preserved for such responses when a valid `evaluation_case_id` is supplied.
+
+## 5. Deterministic safety preflight
 
 Before any model call, VIASEE checks user turns for separately versioned explicit acute eye-safety signals.
 
-When the preflight blocks:
+When preflight blocks:
 
 - the model is not invoked;
 - search is stopped;
-- urgency is deterministically `confirmed`;
-- the action is deterministically `show_emergency_guidance`;
+- urgency becomes deterministically `confirmed`;
+- the final action becomes `show_emergency_guidance`;
 - a fixed VIASEE safety message is used;
-- runtime metadata records `model_invoked: false`, `model: null`, and `prompt_version: null`.
+- runtime metadata records a truthful no-model identity.
 
-Safety state is reduced turn by turn. A locality-only reply does not clear an earlier acute signal. Only a later explicit correction recognized by deterministic policy may clear the corresponding flag.
+A locality-only reply does not erase an earlier acute signal. Only a later explicit correction recognized by deterministic policy may clear the corresponding flag.
 
-The LLM may report possible safety flags, but those flags are advisory. The model cannot clear a deterministic signal or declare a case safe.
+Model safety flags are advisory. They cannot clear deterministic safety or declare a case safe.
 
-## 5. Semantic model input
+## 6. Semantic model input
 
-The model receives:
+For a model-invoked attempt, the runtime supplies:
 
 - at most 20 `user` or `assistant` turns;
 - at most 8,000 conversation characters;
 - at most 1,200 characters per turn;
-- a bounded and field-selected prior state;
 - known locality when available;
 - the patient-facing canonical service catalog;
-- approved intent, ambiguity, safety-flag, and state-delta values;
+- approved intent, ambiguity, safety-flag and state-delta values;
 - `contact_share_approved: false`.
 
-Before the call, email addresses, Romanian phone numbers, and 13-digit identifiers are removed.
+Email addresses, Romanian phone numbers and 13-digit identifiers are removed before the call.
 
-Conversation text and prior state are untrusted data, not instructions.
+### Prior-state boundary
 
-## 6. Raw semantic response contract
+Normal shadow requests discard browser-provided `prior_state` before the semantic core.
 
-The model response uses:
+A bounded and field-selected `prior_state` is accepted only for administrator evaluation fixtures carrying a syntactically valid `evaluation_case_id`. This permits controlled memory and correction replay. It is not durable patient state, a production authority or a patient-visible activation path.
+
+Conversation content and evaluation prior state remain untrusted data, never prompt instructions.
+
+## 7. Raw semantic response contract
 
 - semantic contract: `viasee-patient-conversation-semantic-v1`;
 - prompt: `viasee-patient-conversation-prompt-v1.2`;
-- model: `gpt_5_4` in the current controlled evaluation.
+- current controlled model: `gpt_5_4`.
 
 Logical shape:
 
@@ -168,64 +193,58 @@ Logical shape:
 }
 ```
 
-The raw model schema deliberately excludes:
+The raw schema excludes:
 
-- `care_path_candidates`;
-- `provider_type_candidates`;
-- `urgency`;
-- `information_status`;
-- `next_action`;
-- `assistant_message`;
-- `specialist_summary`.
+- care paths and provider types;
+- urgency and search-readiness authority;
+- final action;
+- assistant or specialist wording;
+- providers, scores, ranking and Top 3.
 
 Unexpected fields fail schema validation. Invalid output is not repaired into a usable interpretation.
 
-## 7. Final VIASEE shadow envelope
+## 8. Conversational state
 
-After semantic validation, VIASEE builds a compatibility envelope for the existing evaluation and future planner integration.
+The deterministic state policy may preserve compatible evaluation prior facts for short answers. It must prevent stale intent-specific facts, locality, person, symptom timing, prescription, investigation or repair details from contaminating a corrected request.
 
-Server code derives or recalculates:
+A model state delta is only a hint. The deterministic reducer:
 
-- care-path candidates;
-- provider-profile candidates;
-- urgency;
+- requires `correction_detected: true`;
+- requires a matching correction signal in the conversation;
+- rejects unsupported clear requests;
+- clears only stale values;
+- preserves replacement values such as Lugoj replacing Timisoara;
+- records field names and aggregate diagnostics without raw conversation text.
+
+Durable server-owned conversation persistence is not implemented.
+
+## 9. Final decision and canonical boundary
+
+After semantic validation and state processing, deterministic code recalculates:
+
+- final urgency;
 - missing critical fields;
 - search readiness;
 - final action;
-- patient-facing operational text.
+- patient-facing operational wording;
+- provider-profile candidates from canonical services.
 
-`specialist_summary` remains `null` in this layer because contact sharing is outside semantic interpretation.
+Rules:
 
-## 8. Conversational state
+- explicit deterministic safety signal → emergency interruption;
+- model-only safety signal → controlled clarification;
+- unknown intent or no canonical services → clarification;
+- known need without locality → locality question;
+- known need, services and locality with no unresolved safety concern → search-ready.
 
-### Existing state reconciliation
+The final envelope separates:
 
-The deterministic state policy may preserve compatible prior facts for short replies. It must prevent old intent-specific facts, locality, person, symptom timing, prescription, investigation, or repair details from contaminating a corrected request.
+- `provider_profile_type_candidates`;
+- `location_provider_type_candidates`.
 
-### Semantic state delta
+The older `provider_type_candidates` field remains only as a temporary compatibility alias.
 
-The model may suggest that explicitly corrected fields from prior state should be cleared.
-
-The suggestion is never applied directly. The deterministic reducer:
-
-- requires `correction_detected: true`;
-- requires a matching deterministic correction signal in the conversation;
-- rejects unsupported clear requests;
-- clears a stale value only when the current value is absent or still equals the prior value;
-- preserves a new replacement value, such as Lugoj replacing Timisoara;
-- records requested, applied, rejected, and replacement-preserved fields without logging raw conversation text.
-
-## 9. Final decision policy
-
-After state processing, deterministic code owns the final decision.
-
-- Explicit deterministic safety signal → emergency interruption.
-- Model-only possible or confirmed safety signal → controlled clarification, never automatic emergency certainty.
-- Unknown intent or no canonical services → clarification.
-- Known intent and services but no locality → locality question.
-- Known intent, canonical services, locality, and no unresolved safety concern → search-ready.
-
-Provider-profile candidates are derived from canonical service definitions. Model-proposed provider types do not exist in the raw schema.
+`specialist_summary` remains `null` in this layer.
 
 ## 10. Marketplace integration
 
@@ -233,15 +252,14 @@ The agent does not query or receive concrete providers.
 
 The existing deterministic marketplace remains responsible for:
 
-- canonical locality through SIRUTA;
+- canonical SIRUTA locality;
 - service matching;
 - operational prerequisites;
 - specialist, equipment, facility and capability checks;
 - profile trust state;
 - confirmed versus directory result groups;
 - explainable score components;
-- Top 3 eligibility;
-- ranking and tie-breaking.
+- Top 3 eligibility and tie-breaking.
 
 The AI cannot alter provider order or create a commercial advantage.
 
@@ -251,42 +269,43 @@ The controlled suite contains 71 scenarios:
 
 - 53 semantic and safety cases;
 - 8 adversarial cases;
-- 10 memory, correction, negation, typo, mixed-language, and intent-switch cases.
+- 10 memory, correction, negation, typo, mixed-language and intent-switch cases.
 
-Critical cases run repeatedly. Acceptance requires 100% for safety-critical behavior, prohibited-output protection, decision-policy application, state-policy application where relevant, memory, corrections, and critical stability. Overall pass rate and weighted score must each be at least 85%.
+Critical cases run repeatedly. Acceptance requires 100% for safety-critical behavior, prohibited-output protection, deterministic decision/state policies where applicable, memory, corrections and critical stability. Overall pass rate and weighted score must each be at least 85%.
 
 The evaluator distinguishes:
 
 1. model-invoked attempts with exact model and prompt identity;
-2. deterministic preflight attempts with truthful no-model metadata.
+2. deterministic preflight attempts with truthful no-model metadata;
+3. terminal or skipped attempts, which cannot satisfy the completed-attempt threshold.
 
-## 12. Activation sequence
+## 12. Activation blockers
 
-The implementation remains draft until:
+PR #266 remains draft until:
 
-1. GitHub Actions executes all checks;
+1. GitHub Actions executes the configured checks;
 2. lint, typecheck and build complete;
 3. all required real-model attempts are captured;
 4. acceptance thresholds pass;
-5. critical outputs are manually reviewed;
-6. a medical safety reviewer examines the emergency boundary;
-7. the single approved question planner is selected as orchestrator;
-8. kill switch, timeout, call budget, sampling and server-owned state exist;
-9. the final diff confirms no matching, ranking, Top 3 or distribution change.
+5. critical outputs receive manual review;
+6. the emergency boundary receives medical safety review;
+7. PR #265 remains the sole approved question orchestrator;
+8. durable server-owned session persistence and per-session/per-user budgets are designed and implemented;
+9. patient-visible disclosure, fallback and sampling policy are approved;
+10. the final diff confirms no normal matching, ranking, Top 3, distribution or contact change.
 
-Activation must progress from administrator evaluation to invisible shadow sampling and only later to controlled patient-visible wording.
+Existing request-scoped controls are necessary but are not sufficient for patient-visible activation.
 
 ## 13. Explicit v1 exclusions
 
 The first active version must not:
 
-- diagnose or prescribe;
-- recommend medication;
+- diagnose, prescribe or recommend medication;
 - claim medical certainty;
 - choose or rank providers;
 - generate Top 3;
 - share contact details;
 - send provider requests;
 - own the next-question planner;
-- rely on exact evaluation phrases as semantic routing logic;
+- rely on exact evaluation phrases as routing logic;
 - publish automatically.
