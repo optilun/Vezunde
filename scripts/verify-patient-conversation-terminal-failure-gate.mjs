@@ -18,7 +18,8 @@ function unavailableEnvelope(attempt) {
     interpretation: null,
     runtime_metadata: {
       model: 'gpt_5_4',
-      prompt_version: 'viasee-patient-conversation-prompt-v1.1',
+      prompt_version: 'viasee-patient-conversation-prompt-v1.2',
+      model_invoked: true,
       duration_ms: 50 + attempt,
       input_limits: {
         max_turns: 20,
