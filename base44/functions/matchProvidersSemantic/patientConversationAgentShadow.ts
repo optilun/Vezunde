@@ -24,6 +24,15 @@ function isPlainObject(value: unknown): value is Record<string, any> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
+function evaluationCaseIdFromPayload(payload: any) {
+  const value = clean(payload?.evaluation_case_id, 120);
+  return /^[a-z0-9][a-z0-9._-]{0,119}$/i.test(value) ? value : '';
+}
+
+function attachEvaluationCorrelation(envelope: any, evaluationCaseId: string) {
+  return evaluationCaseId ? { ...envelope, evaluation_case_id: evaluationCaseId } : envelope;
+}
+
 function conversationFromPayload(payload: any) {
   if (Array.isArray(payload?.conversation)) return payload.conversation;
   const fallbackText = clean(
@@ -125,15 +134,9 @@ function redactContactDetails(value: unknown) {
 }
 
 function fallbackAssistantMessage(nextAction: string) {
-  if (nextAction === 'ask_locality') {
-    return 'In ce oras sau zona doresti sa cauti?';
-  }
-  if (nextAction === 'confirm_understanding') {
-    return 'Am inteles nevoia descrisa. Este corect?';
-  }
-  if (nextAction === 'ask_clarifying_question') {
-    return 'Poti sa imi spui putin mai clar ce ai nevoie sa rezolvi?';
-  }
+  if (nextAction === 'ask_locality') return 'In ce oras sau zona doresti sa cauti?';
+  if (nextAction === 'confirm_understanding') return 'Am inteles nevoia descrisa. Este corect?';
+  if (nextAction === 'ask_clarifying_question') return 'Poti sa imi spui putin mai clar ce ai nevoie sa rezolvi?';
   return '';
 }
 
@@ -144,13 +147,9 @@ function applyRuntimePolicy(envelope: any, runtimeContext: any) {
     ...envelope.interpretation,
     facts: {
       ...envelope.interpretation.facts,
-      locality: {
-        ...envelope.interpretation.facts?.locality,
-      },
+      locality: { ...envelope.interpretation.facts?.locality },
     },
-    urgency: {
-      ...envelope.interpretation.urgency,
-    },
+    urgency: { ...envelope.interpretation.urgency },
     information_status: {
       ...envelope.interpretation.information_status,
       missing_critical_fields: [
@@ -211,10 +210,7 @@ function applyRuntimePolicy(envelope: any, runtimeContext: any) {
     interpretation.assistant_message = fallbackAssistantMessage(interpretation.next_action);
   }
 
-  return {
-    ...envelope,
-    interpretation,
-  };
+  return { ...envelope, interpretation };
 }
 
 function emitShadowSummary(envelope: any) {
@@ -222,6 +218,7 @@ function emitShadowSummary(envelope: any) {
   console.info(PATIENT_CONVERSATION_SHADOW_EVENT, JSON.stringify({
     contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
     status: envelope?.status || 'unknown',
+    evaluation_case_id_present: Boolean(envelope?.evaluation_case_id),
     primary_intent: interpretation?.primary_intent || 'unknown',
     care_path_count: Array.isArray(interpretation?.care_path_candidates)
       ? interpretation.care_path_candidates.length
@@ -236,16 +233,17 @@ function emitShadowSummary(envelope: any) {
 }
 
 export async function runPatientConversationAgentShadow(base44: any, payload: any = {}) {
+  const evaluationCaseId = evaluationCaseIdFromPayload(payload);
   const conversation = conversationFromPayload(payload);
   const hasUserMessage = conversation.some((turn: any) => (
     turn?.role === 'user' && clean(turn?.content)
   ));
 
   if (!hasUserMessage) {
-    const skipped = buildPatientConversationShadowEnvelope({
+    const skipped = attachEvaluationCorrelation(buildPatientConversationShadowEnvelope({
       status: 'skipped',
       reason: 'user_message_required',
-    });
+    }), evaluationCaseId);
     emitShadowSummary(skipped);
     return skipped;
   }
@@ -263,19 +261,19 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
       add_context_from_internet: false,
       response_json_schema: getPatientConversationAgentResponseSchema(),
     });
-    const completed = applyRuntimePolicy(buildPatientConversationShadowEnvelope({
+    const completed = attachEvaluationCorrelation(applyRuntimePolicy(buildPatientConversationShadowEnvelope({
       status: 'completed',
       raw,
       conversation,
-    }), runtimeContext);
+    }), runtimeContext), evaluationCaseId);
     emitShadowSummary(completed);
     return completed;
   } catch (_error) {
-    const unavailable = buildPatientConversationShadowEnvelope({
+    const unavailable = attachEvaluationCorrelation(buildPatientConversationShadowEnvelope({
       status: 'unavailable',
       conversation,
       reason: 'conversation_model_unavailable',
-    });
+    }), evaluationCaseId);
     emitShadowSummary(unavailable);
     return unavailable;
   }
