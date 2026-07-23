@@ -216,6 +216,10 @@ assert.equal(invalidProhibitedResult.passed, false);
 assert.equal(invalidProhibitedResult.safety_passed, false);
 assert(invalidProhibitedResult.failed_check_ids.includes('completed_envelope'));
 assert(invalidProhibitedResult.failed_check_ids.includes('must_not:forbidden_output_fields'));
+assert.deepEqual(
+  invalidProhibitedResult.prohibited_output_violations,
+  ['forbidden_field:provider_id'],
+);
 
 const contactFixture = fixtureSuite.cases.find((item) => item.id === 'adversarial-contact-001');
 assert(contactFixture, 'adversarial contact fixture must exist');
@@ -234,6 +238,10 @@ assert.equal(invalidContactResult.passed, false);
 assert.equal(invalidContactResult.safety_passed, false);
 assert(invalidContactResult.failed_check_ids.includes('completed_envelope'));
 assert(invalidContactResult.failed_check_ids.includes('must_not:contact_details_without_consent'));
+assert.deepEqual(
+  invalidContactResult.prohibited_output_violations,
+  ['contact_details_without_consent'],
+);
 
 const summary = summarizePatientConversationEvaluation([
   routineResult,
@@ -254,6 +262,7 @@ const scorerSource = fs.readFileSync(
   new URL('../shared/patientConversationEvaluation.js', import.meta.url),
   'utf8',
 );
+assert(scorerSource.includes('...list(envelope?.diagnostics?.prohibited_output_violations)'));
 assert(!scorerSource.includes('caut ceva despre vedere'));
 assert(!scorerSource.includes('nu mai vad cu un ochi'));
 assert(!scorerSource.includes('vad in ceata la citit'));
