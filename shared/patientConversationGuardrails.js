@@ -33,12 +33,114 @@ function clean(value, maxLength = 1200) {
   return String(value ?? "").trim().slice(0, maxLength);
 }
 
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
 function normalizedFieldName(value) {
   return String(value ?? "")
     .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
+}
+
+function schemaPath(parentPath, key) {
+  return /^\d+$/.test(String(key))
+    ? `${parentPath}[${key}]`
+    : `${parentPath}.${key}`;
+}
+
+function validateSchemaNode(value, schema, path, violations, depth = 0) {
+  if (!schema || typeof schema !== "object" || depth > 16) return;
+
+  if (Array.isArray(schema.anyOf)) {
+    const matched = schema.anyOf.some((candidateSchema) => {
+      const candidateViolations = [];
+      validateSchemaNode(value, candidateSchema, path, candidateViolations, depth + 1);
+      return candidateViolations.length === 0;
+    });
+    if (!matched) violations.add(`schema_any_of:${path}`);
+    return;
+  }
+
+  if (Array.isArray(schema.enum) && !schema.enum.some((candidate) => Object.is(candidate, value))) {
+    violations.add(`schema_enum:${path}`);
+    return;
+  }
+
+  if (schema.type === "object") {
+    if (!isPlainObject(value)) {
+      violations.add(`schema_type_object:${path}`);
+      return;
+    }
+    const properties = isPlainObject(schema.properties) ? schema.properties : {};
+    const required = Array.isArray(schema.required) ? schema.required : [];
+    for (const requiredKey of required) {
+      if (!Object.prototype.hasOwnProperty.call(value, requiredKey)) {
+        violations.add(`schema_missing:${schemaPath(path, requiredKey)}`);
+      }
+    }
+    if (schema.additionalProperties === false) {
+      for (const key of Object.keys(value)) {
+        if (!Object.prototype.hasOwnProperty.call(properties, key)) {
+          violations.add(`schema_unexpected:${schemaPath(path, key)}`);
+        }
+      }
+    }
+    for (const [key, propertySchema] of Object.entries(properties)) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) {
+        validateSchemaNode(value[key], propertySchema, schemaPath(path, key), violations, depth + 1);
+      }
+    }
+    return;
+  }
+
+  if (schema.type === "array") {
+    if (!Array.isArray(value)) {
+      violations.add(`schema_type_array:${path}`);
+      return;
+    }
+    if (Number.isInteger(schema.maxItems) && value.length > schema.maxItems) {
+      violations.add(`schema_max_items:${path}`);
+    }
+    if (schema.items) {
+      value.forEach((item, index) => {
+        validateSchemaNode(item, schema.items, schemaPath(path, index), violations, depth + 1);
+      });
+    }
+    return;
+  }
+
+  if (schema.type === "string") {
+    if (typeof value !== "string") {
+      violations.add(`schema_type_string:${path}`);
+      return;
+    }
+    if (Number.isInteger(schema.maxLength) && value.length > schema.maxLength) {
+      violations.add(`schema_max_length:${path}`);
+    }
+    return;
+  }
+
+  if (schema.type === "boolean" && typeof value !== "boolean") {
+    violations.add(`schema_type_boolean:${path}`);
+    return;
+  }
+
+  if (schema.type === "number" && (typeof value !== "number" || !Number.isFinite(value))) {
+    violations.add(`schema_type_number:${path}`);
+    return;
+  }
+
+  if (schema.type === "integer" && !Number.isInteger(value)) {
+    violations.add(`schema_type_integer:${path}`);
+    return;
+  }
+
+  if (schema.type === "null" && value !== null) {
+    violations.add(`schema_type_null:${path}`);
+  }
 }
 
 export function redactPatientConversationText(value, maxLength = 1200) {
@@ -80,6 +182,12 @@ export function sanitizePatientConversationTurns(conversation, fallbackText = ""
     totalCharacters += row.content.length;
   }
   return bounded;
+}
+
+export function validatePatientConversationModelResponse(value, responseSchema) {
+  const violations = new Set();
+  validateSchemaNode(value, responseSchema, "$", violations);
+  return [...violations].sort();
 }
 
 export function detectProhibitedPatientConversationOutput(value) {
