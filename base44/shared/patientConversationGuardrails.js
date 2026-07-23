@@ -44,8 +44,8 @@ function normalizedFieldName(value) {
 export function redactPatientConversationText(value, maxLength = 1200) {
   return clean(value, maxLength)
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email eliminat]")
-    .replace(/(?:\+?40[\s.-]?)?(?:0?2\d{2}|0?3\d{2}|0?7\d{2})(?:[\s.-]?\d){6,7}/g, "[telefon eliminat]")
     .replace(/\b\d{13}\b/g, "[identificator eliminat]")
+    .replace(/(^|[^\d])((?:\+?40[\s.-]?)?(?:0?2\d{2}|0?3\d{2}|0?7\d{2})(?:[\s.-]?\d){6,7})(?!\d)/g, "$1[telefon eliminat]")
     .replace(/\s{2,}/g, " ")
     .trim();
 }
