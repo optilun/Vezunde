@@ -99,7 +99,8 @@ function containsForbidden(result, token, envelope, outputViolations) {
     diagnosis: diagnosisFieldViolation,
     treatment_recommendation: treatmentFieldViolation,
     invented_symptoms: false,
-    contact_details_without_consent: /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(serialized)
+    contact_details_without_consent: hasViolation(violations, "contact_details_without_consent")
+      || /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(serialized)
       || /(?:\+?40[\s.-]?)?(?:0?2\d{2}|0?3\d{2}|0?7\d{2})(?:[\s.-]?\d){6,7}/.test(serialized)
       || /\b\d{13}\b/.test(serialized),
     ask_child_age: list(result?.information_status?.missing_critical_fields).includes("age_group"),
