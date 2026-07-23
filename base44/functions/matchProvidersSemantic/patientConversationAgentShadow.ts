@@ -17,6 +17,7 @@ import {
   buildPatientConversationEmergencyInterpretation,
 } from '../../shared/patientConversationDecisionPolicy.js';
 import { reconcilePatientConversationState } from '../../shared/patientConversationStatePolicy.js';
+import { reducePatientConversationSemanticStateDelta } from '../../shared/patientConversationStateDeltaReducer.js';
 
 const PATIENT_CONVERSATION_SHADOW_EVENT = 'patient_conversation_agent_shadow_summary';
 const PATIENT_CONVERSATION_MODEL = 'gpt_5_4';
@@ -190,7 +191,6 @@ function applyConversationStatePolicy(envelope: any, priorState: any, conversati
     interpretation: envelope.interpretation,
     priorState,
     conversation,
-    semanticStateDelta: envelope?.diagnostics?.semantic_state_delta,
   });
   return {
     ...envelope,
@@ -198,6 +198,28 @@ function applyConversationStatePolicy(envelope: any, priorState: any, conversati
     diagnostics: {
       ...(envelope.diagnostics || {}),
       state_policy: reconciled.diagnostics,
+    },
+  };
+}
+
+function applySemanticStateDeltaReducer(
+  envelope: any,
+  priorState: any,
+  conversation: any[],
+) {
+  if (!envelope?.interpretation) return envelope;
+  const reduced = reducePatientConversationSemanticStateDelta({
+    interpretation: envelope.interpretation,
+    priorState,
+    conversation,
+    semanticStateDelta: envelope?.diagnostics?.semantic_state_delta,
+  });
+  return {
+    ...envelope,
+    interpretation: reduced.interpretation,
+    diagnostics: {
+      ...(envelope.diagnostics || {}),
+      state_delta_reducer: reduced.diagnostics,
     },
   };
 }
@@ -264,6 +286,21 @@ function emitShadowSummary(envelope: any) {
       envelope?.diagnostics?.semantic_state_delta?.clear_fields,
     )
       ? envelope.diagnostics.semantic_state_delta.clear_fields.length
+      : 0,
+    state_delta_applied_field_count: Array.isArray(
+      envelope?.diagnostics?.state_delta_reducer?.applied_fields,
+    )
+      ? envelope.diagnostics.state_delta_reducer.applied_fields.length
+      : 0,
+    state_delta_preserved_replacement_count: Array.isArray(
+      envelope?.diagnostics?.state_delta_reducer?.replacement_preserved_fields,
+    )
+      ? envelope.diagnostics.state_delta_reducer.replacement_preserved_fields.length
+      : 0,
+    state_delta_rejected_field_count: Array.isArray(
+      envelope?.diagnostics?.state_delta_reducer?.rejected_fields,
+    )
+      ? envelope.diagnostics.state_delta_reducer.rejected_fields.length
       : 0,
     prohibited_output_count: Array.isArray(envelope?.diagnostics?.prohibited_output_violations)
       ? envelope.diagnostics.prohibited_output_violations.length
@@ -395,8 +432,13 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
     }
 
     const stateEnvelope = applyConversationStatePolicy(builtEnvelope, priorState, conversation);
-    const deterministicEnvelope = applyDeterministicDecisionPolicy(
+    const deltaEnvelope = applySemanticStateDeltaReducer(
       stateEnvelope,
+      priorState,
+      conversation,
+    );
+    const deterministicEnvelope = applyDeterministicDecisionPolicy(
+      deltaEnvelope,
       conversation,
       runtimeContext,
     );
