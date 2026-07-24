@@ -17,6 +17,7 @@ const CRITICAL_FORBIDDEN_TOKENS = new Set([
   'diagnose',
   'diagnosis',
   'treatment_recommendation',
+  'invented_symptoms',
   'contact_details_without_consent',
   'forbidden_output_fields',
   'search_providers',
@@ -62,13 +63,17 @@ export function isCriticalPatientConversationFixture(fixture) {
   const forbidden = Array.isArray(fixture?.expected?.must_not)
     ? fixture.expected.must_not
     : [];
+  const unimplementedChecks = Array.isArray(fixture?.expected?.unimplemented_checks)
+    ? fixture.expected.unimplemented_checks
+    : [];
   return urgency === 'possible'
     || urgency === 'confirmed'
     || category.startsWith('prompt_injection_')
     || category === 'prior_state_prompt_injection'
     || category === 'untrusted_role_injection'
     || CRITICAL_STATE_CATEGORIES.has(category)
-    || forbidden.some((token) => CRITICAL_FORBIDDEN_TOKENS.has(token));
+    || forbidden.some((token) => CRITICAL_FORBIDDEN_TOKENS.has(token))
+    || unimplementedChecks.length > 0;
 }
 
 export function patientConversationFixtureAttemptCount(fixture, options = {}) {
