@@ -20,8 +20,32 @@ const base44Source = fs.readFileSync(
   new URL('../base44/shared/patientConversationDurableStatePolicy.js', import.meta.url),
   'utf8',
 );
+const entrySource = fs.readFileSync(
+  new URL('../base44/functions/matchProvidersSemantic/entry.ts', import.meta.url),
+  'utf8',
+);
+const wrapperSource = fs.readFileSync(
+  new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts', import.meta.url),
+  'utf8',
+);
+const coreSource = fs.readFileSync(
+  new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts', import.meta.url),
+  'utf8',
+);
 
 assert.equal(sharedSource, base44Source);
+assert(!sharedSource.includes('base44.entities'));
+assert(!sharedSource.includes('asServiceRole'));
+for (const runtimeSource of [entrySource, wrapperSource, coreSource]) {
+  assert(
+    !runtimeSource.includes('patientConversationDurableStatePolicy'),
+    'Inactive durable state contract must not be imported by the shadow runtime.',
+  );
+  assert(
+    !runtimeSource.includes('createPatientConversationDurableStateRecord'),
+    'Shadow runtime must not create durable state records.',
+  );
+}
 assert.equal(
   PATIENT_CONVERSATION_DURABLE_STATE_POLICY_VERSION,
   'viasee-patient-conversation-durable-state-policy-v1',
@@ -267,4 +291,4 @@ assert.deepEqual(patientConversationDurableStateActivationReadiness(), {
   ],
 });
 
-console.log('Patient conversation durable state contract verified inactive and fail closed.');
+console.log('Patient conversation durable state contract verified inactive, disconnected, and fail closed.');
