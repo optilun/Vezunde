@@ -84,7 +84,7 @@ function canonicalCarePaths(values) {
 function evidencePhraseForValue(value, evidencePhrases) {
   const normalizedValue = normalized(value);
   if (!normalizedValue) return "";
-  return unique(evidencePhrases, 8, 160).find((phrase) => {
+  return unique(evidencePhrases, 5, 120).find((phrase) => {
     const normalizedPhrase = normalized(phrase);
     return normalizedPhrase
       && (normalizedValue.includes(normalizedPhrase) || normalizedPhrase.includes(normalizedValue));
@@ -201,7 +201,7 @@ export function buildPatientConversationGuidanceHandoff(envelope = {}) {
   }
 
   const state = handoffSafetyState(envelope);
-  const evidencePhrases = unique(interpretation.evidence_phrases, 8, 160);
+  const evidencePhrases = unique(interpretation.evidence_phrases, 5, 120);
   const primaryIntent = canonicalIntent(interpretation.primary_intent);
   const alternativeIntents = unique(interpretation.alternative_intents, 3, 80)
     .map(canonicalIntent)
