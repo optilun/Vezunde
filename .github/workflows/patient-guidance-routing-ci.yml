@@ -13,6 +13,7 @@ on:
       - "shared/patientConversationEvaluation.js"
       - "shared/patientConversationGuardrails.js"
       - "shared/patientConversationGuidanceHandoff.js"
+      - "shared/patientConversationGuidancePlannerBridge.js"
       - "shared/patientConversationOperationalPolicy.js"
       - "shared/patientConversationStatePolicy.js"
       - "shared/patientConversationStateDeltaReducer.js"
@@ -27,6 +28,7 @@ on:
       - "base44/shared/patientConversationDecisionPolicy.js"
       - "base44/shared/patientConversationGuardrails.js"
       - "base44/shared/patientConversationGuidanceHandoff.js"
+      - "base44/shared/patientConversationGuidancePlannerBridge.js"
       - "base44/shared/patientConversationOperationalPolicy.js"
       - "base44/shared/patientConversationStatePolicy.js"
       - "base44/shared/patientConversationStateDeltaReducer.js"
@@ -41,6 +43,7 @@ on:
       - "src/components/intake2/UrgencyInterruption.jsx"
       - "docs/patient-conversation-agent-v1.md"
       - "docs/patient-conversation-agent-acceptance.md"
+      - "docs/patient-conversation-guidance-handoff.md"
       - "docs/patient-conversation-operational-policy.md"
       - "docs/patient-emergency-guidance-policy.md"
       - "tests/fixtures/patient-conversation-agent-evaluations.json"
@@ -60,6 +63,7 @@ on:
       - "scripts/verify-patient-conversation-decision-policy.mjs"
       - "scripts/verify-patient-conversation-deterministic-preflight-evaluation.mjs"
       - "scripts/verify-patient-conversation-guidance-handoff.mjs"
+      - "scripts/verify-patient-conversation-guidance-planner-bridge.mjs"
       - "scripts/verify-patient-conversation-state-policy.mjs"
       - "scripts/verify-patient-conversation-state-delta-reducer.mjs"
       - "scripts/verify-patient-conversation-canonical-boundary.mjs"
@@ -120,6 +124,8 @@ jobs:
         run: node scripts/verify-patient-conversation-deterministic-preflight-evaluation.mjs
       - name: Verify semantic handoff to patient guidance planner
         run: node scripts/verify-patient-conversation-guidance-handoff.mjs
+      - name: Verify inactive server-side planner bridge
+        run: node scripts/verify-patient-conversation-guidance-planner-bridge.mjs
       - name: Verify patient conversation state policy
         run: node scripts/verify-patient-conversation-state-policy.mjs
       - name: Verify semantic state delta reducer
@@ -199,6 +205,7 @@ jobs:
           shared/patientConversationEvaluation.js
           shared/patientConversationGuardrails.js
           shared/patientConversationGuidanceHandoff.js
+          shared/patientConversationGuidancePlannerBridge.js
           shared/patientConversationOperationalPolicy.js
           shared/patientConversationStatePolicy.js
           shared/patientConversationStateDeltaReducer.js
@@ -213,6 +220,7 @@ jobs:
           base44/shared/patientConversationDecisionPolicy.js
           base44/shared/patientConversationGuardrails.js
           base44/shared/patientConversationGuidanceHandoff.js
+          base44/shared/patientConversationGuidancePlannerBridge.js
           base44/shared/patientConversationOperationalPolicy.js
           base44/shared/patientConversationStatePolicy.js
           base44/shared/patientConversationStateDeltaReducer.js
@@ -239,6 +247,7 @@ jobs:
           scripts/verify-patient-conversation-decision-policy.mjs
           scripts/verify-patient-conversation-deterministic-preflight-evaluation.mjs
           scripts/verify-patient-conversation-guidance-handoff.mjs
+          scripts/verify-patient-conversation-guidance-planner-bridge.mjs
           scripts/verify-patient-conversation-state-policy.mjs
           scripts/verify-patient-conversation-state-delta-reducer.mjs
           scripts/verify-patient-conversation-canonical-boundary.mjs
