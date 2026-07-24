@@ -105,7 +105,8 @@ function preflightEnvelope(attempt, overrides = {}) {
       diagnostics: {
         decision_policy: {
           policy_version: 'viasee-patient-conversation-decision-policy-v1',
-          safety_policy_version: 'patient-eye-safety-v1.1',
+          safety_policy_version: 'patient-eye-safety-v1.2',
+          deterministic_safety_state: 'blocking',
           deterministic_safety_preflight: true,
           deterministic_safety_flags: ['sudden_vision_loss'],
           model_invoked: false,
