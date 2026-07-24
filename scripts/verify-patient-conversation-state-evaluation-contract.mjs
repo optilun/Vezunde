@@ -8,6 +8,7 @@ import {
 } from './patient-conversation-fixture-loader.mjs';
 
 const stateFixturePath = 'tests/fixtures/patient-conversation-agent-state-evaluations.json';
+const overrideFixturePath = 'tests/fixtures/patient-conversation-agent-evaluation-overrides.json';
 const stateFixtures = JSON.parse(fs.readFileSync(stateFixturePath, 'utf8'));
 const suite = loadPatientConversationFixtures();
 const evaluatorSource = fs.readFileSync(
@@ -23,7 +24,9 @@ assert.deepEqual(DEFAULT_PATIENT_CONVERSATION_FIXTURE_PATHS, [
   'tests/fixtures/patient-conversation-agent-evaluations.json',
   'tests/fixtures/patient-conversation-agent-adversarial-evaluations.json',
   stateFixturePath,
+  overrideFixturePath,
 ]);
+assert.deepEqual(suite.replacement_case_ids, ['vision-loss-003', 'summary-001']);
 assert.equal(stateFixtures.fixture_version, 'patient-conversation-agent-state-evaluations-v1.1');
 assert.equal(stateFixtures.cases.length, 10);
 assert.equal(suite.cases.length, 71);
@@ -88,6 +91,10 @@ assert(
 assert(
   caseEvaluatorSource.includes('`forbidden_fact:${forbiddenFact}`'),
   'Forbidden facts must be visible as dedicated failed checks.',
+);
+assert(
+  caseEvaluatorSource.includes('forget_previous_need: forgotPreviousNeed(result)'),
+  'Prior-need retention token must have an active evaluator rule.',
 );
 
 const intentSwitchFixture = stateFixtures.cases.find((fixture) => fixture.id === 'state-switch-001');
@@ -232,4 +239,4 @@ assert.equal(staleSymptomResult.passed, false);
 assert(staleSymptomResult.failed_check_ids.includes('forbidden_fact:symptom_onset'));
 assert(staleSymptomResult.failed_check_ids.includes('forbidden_fact:symptom_pattern'));
 
-console.log('Patient conversation state fixture, stale-fact, and acceptance gates verified.');
+console.log('Patient conversation state fixture, stale-fact, replacement, and acceptance gates verified.');
