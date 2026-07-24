@@ -1,6 +1,7 @@
 import process from 'node:process';
 import {
   assertPatientConversationFixtureContract,
+  assertPatientConversationFixtureReleaseReady,
 } from './patient-conversation-fixture-contract.mjs';
 import {
   loadPatientConversationFixtures,
@@ -11,5 +12,6 @@ const fixtureSuite = loadPatientConversationFixtures(
   fixtureArgument === 'default' ? undefined : [fixtureArgument],
 );
 assertPatientConversationFixtureContract(fixtureSuite.cases);
+assertPatientConversationFixtureReleaseReady(fixtureSuite.cases);
 
 await import('./evaluate-patient-conversation-results.mjs');
