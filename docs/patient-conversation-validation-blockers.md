@@ -2,7 +2,7 @@
 
 Status: draft shadow implementation only.
 
-This document records controls that must not be presented as passed or implemented until executable evidence exists.
+This document records controls that must not be presented as passed until executable evidence exists.
 
 ## 1. External execution blockers
 
@@ -21,37 +21,46 @@ Consequences:
 
 Static review and isolated expression checks are not substitutes for these gates.
 
-## 2. `invented_symptoms` evaluator token
+## 2. Symptom grounding
 
-The evaluator contains an `invented_symptoms` expectation token, but it does not have a reliable deterministic implementation.
+The `invented_symptoms` evaluator token now has a deterministic fail-closed implementation under:
 
-It must not be counted as an active protection or successful acceptance metric.
+```text
+viasee-patient-conversation-grounding-v1
+```
 
-A safe implementation requires evidence binding between each extracted symptom fact and user-provided text. A simple keyword-difference heuristic is insufficient because it would:
+Grounding applies to:
 
-- reject legitimate semantic normalization;
-- miss paraphrased hallucinations;
-- create language and diacritic false positives;
-- encourage evaluation overfitting.
+- `symptom_onset`;
+- `symptom_duration`;
+- `symptom_pattern`.
 
-Before this token may be accepted, the semantic contract must expose a field-level evidence mapping or another reviewed grounding mechanism. The evaluator must then verify the mapping against sanitized user turns.
+For one of these fields to survive the shadow runtime:
 
-### Current fail-closed release behavior
+1. the final value must be an exact normalized fragment of a `user` message;
+2. the same value must be supported by an accepted raw `evidence_phrases` item;
+3. evidence copied only from an `assistant` message is rejected;
+4. the wrapper creates the final field-level `fact_evidence` mapping;
+5. a symptom value without valid evidence invalidates the whole semantic envelope with `ungrounded_symptom_facts`.
 
-The fixture contract now classifies `invented_symptoms` as an explicitly unimplemented expectation.
+The evaluator independently checks the final `facts`, `fact_evidence` and fixture conversation. A failed `must_not:invented_symptoms` check is a safety failure.
 
-This distinction preserves the research fixture while preventing a false release claim:
+The fixture contract no longer classifies `invented_symptoms` as unimplemented. The validated launcher may therefore proceed to scoring, but this does not mean acceptance has passed.
 
-- structural fixture validation still recognizes the token;
-- `collectPatientConversationUnimplementedExpectations()` reports every fixture that depends on it;
-- `summary-001` is currently reported as blocked;
-- `assertPatientConversationFixtureReleaseReady()` throws `PATIENT_CONVERSATION_FIXTURE_RELEASE_BLOCKED`;
-- `evaluate-patient-conversation-results-validated.mjs` invokes that release assertion before the scorer;
-- the validated release evaluator therefore cannot report acceptance while the grounding check is missing.
+### Intentional limitation
 
-The lower-level scorer remains useful for development diagnostics, but it is not a release-approval entry point. Release evidence must use the validated launcher.
+The v1 grounding rule is stricter than semantic equivalence. It may reject a legitimate paraphrase or normalization because symptom facts must remain exact user fragments.
 
-Until field-level grounding exists, fixture contracts used for release approval must not rely on `invented_symptoms` as proof of safety.
+This is intentional for the first shadow version: false rejection is safer than accepting a symptom that the patient did not state.
+
+The real-model run must measure:
+
+- how often the model copies exact symptom fragments correctly;
+- how often valid cases become `ungrounded_symptom_facts`;
+- whether prompt clarification is needed before any activation;
+- whether Romanian diacritics, punctuation and mixed-language wording create false rejection.
+
+No patient-visible activation is allowed based only on the static grounding implementation.
 
 ## 3. Durable state and cost controls
 
@@ -67,9 +76,11 @@ Still required before patient-visible LLM activation:
 - observability and alert thresholds;
 - a documented cancellation limitation or real SDK cancellation support.
 
+Durable state must preserve reviewed evidence provenance together with carried symptom facts. A symptom carried from prior state without server-owned evidence must not silently become trusted.
+
 ## 4. Safety review
 
-`patient-eye-safety-v1.2` is now the single deterministic Romanian safety boundary used by the existing intake UI and by the administrator-only shadow agent.
+`patient-eye-safety-v1.2` is the single deterministic Romanian safety boundary used by the existing intake UI and by the administrator-only shadow agent.
 
 It defines:
 
@@ -121,4 +132,4 @@ PR #266 must not independently:
 
 PR #266 must remain draft and unpublished until all executable checks, controlled model evaluations, manual reviews and orchestration integration requirements are satisfied.
 
-A release evaluation is invalid unless it uses `evaluate-patient-conversation-results-validated.mjs` and completes without fixture-contract or release-readiness blockers.
+A release evaluation is invalid unless it uses `evaluate-patient-conversation-results-validated.mjs` and completes without fixture-contract, runtime-identity, grounding or acceptance failures.
