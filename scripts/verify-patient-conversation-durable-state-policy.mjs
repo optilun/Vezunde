@@ -188,13 +188,45 @@ const rawConversationValidation = validatePatientConversationDurableStateRecord(
   { now },
 );
 assert.equal(rawConversationValidation.valid, false);
-assert(rawConversationValidation.violations.includes('forbidden_field:conversation'));
+assert(rawConversationValidation.violations.includes('unexpected_field:conversation'));
+
+const unknownNestedFieldRecord = {
+  ...record,
+  grounded_facts: {
+    ...record.grounded_facts,
+    diagnosis: 'conjunctivita',
+  },
+};
+const unknownNestedValidation = validatePatientConversationDurableStateRecord(
+  unknownNestedFieldRecord,
+  { now },
+);
+assert.equal(unknownNestedValidation.valid, false);
+assert(unknownNestedValidation.violations.includes('unexpected_fact_field:diagnosis'));
 
 const expiredValidation = validatePatientConversationDurableStateRecord(record, {
   now: record.expires_at + 1,
 });
 assert.equal(expiredValidation.valid, false);
 assert(expiredValidation.violations.includes('record_expired'));
+
+const completed = planPatientConversationDurableStateUpdate(record, {
+  expectedRevision: 0,
+  groundedFacts: {},
+  factProvenance: {},
+  status: 'completed',
+  now: now + 1_000,
+});
+assert.equal(completed.status, 'planned');
+const reopenCompleted = planPatientConversationDurableStateUpdate(completed.record, {
+  expectedRevision: completed.record.revision,
+  groundedFacts: {},
+  factProvenance: {},
+  status: 'active',
+  now: now + 2_000,
+});
+assert.equal(reopenCompleted.status, 'rejected');
+assert.equal(reopenCompleted.reason, 'durable_state_transition_invalid');
 
 assert.deepEqual(evaluatePatientConversationDurableBudget({
   record,
