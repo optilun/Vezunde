@@ -23,7 +23,7 @@ Static review and isolated expression checks are not substitutes for these gates
 
 ## 2. `invented_symptoms` evaluator token
 
-The evaluator currently contains an `invented_symptoms` expectation token, but it does not have a reliable deterministic implementation.
+The evaluator contains an `invented_symptoms` expectation token, but it does not have a reliable deterministic implementation.
 
 It must not be counted as an active protection or successful acceptance metric.
 
@@ -36,7 +36,22 @@ A safe implementation requires evidence binding between each extracted symptom f
 
 Before this token may be accepted, the semantic contract must expose a field-level evidence mapping or another reviewed grounding mechanism. The evaluator must then verify the mapping against sanitized user turns.
 
-Until that exists, fixture contracts used for release approval must not rely on `invented_symptoms` as proof of safety.
+### Current fail-closed release behavior
+
+The fixture contract now classifies `invented_symptoms` as an explicitly unimplemented expectation.
+
+This distinction preserves the research fixture while preventing a false release claim:
+
+- structural fixture validation still recognizes the token;
+- `collectPatientConversationUnimplementedExpectations()` reports every fixture that depends on it;
+- `summary-001` is currently reported as blocked;
+- `assertPatientConversationFixtureReleaseReady()` throws `PATIENT_CONVERSATION_FIXTURE_RELEASE_BLOCKED`;
+- `evaluate-patient-conversation-results-validated.mjs` invokes that release assertion before the scorer;
+- the validated release evaluator therefore cannot report acceptance while the grounding check is missing.
+
+The lower-level scorer remains useful for development diagnostics, but it is not a release-approval entry point. Release evidence must use the validated launcher.
+
+Until field-level grounding exists, fixture contracts used for release approval must not rely on `invented_symptoms` as proof of safety.
 
 ## 3. Durable state and cost controls
 
@@ -105,3 +120,5 @@ PR #266 must not independently:
 ## 7. Release rule
 
 PR #266 must remain draft and unpublished until all executable checks, controlled model evaluations, manual reviews and orchestration integration requirements are satisfied.
+
+A release evaluation is invalid unless it uses `evaluate-patient-conversation-results-validated.mjs` and completes without fixture-contract or release-readiness blockers.
