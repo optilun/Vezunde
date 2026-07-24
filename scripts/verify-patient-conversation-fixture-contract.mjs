@@ -22,6 +22,7 @@ const validFixture = [{
   expected: {
     must_not: [
       'search_providers',
+      'mention_112',
       'generic_112_primary_action',
       'provider_recommendation',
       'contact_details_without_consent',
