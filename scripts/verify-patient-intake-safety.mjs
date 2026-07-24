@@ -9,6 +9,7 @@ import {
 import {
   PATIENT_EMERGENCY_GUIDANCE_MESSAGE,
   patientEmergencyGuidanceMentions112,
+  patientEmergencyGuidanceUses112AsPrimaryAction,
 } from '../shared/patientEmergencyGuidance.js';
 
 assert.equal(PATIENT_SAFETY_ASSESSMENT_VERSION, 'patient-eye-safety-v1');
@@ -57,12 +58,13 @@ assert.match(questionText, /UrgencyInterruption/);
 assert.match(questionText, /if \(assessment\.blocking\)/);
 assert.match(interruption, /Opreste cautarea si solicita ajutor medical imediat/);
 assert.match(interruption, /PATIENT_EMERGENCY_GUIDANCE_COPY/);
+assert.match(interruption, /emergency_call_instruction/);
 assert.match(interruption, /Hospital/);
 assert.match(interruption, /blocking \? \(/);
 assert.match(interruption, /blocking && chemical/);
 assert.match(interruption, /Clarifica mai intai situatia/);
 assert.match(interruption, /cautarea ramane oprita pana cand situatia este clarificata/);
-assert.doesNotMatch(interruption, /tel:112|Suna la 112|PhoneCall/);
+assert.doesNotMatch(interruption, /href="tel:112"|PhoneCall/);
 assert.match(interruption, /cel putin 20 de minute/);
 assert.match(interruption, /nu reprezinta diagnostic sau triaj medical/);
 assert.doesNotMatch(interruption.toLowerCase(), /diagnosticul este|ai glaucom|ai dezlipire de retina/);
@@ -70,7 +72,9 @@ assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /spital public/);
 assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /urgente oftalmologice/);
 assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /chirurgie/);
 assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /Nu conduce/);
-assert.equal(patientEmergencyGuidanceMentions112(PATIENT_EMERGENCY_GUIDANCE_MESSAGE), false);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /apeleaza 112/);
+assert.equal(patientEmergencyGuidanceMentions112(PATIENT_EMERGENCY_GUIDANCE_MESSAGE), true);
+assert.equal(patientEmergencyGuidanceUses112AsPrimaryAction(PATIENT_EMERGENCY_GUIDANCE_MESSAGE), false);
 assert.match(safetyPolicy, /advisoryFlags/);
 assert.match(safetyPolicy, /blocking: blockingFlags\.length > 0/);
 
