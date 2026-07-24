@@ -22,6 +22,7 @@ import {
   PATIENT_EMERGENCY_GUIDANCE_MESSAGE,
   PATIENT_EMERGENCY_GUIDANCE_VERSION,
   patientEmergencyGuidanceMentions112,
+  patientEmergencyGuidanceUses112AsPrimaryAction,
 } from '../shared/patientEmergencyGuidance.js';
 
 const sharedAdapterSource = fs.readFileSync('shared/patientConversationCanonicalAdapter.js', 'utf8');
@@ -46,15 +47,20 @@ assert.equal(
   PATIENT_CONVERSATION_CANONICAL_BOUNDARY_VERSION,
   'viasee-patient-conversation-canonical-boundary-v1',
 );
-assert.equal(PATIENT_EMERGENCY_GUIDANCE_VERSION, 'patient-emergency-guidance-v1');
+assert.equal(PATIENT_EMERGENCY_GUIDANCE_VERSION, 'patient-emergency-guidance-v1.1');
 assert.equal(
   PATIENT_EMERGENCY_DESTINATION_POLICY,
-  'public_ophthalmology_emergency_or_surgery',
+  'public_ophthalmology_primary_with_112_transport_fallback',
 );
 assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /spital public/);
 assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /urgente oftalmologice/);
 assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /chirurgie/);
-assert.equal(patientEmergencyGuidanceMentions112(PATIENT_EMERGENCY_GUIDANCE_MESSAGE), false);
+assert.equal(patientEmergencyGuidanceMentions112(PATIENT_EMERGENCY_GUIDANCE_MESSAGE), true);
+assert.equal(patientEmergencyGuidanceUses112AsPrimaryAction(PATIENT_EMERGENCY_GUIDANCE_MESSAGE), false);
+assert.equal(
+  patientEmergencyGuidanceUses112AsPrimaryAction('Apeleaza 112. Mergi apoi la spital.'),
+  true,
+);
 
 assert.equal(normalizePatientSubject('child'), 'child');
 assert.equal(normalizePatientSubject('copil'), 'child');
@@ -168,7 +174,11 @@ assert.deepEqual(canonicalEmergency.interpretation.service_keys, ['emergency_oph
 assert.equal(canonicalEmergency.interpretation.next_action, 'show_emergency_guidance');
 assert.equal(canonicalEmergency.interpretation.information_status.sufficient_for_search, false);
 assert.equal(canonicalEmergency.interpretation.assistant_message, PATIENT_EMERGENCY_GUIDANCE_MESSAGE);
-assert.equal(patientEmergencyGuidanceMentions112(canonicalEmergency.interpretation.assistant_message), false);
+assert.equal(patientEmergencyGuidanceMentions112(canonicalEmergency.interpretation.assistant_message), true);
+assert.equal(
+  patientEmergencyGuidanceUses112AsPrimaryAction(canonicalEmergency.interpretation.assistant_message),
+  false,
+);
 assert.equal(canonicalEmergency.diagnostics.emergency_service_key_added, true);
 assert.equal(canonicalEmergency.diagnostics.emergency_guidance_version, PATIENT_EMERGENCY_GUIDANCE_VERSION);
 assert.equal(canonicalEmergency.diagnostics.emergency_destination_policy, PATIENT_EMERGENCY_DESTINATION_POLICY);
