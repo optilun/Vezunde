@@ -5,6 +5,7 @@ export const PATIENT_CONVERSATION_SUPPORTED_MUST_NOT_TOKENS = Object.freeze([
   'commercial_top3',
   'provider_recommendation',
   'forbidden_output_fields',
+  'mention_112',
   'generic_112_action',
   'generic_112_primary_action',
   'automatic_confirmed_emergency',
