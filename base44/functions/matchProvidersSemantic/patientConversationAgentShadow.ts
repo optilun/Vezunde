@@ -2,6 +2,9 @@ import {
   PATIENT_CONVERSATION_AGENT_VERSION,
 } from '../../shared/patientConversationAgent.js';
 import {
+  buildPatientConversationGuidanceHandoff,
+} from '../../shared/patientConversationGuidanceHandoff.js';
+import {
   PATIENT_CONVERSATION_MAX_CHARACTERS,
   PATIENT_CONVERSATION_MAX_TURNS,
 } from '../../shared/patientConversationGuardrails.js';
@@ -166,6 +169,19 @@ function normalizeRuntimeIdentity(envelope: any, controller: any) {
   };
 }
 
+function attachGuidanceHandoff(envelope: any) {
+  return {
+    ...envelope,
+    patient_guidance_handoff: buildPatientConversationGuidanceHandoff(envelope),
+  };
+}
+
+function finalizeWithGuidanceHandoff(envelope: any, controller: any) {
+  return attachGuidanceHandoff(
+    finalizePatientConversationOperationalEnvelope(envelope, controller),
+  );
+}
+
 export async function runPatientConversationAgentShadow(base44: any, payload: any = {}) {
   const startedAt = Date.now();
   const runtimePayload = runtimePayloadFromRequest(payload);
@@ -174,7 +190,7 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
   });
 
   if (!controller.allowed) {
-    return finalizePatientConversationOperationalEnvelope({
+    return finalizeWithGuidanceHandoff({
       mode: 'shadow',
       contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
       status: 'skipped',
@@ -185,7 +201,7 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
   }
 
   if (!requestHasUserMessage(runtimePayload)) {
-    return finalizePatientConversationOperationalEnvelope(
+    return finalizeWithGuidanceHandoff(
       skippedWithoutUserMessage(runtimePayload, Date.now() - startedAt),
       controller,
     );
@@ -196,13 +212,13 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
       createOperationalBase44(base44, controller),
       runtimePayload,
     );
-    return finalizePatientConversationOperationalEnvelope(
+    return finalizeWithGuidanceHandoff(
       normalizeRuntimeIdentity(envelope, controller),
       controller,
     );
   } catch (_error) {
     const snapshot = controller.snapshot();
-    return finalizePatientConversationOperationalEnvelope(
+    return finalizeWithGuidanceHandoff(
       unavailableRuntime({
         payload: runtimePayload,
         modelInvoked: snapshot.model_calls_used > 0,
