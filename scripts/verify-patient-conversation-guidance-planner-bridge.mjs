@@ -118,6 +118,7 @@ assert.equal(
 );
 assert.equal(candidateOnlyResult.diagnostics.confirmed_fact_source, 'controlled_context_only');
 assert.equal(candidateOnlyResult.diagnostics.semantic_candidate_fact_count, 1);
+assert.equal(candidateOnlyResult.diagnostics.controlled_answer_count, 0);
 assert(!candidateOnlyResult.diagnostics.planner_confirmed_fact_keys.includes('locality'));
 assert.equal(candidateOnlyResult.diagnostics.planner_confirmed_fact_sources.locality, undefined);
 assert(
@@ -151,6 +152,48 @@ assert.equal(
   controlledLocalityResult.diagnostics.planner_confirmed_fact_sources.locality,
   'explicit_user',
 );
+
+const invalidControlledAnswerResult = consumePatientConversationGuidanceHandoff({
+  handoff: handoff(),
+  text,
+  controlledContext: {
+    explicit_primary_intent: 'reparatii_ochelari',
+    explicit_confirmed_service_keys: ['hinge_repair'],
+    guided_answers: [
+      { question_key: 'locality', answer_value: {} },
+      { question_key: 'repair_type', answer_value: 'invented_option' },
+      { question_key: 'invented_question', answer_value: 'invented' },
+    ],
+    question_history: ['invented_question'],
+  },
+});
+assert.equal(invalidControlledAnswerResult.diagnostics.controlled_answer_count, 0);
+assert(!invalidControlledAnswerResult.diagnostics.planner_confirmed_fact_keys.includes('locality'));
+assert.equal(invalidControlledAnswerResult.question_selection.asked_question_count, 0);
+assert.notEqual(
+  invalidControlledAnswerResult.question_selection.fallback_reason,
+  'answered_question_reselected',
+);
+
+const validControlledAnswerResult = consumePatientConversationGuidanceHandoff({
+  handoff: handoff(),
+  text,
+  controlledContext: {
+    explicit_primary_intent: 'reparatii_ochelari',
+    explicit_confirmed_service_keys: ['hinge_repair'],
+    guided_answers: [
+      { question_key: 'repair_type', answer_value: 'hinge_or_screw' },
+    ],
+    question_history: ['repair_type'],
+  },
+});
+assert.equal(validControlledAnswerResult.diagnostics.controlled_answer_count, 1);
+assert(validControlledAnswerResult.diagnostics.planner_confirmed_fact_keys.includes('repair_type'));
+assert.equal(
+  validControlledAnswerResult.diagnostics.planner_confirmed_fact_sources.repair_type,
+  'guided_answer',
+);
+assert.equal(validControlledAnswerResult.question_selection.asked_question_count, 1);
 
 const advisoryResult = consumePatientConversationGuidanceHandoff({
   handoff: handoff({
