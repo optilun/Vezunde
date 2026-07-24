@@ -28,6 +28,7 @@ export const APPROVED_PATIENT_SAFETY_COPY = Object.freeze({
   emergency_instruction: [
     PATIENT_EMERGENCY_GUIDANCE_COPY.fallback_instruction,
     PATIENT_EMERGENCY_GUIDANCE_COPY.transport_instruction,
+    PATIENT_EMERGENCY_GUIDANCE_COPY.emergency_call_instruction,
   ].join(" "),
   chemical_instruction: "Daca a ajuns o substanta chimica in ochi: clateste imediat cu apa curata cel putin 20 de minute, indeparteaza lentilele de contact daca se desprind usor si nu freca ochiul. Continua apoi spre urgenta.",
   disclaimer: "Acest mesaj este informational si nu reprezinta diagnostic sau triaj medical.",
