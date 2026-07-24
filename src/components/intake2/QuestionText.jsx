@@ -97,11 +97,17 @@ export default function QuestionText({ question, onSubmit }) {
               type="button"
               onClick={() => {
                 setUrgentChoice("");
-                setScreeningCleared(true);
                 if (textAssessment?.advisory) {
-                  setSafetyReviewedValue(value.trim());
+                  const reviewedValue = value.trim();
+                  setSafetyReviewedValue(reviewedValue);
                   setTextAssessment(null);
+                  setScreeningCleared(true);
+                  if (reviewedValue) {
+                    onSubmit(question, reviewedValue);
+                  }
+                  return;
                 }
+                setScreeningCleared(true);
               }}
               className="min-h-11 rounded-xl bg-foreground px-4 py-3 text-left text-xs font-bold text-background transition-opacity hover:opacity-90"
             >
