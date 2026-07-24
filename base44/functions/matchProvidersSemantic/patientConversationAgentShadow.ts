@@ -5,8 +5,12 @@ import {
   buildPatientConversationGuidanceHandoff,
 } from '../../shared/patientConversationGuidanceHandoff.js';
 import {
+  groundPatientConversationSymptomFacts,
+} from '../../shared/patientConversationGrounding.js';
+import {
   PATIENT_CONVERSATION_MAX_CHARACTERS,
   PATIENT_CONVERSATION_MAX_TURNS,
+  sanitizePatientConversationTurns,
 } from '../../shared/patientConversationGuardrails.js';
 import {
   createPatientConversationOperationalController,
@@ -73,6 +77,21 @@ function runtimePayloadFromRequest(payload: any = {}) {
   const runtimePayload = { ...source };
   delete runtimePayload.prior_state;
   return runtimePayload;
+}
+
+function conversationFromPayload(payload: any = {}) {
+  const source = Array.isArray(payload?.conversation)
+    ? payload.conversation
+    : null;
+  const fallbackText = payload?.search_text
+    || payload?.query
+    || payload?.free_text
+    || payload?.search_query
+    || '';
+  return sanitizePatientConversationTurns(
+    Array.isArray(source) && source.length > 0 ? source : null,
+    fallbackText,
+  );
 }
 
 function requestHasUserMessage(payload: any = {}) {
@@ -169,6 +188,43 @@ function normalizeRuntimeIdentity(envelope: any, controller: any) {
   };
 }
 
+function applySymptomGrounding(envelope: any, payload: any = {}) {
+  if (envelope?.status !== 'completed' || !envelope?.interpretation) return envelope;
+
+  const grounding = groundPatientConversationSymptomFacts({
+    rawFacts: envelope.interpretation.facts,
+    evidencePhrases: envelope.interpretation.evidence_phrases,
+    conversation: conversationFromPayload(payload),
+  });
+  const diagnostics = {
+    ...(envelope.diagnostics || {}),
+    grounding: grounding.diagnostics,
+  };
+
+  if (grounding.diagnostics.rejected_fact_fields.length > 0) {
+    return {
+      ...envelope,
+      status: 'invalid',
+      reason: 'ungrounded_symptom_facts',
+      interpretation: null,
+      diagnostics,
+    };
+  }
+
+  return {
+    ...envelope,
+    interpretation: {
+      ...envelope.interpretation,
+      facts: {
+        ...(envelope.interpretation.facts || {}),
+        ...grounding.grounded_facts,
+      },
+      fact_evidence: grounding.fact_evidence,
+    },
+    diagnostics,
+  };
+}
+
 function attachGuidanceHandoff(envelope: any) {
   return {
     ...envelope,
@@ -212,8 +268,12 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
       createOperationalBase44(base44, controller),
       runtimePayload,
     );
-    return finalizeWithGuidanceHandoff(
+    const groundedEnvelope = applySymptomGrounding(
       normalizeRuntimeIdentity(envelope, controller),
+      runtimePayload,
+    );
+    return finalizeWithGuidanceHandoff(
+      groundedEnvelope,
       controller,
     );
   } catch (_error) {
