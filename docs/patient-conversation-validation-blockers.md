@@ -2,28 +2,28 @@
 
 Status: draft shadow implementation only.
 
-This document records controls that must not be presented as passed until executable evidence exists.
+This document records what must not be presented as passed until executable evidence exists.
 
 ## 1. External execution blockers
 
-- GitHub Actions currently fails before checkout across unrelated workflows.
-- The affected jobs expose no executable steps and no logs.
-- The connected Base44 sandbox does not grant the required write/command execution scope.
-- A direct repository checkout is not available in the current execution environment.
+- GitHub Actions fails before checkout across unrelated workflows.
+- Affected jobs expose `steps: null` and no usable logs.
+- The connected Base44 sandbox does not grant command execution scope.
+- Direct repository checkout is unavailable in the current environment.
 
 Consequences:
 
-- full verification scripts have not executed on the final HEAD;
-- lint has not executed on the final HEAD;
-- service typecheck has not executed on the final HEAD;
-- build has not executed on the final HEAD;
+- final verification scripts have not executed;
+- scoped or complete lint has not executed;
+- service typecheck and baseline comparison have not executed;
+- build has not executed;
 - the controlled 71-case model run has not executed.
 
-Static review and isolated expression checks are not substitutes for these gates.
+Static review is not a substitute for these gates.
 
-## 2. Symptom grounding
+## 2. Symptom grounding status
 
-The `invented_symptoms` evaluator token now has a deterministic fail-closed implementation under:
+`invented_symptoms` has a deterministic fail-closed implementation under:
 
 ```text
 viasee-patient-conversation-grounding-v1
@@ -35,129 +35,124 @@ Grounding applies to:
 - `symptom_duration`;
 - `symptom_pattern`.
 
-For one of these fields to survive the shadow runtime:
+A value survives only when it is an exact normalized user fragment supported by accepted model evidence.
 
-1. the final value must be an exact normalized fragment of a `user` message;
-2. the same value must be supported by an accepted raw `evidence_phrases` item;
-3. evidence copied only from an `assistant` message is rejected;
-4. the wrapper creates the final field-level `fact_evidence` mapping;
-5. a symptom value without valid evidence invalidates the whole semantic envelope with `ungrounded_symptom_facts`.
+Assistant-only evidence is rejected.
 
-The evaluator independently checks the final `facts`, `fact_evidence` and fixture conversation. A failed `must_not:invented_symptoms` check is a safety failure.
-
-The fixture contract no longer classifies `invented_symptoms` as unimplemented.
-
-### Intentional limitation
-
-The v1 grounding rule is stricter than semantic equivalence. It may reject a legitimate paraphrase or normalization because symptom facts must remain exact user fragments.
-
-This is intentional for the first shadow version: false rejection is safer than accepting a symptom that the patient did not state.
-
-The real-model run must measure:
-
-- how often the model copies exact symptom fragments correctly;
-- how often valid cases become `ungrounded_symptom_facts`;
-- whether prompt clarification is needed before any activation;
-- whether Romanian diacritics, punctuation and mixed-language wording create false rejection.
-
-No patient-visible activation is allowed based only on the static grounding implementation.
-
-## 3. Fixture-scope alignment
-
-The default fixture `summary-001` currently requires `specialist_summary_must_include` values.
-
-PR #266 intentionally keeps:
+Unsupported symptom facts invalidate the whole semantic envelope with:
 
 ```text
-specialist_summary = null
+ungrounded_symptom_facts
 ```
 
-The semantic model is not allowed to generate specialist messaging, and this PR does not activate provider-facing summaries.
+Evaluation v1.4 independently checks final facts, final `fact_evidence` and fixture user turns. Failure of `must_not:invented_symptoms` is a safety failure.
 
-The fixture contract therefore reports:
+### Remaining grounding evidence
 
-```text
-fixture_unsupported_runtime_expectation
-```
+The real-model run must still measure:
 
-for `summary-001` and blocks the validated release launcher with:
+- exact-fragment success rate;
+- `ungrounded_symptom_facts` frequency;
+- Romanian punctuation and diacritic effects;
+- mixed Romanian/English behavior;
+- false rejection of legitimate wording.
 
-```text
-PATIENT_CONVERSATION_FIXTURE_RELEASE_BLOCKED
-```
+No patient-visible activation is permitted based only on static grounding code.
 
-This is not a grounding failure. It is an acceptance-suite scope mismatch.
+## 3. Fixture alignment status
 
-The correct resolution is to revise `summary-001` so it tests grounded structured facts and controlled context, or to move specialist-summary evaluation into a future separately approved provider-messaging contract. The evaluator must not silently ignore the expectation, and PR #266 must not expand into provider messaging merely to satisfy the fixture.
+The previous `summary-001` scope mismatch is resolved without enabling provider messaging.
+
+An explicit replacement now tests:
+
+- locality;
+- duration;
+- exact symptom pattern;
+- timing preference;
+- no invented symptoms, diagnosis or contact leakage.
+
+`specialist_summary` remains `null`.
+
+`vision-loss-003` is also replaced with current public-hospital/UPU-first emergency guidance expectations.
+
+The replacement file does not add cases. The loaded suite remains exactly 71 unique cases.
+
+`question_goal` is preserved as non-scoring metadata because PR #265 owns adaptive question selection.
+
+Evaluation v1.4 now activates checks that were previously incomplete:
+
+- `service_keys_all: []` requires an actually empty service list;
+- `forget_previous_need` detects lost intent/service memory;
+- unknown expectation fields and tokens fail contract validation;
+- contradictory urgency, action and question expectations fail validation;
+- user-grounded symptom and timing expectations are checked before scoring.
+
+The suite is structurally release-ready. This does not mean it passed execution.
 
 ## 4. Durable state and cost controls
 
-Implemented request-scoped controls are not durable patient controls.
+Request-scoped controls are not durable patient controls.
 
-Still required before patient-visible LLM activation:
+Still required:
 
 - server-owned conversation/session persistence;
-- per-session model-call budget;
-- per-user model-call budget;
+- evidence provenance for carried symptom facts;
+- per-session model-call budgets;
+- per-user model-call budgets;
 - reviewed expiry and concurrency rules;
-- server-owned sampling identity independent of patient text;
+- server-owned sampling identity;
 - observability and alert thresholds;
-- a documented cancellation limitation or real SDK cancellation support.
+- a documented cancellation limitation or real cancellation support.
 
-Durable state must preserve reviewed evidence provenance together with carried symptom facts. A symptom carried from prior state without server-owned evidence must not silently become trusted.
+A symptom carried from prior state without server-owned evidence must not become trusted.
 
 ## 5. Safety review
 
-`patient-eye-safety-v1.2` is the single deterministic Romanian safety boundary used by the existing intake UI and by the administrator-only shadow agent.
+`patient-eye-safety-v1.2` is the shared deterministic Romanian safety boundary for the existing intake UI and the administrator-only shadow agent.
 
-It defines:
-
-- `clear` for no unresolved deterministic safety signal;
-- `advisory` for ambiguous monocular wording or model-proposed possible safety signals;
-- `blocking` for explicit acute wording or guided emergency answers.
-
-This unification removes the previous frontend/Base44 contradiction, but it still requires:
+It still requires:
 
 - complete fixture execution;
 - repeated critical attempts;
-- manual review of false-positive and false-negative cases;
+- manual review of false positives and false negatives;
 - medical safety review;
-- review for unsupported Romanian variants and mixed-language acute wording;
-- review of the transition from `advisory` to `clear` after user clarification;
-- review of the transition from `advisory` to `blocking` after an acute guided answer.
+- review of unsupported Romanian and mixed-language variants;
+- review of advisory-to-clear transitions;
+- review of advisory-to-blocking transitions.
 
-No medical safety approval is implied by the current code.
+No medical approval is implied by the code.
 
 ## 6. Patient UI boundary
 
-The existing patient intake uses the shared deterministic safety policy only.
+The existing intake uses deterministic safety only.
 
-This does not activate the semantic LLM for patients.
+The semantic LLM remains disabled for patients.
 
-The current UI behavior must still be verified through executable tests and manual interaction:
+Executable and manual verification still must confirm:
 
-- ambiguous wording must show clarification, not emergency guidance;
-- `Niciuna dintre acestea` must allow the unchanged description to continue without a loop;
-- editing the description must invalidate the previous safety review;
-- blocking cases must remain stopped;
-- advisory cases must not expose hospital or 112 guidance.
+- ambiguous wording shows clarification, not emergency guidance;
+- `Niciuna dintre acestea` avoids a loop for unchanged text;
+- editing the description invalidates the prior safety review;
+- blocking cases remain stopped;
+- advisory cases expose no hospital, UPU or 112 guidance.
 
 ## 7. Orchestration boundary
 
-PR #265 must remain the sole approved next-question orchestrator for the future LLM-assisted conversation.
+PR #265 must remain the sole approved next-question orchestrator.
 
-PR #266 must not independently:
+PR #266 must not:
 
-- own adaptive next-question selection;
+- own adaptive question selection;
 - activate patient-visible LLM wording;
 - invoke matching from the shadow route;
 - alter provider eligibility;
 - alter ranking or Top 3;
 - distribute requests;
-- expose contact details.
+- expose contact details;
+- generate provider-facing specialist summaries.
 
 ## 8. Release rule
 
-PR #266 must remain draft and unpublished until all executable checks, controlled model evaluations, manual reviews and orchestration integration requirements are satisfied.
+PR #266 must remain draft and unpublished until executable checks, controlled model evaluation, manual review, medical review and orchestration requirements are satisfied.
 
 A release evaluation is invalid unless it uses `evaluate-patient-conversation-results-validated.mjs` and completes without fixture-contract, runtime-identity, grounding or acceptance failures.
