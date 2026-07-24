@@ -95,11 +95,12 @@ const ADVISORY_PATTERNS = Object.freeze({
 
 const CLEAR_PATTERNS = Object.freeze({
   sudden_vision_loss: [
-    /\bnu (?:e|este) brusc\b/,
+    /\bnu (?:e|este) brusc(?:a)?\b/,
+    /\bnu (?:a aparut|s a instalat) brusc\b/,
     /\bnu am pierdut vederea\b/,
-    /\b(?:vad|văd) mai slab\b.{0,80}\bde (?:cateva|mai multe|[0-9]+) (?:zile|saptamani|luni|ani)\b/,
+    /\bvad mai slab\b.{0,80}\bde (?:cateva|mai multe|[0-9]+) (?:zile|saptamani|luni|ani)\b/,
     /\bproblema (?:exista|este) de (?:cateva|mai multe|[0-9]+) (?:zile|saptamani|luni|ani)\b/,
-    /\bde (?:mic|mica|copil|copilarie)\b/,
+    /\b(?:vad|vederea|ochiul)\b.{0,80}\bde (?:mic|mica|copil|copilarie)\b/,
   ],
   chemical_injury: [
     /\bnu (?:a fost|este) substanta chimica\b/,
@@ -120,7 +121,7 @@ const CLEAR_PATTERNS = Object.freeze({
     /\bnu este dupa operatie\b/,
   ],
   other_possible_urgent_eye_problem: [
-    /\bnu (?:e|este) brusc\b/,
+    /\bnu (?:e|este) brusc(?:a)?\b/,
     /\bnu vad dublu\b/,
     /\bnu (?:e|este) perdea\b/,
     /\bfara fulgerari\b/,
@@ -177,9 +178,11 @@ export function deterministicSafetyFlagsFromText(value) {
 export function advisorySafetyFlagsFromText(value) {
   const text = normalizeText(value);
   if (!text) return [];
-  const cleared = matchingFlags(text, CLEAR_PATTERNS);
+  const blocking = matchingFlags(text, BLOCKING_PATTERNS);
+  const cleared = matchingFlags(text, CLEAR_PATTERNS)
+    .filter((flag) => !blocking.includes(flag));
   return uniqueFlags(matchingFlags(text, ADVISORY_PATTERNS))
-    .filter((flag) => !cleared.includes(flag));
+    .filter((flag) => !cleared.includes(flag) && !blocking.includes(flag));
 }
 
 export function assessPatientEyeSafety({
@@ -193,13 +196,14 @@ export function assessPatientEyeSafety({
   const clearedFlags = [];
 
   for (const turnText of userTurnTexts(conversation, text)) {
-    const turnClears = matchingFlags(turnText, CLEAR_PATTERNS);
+    const turnBlocking = matchingFlags(turnText, BLOCKING_PATTERNS);
+    const turnClears = matchingFlags(turnText, CLEAR_PATTERNS)
+      .filter((flag) => !turnBlocking.includes(flag));
+
     blockingFlags = blockingFlags.filter((flag) => !turnClears.includes(flag));
     advisoryFlags = advisoryFlags.filter((flag) => !turnClears.includes(flag));
     clearedFlags.push(...turnClears);
 
-    const turnBlocking = matchingFlags(turnText, BLOCKING_PATTERNS)
-      .filter((flag) => !turnClears.includes(flag));
     const turnAdvisory = matchingFlags(turnText, ADVISORY_PATTERNS)
       .filter((flag) => !turnClears.includes(flag) && !turnBlocking.includes(flag));
     blockingFlags = uniqueFlags([...blockingFlags, ...turnBlocking]);
@@ -209,7 +213,9 @@ export function assessPatientEyeSafety({
 
   const guidedFlags = guidedSafetyFlagsFromAnswers(answers);
   blockingFlags = uniqueFlags([...blockingFlags, ...guidedFlags]);
-  advisoryFlags = uniqueFlags([...advisoryFlags, ...aiFlags])
+  const effectiveAiFlags = uniqueFlags(aiFlags)
+    .filter((flag) => !clearedFlags.includes(flag));
+  advisoryFlags = uniqueFlags([...advisoryFlags, ...effectiveAiFlags])
     .filter((flag) => !blockingFlags.includes(flag));
 
   const state = blockingFlags.length > 0
@@ -222,7 +228,7 @@ export function assessPatientEyeSafety({
     : (blockingFlags.length > 0
       ? "explicit_text"
       : (advisoryFlags.length > 0
-        ? (uniqueFlags(aiFlags).length > 0 ? "ai_or_text_advisory" : "ambiguous_text")
+        ? (effectiveAiFlags.length > 0 ? "ai_or_text_advisory" : "ambiguous_text")
         : (clearedFlags.length > 0 ? "explicit_clear" : "none")));
 
   return {
