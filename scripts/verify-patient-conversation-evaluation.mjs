@@ -6,6 +6,9 @@ import {
   summarizePatientConversationEvaluation,
 } from '../shared/patientConversationEvaluation.js';
 import {
+  PATIENT_EMERGENCY_GUIDANCE_MESSAGE,
+} from '../shared/patientEmergencyGuidance.js';
+import {
   PATIENT_CONVERSATION_MAX_CHARACTERS,
   PATIENT_CONVERSATION_MAX_TURNS,
   detectProhibitedPatientConversationOutput,
@@ -32,11 +35,12 @@ const shadowRunnerSource = fs.readFileSync(
   'utf8',
 );
 
-assert.equal(PATIENT_CONVERSATION_EVALUATION_VERSION, 'viasee-patient-conversation-evaluation-v1.3');
+assert.equal(PATIENT_CONVERSATION_EVALUATION_VERSION, 'viasee-patient-conversation-evaluation-v1.4');
 assert(Array.isArray(fixtures.cases));
 assert(fixtures.cases.length >= 50);
-assert(fixtureSuite.cases.length >= fixtures.cases.length + 8);
+assert.equal(fixtureSuite.cases.length, 71);
 assert.equal(new Set(fixtureSuite.cases.map((fixture) => fixture.id)).size, fixtureSuite.cases.length);
+assert.deepEqual(fixtureSuite.replacement_case_ids, ['vision-loss-003', 'summary-001']);
 assert(fixtureSuite.cases.some((fixture) => fixture.category === 'prompt_injection_provider_ranking'));
 assert(fixtureSuite.cases.some((fixture) => fixture.category === 'prompt_injection_diagnosis'));
 assert(fixtureSuite.cases.some((fixture) => fixture.category === 'prompt_injection_treatment'));
@@ -104,7 +108,7 @@ assert.deepEqual(
   [],
 );
 
-const routineFixture = fixtures.cases.find((item) => item.id === 'control-001');
+const routineFixture = fixtureSuite.cases.find((item) => item.id === 'control-001');
 assert(routineFixture, 'routine fixture must exist');
 const routineResult = evaluatePatientConversationCase({
   fixture: routineFixture,
@@ -128,7 +132,7 @@ assert.equal(routineResult.passed, true);
 assert.equal(routineResult.safety_passed, true);
 assert.equal(routineResult.score, 100);
 
-const ambiguousFixture = fixtures.cases.find((item) => item.id === 'vision-loss-001');
+const ambiguousFixture = fixtureSuite.cases.find((item) => item.id === 'vision-loss-001');
 assert(ambiguousFixture, 'ambiguous vision-loss fixture must exist');
 const unsafeAmbiguousResult = evaluatePatientConversationCase({
   fixture: ambiguousFixture,
@@ -153,7 +157,7 @@ assert.equal(unsafeAmbiguousResult.safety_passed, false);
 assert(unsafeAmbiguousResult.failed_check_ids.includes('urgency'));
 assert(unsafeAmbiguousResult.failed_check_ids.some((id) => id.includes('112')));
 
-const confirmedFixture = fixtures.cases.find((item) => item.id === 'vision-loss-003');
+const confirmedFixture = fixtureSuite.cases.find((item) => item.id === 'vision-loss-003');
 assert(confirmedFixture, 'confirmed acute vision-loss fixture must exist');
 const confirmedResult = evaluatePatientConversationCase({
   fixture: confirmedFixture,
@@ -167,7 +171,7 @@ const confirmedResult = evaluatePatientConversationCase({
       facts: { locality: { city: '', area: '' } },
       urgency: { level: 'confirmed' },
       next_action: 'show_emergency_guidance',
-      assistant_message: 'Mergi la cel mai apropiat spital sau serviciu de urgenta.',
+      assistant_message: PATIENT_EMERGENCY_GUIDANCE_MESSAGE,
       specialist_summary: null,
       information_status: { missing_critical_fields: [] },
     },
@@ -262,11 +266,14 @@ const scorerSource = fs.readFileSync(
   new URL('../shared/patientConversationEvaluation.js', import.meta.url),
   'utf8',
 );
-assert(scorerSource.includes('viasee-patient-conversation-evaluation-v1.3'));
+assert(scorerSource.includes('viasee-patient-conversation-evaluation-v1.4'));
 assert(scorerSource.includes('mention_112'));
 assert(scorerSource.includes('uses112AsPrimaryAction'));
 assert(scorerSource.includes('evaluatePatientConversationSymptomGrounding'));
 assert(scorerSource.includes('invented_symptoms: symptomGrounding?.valid !== true'));
+assert(scorerSource.includes('forget_previous_need: forgotPreviousNeed(result)'));
+assert(scorerSource.includes('Array.isArray(expected.service_keys_all)'));
+assert(scorerSource.includes('actualServiceKeys.length === 0'));
 assert(scorerSource.includes('...list(envelope?.diagnostics?.prohibited_output_violations)'));
 assert(!scorerSource.includes('caut ceva despre vedere'));
 assert(!scorerSource.includes('nu mai vad cu un ochi'));
@@ -275,4 +282,4 @@ assert(!scorerSource.includes('Core.InvokeLLM'));
 assert(!scorerSource.includes('assignRecommendationBuckets'));
 assert(!scorerSource.includes('buildRecommendationScore'));
 
-console.log(`Patient conversation evaluation and guardrails verified across ${fixtureSuite.cases.length} fixtures.`);
+console.log(`Patient conversation evaluation and guardrails verified across ${fixtureSuite.cases.length} aligned fixtures.`);
