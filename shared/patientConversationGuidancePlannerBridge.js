@@ -227,6 +227,13 @@ export function consumePatientConversationGuidanceHandoff({
   const status = completedStatuses.has(selection?.status)
     ? selection.status
     : "fallback";
+  const confirmedFacts = isPlainObject(profile?.confirmed_facts)
+    ? profile.confirmed_facts
+    : {};
+  const factSources = isPlainObject(profile?.fact_sources)
+    ? profile.fact_sources
+    : {};
+  const confirmedFactKeys = Object.keys(confirmedFacts).sort().slice(0, 24);
 
   return {
     ...resultBase(
@@ -245,6 +252,10 @@ export function consumePatientConversationGuidanceHandoff({
       semantic_candidate_fact_count:
         handoff.semantic_proposal.extracted_facts?.length || 0,
       confirmed_fact_source: "controlled_context_only",
+      planner_confirmed_fact_keys: confirmedFactKeys,
+      planner_confirmed_fact_sources: Object.fromEntries(
+        confirmedFactKeys.map((key) => [key, clean(factSources[key], 40) || "unknown"]),
+      ),
       planner_profile_status: clean(profile?.status, 40) || "unknown",
       planner_sufficient_for_search: profile?.sufficient_for_search === true,
     },
