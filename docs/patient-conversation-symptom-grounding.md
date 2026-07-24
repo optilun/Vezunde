@@ -122,6 +122,14 @@ unless a later reviewed contract explicitly permits that normalization while pre
 
 This strictness protects against hallucinated symptom details at the cost of more invalid shadow attempts.
 
+The current prompt remains `viasee-patient-conversation-prompt-v1.2`. It already requires `evidence_phrases` to be copied from user turns, but it does not explicitly require every symptom fact value to be copied literally. The fail-closed grounding layer will measure how often this causes `ungrounded_symptom_facts` before any prompt revision is approved.
+
+## Fixture-scope distinction
+
+The default fixture `summary-001` contains a separate provider-summary expectation. The runtime intentionally keeps `specialist_summary = null`, so the validated launcher blocks that fixture with `fixture_unsupported_runtime_expectation`.
+
+This blocker is independent from symptom grounding. Grounding itself is implemented; the fixture must be aligned with the actual PR scope before the complete release evaluation can start.
+
 ## State limitation
 
 Current persistence is request-scoped shadow state.
@@ -134,6 +142,7 @@ Until durable provenance is implemented, cross-request symptom memory remains an
 
 Before patient-visible activation:
 
+- align the incompatible `summary-001` fixture;
 - execute the grounding verification script;
 - execute lint and typecheck;
 - run all 71 fixtures with critical repeats;
