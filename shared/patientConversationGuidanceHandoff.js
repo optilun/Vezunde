@@ -151,17 +151,16 @@ function handoffSafetyState(envelope) {
   if (blocking) return "blocking";
   const advisory = urgency.level === "possible"
     || urgency.needs_clarification === true
-    || missingFields.includes("symptom_severity")
-    || (Array.isArray(envelope?.diagnostics?.advisory_safety_flags)
-      && envelope.diagnostics.advisory_safety_flags.length > 0);
+    || missingFields.includes("symptom_severity");
   return advisory ? "advisory" : "clear";
 }
 
-function safetyFlags(envelope) {
-  return unique([
-    ...(envelope?.diagnostics?.advisory_safety_flags || []),
-    ...(envelope?.diagnostics?.decision_policy?.deterministic_safety_flags || []),
-  ], 6, 80).filter((flag) => SAFETY_FLAG_SET.has(flag));
+function safetyFlags(envelope, state) {
+  if (state === "clear") return [];
+  const source = state === "blocking"
+    ? envelope?.diagnostics?.decision_policy?.deterministic_safety_flags
+    : envelope?.diagnostics?.advisory_safety_flags;
+  return unique(source, 6, 80).filter((flag) => SAFETY_FLAG_SET.has(flag));
 }
 
 function emptySemanticProposal() {
@@ -237,7 +236,7 @@ export function buildPatientConversationGuidanceHandoff(envelope = {}) {
         : canonicalCarePaths(interpretation.care_path_candidates),
       next_question_key: null,
       confidence_band: confidence,
-      possible_safety_flags: safetyFlags(envelope),
+      possible_safety_flags: safetyFlags(envelope, state),
       evidence_phrases: evidencePhrases,
     },
     missing_critical_fields: missingCriticalFields,
