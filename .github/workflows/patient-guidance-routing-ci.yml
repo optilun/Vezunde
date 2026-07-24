@@ -78,6 +78,7 @@ on:
       - "scripts/verify-patient-conversation-canonical-boundary.mjs"
       - "scripts/verify-patient-conversation-operational-policy.mjs"
       - "scripts/verify-patient-conversation-durable-state-policy.mjs"
+      - "scripts/verify-patient-conversation-marketplace-isolation.mjs"
       - "scripts/verify-patient-conversation-state-compatibility.mjs"
       - "scripts/verify-patient-conversation-state-evaluation-contract.mjs"
       - "scripts/verify-patient-conversation-shadow-harness.mjs"
@@ -151,6 +152,8 @@ jobs:
         run: node scripts/verify-patient-conversation-operational-policy.mjs
       - name: Verify inactive durable patient conversation state contract
         run: node scripts/verify-patient-conversation-durable-state-policy.mjs
+      - name: Verify normal marketplace byte isolation
+        run: node scripts/verify-patient-conversation-marketplace-isolation.mjs
       - name: Verify patient conversation state compatibility
         run: node scripts/verify-patient-conversation-state-compatibility.mjs
       - name: Verify patient conversation state evaluation contract
@@ -276,6 +279,7 @@ jobs:
           scripts/verify-patient-emergency-guidance-policy.mjs
           scripts/verify-patient-conversation-operational-policy.mjs
           scripts/verify-patient-conversation-durable-state-policy.mjs
+          scripts/verify-patient-conversation-marketplace-isolation.mjs
           scripts/verify-patient-conversation-state-compatibility.mjs
           scripts/verify-patient-conversation-state-evaluation-contract.mjs
           scripts/verify-patient-conversation-shadow-harness.mjs
