@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import {
+  PATIENT_CONVERSATION_UNIMPLEMENTED_EXPECTATION_TOKENS,
   assertPatientConversationFixtureContract,
+  assertPatientConversationFixtureReleaseReady,
+  collectPatientConversationUnimplementedExpectations,
   validatePatientConversationFixtureContract,
 } from './patient-conversation-fixture-contract.mjs';
 import {
@@ -16,6 +19,27 @@ assert.deepEqual(
 assert.doesNotThrow(() => {
   assertPatientConversationFixtureContract(fixtureSuite.cases);
 });
+assert.deepEqual(
+  PATIENT_CONVERSATION_UNIMPLEMENTED_EXPECTATION_TOKENS,
+  ['invented_symptoms'],
+);
+const defaultReleaseBlockers = collectPatientConversationUnimplementedExpectations(
+  fixtureSuite.cases,
+);
+assert(defaultReleaseBlockers.some((blocker) => (
+  blocker.fixture_id === 'summary-001'
+  && blocker.value === 'invented_symptoms'
+)));
+assert.throws(
+  () => assertPatientConversationFixtureReleaseReady(fixtureSuite.cases),
+  (error) => (
+    error?.code === 'PATIENT_CONVERSATION_FIXTURE_RELEASE_BLOCKED'
+    && error?.blockers?.some((blocker) => (
+      blocker.fixture_id === 'summary-001'
+      && blocker.value === 'invented_symptoms'
+    ))
+  ),
+);
 
 const validFixture = [{
   id: 'fixture-contract-valid-001',
@@ -30,6 +54,41 @@ const validFixture = [{
   },
 }];
 assert.deepEqual(validatePatientConversationFixtureContract(validFixture), []);
+assert.deepEqual(collectPatientConversationUnimplementedExpectations(validFixture), []);
+assert.doesNotThrow(() => assertPatientConversationFixtureReleaseReady(validFixture));
+
+const unimplementedMustNotFixture = [{
+  id: 'fixture-contract-blocked-001',
+  expected: {
+    must_not: ['invented_symptoms'],
+  },
+}];
+assert.deepEqual(validatePatientConversationFixtureContract(unimplementedMustNotFixture), []);
+assert.deepEqual(
+  collectPatientConversationUnimplementedExpectations(unimplementedMustNotFixture),
+  [{
+    fixture_id: 'fixture-contract-blocked-001',
+    field: 'expected.must_not',
+    code: 'fixture_unimplemented_expectation',
+    value: 'invented_symptoms',
+  }],
+);
+assert.throws(
+  () => assertPatientConversationFixtureReleaseReady(unimplementedMustNotFixture),
+  (error) => error?.code === 'PATIENT_CONVERSATION_FIXTURE_RELEASE_BLOCKED',
+);
+
+const explicitUnimplementedFixture = [{
+  id: 'fixture-contract-blocked-002',
+  expected: {
+    unimplemented_checks: ['invented_symptoms'],
+  },
+}];
+assert.deepEqual(validatePatientConversationFixtureContract(explicitUnimplementedFixture), []);
+assert.throws(
+  () => assertPatientConversationFixtureReleaseReady(explicitUnimplementedFixture),
+  (error) => error?.code === 'PATIENT_CONVERSATION_FIXTURE_RELEASE_BLOCKED',
+);
 
 const unknownTokenFixture = [{
   id: 'fixture-contract-invalid-001',
@@ -80,4 +139,18 @@ assert.throws(
   ),
 );
 
-console.log(`Patient conversation fixture contract verified across ${fixtureSuite.cases.length} default cases.`);
+const unknownUnimplementedFixture = [{
+  id: 'fixture-contract-invalid-004',
+  expected: {
+    unimplemented_checks: ['unknown_grounding_check'],
+  },
+}];
+assert.throws(
+  () => assertPatientConversationFixtureContract(unknownUnimplementedFixture),
+  (error) => (
+    error?.code === 'PATIENT_CONVERSATION_FIXTURE_CONTRACT_INVALID'
+    && error?.violations?.[0]?.code === 'fixture_unknown_unimplemented_check_token'
+  ),
+);
+
+console.log(`Patient conversation fixture contract verified across ${fixtureSuite.cases.length} default cases with explicit release blockers.`);
