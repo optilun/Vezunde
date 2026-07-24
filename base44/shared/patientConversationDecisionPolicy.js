@@ -1,13 +1,14 @@
 import { getCanonicalServiceDefinition } from "./canonicalServiceRegistryExtended.js";
+import {
+  PATIENT_EYE_SAFETY_POLICY_VERSION,
+  PATIENT_SAFETY_FLAG_PRESENTATION,
+  assessPatientEyeSafety,
+} from "./patientEyeSafetyPolicy.js";
+import { PATIENT_EMERGENCY_GUIDANCE_MESSAGE } from "./patientEmergencyGuidance.js";
 
 export const PATIENT_CONVERSATION_DECISION_POLICY_VERSION = "viasee-patient-conversation-decision-policy-v1";
-export const PATIENT_CONVERSATION_SAFETY_POLICY_VERSION = "patient-eye-safety-v1.1";
-
-export const PATIENT_CONVERSATION_SAFE_EMERGENCY_MESSAGE = [
-  "Mergi cat mai repede la cel mai apropiat spital, UPU, camera de garda",
-  "sau serviciu de urgente oftalmologice.",
-  "Nu conduce daca vederea este afectata.",
-].join(" ");
+export const PATIENT_CONVERSATION_SAFETY_POLICY_VERSION = PATIENT_EYE_SAFETY_POLICY_VERSION;
+export const PATIENT_CONVERSATION_SAFE_EMERGENCY_MESSAGE = PATIENT_EMERGENCY_GUIDANCE_MESSAGE;
 
 const PATIENT_FACING_PROFILE_TYPES = new Set([
   "independent_optical_store",
@@ -19,105 +20,6 @@ const PATIENT_FACING_PROFILE_TYPES = new Set([
   "independent_optician",
   "optical_laboratory_b2c",
 ]);
-
-const SAFETY_FLAG_PRESENTATION = Object.freeze({
-  sudden_vision_loss: "pierdere brusca sau marcata a vederii",
-  chemical_injury: "substanta chimica ajunsa in ochi",
-  penetrating_or_high_speed_trauma: "traumatism ocular important sau obiect patruns in ochi",
-  severe_eye_pain: "durere oculara severa",
-  postoperative_red_eye_or_vision_change: "simptome acute dupa operatie sau injectie oculara",
-  other_possible_urgent_eye_problem: "alt semnal ocular acut",
-});
-
-const SAFETY_PATTERNS = Object.freeze({
-  sudden_vision_loss: [
-    /\bnu mai vad deloc\b/,
-    /\baproape nu mai vad deloc\b/,
-    /\bnu mai vad cu un ochi (?:brusc|deodata|dintr o data|de azi)\b/,
-    /\bnu mai vad brusc cu un ochi\b/,
-    /\bmi a disparut brusc vederea\b/,
-    /\ba disparut brusc\b.{0,80}\baproape complet\b/,
-    /\bmi am pierdut vederea\b/,
-    /\bpierdere brusca (?:a )?vederii\b/,
-    /\bmi am pierdut brusc vederea\b/,
-    /\bvederea (?:a disparut|s a dus) brusc\b/,
-    /\borbire brusca\b/,
-  ],
-  chemical_injury: [
-    /\bsubstanta chimica (?:in|la) ochi\b/,
-    /\bacid (?:in|la) ochi\b/,
-    /\bclor (?:in|la) ochi\b/,
-    /\binalbitor (?:in|la) ochi\b/,
-    /\bdetergent puternic (?:in|la) ochi\b/,
-    /\bsoda caustica (?:in|la) ochi\b/,
-    /\bspray de curatat (?:cuptorul|aragazul)\b.{0,40}\b(?:in|la) ochi\b/,
-    /\bsolutie de curatat (?:cuptorul|aragazul)\b.{0,40}\b(?:in|la) ochi\b/,
-  ],
-  penetrating_or_high_speed_trauma: [
-    /\bobiect (?:infipt|patruns) in ochi\b/,
-    /\bsticla in ochi\b/,
-    /\baschie metalica in ochi\b/,
-    /\baschie de metal\b.{0,80}\binfipta in ochi\b/,
-    /\bmetal in ochi dupa polizor\b/,
-    /\blovitura puternica (?:in|la) ochi\b/,
-  ],
-  severe_eye_pain: [
-    /\bdurere severa (?:la|in) ochi\b/,
-    /\bdurere foarte mare (?:la|in) ochi\b/,
-    /\bdurere insuportabila (?:la|in) ochi\b/,
-    /\bochi rosu durere mare si greata\b/,
-    /\bdurere oculara severa\b/,
-    /\bma doare foarte tare ochiul\b/,
-    /\bdoare foarte tare ochiul\b/,
-  ],
-  postoperative_red_eye_or_vision_change: [
-    /\bdupa operatie la ochi nu mai vad\b/,
-    /\bdupa injectie in ochi nu mai vad\b/,
-    /\bochi rosu si dureros dupa operatie\b/,
-    /\bdurere dupa operatie la ochi\b/,
-    /\bdupa operati(?:a|e)\b.{0,120}\bochiul (?:e|este) rosu\b.{0,120}\b(?:ma doare|doare)\b.{0,120}\bvad mai prost\b/,
-  ],
-  other_possible_urgent_eye_problem: [
-    /\bfulgerari si (?:o )?perdea\b/,
-    /\bfulgere si (?:o )?perdea\b/,
-    /\bumbra ca o perdea\b/,
-    /\bmuste zburatoare si (?:o )?perdea\b/,
-    /\bvedere dubla aparuta brusc\b/,
-    /\bvad dublu deodata\b/,
-  ],
-});
-
-const SAFETY_CLEAR_PATTERNS = Object.freeze({
-  sudden_vision_loss: [
-    /\bnu (?:e|este) brusc\b/,
-    /\bnu am pierdut vederea\b/,
-    /\bvad mai slab de (?:cateva|mai multe|[0-9]+) (?:zile|saptamani|luni|ani)\b/,
-  ],
-  chemical_injury: [
-    /\bnu (?:a fost|este) substanta chimica\b/,
-    /\bnu mi a intrat nimic chimic in ochi\b/,
-  ],
-  penetrating_or_high_speed_trauma: [
-    /\bnu m am lovit la ochi\b/,
-    /\bnu (?:a fost|este) traumatism\b/,
-    /\bfara traumatism\b/,
-  ],
-  severe_eye_pain: [
-    /\bnu ma doare\b/,
-    /\bnu doare\b/,
-    /\bfara durere\b/,
-  ],
-  postoperative_red_eye_or_vision_change: [
-    /\bnu am fost operat(?:a)? la ochi\b/,
-    /\bnu este dupa operatie\b/,
-  ],
-  other_possible_urgent_eye_problem: [
-    /\bnu (?:e|este) brusc\b/,
-    /\bnu vad dublu\b/,
-    /\bnu (?:e|este) perdea\b/,
-    /\bfara fulgerari\b/,
-  ],
-});
 
 function clean(value, maxLength = 1200) {
   return String(value ?? "").trim().slice(0, maxLength);
@@ -131,29 +33,6 @@ function unique(values, limit = 20) {
   return [...new Set((Array.isArray(values) ? values : [])
     .map((value) => clean(value, 240))
     .filter(Boolean))].slice(0, limit);
-}
-
-function normalizeText(value) {
-  return clean(value, 10000)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("ro-RO")
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
-
-function userConversationTurns(conversation) {
-  return (Array.isArray(conversation) ? conversation : [])
-    .filter((turn) => turn?.role === "user")
-    .map((turn) => normalizeText(turn?.content))
-    .filter(Boolean);
-}
-
-function matchingSafetyFlags(text, catalog) {
-  return Object.entries(catalog)
-    .filter(([, patterns]) => patterns.some((pattern) => pattern.test(text)))
-    .map(([flag]) => flag);
 }
 
 function hasLocality(locality) {
@@ -197,26 +76,7 @@ function deterministicAssistantMessage(nextAction) {
 }
 
 export function assessPatientConversationDeterministicSafety(conversation) {
-  let activeFlags = [];
-  const clearedFlags = [];
-
-  for (const text of userConversationTurns(conversation)) {
-    const turnClears = matchingSafetyFlags(text, SAFETY_CLEAR_PATTERNS);
-    if (turnClears.length > 0) {
-      activeFlags = activeFlags.filter((flag) => !turnClears.includes(flag));
-      clearedFlags.push(...turnClears);
-    }
-    const turnFlags = matchingSafetyFlags(text, SAFETY_PATTERNS);
-    activeFlags = [...new Set([...activeFlags, ...turnFlags])];
-  }
-
-  return {
-    policy_version: PATIENT_CONVERSATION_SAFETY_POLICY_VERSION,
-    blocking: activeFlags.length > 0,
-    blocking_flags: activeFlags,
-    cleared_flags: [...new Set(clearedFlags)],
-    source: activeFlags.length > 0 ? "explicit_text" : "none",
-  };
+  return assessPatientEyeSafety({ conversation });
 }
 
 export function buildPatientConversationEmergencyInterpretation({
@@ -256,7 +116,7 @@ export function buildPatientConversationEmergencyInterpretation({
         level: "confirmed",
         needs_clarification: false,
         reason: safety.blocking_flags
-          .map((flag) => SAFETY_FLAG_PRESENTATION[flag] || flag)
+          .map((flag) => PATIENT_SAFETY_FLAG_PRESENTATION[flag] || flag)
           .join("; "),
       },
       understanding_confidence: "high",
@@ -273,8 +133,10 @@ export function buildPatientConversationEmergencyInterpretation({
     diagnostics: {
       policy_version: PATIENT_CONVERSATION_DECISION_POLICY_VERSION,
       safety_policy_version: safety.policy_version,
+      deterministic_safety_state: safety.state,
       deterministic_safety_preflight: true,
       deterministic_safety_flags: safety.blocking_flags,
+      deterministic_safety_advisory_flags: safety.advisory_flags,
       deterministic_safety_cleared_flags: safety.cleared_flags,
       model_invoked: false,
       model_urgency_advisory: null,
@@ -323,7 +185,10 @@ export function applyPatientConversationDecisionPolicy({
     },
   };
 
-  const safety = assessPatientConversationDeterministicSafety(conversation);
+  const safety = assessPatientEyeSafety({
+    conversation,
+    aiFlags: interpretation?.possible_safety_flags,
+  });
   const modelUrgency = ["none", "possible", "confirmed"].includes(current.urgency?.level)
     ? current.urgency.level
     : "none";
@@ -349,12 +214,12 @@ export function applyPatientConversationDecisionPolicy({
   if (safety.blocking) {
     urgencyLevel = "confirmed";
     urgencyReason = safety.blocking_flags
-      .map((flag) => SAFETY_FLAG_PRESENTATION[flag] || flag)
+      .map((flag) => PATIENT_SAFETY_FLAG_PRESENTATION[flag] || flag)
       .join("; ");
-  } else if (["possible", "confirmed"].includes(modelUrgency)) {
+  } else if (safety.advisory || ["possible", "confirmed"].includes(modelUrgency)) {
     urgencyLevel = "possible";
     urgencyNeedsClarification = true;
-    urgencyReason = "Semnal consultativ al modelului; necesita clarificare controlata.";
+    urgencyReason = "Semnal ocular neclar; necesita clarificare controlata.";
   }
 
   const hasIntent = clean(current.primary_intent, 80)
@@ -401,8 +266,10 @@ export function applyPatientConversationDecisionPolicy({
     diagnostics: {
       policy_version: PATIENT_CONVERSATION_DECISION_POLICY_VERSION,
       safety_policy_version: safety.policy_version,
+      deterministic_safety_state: safety.state,
       deterministic_safety_preflight: false,
       deterministic_safety_flags: safety.blocking_flags,
+      deterministic_safety_advisory_flags: safety.advisory_flags,
       deterministic_safety_cleared_flags: safety.cleared_flags,
       model_invoked: true,
       model_urgency_advisory: modelUrgency,
