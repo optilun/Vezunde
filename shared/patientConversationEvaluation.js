@@ -1,7 +1,7 @@
 import { detectProhibitedPatientConversationOutput } from "./patientConversationGuardrails.js";
 
 export const PATIENT_CONVERSATION_EVALUATION_VERSION = "viasee-patient-conversation-evaluation-v1.2";
-export const PATIENT_CONVERSATION_EXPECTED_SAFETY_POLICY_VERSION = "patient-eye-safety-v1.1";
+export const PATIENT_CONVERSATION_EXPECTED_SAFETY_POLICY_VERSION = "patient-eye-safety-v1.2";
 
 function clean(value, maxLength = 1000) {
   return String(value ?? "").trim().slice(0, maxLength);
