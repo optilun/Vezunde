@@ -42,7 +42,7 @@ Until that exists, fixture contracts used for release approval must not rely on 
 
 Implemented request-scoped controls are not durable patient controls.
 
-Still required before patient-visible activation:
+Still required before patient-visible LLM activation:
 
 - server-owned conversation/session persistence;
 - per-session model-call budget;
@@ -54,30 +54,54 @@ Still required before patient-visible activation:
 
 ## 4. Safety review
 
-`patient-eye-safety-v1.1` has a deterministic Romanian text boundary and isolated expression checks, but still requires:
+`patient-eye-safety-v1.2` is now the single deterministic Romanian safety boundary used by the existing intake UI and by the administrator-only shadow agent.
+
+It defines:
+
+- `clear` for no unresolved deterministic safety signal;
+- `advisory` for ambiguous monocular wording or model-proposed possible safety signals;
+- `blocking` for explicit acute wording or guided emergency answers.
+
+This unification removes the previous frontend/Base44 contradiction, but it still requires:
 
 - complete fixture execution;
 - repeated critical attempts;
-- manual output review;
+- manual review of false-positive and false-negative cases;
 - medical safety review;
-- review for unsupported Romanian variants and mixed-language acute wording.
+- review for unsupported Romanian variants and mixed-language acute wording;
+- review of the transition from `advisory` to `clear` after user clarification;
+- review of the transition from `advisory` to `blocking` after an acute guided answer.
 
 No medical safety approval is implied by the current code.
 
-## 5. Orchestration boundary
+## 5. Patient UI boundary
 
-PR #265 must remain the sole approved next-question orchestrator.
+The existing patient intake uses the shared deterministic safety policy only.
+
+This does not activate the semantic LLM for patients.
+
+The current UI behavior must still be verified through executable tests and manual interaction:
+
+- ambiguous wording must show clarification, not emergency guidance;
+- `Niciuna dintre acestea` must allow the unchanged description to continue without a loop;
+- editing the description must invalidate the previous safety review;
+- blocking cases must remain stopped;
+- advisory cases must not expose hospital or 112 guidance.
+
+## 6. Orchestration boundary
+
+PR #265 must remain the sole approved next-question orchestrator for the future LLM-assisted conversation.
 
 PR #266 must not independently:
 
-- choose the next question;
-- activate patient-visible wording;
-- invoke matching;
+- own adaptive next-question selection;
+- activate patient-visible LLM wording;
+- invoke matching from the shadow route;
 - alter provider eligibility;
 - alter ranking or Top 3;
 - distribute requests;
 - expose contact details.
 
-## 6. Release rule
+## 7. Release rule
 
 PR #266 must remain draft and unpublished until all executable checks, controlled model evaluations, manual reviews and orchestration integration requirements are satisfied.
