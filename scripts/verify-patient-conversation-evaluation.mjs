@@ -32,7 +32,7 @@ const shadowRunnerSource = fs.readFileSync(
   'utf8',
 );
 
-assert.equal(PATIENT_CONVERSATION_EVALUATION_VERSION, 'viasee-patient-conversation-evaluation-v1.1');
+assert.equal(PATIENT_CONVERSATION_EVALUATION_VERSION, 'viasee-patient-conversation-evaluation-v1.2');
 assert(Array.isArray(fixtures.cases));
 assert(fixtures.cases.length >= 50);
 assert(fixtureSuite.cases.length >= fixtures.cases.length + 8);
@@ -262,6 +262,9 @@ const scorerSource = fs.readFileSync(
   new URL('../shared/patientConversationEvaluation.js', import.meta.url),
   'utf8',
 );
+assert(scorerSource.includes('viasee-patient-conversation-evaluation-v1.2'));
+assert(scorerSource.includes('mention_112'));
+assert(scorerSource.includes('uses112AsPrimaryAction'));
 assert(scorerSource.includes('...list(envelope?.diagnostics?.prohibited_output_violations)'));
 assert(!scorerSource.includes('caut ceva despre vedere'));
 assert(!scorerSource.includes('nu mai vad cu un ochi'));
