@@ -6,6 +6,10 @@ import {
   deterministicSafetyFlagsFromText,
   guidedSafetyFlagsFromAnswers,
 } from '../src/lib/patientSafety.js';
+import {
+  PATIENT_EMERGENCY_GUIDANCE_MESSAGE,
+  patientEmergencyGuidanceMentions112,
+} from '../shared/patientEmergencyGuidance.js';
 
 assert.equal(PATIENT_SAFETY_ASSESSMENT_VERSION, 'patient-eye-safety-v1');
 assert.deepEqual(guidedSafetyFlagsFromAnswers([{ question_key: 'safety_screening', answer_value: 'substanta_chimica' }]), ['chemical_injury']);
@@ -52,12 +56,17 @@ assert.match(questionText, /buildPatientSafetyAssessment/);
 assert.match(questionText, /UrgencyInterruption/);
 assert.match(questionText, /if \(assessment\.blocking\)/);
 assert.match(interruption, /Opreste cautarea si solicita ajutor medical imediat/);
-assert.match(interruption, /Mergi imediat la UPU, camera de garda/);
-assert.match(interruption, /href="tel:112"/);
+assert.match(interruption, /PATIENT_EMERGENCY_GUIDANCE_COPY/);
+assert.match(interruption, /Hospital/);
+assert.doesNotMatch(interruption, /tel:112|Suna la 112|PhoneCall/);
 assert.match(interruption, /cel putin 20 de minute/);
-assert.match(interruption, /Nu conduce/);
 assert.match(interruption, /nu reprezinta diagnostic sau triaj medical/);
 assert.doesNotMatch(interruption.toLowerCase(), /diagnosticul este|ai glaucom|ai dezlipire de retina/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /spital public/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /urgente oftalmologice/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /chirurgie/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /Nu conduce/);
+assert.equal(patientEmergencyGuidanceMentions112(PATIENT_EMERGENCY_GUIDANCE_MESSAGE), false);
 assert.match(safetyPolicy, /advisoryFlags/);
 assert.match(safetyPolicy, /blocking: blockingFlags\.length > 0/);
 
