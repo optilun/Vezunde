@@ -53,6 +53,7 @@ on:
       - "tests/fixtures/patient-conversation-agent-evaluations.json"
       - "tests/fixtures/patient-conversation-agent-adversarial-evaluations.json"
       - "tests/fixtures/patient-conversation-agent-state-evaluations.json"
+      - "tests/fixtures/patient-conversation-agent-evaluation-overrides.json"
       - "scripts/patient-conversation-fixture-loader.mjs"
       - "scripts/patient-conversation-fixture-contract.mjs"
       - "scripts/verify-patient-guidance-routing.mjs"
@@ -77,6 +78,7 @@ on:
       - "scripts/verify-patient-conversation-state-evaluation-contract.mjs"
       - "scripts/verify-patient-conversation-shadow-harness.mjs"
       - "scripts/verify-patient-conversation-fixture-contract.mjs"
+      - "scripts/verify-patient-conversation-fixture-audit.mjs"
       - "scripts/verify-patient-emergency-guidance-policy.mjs"
       - "scripts/verify-patient-intake-safety.mjs"
       - "scripts/prepare-patient-conversation-shadow-run.mjs"
@@ -151,6 +153,8 @@ jobs:
         run: node scripts/verify-patient-conversation-shadow-harness.mjs
       - name: Verify patient conversation fixture contract
         run: node scripts/verify-patient-conversation-fixture-contract.mjs
+      - name: Verify complete patient conversation fixture audit
+        run: node scripts/verify-patient-conversation-fixture-audit.mjs
       - name: Base44 router and physical function checks
         run: |
           node scripts/verify-directory-function-router.mjs
@@ -267,6 +271,7 @@ jobs:
           scripts/verify-patient-conversation-state-evaluation-contract.mjs
           scripts/verify-patient-conversation-shadow-harness.mjs
           scripts/verify-patient-conversation-fixture-contract.mjs
+          scripts/verify-patient-conversation-fixture-audit.mjs
           scripts/verify-patient-intake-safety.mjs
           scripts/prepare-patient-conversation-shadow-run.mjs
           scripts/evaluate-patient-conversation-results.mjs
