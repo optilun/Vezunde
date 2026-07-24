@@ -47,14 +47,21 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
         </div>
       )}
 
-      <div className="mt-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-white/70 p-4 text-sm leading-relaxed text-red-950">
-        <Hospital className="mt-0.5 h-5 w-5 shrink-0 text-red-700" />
-        <div className="space-y-2">
-          <p><strong>{PATIENT_EMERGENCY_GUIDANCE_COPY.primary_instruction}</strong></p>
-          <p>{PATIENT_EMERGENCY_GUIDANCE_COPY.fallback_instruction}</p>
-          <p>{PATIENT_EMERGENCY_GUIDANCE_COPY.transport_instruction}</p>
+      {blocking ? (
+        <div className="mt-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-white/70 p-4 text-sm leading-relaxed text-red-950">
+          <Hospital className="mt-0.5 h-5 w-5 shrink-0 text-red-700" />
+          <div className="space-y-2">
+            <p><strong>{PATIENT_EMERGENCY_GUIDANCE_COPY.primary_instruction}</strong></p>
+            <p>{PATIENT_EMERGENCY_GUIDANCE_COPY.fallback_instruction}</p>
+            <p>{PATIENT_EMERGENCY_GUIDANCE_COPY.transport_instruction}</p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="mt-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+          <p><strong>Clarifica mai intai situatia.</strong> VIASEE nu porneste cautarea si nu afiseaza instructiunea de urgenta pana cand semnalul nu este confirmat prin raspunsurile tale.</p>
+        </div>
+      )}
 
       {chemical && (
         <div className="mt-5 flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sky-950">
