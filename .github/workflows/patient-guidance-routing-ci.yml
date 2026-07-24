@@ -61,6 +61,7 @@ on:
       - "scripts/verify-patient-conversation-state-evaluation-contract.mjs"
       - "scripts/verify-patient-conversation-shadow-harness.mjs"
       - "scripts/verify-patient-conversation-fixture-contract.mjs"
+      - "scripts/verify-patient-emergency-guidance-policy.mjs"
       - "scripts/verify-patient-intake-safety.mjs"
       - "scripts/prepare-patient-conversation-shadow-run.mjs"
       - "scripts/evaluate-patient-conversation-results.mjs"
@@ -116,6 +117,8 @@ jobs:
         run: node scripts/verify-patient-conversation-state-delta-reducer.mjs
       - name: Verify canonical patient and provider boundary
         run: node scripts/verify-patient-conversation-canonical-boundary.mjs
+      - name: Verify patient emergency guidance policy
+        run: node scripts/verify-patient-emergency-guidance-policy.mjs
       - name: Verify patient conversation operational policy
         run: node scripts/verify-patient-conversation-operational-policy.mjs
       - name: Verify patient conversation state compatibility
@@ -223,6 +226,7 @@ jobs:
           scripts/verify-patient-conversation-state-policy.mjs
           scripts/verify-patient-conversation-state-delta-reducer.mjs
           scripts/verify-patient-conversation-canonical-boundary.mjs
+          scripts/verify-patient-emergency-guidance-policy.mjs
           scripts/verify-patient-conversation-operational-policy.mjs
           scripts/verify-patient-conversation-state-compatibility.mjs
           scripts/verify-patient-conversation-state-evaluation-contract.mjs
