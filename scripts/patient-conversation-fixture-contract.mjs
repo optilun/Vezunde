@@ -19,9 +19,7 @@ export const PATIENT_CONVERSATION_SUPPORTED_MUST_NOT_TOKENS = Object.freeze([
   'retain_superseded_eyeglasses_intent',
 ]);
 
-export const PATIENT_CONVERSATION_UNIMPLEMENTED_EXPECTATION_TOKENS = Object.freeze([
-  'invented_symptoms',
-]);
+export const PATIENT_CONVERSATION_UNIMPLEMENTED_EXPECTATION_TOKENS = Object.freeze([]);
 
 const SUPPORTED_MUST_NOT_TOKEN_SET = new Set(
   PATIENT_CONVERSATION_SUPPORTED_MUST_NOT_TOKENS,
