@@ -171,6 +171,39 @@ assert.deepEqual(advisoryHandoff.semantic_proposal.possible_safety_flags, [
 ]);
 assert(advisoryHandoff.missing_critical_fields.includes('symptom_severity'));
 
+const clearedStaleAdvisoryEnvelope = {
+  ...routineEnvelope,
+  interpretation: interpretation({
+    primary_intent: 'simptome_oftalmologice',
+    service_keys: ['optometry_consultation'],
+    care_path_candidates: ['optometry'],
+    urgency: {
+      level: 'none',
+      needs_clarification: false,
+      reason: '',
+    },
+    information_status: {
+      sufficient_for_search: true,
+      sufficient_for_specialist_message: false,
+      missing_critical_fields: [],
+    },
+    next_action: 'search_providers',
+  }),
+  diagnostics: {
+    advisory_safety_flags: ['sudden_vision_loss'],
+    decision_policy: {
+      deterministic_safety_flags: [],
+      decision_source: 'deterministic_search_readiness',
+    },
+  },
+};
+const clearedStaleAdvisoryHandoff = buildPatientConversationGuidanceHandoff(
+  clearedStaleAdvisoryEnvelope,
+);
+assert.equal(clearedStaleAdvisoryHandoff.safety_state, 'clear');
+assert.equal(clearedStaleAdvisoryHandoff.planner_allowed, true);
+assert.deepEqual(clearedStaleAdvisoryHandoff.semantic_proposal.possible_safety_flags, []);
+
 const blockingEnvelope = {
   ...routineEnvelope,
   interpretation: interpretation({
