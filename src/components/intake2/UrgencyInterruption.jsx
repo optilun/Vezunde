@@ -29,7 +29,9 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
             {blocking ? "Opreste cautarea si solicita ajutor medical imediat" : "Cererea contine un posibil semnal de urgenta"}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-red-900/85">
-            VIASEE nu poate stabili cauza sau gravitatea simptomelor. Pentru situatiile de mai jos, nu astepta recomandari sau raspunsuri in platforma.
+            {blocking
+              ? "VIASEE nu poate stabili cauza sau gravitatea simptomelor. Nu astepta recomandari sau raspunsuri in platforma."
+              : "VIASEE nu poate stabili cauza sau gravitatea simptomelor. Raspunde la intrebarile de clarificare; cautarea ramane oprita pana cand situatia este clarificata."}
           </p>
         </div>
       </div>
@@ -59,11 +61,11 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
       ) : (
         <div className="mt-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
-          <p><strong>Clarifica mai intai situatia.</strong> VIASEE nu porneste cautarea si nu afiseaza instructiunea de urgenta pana cand semnalul nu este confirmat prin raspunsurile tale.</p>
+          <p><strong>Clarifica mai intai situatia.</strong> VIASEE nu afiseaza instructiunea de urgenta pana cand semnalul nu este confirmat prin raspunsurile tale.</p>
         </div>
       )}
 
-      {chemical && (
+      {blocking && chemical && (
         <div className="mt-5 flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sky-950">
           <Droplets className="mt-0.5 h-5 w-5 shrink-0 text-sky-700" />
           <p className="text-xs leading-relaxed"><strong>Daca a ajuns o substanta chimica in ochi:</strong> clateste imediat cu apa curata cel putin 20 de minute, indeparteaza lentilele de contact daca se desprind usor si nu freca ochiul. Continua apoi spre urgenta.</p>
