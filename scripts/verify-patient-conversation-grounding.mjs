@@ -124,7 +124,7 @@ assert.deepEqual(mismatch.mismatched_fields, ['symptom_pattern']);
 
 const groundingFixture = {
   id: 'grounding-001',
-  category: 'specialist_summary',
+  category: 'grounded_structured_facts',
   conversation,
   expected: {
     must_not: ['invented_symptoms'],
