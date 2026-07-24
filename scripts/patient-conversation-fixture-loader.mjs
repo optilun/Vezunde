@@ -4,6 +4,7 @@ export const DEFAULT_PATIENT_CONVERSATION_FIXTURE_PATHS = Object.freeze([
   'tests/fixtures/patient-conversation-agent-evaluations.json',
   'tests/fixtures/patient-conversation-agent-adversarial-evaluations.json',
   'tests/fixtures/patient-conversation-agent-state-evaluations.json',
+  'tests/fixtures/patient-conversation-agent-evaluation-overrides.json',
 ]);
 
 const CRITICAL_FORBIDDEN_TOKENS = new Set([
@@ -21,6 +22,7 @@ const CRITICAL_FORBIDDEN_TOKENS = new Set([
   'contact_details_without_consent',
   'forbidden_output_fields',
   'search_providers',
+  'forget_previous_need',
 ]);
 
 const CRITICAL_STATE_CATEGORIES = new Set([
@@ -34,6 +36,30 @@ const CRITICAL_STATE_CATEGORIES = new Set([
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function fixtureId(fixture) {
+  return String(fixture?.id || '').trim();
+}
+
+function normalizeFixtureMetadata(fixture) {
+  if (!isPlainObject(fixture)) return fixture;
+  const expected = isPlainObject(fixture.expected) ? fixture.expected : fixture.expected;
+  if (!isPlainObject(expected) || expected.question_goal === undefined) return fixture;
+
+  const { question_goal: questionGoal, ...scoredExpected } = expected;
+  return {
+    ...fixture,
+    fixture_notes: {
+      ...(isPlainObject(fixture.fixture_notes) ? fixture.fixture_notes : {}),
+      question_goal: String(questionGoal ?? '').trim(),
+    },
+    expected: scoredExpected,
+  };
 }
 
 export function normalizePatientConversationFixturePaths(value) {
@@ -97,11 +123,35 @@ export function loadPatientConversationFixtures(pathsInput) {
     Array.isArray(payload?.cases) ? payload.cases : []
   ));
   const duplicateCaseIds = [...new Set(cases
-    .map((fixture) => fixture?.id)
+    .map((fixture) => fixtureId(fixture))
     .filter((caseId, index, all) => caseId && all.indexOf(caseId) !== index))];
   if (duplicateCaseIds.length > 0) {
     throw new Error(`Duplicate patient conversation fixture IDs: ${duplicateCaseIds.join(', ')}`);
   }
+
+  const replacements = payloads.flatMap(({ payload }) => (
+    Array.isArray(payload?.replacements) ? payload.replacements : []
+  ));
+  const replacementIds = replacements.map((fixture) => fixtureId(fixture)).filter(Boolean);
+  const duplicateReplacementIds = [...new Set(replacementIds
+    .filter((caseId, index, all) => all.indexOf(caseId) !== index))];
+  if (duplicateReplacementIds.length > 0) {
+    throw new Error(`Duplicate patient conversation fixture replacement IDs: ${duplicateReplacementIds.join(', ')}`);
+  }
+
+  const caseIndexById = new Map(cases.map((fixture, index) => [fixtureId(fixture), index]));
+  for (const replacement of replacements) {
+    const id = fixtureId(replacement);
+    if (!id || !caseIndexById.has(id)) {
+      throw new Error(`Unknown patient conversation fixture replacement ID: ${id || '(missing)'}`);
+    }
+    cases[caseIndexById.get(id)] = replacement;
+  }
+
+  const normalizedCases = cases.map((fixture) => normalizeFixtureMetadata(fixture));
+  const nonScoringQuestionGoalCaseIds = normalizedCases
+    .filter((fixture) => fixture?.fixture_notes?.question_goal)
+    .map((fixture) => fixture.id);
 
   return {
     fixture_paths: fixturePaths,
@@ -110,6 +160,8 @@ export function loadPatientConversationFixtures(pathsInput) {
       fixture_version: payload?.fixture_version || null,
       contract_version: payload?.contract_version || null,
     })),
-    cases,
+    replacement_case_ids: replacementIds,
+    non_scoring_question_goal_case_ids: nonScoringQuestionGoalCaseIds,
+    cases: normalizedCases,
   };
 }
