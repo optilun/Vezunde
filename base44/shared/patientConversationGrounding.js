@@ -21,7 +21,7 @@ function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function unique(values, limit = 4, maxLength = 160) {
+function unique(values, limit = 8, maxLength = 160) {
   return [...new Set((Array.isArray(values) ? values : [])
     .map((value) => clean(value, maxLength))
     .filter(Boolean))]
@@ -59,6 +59,13 @@ function evidenceFrom(value) {
   ]));
 }
 
+function matchingEvidence(value, evidencePhrases) {
+  const normalizedValue = normalizeForEvidence(value);
+  if (!normalizedValue) return [];
+  return unique(evidencePhrases, 8, 160)
+    .filter((phrase) => normalizeForEvidence(phrase).includes(normalizedValue));
+}
+
 export function emptyPatientConversationFactEvidence() {
   return evidenceFrom(null);
 }
@@ -81,42 +88,47 @@ export function sanitizePatientConversationFactEvidence(value, conversation) {
   };
 }
 
-function groundedValue(field, phrases) {
-  const maxLength = SYMPTOM_FIELD_LIMITS[field] || 400;
-  return clean((Array.isArray(phrases) ? phrases : []).join("; "), maxLength);
-}
-
 export function groundPatientConversationSymptomFacts({
   rawFacts,
-  factEvidence,
+  evidencePhrases,
   conversation,
 } = {}) {
   const facts = isPlainObject(rawFacts) ? rawFacts : {};
-  const sanitized = sanitizePatientConversationFactEvidence(factEvidence, conversation);
   const groundedFacts = {};
+  const factEvidence = emptyPatientConversationFactEvidence();
   const groundedFields = [];
   const rejectedFactFields = [];
 
   for (const field of PATIENT_CONVERSATION_GROUNDED_SYMPTOM_FIELDS) {
     const rawValue = clean(facts[field], SYMPTOM_FIELD_LIMITS[field] || 400);
-    const phrases = sanitized.fact_evidence[field];
-    const value = groundedValue(field, phrases);
-    groundedFacts[field] = value;
-    if (value) groundedFields.push(field);
-    if (rawValue && !value) rejectedFactFields.push(field);
+    if (!rawValue) {
+      groundedFacts[field] = "";
+      continue;
+    }
+
+    const supportedByUser = phraseSupportedByUser(rawValue, conversation);
+    const evidence = supportedByUser
+      ? matchingEvidence(rawValue, evidencePhrases)
+      : [];
+    if (evidence.length === 0) {
+      groundedFacts[field] = "";
+      rejectedFactFields.push(field);
+      continue;
+    }
+
+    groundedFacts[field] = rawValue;
+    factEvidence[field] = [rawValue];
+    groundedFields.push(field);
   }
 
   return {
     grounded_facts: groundedFacts,
-    fact_evidence: sanitized.fact_evidence,
+    fact_evidence: factEvidence,
     diagnostics: {
       grounding_version: PATIENT_CONVERSATION_GROUNDING_VERSION,
       grounded_fields: groundedFields,
       rejected_fact_fields: rejectedFactFields,
-      rejected_evidence_phrase_count: sanitized.rejected_phrase_count,
-      release_ready:
-        rejectedFactFields.length === 0
-        && sanitized.rejected_phrase_count === 0,
+      release_ready: rejectedFactFields.length === 0,
     },
   };
 }
@@ -134,10 +146,14 @@ export function evaluatePatientConversationSymptomGrounding({
 
   for (const field of PATIENT_CONVERSATION_GROUNDED_SYMPTOM_FIELDS) {
     const actual = clean(sourceFacts[field], SYMPTOM_FIELD_LIMITS[field] || 400);
-    const expected = groundedValue(field, sanitized.fact_evidence[field]);
+    const evidence = sanitized.fact_evidence[field];
     if (actual) presentSymptomFields.push(field);
-    if (actual && !expected) missingEvidenceFields.push(field);
-    if (actual && expected && normalizeForEvidence(actual) !== normalizeForEvidence(expected)) {
+    if (actual && evidence.length === 0) missingEvidenceFields.push(field);
+    if (
+      actual
+      && evidence.length > 0
+      && !evidence.some((phrase) => normalizeForEvidence(phrase) === normalizeForEvidence(actual))
+    ) {
       mismatchedFields.push(field);
     }
   }
