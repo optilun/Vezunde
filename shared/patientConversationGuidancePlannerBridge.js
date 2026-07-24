@@ -6,7 +6,9 @@ import {
   sanitizePatientGuidancePlannerProposal,
 } from "./patientGuidancePlanner.js";
 import {
+  PATIENT_GUIDANCE_QUESTION_CATALOG,
   PATIENT_GUIDANCE_QUESTION_CATALOG_VERSION,
+  isApprovedPatientGuidanceQuestionKey,
 } from "./patientGuidanceQuestionCatalog.js";
 import {
   PATIENT_CONVERSATION_GUIDANCE_HANDOFF_VERSION,
@@ -29,18 +31,8 @@ function isPlainObject(value) {
 function controlledQuestionKeys(values, limit = 30) {
   return [...new Set((Array.isArray(values) ? values : [])
     .map((value) => clean(value, 80))
-    .filter(Boolean))]
+    .filter((value) => isApprovedPatientGuidanceQuestionKey(value)))]
     .slice(0, limit);
-}
-
-function controlledGuidedAnswers(values, limit = 30) {
-  return (Array.isArray(values) ? values : [])
-    .slice(0, limit)
-    .map((answer) => ({
-      question_key: clean(answer?.question_key, 80),
-      answer_value: answer?.answer_value,
-    }))
-    .filter((answer) => answer.question_key && answer.answer_value !== undefined);
 }
 
 function controlledLocality(value) {
@@ -55,6 +47,39 @@ function controlledLocality(value) {
     Object.entries(locality).filter(([, item]) => Boolean(item)),
   );
   return Object.keys(result).length > 0 ? result : null;
+}
+
+function controlledAnswerValue(question, value) {
+  if (question?.type === "choice") {
+    const answer = clean(value, 160);
+    return question.options?.some((option) => option.key === answer)
+      ? answer
+      : null;
+  }
+  if (question?.type === "text") {
+    return clean(value, 800) || null;
+  }
+  if (question?.type === "location") {
+    return controlledLocality(value);
+  }
+  return null;
+}
+
+function controlledGuidedAnswers(values, limit = 30) {
+  return (Array.isArray(values) ? values : [])
+    .slice(0, limit)
+    .map((answer) => {
+      const questionKey = clean(answer?.question_key, 80);
+      if (!isApprovedPatientGuidanceQuestionKey(questionKey)) return null;
+      const answerValue = controlledAnswerValue(
+        PATIENT_GUIDANCE_QUESTION_CATALOG[questionKey],
+        answer?.answer_value,
+      );
+      return answerValue === null
+        ? null
+        : { question_key: questionKey, answer_value: answerValue };
+    })
+    .filter(Boolean);
 }
 
 function fallbackSelection(reason, askedQuestionCount = 0) {
@@ -142,10 +167,9 @@ export function consumePatientConversationGuidanceHandoff({
   controlledContext = {},
 } = {}) {
   const askedQuestionKeys = controlledQuestionKeys(controlledContext.question_history);
+  const guidedAnswers = controlledGuidedAnswers(controlledContext.guided_answers);
   const answeredQuestionKeys = controlledQuestionKeys(
-    (Array.isArray(controlledContext.guided_answers)
-      ? controlledContext.guided_answers
-      : []).map((answer) => answer?.question_key),
+    guidedAnswers.map((answer) => answer.question_key),
   );
   const askedQuestionCount = askedQuestionKeys.length;
 
@@ -186,7 +210,6 @@ export function consumePatientConversationGuidanceHandoff({
     );
   }
 
-  const guidedAnswers = controlledGuidedAnswers(controlledContext.guided_answers);
   const explicitLocality = controlledLocality(controlledContext.explicit_locality);
   const explicitPrimaryIntent = clean(controlledContext.explicit_primary_intent, 80);
   const explicitConfirmedServiceKeys = Array.isArray(
@@ -251,6 +274,7 @@ export function consumePatientConversationGuidanceHandoff({
         handoff.semantic_proposal.candidate_service_keys?.length || 0,
       semantic_candidate_fact_count:
         handoff.semantic_proposal.extracted_facts?.length || 0,
+      controlled_answer_count: guidedAnswers.length,
       confirmed_fact_source: "controlled_context_only",
       planner_confirmed_fact_keys: confirmedFactKeys,
       planner_confirmed_fact_sources: Object.fromEntries(
