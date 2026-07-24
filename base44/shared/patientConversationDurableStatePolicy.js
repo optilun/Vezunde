@@ -30,16 +30,31 @@ const RECORD_STATUS_VALUES = new Set([
   "expired",
   "revoked",
 ]);
-const FORBIDDEN_RECORD_FIELDS = Object.freeze([
-  "conversation",
-  "messages",
-  "raw_turns",
-  "raw_conversation",
-  "email",
-  "phone",
-  "name",
-  "access_token",
-  "contact",
+const STATUS_TRANSITIONS = Object.freeze({
+  active: new Set(["active", "completed", "revoked"]),
+  completed: new Set(["completed"]),
+  expired: new Set(["expired"]),
+  revoked: new Set(["revoked"]),
+});
+const ALLOWED_RECORD_FIELDS = new Set([
+  "record_version",
+  "policy_version",
+  "session_id",
+  "subject_key",
+  "status",
+  "revision",
+  "created_at",
+  "updated_at",
+  "expires_at",
+  "model_calls_used",
+  "grounded_facts",
+  "fact_provenance",
+]);
+const ALLOWED_PROVENANCE_FIELDS = new Set([
+  "value",
+  "evidence_phrase",
+  "source_message_id",
+  "verified_at_revision",
 ]);
 
 function clean(value, maxLength = 400) {
@@ -190,6 +205,10 @@ export function createPatientConversationDurableStateRecord({
 function recordViolations(record, { now = Date.now() } = {}) {
   const violations = [];
   if (!isPlainObject(record)) return ["record_required"];
+
+  for (const field of Object.keys(record)) {
+    if (!ALLOWED_RECORD_FIELDS.has(field)) violations.push(`unexpected_field:${field}`);
+  }
   if (record.record_version !== PATIENT_CONVERSATION_DURABLE_STATE_RECORD_VERSION) {
     violations.push("record_version_invalid");
   }
@@ -222,14 +241,21 @@ function recordViolations(record, { now = Date.now() } = {}) {
     violations.push("created_at_in_future");
   }
 
-  for (const field of FORBIDDEN_RECORD_FIELDS) {
-    if (Object.prototype.hasOwnProperty.call(record, field)) {
-      violations.push(`forbidden_field:${field}`);
+  const facts = isPlainObject(record.grounded_facts) ? record.grounded_facts : {};
+  const provenance = isPlainObject(record.fact_provenance) ? record.fact_provenance : {};
+  if (!isPlainObject(record.grounded_facts)) violations.push("grounded_facts_invalid");
+  if (!isPlainObject(record.fact_provenance)) violations.push("fact_provenance_invalid");
+  for (const field of Object.keys(facts)) {
+    if (!PATIENT_CONVERSATION_DURABLE_STATE_GROUNDED_FIELDS.includes(field)) {
+      violations.push(`unexpected_fact_field:${field}`);
+    }
+  }
+  for (const field of Object.keys(provenance)) {
+    if (!PATIENT_CONVERSATION_DURABLE_STATE_GROUNDED_FIELDS.includes(field)) {
+      violations.push(`unexpected_provenance_field:${field}`);
     }
   }
 
-  const facts = isPlainObject(record.grounded_facts) ? record.grounded_facts : {};
-  const provenance = isPlainObject(record.fact_provenance) ? record.fact_provenance : {};
   for (const field of PATIENT_CONVERSATION_DURABLE_STATE_GROUNDED_FIELDS) {
     const value = clean(facts[field], field === "symptom_pattern" ? 400 : 240);
     const source = provenance[field];
@@ -241,6 +267,11 @@ function recordViolations(record, { now = Date.now() } = {}) {
     if (!isPlainObject(source)) {
       violations.push(`missing_provenance:${field}`);
       continue;
+    }
+    for (const sourceField of Object.keys(source)) {
+      if (!ALLOWED_PROVENANCE_FIELDS.has(sourceField)) {
+        violations.push(`unexpected_provenance_property:${field}:${sourceField}`);
+      }
     }
     if (normalizeEvidence(source.value) !== normalizeEvidence(value)) {
       violations.push(`provenance_value_mismatch:${field}`);
@@ -338,7 +369,11 @@ export function planPatientConversationDurableStateUpdate(record, {
       record: null,
     };
   }
-  if (!RECORD_STATUS_VALUES.has(status) || ["expired", "revoked"].includes(record.status)) {
+  if (
+    !RECORD_STATUS_VALUES.has(status)
+    || !STATUS_TRANSITIONS[record.status]?.has(status)
+    || ["expired", "revoked"].includes(record.status)
+  ) {
     return {
       status: "rejected",
       reason: "durable_state_transition_invalid",
