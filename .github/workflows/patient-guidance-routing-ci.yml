@@ -11,6 +11,7 @@ on:
       - "shared/patientConversationCanonicalBoundary.js"
       - "shared/patientConversationDecisionPolicy.js"
       - "shared/patientConversationEvaluation.js"
+      - "shared/patientConversationGrounding.js"
       - "shared/patientConversationGuardrails.js"
       - "shared/patientConversationGuidanceHandoff.js"
       - "shared/patientConversationGuidancePlannerBridge.js"
@@ -26,6 +27,7 @@ on:
       - "base44/shared/patientConversationCanonicalAdapter.js"
       - "base44/shared/patientConversationCanonicalBoundary.js"
       - "base44/shared/patientConversationDecisionPolicy.js"
+      - "base44/shared/patientConversationGrounding.js"
       - "base44/shared/patientConversationGuardrails.js"
       - "base44/shared/patientConversationGuidanceHandoff.js"
       - "base44/shared/patientConversationGuidancePlannerBridge.js"
@@ -45,6 +47,7 @@ on:
       - "docs/patient-conversation-agent-acceptance.md"
       - "docs/patient-conversation-guidance-handoff.md"
       - "docs/patient-conversation-operational-policy.md"
+      - "docs/patient-conversation-validation-blockers.md"
       - "docs/patient-emergency-guidance-policy.md"
       - "tests/fixtures/patient-conversation-agent-evaluations.json"
       - "tests/fixtures/patient-conversation-agent-adversarial-evaluations.json"
@@ -57,6 +60,7 @@ on:
       - "scripts/verify-patient-conversation-agent.mjs"
       - "scripts/verify-patient-conversation-shadow-route.mjs"
       - "scripts/verify-patient-conversation-evaluation.mjs"
+      - "scripts/verify-patient-conversation-grounding.mjs"
       - "scripts/verify-patient-conversation-model-response-contract.mjs"
       - "scripts/verify-patient-conversation-repeated-evaluation.mjs"
       - "scripts/verify-patient-conversation-terminal-failure-gate.mjs"
@@ -112,6 +116,8 @@ jobs:
         run: node scripts/verify-patient-conversation-shadow-route.mjs
       - name: Verify patient conversation evaluation scorer and guardrails
         run: node scripts/verify-patient-conversation-evaluation.mjs
+      - name: Verify patient conversation symptom grounding
+        run: node scripts/verify-patient-conversation-grounding.mjs
       - name: Verify strict patient conversation model response contract
         run: node scripts/verify-patient-conversation-model-response-contract.mjs
       - name: Verify repeated patient conversation acceptance
@@ -203,6 +209,7 @@ jobs:
           shared/patientConversationCanonicalBoundary.js
           shared/patientConversationDecisionPolicy.js
           shared/patientConversationEvaluation.js
+          shared/patientConversationGrounding.js
           shared/patientConversationGuardrails.js
           shared/patientConversationGuidanceHandoff.js
           shared/patientConversationGuidancePlannerBridge.js
@@ -218,6 +225,7 @@ jobs:
           base44/shared/patientConversationCanonicalAdapter.js
           base44/shared/patientConversationCanonicalBoundary.js
           base44/shared/patientConversationDecisionPolicy.js
+          base44/shared/patientConversationGrounding.js
           base44/shared/patientConversationGuardrails.js
           base44/shared/patientConversationGuidanceHandoff.js
           base44/shared/patientConversationGuidancePlannerBridge.js
@@ -241,6 +249,7 @@ jobs:
           scripts/verify-patient-conversation-agent.mjs
           scripts/verify-patient-conversation-shadow-route.mjs
           scripts/verify-patient-conversation-evaluation.mjs
+          scripts/verify-patient-conversation-grounding.mjs
           scripts/verify-patient-conversation-model-response-contract.mjs
           scripts/verify-patient-conversation-repeated-evaluation.mjs
           scripts/verify-patient-conversation-terminal-failure-gate.mjs
