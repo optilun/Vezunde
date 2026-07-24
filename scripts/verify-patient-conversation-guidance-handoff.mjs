@@ -135,6 +135,25 @@ assert.equal(plannerValidation.proposal.next_question_key, null);
 assert.deepEqual(plannerValidation.proposal.candidate_service_keys, ['hinge_repair']);
 assert.equal(plannerValidation.diagnostics.question_key_rejected, false);
 
+const evidenceLimitHandoff = buildPatientConversationGuidanceHandoff({
+  ...routineEnvelope,
+  interpretation: interpretation({
+    evidence_phrases: [
+      'prima dovada',
+      'a doua dovada',
+      'a treia dovada',
+      'a patra dovada',
+      'a cincea dovada',
+      'a sasea dovada care trebuie eliminata',
+      'x'.repeat(180),
+    ],
+  }),
+});
+assert.equal(evidenceLimitHandoff.semantic_proposal.evidence_phrases.length, 5);
+assert(evidenceLimitHandoff.semantic_proposal.evidence_phrases.every((phrase) => (
+  phrase.length <= 120
+)));
+
 const advisoryEnvelope = {
   ...routineEnvelope,
   interpretation: interpretation({
