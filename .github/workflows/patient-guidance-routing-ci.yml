@@ -47,6 +47,7 @@ on:
       - "docs/patient-conversation-agent-acceptance.md"
       - "docs/patient-conversation-guidance-handoff.md"
       - "docs/patient-conversation-operational-policy.md"
+      - "docs/patient-conversation-symptom-grounding.md"
       - "docs/patient-conversation-validation-blockers.md"
       - "docs/patient-emergency-guidance-policy.md"
       - "tests/fixtures/patient-conversation-agent-evaluations.json"
@@ -273,3 +274,15 @@ jobs:
           --quiet
       - name: Lint complete
         run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Upload typecheck diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: patient-guidance-routing-typecheck
+          path: |
+            typecheck-head.log
+            typecheck-base.log
+          if-no-files-found: warn
+          retention-days: 7
