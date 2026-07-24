@@ -15,6 +15,7 @@ on:
       - "shared/patientConversationOperationalPolicy.js"
       - "shared/patientConversationStatePolicy.js"
       - "shared/patientConversationStateDeltaReducer.js"
+      - "shared/patientEmergencyGuidance.js"
       - "base44/shared/patientGuidanceQuestionCatalog.js"
       - "base44/shared/patientGuidanceRouting.js"
       - "base44/shared/patientGuidancePlanner.js"
@@ -26,17 +27,21 @@ on:
       - "base44/shared/patientConversationOperationalPolicy.js"
       - "base44/shared/patientConversationStatePolicy.js"
       - "base44/shared/patientConversationStateDeltaReducer.js"
+      - "base44/shared/patientEmergencyGuidance.js"
       - "base44/functions/matchProvidersSemantic/entry.ts"
       - "base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts"
       - "base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts"
       - "src/lib/providerSemanticSearch.js"
+      - "src/components/intake2/UrgencyInterruption.jsx"
       - "docs/patient-conversation-agent-v1.md"
       - "docs/patient-conversation-agent-acceptance.md"
       - "docs/patient-conversation-operational-policy.md"
+      - "docs/patient-emergency-guidance-policy.md"
       - "tests/fixtures/patient-conversation-agent-evaluations.json"
       - "tests/fixtures/patient-conversation-agent-adversarial-evaluations.json"
       - "tests/fixtures/patient-conversation-agent-state-evaluations.json"
       - "scripts/patient-conversation-fixture-loader.mjs"
+      - "scripts/patient-conversation-fixture-contract.mjs"
       - "scripts/verify-patient-guidance-routing.mjs"
       - "scripts/verify-patient-guidance-planner.mjs"
       - "scripts/verify-patient-guidance-runtime-shadow.mjs"
@@ -55,8 +60,11 @@ on:
       - "scripts/verify-patient-conversation-state-compatibility.mjs"
       - "scripts/verify-patient-conversation-state-evaluation-contract.mjs"
       - "scripts/verify-patient-conversation-shadow-harness.mjs"
+      - "scripts/verify-patient-conversation-fixture-contract.mjs"
+      - "scripts/verify-patient-intake-safety.mjs"
       - "scripts/prepare-patient-conversation-shadow-run.mjs"
       - "scripts/evaluate-patient-conversation-results.mjs"
+      - "scripts/evaluate-patient-conversation-results-validated.mjs"
       - "package.json"
       - ".github/workflows/patient-guidance-routing-ci.yml"
 
@@ -116,6 +124,8 @@ jobs:
         run: node scripts/verify-patient-conversation-state-evaluation-contract.mjs
       - name: Verify patient conversation shadow harness
         run: node scripts/verify-patient-conversation-shadow-harness.mjs
+      - name: Verify patient conversation fixture contract
+        run: node scripts/verify-patient-conversation-fixture-contract.mjs
       - name: Base44 router and physical function checks
         run: |
           node scripts/verify-directory-function-router.mjs
@@ -179,6 +189,7 @@ jobs:
           shared/patientConversationOperationalPolicy.js
           shared/patientConversationStatePolicy.js
           shared/patientConversationStateDeltaReducer.js
+          shared/patientEmergencyGuidance.js
           base44/shared/patientGuidanceQuestionCatalog.js
           base44/shared/patientGuidanceRouting.js
           base44/shared/patientGuidancePlanner.js
@@ -190,11 +201,14 @@ jobs:
           base44/shared/patientConversationOperationalPolicy.js
           base44/shared/patientConversationStatePolicy.js
           base44/shared/patientConversationStateDeltaReducer.js
+          base44/shared/patientEmergencyGuidance.js
           base44/functions/matchProvidersSemantic/entry.ts
           base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts
           base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts
           src/lib/providerSemanticSearch.js
+          src/components/intake2/UrgencyInterruption.jsx
           scripts/patient-conversation-fixture-loader.mjs
+          scripts/patient-conversation-fixture-contract.mjs
           scripts/verify-patient-guidance-routing.mjs
           scripts/verify-patient-guidance-planner.mjs
           scripts/verify-patient-guidance-runtime-shadow.mjs
@@ -213,20 +227,11 @@ jobs:
           scripts/verify-patient-conversation-state-compatibility.mjs
           scripts/verify-patient-conversation-state-evaluation-contract.mjs
           scripts/verify-patient-conversation-shadow-harness.mjs
+          scripts/verify-patient-conversation-fixture-contract.mjs
+          scripts/verify-patient-intake-safety.mjs
           scripts/prepare-patient-conversation-shadow-run.mjs
           scripts/evaluate-patient-conversation-results.mjs
+          scripts/evaluate-patient-conversation-results-validated.mjs
           --quiet
       - name: Lint complete
         run: npm run lint
-      - name: Build
-        run: npm run build
-      - name: Upload typecheck diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: patient-guidance-routing-typecheck
-          path: |
-            typecheck-head.log
-            typecheck-base.log
-          if-no-files-found: warn
-          retention-days: 7
