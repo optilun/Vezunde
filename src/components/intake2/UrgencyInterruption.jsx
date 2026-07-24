@@ -56,6 +56,7 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
             <p><strong>{PATIENT_EMERGENCY_GUIDANCE_COPY.primary_instruction}</strong></p>
             <p>{PATIENT_EMERGENCY_GUIDANCE_COPY.fallback_instruction}</p>
             <p>{PATIENT_EMERGENCY_GUIDANCE_COPY.transport_instruction}</p>
+            <p className="text-xs text-red-900/80">{PATIENT_EMERGENCY_GUIDANCE_COPY.emergency_call_instruction}</p>
           </div>
         </div>
       ) : (
