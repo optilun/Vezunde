@@ -4,7 +4,9 @@
 
 The implementation is an administrator-only, unpublished shadow route.
 
-It is not connected to the patient UI. It does not call provider matching, rank providers, create Top 3, distribute requests or modify production behavior.
+The semantic agent is not connected to the patient UI. It does not call provider matching, rank providers, create Top 3, distribute requests or modify normal marketplace behavior.
+
+The existing intake safety UI uses the same deterministic eye-safety policy as the shadow agent. This does not activate the LLM for patients.
 
 The model is a semantic interpreter only. Deterministic VIASEE policies own safety, state, care-path compatibility, provider-profile derivation, search readiness, final action and patient-facing operational wording.
 
@@ -19,7 +21,8 @@ Required identity:
 - model: `gpt_5_4`;
 - prompt: `viasee-patient-conversation-prompt-v1.2`;
 - decision policy: `viasee-patient-conversation-decision-policy-v1`;
-- safety policy: `patient-eye-safety-v1.1` when decision-policy diagnostics are present;
+- safety policy: `patient-eye-safety-v1.2` when decision-policy diagnostics are present;
+- emergency guidance: `patient-emergency-guidance-v1.1` for confirmed emergencies;
 - state policy: `viasee-patient-conversation-state-policy-v1.1` when evaluation prior state exists;
 - state-delta reducer: `viasee-patient-conversation-state-delta-reducer-v1` when a semantic correction is processed.
 
@@ -32,7 +35,8 @@ When explicit deterministic safety rules block before the model call:
 - `model_invoked` must be `false`;
 - `model` and `prompt_version` must be `null`;
 - decision policy must be present;
-- `safety_policy_version` must equal `patient-eye-safety-v1.1`;
+- `safety_policy_version` must equal `patient-eye-safety-v1.2`;
+- `deterministic_safety_state` must equal `blocking`;
 - urgency must be `confirmed`;
 - final action must be `show_emergency_guidance`;
 - search readiness must be false.
@@ -106,26 +110,49 @@ Rejected output returns `status: invalid` and `interpretation: null`. It must no
 
 Operational timeout, rollout exclusion and call-budget failures also expose no interpretation.
 
-## Deterministic safety authority
+## Unified deterministic safety authority
 
-Safety uses `patient-eye-safety-v1.1` before and after semantic interpretation.
+Frontend intake and Base44 shadow runtime must use byte-identical copies of `patient-eye-safety-v1.2`.
+
+The policy has exactly three states:
+
+- `clear`: no unresolved deterministic safety signal; the ordinary flow may continue;
+- `advisory`: the description is ambiguous or the model proposes a possible safety signal; search stays stopped and controlled clarification is required;
+- `blocking`: an explicit acute signal or guided emergency answer is present; the ordinary flow stops and fixed emergency guidance is shown.
 
 The acceptance boundary distinguishes an ambiguous statement from an explicit acute signal:
 
-- `Nu mai vad cu un ochi` alone must not automatically become confirmed by the deterministic text policy;
-- explicit sudden or near-complete vision loss must block before LLM;
-- strong chemical exposure, penetrating or embedded eye trauma, severe ocular pain, acute postoperative deterioration, and flashes with a curtain-like shadow must block;
+- `Nu mai vad cu un ochi`, `Nu vad cu ochiul drept` or similar monocular wording alone must be `advisory`, not automatically confirmed;
+- explicit sudden or near-complete vision loss must be `blocking` before LLM;
+- strong chemical exposure, penetrating or embedded eye trauma, severe ocular pain, acute postoperative deterioration, and flashes with a curtain-like shadow must be `blocking`;
+- a later explicit clarification such as a stable problem existing for months and not appearing suddenly may clear the monocular advisory signal;
 - mild shampoo exposure or nonspecific impact followed only by blurred vision must not automatically become confirmed by this text policy alone.
 
 Additional safety rules:
 
-- A short later answer does not erase an earlier deterministic signal.
+- A short unrelated later answer does not erase an earlier deterministic signal.
 - Only an explicit deterministic correction may clear the corresponding signal.
 - Model safety flags are advisory only.
+- An AI advisory cannot create a blocking state by itself.
 - Unsupported model emergency certainty becomes `possible` and requires clarification.
 - A model-proposed safe state cannot clear deterministic safety.
+- `advisory` may not expose hospital or 112 guidance.
+- `blocking` uses only the controlled emergency-guidance contract.
 
-The emergency message is fixed by VIASEE and must not contain diagnosis, treatment, commercial results or generic 112 as the primary action.
+The emergency message is fixed by VIASEE and must not contain diagnosis, treatment, commercial results or 112 as the primary action.
+
+## Patient intake safety behavior
+
+For the existing patient description step:
+
+- a blocking assessment displays `UrgencyInterruption` in blocking mode;
+- an advisory assessment displays clarification-only copy plus the controlled safety options;
+- choosing an acute option creates a blocking assessment;
+- choosing `Niciuna dintre acestea` marks the unchanged description as safety-reviewed and allows it to continue;
+- editing the description invalidates that review and requires a fresh assessment;
+- the UI must not contain a `tel:112` primary action.
+
+This UI behavior is deterministic and does not activate the semantic LLM for patients.
 
 ## State and correction authority
 
@@ -169,11 +196,11 @@ After semantic and state processing, server policy recalculates:
 
 Rules:
 
-- deterministic acute safety → `show_emergency_guidance`;
-- unresolved safety → `ask_clarifying_question`;
+- `blocking` deterministic safety → `show_emergency_guidance`;
+- `advisory` or unresolved model safety → `ask_clarifying_question`;
 - unknown intent or no canonical service → `ask_clarifying_question`;
 - sufficient need without locality → `ask_locality`;
-- sufficient need, canonical services, locality and no unresolved safety → `search_providers`.
+- sufficient need, canonical services, locality and `clear` safety → `search_providers`.
 
 `specialist_summary` remains `null` in this layer.
 
@@ -206,11 +233,13 @@ Additional contract tests cover:
 - semantic-only raw schema;
 - rejection of operational model fields;
 - deterministic safety before LLM;
-- ambiguous one-eye vision wording versus explicit sudden loss;
+- shared/Base44 eye-safety byte parity;
+- `clear / advisory / blocking` state identity;
+- ambiguous monocular wording versus explicit sudden loss;
+- stable-history clarification and cross-turn safety correction;
 - approved acute chemical, trauma, postoperative and flashes-with-curtain wording;
 - false-negative urgency override;
 - unsupported emergency downgrade;
-- explicit safety corrections across turns;
 - stale safety-policy version rejection;
 - canonical provider-profile derivation;
 - valid pediatric planner-age mapping only;
@@ -222,8 +251,7 @@ Additional contract tests cover:
 - truthful no-model identity;
 - browser prior-state isolation;
 - empty-message pre-core stop;
-- wrapper/core separation;
-- shared/Base44 byte parity.
+- wrapper/core separation.
 
 ## Repeat policy
 
@@ -284,10 +312,10 @@ Execute only as an authenticated administrator against:
 mode = patient_conversation_shadow
 ```
 
-Evaluate the complete capture:
+Evaluate the complete capture through the validated launcher:
 
 ```bash
-node scripts/evaluate-patient-conversation-results.mjs \
+node scripts/evaluate-patient-conversation-results-validated.mjs \
   default \
   tmp/patient-conversation-shadow-run.json \
   tmp/patient-conversation-evaluation-report.json
