@@ -12,6 +12,7 @@ on:
       - "shared/patientConversationDecisionPolicy.js"
       - "shared/patientConversationEvaluation.js"
       - "shared/patientConversationGuardrails.js"
+      - "shared/patientConversationGuidanceHandoff.js"
       - "shared/patientConversationOperationalPolicy.js"
       - "shared/patientConversationStatePolicy.js"
       - "shared/patientConversationStateDeltaReducer.js"
@@ -25,6 +26,7 @@ on:
       - "base44/shared/patientConversationCanonicalBoundary.js"
       - "base44/shared/patientConversationDecisionPolicy.js"
       - "base44/shared/patientConversationGuardrails.js"
+      - "base44/shared/patientConversationGuidanceHandoff.js"
       - "base44/shared/patientConversationOperationalPolicy.js"
       - "base44/shared/patientConversationStatePolicy.js"
       - "base44/shared/patientConversationStateDeltaReducer.js"
@@ -57,6 +59,7 @@ on:
       - "scripts/verify-patient-conversation-terminal-failure-gate.mjs"
       - "scripts/verify-patient-conversation-decision-policy.mjs"
       - "scripts/verify-patient-conversation-deterministic-preflight-evaluation.mjs"
+      - "scripts/verify-patient-conversation-guidance-handoff.mjs"
       - "scripts/verify-patient-conversation-state-policy.mjs"
       - "scripts/verify-patient-conversation-state-delta-reducer.mjs"
       - "scripts/verify-patient-conversation-canonical-boundary.mjs"
@@ -115,6 +118,8 @@ jobs:
         run: node scripts/verify-patient-conversation-decision-policy.mjs
       - name: Verify deterministic safety preflight evaluation
         run: node scripts/verify-patient-conversation-deterministic-preflight-evaluation.mjs
+      - name: Verify semantic handoff to patient guidance planner
+        run: node scripts/verify-patient-conversation-guidance-handoff.mjs
       - name: Verify patient conversation state policy
         run: node scripts/verify-patient-conversation-state-policy.mjs
       - name: Verify semantic state delta reducer
@@ -193,6 +198,7 @@ jobs:
           shared/patientConversationDecisionPolicy.js
           shared/patientConversationEvaluation.js
           shared/patientConversationGuardrails.js
+          shared/patientConversationGuidanceHandoff.js
           shared/patientConversationOperationalPolicy.js
           shared/patientConversationStatePolicy.js
           shared/patientConversationStateDeltaReducer.js
@@ -206,6 +212,7 @@ jobs:
           base44/shared/patientConversationCanonicalBoundary.js
           base44/shared/patientConversationDecisionPolicy.js
           base44/shared/patientConversationGuardrails.js
+          base44/shared/patientConversationGuidanceHandoff.js
           base44/shared/patientConversationOperationalPolicy.js
           base44/shared/patientConversationStatePolicy.js
           base44/shared/patientConversationStateDeltaReducer.js
@@ -231,6 +238,7 @@ jobs:
           scripts/verify-patient-conversation-terminal-failure-gate.mjs
           scripts/verify-patient-conversation-decision-policy.mjs
           scripts/verify-patient-conversation-deterministic-preflight-evaluation.mjs
+          scripts/verify-patient-conversation-guidance-handoff.mjs
           scripts/verify-patient-conversation-state-policy.mjs
           scripts/verify-patient-conversation-state-delta-reducer.mjs
           scripts/verify-patient-conversation-canonical-boundary.mjs
