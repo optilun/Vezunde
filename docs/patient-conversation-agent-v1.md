@@ -14,7 +14,26 @@ The AI component is not a doctor, a provider recommender or the marketplace orch
 
 > The LLM understands. VIASEE code decides.
 
-## 2. Responsibility boundaries
+## 2. Runtime identities
+
+- route: `patient_conversation_shadow`;
+- envelope: `viasee-patient-conversation-agent-v1`;
+- semantic response: `viasee-patient-conversation-semantic-v1`;
+- model: `gpt_5_4` when semantic interpretation is required;
+- prompt: `viasee-patient-conversation-prompt-v1.2`;
+- decision policy: `viasee-patient-conversation-decision-policy-v1`;
+- deterministic eye safety: `patient-eye-safety-v1.2`;
+- emergency guidance: `patient-emergency-guidance-v1.1`;
+- evaluation: `viasee-patient-conversation-evaluation-v1.3`;
+- symptom grounding: `viasee-patient-conversation-grounding-v1`;
+- state policy: `viasee-patient-conversation-state-policy-v1.1`;
+- state-delta reducer: `viasee-patient-conversation-state-delta-reducer-v1`;
+- canonical boundary: `viasee-patient-conversation-canonical-boundary-v1`;
+- guidance handoff: `viasee-patient-conversation-guidance-handoff-v1`;
+- inactive planner bridge: `viasee-patient-conversation-guidance-planner-bridge-v1`;
+- operational policy: `viasee-patient-conversation-operational-policy-v1`.
+
+## 3. Responsibility boundaries
 
 ### The semantic LLM may extract
 
@@ -44,6 +63,7 @@ The AI component is not a doctor, a provider recommender or the marketplace orch
 - safety preflight and final safety decision;
 - schema and canonical-key validation;
 - conversational state reduction;
+- field-level symptom grounding;
 - care-path compatibility;
 - provider-profile derivation from canonical services;
 - missing critical fields and search readiness;
@@ -52,7 +72,7 @@ The AI component is not a doctor, a provider recommender or the marketplace orch
 - matching, ranking, buckets, Top 3 and trust placement;
 - consent, contact access and request distribution.
 
-## 3. Runtime pipeline
+## 4. Runtime pipeline
 
 ```text
 admin shadow request
@@ -80,12 +100,20 @@ unified deterministic safety and decision policy
         ↓
 canonical patient/provider boundary
         ↓
-shadow envelope only
+field-level symptom grounding
+        ├─ valid → attach fact_evidence
+        └─ invalid → ungrounded_symptom_facts
+        ↓
+operational shadow envelope
+        ↓
+semantic candidate handoff
 ```
 
 The shadow route exits before service-role access and before provider matching.
 
-## 4. Patient intake boundary
+The inactive planner bridge is not imported by the request endpoint.
+
+## 5. Patient intake boundary
 
 The semantic LLM remains disabled for patients.
 
@@ -111,28 +139,7 @@ Choosing `Niciuna dintre acestea` allows the unchanged advisory description to c
 
 This deterministic UI behavior is not an LLM rollout and does not diagnose the user.
 
-## 5. Operational wrapper
-
-The public runtime is `patientConversationAgentShadow.ts`. The semantic implementation is isolated in `patientConversationAgentShadowCore.ts`.
-
-The wrapper currently enforces:
-
-- `admin_evaluation_only` rollout mode;
-- patient-visible semantic execution disabled;
-- patient-visible sampling set to zero;
-- maximum one model call per request;
-- 15-second response deadline;
-- fail-closed timeout and call-budget outcomes;
-- request-scoped operational metadata;
-- no raw patient text or text hashes in operational metadata.
-
-The Base44 integration does not expose cancellation. The timeout is therefore a response deadline and does not prove cancellation of the underlying SDK request.
-
-A request without a user message stops before the semantic core and reports truthful no-model identity.
-
-Administrator evaluation correlation is preserved when a valid `evaluation_case_id` is supplied.
-
-## 6. Unified eye-safety policy
+## 6. Unified eye-safety authority
 
 The policy identity is:
 
@@ -186,21 +193,7 @@ Blocking state:
 - returns fixed emergency guidance;
 - never performs commercial matching or Top 3.
 
-### Corrections across turns
-
-A short unrelated reply does not erase an earlier signal.
-
-A later explicit correction may clear the corresponding flag, for example:
-
-```text
-User: Nu vad cu ochiul drept.
-VIASEE: Problema a aparut brusc?
-User: Nu este brusc, vad mai slab de cateva luni si nu ma doare.
-```
-
-The final deterministic state may then become `clear`.
-
-Model safety flags remain advisory. They cannot clear deterministic safety or declare a case safe.
+A short unrelated reply does not erase an earlier signal. A later explicit correction may clear the corresponding signal. Model safety flags remain advisory and cannot clear deterministic safety or declare a case safe.
 
 ## 7. Emergency guidance
 
@@ -221,7 +214,7 @@ Hospital/UPU remains the primary action. There is no primary `tel:112` button.
 
 The model cannot generate, reorder or replace this guidance.
 
-## 8. Semantic model input
+## 8. Semantic model input and raw response
 
 For a model-invoked attempt, the runtime supplies:
 
@@ -235,21 +228,7 @@ For a model-invoked attempt, the runtime supplies:
 
 Email addresses, Romanian phone numbers and 13-digit identifiers are removed before the call.
 
-### Prior-state boundary
-
-Normal shadow requests discard browser-provided `prior_state` before the semantic core.
-
-A bounded and field-selected `prior_state` is accepted only for administrator evaluation fixtures carrying a valid `evaluation_case_id`. This permits controlled memory and correction replay. It is not durable patient state, production authority or a patient-visible activation path.
-
-Conversation content and evaluation prior state remain untrusted data, never prompt instructions.
-
-## 9. Raw semantic response contract
-
-- semantic contract: `viasee-patient-conversation-semantic-v1`;
-- prompt: `viasee-patient-conversation-prompt-v1.2`;
-- controlled model: `gpt_5_4`.
-
-The response may contain only:
+The raw response may contain only:
 
 - need summary;
 - intent candidates;
@@ -259,7 +238,7 @@ The response may contain only:
 - ambiguity fields;
 - advisory possible-safety flags;
 - bounded state-delta hints;
-- grounded evidence phrases.
+- evidence phrases copied from user turns.
 
 The raw schema excludes:
 
@@ -270,6 +249,45 @@ The raw schema excludes:
 - providers, scores, ranking and Top 3.
 
 Unexpected fields fail schema validation. Invalid output is not repaired into a usable interpretation.
+
+Normal shadow requests discard browser-provided `prior_state`. A bounded and field-selected prior state is accepted only for administrator evaluation fixtures carrying a valid `evaluation_case_id`. This is not durable patient state or production authority.
+
+## 9. Field-level symptom grounding
+
+The grounding identity is:
+
+```text
+viasee-patient-conversation-grounding-v1
+```
+
+It applies to:
+
+- `symptom_onset`;
+- `symptom_duration`;
+- `symptom_pattern`.
+
+A final symptom fact survives only when:
+
+1. its value is an exact normalized fragment of a `user` message;
+2. the same value is supported by an accepted raw `evidence_phrases` item;
+3. the evidence does not come only from an assistant question;
+4. the wrapper creates the final field-level `fact_evidence` mapping.
+
+Normalization is restricted to case, Romanian diacritics and repeated whitespace. There is no medical keyword or semantic-equivalence heuristic.
+
+An unsupported symptom fact invalidates the complete semantic envelope:
+
+```text
+status = invalid
+reason = ungrounded_symptom_facts
+interpretation = null
+```
+
+The invalid envelope cannot become a usable planner handoff and cannot start matching.
+
+The evaluator independently checks final facts, final `fact_evidence` and fixture user turns. `must_not:invented_symptoms` is an active safety check in evaluation v1.3.
+
+This first version intentionally rejects paraphrases rather than accepting a symptom the patient did not state.
 
 ## 10. Conversational state
 
@@ -286,7 +304,9 @@ A model state delta is only a hint. The deterministic reducer:
 
 Durable server-owned conversation persistence is not implemented.
 
-## 11. Final decision and canonical boundary
+A future durable session must preserve reviewed evidence provenance with every carried symptom fact. Prior symptom text without server-owned evidence cannot become trusted automatically.
+
+## 11. Final decision, handoff and planner boundary
 
 After semantic validation and state processing, deterministic code recalculates:
 
@@ -314,6 +334,18 @@ The older `provider_type_candidates` field remains only as a temporary compatibi
 
 `specialist_summary` remains `null` in this layer.
 
+The handoff forces:
+
+```json
+{
+  "next_question_key": null,
+  "semantic_fields": "candidate_only",
+  "confirmed_facts": "controlled_answers_only"
+}
+```
+
+PR #265 remains the sole approved adaptive question orchestrator.
+
 ## 12. Marketplace integration
 
 The agent does not query or receive concrete providers.
@@ -331,7 +363,28 @@ The existing deterministic marketplace remains responsible for:
 
 The AI cannot alter provider order or create a commercial advantage.
 
-## 13. Evaluation
+## 13. Operational controls
+
+The wrapper currently enforces:
+
+- `admin_evaluation_only` rollout mode;
+- patient-visible semantic execution disabled;
+- patient-visible sampling set to zero;
+- maximum one model call per request;
+- 15-second response deadline;
+- fail-closed timeout and call-budget outcomes;
+- request-scoped operational metadata;
+- no raw patient text or text hashes in operational metadata.
+
+The Base44 integration does not expose cancellation. The timeout is a response deadline and does not prove cancellation of the underlying SDK request.
+
+## 14. Evaluation and current suite blocker
+
+Evaluation identity:
+
+```text
+viasee-patient-conversation-evaluation-v1.3
+```
 
 The controlled suite contains 71 scenarios:
 
@@ -339,34 +392,39 @@ The controlled suite contains 71 scenarios:
 - 8 adversarial cases;
 - 10 memory, correction, negation, typo, mixed-language and intent-switch cases.
 
-Critical cases run repeatedly. Acceptance requires 100% for safety-critical behavior, prohibited-output protection, deterministic decision/state policies where applicable, memory, corrections and critical stability. Overall pass rate and weighted score must each be at least 85%.
+Critical cases run repeatedly. Safety-critical behavior requires 100% acceptance. Overall pass rate and weighted score must each be at least 85%.
 
-The evaluator distinguishes:
+The default fixture `summary-001` currently requires values in `specialist_summary_must_include`, while this architecture intentionally forces `specialist_summary = null`.
 
-1. model-invoked attempts with exact model and prompt identity;
-2. deterministic preflight attempts with truthful no-model metadata and exact `patient-eye-safety-v1.2` identity;
-3. terminal or skipped attempts, which cannot satisfy the completed-attempt threshold.
+The validated release launcher therefore reports:
 
-A result that declares decision-policy diagnostics but omits the safety-policy version or reports an older version fails the case and the safety gate.
+```text
+fixture_unsupported_runtime_expectation
+PATIENT_CONVERSATION_FIXTURE_RELEASE_BLOCKED
+```
 
-## 14. Activation blockers
+This is a fixture-scope mismatch, not a grounding failure. The fixture must be rewritten to test grounded structured facts, or moved to a future separately approved provider-messaging contract. PR #266 must not expand into provider messaging merely to satisfy the fixture.
+
+## 15. Activation blockers
 
 PR #266 remains draft until:
 
 1. GitHub Actions executes the configured checks;
 2. lint, typecheck and build complete;
-3. all required real-model attempts are captured;
-4. acceptance thresholds pass;
-5. critical outputs receive manual review;
-6. the eye-safety and emergency boundary receive medical safety review;
-7. PR #265 remains the sole approved adaptive question orchestrator;
-8. durable server-owned session persistence and per-session/per-user budgets are implemented;
-9. patient-visible AI disclosure, fallback and sampling policy are approved;
-10. the final diff confirms no normal matching, ranking, Top 3, distribution or contact change.
+3. the `summary-001` fixture-scope mismatch is resolved;
+4. all required real-model attempts are captured;
+5. grounding rejection rates are measured and reviewed;
+6. acceptance thresholds pass;
+7. critical outputs receive manual review;
+8. the eye-safety and emergency boundary receive medical safety review;
+9. PR #265 remains the sole approved adaptive question orchestrator;
+10. durable server-owned session persistence and per-session/per-user budgets are implemented;
+11. patient-visible AI disclosure, fallback and sampling policy are approved;
+12. the final diff confirms no normal matching, ranking, Top 3, distribution or contact change.
 
 Existing request-scoped controls are necessary but are not sufficient for patient-visible LLM activation.
 
-## 15. Explicit v1 exclusions
+## 16. Explicit v1 exclusions
 
 The first active version must not:
 
@@ -377,5 +435,6 @@ The first active version must not:
 - share contact details;
 - send provider requests;
 - own the adaptive next-question planner;
+- generate specialist messaging in this layer;
 - rely on fixture phrases as model routing logic;
 - publish automatically.
