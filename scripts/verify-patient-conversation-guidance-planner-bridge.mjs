@@ -118,8 +118,15 @@ assert.equal(
 );
 assert.equal(candidateOnlyResult.diagnostics.confirmed_fact_source, 'controlled_context_only');
 assert.equal(candidateOnlyResult.diagnostics.semantic_candidate_fact_count, 1);
-assert.equal(candidateOnlyResult.question_selection.next_question_key, 'locality');
-assert(Object.hasOwn(PATIENT_GUIDANCE_QUESTION_CATALOG, 'locality'));
+assert(!candidateOnlyResult.diagnostics.planner_confirmed_fact_keys.includes('locality'));
+assert.equal(candidateOnlyResult.diagnostics.planner_confirmed_fact_sources.locality, undefined);
+assert(
+  candidateOnlyResult.question_selection.next_question_key === null
+  || Object.hasOwn(
+    PATIENT_GUIDANCE_QUESTION_CATALOG,
+    candidateOnlyResult.question_selection.next_question_key,
+  ),
+);
 
 const controlledLocalityResult = consumePatientConversationGuidanceHandoff({
   handoff: handoff(),
@@ -139,6 +146,11 @@ const controlledLocalityResult = consumePatientConversationGuidanceHandoff({
 assert.notEqual(controlledLocalityResult.status, 'invalid');
 assert.notEqual(controlledLocalityResult.reason, 'semantic_proposal_invalid');
 assert.equal(controlledLocalityResult.diagnostics.confirmed_fact_source, 'controlled_context_only');
+assert(controlledLocalityResult.diagnostics.planner_confirmed_fact_keys.includes('locality'));
+assert.equal(
+  controlledLocalityResult.diagnostics.planner_confirmed_fact_sources.locality,
+  'explicit_user',
+);
 
 const advisoryResult = consumePatientConversationGuidanceHandoff({
   handoff: handoff({
@@ -165,6 +177,7 @@ const advisoryResult = consumePatientConversationGuidanceHandoff({
 });
 assert.notEqual(advisoryResult.status, 'safety_blocked');
 assert.equal(advisoryResult.question_selection.safety_blocking, false);
+assert(!advisoryResult.diagnostics.planner_confirmed_fact_keys.includes('symptom_description'));
 assert(
   advisoryResult.question_selection.next_question_key === null
   || Object.hasOwn(
