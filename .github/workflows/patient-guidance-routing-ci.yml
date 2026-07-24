@@ -16,6 +16,7 @@ on:
       - "shared/patientConversationGuidanceHandoff.js"
       - "shared/patientConversationGuidancePlannerBridge.js"
       - "shared/patientConversationOperationalPolicy.js"
+      - "shared/patientConversationDurableStatePolicy.js"
       - "shared/patientConversationStatePolicy.js"
       - "shared/patientConversationStateDeltaReducer.js"
       - "shared/patientEyeSafetyPolicy.js"
@@ -32,6 +33,7 @@ on:
       - "base44/shared/patientConversationGuidanceHandoff.js"
       - "base44/shared/patientConversationGuidancePlannerBridge.js"
       - "base44/shared/patientConversationOperationalPolicy.js"
+      - "base44/shared/patientConversationDurableStatePolicy.js"
       - "base44/shared/patientConversationStatePolicy.js"
       - "base44/shared/patientConversationStateDeltaReducer.js"
       - "base44/shared/patientEyeSafetyPolicy.js"
@@ -47,6 +49,7 @@ on:
       - "docs/patient-conversation-agent-acceptance.md"
       - "docs/patient-conversation-guidance-handoff.md"
       - "docs/patient-conversation-operational-policy.md"
+      - "docs/patient-conversation-durable-state-policy.md"
       - "docs/patient-conversation-symptom-grounding.md"
       - "docs/patient-conversation-validation-blockers.md"
       - "docs/patient-emergency-guidance-policy.md"
@@ -74,6 +77,7 @@ on:
       - "scripts/verify-patient-conversation-state-delta-reducer.mjs"
       - "scripts/verify-patient-conversation-canonical-boundary.mjs"
       - "scripts/verify-patient-conversation-operational-policy.mjs"
+      - "scripts/verify-patient-conversation-durable-state-policy.mjs"
       - "scripts/verify-patient-conversation-state-compatibility.mjs"
       - "scripts/verify-patient-conversation-state-evaluation-contract.mjs"
       - "scripts/verify-patient-conversation-shadow-harness.mjs"
@@ -145,6 +149,8 @@ jobs:
         run: node scripts/verify-patient-emergency-guidance-policy.mjs
       - name: Verify patient conversation operational policy
         run: node scripts/verify-patient-conversation-operational-policy.mjs
+      - name: Verify inactive durable patient conversation state contract
+        run: node scripts/verify-patient-conversation-durable-state-policy.mjs
       - name: Verify patient conversation state compatibility
         run: node scripts/verify-patient-conversation-state-compatibility.mjs
       - name: Verify patient conversation state evaluation contract
@@ -219,6 +225,7 @@ jobs:
           shared/patientConversationGuidanceHandoff.js
           shared/patientConversationGuidancePlannerBridge.js
           shared/patientConversationOperationalPolicy.js
+          shared/patientConversationDurableStatePolicy.js
           shared/patientConversationStatePolicy.js
           shared/patientConversationStateDeltaReducer.js
           shared/patientEyeSafetyPolicy.js
@@ -235,6 +242,7 @@ jobs:
           base44/shared/patientConversationGuidanceHandoff.js
           base44/shared/patientConversationGuidancePlannerBridge.js
           base44/shared/patientConversationOperationalPolicy.js
+          base44/shared/patientConversationDurableStatePolicy.js
           base44/shared/patientConversationStatePolicy.js
           base44/shared/patientConversationStateDeltaReducer.js
           base44/shared/patientEyeSafetyPolicy.js
@@ -267,6 +275,7 @@ jobs:
           scripts/verify-patient-conversation-canonical-boundary.mjs
           scripts/verify-patient-emergency-guidance-policy.mjs
           scripts/verify-patient-conversation-operational-policy.mjs
+          scripts/verify-patient-conversation-durable-state-policy.mjs
           scripts/verify-patient-conversation-state-compatibility.mjs
           scripts/verify-patient-conversation-state-evaluation-contract.mjs
           scripts/verify-patient-conversation-shadow-harness.mjs
