@@ -7,7 +7,9 @@ import {
   validatePatientConversationFixtureContract,
 } from './patient-conversation-fixture-contract.mjs';
 import {
+  isCriticalPatientConversationFixture,
   loadPatientConversationFixtures,
+  patientConversationFixtureAttemptCount,
 } from './patient-conversation-fixture-loader.mjs';
 
 const fixtureSuite = loadPatientConversationFixtures();
@@ -39,6 +41,16 @@ assert.throws(
       && blocker.value === 'invented_symptoms'
     ))
   ),
+);
+const summaryFixture = fixtureSuite.cases.find((fixture) => fixture.id === 'summary-001');
+assert(summaryFixture);
+assert.equal(isCriticalPatientConversationFixture(summaryFixture), true);
+assert.equal(
+  patientConversationFixtureAttemptCount(summaryFixture, {
+    defaultRepeat: 1,
+    criticalRepeat: 3,
+  }),
+  3,
 );
 
 const validFixture = [{
@@ -73,6 +85,7 @@ assert.deepEqual(
     value: 'invented_symptoms',
   }],
 );
+assert.equal(isCriticalPatientConversationFixture(unimplementedMustNotFixture[0]), true);
 assert.throws(
   () => assertPatientConversationFixtureReleaseReady(unimplementedMustNotFixture),
   (error) => error?.code === 'PATIENT_CONVERSATION_FIXTURE_RELEASE_BLOCKED',
@@ -85,6 +98,7 @@ const explicitUnimplementedFixture = [{
   },
 }];
 assert.deepEqual(validatePatientConversationFixtureContract(explicitUnimplementedFixture), []);
+assert.equal(isCriticalPatientConversationFixture(explicitUnimplementedFixture[0]), true);
 assert.throws(
   () => assertPatientConversationFixtureReleaseReady(explicitUnimplementedFixture),
   (error) => error?.code === 'PATIENT_CONVERSATION_FIXTURE_RELEASE_BLOCKED',
