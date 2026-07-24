@@ -39,6 +39,13 @@ assert.equal(explicitTextAssessment.state, 'blocking');
 assert.equal(explicitTextAssessment.blocking, true);
 assert.equal(explicitTextAssessment.source, 'explicit_text');
 
+const contradictorySameTurnAssessment = buildPatientSafetyAssessment({
+  text: 'Nu este brusca problema, dar acum nu mai vad deloc cu ochiul drept.',
+});
+assert.equal(contradictorySameTurnAssessment.state, 'blocking');
+assert(contradictorySameTurnAssessment.blocking_flags.includes('sudden_vision_loss'));
+assert.equal(contradictorySameTurnAssessment.cleared_flags.includes('sudden_vision_loss'), false);
+
 const ambiguousTextAssessment = buildPatientSafetyAssessment({ text: 'Nu vad cu ochiul drept' });
 assert.equal(ambiguousTextAssessment.state, 'advisory');
 assert.equal(ambiguousTextAssessment.blocking, false);
@@ -54,15 +61,36 @@ assert.equal(stableTextAssessment.blocking, false);
 assert.equal(stableTextAssessment.advisory, false);
 assert(stableTextAssessment.cleared_flags.includes('sudden_vision_loss'));
 
+const unrelatedChildhoodText = buildPatientSafetyAssessment({
+  conversation: [
+    { role: 'user', content: 'Nu vad cu ochiul drept.' },
+    { role: 'assistant', content: 'Problema exista de mult timp?' },
+    { role: 'user', content: 'Locuiesc in Brasov de mic.' },
+  ],
+});
+assert.equal(unrelatedChildhoodText.state, 'advisory');
+assert.equal(unrelatedChildhoodText.cleared_flags.includes('sudden_vision_loss'), false);
+
 const correctedConversationAssessment = buildPatientSafetyAssessment({
   conversation: [
     { role: 'user', content: 'Nu vad cu ochiul drept.' },
     { role: 'assistant', content: 'Problema a aparut brusc?' },
-    { role: 'user', content: 'Nu este brusc, vad mai slab de cateva luni si nu ma doare.' },
+    { role: 'user', content: 'Nu este brusca, vad mai slab de cateva luni si nu ma doare.' },
   ],
 });
 assert.equal(correctedConversationAssessment.state, 'clear');
 assert(correctedConversationAssessment.cleared_flags.includes('sudden_vision_loss'));
+
+const correctedConversationWithStaleAiFlag = buildPatientSafetyAssessment({
+  conversation: [
+    { role: 'user', content: 'Nu vad cu ochiul drept.' },
+    { role: 'assistant', content: 'Problema a aparut brusc?' },
+    { role: 'user', content: 'Nu este brusca, vad mai slab de cateva luni.' },
+  ],
+  aiFlags: ['sudden_vision_loss'],
+});
+assert.equal(correctedConversationWithStaleAiFlag.state, 'clear');
+assert.deepEqual(correctedConversationWithStaleAiFlag.advisory_flags, []);
 
 const aiOnlyAssessment = buildPatientSafetyAssessment({ aiFlags: ['severe_eye_pain'] });
 assert.equal(aiOnlyAssessment.state, 'advisory');
