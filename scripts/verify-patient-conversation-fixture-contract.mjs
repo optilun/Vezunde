@@ -22,17 +22,12 @@ assert.doesNotThrow(() => {
   assertPatientConversationFixtureContract(fixtureSuite.cases);
 });
 assert.deepEqual(PATIENT_CONVERSATION_UNIMPLEMENTED_EXPECTATION_TOKENS, []);
-assert.deepEqual(
-  collectPatientConversationUnimplementedExpectations(fixtureSuite.cases),
-  [],
-);
-assert.doesNotThrow(() => {
-  assertPatientConversationFixtureReleaseReady(fixtureSuite.cases);
-});
 
 const summaryFixture = fixtureSuite.cases.find((fixture) => fixture.id === 'summary-001');
 assert(summaryFixture);
 assert(summaryFixture.expected.must_not.includes('invented_symptoms'));
+assert(Array.isArray(summaryFixture.expected.specialist_summary_must_include));
+assert(summaryFixture.expected.specialist_summary_must_include.length > 0);
 assert.equal(isCriticalPatientConversationFixture(summaryFixture), true);
 assert.equal(
   patientConversationFixtureAttemptCount(summaryFixture, {
@@ -40,6 +35,24 @@ assert.equal(
     criticalRepeat: 3,
   }),
   3,
+);
+
+const defaultReleaseBlockers = collectPatientConversationUnimplementedExpectations(
+  fixtureSuite.cases,
+);
+assert.deepEqual(defaultReleaseBlockers, [{
+  fixture_id: 'summary-001',
+  field: 'expected.specialist_summary_must_include',
+  code: 'fixture_unsupported_runtime_expectation',
+  value: 'specialist_summary',
+}]);
+assert.throws(
+  () => assertPatientConversationFixtureReleaseReady(fixtureSuite.cases),
+  (error) => (
+    error?.code === 'PATIENT_CONVERSATION_FIXTURE_RELEASE_BLOCKED'
+    && error?.blockers?.[0]?.fixture_id === 'summary-001'
+    && error?.blockers?.[0]?.value === 'specialist_summary'
+  ),
 );
 
 const validFixture = [{
@@ -59,6 +72,27 @@ assert.deepEqual(validatePatientConversationFixtureContract(validFixture), []);
 assert.deepEqual(collectPatientConversationUnimplementedExpectations(validFixture), []);
 assert.doesNotThrow(() => assertPatientConversationFixtureReleaseReady(validFixture));
 assert.equal(isCriticalPatientConversationFixture(validFixture[0]), true);
+
+const unsupportedSummaryFixture = [{
+  id: 'fixture-contract-blocked-001',
+  expected: {
+    specialist_summary_must_include: ['simptom inventat'],
+  },
+}];
+assert.deepEqual(validatePatientConversationFixtureContract(unsupportedSummaryFixture), []);
+assert.deepEqual(
+  collectPatientConversationUnimplementedExpectations(unsupportedSummaryFixture),
+  [{
+    fixture_id: 'fixture-contract-blocked-001',
+    field: 'expected.specialist_summary_must_include',
+    code: 'fixture_unsupported_runtime_expectation',
+    value: 'specialist_summary',
+  }],
+);
+assert.throws(
+  () => assertPatientConversationFixtureReleaseReady(unsupportedSummaryFixture),
+  (error) => error?.code === 'PATIENT_CONVERSATION_FIXTURE_RELEASE_BLOCKED',
+);
 
 const unknownTokenFixture = [{
   id: 'fixture-contract-invalid-001',
@@ -123,4 +157,18 @@ assert.throws(
   ),
 );
 
-console.log(`Patient conversation fixture contract verified across ${fixtureSuite.cases.length} default cases with active grounding checks.`);
+const malformedSummaryFixture = [{
+  id: 'fixture-contract-invalid-005',
+  expected: {
+    specialist_summary_must_include: 'simptom',
+  },
+}];
+assert.throws(
+  () => assertPatientConversationFixtureContract(malformedSummaryFixture),
+  (error) => (
+    error?.code === 'PATIENT_CONVERSATION_FIXTURE_CONTRACT_INVALID'
+    && error?.violations?.[0]?.code === 'fixture_specialist_summary_array_required'
+  ),
+);
+
+console.log(`Patient conversation fixture contract verified across ${fixtureSuite.cases.length} cases with active grounding and explicit summary-scope blocking.`);
