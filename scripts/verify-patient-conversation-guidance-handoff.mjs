@@ -21,6 +21,10 @@ const wrapperSource = fs.readFileSync(
   new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts', import.meta.url),
   'utf8',
 );
+const handoffDoc = fs.readFileSync(
+  new URL('../docs/patient-conversation-guidance-handoff.md', import.meta.url),
+  'utf8',
+);
 
 assert.equal(sharedSource, base44Source);
 assert.equal(
@@ -31,6 +35,9 @@ assert.equal(
   PATIENT_CONVERSATION_GUIDANCE_TARGET_PLANNER_VERSION,
   'patient-guidance-planner-v1',
 );
+assert.match(handoffDoc, /next_question_key` is deliberately forced to `null`/);
+assert.match(handoffDoc, /confirmed_facts": "controlled_answers_only"/);
+assert.match(handoffDoc, /does not activate the semantic LLM for patients/);
 
 function interpretation(overrides = {}) {
   return {
