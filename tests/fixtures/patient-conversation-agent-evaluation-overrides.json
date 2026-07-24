@@ -1,0 +1,51 @@
+{
+  "contract_version": "viasee-patient-conversation-agent-v1",
+  "fixture_version": "patient-conversation-agent-evaluation-overrides-v1",
+  "language": "ro",
+  "purpose": "Explicit replacements for legacy evaluation cases whose original expectations no longer match the approved shadow runtime authority.",
+  "replacements": [
+    {
+      "id": "vision-loss-003",
+      "category": "confirmed_acute_vision_loss",
+      "conversation": [
+        { "role": "user", "content": "nu mai vad cu un ochi" },
+        { "role": "assistant", "content": "Vederea a disparut brusc aproape complet sau vezi in continuare, dar mai slab ori incetosat?" },
+        { "role": "user", "content": "a disparut brusc azi dimineata, aproape complet" }
+      ],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["emergency_interruption"],
+        "service_keys_any": ["emergency_ophthalmology"],
+        "next_action": "show_emergency_guidance",
+        "urgency": "confirmed",
+        "must_ask": false,
+        "must_include_guidance": ["spital public", "upu", "nu conduce", "112"],
+        "must_not": ["commercial_top3", "generic_112_primary_action"]
+      }
+    },
+    {
+      "id": "summary-001",
+      "category": "grounded_structured_facts",
+      "conversation": [
+        { "role": "user", "content": "vad mai prost cand citesc si ma doare capul" },
+        { "role": "assistant", "content": "De cand ai observat si in ce oras cauti?" },
+        { "role": "user", "content": "de cateva luni, in Timisoara, pot dupa ora 17" }
+      ],
+      "expected": {
+        "primary_intent": "control_vedere",
+        "care_paths_any": ["optometry", "ophthalmology"],
+        "service_keys_any": ["optometry_consultation", "refraction", "binocular_vision"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": {
+          "locality_city": "Timisoara",
+          "duration": "de cateva luni",
+          "symptom_pattern": "vad mai prost cand citesc si ma doare capul",
+          "timing_preference": "dupa ora 17"
+        },
+        "must_not": ["diagnosis", "invented_symptoms", "contact_details_without_consent"]
+      }
+    }
+  ]
+}
