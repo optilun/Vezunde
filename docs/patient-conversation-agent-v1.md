@@ -3,6 +3,7 @@
 Status: administrator-only semantic shadow implementation  
 Patient LLM: not connected  
 Patient intake safety: shared deterministic policy connected  
+Durable persistence: inactive contract only  
 Matching, ranking and Top 3 impact: none  
 Production publication: none
 
@@ -39,8 +40,10 @@ The semantic layer must not:
 - emergency guidance: `patient-emergency-guidance-v1.1`;
 - evaluation: `viasee-patient-conversation-evaluation-v1.4`;
 - symptom grounding: `viasee-patient-conversation-grounding-v1`;
-- state policy: `viasee-patient-conversation-state-policy-v1.1`;
+- request-scoped state policy: `viasee-patient-conversation-state-policy-v1.1`;
 - state-delta reducer: `viasee-patient-conversation-state-delta-reducer-v1`;
+- inactive durable-state policy: `viasee-patient-conversation-durable-state-policy-v1`;
+- inactive durable-state record: `viasee-patient-conversation-durable-state-record-v1`;
 - canonical boundary: `viasee-patient-conversation-canonical-boundary-v1`;
 - guidance handoff: `viasee-patient-conversation-guidance-handoff-v1`;
 - inactive planner bridge: `viasee-patient-conversation-guidance-planner-bridge-v1`;
@@ -59,7 +62,7 @@ deterministic eye-safety preflight
                 ↓
 strict schema and prohibited-output validation
         ↓
-deterministic state reconciliation
+deterministic request-scoped state reconciliation
         ↓
 validated correction-delta reducer
         ↓
@@ -76,7 +79,9 @@ shadow envelope and candidate-only handoff
 
 The shadow route exits before service-role provider access and before matching.
 
-The inactive planner bridge is not imported by the endpoint.
+The inactive planner bridge and inactive durable-state policy are not imported by the endpoint.
+
+No durable record is read or written by the runtime.
 
 ## 4. Patient intake safety
 
@@ -160,7 +165,7 @@ interpretation = null
 
 The invalid envelope cannot become a usable planner handoff and cannot start matching.
 
-## 8. State and corrections
+## 8. Request-scoped state and corrections
 
 Normal shadow requests discard browser-provided `prior_state`.
 
@@ -168,11 +173,55 @@ A bounded prior state is accepted only for authenticated administrator evaluatio
 
 The deterministic state policy and correction reducer must prevent stale intent, locality, person, symptom, prescription, investigation and repair facts from contaminating a corrected request.
 
-Durable server-owned conversation state is not implemented.
+This remains controlled evaluation memory, not patient-owned durable state.
 
-A future durable session must store reviewed evidence provenance with every carried symptom fact.
+## 9. Inactive durable-state foundation
 
-## 9. Final decision and handoff
+The durable-state contract defines a future server-owned boundary without activating storage.
+
+Current policy:
+
+```text
+mode = inactive_contract_only
+persistence_adapter = none
+patient_visible_persistence_enabled = false
+admin_shadow_persistence_enabled = false
+max_model_calls_per_session = null
+max_model_calls_per_subject_24h = null
+release_ready = false
+```
+
+The strict record permits only:
+
+- version identities;
+- an opaque session identifier in the approved server format;
+- an opaque pseudonymous subject identifier in the approved server format;
+- status and optimistic revision;
+- creation, update and absolute-expiry timestamps;
+- aggregate model-call count;
+- grounded symptom facts and their provenance.
+
+It rejects:
+
+- unknown top-level, fact or provenance fields;
+- raw conversations or message arrays;
+- names and contact details;
+- diagnosis, treatment or provider data;
+- symptom facts without exact evidence provenance;
+- assistant-only evidence;
+- stale revision writes;
+- expired records;
+- reopening a completed session.
+
+The absolute TTL is two hours, aligned with the existing browser intake snapshot policy.
+
+The pure contract validates identifier format only. A future reviewed adapter must generate identifiers server-side and enforce atomic compare-and-swap writes.
+
+Budget evaluation fails closed while numeric session and rolling 24-hour subject limits remain unapproved.
+
+No Base44 entity, persistence adapter or endpoint import exists in this PR.
+
+## 10. Final decision and handoff
 
 Deterministic code recalculates:
 
@@ -195,7 +244,7 @@ The handoff forces:
 
 PR #265 remains the sole approved adaptive `next_question_key` orchestrator.
 
-## 10. Fixture architecture
+## 11. Fixture architecture
 
 The controlled evaluation suite contains exactly 71 cases:
 
@@ -225,15 +274,15 @@ The fixture contract rejects:
 - symptom/timing expectations unsupported by user text;
 - unsupported provider-messaging expectations.
 
-Evaluation v1.4 also activates previously ineffective checks:
+Evaluation v1.4 actively checks:
 
-- `service_keys_all: []` requires an actually empty service list;
-- `forget_previous_need` fails when prior intent or service meaning is lost;
-- `invented_symptoms` independently validates final facts and `fact_evidence`.
+- `service_keys_all: []` as an actually empty service list;
+- `forget_previous_need` when prior intent or service meaning is lost;
+- `invented_symptoms` against final facts and `fact_evidence`.
 
 The aligned suite is structurally release-ready. This is not evidence that the 71-case model run passed.
 
-## 11. Operational controls
+## 12. Operational controls
 
 The current wrapper enforces:
 
@@ -247,7 +296,7 @@ The current wrapper enforces:
 
 The Base44 integration exposes no cancellation primitive. The timeout is a fail-closed response deadline, not proof that the underlying request was cancelled.
 
-## 12. Marketplace isolation
+## 13. Marketplace isolation
 
 The deterministic marketplace remains responsible for:
 
@@ -260,7 +309,7 @@ The deterministic marketplace remains responsible for:
 
 PR #266 does not modify these behaviors.
 
-## 13. Activation blockers
+## 14. Activation blockers
 
 PR #266 remains draft and unpublished until:
 
@@ -272,8 +321,10 @@ PR #266 remains draft and unpublished until:
 6. critical outputs receive manual review;
 7. the safety and emergency boundary receives medical review;
 8. PR #265 remains the sole approved next-question orchestrator;
-9. durable server-owned session state, evidence provenance and per-session/per-user budgets exist;
-10. patient-visible disclosure, fallback and rollout policy are approved;
-11. the final executable diff confirms no normal matching, ranking, Top 3, distribution or contact change.
+9. a reviewed atomic persistence adapter, server-side identity issuance, TTL cleanup and revocation exist;
+10. numeric per-session and rolling subject budgets are approved;
+11. durable-state privacy, encryption, access and consent/disclosure reviews pass;
+12. patient-visible fallback and rollout policy are approved;
+13. the final executable diff confirms no normal matching, ranking, Top 3, distribution or contact change.
 
 Static implementation and static audit are not release evidence.
