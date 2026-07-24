@@ -1,6 +1,7 @@
 import React from "react";
-import { AlertTriangle, ArrowLeft, Droplets, PhoneCall, ShieldAlert } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Droplets, Hospital, ShieldAlert } from "lucide-react";
 import { PATIENT_SAFETY_FLAG_PRESENTATION } from "@/lib/patientSafety";
+import { PATIENT_EMERGENCY_GUIDANCE_COPY } from "../../../shared/patientEmergencyGuidance.js";
 
 function flagLabels(assessment) {
   const flags = assessment?.blocking_flags?.length
@@ -46,9 +47,13 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
         </div>
       )}
 
-      <div className="mt-5 space-y-3 text-sm leading-relaxed text-red-950">
-        <p><strong>Mergi imediat la UPU, camera de garda sau un serviciu de urgente oftalmologice.</strong></p>
-        <p>Suna la 112 daca nu te poti deplasa in siguranta, vederea s-a pierdut brusc, exista un traumatism sever sau starea se agraveaza. Nu conduce.</p>
+      <div className="mt-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-white/70 p-4 text-sm leading-relaxed text-red-950">
+        <Hospital className="mt-0.5 h-5 w-5 shrink-0 text-red-700" />
+        <div className="space-y-2">
+          <p><strong>{PATIENT_EMERGENCY_GUIDANCE_COPY.primary_instruction}</strong></p>
+          <p>{PATIENT_EMERGENCY_GUIDANCE_COPY.fallback_instruction}</p>
+          <p>{PATIENT_EMERGENCY_GUIDANCE_COPY.transport_instruction}</p>
+        </div>
       </div>
 
       {chemical && (
@@ -58,16 +63,13 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
         </div>
       )}
 
-      <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-        <a href="tel:112" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-red-700 px-5 text-sm font-extrabold text-white transition-opacity hover:opacity-90">
-          <PhoneCall className="h-4 w-4" /> Suna la 112
-        </a>
-        {onCorrect && (
+      {onCorrect && (
+        <div className="mt-5">
           <button type="button" onClick={onCorrect} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-red-300 bg-white px-5 text-sm font-bold text-red-950 hover:bg-red-100/60">
             <ArrowLeft className="h-4 w-4" /> Am selectat gresit. Corecteaza raspunsul
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       <p className="mt-5 text-[11px] leading-relaxed text-red-900/70">Acest mesaj este informational si nu reprezinta diagnostic sau triaj medical.</p>
     </section>
