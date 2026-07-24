@@ -89,7 +89,6 @@ const ARRAY_EXPECTATION_FIELDS = Object.freeze([
   'service_keys_all',
   'service_keys_any',
   'provider_types_any',
-  'forbidden_facts',
   'must_include_guidance',
   'specialist_summary_must_include',
 ]);
