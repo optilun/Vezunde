@@ -45,7 +45,7 @@ For one of these fields to survive the shadow runtime:
 
 The evaluator independently checks the final `facts`, `fact_evidence` and fixture conversation. A failed `must_not:invented_symptoms` check is a safety failure.
 
-The fixture contract no longer classifies `invented_symptoms` as unimplemented. The validated launcher may therefore proceed to scoring, but this does not mean acceptance has passed.
+The fixture contract no longer classifies `invented_symptoms` as unimplemented.
 
 ### Intentional limitation
 
@@ -62,7 +62,35 @@ The real-model run must measure:
 
 No patient-visible activation is allowed based only on the static grounding implementation.
 
-## 3. Durable state and cost controls
+## 3. Fixture-scope alignment
+
+The default fixture `summary-001` currently requires `specialist_summary_must_include` values.
+
+PR #266 intentionally keeps:
+
+```text
+specialist_summary = null
+```
+
+The semantic model is not allowed to generate specialist messaging, and this PR does not activate provider-facing summaries.
+
+The fixture contract therefore reports:
+
+```text
+fixture_unsupported_runtime_expectation
+```
+
+for `summary-001` and blocks the validated release launcher with:
+
+```text
+PATIENT_CONVERSATION_FIXTURE_RELEASE_BLOCKED
+```
+
+This is not a grounding failure. It is an acceptance-suite scope mismatch.
+
+The correct resolution is to revise `summary-001` so it tests grounded structured facts and controlled context, or to move specialist-summary evaluation into a future separately approved provider-messaging contract. The evaluator must not silently ignore the expectation, and PR #266 must not expand into provider messaging merely to satisfy the fixture.
+
+## 4. Durable state and cost controls
 
 Implemented request-scoped controls are not durable patient controls.
 
@@ -78,7 +106,7 @@ Still required before patient-visible LLM activation:
 
 Durable state must preserve reviewed evidence provenance together with carried symptom facts. A symptom carried from prior state without server-owned evidence must not silently become trusted.
 
-## 4. Safety review
+## 5. Safety review
 
 `patient-eye-safety-v1.2` is the single deterministic Romanian safety boundary used by the existing intake UI and by the administrator-only shadow agent.
 
@@ -100,7 +128,7 @@ This unification removes the previous frontend/Base44 contradiction, but it stil
 
 No medical safety approval is implied by the current code.
 
-## 5. Patient UI boundary
+## 6. Patient UI boundary
 
 The existing patient intake uses the shared deterministic safety policy only.
 
@@ -114,7 +142,7 @@ The current UI behavior must still be verified through executable tests and manu
 - blocking cases must remain stopped;
 - advisory cases must not expose hospital or 112 guidance.
 
-## 6. Orchestration boundary
+## 7. Orchestration boundary
 
 PR #265 must remain the sole approved next-question orchestrator for the future LLM-assisted conversation.
 
@@ -128,7 +156,7 @@ PR #266 must not independently:
 - distribute requests;
 - expose contact details.
 
-## 7. Release rule
+## 8. Release rule
 
 PR #266 must remain draft and unpublished until all executable checks, controlled model evaluations, manual reviews and orchestration integration requirements are satisfied.
 
