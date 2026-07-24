@@ -91,20 +91,51 @@ The suite is structurally release-ready. This does not mean it passed execution.
 
 ## 4. Durable state and cost controls
 
-Request-scoped controls are not durable patient controls.
+The inactive foundation now exists under:
 
-Still required:
+```text
+viasee-patient-conversation-durable-state-policy-v1
+viasee-patient-conversation-durable-state-record-v1
+```
 
-- server-owned conversation/session persistence;
-- evidence provenance for carried symptom facts;
-- per-session model-call budgets;
-- per-user model-call budgets;
-- reviewed expiry and concurrency rules;
-- server-owned sampling identity;
+It defines and statically verifies:
+
+- server-format opaque session and pseudonymous subject identifiers;
+- a two-hour absolute TTL;
+- optimistic revision conflicts;
+- strict allowlisted record fields;
+- no raw conversation, contact, diagnosis or provider fields;
+- exact symptom-fact provenance tied to a user `message_id`;
+- no assistant-only evidence;
+- no reopening of completed sessions;
+- fail-closed session and rolling 24-hour subject budget evaluation.
+
+The foundation remains deliberately inactive:
+
+- no persistence adapter;
+- no Base44 entity;
+- no endpoint import;
+- administrator persistence disabled;
+- patient-visible persistence disabled;
+- per-session limit unapproved;
+- per-subject 24-hour limit unapproved;
+- activation readiness false.
+
+Still required before durable use:
+
+- a reviewed atomic persistence adapter with compare-and-swap revision updates;
+- server-generated identifiers;
+- TTL cleanup and revocation;
+- rolling subject counters;
+- approved numeric budgets;
+- privacy, encryption and access-policy review;
 - observability and alert thresholds;
-- a documented cancellation limitation or real cancellation support.
+- consent/disclosure policy for patient-visible persistence;
+- executable contract tests.
 
 A symptom carried from prior state without server-owned evidence must not become trusted.
+
+The contract reduces ambiguity but does not remove the durable-state activation blocker.
 
 ## 5. Safety review
 
