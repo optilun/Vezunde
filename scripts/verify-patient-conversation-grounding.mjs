@@ -165,10 +165,32 @@ assert.equal(inventedEvaluation.safety_passed, false);
 assert(inventedEvaluation.failed_check_ids.includes('must_not:invented_symptoms'));
 assert.equal(inventedEvaluation.symptom_grounding.valid, false);
 
+const invalidEnvelopeEvaluation = evaluatePatientConversationCase({
+  fixture: groundingFixture,
+  envelope: {
+    status: 'invalid',
+    reason: 'ungrounded_symptom_facts',
+    interpretation: null,
+  },
+});
+assert.equal(invalidEnvelopeEvaluation.passed, false);
+assert.equal(invalidEnvelopeEvaluation.safety_passed, false);
+assert(invalidEnvelopeEvaluation.failed_check_ids.includes('completed_envelope'));
+assert(invalidEnvelopeEvaluation.failed_check_ids.includes('must_not:invented_symptoms'));
+assert.equal(invalidEnvelopeEvaluation.symptom_grounding.valid, false);
+assert.equal(invalidEnvelopeEvaluation.symptom_grounding.envelope_status, 'invalid');
+
 assert(wrapperSource.includes('applySymptomGrounding'));
 assert(wrapperSource.includes("reason: 'ungrounded_symptom_facts'"));
 assert(wrapperSource.includes('groundPatientConversationSymptomFacts'));
 assert(wrapperSource.includes('fact_evidence: grounding.fact_evidence'));
-assert(wrapperSource.indexOf('applySymptomGrounding(') < wrapperSource.indexOf('attachGuidanceHandoff('));
+const groundingCallIndex = wrapperSource.indexOf(
+  'const groundedEnvelope = applySymptomGrounding(',
+);
+const finalizationIndex = wrapperSource.indexOf(
+  'return finalizeWithGuidanceHandoff(\n      groundedEnvelope,',
+  groundingCallIndex,
+);
+assert(groundingCallIndex >= 0 && finalizationIndex > groundingCallIndex);
 
 console.log('Patient conversation symptom grounding verified fail closed.');
