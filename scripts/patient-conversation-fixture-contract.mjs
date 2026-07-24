@@ -106,6 +106,18 @@ export function validatePatientConversationFixtureContract(fixtures = []) {
         });
       }
     }
+
+    if (
+      expected.specialist_summary_must_include !== undefined
+      && !Array.isArray(expected.specialist_summary_must_include)
+    ) {
+      violations.push({
+        fixture_id: id,
+        field: 'expected.specialist_summary_must_include',
+        code: 'fixture_specialist_summary_array_required',
+        value: clean(expected.specialist_summary_must_include),
+      });
+    }
   });
 
   return violations;
@@ -139,6 +151,17 @@ export function collectPatientConversationUnimplementedExpectations(fixtures = [
         });
       }
     }
+    if (
+      Array.isArray(expected.specialist_summary_must_include)
+      && expected.specialist_summary_must_include.some((value) => clean(value, 240))
+    ) {
+      blockers.push({
+        fixture_id: id,
+        field: 'expected.specialist_summary_must_include',
+        code: 'fixture_unsupported_runtime_expectation',
+        value: 'specialist_summary',
+      });
+    }
   });
   return blockers;
 }
@@ -170,7 +193,7 @@ export function assertPatientConversationFixtureReleaseReady(fixtures = []) {
     .map((blocker) => `${blocker.fixture_id}:${blocker.value}`)
     .join(', ');
   const error = new Error(
-    `Patient conversation fixture release blocked by unimplemented checks: ${details}`,
+    `Patient conversation fixture release blocked by unsupported expectations: ${details}`,
   );
   error.code = 'PATIENT_CONVERSATION_FIXTURE_RELEASE_BLOCKED';
   error.blockers = blockers;
