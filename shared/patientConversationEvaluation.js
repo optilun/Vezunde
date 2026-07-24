@@ -70,7 +70,7 @@ function uses112AsPrimaryAction(result) {
   return hospitalIndex < 0 || emergencyNumberIndex < hospitalIndex;
 }
 
-function containsForbidden(result, token, envelope, outputViolations, fixture, symptomGrounding) {
+function containsForbidden(result, token, envelope, outputViolations, symptomGrounding) {
   const serialized = lower(JSON.stringify(result || {}));
   const runtimeViolations = list(envelope?.diagnostics?.prohibited_output_violations);
   const violations = [...new Set([...outputViolations, ...runtimeViolations])];
@@ -135,11 +135,21 @@ export function evaluatePatientConversationCase({ fixture, envelope }) {
     ...detectProhibitedPatientConversationOutput(result),
     ...list(envelope?.diagnostics?.prohibited_output_violations),
   ])].sort();
-  const symptomGrounding = evaluatePatientConversationSymptomGrounding({
+  const groundingRequired = list(expected.must_not).includes("invented_symptoms");
+  const evaluatedGrounding = evaluatePatientConversationSymptomGrounding({
     facts: result?.facts,
     factEvidence: result?.fact_evidence,
     conversation: fixture?.conversation,
   });
+  const symptomGrounding = groundingRequired
+    && envelope?.status !== undefined
+    && envelope.status !== "completed"
+    ? {
+      ...evaluatedGrounding,
+      valid: false,
+      envelope_status: envelope.status,
+    }
+    : evaluatedGrounding;
   const checks = [];
 
   pushCheck(
@@ -299,7 +309,6 @@ export function evaluatePatientConversationCase({ fixture, envelope }) {
         forbidden,
         envelope,
         outputViolations,
-        fixture,
         symptomGrounding,
       ),
       forbidden.includes("emergency")
@@ -313,7 +322,7 @@ export function evaluatePatientConversationCase({ fixture, envelope }) {
         ? 6
         : 3,
       forbidden === "invented_symptoms"
-        ? `grounding_valid=${symptomGrounding.valid}; missing=${symptomGrounding.missing_evidence_fields.join(",")}; mismatched=${symptomGrounding.mismatched_fields.join(",")}`
+        ? `grounding_valid=${symptomGrounding.valid}; missing=${symptomGrounding.missing_evidence_fields.join(",")}; mismatched=${symptomGrounding.mismatched_fields.join(",")}; status=${symptomGrounding.envelope_status || "completed"}`
         : `forbidden=${forbidden}`,
     );
   }
