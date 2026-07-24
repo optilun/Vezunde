@@ -207,6 +207,19 @@ assert(validatePatientConversationFixtureContract(unknownFactFixture).some(
   (item) => item.code === 'fixture_unknown_fact_expectation_key',
 ));
 
+const malformedForbiddenFactsFixture = [{
+  id: 'fixture-contract-invalid-007',
+  expected: {
+    forbidden_facts: 'symptom_pattern',
+  },
+}];
+assert.deepEqual(validatePatientConversationFixtureContract(malformedForbiddenFactsFixture), [{
+  fixture_id: 'fixture-contract-invalid-007',
+  field: 'expected.forbidden_facts',
+  code: 'fixture_forbidden_facts_array_required',
+  value: null,
+}]);
+
 assert.throws(
   () => assertPatientConversationFixtureContract(unknownTokenFixture),
   (error) => error?.code === 'PATIENT_CONVERSATION_FIXTURE_CONTRACT_INVALID',
