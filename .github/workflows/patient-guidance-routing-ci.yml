@@ -15,6 +15,7 @@ on:
       - "shared/patientConversationOperationalPolicy.js"
       - "shared/patientConversationStatePolicy.js"
       - "shared/patientConversationStateDeltaReducer.js"
+      - "shared/patientEyeSafetyPolicy.js"
       - "shared/patientEmergencyGuidance.js"
       - "base44/shared/patientGuidanceQuestionCatalog.js"
       - "base44/shared/patientGuidanceRouting.js"
@@ -27,11 +28,14 @@ on:
       - "base44/shared/patientConversationOperationalPolicy.js"
       - "base44/shared/patientConversationStatePolicy.js"
       - "base44/shared/patientConversationStateDeltaReducer.js"
+      - "base44/shared/patientEyeSafetyPolicy.js"
       - "base44/shared/patientEmergencyGuidance.js"
       - "base44/functions/matchProvidersSemantic/entry.ts"
       - "base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts"
       - "base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts"
       - "src/lib/providerSemanticSearch.js"
+      - "src/lib/patientSafety.js"
+      - "src/components/intake2/QuestionText.jsx"
       - "src/components/intake2/UrgencyInterruption.jsx"
       - "docs/patient-conversation-agent-v1.md"
       - "docs/patient-conversation-agent-acceptance.md"
@@ -192,6 +196,7 @@ jobs:
           shared/patientConversationOperationalPolicy.js
           shared/patientConversationStatePolicy.js
           shared/patientConversationStateDeltaReducer.js
+          shared/patientEyeSafetyPolicy.js
           shared/patientEmergencyGuidance.js
           base44/shared/patientGuidanceQuestionCatalog.js
           base44/shared/patientGuidanceRouting.js
@@ -204,11 +209,14 @@ jobs:
           base44/shared/patientConversationOperationalPolicy.js
           base44/shared/patientConversationStatePolicy.js
           base44/shared/patientConversationStateDeltaReducer.js
+          base44/shared/patientEyeSafetyPolicy.js
           base44/shared/patientEmergencyGuidance.js
           base44/functions/matchProvidersSemantic/entry.ts
           base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts
           base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts
           src/lib/providerSemanticSearch.js
+          src/lib/patientSafety.js
+          src/components/intake2/QuestionText.jsx
           src/components/intake2/UrgencyInterruption.jsx
           scripts/patient-conversation-fixture-loader.mjs
           scripts/patient-conversation-fixture-contract.mjs
