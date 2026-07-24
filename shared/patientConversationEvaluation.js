@@ -1,7 +1,7 @@
 import { detectProhibitedPatientConversationOutput } from "./patientConversationGuardrails.js";
 import { evaluatePatientConversationSymptomGrounding } from "./patientConversationGrounding.js";
 
-export const PATIENT_CONVERSATION_EVALUATION_VERSION = "viasee-patient-conversation-evaluation-v1.3";
+export const PATIENT_CONVERSATION_EVALUATION_VERSION = "viasee-patient-conversation-evaluation-v1.4";
 export const PATIENT_CONVERSATION_EXPECTED_SAFETY_POLICY_VERSION = "patient-eye-safety-v1.2";
 
 function clean(value, maxLength = 1000) {
@@ -70,6 +70,13 @@ function uses112AsPrimaryAction(result) {
   return hospitalIndex < 0 || emergencyNumberIndex < hospitalIndex;
 }
 
+function forgotPreviousNeed(result) {
+  const primaryIntent = clean(result?.primary_intent, 80);
+  return !primaryIntent
+    || primaryIntent === "unknown"
+    || list(result?.service_keys).length === 0;
+}
+
 function containsForbidden(result, token, envelope, outputViolations, symptomGrounding) {
   const serialized = lower(JSON.stringify(result || {}));
   const runtimeViolations = list(envelope?.diagnostics?.prohibited_output_violations);
@@ -121,6 +128,7 @@ function containsForbidden(result, token, envelope, outputViolations, symptomGro
     ask_child_age: list(result?.information_status?.missing_critical_fields).includes("age_group"),
     ask_safety_screening: list(result?.information_status?.missing_critical_fields).includes("symptom_severity"),
     retain_superseded_eyeglasses_intent: result?.primary_intent === "ochelari_lentile",
+    forget_previous_need: forgotPreviousNeed(result),
   };
   return rules[token] === true;
 }
@@ -192,13 +200,17 @@ export function evaluatePatientConversationCase({ fixture, envelope }) {
     );
   }
 
-  if (list(expected.service_keys_all).length > 0) {
+  if (Array.isArray(expected.service_keys_all)) {
+    const expectedServiceKeys = list(expected.service_keys_all);
+    const actualServiceKeys = list(result.service_keys);
     pushCheck(
       checks,
       "service_keys_all",
-      includesAll(result.service_keys, expected.service_keys_all),
+      expectedServiceKeys.length === 0
+        ? actualServiceKeys.length === 0
+        : includesAll(actualServiceKeys, expectedServiceKeys),
       5,
-      `expected_all=${expected.service_keys_all.join(",")}; actual=${list(result.service_keys).join(",")}`,
+      `expected_all=${expectedServiceKeys.join(",")}; actual=${actualServiceKeys.join(",")}`,
     );
   }
 
