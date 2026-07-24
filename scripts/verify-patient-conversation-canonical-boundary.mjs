@@ -17,11 +17,19 @@ import {
 import {
   applyPatientConversationCanonicalBoundary as applyBase44PatientConversationCanonicalBoundary,
 } from '../base44/shared/patientConversationCanonicalBoundary.js';
+import {
+  PATIENT_EMERGENCY_DESTINATION_POLICY,
+  PATIENT_EMERGENCY_GUIDANCE_MESSAGE,
+  PATIENT_EMERGENCY_GUIDANCE_VERSION,
+  patientEmergencyGuidanceMentions112,
+} from '../shared/patientEmergencyGuidance.js';
 
 const sharedAdapterSource = fs.readFileSync('shared/patientConversationCanonicalAdapter.js', 'utf8');
 const base44AdapterSource = fs.readFileSync('base44/shared/patientConversationCanonicalAdapter.js', 'utf8');
 const sharedBoundarySource = fs.readFileSync('shared/patientConversationCanonicalBoundary.js', 'utf8');
 const base44BoundarySource = fs.readFileSync('base44/shared/patientConversationCanonicalBoundary.js', 'utf8');
+const sharedEmergencySource = fs.readFileSync('shared/patientEmergencyGuidance.js', 'utf8');
+const base44EmergencySource = fs.readFileSync('base44/shared/patientEmergencyGuidance.js', 'utf8');
 const runtimeSource = fs.readFileSync(
   'base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts',
   'utf8',
@@ -29,6 +37,7 @@ const runtimeSource = fs.readFileSync(
 
 assert.equal(sharedAdapterSource, base44AdapterSource);
 assert.equal(sharedBoundarySource, base44BoundarySource);
+assert.equal(sharedEmergencySource, base44EmergencySource);
 assert.equal(
   PATIENT_CONVERSATION_CANONICAL_ADAPTER_VERSION,
   'viasee-patient-conversation-canonical-adapter-v1',
@@ -37,6 +46,15 @@ assert.equal(
   PATIENT_CONVERSATION_CANONICAL_BOUNDARY_VERSION,
   'viasee-patient-conversation-canonical-boundary-v1',
 );
+assert.equal(PATIENT_EMERGENCY_GUIDANCE_VERSION, 'patient-emergency-guidance-v1');
+assert.equal(
+  PATIENT_EMERGENCY_DESTINATION_POLICY,
+  'public_ophthalmology_emergency_or_surgery',
+);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /spital public/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /urgente oftalmologice/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /chirurgie/);
+assert.equal(patientEmergencyGuidanceMentions112(PATIENT_EMERGENCY_GUIDANCE_MESSAGE), false);
 
 assert.equal(normalizePatientSubject('child'), 'child');
 assert.equal(normalizePatientSubject('copil'), 'child');
@@ -90,6 +108,7 @@ const interpretation = {
   primary_intent: 'control_copil',
   service_keys: ['children_eye_exam'],
   provider_type_candidates: ['invalid_model_profile'],
+  assistant_message: 'Mesaj obisnuit.',
   facts: {
     for_whom: 'copil',
     age_group: '7_12',
@@ -106,6 +125,7 @@ const interpretation = {
 const canonical = applyPatientConversationCanonicalBoundary(interpretation);
 assert.equal(canonical.interpretation.facts.for_whom, 'child');
 assert.equal(canonical.interpretation.facts.age_group, '7_12_ani');
+assert.equal(canonical.interpretation.assistant_message, 'Mesaj obisnuit.');
 assert.deepEqual(
   canonical.interpretation.provider_type_candidates,
   canonical.interpretation.provider_profile_type_candidates,
@@ -117,6 +137,8 @@ assert.equal(canonical.diagnostics.canonical_subject, 'child');
 assert.equal(canonical.diagnostics.legacy_patient_need_subject, 'copil');
 assert.equal(canonical.diagnostics.guidance_planner_age_group, '7_12');
 assert.equal(canonical.diagnostics.emergency_service_key_added, false);
+assert.equal(canonical.diagnostics.emergency_guidance_version, null);
+assert.equal(canonical.diagnostics.emergency_destination_policy, null);
 assert.equal(canonical.diagnostics.compatibility_provider_type_alias, true);
 
 const base44Canonical = applyBase44PatientConversationCanonicalBoundary(interpretation);
@@ -127,6 +149,7 @@ const emergencyInterpretation = {
   care_path_candidates: ['emergency_interruption'],
   service_keys: [],
   provider_type_candidates: [],
+  assistant_message: 'Mesaj care trebuie inlocuit.',
   facts: {
     for_whom: 'unknown',
     age_group: 'unknown',
@@ -144,7 +167,11 @@ const canonicalEmergency = applyPatientConversationCanonicalBoundary(emergencyIn
 assert.deepEqual(canonicalEmergency.interpretation.service_keys, ['emergency_ophthalmology']);
 assert.equal(canonicalEmergency.interpretation.next_action, 'show_emergency_guidance');
 assert.equal(canonicalEmergency.interpretation.information_status.sufficient_for_search, false);
+assert.equal(canonicalEmergency.interpretation.assistant_message, PATIENT_EMERGENCY_GUIDANCE_MESSAGE);
+assert.equal(patientEmergencyGuidanceMentions112(canonicalEmergency.interpretation.assistant_message), false);
 assert.equal(canonicalEmergency.diagnostics.emergency_service_key_added, true);
+assert.equal(canonicalEmergency.diagnostics.emergency_guidance_version, PATIENT_EMERGENCY_GUIDANCE_VERSION);
+assert.equal(canonicalEmergency.diagnostics.emergency_destination_policy, PATIENT_EMERGENCY_DESTINATION_POLICY);
 assert(canonicalEmergency.interpretation.provider_profile_type_candidates.length > 0);
 assert.deepEqual(
   applyBase44PatientConversationCanonicalBoundary(emergencyInterpretation),
@@ -172,4 +199,4 @@ const canonicalIndex = runtimeSource.indexOf(
 assert(decisionIndex >= 0 && canonicalIndex > decisionIndex);
 assert(runtimeSource.includes('canonical_boundary: canonical.diagnostics'));
 
-console.log('Canonical patient, emergency service, profile-type, and location-provider-type boundaries verified.');
+console.log('Canonical patient, emergency guidance, service, profile-type, and location-provider-type boundaries verified.');
