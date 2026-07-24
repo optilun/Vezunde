@@ -120,6 +120,7 @@ assert.match(questionText, /assessment\.advisory/);
 assert.match(questionText, /safetyReviewedValue/);
 assert.match(questionText, /mode="advisory"/);
 assert.match(questionText, /diferentiem o problema obisnuita de una urgenta/);
+assert.match(questionText, /onSubmit\(question, reviewedValue\)/);
 assert.match(questionText, /if \(assessment\.blocking\)/);
 assert.match(interruption, /Opreste cautarea si solicita ajutor medical imediat/);
 assert.match(interruption, /PATIENT_EMERGENCY_GUIDANCE_COPY/);
