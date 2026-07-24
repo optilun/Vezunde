@@ -15,6 +15,8 @@ import { getCanonicalServiceDefinition } from '../shared/canonicalServiceRegistr
 
 const sharedSource = fs.readFileSync('shared/patientConversationDecisionPolicy.js', 'utf8');
 const base44Source = fs.readFileSync('base44/shared/patientConversationDecisionPolicy.js', 'utf8');
+const sharedSafetySource = fs.readFileSync('shared/patientEyeSafetyPolicy.js', 'utf8');
+const base44SafetySource = fs.readFileSync('base44/shared/patientEyeSafetyPolicy.js', 'utf8');
 const runtimeSource = fs.readFileSync(
   'base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts',
   'utf8',
@@ -26,12 +28,17 @@ assert.equal(
 );
 assert.equal(
   PATIENT_CONVERSATION_SAFETY_POLICY_VERSION,
-  'patient-eye-safety-v1.1',
+  'patient-eye-safety-v1.2',
 );
 assert.equal(
   base44Source,
   sharedSource,
   'Shared and Base44 decision policies must remain byte-identical.',
+);
+assert.equal(
+  base44SafetySource,
+  sharedSafetySource,
+  'Shared and Base44 eye safety policies must remain byte-identical.',
 );
 
 function facts(overrides = {}) {
@@ -91,13 +98,17 @@ function interpretation(overrides = {}) {
 const ambiguousOneEye = assessPatientConversationDeterministicSafety([
   { role: 'user', content: 'Nu mai vad cu un ochi.' },
 ]);
+assert.equal(ambiguousOneEye.state, 'advisory');
 assert.equal(ambiguousOneEye.blocking, false);
+assert.equal(ambiguousOneEye.advisory, true);
 assert.deepEqual(ambiguousOneEye.blocking_flags, []);
+assert.deepEqual(ambiguousOneEye.advisory_flags, ['sudden_vision_loss']);
 
 const explicitEmergencyConversation = [
   { role: 'user', content: 'Nu mai vad cu un ochi deodata.' },
 ];
 const explicitSafety = assessPatientConversationDeterministicSafety(explicitEmergencyConversation);
+assert.equal(explicitSafety.state, 'blocking');
 assert.equal(explicitSafety.blocking, true);
 assert(explicitSafety.blocking_flags.includes('sudden_vision_loss'));
 assert.equal(explicitSafety.policy_version, PATIENT_CONVERSATION_SAFETY_POLICY_VERSION);
@@ -120,7 +131,6 @@ for (const [content, expectedFlag] of confirmedSafetyScenarios) {
 }
 
 for (const content of [
-  'nu mai vad cu un ochi',
   'mi-a intrat sampon in ochi, am clatit si inca ma ustura putin',
   'm-am lovit la ochi cu mingea si vad cam in ceata',
 ]) {
@@ -129,6 +139,12 @@ for (const content of [
   ]);
   assert.equal(assessment.blocking, false, content);
 }
+
+const stableMonocular = assessPatientConversationDeterministicSafety([
+  { role: 'user', content: 'Vad mai slab cu ochiul drept, dar problema exista de cateva luni si nu este brusca.' },
+]);
+assert.equal(stableMonocular.state, 'clear');
+assert(stableMonocular.cleared_flags.includes('sudden_vision_loss'));
 
 const emergencyPreflight = buildPatientConversationEmergencyInterpretation({
   contractVersion: 'viasee-patient-conversation-agent-v1',
@@ -152,6 +168,7 @@ assert.equal(
 );
 assert.equal(emergencyPreflight.interpretation.information_status.sufficient_for_search, false);
 assert.equal(emergencyPreflight.diagnostics.model_invoked, false);
+assert.equal(emergencyPreflight.diagnostics.deterministic_safety_state, 'blocking');
 assert.equal(emergencyPreflight.diagnostics.decision_source, 'deterministic_safety_preflight');
 assert.equal(
   emergencyPreflight.diagnostics.safety_policy_version,
@@ -171,6 +188,7 @@ const correctedSafety = assessPatientConversationDeterministicSafety([
   { role: 'assistant', content: 'A aparut chiar astazi?' },
   { role: 'user', content: 'Nu e brusc, vad mai slab de cateva luni.' },
 ]);
+assert.equal(correctedSafety.state, 'clear');
 assert.equal(correctedSafety.blocking, false);
 assert(correctedSafety.cleared_flags.includes('sudden_vision_loss'));
 
@@ -187,6 +205,20 @@ assert.equal(falseNegativeModel.interpretation.next_action, 'show_emergency_guid
 assert.equal(falseNegativeModel.interpretation.information_status.sufficient_for_search, false);
 assert.equal(falseNegativeModel.diagnostics.model_urgency_overridden, true);
 assert(falseNegativeModel.diagnostics.deterministic_safety_flags.includes('sudden_vision_loss'));
+
+const ambiguousModelMiss = applyPatientConversationDecisionPolicy({
+  interpretation: interpretation({
+    urgency: { level: 'none', needs_clarification: false, reason: '' },
+    next_action: 'search_providers',
+  }),
+  conversation: [{ role: 'user', content: 'Nu vad cu ochiul drept.' }],
+  runtimeContext: {},
+});
+assert.equal(ambiguousModelMiss.interpretation.urgency.level, 'possible');
+assert.equal(ambiguousModelMiss.interpretation.next_action, 'ask_clarifying_question');
+assert.equal(ambiguousModelMiss.interpretation.information_status.sufficient_for_search, false);
+assert(ambiguousModelMiss.interpretation.information_status.missing_critical_fields.includes('symptom_severity'));
+assert.equal(ambiguousModelMiss.diagnostics.deterministic_safety_state, 'advisory');
 
 const unsupportedModelEmergency = applyPatientConversationDecisionPolicy({
   interpretation: interpretation({
