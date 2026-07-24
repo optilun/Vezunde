@@ -47,9 +47,9 @@ function fixtureId(fixture) {
 }
 
 function normalizeFixtureMetadata(fixture) {
-  if (!isPlainObject(fixture)) return fixture;
-  const expected = isPlainObject(fixture.expected) ? fixture.expected : fixture.expected;
-  if (!isPlainObject(expected) || expected.question_goal === undefined) return fixture;
+  if (!isPlainObject(fixture) || !isPlainObject(fixture.expected)) return fixture;
+  const expected = fixture.expected;
+  if (expected.question_goal === undefined) return fixture;
 
   const { question_goal: questionGoal, ...scoredExpected } = expected;
   return {
