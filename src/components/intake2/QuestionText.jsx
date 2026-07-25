@@ -72,7 +72,16 @@ export default function QuestionText({ question, onSubmit }) {
     return (
       <div className="mt-6 space-y-4">
         {textAssessment?.advisory && (
-          <UrgencyInterruption assessment={textAssessment} mode="advisory" />
+          <UrgencyInterruption
+            assessment={textAssessment}
+            mode="advisory"
+            onCorrect={() => {
+              setUrgentChoice("");
+              setTextAssessment(null);
+              setSafetyReviewedValue("");
+              setScreeningCleared(true);
+            }}
+          />
         )}
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
           <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-amber-800">Verificare de siguranta</p>
