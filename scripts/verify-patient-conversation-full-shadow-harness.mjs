@@ -43,6 +43,7 @@ function responseEnvelope({
   status = 'completed',
   contractVersion = 'viasee-patient-conversation-agent-v1',
   durationMs = 5,
+  includeDuration = true,
 } = {}) {
   const envelope = {
     mode: 'shadow',
@@ -53,7 +54,7 @@ function responseEnvelope({
     interpretation: status === 'completed' ? {} : null,
     runtime_metadata: {},
   };
-  if (durationMs !== undefined) envelope.runtime_metadata.duration_ms = durationMs;
+  if (includeDuration) envelope.runtime_metadata.duration_ms = durationMs;
   return envelope;
 }
 
@@ -167,7 +168,7 @@ try {
     envelope: responseEnvelope({
       caseId: 'critical-001',
       attempt: 1,
-      durationMs: undefined,
+      includeDuration: false,
     }),
   }));
   const missingDuration = runFullHarness(['--response', missingDurationPath]);
