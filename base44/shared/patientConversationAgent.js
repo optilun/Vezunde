@@ -6,6 +6,9 @@ import {
 import {
   sanitizePatientConversationPriorState,
 } from "./patientConversationPriorStatePolicy.js";
+import {
+  sanitizePatientConversationRuntimeContext,
+} from "./patientConversationRuntimeContextPolicy.js";
 
 export function buildPatientConversationAgentPrompt(input = {}) {
   const source = input && typeof input === "object" && !Array.isArray(input)
@@ -14,5 +17,6 @@ export function buildPatientConversationAgentPrompt(input = {}) {
   return buildPatientConversationAgentPromptCore({
     ...source,
     priorState: sanitizePatientConversationPriorState(source.priorState),
+    runtimeContext: sanitizePatientConversationRuntimeContext(source.runtimeContext),
   });
 }
