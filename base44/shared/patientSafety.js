@@ -4,6 +4,7 @@ import {
   advisorySafetyFlagsFromText,
   assessPatientEyeSafety,
   deterministicSafetyFlagsFromText,
+  guidedSafetyClearRequestedFromAnswers,
   guidedSafetyFlagsFromAnswers,
 } from './patientEyeSafetyPolicy.js';
 
@@ -12,6 +13,7 @@ export { PATIENT_SAFETY_FLAG_PRESENTATION };
 export {
   advisorySafetyFlagsFromText,
   deterministicSafetyFlagsFromText,
+  guidedSafetyClearRequestedFromAnswers,
   guidedSafetyFlagsFromAnswers,
 };
 
