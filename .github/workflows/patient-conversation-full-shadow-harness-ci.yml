@@ -21,6 +21,10 @@ on:
       - "scripts/verify-patient-conversation-shadow-harness.mjs"
       - ".github/workflows/patient-conversation-full-shadow-harness-ci.yml"
 
+concurrency:
+  group: patient-conversation-full-shadow-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
