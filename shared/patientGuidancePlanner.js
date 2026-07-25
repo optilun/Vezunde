@@ -1,4 +1,8 @@
 export * from "./patientGuidancePlannerCore.js";
+export {
+  PATIENT_GUIDANCE_QUESTION_SELECTION_VERSION,
+  buildPatientGuidanceQuestionSelection,
+} from "./patientGuidancePlannerCore.js";
 
 import {
   buildPatientGuidancePlannerProfile as buildPatientGuidancePlannerProfileCore,
