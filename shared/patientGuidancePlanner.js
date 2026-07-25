@@ -1,14 +1,11 @@
 export * from "./patientGuidancePlannerCore.js";
-export * from "./patientGuidanceQuestionSelection.js";
 
 import {
   buildPatientGuidancePlannerProfile as buildPatientGuidancePlannerProfileCore,
+  buildPatientGuidanceQuestionSelection,
   runPatientGuidancePlannerShadow as runPatientGuidancePlannerShadowCore,
   runPatientGuidanceRuntimeShadow as runPatientGuidanceRuntimeShadowCore,
 } from "./patientGuidancePlannerCore.js";
-import {
-  buildPatientGuidanceQuestionSelection,
-} from "./patientGuidanceQuestionSelection.js";
 import { assessPatientEyeSafety } from "./patientEyeSafetyPolicy.js";
 
 const COMPOSED_SAFETY_STATES = new Set(["unchecked", "clear", "advisory", "blocking"]);
@@ -72,6 +69,8 @@ export function runPatientGuidanceRuntimeShadow(context = {}, options = {}) {
       deterministicSafetyState: context.deterministicSafetyState,
     }),
   }, options);
+
+  if (observation?.question_selection) return observation;
 
   return {
     ...observation,
