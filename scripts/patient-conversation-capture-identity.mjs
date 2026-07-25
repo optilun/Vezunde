@@ -20,10 +20,10 @@ function validRepeatCount(value, minimum = 1) {
   return Number.isInteger(value) && value >= minimum && value <= MAXIMUM_REPEAT_COUNT;
 }
 
-function validTimestamp(value) {
-  return typeof value === 'string'
-    && value.trim().length > 0
-    && Number.isFinite(Date.parse(value));
+function timestampMillis(value) {
+  if (typeof value !== 'string' || value.trim().length === 0) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export function patientConversationFixtureFingerprint(fixtureSuite) {
@@ -56,6 +56,8 @@ export function assessPatientConversationCaptureIdentity({ fixtureSuite, capture
     ]))
     : null;
   const expectedFingerprint = patientConversationFixtureFingerprint(suite);
+  const startedAtMs = timestampMillis(modelRun.started_at);
+  const completedAtMs = timestampMillis(modelRun.completed_at);
   const issues = [];
 
   if (cases.length === 0) issues.push('fixture_cases_missing');
@@ -82,8 +84,11 @@ export function assessPatientConversationCaptureIdentity({ fixtureSuite, capture
     && !sameJson(modelRun.expected_attempts_by_case, expectedAttemptsByCase)) {
     issues.push('expected_attempts_by_case_mismatch');
   }
-  if (!validTimestamp(modelRun.started_at)) issues.push('started_at_invalid');
-  if (!validTimestamp(modelRun.completed_at)) issues.push('completed_at_invalid');
+  if (startedAtMs === null) issues.push('started_at_invalid');
+  if (completedAtMs === null) issues.push('completed_at_invalid');
+  if (startedAtMs !== null && completedAtMs !== null && completedAtMs < startedAtMs) {
+    issues.push('completed_before_started');
+  }
 
   return {
     complete: issues.length === 0,
