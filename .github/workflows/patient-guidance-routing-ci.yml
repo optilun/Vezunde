@@ -37,6 +37,7 @@ on:
       - "base44/shared/patientConversationStatePolicy.js"
       - "base44/shared/patientConversationStateDeltaReducer.js"
       - "base44/shared/patientEyeSafetyPolicy.js"
+      - "base44/shared/patientSafety.js"
       - "base44/shared/patientEmergencyGuidance.js"
       - "base44/functions/matchProvidersSemantic/entry.ts"
       - "base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts"
@@ -249,6 +250,7 @@ jobs:
           base44/shared/patientConversationStatePolicy.js
           base44/shared/patientConversationStateDeltaReducer.js
           base44/shared/patientEyeSafetyPolicy.js
+          base44/shared/patientSafety.js
           base44/shared/patientEmergencyGuidance.js
           base44/functions/matchProvidersSemantic/entry.ts
           base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts
