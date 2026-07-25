@@ -29,6 +29,21 @@ jobs:
     runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 15
     steps:
+      - name: Show previous npm debug tail
+        shell: powershell
+        continue-on-error: true
+        run: |
+          $logDirectory = Join-Path $env:LOCALAPPDATA 'npm-cache\_logs'
+          $latestLog = Get-ChildItem $logDirectory -Filter '*-debug-0.log' -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+          if ($null -eq $latestLog) {
+            Write-Host 'No npm debug log found.'
+          } else {
+            Write-Host "Reading $($latestLog.FullName)"
+            Get-Content $latestLog.FullName -Tail 70
+          }
+          exit 0
       - name: Checkout
         uses: actions/checkout@v4
         with:
