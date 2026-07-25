@@ -29,15 +29,6 @@ jobs:
     runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 15
     steps:
-      - name: Show previous npm diagnostic
-        shell: pwsh
-        run: |
-          $logPath = Join-Path $env:GITHUB_WORKSPACE 'npm-ci-output.log'
-          if (Test-Path $logPath) {
-            Get-Content $logPath -Tail 80
-          } else {
-            Write-Host 'No previous npm diagnostic file found.'
-          }
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -49,16 +40,10 @@ jobs:
           node-version: 20
           cache: npm
       - name: Install dependencies
-        shell: pwsh
+        shell: powershell
         run: |
-          npm ci --no-audit --no-fund *> npm-ci-output.log
-          $exitCode = $LASTEXITCODE
-          if ($exitCode -ne 0) {
-            Write-Host "npm ci failed with exit code $exitCode"
-            Get-Content npm-ci-output.log -Tail 80
-            exit $exitCode
-          }
-          Get-Content npm-ci-output.log -Tail 20
+          npm ci --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify full shadow capture harness
         run: node scripts/verify-patient-conversation-shadow-harness.mjs
       - name: Lint full shadow capture harness
