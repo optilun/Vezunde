@@ -40,7 +40,16 @@ jobs:
           node-version: 20
           cache: npm
       - name: Install dependencies
-        run: npm ci
+        shell: pwsh
+        run: |
+          npm ci --no-audit --no-fund *> npm-ci-output.log
+          $exitCode = $LASTEXITCODE
+          if ($exitCode -ne 0) {
+            Write-Host "npm ci failed with exit code $exitCode"
+            Get-Content npm-ci-output.log -Tail 80
+            exit $exitCode
+          }
+          Get-Content npm-ci-output.log -Tail 20
       - name: Verify full shadow capture harness
         run: node scripts/verify-patient-conversation-shadow-harness.mjs
       - name: Lint full shadow capture harness
