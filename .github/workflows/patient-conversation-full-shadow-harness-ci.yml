@@ -34,7 +34,7 @@ jobs:
         continue-on-error: true
         run: |
           cd /d C:\actions-runner\_work\Vezunde\Vezunde
-          node scripts\verify-patient-conversation-shadow-harness.mjs > harness-output.log 2>&1
+          C:\actions-runner\_work\_tool\node\20.20.2\x64\node.exe scripts\verify-patient-conversation-shadow-harness.mjs > harness-output.log 2>&1
           type harness-output.log
           exit /b 0
       - name: Checkout
