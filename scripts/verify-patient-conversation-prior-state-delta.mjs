@@ -15,9 +15,10 @@ import {
 } from '../shared/patientConversationPriorStatePolicy.js';
 
 function gitBlobSha(content) {
+  const normalized = String(content).replace(/\r\n/g, '\n');
   return crypto.createHash('sha1')
-    .update(`blob ${Buffer.byteLength(content)}\0`)
-    .update(content)
+    .update(`blob ${Buffer.byteLength(normalized)}\0`)
+    .update(normalized)
     .digest('hex');
 }
 
