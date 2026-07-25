@@ -152,11 +152,13 @@ function controlledSafetyPreflightEnvelope({
   conversation,
   answers,
   runtimeContext,
+  durationMs,
 }: {
   payload: any;
   conversation: any[];
   answers: any[];
   runtimeContext: any;
+  durationMs: number;
 }) {
   if (answers.length === 0) return null;
   const decision = buildPatientConversationEmergencyInterpretation({
@@ -177,6 +179,7 @@ function controlledSafetyPreflightEnvelope({
       decision_policy: decision.diagnostics,
     },
     ...evaluationCorrelation(payload),
+    runtime_metadata: noModelRuntimeMetadata(durationMs),
   });
 }
 
@@ -268,6 +271,59 @@ function modelRuntimeMetadata(durationMs = 0) {
       max_characters: PATIENT_CONVERSATION_MAX_CHARACTERS,
     },
   };
+}
+
+function emitControlledPreflightSummary(envelope: any) {
+  const decision = envelope?.diagnostics?.decision_policy;
+  console.info('patient_conversation_agent_shadow_summary', JSON.stringify({
+    contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
+    prompt_version: null,
+    model: null,
+    model_invoked: false,
+    duration_ms: boundedDuration(envelope?.runtime_metadata?.duration_ms),
+    status: envelope?.status || 'unknown',
+    reason: envelope?.reason || null,
+    evaluation_case_id_present: Boolean(envelope?.evaluation_case_id),
+    evaluation_attempt: envelope?.evaluation_attempt || null,
+    semantic_contract_version: null,
+    model_operational_authority: false,
+    semantic_correction_detected: false,
+    semantic_clear_field_count: 0,
+    state_delta_applied_field_count: 0,
+    state_delta_preserved_replacement_count: 0,
+    state_delta_rejected_field_count: 0,
+    canonical_boundary_version:
+      envelope?.diagnostics?.canonical_boundary?.boundary_version || null,
+    provider_profile_type_count:
+      envelope?.diagnostics?.canonical_boundary?.provider_profile_type_count || 0,
+    location_provider_type_count:
+      envelope?.diagnostics?.canonical_boundary?.location_provider_type_count || 0,
+    prohibited_output_count: 0,
+    schema_violation_count: 0,
+    noncanonical_output_count: 0,
+    state_transition: null,
+    state_carried_field_count: 0,
+    state_cleared_stale_field_count: 0,
+    decision_source: decision?.decision_source || null,
+    deterministic_safety_preflight:
+      decision?.deterministic_safety_preflight === true,
+    deterministic_safety_flag_count: Array.isArray(decision?.deterministic_safety_flags)
+      ? decision.deterministic_safety_flags.length
+      : 0,
+    model_urgency_advisory: null,
+    model_next_action_ignored: null,
+    primary_intent: envelope?.interpretation?.primary_intent || 'unknown',
+    care_path_count: Array.isArray(envelope?.interpretation?.care_path_candidates)
+      ? envelope.interpretation.care_path_candidates.length
+      : 0,
+    service_count: Array.isArray(envelope?.interpretation?.service_keys)
+      ? envelope.interpretation.service_keys.length
+      : 0,
+    urgency_level: envelope?.interpretation?.urgency?.level || 'unknown',
+    next_action: envelope?.interpretation?.next_action || null,
+    sufficient_for_search:
+      envelope?.interpretation?.information_status?.sufficient_for_search === true,
+  }));
 }
 
 function skippedWithoutUserMessage(payload: any = {}, durationMs = 0) {
@@ -401,17 +457,19 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
       conversation,
       answers: controlledAnswers,
       runtimeContext: controlledRuntimeContext,
+      durationMs: Date.now() - startedAt,
     });
     const coreEnvelope = controlledPreflight || await runPatientConversationAgentShadowCore(
       createOperationalBase44(base44, controller),
       semanticPayloadWithoutControlledAnswers(runtimePayload),
     );
-    const envelope = applyControlledSafetyDecision({
+    const envelope = controlledPreflight || applyControlledSafetyDecision({
       envelope: coreEnvelope,
       conversation,
       answers: controlledAnswers,
       runtimeContext: controlledRuntimeContext,
     });
+    if (controlledPreflight) emitControlledPreflightSummary(envelope);
     const groundedEnvelope = applySymptomGrounding(
       normalizeRuntimeIdentity(envelope, controller),
       runtimePayload,
