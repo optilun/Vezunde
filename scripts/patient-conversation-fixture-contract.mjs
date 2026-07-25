@@ -262,7 +262,9 @@ export function validatePatientConversationFixtureContract(fixtures = []) {
       }
     }
 
-    for (const rawFactKey of expected.forbidden_facts || []) {
+    for (const rawFactKey of Array.isArray(expected.forbidden_facts)
+      ? expected.forbidden_facts
+      : []) {
       const factKey = clean(rawFactKey, 120);
       if (!SUPPORTED_FACT_EXPECTATION_KEY_SET.has(factKey)) {
         violations.push(violation(
@@ -359,7 +361,7 @@ export function collectPatientConversationUnimplementedExpectations(fixtures = [
   fixtures.forEach((fixture, index) => {
     const id = fixtureId(fixture, index);
     const expected = fixture?.expected || {};
-    for (const rawToken of expected.must_not || []) {
+    for (const rawToken of Array.isArray(expected.must_not) ? expected.must_not : []) {
       const token = clean(rawToken, 120);
       if (UNIMPLEMENTED_EXPECTATION_TOKEN_SET.has(token)) {
         blockers.push(violation(
@@ -370,7 +372,9 @@ export function collectPatientConversationUnimplementedExpectations(fixtures = [
         ));
       }
     }
-    for (const rawToken of expected.unimplemented_checks || []) {
+    for (const rawToken of Array.isArray(expected.unimplemented_checks)
+      ? expected.unimplemented_checks
+      : []) {
       const token = clean(rawToken, 120);
       if (UNIMPLEMENTED_EXPECTATION_TOKEN_SET.has(token)) {
         blockers.push(violation(
