@@ -29,6 +29,15 @@ jobs:
     runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 15
     steps:
+      - name: Show previous npm diagnostic
+        shell: pwsh
+        run: |
+          $logPath = Join-Path $env:GITHUB_WORKSPACE 'npm-ci-output.log'
+          if (Test-Path $logPath) {
+            Get-Content $logPath -Tail 80
+          } else {
+            Write-Host 'No previous npm diagnostic file found.'
+          }
       - name: Checkout
         uses: actions/checkout@v4
         with:
