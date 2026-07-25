@@ -29,7 +29,7 @@ const RANKING_OR_PROVIDER_RECOMMENDATION_PATTERN = /\btop\s*3\b|\btop3\b|\b(?:lo
 const DIAGNOSIS_CLAIM_PATTERN = /\b(?:ai|ave[țt]i|suferi(?:[țt]i)?\s+de|este\s+(?:sigur|clar|probabil)\s+c[ăa]\s+ai)\s+(?:conjunctivit[ăa]|glaucom|cataract[ăa]|keratit[ăa]|uveit[ăa]|dezlipire\s+de\s+retin[ăa]|degenerescen[țt][ăa]\s+macular[ăa])(?=$|[\s.,;:!?])|\bdiagnosticul\s+(?:este|e)\b|\b(?:you\s+(?:likely\s+)?have|the\s+diagnosis\s+is)\s+(?:conjunctivitis|glaucoma|cataract|keratitis|uveitis|retinal\s+detachment|macular\s+degeneration)\b/iu;
 const TREATMENT_DIRECTIVE_PATTERN = /\b(?:ia|lua[țt]i|folosi[țt]i|pune[țt]i|aplic[ăa])\s+(?:pic[ăa]turi|antibiotic(?:e)?|medicament(?:e)?|unguente?|tratament)\b|\b(?:tratamentul|medica[țt]ia)\s+(?:potrivit[ăa]|recomandat[ăa])\b|\b(?:take|use|apply)\s+(?:eye\s+drops?|antibiotics?|medication|ointment|treatment)\b/iu;
 const GENERATED_EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
-const GENERATED_ROMANIAN_PHONE_PATTERN = /(^|[^\d])(?:\+?40[\s.-]?)?(?:0?2\d{2}|0?3\d{2}|0?7\d{2})(?:[\s.-]?\d){6,7}(?!\d)/;
+const GENERATED_ROMANIAN_PHONE_PATTERN = /(^|[^\d])(?:(?:(?:\+|00)40[\s.-]?(?:\(0\)[\s.-]?)?)?(?:\(?0?[237]\d\)?(?:[\s.-]?\d){7}|\(?0?[237]\d{2}\)?(?:[\s.-]?\d){6}))(?!\d)/;
 const GENERATED_IDENTIFIER_PATTERN = /\b\d{13}\b/;
 
 function clean(value, maxLength = 1200) {
@@ -178,7 +178,7 @@ export function redactPatientConversationText(value, maxLength = 1200) {
   return clean(value, maxLength)
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email eliminat]")
     .replace(/\b\d{13}\b/g, "[identificator eliminat]")
-    .replace(/(^|[^\d])((?:\+?40[\s.-]?)?(?:0?2\d{2}|0?3\d{2}|0?7\d{2})(?:[\s.-]?\d){6,7})(?!\d)/g, "$1[telefon eliminat]")
+    .replace(/(^|[^\d])((?:(?:(?:\+|00)40[\s.-]?(?:\(0\)[\s.-]?)?)?(?:\(?0?[237]\d\)?(?:[\s.-]?\d){7}|\(?0?[237]\d{2}\)?(?:[\s.-]?\d){6})))(?!\d)/g, "$1[telefon eliminat]")
     .replace(/\s{2,}/g, " ")
     .trim();
 }
