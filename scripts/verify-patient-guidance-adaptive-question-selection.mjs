@@ -14,7 +14,9 @@ import {
 } from "../shared/patientGuidanceQuestionCatalog.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const source = (relativePath) => readFileSync(path.join(root, relativePath), "utf8");
+const source = (relativePath) => (
+  readFileSync(path.join(root, relativePath), "utf8").replace(/\r\n/g, "\n")
+);
 const locality = () => ({ siruta_code: "155243", city: "Timisoara", county_code: "TM" });
 const scenarios = [];
 
