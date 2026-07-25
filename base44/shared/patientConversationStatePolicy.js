@@ -31,6 +31,12 @@ const PATIENT_FACING_SERVICE_SET = new Set(
   }),
 );
 const REDACTION_MARKER_PATTERN = /\[(?:email|telefon|identificator) eliminat\]/i;
+const COUNTY_CODE_SET = new Set([
+  "AB", "AG", "AR", "B", "BC", "BH", "BN", "BR", "BT", "BV", "BZ",
+  "CJ", "CL", "CS", "CT", "CV", "DB", "DJ", "GJ", "GL", "GR", "HD",
+  "HR", "IF", "IL", "IS", "MH", "MM", "MS", "NT", "OT", "PH", "SB",
+  "SJ", "SM", "SV", "TL", "TM", "TR", "VL", "VN", "VS",
+]);
 
 function clean(value, maxLength = 400) {
   return String(value ?? "").trim().slice(0, maxLength);
@@ -73,12 +79,12 @@ function controlledLocalityText(value, maxLength) {
 
 function controlledSirutaCode(value) {
   const code = clean(value, 10);
-  return /^\d{1,6}$/.test(code) ? code : "";
+  return /^[1-9]\d{0,5}$/.test(code) ? code : "";
 }
 
 function controlledCountyCode(value) {
   const code = clean(value, 4).toUpperCase();
-  return /^[A-Z]{1,2}$/.test(code) ? code : "";
+  return COUNTY_CODE_SET.has(code) ? code : "";
 }
 
 function sanitizedLocality(value) {
