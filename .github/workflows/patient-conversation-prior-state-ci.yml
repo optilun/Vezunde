@@ -1,0 +1,51 @@
+name: Patient Conversation Prior State
+
+on:
+  pull_request:
+    paths:
+      - "shared/patientConversationAgent.js"
+      - "shared/patientConversationAgentCore.js"
+      - "shared/patientConversationPriorStatePolicy.js"
+      - "shared/patientConversationStatePolicy.js"
+      - "base44/shared/patientConversationAgent.js"
+      - "base44/shared/patientConversationAgentCore.js"
+      - "base44/shared/patientConversationPriorStatePolicy.js"
+      - "base44/shared/patientConversationStatePolicy.js"
+      - "scripts/verify-patient-conversation-prompt-prior-state.mjs"
+      - ".github/workflows/patient-conversation-prior-state-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify prompt prior-state authority
+        run: node scripts/verify-patient-conversation-prompt-prior-state.mjs
+      - name: Lint prior-state boundary
+        run: >-
+          npx eslint
+          shared/patientConversationAgent.js
+          shared/patientConversationAgentCore.js
+          shared/patientConversationPriorStatePolicy.js
+          shared/patientConversationStatePolicy.js
+          base44/shared/patientConversationAgent.js
+          base44/shared/patientConversationAgentCore.js
+          base44/shared/patientConversationPriorStatePolicy.js
+          base44/shared/patientConversationStatePolicy.js
+          scripts/verify-patient-conversation-prompt-prior-state.mjs
+          --quiet
