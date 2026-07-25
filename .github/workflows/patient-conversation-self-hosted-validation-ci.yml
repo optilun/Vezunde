@@ -1,0 +1,58 @@
+name: Patient Conversation Self-Hosted Validation
+
+on:
+  pull_request:
+    paths:
+      - "shared/**"
+      - "base44/shared/**"
+      - "base44/functions/matchProvidersSemantic/**"
+      - "src/lib/patient*.js"
+      - "src/lib/providerSemanticSearch.js"
+      - "src/components/intake2/**"
+      - "scripts/verify-patient-conversation-*.mjs"
+      - "scripts/verify-patient-guidance-*.mjs"
+      - "scripts/patient-conversation-*.mjs"
+      - "scripts/prepare-patient-conversation-*.mjs"
+      - "scripts/evaluate-patient-conversation-*.mjs"
+      - "tests/fixtures/patient-conversation-*.json"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/patient-conversation-self-hosted-validation-ci.yml"
+
+concurrency:
+  group: patient-conversation-self-hosted-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        shell: cmd
+        run: npm ci --no-audit --no-fund
+      - name: Verify service and patient-conversation suites
+        shell: cmd
+        run: npm run test:services
+      - name: Typecheck service scope
+        shell: cmd
+        run: npm run typecheck:services
+      - name: Build application
+        shell: cmd
+        run: npm run build
+      - name: Lint repository
+        shell: cmd
+        run: npm run lint
