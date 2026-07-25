@@ -30,6 +30,7 @@ const PATIENT_FACING_SERVICE_SET = new Set(
     return definition?.patient_facing !== false && definition?.b2b_only !== true;
   }),
 );
+const REDACTION_MARKER_PATTERN = /\[(?:email|telefon|identificator) eliminat\]/i;
 
 function clean(value, maxLength = 400) {
   return String(value ?? "").trim().slice(0, maxLength);
@@ -65,14 +66,29 @@ function canonicalPatientServiceKeys(values) {
   )].slice(0, 12);
 }
 
+function controlledLocalityText(value, maxLength) {
+  const redacted = redactPatientConversationText(value, maxLength);
+  return REDACTION_MARKER_PATTERN.test(redacted) ? "" : redacted;
+}
+
+function controlledSirutaCode(value) {
+  const code = clean(value, 10);
+  return /^\d{1,6}$/.test(code) ? code : "";
+}
+
+function controlledCountyCode(value) {
+  const code = clean(value, 4).toUpperCase();
+  return /^[A-Z]{1,2}$/.test(code) ? code : "";
+}
+
 function sanitizedLocality(value) {
   const locality = isPlainObject(value) ? value : {};
   return {
-    siruta_code: clean(locality.siruta_code, 40),
-    city: redactPatientConversationText(locality.city || locality.name, 120),
-    county_code: clean(locality.county_code, 40),
-    county: redactPatientConversationText(locality.county || locality.county_name, 120),
-    area: redactPatientConversationText(locality.area, 160),
+    siruta_code: controlledSirutaCode(locality.siruta_code),
+    city: controlledLocalityText(locality.city || locality.name, 120),
+    county_code: controlledCountyCode(locality.county_code),
+    county: controlledLocalityText(locality.county || locality.county_name, 120),
+    area: controlledLocalityText(locality.area, 160),
   };
 }
 
