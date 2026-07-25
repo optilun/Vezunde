@@ -109,7 +109,7 @@ const semanticCoreCallIndex = wrapperSource.indexOf(
   'const coreEnvelope = controlledPreflight || await runPatientConversationAgentShadowCore(',
 );
 const controlledDecisionIndex = wrapperSource.indexOf(
-  'const envelope = applyControlledSafetyDecision({',
+  'const envelope = controlledPreflight || applyControlledSafetyDecision({',
 );
 assert(emptyMessageGateIndex >= 0);
 assert(emptyMessageEnvelopeIndex > emptyMessageGateIndex);
@@ -128,6 +128,11 @@ assert(wrapperSource.includes('function semanticPayloadWithoutControlledAnswers(
 assert(wrapperSource.includes('delete semanticPayload.answers;'));
 assert(wrapperSource.includes('answers: controlledAnswers'));
 assert(wrapperSource.includes('semanticPayloadWithoutControlledAnswers(runtimePayload)'));
+assert(wrapperSource.includes('runtime_metadata: noModelRuntimeMetadata(durationMs)'));
+assert(wrapperSource.includes('function emitControlledPreflightSummary('));
+assert(wrapperSource.includes("console.info('patient_conversation_agent_shadow_summary'"));
+assert(wrapperSource.includes('if (controlledPreflight) emitControlledPreflightSummary(envelope);'));
+assert(wrapperSource.includes('const envelope = controlledPreflight || applyControlledSafetyDecision({'));
 assert(!coreSource.includes('payload?.answers'));
 assert(!coreSource.includes('runtimePayload?.answers'));
 
