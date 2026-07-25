@@ -22,6 +22,7 @@ function fixturePayload(conversationSuffix = '') {
         id: 'routine-001',
         category: 'routine_control',
         conversation: [{ role: 'user', content: `Am nevoie de un control.${conversationSuffix}` }],
+        expected: {},
       },
       {
         id: 'critical-001',
