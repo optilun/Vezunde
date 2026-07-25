@@ -4,7 +4,10 @@ import {
   PATIENT_SAFETY_FLAG_PRESENTATION,
   assessPatientEyeSafety,
 } from "./patientEyeSafetyPolicy.js";
-import { PATIENT_EMERGENCY_GUIDANCE_MESSAGE } from "./patientEmergencyGuidance.js";
+import {
+  PATIENT_EMERGENCY_GUIDANCE_MESSAGE,
+  buildPatientEmergencyGuidanceMessage,
+} from "./patientEmergencyGuidance.js";
 
 export const PATIENT_CONVERSATION_DECISION_POLICY_VERSION = "viasee-patient-conversation-decision-policy-v1";
 export const PATIENT_CONVERSATION_SAFETY_POLICY_VERSION = PATIENT_EYE_SAFETY_POLICY_VERSION;
@@ -59,9 +62,9 @@ function derivedProviderProfileTypes(serviceKeys) {
   }).filter((profileType) => PATIENT_FACING_PROFILE_TYPES.has(profileType)))].slice(0, 8);
 }
 
-function deterministicAssistantMessage(nextAction) {
+function deterministicAssistantMessage(nextAction, safetyFlags = []) {
   if (nextAction === "show_emergency_guidance") {
-    return PATIENT_CONVERSATION_SAFE_EMERGENCY_MESSAGE;
+    return buildPatientEmergencyGuidanceMessage(safetyFlags);
   }
   if (nextAction === "ask_locality") {
     return "In ce oras sau zona doresti sa cauti?";
@@ -89,6 +92,7 @@ export function buildPatientConversationEmergencyInterpretation({
   if (!safety.blocking) return null;
 
   const knownLocality = cloneLocality(runtimeContext?.known_locality);
+  const emergencyMessage = buildPatientEmergencyGuidanceMessage(safety.blocking_flags);
   return {
     interpretation: {
       contract_version: clean(contractVersion, 80),
@@ -127,7 +131,7 @@ export function buildPatientConversationEmergencyInterpretation({
         missing_critical_fields: [],
       },
       next_action: "show_emergency_guidance",
-      assistant_message: PATIENT_CONVERSATION_SAFE_EMERGENCY_MESSAGE,
+      assistant_message: emergencyMessage,
       specialist_summary: null,
       evidence_phrases: [],
     },
@@ -264,7 +268,7 @@ export function applyPatientConversationDecisionPolicy({
     missing_critical_fields: missingCriticalFields,
   };
   current.next_action = nextAction;
-  current.assistant_message = deterministicAssistantMessage(nextAction);
+  current.assistant_message = deterministicAssistantMessage(nextAction, safety.blocking_flags);
   current.specialist_summary = null;
 
   return {
