@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 
+await import('./verify-patient-conversation-pr265-composition.mjs');
+
 const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
   'src/lib/providerSemanticSearch.js': Object.freeze([
     'c925bfd80a556aa1ed30dd4eed22a80fe80bc1ee',
