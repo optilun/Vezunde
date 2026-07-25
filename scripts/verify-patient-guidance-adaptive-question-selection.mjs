@@ -15,7 +15,9 @@ import {
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const source = (relativePath) => (
-  readFileSync(path.join(root, relativePath), "utf8").replace(/\r\n/g, "\n")
+  readFileSync(path.join(root, relativePath), "utf8")
+    .replace(/\r\n/g, "\n")
+    .replace(/\n$/, "")
 );
 const locality = () => ({ siruta_code: "155243", city: "Timisoara", county_code: "TM" });
 const scenarios = [];
