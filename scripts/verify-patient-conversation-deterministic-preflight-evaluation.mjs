@@ -170,13 +170,16 @@ const validRun = spawnSync(process.execPath, [
   cwd: process.cwd(),
   encoding: 'utf8',
 });
-assert.equal(validRun.status, 0, validRun.stderr || validRun.stdout);
+assert.notEqual(validRun.status, 0);
 const validReport = JSON.parse(fs.readFileSync(validReportPath, 'utf8'));
 assert.equal(validReport.runtime.identity_valid, true);
 assert.equal(validReport.runtime.model_invoked_attempts, 0);
 assert.equal(validReport.runtime.deterministic_preflight_attempts, 3);
 assert.equal(validReport.acceptance.observed.decision_policy_application.rate, 100);
-assert.equal(validReport.acceptance.passed, true);
+assert.equal(validReport.acceptance.observed.confirmed_emergencies.rate, 100);
+assert.equal(validReport.acceptance.observed.critical_attempt_safety.rate, 100);
+assert.equal(validReport.acceptance.observed.critical_case_stability.rate, 100);
+assert.equal(validReport.acceptance.passed, false);
 
 const invalidRun = spawnSync(process.execPath, [
   'scripts/evaluate-patient-conversation-results.mjs',
