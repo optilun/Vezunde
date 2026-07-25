@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
 import {
-  isCriticalPatientConversationFixture,
   loadPatientConversationFixtures,
   patientConversationFixtureAttemptCount,
 } from './patient-conversation-fixture-loader.mjs';
@@ -169,16 +168,26 @@ function assertResponseCorrelation(responseFile, selectedCaseIds, attemptsByCase
   if (!isPlainObject(envelope)) {
     throw new Error(`Raspunsul ${responseFile} nu contine un envelope obiect.`);
   }
+  if (clean(envelope.mode) !== 'shadow') {
+    throw new Error(`Raspunsul ${responseFile} nu provine din mode=shadow.`);
+  }
+  if (clean(envelope.contract_version) !== CONTRACT_VERSION) {
+    throw new Error(`Raspunsul ${responseFile} are contract_version invalid.`);
+  }
 
+  const envelopeCaseId = clean(envelope.evaluation_case_id);
+  if (!envelopeCaseId) {
+    throw new Error(`Raspunsul ${responseFile} nu pastreaza evaluation_case_id in envelope.`);
+  }
   const caseValues = [
     payload?.evaluation_case_id,
     payload?.case_id,
-    envelope?.evaluation_case_id,
+    envelopeCaseId,
   ].map(clean).filter(Boolean);
   const uniqueCaseValues = [...new Set(caseValues)];
   if (uniqueCaseValues.length !== 1) {
     throw new Error(
-      `Raspunsul ${responseFile} are corelatie de caz lipsa sau contradictorie: ${uniqueCaseValues.join(', ') || '(lipsa)'}.`,
+      `Raspunsul ${responseFile} are corelatie de caz contradictorie: ${uniqueCaseValues.join(', ')}.`,
     );
   }
   const caseId = uniqueCaseValues[0];
@@ -186,10 +195,14 @@ function assertResponseCorrelation(responseFile, selectedCaseIds, attemptsByCase
     throw new Error(`Raspunsul ${responseFile} apartine cazului neselectat ${caseId}.`);
   }
 
+  const envelopeAttempt = normalizedAttempt(envelope.evaluation_attempt);
+  if (!envelopeAttempt) {
+    throw new Error(`Raspunsul ${responseFile} nu pastreaza evaluation_attempt valid in envelope.`);
+  }
   const rawAttempts = [
     payload?.evaluation_attempt,
     payload?.attempt,
-    envelope?.evaluation_attempt,
+    envelopeAttempt,
   ].filter((value) => value !== undefined && value !== null && String(value).trim() !== '');
   const attempts = rawAttempts.map(normalizedAttempt);
   if (attempts.some((attempt) => attempt === null)) {
@@ -197,13 +210,10 @@ function assertResponseCorrelation(responseFile, selectedCaseIds, attemptsByCase
   }
   const uniqueAttempts = [...new Set(attempts)];
   const expectedAttempts = attemptsByCase[caseId];
-  if (uniqueAttempts.length > 1) {
+  if (uniqueAttempts.length !== 1) {
     throw new Error(`Raspunsul ${responseFile} are attempturi contradictorii: ${uniqueAttempts.join(', ')}.`);
   }
-  if (uniqueAttempts.length === 0 && expectedAttempts > 1) {
-    throw new Error(`Raspunsul ${responseFile} necesita evaluation_attempt pentru cazul repetat ${caseId}.`);
-  }
-  const attempt = uniqueAttempts[0] || 1;
+  const attempt = uniqueAttempts[0];
   if (attempt > expectedAttempts) {
     throw new Error(
       `Raspunsul ${responseFile} are attempt ${attempt}, peste limita ${expectedAttempts} pentru ${caseId}.`,
@@ -215,6 +225,10 @@ function assertResponseCorrelation(responseFile, selectedCaseIds, attemptsByCase
     throw new Error(
       `Raspunsul ${responseFile} necesita status explicit completed, invalid, unavailable sau skipped.`,
     );
+  }
+  const durationMs = Number(envelope?.runtime_metadata?.duration_ms);
+  if (!Number.isFinite(durationMs) || durationMs < 0) {
+    throw new Error(`Raspunsul ${responseFile} nu pastreaza runtime_metadata.duration_ms valid.`);
   }
 }
 
