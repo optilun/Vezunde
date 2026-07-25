@@ -14,7 +14,12 @@ function flagLabels(assessment) {
 
 export default function UrgencyInterruption({ assessment, mode = "blocking", onCorrect }) {
   const labels = flagLabels(assessment);
-  const chemical = [...(assessment?.blocking_flags || []), ...(assessment?.advisory_flags || [])].includes("chemical_injury");
+  const safetyFlags = [
+    ...(assessment?.blocking_flags || []),
+    ...(assessment?.advisory_flags || []),
+  ];
+  const penetrating = safetyFlags.includes("penetrating_or_high_speed_trauma");
+  const chemical = safetyFlags.includes("chemical_injury") && !penetrating;
   const blocking = mode === "blocking";
 
   return (
@@ -49,6 +54,20 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
         </div>
       )}
 
+      {blocking && penetrating && (
+        <div className="mt-5 flex items-start gap-3 rounded-2xl border border-red-300 bg-white/80 p-4 text-red-950">
+          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-red-700" />
+          <p className="text-xs font-semibold leading-relaxed">{PATIENT_EMERGENCY_GUIDANCE_COPY.penetrating_injury_instruction}</p>
+        </div>
+      )}
+
+      {blocking && chemical && (
+        <div className="mt-5 flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sky-950">
+          <Droplets className="mt-0.5 h-5 w-5 shrink-0 text-sky-700" />
+          <p className="text-xs font-semibold leading-relaxed">{PATIENT_EMERGENCY_GUIDANCE_COPY.chemical_irrigation_instruction}</p>
+        </div>
+      )}
+
       {blocking ? (
         <div className="mt-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-white/70 p-4 text-sm leading-relaxed text-red-950">
           <Hospital className="mt-0.5 h-5 w-5 shrink-0 text-red-700" />
@@ -63,13 +82,6 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
         <div className="mt-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
           <p><strong>Clarifica mai intai situatia.</strong> VIASEE nu afiseaza instructiunea de urgenta pana cand semnalul nu este confirmat prin raspunsurile tale.</p>
-        </div>
-      )}
-
-      {blocking && chemical && (
-        <div className="mt-5 flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sky-950">
-          <Droplets className="mt-0.5 h-5 w-5 shrink-0 text-sky-700" />
-          <p className="text-xs leading-relaxed"><strong>Daca a ajuns o substanta chimica in ochi:</strong> clateste imediat cu apa curata cel putin 20 de minute, indeparteaza lentilele de contact daca se desprind usor si nu freca ochiul. Continua apoi spre urgenta.</p>
         </div>
       )}
 
