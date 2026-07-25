@@ -107,6 +107,22 @@ assert.deepEqual(poisoned.interpretation.provider_type_candidates, []);
 assert.equal(poisoned.interpretation.urgency.level, 'none');
 assert.notEqual(poisoned.interpretation.next_action, 'show_emergency_guidance');
 
+const markupPoisoned = reconcile(reconcilePatientConversationState, {
+  siruta_code: '155243<script>',
+  city: '<script>alert(1)</script>',
+  county_code: 'TM',
+  county: 'Timis:https://evil.example',
+  area: 'https://evil.example/path',
+});
+assert.deepEqual(markupPoisoned.interpretation.facts.locality, {
+  siruta_code: '',
+  city: '',
+  county_code: 'TM',
+  county: '',
+  area: '',
+});
+assert(markupPoisoned.interpretation.information_status.missing_critical_fields.includes('locality'));
+
 const valid = reconcile(reconcilePatientConversationState, {
   siruta_code: '155243',
   city: 'Timisoara',
