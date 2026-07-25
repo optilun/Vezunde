@@ -46,7 +46,11 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Verify service and patient-conversation suites
         shell: cmd
-        run: npm run test:services
+        run: |
+          call npm run test:services > test-services.log 2>&1
+          set TEST_EXIT=%ERRORLEVEL%
+          if not "%TEST_EXIT%"=="0" node -e "const fs=require('fs');const rows=fs.readFileSync('test-services.log','utf8').split(/\r?\n/);console.log(rows.slice(-100).join('\n'))"
+          exit /b %TEST_EXIT%
       - name: Typecheck service scope
         shell: cmd
         run: npm run typecheck:services
