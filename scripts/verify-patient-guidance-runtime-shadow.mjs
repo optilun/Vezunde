@@ -282,14 +282,17 @@ await scenario("browser payload cannot enable the future canary", () => {
 
 await scenario("complete shadow profile is not returned publicly", () => {
   const entry = source("base44/functions/matchProvidersSemantic/entry.ts");
-  assert.match(entry, /return observation\.live_result;/);
+  assert.match(
+    entry,
+    /patient_guidance_question_selection: observation\.question_selection/,
+  );
   assert.doesNotMatch(entry, /Response\.json\([^;]*patient_guidance_shadow_profile/s);
 });
 
 await scenario("runtime logs only controlled aggregate objects", () => {
   const entry = source("base44/functions/matchProvidersSemantic/entry.ts");
   const start = entry.indexOf("console.info(");
-  const end = entry.indexOf("return observation.live_result;", start);
+  const end = entry.indexOf("function selectPatientGuidanceQuestion", start);
   const logBlock = entry.slice(start, end);
   assert.ok(start >= 0 && end > start);
   assert.match(
