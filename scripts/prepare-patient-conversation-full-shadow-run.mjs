@@ -4,7 +4,9 @@ import {
   loadPatientConversationFixtures,
 } from './patient-conversation-fixture-loader.mjs';
 
-function fixturePathsFromArgs(argv) {
+const MINIMUM_CRITICAL_REPEAT_COUNT = 3;
+
+function validatedArguments(argv) {
   const fixturePaths = [];
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -16,13 +18,21 @@ function fixturePathsFromArgs(argv) {
       if (!fixturePath) throw new Error('--fixtures necesita o cale.');
       fixturePaths.push(fixturePath);
       index += 1;
+      continue;
+    }
+    if (arg === '--critical-repeat') {
+      const value = String(argv[index + 1] ?? '').trim();
+      if (!/^\d+$/.test(value) || Number.parseInt(value, 10) < MINIMUM_CRITICAL_REPEAT_COUNT) {
+        throw new Error(`--critical-repeat trebuie sa fie minimum ${MINIMUM_CRITICAL_REPEAT_COUNT}.`);
+      }
+      index += 1;
     }
   }
-  return fixturePaths;
+  return { fixturePaths };
 }
 
 const forwardedArguments = process.argv.slice(2);
-const fixturePaths = fixturePathsFromArgs(forwardedArguments);
+const { fixturePaths } = validatedArguments(forwardedArguments);
 const suite = loadPatientConversationFixtures(
   fixturePaths.length > 0 ? fixturePaths : undefined,
 );
