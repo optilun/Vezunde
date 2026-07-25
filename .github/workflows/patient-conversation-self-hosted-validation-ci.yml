@@ -31,15 +31,6 @@ jobs:
     runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 60
     steps:
-      - name: Diagnose previous service-test failure
-        shell: cmd
-        continue-on-error: true
-        run: |
-          cd /d C:\actions-runner\_work\Vezunde\Vezunde
-          set PATH=C:\actions-runner\_work\_tool\node\20.20.2\x64;%PATH%
-          call npm.cmd run test:services > service-diagnostic.log 2>&1
-          node.exe -e "const fs=require('fs');const rows=fs.readFileSync('service-diagnostic.log','utf8').split(/\r?\n/);console.log(rows.slice(-35).join('\n'))"
-          exit /b 0
       - name: Checkout
         uses: actions/checkout@v4
         with:
