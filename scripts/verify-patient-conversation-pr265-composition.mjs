@@ -49,6 +49,20 @@ scenario('PR265 planner copies remain byte-identical', () => {
   assert.match(plannerWrapper, /if \(safety\.advisory\) return "advisory"/);
 });
 
+scenario('planner core cannot bypass the composed safety wrapper', () => {
+  for (const runtimePath of [
+    'base44/functions/matchProvidersSemantic/entry.ts',
+    'base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts',
+    'base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts',
+    'src/lib/providerSemanticSearch.js',
+    'src/components/intake2/ConversationalCard.jsx',
+    'shared/patientConversationGuidanceHandoff.js',
+    'shared/patientConversationGuidancePlannerBridge.js',
+  ]) {
+    assert.doesNotMatch(source(runtimePath), /patientGuidancePlannerCore/);
+  }
+});
+
 scenario('canonical safety policy copies remain byte-identical', () => {
   assert.equal(
     source('shared/patientEyeSafetyPolicy.js'),
@@ -188,5 +202,5 @@ scenario('matching, ranking and Top 3 are absent from both authority seams', () 
   }
 });
 
-assert.ok(scenarios >= 15);
+assert.ok(scenarios >= 16);
 console.log(`PR #265 + PR #266 conversational composition checks passed: ${scenarios} scenarios.`);
