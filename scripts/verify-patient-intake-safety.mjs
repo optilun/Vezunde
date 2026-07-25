@@ -8,14 +8,23 @@ import {
   guidedSafetyFlagsFromAnswers,
 } from '../src/lib/patientSafety.js';
 import {
+  PATIENT_SAFETY_ASSESSMENT_VERSION as BASE44_PATIENT_SAFETY_ASSESSMENT_VERSION,
+  buildPatientSafetyAssessment as buildBase44PatientSafetyAssessment,
+  guidedSafetyFlagsFromAnswers as guidedBase44SafetyFlagsFromAnswers,
+} from '../base44/shared/patientSafety.js';
+import {
   PATIENT_EMERGENCY_GUIDANCE_MESSAGE,
   patientEmergencyGuidanceMentions112,
   patientEmergencyGuidanceUses112AsPrimaryAction,
 } from '../shared/patientEmergencyGuidance.js';
 
 assert.equal(PATIENT_SAFETY_ASSESSMENT_VERSION, 'patient-eye-safety-v1.2');
+assert.equal(BASE44_PATIENT_SAFETY_ASSESSMENT_VERSION, 'patient-eye-safety-v1.2');
 assert.deepEqual(guidedSafetyFlagsFromAnswers([{ question_key: 'safety_screening', answer_value: 'substanta_chimica' }]), ['chemical_injury']);
+assert.deepEqual(guidedSafetyFlagsFromAnswers([{ question_key: 'safety_targeted_check', answer_value: 'substanta_chimica' }]), ['chemical_injury']);
 assert.deepEqual(guidedSafetyFlagsFromAnswers([{ question_key: 'safety_screening', answer_value: 'niciuna' }]), []);
+assert.deepEqual(guidedSafetyFlagsFromAnswers([{ question_key: 'safety_targeted_check', answer_value: 'niciuna' }]), []);
+assert.deepEqual(guidedBase44SafetyFlagsFromAnswers([{ question_key: 'safety_targeted_check', answer_value: 'traumatism_obiect' }]), ['penetrating_or_high_speed_trauma']);
 
 assert.ok(deterministicSafetyFlagsFromText('Mi-am pierdut vederea brusc la un ochi').includes('sudden_vision_loss'));
 assert.ok(deterministicSafetyFlagsFromText('Mi-a intrat acid in ochi').includes('chemical_injury'));
@@ -33,6 +42,20 @@ assert.equal(guidedAssessment.state, 'blocking');
 assert.equal(guidedAssessment.blocking, true);
 assert.equal(guidedAssessment.source, 'guided_answer');
 assert.ok(guidedAssessment.blocking_flags.includes('penetrating_or_high_speed_trauma'));
+
+const canonicalGuidedAssessment = buildPatientSafetyAssessment({
+  answers: [{ question_key: 'safety_targeted_check', answer_value: 'durere_severa' }],
+});
+assert.equal(canonicalGuidedAssessment.state, 'blocking');
+assert.equal(canonicalGuidedAssessment.blocking, true);
+assert.ok(canonicalGuidedAssessment.blocking_flags.includes('severe_eye_pain'));
+
+const base44CanonicalGuidedAssessment = buildBase44PatientSafetyAssessment({
+  answers: [{ question_key: 'safety_targeted_check', answer_value: 'postoperator_acut' }],
+});
+assert.equal(base44CanonicalGuidedAssessment.state, 'blocking');
+assert.equal(base44CanonicalGuidedAssessment.blocking, true);
+assert.ok(base44CanonicalGuidedAssessment.blocking_flags.includes('postoperative_red_eye_or_vision_change'));
 
 const explicitTextAssessment = buildPatientSafetyAssessment({ text: 'Nu mai vad deloc cu un ochi deodata' });
 assert.equal(explicitTextAssessment.state, 'blocking');
@@ -101,10 +124,14 @@ assert.equal(aiOnlyAssessment.source, 'ai_or_text_advisory');
 const questionText = await readFile(new URL('../src/components/intake2/QuestionText.jsx', import.meta.url), 'utf8');
 const interruption = await readFile(new URL('../src/components/intake2/UrgencyInterruption.jsx', import.meta.url), 'utf8');
 const safetyPolicy = await readFile(new URL('../src/lib/patientSafety.js', import.meta.url), 'utf8');
+const base44SafetyAdapter = await readFile(new URL('../base44/shared/patientSafety.js', import.meta.url), 'utf8');
 const sharedSafetyPolicy = await readFile(new URL('../shared/patientEyeSafetyPolicy.js', import.meta.url), 'utf8');
 const base44SafetyPolicy = await readFile(new URL('../base44/shared/patientEyeSafetyPolicy.js', import.meta.url), 'utf8');
 
 assert.equal(sharedSafetyPolicy, base44SafetyPolicy);
+assert.match(base44SafetyAdapter, /assessPatientEyeSafety/);
+assert.match(base44SafetyAdapter, /PATIENT_EYE_SAFETY_POLICY_VERSION/);
+assert.doesNotMatch(base44SafetyAdapter, /nu mai vad cu un ochi/);
 
 for (const label of [
   'Nu mai vad brusc sau vederea a scazut mult',
