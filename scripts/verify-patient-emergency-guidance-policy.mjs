@@ -10,16 +10,22 @@ import {
   patientEmergencyGuidanceUses112AsPrimaryAction,
 } from '../shared/patientEmergencyGuidance.js';
 import {
+  buildPatientConversationEmergencyInterpretation,
+} from '../shared/patientConversationDecisionPolicy.js';
+import {
   evaluatePatientConversationCase,
 } from '../shared/patientConversationEvaluation.js';
 
 const sharedSource = fs.readFileSync('shared/patientEmergencyGuidance.js', 'utf8');
 const base44Source = fs.readFileSync('base44/shared/patientEmergencyGuidance.js', 'utf8');
+const sharedDecisionCore = fs.readFileSync('shared/patientConversationDecisionPolicyCore.js', 'utf8');
+const base44DecisionCore = fs.readFileSync('base44/shared/patientConversationDecisionPolicyCore.js', 'utf8');
 const sharedCatalog = fs.readFileSync('shared/patientGuidanceQuestionCatalog.js', 'utf8');
 const base44Catalog = fs.readFileSync('base44/shared/patientGuidanceQuestionCatalog.js', 'utf8');
 const interruptionSource = fs.readFileSync('src/components/intake2/UrgencyInterruption.jsx', 'utf8');
 
 assert.equal(sharedSource, base44Source);
+assert.equal(sharedDecisionCore, base44DecisionCore);
 assert.equal(sharedCatalog, base44Catalog);
 assert.equal(PATIENT_EMERGENCY_GUIDANCE_VERSION, 'patient-emergency-guidance-v1.2');
 assert.equal(
@@ -61,6 +67,22 @@ const combinedTraumaMessage = buildPatientEmergencyGuidanceMessage([
 ]);
 assert.match(combinedTraumaMessage, /nu incerca sa il scoti/);
 assert.doesNotMatch(combinedTraumaMessage, /clateste imediat/);
+
+const chemicalPreflight = buildPatientConversationEmergencyInterpretation({
+  contractVersion: 'viasee-patient-conversation-agent-v1',
+  conversation: [{ role: 'user', content: 'Mi-a sarit spray de curatat cuptorul in ochi.' }],
+  runtimeContext: {},
+});
+assert.equal(chemicalPreflight.interpretation.assistant_message, chemicalMessage);
+assert.equal(chemicalPreflight.diagnostics.model_invoked, false);
+
+const penetratingPreflight = buildPatientConversationEmergencyInterpretation({
+  contractVersion: 'viasee-patient-conversation-agent-v1',
+  conversation: [{ role: 'user', content: 'Mi-a sarit o aschie de metal si a ramas infipta in ochi.' }],
+  runtimeContext: {},
+});
+assert.equal(penetratingPreflight.interpretation.assistant_message, penetratingMessage);
+assert.equal(penetratingPreflight.diagnostics.model_invoked, false);
 
 function result(assistantMessage, urgency = 'confirmed') {
   return {
