@@ -13,6 +13,9 @@ import {
   buildPatientConversationEmergencyInterpretation,
 } from '../shared/patientConversationDecisionPolicy.js';
 import {
+  applyPatientConversationCanonicalBoundary,
+} from '../shared/patientConversationCanonicalBoundary.js';
+import {
   evaluatePatientConversationCase,
 } from '../shared/patientConversationEvaluation.js';
 
@@ -20,12 +23,15 @@ const sharedSource = fs.readFileSync('shared/patientEmergencyGuidance.js', 'utf8
 const base44Source = fs.readFileSync('base44/shared/patientEmergencyGuidance.js', 'utf8');
 const sharedDecisionCore = fs.readFileSync('shared/patientConversationDecisionPolicyCore.js', 'utf8');
 const base44DecisionCore = fs.readFileSync('base44/shared/patientConversationDecisionPolicyCore.js', 'utf8');
+const sharedBoundary = fs.readFileSync('shared/patientConversationCanonicalBoundary.js', 'utf8');
+const base44Boundary = fs.readFileSync('base44/shared/patientConversationCanonicalBoundary.js', 'utf8');
 const sharedCatalog = fs.readFileSync('shared/patientGuidanceQuestionCatalog.js', 'utf8');
 const base44Catalog = fs.readFileSync('base44/shared/patientGuidanceQuestionCatalog.js', 'utf8');
 const interruptionSource = fs.readFileSync('src/components/intake2/UrgencyInterruption.jsx', 'utf8');
 
 assert.equal(sharedSource, base44Source);
 assert.equal(sharedDecisionCore, base44DecisionCore);
+assert.equal(sharedBoundary, base44Boundary);
 assert.equal(sharedCatalog, base44Catalog);
 assert.equal(PATIENT_EMERGENCY_GUIDANCE_VERSION, 'patient-emergency-guidance-v1.2');
 assert.equal(
@@ -83,6 +89,28 @@ const penetratingPreflight = buildPatientConversationEmergencyInterpretation({
 });
 assert.equal(penetratingPreflight.interpretation.assistant_message, penetratingMessage);
 assert.equal(penetratingPreflight.diagnostics.model_invoked, false);
+
+const canonicalChemical = applyPatientConversationCanonicalBoundary(
+  chemicalPreflight.interpretation,
+);
+assert.equal(canonicalChemical.interpretation.assistant_message, chemicalMessage);
+assert.equal(canonicalChemical.diagnostics.emergency_message_approved, true);
+
+const canonicalPenetrating = applyPatientConversationCanonicalBoundary(
+  penetratingPreflight.interpretation,
+);
+assert.equal(canonicalPenetrating.interpretation.assistant_message, penetratingMessage);
+assert.equal(canonicalPenetrating.diagnostics.emergency_message_approved, true);
+
+const rejectedModifiedEmergency = applyPatientConversationCanonicalBoundary({
+  ...chemicalPreflight.interpretation,
+  assistant_message: `${chemicalMessage} Foloseste si picaturi recomandate de model.`,
+});
+assert.equal(
+  rejectedModifiedEmergency.interpretation.assistant_message,
+  PATIENT_EMERGENCY_GUIDANCE_MESSAGE,
+);
+assert.equal(rejectedModifiedEmergency.diagnostics.emergency_message_approved, false);
 
 function result(assistantMessage, urgency = 'confirmed') {
   return {
@@ -162,4 +190,4 @@ assert(interruptionSource.includes('Clarifica mai intai situatia'));
 assert(!interruptionSource.includes('href="tel:112"'));
 assert(!interruptionSource.includes('PhoneCall'));
 
-console.log('Patient emergency guidance policy verified: injury-specific first aid, public hospital first, conditional 112 fallback.');
+console.log('Patient emergency guidance policy verified: approved injury-specific first aid survives the canonical boundary and untrusted variants fail closed.');
