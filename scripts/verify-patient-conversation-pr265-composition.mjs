@@ -40,6 +40,13 @@ scenario('PR265 planner copies remain byte-identical', () => {
     source('shared/patientGuidanceQuestionCatalog.js'),
     source('base44/shared/patientGuidanceQuestionCatalog.js'),
   );
+  assert.equal(
+    source('shared/patientGuidancePlannerCore.js'),
+    source('base44/shared/patientGuidancePlannerCore.js'),
+  );
+  const plannerWrapper = source('shared/patientGuidancePlanner.js');
+  assert.match(plannerWrapper, /assessPatientEyeSafety/);
+  assert.match(plannerWrapper, /if \(safety\.advisory\) return "advisory"/);
 });
 
 scenario('canonical safety policy copies remain byte-identical', () => {
@@ -127,6 +134,15 @@ scenario('generic monocular wording is advisory, not automatically blocking', ()
   assert.ok(safety.advisory_flags.includes('sudden_vision_loss'));
 });
 
+scenario('composed planner preserves advisory safety for guided questioning', () => {
+  const profile = buildPatientGuidancePlannerProfile({
+    text: 'Nu mai vad cu un ochi',
+  }, { status: 'not_requested' });
+  assert.equal(profile.safety_state, 'advisory');
+  assert.equal(profile.next_question_key, 'safety_targeted_check');
+  assert.equal(profile.sufficient_for_search, false);
+});
+
 scenario('explicit sudden monocular loss remains blocking', () => {
   const safety = buildPatientSafetyAssessment({ text: 'Nu mai vad brusc cu un ochi' });
   assert.equal(safety.blocking, true);
@@ -172,5 +188,5 @@ scenario('matching, ranking and Top 3 are absent from both authority seams', () 
   }
 });
 
-assert.ok(scenarios >= 14);
+assert.ok(scenarios >= 15);
 console.log(`PR #265 + PR #266 conversational composition checks passed: ${scenarios} scenarios.`);
