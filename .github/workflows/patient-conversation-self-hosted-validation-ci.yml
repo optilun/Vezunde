@@ -36,8 +36,9 @@ jobs:
         continue-on-error: true
         run: |
           cd /d C:\actions-runner\_work\Vezunde\Vezunde
-          call C:\actions-runner\_work\_tool\node\20.20.2\x64\npm.cmd run test:services > service-diagnostic.log 2>&1
-          C:\actions-runner\_work\_tool\node\20.20.2\x64\node.exe -e "const fs=require('fs');const rows=fs.readFileSync('service-diagnostic.log','utf8').split(/\r?\n/);console.log(rows.slice(-35).join('\n'))"
+          set PATH=C:\actions-runner\_work\_tool\node\20.20.2\x64;%PATH%
+          call npm.cmd run test:services > service-diagnostic.log 2>&1
+          node.exe -e "const fs=require('fs');const rows=fs.readFileSync('service-diagnostic.log','utf8').split(/\r?\n/);console.log(rows.slice(-35).join('\n'))"
           exit /b 0
       - name: Checkout
         uses: actions/checkout@v4
