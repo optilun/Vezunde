@@ -157,9 +157,10 @@ function handoffSafetyState(envelope) {
 
 function safetyFlags(envelope, state) {
   if (state === "clear") return [];
+  const decisionDiagnostics = envelope?.diagnostics?.decision_policy;
   const source = state === "blocking"
-    ? envelope?.diagnostics?.decision_policy?.deterministic_safety_flags
-    : envelope?.diagnostics?.advisory_safety_flags;
+    ? decisionDiagnostics?.deterministic_safety_flags
+    : decisionDiagnostics?.deterministic_safety_advisory_flags;
   return unique(source, 6, 80).filter((flag) => SAFETY_FLAG_SET.has(flag));
 }
 
