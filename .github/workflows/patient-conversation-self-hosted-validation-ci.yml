@@ -62,6 +62,21 @@ jobs:
       - name: Typecheck service scope
         shell: cmd
         run: npm run typecheck:services
+      - name: Typecheck full repository
+        shell: cmd
+        run: |
+          call npm run typecheck -- --pretty false > typecheck-full.log 2>&1
+          set TYPECHECK_EXIT=%ERRORLEVEL%
+          if not "%TYPECHECK_EXIT%"=="0" node -e "const fs=require('fs');const rows=fs.readFileSync('typecheck-full.log','utf8').split(/\r?\n/);console.log(rows.slice(-80).join('\n'))"
+          exit /b %TYPECHECK_EXIT%
+      - name: Upload full typecheck failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: patient-conversation-full-typecheck-log
+          path: typecheck-full.log
+          if-no-files-found: ignore
+          retention-days: 3
       - name: Build application
         shell: cmd
         run: npm run build
