@@ -1,10 +1,14 @@
 export * from "./patientGuidancePlannerCore.js";
+export * from "./patientGuidanceQuestionSelection.js";
 
 import {
   buildPatientGuidancePlannerProfile as buildPatientGuidancePlannerProfileCore,
   runPatientGuidancePlannerShadow as runPatientGuidancePlannerShadowCore,
   runPatientGuidanceRuntimeShadow as runPatientGuidanceRuntimeShadowCore,
 } from "./patientGuidancePlannerCore.js";
+import {
+  buildPatientGuidanceQuestionSelection,
+} from "./patientGuidanceQuestionSelection.js";
 import { assessPatientEyeSafety } from "./patientEyeSafetyPolicy.js";
 
 const COMPOSED_SAFETY_STATES = new Set(["unchecked", "clear", "advisory", "blocking"]);
@@ -34,6 +38,17 @@ function withComposedDeterministicSafety(input = {}) {
   };
 }
 
+function selectionProfileFromObservation(observation = {}) {
+  if (observation?.patient_guidance_shadow_profile) {
+    return observation.patient_guidance_shadow_profile;
+  }
+  return {
+    status: observation?.summary?.status || "unavailable",
+    ai_status: observation?.summary?.ai_status || "unavailable",
+    fallback_reason: observation?.summary?.fallback_reason || null,
+  };
+}
+
 export function buildPatientGuidancePlannerProfile(input = {}, aiEnvelope = {}) {
   return buildPatientGuidancePlannerProfileCore(
     withComposedDeterministicSafety(input),
@@ -49,7 +64,7 @@ export async function runPatientGuidancePlannerShadow(input = {}, options = {}) 
 }
 
 export function runPatientGuidanceRuntimeShadow(context = {}, options = {}) {
-  return runPatientGuidanceRuntimeShadowCore({
+  const observation = runPatientGuidanceRuntimeShadowCore({
     ...context,
     deterministicSafetyState: composedDeterministicSafetyState({
       text: context.text,
@@ -57,4 +72,17 @@ export function runPatientGuidanceRuntimeShadow(context = {}, options = {}) {
       deterministicSafetyState: context.deterministicSafetyState,
     }),
   }, options);
+
+  return {
+    ...observation,
+    question_selection: buildPatientGuidanceQuestionSelection(
+      selectionProfileFromObservation(observation),
+      {
+        askedQuestionKeys: context.questionHistory,
+        answeredQuestionKeys: (Array.isArray(context.guidedAnswers)
+          ? context.guidedAnswers
+          : []).map((answer) => answer?.question_key),
+      },
+    ),
+  };
 }
