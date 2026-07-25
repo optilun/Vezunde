@@ -5,11 +5,13 @@ import {
   advisorySafetyFlagsFromText,
   buildPatientSafetyAssessment,
   deterministicSafetyFlagsFromText,
+  guidedSafetyClearRequestedFromAnswers,
   guidedSafetyFlagsFromAnswers,
 } from '../src/lib/patientSafety.js';
 import {
   PATIENT_SAFETY_ASSESSMENT_VERSION as BASE44_PATIENT_SAFETY_ASSESSMENT_VERSION,
   buildPatientSafetyAssessment as buildBase44PatientSafetyAssessment,
+  guidedSafetyClearRequestedFromAnswers as guidedBase44SafetyClearRequestedFromAnswers,
   guidedSafetyFlagsFromAnswers as guidedBase44SafetyFlagsFromAnswers,
 } from '../base44/shared/patientSafety.js';
 import {
@@ -24,7 +26,11 @@ assert.deepEqual(guidedSafetyFlagsFromAnswers([{ question_key: 'safety_screening
 assert.deepEqual(guidedSafetyFlagsFromAnswers([{ question_key: 'safety_targeted_check', answer_value: 'substanta_chimica' }]), ['chemical_injury']);
 assert.deepEqual(guidedSafetyFlagsFromAnswers([{ question_key: 'safety_screening', answer_value: 'niciuna' }]), []);
 assert.deepEqual(guidedSafetyFlagsFromAnswers([{ question_key: 'safety_targeted_check', answer_value: 'niciuna' }]), []);
+assert.equal(guidedSafetyClearRequestedFromAnswers([{ question_key: 'safety_screening', answer_value: 'niciuna' }]), true);
+assert.equal(guidedSafetyClearRequestedFromAnswers([{ question_key: 'safety_targeted_check', answer_value: 'niciuna' }]), true);
+assert.equal(guidedSafetyClearRequestedFromAnswers([{ question_key: 'safety_targeted_check', answer_value: 'necunoscut' }]), false);
 assert.deepEqual(guidedBase44SafetyFlagsFromAnswers([{ question_key: 'safety_targeted_check', answer_value: 'traumatism_obiect' }]), ['penetrating_or_high_speed_trauma']);
+assert.equal(guidedBase44SafetyClearRequestedFromAnswers([{ question_key: 'safety_targeted_check', answer_value: 'niciuna' }]), true);
 
 assert.ok(deterministicSafetyFlagsFromText('Mi-am pierdut vederea brusc la un ochi').includes('sudden_vision_loss'));
 assert.ok(deterministicSafetyFlagsFromText('Mi-a intrat acid in ochi').includes('chemical_injury'));
@@ -75,6 +81,54 @@ assert.equal(ambiguousTextAssessment.blocking, false);
 assert.equal(ambiguousTextAssessment.advisory, true);
 assert.deepEqual(ambiguousTextAssessment.advisory_flags, ['sudden_vision_loss']);
 assert.equal(ambiguousTextAssessment.source, 'ambiguous_text');
+
+const guidedClearAssessment = buildPatientSafetyAssessment({
+  text: 'Nu vad cu ochiul drept',
+  answers: [{ question_key: 'safety_targeted_check', answer_value: 'niciuna' }],
+});
+assert.equal(guidedClearAssessment.state, 'clear');
+assert.equal(guidedClearAssessment.blocking, false);
+assert.equal(guidedClearAssessment.advisory, false);
+assert.equal(guidedClearAssessment.source, 'guided_clear');
+assert.deepEqual(guidedClearAssessment.advisory_flags, []);
+assert.ok(guidedClearAssessment.cleared_flags.includes('sudden_vision_loss'));
+
+const guidedClearCannotOverrideBlockingText = buildPatientSafetyAssessment({
+  text: 'Nu mai vad deloc cu un ochi deodata',
+  answers: [{ question_key: 'safety_targeted_check', answer_value: 'niciuna' }],
+});
+assert.equal(guidedClearCannotOverrideBlockingText.state, 'blocking');
+assert.equal(guidedClearCannotOverrideBlockingText.blocking, true);
+assert.equal(guidedClearCannotOverrideBlockingText.source, 'explicit_text');
+assert.ok(guidedClearCannotOverrideBlockingText.blocking_flags.includes('sudden_vision_loss'));
+
+const correctedGuidedAnswerAssessment = buildPatientSafetyAssessment({
+  answers: [
+    { question_key: 'safety_screening', answer_value: 'durere_severa' },
+    { question_key: 'safety_targeted_check', answer_value: 'niciuna' },
+  ],
+});
+assert.equal(correctedGuidedAnswerAssessment.state, 'clear');
+assert.equal(correctedGuidedAnswerAssessment.source, 'guided_clear');
+assert.deepEqual(correctedGuidedAnswerAssessment.blocking_flags, []);
+
+const laterBlockingGuidedAnswerAssessment = buildPatientSafetyAssessment({
+  answers: [
+    { question_key: 'safety_screening', answer_value: 'niciuna' },
+    { question_key: 'safety_targeted_check', answer_value: 'durere_severa' },
+  ],
+});
+assert.equal(laterBlockingGuidedAnswerAssessment.state, 'blocking');
+assert.equal(laterBlockingGuidedAnswerAssessment.source, 'guided_answer');
+assert.deepEqual(laterBlockingGuidedAnswerAssessment.blocking_flags, ['severe_eye_pain']);
+
+const base44GuidedClearAssessment = buildBase44PatientSafetyAssessment({
+  text: 'Nu vad cu ochiul drept',
+  answers: [{ question_key: 'safety_targeted_check', answer_value: 'niciuna' }],
+});
+assert.equal(base44GuidedClearAssessment.state, 'clear');
+assert.equal(base44GuidedClearAssessment.source, 'guided_clear');
+assert.deepEqual(base44GuidedClearAssessment.advisory_flags, []);
 
 const stableTextAssessment = buildPatientSafetyAssessment({
   text: 'Vad mai slab cu ochiul drept, dar problema exista de cateva luni si nu este brusca.',
@@ -131,6 +185,7 @@ const base44SafetyPolicy = await readFile(new URL('../base44/shared/patientEyeSa
 assert.equal(sharedSafetyPolicy, base44SafetyPolicy);
 assert.match(base44SafetyAdapter, /assessPatientEyeSafety/);
 assert.match(base44SafetyAdapter, /PATIENT_EYE_SAFETY_POLICY_VERSION/);
+assert.match(base44SafetyAdapter, /guidedSafetyClearRequestedFromAnswers/);
 assert.doesNotMatch(base44SafetyAdapter, /nu mai vad cu un ochi/);
 
 for (const label of [
@@ -169,6 +224,7 @@ assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /apeleaza 112/);
 assert.equal(patientEmergencyGuidanceMentions112(PATIENT_EMERGENCY_GUIDANCE_MESSAGE), true);
 assert.equal(patientEmergencyGuidanceUses112AsPrimaryAction(PATIENT_EMERGENCY_GUIDANCE_MESSAGE), false);
 assert.match(safetyPolicy, /assessPatientEyeSafety/);
+assert.match(safetyPolicy, /guidedSafetyClearRequestedFromAnswers/);
 assert.doesNotMatch(safetyPolicy, /nu mai vad cu un ochi/);
 
 console.log('Patient intake safety checks passed.');
