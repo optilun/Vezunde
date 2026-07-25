@@ -14,6 +14,7 @@ import { assessPatientEyeSafety } from "./patientEyeSafetyPolicy.js";
 
 const COMPOSED_SAFETY_STATES = new Set(["unchecked", "clear", "advisory", "blocking"]);
 const CONTROLLED_CLEAR_SOURCES = new Set(["guided_clear", "explicit_clear"]);
+const SAFETY_TARGETED_QUESTION_KEY = "safety_targeted_check";
 
 function composedDeterministicSafetyState(input = {}) {
   const suppliedState = COMPOSED_SAFETY_STATES.has(input.deterministicSafetyState)
@@ -39,6 +40,32 @@ function withComposedDeterministicSafety(input = {}) {
   };
 }
 
+function hasControlledSafetyAnswer(input = {}) {
+  return (Array.isArray(input.guidedAnswers) ? input.guidedAnswers : []).some((answer) => (
+    answer?.question_key === SAFETY_TARGETED_QUESTION_KEY
+  ));
+}
+
+function prioritizeUnresolvedAdvisorySafety(profile, input = {}) {
+  if (
+    profile?.safety_state !== "advisory"
+    || hasControlledSafetyAnswer(input)
+  ) {
+    return profile;
+  }
+
+  return {
+    ...profile,
+    sufficient_for_search: false,
+    next_question_key: SAFETY_TARGETED_QUESTION_KEY,
+    routing_profile: {
+      ...(profile?.routing_profile || {}),
+      sufficient_for_search: false,
+      next_question_key: SAFETY_TARGETED_QUESTION_KEY,
+    },
+  };
+}
+
 function selectionProfileFromObservation(observation = {}) {
   if (observation?.patient_guidance_shadow_profile) {
     return observation.patient_guidance_shadow_profile;
@@ -51,28 +78,34 @@ function selectionProfileFromObservation(observation = {}) {
 }
 
 export function buildPatientGuidancePlannerProfile(input = {}, aiEnvelope = {}) {
-  return buildPatientGuidancePlannerProfileCore(
-    withComposedDeterministicSafety(input),
-    aiEnvelope,
+  const composedInput = withComposedDeterministicSafety(input);
+  return prioritizeUnresolvedAdvisorySafety(
+    buildPatientGuidancePlannerProfileCore(composedInput, aiEnvelope),
+    composedInput,
   );
 }
 
 export async function runPatientGuidancePlannerShadow(input = {}, options = {}) {
-  return runPatientGuidancePlannerShadowCore(
-    withComposedDeterministicSafety(input),
-    options,
+  const composedInput = withComposedDeterministicSafety(input);
+  return prioritizeUnresolvedAdvisorySafety(
+    await runPatientGuidancePlannerShadowCore(composedInput, options),
+    composedInput,
   );
 }
 
 export function runPatientGuidanceRuntimeShadow(context = {}, options = {}) {
-  const observation = runPatientGuidanceRuntimeShadowCore({
+  const composedContext = {
     ...context,
     deterministicSafetyState: composedDeterministicSafetyState({
       text: context.text,
       guidedAnswers: context.guidedAnswers,
       deterministicSafetyState: context.deterministicSafetyState,
     }),
-  }, options);
+  };
+  const observation = runPatientGuidanceRuntimeShadowCore(composedContext, {
+    ...options,
+    buildProfile: buildPatientGuidancePlannerProfile,
+  });
 
   if (observation?.question_selection) return observation;
 
