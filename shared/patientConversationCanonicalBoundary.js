@@ -10,11 +10,17 @@ import {
   PATIENT_EMERGENCY_DESTINATION_POLICY,
   PATIENT_EMERGENCY_GUIDANCE_MESSAGE,
   PATIENT_EMERGENCY_GUIDANCE_VERSION,
+  buildPatientEmergencyGuidanceMessage,
 } from "./patientEmergencyGuidance.js";
 
 export const PATIENT_CONVERSATION_CANONICAL_BOUNDARY_VERSION = "viasee-patient-conversation-canonical-boundary-v1";
 
 const EMERGENCY_SERVICE_KEY = "emergency_ophthalmology";
+const APPROVED_EMERGENCY_MESSAGES = new Set([
+  PATIENT_EMERGENCY_GUIDANCE_MESSAGE,
+  buildPatientEmergencyGuidanceMessage(["chemical_injury"]),
+  buildPatientEmergencyGuidanceMessage(["penetrating_or_high_speed_trauma"]),
+]);
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -33,6 +39,13 @@ function canonicalServiceKeys(interpretation) {
   const emergency = isEmergencyInterpretation(interpretation);
   if (!emergency || source.includes(EMERGENCY_SERVICE_KEY)) return source;
   return [EMERGENCY_SERVICE_KEY, ...source].slice(0, 12);
+}
+
+function canonicalEmergencyMessage(value) {
+  const candidate = String(value ?? "").trim();
+  return APPROVED_EMERGENCY_MESSAGES.has(candidate)
+    ? candidate
+    : PATIENT_EMERGENCY_GUIDANCE_MESSAGE;
 }
 
 export function applyPatientConversationCanonicalBoundary(interpretation) {
@@ -62,7 +75,7 @@ export function applyPatientConversationCanonicalBoundary(interpretation) {
       ...interpretation,
       service_keys: serviceKeys,
       assistant_message: emergency
-        ? PATIENT_EMERGENCY_GUIDANCE_MESSAGE
+        ? canonicalEmergencyMessage(interpretation.assistant_message)
         : interpretation.assistant_message,
       facts: {
         ...facts,
@@ -94,6 +107,9 @@ export function applyPatientConversationCanonicalBoundary(interpretation) {
         : null,
       emergency_destination_policy: emergency
         ? PATIENT_EMERGENCY_DESTINATION_POLICY
+        : null,
+      emergency_message_approved: emergency
+        ? APPROVED_EMERGENCY_MESSAGES.has(String(interpretation.assistant_message ?? "").trim())
         : null,
       provider_profile_type_count:
         providerCandidates.provider_profile_type_candidates.length,
