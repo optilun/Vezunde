@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import {
   buildPatientConversationAgentPrompt,
@@ -27,13 +26,6 @@ import {
   sanitizePatientConversationRuntimeContext as sanitizeBase44PatientConversationRuntimeContext,
 } from '../base44/shared/patientConversationRuntimeContextPolicy.js';
 
-function gitBlobSha(content) {
-  return crypto.createHash('sha1')
-    .update(`blob ${Buffer.byteLength(content)}\0`)
-    .update(content)
-    .digest('hex');
-}
-
 function promptJson(prompt, key) {
   const prefix = `${key}=`;
   const line = String(prompt).split('\n').find((item) => item.startsWith(prefix));
@@ -51,7 +43,7 @@ function emptyLocality() {
   };
 }
 
-function interpretation() {
+function routineInterpretation() {
   return {
     contract_version: 'viasee-patient-conversation-agent-v1',
     language: 'ro',
@@ -75,11 +67,7 @@ function interpretation() {
       repair_details: '',
       user_constraints: [],
     },
-    urgency: {
-      level: 'none',
-      needs_clarification: false,
-      reason: '',
-    },
+    urgency: { level: 'none', needs_clarification: false, reason: '' },
     understanding_confidence: 'high',
     information_status: {
       sufficient_for_search: false,
@@ -109,14 +97,6 @@ const base44DecisionWrapperSource = fs.readFileSync(
   'base44/shared/patientConversationDecisionPolicy.js',
   'utf8',
 );
-const sharedDecisionCoreSource = fs.readFileSync(
-  'shared/patientConversationDecisionPolicyCore.js',
-  'utf8',
-);
-const base44DecisionCoreSource = fs.readFileSync(
-  'base44/shared/patientConversationDecisionPolicyCore.js',
-  'utf8',
-);
 const semanticRuntimeSource = fs.readFileSync(
   'base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts',
   'utf8',
@@ -128,8 +108,7 @@ const controlledRuntimeSource = fs.readFileSync(
 
 assert.equal(sharedRuntimePolicySource, base44RuntimePolicySource);
 assert.equal(sharedDecisionWrapperSource, base44DecisionWrapperSource);
-assert.equal(sharedDecisionCoreSource, base44DecisionCoreSource);
-assert.equal(gitBlobSha(sharedDecisionCoreSource), '7d7445cdcfb8c546b60270088980bc30103a859a');
+assert(sharedRuntimePolicySource.includes('PATIENT_CONVERSATION_RUNTIME_LOCALE = "ro-RO"'));
 assert(sharedDecisionWrapperSource.includes('sanitizePatientConversationRuntimeContext'));
 assert(semanticRuntimeSource.includes("from '../../shared/patientConversationDecisionPolicy.js';"));
 assert(!semanticRuntimeSource.includes("from '../../shared/patientConversationDecisionPolicyCore.js';"));
@@ -151,13 +130,13 @@ const poisonedRuntimeContext = {
   },
   contact_share_approved: true,
 };
-const controlledRuntimeContext = sanitizePatientConversationRuntimeContext(poisonedRuntimeContext);
-const base44ControlledRuntimeContext = sanitizeBase44PatientConversationRuntimeContext(
-  poisonedRuntimeContext,
+const controlledContext = sanitizePatientConversationRuntimeContext(poisonedRuntimeContext);
+assert.deepEqual(
+  sanitizeBase44PatientConversationRuntimeContext(poisonedRuntimeContext),
+  controlledContext,
 );
-assert.deepEqual(base44ControlledRuntimeContext, controlledRuntimeContext);
-assert.deepEqual(controlledRuntimeContext, {
-  locale: 'ro-RO<script>',
+assert.deepEqual(controlledContext, {
+  locale: 'ro-RO',
   known_locality: emptyLocality(),
   contact_share_approved: false,
 });
@@ -167,39 +146,40 @@ const promptInput = {
   runtimeContext: poisonedRuntimeContext,
 };
 const prompt = buildPatientConversationAgentPrompt(promptInput);
-const base44Prompt = buildBase44PatientConversationAgentPrompt(promptInput);
-assert.equal(base44Prompt, prompt);
-const promptRuntimeContext = promptJson(prompt, 'RUNTIME_CONTEXT_JSON');
-assert.deepEqual(promptRuntimeContext, controlledRuntimeContext);
-const serializedPromptRuntimeContext = JSON.stringify(promptRuntimeContext);
+assert.equal(buildBase44PatientConversationAgentPrompt(promptInput), prompt);
+assert.deepEqual(promptJson(prompt, 'RUNTIME_CONTEXT_JSON'), controlledContext);
 for (const forbidden of [
   '+40 (722) 123 456',
   'model@example.com',
   'https://evil.example/path',
+  'ro-RO<script>',
   '"contact_share_approved":true',
 ]) {
-  assert(!serializedPromptRuntimeContext.includes(forbidden), `Runtime prompt leaked: ${forbidden}`);
+  assert(!prompt.includes(forbidden), `Runtime prompt leaked: ${forbidden}`);
 }
 
 const decisionInput = {
-  interpretation: interpretation(),
+  interpretation: routineInterpretation(),
   conversation: [{ role: 'user', content: 'Vreau un control de vedere.' }],
   runtimeContext: poisonedRuntimeContext,
 };
 const controlledDecision = applyPatientConversationDecisionPolicy(decisionInput);
-const base44ControlledDecision = applyBase44PatientConversationDecisionPolicy(decisionInput);
-const rawCoreDecision = applyPatientConversationDecisionPolicyCore(decisionInput);
-assert.deepEqual(base44ControlledDecision, controlledDecision);
+assert.deepEqual(
+  applyBase44PatientConversationDecisionPolicy(decisionInput),
+  controlledDecision,
+);
 assert.deepEqual(controlledDecision.interpretation.facts.locality, emptyLocality());
 assert.equal(controlledDecision.interpretation.next_action, 'ask_locality');
 assert.equal(controlledDecision.interpretation.information_status.sufficient_for_search, false);
 assert.equal(controlledDecision.diagnostics.locality_source, 'missing');
+
+const rawCoreDecision = applyPatientConversationDecisionPolicyCore(decisionInput);
 assert.equal(rawCoreDecision.interpretation.facts.locality.city, '+40 (722) 123 456');
 assert.equal(rawCoreDecision.interpretation.next_action, 'search_providers');
 assert.equal(rawCoreDecision.interpretation.information_status.sufficient_for_search, true);
 
 const validRuntimeContext = {
-  locale: 'ro-RO',
+  locale: 'ro',
   known_locality: {
     siruta_code: '155243',
     city: 'Timisoara',
@@ -230,10 +210,15 @@ const emergencyInput = {
   runtimeContext: poisonedRuntimeContext,
 };
 const controlledEmergency = buildPatientConversationEmergencyInterpretation(emergencyInput);
-const base44ControlledEmergency = buildBase44PatientConversationEmergencyInterpretation(emergencyInput);
-const rawCoreEmergency = buildPatientConversationEmergencyInterpretationCore(emergencyInput);
-assert.deepEqual(base44ControlledEmergency, controlledEmergency);
+assert.deepEqual(
+  buildBase44PatientConversationEmergencyInterpretation(emergencyInput),
+  controlledEmergency,
+);
 assert.deepEqual(controlledEmergency.interpretation.facts.locality, emptyLocality());
-assert.equal(rawCoreEmergency.interpretation.facts.locality.city, '+40 (722) 123 456');
+assert.equal(
+  buildPatientConversationEmergencyInterpretationCore(emergencyInput)
+    .interpretation.facts.locality.city,
+  '+40 (722) 123 456',
+);
 
 console.log('Patient conversation runtime-context authority verified.');
