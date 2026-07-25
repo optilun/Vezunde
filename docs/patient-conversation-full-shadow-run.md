@@ -35,12 +35,16 @@ The full-suite command:
 
 - selects every fixture exactly once;
 - rejects `--case` to prevent an accidental partial run;
-- requires `--critical-repeat` to be at least 3;
+- requires `--critical-repeat` to be between 3 and 5;
 - expands critical fixtures to at least three attempts;
+- binds the capture file to a SHA-256 fingerprint of the normalized fixture suite;
+- rejects reuse after fixture, path, version, selected-case or repeat-policy changes;
 - preserves already captured attempts;
 - outputs only pending administrator-shadow requests.
 
 The default fixture contract must resolve to exactly 71 unique cases before requests are executed.
+
+Use a new output file whenever the fixture fingerprint or repeat policy changes. Do not remove or edit the fingerprint in an existing capture.
 
 ## 3. Execute pending requests
 
@@ -53,7 +57,13 @@ evaluation_case_id
 evaluation_attempt
 ```
 
-Do not edit model outputs or reuse one response for multiple attempts.
+Every saved response must also preserve an explicit runtime status:
+
+```text
+completed | invalid | unavailable | skipped
+```
+
+Do not edit model outputs, add an outer correlation value that contradicts the envelope, or reuse one response for multiple attempts.
 
 Every captured attempt must retain the server-generated `runtime_metadata.duration_ms`. A response without duration evidence cannot satisfy the validated acceptance gate.
 
@@ -73,11 +83,14 @@ node scripts/prepare-patient-conversation-full-shadow-run.mjs \
 The harness rejects:
 
 - unknown or unselected cases;
-- invalid attempt numbers;
+- missing or contradictory case correlation;
+- invalid, missing or contradictory attempt correlation;
+- missing, pending or unknown response status;
 - duplicate response files for one attempt;
 - overwriting an already captured attempt;
 - attempts beyond the required repeat count;
-- a critical repeat count below 3.
+- a critical repeat count below 3;
+- an existing capture whose fixture fingerprint or run identity no longer matches.
 
 Continue until `pending_attempts` and `requests` are empty.
 
