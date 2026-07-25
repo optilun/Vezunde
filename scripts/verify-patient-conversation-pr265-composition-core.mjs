@@ -47,6 +47,10 @@ scenario('PR265 planner copies remain byte-identical', () => {
   const plannerWrapper = source('shared/patientGuidancePlanner.js');
   assert.match(plannerWrapper, /assessPatientEyeSafety/);
   assert.match(plannerWrapper, /if \(safety\.advisory\) return "advisory"/);
+  assert.ok(
+    plannerWrapper.indexOf('CONTROLLED_CLEAR_SOURCES.has(safety.source)')
+      < plannerWrapper.indexOf('suppliedState === "advisory"'),
+  );
 });
 
 scenario('planner core cannot bypass the composed safety wrapper', () => {
@@ -157,6 +161,27 @@ scenario('composed planner preserves advisory safety for guided questioning', ()
   assert.equal(profile.sufficient_for_search, false);
 });
 
+scenario('controlled clear closes stale advisory but not blocking', () => {
+  const guidedAnswers = [{
+    question_key: 'safety_targeted_check',
+    answer_value: 'niciuna',
+  }];
+  const cleared = buildPatientGuidancePlannerProfile({
+    text: 'Nu mai vad cu un ochi',
+    guidedAnswers,
+    deterministicSafetyState: 'advisory',
+  }, { status: 'not_requested' });
+  assert.equal(cleared.safety_state, 'clear');
+
+  const blocked = buildPatientGuidancePlannerProfile({
+    text: 'Nu mai vad brusc cu un ochi',
+    guidedAnswers,
+    deterministicSafetyState: 'blocking',
+  }, { status: 'not_requested' });
+  assert.equal(blocked.safety_state, 'blocking');
+  assert.equal(blocked.care_path, 'emergency_interruption');
+});
+
 scenario('explicit sudden monocular loss remains blocking', () => {
   const safety = buildPatientSafetyAssessment({ text: 'Nu mai vad brusc cu un ochi' });
   assert.equal(safety.blocking, true);
@@ -202,5 +227,5 @@ scenario('matching, ranking and Top 3 are absent from both authority seams', () 
   }
 });
 
-assert.ok(scenarios >= 16);
+assert.ok(scenarios >= 17);
 console.log(`PR #265 + PR #266 conversational composition checks passed: ${scenarios} scenarios.`);
