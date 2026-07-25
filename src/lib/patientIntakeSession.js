@@ -82,6 +82,13 @@ function safeState(state = {}) {
       .map((value) => clean(value, 120))
       .filter(Boolean))]
       .slice(0, 60),
+    explicitServiceKeys: [...new Set((Array.isArray(state.explicitServiceKeys)
+      ? state.explicitServiceKeys
+      : []).map((value) => clean(value, 120)).filter(Boolean))].slice(0, 30),
+    questionHistory: [...new Set([
+      ...(Array.isArray(state.questionHistory) ? state.questionHistory : []),
+      ...(Array.isArray(state.answers) ? state.answers.map((answer) => answer?.question_key) : []),
+    ].map((value) => clean(value, 80)).filter(Boolean))].slice(0, 30),
     city: clean(state.city, 120),
     scope: clean(state.scope, 40),
     locality: safeLocality(state.locality),

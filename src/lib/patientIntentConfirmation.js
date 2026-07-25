@@ -22,7 +22,6 @@ export function buildIntentConfirmationProposal(response = {}, {
       service_keys: [],
       confidence_band: "low",
       agreement_status: "not_comparable",
-      clarification_question: "",
       possible_safety_flags: [],
       version: null,
     };
@@ -45,9 +44,6 @@ export function buildIntentConfirmationProposal(response = {}, {
     service_keys: cleanList(interpretation.service_keys),
     confidence_band: confidenceBand,
     agreement_status: interpretation.agreement_status || "not_comparable",
-    clarification_question: clarificationRequired
-      ? String(interpretation.clarification_question || "").trim()
-      : "",
     possible_safety_flags: cleanList(interpretation.possible_safety_flags),
     version: interpretation.version || null,
   };

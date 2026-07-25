@@ -60,9 +60,12 @@ function interpretationRequest(payload = {}) {
     limit: payload.semantic_limit || 15,
     minScore: payload.semantic_min_score || 0.34,
   });
-  const explicitKeys = Array.isArray(payload.service_keys) ? payload.service_keys.filter(Boolean) : [];
+  const requestedKeys = Array.isArray(payload.service_keys) ? payload.service_keys.filter(Boolean) : [];
+  const explicitKeys = Array.isArray(payload.explicit_confirmed_service_keys)
+    ? payload.explicit_confirmed_service_keys.filter(Boolean)
+    : requestedKeys;
   const detectedServiceKeys = localResolution.service_keys;
-  const deterministicServiceKeys = [...new Set([...explicitKeys, ...detectedServiceKeys])];
+  const deterministicServiceKeys = [...new Set([...requestedKeys, ...detectedServiceKeys])];
 
   return {
     searchText,
@@ -75,6 +78,39 @@ function interpretationRequest(payload = {}) {
       service_keys: deterministicServiceKeys,
       answers: Array.isArray(payload.answers) ? payload.answers : [],
       explicit_primary_intent: payload.explicit_primary_intent || "",
+      explicit_confirmed_service_keys: explicitKeys,
+      deterministic_service_keys: detectedServiceKeys,
+      deterministic_facts: payload.deterministic_facts || {},
+      deterministic_safety_state: payload.deterministic_safety_state || "unchecked",
+      locality_siruta_code: payload.locality_siruta_code || "",
+      locality_name: payload.locality_name || payload.locality_city || "",
+      county_code: payload.county_code || "",
+      county_name: payload.county_name || "",
+    },
+  };
+}
+
+function questionSelectionRequest(payload = {}) {
+  const searchText = searchTextFromPayload(payload);
+  const localResolution = resolveServiceSearchQuery(searchText, {
+    limit: payload.semantic_limit || 15,
+    minScore: payload.semantic_min_score || 0.34,
+  });
+  const requestedKeys = Array.isArray(payload.service_keys) ? payload.service_keys.filter(Boolean) : [];
+  const explicitKeys = Array.isArray(payload.explicit_confirmed_service_keys)
+    ? payload.explicit_confirmed_service_keys.filter(Boolean)
+    : requestedKeys;
+  const detectedServiceKeys = localResolution.service_keys;
+
+  return {
+    body: {
+      mode: "question_only",
+      search_text: searchText,
+      deterministic_intent: payload.deterministic_intent || payload.intent || "unknown",
+      service_keys: [...new Set([...requestedKeys, ...detectedServiceKeys])],
+      answers: Array.isArray(payload.answers) ? payload.answers : [],
+      question_history: Array.isArray(payload.question_history) ? payload.question_history : [],
+      explicit_primary_intent: payload.explicit_primary_intent || payload.intent || "",
       explicit_confirmed_service_keys: explicitKeys,
       deterministic_service_keys: detectedServiceKeys,
       deterministic_facts: payload.deterministic_facts || {},
@@ -185,6 +221,45 @@ export async function interpretPatientNeedForConfirmation(payload = {}, options 
     return {
       status: "unavailable",
       reason: timedOut ? "ai_interpretation_timeout" : "ai_interpretation_unavailable",
+    };
+  }
+}
+
+/**
+ * Selects only the next approved wizard question. Matching and ranking never use this response.
+ * @param {any} payload
+ * @param {{ timeoutMs?: number, requestId?: any }} options
+ */
+export async function selectPatientGuidanceNextQuestion(payload = {}, options = {}) {
+  const request = questionSelectionRequest(payload);
+
+  try {
+    const response = await invokePatientFunction("matchProvidersSemantic", request.body, {
+      timeoutMs: options.timeoutMs || PATIENT_INTERPRETATION_TIMEOUT_MS,
+      operation: "patient_guidance_question_selection",
+      requestId: options.requestId || null,
+    });
+    const data = response?.data || {};
+    const selection = data.patient_guidance_question_selection;
+    if (
+      data.status === "completed"
+      && selection
+      && ["selected", "complete", "safety_blocked"].includes(selection.status)
+    ) {
+      return data;
+    }
+    return {
+      status: "unavailable",
+      reason: data.reason || selection?.fallback_reason || "planner_unavailable",
+      patient_guidance_question_selection: selection || null,
+    };
+  } catch (error) {
+    return {
+      status: "unavailable",
+      reason: isPatientOperationTimeout(error)
+        ? "planner_timeout"
+        : "planner_unavailable",
+      patient_guidance_question_selection: null,
     };
   }
 }
