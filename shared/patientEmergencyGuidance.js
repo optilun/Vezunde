@@ -1,7 +1,11 @@
-export const PATIENT_EMERGENCY_GUIDANCE_VERSION = "patient-emergency-guidance-v1.1";
+export const PATIENT_EMERGENCY_GUIDANCE_VERSION = "patient-emergency-guidance-v1.2";
 export const PATIENT_EMERGENCY_DESTINATION_POLICY = "public_ophthalmology_primary_with_112_transport_fallback";
 
 export const PATIENT_EMERGENCY_GUIDANCE_COPY = Object.freeze({
+  chemical_irrigation_instruction:
+    "Daca a ajuns o substanta chimica in ochi, clateste imediat si continuu cu multa apa curata cel putin 20 de minute. Nu astepta sa ajungi la spital pentru a incepe clatirea si nu incerca sa neutralizezi substanta cu alt produs.",
+  penetrating_injury_instruction:
+    "Daca un obiect a patruns sau a ramas infipt in ochi, nu incerca sa il scoti, nu freca si nu apasa pe ochi.",
   primary_instruction:
     "Mergi imediat la cel mai apropiat spital public care confirma ca preia urgente oftalmologice, are camera de garda oftalmologica sau sectie de oftalmologie cu linie de garda si chirurgie.",
   fallback_instruction:
@@ -18,6 +22,19 @@ export const PATIENT_EMERGENCY_GUIDANCE_MESSAGE = [
   PATIENT_EMERGENCY_GUIDANCE_COPY.transport_instruction,
   PATIENT_EMERGENCY_GUIDANCE_COPY.emergency_call_instruction,
 ].join(" ");
+
+export function buildPatientEmergencyGuidanceMessage(flags = []) {
+  const controlledFlags = new Set(Array.isArray(flags) ? flags : []);
+  const instructions = [];
+  const penetrating = controlledFlags.has("penetrating_or_high_speed_trauma");
+  if (penetrating) {
+    instructions.push(PATIENT_EMERGENCY_GUIDANCE_COPY.penetrating_injury_instruction);
+  } else if (controlledFlags.has("chemical_injury")) {
+    instructions.push(PATIENT_EMERGENCY_GUIDANCE_COPY.chemical_irrigation_instruction);
+  }
+  instructions.push(PATIENT_EMERGENCY_GUIDANCE_MESSAGE);
+  return instructions.join(" ");
+}
 
 export function patientEmergencyGuidanceMentions112(value) {
   return /\b112\b/.test(String(value ?? ""));
