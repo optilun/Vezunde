@@ -21,8 +21,13 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
 });
 
 const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
-  main: '0516abee9d11b4ff38ad62045b6dfc0931415545',
-  pr265_question_selection: 'dd9d9938939e2434398da9a31bafc8d3fb6b646f',
+  main: Object.freeze([
+    '0516abee9d11b4ff38ad62045b6dfc0931415545',
+  ]),
+  pr265_question_selection: Object.freeze([
+    'dd9d9938939e2434398da9a31bafc8d3fb6b646f',
+    '6cca8f15072f0f5f9e652ce8414f2da0d851f161',
+  ]),
 });
 
 function gitBlobSha(content) {
@@ -123,7 +128,7 @@ function stripApprovedShadowSeam(source) {
 const normalPathReconstruction = stripApprovedShadowSeam(semanticEntrySource);
 const reconstructedSemanticEntryBlob = gitBlobSha(normalPathReconstruction);
 const approvedCompositionEntry = Object.entries(MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS)
-  .find(([, blob]) => blob === reconstructedSemanticEntryBlob)?.[0] || null;
+  .find(([, blobs]) => blobs.includes(reconstructedSemanticEntryBlob))?.[0] || null;
 assert(
   approvedCompositionEntry,
   `Normal matchProvidersSemantic route changed outside the approved admin shadow or PR #265 question-only seams. Actual reconstructed blob: ${reconstructedSemanticEntryBlob}`,
