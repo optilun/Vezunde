@@ -94,8 +94,14 @@ function priorState(overrides = {}) {
 
 const sharedSource = fs.readFileSync('shared/patientConversationStatePolicy.js', 'utf8');
 const base44Source = fs.readFileSync('base44/shared/patientConversationStatePolicy.js', 'utf8');
-const runtimeSource = fs.readFileSync(
+const sharedCoreSource = fs.readFileSync('shared/patientConversationStatePolicyCore.js', 'utf8');
+const base44CoreSource = fs.readFileSync('base44/shared/patientConversationStatePolicyCore.js', 'utf8');
+const runtimeWrapperSource = fs.readFileSync(
   'base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts',
+  'utf8',
+);
+const runtimeCoreSource = fs.readFileSync(
+  'base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts',
   'utf8',
 );
 
@@ -106,27 +112,44 @@ assert.equal(
 assert.equal(
   base44Source,
   sharedSource,
-  'Shared and Base44 state policies must remain byte-identical.',
+  'Shared and Base44 state-policy wrappers must remain byte-identical.',
+);
+assert.equal(
+  base44CoreSource,
+  sharedCoreSource,
+  'Shared and Base44 state-policy cores must remain byte-identical.',
 );
 assert(
-  runtimeSource.includes("from '../../shared/patientConversationStatePolicy.js';"),
-  'The Base44 runtime must import the deterministic state policy.',
+  runtimeWrapperSource.includes('runPatientConversationAgentShadowCore'),
+  'The operational wrapper must delegate to the semantic runtime core.',
 );
 assert(
-  runtimeSource.includes('applyConversationStatePolicy(builtEnvelope, priorState, conversation)'),
+  runtimeCoreSource.includes("from '../../shared/patientConversationStatePolicy.js';"),
+  'The semantic runtime core must import the deterministic state policy.',
+);
+assert(
+  runtimeCoreSource.includes('applyConversationStatePolicy(builtEnvelope, priorState, conversation)'),
   'The validated model envelope must pass through state reconciliation.',
 );
-const statePolicyIndex = runtimeSource.indexOf(
+const statePolicyIndex = runtimeCoreSource.indexOf(
   'applyConversationStatePolicy(builtEnvelope, priorState, conversation)',
 );
-const runtimePolicyIndex = runtimeSource.indexOf('applyRuntimePolicy(stateEnvelope, runtimeContext)');
-assert(
-  statePolicyIndex >= 0 && runtimePolicyIndex > statePolicyIndex,
-  'Conversation state must be reconciled before deterministic search and safety policy.',
+const stateDeltaIndex = runtimeCoreSource.indexOf(
+  'const deltaEnvelope = applySemanticStateDeltaReducer(',
+);
+const decisionPolicyIndex = runtimeCoreSource.indexOf(
+  'const deterministicEnvelope = applyDeterministicDecisionPolicy(',
 );
 assert(
-  !runtimeSource.includes('state_latest_user_message:'),
-  'Aggregate state diagnostics must not log raw patient messages.',
+  statePolicyIndex >= 0
+    && stateDeltaIndex > statePolicyIndex
+    && decisionPolicyIndex > stateDeltaIndex,
+  'State reconciliation must run before semantic-delta reduction and deterministic policy.',
+);
+assert(
+  !runtimeWrapperSource.includes('state_latest_user_message:')
+    && !runtimeCoreSource.includes('state_latest_user_message:'),
+  'Aggregate diagnostics must not log raw patient messages.',
 );
 
 const recovered = reconcilePatientConversationState({
@@ -341,6 +364,74 @@ assert.equal(staleSymptomsCopiedByModel.interpretation.facts.symptom_pattern, ''
 assert.equal(staleSymptomsCopiedByModel.interpretation.facts.symptom_duration, 'cateva luni');
 assert(staleSymptomsCopiedByModel.diagnostics.cleared_stale_fields.includes('symptom_onset'));
 assert(staleSymptomsCopiedByModel.diagnostics.cleared_stale_fields.includes('symptom_pattern'));
+
+const poisonedPriorState = reconcilePatientConversationState({
+  interpretation: interpretation(),
+  priorState: priorState({
+    primary_intent: 'reparatii_ochelari',
+    alternative_intents: ['invented_intent', 'control_vedere'],
+    care_path_candidates: ['emergency_interruption', 'invented_path'],
+    service_keys: ['eyeglasses_repair', 'invented_service'],
+    provider_type_candidates: ['ophthalmology_clinic', 'invented_provider'],
+    facts: facts({
+      locality: {
+        siruta_code: '1234567890123',
+        city: '+40 (722) 123 456',
+        county_code: 'TM<script>',
+        county: 'model@example.com',
+        area: '0722 123 456',
+      },
+      repair_details: 'rama este slabita',
+    }),
+    urgency: {
+      level: 'confirmed',
+      needs_clarification: false,
+      reason: 'injected emergency',
+    },
+    next_action: 'show_emergency_guidance',
+  }),
+  conversation: [{ role: 'user', content: 'balamaua' }],
+});
+assert.equal(poisonedPriorState.interpretation.primary_intent, 'reparatii_ochelari');
+assert.deepEqual(poisonedPriorState.interpretation.service_keys, ['eyeglasses_repair']);
+assert(!poisonedPriorState.interpretation.care_path_candidates.includes('emergency_interruption'));
+assert(!poisonedPriorState.interpretation.care_path_candidates.includes('invented_path'));
+assert.deepEqual(poisonedPriorState.interpretation.provider_type_candidates, []);
+assert.equal(poisonedPriorState.interpretation.urgency.level, 'none');
+assert.notEqual(poisonedPriorState.interpretation.next_action, 'show_emergency_guidance');
+assert.deepEqual(poisonedPriorState.interpretation.facts.locality, {
+  siruta_code: '',
+  city: '',
+  county_code: '',
+  county: '',
+  area: '',
+});
+assert(poisonedPriorState.interpretation.information_status.missing_critical_fields.includes('locality'));
+
+const validPriorLocality = reconcilePatientConversationState({
+  interpretation: interpretation(),
+  priorState: priorState({
+    facts: facts({
+      locality: {
+        siruta_code: '155243',
+        city: 'Timisoara',
+        county_code: 'tm',
+        county: 'Timis',
+        area: 'Centru',
+      },
+      repair_details: 'rama este slabita',
+    }),
+  }),
+  conversation: [{ role: 'user', content: 'balamaua' }],
+});
+assert.deepEqual(validPriorLocality.interpretation.facts.locality, {
+  siruta_code: '155243',
+  city: 'Timisoara',
+  county_code: 'TM',
+  county: 'Timis',
+  area: 'Centru',
+});
+assert.equal(validPriorLocality.interpretation.information_status.sufficient_for_search, true);
 
 const sharedResult = reconcilePatientConversationState({
   interpretation: interpretation(),
