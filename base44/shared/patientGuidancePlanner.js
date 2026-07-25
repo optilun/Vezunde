@@ -22,8 +22,8 @@ function composedDeterministicSafetyState(input = {}) {
   });
   if (safety.blocking) return "blocking";
   if (safety.advisory) return "advisory";
-  if (suppliedState === "advisory") return "advisory";
   if (CONTROLLED_CLEAR_SOURCES.has(safety.source)) return "clear";
+  if (suppliedState === "advisory") return "advisory";
   return suppliedState;
 }
 
