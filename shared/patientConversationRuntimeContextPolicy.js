@@ -9,14 +9,15 @@ function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function clean(value, maxLength = 120) {
-  return String(value ?? "").trim().slice(0, maxLength);
+function controlledLocale(value) {
+  const locale = String(value ?? "").trim().toLocaleLowerCase("ro-RO");
+  return locale === "ro" || locale === "ro-ro" ? "ro-RO" : "ro-RO";
 }
 
 export function sanitizePatientConversationRuntimeContext(value) {
   const context = isPlainObject(value) ? value : {};
   return {
-    locale: clean(context.locale, 20) || "ro-RO",
+    locale: controlledLocale(context.locale),
     known_locality: sanitizePatientConversationLocality(context.known_locality),
     contact_share_approved: false,
   };
