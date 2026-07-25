@@ -31,6 +31,7 @@ const PATIENT_FACING_SERVICE_SET = new Set(
   }),
 );
 const REDACTION_MARKER_PATTERN = /\[(?:email|telefon|identificator) eliminat\]/i;
+const LOCALITY_TEXT_PATTERN = /^[\p{L}\p{M}\d .,'’()\/-]+$/u;
 const COUNTY_CODE_SET = new Set([
   "AB", "AG", "AR", "B", "BC", "BH", "BN", "BR", "BT", "BV", "BZ",
   "CJ", "CL", "CS", "CT", "CV", "DB", "DJ", "GJ", "GL", "GR", "HD",
@@ -73,8 +74,12 @@ function canonicalPatientServiceKeys(values) {
 }
 
 function controlledLocalityText(value, maxLength) {
-  const redacted = redactPatientConversationText(value, maxLength);
-  return REDACTION_MARKER_PATTERN.test(redacted) ? "" : redacted;
+  const redacted = redactPatientConversationText(value, maxLength)
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  if (!redacted || REDACTION_MARKER_PATTERN.test(redacted)) return "";
+  if (!LOCALITY_TEXT_PATTERN.test(redacted) || !/[\p{L}\p{M}]/u.test(redacted)) return "";
+  return redacted;
 }
 
 function controlledSirutaCode(value) {
