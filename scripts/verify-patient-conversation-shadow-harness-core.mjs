@@ -53,6 +53,7 @@ try {
         category: 'routine_control',
         conversation: [{ role: 'user', content: 'Am nevoie de un control.' }],
         runtime_context: { known_locality: { city: 'Timisoara' } },
+        expected: {},
       },
       {
         id: 'critical-001',
