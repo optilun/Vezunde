@@ -174,14 +174,22 @@ function userTurnTexts(conversation, fallbackText = "") {
 }
 
 function latestGuidedSafetyAnswer(answers) {
-  const source = Array.isArray(answers) ? answers : [];
+  const source = Array.isArray(answers) ? answers.slice(-30) : [];
   for (let index = source.length - 1; index >= 0; index -= 1) {
     const answer = source[index];
     if (!GUIDED_SAFETY_QUESTION_KEYS.has(answer?.question_key)) continue;
-    const answerValue = String(answer?.answer_value ?? "").trim();
+    const answerValue = String(answer?.answer_value ?? "").trim().slice(0, 80);
     if (GUIDED_SAFETY_ANSWER_VALUES.has(answerValue)) return answerValue;
   }
   return "";
+}
+
+export function sanitizeGuidedSafetyAnswers(answers) {
+  const answerValue = latestGuidedSafetyAnswer(answers);
+  return answerValue ? [{
+    question_key: "safety_targeted_check",
+    answer_value: answerValue,
+  }] : [];
 }
 
 export function guidedSafetyFlagsFromAnswers(answers) {
