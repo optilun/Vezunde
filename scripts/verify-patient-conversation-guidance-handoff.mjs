@@ -27,6 +27,8 @@ const handoffDoc = fs.readFileSync(
 );
 
 assert.equal(sharedSource, base44Source);
+assert.match(sharedSource, /deterministic_safety_advisory_flags/);
+assert.doesNotMatch(sharedSource, /envelope\?\.diagnostics\?\.advisory_safety_flags/);
 assert.equal(
   PATIENT_CONVERSATION_GUIDANCE_HANDOFF_VERSION,
   'viasee-patient-conversation-guidance-handoff-v1',
@@ -94,9 +96,10 @@ const routineEnvelope = {
   reason: null,
   interpretation: interpretation(),
   diagnostics: {
-    advisory_safety_flags: [],
+    advisory_safety_flags: ['chemical_injury'],
     decision_policy: {
       deterministic_safety_flags: [],
+      deterministic_safety_advisory_flags: [],
     },
   },
 };
@@ -181,9 +184,10 @@ const advisoryEnvelope = {
     evidence_phrases: ['nu vad cu ochiul drept'],
   }),
   diagnostics: {
-    advisory_safety_flags: ['sudden_vision_loss'],
+    advisory_safety_flags: ['chemical_injury'],
     decision_policy: {
       deterministic_safety_flags: [],
+      deterministic_safety_advisory_flags: ['sudden_vision_loss'],
     },
   },
 };
@@ -219,6 +223,7 @@ const clearedStaleAdvisoryEnvelope = {
     advisory_safety_flags: ['sudden_vision_loss'],
     decision_policy: {
       deterministic_safety_flags: [],
+      deterministic_safety_advisory_flags: [],
       decision_source: 'deterministic_search_readiness',
     },
   },
@@ -249,9 +254,10 @@ const blockingEnvelope = {
     next_action: 'show_emergency_guidance',
   }),
   diagnostics: {
-    advisory_safety_flags: [],
+    advisory_safety_flags: ['chemical_injury'],
     decision_policy: {
       deterministic_safety_flags: ['sudden_vision_loss'],
+      deterministic_safety_advisory_flags: [],
     },
   },
 };
