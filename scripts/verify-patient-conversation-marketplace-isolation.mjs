@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 
 await import('./verify-patient-conversation-pr265-composition.mjs');
+await import('./verify-patient-conversation-prior-state-locality.mjs');
 
 const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
   'src/lib/providerSemanticSearch.js': Object.freeze([
