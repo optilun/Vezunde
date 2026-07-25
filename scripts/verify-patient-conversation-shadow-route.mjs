@@ -6,8 +6,16 @@ const wrapperPath = new URL('../base44/functions/matchProvidersSemantic/patientC
 const corePath = new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts', import.meta.url);
 const agentPath = new URL('../base44/shared/patientConversationAgent.js', import.meta.url);
 const sharedAgentPath = new URL('../shared/patientConversationAgent.js', import.meta.url);
+const agentCorePath = new URL('../base44/shared/patientConversationAgentCore.js', import.meta.url);
+const sharedAgentCorePath = new URL('../shared/patientConversationAgentCore.js', import.meta.url);
+const priorStatePath = new URL('../base44/shared/patientConversationPriorStatePolicy.js', import.meta.url);
+const sharedPriorStatePath = new URL('../shared/patientConversationPriorStatePolicy.js', import.meta.url);
+const runtimeContextPath = new URL('../base44/shared/patientConversationRuntimeContextPolicy.js', import.meta.url);
+const sharedRuntimeContextPath = new URL('../shared/patientConversationRuntimeContextPolicy.js', import.meta.url);
 const decisionPath = new URL('../base44/shared/patientConversationDecisionPolicy.js', import.meta.url);
 const sharedDecisionPath = new URL('../shared/patientConversationDecisionPolicy.js', import.meta.url);
+const decisionCorePath = new URL('../base44/shared/patientConversationDecisionPolicyCore.js', import.meta.url);
+const sharedDecisionCorePath = new URL('../shared/patientConversationDecisionPolicyCore.js', import.meta.url);
 const guardrailPath = new URL('../base44/shared/patientConversationGuardrails.js', import.meta.url);
 const sharedGuardrailPath = new URL('../shared/patientConversationGuardrails.js', import.meta.url);
 const operationalPath = new URL('../base44/shared/patientConversationOperationalPolicy.js', import.meta.url);
@@ -18,8 +26,16 @@ const wrapperSource = fs.readFileSync(wrapperPath, 'utf8');
 const coreSource = fs.readFileSync(corePath, 'utf8');
 const agentSource = fs.readFileSync(agentPath, 'utf8');
 const sharedAgentSource = fs.readFileSync(sharedAgentPath, 'utf8');
+const agentCoreSource = fs.readFileSync(agentCorePath, 'utf8');
+const sharedAgentCoreSource = fs.readFileSync(sharedAgentCorePath, 'utf8');
+const priorStateSource = fs.readFileSync(priorStatePath, 'utf8');
+const sharedPriorStateSource = fs.readFileSync(sharedPriorStatePath, 'utf8');
+const runtimeContextSource = fs.readFileSync(runtimeContextPath, 'utf8');
+const sharedRuntimeContextSource = fs.readFileSync(sharedRuntimeContextPath, 'utf8');
 const decisionSource = fs.readFileSync(decisionPath, 'utf8');
 const sharedDecisionSource = fs.readFileSync(sharedDecisionPath, 'utf8');
+const decisionCoreSource = fs.readFileSync(decisionCorePath, 'utf8');
+const sharedDecisionCoreSource = fs.readFileSync(sharedDecisionCorePath, 'utf8');
 const guardrailSource = fs.readFileSync(guardrailPath, 'utf8');
 const sharedGuardrailSource = fs.readFileSync(sharedGuardrailPath, 'utf8');
 const operationalSource = fs.readFileSync(operationalPath, 'utf8');
@@ -27,7 +43,11 @@ const sharedOperationalSource = fs.readFileSync(sharedOperationalPath, 'utf8');
 
 assert.equal(guardrailSource, sharedGuardrailSource);
 assert.equal(agentSource, sharedAgentSource);
+assert.equal(agentCoreSource, sharedAgentCoreSource);
+assert.equal(priorStateSource, sharedPriorStateSource);
+assert.equal(runtimeContextSource, sharedRuntimeContextSource);
 assert.equal(decisionSource, sharedDecisionSource);
+assert.equal(decisionCoreSource, sharedDecisionCoreSource);
 assert.equal(operationalSource, sharedOperationalSource);
 
 assert(entrySource.includes("import { runPatientConversationAgentShadow } from './patientConversationAgentShadow.ts';"));
@@ -141,7 +161,12 @@ assert(coreSource.includes('model: PATIENT_CONVERSATION_MODEL'));
 assert(coreSource.includes('add_context_from_internet: false'));
 assert(coreSource.includes('response_json_schema: responseSchema'));
 assert(coreSource.includes("from '../../shared/patientConversationGuardrails.js';"));
+assert(coreSource.includes("from '../../shared/patientConversationAgent.js';"));
+assert(!coreSource.includes("from '../../shared/patientConversationAgentCore.js';"));
 assert(coreSource.includes("from '../../shared/patientConversationDecisionPolicy.js';"));
+assert(!coreSource.includes("from '../../shared/patientConversationDecisionPolicyCore.js';"));
+assert(coreSource.includes("from '../../shared/patientConversationStateDeltaReducer.js';"));
+assert(!coreSource.includes("from '../../shared/patientConversationStateDeltaReducerCore.js';"));
 assert(coreSource.includes('sanitizePatientConversationTurns('));
 assert(coreSource.includes('sanitizePriorState(payload?.prior_state)'));
 assert(coreSource.includes('need_summary: redactPatientConversationText(value.need_summary, 500)'));
@@ -163,11 +188,16 @@ assert(!promptBuildBlock.includes('evaluation_attempt'));
 assert(!promptBuildBlock.includes('answers'));
 assert(!promptBuildBlock.includes('answer_value'));
 
-assert(agentSource.includes('PATIENT_CONVERSATION_SEMANTIC_CONTRACT_VERSION'));
-assert(agentSource.includes('Extract semantic meaning only'));
-assert(agentSource.includes('Do not choose a care path, provider type'));
-assert(agentSource.includes('possible_safety_flags are advisory'));
-assert(!agentSource.includes('Only confirmed urgency may use show_emergency_guidance'));
+assert(agentSource.includes('sanitizePatientConversationPriorState(source.priorState)'));
+assert(agentSource.includes('sanitizePatientConversationRuntimeContext(source.runtimeContext)'));
+assert(agentCoreSource.includes('PATIENT_CONVERSATION_SEMANTIC_CONTRACT_VERSION'));
+assert(agentCoreSource.includes('Extract semantic meaning only'));
+assert(agentCoreSource.includes('Do not choose a care path, provider type'));
+assert(agentCoreSource.includes('possible_safety_flags are advisory'));
+assert(!agentCoreSource.includes('Only confirmed urgency may use show_emergency_guidance'));
+assert(priorStateSource.includes('sanitizePatientConversationPriorState'));
+assert(runtimeContextSource.includes('sanitizePatientConversationRuntimeContext'));
+assert(decisionSource.includes('sanitizePatientConversationRuntimeContext'));
 
 for (const forbiddenRawModelField of [
   'care_path_candidates',
@@ -178,9 +208,9 @@ for (const forbiddenRawModelField of [
   'assistant_message',
   'specialist_summary',
 ]) {
-  const schemaStart = agentSource.indexOf('export function getPatientConversationAgentResponseSchema()');
-  const promptStart = agentSource.indexOf('export function buildPatientConversationAgentPrompt');
-  const schemaBlock = agentSource.slice(schemaStart, promptStart);
+  const schemaStart = agentCoreSource.indexOf('export function getPatientConversationAgentResponseSchema()');
+  const promptStart = agentCoreSource.indexOf('export function buildPatientConversationAgentPrompt');
+  const schemaBlock = agentCoreSource.slice(schemaStart, promptStart);
   assert(!schemaBlock.includes(`${forbiddenRawModelField}: {`), `${forbiddenRawModelField} leaked into raw model schema`);
 }
 
@@ -193,22 +223,24 @@ const prohibitedIndex = coreSource.indexOf('detectProhibitedPatientConversationO
 const schemaIndex = coreSource.indexOf('validatePatientConversationModelResponse(raw, responseSchema)');
 const envelopeIndex = coreSource.indexOf('const builtEnvelope = buildPatientConversationShadowEnvelope({');
 const stateIndex = coreSource.indexOf('const stateEnvelope = applyConversationStatePolicy(');
+const deltaIndex = coreSource.indexOf('const deltaEnvelope = applySemanticStateDeltaReducer(');
 const decisionIndex = coreSource.indexOf('const deterministicEnvelope = applyDeterministicDecisionPolicy(');
 assert(prohibitedIndex >= 0 && schemaIndex > prohibitedIndex);
-assert(envelopeIndex > schemaIndex && stateIndex > envelopeIndex && decisionIndex > stateIndex);
+assert(envelopeIndex > schemaIndex && stateIndex > envelopeIndex);
+assert(deltaIndex > stateIndex && decisionIndex > deltaIndex);
 
-assert(decisionSource.includes('const providerTypes = derivedProviderProfileTypes(current.service_keys);'));
-assert(decisionSource.includes('current.provider_type_candidates = providerTypes;'));
-assert(decisionSource.includes('let nextAction = "ask_clarifying_question";'));
-assert(decisionSource.includes('current.assistant_message = deterministicAssistantMessage(nextAction);'));
-assert(decisionSource.includes('current.specialist_summary = null;'));
-assert(decisionSource.includes('if (safety.blocking)'));
-assert(decisionSource.includes('urgencyLevel = "confirmed";'));
-assert(decisionSource.includes('urgencyLevel = "possible";'));
+assert(decisionCoreSource.includes('const providerTypes = derivedProviderProfileTypes(current.service_keys);'));
+assert(decisionCoreSource.includes('current.provider_type_candidates = providerTypes;'));
+assert(decisionCoreSource.includes('let nextAction = "ask_clarifying_question";'));
+assert(decisionCoreSource.includes('current.assistant_message = deterministicAssistantMessage(nextAction);'));
+assert(decisionCoreSource.includes('current.specialist_summary = null;'));
+assert(decisionCoreSource.includes('if (safety.blocking)'));
+assert(decisionCoreSource.includes('urgencyLevel = "confirmed";'));
+assert(decisionCoreSource.includes('urgencyLevel = "possible";'));
 
 assert(!coreSource.includes('assignRecommendationBuckets'));
 assert(!coreSource.includes('buildRecommendationScore'));
 assert(!coreSource.includes('ProviderLocation'));
 assert(!coreSource.includes('asServiceRole'));
 
-console.log('Patient conversation operational wrapper, semantic core, and deterministic authority verified.');
+console.log('Patient conversation operational wrapper, semantic core, and controlled deterministic authority verified.');
