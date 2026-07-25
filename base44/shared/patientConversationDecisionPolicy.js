@@ -75,16 +75,17 @@ function deterministicAssistantMessage(nextAction) {
   return "";
 }
 
-export function assessPatientConversationDeterministicSafety(conversation) {
-  return assessPatientEyeSafety({ conversation });
+export function assessPatientConversationDeterministicSafety(conversation, answers = []) {
+  return assessPatientEyeSafety({ conversation, answers });
 }
 
 export function buildPatientConversationEmergencyInterpretation({
   contractVersion,
   conversation,
+  answers,
   runtimeContext,
 } = {}) {
-  const safety = assessPatientConversationDeterministicSafety(conversation);
+  const safety = assessPatientConversationDeterministicSafety(conversation, answers);
   if (!safety.blocking) return null;
 
   const knownLocality = cloneLocality(runtimeContext?.known_locality);
@@ -138,6 +139,7 @@ export function buildPatientConversationEmergencyInterpretation({
       deterministic_safety_flags: safety.blocking_flags,
       deterministic_safety_advisory_flags: safety.advisory_flags,
       deterministic_safety_cleared_flags: safety.cleared_flags,
+      deterministic_safety_guided_clear: safety.source === "guided_clear",
       model_invoked: false,
       model_urgency_advisory: null,
       model_next_action_ignored: null,
@@ -150,6 +152,7 @@ export function buildPatientConversationEmergencyInterpretation({
 export function applyPatientConversationDecisionPolicy({
   interpretation,
   conversation,
+  answers,
   runtimeContext,
   stateDiagnostics,
 } = {}) {
@@ -187,6 +190,7 @@ export function applyPatientConversationDecisionPolicy({
 
   const safety = assessPatientEyeSafety({
     conversation,
+    answers,
     aiFlags: interpretation?.possible_safety_flags,
   });
   const modelUrgency = ["none", "possible", "confirmed"].includes(current.urgency?.level)
@@ -271,6 +275,7 @@ export function applyPatientConversationDecisionPolicy({
       deterministic_safety_flags: safety.blocking_flags,
       deterministic_safety_advisory_flags: safety.advisory_flags,
       deterministic_safety_cleared_flags: safety.cleared_flags,
+      deterministic_safety_guided_clear: safety.source === "guided_clear",
       model_invoked: true,
       model_urgency_advisory: modelUrgency,
       model_urgency_overridden: modelUrgency !== urgencyLevel,
