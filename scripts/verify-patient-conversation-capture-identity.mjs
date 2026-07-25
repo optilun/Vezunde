@@ -99,4 +99,12 @@ const incompleteResult = assessPatientConversationCaptureIdentity({
 });
 assert(incompleteResult.issues.includes('completed_at_invalid'));
 
+const reversedTime = validCapture(suite);
+reversedTime.model_run.completed_at = '2026-07-25T11:59:59.000Z';
+const reversedTimeResult = assessPatientConversationCaptureIdentity({
+  fixtureSuite: suite,
+  capture: reversedTime,
+});
+assert(reversedTimeResult.issues.includes('completed_before_started'));
+
 console.log('Patient conversation capture identity verified.');
