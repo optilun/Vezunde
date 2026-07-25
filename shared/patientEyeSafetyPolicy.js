@@ -24,6 +24,16 @@ const GUIDED_ANSWER_TO_FLAG = Object.freeze({
   postoperator_acut: "postoperative_red_eye_or_vision_change",
 });
 
+const GUIDED_CLEAR_ANSWER = "niciuna";
+const GUIDED_SAFETY_QUESTION_KEYS = new Set([
+  "safety_screening",
+  "safety_targeted_check",
+]);
+const GUIDED_SAFETY_ANSWER_VALUES = new Set([
+  ...Object.keys(GUIDED_ANSWER_TO_FLAG),
+  GUIDED_CLEAR_ANSWER,
+]);
+
 const BLOCKING_PATTERNS = Object.freeze({
   sudden_vision_loss: [
     /\bnu mai vad deloc\b/,
@@ -163,11 +173,25 @@ function userTurnTexts(conversation, fallbackText = "") {
     .filter(Boolean);
 }
 
+function latestGuidedSafetyAnswer(answers) {
+  const source = Array.isArray(answers) ? answers : [];
+  for (let index = source.length - 1; index >= 0; index -= 1) {
+    const answer = source[index];
+    if (!GUIDED_SAFETY_QUESTION_KEYS.has(answer?.question_key)) continue;
+    const answerValue = String(answer?.answer_value ?? "").trim();
+    if (GUIDED_SAFETY_ANSWER_VALUES.has(answerValue)) return answerValue;
+  }
+  return "";
+}
+
 export function guidedSafetyFlagsFromAnswers(answers) {
-  return uniqueFlags((Array.isArray(answers) ? answers : [])
-    .filter((answer) => ["safety_screening", "safety_targeted_check"].includes(answer?.question_key))
-    .map((answer) => GUIDED_ANSWER_TO_FLAG[answer?.answer_value])
-    .filter(Boolean));
+  const answerValue = latestGuidedSafetyAnswer(answers);
+  const flag = GUIDED_ANSWER_TO_FLAG[answerValue];
+  return flag ? [flag] : [];
+}
+
+export function guidedSafetyClearRequestedFromAnswers(answers) {
+  return latestGuidedSafetyAnswer(answers) === GUIDED_CLEAR_ANSWER;
 }
 
 export function deterministicSafetyFlagsFromText(value) {
@@ -212,11 +236,19 @@ export function assessPatientEyeSafety({
   }
 
   const guidedFlags = guidedSafetyFlagsFromAnswers(answers);
+  const guidedClearRequested = guidedSafetyClearRequestedFromAnswers(answers);
   blockingFlags = uniqueFlags([...blockingFlags, ...guidedFlags]);
   const effectiveAiFlags = uniqueFlags(aiFlags)
     .filter((flag) => !clearedFlags.includes(flag));
-  advisoryFlags = uniqueFlags([...advisoryFlags, ...effectiveAiFlags])
+  const unresolvedAdvisoryFlags = uniqueFlags([...advisoryFlags, ...effectiveAiFlags])
     .filter((flag) => !blockingFlags.includes(flag));
+
+  if (guidedClearRequested) {
+    clearedFlags.push(...unresolvedAdvisoryFlags);
+    advisoryFlags = [];
+  } else {
+    advisoryFlags = unresolvedAdvisoryFlags;
+  }
 
   const state = blockingFlags.length > 0
     ? PATIENT_EYE_SAFETY_STATES.blocking
@@ -227,9 +259,11 @@ export function assessPatientEyeSafety({
     ? "guided_answer"
     : (blockingFlags.length > 0
       ? "explicit_text"
-      : (advisoryFlags.length > 0
-        ? (effectiveAiFlags.length > 0 ? "ai_or_text_advisory" : "ambiguous_text")
-        : (clearedFlags.length > 0 ? "explicit_clear" : "none")));
+      : (guidedClearRequested
+        ? "guided_clear"
+        : (advisoryFlags.length > 0
+          ? (effectiveAiFlags.length > 0 ? "ai_or_text_advisory" : "ambiguous_text")
+          : (clearedFlags.length > 0 ? "explicit_clear" : "none"))));
 
   return {
     policy_version: PATIENT_EYE_SAFETY_POLICY_VERSION,
