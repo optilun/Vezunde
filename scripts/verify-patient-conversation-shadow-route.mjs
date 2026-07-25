@@ -99,14 +99,37 @@ const controllerInvokeIndex = wrapperSource.indexOf('return controller.invoke(()
 assert(invokerGuardIndex >= 0 && controllerInvokeIndex > invokerGuardIndex);
 const emptyMessageGateIndex = wrapperSource.indexOf('if (!requestHasUserMessage(runtimePayload))');
 const emptyMessageEnvelopeIndex = wrapperSource.indexOf('skippedWithoutUserMessage(runtimePayload');
-const semanticCoreCallIndex = wrapperSource.indexOf('const envelope = await runPatientConversationAgentShadowCore(');
+const controlledAnswersIndex = wrapperSource.indexOf(
+  'const controlledAnswers = sanitizeGuidedSafetyAnswers(runtimePayload?.answers);',
+);
+const controlledPreflightIndex = wrapperSource.indexOf(
+  'const controlledPreflight = controlledSafetyPreflightEnvelope({',
+);
+const semanticCoreCallIndex = wrapperSource.indexOf(
+  'const coreEnvelope = controlledPreflight || await runPatientConversationAgentShadowCore(',
+);
+const controlledDecisionIndex = wrapperSource.indexOf(
+  'const envelope = applyControlledSafetyDecision({',
+);
 assert(emptyMessageGateIndex >= 0);
 assert(emptyMessageEnvelopeIndex > emptyMessageGateIndex);
-assert(semanticCoreCallIndex > emptyMessageEnvelopeIndex);
+assert(controlledAnswersIndex > emptyMessageEnvelopeIndex);
+assert(controlledPreflightIndex > controlledAnswersIndex);
+assert(semanticCoreCallIndex > controlledPreflightIndex);
+assert(controlledDecisionIndex > semanticCoreCallIndex);
 assert(!wrapperSource.includes('normalizeNonInvokedRuntimeIdentity'));
 assert(!wrapperSource.includes('assignRecommendationBuckets'));
 assert(!wrapperSource.includes('buildRecommendationScore'));
 assert(!wrapperSource.includes('asServiceRole'));
+assert(wrapperSource.includes("from '../../shared/patientEyeSafetyPolicy.js';"));
+assert(wrapperSource.includes('function controlledSafetyPreflightEnvelope('));
+assert(wrapperSource.includes('function applyControlledSafetyDecision('));
+assert(wrapperSource.includes('function semanticPayloadWithoutControlledAnswers('));
+assert(wrapperSource.includes('delete semanticPayload.answers;'));
+assert(wrapperSource.includes('answers: controlledAnswers'));
+assert(wrapperSource.includes('semanticPayloadWithoutControlledAnswers(runtimePayload)'));
+assert(!coreSource.includes('payload?.answers'));
+assert(!coreSource.includes('runtimePayload?.answers'));
 
 assert.equal((coreSource.match(/Core\.InvokeLLM/g) || []).length, 1);
 assert(coreSource.includes('model: PATIENT_CONVERSATION_MODEL'));
@@ -132,6 +155,8 @@ assert(coreSource.includes('model_invoked: modelInvoked'));
 const promptBuildBlock = coreSource.slice(promptBuildIndex, modelCallIndex);
 assert(!promptBuildBlock.includes('evaluationAttempt'));
 assert(!promptBuildBlock.includes('evaluation_attempt'));
+assert(!promptBuildBlock.includes('answers'));
+assert(!promptBuildBlock.includes('answer_value'));
 
 assert(agentSource.includes('PATIENT_CONVERSATION_SEMANTIC_CONTRACT_VERSION'));
 assert(agentSource.includes('Extract semantic meaning only'));
