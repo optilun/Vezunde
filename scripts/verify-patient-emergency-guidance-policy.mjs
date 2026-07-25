@@ -5,6 +5,7 @@ import {
   PATIENT_EMERGENCY_GUIDANCE_COPY,
   PATIENT_EMERGENCY_GUIDANCE_MESSAGE,
   PATIENT_EMERGENCY_GUIDANCE_VERSION,
+  buildPatientEmergencyGuidanceMessage,
   patientEmergencyGuidanceMentions112,
   patientEmergencyGuidanceUses112AsPrimaryAction,
 } from '../shared/patientEmergencyGuidance.js';
@@ -20,7 +21,7 @@ const interruptionSource = fs.readFileSync('src/components/intake2/UrgencyInterr
 
 assert.equal(sharedSource, base44Source);
 assert.equal(sharedCatalog, base44Catalog);
-assert.equal(PATIENT_EMERGENCY_GUIDANCE_VERSION, 'patient-emergency-guidance-v1.1');
+assert.equal(PATIENT_EMERGENCY_GUIDANCE_VERSION, 'patient-emergency-guidance-v1.2');
 assert.equal(
   PATIENT_EMERGENCY_DESTINATION_POLICY,
   'public_ophthalmology_primary_with_112_transport_fallback',
@@ -30,12 +31,36 @@ assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.primary_instruction, /urgente oftal
 assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.primary_instruction, /chirurgie/);
 assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.fallback_instruction, /UPU/);
 assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.emergency_call_instruction, /apeleaza 112/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.chemical_irrigation_instruction, /clateste imediat/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.chemical_irrigation_instruction, /cel putin 20 de minute/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.chemical_irrigation_instruction, /nu incerca sa neutralizezi/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.penetrating_injury_instruction, /nu incerca sa il scoti/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.penetrating_injury_instruction, /nu apasa pe ochi/);
 assert.equal(patientEmergencyGuidanceMentions112(PATIENT_EMERGENCY_GUIDANCE_MESSAGE), true);
 assert.equal(patientEmergencyGuidanceUses112AsPrimaryAction(PATIENT_EMERGENCY_GUIDANCE_MESSAGE), false);
 assert.equal(
   patientEmergencyGuidanceUses112AsPrimaryAction('Apeleaza 112. Mergi apoi la cel mai apropiat spital public.'),
   true,
 );
+
+const chemicalMessage = buildPatientEmergencyGuidanceMessage(['chemical_injury']);
+assert.match(chemicalMessage, /clateste imediat/);
+assert.match(chemicalMessage, /spital public/);
+assert.equal(patientEmergencyGuidanceUses112AsPrimaryAction(chemicalMessage), false);
+
+const penetratingMessage = buildPatientEmergencyGuidanceMessage([
+  'penetrating_or_high_speed_trauma',
+]);
+assert.match(penetratingMessage, /nu incerca sa il scoti/);
+assert.match(penetratingMessage, /spital public/);
+assert.doesNotMatch(penetratingMessage, /clateste imediat/);
+
+const combinedTraumaMessage = buildPatientEmergencyGuidanceMessage([
+  'chemical_injury',
+  'penetrating_or_high_speed_trauma',
+]);
+assert.match(combinedTraumaMessage, /nu incerca sa il scoti/);
+assert.doesNotMatch(combinedTraumaMessage, /clateste imediat/);
 
 function result(assistantMessage, urgency = 'confirmed') {
   return {
@@ -108,9 +133,11 @@ assert.equal(unsafeAdvisory112.safety_passed, false);
 assert(unsafeAdvisory112.failed_check_ids.includes('must_not:mention_112'));
 
 assert(interruptionSource.includes('blocking ? ('));
+assert(interruptionSource.includes('PATIENT_EMERGENCY_GUIDANCE_COPY.chemical_irrigation_instruction'));
+assert(interruptionSource.includes('PATIENT_EMERGENCY_GUIDANCE_COPY.penetrating_injury_instruction'));
 assert(interruptionSource.includes('PATIENT_EMERGENCY_GUIDANCE_COPY.emergency_call_instruction'));
 assert(interruptionSource.includes('Clarifica mai intai situatia'));
 assert(!interruptionSource.includes('href="tel:112"'));
 assert(!interruptionSource.includes('PhoneCall'));
 
-console.log('Patient emergency guidance policy verified: public hospital first, conditional 112 fallback only for confirmed emergencies.');
+console.log('Patient emergency guidance policy verified: injury-specific first aid, public hospital first, conditional 112 fallback.');
