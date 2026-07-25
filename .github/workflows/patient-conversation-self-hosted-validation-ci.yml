@@ -31,15 +31,6 @@ jobs:
     runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 60
     steps:
-      - name: Diagnose current service-test failure
-        shell: cmd
-        continue-on-error: true
-        run: |
-          cd /d C:\actions-runner\_work\Vezunde\Vezunde
-          set PATH=C:\actions-runner\_work\_tool\node\20.20.2\x64;%PATH%
-          call npm.cmd run test:services > service-diagnostic.log 2>&1
-          node.exe -e "const fs=require('fs');const rows=fs.readFileSync('service-diagnostic.log','utf8').split(/\r?\n/);console.log(rows.slice(-35).join('\n'))"
-          exit /b 0
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -60,6 +51,14 @@ jobs:
           set TEST_EXIT=%ERRORLEVEL%
           if not "%TEST_EXIT%"=="0" node -e "const fs=require('fs');const rows=fs.readFileSync('test-services.log','utf8').split(/\r?\n/);console.log(rows.slice(-60).join('\n'))"
           exit /b %TEST_EXIT%
+      - name: Upload service failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: patient-conversation-test-services-log
+          path: test-services.log
+          if-no-files-found: ignore
+          retention-days: 3
       - name: Typecheck service scope
         shell: cmd
         run: npm run typecheck:services
