@@ -32,10 +32,11 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
 });
 
 function gitBlobSha(content) {
-  const bytes = Buffer.byteLength(content);
+  const normalized = String(content).replace(/\r\n/g, '\n');
+  const bytes = Buffer.byteLength(normalized);
   return crypto.createHash('sha1')
     .update(`blob ${bytes}\0`)
-    .update(content)
+    .update(normalized)
     .digest('hex');
 }
 
@@ -94,7 +95,7 @@ for (const forbiddenNormalMatchingAuthority of [
 }
 
 function stripApprovedShadowSeam(source) {
-  let normalized = source;
+  let normalized = String(source).replace(/\r\n/g, '\n');
   normalized = normalized.replace(
     "import { runPatientConversationAgentShadow } from './patientConversationAgentShadow.ts';\n",
     '',
