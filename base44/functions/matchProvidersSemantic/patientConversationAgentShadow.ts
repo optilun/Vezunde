@@ -2,6 +2,10 @@ import {
   PATIENT_CONVERSATION_AGENT_VERSION,
 } from '../../shared/patientConversationAgent.js';
 import {
+  applyPatientConversationDecisionPolicy,
+  buildPatientConversationEmergencyInterpretation,
+} from '../../shared/patientConversationDecisionPolicy.js';
+import {
   buildPatientConversationGuidanceHandoff,
 } from '../../shared/patientConversationGuidanceHandoff.js';
 import {
@@ -12,6 +16,12 @@ import {
   PATIENT_CONVERSATION_MAX_TURNS,
   sanitizePatientConversationTurns,
 } from '../../shared/patientConversationGuardrails.js';
+import {
+  sanitizeGuidedSafetyAnswers,
+} from '../../shared/patientEyeSafetyPolicy.js';
+import {
+  applyPatientConversationCanonicalBoundary,
+} from '../../shared/patientConversationCanonicalBoundary.js';
 import {
   createPatientConversationOperationalController,
   finalizePatientConversationOperationalEnvelope,
@@ -92,6 +102,125 @@ function conversationFromPayload(payload: any = {}) {
     Array.isArray(source) && source.length > 0 ? source : null,
     fallbackText,
   );
+}
+
+function controlledRuntimeContextFromPayload(payload: any = {}) {
+  const explicitRuntimeContext = payload?.runtime_context
+    && typeof payload.runtime_context === 'object'
+    && !Array.isArray(payload.runtime_context)
+    ? payload.runtime_context
+    : {};
+  const explicitLocality = explicitRuntimeContext?.known_locality
+    && typeof explicitRuntimeContext.known_locality === 'object'
+    && !Array.isArray(explicitRuntimeContext.known_locality)
+    ? explicitRuntimeContext.known_locality
+    : {};
+  const fallbackLocality = {
+    siruta_code: payload?.locality_siruta_code,
+    city: payload?.locality_name || payload?.locality_city,
+    county_code: payload?.county_code,
+    county: payload?.county_name,
+    area: payload?.locality_area,
+  };
+  const hasExplicitLocality = Boolean(
+    String(explicitLocality?.siruta_code ?? '').trim()
+    || String(explicitLocality?.city ?? explicitLocality?.name ?? '').trim()
+  );
+
+  return {
+    locale: String(explicitRuntimeContext?.locale ?? '').trim().slice(0, 20) || 'ro-RO',
+    known_locality: hasExplicitLocality ? explicitLocality : fallbackLocality,
+    contact_share_approved: false,
+  };
+}
+
+function applyCanonicalBoundary(envelope: any) {
+  if (!envelope?.interpretation) return envelope;
+  const canonical = applyPatientConversationCanonicalBoundary(envelope.interpretation);
+  return {
+    ...envelope,
+    interpretation: canonical.interpretation,
+    diagnostics: {
+      ...(envelope.diagnostics || {}),
+      canonical_boundary: canonical.diagnostics,
+    },
+  };
+}
+
+function controlledSafetyPreflightEnvelope({
+  payload,
+  conversation,
+  answers,
+  runtimeContext,
+}: {
+  payload: any;
+  conversation: any[];
+  answers: any[];
+  runtimeContext: any;
+}) {
+  if (answers.length === 0) return null;
+  const decision = buildPatientConversationEmergencyInterpretation({
+    contractVersion: PATIENT_CONVERSATION_AGENT_VERSION,
+    conversation,
+    answers,
+    runtimeContext,
+  });
+  if (!decision) return null;
+
+  return applyCanonicalBoundary({
+    mode: 'shadow',
+    contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
+    status: 'completed',
+    reason: null,
+    interpretation: decision.interpretation,
+    diagnostics: {
+      decision_policy: decision.diagnostics,
+    },
+    ...evaluationCorrelation(payload),
+  });
+}
+
+function applyControlledSafetyDecision({
+  envelope,
+  conversation,
+  answers,
+  runtimeContext,
+}: {
+  envelope: any;
+  conversation: any[];
+  answers: any[];
+  runtimeContext: any;
+}) {
+  if (
+    answers.length === 0
+    || envelope?.status !== 'completed'
+    || !envelope?.interpretation
+  ) {
+    return envelope;
+  }
+
+  const decision = applyPatientConversationDecisionPolicy({
+    interpretation: envelope.interpretation,
+    conversation,
+    answers,
+    runtimeContext,
+    stateDiagnostics: envelope?.diagnostics?.state_policy,
+  });
+
+  return applyCanonicalBoundary({
+    ...envelope,
+    interpretation: decision.interpretation,
+    diagnostics: {
+      ...(envelope.diagnostics || {}),
+      decision_policy: decision.diagnostics,
+    },
+  });
+}
+
+function semanticPayloadWithoutControlledAnswers(payload: any = {}) {
+  const semanticPayload = { ...payload };
+  delete semanticPayload.answers;
+  return semanticPayload;
 }
 
 function requestHasUserMessage(payload: any = {}) {
@@ -264,10 +393,25 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
   }
 
   try {
-    const envelope = await runPatientConversationAgentShadowCore(
+    const conversation = conversationFromPayload(runtimePayload);
+    const controlledAnswers = sanitizeGuidedSafetyAnswers(runtimePayload?.answers);
+    const controlledRuntimeContext = controlledRuntimeContextFromPayload(runtimePayload);
+    const controlledPreflight = controlledSafetyPreflightEnvelope({
+      payload: runtimePayload,
+      conversation,
+      answers: controlledAnswers,
+      runtimeContext: controlledRuntimeContext,
+    });
+    const coreEnvelope = controlledPreflight || await runPatientConversationAgentShadowCore(
       createOperationalBase44(base44, controller),
-      runtimePayload,
+      semanticPayloadWithoutControlledAnswers(runtimePayload),
     );
+    const envelope = applyControlledSafetyDecision({
+      envelope: coreEnvelope,
+      conversation,
+      answers: controlledAnswers,
+      runtimeContext: controlledRuntimeContext,
+    });
     const groundedEnvelope = applySymptomGrounding(
       normalizeRuntimeIdentity(envelope, controller),
       runtimePayload,
