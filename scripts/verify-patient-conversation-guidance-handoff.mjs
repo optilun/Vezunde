@@ -39,7 +39,7 @@ assert.equal(
 );
 assert.match(handoffDoc, /next_question_key` is deliberately forced to `null`/);
 assert.match(handoffDoc, /confirmed_facts": "controlled_answers_only"/);
-assert.match(handoffDoc, /does not activate the semantic LLM for patients/);
+assert.match(handoffDoc, /do not activate the semantic LLM for patients/);
 
 function interpretation(overrides = {}) {
   return {
