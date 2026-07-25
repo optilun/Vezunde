@@ -47,7 +47,7 @@ assert.equal(
   PATIENT_CONVERSATION_CANONICAL_BOUNDARY_VERSION,
   'viasee-patient-conversation-canonical-boundary-v1',
 );
-assert.equal(PATIENT_EMERGENCY_GUIDANCE_VERSION, 'patient-emergency-guidance-v1.1');
+assert.equal(PATIENT_EMERGENCY_GUIDANCE_VERSION, 'patient-emergency-guidance-v1.2');
 assert.equal(
   PATIENT_EMERGENCY_DESTINATION_POLICY,
   'public_ophthalmology_primary_with_112_transport_fallback',
