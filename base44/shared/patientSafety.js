@@ -6,6 +6,7 @@ import {
   deterministicSafetyFlagsFromText,
   guidedSafetyClearRequestedFromAnswers,
   guidedSafetyFlagsFromAnswers,
+  sanitizeGuidedSafetyAnswers,
 } from './patientEyeSafetyPolicy.js';
 
 export const PATIENT_SAFETY_ASSESSMENT_VERSION = PATIENT_EYE_SAFETY_POLICY_VERSION;
@@ -15,6 +16,7 @@ export {
   deterministicSafetyFlagsFromText,
   guidedSafetyClearRequestedFromAnswers,
   guidedSafetyFlagsFromAnswers,
+  sanitizeGuidedSafetyAnswers,
 };
 
 export function buildPatientSafetyAssessment(options = {}) {
