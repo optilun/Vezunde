@@ -22,6 +22,7 @@ const wrapperSource = fs.readFileSync(
   new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts', import.meta.url),
   'utf8',
 );
+const normalizedWrapperSource = wrapperSource.replace(/\r\n/g, '\n');
 
 assert.equal(sharedSource, base44Source);
 assert.equal(
@@ -180,17 +181,25 @@ assert(invalidEnvelopeEvaluation.failed_check_ids.includes('must_not:invented_sy
 assert.equal(invalidEnvelopeEvaluation.symptom_grounding.valid, false);
 assert.equal(invalidEnvelopeEvaluation.symptom_grounding.envelope_status, 'invalid');
 
-assert(wrapperSource.includes('applySymptomGrounding'));
-assert(wrapperSource.includes("reason: 'ungrounded_symptom_facts'"));
-assert(wrapperSource.includes('groundPatientConversationSymptomFacts'));
-assert(wrapperSource.includes('fact_evidence: grounding.fact_evidence'));
-const groundingCallIndex = wrapperSource.indexOf(
+assert(normalizedWrapperSource.includes('applySymptomGrounding'));
+assert(normalizedWrapperSource.includes("reason: 'ungrounded_symptom_facts'"));
+assert(normalizedWrapperSource.includes('groundPatientConversationSymptomFacts'));
+assert(normalizedWrapperSource.includes('fact_evidence: grounding.fact_evidence'));
+const groundingCallIndex = normalizedWrapperSource.indexOf(
   'const groundedEnvelope = applySymptomGrounding(',
 );
-const finalizationIndex = wrapperSource.indexOf(
-  'return finalizeWithGuidanceHandoff(\n      groundedEnvelope,',
+const finalizationIndex = normalizedWrapperSource.indexOf(
+  'return finalizeWithGuidanceHandoff(',
   groundingCallIndex,
 );
-assert(groundingCallIndex >= 0 && finalizationIndex > groundingCallIndex);
+const groundedEnvelopeArgumentIndex = normalizedWrapperSource.indexOf(
+  'groundedEnvelope,',
+  finalizationIndex,
+);
+assert(
+  groundingCallIndex >= 0
+  && finalizationIndex > groundingCallIndex
+  && groundedEnvelopeArgumentIndex > finalizationIndex,
+);
 
 console.log('Patient conversation symptom grounding verified fail closed.');
