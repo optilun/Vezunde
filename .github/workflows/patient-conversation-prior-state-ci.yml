@@ -6,17 +6,26 @@ on:
       - "shared/patientConversationAgent.js"
       - "shared/patientConversationAgentCore.js"
       - "shared/patientConversationPriorStatePolicy.js"
+      - "shared/patientConversationPriorStatePolicyCore.js"
+      - "shared/patientConversationRuntimeContextPolicy.js"
+      - "shared/patientConversationDecisionPolicy.js"
+      - "shared/patientConversationDecisionPolicyCore.js"
       - "shared/patientConversationStatePolicy.js"
       - "shared/patientConversationStateDeltaReducer.js"
       - "shared/patientConversationStateDeltaReducerCore.js"
       - "base44/shared/patientConversationAgent.js"
       - "base44/shared/patientConversationAgentCore.js"
       - "base44/shared/patientConversationPriorStatePolicy.js"
+      - "base44/shared/patientConversationPriorStatePolicyCore.js"
+      - "base44/shared/patientConversationRuntimeContextPolicy.js"
+      - "base44/shared/patientConversationDecisionPolicy.js"
+      - "base44/shared/patientConversationDecisionPolicyCore.js"
       - "base44/shared/patientConversationStatePolicy.js"
       - "base44/shared/patientConversationStateDeltaReducer.js"
       - "base44/shared/patientConversationStateDeltaReducerCore.js"
       - "scripts/verify-patient-conversation-prompt-prior-state.mjs"
       - "scripts/verify-patient-conversation-prior-state-delta.mjs"
+      - "scripts/verify-patient-conversation-runtime-context-authority.mjs"
       - ".github/workflows/patient-conversation-prior-state-ci.yml"
 
 permissions:
@@ -43,21 +52,32 @@ jobs:
         run: node scripts/verify-patient-conversation-prompt-prior-state.mjs
       - name: Verify delta prior-state authority
         run: node scripts/verify-patient-conversation-prior-state-delta.mjs
-      - name: Lint prior-state boundary
+      - name: Verify runtime-context authority
+        run: node scripts/verify-patient-conversation-runtime-context-authority.mjs
+      - name: Lint controlled context boundary
         run: >-
           npx eslint
           shared/patientConversationAgent.js
           shared/patientConversationAgentCore.js
           shared/patientConversationPriorStatePolicy.js
+          shared/patientConversationPriorStatePolicyCore.js
+          shared/patientConversationRuntimeContextPolicy.js
+          shared/patientConversationDecisionPolicy.js
+          shared/patientConversationDecisionPolicyCore.js
           shared/patientConversationStatePolicy.js
           shared/patientConversationStateDeltaReducer.js
           shared/patientConversationStateDeltaReducerCore.js
           base44/shared/patientConversationAgent.js
           base44/shared/patientConversationAgentCore.js
           base44/shared/patientConversationPriorStatePolicy.js
+          base44/shared/patientConversationPriorStatePolicyCore.js
+          base44/shared/patientConversationRuntimeContextPolicy.js
+          base44/shared/patientConversationDecisionPolicy.js
+          base44/shared/patientConversationDecisionPolicyCore.js
           base44/shared/patientConversationStatePolicy.js
           base44/shared/patientConversationStateDeltaReducer.js
           base44/shared/patientConversationStateDeltaReducerCore.js
           scripts/verify-patient-conversation-prompt-prior-state.mjs
           scripts/verify-patient-conversation-prior-state-delta.mjs
+          scripts/verify-patient-conversation-runtime-context-authority.mjs
           --quiet
