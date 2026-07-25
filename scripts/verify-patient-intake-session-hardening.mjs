@@ -95,6 +95,8 @@ const state = {
     { question_key: 'locatie', answer_value: 'Timisoara' },
   ],
   serviceKeys: ['reparatii_ochelari', 'reglaj_rame'],
+  explicitServiceKeys: ['frame_repair'],
+  questionHistory: ['repair_type', 'locality'],
   city: 'Timisoara',
   scope: 'locality',
   locality: {
@@ -141,6 +143,8 @@ assert.equal(snapshot.phase, 'review');
 assert.equal(snapshot.history.length, PATIENT_INTAKE_HISTORY_LIMIT);
 assert.equal(snapshot.locality.siruta_code, '155243');
 assert.equal(snapshot.city, 'Timisoara');
+assert.deepEqual(snapshot.explicitServiceKeys, ['frame_repair']);
+assert.deepEqual(snapshot.questionHistory, ['repair_type', 'locality', 'ce_deteriorat', 'locatie']);
 assert.equal(snapshot.requestDraft.locality_siruta_code, '155243');
 assert.equal(Object.hasOwn(snapshot, 'results'), false);
 assert.equal(Object.hasOwn(snapshot, 'email'), false);
@@ -157,6 +161,8 @@ const restored = readPatientIntakeSession({
 });
 assert.equal(restored.phase, 'review');
 assert.deepEqual(restored.answers, state.answers);
+assert.deepEqual(restored.questionHistory, snapshot.questionHistory);
+assert.deepEqual(restored.explicitServiceKeys, ['frame_repair']);
 assert.equal(restored.locality.siruta_code, '155243');
 
 const expiredStorage = new MemoryStorage();
