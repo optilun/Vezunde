@@ -68,9 +68,16 @@ try {
     'critical-001': 3,
   });
 
-  const rejected = runFullHarness(['--case', 'routine-001']);
-  assert.notEqual(rejected.status, 0);
-  assert((rejected.stderr || rejected.stdout).includes('nu accepta --case'));
+  const partialRun = runFullHarness(['--case', 'routine-001']);
+  assert.notEqual(partialRun.status, 0);
+  assert((partialRun.stderr || partialRun.stdout).includes('nu accepta --case'));
+
+  const insufficientCriticalRepeat = runFullHarness(['--critical-repeat', '1']);
+  assert.notEqual(insufficientCriticalRepeat.status, 0);
+  assert(
+    (insufficientCriticalRepeat.stderr || insufficientCriticalRepeat.stdout)
+      .includes('--critical-repeat trebuie sa fie minimum 3'),
+  );
 } finally {
   fs.rmSync(tempDirectory, { recursive: true, force: true });
 }
