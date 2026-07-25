@@ -99,6 +99,15 @@ export default function QuestionText({ question, onSubmit }) {
                 setUrgentChoice("");
                 if (textAssessment?.advisory) {
                   const reviewedValue = value.trim();
+                  const reviewedAssessment = buildPatientSafetyAssessment({
+                    text: reviewedValue,
+                    answers: [{ question_key: "safety_screening", answer_value: "niciuna" }],
+                  });
+                  if (!reviewedAssessment.clear) {
+                    setTextAssessment(reviewedAssessment);
+                    setScreeningCleared(false);
+                    return;
+                  }
                   setSafetyReviewedValue(reviewedValue);
                   setTextAssessment(null);
                   setScreeningCleared(true);
