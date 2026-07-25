@@ -40,6 +40,8 @@ assert.equal(
   sharedSafetySource,
   'Shared and Base44 eye safety policies must remain byte-identical.',
 );
+assert.match(sharedSource, /guidedSafetyCleared/);
+assert.match(sharedSource, /deterministic_safety_guided_clear/);
 
 function facts(overrides = {}) {
   return {
@@ -104,6 +106,14 @@ assert.equal(ambiguousOneEye.advisory, true);
 assert.deepEqual(ambiguousOneEye.blocking_flags, []);
 assert.deepEqual(ambiguousOneEye.advisory_flags, ['sudden_vision_loss']);
 
+const controlledClearSafety = assessPatientConversationDeterministicSafety(
+  [{ role: 'user', content: 'Nu mai vad cu un ochi.' }],
+  [{ question_key: 'safety_targeted_check', answer_value: 'niciuna' }],
+);
+assert.equal(controlledClearSafety.state, 'clear');
+assert.equal(controlledClearSafety.source, 'guided_clear');
+assert.deepEqual(controlledClearSafety.advisory_flags, []);
+
 const explicitEmergencyConversation = [
   { role: 'user', content: 'Nu mai vad cu un ochi deodata.' },
 ];
@@ -112,6 +122,13 @@ assert.equal(explicitSafety.state, 'blocking');
 assert.equal(explicitSafety.blocking, true);
 assert(explicitSafety.blocking_flags.includes('sudden_vision_loss'));
 assert.equal(explicitSafety.policy_version, PATIENT_CONVERSATION_SAFETY_POLICY_VERSION);
+
+const explicitSafetyWithControlledClear = assessPatientConversationDeterministicSafety(
+  explicitEmergencyConversation,
+  [{ question_key: 'safety_targeted_check', answer_value: 'niciuna' }],
+);
+assert.equal(explicitSafetyWithControlledClear.state, 'blocking');
+assert.equal(explicitSafetyWithControlledClear.source, 'explicit_text');
 
 const confirmedSafetyScenarios = [
   ['a disparut brusc azi dimineata, aproape complet', 'sudden_vision_loss'],
@@ -175,6 +192,17 @@ assert.equal(
   PATIENT_CONVERSATION_SAFETY_POLICY_VERSION,
 );
 
+const guidedEmergencyPreflight = buildPatientConversationEmergencyInterpretation({
+  contractVersion: 'viasee-patient-conversation-agent-v1',
+  conversation: [{ role: 'user', content: 'Am o problema la ochi.' }],
+  answers: [{ question_key: 'safety_targeted_check', answer_value: 'durere_severa' }],
+  runtimeContext: {},
+});
+assert(guidedEmergencyPreflight);
+assert.equal(guidedEmergencyPreflight.interpretation.urgency.level, 'confirmed');
+assert(guidedEmergencyPreflight.diagnostics.deterministic_safety_preflight, true);
+assert(guidedEmergencyPreflight.diagnostics.deterministic_safety_flags.includes('severe_eye_pain'));
+
 const emergencySurvivesShortFollowup = assessPatientConversationDeterministicSafety([
   { role: 'user', content: 'Vederea a disparut brusc.' },
   { role: 'assistant', content: 'In ce oras esti?' },
@@ -219,6 +247,36 @@ assert.equal(ambiguousModelMiss.interpretation.next_action, 'ask_clarifying_ques
 assert.equal(ambiguousModelMiss.interpretation.information_status.sufficient_for_search, false);
 assert(ambiguousModelMiss.interpretation.information_status.missing_critical_fields.includes('symptom_severity'));
 assert.equal(ambiguousModelMiss.diagnostics.deterministic_safety_state, 'advisory');
+
+const controlledClearOverridesModelAdvisory = applyPatientConversationDecisionPolicy({
+  interpretation: interpretation({
+    urgency: { level: 'possible', needs_clarification: true, reason: 'Model advisory.' },
+    possible_safety_flags: ['sudden_vision_loss'],
+    next_action: 'ask_clarifying_question',
+  }),
+  conversation: [{ role: 'user', content: 'Nu vad cu ochiul drept.' }],
+  answers: [{ question_key: 'safety_targeted_check', answer_value: 'niciuna' }],
+  runtimeContext: {},
+});
+assert.equal(controlledClearOverridesModelAdvisory.interpretation.urgency.level, 'none');
+assert.equal(controlledClearOverridesModelAdvisory.interpretation.next_action, 'search_providers');
+assert.equal(controlledClearOverridesModelAdvisory.interpretation.information_status.sufficient_for_search, true);
+assert.deepEqual(controlledClearOverridesModelAdvisory.diagnostics.deterministic_safety_advisory_flags, []);
+assert.equal(controlledClearOverridesModelAdvisory.diagnostics.deterministic_safety_guided_clear, true);
+assert.equal(controlledClearOverridesModelAdvisory.diagnostics.model_urgency_overridden, true);
+
+const controlledClearCannotOverrideDecisionBlocking = applyPatientConversationDecisionPolicy({
+  interpretation: interpretation({
+    urgency: { level: 'none', needs_clarification: false, reason: '' },
+    next_action: 'search_providers',
+  }),
+  conversation: explicitEmergencyConversation,
+  answers: [{ question_key: 'safety_targeted_check', answer_value: 'niciuna' }],
+  runtimeContext: {},
+});
+assert.equal(controlledClearCannotOverrideDecisionBlocking.interpretation.urgency.level, 'confirmed');
+assert.equal(controlledClearCannotOverrideDecisionBlocking.interpretation.next_action, 'show_emergency_guidance');
+assert.equal(controlledClearCannotOverrideDecisionBlocking.diagnostics.deterministic_safety_guided_clear, false);
 
 const unsupportedModelEmergency = applyPatientConversationDecisionPolicy({
   interpretation: interpretation({
