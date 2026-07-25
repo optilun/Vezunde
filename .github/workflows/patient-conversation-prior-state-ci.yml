@@ -7,11 +7,16 @@ on:
       - "shared/patientConversationAgentCore.js"
       - "shared/patientConversationPriorStatePolicy.js"
       - "shared/patientConversationStatePolicy.js"
+      - "shared/patientConversationStateDeltaReducer.js"
+      - "shared/patientConversationStateDeltaReducerCore.js"
       - "base44/shared/patientConversationAgent.js"
       - "base44/shared/patientConversationAgentCore.js"
       - "base44/shared/patientConversationPriorStatePolicy.js"
       - "base44/shared/patientConversationStatePolicy.js"
+      - "base44/shared/patientConversationStateDeltaReducer.js"
+      - "base44/shared/patientConversationStateDeltaReducerCore.js"
       - "scripts/verify-patient-conversation-prompt-prior-state.mjs"
+      - "scripts/verify-patient-conversation-prior-state-delta.mjs"
       - ".github/workflows/patient-conversation-prior-state-ci.yml"
 
 permissions:
@@ -36,6 +41,8 @@ jobs:
         run: npm ci
       - name: Verify prompt prior-state authority
         run: node scripts/verify-patient-conversation-prompt-prior-state.mjs
+      - name: Verify delta prior-state authority
+        run: node scripts/verify-patient-conversation-prior-state-delta.mjs
       - name: Lint prior-state boundary
         run: >-
           npx eslint
@@ -43,9 +50,14 @@ jobs:
           shared/patientConversationAgentCore.js
           shared/patientConversationPriorStatePolicy.js
           shared/patientConversationStatePolicy.js
+          shared/patientConversationStateDeltaReducer.js
+          shared/patientConversationStateDeltaReducerCore.js
           base44/shared/patientConversationAgent.js
           base44/shared/patientConversationAgentCore.js
           base44/shared/patientConversationPriorStatePolicy.js
           base44/shared/patientConversationStatePolicy.js
+          base44/shared/patientConversationStateDeltaReducer.js
+          base44/shared/patientConversationStateDeltaReducerCore.js
           scripts/verify-patient-conversation-prompt-prior-state.mjs
+          scripts/verify-patient-conversation-prior-state-delta.mjs
           --quiet
