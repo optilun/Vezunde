@@ -2,14 +2,26 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 
-const BYTE_STABLE_FILES = Object.freeze({
-  'src/lib/providerSemanticSearch.js': 'c925bfd80a556aa1ed30dd4eed22a80fe80bc1ee',
-  'shared/providerRecommendation.js': 'cb05c9b755d78b2432c80f336e99cd82bfab5ba0',
-  'base44/functions/matchProviders/entry.ts': '5dcbdff68ab17dc489b48baee8283db1d234da51',
-  'base44/functions/matchProvidersSemantic/sharedDependencies.js': '134166b15ecce5cd52b32f3d3dca05b27ae14e81',
+const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
+  'src/lib/providerSemanticSearch.js': Object.freeze([
+    'c925bfd80a556aa1ed30dd4eed22a80fe80bc1ee',
+    '240474eb3bba41f56f058ba83359ff33c77e757d',
+  ]),
+  'shared/providerRecommendation.js': Object.freeze([
+    'cb05c9b755d78b2432c80f336e99cd82bfab5ba0',
+  ]),
+  'base44/functions/matchProviders/entry.ts': Object.freeze([
+    '5dcbdff68ab17dc489b48baee8283db1d234da51',
+  ]),
+  'base44/functions/matchProvidersSemantic/sharedDependencies.js': Object.freeze([
+    '134166b15ecce5cd52b32f3d3dca05b27ae14e81',
+  ]),
 });
 
-const MATCH_PROVIDERS_SEMANTIC_MAIN_BLOB = '0516abee9d11b4ff38ad62045b6dfc0931415545';
+const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
+  main: '0516abee9d11b4ff38ad62045b6dfc0931415545',
+  pr265_question_selection: 'dd9d9938939e2434398da9a31bafc8d3fb6b646f',
+});
 
 function gitBlobSha(content) {
   const bytes = Buffer.byteLength(content);
@@ -19,13 +31,19 @@ function gitBlobSha(content) {
     .digest('hex');
 }
 
-for (const [filePath, expectedBlob] of Object.entries(BYTE_STABLE_FILES)) {
-  const source = fs.readFileSync(new URL(`../${filePath}`, import.meta.url), 'utf8');
-  assert.equal(
-    gitBlobSha(source),
-    expectedBlob,
-    `${filePath} changed relative to the approved main baseline.`,
+function assertApprovedBlob(filePath, source, approvedBlobs) {
+  const actualBlob = gitBlobSha(source);
+  assert(
+    approvedBlobs.includes(actualBlob),
+    `${filePath} changed outside the approved main/PR #265 integration seams. Actual blob: ${actualBlob}`,
   );
+  return actualBlob;
+}
+
+const observedStableBlobs = {};
+for (const [filePath, approvedBlobs] of Object.entries(APPROVED_BYTE_STABLE_BLOBS)) {
+  const source = fs.readFileSync(new URL(`../${filePath}`, import.meta.url), 'utf8');
+  observedStableBlobs[filePath] = assertApprovedBlob(filePath, source, approvedBlobs);
 }
 
 const semanticEntryPath = new URL(
@@ -101,11 +119,31 @@ function stripApprovedShadowSeam(source) {
 }
 
 const normalPathReconstruction = stripApprovedShadowSeam(semanticEntrySource);
-assert.equal(
-  gitBlobSha(normalPathReconstruction),
-  MATCH_PROVIDERS_SEMANTIC_MAIN_BLOB,
-  'Normal matchProvidersSemantic route changed outside the approved admin-only shadow seam.',
+const reconstructedSemanticEntryBlob = gitBlobSha(normalPathReconstruction);
+const approvedCompositionEntry = Object.entries(MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS)
+  .find(([, blob]) => blob === reconstructedSemanticEntryBlob)?.[0] || null;
+assert(
+  approvedCompositionEntry,
+  `Normal matchProvidersSemantic route changed outside the approved admin shadow or PR #265 question-only seams. Actual reconstructed blob: ${reconstructedSemanticEntryBlob}`,
 );
+
+const providerSemanticBlob = observedStableBlobs['src/lib/providerSemanticSearch.js'];
+const providerSemanticComposition = providerSemanticBlob === '240474eb3bba41f56f058ba83359ff33c77e757d'
+  ? 'pr265_question_selection'
+  : 'main';
+assert.equal(
+  providerSemanticComposition,
+  approvedCompositionEntry,
+  'Frontend question-selection seam and backend question-only seam are not from the same approved composition baseline.',
+);
+
+const backendSafetyAdapterSource = fs.readFileSync(
+  new URL('../base44/shared/patientSafety.js', import.meta.url),
+  'utf8',
+);
+assert(backendSafetyAdapterSource.includes("from './patientEyeSafetyPolicy.js';"));
+assert(backendSafetyAdapterSource.includes('assessPatientEyeSafety'));
+assert(!backendSafetyAdapterSource.includes('const BLOCKING_PATTERNS'));
 
 const durablePolicyName = 'patientConversationDurableStatePolicy';
 for (const runtimePath of [
@@ -121,4 +159,6 @@ for (const runtimePath of [
   );
 }
 
-console.log('Patient conversation marketplace isolation verified against approved main Git blobs.');
+console.log(
+  `Patient conversation marketplace isolation verified against approved ${approvedCompositionEntry} Git blobs.`,
+);
