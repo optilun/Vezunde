@@ -11,6 +11,8 @@ const validResponsePath = path.join(tempDirectory, 'valid-response.json');
 const conflictingCasePath = path.join(tempDirectory, 'conflicting-case.json');
 const conflictingAttemptPath = path.join(tempDirectory, 'conflicting-attempt.json');
 const missingStatusPath = path.join(tempDirectory, 'missing-status.json');
+const wrongContractPath = path.join(tempDirectory, 'wrong-contract.json');
+const missingDurationPath = path.join(tempDirectory, 'missing-duration.json');
 
 function fixturePayload(conversationSuffix = '') {
   return {
@@ -32,6 +34,26 @@ function fixturePayload(conversationSuffix = '') {
       },
     ],
   };
+}
+
+function responseEnvelope({
+  caseId,
+  attempt,
+  status = 'completed',
+  contractVersion = 'viasee-patient-conversation-agent-v1',
+  durationMs = 5,
+} = {}) {
+  const envelope = {
+    mode: 'shadow',
+    contract_version: contractVersion,
+    status,
+    evaluation_case_id: caseId,
+    evaluation_attempt: attempt,
+    interpretation: status === 'completed' ? {} : null,
+    runtime_metadata: {},
+  };
+  if (durationMs !== undefined) envelope.runtime_metadata.duration_ms = durationMs;
+  return envelope;
 }
 
 function runFullHarness(extraArguments = []) {
@@ -84,12 +106,11 @@ try {
   fs.writeFileSync(validResponsePath, JSON.stringify({
     evaluation_case_id: 'routine-001',
     evaluation_attempt: 1,
-    envelope: {
+    envelope: responseEnvelope({
+      caseId: 'routine-001',
+      attempt: 1,
       status: 'unavailable',
-      evaluation_case_id: 'routine-001',
-      evaluation_attempt: 1,
-      interpretation: null,
-    },
+    }),
   }));
   const validImport = runFullHarness(['--response', validResponsePath]);
   assert.equal(validImport.status, 0, validImport.stderr || validImport.stdout);
@@ -108,43 +129,49 @@ try {
   fs.writeFileSync(conflictingCasePath, JSON.stringify({
     evaluation_case_id: 'routine-001',
     evaluation_attempt: 1,
-    envelope: {
-      status: 'completed',
-      evaluation_case_id: 'critical-001',
-      evaluation_attempt: 1,
-      interpretation: {},
-    },
+    envelope: responseEnvelope({ caseId: 'critical-001', attempt: 1 }),
   }));
   const conflictingCase = runFullHarness(['--response', conflictingCasePath]);
   assert.notEqual(conflictingCase.status, 0);
-  assert(combinedOutput(conflictingCase).includes('corelatie de caz lipsa sau contradictorie'));
+  assert(combinedOutput(conflictingCase).includes('corelatie de caz contradictorie'));
 
   fs.writeFileSync(conflictingAttemptPath, JSON.stringify({
     evaluation_case_id: 'critical-001',
     evaluation_attempt: 1,
-    envelope: {
-      status: 'completed',
-      evaluation_case_id: 'critical-001',
-      evaluation_attempt: 2,
-      interpretation: {},
-    },
+    envelope: responseEnvelope({ caseId: 'critical-001', attempt: 2 }),
   }));
   const conflictingAttempt = runFullHarness(['--response', conflictingAttemptPath]);
   assert.notEqual(conflictingAttempt.status, 0);
   assert(combinedOutput(conflictingAttempt).includes('attempturi contradictorii'));
 
-  fs.writeFileSync(missingStatusPath, JSON.stringify({
-    evaluation_case_id: 'critical-001',
-    evaluation_attempt: 1,
-    envelope: {
-      evaluation_case_id: 'critical-001',
-      evaluation_attempt: 1,
-      interpretation: {},
-    },
-  }));
+  const noStatusEnvelope = responseEnvelope({ caseId: 'critical-001', attempt: 1 });
+  delete noStatusEnvelope.status;
+  fs.writeFileSync(missingStatusPath, JSON.stringify({ envelope: noStatusEnvelope }));
   const missingStatus = runFullHarness(['--response', missingStatusPath]);
   assert.notEqual(missingStatus.status, 0);
   assert(combinedOutput(missingStatus).includes('necesita status explicit'));
+
+  fs.writeFileSync(wrongContractPath, JSON.stringify({
+    envelope: responseEnvelope({
+      caseId: 'critical-001',
+      attempt: 1,
+      contractVersion: 'wrong-contract',
+    }),
+  }));
+  const wrongContract = runFullHarness(['--response', wrongContractPath]);
+  assert.notEqual(wrongContract.status, 0);
+  assert(combinedOutput(wrongContract).includes('contract_version invalid'));
+
+  fs.writeFileSync(missingDurationPath, JSON.stringify({
+    envelope: responseEnvelope({
+      caseId: 'critical-001',
+      attempt: 1,
+      durationMs: undefined,
+    }),
+  }));
+  const missingDuration = runFullHarness(['--response', missingDurationPath]);
+  assert.notEqual(missingDuration.status, 0);
+  assert(combinedOutput(missingDuration).includes('runtime_metadata.duration_ms valid'));
 
   fs.writeFileSync(fixturesPath, JSON.stringify(fixturePayload(' Modificat dupa capturare.')));
   const staleCapture = runFullHarness();
