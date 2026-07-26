@@ -4,8 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const MODEL = 'gpt_5_4';
-const PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.2';
+const MODEL_POLICY = 'base44_automatic';
+const PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3';
 const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'viasee-repeated-evaluation-'));
 const fixturesPath = path.join(tempDirectory, 'fixtures.json');
 
@@ -38,7 +38,9 @@ function envelope(caseId, attempt, result, durationMs = 100) {
     evaluation_attempt: attempt,
     interpretation: result,
     runtime_metadata: {
-      model: MODEL,
+      model: null,
+      model_policy: MODEL_POLICY,
+      model_override: null,
       prompt_version: PROMPT_VERSION,
       model_invoked: true,
       duration_ms: durationMs,
