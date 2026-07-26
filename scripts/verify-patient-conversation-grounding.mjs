@@ -182,9 +182,14 @@ assert.equal(invalidEnvelopeEvaluation.symptom_grounding.valid, false);
 assert.equal(invalidEnvelopeEvaluation.symptom_grounding.envelope_status, 'invalid');
 
 assert(normalizedWrapperSource.includes('applySymptomGrounding'));
-assert(normalizedWrapperSource.includes("reason: 'ungrounded_symptom_facts'"));
+assert(!normalizedWrapperSource.includes("reason: 'ungrounded_symptom_facts'"));
 assert(normalizedWrapperSource.includes('groundPatientConversationSymptomFacts'));
 assert(normalizedWrapperSource.includes('fact_evidence: grounding.fact_evidence'));
+assert(normalizedWrapperSource.includes('grounding_recovery'));
+assert(normalizedWrapperSource.includes('rejected_fact_values'));
+assert(normalizedWrapperSource.includes('redactedRejectedSymptomFacts'));
+assert(normalizedWrapperSource.includes("status: 'completed'"));
+assert(normalizedWrapperSource.includes('decision_recomputed: rejectedFields.length > 0'));
 const groundingCallIndex = normalizedWrapperSource.indexOf(
   'const groundedEnvelope = applySymptomGrounding(',
 );
@@ -202,4 +207,4 @@ assert(
   && groundedEnvelopeArgumentIndex > finalizationIndex,
 );
 
-console.log('Patient conversation symptom grounding verified fail closed.');
+console.log('Patient conversation symptom grounding verified with fail-closed field stripping.');
