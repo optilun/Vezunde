@@ -51,11 +51,11 @@ jobs:
             const text = fs.existsSync(path)
               ? fs.readFileSync(path, 'utf8').slice(-12000)
               : 'Patch failed without a captured log.';
-            await github.rest.issues.createComment({
+            await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `<!-- pr266-post-evaluation-diagnostics -->\n\n\`\`\`text\n${text}\n\`\`\``,
+              title: `PR266 patch diagnostics ${context.sha.slice(0, 8)}`,
+              body: `Temporary diagnostic issue for PR #266.\n\n\`\`\`text\n${text}\n\`\`\``,
             });
 
       - name: Verify focused post-evaluation coverage
