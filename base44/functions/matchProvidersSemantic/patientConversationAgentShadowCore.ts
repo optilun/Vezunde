@@ -22,7 +22,7 @@ import { reducePatientConversationSemanticStateDelta } from '../../shared/patien
 
 const PATIENT_CONVERSATION_SHADOW_EVENT = 'patient_conversation_agent_shadow_summary';
 const PATIENT_CONVERSATION_MODEL = 'gpt_5_4';
-const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.2';
+const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3';
 
 function clean(value: unknown, maxLength = 1200) {
   return String(value ?? '').trim().slice(0, maxLength);
