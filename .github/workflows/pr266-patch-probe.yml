@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - scripts/apply-pr266-post-evaluation-patch.mjs
+      - scripts/repair-pr266-post-evaluation-applicator.mjs
       - .github/workflows/pr266-patch-probe.yml
 
 permissions:
@@ -19,6 +20,10 @@ jobs:
         with:
           ref: feat/patient-conversation-agent-contract
           fetch-depth: 1
+
+      - name: Repair patch applicator target list
+        shell: cmd
+        run: node scripts/repair-pr266-post-evaluation-applicator.mjs
 
       - name: Run patch applicator probe
         shell: cmd
