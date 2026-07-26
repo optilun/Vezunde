@@ -9,6 +9,8 @@ on:
 
 permissions:
   contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
   apply-and-validate:
@@ -34,22 +36,27 @@ jobs:
       - name: Apply post-evaluation patch
         shell: powershell
         run: |
-          node scripts/apply-pr266-post-evaluation-patch.mjs *>&1 | Tee-Object post-evaluation-patch.log
+          $output = & node scripts/apply-pr266-post-evaluation-patch.mjs 2>&1
+          $output | Set-Content post-evaluation-patch.log
+          $output | Write-Host
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Persist patch diagnostics
+      - name: Report patch diagnostics
         if: failure()
-        shell: powershell
-        run: |
-          if (!(Test-Path post-evaluation-patch.log)) {
-            "Patch failed without a captured log." | Set-Content post-evaluation-patch.log
-          }
-          Copy-Item post-evaluation-patch.log pr266-post-evaluation-patch-error.log -Force
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f pr266-post-evaluation-patch-error.log
-          git commit -m "Capture PR266 patch failure diagnostics"
-          git push origin "HEAD:feat/patient-conversation-agent-contract"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'post-evaluation-patch.log';
+            const text = fs.existsSync(path)
+              ? fs.readFileSync(path, 'utf8').slice(-12000)
+              : 'Patch failed without a captured log.';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `<!-- pr266-post-evaluation-diagnostics -->\n\n\`\`\`text\n${text}\n\`\`\``,
+            });
 
       - name: Verify focused post-evaluation coverage
         shell: cmd
