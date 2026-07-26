@@ -8,6 +8,10 @@ on:
       - scripts/verify-patient-conversation-post-evaluation.mjs
       - .github/workflows/pr266-post-evaluation-patch-pr.yml
 
+concurrency:
+  group: pr266-post-evaluation-patch-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
   issues: write
