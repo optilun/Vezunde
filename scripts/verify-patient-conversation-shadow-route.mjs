@@ -52,13 +52,13 @@ assert(!shadowRouteBlock.includes('resolveServiceSearchQuery'));
 
 assert(wrapperSource.includes("const PATIENT_CONVERSATION_MODEL_POLICY = 'base44_automatic';"));
 assert(wrapperSource.includes("const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3';"));
-assert(wrapperSource.includes('const PATIENT_CONVERSATION_MONTHLY_MODEL_CALL_TARGET = 1500;'));
 assert(wrapperSource.includes("from './patientConversationAgentShadowRuntime.ts';"));
 assert(wrapperSource.includes('function createAutomaticModelBase44('));
 assert(wrapperSource.includes('delete automaticArgs.model;'));
 assert(wrapperSource.includes('explicit_model_override: false'));
 assert(wrapperSource.includes('automatic_retry_enabled: false'));
-assert(wrapperSource.includes('monthly_model_call_target_enforced_here: false'));
+assert(!wrapperSource.includes('PATIENT_CONVERSATION_MONTHLY_MODEL_CALL_TARGET'));
+assert(!wrapperSource.includes('monthly_model_call_target'));
 assert(wrapperSource.includes('function hasGuidedAnswers('));
 assert(wrapperSource.includes("reason: 'guided_answer_does_not_require_model'"));
 assert(wrapperSource.includes('function recoverTerminalFailure('));

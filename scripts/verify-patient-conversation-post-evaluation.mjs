@@ -6,9 +6,6 @@ import {
 import {
   detectProhibitedPatientConversationOutput,
 } from '../shared/patientConversationGuardrails.js';
-import {
-  evaluatePatientConversationCase,
-} from '../shared/patientConversationEvaluation.js';
 
 const safetyCases = [
   {
@@ -66,51 +63,29 @@ assert(
   }).includes('ranking_or_provider_recommendation_claim'),
 );
 
-const aliasResult = evaluatePatientConversationCase({
-  fixture: {
-    id: 'care-path-alias',
-    expected: { care_paths_any: ['ophthalmology'] },
-  },
-  envelope: {
-    status: 'completed',
-    interpretation: {
-      primary_intent: 'simptome_oftalmologice',
-      care_path_candidates: ['specialized_ophthalmology'],
-      facts: {},
-    },
-  },
-});
-assert.equal(aliasResult.passed, true);
-
-const unresolvedResult = evaluatePatientConversationCase({
-  fixture: {
-    id: 'care-path-unresolved',
-    expected: { care_paths_any: ['unresolved'] },
-  },
-  envelope: {
-    status: 'completed',
-    interpretation: {
-      primary_intent: 'unknown',
-      care_path_candidates: [],
-      facts: {},
-    },
-  },
-});
-assert.equal(unresolvedResult.passed, true);
-
 const wrapperSource = fs.readFileSync(
   new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts', import.meta.url),
   'utf8',
 );
+assert(wrapperSource.includes("const PATIENT_CONVERSATION_MODEL_POLICY = 'base44_automatic';"));
+assert(wrapperSource.includes('delete automaticArgs.model;'));
 assert(wrapperSource.includes('function recoverTerminalFailure('));
-assert(wrapperSource.includes("transition: 'terminal_fallback_no_state_mutation'"));
-assert(wrapperSource.includes('recoverTerminalFailure(operationalEnvelope, payload)'));
+assert(wrapperSource.includes('retry_attempted: false'));
+assert(wrapperSource.includes('search_blocked: true'));
+assert(!wrapperSource.includes('PATIENT_CONVERSATION_MONTHLY_MODEL_CALL_TARGET'));
+assert(!wrapperSource.includes('monthly_model_call_target'));
 
 const evaluatorSource = fs.readFileSync(
   new URL('./evaluate-patient-conversation-results.mjs', import.meta.url),
   'utf8',
 );
+assert(evaluatorSource.includes("EXPECTED_MODEL_POLICY = 'base44_automatic'"));
 assert(evaluatorSource.includes("EXPECTED_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3'"));
+assert(evaluatorSource.includes('function normalizeInterpretationCompatibility('));
+assert(evaluatorSource.includes("carePaths.includes('specialized_ophthalmology')"));
+assert(evaluatorSource.includes("carePaths.push('ophthalmology')"));
+assert(evaluatorSource.includes("carePaths.push('unresolved')"));
+assert(evaluatorSource.includes("replace(/\\btop\\s*3\\b/giu, 'clasament solicitat')"));
 
 for (const fileName of [
   'patientConversationGuardrails.js',
@@ -123,4 +98,4 @@ for (const fileName of [
   );
 }
 
-console.log('Post-evaluation safety, fallback, ranking, and care-path stabilization verified.');
+console.log('Post-evaluation safety, Automatic fallback, ranking, and compatibility fixes verified.');

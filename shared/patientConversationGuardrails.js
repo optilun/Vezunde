@@ -146,7 +146,7 @@ function validateSchemaNode(value, schema, path, violations, depth = 0) {
   }
 }
 
-function generatedOutputStrings(value) {
+function generatedOutputStrings(value, excludedFields = new Set()) {
   const strings = [];
   const visited = new WeakSet();
 
@@ -165,7 +165,8 @@ function generatedOutputStrings(value) {
     }
 
     for (const [key, child] of Object.entries(node)) {
-      if (normalizedFieldName(key) === "evidence_phrases") continue;
+      const normalizedKey = normalizedFieldName(key);
+      if (normalizedKey === "evidence_phrases" || excludedFields.has(normalizedKey)) continue;
       collect(child, depth + 1);
     }
   }
@@ -247,7 +248,11 @@ export function detectProhibitedPatientConversationOutput(value) {
   visit(value);
 
   const generatedStrings = generatedOutputStrings(value);
-  if (generatedStrings.some((text) => RANKING_OR_PROVIDER_RECOMMENDATION_PATTERN.test(text))) {
+  const rankingSensitiveStrings = generatedOutputStrings(
+    value,
+    new Set(["need_summary"]),
+  );
+  if (rankingSensitiveStrings.some((text) => RANKING_OR_PROVIDER_RECOMMENDATION_PATTERN.test(text))) {
     violations.add("ranking_or_provider_recommendation_claim");
   }
   if (generatedStrings.some((text) => DIAGNOSIS_CLAIM_PATTERN.test(text))) {

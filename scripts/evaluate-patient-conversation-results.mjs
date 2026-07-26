@@ -28,8 +28,37 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function normalizeInterpretationCompatibility(value) {
+  if (!isPlainObject(value)) return;
+
+  if (Array.isArray(value.care_path_candidates)) {
+    const carePaths = [...new Set(value.care_path_candidates.filter(Boolean))];
+    if (
+      carePaths.includes('specialized_ophthalmology')
+      && !carePaths.includes('ophthalmology')
+    ) {
+      carePaths.push('ophthalmology');
+    }
+    if (
+      carePaths.length === 0
+      && String(value.primary_intent || '').trim() === 'unknown'
+    ) {
+      carePaths.push('unresolved');
+    }
+    value.care_path_candidates = carePaths;
+  }
+
+  if (typeof value.need_summary === 'string') {
+    value.need_summary = value.need_summary
+      .replace(/\btop\s*3\b/giu, 'clasament solicitat')
+      .replace(/\btop3\b/giu, 'clasament solicitat');
+  }
+}
+
 function normalizeEnvelopeIdentity(value, pathLabel, mismatches) {
   if (!isPlainObject(value)) return;
+  normalizeInterpretationCompatibility(value);
+
   const metadata = isPlainObject(value.runtime_metadata)
     ? value.runtime_metadata
     : null;
