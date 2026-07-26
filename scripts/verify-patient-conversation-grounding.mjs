@@ -18,11 +18,11 @@ const base44Source = fs.readFileSync(
   new URL('../base44/shared/patientConversationGrounding.js', import.meta.url),
   'utf8',
 );
-const wrapperSource = fs.readFileSync(
-  new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts', import.meta.url),
+const runtimeSource = fs.readFileSync(
+  new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadowRuntime.ts', import.meta.url),
   'utf8',
 );
-const normalizedWrapperSource = wrapperSource.replace(/\r\n/g, '\n');
+const normalizedRuntimeSource = runtimeSource.replace(/\r\n/g, '\n');
 
 assert.equal(sharedSource, base44Source);
 assert.equal(
@@ -181,23 +181,23 @@ assert(invalidEnvelopeEvaluation.failed_check_ids.includes('must_not:invented_sy
 assert.equal(invalidEnvelopeEvaluation.symptom_grounding.valid, false);
 assert.equal(invalidEnvelopeEvaluation.symptom_grounding.envelope_status, 'invalid');
 
-assert(normalizedWrapperSource.includes('applySymptomGrounding'));
-assert(!normalizedWrapperSource.includes("reason: 'ungrounded_symptom_facts'"));
-assert(normalizedWrapperSource.includes('groundPatientConversationSymptomFacts'));
-assert(normalizedWrapperSource.includes('fact_evidence: grounding.fact_evidence'));
-assert(normalizedWrapperSource.includes('grounding_recovery'));
-assert(normalizedWrapperSource.includes('rejected_fact_values'));
-assert(normalizedWrapperSource.includes('redactedRejectedSymptomFacts'));
-assert(normalizedWrapperSource.includes("status: 'completed'"));
-assert(normalizedWrapperSource.includes('decision_recomputed: rejectedFields.length > 0'));
-const groundingCallIndex = normalizedWrapperSource.indexOf(
+assert(normalizedRuntimeSource.includes('applySymptomGrounding'));
+assert(!normalizedRuntimeSource.includes("reason: 'ungrounded_symptom_facts'"));
+assert(normalizedRuntimeSource.includes('groundPatientConversationSymptomFacts'));
+assert(normalizedRuntimeSource.includes('fact_evidence: grounding.fact_evidence'));
+assert(normalizedRuntimeSource.includes('grounding_recovery'));
+assert(normalizedRuntimeSource.includes('rejected_fact_values'));
+assert(normalizedRuntimeSource.includes('redactedRejectedSymptomFacts'));
+assert(normalizedRuntimeSource.includes("status: 'completed'"));
+assert(normalizedRuntimeSource.includes('decision_recomputed: rejectedFields.length > 0'));
+const groundingCallIndex = normalizedRuntimeSource.indexOf(
   'const groundedEnvelope = applySymptomGrounding(',
 );
-const finalizationIndex = normalizedWrapperSource.indexOf(
+const finalizationIndex = normalizedRuntimeSource.indexOf(
   'return finalizeWithGuidanceHandoff(',
   groundingCallIndex,
 );
-const groundedEnvelopeArgumentIndex = normalizedWrapperSource.indexOf(
+const groundedEnvelopeArgumentIndex = normalizedRuntimeSource.indexOf(
   'groundedEnvelope,',
   finalizationIndex,
 );
