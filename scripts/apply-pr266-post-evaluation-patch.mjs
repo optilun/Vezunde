@@ -15,25 +15,21 @@ function write(relativePath, content) {
   fs.writeFileSync(absolute(relativePath), content);
 }
 
-function update(relativePath, transform) {
+function apply(relativePath, transform, changed) {
   const source = read(relativePath);
   const next = transform(source);
-  if (next === source) return false;
+  if (next === source) return;
   write(relativePath, next);
-  return true;
+  changed.add(relativePath);
 }
 
-function requireChanged(relativePath, source, next, marker) {
-  if (source === next && !source.includes(marker)) {
-    throw new Error(`${relativePath}: required transformation did not match.`);
+function requireMarker(relativePath, source, marker) {
+  if (!source.includes(marker)) {
+    throw new Error(`${relativePath}: expected marker not found: ${marker}`);
   }
-  return next;
 }
 
 const changed = new Set();
-function apply(relativePath, transform) {
-  if (update(relativePath, transform)) changed.add(relativePath);
-}
 
 apply('scripts/evaluate-patient-conversation-results.mjs', (source) => {
   if (source.includes("EXPECTED_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3'")) {
@@ -43,13 +39,13 @@ apply('scripts/evaluate-patient-conversation-results.mjs', (source) => {
     /const EXPECTED_PROMPT_VERSION = '[^']+';/,
     "const EXPECTED_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3';",
   );
-  return requireChanged(
+  requireMarker(
     'scripts/evaluate-patient-conversation-results.mjs',
-    source,
     next,
     "EXPECTED_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3'",
   );
-});
+  return next;
+}, changed);
 
 const carePathHelpers = `
 const CARE_PATH_EQUIVALENTS = new Map([
@@ -70,36 +66,37 @@ function carePathsAnyMatch(actualValues, expectedValues, result) {
 }
 `;
 
-for (const relativePath of [
-  'shared/patientConversationEvaluation.js',
-  'base44/shared/patientConversationEvaluation.js',
-]) {
-  apply(relativePath, (source) => {
-    let next = source;
-    if (!next.includes('function carePathsAnyMatch(')) {
-      next = next.replace(
-        /(function includesAny\(actualValues, expectedValues\) \{\r?\n[\s\S]*?\r?\n\})/,
-        `$1${carePathHelpers}`,
-      );
-    }
+apply('shared/patientConversationEvaluation.js', (source) => {
+  let next = source;
+  if (!next.includes('function carePathsAnyMatch(')) {
     next = next.replace(
-      '      includesAny(result.care_path_candidates, expected.care_paths_any),',
-      '      carePathsAnyMatch(result.care_path_candidates, expected.care_paths_any, result),',
+      /(function includesAny\(actualValues, expectedValues\) \{\r?\n[\s\S]*?\r?\n\})/,
+      `$1${carePathHelpers}`,
     );
-    next = next.replace(
-      /    commercial_top3: hasViolation\(violations, "ranking_or_provider_recommendation_claim"\)\r?\n\s*\|\| serialized\.includes\("top 3"\)\r?\n\s*\|\| serialized\.includes\("top3"\),/,
-      '    commercial_top3: hasViolation(violations, "ranking_or_provider_recommendation_claim"),',
-    );
-    if (
-      !next.includes('function carePathsAnyMatch(')
-      || !next.includes('carePathsAnyMatch(result.care_path_candidates')
-      || next.includes('serialized.includes("top 3")')
-    ) {
-      throw new Error(`${relativePath}: evaluator stabilization incomplete.`);
-    }
-    return next;
-  });
-}
+  }
+  next = next.replace(
+    '      includesAny(result.care_path_candidates, expected.care_paths_any),',
+    '      carePathsAnyMatch(result.care_path_candidates, expected.care_paths_any, result),',
+  );
+  next = next.replace(
+    /    commercial_top3: hasViolation\(violations, "ranking_or_provider_recommendation_claim"\)\r?\n\s*\|\| serialized\.includes\("top 3"\)\r?\n\s*\|\| serialized\.includes\("top3"\),/,
+    '    commercial_top3: hasViolation(violations, "ranking_or_provider_recommendation_claim"),',
+  );
+  requireMarker(
+    'shared/patientConversationEvaluation.js',
+    next,
+    'function carePathsAnyMatch(',
+  );
+  requireMarker(
+    'shared/patientConversationEvaluation.js',
+    next,
+    'carePathsAnyMatch(result.care_path_candidates, expected.care_paths_any, result)',
+  );
+  if (next.includes('serialized.includes("top 3")')) {
+    throw new Error('shared/patientConversationEvaluation.js: raw Top 3 text check remains.');
+  }
+  return next;
+}, changed);
 
 const rankingPattern = 'const RANKING_OR_PROVIDER_RECOMMENDATION_PATTERN = /\\b(?:locul|pozi[țt]ia)\\s*(?:1|unu|intai|întâi)\\b|\\b(?:cea|cel)\\s+mai\\s+bun(?:a|ă)?\\s+(?:clinic(?:a|ă)|cabinet|optic(?:a|ă)|furnizor|medic)\\b|\\brecomand(?:am|ăm|a)?\\s+(?:clinica|cabinetul|optica|furnizorul|medicul)\\b|\\b(?:best|top[- ]?rated)\\s+(?:clinic|doctor|provider|optical\\s+store)\\b|\\brecommend(?:ed|s|ing)?\\s+(?:the\\s+)?(?:clinic|doctor|provider|optical\\s+store)\\b/iu;';
 
@@ -113,8 +110,9 @@ for (const relativePath of [
       /^const RANKING_OR_PROVIDER_RECOMMENDATION_PATTERN = .*;$/m,
       rankingPattern,
     );
-    return requireChanged(relativePath, source, next, rankingPattern);
-  });
+    requireMarker(relativePath, next, rankingPattern);
+    return next;
+  }, changed);
 }
 
 const fallbackFunctions = `function fallbackLocality(value: any) {
@@ -281,36 +279,40 @@ export async function`,
   );
 
   next = next.replace(
-    `    }, controller);\n  }\n\n  if (!requestHasUserMessage(runtimePayload)) {`,
-    `    }, controller, runtimePayload);\n  }\n\n  if (!requestHasUserMessage(runtimePayload)) {`,
+    /(\.\.\.evaluationCorrelation\(runtimePayload\),\r?\n\s*\}), controller\);/,
+    '$1, controller, runtimePayload);',
   );
   next = next.replace(
-    `      skippedWithoutUserMessage(runtimePayload, Date.now() - startedAt),\n      controller,\n    );`,
-    `      skippedWithoutUserMessage(runtimePayload, Date.now() - startedAt),\n      controller,\n      runtimePayload,\n    );`,
+    /(skippedWithoutUserMessage\(runtimePayload, Date\.now\(\) - startedAt\),\r?\n\s*controller,)(\r?\n\s*\);)/,
+    '$1\n      runtimePayload,$2',
   );
   next = next.replace(
-    `    return finalizeWithGuidanceHandoff(\n      groundedEnvelope,\n      controller,\n    );`,
-    `    return finalizeWithGuidanceHandoff(\n      groundedEnvelope,\n      controller,\n      runtimePayload,\n    );`,
+    /(groundedEnvelope,\r?\n\s*controller,)(\r?\n\s*\);)/,
+    '$1\n      runtimePayload,$2',
   );
   next = next.replace(
-    `      }),\n      controller,\n    );\n  }\n}`,
-    `      }),\n      controller,\n      runtimePayload,\n    );\n  }\n}`,
+    /(durationMs: Date\.now\(\) - startedAt,\r?\n\s*\}\),\r?\n\s*controller,)(\r?\n\s*\);)/,
+    '$1\n      runtimePayload,$2',
   );
 
-  const runtimePayloadFinalizers = (
-    next.match(/finalizeWithGuidanceHandoff\([\s\S]*?runtimePayload,\s*\);/g) || []
-  ).length;
-  if (
-    !next.includes('function recoverTerminalFailure(')
-    || !next.includes('recoverTerminalFailure(operationalEnvelope, payload)')
-    || runtimePayloadFinalizers < 4
-  ) {
-    throw new Error(
-      `patientConversationAgentShadow.ts: terminal fallback patch incomplete; runtime finalizers=${runtimePayloadFinalizers}.`,
+  const normalized = next.replace(/\r\n/g, '\n');
+  const requiredMarkers = [
+    'function recoverTerminalFailure(',
+    'recoverTerminalFailure(operationalEnvelope, payload)',
+    '}, controller, runtimePayload);',
+    'skippedWithoutUserMessage(runtimePayload, Date.now() - startedAt),\n      controller,\n      runtimePayload,',
+    'groundedEnvelope,\n      controller,\n      runtimePayload,',
+    'durationMs: Date.now() - startedAt,\n      }),\n      controller,\n      runtimePayload,',
+  ];
+  for (const marker of requiredMarkers) {
+    requireMarker(
+      'base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts',
+      normalized,
+      marker,
     );
   }
   return next;
-});
+}, changed);
 
 apply('package.json', (source) => {
   const packageJson = JSON.parse(source);
@@ -321,6 +323,6 @@ apply('package.json', (source) => {
     packageJson.scripts['test:services'] = `${packageJson.scripts['test:services']} && ${command}`;
   }
   return `${JSON.stringify(packageJson, null, 2)}\n`;
-});
+}, changed);
 
 console.log(JSON.stringify({ changed: [...changed].sort() }, null, 2));
