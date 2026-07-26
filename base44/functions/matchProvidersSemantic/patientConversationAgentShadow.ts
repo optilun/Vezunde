@@ -27,6 +27,7 @@ import {
   runPatientConversationAgentShadow as runPatientConversationAgentShadowRuntime,
 } from './patientConversationAgentShadowRuntime.ts';
 
+// Delegation chain: runPatientConversationAgentShadowRuntime -> runPatientConversationAgentShadowCore.
 const PATIENT_CONVERSATION_MODEL_POLICY = 'base44_automatic';
 const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3';
 
