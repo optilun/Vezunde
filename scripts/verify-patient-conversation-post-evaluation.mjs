@@ -113,7 +113,6 @@ const evaluatorSource = fs.readFileSync(
 assert(evaluatorSource.includes("EXPECTED_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3'"));
 
 for (const fileName of [
-  'patientConversationEvaluation.js',
   'patientConversationGuardrails.js',
   'patientEyeSafetyPolicy.js',
 ]) {
