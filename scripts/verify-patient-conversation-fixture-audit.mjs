@@ -25,7 +25,7 @@ const evaluatorSource = fs.readFileSync(
 const emergencyGuidance = PATIENT_EMERGENCY_GUIDANCE_MESSAGE
   .toLocaleLowerCase('ro-RO');
 
-assert.equal(PATIENT_CONVERSATION_EVALUATION_VERSION, 'viasee-patient-conversation-evaluation-v1.4');
+assert.equal(PATIENT_CONVERSATION_EVALUATION_VERSION, 'viasee-patient-conversation-evaluation-v1.5');
 assert.equal(suite.cases.length, 71);
 assert.equal(new Set(suite.cases.map((fixture) => fixture.id)).size, 71);
 assert.deepEqual(suite.replacement_case_ids, ['vision-loss-003', 'summary-001']);
