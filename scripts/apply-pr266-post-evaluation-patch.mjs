@@ -15,52 +15,43 @@ function write(relativePath, content) {
   fs.writeFileSync(absolute(relativePath), content);
 }
 
-function replaceOnce(relativePath, before, after, marker = after) {
+function update(relativePath, transform) {
   const source = read(relativePath);
-  if (source.includes(marker)) return false;
-  const count = source.split(before).length - 1;
-  if (count !== 1) {
-    throw new Error(`${relativePath}: expected one target, found ${count}.`);
-  }
-  write(relativePath, source.replace(before, after));
+  const next = transform(source);
+  if (next === source) return false;
+  write(relativePath, next);
   return true;
 }
 
-function insertAfter(relativePath, anchor, addition, marker) {
-  const source = read(relativePath);
-  if (source.includes(marker)) return false;
-  const count = source.split(anchor).length - 1;
-  if (count !== 1) {
-    throw new Error(`${relativePath}: expected one anchor, found ${count}.`);
+function requireChanged(relativePath, source, next, marker) {
+  if (source === next && !source.includes(marker)) {
+    throw new Error(`${relativePath}: required transformation did not match.`);
   }
-  write(relativePath, source.replace(anchor, `${anchor}${addition}`));
-  return true;
+  return next;
 }
 
 const changed = new Set();
-function apply(relativePath, result) {
-  if (result) changed.add(relativePath);
+function apply(relativePath, transform) {
+  if (update(relativePath, transform)) changed.add(relativePath);
 }
 
-apply(
-  'scripts/evaluate-patient-conversation-results.mjs',
-  replaceOnce(
-    'scripts/evaluate-patient-conversation-results.mjs',
-    "const EXPECTED_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.2';",
+apply('scripts/evaluate-patient-conversation-results.mjs', (source) => {
+  if (source.includes("EXPECTED_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3'")) {
+    return source;
+  }
+  const next = source.replace(
+    /const EXPECTED_PROMPT_VERSION = '[^']+';/,
     "const EXPECTED_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3';",
-  ),
-);
+  );
+  return requireChanged(
+    'scripts/evaluate-patient-conversation-results.mjs',
+    source,
+    next,
+    "EXPECTED_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3'",
+  );
+});
 
-const includesAnyBefore = `function includesAny(actualValues, expectedValues) {
-  const actual = new Set(list(actualValues));
-  return list(expectedValues).some((value) => actual.has(value));
-}
-`;
-const includesAnyAfter = `function includesAny(actualValues, expectedValues) {
-  const actual = new Set(list(actualValues));
-  return list(expectedValues).some((value) => actual.has(value));
-}
-
+const carePathHelpers = `
 const CARE_PATH_EQUIVALENTS = new Map([
   ["ophthalmology", new Set(["ophthalmology", "specialized_ophthalmology"])],
   ["specialized_ophthalmology", new Set(["specialized_ophthalmology", "ophthalmology"])],
@@ -78,70 +69,55 @@ function carePathsAnyMatch(actualValues, expectedValues, result) {
   });
 }
 `;
-const commercialTop3Before = `    commercial_top3: hasViolation(violations, "ranking_or_provider_recommendation_claim")
-      || serialized.includes("top 3")
-      || serialized.includes("top3"),`;
-const commercialTop3After = `    commercial_top3: hasViolation(violations, "ranking_or_provider_recommendation_claim"),`;
 
 for (const relativePath of [
   'shared/patientConversationEvaluation.js',
   'base44/shared/patientConversationEvaluation.js',
 ]) {
-  apply(relativePath, replaceOnce(
-    relativePath,
-    includesAnyBefore,
-    includesAnyAfter,
-    'function carePathsAnyMatch(',
-  ));
-  apply(relativePath, replaceOnce(
-    relativePath,
-    '      includesAny(result.care_path_candidates, expected.care_paths_any),',
-    '      carePathsAnyMatch(result.care_path_candidates, expected.care_paths_any, result),',
-  ));
-  apply(relativePath, replaceOnce(
-    relativePath,
-    commercialTop3Before,
-    commercialTop3After,
-  ));
+  apply(relativePath, (source) => {
+    let next = source;
+    if (!next.includes('function carePathsAnyMatch(')) {
+      next = next.replace(
+        /(function includesAny\(actualValues, expectedValues\) \{\r?\n[\s\S]*?\r?\n\})/,
+        `$1${carePathHelpers}`,
+      );
+    }
+    next = next.replace(
+      '      includesAny(result.care_path_candidates, expected.care_paths_any),',
+      '      carePathsAnyMatch(result.care_path_candidates, expected.care_paths_any, result),',
+    );
+    next = next.replace(
+      /    commercial_top3: hasViolation\(violations, "ranking_or_provider_recommendation_claim"\)\r?\n\s*\|\| serialized\.includes\("top 3"\)\r?\n\s*\|\| serialized\.includes\("top3"\),/,
+      '    commercial_top3: hasViolation(violations, "ranking_or_provider_recommendation_claim"),',
+    );
+    if (
+      !next.includes('function carePathsAnyMatch(')
+      || !next.includes('carePathsAnyMatch(result.care_path_candidates')
+      || next.includes('serialized.includes("top 3")')
+    ) {
+      throw new Error(`${relativePath}: evaluator stabilization incomplete.`);
+    }
+    return next;
+  });
 }
 
-const rankingPatternBefore = String.raw`const RANKING_OR_PROVIDER_RECOMMENDATION_PATTERN = /\btop\s*3\b|\btop3\b|\b(?:locul|pozi[țt]ia)\s*(?:1|unu|intai|întâi)\b|\b(?:cea|cel)\s+mai\s+bun(?:a|ă)?\s+(?:clinic(?:a|ă)|cabinet|optic(?:a|ă)|furnizor|medic)\b|\brecomand(?:am|ăm|a)?\s+(?:clinica|cabinetul|optica|furnizorul|medicul)\b|\b(?:best|top[- ]?rated)\s+(?:clinic|doctor|provider|optical\s+store)\b|\brecommend(?:ed|s|ing)?\s+(?:the\s+)?(?:clinic|doctor|provider|optical\s+store)\b/iu;`;
-const rankingPatternAfter = String.raw`const RANKING_OR_PROVIDER_RECOMMENDATION_PATTERN = /\b(?:locul|pozi[țt]ia)\s*(?:1|unu|intai|întâi)\b|\b(?:cea|cel)\s+mai\s+bun(?:a|ă)?\s+(?:clinic(?:a|ă)|cabinet|optic(?:a|ă)|furnizor|medic)\b|\brecomand(?:am|ăm|a)?\s+(?:clinica|cabinetul|optica|furnizorul|medicul)\b|\b(?:best|top[- ]?rated)\s+(?:clinic|doctor|provider|optical\s+store)\b|\brecommend(?:ed|s|ing)?\s+(?:the\s+)?(?:clinic|doctor|provider|optical\s+store)\b/iu;`;
+const rankingPattern = 'const RANKING_OR_PROVIDER_RECOMMENDATION_PATTERN = /\\b(?:locul|pozi[țt]ia)\\s*(?:1|unu|intai|întâi)\\b|\\b(?:cea|cel)\\s+mai\\s+bun(?:a|ă)?\\s+(?:clinic(?:a|ă)|cabinet|optic(?:a|ă)|furnizor|medic)\\b|\\brecomand(?:am|ăm|a)?\\s+(?:clinica|cabinetul|optica|furnizorul|medicul)\\b|\\b(?:best|top[- ]?rated)\\s+(?:clinic|doctor|provider|optical\\s+store)\\b|\\brecommend(?:ed|s|ing)?\\s+(?:the\\s+)?(?:clinic|doctor|provider|optical\\s+store)\\b/iu;';
 
 for (const relativePath of [
   'shared/patientConversationGuardrails.js',
   'base44/shared/patientConversationGuardrails.js',
 ]) {
-  apply(relativePath, replaceOnce(
-    relativePath,
-    rankingPatternBefore,
-    rankingPatternAfter,
-  ));
+  apply(relativePath, (source) => {
+    if (source.includes(rankingPattern)) return source;
+    const next = source.replace(
+      /^const RANKING_OR_PROVIDER_RECOMMENDATION_PATTERN = .*;$/m,
+      rankingPattern,
+    );
+    return requireChanged(relativePath, source, next, rankingPattern);
+  });
 }
 
-const wrapperPath = 'base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts';
-const unavailableAnchor = `function unavailableRuntime({ payload, modelInvoked, durationMs }: {
-  payload: any;
-  modelInvoked: boolean;
-  durationMs: number;
-}) {
-  return {
-    mode: 'shadow',
-    contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
-    status: 'unavailable',
-    reason: modelInvoked
-      ? 'conversation_model_unavailable'
-      : 'conversation_runtime_unavailable',
-    interpretation: null,
-    ...evaluationCorrelation(payload),
-    runtime_metadata: modelInvoked
-      ? modelRuntimeMetadata(durationMs)
-      : noModelRuntimeMetadata(durationMs),
-  };
-}
-`;
-const fallbackFunctions = `
-function fallbackLocality(value: any) {
+const fallbackFunctions = `function fallbackLocality(value: any) {
   const locality = value && typeof value === 'object' && !Array.isArray(value)
     ? value
     : {};
@@ -273,20 +249,21 @@ function recoverTerminalFailure(envelope: any, payload: any = {}) {
     },
   });
 }
-`;
-apply(wrapperPath, insertAfter(
-  wrapperPath,
-  unavailableAnchor,
-  fallbackFunctions,
-  'function recoverTerminalFailure(',
-));
 
-const finalizeBefore = `function finalizeWithGuidanceHandoff(envelope: any, controller: any) {
-  return attachGuidanceHandoff(
-    finalizePatientConversationOperationalEnvelope(envelope, controller),
-  );
-}`;
-const finalizeAfter = `function finalizeWithGuidanceHandoff(
+`;
+
+apply('base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts', (source) => {
+  let next = source;
+  if (!next.includes('function recoverTerminalFailure(')) {
+    next = next.replace(
+      'function normalizeRuntimeIdentity(envelope: any, controller: any) {',
+      `${fallbackFunctions}function normalizeRuntimeIdentity(envelope: any, controller: any) {`,
+    );
+  }
+
+  next = next.replace(
+    /function finalizeWithGuidanceHandoff\(envelope: any, controller: any\) \{[\s\S]*?\r?\n\}\r?\n\r?\nexport async function/,
+    `function finalizeWithGuidanceHandoff(
   envelope: any,
   controller: any,
   payload: any = {},
@@ -298,74 +275,47 @@ const finalizeAfter = `function finalizeWithGuidanceHandoff(
   return attachGuidanceHandoff(
     recoverTerminalFailure(operationalEnvelope, payload),
   );
-}`;
-apply(wrapperPath, replaceOnce(
-  wrapperPath,
-  finalizeBefore,
-  finalizeAfter,
-  'recoverTerminalFailure(operationalEnvelope, payload)',
-));
+}
 
-apply(wrapperPath, replaceOnce(
-  wrapperPath,
-  `    }, controller);
-  }
+export async function`,
+  );
 
-  if (!requestHasUserMessage(runtimePayload)) {`,
-  `    }, controller, runtimePayload);
-  }
+  next = next.replace(
+    `    }, controller);\n  }\n\n  if (!requestHasUserMessage(runtimePayload)) {`,
+    `    }, controller, runtimePayload);\n  }\n\n  if (!requestHasUserMessage(runtimePayload)) {`,
+  );
+  next = next.replace(
+    `      skippedWithoutUserMessage(runtimePayload, Date.now() - startedAt),\n      controller,\n    );`,
+    `      skippedWithoutUserMessage(runtimePayload, Date.now() - startedAt),\n      controller,\n      runtimePayload,\n    );`,
+  );
+  next = next.replace(
+    `    return finalizeWithGuidanceHandoff(\n      groundedEnvelope,\n      controller,\n    );`,
+    `    return finalizeWithGuidanceHandoff(\n      groundedEnvelope,\n      controller,\n      runtimePayload,\n    );`,
+  );
+  next = next.replace(
+    `      }),\n      controller,\n    );\n  }\n}`,
+    `      }),\n      controller,\n      runtimePayload,\n    );\n  }\n}`,
+  );
 
-  if (!requestHasUserMessage(runtimePayload)) {`,
-));
-apply(wrapperPath, replaceOnce(
-  wrapperPath,
-  `      skippedWithoutUserMessage(runtimePayload, Date.now() - startedAt),
-      controller,
-    );`,
-  `      skippedWithoutUserMessage(runtimePayload, Date.now() - startedAt),
-      controller,
-      runtimePayload,
-    );`,
-));
-apply(wrapperPath, replaceOnce(
-  wrapperPath,
-  `    return finalizeWithGuidanceHandoff(
-      groundedEnvelope,
-      controller,
-    );`,
-  `    return finalizeWithGuidanceHandoff(
-      groundedEnvelope,
-      controller,
-      runtimePayload,
-    );`,
-));
-apply(wrapperPath, replaceOnce(
-  wrapperPath,
-  `      }),
-      controller,
-    );
+  if (
+    !next.includes('function recoverTerminalFailure(')
+    || !next.includes('recoverTerminalFailure(operationalEnvelope, payload)')
+    || !next.includes('controller, runtimePayload);')
+  ) {
+    throw new Error('patientConversationAgentShadow.ts: terminal fallback patch incomplete.');
   }
-}`,
-  `      }),
-      controller,
-      runtimePayload,
-    );
-  }
-}`,
-));
+  return next;
+});
 
-const packagePath = 'package.json';
-const packageJson = JSON.parse(read(packagePath));
-packageJson.scripts = packageJson.scripts || {};
-const command = 'node scripts/verify-patient-conversation-post-evaluation.mjs';
-if (packageJson.scripts['test:patient-conversation-post-evaluation'] !== command) {
+apply('package.json', (source) => {
+  const packageJson = JSON.parse(source);
+  packageJson.scripts = packageJson.scripts || {};
+  const command = 'node scripts/verify-patient-conversation-post-evaluation.mjs';
   packageJson.scripts['test:patient-conversation-post-evaluation'] = command;
-  changed.add(packagePath);
-}
-if (!String(packageJson.scripts['test:services'] || '').includes(command)) {
-  packageJson.scripts['test:services'] = `${packageJson.scripts['test:services']} && ${command}`;
-  changed.add(packagePath);
-}
-write(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
+  if (!String(packageJson.scripts['test:services'] || '').includes(command)) {
+    packageJson.scripts['test:services'] = `${packageJson.scripts['test:services']} && ${command}`;
+  }
+  return `${JSON.stringify(packageJson, null, 2)}\n`;
+});
 
 console.log(JSON.stringify({ changed: [...changed].sort() }, null, 2));
