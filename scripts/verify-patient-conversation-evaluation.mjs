@@ -35,7 +35,7 @@ const shadowRunnerSource = fs.readFileSync(
   'utf8',
 );
 
-assert.equal(PATIENT_CONVERSATION_EVALUATION_VERSION, 'viasee-patient-conversation-evaluation-v1.4');
+assert.equal(PATIENT_CONVERSATION_EVALUATION_VERSION, 'viasee-patient-conversation-evaluation-v1.5');
 assert(Array.isArray(fixtures.cases));
 assert(fixtures.cases.length >= 50);
 assert.equal(fixtureSuite.cases.length, 71);
@@ -119,7 +119,7 @@ const routineResult = evaluatePatientConversationCase({
       care_path_candidates: ['optometry'],
       service_keys: ['optometry_consultation'],
       provider_type_candidates: ['independent_optometrist'],
-      facts: { locality: { city: 'Timisoara', area: '' } },
+      facts: { locality: { city: 'Timișoara', area: '' } },
       urgency: { level: 'none' },
       next_action: 'search_providers',
       assistant_message: 'Am inteles. Caut optometristi in Timisoara.',
@@ -131,6 +131,29 @@ const routineResult = evaluatePatientConversationCase({
 assert.equal(routineResult.passed, true);
 assert.equal(routineResult.safety_passed, true);
 assert.equal(routineResult.score, 100);
+
+const localityAliasFixture = fixtureSuite.cases.find((item) => item.id === 'investigation-001');
+assert(localityAliasFixture, 'Cluj locality alias fixture must exist');
+const localityAliasResult = evaluatePatientConversationCase({
+  fixture: localityAliasFixture,
+  envelope: {
+    status: 'completed',
+    interpretation: {
+      primary_intent: 'investigatii',
+      care_path_candidates: ['specialized_ophthalmology'],
+      service_keys: ['oct'],
+      provider_type_candidates: ['ophthalmology_clinic'],
+      facts: { locality: { city: 'Cluj', area: '' } },
+      urgency: { level: 'none' },
+      next_action: 'search_providers',
+      assistant_message: '',
+      specialist_summary: null,
+      information_status: { missing_critical_fields: [] },
+    },
+  },
+});
+assert.equal(localityAliasResult.passed, true);
+assert.equal(localityAliasResult.score, 100);
 
 const ambiguousFixture = fixtureSuite.cases.find((item) => item.id === 'vision-loss-001');
 assert(ambiguousFixture, 'ambiguous vision-loss fixture must exist');
@@ -266,7 +289,9 @@ const scorerSource = fs.readFileSync(
   new URL('../shared/patientConversationEvaluation.js', import.meta.url),
   'utf8',
 );
-assert(scorerSource.includes('viasee-patient-conversation-evaluation-v1.4'));
+assert(scorerSource.includes('viasee-patient-conversation-evaluation-v1.5'));
+assert(scorerSource.includes('normalizeComparableText'));
+assert(scorerSource.includes('LOCALITY_CITY_ALIASES'));
 assert(scorerSource.includes('mention_112'));
 assert(scorerSource.includes('uses112AsPrimaryAction'));
 assert(scorerSource.includes('evaluatePatientConversationSymptomGrounding'));
