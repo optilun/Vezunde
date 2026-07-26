@@ -21,7 +21,7 @@ import { reconcilePatientConversationState } from '../../shared/patientConversat
 import { reducePatientConversationSemanticStateDelta } from '../../shared/patientConversationStateDeltaReducer.js';
 
 const PATIENT_CONVERSATION_SHADOW_EVENT = 'patient_conversation_agent_shadow_summary';
-const PATIENT_CONVERSATION_MODEL = 'gpt_5_4';
+const PATIENT_CONVERSATION_MODEL_POLICY = 'base44_automatic';
 const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3';
 
 function clean(value: unknown, maxLength = 1200) {
@@ -67,7 +67,9 @@ function attachRuntimeMetadata(
   return {
     ...envelope,
     runtime_metadata: {
-      model: modelInvoked ? PATIENT_CONVERSATION_MODEL : null,
+      model: null,
+      model_policy: modelInvoked ? PATIENT_CONVERSATION_MODEL_POLICY : null,
+      model_override: null,
       prompt_version: modelInvoked ? PATIENT_CONVERSATION_PROMPT_VERSION : null,
       model_invoked: modelInvoked,
       duration_ms: Math.max(0, Math.round(durationMs)),
@@ -285,6 +287,7 @@ function emitShadowSummary(envelope: any) {
     contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
     prompt_version: envelope?.runtime_metadata?.prompt_version || null,
     model: envelope?.runtime_metadata?.model || null,
+    model_policy: envelope?.runtime_metadata?.model_policy || null,
     model_invoked: envelope?.runtime_metadata?.model_invoked === true,
     duration_ms: envelope?.runtime_metadata?.duration_ms || 0,
     status: envelope?.status || 'unknown',
@@ -402,7 +405,6 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
   try {
     const raw = await base44.integrations.Core.InvokeLLM({
       prompt,
-      model: PATIENT_CONVERSATION_MODEL,
       add_context_from_internet: false,
       response_json_schema: responseSchema,
     });
