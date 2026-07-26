@@ -194,7 +194,7 @@ assert.notEqual(invalidRun.status, 0);
 const invalidReport = JSON.parse(fs.readFileSync(invalidReportPath, 'utf8'));
 assert.equal(invalidReport.runtime.identity_valid, false);
 assert.equal(invalidReport.acceptance.passed, false);
-assert.equal(invalidReport.runtime.identity_mismatches[0].route, 'deterministic_safety_preflight');
+assert.equal(invalidReport.runtime.identity_mismatches[0].route, 'model_interpretation');
 
 const staleSafetyRun = spawnSync(process.execPath, [
   'scripts/evaluate-patient-conversation-results.mjs',
