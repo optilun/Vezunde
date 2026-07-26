@@ -75,18 +75,27 @@ assert(!wrapperSource.includes('assignRecommendationBuckets'));
 assert(!wrapperSource.includes('buildRecommendationScore'));
 assert(!wrapperSource.includes('asServiceRole'));
 
+assert(runtimeSource.includes("const PATIENT_CONVERSATION_MODEL_POLICY = 'base44_automatic';"));
 assert(runtimeSource.includes('createPatientConversationOperationalController('));
 assert(runtimeSource.includes("audience: 'admin_shadow'"));
 assert(runtimeSource.includes('controller.invoke(() =>'));
+assert(runtimeSource.includes('delete automaticArgs.model;'));
 assert(runtimeSource.includes('finalizePatientConversationOperationalEnvelope('));
 assert(runtimeSource.includes('semanticPayloadWithoutControlledAnswers(runtimePayload)'));
 assert(runtimeSource.includes('sanitizeGuidedSafetyAnswers(runtimePayload?.answers)'));
+assert(!runtimeSource.includes("'gpt_5_4'"));
+assert(!runtimeSource.includes('PATIENT_CONVERSATION_MODEL ='));
+assert(!runtimeSource.includes('model: PATIENT_CONVERSATION_MODEL'));
 
 assert.equal((coreSource.match(/Core\.InvokeLLM/g) || []).length, 1);
+assert(coreSource.includes("const PATIENT_CONVERSATION_MODEL_POLICY = 'base44_automatic';"));
 assert(coreSource.includes('add_context_from_internet: false'));
 assert(coreSource.includes('response_json_schema: responseSchema'));
 assert(coreSource.includes('detectProhibitedPatientConversationOutput(raw)'));
 assert(coreSource.includes('validatePatientConversationModelResponse(raw, responseSchema)'));
+assert(!coreSource.includes("'gpt_5_4'"));
+assert(!coreSource.includes('PATIENT_CONVERSATION_MODEL ='));
+assert(!coreSource.includes('model: PATIENT_CONVERSATION_MODEL'));
 assert(!coreSource.includes('assignRecommendationBuckets'));
 assert(!coreSource.includes('buildRecommendationScore'));
 assert(!coreSource.includes('ProviderLocation'));
