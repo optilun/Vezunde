@@ -14,6 +14,7 @@ import {
 import {
   PATIENT_CONVERSATION_MAX_CHARACTERS,
   PATIENT_CONVERSATION_MAX_TURNS,
+  redactPatientConversationText,
   sanitizePatientConversationTurns,
 } from '../../shared/patientConversationGuardrails.js';
 import {
@@ -31,7 +32,7 @@ import {
 } from './patientConversationAgentShadowCore.ts';
 
 const PATIENT_CONVERSATION_MODEL = 'gpt_5_4';
-const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.2';
+const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3';
 
 function createOperationalBase44(base44: any, controller: any) {
   const integrations = base44?.integrations || {};
@@ -52,7 +53,7 @@ function createOperationalBase44(base44: any, controller: any) {
           }
           return controller.invoke(() => invokeModel.call(core, args));
         },
-      },
+      }
     },
     enumerable: true,
   });
@@ -360,43 +361,48 @@ function unavailableRuntime({ payload, modelInvoked, durationMs }: {
 
 function normalizeRuntimeIdentity(envelope: any, controller: any) {
   const snapshot = controller?.snapshot?.();
-  if (snapshot?.model_calls_used !== 0) return envelope;
+  if (snapshot?.model_calls_used === 0) {
+    return {
+      ...envelope,
+      runtime_metadata: {
+        ...noModelRuntimeMetadata(envelope?.runtime_metadata?.duration_ms),
+        ...(envelope?.runtime_metadata || {}),
+        model: null,
+        prompt_version: null,
+        model_invoked: false,
+      },
+    };
+  }
   return {
     ...envelope,
     runtime_metadata: {
-      ...noModelRuntimeMetadata(envelope?.runtime_metadata?.duration_ms),
       ...(envelope?.runtime_metadata || {}),
-      model: null,
-      prompt_version: null,
-      model_invoked: false,
+      model: PATIENT_CONVERSATION_MODEL,
+      prompt_version: PATIENT_CONVERSATION_PROMPT_VERSION,
+      model_invoked: true,
     },
   };
+}
+
+function redactedRejectedSymptomFacts(envelope: any, rejectedFields: string[]) {
+  const facts = envelope?.interpretation?.facts || {};
+  return Object.fromEntries(rejectedFields.map((field) => [
+    field,
+    redactPatientConversationText(facts?.[field], 400),
+  ]).filter(([, value]) => Boolean(value)));
 }
 
 function applySymptomGrounding(envelope: any, payload: any = {}) {
   if (envelope?.status !== 'completed' || !envelope?.interpretation) return envelope;
 
+  const conversation = conversationFromPayload(payload);
   const grounding = groundPatientConversationSymptomFacts({
     rawFacts: envelope.interpretation.facts,
     evidencePhrases: envelope.interpretation.evidence_phrases,
-    conversation: conversationFromPayload(payload),
+    conversation,
   });
-  const diagnostics = {
-    ...(envelope.diagnostics || {}),
-    grounding: grounding.diagnostics,
-  };
-
-  if (grounding.diagnostics.rejected_fact_fields.length > 0) {
-    return {
-      ...envelope,
-      status: 'invalid',
-      reason: 'ungrounded_symptom_facts',
-      interpretation: null,
-      diagnostics,
-    };
-  }
-
-  return {
+  const rejectedFields = grounding.diagnostics.rejected_fact_fields;
+  const groundedEnvelope = {
     ...envelope,
     interpretation: {
       ...envelope.interpretation,
@@ -406,8 +412,40 @@ function applySymptomGrounding(envelope: any, payload: any = {}) {
       },
       fact_evidence: grounding.fact_evidence,
     },
-    diagnostics,
+    diagnostics: {
+      ...(envelope.diagnostics || {}),
+      grounding: {
+        ...grounding.diagnostics,
+        rejected_fact_values: redactedRejectedSymptomFacts(envelope, rejectedFields),
+      },
+      grounding_recovery: {
+        applied: rejectedFields.length > 0,
+        stripped_fields: rejectedFields,
+        decision_recomputed: rejectedFields.length > 0,
+      },
+    },
   };
+
+  if (rejectedFields.length === 0) return groundedEnvelope;
+
+  const decision = applyPatientConversationDecisionPolicy({
+    interpretation: groundedEnvelope.interpretation,
+    conversation,
+    answers: sanitizeGuidedSafetyAnswers(payload?.answers),
+    runtimeContext: controlledRuntimeContextFromPayload(payload),
+    stateDiagnostics: groundedEnvelope?.diagnostics?.state_policy,
+  });
+
+  return applyCanonicalBoundary({
+    ...groundedEnvelope,
+    status: 'completed',
+    reason: null,
+    interpretation: decision.interpretation,
+    diagnostics: {
+      ...(groundedEnvelope.diagnostics || {}),
+      decision_policy: decision.diagnostics,
+    },
+  });
 }
 
 function attachGuidanceHandoff(envelope: any) {
