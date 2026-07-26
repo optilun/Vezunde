@@ -37,14 +37,19 @@ jobs:
           node scripts/apply-pr266-post-evaluation-patch.mjs *>&1 | Tee-Object post-evaluation-patch.log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Upload patch diagnostics
+      - name: Persist patch diagnostics
         if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr266-post-evaluation-patch-diagnostics
-          path: post-evaluation-patch.log
-          if-no-files-found: error
-          retention-days: 3
+        shell: powershell
+        run: |
+          if (!(Test-Path post-evaluation-patch.log)) {
+            "Patch failed without a captured log." | Set-Content post-evaluation-patch.log
+          }
+          Copy-Item post-evaluation-patch.log pr266-post-evaluation-patch-error.log -Force
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f pr266-post-evaluation-patch-error.log
+          git commit -m "Capture PR266 patch failure diagnostics"
+          git push origin "HEAD:feat/patient-conversation-agent-contract"
 
       - name: Verify focused post-evaluation coverage
         shell: cmd
