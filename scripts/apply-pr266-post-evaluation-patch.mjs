@@ -1,53 +1,30 @@
 import fs from 'node:fs';
-import path from 'node:path';
 
-const root = process.cwd();
-
-function absolute(relativePath) {
-  return path.join(root, relativePath);
+function read(path) {
+  return fs.readFileSync(path, 'utf8').replace(/\r\n/g, '\n');
 }
 
-function read(relativePath) {
-  return fs.readFileSync(absolute(relativePath), 'utf8');
+function write(path, content) {
+  fs.writeFileSync(path, content.endsWith('\n') ? content : `${content}\n`);
 }
 
-function write(relativePath, content) {
-  fs.writeFileSync(absolute(relativePath), content);
-}
-
-function apply(relativePath, transform, changed) {
-  const source = read(relativePath);
-  const next = transform(source);
-  if (next === source) return;
-  write(relativePath, next);
-  changed.add(relativePath);
-}
-
-function requireMarker(relativePath, source, marker) {
-  if (!source.includes(marker)) {
-    throw new Error(`${relativePath}: expected marker not found: ${marker}`);
+function replaceOnce(source, before, after, label) {
+  if (source.includes(after)) return source;
+  const count = source.split(before).length - 1;
+  if (count !== 1) {
+    throw new Error(`${label}: expected one exact target, found ${count}.`);
   }
+  return source.replace(before, after);
 }
 
-const changed = new Set();
+function patchEvaluation(path) {
+  let source = read(path);
+  const includesAny = `function includesAny(actualValues, expectedValues) {
+  const actual = new Set(list(actualValues));
+  return list(expectedValues).some((value) => actual.has(value));
+}`;
+  const carePathCompatibility = `${includesAny}
 
-apply('scripts/evaluate-patient-conversation-results.mjs', (source) => {
-  if (source.includes("EXPECTED_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3'")) {
-    return source;
-  }
-  const next = source.replace(
-    /const EXPECTED_PROMPT_VERSION = '[^']+';/,
-    "const EXPECTED_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3';",
-  );
-  requireMarker(
-    'scripts/evaluate-patient-conversation-results.mjs',
-    next,
-    "EXPECTED_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3'",
-  );
-  return next;
-}, changed);
-
-const carePathHelpers = `
 const CARE_PATH_EQUIVALENTS = new Map([
   ["ophthalmology", new Set(["ophthalmology", "specialized_ophthalmology"])],
   ["specialized_ophthalmology", new Set(["specialized_ophthalmology", "ophthalmology"])],
@@ -63,266 +40,137 @@ function carePathsAnyMatch(actualValues, expectedValues, result) {
       || new Set([expectedValue]);
     return [...equivalents].some((value) => actual.has(value));
   });
-}
-`;
-
-apply('shared/patientConversationEvaluation.js', (source) => {
-  let next = source;
-  if (!next.includes('function carePathsAnyMatch(')) {
-    next = next.replace(
-      /(function includesAny\(actualValues, expectedValues\) \{\r?\n[\s\S]*?\r?\n\})/,
-      `$1${carePathHelpers}`,
-    );
-  }
-  next = next.replace(
+}`;
+  source = replaceOnce(
+    source,
+    includesAny,
+    carePathCompatibility,
+    `${path}: care-path helper`,
+  );
+  source = replaceOnce(
+    source,
     '      includesAny(result.care_path_candidates, expected.care_paths_any),',
     '      carePathsAnyMatch(result.care_path_candidates, expected.care_paths_any, result),',
+    `${path}: care-path evaluation`,
   );
-  next = next.replace(
-    /    commercial_top3: hasViolation\(violations, "ranking_or_provider_recommendation_claim"\)\r?\n\s*\|\| serialized\.includes\("top 3"\)\r?\n\s*\|\| serialized\.includes\("top3"\),/,
+  source = replaceOnce(
+    source,
+    `    commercial_top3: hasViolation(violations, "ranking_or_provider_recommendation_claim")
+      || serialized.includes("top 3")
+      || serialized.includes("top3"),`,
     '    commercial_top3: hasViolation(violations, "ranking_or_provider_recommendation_claim"),',
+    `${path}: Top 3 evaluator`,
   );
-  requireMarker(
-    'shared/patientConversationEvaluation.js',
-    next,
-    'function carePathsAnyMatch(',
-  );
-  requireMarker(
-    'shared/patientConversationEvaluation.js',
-    next,
-    'carePathsAnyMatch(result.care_path_candidates, expected.care_paths_any, result)',
-  );
-  if (next.includes('serialized.includes("top 3")')) {
-    throw new Error('shared/patientConversationEvaluation.js: raw Top 3 text check remains.');
-  }
-  return next;
-}, changed);
-
-const rankingPattern = 'const RANKING_OR_PROVIDER_RECOMMENDATION_PATTERN = /\\b(?:locul|pozi[țt]ia)\\s*(?:1|unu|intai|întâi)\\b|\\b(?:cea|cel)\\s+mai\\s+bun(?:a|ă)?\\s+(?:clinic(?:a|ă)|cabinet|optic(?:a|ă)|furnizor|medic)\\b|\\brecomand(?:am|ăm|a)?\\s+(?:clinica|cabinetul|optica|furnizorul|medicul)\\b|\\b(?:best|top[- ]?rated)\\s+(?:clinic|doctor|provider|optical\\s+store)\\b|\\brecommend(?:ed|s|ing)?\\s+(?:the\\s+)?(?:clinic|doctor|provider|optical\\s+store)\\b/iu;';
-
-for (const relativePath of [
-  'shared/patientConversationGuardrails.js',
-  'base44/shared/patientConversationGuardrails.js',
-]) {
-  apply(relativePath, (source) => {
-    if (source.includes(rankingPattern)) return source;
-    const next = source.replace(
-      /^const RANKING_OR_PROVIDER_RECOMMENDATION_PATTERN = .*;$/m,
-      rankingPattern,
-    );
-    requireMarker(relativePath, next, rankingPattern);
-    return next;
-  }, changed);
+  write(path, source);
 }
 
-const fallbackFunctions = `function fallbackLocality(value: any) {
-  const locality = value && typeof value === 'object' && !Array.isArray(value)
-    ? value
-    : {};
-  return {
-    siruta_code: String(locality?.siruta_code ?? '').trim().slice(0, 40),
-    city: String(locality?.city ?? locality?.name ?? '').trim().slice(0, 120),
-    county_code: String(locality?.county_code ?? '').trim().slice(0, 40),
-    county: String(locality?.county ?? locality?.county_name ?? '').trim().slice(0, 120),
-    area: String(locality?.area ?? '').trim().slice(0, 160),
-  };
-}
-
-function terminalFallbackStateDiagnostics(payload: any = {}) {
-  const priorStatePresent = Boolean(
-    payload?.prior_state
-    && typeof payload.prior_state === 'object'
-    && !Array.isArray(payload.prior_state)
+function patchGuardrails(path) {
+  let source = read(path);
+  source = replaceOnce(
+    source,
+    'function generatedOutputStrings(value) {',
+    'function generatedOutputStrings(value, excludedFields = new Set()) {',
+    `${path}: output string collector signature`,
   );
-  return priorStatePresent ? {
-    policy_version: 'viasee-patient-conversation-state-policy-v1.1',
-    transition: 'terminal_fallback_no_state_mutation',
-    carried_fields: [],
-    cleared_stale_fields: [],
-  } : null;
+  source = replaceOnce(
+    source,
+    `    for (const [key, child] of Object.entries(node)) {
+      if (normalizedFieldName(key) === "evidence_phrases") continue;
+      collect(child, depth + 1);
+    }`,
+    `    for (const [key, child] of Object.entries(node)) {
+      const normalizedKey = normalizedFieldName(key);
+      if (normalizedKey === "evidence_phrases" || excludedFields.has(normalizedKey)) continue;
+      collect(child, depth + 1);
+    }`,
+    `${path}: excluded descriptive fields`,
+  );
+  source = replaceOnce(
+    source,
+    `  const generatedStrings = generatedOutputStrings(value);
+  if (generatedStrings.some((text) => RANKING_OR_PROVIDER_RECOMMENDATION_PATTERN.test(text))) {`,
+    `  const generatedStrings = generatedOutputStrings(value);
+  const rankingSensitiveStrings = generatedOutputStrings(
+    value,
+    new Set(["need_summary"]),
+  );
+  if (rankingSensitiveStrings.some((text) => RANKING_OR_PROVIDER_RECOMMENDATION_PATTERN.test(text))) {`,
+    `${path}: ranking-sensitive strings`,
+  );
+  write(path, source);
 }
 
-function recoverTerminalFailure(envelope: any, payload: any = {}) {
-  if (
-    !['invalid', 'unavailable'].includes(String(envelope?.status || ''))
-    || !requestHasUserMessage(payload)
-  ) {
-    return envelope;
-  }
-
-  const conversation = conversationFromPayload(payload);
-  const answers = sanitizeGuidedSafetyAnswers(payload?.answers);
-  const runtimeContext = controlledRuntimeContextFromPayload(payload);
-  const originalDiagnostics = envelope?.diagnostics || {};
-  const terminalFallback = {
-    applied: true,
-    original_status: String(envelope?.status || 'unavailable'),
-    original_reason: String(envelope?.reason || 'conversation_runtime_unavailable'),
-    rejected_model_output_violations: Array.isArray(originalDiagnostics.prohibited_output_violations)
-      ? originalDiagnostics.prohibited_output_violations
-      : [],
-    rejected_schema_violations: Array.isArray(originalDiagnostics.schema_violations)
-      ? originalDiagnostics.schema_violations
-      : [],
-    noncanonical_output_count: Number(originalDiagnostics.noncanonical_output_count) || 0,
-    search_blocked: true,
-  };
-  const emergency = buildPatientConversationEmergencyInterpretation({
-    contractVersion: PATIENT_CONVERSATION_AGENT_VERSION,
-    conversation,
-    answers,
-    runtimeContext,
-  });
-
-  if (emergency) {
-    return applyCanonicalBoundary({
-      ...envelope,
-      status: 'completed',
-      reason: null,
-      interpretation: emergency.interpretation,
-      diagnostics: {
-        decision_policy: emergency.diagnostics,
-        terminal_fallback: terminalFallback,
-      },
-    });
-  }
-
-  const knownLocality = fallbackLocality(runtimeContext?.known_locality);
-  const conservativeInterpretation = {
-    contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
-    language: 'ro',
-    need_summary: 'Cererea necesita clarificare controlata inainte de cautare.',
-    primary_intent: 'unknown',
-    alternative_intents: [],
-    care_path_candidates: ['unresolved'],
-    service_keys: [],
-    provider_type_candidates: [],
-    facts: {
-      for_whom: 'unknown',
-      age_group: 'unknown',
-      locality: knownLocality,
-      symptom_onset: '',
-      symptom_duration: '',
-      symptom_pattern: '',
-      desired_timing: '',
-      contact_lens_experience: 'unknown',
-      prescription_status: 'unknown',
-      investigation_reference_text: '',
-      repair_details: '',
-      user_constraints: [],
-    },
-    urgency: {
-      level: 'none',
-      needs_clarification: false,
-      reason: '',
-    },
-    understanding_confidence: 'low',
-    information_status: {
-      sufficient_for_search: false,
-      sufficient_for_specialist_message: false,
-      missing_critical_fields: ['need', 'service'],
-    },
-    next_action: 'ask_clarifying_question',
-    assistant_message: '',
-    specialist_summary: null,
-    evidence_phrases: [],
-  };
-  const decision = applyPatientConversationDecisionPolicy({
-    interpretation: conservativeInterpretation,
-    conversation,
-    answers,
-    runtimeContext,
-  });
-  const statePolicy = terminalFallbackStateDiagnostics(payload);
-
-  return applyCanonicalBoundary({
-    ...envelope,
-    status: 'completed',
-    reason: null,
-    interpretation: decision.interpretation,
-    diagnostics: {
-      decision_policy: decision.diagnostics,
-      ...(statePolicy ? { state_policy: statePolicy } : {}),
-      terminal_fallback: terminalFallback,
-    },
-  });
-}
-
-`;
-
-apply('base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts', (source) => {
-  let next = source;
-  if (!next.includes('function recoverTerminalFailure(')) {
-    next = next.replace(
-      'function normalizeRuntimeIdentity(envelope: any, controller: any) {',
-      `${fallbackFunctions}function normalizeRuntimeIdentity(envelope: any, controller: any) {`,
+function patchShadowRouteVerification(path) {
+  let source = read(path);
+  source = source.replace(
+    "assert(wrapperSource.includes('const PATIENT_CONVERSATION_MONTHLY_MODEL_CALL_TARGET = 1500;'));\n",
+    '',
+  );
+  source = source.replace(
+    "assert(wrapperSource.includes('monthly_model_call_target_enforced_here: false'));\n",
+    '',
+  );
+  if (!source.includes("assert(!wrapperSource.includes('PATIENT_CONVERSATION_MONTHLY_MODEL_CALL_TARGET'));")) {
+    source = source.replace(
+      "assert(wrapperSource.includes('automatic_retry_enabled: false'));",
+      `assert(wrapperSource.includes('automatic_retry_enabled: false'));
+assert(!wrapperSource.includes('PATIENT_CONVERSATION_MONTHLY_MODEL_CALL_TARGET'));
+assert(!wrapperSource.includes('monthly_model_call_target'));`,
     );
   }
-
-  next = next.replace(
-    /function finalizeWithGuidanceHandoff\(envelope: any, controller: any\) \{[\s\S]*?\r?\n\}\r?\n\r?\nexport async function/,
-    `function finalizeWithGuidanceHandoff(
-  envelope: any,
-  controller: any,
-  payload: any = {},
-) {
-  const operationalEnvelope = finalizePatientConversationOperationalEnvelope(
-    envelope,
-    controller,
-  );
-  return attachGuidanceHandoff(
-    recoverTerminalFailure(operationalEnvelope, payload),
-  );
+  write(path, source);
 }
 
-export async function`,
+function patchPostEvaluationVerification(path) {
+  let source = read(path);
+  const staleBlock = `assert(wrapperSource.includes('function recoverTerminalFailure('));
+assert(wrapperSource.includes("transition: 'terminal_fallback_no_state_mutation'"));
+assert(wrapperSource.includes('recoverTerminalFailure(operationalEnvelope, payload)'));`;
+  const currentBlock = `assert(wrapperSource.includes("const PATIENT_CONVERSATION_MODEL_POLICY = 'base44_automatic';"));
+assert(wrapperSource.includes('delete automaticArgs.model;'));
+assert(wrapperSource.includes('function recoverTerminalFailure('));
+assert(wrapperSource.includes('retry_attempted: false'));
+assert(wrapperSource.includes('search_blocked: true'));
+assert(!wrapperSource.includes('PATIENT_CONVERSATION_MONTHLY_MODEL_CALL_TARGET'));
+assert(!wrapperSource.includes('monthly_model_call_target'));`;
+  source = replaceOnce(
+    source,
+    staleBlock,
+    currentBlock,
+    `${path}: current Automatic fallback assertions`,
   );
+  write(path, source);
+}
 
-  next = next.replace(
-    /(\.\.\.evaluationCorrelation\(runtimePayload\),\r?\n\s*\}), controller\);/,
-    '$1, controller, runtimePayload);',
-  );
-  next = next.replace(
-    /(skippedWithoutUserMessage\(runtimePayload, Date\.now\(\) - startedAt\),\r?\n\s*controller,)(\r?\n\s*\);)/,
-    '$1\n      runtimePayload,$2',
-  );
-  next = next.replace(
-    /(groundedEnvelope,\r?\n\s*controller,)(\r?\n\s*\);)/,
-    '$1\n      runtimePayload,$2',
-  );
-  next = next.replace(
-    /(durationMs: Date\.now\(\) - startedAt,\r?\n\s*\}\),\r?\n\s*controller,)(\r?\n\s*\);)/,
-    '$1\n      runtimePayload,$2',
-  );
-
-  const normalized = next.replace(/\r\n/g, '\n');
-  const requiredMarkers = [
-    'function recoverTerminalFailure(',
-    'recoverTerminalFailure(operationalEnvelope, payload)',
-    '}, controller, runtimePayload);',
-    'skippedWithoutUserMessage(runtimePayload, Date.now() - startedAt),\n      controller,\n      runtimePayload,',
-    'groundedEnvelope,\n      controller,\n      runtimePayload,',
-    'durationMs: Date.now() - startedAt,\n      }),\n      controller,\n      runtimePayload,',
-  ];
-  for (const marker of requiredMarkers) {
-    requireMarker(
-      'base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts',
-      normalized,
-      marker,
-    );
-  }
-  return next;
-}, changed);
-
-apply('package.json', (source) => {
-  const packageJson = JSON.parse(source);
-  packageJson.scripts = packageJson.scripts || {};
+function patchPackage(path) {
+  const packageJson = JSON.parse(read(path));
   const command = 'node scripts/verify-patient-conversation-post-evaluation.mjs';
   packageJson.scripts['test:patient-conversation-post-evaluation'] = command;
-  if (!String(packageJson.scripts['test:services'] || '').includes(command)) {
-    packageJson.scripts['test:services'] = `${packageJson.scripts['test:services']} && ${command}`;
+  const services = String(packageJson.scripts['test:services'] || '');
+  if (!services.includes(command)) {
+    const anchor = 'node scripts/verify-patient-conversation-fixture-audit.mjs';
+    if (!services.includes(anchor)) {
+      throw new Error(`${path}: fixture audit anchor missing from test:services.`);
+    }
+    packageJson.scripts['test:services'] = services.replace(
+      anchor,
+      `${anchor} && ${command}`,
+    );
   }
-  return `${JSON.stringify(packageJson, null, 2)}\n`;
-}, changed);
+  write(path, JSON.stringify(packageJson, null, 2));
+}
 
-console.log(JSON.stringify({ changed: [...changed].sort() }, null, 2));
+patchEvaluation('shared/patientConversationEvaluation.js');
+patchGuardrails('shared/patientConversationGuardrails.js');
+patchGuardrails('base44/shared/patientConversationGuardrails.js');
+patchShadowRouteVerification('scripts/verify-patient-conversation-shadow-route.mjs');
+patchPostEvaluationVerification('scripts/verify-patient-conversation-post-evaluation.mjs');
+patchPackage('package.json');
+
+const sharedGuardrails = read('shared/patientConversationGuardrails.js');
+const base44Guardrails = read('base44/shared/patientConversationGuardrails.js');
+if (sharedGuardrails !== base44Guardrails) {
+  throw new Error('Guardrail shared/Base44 copies differ after patching.');
+}
+
+console.log('PR266 Automatic cost-control and post-evaluation fixes applied.');

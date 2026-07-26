@@ -1,26 +1,24 @@
-name: PR266 Post Evaluation Patch PR
+name: PR266 Finalize Automatic Runtime
 
 on:
   pull_request:
     paths:
       - scripts/apply-pr266-post-evaluation-patch.mjs
-      - scripts/repair-pr266-post-evaluation-applicator.mjs
-      - scripts/verify-patient-conversation-post-evaluation.mjs
       - .github/workflows/pr266-post-evaluation-patch-pr.yml
 
 concurrency:
-  group: pr266-post-evaluation-patch-${{ github.event.pull_request.number }}
+  group: pr266-finalize-automatic-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
   contents: write
 
 jobs:
-  apply-and-validate:
+  apply-validate-clean:
     runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 45
     steps:
-      - name: Checkout branch
+      - name: Checkout PR branch
         uses: actions/checkout@v4
         with:
           ref: feat/patient-conversation-agent-contract
@@ -36,21 +34,25 @@ jobs:
         shell: cmd
         run: npm ci --no-audit --no-fund
 
-      - name: Repair patch applicator target list
-        shell: cmd
-        run: node scripts/repair-pr266-post-evaluation-applicator.mjs
-
-      - name: Apply post-evaluation patch
+      - name: Apply direct PR266 fixes
         shell: cmd
         run: node scripts/apply-pr266-post-evaluation-patch.mjs
 
-      - name: Verify focused post-evaluation coverage
+      - name: Verify Automatic runtime boundary
+        shell: cmd
+        run: node scripts/verify-patient-conversation-shadow-route.mjs
+
+      - name: Verify post-evaluation fixes
         shell: cmd
         run: node scripts/verify-patient-conversation-post-evaluation.mjs
 
-      - name: Run service test suite
+      - name: Verify evaluator and response contract
         shell: cmd
-        run: npm run test:services
+        run: node scripts/verify-patient-conversation-evaluation.mjs && node scripts/verify-patient-conversation-model-response-contract.mjs
+
+      - name: Verify failure and decision policies
+        shell: cmd
+        run: node scripts/verify-patient-conversation-terminal-failure-gate.mjs && node scripts/verify-patient-conversation-decision-policy.mjs && node scripts/verify-patient-conversation-operational-policy.mjs
 
       - name: Typecheck services
         shell: cmd
@@ -64,16 +66,26 @@ jobs:
         shell: cmd
         run: npm run lint
 
-      - name: Commit validated patch
+      - name: Remove temporary patch machinery
+        shell: powershell
+        run: |
+          git rm --ignore-unmatch `
+            .github/workflows/pr266-patch-probe.yml `
+            .github/workflows/pr266-post-evaluation-patch.yml `
+            .github/workflows/pr266-post-evaluation-patch-pr.yml `
+            scripts/apply-pr266-post-evaluation-patch.mjs `
+            scripts/repair-pr266-post-evaluation-applicator.mjs
+
+      - name: Commit validated implementation
         shell: powershell
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json scripts/apply-pr266-post-evaluation-patch.mjs scripts/evaluate-patient-conversation-results.mjs shared/patientConversationEvaluation.js shared/patientConversationGuardrails.js base44/shared/patientConversationGuardrails.js base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts
+          git add -A
           git diff --cached --quiet
           if ($LASTEXITCODE -eq 0) {
-            Write-Host "No patch changes to commit."
+            Write-Host "No implementation changes to commit."
             exit 0
           }
-          git commit -m "Stabilize post-evaluation patient conversation runtime"
+          git commit -m "Finalize Automatic patient conversation runtime"
           git push origin "HEAD:feat/patient-conversation-agent-contract"
