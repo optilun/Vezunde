@@ -297,12 +297,17 @@ export async function`,
     `      }),\n      controller,\n      runtimePayload,\n    );\n  }\n}`,
   );
 
+  const runtimePayloadFinalizers = (
+    next.match(/finalizeWithGuidanceHandoff\([\s\S]*?runtimePayload,\s*\);/g) || []
+  ).length;
   if (
     !next.includes('function recoverTerminalFailure(')
     || !next.includes('recoverTerminalFailure(operationalEnvelope, payload)')
-    || !next.includes('controller, runtimePayload);')
+    || runtimePayloadFinalizers < 4
   ) {
-    throw new Error('patientConversationAgentShadow.ts: terminal fallback patch incomplete.');
+    throw new Error(
+      `patientConversationAgentShadow.ts: terminal fallback patch incomplete; runtime finalizers=${runtimePayloadFinalizers}.`,
+    );
   }
   return next;
 });
