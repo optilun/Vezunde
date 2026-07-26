@@ -4,6 +4,15 @@ const path = 'scripts/apply-pr266-post-evaluation-patch.mjs';
 let source = fs.readFileSync(path, 'utf8');
 let changed = false;
 
+const canonicalApplicator = source.includes('const requiredMarkers = [')
+  && source.includes("'base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts'")
+  && source.includes("'}, controller, runtimePayload);'");
+
+if (canonicalApplicator) {
+  console.log('PR266 post-evaluation applicator already uses canonical robust transforms.');
+  process.exit(0);
+}
+
 const repairedTarget = `for (const relativePath of [
   'shared/patientConversationEvaluation.js',
 ]) {`;
