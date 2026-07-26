@@ -146,6 +146,8 @@ export function buildPatientConversationEmergencyInterpretation({
       deterministic_safety_guided_clear: safety.source === "guided_clear",
       model_invoked: false,
       model_urgency_advisory: null,
+      model_safety_flag_count: 0,
+      model_safety_flags_ignored: true,
       model_next_action_ignored: null,
       provider_types_derived: true,
       decision_source: "deterministic_safety_preflight",
@@ -192,10 +194,10 @@ export function applyPatientConversationDecisionPolicy({
     },
   };
 
+  const modelSafetyFlags = unique(interpretation?.possible_safety_flags, 6);
   const safety = assessPatientEyeSafety({
     conversation,
     answers,
-    aiFlags: interpretation?.possible_safety_flags,
   });
   const guidedSafetyCleared = safety.source === "guided_clear";
   const modelUrgency = ["none", "possible", "confirmed"].includes(current.urgency?.level)
@@ -225,8 +227,7 @@ export function applyPatientConversationDecisionPolicy({
     urgencyReason = safety.blocking_flags
       .map((flag) => PATIENT_SAFETY_FLAG_PRESENTATION[flag] || flag)
       .join("; ");
-  } else if (safety.advisory
-    || (!guidedSafetyCleared && ["possible", "confirmed"].includes(modelUrgency))) {
+  } else if (safety.advisory) {
     urgencyLevel = "possible";
     urgencyNeedsClarification = true;
     urgencyReason = "Semnal ocular neclar; necesita clarificare controlata.";
@@ -285,6 +286,8 @@ export function applyPatientConversationDecisionPolicy({
       model_invoked: true,
       model_urgency_advisory: modelUrgency,
       model_urgency_overridden: modelUrgency !== urgencyLevel,
+      model_safety_flag_count: modelSafetyFlags.length,
+      model_safety_flags_ignored: true,
       model_next_action_advisory: modelNextAction || null,
       model_next_action_ignored: modelNextAction !== nextAction,
       model_provider_type_count: modelProviderTypes.length,
