@@ -7,6 +7,10 @@ on:
       - scripts/repair-pr266-post-evaluation-applicator.mjs
       - .github/workflows/pr266-patch-probe.yml
 
+concurrency:
+  group: pr266-patch-probe-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
