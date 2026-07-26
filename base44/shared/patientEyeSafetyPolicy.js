@@ -74,6 +74,7 @@ const BLOCKING_PATTERNS = Object.freeze({
     /\bdurere oculara severa\b/,
     /\bma doare foarte tare ochiul\b/,
     /\bdoare foarte tare ochiul\b/,
+    /\bochi(?:ul)? (?:e|este) foarte rosu\b.{0,100}\b(?:ma )?doare tare\b.{0,100}\b(?:imi vine sa vomit|greata|varsaturi)\b/,
   ],
   postoperative_red_eye_or_vision_change: [
     /\bdupa operatie la ochi nu mai vad\b/,
@@ -101,6 +102,15 @@ const ADVISORY_PATTERNS = Object.freeze({
     /\bvad incetosat cu (?:un ochi|ochiul drept|ochiul stang)\b/,
     /\bvederea (?:e|este) mai slaba la (?:un ochi|ochiul drept|ochiul stang)\b/,
   ],
+  chemical_injury: [
+    /\b(?:sampon|sapun|gel de dus)\b.{0,80}\b(?:in|la) ochi\b.{0,120}\b(?:inca )?(?:ma )?(?:ustura|usturime|arde|iritat)\b/,
+  ],
+  penetrating_or_high_speed_trauma: [
+    /\bm am lovit la ochi cu (?:mingea|un obiect)\b.{0,120}\b(?:vad|vedere)\b.{0,40}\b(?:in ceata|incetosat|mai slab)\b/,
+  ],
+  other_possible_urgent_eye_problem: [
+    /\bam nevoie urgent de (?:un )?oftalmolog\b/,
+  ],
 });
 
 const CLEAR_PATTERNS = Object.freeze({
@@ -109,6 +119,7 @@ const CLEAR_PATTERNS = Object.freeze({
     /\bnu (?:a aparut|s a instalat) brusc\b/,
     /\bnu am pierdut vederea\b/,
     /\bvad mai slab\b.{0,80}\bde (?:cateva|mai multe|[0-9]+) (?:zile|saptamani|luni|ani)\b/,
+    /\bvad\b.{0,40}\b(?:mai|mult mai) slab\b.{0,80}\bde (?:vreo )?(?:un|o|doi|doua|trei|patru|cinci|sase|sapte|opt|noua|zece|cateva|mai multe|[0-9]+) (?:zile|saptamani|luni|ani)\b/,
     /\bproblema (?:exista|este) de (?:cateva|mai multe|[0-9]+) (?:zile|saptamani|luni|ani)\b/,
     /\b(?:vad|vederea|ochiul)\b.{0,80}\bde (?:mic|mica|copil|copilarie)\b/,
   ],
