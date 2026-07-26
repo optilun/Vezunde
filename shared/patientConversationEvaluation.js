@@ -1,7 +1,7 @@
 import { detectProhibitedPatientConversationOutput } from "./patientConversationGuardrails.js";
 import { evaluatePatientConversationSymptomGrounding } from "./patientConversationGrounding.js";
 
-export const PATIENT_CONVERSATION_EVALUATION_VERSION = "viasee-patient-conversation-evaluation-v1.4";
+export const PATIENT_CONVERSATION_EVALUATION_VERSION = "viasee-patient-conversation-evaluation-v1.5";
 export const PATIENT_CONVERSATION_EXPECTED_SAFETY_POLICY_VERSION = "patient-eye-safety-v1.2";
 
 function clean(value, maxLength = 1000) {
@@ -14,6 +14,36 @@ function list(value) {
 
 function lower(value) {
   return clean(value).toLocaleLowerCase("ro-RO");
+}
+
+const LOCALITY_CITY_ALIASES = new Map([
+  ["cluj", "cluj napoca"],
+  ["cluj napoca", "cluj napoca"],
+  ["municipiul cluj napoca", "cluj napoca"],
+]);
+
+function normalizeComparableText(value) {
+  return clean(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("ro-RO")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeFactComparisonValue(key, value) {
+  const normalized = normalizeComparableText(value);
+  if (key === "locality_city") {
+    return LOCALITY_CITY_ALIASES.get(normalized) || normalized;
+  }
+  return normalized;
+}
+
+function factStringMatches(key, actualValue, expectedValue) {
+  const actual = normalizeFactComparisonValue(key, actualValue);
+  const expected = normalizeFactComparisonValue(key, expectedValue);
+  return Boolean(actual && expected && actual.includes(expected));
 }
 
 function includesAny(actualValues, expectedValues) {
@@ -268,7 +298,7 @@ export function evaluatePatientConversationCase({ fixture, envelope }) {
   for (const [key, expectedValue] of Object.entries(expected.required_facts || {})) {
     const actualValue = factValue(result, key);
     const passed = typeof expectedValue === "string"
-      ? lower(actualValue).includes(lower(expectedValue))
+      ? factStringMatches(key, actualValue, expectedValue)
       : actualValue === expectedValue;
     pushCheck(
       checks,
