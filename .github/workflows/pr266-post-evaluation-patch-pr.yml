@@ -1,0 +1,70 @@
+name: PR266 Post Evaluation Patch PR
+
+on:
+  pull_request:
+    paths:
+      - scripts/apply-pr266-post-evaluation-patch.mjs
+      - scripts/verify-patient-conversation-post-evaluation.mjs
+      - .github/workflows/pr266-post-evaluation-patch-pr.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-validate:
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 45
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/patient-conversation-agent-contract
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        shell: cmd
+        run: npm ci --no-audit --no-fund
+
+      - name: Apply post-evaluation patch
+        shell: cmd
+        run: node scripts/apply-pr266-post-evaluation-patch.mjs
+
+      - name: Verify focused post-evaluation coverage
+        shell: cmd
+        run: node scripts/verify-patient-conversation-post-evaluation.mjs
+
+      - name: Run service test suite
+        shell: cmd
+        run: npm run test:services
+
+      - name: Typecheck services
+        shell: cmd
+        run: npm run typecheck:services
+
+      - name: Build application
+        shell: cmd
+        run: npm run build
+
+      - name: Lint repository
+        shell: cmd
+        run: npm run lint
+
+      - name: Commit validated patch
+        shell: powershell
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json scripts/evaluate-patient-conversation-results.mjs shared/patientConversationEvaluation.js base44/shared/patientConversationEvaluation.js shared/patientConversationGuardrails.js base44/shared/patientConversationGuardrails.js base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "No patch changes to commit."
+            exit 0
+          }
+          git commit -m "Stabilize post-evaluation patient conversation runtime"
+          git push origin "HEAD:feat/patient-conversation-agent-contract"
