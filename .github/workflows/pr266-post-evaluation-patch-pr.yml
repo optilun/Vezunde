@@ -32,8 +32,19 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Apply post-evaluation patch
-        shell: cmd
-        run: node scripts/apply-pr266-post-evaluation-patch.mjs
+        shell: powershell
+        run: |
+          node scripts/apply-pr266-post-evaluation-patch.mjs *>&1 | Tee-Object post-evaluation-patch.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload patch diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr266-post-evaluation-patch-diagnostics
+          path: post-evaluation-patch.log
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Verify focused post-evaluation coverage
         shell: cmd
