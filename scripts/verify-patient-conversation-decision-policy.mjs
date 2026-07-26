@@ -15,6 +15,8 @@ import { getCanonicalServiceDefinition } from '../shared/canonicalServiceRegistr
 
 const sharedSource = fs.readFileSync('shared/patientConversationDecisionPolicy.js', 'utf8');
 const base44Source = fs.readFileSync('base44/shared/patientConversationDecisionPolicy.js', 'utf8');
+const sharedCoreSource = fs.readFileSync('shared/patientConversationDecisionPolicyCore.js', 'utf8');
+const base44CoreSource = fs.readFileSync('base44/shared/patientConversationDecisionPolicyCore.js', 'utf8');
 const sharedSafetySource = fs.readFileSync('shared/patientEyeSafetyPolicy.js', 'utf8');
 const base44SafetySource = fs.readFileSync('base44/shared/patientEyeSafetyPolicy.js', 'utf8');
 const runtimeSource = fs.readFileSync(
@@ -36,12 +38,19 @@ assert.equal(
   'Shared and Base44 decision policies must remain byte-identical.',
 );
 assert.equal(
+  base44CoreSource,
+  sharedCoreSource,
+  'Shared and Base44 decision policy cores must remain byte-identical.',
+);
+assert.equal(
   base44SafetySource,
   sharedSafetySource,
   'Shared and Base44 eye safety policies must remain byte-identical.',
 );
-assert.match(sharedSource, /guidedSafetyCleared/);
-assert.match(sharedSource, /deterministic_safety_guided_clear/);
+assert.match(sharedCoreSource, /guidedSafetyCleared/);
+assert.match(sharedCoreSource, /deterministic_safety_guided_clear/);
+assert.match(sharedCoreSource, /model_safety_flags_ignored: true/);
+assert(!sharedCoreSource.includes('aiFlags: interpretation?.possible_safety_flags'));
 
 function facts(overrides = {}) {
   return {
@@ -191,6 +200,7 @@ assert.equal(
   emergencyPreflight.diagnostics.safety_policy_version,
   PATIENT_CONVERSATION_SAFETY_POLICY_VERSION,
 );
+assert.equal(emergencyPreflight.diagnostics.model_safety_flags_ignored, true);
 
 const guidedEmergencyPreflight = buildPatientConversationEmergencyInterpretation({
   contractVersion: 'viasee-patient-conversation-agent-v1',
@@ -200,7 +210,7 @@ const guidedEmergencyPreflight = buildPatientConversationEmergencyInterpretation
 });
 assert(guidedEmergencyPreflight);
 assert.equal(guidedEmergencyPreflight.interpretation.urgency.level, 'confirmed');
-assert(guidedEmergencyPreflight.diagnostics.deterministic_safety_preflight, true);
+assert.equal(guidedEmergencyPreflight.diagnostics.deterministic_safety_preflight, true);
 assert(guidedEmergencyPreflight.diagnostics.deterministic_safety_flags.includes('severe_eye_pain'));
 
 const emergencySurvivesShortFollowup = assessPatientConversationDeterministicSafety([
@@ -264,6 +274,8 @@ assert.equal(controlledClearOverridesModelAdvisory.interpretation.information_st
 assert.deepEqual(controlledClearOverridesModelAdvisory.diagnostics.deterministic_safety_advisory_flags, []);
 assert.equal(controlledClearOverridesModelAdvisory.diagnostics.deterministic_safety_guided_clear, true);
 assert.equal(controlledClearOverridesModelAdvisory.diagnostics.model_urgency_overridden, true);
+assert.equal(controlledClearOverridesModelAdvisory.diagnostics.model_safety_flag_count, 1);
+assert.equal(controlledClearOverridesModelAdvisory.diagnostics.model_safety_flags_ignored, true);
 
 const controlledClearCannotOverrideDecisionBlocking = applyPatientConversationDecisionPolicy({
   interpretation: interpretation({
@@ -285,16 +297,20 @@ const unsupportedModelEmergency = applyPatientConversationDecisionPolicy({
       needs_clarification: false,
       reason: 'Modelul considera urgent.',
     },
+    possible_safety_flags: ['sudden_vision_loss'],
     next_action: 'show_emergency_guidance',
   }),
   conversation: [{ role: 'user', content: 'Vad mai slab de cateva luni.' }],
   runtimeContext: {},
 });
-assert.equal(unsupportedModelEmergency.interpretation.urgency.level, 'possible');
-assert.equal(unsupportedModelEmergency.interpretation.next_action, 'ask_clarifying_question');
-assert.equal(unsupportedModelEmergency.interpretation.information_status.sufficient_for_search, false);
+assert.equal(unsupportedModelEmergency.interpretation.urgency.level, 'none');
+assert.equal(unsupportedModelEmergency.interpretation.next_action, 'search_providers');
+assert.equal(unsupportedModelEmergency.interpretation.information_status.sufficient_for_search, true);
 assert.equal(unsupportedModelEmergency.diagnostics.model_urgency_advisory, 'confirmed');
 assert.equal(unsupportedModelEmergency.diagnostics.model_urgency_overridden, true);
+assert.equal(unsupportedModelEmergency.diagnostics.model_safety_flag_count, 1);
+assert.equal(unsupportedModelEmergency.diagnostics.model_safety_flags_ignored, true);
+assert.equal(unsupportedModelEmergency.diagnostics.deterministic_safety_state, 'clear');
 
 const completeRoutine = applyPatientConversationDecisionPolicy({
   interpretation: interpretation({
@@ -410,4 +426,4 @@ assert(
   'Runtime must retain decision policy diagnostics.',
 );
 
-console.log('Deterministic authority over patient conversation safety and decisions verified.');
+console.log('Exclusive deterministic authority over patient conversation safety and decisions verified.');
