@@ -29,7 +29,6 @@ import {
 
 const PATIENT_CONVERSATION_MODEL_POLICY = 'base44_automatic';
 const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3';
-const PATIENT_CONVERSATION_MONTHLY_MODEL_CALL_TARGET = 1500;
 
 function isPlainObject(value: any) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -307,8 +306,6 @@ function automaticRuntimeMetadata(envelope: any) {
         policy: PATIENT_CONVERSATION_MODEL_POLICY,
         explicit_model_override: false,
         automatic_retry_enabled: false,
-        monthly_model_call_target: PATIENT_CONVERSATION_MONTHLY_MODEL_CALL_TARGET,
-        monthly_model_call_target_enforced_here: false,
       },
     },
   };
