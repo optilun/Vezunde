@@ -31,7 +31,7 @@ import {
   runPatientConversationAgentShadow as runPatientConversationAgentShadowCore,
 } from './patientConversationAgentShadowCore.ts';
 
-const PATIENT_CONVERSATION_MODEL = 'gpt_5_4';
+const PATIENT_CONVERSATION_MODEL_POLICY = 'base44_automatic';
 const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3';
 
 function createOperationalBase44(base44: any, controller: any) {
@@ -45,13 +45,17 @@ function createOperationalBase44(base44: any, controller: any) {
       ...integrations,
       Core: {
         ...core,
-        InvokeLLM: (args: any) => {
+        InvokeLLM: (args: any = {}) => {
           if (typeof invokeModel !== 'function') {
             const error: any = new Error('Base44 Core.InvokeLLM is unavailable.');
             error.code = 'PATIENT_CONVERSATION_MODEL_INVOKER_UNAVAILABLE';
             throw error;
           }
-          return controller.invoke(() => invokeModel.call(core, args));
+          const automaticArgs = {
+            ...(args && typeof args === 'object' && !Array.isArray(args) ? args : {}),
+          };
+          delete automaticArgs.model;
+          return controller.invoke(() => invokeModel.call(core, automaticArgs));
         },
       }
     },
@@ -251,6 +255,8 @@ function boundedDuration(durationMs = 0) {
 function noModelRuntimeMetadata(durationMs = 0) {
   return {
     model: null,
+    model_policy: null,
+    model_override: null,
     prompt_version: null,
     model_invoked: false,
     duration_ms: boundedDuration(durationMs),
@@ -263,7 +269,9 @@ function noModelRuntimeMetadata(durationMs = 0) {
 
 function modelRuntimeMetadata(durationMs = 0) {
   return {
-    model: PATIENT_CONVERSATION_MODEL,
+    model: null,
+    model_policy: PATIENT_CONVERSATION_MODEL_POLICY,
+    model_override: null,
     prompt_version: PATIENT_CONVERSATION_PROMPT_VERSION,
     model_invoked: true,
     duration_ms: boundedDuration(durationMs),
@@ -280,6 +288,7 @@ function emitControlledPreflightSummary(envelope: any) {
     contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
     prompt_version: null,
     model: null,
+    model_policy: null,
     model_invoked: false,
     duration_ms: boundedDuration(envelope?.runtime_metadata?.duration_ms),
     status: envelope?.status || 'unknown',
@@ -368,6 +377,8 @@ function normalizeRuntimeIdentity(envelope: any, controller: any) {
         ...noModelRuntimeMetadata(envelope?.runtime_metadata?.duration_ms),
         ...(envelope?.runtime_metadata || {}),
         model: null,
+        model_policy: null,
+        model_override: null,
         prompt_version: null,
         model_invoked: false,
       },
@@ -377,7 +388,9 @@ function normalizeRuntimeIdentity(envelope: any, controller: any) {
     ...envelope,
     runtime_metadata: {
       ...(envelope?.runtime_metadata || {}),
-      model: PATIENT_CONVERSATION_MODEL,
+      model: null,
+      model_policy: PATIENT_CONVERSATION_MODEL_POLICY,
+      model_override: null,
       prompt_version: PATIENT_CONVERSATION_PROMPT_VERSION,
       model_invoked: true,
     },
