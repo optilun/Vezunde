@@ -1,29 +1,75 @@
-# VIASEE patient conversation — validation blockers
+# VIASEE patient conversation — remaining validation blockers
 
-Status: draft shadow implementation only.
+Status: draft administrator-only shadow implementation.
 
-This document records what must not be presented as passed until executable evidence exists.
+This document records the gates that remain after successful repository validation.
 
-## 1. External execution blockers
+## 1. Repository validation is complete
 
-- GitHub Actions fails before checkout across unrelated workflows.
-- Affected jobs expose `steps: null` and no usable logs.
-- The connected Base44 sandbox does not grant command execution scope.
-- Direct repository checkout is unavailable in the current environment.
+Validated implementation:
 
-Consequences:
+```text
+branch: feat/patient-conversation-agent-contract
+HEAD validated before documentation refresh: 460ae7934131c426406477b246a9275dd187fa1e
+```
 
-- final verification scripts have not executed;
-- scoped or complete lint has not executed;
-- service typecheck and baseline comparison have not executed;
-- build has not executed;
-- the controlled 71-case model run has not executed.
+The dedicated self-hosted validation passed:
 
-Static review is not a substitute for these gates.
+- service and patient-conversation suites;
+- post-evaluation stabilization;
+- service typecheck;
+- full typecheck comparison against `main`;
+- build;
+- lint.
 
-## 2. Symptom grounding status
+Evidence:
 
-`invented_symptoms` has a deterministic fail-closed implementation under:
+```text
+Patient Conversation Self-Hosted Validation
+run 30213042388 — success
+```
+
+The full shadow harness also passed:
+
+```text
+Patient Conversation Full Shadow Harness
+run 30213042389 — success
+```
+
+These runs are static. They do not establish real-model quality or medical approval.
+
+Some unrelated GitHub-hosted workflows still fail before checkout because of the repository-wide hosted-runner startup restriction. They are not executed-test failures for this implementation.
+
+## 2. Automatic model pilot has not run
+
+The current model boundary is:
+
+```text
+model = null
+model_policy = base44_automatic
+model_override = null
+maximum_model_calls_per_request = 1
+automatic_retry_enabled = false
+```
+
+No live request has been executed after the switch from `gpt_5_4` to Base44 Automatic.
+
+The Base44 cloud sandbox currently accessible to the project contains an older app state and does not include the PR #266 runtime files or route. It must not be used as pilot evidence.
+
+Still required:
+
+- confirm an isolated runtime on the exact PR branch and HEAD;
+- run the separately approved three-attempt pilot;
+- preserve complete server envelopes;
+- inspect actual Base44 credit consumption;
+- review latency, invalid output and unavailable-model behavior;
+- decide whether a larger evaluation is justified.
+
+No large 71-case or 151-attempt run may start automatically.
+
+## 3. Symptom grounding still requires real-model evidence
+
+`invented_symptoms` has deterministic fail-closed grounding under:
 
 ```text
 viasee-patient-conversation-grounding-v1
@@ -35,141 +81,103 @@ Grounding applies to:
 - `symptom_duration`;
 - `symptom_pattern`.
 
-A value survives only when it is an exact normalized user fragment supported by accepted model evidence.
+Unsupported fields are stripped and the deterministic decision is recomputed. Assistant-only evidence is rejected.
 
-Assistant-only evidence is rejected.
+The Automatic pilot and any later approved evaluation must measure:
 
-Unsupported symptom facts invalidate the whole semantic envelope with:
+- exact user-fragment retention;
+- unsupported-field rejection frequency;
+- Romanian punctuation and diacritic behavior;
+- mixed Romanian/English behavior;
+- false rejection of legitimate descriptions.
+
+## 4. Evaluation contract
+
+The loaded fixture suite contains exactly 71 unique cases.
+
+Current evaluation identity:
 
 ```text
-ungrounded_symptom_facts
+viasee-patient-conversation-evaluation-v1.5
+viasee-patient-conversation-prompt-v1.3
+base44_automatic
 ```
 
-Evaluation v1.4 independently checks final facts, final `fact_evidence` and fixture user turns. Failure of `must_not:invented_symptoms` is a safety failure.
-
-### Remaining grounding evidence
-
-The real-model run must still measure:
-
-- exact-fragment success rate;
-- `ungrounded_symptom_facts` frequency;
-- Romanian punctuation and diacritic effects;
-- mixed Romanian/English behavior;
-- false rejection of legitimate wording.
-
-No patient-visible activation is permitted based only on static grounding code.
-
-## 3. Fixture alignment status
-
-The previous `summary-001` scope mismatch is resolved without enabling provider messaging.
-
-An explicit replacement now tests:
-
-- locality;
-- duration;
-- exact symptom pattern;
-- timing preference;
-- no invented symptoms, diagnosis or contact leakage.
+`question_goal` remains non-scoring metadata because PR #265 owns adaptive question selection.
 
 `specialist_summary` remains `null`.
 
-`vision-loss-003` is also replaced with current public-hospital/UPU-first emergency guidance expectations.
+A release-scale evaluation is invalid unless it:
 
-The replacement file does not add cases. The loaded suite remains exactly 71 unique cases.
+- uses complete server envelopes;
+- preserves runtime identity and measured duration;
+- contains no missing or duplicate attempts;
+- is processed through `evaluate-patient-conversation-results-validated.mjs`;
+- completes without fixture-contract, runtime-identity, grounding or acceptance failures.
 
-`question_goal` is preserved as non-scoring metadata because PR #265 owns adaptive question selection.
+## 5. Cost and credit exhaustion boundary
 
-Evaluation v1.4 now activates checks that were previously incomplete:
+No arbitrary monthly model-call limit is hardcoded in PR #266.
 
-- `service_keys_all: []` requires an actually empty service list;
-- `forget_previous_need` detects lost intent/service memory;
-- unknown expectation fields and tokens fail contract validation;
-- contradictory urgency, action and question expectations fail validation;
-- user-grounded symptom and timing expectations are checked before scoring.
+The runtime enforces only:
 
-The suite is structurally release-ready. This does not mean it passed execution.
+```text
+maximum 1 model call per request
+0 automatic retries
+0 expensive fallback-model calls
+```
 
-## 4. Durable state and cost controls
+When Base44 cannot execute `InvokeLLM`, including credit exhaustion or model unavailability:
 
-The inactive foundation now exists under:
+- the request fails closed;
+- search remains blocked;
+- the user is routed to deterministic clarification;
+- no second model call is attempted.
+
+Actual Automatic cost remains an empirical pilot item.
+
+## 6. Durable state remains inactive
+
+The inactive contracts remain under:
 
 ```text
 viasee-patient-conversation-durable-state-policy-v1
 viasee-patient-conversation-durable-state-record-v1
 ```
 
-It defines and statically verifies:
+They are not connected to a Base44 entity or production endpoint.
 
-- server-format opaque session and pseudonymous subject identifiers;
-- a two-hour absolute TTL;
-- optimistic revision conflicts;
-- strict allowlisted record fields;
-- no raw conversation, contact, diagnosis or provider fields;
-- exact symptom-fact provenance tied to a user `message_id`;
-- no assistant-only evidence;
-- no reopening of completed sessions;
-- fail-closed session and rolling 24-hour subject budget evaluation.
+Before any durable use, VIASEE still requires:
 
-The foundation remains deliberately inactive:
-
-- no persistence adapter;
-- no Base44 entity;
-- no endpoint import;
-- administrator persistence disabled;
-- patient-visible persistence disabled;
-- per-session limit unapproved;
-- per-subject 24-hour limit unapproved;
-- activation readiness false.
-
-Still required before durable use:
-
-- a reviewed atomic persistence adapter with compare-and-swap revision updates;
+- reviewed atomic persistence;
 - server-generated identifiers;
 - TTL cleanup and revocation;
-- rolling subject counters;
-- approved numeric budgets;
 - privacy, encryption and access-policy review;
-- observability and alert thresholds;
-- consent/disclosure policy for patient-visible persistence;
-- executable contract tests.
+- observability;
+- consent and disclosure policy;
+- separate activation approval.
 
-A symptom carried from prior state without server-owned evidence must not become trusted.
+No durable counter or arbitrary monthly cutoff is part of the current implementation.
 
-The contract reduces ambiguity but does not remove the durable-state activation blocker.
+## 7. Medical safety review remains mandatory
 
-## 5. Safety review
+`patient-eye-safety-v1.2` is deterministic and shared by the existing intake and shadow agent.
 
-`patient-eye-safety-v1.2` is the shared deterministic Romanian safety boundary for the existing intake UI and the administrator-only shadow agent.
+The code does not constitute medical approval.
 
-It still requires:
+Still required:
 
-- complete fixture execution;
-- repeated critical attempts;
-- manual review of false positives and false negatives;
-- medical safety review;
-- review of unsupported Romanian and mixed-language variants;
-- review of advisory-to-clear transitions;
-- review of advisory-to-blocking transitions.
+- qualified medical review of emergency wording;
+- review of false positives and false negatives;
+- review of Romanian and mixed-language variants;
+- review of advisory-to-clear and advisory-to-blocking transitions;
+- manual review of every safety failure in any future live evaluation.
 
-No medical approval is implied by the code.
-
-## 6. Patient UI boundary
-
-The existing intake uses deterministic safety only.
+## 8. Patient and marketplace boundaries
 
 The semantic LLM remains disabled for patients.
 
-Executable and manual verification still must confirm:
-
-- ambiguous wording shows clarification, not emergency guidance;
-- `Niciuna dintre acestea` avoids a loop for unchanged text;
-- editing the description invalidates the prior safety review;
-- blocking cases remain stopped;
-- advisory cases expose no hospital, UPU or 112 guidance.
-
-## 7. Orchestration boundary
-
-PR #265 must remain the sole approved next-question orchestrator.
+PR #265 remains the sole approved `next_question_key` authority.
 
 PR #266 must not:
 
@@ -182,8 +190,13 @@ PR #266 must not:
 - expose contact details;
 - generate provider-facing specialist summaries.
 
-## 8. Release rule
+## 9. Release rule
 
-PR #266 must remain draft and unpublished until executable checks, controlled model evaluation, manual review, medical review and orchestration requirements are satisfied.
+PR #266 remains draft and unpublished until:
 
-A release evaluation is invalid unless it uses `evaluate-patient-conversation-results-validated.mjs` and completes without fixture-contract, runtime-identity, grounding or acceptance failures.
+1. the exact PR runtime is available in isolation;
+2. the small Automatic pilot is explicitly approved and reviewed;
+3. medical and privacy/security review are complete;
+4. a final human release decision is made.
+
+Static green checks alone do not authorize merge or publication.
