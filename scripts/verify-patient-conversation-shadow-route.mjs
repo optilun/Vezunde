@@ -62,9 +62,9 @@ assert(wrapperSource.includes("from '../../shared/patientConversationOperational
 assert(wrapperSource.includes("from './patientConversationAgentShadowCore.ts';"));
 assert(wrapperSource.includes("audience: 'admin_shadow'"));
 assert(wrapperSource.includes("const PATIENT_CONVERSATION_MODEL = 'gpt_5_4';"));
-assert(wrapperSource.includes("const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.2';"));
+assert(wrapperSource.includes("const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3';"));
 assert(coreSource.includes("const PATIENT_CONVERSATION_MODEL = 'gpt_5_4';"));
-assert(coreSource.includes("const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.2';"));
+assert(coreSource.includes("const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3';"));
 assert(wrapperSource.includes('function normalizedEvaluationCaseId('));
 assert(wrapperSource.includes('function normalizedEvaluationAttempt('));
 assert(wrapperSource.includes('function evaluationCorrelation('));
