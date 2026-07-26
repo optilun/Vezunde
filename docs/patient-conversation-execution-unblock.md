@@ -1,93 +1,148 @@
-# VIASEE patient conversation — execution unblock checklist
+# VIASEE patient conversation — execution and pilot checklist
 
 ## Purpose
 
-This checklist separates external execution access from conversational code changes. Completing it does not authorize merge or publication.
+This checklist records the remaining execution boundary after static validation. It does not authorize merge, publication or patient-visible rollout.
 
-## GitHub Actions
+## Repository validation status
 
-Observed repository-wide behavior:
-
-```text
-job.status = completed
-job.conclusion = failure
-job.steps = null
-job.logs_url = null
-```
-
-The same failure occurs across unrelated workflows and newly added minimal verification workflows. This means the jobs are failing before repository checkout and before any test command executes.
-
-Administrator checks required in GitHub:
-
-1. Open the account billing and usage page for the repository owner.
-2. Check GitHub Actions included-minute usage for the current billing cycle.
-3. Check whether an Actions budget or spending limit is exhausted or set to zero.
-4. Check payment-method or billing-status warnings.
-5. In the repository, open `Settings → Actions → General` and confirm Actions and GitHub-hosted runners are enabled.
-6. After resolving the account or policy issue, rerun only the failed jobs on PR #266.
-
-Do not interpret the current red checks as test failures. There are no executed steps or logs supporting that conclusion.
-
-## Base44 sandbox
-
-The connected Base44 tool currently returns:
+The current implementation was validated on:
 
 ```text
-NOT_AUTHORIZED
-Missing required OAuth scope 'sandbox:write'. Reconnect granting sandbox access.
+branch: feat/patient-conversation-agent-contract
+HEAD: 460ae7934131c426406477b246a9275dd187fa1e
 ```
 
-Required action:
+Completed successfully:
 
-1. Reconnect the Base44 integration and grant sandbox access including `sandbox:write`.
-2. Do not publish or edit the application during reconnection.
-3. After reconnection, use the sandbox only to check out the PR #266 branch in a temporary working directory and run verification commands.
-4. Confirm the sandbox Git HEAD before every command.
+- service and patient-conversation suites;
+- post-evaluation stabilization checks;
+- service-scope typecheck;
+- full typecheck comparison against `main`;
+- application build;
+- repository lint;
+- full shadow harness contract and manifest preparation.
 
-## First executable commands after either environment is restored
+Evidence:
 
-Run in this order:
+```text
+Patient Conversation Self-Hosted Validation
+run 30213042388 — success
 
-```bash
-node scripts/verify-patient-conversation-pr265-composition.mjs
-node scripts/verify-patient-conversation-shadow-route.mjs
-node scripts/verify-patient-conversation-shadow-harness.mjs
-node scripts/verify-patient-conversation-evaluation.mjs
-npm run test:services
-npm run typecheck:services
-npm run typecheck -- --pretty false
-npm run lint
-npm run build
+Patient Conversation Full Shadow Harness
+run 30213042389 — success
 ```
 
-Any failure must be investigated from its actual output. Do not bypass or downgrade a failing safety, authority, fixture, capture-identity or marketplace-isolation gate.
+These workflows did not call Base44 and did not execute `InvokeLLM`.
 
-## Controlled model run
+Some unrelated GitHub-hosted workflows still show the repository-wide pre-checkout startup failure. They are not evidence of a test failure in PR #266 because the dedicated self-hosted validation completed all executable repository gates.
 
-Only after the repository commands pass:
+## Base44 execution boundary
+
+The Base44 cloud sandbox currently accessible to the project does not contain the PR #266 runtime files or `patient_conversation_shadow` route. It represents an older application state.
+
+Do not run a model pilot against that sandbox. It would test the wrong code and consume credits without validating PR #266.
+
+A valid pilot requires an isolated executable runtime that confirms exactly:
+
+```text
+branch: feat/patient-conversation-agent-contract
+HEAD: 460ae7934131c426406477b246a9275dd187fa1e
+route: patient_conversation_shadow
+model_policy: base44_automatic
+explicit_model_override: false
+maximum_model_calls_per_request: 1
+automatic_retry_enabled: false
+```
+
+Do not merge into `main` merely to obtain a pilot runtime.
+
+## First Automatic pilot
+
+The first pilot is deliberately limited to three attempts and must be approved separately because it consumes Base44 integration credits.
+
+Prepare the pilot manifest with:
 
 ```bash
-node scripts/prepare-patient-conversation-full-shadow-run.mjs \
-  --output tmp/patient-conversation-shadow-run.json \
+node scripts/prepare-patient-conversation-shadow-run.mjs \
+  --output tmp/patient-conversation-automatic-pilot.json \
+  --case control-001 \
+  --case state-switch-001 \
+  --case adversarial-ranking-001 \
   --repeat 1 \
-  --critical-repeat 3
+  --critical-repeat 1
 ```
 
-Use only administrator-only `patient_conversation_shadow` requests. Import complete server envelopes and evaluate only with:
+The three cases cover:
 
-```bash
-node scripts/evaluate-patient-conversation-results-validated.mjs \
-  default \
-  tmp/patient-conversation-shadow-run.json \
-  tmp/patient-conversation-evaluation-report.json
+- a simple routine request with locality;
+- replacement of stale prior intent and locality;
+- prompt injection requesting provider ranking and Top 3.
+
+Expected maximum model consumption:
+
+```text
+3 requests
+maximum 1 InvokeLLM call per request
+maximum 3 model calls total
+0 retries
 ```
+
+Before sending any request, verify the runtime identity again. Stop immediately if the branch, HEAD, route or model policy differs.
+
+## Pilot evidence to preserve
+
+For every response preserve the complete server envelope, including:
+
+```text
+evaluation_case_id
+evaluation_attempt
+status
+runtime_metadata.model
+runtime_metadata.model_policy
+runtime_metadata.model_override
+runtime_metadata.model_invoked
+runtime_metadata.prompt_version
+runtime_metadata.duration_ms
+operational_metadata.model_calls_used
+operational_metadata.retry_attempted
+```
+
+Required identities for model-invoked attempts:
+
+```text
+model = null
+model_policy = base44_automatic
+model_override = null
+prompt_version = viasee-patient-conversation-prompt-v1.3
+model_calls_used = 1
+retry_attempted = false
+```
+
+Any timeout, invalid output or unavailable model must remain fail-closed and must not trigger a second call.
+
+## After the pilot
+
+Do not start a larger run automatically.
+
+Review:
+
+- correctness of extracted intent, locality and services;
+- stale-state removal;
+- ranking and Top 3 isolation;
+- schema validity;
+- latency;
+- actual credit consumption visible in Base44;
+- fallback behavior for any invalid or unavailable response.
+
+A full 71-case evaluation requires a new explicit decision after the pilot results and cost are reviewed.
 
 ## Release boundary
 
-Until all executable checks and the controlled model run pass:
+Until the pilot, medical review and final human release decision are complete:
 
 - PR #266 stays draft;
-- PR #265 stays the only approved `next_question_key` authority;
+- PR #265 remains the only approved `next_question_key` authority;
 - no merge into `main`;
 - no GitHub-to-Base44 production build handoff;
 - no Base44 publication;
