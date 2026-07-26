@@ -52,6 +52,9 @@ jobs:
           set TEST_EXIT=%ERRORLEVEL%
           if not "%TEST_EXIT%"=="0" node -e "const fs=require('fs');const rows=fs.readFileSync('test-services.log','utf8').split(/\r?\n/);console.log(rows.slice(-60).join('\n'))"
           exit /b %TEST_EXIT%
+      - name: Verify post-evaluation stabilization
+        shell: cmd
+        run: node scripts/verify-patient-conversation-post-evaluation.mjs
       - name: Upload service failure log
         if: failure()
         uses: actions/upload-artifact@v4
