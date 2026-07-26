@@ -294,7 +294,10 @@ try {
   const wrongIdentity = evaluate(wrongIdentityCapture, 'wrong-identity');
   assert.equal(wrongIdentity.run.status, 1);
   assert.equal(wrongIdentity.report.runtime.identity_valid, false);
-  assert.equal(wrongIdentity.report.runtime.identity_mismatches[0].attempt_id, 'ranking-001#1');
+  assert.equal(
+    wrongIdentity.report.runtime.identity_mismatches[0].attempt_id,
+    'capture.outputs.ranking-001.attempts.1',
+  );
 
   const unexpectedCapture = buildCapture();
   unexpectedCapture.outputs['ranking-001'].attempts['4'] = envelope(
