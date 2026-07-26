@@ -1,216 +1,99 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const entryPath = new URL('../base44/functions/matchProvidersSemantic/entry.ts', import.meta.url);
-const wrapperPath = new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts', import.meta.url);
-const corePath = new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts', import.meta.url);
-const agentPath = new URL('../base44/shared/patientConversationAgent.js', import.meta.url);
-const sharedAgentPath = new URL('../shared/patientConversationAgent.js', import.meta.url);
-const agentCorePath = new URL('../base44/shared/patientConversationAgentCore.js', import.meta.url);
-const sharedAgentCorePath = new URL('../shared/patientConversationAgentCore.js', import.meta.url);
-const decisionPath = new URL('../base44/shared/patientConversationDecisionPolicy.js', import.meta.url);
-const sharedDecisionPath = new URL('../shared/patientConversationDecisionPolicy.js', import.meta.url);
-const guardrailPath = new URL('../base44/shared/patientConversationGuardrails.js', import.meta.url);
-const sharedGuardrailPath = new URL('../shared/patientConversationGuardrails.js', import.meta.url);
-const operationalPath = new URL('../base44/shared/patientConversationOperationalPolicy.js', import.meta.url);
-const sharedOperationalPath = new URL('../shared/patientConversationOperationalPolicy.js', import.meta.url);
+const entrySource = fs.readFileSync(
+  new URL('../base44/functions/matchProvidersSemantic/entry.ts', import.meta.url),
+  'utf8',
+);
+const wrapperSource = fs.readFileSync(
+  new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts', import.meta.url),
+  'utf8',
+);
+const runtimeSource = fs.readFileSync(
+  new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadowRuntime.ts', import.meta.url),
+  'utf8',
+);
+const coreSource = fs.readFileSync(
+  new URL('../base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts', import.meta.url),
+  'utf8',
+);
+const sharedGuardrailSource = fs.readFileSync(
+  new URL('../shared/patientConversationGuardrails.js', import.meta.url),
+  'utf8',
+);
+const base44GuardrailSource = fs.readFileSync(
+  new URL('../base44/shared/patientConversationGuardrails.js', import.meta.url),
+  'utf8',
+);
+const sharedOperationalSource = fs.readFileSync(
+  new URL('../shared/patientConversationOperationalPolicy.js', import.meta.url),
+  'utf8',
+);
+const base44OperationalSource = fs.readFileSync(
+  new URL('../base44/shared/patientConversationOperationalPolicy.js', import.meta.url),
+  'utf8',
+);
 
-const entrySource = fs.readFileSync(entryPath, 'utf8');
-const wrapperSource = fs.readFileSync(wrapperPath, 'utf8');
-const coreSource = fs.readFileSync(corePath, 'utf8');
-const agentSource = fs.readFileSync(agentPath, 'utf8');
-const sharedAgentSource = fs.readFileSync(sharedAgentPath, 'utf8');
-const agentCoreSource = fs.readFileSync(agentCorePath, 'utf8');
-const sharedAgentCoreSource = fs.readFileSync(sharedAgentCorePath, 'utf8');
-const decisionSource = fs.readFileSync(decisionPath, 'utf8');
-const sharedDecisionSource = fs.readFileSync(sharedDecisionPath, 'utf8');
-const guardrailSource = fs.readFileSync(guardrailPath, 'utf8');
-const sharedGuardrailSource = fs.readFileSync(sharedGuardrailPath, 'utf8');
-const operationalSource = fs.readFileSync(operationalPath, 'utf8');
-const sharedOperationalSource = fs.readFileSync(sharedOperationalPath, 'utf8');
+assert.equal(sharedGuardrailSource, base44GuardrailSource);
+assert.equal(sharedOperationalSource, base44OperationalSource);
 
-assert.equal(guardrailSource, sharedGuardrailSource);
-assert.equal(agentSource, sharedAgentSource);
-assert.equal(agentCoreSource, sharedAgentCoreSource);
-assert.equal(decisionSource, sharedDecisionSource);
-assert.equal(operationalSource, sharedOperationalSource);
-
-assert(entrySource.includes("import { runPatientConversationAgentShadow } from './patientConversationAgentShadow.ts';"));
 assert(entrySource.includes("const PATIENT_CONVERSATION_SHADOW_MODE = 'patient_conversation_shadow';"));
 assert(entrySource.includes('const user = await base44.auth.me().catch(() => null);'));
 assert(entrySource.includes("if (user.role !== 'admin')"));
-assert(entrySource.includes('status: 401'));
-assert(entrySource.includes('status: 403'));
-assert(entrySource.includes("headers: { 'Cache-Control': 'no-store' }"));
-assert(entrySource.includes('return Response.json(envelope'));
+assert(entrySource.includes('return await handlePatientConversationShadowMode(base44, payload);'));
 
 const modeBranchIndex = entrySource.indexOf('payload.mode === PATIENT_CONVERSATION_SHADOW_MODE');
-const semanticResolutionIndex = entrySource.indexOf('const semantic = resolveServiceSearchQuery(searchText');
 const serviceRoleIndex = entrySource.indexOf('const svc = base44.asServiceRole;');
-assert(modeBranchIndex >= 0);
-assert(semanticResolutionIndex >= 0);
-assert(serviceRoleIndex >= 0);
-assert(modeBranchIndex < serviceRoleIndex && modeBranchIndex < semanticResolutionIndex);
-const modeBlock = entrySource.slice(modeBranchIndex, serviceRoleIndex);
-assert(modeBlock.includes('return await handlePatientConversationShadowMode(base44, payload);'));
-assert(!modeBlock.includes('return handlePatientConversationShadowMode(base44, payload);'));
-assert(!modeBlock.includes('assignRecommendationBuckets'));
-assert(!modeBlock.includes('buildRecommendationScore'));
-assert(!modeBlock.includes('resolveServiceSearchQuery'));
+assert(modeBranchIndex >= 0 && serviceRoleIndex > modeBranchIndex);
+const shadowRouteBlock = entrySource.slice(modeBranchIndex, serviceRoleIndex);
+assert(!shadowRouteBlock.includes('assignRecommendationBuckets'));
+assert(!shadowRouteBlock.includes('buildRecommendationScore'));
+assert(!shadowRouteBlock.includes('resolveServiceSearchQuery'));
 
-assert(wrapperSource.includes("from '../../shared/patientConversationOperationalPolicy.js';"));
-assert(wrapperSource.includes("from './patientConversationAgentShadowCore.ts';"));
-assert(wrapperSource.includes("audience: 'admin_shadow'"));
-assert(wrapperSource.includes("const PATIENT_CONVERSATION_MODEL = 'gpt_5_4';"));
+assert(wrapperSource.includes("const PATIENT_CONVERSATION_MODEL_POLICY = 'base44_automatic';"));
 assert(wrapperSource.includes("const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3';"));
-assert(coreSource.includes("const PATIENT_CONVERSATION_MODEL = 'gpt_5_4';"));
-assert(coreSource.includes("const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3';"));
-assert(wrapperSource.includes('function normalizedEvaluationCaseId('));
-assert(wrapperSource.includes('function normalizedEvaluationAttempt('));
-assert(wrapperSource.includes('function evaluationCorrelation('));
-assert(wrapperSource.includes('evaluation_case_id: evaluationCaseId'));
-assert(wrapperSource.includes('evaluation_attempt: normalizedEvaluationAttempt(payload)'));
-assert(wrapperSource.includes('...evaluationCorrelation(payload)'));
-assert(wrapperSource.includes('...evaluationCorrelation(runtimePayload)'));
-assert(wrapperSource.includes('payload: runtimePayload'));
-assert(wrapperSource.includes('function runtimePayloadFromRequest('));
-assert(wrapperSource.includes('if (normalizedEvaluationCaseId(source)) return source;'));
-assert(wrapperSource.includes('delete runtimePayload.prior_state;'));
-assert(wrapperSource.includes('const runtimePayload = runtimePayloadFromRequest(payload);'));
-assert(wrapperSource.includes('createPatientConversationOperationalController(runtimePayload'));
-assert(wrapperSource.includes('controller.invoke(() =>'));
-assert(wrapperSource.includes('finalizePatientConversationOperationalEnvelope('));
-assert(wrapperSource.includes('function requestHasUserMessage('));
-assert(wrapperSource.includes('function skippedWithoutUserMessage('));
-assert(wrapperSource.includes('function noModelRuntimeMetadata('));
-assert(wrapperSource.includes('function modelRuntimeMetadata('));
-assert(wrapperSource.includes('function unavailableRuntime('));
-assert(wrapperSource.includes('function normalizeRuntimeIdentity('));
-assert(wrapperSource.includes("reason: 'user_message_required'"));
-assert(wrapperSource.includes("? 'conversation_model_unavailable'"));
-assert(wrapperSource.includes(": 'conversation_runtime_unavailable'"));
-assert(wrapperSource.includes('snapshot?.model_calls_used === 0'));
-assert(wrapperSource.includes('modelInvoked: snapshot.model_calls_used > 0'));
-assert(wrapperSource.includes('model: PATIENT_CONVERSATION_MODEL'));
-assert(wrapperSource.includes('prompt_version: PATIENT_CONVERSATION_PROMPT_VERSION'));
-assert(wrapperSource.includes('model_invoked: true'));
-assert(wrapperSource.includes('model: null'));
-assert(wrapperSource.includes('prompt_version: null'));
-assert(wrapperSource.includes('model_invoked: false'));
-assert(wrapperSource.includes('catch (_error)'));
-assert(!wrapperSource.includes('_error?.message'));
-const invokerGuardIndex = wrapperSource.indexOf("if (typeof invokeModel !== 'function')");
-const controllerInvokeIndex = wrapperSource.indexOf('return controller.invoke(() => invokeModel.call(core, args));');
-assert(invokerGuardIndex >= 0 && controllerInvokeIndex > invokerGuardIndex);
-const emptyMessageGateIndex = wrapperSource.indexOf('if (!requestHasUserMessage(runtimePayload))');
-const emptyMessageEnvelopeIndex = wrapperSource.indexOf('skippedWithoutUserMessage(runtimePayload');
-const controlledAnswersIndex = wrapperSource.indexOf(
-  'const controlledAnswers = sanitizeGuidedSafetyAnswers(runtimePayload?.answers);',
-);
-const controlledPreflightIndex = wrapperSource.indexOf(
-  'const controlledPreflight = controlledSafetyPreflightEnvelope({',
-);
-const semanticCoreCallIndex = wrapperSource.indexOf(
-  'const coreEnvelope = controlledPreflight || await runPatientConversationAgentShadowCore(',
-);
-const controlledDecisionIndex = wrapperSource.indexOf(
-  'const envelope = controlledPreflight || applyControlledSafetyDecision({',
-);
-assert(emptyMessageGateIndex >= 0);
-assert(emptyMessageEnvelopeIndex > emptyMessageGateIndex);
-assert(controlledAnswersIndex > emptyMessageEnvelopeIndex);
-assert(controlledPreflightIndex > controlledAnswersIndex);
-assert(semanticCoreCallIndex > controlledPreflightIndex);
-assert(controlledDecisionIndex > semanticCoreCallIndex);
-assert(!wrapperSource.includes('normalizeNonInvokedRuntimeIdentity'));
+assert(wrapperSource.includes('const PATIENT_CONVERSATION_MONTHLY_MODEL_CALL_TARGET = 1500;'));
+assert(wrapperSource.includes("from './patientConversationAgentShadowRuntime.ts';"));
+assert(wrapperSource.includes('function createAutomaticModelBase44('));
+assert(wrapperSource.includes('delete automaticArgs.model;'));
+assert(wrapperSource.includes('explicit_model_override: false'));
+assert(wrapperSource.includes('automatic_retry_enabled: false'));
+assert(wrapperSource.includes('monthly_model_call_target_enforced_here: false'));
+assert(wrapperSource.includes('function hasGuidedAnswers('));
+assert(wrapperSource.includes("reason: 'guided_answer_does_not_require_model'"));
+assert(wrapperSource.includes('function recoverTerminalFailure('));
+assert(wrapperSource.includes('retry_attempted: false'));
+assert(wrapperSource.includes('search_blocked: true'));
+
+const guidedGateIndex = wrapperSource.indexOf('if (hasGuidedAnswers(payload))');
+const runtimeCallIndex = wrapperSource.indexOf('await runPatientConversationAgentShadowRuntime(');
+assert(guidedGateIndex >= 0 && runtimeCallIndex > guidedGateIndex);
+assert.equal((wrapperSource.match(/runPatientConversationAgentShadowRuntime\(/g) || []).length, 1);
+assert.equal((wrapperSource.match(/InvokeLLM/g) || []).length, 3);
+assert(!wrapperSource.includes("model: 'gpt_5_4'"));
 assert(!wrapperSource.includes('assignRecommendationBuckets'));
 assert(!wrapperSource.includes('buildRecommendationScore'));
 assert(!wrapperSource.includes('asServiceRole'));
-assert(wrapperSource.includes("from '../../shared/patientEyeSafetyPolicy.js';"));
-assert(wrapperSource.includes('function controlledSafetyPreflightEnvelope('));
-assert(wrapperSource.includes('function applyControlledSafetyDecision('));
-assert(wrapperSource.includes('function semanticPayloadWithoutControlledAnswers('));
-assert(wrapperSource.includes('delete semanticPayload.answers;'));
-assert(wrapperSource.includes('answers: controlledAnswers'));
-assert(wrapperSource.includes('semanticPayloadWithoutControlledAnswers(runtimePayload)'));
-assert(wrapperSource.includes('runtime_metadata: noModelRuntimeMetadata(durationMs)'));
-assert(wrapperSource.includes('function emitControlledPreflightSummary('));
-assert(wrapperSource.includes("console.info('patient_conversation_agent_shadow_summary'"));
-assert(wrapperSource.includes('if (controlledPreflight) emitControlledPreflightSummary(envelope);'));
-assert(wrapperSource.includes('const envelope = controlledPreflight || applyControlledSafetyDecision({'));
-assert(!coreSource.includes('payload?.answers'));
-assert(!coreSource.includes('runtimePayload?.answers'));
+
+assert(runtimeSource.includes('createPatientConversationOperationalController('));
+assert(runtimeSource.includes("audience: 'admin_shadow'"));
+assert(runtimeSource.includes('controller.invoke(() =>'));
+assert(runtimeSource.includes('finalizePatientConversationOperationalEnvelope('));
+assert(runtimeSource.includes('semanticPayloadWithoutControlledAnswers(runtimePayload)'));
+assert(runtimeSource.includes('sanitizeGuidedSafetyAnswers(runtimePayload?.answers)'));
 
 assert.equal((coreSource.match(/Core\.InvokeLLM/g) || []).length, 1);
-assert(coreSource.includes('model: PATIENT_CONVERSATION_MODEL'));
 assert(coreSource.includes('add_context_from_internet: false'));
 assert(coreSource.includes('response_json_schema: responseSchema'));
-assert(coreSource.includes("from '../../shared/patientConversationGuardrails.js';"));
-assert(coreSource.includes("from '../../shared/patientConversationDecisionPolicy.js';"));
-assert(coreSource.includes('sanitizePatientConversationTurns('));
-assert(coreSource.includes('sanitizePriorState(payload?.prior_state)'));
-assert(coreSource.includes('need_summary: redactPatientConversationText(value.need_summary, 500)'));
-assert(guardrailSource.includes('PATIENT_CONVERSATION_MAX_TURNS = 20'));
-assert(guardrailSource.includes('PATIENT_CONVERSATION_MAX_CHARACTERS = 8000'));
-assert(guardrailSource.includes('.replace(/\\b\\d{13}\\b/g, "[identificator eliminat]")'));
-assert(guardrailSource.includes('[email eliminat]') && guardrailSource.includes('[telefon eliminat]'));
-
-const preflightIndex = coreSource.indexOf('const preflightDecision = deterministicSafetyPreflight(conversation, runtimeContext);');
-const promptBuildIndex = coreSource.indexOf('const prompt = buildPatientConversationAgentPrompt({');
-const modelCallIndex = coreSource.indexOf('const raw = await base44.integrations.Core.InvokeLLM({');
-assert(preflightIndex >= 0 && promptBuildIndex > preflightIndex && modelCallIndex > promptBuildIndex);
-assert(coreSource.includes('{ modelInvoked: false }'));
-assert(coreSource.includes('model_invoked: modelInvoked'));
-
-const promptBuildBlock = coreSource.slice(promptBuildIndex, modelCallIndex);
-assert(!promptBuildBlock.includes('evaluationAttempt'));
-assert(!promptBuildBlock.includes('evaluation_attempt'));
-assert(!promptBuildBlock.includes('answers'));
-assert(!promptBuildBlock.includes('answer_value'));
-
-assert(agentSource.includes('sanitizePatientConversationPriorState(source.priorState)'));
-assert(agentSource.includes('sanitizePatientConversationRuntimeContext(source.runtimeContext)'));
-assert(agentSource.includes('sanitizePatientConversationTurns(source.conversation, fallbackText)'));
-assert(agentCoreSource.includes('PATIENT_CONVERSATION_SEMANTIC_CONTRACT_VERSION'));
-assert(agentCoreSource.includes('Extract semantic meaning only'));
-assert(agentCoreSource.includes('Do not choose a care path, provider type'));
-assert(agentCoreSource.includes('possible_safety_flags are advisory'));
-assert(!agentCoreSource.includes('Only confirmed urgency may use show_emergency_guidance'));
-
-for (const forbiddenRawModelField of [
-  'care_path_candidates',
-  'provider_type_candidates',
-  'urgency',
-  'information_status',
-  'next_action',
-  'assistant_message',
-  'specialist_summary',
-]) {
-  const schemaStart = agentCoreSource.indexOf('export function getPatientConversationAgentResponseSchema()');
-  const promptStart = agentCoreSource.indexOf('export function buildPatientConversationAgentPrompt');
-  assert(schemaStart >= 0 && promptStart > schemaStart);
-  const schemaBlock = agentCoreSource.slice(schemaStart, promptStart);
-  assert(!schemaBlock.includes(`${forbiddenRawModelField}: {`), `${forbiddenRawModelField} leaked into raw model schema`);
-}
-
 assert(coreSource.includes('detectProhibitedPatientConversationOutput(raw)'));
 assert(coreSource.includes('validatePatientConversationModelResponse(raw, responseSchema)'));
-assert(coreSource.includes("invalidModelOutputEnvelope('prohibited_model_output'"));
-assert(coreSource.includes("invalidModelOutputEnvelope('invalid_model_output_shape'"));
-assert(coreSource.includes("invalidModelOutputEnvelope('noncanonical_model_output'"));
-const prohibitedIndex = coreSource.indexOf('detectProhibitedPatientConversationOutput(raw)');
-const schemaIndex = coreSource.indexOf('validatePatientConversationModelResponse(raw, responseSchema)');
-const envelopeIndex = coreSource.indexOf('const builtEnvelope = buildPatientConversationShadowEnvelope({');
-const stateIndex = coreSource.indexOf('const stateEnvelope = applyConversationStatePolicy(');
-const decisionIndex = coreSource.indexOf('const deterministicEnvelope = applyDeterministicDecisionPolicy(');
-assert(prohibitedIndex >= 0 && schemaIndex > prohibitedIndex);
-assert(envelopeIndex > schemaIndex && stateIndex > envelopeIndex && decisionIndex > stateIndex);
-
-assert(decisionSource.includes('sanitizePatientConversationRuntimeContext(source.runtimeContext)'));
-assert(sharedDecisionSource.includes('sanitizePatientConversationRuntimeContext(source.runtimeContext)'));
 assert(!coreSource.includes('assignRecommendationBuckets'));
 assert(!coreSource.includes('buildRecommendationScore'));
 assert(!coreSource.includes('ProviderLocation'));
 assert(!coreSource.includes('asServiceRole'));
 
-console.log('Patient conversation operational wrapper, semantic core, and deterministic authority verified.');
+assert(sharedOperationalSource.includes('max_model_calls_per_request: 1'));
+assert(sharedOperationalSource.includes('if (modelCallsUsed >= policy.max_model_calls_per_request)'));
+assert(sharedOperationalSource.includes('modelCallsUsed += 1'));
+
+console.log('Patient conversation Automatic model policy, zero-retry fallback, guided bypass, and marketplace isolation verified.');

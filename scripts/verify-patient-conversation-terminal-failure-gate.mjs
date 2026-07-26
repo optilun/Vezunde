@@ -18,8 +18,10 @@ function unavailableEnvelope(attempt) {
     evaluation_attempt: attempt,
     interpretation: null,
     runtime_metadata: {
-      model: 'gpt_5_4',
-      prompt_version: 'viasee-patient-conversation-prompt-v1.2',
+      model: null,
+      model_policy: 'base44_automatic',
+      model_override: null,
+      prompt_version: 'viasee-patient-conversation-prompt-v1.3',
       model_invoked: true,
       duration_ms: 50 + attempt,
       input_limits: {
@@ -87,6 +89,9 @@ try {
   assert.equal(report.acceptance.observed.completed_attempt_rate.passed_cases, 0);
   assert.equal(report.acceptance.observed.completed_attempt_rate.rate, 0);
   assert.equal(report.runtime.identity_valid, true);
+  assert.equal(report.runtime.expected_model, null);
+  assert.equal(report.runtime.expected_model_policy, 'base44_automatic');
+  assert.equal(report.runtime.expected_prompt_version, 'viasee-patient-conversation-prompt-v1.3');
   assert.equal(report.runtime.status_counts.unavailable, 3);
   assert.equal(report.runtime.duration_ms.measured_attempts, 3);
   assert.deepEqual(report.missing_output_attempt_ids, []);
@@ -95,4 +100,4 @@ try {
   fs.rmSync(tempDirectory, { recursive: true, force: true });
 }
 
-console.log('Patient conversation terminal model failures are retained and rejected.');
+console.log('Patient conversation terminal model failures remain visible under the Automatic model policy.');

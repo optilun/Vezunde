@@ -9,12 +9,8 @@ import {
   buildPatientConversationGuidanceHandoff,
 } from '../../shared/patientConversationGuidanceHandoff.js';
 import {
-  groundPatientConversationSymptomFacts,
-} from '../../shared/patientConversationGrounding.js';
-import {
   PATIENT_CONVERSATION_MAX_CHARACTERS,
   PATIENT_CONVERSATION_MAX_TURNS,
-  redactPatientConversationText,
   sanitizePatientConversationTurns,
 } from '../../shared/patientConversationGuardrails.js';
 import {
@@ -28,37 +24,15 @@ import {
   finalizePatientConversationOperationalEnvelope,
 } from '../../shared/patientConversationOperationalPolicy.js';
 import {
-  runPatientConversationAgentShadow as runPatientConversationAgentShadowCore,
-} from './patientConversationAgentShadowCore.ts';
+  runPatientConversationAgentShadow as runPatientConversationAgentShadowRuntime,
+} from './patientConversationAgentShadowRuntime.ts';
 
-const PATIENT_CONVERSATION_MODEL = 'gpt_5_4';
+const PATIENT_CONVERSATION_MODEL_POLICY = 'base44_automatic';
 const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3';
+const PATIENT_CONVERSATION_MONTHLY_MODEL_CALL_TARGET = 1500;
 
-function createOperationalBase44(base44: any, controller: any) {
-  const integrations = base44?.integrations || {};
-  const core = integrations?.Core || {};
-  const invokeModel = core?.InvokeLLM;
-  const controlled = Object.create(base44 || null);
-
-  Object.defineProperty(controlled, 'integrations', {
-    value: {
-      ...integrations,
-      Core: {
-        ...core,
-        InvokeLLM: (args: any) => {
-          if (typeof invokeModel !== 'function') {
-            const error: any = new Error('Base44 Core.InvokeLLM is unavailable.');
-            error.code = 'PATIENT_CONVERSATION_MODEL_INVOKER_UNAVAILABLE';
-            throw error;
-          }
-          return controller.invoke(() => invokeModel.call(core, args));
-        },
-      }
-    },
-    enumerable: true,
-  });
-
-  return controlled;
+function isPlainObject(value: any) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 function normalizedEvaluationCaseId(payload: any = {}) {
@@ -79,17 +53,6 @@ function evaluationCorrelation(payload: any = {}) {
   } : {};
 }
 
-function runtimePayloadFromRequest(payload: any = {}) {
-  const source = payload && typeof payload === 'object' && !Array.isArray(payload)
-    ? payload
-    : {};
-  if (normalizedEvaluationCaseId(source)) return source;
-
-  const runtimePayload = { ...source };
-  delete runtimePayload.prior_state;
-  return runtimePayload;
-}
-
 function conversationFromPayload(payload: any = {}) {
   const source = Array.isArray(payload?.conversation)
     ? payload.conversation
@@ -105,28 +68,30 @@ function conversationFromPayload(payload: any = {}) {
   );
 }
 
+function sanitizeLocality(value: any) {
+  const locality = isPlainObject(value) ? value : {};
+  return {
+    siruta_code: String(locality?.siruta_code ?? '').trim().slice(0, 40),
+    city: String(locality?.city ?? locality?.name ?? '').trim().slice(0, 120),
+    county_code: String(locality?.county_code ?? '').trim().slice(0, 40),
+    county: String(locality?.county ?? locality?.county_name ?? '').trim().slice(0, 120),
+    area: String(locality?.area ?? '').trim().slice(0, 160),
+  };
+}
+
 function controlledRuntimeContextFromPayload(payload: any = {}) {
-  const explicitRuntimeContext = payload?.runtime_context
-    && typeof payload.runtime_context === 'object'
-    && !Array.isArray(payload.runtime_context)
+  const explicitRuntimeContext = isPlainObject(payload?.runtime_context)
     ? payload.runtime_context
     : {};
-  const explicitLocality = explicitRuntimeContext?.known_locality
-    && typeof explicitRuntimeContext.known_locality === 'object'
-    && !Array.isArray(explicitRuntimeContext.known_locality)
-    ? explicitRuntimeContext.known_locality
-    : {};
-  const fallbackLocality = {
+  const explicitLocality = sanitizeLocality(explicitRuntimeContext?.known_locality);
+  const fallbackLocality = sanitizeLocality({
     siruta_code: payload?.locality_siruta_code,
     city: payload?.locality_name || payload?.locality_city,
     county_code: payload?.county_code,
     county: payload?.county_name,
     area: payload?.locality_area,
-  };
-  const hasExplicitLocality = Boolean(
-    String(explicitLocality?.siruta_code ?? '').trim()
-    || String(explicitLocality?.city ?? explicitLocality?.name ?? '').trim()
-  );
+  });
+  const hasExplicitLocality = Boolean(explicitLocality.siruta_code || explicitLocality.city);
 
   return {
     locale: String(explicitRuntimeContext?.locale ?? '').trim().slice(0, 20) || 'ro-RO',
@@ -135,317 +100,149 @@ function controlledRuntimeContextFromPayload(payload: any = {}) {
   };
 }
 
-function applyCanonicalBoundary(envelope: any) {
-  if (!envelope?.interpretation) return envelope;
-  const canonical = applyPatientConversationCanonicalBoundary(envelope.interpretation);
+function noModelRuntimeMetadata(durationMs = 0) {
   return {
-    ...envelope,
-    interpretation: canonical.interpretation,
-    diagnostics: {
-      ...(envelope.diagnostics || {}),
-      canonical_boundary: canonical.diagnostics,
+    model: null,
+    model_policy: null,
+    model_override: null,
+    prompt_version: null,
+    model_invoked: false,
+    duration_ms: Math.max(0, Math.round(Number(durationMs) || 0)),
+    input_limits: {
+      max_turns: PATIENT_CONVERSATION_MAX_TURNS,
+      max_characters: PATIENT_CONVERSATION_MAX_CHARACTERS,
     },
   };
 }
 
-function controlledSafetyPreflightEnvelope({
+function createAutomaticModelBase44(base44: any) {
+  const integrations = base44?.integrations || {};
+  const core = integrations?.Core || {};
+  const invokeModel = core?.InvokeLLM;
+  const controlled = Object.create(base44 || null);
+
+  Object.defineProperty(controlled, 'integrations', {
+    value: {
+      ...integrations,
+      Core: {
+        ...core,
+        InvokeLLM: (args: any = {}) => {
+          if (typeof invokeModel !== 'function') {
+            const error: any = new Error('Base44 Core.InvokeLLM is unavailable.');
+            error.code = 'PATIENT_CONVERSATION_MODEL_INVOKER_UNAVAILABLE';
+            throw error;
+          }
+          const automaticArgs = { ...(isPlainObject(args) ? args : {}) };
+          delete automaticArgs.model;
+          return invokeModel.call(core, automaticArgs);
+        },
+      },
+    },
+    enumerable: true,
+  });
+
+  return controlled;
+}
+
+function hasGuidedAnswers(payload: any = {}) {
+  return Array.isArray(payload?.answers) && payload.answers.length > 0;
+}
+
+function unresolvedInterpretation(runtimeContext: any) {
+  return {
+    contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
+    language: 'ro',
+    need_summary: 'Cererea necesita o clarificare ghidata inainte de cautare.',
+    primary_intent: 'unknown',
+    alternative_intents: [],
+    care_path_candidates: ['unresolved'],
+    service_keys: [],
+    provider_type_candidates: [],
+    facts: {
+      for_whom: 'unknown',
+      age_group: 'unknown',
+      locality: sanitizeLocality(runtimeContext?.known_locality),
+      symptom_onset: '',
+      symptom_duration: '',
+      symptom_pattern: '',
+      desired_timing: '',
+      contact_lens_experience: 'unknown',
+      prescription_status: 'unknown',
+      investigation_reference_text: '',
+      repair_details: '',
+      user_constraints: [],
+    },
+    urgency: {
+      level: 'none',
+      needs_clarification: false,
+      reason: '',
+    },
+    understanding_confidence: 'low',
+    information_status: {
+      sufficient_for_search: false,
+      sufficient_for_specialist_message: false,
+      missing_critical_fields: ['need', 'service'],
+    },
+    next_action: 'ask_clarifying_question',
+    assistant_message: '',
+    specialist_summary: null,
+    evidence_phrases: [],
+  };
+}
+
+function canonicalizeInterpretation(interpretation: any) {
+  return applyPatientConversationCanonicalBoundary(interpretation).interpretation;
+}
+
+function deterministicInterpretation({
   payload,
-  conversation,
-  answers,
-  runtimeContext,
-  durationMs,
+  reason,
 }: {
   payload: any;
-  conversation: any[];
-  answers: any[];
-  runtimeContext: any;
-  durationMs: number;
+  reason: string;
 }) {
-  if (answers.length === 0) return null;
-  const decision = buildPatientConversationEmergencyInterpretation({
+  const conversation = conversationFromPayload(payload);
+  const answers = sanitizeGuidedSafetyAnswers(payload?.answers);
+  const runtimeContext = controlledRuntimeContextFromPayload(payload);
+  const emergency = buildPatientConversationEmergencyInterpretation({
     contractVersion: PATIENT_CONVERSATION_AGENT_VERSION,
     conversation,
     answers,
     runtimeContext,
   });
-  if (!decision) return null;
 
-  return applyCanonicalBoundary({
-    mode: 'shadow',
-    contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
-    status: 'completed',
-    reason: null,
-    interpretation: decision.interpretation,
-    diagnostics: {
-      decision_policy: decision.diagnostics,
-    },
-    ...evaluationCorrelation(payload),
-    runtime_metadata: noModelRuntimeMetadata(durationMs),
-  });
-}
-
-function applyControlledSafetyDecision({
-  envelope,
-  conversation,
-  answers,
-  runtimeContext,
-}: {
-  envelope: any;
-  conversation: any[];
-  answers: any[];
-  runtimeContext: any;
-}) {
-  if (
-    answers.length === 0
-    || envelope?.status !== 'completed'
-    || !envelope?.interpretation
-  ) {
-    return envelope;
-  }
-
-  const decision = applyPatientConversationDecisionPolicy({
-    interpretation: envelope.interpretation,
-    conversation,
-    answers,
-    runtimeContext,
-    stateDiagnostics: envelope?.diagnostics?.state_policy,
-  });
-
-  return applyCanonicalBoundary({
-    ...envelope,
-    interpretation: decision.interpretation,
-    diagnostics: {
-      ...(envelope.diagnostics || {}),
-      decision_policy: decision.diagnostics,
-    },
-  });
-}
-
-function semanticPayloadWithoutControlledAnswers(payload: any = {}) {
-  const semanticPayload = { ...payload };
-  delete semanticPayload.answers;
-  return semanticPayload;
-}
-
-function requestHasUserMessage(payload: any = {}) {
-  const conversation = Array.isArray(payload?.conversation) ? payload.conversation : null;
-  if (conversation && conversation.length > 0) {
-    return conversation.some((turn: any) => (
-      turn?.role === 'user' && String(turn?.content ?? '').trim()
-    ));
-  }
-
-  return Boolean(String(
-    payload?.search_text
-    || payload?.query
-    || payload?.free_text
-    || payload?.search_query
-    || '',
-  ).trim());
-}
-
-function boundedDuration(durationMs = 0) {
-  return Math.max(0, Math.round(Number(durationMs) || 0));
-}
-
-function noModelRuntimeMetadata(durationMs = 0) {
-  return {
-    model: null,
-    prompt_version: null,
-    model_invoked: false,
-    duration_ms: boundedDuration(durationMs),
-    input_limits: {
-      max_turns: PATIENT_CONVERSATION_MAX_TURNS,
-      max_characters: PATIENT_CONVERSATION_MAX_CHARACTERS,
-    },
-  };
-}
-
-function modelRuntimeMetadata(durationMs = 0) {
-  return {
-    model: PATIENT_CONVERSATION_MODEL,
-    prompt_version: PATIENT_CONVERSATION_PROMPT_VERSION,
-    model_invoked: true,
-    duration_ms: boundedDuration(durationMs),
-    input_limits: {
-      max_turns: PATIENT_CONVERSATION_MAX_TURNS,
-      max_characters: PATIENT_CONVERSATION_MAX_CHARACTERS,
-    },
-  };
-}
-
-function emitControlledPreflightSummary(envelope: any) {
-  const decision = envelope?.diagnostics?.decision_policy;
-  console.info('patient_conversation_agent_shadow_summary', JSON.stringify({
-    contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
-    prompt_version: null,
-    model: null,
-    model_invoked: false,
-    duration_ms: boundedDuration(envelope?.runtime_metadata?.duration_ms),
-    status: envelope?.status || 'unknown',
-    reason: envelope?.reason || null,
-    evaluation_case_id_present: Boolean(envelope?.evaluation_case_id),
-    evaluation_attempt: envelope?.evaluation_attempt || null,
-    semantic_contract_version: null,
-    model_operational_authority: false,
-    semantic_correction_detected: false,
-    semantic_clear_field_count: 0,
-    state_delta_applied_field_count: 0,
-    state_delta_preserved_replacement_count: 0,
-    state_delta_rejected_field_count: 0,
-    canonical_boundary_version:
-      envelope?.diagnostics?.canonical_boundary?.boundary_version || null,
-    provider_profile_type_count:
-      envelope?.diagnostics?.canonical_boundary?.provider_profile_type_count || 0,
-    location_provider_type_count:
-      envelope?.diagnostics?.canonical_boundary?.location_provider_type_count || 0,
-    prohibited_output_count: 0,
-    schema_violation_count: 0,
-    noncanonical_output_count: 0,
-    state_transition: null,
-    state_carried_field_count: 0,
-    state_cleared_stale_field_count: 0,
-    decision_source: decision?.decision_source || null,
-    deterministic_safety_preflight:
-      decision?.deterministic_safety_preflight === true,
-    deterministic_safety_flag_count: Array.isArray(decision?.deterministic_safety_flags)
-      ? decision.deterministic_safety_flags.length
-      : 0,
-    model_urgency_advisory: null,
-    model_next_action_ignored: null,
-    primary_intent: envelope?.interpretation?.primary_intent || 'unknown',
-    care_path_count: Array.isArray(envelope?.interpretation?.care_path_candidates)
-      ? envelope.interpretation.care_path_candidates.length
-      : 0,
-    service_count: Array.isArray(envelope?.interpretation?.service_keys)
-      ? envelope.interpretation.service_keys.length
-      : 0,
-    urgency_level: envelope?.interpretation?.urgency?.level || 'unknown',
-    next_action: envelope?.interpretation?.next_action || null,
-    sufficient_for_search:
-      envelope?.interpretation?.information_status?.sufficient_for_search === true,
-  }));
-}
-
-function skippedWithoutUserMessage(payload: any = {}, durationMs = 0) {
-  return {
-    mode: 'shadow',
-    contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
-    status: 'skipped',
-    reason: 'user_message_required',
-    interpretation: null,
-    ...evaluationCorrelation(payload),
-    runtime_metadata: noModelRuntimeMetadata(durationMs),
-  };
-}
-
-function unavailableRuntime({ payload, modelInvoked, durationMs }: {
-  payload: any;
-  modelInvoked: boolean;
-  durationMs: number;
-}) {
-  return {
-    mode: 'shadow',
-    contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
-    status: 'unavailable',
-    reason: modelInvoked
-      ? 'conversation_model_unavailable'
-      : 'conversation_runtime_unavailable',
-    interpretation: null,
-    ...evaluationCorrelation(payload),
-    runtime_metadata: modelInvoked
-      ? modelRuntimeMetadata(durationMs)
-      : noModelRuntimeMetadata(durationMs),
-  };
-}
-
-function normalizeRuntimeIdentity(envelope: any, controller: any) {
-  const snapshot = controller?.snapshot?.();
-  if (snapshot?.model_calls_used === 0) {
+  if (emergency) {
     return {
-      ...envelope,
-      runtime_metadata: {
-        ...noModelRuntimeMetadata(envelope?.runtime_metadata?.duration_ms),
-        ...(envelope?.runtime_metadata || {}),
-        model: null,
-        prompt_version: null,
-        model_invoked: false,
+      interpretation: canonicalizeInterpretation(emergency.interpretation),
+      diagnostics: {
+        decision_policy: emergency.diagnostics,
+        model_bypass: {
+          applied: true,
+          reason,
+          model_calls_used: 0,
+        },
       },
     };
   }
-  return {
-    ...envelope,
-    runtime_metadata: {
-      ...(envelope?.runtime_metadata || {}),
-      model: PATIENT_CONVERSATION_MODEL,
-      prompt_version: PATIENT_CONVERSATION_PROMPT_VERSION,
-      model_invoked: true,
-    },
-  };
-}
-
-function redactedRejectedSymptomFacts(envelope: any, rejectedFields: string[]) {
-  const facts = envelope?.interpretation?.facts || {};
-  return Object.fromEntries(rejectedFields.map((field) => [
-    field,
-    redactPatientConversationText(facts?.[field], 400),
-  ]).filter(([, value]) => Boolean(value)));
-}
-
-function applySymptomGrounding(envelope: any, payload: any = {}) {
-  if (envelope?.status !== 'completed' || !envelope?.interpretation) return envelope;
-
-  const conversation = conversationFromPayload(payload);
-  const grounding = groundPatientConversationSymptomFacts({
-    rawFacts: envelope.interpretation.facts,
-    evidencePhrases: envelope.interpretation.evidence_phrases,
-    conversation,
-  });
-  const rejectedFields = grounding.diagnostics.rejected_fact_fields;
-  const groundedEnvelope = {
-    ...envelope,
-    interpretation: {
-      ...envelope.interpretation,
-      facts: {
-        ...(envelope.interpretation.facts || {}),
-        ...grounding.grounded_facts,
-      },
-      fact_evidence: grounding.fact_evidence,
-    },
-    diagnostics: {
-      ...(envelope.diagnostics || {}),
-      grounding: {
-        ...grounding.diagnostics,
-        rejected_fact_values: redactedRejectedSymptomFacts(envelope, rejectedFields),
-      },
-      grounding_recovery: {
-        applied: rejectedFields.length > 0,
-        stripped_fields: rejectedFields,
-        decision_recomputed: rejectedFields.length > 0,
-      },
-    },
-  };
-
-  if (rejectedFields.length === 0) return groundedEnvelope;
 
   const decision = applyPatientConversationDecisionPolicy({
-    interpretation: groundedEnvelope.interpretation,
+    interpretation: unresolvedInterpretation(runtimeContext),
     conversation,
-    answers: sanitizeGuidedSafetyAnswers(payload?.answers),
-    runtimeContext: controlledRuntimeContextFromPayload(payload),
-    stateDiagnostics: groundedEnvelope?.diagnostics?.state_policy,
+    answers,
+    runtimeContext,
   });
 
-  return applyCanonicalBoundary({
-    ...groundedEnvelope,
-    status: 'completed',
-    reason: null,
-    interpretation: decision.interpretation,
+  return {
+    interpretation: canonicalizeInterpretation(decision.interpretation),
     diagnostics: {
-      ...(groundedEnvelope.diagnostics || {}),
       decision_policy: decision.diagnostics,
+      model_bypass: {
+        applied: true,
+        reason,
+        model_calls_used: 0,
+      },
     },
-  });
+  };
 }
 
 function attachGuidanceHandoff(envelope: any) {
@@ -455,76 +252,105 @@ function attachGuidanceHandoff(envelope: any) {
   };
 }
 
-function finalizeWithGuidanceHandoff(envelope: any, controller: any) {
-  return attachGuidanceHandoff(
-    finalizePatientConversationOperationalEnvelope(envelope, controller),
-  );
-}
-
-export async function runPatientConversationAgentShadow(base44: any, payload: any = {}) {
+function guidedAnswerEnvelope(payload: any = {}) {
   const startedAt = Date.now();
-  const runtimePayload = runtimePayloadFromRequest(payload);
-  const controller = createPatientConversationOperationalController(runtimePayload, {
+  const controller = createPatientConversationOperationalController(payload, {
     audience: 'admin_shadow',
   });
 
   if (!controller.allowed) {
-    return finalizeWithGuidanceHandoff({
+    return attachGuidanceHandoff(finalizePatientConversationOperationalEnvelope({
       mode: 'shadow',
       contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
       status: 'skipped',
       reason: controller.reason,
       interpretation: null,
-      ...evaluationCorrelation(runtimePayload),
-    }, controller);
+      ...evaluationCorrelation(payload),
+      runtime_metadata: noModelRuntimeMetadata(Date.now() - startedAt),
+    }, controller));
   }
 
-  if (!requestHasUserMessage(runtimePayload)) {
-    return finalizeWithGuidanceHandoff(
-      skippedWithoutUserMessage(runtimePayload, Date.now() - startedAt),
-      controller,
-    );
+  const deterministic = deterministicInterpretation({
+    payload,
+    reason: 'guided_answer_does_not_require_model',
+  });
+  return attachGuidanceHandoff(finalizePatientConversationOperationalEnvelope({
+    mode: 'shadow',
+    contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
+    status: 'completed',
+    reason: null,
+    interpretation: deterministic.interpretation,
+    diagnostics: deterministic.diagnostics,
+    ...evaluationCorrelation(payload),
+    runtime_metadata: noModelRuntimeMetadata(Date.now() - startedAt),
+  }, controller));
+}
+
+function automaticRuntimeMetadata(envelope: any) {
+  const metadata = isPlainObject(envelope?.runtime_metadata)
+    ? envelope.runtime_metadata
+    : {};
+  const modelInvoked = metadata?.model_invoked === true;
+  return {
+    ...envelope,
+    runtime_metadata: {
+      ...metadata,
+      model: null,
+      model_policy: modelInvoked ? PATIENT_CONVERSATION_MODEL_POLICY : null,
+      model_override: null,
+      prompt_version: modelInvoked ? PATIENT_CONVERSATION_PROMPT_VERSION : null,
+      model_invoked: modelInvoked,
+    },
+    diagnostics: {
+      ...(envelope?.diagnostics || {}),
+      model_selection: {
+        policy: PATIENT_CONVERSATION_MODEL_POLICY,
+        explicit_model_override: false,
+        automatic_retry_enabled: false,
+        monthly_model_call_target: PATIENT_CONVERSATION_MONTHLY_MODEL_CALL_TARGET,
+        monthly_model_call_target_enforced_here: false,
+      },
+    },
+  };
+}
+
+function recoverTerminalFailure(envelope: any, payload: any = {}) {
+  if (!['invalid', 'unavailable'].includes(String(envelope?.status || ''))) {
+    return envelope;
   }
 
-  try {
-    const conversation = conversationFromPayload(runtimePayload);
-    const controlledAnswers = sanitizeGuidedSafetyAnswers(runtimePayload?.answers);
-    const controlledRuntimeContext = controlledRuntimeContextFromPayload(runtimePayload);
-    const controlledPreflight = controlledSafetyPreflightEnvelope({
-      payload: runtimePayload,
-      conversation,
-      answers: controlledAnswers,
-      runtimeContext: controlledRuntimeContext,
-      durationMs: Date.now() - startedAt,
-    });
-    const coreEnvelope = controlledPreflight || await runPatientConversationAgentShadowCore(
-      createOperationalBase44(base44, controller),
-      semanticPayloadWithoutControlledAnswers(runtimePayload),
-    );
-    const envelope = controlledPreflight || applyControlledSafetyDecision({
-      envelope: coreEnvelope,
-      conversation,
-      answers: controlledAnswers,
-      runtimeContext: controlledRuntimeContext,
-    });
-    if (controlledPreflight) emitControlledPreflightSummary(envelope);
-    const groundedEnvelope = applySymptomGrounding(
-      normalizeRuntimeIdentity(envelope, controller),
-      runtimePayload,
-    );
-    return finalizeWithGuidanceHandoff(
-      groundedEnvelope,
-      controller,
-    );
-  } catch (_error) {
-    const snapshot = controller.snapshot();
-    return finalizeWithGuidanceHandoff(
-      unavailableRuntime({
-        payload: runtimePayload,
-        modelInvoked: snapshot.model_calls_used > 0,
-        durationMs: Date.now() - startedAt,
-      }),
-      controller,
-    );
+  const deterministic = deterministicInterpretation({
+    payload,
+    reason: 'terminal_model_failure',
+  });
+  return {
+    ...envelope,
+    status: 'completed',
+    reason: null,
+    interpretation: deterministic.interpretation,
+    diagnostics: {
+      ...(envelope?.diagnostics || {}),
+      ...deterministic.diagnostics,
+      terminal_fallback: {
+        applied: true,
+        original_status: String(envelope?.status || ''),
+        original_reason: String(envelope?.reason || ''),
+        search_blocked: true,
+        retry_attempted: false,
+      },
+    },
+  };
+}
+
+export async function runPatientConversationAgentShadow(base44: any, payload: any = {}) {
+  if (hasGuidedAnswers(payload)) {
+    return guidedAnswerEnvelope(payload);
   }
+
+  const runtimeEnvelope = await runPatientConversationAgentShadowRuntime(
+    createAutomaticModelBase44(base44),
+    payload,
+  );
+  const automaticEnvelope = automaticRuntimeMetadata(runtimeEnvelope);
+  return attachGuidanceHandoff(recoverTerminalFailure(automaticEnvelope, payload));
 }
