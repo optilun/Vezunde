@@ -89,7 +89,7 @@ assert(wrapperSource.includes('function normalizeRuntimeIdentity('));
 assert(wrapperSource.includes("reason: 'user_message_required'"));
 assert(wrapperSource.includes("? 'conversation_model_unavailable'"));
 assert(wrapperSource.includes(": 'conversation_runtime_unavailable'"));
-assert(wrapperSource.includes('snapshot?.model_calls_used !== 0'));
+assert(wrapperSource.includes('snapshot?.model_calls_used === 0'));
 assert(wrapperSource.includes('modelInvoked: snapshot.model_calls_used > 0'));
 assert(wrapperSource.includes('model: PATIENT_CONVERSATION_MODEL'));
 assert(wrapperSource.includes('prompt_version: PATIENT_CONVERSATION_PROMPT_VERSION'));
