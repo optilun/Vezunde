@@ -70,7 +70,7 @@ function observation(overrides = {}, options = {}) {
 }
 
 function source(relativePath) {
-  return readFileSync(path.join(root, relativePath), "utf8");
+  return readFileSync(path.join(root, relativePath), "utf8").replace(/\r\n/g, "\n");
 }
 
 function fnv1a(value) {
