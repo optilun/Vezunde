@@ -102,9 +102,12 @@ export function runPatientGuidanceRuntimeShadow(context = {}, options = {}) {
       deterministicSafetyState: context.deterministicSafetyState,
     }),
   };
+  const buildProfile = typeof options.buildProfile === "function"
+    ? options.buildProfile
+    : buildPatientGuidancePlannerProfile;
   const observation = runPatientGuidanceRuntimeShadowCore(composedContext, {
     ...options,
-    buildProfile: buildPatientGuidancePlannerProfile,
+    buildProfile,
   });
 
   if (observation?.question_selection) return observation;
