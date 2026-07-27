@@ -7,25 +7,6 @@ on:
     paths:
       - ".github/workflows/patient-conversation-self-hosted-validation-ci.yml"
 
-x-pull-request-paths:
-  paths:
-      - "shared/**"
-      - "base44/shared/**"
-      - "base44/functions/matchProvidersSemantic/**"
-      - "src/lib/patient*.js"
-      - "src/lib/providerSemanticSearch.js"
-      - "src/components/intake2/**"
-      - "scripts/verify-patient-conversation-*.mjs"
-      - "scripts/verify-patient-guidance-*.mjs"
-      - "scripts/verify-typecheck-baseline-delta.mjs"
-      - "scripts/patient-conversation-*.mjs"
-      - "scripts/prepare-patient-conversation-*.mjs"
-      - "scripts/evaluate-patient-conversation-*.mjs"
-      - "tests/fixtures/patient-conversation-*.json"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/patient-conversation-self-hosted-validation-ci.yml"
-
 concurrency:
   group: pr266-reconcile-main-once
   cancel-in-progress: true
@@ -41,7 +22,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: feat/patient-conversation-agent-contract
           fetch-depth: 0
       - name: Setup Node
         uses: actions/setup-node@v4
