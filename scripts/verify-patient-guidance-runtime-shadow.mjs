@@ -292,7 +292,7 @@ await scenario("complete shadow profile is not returned publicly", () => {
 await scenario("runtime logs only controlled aggregate objects", () => {
   const entry = source("base44/functions/matchProvidersSemantic/entry.ts");
   const start = entry.indexOf("console.info(");
-  const end = entry.indexOf("function selectPatientGuidanceQuestion", start);
+  const end = entry.indexOf("function activatedQuestionSelection", start);
   const logBlock = entry.slice(start, end);
   assert.ok(start >= 0 && end > start);
   assert.match(
