@@ -1,18 +1,31 @@
 name: Patient Conversation Self-Hosted Validation
 
 on:
-  push:
-    branches:
-      - feat/patient-conversation-agent-contract
+  pull_request:
     paths:
+      - "shared/**"
+      - "base44/shared/**"
+      - "base44/functions/matchProvidersSemantic/**"
+      - "src/lib/patient*.js"
+      - "src/lib/providerSemanticSearch.js"
+      - "src/components/intake2/**"
+      - "scripts/verify-patient-conversation-*.mjs"
+      - "scripts/verify-patient-guidance-*.mjs"
+      - "scripts/verify-typecheck-baseline-delta.mjs"
+      - "scripts/patient-conversation-*.mjs"
+      - "scripts/prepare-patient-conversation-*.mjs"
+      - "scripts/evaluate-patient-conversation-*.mjs"
+      - "tests/fixtures/patient-conversation-*.json"
+      - "package.json"
+      - "package-lock.json"
       - ".github/workflows/patient-conversation-self-hosted-validation-ci.yml"
 
 concurrency:
-  group: pr266-reconcile-main-once
+  group: patient-conversation-self-hosted-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
@@ -22,21 +35,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: feat/patient-conversation-agent-contract
-          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      - name: Merge current main locally
-        shell: cmd
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
-          git merge --no-ff -X ours origin/main -m "Merge main after PR 265"
-          git merge-base --is-ancestor origin/main HEAD
       - name: Install dependencies
         shell: cmd
         run: npm ci --no-audit --no-fund
@@ -113,6 +118,3 @@ jobs:
       - name: Lint repository
         shell: cmd
         run: npm run lint
-      - name: Push validated merge
-        shell: cmd
-        run: git push origin HEAD:refs/heads/feat/patient-conversation-agent-contract
