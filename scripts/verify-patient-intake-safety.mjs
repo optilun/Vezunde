@@ -15,6 +15,7 @@ import {
   guidedSafetyFlagsFromAnswers as guidedBase44SafetyFlagsFromAnswers,
 } from '../base44/shared/patientSafety.js';
 import {
+  PATIENT_EMERGENCY_GUIDANCE_COPY,
   PATIENT_EMERGENCY_GUIDANCE_MESSAGE,
   patientEmergencyGuidanceMentions112,
   patientEmergencyGuidanceUses112AsPrimaryAction,
@@ -213,7 +214,7 @@ assert.match(interruption, /blocking && chemical/);
 assert.match(interruption, /Clarifica mai intai situatia/);
 assert.match(interruption, /cautarea ramane oprita pana cand situatia este clarificata/);
 assert.doesNotMatch(interruption, /href="tel:112"|PhoneCall/);
-assert.match(interruption, /cel putin 20 de minute/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.chemical_irrigation_instruction, /cel putin 20 de minute/);
 assert.match(interruption, /nu reprezinta diagnostic sau triaj medical/);
 assert.doesNotMatch(interruption.toLowerCase(), /diagnosticul este|ai glaucom|ai dezlipire de retina/);
 assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /spital public/);
