@@ -178,7 +178,7 @@ scenario("question-only selection still performs no extra AI call", () => {
 
 scenario("matching and ranking implementation remains byte-stable", () => {
   const marker = "    if (requestedKeys.length === 0) {";
-  const matchingTail = entry.slice(entry.indexOf(marker)).replace(/\n$/, "");
+  const matchingTail = entry.slice(entry.indexOf(marker)).trimEnd();
   assert.equal(fnv1a(matchingTail), "39eec47a");
 
   const client = source("src/lib/providerSemanticSearch.js");

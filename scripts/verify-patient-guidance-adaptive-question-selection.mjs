@@ -230,7 +230,7 @@ await scenario("full planner profile is never exposed to the browser", () => {
 await scenario("matching implementation remains byte-stable", () => {
   const entry = source("base44/functions/matchProvidersSemantic/entry.ts");
   const marker = "    if (requestedKeys.length === 0) {";
-  const matchingTail = entry.slice(entry.indexOf(marker)).replace(/\n$/, "");
+  const matchingTail = entry.slice(entry.indexOf(marker)).trimEnd();
   assert.equal(fnv1a(matchingTail), "39eec47a");
 });
 

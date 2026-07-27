@@ -70,7 +70,7 @@ function observation(overrides = {}, options = {}) {
 }
 
 function source(relativePath) {
-  return readFileSync(path.join(root, relativePath), "utf8");
+  return readFileSync(path.join(root, relativePath), "utf8").replace(/\r\n/g, "\n");
 }
 
 function fnv1a(value) {
@@ -292,7 +292,7 @@ await scenario("complete shadow profile is not returned publicly", () => {
 await scenario("runtime logs only controlled aggregate objects", () => {
   const entry = source("base44/functions/matchProvidersSemantic/entry.ts");
   const start = entry.indexOf("console.info(");
-  const end = entry.indexOf("function selectPatientGuidanceQuestion", start);
+  const end = entry.indexOf("function activatedQuestionSelection", start);
   const logBlock = entry.slice(start, end);
   assert.ok(start >= 0 && end > start);
   assert.match(
@@ -332,7 +332,7 @@ await scenario("Base44 shared guidance copies are byte-identical", () => {
 await scenario("matching and ranking implementation remains byte-stable", () => {
   const entry = source("base44/functions/matchProvidersSemantic/entry.ts");
   const entryMarker = "    if (requestedKeys.length === 0) {";
-  assert.equal(fnv1a(entry.slice(entry.indexOf(entryMarker))), "39eec47a");
+  assert.equal(fnv1a(entry.slice(entry.indexOf(entryMarker)).trimEnd()), "39eec47a");
 
   const client = source("src/lib/providerSemanticSearch.js");
   const clientMarker = "export async function matchProvidersWithSemanticFallback";
