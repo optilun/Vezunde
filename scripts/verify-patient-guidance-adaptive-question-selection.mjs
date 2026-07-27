@@ -14,7 +14,7 @@ import {
 } from "../shared/patientGuidanceQuestionCatalog.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const source = (relativePath) => readFileSync(path.join(root, relativePath), "utf8");
+const source = (relativePath) => readFileSync(path.join(root, relativePath), "utf8").replace(/\r\n/g, "\n");
 const locality = () => ({ siruta_code: "155243", city: "Timisoara", county_code: "TM" });
 const scenarios = [];
 
@@ -228,7 +228,7 @@ await scenario("full planner profile is never exposed to the browser", () => {
 await scenario("matching implementation remains byte-stable", () => {
   const entry = source("base44/functions/matchProvidersSemantic/entry.ts");
   const marker = "    if (requestedKeys.length === 0) {";
-  assert.equal(fnv1a(entry.slice(entry.indexOf(marker))), "39eec47a");
+  assert.equal(fnv1a(entry.slice(entry.indexOf(marker)).trimEnd()), "39eec47a");
 });
 
 await scenario("ranking and recommendation client remain byte-stable", () => {
