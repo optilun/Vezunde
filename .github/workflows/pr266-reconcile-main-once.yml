@@ -1,9 +1,7 @@
 name: PR266 Reconcile Main Once
 
 on:
-  push:
-    branches:
-      - feat/patient-conversation-agent-contract
+  pull_request:
     paths:
       - ".github/workflows/pr266-reconcile-main-once.yml"
 
@@ -12,7 +10,7 @@ permissions:
 
 concurrency:
   group: pr266-reconcile-main-once
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   reconcile:
