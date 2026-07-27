@@ -1,0 +1,28 @@
+name: Patient Conversation Base44 Automatic Schema
+
+on:
+  pull_request:
+    paths:
+      - "base44/functions/matchProvidersSemantic/patientConversationInvokeSchemaPolicy.js"
+      - "base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts"
+      - "scripts/verify-patient-conversation-base44-automatic-schema.mjs"
+      - ".github/workflows/patient-conversation-base44-automatic-schema-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify Base44 Automatic schema compatibility
+        run: node scripts/verify-patient-conversation-base44-automatic-schema.mjs
+      - name: Verify shadow route contract
+        run: node scripts/verify-patient-conversation-shadow-route.mjs
