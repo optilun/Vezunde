@@ -1,47 +1,120 @@
-name: PR266 Merge Main
+name: Patient Conversation Self-Hosted Validation
 
 on:
-  push:
-    branches:
-      - feat/patient-conversation-agent-contract
+  pull_request:
     paths:
+      - "shared/**"
+      - "base44/shared/**"
+      - "base44/functions/matchProvidersSemantic/**"
+      - "src/lib/patient*.js"
+      - "src/lib/providerSemanticSearch.js"
+      - "src/components/intake2/**"
+      - "scripts/verify-patient-conversation-*.mjs"
+      - "scripts/verify-patient-guidance-*.mjs"
+      - "scripts/verify-typecheck-baseline-delta.mjs"
+      - "scripts/patient-conversation-*.mjs"
+      - "scripts/prepare-patient-conversation-*.mjs"
+      - "scripts/evaluate-patient-conversation-*.mjs"
+      - "tests/fixtures/patient-conversation-*.json"
+      - "package.json"
+      - "package-lock.json"
       - ".github/workflows/patient-conversation-self-hosted-validation-ci.yml"
 
-permissions:
-  contents: write
-
 concurrency:
-  group: pr266-merge-main-once
+  group: patient-conversation-self-hosted-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
-  reconcile:
+  verify:
     runs-on: [self-hosted, Windows, X64]
-    timeout-minutes: 10
+    timeout-minutes: 60
     steps:
-      - name: Checkout PR branch
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: feat/patient-conversation-agent-contract
-          fetch-depth: 0
-          persist-credentials: true
-      - name: Merge main or record conflicts
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        shell: cmd
+        run: npm ci --no-audit --no-fund
+      - name: Verify service and patient-conversation suites
         shell: cmd
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
-          git merge --no-ff -X ours origin/main -m "Merge main after PR 265"
-          if errorlevel 1 goto conflict
-          git merge-base --is-ancestor origin/main HEAD
-          if errorlevel 1 exit /b 1
-          git push origin HEAD:refs/heads/feat/patient-conversation-agent-contract
-          exit /b %ERRORLEVEL%
-          :conflict
-          git diff --name-only --diff-filter=U > "%RUNNER_TEMP%\pr266-merge-conflicts.txt"
-          git merge --abort
-          copy /Y "%RUNNER_TEMP%\pr266-merge-conflicts.txt" pr266-merge-conflicts.txt
-          git add pr266-merge-conflicts.txt
-          git commit -m "Record PR266 merge conflicts"
-          git push origin HEAD:refs/heads/feat/patient-conversation-agent-contract
-          exit /b %ERRORLEVEL%
+          call npm run test:services > test-services.log 2>&1
+          set TEST_EXIT=%ERRORLEVEL%
+          if not "%TEST_EXIT%"=="0" node -e "const fs=require('fs');const rows=fs.readFileSync('test-services.log','utf8').split(/\r?\n/);console.log(rows.slice(-60).join('\n'))"
+          exit /b %TEST_EXIT%
+      - name: Verify post-evaluation stabilization
+        shell: cmd
+        run: node scripts/verify-patient-conversation-post-evaluation.mjs
+      - name: Upload service failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: patient-conversation-test-services-log
+          path: test-services.log
+          if-no-files-found: ignore
+          retention-days: 3
+      - name: Typecheck service scope
+        shell: cmd
+        run: npm run typecheck:services
+      - name: Capture candidate full typecheck
+        shell: cmd
+        run: |
+          call npm run typecheck -- --pretty false > typecheck-full.log 2>&1
+          echo %ERRORLEVEL% > typecheck-full.exit
+          exit /b 0
+      - name: Capture main full typecheck baseline
+        shell: cmd
+        run: |
+          git fetch origin main --depth=1
+          git worktree prune
+          if exist ..\Vezunde-main-baseline rmdir /s /q ..\Vezunde-main-baseline
+          git worktree add --detach ..\Vezunde-main-baseline FETCH_HEAD
+          cd /d ..\Vezunde-main-baseline
+          call npm ci --no-audit --no-fund
+          if errorlevel 1 exit /b %ERRORLEVEL%
+          call npm run typecheck -- --pretty false > ..\Vezunde\typecheck-main.log 2>&1
+          echo %ERRORLEVEL% > ..\Vezunde\typecheck-main.exit
+          exit /b 0
+      - name: Verify full typecheck baseline delta
+        shell: cmd
+        run: >-
+          node scripts/verify-typecheck-baseline-delta.mjs
+          typecheck-full.log
+          typecheck-main.log
+          typecheck-full.exit
+          typecheck-main.exit
+      - name: Upload full typecheck evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: patient-conversation-full-typecheck-evidence
+          path: |
+            typecheck-full.log
+            typecheck-main.log
+            typecheck-full.exit
+            typecheck-main.exit
+          if-no-files-found: ignore
+          retention-days: 3
+      - name: Remove main typecheck worktree
+        if: always()
+        shell: cmd
+        run: |
+          if exist ..\Vezunde-main-baseline git worktree remove --force ..\Vezunde-main-baseline
+          git worktree prune
+          exit /b 0
+      - name: Build application
+        shell: cmd
+        run: npm run build
+      - name: Lint repository
+        shell: cmd
+        run: npm run lint
