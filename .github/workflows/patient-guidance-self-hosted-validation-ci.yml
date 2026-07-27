@@ -1,0 +1,175 @@
+name: Patient Guidance Self-Hosted Validation
+
+on:
+  pull_request:
+    paths:
+      - "shared/patientGuidanceQuestionCatalog.js"
+      - "shared/patientGuidanceRouting.js"
+      - "shared/patientGuidancePlanner.js"
+      - "base44/shared/patientGuidanceQuestionCatalog.js"
+      - "base44/shared/patientGuidanceRouting.js"
+      - "base44/shared/patientGuidancePlanner.js"
+      - "base44/shared/patientSafety.js"
+      - "base44/functions/matchProvidersSemantic/entry.ts"
+      - "src/lib/providerSemanticSearch.js"
+      - "src/lib/patientIntentConfirmation.js"
+      - "src/lib/patientIntakeSession.js"
+      - "src/lib/patientRequestDraft.js"
+      - "src/lib/patientSafety.js"
+      - "src/components/intake2/**"
+      - "scripts/verify-patient-guidance-*.mjs"
+      - "scripts/verify-patient-ai-intent-confirmation.mjs"
+      - "scripts/verify-patient-intake-session-hardening.mjs"
+      - "scripts/verify-patient-intake-safety.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/patient-guidance-self-hosted-validation-ci.yml"
+
+concurrency:
+  group: patient-guidance-self-hosted-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        shell: cmd
+        run: npm ci --no-audit --no-fund
+      - name: Verify patient guidance routing contract
+        shell: cmd
+        run: node scripts/verify-patient-guidance-routing.mjs
+      - name: Verify patient guidance planner
+        shell: cmd
+        run: node scripts/verify-patient-guidance-planner.mjs
+      - name: Verify patient guidance runtime shadow
+        shell: cmd
+        run: node scripts/verify-patient-guidance-runtime-shadow.mjs
+      - name: Verify adaptive patient guidance question selection
+        shell: cmd
+        run: node scripts/verify-patient-guidance-adaptive-question-selection.mjs
+      - name: Verify adaptive question selection hardening
+        shell: cmd
+        run: node scripts/verify-patient-guidance-question-selection-hardening.mjs
+      - name: Verify Base44 routers
+        shell: cmd
+        run: node scripts/verify-directory-function-router.mjs && node scripts/verify-service-configuration-function-router.mjs && node scripts/verify-provider-workspace-function-router.mjs
+      - name: Verify patient need interpretation
+        shell: cmd
+        run: node scripts/verify-patient-need-interpretation.mjs
+      - name: Verify patient AI intent confirmation
+        shell: cmd
+        run: node scripts/verify-patient-ai-intent-confirmation.mjs
+      - name: Verify service and patient suites
+        shell: cmd
+        run: |
+          call npm run test:services > test-services.log 2>&1
+          set TEST_EXIT=%ERRORLEVEL%
+          if not "%TEST_EXIT%"=="0" node -e "const fs=require('fs');const rows=fs.readFileSync('test-services.log','utf8').split(/\r?\n/);console.log(rows.slice(-80).join('\n'))"
+          exit /b %TEST_EXIT%
+      - name: Verify patient request lifecycle
+        shell: cmd
+        run: node scripts/verify-patient-request-lifecycle.mjs
+      - name: Verify patient communication center
+        shell: cmd
+        run: node scripts/verify-lead-communication-events.mjs && node scripts/verify-in-app-notification-center.mjs && node scripts/verify-patient-request-persistence.mjs
+      - name: Verify patient intake session
+        shell: cmd
+        run: node scripts/verify-patient-intake-session-hardening.mjs
+      - name: Verify patient safety
+        shell: cmd
+        run: node scripts/verify-patient-intake-safety.mjs
+      - name: Verify provider recommendation
+        shell: cmd
+        run: node scripts/verify-provider-recommendation.mjs
+      - name: Typecheck service scope
+        shell: cmd
+        run: npm run typecheck:services
+      - name: Capture candidate full typecheck
+        shell: cmd
+        run: |
+          call npm run typecheck -- --pretty false > typecheck-head.log 2>&1
+          exit /b 0
+      - name: Capture main full typecheck baseline
+        shell: cmd
+        run: |
+          git fetch origin main --depth=1
+          git worktree prune
+          if exist "%RUNNER_TEMP%\vezunde-patient-guidance-main" rmdir /s /q "%RUNNER_TEMP%\vezunde-patient-guidance-main"
+          git worktree add --detach "%RUNNER_TEMP%\vezunde-patient-guidance-main" FETCH_HEAD
+          pushd "%RUNNER_TEMP%\vezunde-patient-guidance-main"
+          call npm ci --no-audit --no-fund
+          if errorlevel 1 exit /b %ERRORLEVEL%
+          call npm run typecheck -- --pretty false > "%GITHUB_WORKSPACE%\typecheck-base.log" 2>&1
+          popd
+          exit /b 0
+      - name: Verify full typecheck baseline delta
+        shell: cmd
+        run: node scripts/compare-typecheck-baseline.mjs typecheck-base.log typecheck-head.log
+      - name: Upload validation failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: patient-guidance-self-hosted-evidence
+          path: |
+            test-services.log
+            typecheck-head.log
+            typecheck-base.log
+          if-no-files-found: ignore
+          retention-days: 3
+      - name: Remove main typecheck worktree
+        if: always()
+        shell: cmd
+        run: |
+          if exist "%RUNNER_TEMP%\vezunde-patient-guidance-main" git worktree remove --force "%RUNNER_TEMP%\vezunde-patient-guidance-main"
+          git worktree prune
+          exit /b 0
+      - name: Lint patient guidance scope
+        shell: cmd
+        run: >-
+          npx eslint
+          shared/patientGuidanceQuestionCatalog.js
+          shared/patientGuidanceRouting.js
+          shared/patientGuidancePlanner.js
+          base44/shared/patientGuidanceQuestionCatalog.js
+          base44/shared/patientGuidanceRouting.js
+          base44/shared/patientGuidancePlanner.js
+          base44/shared/patientSafety.js
+          base44/functions/matchProvidersSemantic/entry.ts
+          src/lib/providerSemanticSearch.js
+          src/lib/patientIntentConfirmation.js
+          src/lib/patientIntakeSession.js
+          src/lib/patientRequestDraft.js
+          src/lib/patientSafety.js
+          src/components/intake2/ConversationalCard.jsx
+          src/components/intake2/PatientIntentConfirmation.jsx
+          src/components/intake2/QuestionChoice.jsx
+          scripts/verify-patient-guidance-routing.mjs
+          scripts/verify-patient-guidance-planner.mjs
+          scripts/verify-patient-guidance-runtime-shadow.mjs
+          scripts/verify-patient-guidance-adaptive-question-selection.mjs
+          scripts/verify-patient-guidance-question-selection-hardening.mjs
+          scripts/verify-patient-ai-intent-confirmation.mjs
+          scripts/verify-patient-intake-session-hardening.mjs
+          scripts/verify-patient-intake-safety.mjs
+          --quiet
+      - name: Lint repository
+        shell: cmd
+        run: npm run lint
+      - name: Build application
+        shell: cmd
+        run: npm run build
