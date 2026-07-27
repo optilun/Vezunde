@@ -29,7 +29,9 @@ const shadowRunnerSource = fs.readFileSync(
 assert.equal(base44ModuleSource, moduleSource);
 assert.equal((shadowRunnerSource.match(/Core\.InvokeLLM/g) || []).length, 1);
 assert(shadowRunnerSource.includes("add_context_from_internet: false"));
-assert(shadowRunnerSource.includes("response_json_schema: responseSchema"));
+assert(!shadowRunnerSource.includes("response_json_schema:"));
+assert(shadowRunnerSource.includes("parsePatientConversationAutomaticOutput(modelOutput)"));
+assert(shadowRunnerSource.includes("validatePatientConversationModelResponse(raw, responseSchema)"));
 assert(!shadowRunnerSource.includes("assignRecommendationBuckets"));
 assert(!shadowRunnerSource.includes("buildRecommendationScore"));
 assert(!shadowRunnerSource.includes("recommendation_score"));
