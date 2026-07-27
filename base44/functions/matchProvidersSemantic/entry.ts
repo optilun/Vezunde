@@ -21,6 +21,11 @@ import { getPublicLocationDisclosure } from './providerPublicTrust.js';
 import { getGenericRepairEligibility } from './genericRepairPolicy.js';
 import { runPatientGuidanceRuntimeShadow } from '../../shared/patientGuidancePlanner.js';
 import {
+  PATIENT_GUIDANCE_QUESTION_CATALOG,
+  isApprovedPatientGuidanceQuestionKey,
+} from '../../shared/patientGuidanceQuestionCatalog.js';
+import { buildPatientSafetyAssessment } from '../../shared/patientSafety.js';
+import {
   loadPublicLocationsForLocality,
   loadRowsForLocationIds,
 } from '../../shared/locationScopedEntityQuery.js';
@@ -143,6 +148,138 @@ async function loadPublicLocationsForScope(svc, scope, selectedLocality, sirutaC
 }
 
 const PATIENT_GUIDANCE_SHADOW_EVENT = "patient_guidance_shadow_summary";
+const PATIENT_GUIDANCE_INTENTS = new Set([
+  'control_vedere',
+  'control_copil',
+  'simptome_oftalmologice',
+  'investigatii',
+  'ochelari_lentile',
+  'lentile_contact',
+  'reparatii_ochelari',
+  'unknown',
+]);
+const PATIENT_GUIDANCE_QUESTION_SELECTION_BLOCKING_RULES = new Set([
+  'pediatric_age_to_care_path',
+  'symptom_safety_completion',
+  'contact_lens_first_time_path',
+]);
+const LEGACY_ANSWER_VALUE_ALIASES = Object.freeze({
+  for_whom: Object.freeze({ copil: 'child' }),
+  child_age_group: Object.freeze({
+    sub_3_ani: 'under_3',
+    '3_6_ani': '3_6',
+    '7_12_ani': '7_12',
+    '13_18_ani': '13_18',
+  }),
+  investigation_type: Object.freeze({
+    camp_vizual: 'visual_field_analyzer',
+    tonometrie: 'tonometry',
+    fund_de_ochi: 'fundus_exam',
+    topografie_corneana: 'corneal_topography',
+    nu_sunt_sigur: 'not_sure',
+  }),
+  optical_product_type: Object.freeze({
+    ochelari_noi: 'new_eyeglasses',
+    lentile_progresive: 'progressive_lenses',
+    schimbare_lentile: 'lens_replacement',
+    lentile_contact: 'contact_lenses',
+    nu_sunt_sigur: 'not_sure',
+  }),
+  contact_lens_experience: Object.freeze({
+    da: 'first_time',
+    nu: 'experienced',
+  }),
+  repair_type: Object.freeze({
+    rama_rupta: 'broken_frame',
+    balama_surub: 'hinge_or_screw',
+    lentila_zgariata: 'damaged_lens',
+    reglaj_rama: 'frame_adjustment',
+    nu_stiu: 'not_sure',
+  }),
+});
+const QUESTION_KEY_ALIASES = new Map(
+  Object.values(PATIENT_GUIDANCE_QUESTION_CATALOG).flatMap((question) => [
+    [question.key, question.key],
+    ...(question.legacy_question_keys || []).map((key) => [key, question.key]),
+  ]),
+);
+
+function canonicalQuestionKey(value) {
+  return QUESTION_KEY_ALIASES.get(clean(value)) || null;
+}
+
+function canonicalAnswerValue(questionKey, value) {
+  const rawValue = clean(value);
+  const aliasedValue = LEGACY_ANSWER_VALUE_ALIASES[questionKey]?.[rawValue] || rawValue;
+  const question = PATIENT_GUIDANCE_QUESTION_CATALOG[questionKey];
+  if (!question) return null;
+  if (question.type === 'choice') {
+    return question.options?.some((option) => option.key === aliasedValue) ? aliasedValue : null;
+  }
+  return aliasedValue || null;
+}
+
+function controlledQuestionHistory(payload) {
+  return [...new Set((Array.isArray(payload.question_history) ? payload.question_history : [])
+    .map(canonicalQuestionKey)
+    .filter((key) => key && isApprovedPatientGuidanceQuestionKey(key)))]
+    .slice(0, 30);
+}
+
+function controlledGuidedAnswers(payload, questionHistory) {
+  const history = new Set(questionHistory);
+  return (Array.isArray(payload.answers) ? payload.answers : [])
+    .slice(0, 30)
+    .map((answer) => {
+      const questionKey = canonicalQuestionKey(answer?.question_key);
+      if (!questionKey || !history.has(questionKey)) return null;
+      const answerValue = canonicalAnswerValue(questionKey, answer?.answer_value);
+      return answerValue ? { question_key: questionKey, answer_value: answerValue } : null;
+    })
+    .filter(Boolean);
+}
+
+function controlledCategoryIntent(payload) {
+  const history = new Set(Array.isArray(payload.question_history) ? payload.question_history : []);
+  if (!history.has('categorie')) return 'unknown';
+  const answer = (Array.isArray(payload.answers) ? payload.answers : [])
+    .find((item) => clean(item?.question_key) === 'categorie');
+  const intent = clean(answer?.answer_value);
+  return PATIENT_GUIDANCE_INTENTS.has(intent) ? intent : 'unknown';
+}
+
+function controlledIntentFromAnswers(payload, answers) {
+  let intent = controlledCategoryIntent(payload);
+  const answerByKey = Object.fromEntries((answers || [])
+    .map((answer) => [answer.question_key, answer.answer_value]));
+
+  if (answerByKey.routine_vs_symptom === 'symptom') intent = 'simptome_oftalmologice';
+  if (answerByKey.routine_vs_symptom === 'routine') intent = 'control_vedere';
+  if (answerByKey.for_whom === 'child' && intent === 'control_vedere') intent = 'control_copil';
+  if (answerByKey.optical_product_type === 'contact_lenses') intent = 'lentile_contact';
+
+  return PATIENT_GUIDANCE_INTENTS.has(intent) ? intent : 'unknown';
+}
+
+function confirmedServiceKeysFromAnswers(answers) {
+  return [...new Set((answers || []).flatMap((answer) => {
+    const question = PATIENT_GUIDANCE_QUESTION_CATALOG[answer.question_key];
+    const option = question?.options?.find((item) => item.key === answer.answer_value);
+    return (option?.service_keys || [])
+      .map((value) => normalizeServiceKey(value).canonicalKey)
+      .filter(Boolean);
+  }))];
+}
+
+function serverQuestionSafetyState(searchText, answers) {
+  const assessment = buildPatientSafetyAssessment({ text: searchText, answers });
+  if (assessment.blocking) return 'blocking';
+  const completedSafetyCheck = answers.some((answer) => (
+    answer.question_key === 'safety_targeted_check'
+    && answer.answer_value === 'niciuna'
+  ));
+  return completedSafetyCheck ? 'clear' : 'unchecked';
+}
 
 function explicitLocalityFromPayload(payload) {
   const locality = {
@@ -163,7 +300,56 @@ function observePatientGuidanceShadow(context) {
     PATIENT_GUIDANCE_SHADOW_EVENT,
     JSON.stringify({ ...observation.summary, ...observation.comparison }),
   );
-  return observation.live_result;
+  return {
+    ...observation.live_result,
+    patient_guidance_question_selection: observation.question_selection,
+  };
+}
+
+function activatedQuestionSelection(observation) {
+  const selection = observation.question_selection;
+  if (selection?.status === 'safety_blocked') return selection;
+  const clinicalBlocks = (
+    observation.patient_guidance_shadow_profile
+      ?.routing_profile?.blocking_validation_rule_keys || []
+  ).filter((ruleKey) => PATIENT_GUIDANCE_QUESTION_SELECTION_BLOCKING_RULES.has(ruleKey));
+  if (clinicalBlocks.length === 0) return selection;
+  return {
+    ...selection,
+    status: 'fallback',
+    next_question_key: null,
+    fallback_reason: 'clinical_validation_required',
+  };
+}
+
+function selectPatientGuidanceQuestion(payload, searchText, deterministicServiceKeys) {
+  const questionHistory = controlledQuestionHistory(payload);
+  const guidedAnswers = controlledGuidedAnswers(payload, questionHistory);
+  const liveResult = { mode: 'question_only', status: 'completed' };
+  const observation = runPatientGuidanceRuntimeShadow({
+    liveResult,
+    text: searchText,
+    legacyStatus: 'not_requested',
+    legacyInterpretation: null,
+    explicitLocality: explicitLocalityFromPayload(payload),
+    explicitPrimaryIntent: controlledIntentFromAnswers(payload, guidedAnswers),
+    explicitConfirmedServiceKeys: confirmedServiceKeysFromAnswers(guidedAnswers),
+    guidedAnswers,
+    questionHistory,
+    deterministicIntent: 'unknown',
+    deterministicServiceKeys,
+    deterministicFacts: {},
+    deterministicSafetyState: serverQuestionSafetyState(searchText, guidedAnswers),
+  });
+
+  const selection = activatedQuestionSelection(observation);
+  const completed = ['selected', 'complete', 'safety_blocked'].includes(selection?.status);
+  return {
+    mode: 'question_only',
+    status: completed ? 'completed' : 'unavailable',
+    reason: completed ? null : (selection?.fallback_reason || 'planner_unavailable'),
+    patient_guidance_question_selection: selection,
+  };
 }
 
 async function interpretPatientNeed(
@@ -252,6 +438,14 @@ Deno.serve(async (request) => {
       semantic.matches.map((match) => [match.service_key, Number(match.score) || 0]),
     );
 
+    if (payload.mode === 'question_only') {
+      return Response.json(selectPatientGuidanceQuestion(
+        payload,
+        searchText,
+        semantic.service_keys,
+      ));
+    }
+
     if (payload.mode === 'interpret_only') {
       return Response.json(await interpretPatientNeed(
         base44,
@@ -265,6 +459,7 @@ Deno.serve(async (request) => {
             ? payload.explicit_confirmed_service_keys
             : [],
           guidedAnswers: Array.isArray(payload.answers) ? payload.answers : [],
+          questionHistory: Array.isArray(payload.question_history) ? payload.question_history : [],
           deterministicIntent: clean(payload.deterministic_intent || payload.intent),
           deterministicServiceKeys: Array.isArray(payload.deterministic_service_keys)
             ? payload.deterministic_service_keys

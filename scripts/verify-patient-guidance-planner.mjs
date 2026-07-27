@@ -617,7 +617,10 @@ await scenario("planner is wired only into interpretation shadow mode", async ()
   );
   assert.equal((source.match(/Core\.InvokeLLM\(/g) || []).length, 1);
   assert.match(source, /if \(payload\.mode === 'interpret_only'\)/);
-  assert.match(source, /return observation\.live_result;/);
+  assert.match(
+    source,
+    /\.\.\.observation\.live_result,\s*patient_guidance_question_selection: observation\.question_selection/s,
+  );
   assert.doesNotMatch(
     source,
     /Response\.json\([^;]*patient_guidance_shadow_profile/s,

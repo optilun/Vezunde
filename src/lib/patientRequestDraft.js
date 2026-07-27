@@ -1,4 +1,5 @@
 import { CATEGORY_QUESTION, INTENTS } from "./intentRegistry.js";
+import { PATIENT_GUIDANCE_QUESTION_CATALOG } from "../../shared/patientGuidanceQuestionCatalog.js";
 
 export const PATIENT_QUESTIONNAIRE_VERSION = "patient-questionnaire-v1";
 export const PATIENT_REQUEST_DRAFT_CONTRACT_VERSION = "patient-request-draft-v1";
@@ -22,6 +23,9 @@ function questionCatalog() {
     for (const question of intent.questions || []) {
       if (!entries.has(question.key)) entries.set(question.key, question);
     }
+  }
+  for (const question of Object.values(PATIENT_GUIDANCE_QUESTION_CATALOG)) {
+    entries.set(question.key, question);
   }
   return entries;
 }
@@ -64,6 +68,15 @@ export function buildPatientRequestDraft({
   const answers = normalizedAnswers(safeState.answers);
   const answerByKey = Object.fromEntries(answers.map((answer) => [answer.question_key, answer.answer_value]));
   const intentDefinition = INTENTS[intent] || INTENTS.unknown;
+  const forWhom = answerByKey.for_whom || answerByKey.pentru_cine || null;
+  const ageGroup = answerByKey.child_age_group || answerByKey.varsta_copil || null;
+  const legacyForWhom = forWhom === "child" ? "copil" : forWhom;
+  const legacyAgeGroup = {
+    under_3: "sub_3_ani",
+    "3_6": "3_6_ani",
+    "7_12": "7_12_ani",
+    "13_18": "13_18_ani",
+  }[ageGroup] || ageGroup;
 
   return {
     contract_version: PATIENT_REQUEST_DRAFT_CONTRACT_VERSION,
@@ -79,8 +92,8 @@ export function buildPatientRequestDraft({
     county_code: clean(safeState.locality?.county_code, 10),
     locality_siruta_code: clean(safeState.locality?.siruta_code, 40),
     client_address_text: clean(safeState.clientAddressText, 240),
-    for_whom: clean(answerByKey.pentru_cine, 40) || null,
-    age_group: clean(answerByKey.varsta_copil, 40) || null,
+    for_whom: clean(legacyForWhom, 40) || null,
+    age_group: clean(legacyAgeGroup, 40) || null,
     timing_key: clean(answerByKey.timing, 60) || null,
     answers,
     interpretation: safeInterpretation ? {

@@ -290,6 +290,10 @@ function deterministicSignalsForText(text) {
   const facts = {};
   let intent = normalizeIntent(base.proposed_intent);
 
+  if (/(^|\s)copil(\s|$)/.test(normalized)) {
+    facts.for_whom = "child";
+  }
+
   if (normalized.includes("consult oftalmologic")) {
     exactServiceKeys.push("ophthalmology_consultation");
     intent = "control_vedere";
@@ -322,7 +326,11 @@ function deterministicSignalsForText(text) {
   ) {
     intent = "simptome_oftalmologice";
   }
-  if (normalized.includes("lentile de contact")) {
+  if (
+    normalized.includes("lentile de contact")
+    || normalized.includes("prima pereche de lentile")
+    || normalized.includes("prima pereche lentile")
+  ) {
     intent = "lentile_contact";
     if (
       normalized.includes("doar sa cumpar")
@@ -333,6 +341,7 @@ function deterministicSignalsForText(text) {
     }
     if (
       normalized.includes("prima data")
+      || normalized.includes("prima pereche")
       || normalized.includes("nu am mai purtat")
       || normalized.includes("n am mai purtat")
     ) {
@@ -936,6 +945,68 @@ export function summarizePatientGuidanceShadowProfile(profile = {}) {
   };
 }
 
+export const PATIENT_GUIDANCE_QUESTION_SELECTION_VERSION = "patient-guidance-question-selection-v1";
+
+function approvedQuestionHistory(values) {
+  return unique(values, 30).filter((key) => isApprovedPatientGuidanceQuestionKey(key));
+}
+
+export function buildPatientGuidanceQuestionSelection(profile = {}, options = {}) {
+  const routingProfile = isPlainObject(profile?.routing_profile)
+    ? profile.routing_profile
+    : null;
+  const aiStatus = clean(profile?.ai_status, 40);
+  const deterministicOnly = aiStatus === "not_requested";
+  const plannerAvailable = Boolean(routingProfile)
+    && (profile?.status === "completed" || deterministicOnly);
+  const askedQuestionKeys = approvedQuestionHistory(options.askedQuestionKeys);
+  const answeredQuestionKeys = approvedQuestionHistory(options.answeredQuestionKeys);
+  const proposedQuestionKey = clean(profile?.next_question_key, 80);
+  const safetyBlocking = profile?.safety_state === "blocking"
+    || routingProfile?.safety_state === "blocking";
+
+  const base = {
+    contract_version: PATIENT_GUIDANCE_QUESTION_SELECTION_VERSION,
+    question_catalog_version: clean(routingProfile?.question_catalog_version, 80)
+      || "patient-guidance-questions-v1",
+    status: "fallback",
+    next_question_key: null,
+    fallback_reason: null,
+    safety_blocking: safetyBlocking,
+    asked_question_count: askedQuestionKeys.length,
+  };
+
+  if (!plannerAvailable) {
+    return {
+      ...base,
+      fallback_reason: profile?.status === "fallback"
+        ? (clean(profile?.fallback_reason, 80) || "planner_unavailable")
+        : "planner_invalid",
+    };
+  }
+  if (safetyBlocking) {
+    return { ...base, status: "safety_blocked" };
+  }
+  if (!proposedQuestionKey) {
+    return { ...base, status: "complete" };
+  }
+  if (!isApprovedPatientGuidanceQuestionKey(proposedQuestionKey)) {
+    return { ...base, status: "invalid", fallback_reason: "question_not_in_catalog" };
+  }
+  if (answeredQuestionKeys.includes(proposedQuestionKey)) {
+    return { ...base, status: "invalid", fallback_reason: "answered_question_reselected" };
+  }
+  if (askedQuestionKeys.includes(proposedQuestionKey)) {
+    return { ...base, status: "fallback", fallback_reason: "question_loop_prevented" };
+  }
+
+  return {
+    ...base,
+    status: "selected",
+    next_question_key: proposedQuestionKey,
+  };
+}
+
 function unavailableShadowObservation(liveResult, fallbackReason) {
   const profile = {
     contract_version: PATIENT_GUIDANCE_PLANNER_VERSION,
@@ -956,6 +1027,7 @@ function unavailableShadowObservation(liveResult, fallbackReason) {
   return {
     live_result: liveResult,
     patient_guidance_shadow_profile: null,
+    question_selection: buildPatientGuidanceQuestionSelection(profile),
     summary: summarizePatientGuidanceShadowProfile(profile),
     comparison: comparePatientGuidanceLiveAndShadow(
       liveResult?.interpretation || {},
@@ -1001,6 +1073,12 @@ export function runPatientGuidanceRuntimeShadow(context = {}, options = {}) {
     return {
       live_result: liveResult,
       patient_guidance_shadow_profile: profile,
+      question_selection: buildPatientGuidanceQuestionSelection(profile, {
+        askedQuestionKeys: context.questionHistory,
+        answeredQuestionKeys: (Array.isArray(context.guidedAnswers)
+          ? context.guidedAnswers
+          : []).map((answer) => answer?.question_key),
+      }),
       summary: summarizePatientGuidanceShadowProfile(profile),
       comparison: comparePatientGuidanceLiveAndShadow(
         context.legacyInterpretation,

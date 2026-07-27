@@ -25,7 +25,7 @@ export default function PatientIntentConfirmation({
 
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
         {requiresManualChoice
-          ? (proposal?.clarification_question || "Alege categoria potrivita pentru a continua cu intrebarile relevante.")
+          ? "Alege categoria potrivita pentru a continua cu intrebarile aprobate."
           : "Confirma interpretarea inainte sa continuam. AI-ul nu alege furnizorii si nu stabileste ordinea rezultatelor."}
       </p>
 

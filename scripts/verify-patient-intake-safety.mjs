@@ -25,6 +25,12 @@ assert.equal(guidedAssessment.blocking, true);
 assert.equal(guidedAssessment.source, 'guided_answer');
 assert.ok(guidedAssessment.blocking_flags.includes('penetrating_or_high_speed_trauma'));
 
+const canonicalGuidedAssessment = buildPatientSafetyAssessment({
+  answers: [{ question_key: 'safety_targeted_check', answer_value: 'durere_severa' }],
+});
+assert.equal(canonicalGuidedAssessment.blocking, true);
+assert.deepEqual(canonicalGuidedAssessment.blocking_flags, ['severe_eye_pain']);
+
 const explicitTextAssessment = buildPatientSafetyAssessment({ text: 'Nu mai vad deloc cu un ochi' });
 assert.equal(explicitTextAssessment.blocking, true);
 assert.equal(explicitTextAssessment.source, 'explicit_text');
@@ -35,6 +41,7 @@ assert.deepEqual(aiOnlyAssessment.advisory_flags, ['severe_eye_pain']);
 assert.equal(aiOnlyAssessment.source, 'ai_advisory');
 
 const questionText = await readFile(new URL('../src/components/intake2/QuestionText.jsx', import.meta.url), 'utf8');
+const questionChoice = await readFile(new URL('../src/components/intake2/QuestionChoice.jsx', import.meta.url), 'utf8');
 const interruption = await readFile(new URL('../src/components/intake2/UrgencyInterruption.jsx', import.meta.url), 'utf8');
 const safetyPolicy = await readFile(new URL('../src/lib/patientSafety.js', import.meta.url), 'utf8');
 
@@ -51,6 +58,8 @@ for (const label of [
 assert.match(questionText, /buildPatientSafetyAssessment/);
 assert.match(questionText, /UrgencyInterruption/);
 assert.match(questionText, /if \(assessment\.blocking\)/);
+assert.match(questionChoice, /safety_targeted_check/);
+assert.match(questionChoice, /UrgencyInterruption/);
 assert.match(interruption, /Opreste cautarea si solicita ajutor medical imediat/);
 assert.match(interruption, /Mergi imediat la UPU, camera de garda/);
 assert.match(interruption, /href="tel:112"/);
