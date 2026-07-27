@@ -204,6 +204,7 @@ function deterministicInterpretation({
   const conversation = conversationFromPayload(payload);
   const answers = sanitizeGuidedSafetyAnswers(payload?.answers);
   const runtimeContext = controlledRuntimeContextFromPayload(payload);
+  const modelInvoked = reason === 'terminal_model_failure';
   const emergency = buildPatientConversationEmergencyInterpretation({
     contractVersion: PATIENT_CONVERSATION_AGENT_VERSION,
     conversation,
@@ -215,7 +216,10 @@ function deterministicInterpretation({
     return {
       interpretation: canonicalizeInterpretation(emergency.interpretation),
       diagnostics: {
-        decision_policy: emergency.diagnostics,
+        decision_policy: {
+          ...emergency.diagnostics,
+          model_invoked: modelInvoked,
+        },
         model_bypass: {
           applied: true,
           reason,
@@ -235,7 +239,10 @@ function deterministicInterpretation({
   return {
     interpretation: canonicalizeInterpretation(decision.interpretation),
     diagnostics: {
-      decision_policy: decision.diagnostics,
+      decision_policy: {
+        ...decision.diagnostics,
+        model_invoked: modelInvoked,
+      },
       model_bypass: {
         applied: true,
         reason,
