@@ -1,8 +1,14 @@
 name: Patient Conversation Self-Hosted Validation
 
 on:
-  pull_request:
+  push:
+    branches:
+      - feat/patient-conversation-agent-contract
     paths:
+      - ".github/workflows/patient-conversation-self-hosted-validation-ci.yml"
+
+x-pull-request-paths:
+  paths:
       - "shared/**"
       - "base44/shared/**"
       - "base44/functions/matchProvidersSemantic/**"
