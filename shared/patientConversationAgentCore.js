@@ -371,6 +371,45 @@ export function getPatientConversationAgentResponseSchema() {
   };
 }
 
+function getPatientConversationAgentOutputTemplate() {
+  return {
+    contract_version: PATIENT_CONVERSATION_SEMANTIC_CONTRACT_VERSION,
+    language: "ro",
+    need_summary: "",
+    primary_intent: "unknown",
+    alternative_intents: [],
+    service_keys: [],
+    facts: {
+      for_whom: "unknown",
+      age_group: "unknown",
+      locality: {
+        siruta_code: "",
+        city: "",
+        county_code: "",
+        county: "",
+        area: "",
+      },
+      symptom_onset: "",
+      symptom_duration: "",
+      symptom_pattern: "",
+      desired_timing: "",
+      contact_lens_experience: "unknown",
+      prescription_status: "unknown",
+      investigation_reference_text: "",
+      repair_details: "",
+      user_constraints: [],
+    },
+    understanding_confidence: "low",
+    ambiguity_fields: [],
+    possible_safety_flags: [],
+    state_delta: {
+      correction_detected: false,
+      clear_fields: [],
+    },
+    evidence_phrases: [],
+  };
+}
+
 export function buildPatientConversationAgentPrompt(input = {}) {
   const conversation = sanitizeConversation(input.conversation, input.text);
   const priorState = isPlainObject(input.priorState) ? input.priorState : null;
@@ -397,12 +436,14 @@ export function buildPatientConversationAgentPrompt(input = {}) {
     "state_delta must describe only explicit corrections in the latest user message. Set correction_detected=false and clear_fields=[] when there is no explicit correction.",
     "Use only canonical service keys and controlled values from the supplied VIASEE catalog.",
     "Copy evidence_phrases only from user messages. Do not copy assistant text as evidence.",
-    "Return only the JSON fields defined by the semantic response schema.",
+    "Return one top-level JSON object matching the supplied output template exactly.",
+    "Do not wrap the output under another key and do not add fields not present in the template.",
     "LATEST_USER_MESSAGE=" + JSON.stringify(latestUserMessage(conversation)),
     "CONVERSATION_JSON=" + JSON.stringify(conversation),
     "PRIOR_STATE_JSON=" + JSON.stringify(priorState),
     "RUNTIME_CONTEXT_JSON=" + JSON.stringify(runtimeContext),
     "VIASEE_SEMANTIC_CATALOG_JSON=" + JSON.stringify(catalog),
+    "VIASEE_SEMANTIC_OUTPUT_TEMPLATE_JSON=" + JSON.stringify(getPatientConversationAgentOutputTemplate()),
   ].join("\n");
 }
 

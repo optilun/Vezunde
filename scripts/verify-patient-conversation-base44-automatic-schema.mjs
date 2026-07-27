@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
+  PATIENT_CONVERSATION_SEMANTIC_CONTRACT_VERSION,
+  buildPatientConversationAgentPrompt,
   getPatientConversationAgentResponseSchema,
 } from '../base44/shared/patientConversationAgent.js';
 import {
@@ -74,6 +76,42 @@ assert.equal(invalid.reason, 'output_too_large');
 assert(!JSON.stringify(invalid).includes(secret));
 
 const schema = getPatientConversationAgentResponseSchema();
+const automaticPrompt = buildPatientConversationAgentPrompt({
+  conversation: [{ role: 'user', content: 'Vreau un control de vedere in Timisoara.' }],
+});
+const outputTemplateMarker = 'VIASEE_SEMANTIC_OUTPUT_TEMPLATE_JSON=';
+const outputTemplateLine = automaticPrompt
+  .split('\n')
+  .find((line) => line.startsWith(outputTemplateMarker));
+assert(outputTemplateLine, 'Automatic prompt must contain the exact semantic output template.');
+const outputTemplate = JSON.parse(outputTemplateLine.slice(outputTemplateMarker.length));
+assert.equal(
+  outputTemplate.contract_version,
+  PATIENT_CONVERSATION_SEMANTIC_CONTRACT_VERSION,
+);
+assert.deepEqual(
+  Object.keys(outputTemplate).sort(),
+  Object.keys(schema.properties).sort(),
+);
+assert.deepEqual(validatePatientConversationModelResponse(outputTemplate, schema), []);
+for (const forbiddenField of [
+  'semantic_intent',
+  'user_provided_facts',
+  'care_path_candidates',
+  'provider_type_candidates',
+]) {
+  assert.equal(
+    Object.hasOwn(outputTemplate, forbiddenField),
+    false,
+    `${forbiddenField} must not be present in the Automatic output template`,
+  );
+}
+assert(automaticPrompt.includes(
+  'Return one top-level JSON object matching the supplied output template exactly.',
+));
+assert(automaticPrompt.includes(
+  'Do not wrap the output under another key and do not add fields not present in the template.',
+));
 const schemaInvalid = parsePatientConversationAutomaticOutput('{"unexpected":true}');
 assert.equal(schemaInvalid.ok, true);
 assert(validatePatientConversationModelResponse(schemaInvalid.value, schema).length > 0);
