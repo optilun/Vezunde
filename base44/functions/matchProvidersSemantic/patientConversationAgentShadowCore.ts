@@ -19,6 +19,10 @@ import {
 import { applyPatientConversationCanonicalBoundary } from '../../shared/patientConversationCanonicalBoundary.js';
 import { reconcilePatientConversationState } from '../../shared/patientConversationStatePolicy.js';
 import { reducePatientConversationSemanticStateDelta } from '../../shared/patientConversationStateDeltaReducer.js';
+import {
+  PATIENT_CONVERSATION_AUTOMATIC_OUTPUT_PROFILE,
+  parsePatientConversationAutomaticOutput,
+} from './patientConversationAutomaticOutputParser.js';
 
 const PATIENT_CONVERSATION_SHADOW_EVENT = 'patient_conversation_agent_shadow_summary';
 const PATIENT_CONVERSATION_MODEL_POLICY = 'base44_automatic';
@@ -403,11 +407,31 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
   const responseSchema = getPatientConversationAgentResponseSchema();
 
   try {
-    const raw = await base44.integrations.Core.InvokeLLM({
+    const modelOutput = await base44.integrations.Core.InvokeLLM({
       prompt,
       add_context_from_internet: false,
-      response_json_schema: responseSchema,
     });
+    const parsedAutomaticOutput = parsePatientConversationAutomaticOutput(modelOutput);
+    if (!parsedAutomaticOutput.ok) {
+      const invalid = attachRuntimeMetadata(attachEvaluationCorrelation(
+        invalidModelOutputEnvelope('invalid_model_output_shape', {
+          schema_violations: [
+            `automatic_output_${parsedAutomaticOutput.reason}`,
+          ],
+          automatic_output_parser: {
+            accepted: false,
+            reason: parsedAutomaticOutput.reason,
+            output_profile: PATIENT_CONVERSATION_AUTOMATIC_OUTPUT_PROFILE,
+          },
+        }),
+        evaluationCaseId,
+        evaluationAttempt,
+      ), Date.now() - startedAt);
+      emitShadowSummary(invalid);
+      return invalid;
+    }
+
+    const raw = parsedAutomaticOutput.value;
     const prohibitedOutputViolations = detectProhibitedPatientConversationOutput(raw);
     if (prohibitedOutputViolations.length > 0) {
       const invalid = attachRuntimeMetadata(attachEvaluationCorrelation(

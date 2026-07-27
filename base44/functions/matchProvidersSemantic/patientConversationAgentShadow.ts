@@ -27,9 +27,8 @@ import {
   classifyPatientConversationModelFailure,
 } from './patientConversationModelFailureDiagnostics.js';
 import {
-  BASE44_AUTOMATIC_INVOKE_SCHEMA_PROFILE,
-  buildBase44AutomaticInvokeSchema,
-} from './patientConversationInvokeSchemaPolicy.js';
+  PATIENT_CONVERSATION_AUTOMATIC_OUTPUT_PROFILE,
+} from './patientConversationAutomaticOutputParser.js';
 import {
   runPatientConversationAgentShadow as runPatientConversationAgentShadowRuntime,
 } from './patientConversationAgentShadowRuntime.ts';
@@ -142,11 +141,7 @@ function createAutomaticModelBase44(base44: any, modelFailureState: any) {
             }
             const automaticArgs = { ...(isPlainObject(args) ? args : {}) };
             delete automaticArgs.model;
-            if (isPlainObject(automaticArgs.response_json_schema)) {
-              automaticArgs.response_json_schema = buildBase44AutomaticInvokeSchema(
-                automaticArgs.response_json_schema,
-              );
-            }
+            delete automaticArgs.response_json_schema;
             return await invokeModel.call(core, automaticArgs);
           } catch (error) {
             modelFailureState.diagnostics = classifyPatientConversationModelFailure(error);
@@ -331,7 +326,7 @@ function automaticRuntimeMetadata(envelope: any) {
         policy: PATIENT_CONVERSATION_MODEL_POLICY,
         explicit_model_override: false,
         automatic_retry_enabled: false,
-        response_schema_profile: BASE44_AUTOMATIC_INVOKE_SCHEMA_PROFILE,
+        automatic_output_profile: PATIENT_CONVERSATION_AUTOMATIC_OUTPUT_PROFILE,
       },
     },
   };
