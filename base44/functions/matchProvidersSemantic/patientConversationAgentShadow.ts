@@ -24,6 +24,9 @@ import {
   finalizePatientConversationOperationalEnvelope,
 } from '../../shared/patientConversationOperationalPolicy.js';
 import {
+  classifyPatientConversationModelFailure,
+} from './patientConversationModelFailureDiagnostics.js';
+import {
   runPatientConversationAgentShadow as runPatientConversationAgentShadowRuntime,
 } from './patientConversationAgentShadowRuntime.ts';
 
@@ -115,7 +118,7 @@ function noModelRuntimeMetadata(durationMs = 0) {
   };
 }
 
-function createAutomaticModelBase44(base44: any) {
+function createAutomaticModelBase44(base44: any, modelFailureState: any) {
   const integrations = base44?.integrations || {};
   const core = integrations?.Core || {};
   const invokeModel = core?.InvokeLLM;
@@ -126,15 +129,20 @@ function createAutomaticModelBase44(base44: any) {
       ...integrations,
       Core: {
         ...core,
-        InvokeLLM: (args: any = {}) => {
-          if (typeof invokeModel !== 'function') {
-            const error: any = new Error('Base44 Core.InvokeLLM is unavailable.');
-            error.code = 'PATIENT_CONVERSATION_MODEL_INVOKER_UNAVAILABLE';
+        InvokeLLM: async (args: any = {}) => {
+          try {
+            if (typeof invokeModel !== 'function') {
+              const error: any = new Error('Base44 Core.InvokeLLM is unavailable.');
+              error.code = 'PATIENT_CONVERSATION_MODEL_INVOKER_UNAVAILABLE';
+              throw error;
+            }
+            const automaticArgs = { ...(isPlainObject(args) ? args : {}) };
+            delete automaticArgs.model;
+            return await invokeModel.call(core, automaticArgs);
+          } catch (error) {
+            modelFailureState.diagnostics = classifyPatientConversationModelFailure(error);
             throw error;
           }
-          const automaticArgs = { ...(isPlainObject(args) ? args : {}) };
-          delete automaticArgs.model;
-          return invokeModel.call(core, automaticArgs);
         },
       },
     },
@@ -319,6 +327,17 @@ function automaticRuntimeMetadata(envelope: any) {
   };
 }
 
+function attachModelFailureDiagnostics(envelope: any, modelFailureState: any) {
+  if (!isPlainObject(modelFailureState?.diagnostics)) return envelope;
+  return {
+    ...envelope,
+    diagnostics: {
+      ...(envelope?.diagnostics || {}),
+      model_failure: modelFailureState.diagnostics,
+    },
+  };
+}
+
 function recoverTerminalFailure(envelope: any, payload: any = {}) {
   if (!['invalid', 'unavailable'].includes(String(envelope?.status || ''))) {
     return envelope;
@@ -328,6 +347,10 @@ function recoverTerminalFailure(envelope: any, payload: any = {}) {
     payload,
     reason: 'terminal_model_failure',
   });
+  const modelCallsUsed = Math.max(
+    0,
+    Math.round(Number(envelope?.operational_metadata?.model_calls_used) || 0),
+  );
   return {
     ...envelope,
     status: 'completed',
@@ -336,6 +359,10 @@ function recoverTerminalFailure(envelope: any, payload: any = {}) {
     diagnostics: {
       ...(envelope?.diagnostics || {}),
       ...deterministic.diagnostics,
+      model_bypass: {
+        ...(deterministic.diagnostics?.model_bypass || {}),
+        model_calls_used: modelCallsUsed,
+      },
       terminal_fallback: {
         applied: true,
         original_status: String(envelope?.status || ''),
@@ -352,10 +379,14 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
     return guidedAnswerEnvelope(payload);
   }
 
+  const modelFailureState: any = {
+    diagnostics: null,
+  };
   const runtimeEnvelope = await runPatientConversationAgentShadowRuntime(
-    createAutomaticModelBase44(base44),
+    createAutomaticModelBase44(base44, modelFailureState),
     payload,
   );
-  const automaticEnvelope = automaticRuntimeMetadata(runtimeEnvelope);
+  const diagnosedEnvelope = attachModelFailureDiagnostics(runtimeEnvelope, modelFailureState);
+  const automaticEnvelope = automaticRuntimeMetadata(diagnosedEnvelope);
   return attachGuidanceHandoff(recoverTerminalFailure(automaticEnvelope, payload));
 }
