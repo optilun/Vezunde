@@ -44,7 +44,7 @@ const runtimeCoreSource = fs.readFileSync(
 assert.equal(sharedAgentSource, base44AgentSource);
 assert.equal(sharedAgentCoreSource, base44AgentCoreSource);
 assert.equal(sharedPriorPolicySource, base44PriorPolicySource);
-assert.equal(gitBlobSha(sharedAgentCoreSource), '0af237a8f35a52818983dabddd26321b000bc3df');
+assert.equal(gitBlobSha(sharedAgentCoreSource), 'a05ac7dbf05d986fc15eae91a2f59dfe7f7a33da');
 assert(sharedAgentSource.includes('sanitizePatientConversationPriorState(source.priorState)'));
 assert(runtimeCoreSource.includes("from '../../shared/patientConversationAgent.js';"));
 assert(!runtimeCoreSource.includes("from '../../shared/patientConversationAgentCore.js';"));
