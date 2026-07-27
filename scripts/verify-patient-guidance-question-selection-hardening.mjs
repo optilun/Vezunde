@@ -9,7 +9,7 @@ import {
 } from "../base44/shared/patientSafety.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const source = (relativePath) => readFileSync(path.join(root, relativePath), "utf8");
+const source = (relativePath) => readFileSync(path.join(root, relativePath), "utf8").replace(/\r\n/g, "\n");
 let scenarioCount = 0;
 
 function scenario(name, verify) {
@@ -156,7 +156,7 @@ scenario("question-only selection still performs no extra AI call", () => {
 
 scenario("matching and ranking implementation remains byte-stable", () => {
   const marker = "    if (requestedKeys.length === 0) {";
-  assert.equal(fnv1a(entry.slice(entry.indexOf(marker))), "39eec47a");
+  assert.equal(fnv1a(entry.slice(entry.indexOf(marker)).trimEnd()), "39eec47a");
 
   const client = source("src/lib/providerSemanticSearch.js");
   const clientMarker = "export async function matchProvidersWithSemanticFallback";
