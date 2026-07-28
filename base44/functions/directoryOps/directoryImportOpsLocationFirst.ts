@@ -5,6 +5,7 @@ import { handle as legacyDirectoryImportOpsHandle } from './directoryImportOps.t
 const MAX_ROWS = 5000;
 const CLASSIFICATION_CONTRACT_VERSION = 'viasee-directory-location-first-v1';
 const RUNTIME_ADAPTER_REVISION = 'directory-location-first-runtime-adapter-1';
+const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-latest-1';
 
 const PROVIDER_TYPES = new Set([
   'optica_medicala',
@@ -261,6 +262,18 @@ async function reconcileFinalizedSnapshot(req: Request, input: Record<string, an
 export async function handle(req: Request) {
   const reconciliationRequest = req.clone();
   const input = await req.clone().json().catch(() => ({}));
+
+  if (clean(input.action, 80) === 'runtime_info') {
+    return Response.json({
+      success: true,
+      runtime_revision: DIRECTORY_IMPORT_RUNTIME_REVISION,
+      adapter_revision: RUNTIME_ADAPTER_REVISION,
+      classification_contract_version: CLASSIFICATION_CONTRACT_VERSION,
+      preserves_explicit_location_type: true,
+      preserves_explicit_organization_type: true,
+    });
+  }
+
   const result = await legacyDirectoryImportOpsHandle(req);
 
   if (clean(input.action, 80) === 'finalize_snapshot' && result.ok) {
