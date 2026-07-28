@@ -44,8 +44,6 @@ function verifyDirectoryImportRuntime(client) {
 export function installBase44FunctionRouting(client, options = {}) {
   const rawFunctions = client.functions;
   const rawInvoke = rawFunctions.invoke.bind(rawFunctions);
-  const directoryImportClient = options.directoryImportClient
-    || (typeof window === 'undefined' ? client : getBase44LatestFunctionClient());
 
   const routedFunctions = new Proxy(rawFunctions, {
     get(target, property) {
@@ -53,6 +51,8 @@ export function installBase44FunctionRouting(client, options = {}) {
         return async (logicalName, payload = {}) => {
           if (DIRECTORY_FUNCTION_ROUTES[logicalName]) {
             if (logicalName === 'directoryImportOps') {
+              const directoryImportClient = options.directoryImportClient
+                || (typeof window === 'undefined' ? client : await getBase44LatestFunctionClient());
               if (payload?.action === 'create_snapshot') {
                 await verifyDirectoryImportRuntime(directoryImportClient);
               }
