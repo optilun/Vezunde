@@ -6,9 +6,6 @@ export const PATIENT_CONVERSATION_EVALUATION_FIXTURE_SOURCE =
 
 const MAX_AUTHORIZATION_LIFETIME_MS = 15 * 60 * 1000;
 const CLOCK_SKEW_MS = 60 * 1000;
-const MAX_REPLAY_ENTRIES = 512;
-const consumedEvaluationNonces = new Map();
-const consumedEvaluationRuns = new Map();
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -119,38 +116,14 @@ function normalizedPositiveInteger(value) {
   return Number.isInteger(number) && number > 0 ? number : null;
 }
 
-function pruneReplayStore(nowMs, replayStore) {
-  for (const [key, expiresAt] of replayStore.entries()) {
-    if (!Number.isFinite(expiresAt) || expiresAt <= nowMs) replayStore.delete(key);
-  }
-  while (replayStore.size > MAX_REPLAY_ENTRIES) {
-    const oldestKey = replayStore.keys().next().value;
-    if (oldestKey === undefined) break;
-    replayStore.delete(oldestKey);
-  }
-}
-
-function pruneRunUsageStore(nowMs, runUsageStore) {
-  for (const [key, usage] of runUsageStore.entries()) {
-    if (!Number.isFinite(usage?.expires_at) || usage.expires_at <= nowMs) {
-      runUsageStore.delete(key);
-    }
-  }
-  while (runUsageStore.size > MAX_REPLAY_ENTRIES) {
-    const oldestKey = runUsageStore.keys().next().value;
-    if (oldestKey === undefined) break;
-    runUsageStore.delete(oldestKey);
-  }
-}
-
-function rejection(reason) {
+function rejection(reason, replayProtectionScope = "unavailable") {
   return {
     allowed: false,
     reason,
     metadata: {
       authorization_version: PATIENT_CONVERSATION_EVALUATION_AUTHORIZATION_VERSION,
       synthetic_fixture_verified: false,
-      replay_protection_scope: "process_instance",
+      replay_protection_scope: replayProtectionScope,
     },
   };
 }
@@ -231,7 +204,16 @@ export async function authorizePatientConversationSyntheticEvaluation(
   const secret = String(options?.secret ?? "");
   const expectedKeyId = validIdentifier(options?.keyId, 80);
   const serverMaxCalls = normalizedPositiveInteger(options?.maxModelCallsPerRun);
-  if (secret.length < 32 || !expectedKeyId || !serverMaxCalls) {
+  const usageStore = options?.usageStore;
+  const usageStoreScope = validIdentifier(usageStore?.scope, 80) || "unavailable";
+  if (
+    secret.length < 32
+    || !expectedKeyId
+    || !serverMaxCalls
+    || usageStore?.configured !== true
+    || typeof usageStore?.reserveNonce !== "function"
+    || typeof usageStore?.consumeModelCall !== "function"
+  ) {
     return rejection("patient_conversation_evaluation_misconfigured");
   }
 
@@ -294,24 +276,36 @@ export async function authorizePatientConversationSyntheticEvaluation(
     return rejection("patient_conversation_evaluation_authorization_invalid");
   }
 
-  const replayStore = options?.replayStore instanceof Map
-    ? options.replayStore
-    : consumedEvaluationNonces;
-  const runUsageStore = options?.runUsageStore instanceof Map
-    ? options.runUsageStore
-    : consumedEvaluationRuns;
-  pruneReplayStore(nowMs, replayStore);
-  pruneRunUsageStore(nowMs, runUsageStore);
-  const replayKey = `${expectedKeyId}:${runId}:${nonce}`;
-  if (replayStore.has(replayKey)) {
-    return rejection("patient_conversation_evaluation_replay_blocked");
+  let nonceReservation;
+  try {
+    nonceReservation = await usageStore.reserveNonce({
+      keyId: expectedKeyId,
+      runId,
+      nonce,
+      maxModelCalls: Math.min(maxModelCalls, serverMaxCalls),
+      expiresAtMs: expiresAt.timestamp,
+      nowMs,
+    });
+  } catch (error) {
+    if (
+      error?.code === "PATIENT_CONVERSATION_EVALUATION_RUN_LIMIT_MISMATCH"
+    ) {
+      return rejection(
+        "patient_conversation_evaluation_run_limit_mismatch",
+        usageStoreScope,
+      );
+    }
+    return rejection(
+      "patient_conversation_evaluation_usage_store_unavailable",
+      usageStoreScope,
+    );
   }
-  const runKey = `${expectedKeyId}:${runId}`;
-  const runUsage = runUsageStore.get(runKey);
-  const runCallsUsed = normalizedPositiveInteger(runUsage?.model_calls_used) || 0;
-
-  replayStore.set(replayKey, expiresAt.timestamp);
-  pruneReplayStore(nowMs, replayStore);
+  if (nonceReservation?.reserved !== true) {
+    return rejection(
+      "patient_conversation_evaluation_replay_blocked",
+      usageStoreScope,
+    );
+  }
 
   const metadata = {
     authorization_version: PATIENT_CONVERSATION_EVALUATION_AUTHORIZATION_VERSION,
@@ -322,8 +316,8 @@ export async function authorizePatientConversationSyntheticEvaluation(
     run_id: runId,
     expires_at: expiresAt.text,
     max_model_calls: maxModelCalls,
-    model_calls_used_in_process: runCallsUsed,
-    replay_protection_scope: "process_instance",
+    model_calls_used_global: null,
+    replay_protection_scope: usageStoreScope,
   };
   let modelCallConsumed = false;
 
@@ -331,7 +325,7 @@ export async function authorizePatientConversationSyntheticEvaluation(
     allowed: true,
     reason: null,
     metadata,
-    consumeModelCall() {
+    async consumeModelCall() {
       if (modelCallConsumed) {
         throw authorizationError(
           "PATIENT_CONVERSATION_EVALUATION_AUTHORIZATION_CONSUMED",
@@ -340,34 +334,50 @@ export async function authorizePatientConversationSyntheticEvaluation(
       }
       modelCallConsumed = true;
 
-      pruneRunUsageStore(nowMs, runUsageStore);
-      const currentUsage = runUsageStore.get(runKey);
-      const currentCallsUsed =
-        normalizedPositiveInteger(currentUsage?.model_calls_used) || 0;
-      if (
-        currentCallsUsed >= maxModelCalls
-        || currentCallsUsed >= serverMaxCalls
-      ) {
+      let consumption;
+      try {
+        consumption = await usageStore.consumeModelCall({
+          keyId: expectedKeyId,
+          runId,
+          maxModelCalls: Math.min(maxModelCalls, serverMaxCalls),
+          expiresAtMs: expiresAt.timestamp,
+          nowMs: Number.isFinite(Number(options?.nowMs))
+            ? nowMs
+            : Date.now(),
+        });
+      } catch (error) {
+        if (
+          error?.code === "PATIENT_CONVERSATION_EVALUATION_RUN_LIMIT_MISMATCH"
+        ) {
+          throw authorizationError(
+            "PATIENT_CONVERSATION_EVALUATION_RUN_LIMIT_MISMATCH",
+            "Evaluation run was initialized with a different model-call budget.",
+          );
+        }
+        throw authorizationError(
+          "PATIENT_CONVERSATION_EVALUATION_USAGE_STORE_UNAVAILABLE",
+          "Evaluation usage store is unavailable.",
+        );
+      }
+      if (consumption?.allowed !== true) {
         throw authorizationError(
           "PATIENT_CONVERSATION_EVALUATION_RUN_BUDGET_EXCEEDED",
           "Evaluation model-call budget has been exceeded.",
         );
       }
 
-      const nextCallsUsed = currentCallsUsed + 1;
-      runUsageStore.set(runKey, {
-        model_calls_used: nextCallsUsed,
-        expires_at: Math.max(
-          Number(currentUsage?.expires_at) || 0,
-          expiresAt.timestamp,
-        ),
-      });
-      pruneRunUsageStore(nowMs, runUsageStore);
-      metadata.model_calls_used_in_process = nextCallsUsed;
+      const nextCallsUsed = Number(consumption.modelCallsUsed);
+      if (!Number.isInteger(nextCallsUsed) || nextCallsUsed <= 0) {
+        throw authorizationError(
+          "PATIENT_CONVERSATION_EVALUATION_USAGE_STORE_UNAVAILABLE",
+          "Evaluation usage store returned an invalid counter.",
+        );
+      }
+      metadata.model_calls_used_global = nextCallsUsed;
       return {
         max_model_calls: maxModelCalls,
-        model_calls_used_in_process: nextCallsUsed,
-        replay_protection_scope: "process_instance",
+        model_calls_used_global: nextCallsUsed,
+        replay_protection_scope: usageStoreScope,
       };
     },
   };

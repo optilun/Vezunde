@@ -9,7 +9,9 @@ conditions are present:
 - `PATIENT_CONVERSATION_EVALUATION_RUNTIME_CONTEXT=isolated_evaluation`;
 - a configured key id;
 - a signing secret containing at least 32 characters;
-- a positive server-side maximum call count for the approved run.
+- a positive server-side maximum call count for the approved run;
+- `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` for the
+  dedicated distributed usage store.
 
 Production must not define this opt-in configuration.
 
@@ -35,9 +37,13 @@ conservative maximum of one model call for every pending request.
 
 ## Replay and consumption boundary
 
-The runtime reserves an authorized nonce before any guided or semantic execution
-and blocks a duplicate nonce within the same warm function instance. The run
-budget is checked and incremented separately, immediately before `InvokeLLM`.
+The runtime reserves an authorized nonce through Redis `SET NX EX` before any
+guided or semantic execution. This blocks the same nonce across concurrent
+backend instances. The run budget is checked and incremented separately,
+immediately before `InvokeLLM`, by one Redis `EVAL` script. The script fixes the
+approved ceiling on first use, rejects a different ceiling for the same run and
+performs the compare-and-increment atomically.
+
 Therefore, a signed request completed by deterministic preflight consumes no
 model-call budget. Reaching the run ceiling does not reject a newly authorized
 request before preflight; it rejects the next attempted `InvokeLLM`. The request
@@ -45,12 +51,19 @@ nonce remains reserved even when the model-call ceiling is already exhausted.
 The existing operational controller still permits at most one model call per
 HTTP request and no retry.
 
-The replay map and per-run counter are process-scoped. They are not a durable,
-cross-instance quota. A global guarantee requires a dedicated persisted usage
-entity with atomic uniqueness or another platform-level idempotency primitive.
-That schema change is intentionally outside this patch.
+Redis keys contain only SHA-256 digests derived from key id, run id and nonce,
+plus the approved maximum, used-call counter and expiry. They never contain
+conversation text, symptoms, semantic output, patient identifiers or provider
+results. Nonce and run state expire with the signed authorization, with a hard
+upper TTL of 16 minutes.
 
-Until that persistence is approved:
+If Redis is missing, unavailable, times out, returns an invalid response or
+reports a run-ceiling mismatch, evaluation fails closed before `InvokeLLM`.
+A response can be lost after Redis reserved a slot; in that case the slot remains
+consumed and the model is not called. This deliberately prefers under-use over a
+quota overrun.
+
+Operational rules:
 
 - keep the route disabled outside the isolated evaluation app;
 - authorize only the smallest explicit model-call ceiling approved for one run;

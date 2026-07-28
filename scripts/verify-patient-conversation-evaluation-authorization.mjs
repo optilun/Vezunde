@@ -10,6 +10,9 @@ import {
   createPatientConversationEvaluationAuthorization,
 } from '../shared/patientConversationEvaluationAuthorization.js';
 import {
+  createPatientConversationEvaluationRedisUsageStore,
+} from '../shared/patientConversationEvaluationUsageStore.js';
+import {
   loadPatientConversationFixtures,
 } from './patient-conversation-fixture-loader.mjs';
 
@@ -19,6 +22,14 @@ const sharedSource = fs.readFileSync(
 );
 const base44Source = fs.readFileSync(
   new URL('../base44/shared/patientConversationEvaluationAuthorization.js', import.meta.url),
+  'utf8',
+);
+const usageStoreSource = fs.readFileSync(
+  new URL('../shared/patientConversationEvaluationUsageStore.js', import.meta.url),
+  'utf8',
+);
+const base44UsageStoreSource = fs.readFileSync(
+  new URL('../base44/shared/patientConversationEvaluationUsageStore.js', import.meta.url),
   'utf8',
 );
 const wrapperSource = fs.readFileSync(
@@ -43,15 +54,27 @@ const signerSource = fs.readFileSync(
 );
 
 assert.equal(sharedSource, base44Source);
+assert.equal(usageStoreSource, base44UsageStoreSource);
 assert(wrapperSource.includes('PATIENT_CONVERSATION_EVALUATION_ENABLED'));
 assert(wrapperSource.includes('PATIENT_CONVERSATION_EVALUATION_RUNTIME_CONTEXT'));
 assert(wrapperSource.includes('PATIENT_CONVERSATION_EVALUATION_KEY_ID'));
 assert(wrapperSource.includes('PATIENT_CONVERSATION_EVALUATION_SECRET'));
+assert(wrapperSource.includes('UPSTASH_REDIS_REST_URL'));
+assert(wrapperSource.includes('UPSTASH_REDIS_REST_TOKEN'));
+assert(wrapperSource.includes('createPatientConversationEvaluationRedisUsageStore({'));
 assert(wrapperSource.includes('authorizePatientConversationSyntheticEvaluation('));
 assert(wrapperSource.includes('delete runtimePayload.evaluation_authorization;'));
 assert(wrapperSource.includes('synthetic_evaluation: evaluationAuthorization.metadata'));
 assert(!wrapperSource.includes('evaluationAuthorization.signature'));
-assert(wrapperSource.includes('evaluationAuthorization.consumeModelCall();'));
+assert(wrapperSource.includes('await evaluationAuthorization.consumeModelCall();'));
+assert(usageStoreSource.includes("redis.call('SET'"));
+assert(usageStoreSource.includes("'NX', 'EX'"));
+assert(usageStoreSource.includes('"EVAL",'));
+assert(usageStoreSource.includes("redis.call('HINCRBY'"));
+assert(!usageStoreSource.includes('patient_text'));
+assert(!usageStoreSource.includes('symptom_text'));
+assert(!usageStoreSource.includes('semantic_output'));
+assert(!usageStoreSource.includes('provider_results'));
 
 const authorizationIndex = wrapperSource.indexOf(
   'await authorizePatientConversationSyntheticEvaluation(',
@@ -217,7 +240,55 @@ async function signedPayload(overrides = {}, claims = {}) {
   return payload;
 }
 
-function authorizationOptions(replayStore = new Map(), runUsageStore = new Map()) {
+function createAtomicTestUsageStore({
+  nonces = new Set(),
+  runs = new Map(),
+  unavailable = false,
+} = {}) {
+  return {
+    scope: 'distributed_test_store',
+    configured: true,
+    async reserveNonce({ keyId, runId, nonce }) {
+      if (unavailable) throw new Error('test store unavailable');
+      const key = `${keyId}:${runId}:${nonce}`;
+      if (nonces.has(key)) return { reserved: false };
+      nonces.add(key);
+      return { reserved: true };
+    },
+    async consumeModelCall({ keyId, runId, maxModelCalls }) {
+      if (unavailable) throw new Error('test store unavailable');
+      const key = `${keyId}:${runId}`;
+      const current = runs.get(key) || {
+        max_model_calls: maxModelCalls,
+        model_calls_used: 0,
+      };
+      if (current.max_model_calls !== maxModelCalls) {
+        const error = new Error('run limit mismatch');
+        error.code = 'PATIENT_CONVERSATION_EVALUATION_RUN_LIMIT_MISMATCH';
+        throw error;
+      }
+      if (current.model_calls_used >= maxModelCalls) {
+        return {
+          allowed: false,
+          modelCallsUsed: current.model_calls_used,
+          maxModelCalls: current.max_model_calls,
+        };
+      }
+      const next = {
+        ...current,
+        model_calls_used: current.model_calls_used + 1,
+      };
+      runs.set(key, next);
+      return {
+        allowed: true,
+        modelCallsUsed: next.model_calls_used,
+        maxModelCalls: next.max_model_calls,
+      };
+    },
+  };
+}
+
+function authorizationOptions(usageStore = createAtomicTestUsageStore()) {
   return {
     enabled: true,
     runtimeContext: 'isolated_evaluation',
@@ -225,13 +296,145 @@ function authorizationOptions(replayStore = new Map(), runUsageStore = new Map()
     secret,
     maxModelCallsPerRun: 3,
     nowMs,
-    replayStore,
-    runUsageStore,
+    usageStore,
   };
 }
 
+const redisCommands = [];
+const redisNonceKeys = new Set();
+const redisRunUsage = new Map();
+async function redisFetch(url, init = {}) {
+  assert.equal(url, 'https://viasee-evaluation-test.upstash.io');
+  assert.equal(init?.method, 'POST');
+  assert.equal(init?.headers?.Authorization, `Bearer ${'t'.repeat(32)}`);
+  const command = JSON.parse(init?.body || '[]');
+  redisCommands.push(command);
+  let result;
+  if (command[0] === 'EVAL' && command[2] === '2') {
+    const nonceKey = command[3];
+    const runKey = command[4];
+    const requestedMax = Number(command[5]);
+    const current = redisRunUsage.get(runKey) || {
+      max_model_calls: requestedMax,
+      model_calls_used: 0,
+    };
+    if (current.max_model_calls !== requestedMax) {
+      result = [-1, current.model_calls_used, current.max_model_calls];
+    } else if (redisNonceKeys.has(nonceKey)) {
+      result = [0, current.model_calls_used, current.max_model_calls];
+    } else {
+      redisNonceKeys.add(nonceKey);
+      redisRunUsage.set(runKey, current);
+      result = [1, current.model_calls_used, current.max_model_calls];
+    }
+  } else if (command[0] === 'EVAL' && command[2] === '1') {
+    const key = command[3];
+    const requestedMax = Number(command[4]);
+    const current = redisRunUsage.get(key) || {
+      max_model_calls: requestedMax,
+      model_calls_used: 0,
+    };
+    if (current.max_model_calls !== requestedMax) {
+      result = [-1, current.model_calls_used, current.max_model_calls];
+    } else if (current.model_calls_used >= requestedMax) {
+      result = [0, current.model_calls_used, current.max_model_calls];
+    } else {
+      const next = {
+        ...current,
+        model_calls_used: current.model_calls_used + 1,
+      };
+      redisRunUsage.set(key, next);
+      result = [1, next.model_calls_used, next.max_model_calls];
+    }
+  } else {
+    throw new Error(`Unexpected Redis command ${String(command[0])}.`);
+  }
+  return new Response(JSON.stringify({ result }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+const redisUsageStore = createPatientConversationEvaluationRedisUsageStore({
+  url: 'https://viasee-evaluation-test.upstash.io/',
+  token: 't'.repeat(32),
+  fetchImpl: redisFetch,
+});
+assert.equal(redisUsageStore.configured, true);
+const redisNonceReservation = {
+  keyId: 'evaluation-key-v1',
+  runId: 'redis-run-001',
+  nonce: 'redis-nonce-1234567890',
+  maxModelCalls: 1,
+  expiresAtMs: nowMs + 60_000,
+  nowMs,
+};
+assert.equal(
+  (await redisUsageStore.reserveNonce(redisNonceReservation)).reserved,
+  true,
+);
+assert.equal(
+  (await redisUsageStore.reserveNonce(redisNonceReservation)).reserved,
+  false,
+);
+const redisConsumptionRequest = {
+  keyId: 'evaluation-key-v1',
+  runId: 'redis-run-001',
+  maxModelCalls: 1,
+  expiresAtMs: nowMs + 60_000,
+  nowMs,
+};
+const redisConcurrentConsumption = await Promise.all([
+  redisUsageStore.consumeModelCall(redisConsumptionRequest),
+  redisUsageStore.consumeModelCall(redisConsumptionRequest),
+]);
+assert.deepEqual(
+  redisConcurrentConsumption.map((item) => item.allowed).sort(),
+  [false, true],
+);
+assert.equal(redisConcurrentConsumption[0].modelCallsUsed, 1);
+assert.equal(redisConcurrentConsumption[1].modelCallsUsed, 1);
+await assert.rejects(
+  redisUsageStore.consumeModelCall({
+    ...redisConsumptionRequest,
+    maxModelCalls: 2,
+  }),
+  (error) => error?.code === 'PATIENT_CONVERSATION_EVALUATION_RUN_LIMIT_MISMATCH',
+);
+assert(redisCommands.some((command) => (
+  command[0] === 'EVAL'
+  && command[2] === '2'
+  && command[1].includes("redis.call('SET'")
+  && command[1].includes("'NX', 'EX'")
+)));
+assert(redisCommands.some((command) => (
+  command[0] === 'EVAL'
+  && command[1].includes("redis.call('HINCRBY'")
+)));
+assert(redisCommands.every((command) => (
+  !JSON.stringify(command).includes(redisNonceReservation.nonce)
+  && !JSON.stringify(command).includes(redisNonceReservation.runId)
+)));
+const redisLimitMismatchPayload = await signedPayload({}, {
+  runId: redisNonceReservation.runId,
+  nonce: 'redis-limit-mismatch-1234567890',
+  maxModelCalls: 2,
+});
+const redisLimitMismatch = await authorizePatientConversationSyntheticEvaluation(
+  redisLimitMismatchPayload,
+  {
+    ...authorizationOptions(redisUsageStore),
+    maxModelCallsPerRun: 3,
+  },
+);
+assert.equal(redisLimitMismatch.allowed, false);
+assert.equal(
+  redisLimitMismatch.reason,
+  'patient_conversation_evaluation_run_limit_mismatch',
+);
+
 const acceptedPayload = await signedPayload();
-const replayStore = new Map();
+const replayStore = createAtomicTestUsageStore();
 const accepted = await authorizePatientConversationSyntheticEvaluation(
   acceptedPayload,
   authorizationOptions(replayStore),
@@ -242,13 +445,13 @@ assert.equal(
   PATIENT_CONVERSATION_EVALUATION_AUTHORIZATION_VERSION,
 );
 assert.equal(accepted.metadata.synthetic_fixture_verified, true);
-assert.equal(accepted.metadata.replay_protection_scope, 'process_instance');
-assert.equal(accepted.metadata.model_calls_used_in_process, 0);
-const acceptedConsumption = accepted.consumeModelCall();
-assert.equal(acceptedConsumption.model_calls_used_in_process, 1);
-assert.equal(accepted.metadata.model_calls_used_in_process, 1);
-assert.throws(
-  () => accepted.consumeModelCall(),
+assert.equal(accepted.metadata.replay_protection_scope, 'distributed_test_store');
+assert.equal(accepted.metadata.model_calls_used_global, null);
+const acceptedConsumption = await accepted.consumeModelCall();
+assert.equal(acceptedConsumption.model_calls_used_global, 1);
+assert.equal(accepted.metadata.model_calls_used_global, 1);
+await assert.rejects(
+  accepted.consumeModelCall(),
   (error) => error?.code === 'PATIENT_CONVERSATION_EVALUATION_AUTHORIZATION_CONSUMED',
 );
 
@@ -296,6 +499,29 @@ const wrongContext = await authorizePatientConversationSyntheticEvaluation(
 assert.equal(wrongContext.allowed, false);
 assert.equal(wrongContext.reason, 'patient_conversation_evaluation_context_invalid');
 
+const missingUsageStore = await authorizePatientConversationSyntheticEvaluation(
+  acceptedPayload,
+  { ...authorizationOptions(), usageStore: null },
+);
+assert.equal(missingUsageStore.allowed, false);
+assert.equal(
+  missingUsageStore.reason,
+  'patient_conversation_evaluation_misconfigured',
+);
+
+const unavailableUsagePayload = await signedPayload({}, {
+  nonce: 'a2345678-1234-4234-9234-123456789abc',
+});
+const unavailableUsageStore = await authorizePatientConversationSyntheticEvaluation(
+  unavailableUsagePayload,
+  authorizationOptions(createAtomicTestUsageStore({ unavailable: true })),
+);
+assert.equal(unavailableUsageStore.allowed, false);
+assert.equal(
+  unavailableUsageStore.reason,
+  'patient_conversation_evaluation_usage_store_unavailable',
+);
+
 const overBudgetPayload = await signedPayload({}, {
   nonce: '42345678-1234-4234-9234-123456789abc',
   maxModelCalls: 4,
@@ -307,8 +533,7 @@ const overBudget = await authorizePatientConversationSyntheticEvaluation(
 assert.equal(overBudget.allowed, false);
 assert.equal(overBudget.reason, 'patient_conversation_evaluation_authorization_invalid');
 
-const runBudgetReplayStore = new Map();
-const runBudgetUsageStore = new Map();
+const runBudgetStore = createAtomicTestUsageStore();
 const runBudgetFirst = await signedPayload({}, {
   runId: 'run-budget-001',
   nonce: '62345678-1234-4234-9234-123456789abc',
@@ -317,14 +542,14 @@ const runBudgetFirst = await signedPayload({}, {
 const runBudgetFirstResult = await authorizePatientConversationSyntheticEvaluation(
   runBudgetFirst,
   {
-    ...authorizationOptions(runBudgetReplayStore, runBudgetUsageStore),
+    ...authorizationOptions(runBudgetStore),
     maxModelCallsPerRun: 1,
   },
 );
 assert.equal(runBudgetFirstResult.allowed, true);
-assert.equal(runBudgetFirstResult.metadata.model_calls_used_in_process, 0);
-runBudgetFirstResult.consumeModelCall();
-assert.equal(runBudgetFirstResult.metadata.model_calls_used_in_process, 1);
+assert.equal(runBudgetFirstResult.metadata.model_calls_used_global, null);
+await runBudgetFirstResult.consumeModelCall();
+assert.equal(runBudgetFirstResult.metadata.model_calls_used_global, 1);
 const runBudgetSecond = await signedPayload({}, {
   runId: 'run-budget-001',
   nonce: '72345678-1234-4234-9234-123456789abc',
@@ -333,20 +558,20 @@ const runBudgetSecond = await signedPayload({}, {
 const runBudgetSecondResult = await authorizePatientConversationSyntheticEvaluation(
   runBudgetSecond,
   {
-    ...authorizationOptions(runBudgetReplayStore, runBudgetUsageStore),
+    ...authorizationOptions(runBudgetStore),
     maxModelCallsPerRun: 1,
   },
 );
 assert.equal(runBudgetSecondResult.allowed, true);
-assert.equal(runBudgetSecondResult.metadata.model_calls_used_in_process, 1);
-assert.throws(
-  () => runBudgetSecondResult.consumeModelCall(),
+assert.equal(runBudgetSecondResult.metadata.model_calls_used_global, null);
+await assert.rejects(
+  runBudgetSecondResult.consumeModelCall(),
   (error) => error?.code === 'PATIENT_CONVERSATION_EVALUATION_RUN_BUDGET_EXCEEDED',
 );
 const runBudgetSecondReplay = await authorizePatientConversationSyntheticEvaluation(
   runBudgetSecond,
   {
-    ...authorizationOptions(runBudgetReplayStore, runBudgetUsageStore),
+    ...authorizationOptions(runBudgetStore),
     maxModelCallsPerRun: 1,
   },
 );
@@ -356,8 +581,7 @@ assert.equal(
   'patient_conversation_evaluation_replay_blocked',
 );
 
-const noModelReplayStore = new Map();
-const noModelUsageStore = new Map();
+const noModelStore = createAtomicTestUsageStore();
 const noModelFirstPayload = await signedPayload({}, {
   runId: 'run-no-model-001',
   nonce: '82345678-1234-4234-9234-123456789abc',
@@ -366,12 +590,12 @@ const noModelFirstPayload = await signedPayload({}, {
 const noModelFirst = await authorizePatientConversationSyntheticEvaluation(
   noModelFirstPayload,
   {
-    ...authorizationOptions(noModelReplayStore, noModelUsageStore),
+    ...authorizationOptions(noModelStore),
     maxModelCallsPerRun: 1,
   },
 );
 assert.equal(noModelFirst.allowed, true);
-assert.equal(noModelFirst.metadata.model_calls_used_in_process, 0);
+assert.equal(noModelFirst.metadata.model_calls_used_global, null);
 const noModelSecondPayload = await signedPayload({}, {
   runId: 'run-no-model-001',
   nonce: '92345678-1234-4234-9234-123456789abc',
@@ -380,16 +604,16 @@ const noModelSecondPayload = await signedPayload({}, {
 const noModelSecond = await authorizePatientConversationSyntheticEvaluation(
   noModelSecondPayload,
   {
-    ...authorizationOptions(noModelReplayStore, noModelUsageStore),
+    ...authorizationOptions(noModelStore),
     maxModelCallsPerRun: 1,
   },
 );
 assert.equal(noModelSecond.allowed, true);
-assert.equal(noModelSecond.metadata.model_calls_used_in_process, 0);
-noModelSecond.consumeModelCall();
-assert.equal(noModelSecond.metadata.model_calls_used_in_process, 1);
-assert.throws(
-  () => noModelFirst.consumeModelCall(),
+assert.equal(noModelSecond.metadata.model_calls_used_global, null);
+await noModelSecond.consumeModelCall();
+assert.equal(noModelSecond.metadata.model_calls_used_global, 1);
+await assert.rejects(
+  noModelFirst.consumeModelCall(),
   (error) => error?.code === 'PATIENT_CONVERSATION_EVALUATION_RUN_BUDGET_EXCEEDED',
 );
 

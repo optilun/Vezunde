@@ -27,6 +27,9 @@ import {
   authorizePatientConversationSyntheticEvaluation,
 } from '../../shared/patientConversationEvaluationAuthorization.js';
 import {
+  createPatientConversationEvaluationRedisUsageStore,
+} from '../../shared/patientConversationEvaluationUsageStore.js';
+import {
   classifyPatientConversationModelFailure,
 } from './patientConversationModelFailureDiagnostics.js';
 import {
@@ -57,6 +60,10 @@ function evaluationAuthorizationOptions() {
         && maxModelCallsPerRun <= 200
         ? maxModelCallsPerRun
         : 0,
+      usageStore: createPatientConversationEvaluationRedisUsageStore({
+        url: Deno.env.get('UPSTASH_REDIS_REST_URL') || '',
+        token: Deno.env.get('UPSTASH_REDIS_REST_TOKEN') || '',
+      }),
     };
   } catch (_error) {
     return {
@@ -65,6 +72,7 @@ function evaluationAuthorizationOptions() {
       keyId: '',
       secret: '',
       maxModelCallsPerRun: 0,
+      usageStore: null,
     };
   }
 }
@@ -180,7 +188,7 @@ function createAutomaticModelBase44(
               error.code = 'PATIENT_CONVERSATION_EVALUATION_AUTHORIZATION_INVALID';
               throw error;
             }
-            evaluationAuthorization.consumeModelCall();
+            await evaluationAuthorization.consumeModelCall();
             const automaticArgs = { ...(isPlainObject(args) ? args : {}) };
             delete automaticArgs.model;
             delete automaticArgs.response_json_schema;
