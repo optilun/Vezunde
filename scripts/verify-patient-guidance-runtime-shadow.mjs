@@ -312,7 +312,7 @@ await scenario("physical Base44 function count remains 48", () => {
       entry.isDirectory()
       && existsSync(path.join(functionsRoot, entry.name, "entry.ts"))
     ));
-  assert.equal(physicalFunctions.length, 49);
+  assert.equal(physicalFunctions.length, 48);
 });
 
 await scenario("Base44 shared guidance copies are byte-identical", () => {

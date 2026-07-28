@@ -44,7 +44,7 @@ const physicalEndpoints = readdirSync(functionsRoot, { withFileTypes: true })
   .map((entry) => entry.name)
   .sort();
 
-assert.equal(physicalEndpoints.length, 49, 'Suprafata Base44 trebuie sa contina exact 49 de functii fizice dupa separarea runtime-ului de import');
+assert.equal(physicalEndpoints.length, 48, 'Suprafata Base44 trebuie sa contina exact 48 de functii fizice dupa folosirea bridge-ului existent');
 assert.deepEqual(logicalNames, expectedLogicalNames, 'Contractul trebuie sa pastreze exact cele 8 nume logice aprobate');
 assert.equal(Object.keys(DIRECTORY_FUNCTION_ROUTES).length, 18, 'Cele 18 rute directory trebuie pastrate');
 assert.equal(Object.keys(SERVICE_CONFIGURATION_FUNCTION_ROUTES).length, 13, 'Cele 13 rute service configuration trebuie pastrate');
@@ -97,7 +97,7 @@ assert.deepEqual(invocations[0], {
   payload: { __function: 'getProviderWorkspaceOverview', payload: { location_id: 'loc-1' } },
 });
 assert.deepEqual(invocations[1], {
-  functionName: 'directoryImportRuntimeOps',
+  functionName: 'listProviderMemberInvitations',
   payload: { __function: 'directoryImportOps', payload: { action: 'list_snapshots' } },
 });
 assert.deepEqual(invocations[2], {
