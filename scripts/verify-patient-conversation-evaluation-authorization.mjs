@@ -1,11 +1,17 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import {
   PATIENT_CONVERSATION_EVALUATION_AUTHORIZATION_VERSION,
   PATIENT_CONVERSATION_EVALUATION_FIXTURE_SOURCE,
   authorizePatientConversationSyntheticEvaluation,
   createPatientConversationEvaluationAuthorization,
 } from '../shared/patientConversationEvaluationAuthorization.js';
+import {
+  loadPatientConversationFixtures,
+} from './patient-conversation-fixture-loader.mjs';
 
 const sharedSource = fs.readFileSync(
   new URL('../shared/patientConversationEvaluationAuthorization.js', import.meta.url),
@@ -85,6 +91,97 @@ assert(signerSource.includes('PATIENT_CONVERSATION_EVALUATION_SIGNING_SECRET'));
 assert(signerSource.includes('loadPatientConversationFixtures()'));
 assert(signerSource.includes('assert.deepEqual(item.request'));
 assert(signerSource.includes('secret_in_output: false'));
+
+function fixtureConversation(fixture) {
+  if (Array.isArray(fixture?.conversation)) return fixture.conversation;
+  if (Array.isArray(fixture?.messages)) return fixture.messages;
+  return [];
+}
+
+function fixturePriorState(fixture) {
+  return fixture?.prior_state && typeof fixture.prior_state === 'object'
+    ? fixture.prior_state
+    : null;
+}
+
+function fixtureRuntimeContext(fixture) {
+  return fixture?.runtime_context && typeof fixture.runtime_context === 'object'
+    ? fixture.runtime_context
+    : {};
+}
+
+const signerTempDirectory = fs.mkdtempSync(
+  path.join(os.tmpdir(), 'viasee-evaluation-signer-'),
+);
+const signerManifestPath = path.join(signerTempDirectory, 'manifest.json');
+const reducedBudgetOutputPath = path.join(signerTempDirectory, 'signed-reduced.json');
+const excessiveBudgetOutputPath = path.join(signerTempDirectory, 'signed-excessive.json');
+const signerFixtureSuite = loadPatientConversationFixtures();
+const signerFixtures = signerFixtureSuite.cases.slice(0, 2);
+assert.equal(signerFixtures.length, 2);
+fs.writeFileSync(signerManifestPath, `${JSON.stringify({
+  fixture_versions: signerFixtureSuite.fixture_versions,
+  requests: signerFixtures.map((fixture) => ({
+    evaluation_case_id: fixture.id,
+    evaluation_attempt: 1,
+    request: {
+      mode: 'patient_conversation_shadow',
+      evaluation_case_id: fixture.id,
+      evaluation_attempt: 1,
+      conversation: fixtureConversation(fixture),
+      prior_state: fixturePriorState(fixture),
+      runtime_context: fixtureRuntimeContext(fixture),
+    },
+  })),
+}, null, 2)}\n`);
+
+function runSigner(maxCalls, outputPath) {
+  return spawnSync(process.execPath, [
+    'scripts/sign-patient-conversation-evaluation-requests.mjs',
+    '--input',
+    signerManifestPath,
+    '--output',
+    outputPath,
+    '--run-id',
+    `signer-budget-${maxCalls}`,
+    '--key-id',
+    'evaluation-key-v1',
+    '--max-calls',
+    String(maxCalls),
+  ], {
+    cwd: new URL('..', import.meta.url),
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      PATIENT_CONVERSATION_EVALUATION_SIGNING_SECRET:
+        'abcdef0123456789abcdef0123456789',
+    },
+  });
+}
+
+const reducedBudgetSignerRun = runSigner(1, reducedBudgetOutputPath);
+assert.equal(
+  reducedBudgetSignerRun.status,
+  0,
+  reducedBudgetSignerRun.stderr || reducedBudgetSignerRun.stdout,
+);
+const reducedBudgetManifest = JSON.parse(
+  fs.readFileSync(reducedBudgetOutputPath, 'utf8'),
+);
+assert.equal(reducedBudgetManifest.request_count, 2);
+assert.equal(reducedBudgetManifest.max_model_calls, 1);
+assert(reducedBudgetManifest.requests.every((item) => (
+  item.request.evaluation_authorization.max_model_calls === 1
+)));
+
+const excessiveBudgetSignerRun = runSigner(3, excessiveBudgetOutputPath);
+assert.notEqual(excessiveBudgetSignerRun.status, 0);
+assert.match(
+  `${excessiveBudgetSignerRun.stderr}\n${excessiveBudgetSignerRun.stdout}`,
+  /cannot exceed the number of pending requests/,
+);
+assert.equal(fs.existsSync(excessiveBudgetOutputPath), false);
+fs.rmSync(signerTempDirectory, { recursive: true, force: true });
 
 const secret = '0123456789abcdef0123456789abcdef';
 const nowMs = Date.parse('2026-07-28T08:00:00.000Z');

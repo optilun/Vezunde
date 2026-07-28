@@ -28,6 +28,11 @@ The signing tool binds the complete request payload to:
 Changing any signed field invalidates the HMAC. The signing secret is read only
 from an environment variable and is never written to the output manifest.
 
+`--max-calls` may be any positive ceiling up to the number of pending requests.
+Use the smallest explicitly approved ceiling when deterministic preflight requests
+are expected to consume zero model calls. Omitting the flag authorizes the
+conservative maximum of one model call for every pending request.
+
 ## Replay and consumption boundary
 
 The runtime reserves an authorized nonce before any guided or semantic execution
@@ -45,7 +50,7 @@ That schema change is intentionally outside this patch.
 Until that persistence is approved:
 
 - keep the route disabled outside the isolated evaluation app;
-- authorize only the exact number of calls approved for one run;
+- authorize only the smallest explicit model-call ceiling approved for one run;
 - use a new run id and output path for every run;
 - do not execute real patient text;
 - do not treat the signed manifest as reusable.

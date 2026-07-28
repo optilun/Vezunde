@@ -120,8 +120,8 @@ assert.deepEqual(
 );
 const fixtureById = new Map(fixtureSuite.cases.map((fixture) => [fixture.id, fixture]));
 const maxCalls = options.maxCalls ?? requests.length;
-if (maxCalls !== requests.length) {
-  throw new Error('--max-calls must equal the exact number of pending requests.');
+if (maxCalls > requests.length) {
+  throw new Error('--max-calls cannot exceed the number of pending requests.');
 }
 
 const fingerprint = fixtureFingerprint(fixtureSuite);

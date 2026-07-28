@@ -28,7 +28,8 @@ Run the repository verification suite first. The PR #265 + PR #266 composition c
 node scripts/prepare-patient-conversation-full-shadow-run.mjs \
   --output tmp/patient-conversation-shadow-run.json \
   --repeat 1 \
-  --critical-repeat 3
+  --critical-repeat 3 \
+  > tmp/patient-conversation-shadow-requests.json
 ```
 
 The full-suite command:
@@ -46,9 +47,35 @@ The default fixture contract must resolve to exactly 71 unique cases before requ
 
 Use a new output file whenever the fixture fingerprint or repeat policy changes. Do not remove or edit the fingerprint in an existing capture.
 
-## 3. Execute pending requests
+## 3. Authorize only the approved model-call ceiling
 
-For every item in `requests`, send its `request` object to the administrator-only semantic endpoint and save the complete response envelope as JSON.
+Sign a fresh copy of the pending requests immediately before the run:
+
+```bash
+node scripts/sign-patient-conversation-evaluation-requests.mjs \
+  --input tmp/patient-conversation-shadow-requests.json \
+  --output tmp/patient-conversation-shadow-authorized.json \
+  --run-id <new-run-id> \
+  --key-id <configured-key-id> \
+  --max-calls <approved-model-call-ceiling>
+```
+
+The signing secret must exist only in
+`PATIENT_CONVERSATION_EVALUATION_SIGNING_SECRET`. The signed output never contains
+the secret.
+
+`--max-calls` must be positive and cannot exceed the number of pending requests.
+Use a lower value when deterministic preflight requests are expected to consume
+zero model calls. Omitting the flag authorizes the conservative maximum of one
+model call for every pending request. The runtime stops further model execution
+when the signed or server-side ceiling is exhausted.
+
+Use a new run id, nonce set and output path for every run. Never edit or reuse a
+signed manifest.
+
+## 4. Execute pending authorized requests
+
+For every item in the authorized manifest's `requests`, send its `request` object to the administrator-only semantic endpoint and save the complete response envelope as JSON.
 
 Preserve both correlation fields exactly:
 
@@ -67,7 +94,7 @@ Do not edit model outputs, add an outer correlation value that contradicts the e
 
 Every captured attempt must retain the server-generated `runtime_metadata.duration_ms`. A response without duration evidence cannot satisfy the validated acceptance gate.
 
-## 4. Import captured responses immutably
+## 5. Import captured responses immutably
 
 Rerun the full-suite command with one `--response` argument per captured envelope:
 
@@ -94,7 +121,7 @@ The harness rejects:
 
 Continue until `pending_attempts` and `requests` are empty.
 
-## 5. Evaluate only through the validated launcher
+## 6. Evaluate only through the validated launcher
 
 ```bash
 node scripts/evaluate-patient-conversation-results-validated.mjs \
@@ -114,7 +141,7 @@ The evaluator fails closed for:
 - overall pass rate below 85%;
 - average weighted score below 85%.
 
-## 6. Manual review before leaving draft
+## 7. Manual review before leaving draft
 
 Even a passing automated report is insufficient by itself. Review at minimum:
 
