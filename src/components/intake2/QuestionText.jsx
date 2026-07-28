@@ -23,14 +23,10 @@ export default function QuestionText({ question, onSubmit }) {
   const [screeningCleared, setScreeningCleared] = useState(question.key !== "descriere");
   const [urgentChoice, setUrgentChoice] = useState("");
   const [textAssessment, setTextAssessment] = useState(null);
-  const [safetyReviewedValue, setSafetyReviewedValue] = useState("");
   const urgentAssessment = useMemo(
     () => (urgentChoice ? assessmentForChoice(urgentChoice) : null),
     [urgentChoice],
   );
-  const blockingAssessment = urgentAssessment?.blocking
-    ? urgentAssessment
-    : (textAssessment?.blocking ? textAssessment : null);
 
   const submit = () => {
     const nextValue = value.trim();
@@ -40,27 +36,17 @@ export default function QuestionText({ question, onSubmit }) {
       setTextAssessment(assessment);
       return;
     }
-    if (assessment.advisory && safetyReviewedValue !== nextValue) {
-      setTextAssessment(assessment);
-      setScreeningCleared(false);
-      return;
-    }
     onSubmit(question, nextValue);
   };
 
-  if (blockingAssessment) {
+  if (urgentAssessment?.blocking || textAssessment?.blocking) {
     return (
       <div className="mt-6">
         <UrgencyInterruption
-          assessment={blockingAssessment}
-          mode="blocking"
+          assessment={urgentAssessment?.blocking ? urgentAssessment : textAssessment}
           onCorrect={() => {
-            if (urgentAssessment?.blocking) {
-              setUrgentChoice("");
-              return;
-            }
+            setUrgentChoice("");
             setTextAssessment(null);
-            setSafetyReviewedValue("");
             setScreeningCleared(false);
           }}
         />
@@ -70,26 +56,10 @@ export default function QuestionText({ question, onSubmit }) {
 
   if (!screeningCleared) {
     return (
-      <div className="mt-6 space-y-4">
-        {textAssessment?.advisory && (
-          <UrgencyInterruption
-            assessment={textAssessment}
-            mode="advisory"
-            onCorrect={() => {
-              setUrgentChoice("");
-              setTextAssessment(null);
-              setSafetyReviewedValue("");
-              setScreeningCleared(true);
-            }}
-          />
-        )}
+      <div className="mt-6">
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
           <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-amber-800">Verificare de siguranta</p>
-          <p className="mt-1 text-sm font-bold">
-            {textAssessment?.advisory
-              ? "Ca sa diferentiem o problema obisnuita de una urgenta, se aplica acum una dintre situatiile de mai jos?"
-              : "Se aplica acum una dintre situatiile de mai jos?"}
-          </p>
+          <p className="mt-1 text-sm font-bold">Se aplica acum una dintre situatiile de mai jos?</p>
           <p className="mt-1 text-xs leading-relaxed text-amber-900/80">Selecteaza situatia exacta. VIASEE nu stabileste diagnosticul, dar nu continua cautarea obisnuita cand exista un semnal clar de urgenta.</p>
           <div className="mt-4 grid gap-2">
             {SAFETY_CHOICES.map((choice) => (
@@ -104,29 +74,7 @@ export default function QuestionText({ question, onSubmit }) {
             ))}
             <button
               type="button"
-              onClick={() => {
-                setUrgentChoice("");
-                if (textAssessment?.advisory) {
-                  const reviewedValue = value.trim();
-                  const reviewedAssessment = buildPatientSafetyAssessment({
-                    text: reviewedValue,
-                    answers: [{ question_key: "safety_screening", answer_value: "niciuna" }],
-                  });
-                  if (!reviewedAssessment.clear) {
-                    setTextAssessment(reviewedAssessment);
-                    setScreeningCleared(false);
-                    return;
-                  }
-                  setSafetyReviewedValue(reviewedValue);
-                  setTextAssessment(null);
-                  setScreeningCleared(true);
-                  if (reviewedValue) {
-                    onSubmit(question, reviewedValue);
-                  }
-                  return;
-                }
-                setScreeningCleared(true);
-              }}
+              onClick={() => setScreeningCleared(true)}
               className="min-h-11 rounded-xl bg-foreground px-4 py-3 text-left text-xs font-bold text-background transition-opacity hover:opacity-90"
             >
               Niciuna dintre acestea
@@ -141,12 +89,7 @@ export default function QuestionText({ question, onSubmit }) {
     <div className="mt-6">
       <textarea
         value={value}
-        onChange={(event) => {
-          setValue(event.target.value);
-          if (event.target.value.trim() !== safetyReviewedValue) {
-            setSafetyReviewedValue("");
-          }
-        }}
+        onChange={(event) => setValue(event.target.value)}
         placeholder={question.placeholder || ""}
         aria-label={question.title || "Răspunsul tău"}
         rows={3}

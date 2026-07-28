@@ -1,7 +1,6 @@
 import React from "react";
-import { AlertTriangle, ArrowLeft, Droplets, Hospital, ShieldAlert } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Droplets, PhoneCall, ShieldAlert } from "lucide-react";
 import { PATIENT_SAFETY_FLAG_PRESENTATION } from "@/lib/patientSafety";
-import { PATIENT_EMERGENCY_GUIDANCE_COPY } from "../../../shared/patientEmergencyGuidance.js";
 
 function flagLabels(assessment) {
   const flags = assessment?.blocking_flags?.length
@@ -14,12 +13,7 @@ function flagLabels(assessment) {
 
 export default function UrgencyInterruption({ assessment, mode = "blocking", onCorrect }) {
   const labels = flagLabels(assessment);
-  const safetyFlags = [
-    ...(assessment?.blocking_flags || []),
-    ...(assessment?.advisory_flags || []),
-  ];
-  const penetrating = safetyFlags.includes("penetrating_or_high_speed_trauma");
-  const chemical = safetyFlags.includes("chemical_injury") && !penetrating;
+  const chemical = [...(assessment?.blocking_flags || []), ...(assessment?.advisory_flags || [])].includes("chemical_injury");
   const blocking = mode === "blocking";
 
   return (
@@ -34,9 +28,7 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
             {blocking ? "Opreste cautarea si solicita ajutor medical imediat" : "Cererea contine un posibil semnal de urgenta"}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-red-900/85">
-            {blocking
-              ? "VIASEE nu poate stabili cauza sau gravitatea simptomelor. Nu astepta recomandari sau raspunsuri in platforma."
-              : "VIASEE nu poate stabili cauza sau gravitatea simptomelor. Raspunde la intrebarile de clarificare; cautarea ramane oprita pana cand situatia este clarificata."}
+            VIASEE nu poate stabili cauza sau gravitatea simptomelor. Pentru situatiile de mai jos, nu astepta recomandari sau raspunsuri in platforma.
           </p>
         </div>
       </div>
@@ -54,44 +46,28 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
         </div>
       )}
 
-      {blocking && penetrating && (
-        <div className="mt-5 flex items-start gap-3 rounded-2xl border border-red-300 bg-white/80 p-4 text-red-950">
-          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-red-700" />
-          <p className="text-xs font-semibold leading-relaxed">{PATIENT_EMERGENCY_GUIDANCE_COPY.penetrating_injury_instruction}</p>
-        </div>
-      )}
+      <div className="mt-5 space-y-3 text-sm leading-relaxed text-red-950">
+        <p><strong>Mergi imediat la UPU, camera de garda sau un serviciu de urgente oftalmologice.</strong></p>
+        <p>Suna la 112 daca nu te poti deplasa in siguranta, vederea s-a pierdut brusc, exista un traumatism sever sau starea se agraveaza. Nu conduce.</p>
+      </div>
 
-      {blocking && chemical && (
+      {chemical && (
         <div className="mt-5 flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sky-950">
           <Droplets className="mt-0.5 h-5 w-5 shrink-0 text-sky-700" />
-          <p className="text-xs font-semibold leading-relaxed">{PATIENT_EMERGENCY_GUIDANCE_COPY.chemical_irrigation_instruction}</p>
+          <p className="text-xs leading-relaxed"><strong>Daca a ajuns o substanta chimica in ochi:</strong> clateste imediat cu apa curata cel putin 20 de minute, indeparteaza lentilele de contact daca se desprind usor si nu freca ochiul. Continua apoi spre urgenta.</p>
         </div>
       )}
 
-      {blocking ? (
-        <div className="mt-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-white/70 p-4 text-sm leading-relaxed text-red-950">
-          <Hospital className="mt-0.5 h-5 w-5 shrink-0 text-red-700" />
-          <div className="space-y-2">
-            <p><strong>{PATIENT_EMERGENCY_GUIDANCE_COPY.primary_instruction}</strong></p>
-            <p>{PATIENT_EMERGENCY_GUIDANCE_COPY.fallback_instruction}</p>
-            <p>{PATIENT_EMERGENCY_GUIDANCE_COPY.transport_instruction}</p>
-            <p className="text-xs text-red-900/80">{PATIENT_EMERGENCY_GUIDANCE_COPY.emergency_call_instruction}</p>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
-          <p><strong>Clarifica mai intai situatia.</strong> VIASEE nu afiseaza instructiunea de urgenta pana cand semnalul nu este confirmat prin raspunsurile tale.</p>
-        </div>
-      )}
-
-      {onCorrect && (
-        <div className="mt-5">
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <a href="tel:112" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-red-700 px-5 text-sm font-extrabold text-white transition-opacity hover:opacity-90">
+          <PhoneCall className="h-4 w-4" /> Suna la 112
+        </a>
+        {onCorrect && (
           <button type="button" onClick={onCorrect} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-red-300 bg-white px-5 text-sm font-bold text-red-950 hover:bg-red-100/60">
             <ArrowLeft className="h-4 w-4" /> Am selectat gresit. Corecteaza raspunsul
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       <p className="mt-5 text-[11px] leading-relaxed text-red-900/70">Acest mesaj este informational si nu reprezinta diagnostic sau triaj medical.</p>
     </section>

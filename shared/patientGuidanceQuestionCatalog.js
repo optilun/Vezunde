@@ -1,5 +1,3 @@
-import { PATIENT_EMERGENCY_GUIDANCE_COPY } from "./patientEmergencyGuidance.js";
-
 export const PATIENT_GUIDANCE_QUESTION_CATALOG_VERSION = "patient-guidance-questions-v1";
 
 const TIMING_OPTIONS = Object.freeze([
@@ -24,12 +22,8 @@ export const APPROVED_PATIENT_SAFETY_COPY = Object.freeze({
   blocking_title: "Opreste cautarea si solicita ajutor medical imediat",
   advisory_title: "Cererea contine un posibil semnal de urgenta",
   explanation: "VIASEE nu poate stabili cauza sau gravitatea simptomelor. Pentru situatiile de mai jos, nu astepta recomandari sau raspunsuri in platforma.",
-  primary_instruction: PATIENT_EMERGENCY_GUIDANCE_COPY.primary_instruction,
-  emergency_instruction: [
-    PATIENT_EMERGENCY_GUIDANCE_COPY.fallback_instruction,
-    PATIENT_EMERGENCY_GUIDANCE_COPY.transport_instruction,
-    PATIENT_EMERGENCY_GUIDANCE_COPY.emergency_call_instruction,
-  ].join(" "),
+  primary_instruction: "Mergi imediat la UPU, camera de garda sau un serviciu de urgente oftalmologice.",
+  emergency_instruction: "Suna la 112 daca nu te poti deplasa in siguranta, vederea s-a pierdut brusc, exista un traumatism sever sau starea se agraveaza. Nu conduce.",
   chemical_instruction: "Daca a ajuns o substanta chimica in ochi: clateste imediat cu apa curata cel putin 20 de minute, indeparteaza lentilele de contact daca se desprind usor si nu freca ochiul. Continua apoi spre urgenta.",
   disclaimer: "Acest mesaj este informational si nu reprezinta diagnostic sau triaj medical.",
 });
