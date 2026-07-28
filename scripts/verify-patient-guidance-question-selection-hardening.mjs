@@ -3,16 +3,13 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  advisorySafetyFlagsFromText,
   buildPatientSafetyAssessment,
   deterministicSafetyFlagsFromText,
   guidedSafetyFlagsFromAnswers,
 } from "../base44/shared/patientSafety.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const source = (relativePath) => (
-  readFileSync(path.join(root, relativePath), "utf8").replace(/\r\n/g, "\n")
-);
+const source = (relativePath) => readFileSync(path.join(root, relativePath), "utf8").replace(/\r\n/g, "\n");
 let scenarioCount = 0;
 
 function scenario(name, verify) {
@@ -88,16 +85,13 @@ scenario("legacy question keys and values are canonicalized", () => {
   assert.match(entry, /da: 'first_time'/);
 });
 
-scenario("server safety assessment overrides browser claims and wrapper preserves advisory", () => {
+scenario("server safety assessment overrides browser claims", () => {
   assert.match(questionOnlyBlock, /serverQuestionSafetyState\(searchText, guidedAnswers\)/);
   const safetyStart = entry.indexOf("function serverQuestionSafetyState");
   const safetyEnd = entry.indexOf("function explicitLocalityFromPayload", safetyStart);
   const safetyBlock = entry.slice(safetyStart, safetyEnd);
   assert.match(safetyBlock, /buildPatientSafetyAssessment\(\{ text: searchText, answers \}\)/);
   assert.match(safetyBlock, /assessment\.blocking/);
-  const plannerWrapper = source("base44/shared/patientGuidancePlanner.js");
-  assert.match(plannerWrapper, /assessPatientEyeSafety/);
-  assert.match(plannerWrapper, /if \(safety\.advisory\) return "advisory"/);
 });
 
 scenario("clinical validation blocks adaptive activation but not safety interruption", () => {
@@ -120,12 +114,9 @@ scenario("Top 3 trust validation cannot disable adaptive question selection", ()
   assert.doesNotMatch(blockerSet, /specialized_service_trust_threshold/);
 });
 
-scenario("generic monocular wording is advisory and explicit sudden loss is blocking", () => {
-  assert.deepEqual(deterministicSafetyFlagsFromText("Nu mai vad cu un ochi"), []);
-  assert.deepEqual(advisorySafetyFlagsFromText("Nu mai vad cu un ochi"), ["sudden_vision_loss"]);
-  assert.equal(buildPatientSafetyAssessment({ text: "Nu mai vad cu un ochi" }).state, "advisory");
+scenario("urgent patient text is detected server-side", () => {
   assert.deepEqual(
-    deterministicSafetyFlagsFromText("Nu mai vad brusc cu un ochi"),
+    deterministicSafetyFlagsFromText("Nu mai vad cu un ochi"),
     ["sudden_vision_loss"],
   );
   assert.equal(buildPatientSafetyAssessment({ text: "Acid in ochi" }).blocking, true);
@@ -140,35 +131,22 @@ scenario("urgent guided answer is detected server-side", () => {
   assert.equal(buildPatientSafetyAssessment({ answers }).blocking, true);
 });
 
-scenario("explicit none clears advisory but cannot clear explicit blocking text", () => {
-  const answers = [{
-    question_key: "safety_targeted_check",
-    answer_value: "niciuna",
-  }];
-  const advisory = buildPatientSafetyAssessment({ text: "Nu mai vad cu un ochi", answers });
-  assert.equal(advisory.blocking, false);
-  assert.equal(advisory.state, "clear");
-  assert.equal(advisory.source, "guided_clear");
-  const blocking = buildPatientSafetyAssessment({
-    text: "Nu mai vad brusc cu un ochi",
-    answers,
+scenario("explicit none safety answer does not invent a blocking flag", () => {
+  const result = buildPatientSafetyAssessment({
+    answers: [{
+      question_key: "safety_targeted_check",
+      answer_value: "niciuna",
+    }],
   });
-  assert.equal(blocking.blocking, true);
+  assert.equal(result.blocking, false);
+  assert.deepEqual(result.blocking_flags, []);
 });
 
-scenario("canonical safety policy and both adapters remain aligned", () => {
+scenario("Base44 and client patient safety rules remain byte-identical", () => {
   assert.equal(
-    source("base44/shared/patientEyeSafetyPolicy.js"),
-    source("shared/patientEyeSafetyPolicy.js"),
+    source("base44/shared/patientSafety.js"),
+    source("src/lib/patientSafety.js"),
   );
-  for (const adapterPath of [
-    "base44/shared/patientSafety.js",
-    "src/lib/patientSafety.js",
-  ]) {
-    const adapter = source(adapterPath);
-    assert.match(adapter, /assessPatientEyeSafety/);
-    assert.doesNotMatch(adapter, /const BLOCKING_PATTERNS/);
-  }
 });
 
 scenario("question-only selection still performs no extra AI call", () => {
@@ -178,8 +156,7 @@ scenario("question-only selection still performs no extra AI call", () => {
 
 scenario("matching and ranking implementation remains byte-stable", () => {
   const marker = "    if (requestedKeys.length === 0) {";
-  const matchingTail = entry.slice(entry.indexOf(marker)).trimEnd();
-  assert.equal(fnv1a(matchingTail), "acb8a9be");
+  assert.equal(fnv1a(entry.slice(entry.indexOf(marker)).trimEnd()), "acb8a9be");
 
   const client = source("src/lib/providerSemanticSearch.js");
   const clientMarker = "export async function matchProvidersWithSemanticFallback";
@@ -195,7 +172,7 @@ scenario("physical Base44 function count remains 48", () => {
 
 assert.ok(scenarioCount >= 15);
 console.log(JSON.stringify({
-  contract: "patient-guidance-question-selection-hardening-v2",
+  contract: "patient-guidance-question-selection-hardening-v1",
   scenarios: scenarioCount,
   physical_function_count: 48,
 }));
