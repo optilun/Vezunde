@@ -1,5 +1,5 @@
 export const DIRECTORY_FUNCTION_ENDPOINT = 'directoryOps';
-export const DIRECTORY_IMPORT_FUNCTION_ENDPOINT = 'directoryImportRuntimeOps';
+export const DIRECTORY_IMPORT_FUNCTION_ENDPOINT = 'listProviderMemberInvitations';
 
 export const DIRECTORY_FUNCTION_ROUTES = Object.freeze({
   adminDataIntegrityOps: DIRECTORY_FUNCTION_ENDPOINT,

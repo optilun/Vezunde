@@ -1,6 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { handle as directoryImportOpsHandle } from '../directoryOps/directoryImportOpsLatest.ts';
 
 const ROLES = ['organization_owner', 'location_manager', 'location_staff'];
+const DIRECTORY_IMPORT_LOGICAL_NAME = 'directoryImportOps';
+const FUNCTION_DEPLOY_REVISION = 'viasee-directory-import-existing-endpoint-bridge-1';
+console.info(`[VIASEE] listProviderMemberInvitations ${FUNCTION_DEPLOY_REVISION}`);
+
 function res(body, status = 200) { return Response.json(body, { status }); }
 function role(r) { if (r === 'owner') return 'organization_owner'; if (r === 'staff') return 'location_staff'; return ROLES.includes(r) ? r : ''; }
 function locIds(inv) { return Array.isArray(inv.invited_location_ids) ? inv.invited_location_ids.filter(Boolean) : []; }
@@ -13,7 +18,18 @@ async function access(svc, userId) {
   return managerLocs;
 }
 
-Deno.serve(async (req) => {
+function routedRequest(req, payload) {
+  const headers = new Headers(req.headers);
+  headers.set('content-type', 'application/json');
+  headers.delete('content-length');
+  return new Request(req.url, {
+    method: req.method,
+    headers,
+    body: JSON.stringify(payload ?? {}),
+  });
+}
+
+async function handleInvitationList(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -31,4 +47,12 @@ Deno.serve(async (req) => {
     }
     return res({ invitations: out });
   } catch (error) { return res({ error: error.message }, 500); }
+}
+
+Deno.serve(async (req) => {
+  const body = await req.clone().json().catch(() => null);
+  if (body?.__function === DIRECTORY_IMPORT_LOGICAL_NAME) {
+    return directoryImportOpsHandle(routedRequest(req, body.payload));
+  }
+  return handleInvitationList(req);
 });

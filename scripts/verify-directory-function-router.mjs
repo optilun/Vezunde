@@ -35,7 +35,7 @@ const physicalEndpoints = readdirSync(functionsRoot, { withFileTypes: true })
   .map((entry) => entry.name)
   .sort();
 
-assert.equal(physicalEndpoints.length, 49, 'Suprafata Base44 trebuie sa contina exact 49 de functii fizice dupa separarea runtime-ului de import');
+assert.equal(physicalEndpoints.length, 48, 'Suprafata Base44 trebuie sa contina exact 48 de functii fizice dupa folosirea bridge-ului existent');
 assert.equal(logicalNames.length, 18, 'Contractul directory trebuie sa pastreze exact cele 18 nume logice consolidate');
 assert.ok(physicalEndpoints.includes(DIRECTORY_FUNCTION_ENDPOINT), 'Endpointul fizic directoryOps trebuie sa existe');
 assert.ok(physicalEndpoints.includes(DIRECTORY_IMPORT_FUNCTION_ENDPOINT), 'Endpointul fizic dedicat importului trebuie sa existe');
@@ -60,10 +60,10 @@ assert.equal((entrySource.match(/Deno\.serve\(/g) || []).length, 1, 'directoryOp
 assert.match(routerSource, /return directoryOpsHandle\(req\)/, 'Contractul existent directoryOps trebuie pastrat pentru apelurile directe');
 assert.match(routerSource, /status: 404/, 'Numele logice necunoscute trebuie respinse explicit');
 
-const dedicatedEntrySource = source('base44/functions/directoryImportRuntimeOps/entry.ts');
-assert.match(dedicatedEntrySource, /directoryImportOpsLatest\.ts/);
-assert.match(dedicatedEntrySource, /logicalName !== 'directoryImportOps'/);
-assert.match(dedicatedEntrySource, /Deno\.serve\(/);
+const bridgeEntrySource = source('base44/functions/listProviderMemberInvitations/entry.ts');
+assert.match(bridgeEntrySource, /directoryImportOpsLatest\.ts/);
+assert.match(bridgeEntrySource, /body\?\.__function === DIRECTORY_IMPORT_LOGICAL_NAME/);
+assert.match(bridgeEntrySource, /return handleInvitationList\(req\)/);
 
 const clientSource = source('src/api/base44Client.js');
 const frontendRoutingSource = source('src/api/base44FunctionRouting.js');
@@ -82,7 +82,7 @@ const routedClient = installBase44FunctionRouting({
 await routedClient.functions.invoke('directoryImportOps', { action: 'list_snapshots' });
 await routedClient.functions.invoke('getPublicProviderProfile', { location_id: 'loc-1' });
 assert.deepEqual(invocations[0], {
-  functionName: 'directoryImportRuntimeOps',
+  functionName: 'listProviderMemberInvitations',
   payload: { __function: 'directoryImportOps', payload: { action: 'list_snapshots' } },
 });
 assert.deepEqual(invocations[1], {
