@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
+  DIRECTORY_CLASSIFICATION_CONTRACT_VERSION,
   DIRECTORY_IMPORT_CONTRACT_VERSION,
   batchApprovalToken,
   normalizeDirectoryImportRow,
@@ -13,6 +14,7 @@ import {
 } from '../src/lib/directoryImportFileParser.js';
 
 assert.equal(DIRECTORY_IMPORT_CONTRACT_VERSION, 'viasee-directory-import-v1');
+assert.equal(DIRECTORY_CLASSIFICATION_CONTRACT_VERSION, 'viasee-directory-location-first-v1');
 
 const normalized = normalizeDirectoryImportRow({
   location_display_name: 'Optica Test Centru',
@@ -30,9 +32,12 @@ const normalized = normalizeDirectoryImportRow({
   import_readiness: 'candidate_for_manual_review',
   confirmed_activity_category: 'optica medicala',
 }, { source_version: 'V3-test', source_row_key: 'row-1', row_number: 1 });
+assert.equal(normalized.classification_contract_version, 'viasee-directory-location-first-v1');
 assert.equal(normalized.location_name, 'Optica Test Centru');
 assert.equal(normalized.provider_type, 'optica_medicala');
 assert.equal(normalized.provider_profile_type, 'independent_optical_store');
+assert.equal(normalized.organization_type_code, 'independent_optical_store');
+assert.equal(normalized.organization_type_source, 'legacy_profile_fallback');
 assert.equal(normalized.location_type_code, 'optical_store');
 assert.equal(normalized.operational_status, 'active');
 assert.equal(normalized.publication_status, 'draft');
@@ -40,6 +45,7 @@ assert.equal(normalized.control_status, 'directory');
 assert.ok(normalized.location_external_key.startsWith('loc:'));
 assert.ok(normalized.address_fingerprint.startsWith('addr:'));
 assert.equal(validateNormalizedDirectoryRow(normalized).valid, true);
+assert.ok(validateNormalizedDirectoryRow(normalized).warnings.includes('organization_type_inferred_from_legacy_profile'));
 
 const mixedOptical = normalizeDirectoryImportRow({
   location_display_name: 'Optica si optometrie Test',
@@ -56,6 +62,7 @@ const mixedOptical = normalizeDirectoryImportRow({
 });
 assert.equal(mixedOptical.provider_type, 'optica_medicala');
 assert.equal(mixedOptical.provider_profile_type, 'independent_optical_store');
+assert.equal(mixedOptical.organization_type_code, 'independent_optical_store');
 assert.equal(mixedOptical.location_type_code, 'optical_store');
 assert.equal(mixedOptical.care_setting_code, 'retail');
 assert.equal(mixedOptical.canonical_type_source, 'activity_inferred');
@@ -74,15 +81,42 @@ const explicitCanonical = normalizeDirectoryImportRow({
   confirmed_activity_category: 'optica; optometrie',
   provider_type: 'optica_medicala',
   provider_profile_type: 'optical_chain',
+  organization_type_code: 'optical_chain',
   location_type_code: 'optical_store',
   care_setting_code: 'retail',
   ownership_type_code: 'private',
 });
 assert.equal(explicitCanonical.provider_profile_type, 'optical_chain');
+assert.equal(explicitCanonical.organization_type_code, 'optical_chain');
+assert.equal(explicitCanonical.organization_type_source, 'source_explicit');
+assert.equal(explicitCanonical.organization_type_legacy_fallback, false);
 assert.equal(explicitCanonical.canonical_type_source, 'source_explicit');
 assert.equal(explicitCanonical.canonical_type_invalid, false);
+assert.equal(explicitCanonical.organization_type_invalid, false);
 assert.equal(explicitCanonical.ownership_type_code, 'private');
 assert.equal(validateNormalizedDirectoryRow(explicitCanonical).valid, true);
+assert.equal(validateNormalizedDirectoryRow(explicitCanonical).warnings.includes('organization_type_inferred_from_legacy_profile'), false);
+
+const legacyChainCanonical = normalizeDirectoryImportRow({
+  location_display_name: 'Lensa Timisoara Legacy',
+  organization_display_name: 'Lensa',
+  official_locality: 'Timisoara',
+  county_if_confirmed: 'Timis',
+  locality_siruta_code: '155243',
+  confirmed_address: 'Str. Exemplu nr. 12A',
+  official_source_url: 'https://example.com/lensa-legacy',
+  research_status: 'official_confirmed',
+  operational_status: 'active_confirmed',
+  import_readiness: 'candidate_for_manual_review',
+  provider_type: 'optica_medicala',
+  provider_profile_type: 'optical_chain',
+  location_type_code: 'optical_store',
+  care_setting_code: 'retail',
+});
+assert.equal(legacyChainCanonical.organization_type_code, 'optical_chain');
+assert.equal(legacyChainCanonical.organization_type_source, 'legacy_profile_fallback');
+assert.equal(legacyChainCanonical.organization_type_legacy_fallback, true);
+assert.ok(validateNormalizedDirectoryRow(legacyChainCanonical).warnings.includes('organization_type_inferred_from_legacy_profile'));
 
 const invalidExplicitCanonical = normalizeDirectoryImportRow({
   location_display_name: 'Tip explicit invalid',
@@ -97,11 +131,32 @@ const invalidExplicitCanonical = normalizeDirectoryImportRow({
   import_readiness: 'candidate_for_manual_review',
   provider_type: 'tip_inexistent',
   provider_profile_type: 'optical_chain',
+  organization_type_code: 'optical_chain',
   location_type_code: 'optical_store',
   care_setting_code: 'retail',
 });
 assert.equal(invalidExplicitCanonical.canonical_type_invalid, true);
 assert.ok(validateNormalizedDirectoryRow(invalidExplicitCanonical).errors.includes('invalid_explicit_canonical_type'));
+
+const invalidOrganizationType = normalizeDirectoryImportRow({
+  location_display_name: 'Organizatie cu tip invalid',
+  organization_display_name: 'Organizatie Test',
+  official_locality: 'Timisoara',
+  county_if_confirmed: 'Timis',
+  locality_siruta_code: '155243',
+  confirmed_address: 'Str. Exemplu nr. 14',
+  official_source_url: 'https://example.com/invalid-org',
+  research_status: 'official_confirmed',
+  operational_status: 'active_confirmed',
+  import_readiness: 'candidate_for_manual_review',
+  provider_type: 'optica_medicala',
+  provider_profile_type: 'independent_optical_store',
+  organization_type_code: 'tip_organizatie_inexistent',
+  location_type_code: 'optical_store',
+  care_setting_code: 'retail',
+});
+assert.equal(invalidOrganizationType.organization_type_invalid, true);
+assert.ok(validateNormalizedDirectoryRow(invalidOrganizationType).errors.includes('invalid_explicit_organization_type'));
 
 const conflict = normalizeDirectoryImportRow({
   location_display_name: 'Clinica neclara',
@@ -177,6 +232,9 @@ const sharedPipeline = await readFile(new URL('../shared/directoryImportPipeline
 const base44Pipeline = await readFile(new URL('../base44/shared/directoryImportPipeline.js', import.meta.url), 'utf8');
 
 assert.equal(base44Pipeline, sharedPipeline);
+assert.match(sharedPipeline, /DIRECTORY_CLASSIFICATION_CONTRACT_VERSION/);
+assert.match(sharedPipeline, /organization_type_code/);
+assert.match(sharedPipeline, /location_type_code; network\/brand identity belongs to organization_type_code/);
 assert.match(backend, /user\.role !== 'admin'/);
 assert.match(backend, /batchApprovalToken/);
 assert.match(backend, /clean\(input\.confirmation, 240\) !== expected/);
