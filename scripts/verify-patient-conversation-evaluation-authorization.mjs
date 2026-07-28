@@ -337,10 +337,23 @@ const runBudgetSecondResult = await authorizePatientConversationSyntheticEvaluat
     maxModelCallsPerRun: 1,
   },
 );
-assert.equal(runBudgetSecondResult.allowed, false);
+assert.equal(runBudgetSecondResult.allowed, true);
+assert.equal(runBudgetSecondResult.metadata.model_calls_used_in_process, 1);
+assert.throws(
+  () => runBudgetSecondResult.consumeModelCall(),
+  (error) => error?.code === 'PATIENT_CONVERSATION_EVALUATION_RUN_BUDGET_EXCEEDED',
+);
+const runBudgetSecondReplay = await authorizePatientConversationSyntheticEvaluation(
+  runBudgetSecond,
+  {
+    ...authorizationOptions(runBudgetReplayStore, runBudgetUsageStore),
+    maxModelCallsPerRun: 1,
+  },
+);
+assert.equal(runBudgetSecondReplay.allowed, false);
 assert.equal(
-  runBudgetSecondResult.reason,
-  'patient_conversation_evaluation_run_budget_exceeded',
+  runBudgetSecondReplay.reason,
+  'patient_conversation_evaluation_replay_blocked',
 );
 
 const noModelReplayStore = new Map();

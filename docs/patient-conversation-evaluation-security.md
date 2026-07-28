@@ -39,8 +39,11 @@ The runtime reserves an authorized nonce before any guided or semantic execution
 and blocks a duplicate nonce within the same warm function instance. The run
 budget is checked and incremented separately, immediately before `InvokeLLM`.
 Therefore, a signed request completed by deterministic preflight consumes no
-model-call budget. The existing operational controller still permits at most one
-model call per HTTP request and no retry.
+model-call budget. Reaching the run ceiling does not reject a newly authorized
+request before preflight; it rejects the next attempted `InvokeLLM`. The request
+nonce remains reserved even when the model-call ceiling is already exhausted.
+The existing operational controller still permits at most one model call per
+HTTP request and no retry.
 
 The replay map and per-run counter are process-scoped. They are not a durable,
 cross-instance quota. A global guarantee requires a dedicated persisted usage

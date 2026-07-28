@@ -68,7 +68,8 @@ the secret.
 Use a lower value when deterministic preflight requests are expected to consume
 zero model calls. Omitting the flag authorizes the conservative maximum of one
 model call for every pending request. The runtime stops further model execution
-when the signed or server-side ceiling is exhausted.
+when the signed or server-side ceiling is exhausted, while still allowing
+authorized deterministic preflight requests that require no model call.
 
 Use a new run id, nonce set and output path for every run. Never edit or reuse a
 signed manifest.

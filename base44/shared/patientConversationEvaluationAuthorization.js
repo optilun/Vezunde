@@ -309,9 +309,6 @@ export async function authorizePatientConversationSyntheticEvaluation(
   const runKey = `${expectedKeyId}:${runId}`;
   const runUsage = runUsageStore.get(runKey);
   const runCallsUsed = normalizedPositiveInteger(runUsage?.model_calls_used) || 0;
-  if (runCallsUsed >= maxModelCalls || runCallsUsed >= serverMaxCalls) {
-    return rejection("patient_conversation_evaluation_run_budget_exceeded");
-  }
 
   replayStore.set(replayKey, expiresAt.timestamp);
   pruneReplayStore(nowMs, replayStore);
