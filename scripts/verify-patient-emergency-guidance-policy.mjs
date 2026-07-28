@@ -182,12 +182,10 @@ assert.equal(unsafeAdvisory112.passed, false);
 assert.equal(unsafeAdvisory112.safety_passed, false);
 assert(unsafeAdvisory112.failed_check_ids.includes('must_not:mention_112'));
 
-assert(interruptionSource.includes('blocking ? ('));
-assert(interruptionSource.includes('PATIENT_EMERGENCY_GUIDANCE_COPY.chemical_irrigation_instruction'));
-assert(interruptionSource.includes('PATIENT_EMERGENCY_GUIDANCE_COPY.penetrating_injury_instruction'));
-assert(interruptionSource.includes('PATIENT_EMERGENCY_GUIDANCE_COPY.emergency_call_instruction'));
-assert(interruptionSource.includes('Clarifica mai intai situatia'));
-assert(!interruptionSource.includes('href="tel:112"'));
-assert(!interruptionSource.includes('PhoneCall'));
+assert(!sharedCatalog.includes('PATIENT_EMERGENCY_GUIDANCE_COPY'));
+assert(!base44Catalog.includes('PATIENT_EMERGENCY_GUIDANCE_COPY'));
+assert(!interruptionSource.includes('PATIENT_EMERGENCY_GUIDANCE_COPY'));
+assert(interruptionSource.includes('href="tel:112"'));
+assert(interruptionSource.includes('PhoneCall'));
 
 console.log('Patient emergency guidance policy verified: approved injury-specific first aid survives the canonical boundary and untrusted variants fail closed.');

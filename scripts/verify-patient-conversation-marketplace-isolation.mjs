@@ -153,9 +153,9 @@ const backendSafetyAdapterSource = fs.readFileSync(
   new URL('../base44/shared/patientSafety.js', import.meta.url),
   'utf8',
 );
-assert(backendSafetyAdapterSource.includes("from './patientEyeSafetyPolicy.js';"));
-assert(backendSafetyAdapterSource.includes('assessPatientEyeSafety'));
-assert(!backendSafetyAdapterSource.includes('const BLOCKING_PATTERNS'));
+assert(!backendSafetyAdapterSource.includes('patientEyeSafetyPolicy'));
+assert(!backendSafetyAdapterSource.includes('assessPatientEyeSafety'));
+assert(backendSafetyAdapterSource.includes('const BLOCKING_FLAGS'));
 
 const durablePolicyName = 'patientConversationDurableStatePolicy';
 for (const runtimePath of [

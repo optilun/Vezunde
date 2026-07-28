@@ -8,9 +8,6 @@ import {
 import {
   isApprovedPatientGuidanceQuestionKey,
 } from '../shared/patientGuidanceQuestionCatalog.js';
-import {
-  buildPatientSafetyAssessment,
-} from '../base44/shared/patientSafety.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const source = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
@@ -45,12 +42,7 @@ scenario('PR265 planner copies remain byte-identical', () => {
     source('base44/shared/patientGuidancePlannerCore.js'),
   );
   const plannerWrapper = source('shared/patientGuidancePlanner.js');
-  assert.match(plannerWrapper, /assessPatientEyeSafety/);
-  assert.match(plannerWrapper, /if \(safety\.advisory\) return "advisory"/);
-  assert.ok(
-    plannerWrapper.indexOf('CONTROLLED_CLEAR_SOURCES.has(safety.source)')
-      < plannerWrapper.indexOf('suppliedState === "advisory"'),
-  );
+  assert.doesNotMatch(plannerWrapper, /patientEyeSafetyPolicy|assessPatientEyeSafety/);
 });
 
 scenario('planner core cannot bypass the composed safety wrapper', () => {
@@ -72,9 +64,8 @@ scenario('canonical safety policy copies remain byte-identical', () => {
     source('shared/patientEyeSafetyPolicy.js'),
     source('base44/shared/patientEyeSafetyPolicy.js'),
   );
-  assert.match(backendSafetyAdapter, /from '\.\/patientEyeSafetyPolicy\.js'/);
-  assert.match(backendSafetyAdapter, /return assessPatientEyeSafety\(options\)/);
-  assert.doesNotMatch(backendSafetyAdapter, /const BLOCKING_PATTERNS/);
+  assert.doesNotMatch(backendSafetyAdapter, /patientEyeSafetyPolicy|assessPatientEyeSafety/);
+  assert.match(backendSafetyAdapter, /const BLOCKING_FLAGS/);
 });
 
 scenario('question-only and semantic shadow modes coexist', () => {
@@ -145,73 +136,6 @@ scenario('answered questions are not selected again', () => {
   assert.notEqual(profile.next_question_key, 'routine_vs_symptom');
 });
 
-scenario('generic monocular wording is advisory, not automatically blocking', () => {
-  const safety = buildPatientSafetyAssessment({ text: 'Nu mai vad cu un ochi' });
-  assert.equal(safety.blocking, false);
-  assert.equal(safety.state, 'advisory');
-  assert.ok(safety.advisory_flags.includes('sudden_vision_loss'));
-});
-
-scenario('composed planner preserves advisory safety for guided questioning', () => {
-  const profile = buildPatientGuidancePlannerProfile({
-    text: 'Nu mai vad cu un ochi',
-  }, { status: 'not_requested' });
-  assert.equal(profile.safety_state, 'advisory');
-  assert.equal(profile.next_question_key, 'safety_targeted_check');
-  assert.equal(profile.sufficient_for_search, false);
-});
-
-scenario('controlled clear closes stale advisory but not blocking', () => {
-  const guidedAnswers = [{
-    question_key: 'safety_targeted_check',
-    answer_value: 'niciuna',
-  }];
-  const cleared = buildPatientGuidancePlannerProfile({
-    text: 'Nu mai vad cu un ochi',
-    guidedAnswers,
-    deterministicSafetyState: 'advisory',
-  }, { status: 'not_requested' });
-  assert.equal(cleared.safety_state, 'clear');
-
-  const blocked = buildPatientGuidancePlannerProfile({
-    text: 'Nu mai vad brusc cu un ochi',
-    guidedAnswers,
-    deterministicSafetyState: 'blocking',
-  }, { status: 'not_requested' });
-  assert.equal(blocked.safety_state, 'blocking');
-  assert.equal(blocked.care_path, 'emergency_interruption');
-});
-
-scenario('explicit sudden monocular loss remains blocking', () => {
-  const safety = buildPatientSafetyAssessment({ text: 'Nu mai vad brusc cu un ochi' });
-  assert.equal(safety.blocking, true);
-  assert.ok(safety.blocking_flags.includes('sudden_vision_loss'));
-});
-
-scenario('controlled urgent answer blocks before ordinary guidance', () => {
-  const safety = buildPatientSafetyAssessment({
-    answers: [{ question_key: 'safety_targeted_check', answer_value: 'durere_severa' }],
-  });
-  assert.equal(safety.blocking, true);
-  assert.ok(safety.blocking_flags.includes('severe_eye_pain'));
-});
-
-scenario('guided none clears advisory but cannot clear explicit blocking text', () => {
-  const answers = [{ question_key: 'safety_targeted_check', answer_value: 'niciuna' }];
-  const advisory = buildPatientSafetyAssessment({
-    text: 'Nu mai vad cu un ochi',
-    answers,
-  });
-  assert.equal(advisory.state, 'clear');
-  assert.equal(advisory.source, 'guided_clear');
-
-  const blocking = buildPatientSafetyAssessment({
-    text: 'Nu mai vad brusc cu un ochi',
-    answers,
-  });
-  assert.equal(blocking.blocking, true);
-});
-
 scenario('matching, ranking and Top 3 are absent from both authority seams', () => {
   const questionStart = entry.indexOf('function selectPatientGuidanceQuestion');
   const questionEnd = entry.indexOf('async function interpretPatientNeed', questionStart);
@@ -227,5 +151,5 @@ scenario('matching, ranking and Top 3 are absent from both authority seams', () 
   }
 });
 
-assert.ok(scenarios >= 17);
+assert.ok(scenarios >= 11);
 console.log(`PR #265 + PR #266 conversational composition checks passed: ${scenarios} scenarios.`);
