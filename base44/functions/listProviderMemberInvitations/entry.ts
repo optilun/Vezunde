@@ -1,9 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { handle as directoryImportOpsHandle } from '../directoryOps/directoryImportOpsLatest.ts';
+import { handle as directoryImportOpsHandle } from './directoryImportOpsLatest.ts';
 
 const ROLES = ['organization_owner', 'location_manager', 'location_staff'];
 const DIRECTORY_IMPORT_LOGICAL_NAME = 'directoryImportOps';
-const FUNCTION_DEPLOY_REVISION = 'viasee-directory-import-existing-endpoint-bridge-1';
+const FUNCTION_DEPLOY_REVISION = 'viasee-directory-import-self-contained-bridge-2';
 console.info(`[VIASEE] listProviderMemberInvitations ${FUNCTION_DEPLOY_REVISION}`);
 
 function res(body, status = 200) { return Response.json(body, { status }); }
