@@ -60,10 +60,27 @@ assert.equal((entrySource.match(/Deno\.serve\(/g) || []).length, 1, 'directoryOp
 assert.match(routerSource, /return directoryOpsHandle\(req\)/, 'Contractul existent directoryOps trebuie pastrat pentru apelurile directe');
 assert.match(routerSource, /status: 404/, 'Numele logice necunoscute trebuie respinse explicit');
 
-const bridgeEntrySource = source('base44/functions/listProviderMemberInvitations/entry.ts');
-assert.match(bridgeEntrySource, /directoryImportOpsLatest\.ts/);
+const bridgeRoot = 'base44/functions/listProviderMemberInvitations';
+const bridgeEntrySource = source(`${bridgeRoot}/entry.ts`);
+assert.match(bridgeEntrySource, /from '\.\/directoryImportOpsLatest\.ts'/);
+assert.doesNotMatch(bridgeEntrySource, /from '\.\.\/directoryOps\//);
 assert.match(bridgeEntrySource, /body\?\.__function === DIRECTORY_IMPORT_LOGICAL_NAME/);
 assert.match(bridgeEntrySource, /return handleInvitationList\(req\)/);
+assert.match(bridgeEntrySource, /viasee-directory-import-self-contained-bridge-2/);
+
+for (const fileName of [
+  'directoryImportOps.ts',
+  'directoryImportOpsLocationFirst.ts',
+  'directoryImportOpsLatest.ts',
+]) {
+  const bridgePath = `${bridgeRoot}/${fileName}`;
+  assert.ok(existsSync(path.join(root, bridgePath)), `Copia locala lipseste pentru ${fileName}`);
+  assert.equal(
+    source(bridgePath),
+    source(`base44/functions/directoryOps/${fileName}`),
+    `${fileName} trebuie sa ramana identic cu implementarea canonica`,
+  );
+}
 
 const clientSource = source('src/api/base44Client.js');
 const frontendRoutingSource = source('src/api/base44FunctionRouting.js');
@@ -128,4 +145,5 @@ console.log(JSON.stringify({
   directory_router_bytes: routerBytes,
   directory_router_files: sourceFiles(routerRoot).length,
   directory_import_endpoint: DIRECTORY_IMPORT_FUNCTION_ENDPOINT,
+  directory_import_self_contained: true,
 }, null, 2));
