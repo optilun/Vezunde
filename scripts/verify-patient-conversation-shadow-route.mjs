@@ -65,9 +65,18 @@ assert(wrapperSource.includes('function recoverTerminalFailure('));
 assert(wrapperSource.includes('retry_attempted: false'));
 assert(wrapperSource.includes('search_blocked: true'));
 
-const guidedGateIndex = wrapperSource.indexOf('if (hasGuidedAnswers(payload))');
+const authorizationGateIndex = wrapperSource.indexOf(
+  'await authorizePatientConversationSyntheticEvaluation(',
+);
+const authorizationStripIndex = wrapperSource.indexOf(
+  'delete runtimePayload.evaluation_authorization;',
+);
+const guidedGateIndex = wrapperSource.indexOf('if (hasGuidedAnswers(runtimePayload))');
 const runtimeCallIndex = wrapperSource.indexOf('await runPatientConversationAgentShadowRuntime(');
-assert(guidedGateIndex >= 0 && runtimeCallIndex > guidedGateIndex);
+assert(authorizationGateIndex >= 0);
+assert(authorizationStripIndex > authorizationGateIndex);
+assert(guidedGateIndex > authorizationStripIndex);
+assert(runtimeCallIndex > guidedGateIndex);
 assert.equal((wrapperSource.match(/runPatientConversationAgentShadowRuntime\(/g) || []).length, 1);
 assert.equal((wrapperSource.match(/InvokeLLM/g) || []).length, 3);
 assert(!wrapperSource.includes("model: 'gpt_5_4'"));
