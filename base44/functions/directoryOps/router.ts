@@ -11,7 +11,7 @@ import { handle as adminWorkspaceReviewHandle } from './adminWorkspaceReview.ts'
 import { handle as aiResearchOpsHandle } from './aiResearchOps.ts';
 import { handle as backfillLocationServiceMatchingHandle } from './backfillLocationServiceMatching.ts';
 import { handle as backfillProviderOrganizationProfileHandle } from './backfillProviderOrganizationProfile.ts';
-import { handle as directoryImportOpsHandle } from './directoryImportOps.ts';
+import { handle as directoryImportOpsHandle } from './directoryImportOpsLocationFirst.ts';
 import { handle as directoryMappingOpsHandle } from './directoryMappingOps.ts';
 import { handle as directoryOpsHandle } from './directoryOps.ts';
 import { handle as geoImportOpsHandle } from './geoImportOps.ts';
