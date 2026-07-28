@@ -415,6 +415,35 @@ assert(redisCommands.every((command) => (
   !JSON.stringify(command).includes(redisNonceReservation.nonce)
   && !JSON.stringify(command).includes(redisNonceReservation.runId)
 )));
+const redisCommandsBeforeTupleSeparation = redisCommands.length;
+const ambiguousTupleFirst = {
+  keyId: 'evaluation:key',
+  runId: 'tuple-run',
+  nonce: 'tuple-nonce-1234567890',
+  maxModelCalls: 1,
+  expiresAtMs: nowMs + 60_000,
+  nowMs,
+};
+const ambiguousTupleSecond = {
+  keyId: 'evaluation',
+  runId: 'key:tuple-run',
+  nonce: 'tuple-nonce-1234567890',
+  maxModelCalls: 1,
+  expiresAtMs: nowMs + 60_000,
+  nowMs,
+};
+assert.equal(
+  (await redisUsageStore.reserveNonce(ambiguousTupleFirst)).reserved,
+  true,
+);
+assert.equal(
+  (await redisUsageStore.reserveNonce(ambiguousTupleSecond)).reserved,
+  true,
+);
+const tupleSeparationCommands = redisCommands.slice(redisCommandsBeforeTupleSeparation);
+assert.equal(tupleSeparationCommands.length, 2);
+assert.notEqual(tupleSeparationCommands[0][3], tupleSeparationCommands[1][3]);
+assert.notEqual(tupleSeparationCommands[0][4], tupleSeparationCommands[1][4]);
 const redisLimitMismatchPayload = await signedPayload({}, {
   runId: redisNonceReservation.runId,
   nonce: 'redis-limit-mismatch-1234567890',

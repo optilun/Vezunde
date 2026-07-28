@@ -106,7 +106,8 @@ async function sha256Hex(value) {
 }
 
 async function opaqueRedisKey(kind, values) {
-  const digest = await sha256Hex(values.join(":"));
+  const tuple = JSON.stringify(values.map((value) => String(value ?? "")));
+  const digest = await sha256Hex(tuple);
   return `${PATIENT_CONVERSATION_EVALUATION_REDIS_PREFIX}:${kind}:${digest}`;
 }
 

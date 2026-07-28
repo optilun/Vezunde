@@ -51,10 +51,11 @@ nonce remains reserved even when the model-call ceiling is already exhausted.
 The existing operational controller still permits at most one model call per
 HTTP request and no retry.
 
-Redis keys contain only SHA-256 digests derived from key id, run id and nonce,
-plus the approved maximum, used-call counter and expiry. They never contain
-conversation text, symptoms, semantic output, patient identifiers or provider
-results. Nonce and run state expire with the signed authorization, with a hard
+Redis keys contain only SHA-256 digests derived from unambiguous JSON tuples
+of key id, run id and nonce, plus the approved maximum, used-call counter and
+expiry. Tuple serialization prevents separator characters inside identifiers from
+aliasing distinct runs or nonces. The keys never contain conversation text,
+symptoms, semantic output, patient identifiers or provider results. Nonce and run state expire with the signed authorization, with a hard
 upper TTL of 16 minutes.
 
 If Redis is missing, unavailable, times out, returns an invalid response or
