@@ -71,7 +71,60 @@ const FIELD_ALIASES = {
   schedule: ["schedule", "confirmed_schedule", "opening_hours"],
   organization_external_key: ["organization_external_key", "organization_key"],
   location_external_key: ["location_external_key", "location_key", "directory_external_key"],
+  provider_type: ["provider_type"],
+  provider_profile_type: ["provider_profile_type"],
+  location_type_code: ["location_type_code"],
+  care_setting_code: ["care_setting_code"],
+  ownership_type_code: ["ownership_type_code"],
 };
+
+const PROVIDER_TYPES = new Set([
+  "optica_medicala",
+  "clinica_oftalmologica",
+  "cabinet_oftalmologic",
+  "cabinet_optometric",
+  "laborator_optic",
+  "optometrist_independent",
+  "medic_oftalmolog_independent",
+]);
+
+const PROVIDER_PROFILE_TYPES = new Set([
+  "independent_optical_store",
+  "optical_chain",
+  "ophthalmology_clinic",
+  "ophthalmology_office",
+  "independent_ophthalmologist",
+  "independent_optometrist",
+  "independent_optician",
+  "optical_laboratory_b2c",
+  "optical_laboratory_b2b",
+  "future_b2b_distributor",
+]);
+
+const LOCATION_TYPE_CODES = new Set([
+  "optical_store",
+  "optometry_office",
+  "ophthalmology_office",
+  "ophthalmology_clinic",
+  "multi_specialty_clinic",
+  "hospital_department",
+  "hospital_outpatient_unit",
+  "optical_laboratory",
+  "independent_professional_office",
+  "other",
+]);
+
+const CARE_SETTING_CODES = new Set([
+  "retail",
+  "outpatient",
+  "hospital_outpatient",
+  "hospital_inpatient",
+  "mixed",
+  "laboratory",
+  "other",
+]);
+
+const OWNERSHIP_TYPE_CODES = new Set(["private", "public", "nonprofit", "unknown"]);
 
 function clean(value, maxLength = 4000) {
   return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, maxLength);
@@ -111,6 +164,37 @@ function canonicalFields(raw = {}) {
   );
 }
 
+function explicitCanonicalType(fields) {
+  const hasAnyExplicitType = Boolean(
+    fields.provider_type
+    || fields.provider_profile_type
+    || fields.location_type_code
+    || fields.care_setting_code,
+  );
+  if (!hasAnyExplicitType) return null;
+
+  const complete = PROVIDER_TYPES.has(fields.provider_type)
+    && PROVIDER_PROFILE_TYPES.has(fields.provider_profile_type)
+    && LOCATION_TYPE_CODES.has(fields.location_type_code)
+    && CARE_SETTING_CODES.has(fields.care_setting_code);
+
+  if (!complete) return {
+    invalid: true,
+    provider_type: "",
+    provider_profile_type: "",
+    location_type_code: "",
+    care_setting_code: "",
+  };
+
+  return {
+    invalid: false,
+    provider_type: fields.provider_type,
+    provider_profile_type: fields.provider_profile_type,
+    location_type_code: fields.location_type_code,
+    care_setting_code: fields.care_setting_code,
+  };
+}
+
 export function normalizeAddressForFingerprint(value) {
   return normalizeIdentityText(value)
     .replace(/\b(strada|str|bulevardul|bulevard|bd|calea|sos|soseaua|piata|p-ta)\b/g, " ")
@@ -137,11 +221,13 @@ export function inferCanonicalLocationType(activityCategory = "") {
   if (value.includes("cabinet") && value.includes("oftalm")) {
     return { provider_type: "cabinet_oftalmologic", provider_profile_type: "ophthalmology_office", location_type_code: "ophthalmology_office", care_setting_code: "outpatient" };
   }
-  if (value.includes("optometr")) {
-    return { provider_type: "cabinet_optometric", provider_profile_type: "independent_optometrist", location_type_code: "optometry_office", care_setting_code: "outpatient" };
-  }
+  // An optical store may offer optometry. The retail identity remains canonical
+  // unless the source explicitly describes an optometry office without optical retail.
   if (value.includes("optica") || value.includes("optic")) {
     return { provider_type: "optica_medicala", provider_profile_type: "independent_optical_store", location_type_code: "optical_store", care_setting_code: "retail" };
+  }
+  if (value.includes("optometr")) {
+    return { provider_type: "cabinet_optometric", provider_profile_type: "independent_optometrist", location_type_code: "optometry_office", care_setting_code: "outpatient" };
   }
   return null;
 }
@@ -164,9 +250,11 @@ function dataQualityFor(fields) {
 
 function pseudoRowReason(fields) {
   const name = normalizeIdentityText(fields.location_name);
+  const locality = clean(fields.locality_name);
   const address = normalizeIdentityText(fields.address);
   if (!name) return "missing_location_name";
-  if (/^(locatii|locatii deja|acoperire|retea|network|total)/.test(name)) return "aggregate_or_summary_row";
+  if (/^(organizatie|locatii|locatii deja|acoperire|retea|network|total)$/.test(name)) return "aggregate_or_summary_row";
+  if (/^~?\d+\+?$/.test(locality)) return "aggregate_count_row";
   if (/^~?\d+\+?$/.test(clean(fields.location_name))) return "aggregate_count_row";
   if (!address && /\b(locatii|puncte|sedii)\b/.test(name)) return "aggregate_without_address";
   return "";
@@ -174,7 +262,8 @@ function pseudoRowReason(fields) {
 
 export function normalizeDirectoryImportRow(raw = {}, context = {}) {
   const fields = canonicalFields(raw);
-  const inferredType = inferCanonicalLocationType(fields.activity_category);
+  const explicitType = explicitCanonicalType(fields);
+  const inferredType = explicitType || inferCanonicalLocationType(fields.activity_category);
   const localityKey = normalizeIdentityText(fields.locality_name);
   const addressKey = normalizeAddressForFingerprint(fields.address);
   const organizationKey = fields.organization_external_key || (
@@ -224,7 +313,7 @@ export function normalizeDirectoryImportRow(raw = {}, context = {}) {
     provider_profile_type: inferredType?.provider_profile_type || "",
     location_type_code: inferredType?.location_type_code || "",
     care_setting_code: inferredType?.care_setting_code || "",
-    ownership_type_code: "unknown",
+    ownership_type_code: OWNERSHIP_TYPE_CODES.has(fields.ownership_type_code) ? fields.ownership_type_code : "unknown",
     operational_status: mapOperationalStatus(fields.operational_status),
     publication_status: "draft",
     control_status: "directory",
@@ -232,6 +321,8 @@ export function normalizeDirectoryImportRow(raw = {}, context = {}) {
     directory_detail_level: "summary",
     directory_basic_details_approved: false,
     pseudo_row_reason: pseudoRowReason(fields),
+    canonical_type_source: explicitType ? "source_explicit" : (inferredType ? "activity_inferred" : "unresolved"),
+    canonical_type_invalid: Boolean(explicitType?.invalid),
   };
 }
 
@@ -253,6 +344,7 @@ export function validateNormalizedDirectoryRow(row = {}, options = {}) {
   if (row.import_readiness === "blocked_conflict") errors.push("research_conflict_requires_review");
   if (row.import_readiness === "blocked_missing_data") errors.push("research_missing_data_requires_review");
   if (row.import_readiness === "blocked_type_mapping") errors.push("location_type_requires_mapping");
+  if (row.canonical_type_invalid) errors.push("invalid_explicit_canonical_type");
   if (!row.provider_type || !row.provider_profile_type || !row.location_type_code) warnings.push("canonical_type_not_inferred");
   if (!row.organization_name) warnings.push("organization_missing");
   if (!row.phone && !row.website && !row.email) warnings.push("public_contact_missing");
