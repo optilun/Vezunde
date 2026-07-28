@@ -81,6 +81,8 @@ assert(entrySource.includes("error: 'Cererea nu a putut fi procesata.'"));
 assert(entrySource.includes("'Cache-Control': 'no-store'"));
 assert(!entrySource.includes("error?.message || 'Eroare neașteptată"));
 assert(signerSource.includes('PATIENT_CONVERSATION_EVALUATION_SIGNING_SECRET'));
+assert(signerSource.includes('loadPatientConversationFixtures()'));
+assert(signerSource.includes('assert.deepEqual(item.request'));
 assert(signerSource.includes('secret_in_output: false'));
 
 const secret = '0123456789abcdef0123456789abcdef';

@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -6,6 +7,9 @@ import {
   PATIENT_CONVERSATION_EVALUATION_FIXTURE_SOURCE,
   createPatientConversationEvaluationAuthorization,
 } from '../shared/patientConversationEvaluationAuthorization.js';
+import {
+  loadPatientConversationFixtures,
+} from './patient-conversation-fixture-loader.mjs';
 
 const MAX_AUTHORIZATION_LIFETIME_SECONDS = 15 * 60;
 
@@ -63,18 +67,34 @@ function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
-function fixtureFingerprint(manifest) {
+function fixtureFingerprint(fixtureSuite) {
   return crypto.createHash('sha256').update(JSON.stringify({
-    fixture_version: manifest?.fixture_version || null,
-    fixture_versions: manifest?.fixture_versions || [],
-    selected_cases: manifest?.selected_cases || [],
-    pending_attempts: manifest?.pending_attempts || [],
+    fixture_versions: fixtureSuite.fixture_versions,
+    cases: fixtureSuite.cases,
   })).digest('hex');
 }
 
 function validIdentifier(value, maxLength) {
   const text = String(value ?? '').trim().slice(0, maxLength);
   return /^[a-z0-9][a-z0-9._:-]*$/i.test(text) ? text : '';
+}
+
+function fixtureConversation(fixture) {
+  if (Array.isArray(fixture?.conversation)) return fixture.conversation;
+  if (Array.isArray(fixture?.messages)) return fixture.messages;
+  return [];
+}
+
+function fixturePriorState(fixture) {
+  return fixture?.prior_state && typeof fixture.prior_state === 'object'
+    ? fixture.prior_state
+    : null;
+}
+
+function fixtureRuntimeContext(fixture) {
+  return fixture?.runtime_context && typeof fixture.runtime_context === 'object'
+    ? fixture.runtime_context
+    : {};
 }
 
 const options = parseArguments(process.argv.slice(2));
@@ -92,21 +112,37 @@ if (!validIdentifier(options.runId, 120) || !validIdentifier(options.keyId, 80))
 const manifest = readJson(options.input);
 const requests = Array.isArray(manifest?.requests) ? manifest.requests : [];
 if (requests.length === 0) throw new Error('Input manifest contains no pending requests.');
+const fixtureSuite = loadPatientConversationFixtures();
+assert.deepEqual(
+  manifest?.fixture_versions,
+  fixtureSuite.fixture_versions,
+  'Input manifest fixture versions do not match the repository fixtures.',
+);
+const fixtureById = new Map(fixtureSuite.cases.map((fixture) => [fixture.id, fixture]));
 const maxCalls = options.maxCalls ?? requests.length;
 if (maxCalls !== requests.length) {
   throw new Error('--max-calls must equal the exact number of pending requests.');
 }
 
-const fingerprint = fixtureFingerprint(manifest);
+const fingerprint = fixtureFingerprint(fixtureSuite);
 const issuedAt = new Date();
 const expiresAt = new Date(issuedAt.getTime() + options.expiresInSeconds * 1000);
 const signedRequests = [];
 for (const item of requests) {
   const caseId = validIdentifier(item?.evaluation_case_id, 120);
   const attempt = positiveInteger(item?.evaluation_attempt, 'evaluation_attempt');
-  if (!caseId || attempt > 5 || item?.request?.evaluation_case_id !== caseId) {
+  const fixture = fixtureById.get(caseId);
+  if (!caseId || !fixture || attempt > 5 || item?.request?.evaluation_case_id !== caseId) {
     throw new Error('Input manifest contains an invalid fixture request.');
   }
+  assert.deepEqual(item.request, {
+    mode: 'patient_conversation_shadow',
+    evaluation_case_id: caseId,
+    evaluation_attempt: attempt,
+    conversation: fixtureConversation(fixture),
+    prior_state: fixturePriorState(fixture),
+    runtime_context: fixtureRuntimeContext(fixture),
+  }, `Request ${caseId}#${attempt} does not match its repository fixture.`);
   const request = {
     ...(item.request || {}),
     evaluation_fixture: {
