@@ -415,6 +415,45 @@ assert(redisCommands.every((command) => (
   !JSON.stringify(command).includes(redisNonceReservation.nonce)
   && !JSON.stringify(command).includes(redisNonceReservation.runId)
 )));
+const malformedRedisUsageStore = createPatientConversationEvaluationRedisUsageStore({
+  url: 'https://viasee-evaluation-test.upstash.io/',
+  token: 't'.repeat(32),
+  fetchImpl: async () => new Response(JSON.stringify({
+    result: [1, null, 1],
+  }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  }),
+});
+await assert.rejects(
+  malformedRedisUsageStore.reserveNonce({
+    ...redisNonceReservation,
+    runId: 'redis-malformed-reservation-001',
+    nonce: 'redis-malformed-nonce-1234567890',
+  }),
+  (error) => (
+    error?.code === 'PATIENT_CONVERSATION_EVALUATION_USAGE_STORE_UNAVAILABLE'
+  ),
+);
+const inconsistentRedisUsageStore = createPatientConversationEvaluationRedisUsageStore({
+  url: 'https://viasee-evaluation-test.upstash.io/',
+  token: 't'.repeat(32),
+  fetchImpl: async () => new Response(JSON.stringify({
+    result: [1, 2, 1],
+  }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  }),
+});
+await assert.rejects(
+  inconsistentRedisUsageStore.consumeModelCall({
+    ...redisConsumptionRequest,
+    runId: 'redis-inconsistent-consumption-001',
+  }),
+  (error) => (
+    error?.code === 'PATIENT_CONVERSATION_EVALUATION_USAGE_STORE_UNAVAILABLE'
+  ),
+);
 const redisCommandsBeforeTupleSeparation = redisCommands.length;
 const ambiguousTupleFirst = {
   keyId: 'evaluation:key',

@@ -81,6 +81,17 @@ function normalizedPositiveInteger(value) {
   return Number.isInteger(number) && number > 0 ? number : null;
 }
 
+function normalizedRedisInteger(value) {
+  if (
+    typeof value !== "number"
+    && !(typeof value === "string" && /^-?\d+$/.test(value))
+  ) {
+    return null;
+  }
+  const number = Number(value);
+  return Number.isSafeInteger(number) ? number : null;
+}
+
 function ttlSeconds(expiresAtMs, nowMs) {
   const remainingMs = Number(expiresAtMs) - Number(nowMs);
   if (!Number.isFinite(remainingMs) || remainingMs <= 0) {
@@ -231,9 +242,23 @@ export function createPatientConversationEvaluationRedisUsageStore({
           "Evaluation nonce reservation returned an invalid result.",
         );
       }
-      const status = Number(result[0]);
-      const modelCallsUsed = Number(result[1]);
-      const storedMaxCalls = Number(result[2]);
+      const status = normalizedRedisInteger(result[0]);
+      const modelCallsUsed = normalizedRedisInteger(result[1]);
+      const storedMaxCalls = normalizedRedisInteger(result[2]);
+      if (
+        status === null
+        || modelCallsUsed === null
+        || modelCallsUsed < 0
+        || storedMaxCalls === null
+        || storedMaxCalls <= 0
+        || modelCallsUsed > storedMaxCalls
+        || (status !== -1 && storedMaxCalls !== controlledMax)
+      ) {
+        throw usageStoreError(
+          "PATIENT_CONVERSATION_EVALUATION_USAGE_STORE_UNAVAILABLE",
+          "Evaluation nonce reservation returned invalid counters.",
+        );
+      }
       if (status === -1) {
         throw usageStoreError(
           "PATIENT_CONVERSATION_EVALUATION_RUN_LIMIT_MISMATCH",
@@ -280,14 +305,17 @@ export function createPatientConversationEvaluationRedisUsageStore({
           "Evaluation run reservation returned an invalid result.",
         );
       }
-      const status = Number(result[0]);
-      const modelCallsUsed = Number(result[1]);
-      const storedMaxCalls = Number(result[2]);
+      const status = normalizedRedisInteger(result[0]);
+      const modelCallsUsed = normalizedRedisInteger(result[1]);
+      const storedMaxCalls = normalizedRedisInteger(result[2]);
       if (
-        !Number.isInteger(modelCallsUsed)
+        status === null
+        || modelCallsUsed === null
         || modelCallsUsed < 0
-        || !Number.isInteger(storedMaxCalls)
+        || storedMaxCalls === null
         || storedMaxCalls <= 0
+        || modelCallsUsed > storedMaxCalls
+        || (status !== -1 && storedMaxCalls !== controlledMax)
       ) {
         throw usageStoreError(
           "PATIENT_CONVERSATION_EVALUATION_USAGE_STORE_UNAVAILABLE",
