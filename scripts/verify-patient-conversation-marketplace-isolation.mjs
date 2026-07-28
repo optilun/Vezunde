@@ -28,6 +28,7 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
   pr265_question_selection: Object.freeze([
     'dd9d9938939e2434398da9a31bafc8d3fb6b646f',
     '6cca8f15072f0f5f9e652ce8414f2da0d851f161',
+    '791ddcbf516a4abc20514de43274f3ac7ceea31f',
   ]),
 });
 
@@ -127,6 +128,8 @@ function stripApprovedShadowSeam(source) {
   return normalized.endsWith('\n') ? normalized.slice(0, -1) : normalized;
 }
 
+assert.match(semanticEntrySource, /error: 'Cererea nu a putut fi procesata\.'/);
+assert.match(semanticEntrySource, /headers: \{ 'Cache-Control': 'no-store' \}/);
 const normalPathReconstruction = stripApprovedShadowSeam(semanticEntrySource);
 const reconstructedSemanticEntryBlob = gitBlobSha(normalPathReconstruction);
 const approvedCompositionEntry = Object.entries(MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS)
