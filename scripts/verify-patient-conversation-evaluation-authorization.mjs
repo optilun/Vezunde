@@ -45,6 +45,7 @@ assert(wrapperSource.includes('authorizePatientConversationSyntheticEvaluation('
 assert(wrapperSource.includes('delete runtimePayload.evaluation_authorization;'));
 assert(wrapperSource.includes('synthetic_evaluation: evaluationAuthorization.metadata'));
 assert(!wrapperSource.includes('evaluationAuthorization.signature'));
+assert(wrapperSource.includes('evaluationAuthorization.consumeModelCall();'));
 
 const authorizationIndex = wrapperSource.indexOf(
   'await authorizePatientConversationSyntheticEvaluation(',
@@ -145,6 +146,14 @@ assert.equal(
 );
 assert.equal(accepted.metadata.synthetic_fixture_verified, true);
 assert.equal(accepted.metadata.replay_protection_scope, 'process_instance');
+assert.equal(accepted.metadata.model_calls_used_in_process, 0);
+const acceptedConsumption = accepted.consumeModelCall();
+assert.equal(acceptedConsumption.model_calls_used_in_process, 1);
+assert.equal(accepted.metadata.model_calls_used_in_process, 1);
+assert.throws(
+  () => accepted.consumeModelCall(),
+  (error) => error?.code === 'PATIENT_CONVERSATION_EVALUATION_AUTHORIZATION_CONSUMED',
+);
 
 const replayed = await authorizePatientConversationSyntheticEvaluation(
   acceptedPayload,
@@ -216,6 +225,9 @@ const runBudgetFirstResult = await authorizePatientConversationSyntheticEvaluati
   },
 );
 assert.equal(runBudgetFirstResult.allowed, true);
+assert.equal(runBudgetFirstResult.metadata.model_calls_used_in_process, 0);
+runBudgetFirstResult.consumeModelCall();
+assert.equal(runBudgetFirstResult.metadata.model_calls_used_in_process, 1);
 const runBudgetSecond = await signedPayload({}, {
   runId: 'run-budget-001',
   nonce: '72345678-1234-4234-9234-123456789abc',
@@ -232,6 +244,43 @@ assert.equal(runBudgetSecondResult.allowed, false);
 assert.equal(
   runBudgetSecondResult.reason,
   'patient_conversation_evaluation_run_budget_exceeded',
+);
+
+const noModelReplayStore = new Map();
+const noModelUsageStore = new Map();
+const noModelFirstPayload = await signedPayload({}, {
+  runId: 'run-no-model-001',
+  nonce: '82345678-1234-4234-9234-123456789abc',
+  maxModelCalls: 1,
+});
+const noModelFirst = await authorizePatientConversationSyntheticEvaluation(
+  noModelFirstPayload,
+  {
+    ...authorizationOptions(noModelReplayStore, noModelUsageStore),
+    maxModelCallsPerRun: 1,
+  },
+);
+assert.equal(noModelFirst.allowed, true);
+assert.equal(noModelFirst.metadata.model_calls_used_in_process, 0);
+const noModelSecondPayload = await signedPayload({}, {
+  runId: 'run-no-model-001',
+  nonce: '92345678-1234-4234-9234-123456789abc',
+  maxModelCalls: 1,
+});
+const noModelSecond = await authorizePatientConversationSyntheticEvaluation(
+  noModelSecondPayload,
+  {
+    ...authorizationOptions(noModelReplayStore, noModelUsageStore),
+    maxModelCallsPerRun: 1,
+  },
+);
+assert.equal(noModelSecond.allowed, true);
+assert.equal(noModelSecond.metadata.model_calls_used_in_process, 0);
+noModelSecond.consumeModelCall();
+assert.equal(noModelSecond.metadata.model_calls_used_in_process, 1);
+assert.throws(
+  () => noModelFirst.consumeModelCall(),
+  (error) => error?.code === 'PATIENT_CONVERSATION_EVALUATION_RUN_BUDGET_EXCEEDED',
 );
 
 const nonSyntheticPayload = await signedPayload({

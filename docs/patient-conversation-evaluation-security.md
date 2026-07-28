@@ -23,16 +23,19 @@ The signing tool binds the complete request payload to:
 - a run id;
 - a one-use nonce;
 - a short expiry;
-- the exact approved model-call budget.
+- the approved upper bound for model calls in the run.
 
 Changing any signed field invalidates the HMAC. The signing secret is read only
 from an environment variable and is never written to the output manifest.
 
 ## Replay and consumption boundary
 
-The runtime consumes an authorized nonce before model execution and blocks a
-duplicate nonce within the same warm function instance. The existing operational
-controller still permits at most one model call per HTTP request and no retry.
+The runtime reserves an authorized nonce before any guided or semantic execution
+and blocks a duplicate nonce within the same warm function instance. The run
+budget is checked and incremented separately, immediately before `InvokeLLM`.
+Therefore, a signed request completed by deterministic preflight consumes no
+model-call budget. The existing operational controller still permits at most one
+model call per HTTP request and no retry.
 
 The replay map and per-run counter are process-scoped. They are not a durable,
 cross-instance quota. A global guarantee requires a dedicated persisted usage

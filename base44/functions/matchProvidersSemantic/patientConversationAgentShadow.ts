@@ -153,7 +153,11 @@ function noModelRuntimeMetadata(durationMs = 0) {
   };
 }
 
-function createAutomaticModelBase44(base44: any, modelFailureState: any) {
+function createAutomaticModelBase44(
+  base44: any,
+  modelFailureState: any,
+  evaluationAuthorization: any,
+) {
   const integrations = base44?.integrations || {};
   const core = integrations?.Core || {};
   const invokeModel = core?.InvokeLLM;
@@ -171,6 +175,12 @@ function createAutomaticModelBase44(base44: any, modelFailureState: any) {
               error.code = 'PATIENT_CONVERSATION_MODEL_INVOKER_UNAVAILABLE';
               throw error;
             }
+            if (typeof evaluationAuthorization?.consumeModelCall !== 'function') {
+              const error: any = new Error('Evaluation model-call authorization is unavailable.');
+              error.code = 'PATIENT_CONVERSATION_EVALUATION_AUTHORIZATION_INVALID';
+              throw error;
+            }
+            evaluationAuthorization.consumeModelCall();
             const automaticArgs = { ...(isPlainObject(args) ? args : {}) };
             delete automaticArgs.model;
             delete automaticArgs.response_json_schema;
@@ -474,7 +484,11 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
     diagnostics: null,
   };
   const runtimeEnvelope = await runPatientConversationAgentShadowRuntime(
-    createAutomaticModelBase44(base44, modelFailureState),
+    createAutomaticModelBase44(
+      base44,
+      modelFailureState,
+      evaluationAuthorization,
+    ),
     runtimePayload,
   );
   const diagnosedEnvelope = attachModelFailureDiagnostics(runtimeEnvelope, modelFailureState);

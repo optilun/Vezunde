@@ -155,6 +155,12 @@ function rejection(reason) {
   };
 }
 
+function authorizationError(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
 function fixtureMetadata(payload = {}) {
   const source = isPlainObject(payload?.evaluation_fixture)
     ? payload.evaluation_fixture
@@ -306,28 +312,66 @@ export async function authorizePatientConversationSyntheticEvaluation(
   if (runCallsUsed >= maxModelCalls || runCallsUsed >= serverMaxCalls) {
     return rejection("patient_conversation_evaluation_run_budget_exceeded");
   }
+
   replayStore.set(replayKey, expiresAt.timestamp);
-  runUsageStore.set(runKey, {
-    model_calls_used: runCallsUsed + 1,
-    expires_at: Math.max(Number(runUsage?.expires_at) || 0, expiresAt.timestamp),
-  });
   pruneReplayStore(nowMs, replayStore);
-  pruneRunUsageStore(nowMs, runUsageStore);
+
+  const metadata = {
+    authorization_version: PATIENT_CONVERSATION_EVALUATION_AUTHORIZATION_VERSION,
+    synthetic_fixture_verified: true,
+    fixture_source: fixture.source,
+    fixture_fingerprint: fixture.fixture_fingerprint,
+    key_id: expectedKeyId,
+    run_id: runId,
+    expires_at: expiresAt.text,
+    max_model_calls: maxModelCalls,
+    model_calls_used_in_process: runCallsUsed,
+    replay_protection_scope: "process_instance",
+  };
+  let modelCallConsumed = false;
 
   return {
     allowed: true,
     reason: null,
-    metadata: {
-      authorization_version: PATIENT_CONVERSATION_EVALUATION_AUTHORIZATION_VERSION,
-      synthetic_fixture_verified: true,
-      fixture_source: fixture.source,
-      fixture_fingerprint: fixture.fixture_fingerprint,
-      key_id: expectedKeyId,
-      run_id: runId,
-      expires_at: expiresAt.text,
-      max_model_calls: maxModelCalls,
-      model_calls_used_in_process: runCallsUsed + 1,
-      replay_protection_scope: "process_instance",
+    metadata,
+    consumeModelCall() {
+      if (modelCallConsumed) {
+        throw authorizationError(
+          "PATIENT_CONVERSATION_EVALUATION_AUTHORIZATION_CONSUMED",
+          "Evaluation authorization has already consumed its model-call reservation.",
+        );
+      }
+      modelCallConsumed = true;
+
+      pruneRunUsageStore(nowMs, runUsageStore);
+      const currentUsage = runUsageStore.get(runKey);
+      const currentCallsUsed =
+        normalizedPositiveInteger(currentUsage?.model_calls_used) || 0;
+      if (
+        currentCallsUsed >= maxModelCalls
+        || currentCallsUsed >= serverMaxCalls
+      ) {
+        throw authorizationError(
+          "PATIENT_CONVERSATION_EVALUATION_RUN_BUDGET_EXCEEDED",
+          "Evaluation model-call budget has been exceeded.",
+        );
+      }
+
+      const nextCallsUsed = currentCallsUsed + 1;
+      runUsageStore.set(runKey, {
+        model_calls_used: nextCallsUsed,
+        expires_at: Math.max(
+          Number(currentUsage?.expires_at) || 0,
+          expiresAt.timestamp,
+        ),
+      });
+      pruneRunUsageStore(nowMs, runUsageStore);
+      metadata.model_calls_used_in_process = nextCallsUsed;
+      return {
+        max_model_calls: maxModelCalls,
+        model_calls_used_in_process: nextCallsUsed,
+        replay_protection_scope: "process_instance",
+      };
     },
   };
 }
