@@ -10,7 +10,7 @@ import {
   PROVIDER_WORKSPACE_FUNCTION_ROUTES,
   invokeProviderWorkspaceFunction,
 } from '../../base44/shared/providerWorkspaceFunctionRouting.js';
-import { getBase44LatestFunctionClient } from '@/api/base44LatestFunctionClient';
+import { getBase44LatestFunctionClient } from './base44LatestFunctionClient.js';
 
 export const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-latest-1';
 
