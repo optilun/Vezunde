@@ -1,0 +1,83 @@
+name: Patient Conversation Full Shadow Harness
+
+on:
+  pull_request:
+    paths:
+      - "tests/fixtures/patient-conversation-agent-evaluations.json"
+      - "tests/fixtures/patient-conversation-agent-adversarial-evaluations.json"
+      - "tests/fixtures/patient-conversation-agent-state-evaluations.json"
+      - "tests/fixtures/patient-conversation-agent-evaluation-overrides.json"
+      - "scripts/patient-conversation-fixture-loader.mjs"
+      - "scripts/patient-conversation-fixture-contract.mjs"
+      - "scripts/patient-conversation-capture-identity.mjs"
+      - "scripts/patient-conversation-runtime-evidence.mjs"
+      - "scripts/prepare-patient-conversation-shadow-run.mjs"
+      - "scripts/prepare-patient-conversation-full-shadow-run.mjs"
+      - "scripts/evaluate-patient-conversation-results.mjs"
+      - "scripts/evaluate-patient-conversation-results-validated.mjs"
+      - "scripts/verify-patient-conversation-shadow-harness-core.mjs"
+      - "scripts/verify-patient-conversation-full-shadow-harness.mjs"
+      - "scripts/verify-patient-conversation-capture-identity.mjs"
+      - "scripts/verify-patient-conversation-shadow-harness.mjs"
+      - ".github/workflows/patient-conversation-full-shadow-harness-ci.yml"
+
+concurrency:
+  group: patient-conversation-full-shadow-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        shell: cmd
+        run: npm ci --no-audit --no-fund
+      - name: Verify full shadow capture harness
+        shell: cmd
+        run: node scripts/verify-patient-conversation-shadow-harness.mjs
+      - name: Prepare complete shadow request manifest
+        shell: cmd
+        run: |
+          if not exist tmp mkdir tmp
+          node scripts/prepare-patient-conversation-full-shadow-run.mjs --output tmp/patient-conversation-shadow-run.json --repeat 1 --critical-repeat 3 > tmp/patient-conversation-shadow-requests.json
+          node -e "const fs=require('fs');const requests=JSON.parse(fs.readFileSync('tmp/patient-conversation-shadow-requests.json','utf8'));const capture=JSON.parse(fs.readFileSync('tmp/patient-conversation-shadow-run.json','utf8'));if(requests.selected_cases.length!==71)throw new Error('Expected exactly 71 selected cases.');if(requests.requests.length!==requests.pending_attempts.length)throw new Error('Request and pending attempt counts differ.');if(capture.model_run.selected_case_ids.length!==71)throw new Error('Capture identity does not contain 71 cases.');if(capture.model_run.default_repeat_count!==1||capture.model_run.critical_repeat_count!==3)throw new Error('Repeat policy mismatch.');console.log(JSON.stringify({selected_cases:requests.selected_cases.length,pending_attempts:requests.pending_attempts.length,requests:requests.requests.length,fixture_fingerprint:capture.model_run.fixture_fingerprint},null,2));"
+      - name: Upload complete shadow request manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: patient-conversation-full-shadow-request-manifest
+          path: |
+            tmp/patient-conversation-shadow-run.json
+            tmp/patient-conversation-shadow-requests.json
+          if-no-files-found: error
+          retention-days: 3
+      - name: Lint full shadow capture harness
+        shell: cmd
+        run: >-
+          npx eslint
+          scripts/patient-conversation-fixture-loader.mjs
+          scripts/patient-conversation-fixture-contract.mjs
+          scripts/patient-conversation-capture-identity.mjs
+          scripts/patient-conversation-runtime-evidence.mjs
+          scripts/prepare-patient-conversation-shadow-run.mjs
+          scripts/prepare-patient-conversation-full-shadow-run.mjs
+          scripts/evaluate-patient-conversation-results.mjs
+          scripts/evaluate-patient-conversation-results-validated.mjs
+          scripts/verify-patient-conversation-shadow-harness-core.mjs
+          scripts/verify-patient-conversation-full-shadow-harness.mjs
+          scripts/verify-patient-conversation-capture-identity.mjs
+          scripts/verify-patient-conversation-shadow-harness.mjs
+          --quiet

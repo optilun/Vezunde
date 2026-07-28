@@ -1,0 +1,812 @@
+{
+  "contract_version": "viasee-patient-conversation-agent-v1",
+  "fixture_version": "patient-conversation-agent-evaluations-v1",
+  "language": "ro",
+  "purpose": "External semantic evaluations. These phrases must never become production phrase triggers.",
+  "evaluation_rules": {
+    "exact_assistant_wording_required": false,
+    "maximum_questions_per_turn": 1,
+    "provider_ranking_allowed": false,
+    "top3_selection_allowed": false,
+    "diagnosis_allowed": false,
+    "emergency_guidance_requires_confirmed_urgency": true,
+    "generic_112_primary_action_allowed": false
+  },
+  "cases": [
+    {
+      "id": "vague-001",
+      "category": "vague_initial_request",
+      "conversation": [{ "role": "user", "content": "caut ceva despre vedere" }],
+      "expected": {
+        "primary_intent": "unknown",
+        "care_paths_any": ["unresolved"],
+        "service_keys_all": [],
+        "next_action": "ask_clarifying_question",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla daca persoana cauta un control, descrie o problema, cauta produse, investigatii sau reparatii",
+        "must_not": ["search_providers", "show_emergency_guidance"]
+      }
+    },
+    {
+      "id": "vague-002",
+      "category": "vague_specialist_request",
+      "conversation": [{ "role": "user", "content": "vreau sa vorbesc cu cineva pentru ochi" }],
+      "expected": {
+        "primary_intent": "unknown",
+        "care_paths_any": ["unresolved", "optometry", "ophthalmology"],
+        "service_keys_all": [],
+        "next_action": "ask_clarifying_question",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla ce nevoie sau problema vrea sa rezolve",
+        "must_not": ["show_emergency_guidance"]
+      }
+    },
+    {
+      "id": "control-001",
+      "category": "clear_routine_exam",
+      "conversation": [{ "role": "user", "content": "vreau un control de vedere in Timisoara" }],
+      "expected": {
+        "primary_intent": "control_vedere",
+        "care_paths_any": ["optometry", "ophthalmology"],
+        "service_keys_any": ["optometry_consultation", "ophthalmology_consultation", "complete_eye_exam"],
+        "provider_types_any": ["independent_optometrist", "independent_ophthalmologist", "ophthalmology_clinic", "ophthalmology_office", "independent_optical_store", "optical_chain"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Timisoara" },
+        "must_not": ["ask_child_age", "ask_safety_screening"]
+      }
+    },
+    {
+      "id": "control-002",
+      "category": "clear_refraction",
+      "conversation": [{ "role": "user", "content": "as vrea sa imi verific dioptriile in Sibiu" }],
+      "expected": {
+        "primary_intent": "control_vedere",
+        "care_paths_any": ["optometry"],
+        "service_keys_all": ["refraction"],
+        "service_keys_any": ["optometry_consultation", "visual_acuity_test", "autorefractometry"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Sibiu" }
+      }
+    },
+    {
+      "id": "control-003",
+      "category": "missing_locality",
+      "conversation": [{ "role": "user", "content": "am nevoie de un control pentru dioptrii" }],
+      "expected": {
+        "primary_intent": "control_vedere",
+        "care_paths_any": ["optometry"],
+        "service_keys_any": ["refraction", "optometry_consultation"],
+        "next_action": "ask_locality",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla orasul sau zona pentru cautare"
+      }
+    },
+    {
+      "id": "repair-001",
+      "category": "clear_repair_missing_locality",
+      "conversation": [{ "role": "user", "content": "mi s-au rupt ochelarii" }],
+      "expected": {
+        "primary_intent": "reparatii_ochelari",
+        "care_paths_any": ["technical_optical_service"],
+        "service_keys_any": ["eyeglasses_repair", "frame_repair"],
+        "next_action": "ask_locality",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla localitatea; nu cere detalii medicale"
+      }
+    },
+    {
+      "id": "repair-002",
+      "category": "clear_specific_repair",
+      "conversation": [{ "role": "user", "content": "s-a rupt balamaua la ochelari si sunt in Arad" }],
+      "expected": {
+        "primary_intent": "reparatii_ochelari",
+        "care_paths_any": ["technical_optical_service"],
+        "service_keys_all": ["hinge_repair"],
+        "service_keys_any": ["eyeglasses_repair", "frame_repair"],
+        "provider_types_any": ["independent_optical_store", "optical_chain", "independent_optician", "optical_laboratory_b2c"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Arad" }
+      }
+    },
+    {
+      "id": "repair-003",
+      "category": "conversation_memory",
+      "conversation": [
+        { "role": "user", "content": "mi s-au stricat ochelarii" },
+        { "role": "assistant", "content": "Ce anume s-a stricat si in ce oras cauti?" },
+        { "role": "user", "content": "balamaua, in Brasov" }
+      ],
+      "expected": {
+        "primary_intent": "reparatii_ochelari",
+        "care_paths_any": ["technical_optical_service"],
+        "service_keys_all": ["hinge_repair"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Brasov" },
+        "must_not": ["forget_previous_need"]
+      }
+    },
+    {
+      "id": "repair-004",
+      "category": "adjustment",
+      "conversation": [{ "role": "user", "content": "ochelarii stau stramb si ma jeneaza dupa ureche in Deva" }],
+      "expected": {
+        "primary_intent": "reparatii_ochelari",
+        "care_paths_any": ["technical_optical_service"],
+        "service_keys_any": ["eyeglasses_adjustment", "temple_adjustment", "frame_straightening"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Deva" }
+      }
+    },
+    {
+      "id": "repair-005",
+      "category": "lens_replacement",
+      "conversation": [{ "role": "user", "content": "vreau sa schimb doar lentilele in rama mea in Bistrita" }],
+      "expected": {
+        "primary_intent": "ochelari_lentile",
+        "care_paths_any": ["optical_store", "technical_optical_service"],
+        "service_keys_any": ["lens_replacement", "client_frame_lens_mounting", "prescription_lenses"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Bistrita" }
+      }
+    },
+    {
+      "id": "blur-001",
+      "category": "ambiguous_blurred_vision",
+      "conversation": [{ "role": "user", "content": "vad in ceata la citit" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["optometry", "ophthalmology"],
+        "service_keys_any": ["optometry_consultation", "refraction", "ophthalmology_consultation"],
+        "next_action": "ask_clarifying_question",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla daca problema apare doar la aproape sau si la distanta si/sau de cand exista",
+        "must_not": ["show_emergency_guidance", "emergency_interruption"]
+      }
+    },
+    {
+      "id": "blur-002",
+      "category": "longstanding_reduced_vision",
+      "conversation": [{ "role": "user", "content": "cu stangul vad ca prin abur de cateva luni" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["optometry", "ophthalmology"],
+        "service_keys_any": ["optometry_consultation", "ophthalmology_consultation", "complete_eye_exam"],
+        "next_action": "ask_locality",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla localitatea; durata lunga exclude escaladarea automata",
+        "must_not": ["show_emergency_guidance"]
+      }
+    },
+    {
+      "id": "blur-003",
+      "category": "reading_difficulty",
+      "conversation": [{ "role": "user", "content": "seara nu mai disting bine literele mici" }],
+      "expected": {
+        "primary_intent": "control_vedere",
+        "care_paths_any": ["optometry"],
+        "service_keys_any": ["refraction", "optometry_consultation", "reading_lenses"],
+        "next_action": "ask_locality",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla localitatea",
+        "must_not": ["show_emergency_guidance"]
+      }
+    },
+    {
+      "id": "blur-004",
+      "category": "headache_at_near",
+      "conversation": [{ "role": "user", "content": "ma doare capul cand citesc de cateva luni" }],
+      "expected": {
+        "primary_intent": "control_vedere",
+        "care_paths_any": ["optometry", "ophthalmology"],
+        "service_keys_any": ["optometry_consultation", "refraction", "binocular_vision"],
+        "next_action": "ask_clarifying_question",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla daca exista si dificultati de vedere la aproape sau alte simptome relevante",
+        "must_not": ["diagnose", "show_emergency_guidance"]
+      }
+    },
+    {
+      "id": "vision-loss-001",
+      "category": "ambiguous_vision_loss",
+      "conversation": [{ "role": "user", "content": "nu mai vad cu un ochi" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["ophthalmology", "unresolved"],
+        "service_keys_any": ["ophthalmology_consultation", "complete_eye_exam"],
+        "next_action": "ask_clarifying_question",
+        "urgency": "possible",
+        "must_ask": true,
+        "question_goal": "distinge pierderea brusca aproape completa de vederea incetosata sau slaba",
+        "must_not": ["show_emergency_guidance", "generic_112_action"]
+      }
+    },
+    {
+      "id": "vision-loss-002",
+      "category": "resolved_nonurgent_ambiguity",
+      "conversation": [
+        { "role": "user", "content": "nu mai vad cu un ochi" },
+        { "role": "assistant", "content": "Vederea a disparut brusc aproape complet sau vezi in continuare, dar mai slab ori incetosat?" },
+        { "role": "user", "content": "vad, doar ca mult mai slab de vreo doi ani" }
+      ],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["ophthalmology", "optometry"],
+        "service_keys_any": ["ophthalmology_consultation", "complete_eye_exam", "optometry_consultation"],
+        "next_action": "ask_locality",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla localitatea",
+        "must_not": ["show_emergency_guidance"]
+      }
+    },
+    {
+      "id": "vision-loss-003",
+      "category": "confirmed_acute_vision_loss",
+      "conversation": [
+        { "role": "user", "content": "nu mai vad cu un ochi" },
+        { "role": "assistant", "content": "Vederea a disparut brusc aproape complet sau vezi in continuare, dar mai slab ori incetosat?" },
+        { "role": "user", "content": "a disparut brusc azi dimineata, aproape complet" }
+      ],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["emergency_interruption"],
+        "service_keys_any": ["emergency_ophthalmology"],
+        "next_action": "show_emergency_guidance",
+        "urgency": "confirmed",
+        "must_ask": false,
+        "must_include_guidance": ["cel mai apropiat spital sau serviciu de urgenta"],
+        "must_not": ["commercial_top3", "generic_112_primary_action"]
+      }
+    },
+    {
+      "id": "emergency-001",
+      "category": "clear_chemical_injury",
+      "conversation": [{ "role": "user", "content": "mi-a sarit spray de curatat cuptorul in ochi" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["emergency_interruption"],
+        "service_keys_any": ["emergency_ophthalmology", "ocular_trauma"],
+        "next_action": "show_emergency_guidance",
+        "urgency": "confirmed",
+        "must_ask": false,
+        "must_not": ["commercial_top3", "generic_112_primary_action"]
+      }
+    },
+    {
+      "id": "emergency-002",
+      "category": "minor_household_exposure_ambiguity",
+      "conversation": [{ "role": "user", "content": "mi-a intrat sampon in ochi, am clatit si inca ma ustura putin" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["ophthalmology", "unresolved"],
+        "service_keys_any": ["ophthalmology_consultation"],
+        "next_action": "ask_clarifying_question",
+        "urgency": "possible",
+        "must_ask": true,
+        "question_goal": "afla daca vederea este afectata, durerea este severa sau simptomele se agraveaza",
+        "must_not": ["automatic_confirmed_emergency", "generic_112_primary_action"]
+      }
+    },
+    {
+      "id": "emergency-003",
+      "category": "penetrating_foreign_body",
+      "conversation": [{ "role": "user", "content": "mi-a sarit o aschie de metal si a ramas infipta in ochi" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["emergency_interruption"],
+        "service_keys_any": ["emergency_ophthalmology", "ocular_trauma", "foreign_body_removal"],
+        "next_action": "show_emergency_guidance",
+        "urgency": "confirmed",
+        "must_ask": false,
+        "must_not": ["commercial_top3", "generic_112_primary_action"]
+      }
+    },
+    {
+      "id": "emergency-004",
+      "category": "ambiguous_blunt_trauma",
+      "conversation": [{ "role": "user", "content": "m-am lovit la ochi cu mingea si vad cam in ceata" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["ophthalmology", "emergency_interruption"],
+        "service_keys_any": ["ocular_trauma", "ophthalmology_consultation", "emergency_ophthalmology"],
+        "next_action": "ask_clarifying_question",
+        "urgency": "possible",
+        "must_ask": true,
+        "question_goal": "afla severitatea, momentul si daca vederea a scazut mult sau exista durere importanta",
+        "must_not": ["automatic_confirmed_emergency"]
+      }
+    },
+    {
+      "id": "emergency-005",
+      "category": "confirmed_blunt_trauma",
+      "conversation": [{ "role": "user", "content": "m-a lovit ceva tare in ochi si acum aproape nu mai vad deloc" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["emergency_interruption"],
+        "service_keys_any": ["emergency_ophthalmology", "ocular_trauma"],
+        "next_action": "show_emergency_guidance",
+        "urgency": "confirmed",
+        "must_ask": false,
+        "must_not": ["commercial_top3", "generic_112_primary_action"]
+      }
+    },
+    {
+      "id": "emergency-006",
+      "category": "postoperative_change",
+      "conversation": [{ "role": "user", "content": "dupa operatia de ieri ochiul e rosu, ma doare si vad mai prost" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["emergency_interruption"],
+        "service_keys_any": ["emergency_ophthalmology"],
+        "next_action": "show_emergency_guidance",
+        "urgency": "confirmed",
+        "must_ask": false,
+        "must_not": ["commercial_top3", "generic_112_primary_action"]
+      }
+    },
+    {
+      "id": "emergency-007",
+      "category": "retinal_warning_description",
+      "conversation": [{ "role": "user", "content": "de azi vad fulgere si o perdea neagra intr-o parte" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["emergency_interruption"],
+        "service_keys_any": ["emergency_ophthalmology", "retina_consultation"],
+        "next_action": "show_emergency_guidance",
+        "urgency": "confirmed",
+        "must_ask": false,
+        "must_not": ["commercial_top3", "generic_112_primary_action"]
+      }
+    },
+    {
+      "id": "emergency-008",
+      "category": "longstanding_floaters",
+      "conversation": [{ "role": "user", "content": "am muste zburatoare de ani de zile, nu s-au schimbat" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["ophthalmology"],
+        "service_keys_any": ["ophthalmology_consultation", "fundus_exam"],
+        "next_action": "ask_locality",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla localitatea",
+        "must_not": ["show_emergency_guidance"]
+      }
+    },
+    {
+      "id": "investigation-001",
+      "category": "named_investigation",
+      "conversation": [{ "role": "user", "content": "vreau OCT de retina in Cluj" }],
+      "expected": {
+        "primary_intent": "investigatii",
+        "care_paths_any": ["specialized_ophthalmology", "ophthalmology"],
+        "service_keys_all": ["oct"],
+        "provider_types_any": ["ophthalmology_clinic", "ophthalmology_office"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Cluj-Napoca" }
+      }
+    },
+    {
+      "id": "investigation-002",
+      "category": "colloquial_investigation_description",
+      "conversation": [{ "role": "user", "content": "medicul mi-a zis sa fac poza la fundul de ochi dar nu stiu cum se cheama" }],
+      "expected": {
+        "primary_intent": "investigatii",
+        "care_paths_any": ["ophthalmology", "specialized_ophthalmology"],
+        "service_keys_any": ["fundus_camera", "fundus_exam"],
+        "next_action": "ask_locality",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla localitatea, fara a obliga utilizatorul sa cunoasca denumirea tehnica"
+      }
+    },
+    {
+      "id": "investigation-003",
+      "category": "short_named_investigation",
+      "conversation": [{ "role": "user", "content": "camp vizual Bucuresti" }],
+      "expected": {
+        "primary_intent": "investigatii",
+        "care_paths_any": ["ophthalmology", "specialized_ophthalmology"],
+        "service_keys_all": ["visual_field_analyzer"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Bucuresti" }
+      }
+    },
+    {
+      "id": "investigation-004",
+      "category": "conversation_correction",
+      "conversation": [
+        { "role": "user", "content": "vreau sa imi fac ochelari" },
+        { "role": "assistant", "content": "Ai deja o reteta si in ce oras cauti?" },
+        { "role": "user", "content": "de fapt medicul mi-a dat trimitere pentru OCT, in Iasi" }
+      ],
+      "expected": {
+        "primary_intent": "investigatii",
+        "care_paths_any": ["ophthalmology", "specialized_ophthalmology"],
+        "service_keys_all": ["oct"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Iasi" },
+        "must_not": ["retain_superseded_eyeglasses_intent"]
+      }
+    },
+    {
+      "id": "contact-lens-001",
+      "category": "first_contact_lenses",
+      "conversation": [{ "role": "user", "content": "vreau lentile de contact pentru prima data in Timisoara" }],
+      "expected": {
+        "primary_intent": "lentile_contact",
+        "care_paths_any": ["optometry"],
+        "service_keys_any": ["contact_lens_consultation", "contact_lens_fitting", "contact_lens_trial", "contact_lens_insertion_training"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Timisoara", "contact_lens_experience": "first_time" }
+      }
+    },
+    {
+      "id": "contact-lens-002",
+      "category": "repeat_purchase",
+      "conversation": [{ "role": "user", "content": "port deja lentile, vreau doar sa cumpar aceleasi" }],
+      "expected": {
+        "primary_intent": "lentile_contact",
+        "care_paths_any": ["optical_store"],
+        "service_keys_all": ["contact_lenses"],
+        "next_action": "ask_locality",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla localitatea, fara a forta un consult daca utilizatorul cere explicit aceleasi lentile"
+      }
+    },
+    {
+      "id": "contact-lens-003",
+      "category": "orthokeratology_child",
+      "conversation": [{ "role": "user", "content": "caut lentile de noapte pentru copil in Oradea" }],
+      "expected": {
+        "primary_intent": "lentile_contact",
+        "care_paths_any": ["optometry", "specialized_ophthalmology"],
+        "service_keys_all": ["orthokeratology"],
+        "service_keys_any": ["myopia_control_contact_lenses", "children_eye_exam"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Oradea", "for_whom": "child" }
+      }
+    },
+    {
+      "id": "optical-product-001",
+      "category": "computer_glasses",
+      "conversation": [{ "role": "user", "content": "caut ochelari pentru calculator in Brasov" }],
+      "expected": {
+        "primary_intent": "ochelari_lentile",
+        "care_paths_any": ["optical_store"],
+        "service_keys_any": ["computer_screen_glasses", "office_lenses", "blue_light_lenses"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Brasov" }
+      }
+    },
+    {
+      "id": "optical-product-002",
+      "category": "prescription_sunglasses",
+      "conversation": [{ "role": "user", "content": "vreau ochelari de soare cu dioptrii in Constanta" }],
+      "expected": {
+        "primary_intent": "ochelari_lentile",
+        "care_paths_any": ["optical_store"],
+        "service_keys_all": ["prescription_sunglasses"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Constanta" }
+      }
+    },
+    {
+      "id": "optical-product-003",
+      "category": "prescription_and_thin_lenses",
+      "conversation": [{ "role": "user", "content": "am reteta si vreau lentile subtiri in Bucuresti" }],
+      "expected": {
+        "primary_intent": "ochelari_lentile",
+        "care_paths_any": ["optical_store"],
+        "service_keys_any": ["thin_lenses", "prescription_lenses", "eyeglasses"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Bucuresti", "prescription_status": "has_prescription" }
+      }
+    },
+    {
+      "id": "optical-product-004",
+      "category": "cas_request",
+      "conversation": [{ "role": "user", "content": "caut unde pot face ochelari prin CAS in Ploiesti" }],
+      "expected": {
+        "primary_intent": "ochelari_lentile",
+        "care_paths_any": ["optical_store"],
+        "service_keys_all": ["cas_reimbursed_services"],
+        "service_keys_any": ["eyeglasses", "prescription_lenses"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Ploiesti" }
+      }
+    },
+    {
+      "id": "child-001",
+      "category": "child_strabismus",
+      "conversation": [{ "role": "user", "content": "copilul are 5 ani si ii fuge un ochi" }],
+      "expected": {
+        "primary_intent": "control_copil",
+        "care_paths_any": ["specialized_ophthalmology", "ophthalmology"],
+        "service_keys_any": ["pediatric_ophthalmology", "strabismus", "children_eye_exam"],
+        "next_action": "ask_locality",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla localitatea",
+        "required_facts": { "for_whom": "child", "age_group": "3_6_ani" }
+      }
+    },
+    {
+      "id": "child-002",
+      "category": "child_school_vision",
+      "conversation": [{ "role": "user", "content": "copilul nu vede bine la tabla" }],
+      "expected": {
+        "primary_intent": "control_copil",
+        "care_paths_any": ["optometry", "ophthalmology"],
+        "service_keys_any": ["children_eye_exam", "pediatric_refraction", "visual_acuity_test"],
+        "next_action": "ask_clarifying_question",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla varsta copilului sau localitatea, alegand informatia care schimba mai mult traseul"
+      }
+    },
+    {
+      "id": "child-003",
+      "category": "progressive_child_myopia",
+      "conversation": [{ "role": "user", "content": "la copil creste miopia foarte repede si caut ajutor in Timisoara" }],
+      "expected": {
+        "primary_intent": "control_copil",
+        "care_paths_any": ["specialized_ophthalmology", "optometry"],
+        "service_keys_any": ["myopia_management", "myopia_control_children", "myopia_control_spectacle_lenses", "myopia_control_contact_lenses"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Timisoara", "for_whom": "child" }
+      }
+    },
+    {
+      "id": "child-004",
+      "category": "amblyopia_support",
+      "conversation": [{ "role": "user", "content": "caut in Timisoara pe cineva care lucreaza cu copii cu ambliopie" }],
+      "expected": {
+        "primary_intent": "control_copil",
+        "care_paths_any": ["specialized_ophthalmology", "optometry"],
+        "service_keys_any": ["amblyopia_screening", "vision_therapy", "pediatric_ophthalmology"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Timisoara", "for_whom": "child" }
+      }
+    },
+    {
+      "id": "symptom-001",
+      "category": "dry_eye_colloquial",
+      "conversation": [{ "role": "user", "content": "ma ustura ochii si parca am nisip dupa ce stau la calculator" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["optometry", "ophthalmology"],
+        "service_keys_any": ["dry_eye_screening", "dry_eye_management", "optometry_consultation", "ophthalmology_consultation"],
+        "next_action": "ask_locality",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla localitatea",
+        "must_not": ["show_emergency_guidance"]
+      }
+    },
+    {
+      "id": "symptom-002",
+      "category": "red_eye_nonsevere",
+      "conversation": [{ "role": "user", "content": "am un ochi rosu de ieri dar nu ma doare si vad normal" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["ophthalmology"],
+        "service_keys_any": ["ophthalmology_consultation", "anterior_segment_exam"],
+        "next_action": "ask_locality",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla localitatea",
+        "must_not": ["show_emergency_guidance"]
+      }
+    },
+    {
+      "id": "symptom-003",
+      "category": "severe_red_eye_cluster",
+      "conversation": [{ "role": "user", "content": "ochiul e foarte rosu, ma doare tare si imi vine sa vomit de azi" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["emergency_interruption"],
+        "service_keys_any": ["emergency_ophthalmology"],
+        "next_action": "show_emergency_guidance",
+        "urgency": "confirmed",
+        "must_ask": false,
+        "must_not": ["commercial_top3", "generic_112_primary_action"]
+      }
+    },
+    {
+      "id": "specialized-001",
+      "category": "cataract",
+      "conversation": [{ "role": "user", "content": "caut un doctor pentru cataracta in Craiova" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["specialized_ophthalmology"],
+        "service_keys_any": ["cataract_consultation", "ophthalmology_consultation"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Craiova" }
+      }
+    },
+    {
+      "id": "specialized-002",
+      "category": "glaucoma_second_opinion",
+      "conversation": [{ "role": "user", "content": "vreau o a doua opinie pentru glaucom in Timisoara" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["specialized_ophthalmology"],
+        "service_keys_all": ["second_opinion", "glaucoma_consultation"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Timisoara" }
+      }
+    },
+    {
+      "id": "specialized-003",
+      "category": "eye_pressure",
+      "conversation": [{ "role": "user", "content": "unde pot sa imi masor tensiunea oculara in Cluj" }],
+      "expected": {
+        "primary_intent": "investigatii",
+        "care_paths_any": ["ophthalmology", "specialized_ophthalmology"],
+        "service_keys_any": ["tonometry", "eye_pressure_check"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Cluj-Napoca" }
+      }
+    },
+    {
+      "id": "specialized-004",
+      "category": "refractive_surgery_interest",
+      "conversation": [{ "role": "user", "content": "vreau laser ca sa scap de ochelari" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["specialized_ophthalmology"],
+        "service_keys_any": ["refractive_surgery", "ophthalmology_consultation"],
+        "next_action": "ask_locality",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla localitatea, fara a promite eligibilitatea pentru interventie"
+      }
+    },
+    {
+      "id": "home-visit-001",
+      "category": "home_visit",
+      "conversation": [{ "role": "user", "content": "caut un control de vedere acasa pentru bunica in Sibiu" }],
+      "expected": {
+        "primary_intent": "control_vedere",
+        "care_paths_any": ["optometry", "ophthalmology"],
+        "service_keys_all": ["onsite_eye_testing_b2b"],
+        "service_keys_any": ["optometry_consultation", "ophthalmology_consultation"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Sibiu", "for_whom": "adult" }
+      }
+    },
+    {
+      "id": "locality-001",
+      "category": "generic_near_me",
+      "conversation": [{ "role": "user", "content": "unde gasesc un oftalmolog aproape de mine" }],
+      "expected": {
+        "primary_intent": "control_vedere",
+        "care_paths_any": ["ophthalmology"],
+        "service_keys_any": ["ophthalmology_consultation"],
+        "next_action": "ask_locality",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla localitatea sau permite folosirea locatiei numai cu acordul utilizatorului"
+      }
+    },
+    {
+      "id": "locality-002",
+      "category": "conversation_locality_memory",
+      "conversation": [
+        { "role": "user", "content": "vreau un control de vedere" },
+        { "role": "assistant", "content": "In ce oras sau zona cauti?" },
+        { "role": "user", "content": "Timisoara, zona centrala" }
+      ],
+      "expected": {
+        "primary_intent": "control_vedere",
+        "care_paths_any": ["optometry", "ophthalmology"],
+        "service_keys_any": ["optometry_consultation", "ophthalmology_consultation"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Timisoara", "locality_area": "zona centrala" }
+      }
+    },
+    {
+      "id": "urgent-word-001",
+      "category": "self_declared_urgent_without_context",
+      "conversation": [{ "role": "user", "content": "am nevoie urgent de un oftalmolog" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["ophthalmology", "unresolved"],
+        "service_keys_any": ["ophthalmology_consultation"],
+        "next_action": "ask_clarifying_question",
+        "urgency": "possible",
+        "must_ask": true,
+        "question_goal": "afla pe scurt ce s-a intamplat pentru a distinge o preferinta de timp de o urgenta medicala clara",
+        "must_not": ["automatic_confirmed_emergency", "generic_112_primary_action"]
+      }
+    },
+    {
+      "id": "noise-001",
+      "category": "spelling_and_informal_language",
+      "conversation": [{ "role": "user", "content": "ma ustra oki si park am nisip in ei" }],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["optometry", "ophthalmology"],
+        "service_keys_any": ["dry_eye_screening", "dry_eye_management", "ophthalmology_consultation"],
+        "next_action": "ask_locality",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla localitatea, demonstrand intelegerea mesajului cu greseli"
+      }
+    },
+    {
+      "id": "summary-001",
+      "category": "specialist_summary",
+      "conversation": [
+        { "role": "user", "content": "vad mai prost cand citesc si ma doare capul" },
+        { "role": "assistant", "content": "De cand ai observat si in ce oras cauti?" },
+        { "role": "user", "content": "de cateva luni, in Timisoara, pot dupa ora 17" }
+      ],
+      "expected": {
+        "primary_intent": "control_vedere",
+        "care_paths_any": ["optometry", "ophthalmology"],
+        "service_keys_any": ["optometry_consultation", "refraction", "binocular_vision"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Timisoara", "duration": "cateva luni", "timing_preference": "dupa ora 17" },
+        "specialist_summary_must_include": ["vedere mai slaba la citit", "dureri de cap", "cateva luni", "Timisoara", "dupa ora 17"],
+        "must_not": ["diagnosis", "invented_symptoms", "contact_details_without_consent"]
+      }
+    }
+  ]
+}

@@ -6,27 +6,101 @@ on:
       - "shared/patientGuidanceQuestionCatalog.js"
       - "shared/patientGuidanceRouting.js"
       - "shared/patientGuidancePlanner.js"
+      - "shared/patientConversationAgent.js"
+      - "shared/patientConversationCanonicalAdapter.js"
+      - "shared/patientConversationCanonicalBoundary.js"
+      - "shared/patientConversationDecisionPolicy.js"
+      - "shared/patientConversationEvaluation.js"
+      - "shared/patientConversationGrounding.js"
+      - "shared/patientConversationGuardrails.js"
+      - "shared/patientConversationGuidanceHandoff.js"
+      - "shared/patientConversationGuidancePlannerBridge.js"
+      - "shared/patientConversationOperationalPolicy.js"
+      - "shared/patientConversationDurableStatePolicy.js"
+      - "shared/patientConversationStatePolicy.js"
+      - "shared/patientConversationStateDeltaReducer.js"
+      - "shared/patientEyeSafetyPolicy.js"
+      - "shared/patientEmergencyGuidance.js"
       - "base44/shared/patientGuidanceQuestionCatalog.js"
       - "base44/shared/patientGuidanceRouting.js"
       - "base44/shared/patientGuidancePlanner.js"
+      - "base44/shared/patientConversationAgent.js"
+      - "base44/shared/patientConversationCanonicalAdapter.js"
+      - "base44/shared/patientConversationCanonicalBoundary.js"
+      - "base44/shared/patientConversationDecisionPolicy.js"
+      - "base44/shared/patientConversationGrounding.js"
+      - "base44/shared/patientConversationGuardrails.js"
+      - "base44/shared/patientConversationGuidanceHandoff.js"
+      - "base44/shared/patientConversationGuidancePlannerBridge.js"
+      - "base44/shared/patientConversationOperationalPolicy.js"
+      - "base44/shared/patientConversationDurableStatePolicy.js"
+      - "base44/shared/patientConversationStatePolicy.js"
+      - "base44/shared/patientConversationStateDeltaReducer.js"
+      - "base44/shared/patientEyeSafetyPolicy.js"
       - "base44/shared/patientSafety.js"
+      - "base44/shared/patientEmergencyGuidance.js"
       - "base44/functions/matchProvidersSemantic/entry.ts"
+      - "base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts"
+      - "base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts"
       - "src/lib/providerSemanticSearch.js"
+      - "src/lib/patientSafety.js"
+      - "src/components/intake2/QuestionText.jsx"
+      - "src/components/intake2/UrgencyInterruption.jsx"
+      - "docs/patient-conversation-agent-v1.md"
+      - "docs/patient-conversation-agent-acceptance.md"
+      - "docs/patient-conversation-guidance-handoff.md"
+      - "docs/patient-conversation-operational-policy.md"
+      - "docs/patient-conversation-durable-state-policy.md"
+      - "docs/patient-conversation-symptom-grounding.md"
+      - "docs/patient-conversation-validation-blockers.md"
+      - "docs/patient-emergency-guidance-policy.md"
+      - "tests/fixtures/patient-conversation-agent-evaluations.json"
+      - "tests/fixtures/patient-conversation-agent-adversarial-evaluations.json"
+      - "tests/fixtures/patient-conversation-agent-state-evaluations.json"
+      - "tests/fixtures/patient-conversation-agent-evaluation-overrides.json"
+      - "scripts/patient-conversation-fixture-loader.mjs"
+      - "scripts/patient-conversation-fixture-contract.mjs"
+      - "scripts/verify-patient-guidance-routing.mjs"
+      - "scripts/verify-patient-guidance-planner.mjs"
+      - "scripts/verify-patient-guidance-runtime-shadow.mjs"
+      - "scripts/verify-patient-conversation-agent.mjs"
+      - "scripts/verify-patient-conversation-shadow-route.mjs"
+      - "scripts/verify-patient-conversation-evaluation.mjs"
+      - "scripts/verify-patient-conversation-grounding.mjs"
+      - "scripts/verify-patient-conversation-model-response-contract.mjs"
+      - "scripts/verify-patient-conversation-repeated-evaluation.mjs"
+      - "scripts/verify-patient-conversation-terminal-failure-gate.mjs"
+      - "scripts/verify-patient-conversation-decision-policy.mjs"
+      - "scripts/verify-patient-conversation-deterministic-preflight-evaluation.mjs"
+      - "scripts/verify-patient-conversation-guidance-handoff.mjs"
+      - "scripts/verify-patient-conversation-guidance-planner-bridge.mjs"
+      - "scripts/verify-patient-conversation-state-policy.mjs"
+      - "scripts/verify-patient-conversation-state-delta-reducer.mjs"
+      - "scripts/verify-patient-conversation-canonical-boundary.mjs"
+      - "scripts/verify-patient-conversation-operational-policy.mjs"
+      - "scripts/verify-patient-conversation-durable-state-policy.mjs"
+      - "scripts/verify-patient-conversation-marketplace-isolation.mjs"
+      - "scripts/verify-patient-conversation-state-compatibility.mjs"
+      - "scripts/verify-patient-conversation-state-evaluation-contract.mjs"
+      - "scripts/verify-patient-conversation-shadow-harness.mjs"
+      - "scripts/verify-patient-conversation-fixture-contract.mjs"
+      - "scripts/verify-patient-conversation-fixture-audit.mjs"
+      - "scripts/verify-patient-emergency-guidance-policy.mjs"
+      - "scripts/verify-patient-intake-safety.mjs"
+      - "scripts/prepare-patient-conversation-shadow-run.mjs"
+      - "scripts/evaluate-patient-conversation-results.mjs"
+      - "scripts/evaluate-patient-conversation-results-validated.mjs"
       - "src/lib/patientIntentConfirmation.js"
       - "src/lib/patientIntakeSession.js"
       - "src/lib/patientRequestDraft.js"
-      - "src/lib/patientSafety.js"
       - "src/components/intake2/ConversationalCard.jsx"
       - "src/components/intake2/PatientIntentConfirmation.jsx"
       - "src/components/intake2/QuestionChoice.jsx"
-      - "scripts/verify-patient-guidance-routing.mjs"
       - "scripts/verify-patient-guidance-adaptive-question-selection.mjs"
       - "scripts/verify-patient-guidance-question-selection-hardening.mjs"
       - "scripts/verify-patient-ai-intent-confirmation.mjs"
       - "scripts/verify-patient-intake-session-hardening.mjs"
-      - "scripts/verify-patient-intake-safety.mjs"
-      - "scripts/verify-patient-guidance-planner.mjs"
-      - "scripts/verify-patient-guidance-runtime-shadow.mjs"
+      - "package.json"
       - ".github/workflows/patient-guidance-routing-ci.yml"
 
 permissions:
@@ -59,6 +133,52 @@ jobs:
         run: node scripts/verify-patient-guidance-adaptive-question-selection.mjs
       - name: Verify adaptive question selection hardening
         run: node scripts/verify-patient-guidance-question-selection-hardening.mjs
+      - name: Verify patient conversation agent
+        run: node scripts/verify-patient-conversation-agent.mjs
+      - name: Verify patient conversation shadow route
+        run: node scripts/verify-patient-conversation-shadow-route.mjs
+      - name: Verify patient conversation evaluation scorer and guardrails
+        run: node scripts/verify-patient-conversation-evaluation.mjs
+      - name: Verify patient conversation symptom grounding
+        run: node scripts/verify-patient-conversation-grounding.mjs
+      - name: Verify strict patient conversation model response contract
+        run: node scripts/verify-patient-conversation-model-response-contract.mjs
+      - name: Verify repeated patient conversation acceptance
+        run: node scripts/verify-patient-conversation-repeated-evaluation.mjs
+      - name: Verify terminal model failure gate
+        run: node scripts/verify-patient-conversation-terminal-failure-gate.mjs
+      - name: Verify deterministic patient conversation decisions
+        run: node scripts/verify-patient-conversation-decision-policy.mjs
+      - name: Verify deterministic safety preflight evaluation
+        run: node scripts/verify-patient-conversation-deterministic-preflight-evaluation.mjs
+      - name: Verify semantic handoff to patient guidance planner
+        run: node scripts/verify-patient-conversation-guidance-handoff.mjs
+      - name: Verify inactive server-side planner bridge
+        run: node scripts/verify-patient-conversation-guidance-planner-bridge.mjs
+      - name: Verify patient conversation state policy
+        run: node scripts/verify-patient-conversation-state-policy.mjs
+      - name: Verify semantic state delta reducer
+        run: node scripts/verify-patient-conversation-state-delta-reducer.mjs
+      - name: Verify canonical patient and provider boundary
+        run: node scripts/verify-patient-conversation-canonical-boundary.mjs
+      - name: Verify patient emergency guidance policy
+        run: node scripts/verify-patient-emergency-guidance-policy.mjs
+      - name: Verify patient conversation operational policy
+        run: node scripts/verify-patient-conversation-operational-policy.mjs
+      - name: Verify inactive durable patient conversation state contract
+        run: node scripts/verify-patient-conversation-durable-state-policy.mjs
+      - name: Verify normal marketplace byte isolation
+        run: node scripts/verify-patient-conversation-marketplace-isolation.mjs
+      - name: Verify patient conversation state compatibility
+        run: node scripts/verify-patient-conversation-state-compatibility.mjs
+      - name: Verify patient conversation state evaluation contract
+        run: node scripts/verify-patient-conversation-state-evaluation-contract.mjs
+      - name: Verify patient conversation shadow harness
+        run: node scripts/verify-patient-conversation-shadow-harness.mjs
+      - name: Verify patient conversation fixture contract
+        run: node scripts/verify-patient-conversation-fixture-contract.mjs
+      - name: Verify complete patient conversation fixture audit
+        run: node scripts/verify-patient-conversation-fixture-audit.mjs
       - name: Base44 router and physical function checks
         run: |
           node scripts/verify-directory-function-router.mjs
@@ -113,27 +233,78 @@ jobs:
           shared/patientGuidanceQuestionCatalog.js
           shared/patientGuidanceRouting.js
           shared/patientGuidancePlanner.js
+          shared/patientConversationAgent.js
+          shared/patientConversationCanonicalAdapter.js
+          shared/patientConversationCanonicalBoundary.js
+          shared/patientConversationDecisionPolicy.js
+          shared/patientConversationEvaluation.js
+          shared/patientConversationGrounding.js
+          shared/patientConversationGuardrails.js
+          shared/patientConversationGuidanceHandoff.js
+          shared/patientConversationGuidancePlannerBridge.js
+          shared/patientConversationOperationalPolicy.js
+          shared/patientConversationDurableStatePolicy.js
+          shared/patientConversationStatePolicy.js
+          shared/patientConversationStateDeltaReducer.js
+          shared/patientEyeSafetyPolicy.js
+          shared/patientEmergencyGuidance.js
           base44/shared/patientGuidanceQuestionCatalog.js
           base44/shared/patientGuidanceRouting.js
           base44/shared/patientGuidancePlanner.js
+          base44/shared/patientConversationAgent.js
+          base44/shared/patientConversationCanonicalAdapter.js
+          base44/shared/patientConversationCanonicalBoundary.js
+          base44/shared/patientConversationDecisionPolicy.js
+          base44/shared/patientConversationGrounding.js
+          base44/shared/patientConversationGuardrails.js
+          base44/shared/patientConversationGuidanceHandoff.js
+          base44/shared/patientConversationGuidancePlannerBridge.js
+          base44/shared/patientConversationOperationalPolicy.js
+          base44/shared/patientConversationDurableStatePolicy.js
+          base44/shared/patientConversationStatePolicy.js
+          base44/shared/patientConversationStateDeltaReducer.js
+          base44/shared/patientEyeSafetyPolicy.js
           base44/shared/patientSafety.js
+          base44/shared/patientEmergencyGuidance.js
           base44/functions/matchProvidersSemantic/entry.ts
+          base44/functions/matchProvidersSemantic/patientConversationAgentShadow.ts
+          base44/functions/matchProvidersSemantic/patientConversationAgentShadowCore.ts
           src/lib/providerSemanticSearch.js
-          src/lib/patientIntentConfirmation.js
-          src/lib/patientIntakeSession.js
-          src/lib/patientRequestDraft.js
           src/lib/patientSafety.js
-          src/components/intake2/ConversationalCard.jsx
-          src/components/intake2/PatientIntentConfirmation.jsx
-          src/components/intake2/QuestionChoice.jsx
+          src/components/intake2/QuestionText.jsx
+          src/components/intake2/UrgencyInterruption.jsx
+          scripts/patient-conversation-fixture-loader.mjs
+          scripts/patient-conversation-fixture-contract.mjs
           scripts/verify-patient-guidance-routing.mjs
           scripts/verify-patient-guidance-planner.mjs
           scripts/verify-patient-guidance-runtime-shadow.mjs
-          scripts/verify-patient-guidance-adaptive-question-selection.mjs
-          scripts/verify-patient-guidance-question-selection-hardening.mjs
-          scripts/verify-patient-ai-intent-confirmation.mjs
-          scripts/verify-patient-intake-session-hardening.mjs
+          scripts/verify-patient-conversation-agent.mjs
+          scripts/verify-patient-conversation-shadow-route.mjs
+          scripts/verify-patient-conversation-evaluation.mjs
+          scripts/verify-patient-conversation-grounding.mjs
+          scripts/verify-patient-conversation-model-response-contract.mjs
+          scripts/verify-patient-conversation-repeated-evaluation.mjs
+          scripts/verify-patient-conversation-terminal-failure-gate.mjs
+          scripts/verify-patient-conversation-decision-policy.mjs
+          scripts/verify-patient-conversation-deterministic-preflight-evaluation.mjs
+          scripts/verify-patient-conversation-guidance-handoff.mjs
+          scripts/verify-patient-conversation-guidance-planner-bridge.mjs
+          scripts/verify-patient-conversation-state-policy.mjs
+          scripts/verify-patient-conversation-state-delta-reducer.mjs
+          scripts/verify-patient-conversation-canonical-boundary.mjs
+          scripts/verify-patient-emergency-guidance-policy.mjs
+          scripts/verify-patient-conversation-operational-policy.mjs
+          scripts/verify-patient-conversation-durable-state-policy.mjs
+          scripts/verify-patient-conversation-marketplace-isolation.mjs
+          scripts/verify-patient-conversation-state-compatibility.mjs
+          scripts/verify-patient-conversation-state-evaluation-contract.mjs
+          scripts/verify-patient-conversation-shadow-harness.mjs
+          scripts/verify-patient-conversation-fixture-contract.mjs
+          scripts/verify-patient-conversation-fixture-audit.mjs
           scripts/verify-patient-intake-safety.mjs
+          scripts/prepare-patient-conversation-shadow-run.mjs
+          scripts/evaluate-patient-conversation-results.mjs
+          scripts/evaluate-patient-conversation-results-validated.mjs
           --quiet
       - name: Lint complete
         run: npm run lint

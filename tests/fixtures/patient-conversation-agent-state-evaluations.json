@@ -1,0 +1,269 @@
+{
+  "contract_version": "viasee-patient-conversation-agent-v1",
+  "fixture_version": "patient-conversation-agent-state-evaluations-v1.1",
+  "language": "ro",
+  "purpose": "External state, memory, correction, negation, typo, and intent-switch evaluations. These phrases must never become production intent-routing rules.",
+  "cases": [
+    {
+      "id": "state-memory-001",
+      "category": "prior_state_short_answer",
+      "prior_state": {
+        "primary_intent": "reparatii_ochelari",
+        "care_path_candidates": ["technical_optical_service"],
+        "service_keys": ["eyeglasses_repair"],
+        "provider_type_candidates": ["independent_optical_store"],
+        "facts": {
+          "locality": { "city": "Brasov" },
+          "repair_details": "ochelarii sunt stricati"
+        }
+      },
+      "conversation": [
+        { "role": "assistant", "content": "Ce anume s-a stricat?" },
+        { "role": "user", "content": "balamaua" }
+      ],
+      "expected": {
+        "primary_intent": "reparatii_ochelari",
+        "care_paths_any": ["technical_optical_service"],
+        "service_keys_any": ["hinge_repair", "eyeglasses_repair", "frame_repair"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Brasov" },
+        "must_not": ["forget_previous_need"]
+      }
+    },
+    {
+      "id": "state-switch-001",
+      "category": "prior_state_intent_replacement",
+      "prior_state": {
+        "primary_intent": "ochelari_lentile",
+        "care_path_candidates": ["optical_store"],
+        "service_keys": ["prescription_lenses"],
+        "facts": {
+          "locality": { "city": "Timisoara" },
+          "prescription_status": "has_prescription"
+        }
+      },
+      "conversation": [
+        { "role": "user", "content": "vreau sa imi fac ochelari" },
+        { "role": "assistant", "content": "Ai deja reteta si in ce oras cauti?" },
+        { "role": "user", "content": "de fapt medicul mi-a dat trimitere pentru OCT, in Iasi" }
+      ],
+      "expected": {
+        "primary_intent": "investigatii",
+        "care_paths_any": ["ophthalmology", "specialized_ophthalmology"],
+        "service_keys_all": ["oct"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Iasi" },
+        "forbidden_facts": ["prescription_status", "repair_details"],
+        "must_not": ["retain_superseded_eyeglasses_intent"]
+      }
+    },
+    {
+      "id": "state-locality-001",
+      "category": "locality_replacement",
+      "prior_state": {
+        "primary_intent": "control_vedere",
+        "care_path_candidates": ["optometry"],
+        "service_keys": ["refraction"],
+        "facts": { "locality": { "city": "Timisoara" } }
+      },
+      "conversation": [
+        { "role": "assistant", "content": "Cauti in Timisoara?" },
+        { "role": "user", "content": "am zis Timisoara dar sunt in Lugoj" }
+      ],
+      "expected": {
+        "primary_intent": "control_vedere",
+        "care_paths_any": ["optometry"],
+        "service_keys_any": ["refraction", "optometry_consultation"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Lugoj" }
+      }
+    },
+    {
+      "id": "state-locality-002",
+      "category": "locality_cleared",
+      "prior_state": {
+        "primary_intent": "control_vedere",
+        "care_path_candidates": ["optometry"],
+        "service_keys": ["refraction"],
+        "facts": { "locality": { "city": "Timisoara" } }
+      },
+      "conversation": [
+        { "role": "assistant", "content": "Pornesc cautarea in Timisoara?" },
+        { "role": "user", "content": "nu mai caut in Timisoara, nu stiu inca orasul" }
+      ],
+      "expected": {
+        "primary_intent": "control_vedere",
+        "care_paths_any": ["optometry"],
+        "service_keys_any": ["refraction", "optometry_consultation"],
+        "next_action": "ask_locality",
+        "urgency": "none",
+        "must_ask": true,
+        "question_goal": "afla noua localitate fara a reutiliza Timisoara",
+        "forbidden_facts": ["locality_city"],
+        "must_not": ["search_providers"]
+      }
+    },
+    {
+      "id": "state-subject-001",
+      "category": "person_replacement",
+      "prior_state": {
+        "primary_intent": "control_copil",
+        "care_path_candidates": ["pediatric_ophthalmology"],
+        "service_keys": ["children_eye_exam"],
+        "facts": {
+          "for_whom": "child",
+          "age_group": "7_12_ani"
+        }
+      },
+      "conversation": [
+        { "role": "assistant", "content": "Este pentru copil?" },
+        { "role": "user", "content": "e pentru mama, nu pentru copil, in Sibiu" }
+      ],
+      "expected": {
+        "primary_intent": "control_vedere",
+        "care_paths_any": ["optometry", "ophthalmology"],
+        "service_keys_any": ["optometry_consultation", "ophthalmology_consultation", "complete_eye_exam"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": {
+          "locality_city": "Sibiu",
+          "for_whom": "adult",
+          "age_group": "adult"
+        }
+      }
+    },
+    {
+      "id": "state-switch-002",
+      "category": "technical_to_routine_intent_switch",
+      "prior_state": {
+        "primary_intent": "reparatii_ochelari",
+        "care_path_candidates": ["technical_optical_service"],
+        "service_keys": ["eyeglasses_repair"],
+        "facts": {
+          "locality": { "city": "Arad" },
+          "repair_details": "rama este indoita"
+        }
+      },
+      "conversation": [
+        { "role": "user", "content": "de fapt nu vreau reparatie, vreau doar sa verific dioptriile in Arad" }
+      ],
+      "expected": {
+        "primary_intent": "control_vedere",
+        "care_paths_any": ["optometry"],
+        "service_keys_any": ["refraction", "optometry_consultation"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Arad" },
+        "forbidden_facts": ["repair_details"]
+      }
+    },
+    {
+      "id": "state-language-001",
+      "category": "mixed_romanian_english",
+      "conversation": [
+        { "role": "user", "content": "I need un control de vedere in Cluj, nu e urgent" }
+      ],
+      "expected": {
+        "primary_intent": "control_vedere",
+        "care_paths_any": ["optometry", "ophthalmology"],
+        "service_keys_any": ["optometry_consultation", "ophthalmology_consultation", "complete_eye_exam"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Cluj-Napoca" },
+        "must_not": ["show_emergency_guidance"]
+      }
+    },
+    {
+      "id": "state-typo-001",
+      "category": "typos_without_diacritics",
+      "conversation": [
+        { "role": "user", "content": "vreau sa verific dioptrile pt mama in sibiu" }
+      ],
+      "expected": {
+        "primary_intent": "control_vedere",
+        "care_paths_any": ["optometry"],
+        "service_keys_any": ["refraction", "optometry_consultation"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": {
+          "locality_city": "Sibiu",
+          "for_whom": "adult",
+          "age_group": "adult"
+        }
+      }
+    },
+    {
+      "id": "state-negation-001",
+      "category": "symptom_timing_correction",
+      "prior_state": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_path_candidates": ["ophthalmology"],
+        "service_keys": ["ophthalmology_consultation"],
+        "facts": {
+          "symptom_onset": "azi, brusc",
+          "symptom_duration": "de azi",
+          "symptom_pattern": "scadere brusca"
+        },
+        "urgency": {
+          "level": "possible",
+          "needs_clarification": true
+        }
+      },
+      "conversation": [
+        { "role": "assistant", "content": "A aparut brusc astazi?" },
+        { "role": "user", "content": "nu e brusc, e de cateva luni, vad mai slab cu stangul in Oradea" }
+      ],
+      "expected": {
+        "primary_intent": "simptome_oftalmologice",
+        "care_paths_any": ["ophthalmology", "optometry"],
+        "service_keys_any": ["ophthalmology_consultation", "complete_eye_exam", "optometry_consultation"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": {
+          "locality_city": "Oradea",
+          "duration": "cateva luni"
+        },
+        "forbidden_facts": ["symptom_onset", "symptom_pattern"],
+        "must_not": ["show_emergency_guidance"]
+      }
+    },
+    {
+      "id": "state-memory-002",
+      "category": "prior_state_locality_only_answer",
+      "prior_state": {
+        "primary_intent": "investigatii",
+        "care_path_candidates": ["specialized_ophthalmology"],
+        "service_keys": ["oct"],
+        "provider_type_candidates": ["ophthalmology_clinic"],
+        "facts": {
+          "investigation_reference_text": "OCT recomandat de medic"
+        }
+      },
+      "conversation": [
+        { "role": "assistant", "content": "In ce oras cauti?" },
+        { "role": "user", "content": "Iasi" }
+      ],
+      "expected": {
+        "primary_intent": "investigatii",
+        "care_paths_any": ["specialized_ophthalmology", "ophthalmology"],
+        "service_keys_all": ["oct"],
+        "next_action": "search_providers",
+        "urgency": "none",
+        "must_ask": false,
+        "required_facts": { "locality_city": "Iasi" },
+        "must_not": ["forget_previous_need"]
+      }
+    }
+  ]
+}

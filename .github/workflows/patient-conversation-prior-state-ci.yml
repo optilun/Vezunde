@@ -1,0 +1,91 @@
+name: Patient Conversation Prior State
+
+on:
+  pull_request:
+    paths:
+      - "shared/patientConversationAgent.js"
+      - "shared/patientConversationAgentCore.js"
+      - "shared/patientConversationPriorStatePolicy.js"
+      - "shared/patientConversationPriorStatePolicyCore.js"
+      - "shared/patientConversationRuntimeContextPolicy.js"
+      - "shared/patientConversationGuardrails.js"
+      - "shared/patientConversationDecisionPolicy.js"
+      - "shared/patientConversationDecisionPolicyCore.js"
+      - "shared/patientConversationStatePolicy.js"
+      - "shared/patientConversationStateDeltaReducer.js"
+      - "shared/patientConversationStateDeltaReducerCore.js"
+      - "base44/shared/patientConversationAgent.js"
+      - "base44/shared/patientConversationAgentCore.js"
+      - "base44/shared/patientConversationPriorStatePolicy.js"
+      - "base44/shared/patientConversationPriorStatePolicyCore.js"
+      - "base44/shared/patientConversationRuntimeContextPolicy.js"
+      - "base44/shared/patientConversationGuardrails.js"
+      - "base44/shared/patientConversationDecisionPolicy.js"
+      - "base44/shared/patientConversationDecisionPolicyCore.js"
+      - "base44/shared/patientConversationStatePolicy.js"
+      - "base44/shared/patientConversationStateDeltaReducer.js"
+      - "base44/shared/patientConversationStateDeltaReducerCore.js"
+      - "scripts/verify-patient-conversation-prompt-prior-state.mjs"
+      - "scripts/verify-patient-conversation-prompt-redaction.mjs"
+      - "scripts/verify-patient-conversation-prior-state-delta.mjs"
+      - "scripts/verify-patient-conversation-runtime-context-authority.mjs"
+      - ".github/workflows/patient-conversation-prior-state-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify prompt prior-state authority
+        run: node scripts/verify-patient-conversation-prompt-prior-state.mjs
+      - name: Verify prompt contact redaction
+        run: node scripts/verify-patient-conversation-prompt-redaction.mjs
+      - name: Verify delta prior-state authority
+        run: node scripts/verify-patient-conversation-prior-state-delta.mjs
+      - name: Verify runtime-context authority
+        run: node scripts/verify-patient-conversation-runtime-context-authority.mjs
+      - name: Lint controlled context boundary
+        run: >-
+          npx eslint
+          shared/patientConversationAgent.js
+          shared/patientConversationAgentCore.js
+          shared/patientConversationPriorStatePolicy.js
+          shared/patientConversationPriorStatePolicyCore.js
+          shared/patientConversationRuntimeContextPolicy.js
+          shared/patientConversationGuardrails.js
+          shared/patientConversationDecisionPolicy.js
+          shared/patientConversationDecisionPolicyCore.js
+          shared/patientConversationStatePolicy.js
+          shared/patientConversationStateDeltaReducer.js
+          shared/patientConversationStateDeltaReducerCore.js
+          base44/shared/patientConversationAgent.js
+          base44/shared/patientConversationAgentCore.js
+          base44/shared/patientConversationPriorStatePolicy.js
+          base44/shared/patientConversationPriorStatePolicyCore.js
+          base44/shared/patientConversationRuntimeContextPolicy.js
+          base44/shared/patientConversationGuardrails.js
+          base44/shared/patientConversationDecisionPolicy.js
+          base44/shared/patientConversationDecisionPolicyCore.js
+          base44/shared/patientConversationStatePolicy.js
+          base44/shared/patientConversationStateDeltaReducer.js
+          base44/shared/patientConversationStateDeltaReducerCore.js
+          scripts/verify-patient-conversation-prompt-prior-state.mjs
+          scripts/verify-patient-conversation-prompt-redaction.mjs
+          scripts/verify-patient-conversation-prior-state-delta.mjs
+          scripts/verify-patient-conversation-runtime-context-authority.mjs
+          --quiet
