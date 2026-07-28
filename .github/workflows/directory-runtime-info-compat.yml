@@ -1,0 +1,19 @@
+name: Directory Runtime Info Compatibility
+
+on:
+  pull_request:
+    paths:
+      - 'base44/functions/directoryOps/directoryImportOpsLocationFirst.ts'
+      - 'base44/functions/directoryOps/entry.ts'
+      - 'scripts/verify-directory-runtime-info-compat.mjs'
+      - '.github/workflows/directory-runtime-info-compat.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/verify-directory-runtime-info-compat.mjs
