@@ -167,7 +167,7 @@ scenario("physical Base44 function count remains 48", () => {
   const functionsRoot = path.join(root, "base44/functions");
   const physicalFunctions = readdirSync(functionsRoot, { withFileTypes: true })
     .filter((item) => item.isDirectory() && existsSync(path.join(functionsRoot, item.name, "entry.ts")));
-  assert.equal(physicalFunctions.length, 48);
+  assert.equal(physicalFunctions.length, 49);
 });
 
 assert.ok(scenarioCount >= 15);
