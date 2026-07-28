@@ -1,4 +1,5 @@
 export const DIRECTORY_FUNCTION_ENDPOINT = 'directoryOps';
+export const DIRECTORY_IMPORT_FUNCTION_ENDPOINT = 'directoryImportRuntimeOps';
 
 export const DIRECTORY_FUNCTION_ROUTES = Object.freeze({
   adminDataIntegrityOps: DIRECTORY_FUNCTION_ENDPOINT,
@@ -13,7 +14,7 @@ export const DIRECTORY_FUNCTION_ROUTES = Object.freeze({
   aiResearchOps: DIRECTORY_FUNCTION_ENDPOINT,
   backfillLocationServiceMatching: DIRECTORY_FUNCTION_ENDPOINT,
   backfillProviderOrganizationProfile: DIRECTORY_FUNCTION_ENDPOINT,
-  directoryImportOps: DIRECTORY_FUNCTION_ENDPOINT,
+  directoryImportOps: DIRECTORY_IMPORT_FUNCTION_ENDPOINT,
   directoryMappingOps: DIRECTORY_FUNCTION_ENDPOINT,
   geoImportOps: DIRECTORY_FUNCTION_ENDPOINT,
   getAdminServiceManagementData: DIRECTORY_FUNCTION_ENDPOINT,
