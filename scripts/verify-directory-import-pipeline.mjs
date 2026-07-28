@@ -41,6 +41,68 @@ assert.ok(normalized.location_external_key.startsWith('loc:'));
 assert.ok(normalized.address_fingerprint.startsWith('addr:'));
 assert.equal(validateNormalizedDirectoryRow(normalized).valid, true);
 
+const mixedOptical = normalizeDirectoryImportRow({
+  location_display_name: 'Optica si optometrie Test',
+  organization_display_name: 'Optica Test',
+  official_locality: 'Timisoara',
+  county_if_confirmed: 'Timis',
+  siruta: '155243',
+  confirmed_address: 'Str. Exemplu nr. 11',
+  official_source_url: 'https://example.com/optica-optometrie',
+  research_status: 'official_confirmed',
+  operational_status: 'active_confirmed',
+  import_readiness: 'candidate_for_manual_review',
+  confirmed_activity_category: 'optica; optometrie',
+});
+assert.equal(mixedOptical.provider_type, 'optica_medicala');
+assert.equal(mixedOptical.provider_profile_type, 'independent_optical_store');
+assert.equal(mixedOptical.location_type_code, 'optical_store');
+assert.equal(mixedOptical.care_setting_code, 'retail');
+assert.equal(mixedOptical.canonical_type_source, 'activity_inferred');
+
+const explicitCanonical = normalizeDirectoryImportRow({
+  location_display_name: 'Lensa Timisoara Test',
+  organization_display_name: 'Lensa',
+  official_locality: 'Timisoara',
+  county_if_confirmed: 'Timis',
+  locality_siruta_code: '155243',
+  confirmed_address: 'Str. Exemplu nr. 12',
+  official_source_url: 'https://example.com/lensa',
+  research_status: 'official_confirmed',
+  operational_status: 'active_confirmed',
+  import_readiness: 'candidate_for_manual_review',
+  confirmed_activity_category: 'optica; optometrie',
+  provider_type: 'optica_medicala',
+  provider_profile_type: 'optical_chain',
+  location_type_code: 'optical_store',
+  care_setting_code: 'retail',
+  ownership_type_code: 'private',
+});
+assert.equal(explicitCanonical.provider_profile_type, 'optical_chain');
+assert.equal(explicitCanonical.canonical_type_source, 'source_explicit');
+assert.equal(explicitCanonical.canonical_type_invalid, false);
+assert.equal(explicitCanonical.ownership_type_code, 'private');
+assert.equal(validateNormalizedDirectoryRow(explicitCanonical).valid, true);
+
+const invalidExplicitCanonical = normalizeDirectoryImportRow({
+  location_display_name: 'Tip explicit invalid',
+  organization_display_name: 'Organizatie Test',
+  official_locality: 'Timisoara',
+  county_if_confirmed: 'Timis',
+  locality_siruta_code: '155243',
+  confirmed_address: 'Str. Exemplu nr. 13',
+  official_source_url: 'https://example.com/invalid',
+  research_status: 'official_confirmed',
+  operational_status: 'active_confirmed',
+  import_readiness: 'candidate_for_manual_review',
+  provider_type: 'tip_inexistent',
+  provider_profile_type: 'optical_chain',
+  location_type_code: 'optical_store',
+  care_setting_code: 'retail',
+});
+assert.equal(invalidExplicitCanonical.canonical_type_invalid, true);
+assert.ok(validateNormalizedDirectoryRow(invalidExplicitCanonical).errors.includes('invalid_explicit_canonical_type'));
+
 const conflict = normalizeDirectoryImportRow({
   location_display_name: 'Clinica neclara',
   organization_display_name: 'Retea neclara',
@@ -65,6 +127,17 @@ const pseudo = normalizeDirectoryImportRow({
 });
 assert.equal(pseudo.pseudo_row_reason, 'aggregate_or_summary_row');
 assert.equal(validateNormalizedDirectoryRow(pseudo).valid, false);
+
+const aggregateNetwork = normalizeDirectoryImportRow({
+  location_display_name: 'Lensa',
+  organization_display_name: 'Lensa',
+  official_locality: '~25+',
+  confirmed_address: '',
+  research_status: 'discovery_only',
+  import_readiness: 'blocked_missing_data',
+});
+assert.equal(aggregateNetwork.pseudo_row_reason, 'aggregate_count_row');
+assert.equal(validateNormalizedDirectoryRow(aggregateNetwork).valid, false);
 
 assert.equal(batchApprovalToken('DIR-TEST-001', 'abcdef1234567890', 3), 'IMPORT DIR-TEST-001 abcdef123456 3');
 assert.equal(rollbackApprovalToken('DIR-TEST-001', 3), 'ROLLBACK DIR-TEST-001 3');
@@ -100,7 +173,10 @@ const ui = await readFile(new URL('../src/components/admin/directory/DirOpsImpor
 const parser = await readFile(new URL('../src/lib/directoryImportFileParser.js', import.meta.url), 'utf8');
 const nav = await readFile(new URL('../src/lib/adminNavConfig.js', import.meta.url), 'utf8');
 const page = await readFile(new URL('../src/pages/AdminDirectoryOps.jsx', import.meta.url), 'utf8');
+const sharedPipeline = await readFile(new URL('../shared/directoryImportPipeline.js', import.meta.url), 'utf8');
+const base44Pipeline = await readFile(new URL('../base44/shared/directoryImportPipeline.js', import.meta.url), 'utf8');
 
+assert.equal(base44Pipeline, sharedPipeline);
 assert.match(backend, /user\.role !== 'admin'/);
 assert.match(backend, /batchApprovalToken/);
 assert.match(backend, /clean\(input\.confirmation, 240\) !== expected/);
