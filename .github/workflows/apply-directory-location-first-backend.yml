@@ -1,0 +1,131 @@
+name: Apply directory location-first backend update
+
+on:
+  push:
+    branches:
+      - fix/directory-location-organization-type-separation
+    paths:
+      - .github/workflows/apply-directory-location-first-backend.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/directory-location-organization-type-separation
+          fetch-depth: 0
+
+      - name: Apply exact backend changes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          backend_path = Path('base44/functions/directoryOps/directoryImportOps.ts')
+          backend = backend_path.read_text()
+
+          old_function = """function organizationTypeFor(row) {
+            const profileType = clean(row.provider_profile_type, 120);
+            if (ORGANIZATION_TYPES.has(profileType)) return profileType;
+            if (profileType === 'independent_optometrist') return 'independent_optometrist';
+            if (profileType === 'ophthalmology_office') return 'ophthalmology_office';
+            if (profileType === 'ophthalmology_clinic') return 'ophthalmology_clinic';
+            if (profileType === 'optical_laboratory_b2c') return 'optical_laboratory_b2c';
+            return 'independent_optical_store';
+          }
+          """
+          new_function = """function organizationTypeFor(row) {
+            const profileType = clean(row.provider_profile_type, 120);
+            if (ORGANIZATION_TYPES.has(profileType)) return profileType;
+            if (profileType === 'independent_optometrist') return 'independent_optometrist';
+            if (profileType === 'ophthalmology_office') return 'ophthalmology_office';
+            if (profileType === 'ophthalmology_clinic') return 'ophthalmology_clinic';
+            if (profileType === 'optical_laboratory_b2c') return 'optical_laboratory_b2c';
+            return 'independent_optical_store';
+          }
+
+          function organizationTypeCodeFor(row) {
+            const explicitType = clean(row.organization_type_code, 120);
+            if (explicitType) return explicitType;
+            return organizationTypeFor(row);
+          }
+          """
+          if old_function not in backend:
+              raise SystemExit('organizationTypeFor block not found')
+          backend = backend.replace(old_function, new_function, 1)
+
+          old_required = """    } else if (!normalized.provider_type || !normalized.provider_profile_type || !normalized.location_type_code || !normalized.care_setting_code) {
+              plannedAction = 'block_conflict';
+              validation.errors.push('canonical_type_not_resolved');
+              validation.validation_codes.push('canonical_type_not_resolved');
+          """
+          new_required = """    } else if (
+              !normalized.provider_type
+              || !normalized.provider_profile_type
+              || !normalized.location_type_code
+              || !normalized.care_setting_code
+              || (normalized.organization_name && !normalized.organization_type_code)
+            ) {
+              plannedAction = 'block_conflict';
+              const code = normalized.organization_name && !normalized.organization_type_code
+                ? 'organization_type_not_resolved'
+                : 'canonical_type_not_resolved';
+              validation.errors.push(code);
+              validation.validation_codes.push(code);
+          """
+          if old_required not in backend:
+              raise SystemExit('canonical requirement block not found')
+          backend = backend.replace(old_required, new_required, 1)
+
+          old_allowed = """    'provider_type', 'provider_profile_type', 'location_type_code', 'care_setting_code',
+          """
+          new_allowed = """    'provider_type', 'provider_profile_type', 'organization_type_code', 'location_type_code', 'care_setting_code',
+          """
+          if old_allowed not in backend:
+              raise SystemExit('override allowed keys block not found')
+          backend = backend.replace(old_allowed, new_allowed, 1)
+
+          old_org_values = """    organization_type: organizationTypeFor(row),
+              directory_external_key: row.organization_external_key,
+              directory_source_version: row.source_version,
+              organization_type_code: row.provider_profile_type === 'optical_chain' ? 'optical_chain' : organizationTypeFor(row),
+          """
+          new_org_values = """    organization_type: organizationTypeFor(row),
+              directory_external_key: row.organization_external_key,
+              directory_source_version: row.source_version,
+              organization_type_code: organizationTypeCodeFor(row),
+          """
+          if old_org_values not in backend:
+              raise SystemExit('organization creation values block not found')
+          backend = backend.replace(old_org_values, new_org_values, 1)
+
+          backend_path.write_text(backend)
+
+          test_path = Path('scripts/verify-directory-import-pipeline.mjs')
+          test = test_path.read_text()
+          anchor = """assert.match(backend, /CONTROLLED_PROFILES/);
+          """
+          additions = """assert.match(backend, /CONTROLLED_PROFILES/);
+          assert.match(backend, /function organizationTypeCodeFor\(row\)/);
+          assert.match(backend, /organization_type_code: organizationTypeCodeFor\(row\)/);
+          assert.match(backend, /organization_name && !normalized\.organization_type_code/);
+          assert.match(backend, /'organization_type_code', 'location_type_code'/);
+          """
+          if anchor not in test:
+              raise SystemExit('backend test anchor not found')
+          test = test.replace(anchor, additions, 1)
+          test_path.write_text(test)
+          PY
+
+      - name: Commit backend changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add base44/functions/directoryOps/directoryImportOps.ts scripts/verify-directory-import-pipeline.mjs
+          git diff --cached --check
+          git commit -m "Consume organization type independently in directory imports [skip ci]"
+          git push origin HEAD:fix/directory-location-organization-type-separation
