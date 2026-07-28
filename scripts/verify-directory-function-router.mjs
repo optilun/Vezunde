@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   DIRECTORY_FUNCTION_ENDPOINT,
+  DIRECTORY_IMPORT_FUNCTION_ENDPOINT,
   DIRECTORY_FUNCTION_ROUTES,
 } from '../base44/shared/directoryFunctionRouting.js';
 import { SERVICE_CONFIGURATION_FUNCTION_ROUTES } from '../base44/shared/serviceConfigurationFunctionRouting.js';
@@ -34,15 +35,19 @@ const physicalEndpoints = readdirSync(functionsRoot, { withFileTypes: true })
   .map((entry) => entry.name)
   .sort();
 
-assert.equal(physicalEndpoints.length, 48, 'Suprafata Base44 trebuie sa contina exact 48 de functii fizice dupa PR 3');
+assert.equal(physicalEndpoints.length, 49, 'Suprafata Base44 trebuie sa contina exact 49 de functii fizice dupa separarea runtime-ului de import');
 assert.equal(logicalNames.length, 18, 'Contractul directory trebuie sa pastreze exact cele 18 nume logice consolidate');
 assert.ok(physicalEndpoints.includes(DIRECTORY_FUNCTION_ENDPOINT), 'Endpointul fizic directoryOps trebuie sa existe');
+assert.ok(physicalEndpoints.includes(DIRECTORY_IMPORT_FUNCTION_ENDPOINT), 'Endpointul fizic dedicat importului trebuie sa existe');
 
 const routerSource = source('base44/functions/directoryOps/router.ts');
 for (const logicalName of logicalNames) {
-  assert.equal(DIRECTORY_FUNCTION_ROUTES[logicalName], DIRECTORY_FUNCTION_ENDPOINT);
+  const expectedEndpoint = logicalName === 'directoryImportOps'
+    ? DIRECTORY_IMPORT_FUNCTION_ENDPOINT
+    : DIRECTORY_FUNCTION_ENDPOINT;
+  assert.equal(DIRECTORY_FUNCTION_ROUTES[logicalName], expectedEndpoint);
   assert.ok(existsSync(path.join(routerRoot, `${logicalName}.ts`)), `Modul local lipsa pentru ${logicalName}`);
-  assert.ok(!existsSync(path.join(functionsRoot, logicalName, 'entry.ts')), `Endpointul vechi ${logicalName} nu a fost eliminat`);
+  assert.ok(!existsSync(path.join(functionsRoot, logicalName, 'entry.ts')), `Endpointul vechi ${logicalName} nu a fost reintrodus`);
   assert.match(routerSource, new RegExp(`${logicalName}:\\s*${logicalName}Handle`), `Handlerul ${logicalName} nu este in router`);
   const moduleSource = source(`base44/functions/directoryOps/${logicalName}.ts`);
   assert.match(moduleSource, /export async function handle\(req: Request\)/, `${logicalName} nu exporta handlerul local`);
@@ -54,6 +59,11 @@ assert.match(entrySource, /Deno\.serve\(handleDirectoryRequest\)/);
 assert.equal((entrySource.match(/Deno\.serve\(/g) || []).length, 1, 'directoryOps trebuie sa aiba un singur entrypoint deployabil');
 assert.match(routerSource, /return directoryOpsHandle\(req\)/, 'Contractul existent directoryOps trebuie pastrat pentru apelurile directe');
 assert.match(routerSource, /status: 404/, 'Numele logice necunoscute trebuie respinse explicit');
+
+const dedicatedEntrySource = source('base44/functions/directoryImportRuntimeOps/entry.ts');
+assert.match(dedicatedEntrySource, /directoryImportOpsLatest\.ts/);
+assert.match(dedicatedEntrySource, /logicalName !== 'directoryImportOps'/);
+assert.match(dedicatedEntrySource, /Deno\.serve\(/);
 
 const clientSource = source('src/api/base44Client.js');
 const frontendRoutingSource = source('src/api/base44FunctionRouting.js');
@@ -72,7 +82,7 @@ const routedClient = installBase44FunctionRouting({
 await routedClient.functions.invoke('directoryImportOps', { action: 'list_snapshots' });
 await routedClient.functions.invoke('getPublicProviderProfile', { location_id: 'loc-1' });
 assert.deepEqual(invocations[0], {
-  functionName: 'directoryOps',
+  functionName: 'directoryImportRuntimeOps',
   payload: { __function: 'directoryImportOps', payload: { action: 'list_snapshots' } },
 });
 assert.deepEqual(invocations[1], {
@@ -117,4 +127,5 @@ console.log(JSON.stringify({
   directory_logical_route_count: logicalNames.length,
   directory_router_bytes: routerBytes,
   directory_router_files: sourceFiles(routerRoot).length,
+  directory_import_endpoint: DIRECTORY_IMPORT_FUNCTION_ENDPOINT,
 }, null, 2));

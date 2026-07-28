@@ -275,7 +275,7 @@ await scenario("physical Base44 function count remains unchanged", () => {
       entry.isDirectory()
       && existsSync(path.join(functionsRoot, entry.name, "entry.ts"))
     ));
-  assert.equal(physicalFunctions.length, 48);
+  assert.equal(physicalFunctions.length, 49);
 });
 
 console.log(`Patient guidance adaptive question selection checks passed: ${scenarios.length} scenarios.`);
