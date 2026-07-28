@@ -1,0 +1,47 @@
+name: Apply directory function count 49
+
+on:
+  push:
+    branches:
+      - fix/directory-import-dedicated-runtime-endpoint
+    paths:
+      - .github/workflows/apply-directory-function-count-49.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/directory-import-dedicated-runtime-endpoint
+          fetch-depth: 0
+      - name: Update physical function count assertions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          paths = [
+              Path('scripts/verify-patient-guidance-adaptive-question-selection.mjs'),
+              Path('scripts/verify-patient-guidance-question-selection-hardening.mjs'),
+              Path('scripts/verify-patient-guidance-runtime-shadow.mjs'),
+          ]
+          old = 'assert.equal(physicalFunctions.length, 48);'
+          new = 'assert.equal(physicalFunctions.length, 49);'
+          for path in paths:
+              content = path.read_text()
+              if content.count(old) != 1:
+                  raise SystemExit(f'{path}: expected one old assertion, found {content.count(old)}')
+              path.write_text(content.replace(old, new, 1))
+          PY
+      - name: Commit updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/verify-patient-guidance-adaptive-question-selection.mjs scripts/verify-patient-guidance-question-selection-hardening.mjs scripts/verify-patient-guidance-runtime-shadow.mjs
+          git diff --cached --check
+          git commit -m "Update physical function count assertions [skip ci]"
+          git push origin HEAD:fix/directory-import-dedicated-runtime-endpoint
