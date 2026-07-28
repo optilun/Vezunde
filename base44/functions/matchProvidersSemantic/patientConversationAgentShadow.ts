@@ -24,6 +24,9 @@ import {
   finalizePatientConversationOperationalEnvelope,
 } from '../../shared/patientConversationOperationalPolicy.js';
 import {
+  authorizePatientConversationSyntheticEvaluation,
+} from '../../shared/patientConversationEvaluationAuthorization.js';
+import {
   classifyPatientConversationModelFailure,
 } from './patientConversationModelFailureDiagnostics.js';
 import {
@@ -36,6 +39,35 @@ import {
 // Delegation chain: runPatientConversationAgentShadowRuntime -> runPatientConversationAgentShadowCore.
 const PATIENT_CONVERSATION_MODEL_POLICY = 'base44_automatic';
 const PATIENT_CONVERSATION_PROMPT_VERSION = 'viasee-patient-conversation-prompt-v1.3';
+
+function evaluationAuthorizationOptions() {
+  try {
+    const maxModelCallsPerRun = Number.parseInt(
+      Deno.env.get('PATIENT_CONVERSATION_EVALUATION_MAX_CALLS_PER_RUN') || '',
+      10,
+    );
+    return {
+      enabled: Deno.env.get('PATIENT_CONVERSATION_EVALUATION_ENABLED') === 'true',
+      runtimeContext:
+        Deno.env.get('PATIENT_CONVERSATION_EVALUATION_RUNTIME_CONTEXT') || '',
+      keyId: Deno.env.get('PATIENT_CONVERSATION_EVALUATION_KEY_ID') || '',
+      secret: Deno.env.get('PATIENT_CONVERSATION_EVALUATION_SECRET') || '',
+      maxModelCallsPerRun: Number.isInteger(maxModelCallsPerRun)
+        && maxModelCallsPerRun > 0
+        && maxModelCallsPerRun <= 200
+        ? maxModelCallsPerRun
+        : 0,
+    };
+  } catch (_error) {
+    return {
+      enabled: false,
+      runtimeContext: '',
+      keyId: '',
+      secret: '',
+      maxModelCallsPerRun: 0,
+    };
+  }
+}
 
 function isPlainObject(value: any) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -271,6 +303,31 @@ function attachGuidanceHandoff(envelope: any) {
   };
 }
 
+function evaluationRejectedEnvelope(
+  payload: any,
+  evaluationAuthorization: any,
+  durationMs: number,
+) {
+  return attachGuidanceHandoff({
+    mode: 'shadow',
+    contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
+    status: 'skipped',
+    reason: evaluationAuthorization?.reason
+      || 'patient_conversation_evaluation_authorization_invalid',
+    interpretation: null,
+    ...evaluationCorrelation(payload),
+    runtime_metadata: noModelRuntimeMetadata(durationMs),
+    synthetic_evaluation: evaluationAuthorization?.metadata || null,
+  });
+}
+
+function attachSyntheticEvaluation(envelope: any, evaluationAuthorization: any) {
+  return {
+    ...envelope,
+    synthetic_evaluation: evaluationAuthorization.metadata,
+  };
+}
+
 function guidedAnswerEnvelope(payload: any = {}) {
   const startedAt = Date.now();
   const controller = createPatientConversationOperationalController(payload, {
@@ -380,8 +437,37 @@ function recoverTerminalFailure(envelope: any, payload: any = {}) {
 }
 
 export async function runPatientConversationAgentShadow(base44: any, payload: any = {}) {
-  if (hasGuidedAnswers(payload)) {
-    return guidedAnswerEnvelope(payload);
+  const startedAt = Date.now();
+  let evaluationAuthorization;
+  try {
+    evaluationAuthorization = await authorizePatientConversationSyntheticEvaluation(
+      payload,
+      evaluationAuthorizationOptions(),
+    );
+  } catch (_error) {
+    evaluationAuthorization = {
+      allowed: false,
+      reason: 'patient_conversation_evaluation_authorization_invalid',
+      metadata: null,
+    };
+  }
+
+  if (!evaluationAuthorization.allowed) {
+    return evaluationRejectedEnvelope(
+      payload,
+      evaluationAuthorization,
+      Date.now() - startedAt,
+    );
+  }
+
+  const runtimePayload = { ...payload };
+  delete runtimePayload.evaluation_authorization;
+
+  if (hasGuidedAnswers(runtimePayload)) {
+    return attachSyntheticEvaluation(
+      guidedAnswerEnvelope(runtimePayload),
+      evaluationAuthorization,
+    );
   }
 
   const modelFailureState: any = {
@@ -389,9 +475,12 @@ export async function runPatientConversationAgentShadow(base44: any, payload: an
   };
   const runtimeEnvelope = await runPatientConversationAgentShadowRuntime(
     createAutomaticModelBase44(base44, modelFailureState),
-    payload,
+    runtimePayload,
   );
   const diagnosedEnvelope = attachModelFailureDiagnostics(runtimeEnvelope, modelFailureState);
   const automaticEnvelope = automaticRuntimeMetadata(diagnosedEnvelope);
-  return attachGuidanceHandoff(recoverTerminalFailure(automaticEnvelope, payload));
+  return attachSyntheticEvaluation(
+    attachGuidanceHandoff(recoverTerminalFailure(automaticEnvelope, runtimePayload)),
+    evaluationAuthorization,
+  );
 }

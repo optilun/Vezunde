@@ -748,9 +748,12 @@ Deno.serve(async (request) => {
       selected_county_name: countyName || null,
       client_address_text: clean(payload.client_address_text),
     });
-  } catch (error) {
+  } catch (_error) {
     return Response.json({
-      error: error?.message || 'Eroare neașteptată la căutarea semantică.',
-    }, { status: 500 });
+      error: 'Cererea nu a putut fi procesata.',
+    }, {
+      status: 500,
+      headers: { 'Cache-Control': 'no-store' },
+    });
   }
 });

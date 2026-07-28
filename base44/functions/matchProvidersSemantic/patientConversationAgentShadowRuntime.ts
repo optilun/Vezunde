@@ -283,7 +283,6 @@ function modelRuntimeMetadata(durationMs = 0) {
 }
 
 function emitControlledPreflightSummary(envelope: any) {
-  const decision = envelope?.diagnostics?.decision_policy;
   console.info('patient_conversation_agent_shadow_summary', JSON.stringify({
     contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
     prompt_version: null,
@@ -311,28 +310,7 @@ function emitControlledPreflightSummary(envelope: any) {
     prohibited_output_count: 0,
     schema_violation_count: 0,
     noncanonical_output_count: 0,
-    state_transition: null,
-    state_carried_field_count: 0,
-    state_cleared_stale_field_count: 0,
-    decision_source: decision?.decision_source || null,
-    deterministic_safety_preflight:
-      decision?.deterministic_safety_preflight === true,
-    deterministic_safety_flag_count: Array.isArray(decision?.deterministic_safety_flags)
-      ? decision.deterministic_safety_flags.length
-      : 0,
-    model_urgency_advisory: null,
-    model_next_action_ignored: null,
-    primary_intent: envelope?.interpretation?.primary_intent || 'unknown',
-    care_path_count: Array.isArray(envelope?.interpretation?.care_path_candidates)
-      ? envelope.interpretation.care_path_candidates.length
-      : 0,
-    service_count: Array.isArray(envelope?.interpretation?.service_keys)
-      ? envelope.interpretation.service_keys.length
-      : 0,
-    urgency_level: envelope?.interpretation?.urgency?.level || 'unknown',
-    next_action: envelope?.interpretation?.next_action || null,
-    sufficient_for_search:
-      envelope?.interpretation?.information_status?.sufficient_for_search === true,
+
   }));
 }
 

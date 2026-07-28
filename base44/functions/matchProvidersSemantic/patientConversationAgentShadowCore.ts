@@ -286,7 +286,6 @@ function deterministicSafetyPreflight(conversation: any[], runtimeContext: any) 
 }
 
 function emitShadowSummary(envelope: any) {
-  const interpretation = envelope?.interpretation;
   console.info(PATIENT_CONVERSATION_SHADOW_EVENT, JSON.stringify({
     contract_version: PATIENT_CONVERSATION_AGENT_VERSION,
     prompt_version: envelope?.runtime_metadata?.prompt_version || null,
@@ -336,35 +335,7 @@ function emitShadowSummary(envelope: any) {
       ? envelope.diagnostics.schema_violations.length
       : 0,
     noncanonical_output_count: Number(envelope?.diagnostics?.noncanonical_output_count) || 0,
-    state_transition: envelope?.diagnostics?.state_policy?.transition || null,
-    state_carried_field_count: Array.isArray(envelope?.diagnostics?.state_policy?.carried_fields)
-      ? envelope.diagnostics.state_policy.carried_fields.length
-      : 0,
-    state_cleared_stale_field_count: Array.isArray(envelope?.diagnostics?.state_policy?.cleared_stale_fields)
-      ? envelope.diagnostics.state_policy.cleared_stale_fields.length
-      : 0,
-    decision_source: envelope?.diagnostics?.decision_policy?.decision_source || null,
-    deterministic_safety_preflight:
-      envelope?.diagnostics?.decision_policy?.deterministic_safety_preflight === true,
-    deterministic_safety_flag_count: Array.isArray(
-      envelope?.diagnostics?.decision_policy?.deterministic_safety_flags,
-    )
-      ? envelope.diagnostics.decision_policy.deterministic_safety_flags.length
-      : 0,
-    model_urgency_advisory:
-      envelope?.diagnostics?.decision_policy?.model_urgency_advisory || null,
-    model_next_action_ignored:
-      envelope?.diagnostics?.decision_policy?.model_next_action_ignored === true,
-    primary_intent: interpretation?.primary_intent || 'unknown',
-    care_path_count: Array.isArray(interpretation?.care_path_candidates)
-      ? interpretation.care_path_candidates.length
-      : 0,
-    service_count: Array.isArray(interpretation?.service_keys)
-      ? interpretation.service_keys.length
-      : 0,
-    urgency_level: interpretation?.urgency?.level || 'unknown',
-    next_action: interpretation?.next_action || null,
-    sufficient_for_search: interpretation?.information_status?.sufficient_for_search === true,
+
   }));
 }
 
