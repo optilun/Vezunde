@@ -1,6 +1,6 @@
 import { handle as legacyDirectoryImportOpsHandle } from './directoryImportOps.ts';
 
-const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-identity-safe-4';
+const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-read-safe-6';
 
 function clean(value: unknown, maxLength = 4000) {
   return String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
@@ -22,6 +22,12 @@ export async function handle(req: Request) {
       rejects_ambiguous_organization_match: true,
       chunked_snapshot_finalization: true,
       chunked_batch_planning: true,
+      reconciles_existing_location_metadata: true,
+      reconciles_directory_state: true,
+      reconciles_directory_evidence: true,
+      preserves_directory_publication_state: true,
+      preserves_existing_optional_fields: true,
+      fails_closed_on_directory_read_errors: true,
     });
   }
 
