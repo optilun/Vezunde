@@ -22,6 +22,15 @@ import {
   resolveDirectoryLocationMatch,
   resolveDirectoryOrganizationMatch,
 } from '../../shared/directoryIdentityMatchPolicy.js';
+import {
+  directoryFieldsEqual,
+  planDirectoryLocationReconciliation,
+  resolveDirectoryEvidencePayload,
+  resolveDirectoryLinkPayload,
+  resolveDirectoryLocationUpdatePayload,
+  resolveDirectoryStateCreatePayload,
+  resolveDirectoryStateUpdatePayload,
+} from '../../shared/directoryLocationReconciliation.js';
 
 const MAX_ROWS = 5000;
 const EXECUTION_CHUNK = 20;
@@ -87,16 +96,6 @@ function normalizeDate(value) {
   if (!text) return null;
   const parsed = new Date(text);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
-}
-
-function activeStatusFor(row) {
-  return row.operational_status === 'active' ? 'activa' : 'inactiva';
-}
-
-function confidenceFor(row) {
-  if (row.data_quality_status === 'high') return 'high';
-  if (row.data_quality_status === 'medium') return 'medium';
-  return 'low';
 }
 
 function sourceSnapshotKey(sourceVersion, sha256) {
@@ -430,111 +429,32 @@ async function finalizeSnapshot(svc, user, input) {
   });
 }
 
-function locationComparablePayload(location) {
-  return {
-    name: location.name || '',
-    city: location.city || '',
-    county_name: location.county_name || '',
-    locality_name: location.locality_name || '',
-    locality_siruta_code: location.locality_siruta_code || '',
-    address: location.address || '',
-    phone_public: location.phone_public || '',
-    public_email: location.public_email || '',
-    website: location.website || '',
-    opening_hours: location.opening_hours || '',
-    active_status: location.active_status || 'activa',
-  };
-}
-
-function locationUpdatePayload(row) {
-  return {
-    name: row.location_name,
-    city: row.locality_name,
-    locality_name: row.locality_name,
-    locality_siruta_code: row.locality_siruta_code,
-    county: row.county_name,
-    county_name: row.county_name,
-    address: row.address,
-    phone_public: row.phone,
-    public_email: row.email,
-    website: row.website,
-    opening_hours: row.schedule,
-    active_status: activeStatusFor(row),
-    source_url: row.source_url,
-    source_name: row.source_name || row.organization_name || row.location_name,
-    source_type: row.source_type || 'official',
-    source_checked_at: normalizeDate(row.source_checked_at),
-    data_confidence: confidenceFor(row),
-    data_source: 'public_source',
-    last_confirmed_at: normalizeDate(row.source_checked_at) || now(),
-    migration_review_required: false,
-  };
-}
-
 function locationCreatePayload(row, organizationId = null) {
+  const canonical = resolveDirectoryLocationUpdatePayload(row);
   return {
     organization_id: organizationId || null,
-    name: row.location_name,
-    provider_type: row.provider_type,
-    provider_profile_type: row.provider_profile_type,
-    city: row.locality_name,
-    county: row.county_name,
-    locality_siruta_code: row.locality_siruta_code,
-    locality_name: row.locality_name,
-    county_name: row.county_name,
-    address: row.address,
-    phone_public: row.phone,
-    public_email: row.email,
-    website: row.website,
-    opening_hours: row.schedule,
+    ...canonical,
     request_intake_status: 'inactive',
     public_visibility_status: 'draft',
     status: 'draft',
     profile_control_status: 'directory',
     claim_verification_status: 'none',
     verification_state: 'unclaimed',
-    active_status: activeStatusFor(row),
     is_verified: false,
-    source_url: row.source_url,
-    source_name: row.source_name || row.organization_name || row.location_name,
-    source_type: row.source_type || 'official',
-    source_checked_at: normalizeDate(row.source_checked_at),
-    data_confidence: confidenceFor(row),
-    data_source: 'public_source',
-    last_confirmed_at: normalizeDate(row.source_checked_at) || now(),
-    migration_review_required: false,
-  };
-}
-
-function directoryStatePayload(row, locationId, organizationLinked) {
-  return {
-    location_id: locationId,
-    directory_external_key: row.location_external_key,
-    directory_source_version: row.source_version,
-    address_fingerprint: row.address_fingerprint,
-    location_type_code: row.location_type_code,
-    care_setting_code: row.care_setting_code,
-    ownership_type_code: row.ownership_type_code || 'unknown',
-    operational_status: row.operational_status,
-    publication_status: 'draft',
-    control_status: 'directory',
-    data_quality_status: row.data_quality_status,
-    directory_detail_level: 'summary',
-    directory_basic_details_approved: false,
-    organization_link_status: organizationLinked ? 'confirmed' : 'unassigned',
-    organization_link_confidence: organizationLinked ? confidenceFor(row) : 'low',
-    organization_link_review_note: organizationLinked ? 'Confirmat prin aprobarea administrativa a lotului de import.' : 'Fara organizatie confirmata la import.',
-    source_checked_at: normalizeDate(row.source_checked_at),
-    normalized_at: now(),
-    state_status: 'active',
+    last_confirmed_at: canonical.last_confirmed_at || now(),
   };
 }
 
 async function loadPlanningContext(svc) {
-  const [organizations, locations, states] = await Promise.all([
+  const [organizations, locations, states, links, evidenceRows] = await Promise.all([
     svc.entities.ProviderOrganization.list('name', MAX_ROWS).catch(() => []),
     svc.entities.ProviderLocation.list('name', MAX_ROWS).catch(() => []),
     svc.entities.ProviderLocationDirectoryState.filter({ state_status: 'active' }, '-created_date', MAX_ROWS).catch(() => []),
+    svc.entities.DirectoryOrganizationLocationLink.filter({ link_record_status: 'active' }, '-created_date', MAX_ROWS).catch(() => []),
+    svc.entities.ProviderEvidence.filter({
+      field_name: 'directory_import_snapshot',
+      evidence_status: 'active',
+    }, '-created_date', MAX_ROWS).catch(() => []),
   ]);
   const organizationsByExternalKey = new Map();
   const organizationsByName = new Map();
@@ -555,9 +475,17 @@ async function loadPlanningContext(svc) {
   }
   const statesByExternalKey = new Map();
   const statesByAddress = new Map();
+  const statesByLocationId = new Map();
   for (const state of states) {
     append(statesByExternalKey, state.directory_external_key, state);
     append(statesByAddress, state.address_fingerprint, state);
+    append(statesByLocationId, state.location_id, state);
+  }
+  const linksByLocationId = new Map();
+  for (const link of links) append(linksByLocationId, link.location_id, link);
+  const evidenceByLocationId = new Map();
+  for (const evidence of evidenceRows) {
+    append(evidenceByLocationId, evidence.entity_id, evidence);
   }
   const locationsById = new Map(locations.map((location) => [location.id, location]));
   const locationsByFallback = new Map();
@@ -565,7 +493,17 @@ async function loadPlanningContext(svc) {
     const key = [normalizeIdentityText(location.locality_name || location.city), normalizeIdentityText(location.address), normalizeIdentityText(location.public_display_name || location.name)].join('|');
     if (key.replace(/\|/g, '')) append(locationsByFallback, key, location);
   }
-  return { organizationsByExternalKey, organizationsByName, statesByExternalKey, statesByAddress, locationsById, locationsByFallback };
+  return {
+    organizationsByExternalKey,
+    organizationsByName,
+    statesByExternalKey,
+    statesByAddress,
+    statesByLocationId,
+    linksByLocationId,
+    evidenceByLocationId,
+    locationsById,
+    locationsByFallback,
+  };
 }
 
 function applyAdminOverride(normalized, row) {
@@ -693,6 +631,7 @@ async function planBatch(svc, user, input) {
     const candidates = [];
     const supplementalActions = [];
     let organizationReconciliation = null;
+    let locationReconciliation = null;
     let organizationMatchError = '';
     let locationMatchError = '';
 
@@ -778,11 +717,18 @@ async function planBatch(svc, user, input) {
         validation.errors.push('controlled_profile_requires_manual_update');
         validation.validation_codes.push('controlled_profile_requires_manual_update');
       } else if (targetLocation) {
-        const updates = locationUpdatePayload(normalized);
-        const comparable = locationComparablePayload(targetLocation);
-        const expectedComparable = pickFields(updates, Object.keys(comparable));
-        const same = equalFieldSubset(comparable, expectedComparable);
-        if (same && (!targetOrganization || targetLocation.organization_id === targetOrganization.id)) plannedAction = 'skip_unchanged';
+        locationReconciliation = planDirectoryLocationReconciliation({
+          location: targetLocation,
+          directoryStates: context.statesByLocationId.get(targetLocation.id) || [],
+          organizationLinks: context.linksByLocationId.get(targetLocation.id) || [],
+          evidenceRows: context.evidenceByLocationId.get(targetLocation.id) || [],
+          row: normalized,
+          organizationId: targetOrganization?.id || '',
+        });
+        if (
+          !locationReconciliation.requires_update
+          && (!targetOrganization || targetLocation.organization_id === targetOrganization.id)
+        ) plannedAction = 'skip_unchanged';
         else if (targetOrganization && targetLocation.organization_id !== targetOrganization.id) plannedAction = 'link_existing_location';
         else plannedAction = 'update_existing_location';
       } else if (targetOrganization) {
@@ -798,6 +744,13 @@ async function planBatch(svc, user, input) {
     if (rowReady && organizationReconciliation?.requires_update) {
       supplementalActions.push('update_directory_organization');
       organizationsPlannedForUpdate.add(targetOrganization.id);
+    }
+    if (rowReady && locationReconciliation?.components) {
+      for (const [component, requiresUpdate] of Object.entries(
+        locationReconciliation.components,
+      )) {
+        if (requiresUpdate) supplementalActions.push(`reconcile_${component}`);
+      }
     }
     if (rowReady) readyRows += 1;
     else blockedRows += 1;
@@ -1038,22 +991,66 @@ async function ensureOrganization(
   return { organization, created: true, updated: false };
 }
 
-async function createEvidence(svc, user, batch, rowRecord, row, entityType, entityId, sequence) {
-  if (!row.source_url) return null;
-  const values = {
+async function ensureEvidence(
+  svc,
+  user,
+  batch,
+  rowRecord,
+  row,
+  entityType,
+  entityId,
+  sequence,
+) {
+  if (!row.source_url) {
+    return { id: null, created: false, superseded: 0 };
+  }
+  const expected = resolveDirectoryEvidencePayload(row, entityType, entityId);
+  const active = await svc.entities.ProviderEvidence.filter({
     entity_type: entityType,
     entity_id: entityId,
     field_name: 'directory_import_snapshot',
-    value_snapshot: JSON.stringify({ source_version: row.source_version, source_row_key: row.source_row_key }),
-    source_url: row.source_url,
-    source_type: row.source_type || 'official',
-    source_title: row.source_name || row.organization_name || row.location_name,
+    evidence_status: 'active',
+  }, '-created_date', 20).catch(() => []);
+  const retained = active.find((item) => directoryFieldsEqual(item, expected)) || null;
+  const stale = active.filter((item) => item.id !== retained?.id);
+
+  for (const [index, existing] of stale.entries()) {
+    const before = { evidence_status: existing.evidence_status };
+    const after = { evidence_status: 'superseded' };
+    await svc.entities.ProviderEvidence.update(existing.id, after);
+    await createMutation(svc, {
+      batch_id: batch.id,
+      row_id: rowRecord.id,
+      sequence: sequence - 0.5 + index / 100,
+      mutation_key: `${batch.id}:${rowRecord.id}:ProviderEvidence:${existing.id}:update`,
+      entity_type: 'ProviderEvidence',
+      entity_id: existing.id,
+      operation: 'update',
+      before_json: JSON.stringify(before),
+      after_json: JSON.stringify(after),
+      rollback_status: 'pending',
+      applied_at: now(),
+    });
+    await writeAudit(
+      svc,
+      user,
+      'ProviderEvidence',
+      existing.id,
+      'directory_import_evidence_superseded',
+      before,
+      after,
+      `Lot ${batch.batch_key}`,
+    );
+  }
+
+  if (retained) {
+    return { id: retained.id, created: false, superseded: stale.length };
+  }
+
+  const values = {
+    ...expected,
     collected_at: now(),
     collected_by: user.id,
-    checked_at: normalizeDate(row.source_checked_at),
-    confidence: confidenceFor(row),
-    evidence_status: 'active',
-    notes: clean([row.evidence_note, row.observations].filter(Boolean).join(' | '), 2000),
   };
   const evidence = await svc.entities.ProviderEvidence.create(values);
   await createMutation(svc, {
@@ -1069,60 +1066,157 @@ async function createEvidence(svc, user, batch, rowRecord, row, entityType, enti
     rollback_status: 'pending',
     applied_at: now(),
   });
-  return evidence;
+  return { id: evidence.id, created: true, superseded: stale.length };
 }
 
-async function ensureDirectoryState(svc, user, batch, rowRecord, row, location, organizationLinked, sequence) {
-  const existing = await svc.entities.ProviderLocationDirectoryState.filter({ location_id: location.id, state_status: 'active' }, '-created_date', 5).catch(() => []);
-  const values = directoryStatePayload(row, location.id, organizationLinked);
-  if (existing[0]) {
-    const before = pickFields(existing[0], Object.keys(values));
-    await svc.entities.ProviderLocationDirectoryState.update(existing[0].id, values);
+async function ensureDirectoryState(
+  svc,
+  user,
+  batch,
+  rowRecord,
+  row,
+  location,
+  organizationLinked,
+  sequence,
+) {
+  const active = await svc.entities.ProviderLocationDirectoryState.filter({
+    location_id: location.id,
+    state_status: 'active',
+  }, '-created_date', 20).catch(() => []);
+  const current = active[0] || null;
+  const duplicates = active.slice(1);
+  const expected = resolveDirectoryStateUpdatePayload(
+    row,
+    location.id,
+    organizationLinked,
+  );
+  let stateId = current?.id || null;
+  let created = false;
+  let updated = false;
+
+  if (current && !directoryFieldsEqual(current, expected)) {
+    const values = { ...expected, normalized_at: now() };
+    const before = pickFields(current, Object.keys(values));
+    await svc.entities.ProviderLocationDirectoryState.update(current.id, values);
     await createMutation(svc, {
       batch_id: batch.id,
       row_id: rowRecord.id,
       sequence,
-      mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocationDirectoryState:${existing[0].id}:update`,
+      mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocationDirectoryState:${current.id}:update`,
       entity_type: 'ProviderLocationDirectoryState',
-      entity_id: existing[0].id,
+      entity_id: current.id,
       operation: 'update',
       before_json: JSON.stringify(before),
       after_json: JSON.stringify(values),
       rollback_status: 'pending',
       applied_at: now(),
     });
-    return existing[0].id;
+    await writeAudit(
+      svc,
+      user,
+      'ProviderLocationDirectoryState',
+      current.id,
+      'directory_import_state_updated',
+      before,
+      values,
+      `Lot ${batch.batch_key}`,
+    );
+    updated = true;
+  } else if (!current) {
+    const values = {
+      ...resolveDirectoryStateCreatePayload(
+        row,
+        location.id,
+        organizationLinked,
+      ),
+      normalized_at: now(),
+    };
+    const state = await svc.entities.ProviderLocationDirectoryState.create(values);
+    stateId = state.id;
+    created = true;
+    await createMutation(svc, {
+      batch_id: batch.id,
+      row_id: rowRecord.id,
+      sequence,
+      mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocationDirectoryState:${state.id}:create`,
+      entity_type: 'ProviderLocationDirectoryState',
+      entity_id: state.id,
+      operation: 'create',
+      before_json: '{}',
+      after_json: JSON.stringify(values),
+      rollback_status: 'pending',
+      applied_at: now(),
+    });
+    await writeAudit(
+      svc,
+      user,
+      'ProviderLocationDirectoryState',
+      state.id,
+      'directory_import_state_created',
+      {},
+      values,
+      `Lot ${batch.batch_key}`,
+    );
   }
-  const state = await svc.entities.ProviderLocationDirectoryState.create(values);
-  await createMutation(svc, {
-    batch_id: batch.id,
-    row_id: rowRecord.id,
-    sequence,
-    mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocationDirectoryState:${state.id}:create`,
-    entity_type: 'ProviderLocationDirectoryState',
-    entity_id: state.id,
-    operation: 'create',
-    before_json: '{}',
-    after_json: JSON.stringify(values),
-    rollback_status: 'pending',
-    applied_at: now(),
-  });
-  await writeAudit(svc, user, 'ProviderLocationDirectoryState', state.id, 'directory_import_state_created', {}, values, `Lot ${batch.batch_key}`);
-  return state.id;
+
+  for (const [index, duplicate] of duplicates.entries()) {
+    const before = { state_status: duplicate.state_status };
+    const after = { state_status: 'superseded' };
+    await svc.entities.ProviderLocationDirectoryState.update(duplicate.id, after);
+    await createMutation(svc, {
+      batch_id: batch.id,
+      row_id: rowRecord.id,
+      sequence: sequence - 0.5 + index / 100,
+      mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocationDirectoryState:${duplicate.id}:update`,
+      entity_type: 'ProviderLocationDirectoryState',
+      entity_id: duplicate.id,
+      operation: 'update',
+      before_json: JSON.stringify(before),
+      after_json: JSON.stringify(after),
+      rollback_status: 'pending',
+      applied_at: now(),
+    });
+    updated = true;
+  }
+  return {
+    id: stateId,
+    created,
+    updated,
+    superseded: duplicates.length,
+  };
 }
 
-async function ensureOrganizationLink(svc, user, batch, rowRecord, row, locationId, organizationId, sequence) {
-  if (!organizationId) return null;
-  const active = await svc.entities.DirectoryOrganizationLocationLink.filter({ location_id: locationId, link_record_status: 'active' }, '-created_date', 20).catch(() => []);
-  for (const existing of active) {
-    if (existing.organization_id === organizationId && existing.link_status === 'confirmed') return existing.id;
+async function ensureOrganizationLink(
+  svc,
+  user,
+  batch,
+  rowRecord,
+  row,
+  locationId,
+  organizationId,
+  sequence,
+) {
+  if (!organizationId) {
+    return { id: null, created: false, updated: false, superseded: 0 };
+  }
+  const active = await svc.entities.DirectoryOrganizationLocationLink.filter({
+    location_id: locationId,
+    link_record_status: 'active',
+  }, '-created_date', 20).catch(() => []);
+  const matching = active.filter(
+    (item) => item.organization_id === organizationId,
+  );
+  const current = matching[0] || null;
+  const stale = active.filter((item) => item.id !== current?.id);
+
+  for (const [index, existing] of stale.entries()) {
     const before = { link_record_status: existing.link_record_status };
     const after = { link_record_status: 'superseded' };
     await svc.entities.DirectoryOrganizationLocationLink.update(existing.id, after);
     await createMutation(svc, {
       batch_id: batch.id,
       row_id: rowRecord.id,
-      sequence: sequence - 1,
+      sequence: sequence - 0.5 + index / 100,
       mutation_key: `${batch.id}:${rowRecord.id}:DirectoryOrganizationLocationLink:${existing.id}:update`,
       entity_type: 'DirectoryOrganizationLocationLink',
       entity_id: existing.id,
@@ -1133,18 +1227,61 @@ async function ensureOrganizationLink(svc, user, batch, rowRecord, row, location
       applied_at: now(),
     });
   }
+
+  const expected = resolveDirectoryLinkPayload(
+    row,
+    locationId,
+    organizationId,
+  );
+  if (current) {
+    let updated = stale.length > 0;
+    if (!directoryFieldsEqual(current, expected)) {
+      const values = {
+        ...expected,
+        review_note: `Confirmata la aprobarea lotului de import ${batch.batch_key}.`,
+        reviewed_by_user_id: user.id,
+        reviewed_at: now(),
+      };
+      const before = pickFields(current, Object.keys(values));
+      await svc.entities.DirectoryOrganizationLocationLink.update(current.id, values);
+      await createMutation(svc, {
+        batch_id: batch.id,
+        row_id: rowRecord.id,
+        sequence,
+        mutation_key: `${batch.id}:${rowRecord.id}:DirectoryOrganizationLocationLink:${current.id}:update`,
+        entity_type: 'DirectoryOrganizationLocationLink',
+        entity_id: current.id,
+        operation: 'update',
+        before_json: JSON.stringify(before),
+        after_json: JSON.stringify(values),
+        rollback_status: 'pending',
+        applied_at: now(),
+      });
+      await writeAudit(
+        svc,
+        user,
+        'DirectoryOrganizationLocationLink',
+        current.id,
+        'directory_import_organization_link_updated',
+        before,
+        values,
+        `Lot ${batch.batch_key}`,
+      );
+      updated = true;
+    }
+    return {
+      id: current.id,
+      created: false,
+      updated,
+      superseded: stale.length,
+    };
+  }
+
   const values = {
-    organization_id: organizationId,
-    location_id: locationId,
-    source_row_key: row.source_row_key,
-    source_version: row.source_version,
-    link_status: 'confirmed',
-    confidence: confidenceFor(row),
-    evidence_summary: row.evidence_note || `Asociere aprobata prin lotul ${batch.batch_key}.`,
+    ...expected,
     review_note: `Confirmata la aprobarea lotului de import ${batch.batch_key}.`,
     reviewed_by_user_id: user.id,
     reviewed_at: now(),
-    link_record_status: 'active',
   };
   const link = await svc.entities.DirectoryOrganizationLocationLink.create(values);
   await createMutation(svc, {
@@ -1160,8 +1297,42 @@ async function ensureOrganizationLink(svc, user, batch, rowRecord, row, location
     rollback_status: 'pending',
     applied_at: now(),
   });
-  await writeAudit(svc, user, 'DirectoryOrganizationLocationLink', link.id, 'directory_import_organization_link_created', {}, values, `Lot ${batch.batch_key}`);
-  return link.id;
+  await writeAudit(
+    svc,
+    user,
+    'DirectoryOrganizationLocationLink',
+    link.id,
+    'directory_import_organization_link_created',
+    {},
+    values,
+    `Lot ${batch.batch_key}`,
+  );
+  return {
+    id: link.id,
+    created: true,
+    updated: stale.length > 0,
+    superseded: stale.length,
+  };
+}
+
+async function loadLocationReconciliationArtifacts(svc, locationId) {
+  const [directoryStates, organizationLinks, evidenceRows] = await Promise.all([
+    svc.entities.ProviderLocationDirectoryState.filter({
+      location_id: locationId,
+      state_status: 'active',
+    }, '-created_date', 20).catch(() => []),
+    svc.entities.DirectoryOrganizationLocationLink.filter({
+      location_id: locationId,
+      link_record_status: 'active',
+    }, '-created_date', 20).catch(() => []),
+    svc.entities.ProviderEvidence.filter({
+      entity_type: 'ProviderLocation',
+      entity_id: locationId,
+      field_name: 'directory_import_snapshot',
+      evidence_status: 'active',
+    }, '-created_date', 20).catch(() => []),
+  ]);
+  return { directoryStates, organizationLinks, evidenceRows };
 }
 
 async function executeRow(svc, user, batch, rowRecord) {
@@ -1175,12 +1346,16 @@ async function executeRow(svc, user, batch, rowRecord) {
     updated_organization: false,
     created_location: false,
     updated_location: false,
+    created_directory_state: false,
+    updated_directory_state: false,
+    superseded_directory_states: 0,
     created_link: false,
+    updated_link: false,
+    superseded_links: 0,
+    created_evidence: false,
+    superseded_evidence: 0,
   };
-  if (
-    (rowRecord.planned_action === 'skip_unchanged' && !updatesDirectoryOrganization)
-    || rowRecord.planned_action === 'skip_duplicate'
-  ) {
+  if (rowRecord.planned_action === 'skip_duplicate') {
     await svc.entities.DirectoryImportRow.update(rowRecord.id, { status: 'skipped', result_json: JSON.stringify(result), applied_at: now(), rollback_status: 'not_required' });
     return { status: 'skipped', result };
   }
@@ -1201,9 +1376,30 @@ async function executeRow(svc, user, batch, rowRecord) {
     result.updated_organization = organizationResult.updated;
   }
 
+  let location = rowRecord.target_location_id
+    ? await svc.entities.ProviderLocation.get(rowRecord.target_location_id).catch(() => null)
+    : null;
+  if (location && CONTROLLED_PROFILES.has(location.profile_control_status || 'directory')) throw new Error('Profilul este controlat si necesita actualizare manuala.');
+
   if (rowRecord.planned_action === 'skip_unchanged') {
+    if (!location) {
+      throw new Error('Locatia existenta nu mai poate fi gasita; regenereaza dry-run-ul.');
+    }
+    const artifacts = await loadLocationReconciliationArtifacts(svc, location.id);
+    const currentPlan = planDirectoryLocationReconciliation({
+      location,
+      ...artifacts,
+      row,
+      organizationId: organization?.id || '',
+    });
+    if (
+      currentPlan.requires_update
+      || (organization?.id && location.organization_id !== organization.id)
+    ) {
+      throw new Error('Locatia s-a schimbat dupa dry-run; regenereaza planul inainte de executie.');
+    }
     result.organization_id = organization?.id || null;
-    result.location_id = rowRecord.target_location_id || null;
+    result.location_id = location.id;
     const status = result.created_organization || result.updated_organization ? 'applied' : 'skipped';
     await svc.entities.DirectoryImportRow.update(rowRecord.id, {
       status,
@@ -1214,11 +1410,6 @@ async function executeRow(svc, user, batch, rowRecord) {
     });
     return { status, result };
   }
-
-  let location = rowRecord.target_location_id
-    ? await svc.entities.ProviderLocation.get(rowRecord.target_location_id).catch(() => null)
-    : null;
-  if (location && CONTROLLED_PROFILES.has(location.profile_control_status || 'directory')) throw new Error('Profilul este controlat si necesita actualizare manuala.');
 
   if (!location) {
     const values = locationCreatePayload(row, organization?.id || null);
@@ -1239,46 +1430,95 @@ async function executeRow(svc, user, batch, rowRecord) {
     });
     await writeAudit(svc, user, 'ProviderLocation', location.id, 'directory_import_location_created', {}, values, `Lot ${batch.batch_key}`);
   } else {
-    const updates = locationUpdatePayload(row);
+    const updates = resolveDirectoryLocationUpdatePayload(row);
     if (organization?.id) updates.organization_id = organization.id;
-    const before = pickFields(location, Object.keys(updates));
-    await svc.entities.ProviderLocation.update(location.id, updates);
-    result.updated_location = true;
-    await createMutation(svc, {
-      batch_id: batch.id,
-      row_id: rowRecord.id,
-      sequence: Number(batch.applied_rows || 0) * 10 + 2,
-      mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocation:${location.id}:update`,
-      entity_type: 'ProviderLocation',
-      entity_id: location.id,
-      operation: 'update',
-      before_json: JSON.stringify(before),
-      after_json: JSON.stringify(updates),
-      rollback_status: 'pending',
-      applied_at: now(),
-    });
-    await writeAudit(svc, user, 'ProviderLocation', location.id, 'directory_import_location_updated', before, updates, `Lot ${batch.batch_key}`);
+    if (!directoryFieldsEqual(location, updates)) {
+      const before = pickFields(location, Object.keys(updates));
+      await svc.entities.ProviderLocation.update(location.id, updates);
+      result.updated_location = true;
+      await createMutation(svc, {
+        batch_id: batch.id,
+        row_id: rowRecord.id,
+        sequence: Number(batch.applied_rows || 0) * 10 + 2,
+        mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocation:${location.id}:update`,
+        entity_type: 'ProviderLocation',
+        entity_id: location.id,
+        operation: 'update',
+        before_json: JSON.stringify(before),
+        after_json: JSON.stringify(updates),
+        rollback_status: 'pending',
+        applied_at: now(),
+      });
+      await writeAudit(svc, user, 'ProviderLocation', location.id, 'directory_import_location_updated', before, updates, `Lot ${batch.batch_key}`);
+      location = { ...location, ...updates };
+    }
   }
 
-  await ensureDirectoryState(svc, user, batch, rowRecord, row, location, Boolean(organization?.id), Number(batch.applied_rows || 0) * 10 + 4);
+  const stateResult = await ensureDirectoryState(
+    svc,
+    user,
+    batch,
+    rowRecord,
+    row,
+    location,
+    Boolean(organization?.id),
+    Number(batch.applied_rows || 0) * 10 + 4,
+  );
+  result.created_directory_state = stateResult.created;
+  result.updated_directory_state = stateResult.updated;
+  result.superseded_directory_states = stateResult.superseded;
   if (organization?.id) {
-    await ensureOrganizationLink(svc, user, batch, rowRecord, row, location.id, organization.id, Number(batch.applied_rows || 0) * 10 + 6);
-    result.created_link = true;
+    const linkResult = await ensureOrganizationLink(
+      svc,
+      user,
+      batch,
+      rowRecord,
+      row,
+      location.id,
+      organization.id,
+      Number(batch.applied_rows || 0) * 10 + 6,
+    );
+    result.created_link = linkResult.created;
+    result.updated_link = linkResult.updated;
+    result.superseded_links = linkResult.superseded;
   }
-  await createEvidence(svc, user, batch, rowRecord, row, 'ProviderLocation', location.id, Number(batch.applied_rows || 0) * 10 + 8);
+  const evidenceResult = await ensureEvidence(
+    svc,
+    user,
+    batch,
+    rowRecord,
+    row,
+    'ProviderLocation',
+    location.id,
+    Number(batch.applied_rows || 0) * 10 + 8,
+  );
+  result.created_evidence = evidenceResult.created;
+  result.superseded_evidence = evidenceResult.superseded;
 
   result.organization_id = organization?.id || null;
   result.location_id = location.id;
+  const status = [
+    result.created_organization,
+    result.updated_organization,
+    result.created_location,
+    result.updated_location,
+    result.created_directory_state,
+    result.updated_directory_state,
+    result.created_link,
+    result.updated_link,
+    result.created_evidence,
+    result.superseded_evidence > 0,
+  ].some(Boolean) ? 'applied' : 'skipped';
   await svc.entities.DirectoryImportRow.update(rowRecord.id, {
-    status: 'applied',
+    status,
     target_organization_id: organization?.id || '',
     target_location_id: location.id,
     result_json: JSON.stringify(result),
     applied_at: now(),
-    rollback_status: 'pending',
+    rollback_status: status === 'applied' ? 'pending' : 'not_required',
     error_message: '',
   });
-  return { status: 'applied', result };
+  return { status, result };
 }
 
 async function acquireBatchLock(svc, batch, requestedToken = '') {

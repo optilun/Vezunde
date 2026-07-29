@@ -12,7 +12,7 @@ import {
 } from '../../base44/shared/providerWorkspaceFunctionRouting.js';
 import { getBase44LatestFunctionClient } from './base44LatestFunctionClient.js';
 
-export const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-latest-1';
+export const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-reconciliation-safe-5';
 
 const directoryImportRuntimeChecks = new WeakMap();
 

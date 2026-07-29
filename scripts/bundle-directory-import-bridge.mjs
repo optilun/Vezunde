@@ -36,7 +36,7 @@ const bundledSource = await readFile(temporaryOutputPath, 'utf8');
 if (/from ['"]\.\.?\//.test(bundledSource)) {
   throw new Error('Bundle-ul directory import contine importuri locale.');
 }
-if (!bundledSource.includes('viasee-directory-import-single-file-6')) {
+if (!bundledSource.includes('viasee-directory-import-single-file-7')) {
   throw new Error('Bundle-ul directory import nu contine revizia asteptata.');
 }
 

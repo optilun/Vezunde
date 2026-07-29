@@ -13,9 +13,12 @@ var DIRECTORY_IMPORT_MAX_CHUNK_SIZE = 100;
 var FIELD_ALIASES = {
   location_name: ["location_name", "location_display_name", "name", "location"],
   organization_name: ["organization_name", "organization_display_name", "organization", "brand"],
-  locality_name: ["locality_name", "official_locality", "city", "locality"],
+  locality_name: ["official_locality", "locality_name", "city", "locality"],
   county_name: ["county_name", "county_if_confirmed", "county"],
+  county_code: ["county_code"],
   locality_siruta_code: ["locality_siruta_code", "siruta", "siruta_code"],
+  uat_code: ["uat_code"],
+  uat_name: ["uat_name"],
   address: ["address", "confirmed_address", "location_address"],
   phone: ["phone", "confirmed_location_phone", "public_phone", "phone_public"],
   email: ["email", "confirmed_location_email", "public_email"],
@@ -236,7 +239,10 @@ function normalizeDirectoryImportRow(raw = {}, context = {}) {
     organization_name: fields.organization_name,
     locality_name: fields.locality_name,
     county_name: fields.county_name,
+    county_code: fields.county_code,
     locality_siruta_code: fields.locality_siruta_code,
+    uat_code: fields.uat_code,
+    uat_name: fields.uat_name,
     address: fields.address,
     phone: fields.phone,
     email: fields.email,
@@ -726,6 +732,205 @@ function resolveDirectoryLocationMatch({
   };
 }
 
+// base44/shared/directoryLocationReconciliation.js
+function clean3(value, maxLength = 4e3) {
+  return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, maxLength);
+}
+function normalizeDirectoryDate(value) {
+  const text = clean3(value, 80);
+  if (!text) return null;
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+function directoryConfidenceFor(row = {}) {
+  if (row.data_quality_status === "high") return "high";
+  if (row.data_quality_status === "medium") return "medium";
+  return "low";
+}
+function comparableValue(key, value, expected) {
+  if (expected === null) {
+    return value === void 0 || value === null || value === "" ? null : value;
+  }
+  if (typeof expected === "string" && key.endsWith("_at")) {
+    return normalizeDirectoryDate(value);
+  }
+  if (typeof expected === "string") return clean3(value);
+  if (typeof expected === "boolean") return Boolean(value);
+  if (typeof expected === "number") return Number(value);
+  return value ?? null;
+}
+function directoryFieldsEqual(current = {}, expected = {}) {
+  return Object.entries(expected).every(
+    ([key, value]) => comparableValue(key, current?.[key], value) === value
+  );
+}
+function resolveDirectoryLocationUpdatePayload(row = {}) {
+  const sourceCheckedAt = normalizeDirectoryDate(row.source_checked_at);
+  const values = {
+    name: clean3(row.location_name, 240),
+    provider_type: clean3(row.provider_type, 120),
+    provider_profile_type: clean3(row.provider_profile_type, 120),
+    city: clean3(row.locality_name, 160),
+    locality_name: clean3(row.locality_name, 160),
+    locality_siruta_code: clean3(row.locality_siruta_code, 40),
+    county: clean3(row.county_name, 160),
+    county_name: clean3(row.county_name, 160),
+    address: clean3(row.address, 600),
+    phone_public: clean3(row.phone, 160),
+    public_email: clean3(row.email, 240),
+    website: clean3(row.website, 600),
+    opening_hours: clean3(row.schedule, 1200),
+    active_status: row.operational_status === "active" ? "activa" : "inactiva",
+    source_url: clean3(row.source_url, 1200),
+    source_name: clean3(
+      row.source_name || row.organization_name || row.location_name,
+      300
+    ),
+    source_type: clean3(row.source_type || "official", 120),
+    data_confidence: directoryConfidenceFor(row),
+    data_source: "public_source",
+    migration_review_required: false
+  };
+  for (const [key, value, maxLength] of [
+    ["county_code", row.county_code, 40],
+    ["uat_code", row.uat_code, 40],
+    ["uat_name", row.uat_name, 160]
+  ]) {
+    const normalized = clean3(value, maxLength);
+    if (normalized) values[key] = normalized;
+  }
+  if (sourceCheckedAt) {
+    values.source_checked_at = sourceCheckedAt;
+    values.last_confirmed_at = sourceCheckedAt;
+  }
+  return values;
+}
+function resolveDirectoryStateUpdatePayload(row = {}, locationId = "", organizationLinked = false) {
+  const values = {
+    location_id: clean3(locationId, 160),
+    directory_external_key: clean3(row.location_external_key, 240),
+    directory_source_version: clean3(row.source_version, 160),
+    address_fingerprint: clean3(row.address_fingerprint, 240),
+    location_type_code: clean3(row.location_type_code, 120),
+    care_setting_code: clean3(row.care_setting_code, 120),
+    ownership_type_code: clean3(row.ownership_type_code || "unknown", 120),
+    operational_status: clean3(row.operational_status || "unknown", 120),
+    data_quality_status: clean3(row.data_quality_status || "low", 120),
+    organization_link_status: organizationLinked ? "confirmed" : "unassigned",
+    organization_link_confidence: organizationLinked ? directoryConfidenceFor(row) : "low",
+    organization_link_review_note: organizationLinked ? "Confirmat prin aprobarea administrativa a lotului de import." : "Fara organizatie confirmata la import."
+  };
+  const sourceCheckedAt = normalizeDirectoryDate(row.source_checked_at);
+  if (sourceCheckedAt) values.source_checked_at = sourceCheckedAt;
+  return values;
+}
+function resolveDirectoryStateCreatePayload(row = {}, locationId = "", organizationLinked = false) {
+  return {
+    ...resolveDirectoryStateUpdatePayload(row, locationId, organizationLinked),
+    publication_status: "draft",
+    control_status: "directory",
+    directory_detail_level: "summary",
+    directory_basic_details_approved: false,
+    state_status: "active"
+  };
+}
+function resolveDirectoryLinkPayload(row = {}, locationId = "", organizationId = "") {
+  return {
+    organization_id: clean3(organizationId, 160),
+    location_id: clean3(locationId, 160),
+    source_row_key: clean3(row.source_row_key, 240),
+    source_version: clean3(row.source_version, 160),
+    link_status: "confirmed",
+    confidence: directoryConfidenceFor(row),
+    evidence_summary: clean3(
+      row.evidence_note || "Asociere confirmata prin sursa directorului.",
+      2e3
+    ),
+    link_record_status: "active"
+  };
+}
+function resolveDirectoryEvidencePayload(row = {}, entityType = "ProviderLocation", entityId = "") {
+  const values = {
+    entity_type: clean3(entityType, 120),
+    entity_id: clean3(entityId, 160),
+    field_name: "directory_import_snapshot",
+    value_snapshot: JSON.stringify({
+      source_version: clean3(row.source_version, 160),
+      source_row_key: clean3(row.source_row_key, 240)
+    }),
+    source_url: clean3(row.source_url, 1200),
+    source_type: clean3(row.source_type || "official", 120),
+    source_title: clean3(
+      row.source_name || row.organization_name || row.location_name,
+      300
+    ),
+    confidence: directoryConfidenceFor(row),
+    evidence_status: "active",
+    notes: clean3(
+      [row.evidence_note, row.observations].filter(Boolean).join(" | "),
+      2e3
+    )
+  };
+  const sourceCheckedAt = normalizeDirectoryDate(row.source_checked_at);
+  if (sourceCheckedAt) values.checked_at = sourceCheckedAt;
+  return values;
+}
+function activeRows(rows, field, activeValue) {
+  return (Array.isArray(rows) ? rows : []).filter((row) => row && (!row[field] || row[field] === activeValue));
+}
+function planDirectoryLocationReconciliation({
+  location = {},
+  directoryStates = [],
+  organizationLinks = [],
+  evidenceRows = [],
+  row = {},
+  organizationId = ""
+} = {}) {
+  const locationValues = resolveDirectoryLocationUpdatePayload(row);
+  const activeStates = activeRows(directoryStates, "state_status", "active");
+  const stateValues = resolveDirectoryStateUpdatePayload(
+    row,
+    location.id,
+    Boolean(organizationId)
+  );
+  const activeLinks = activeRows(
+    organizationLinks,
+    "link_record_status",
+    "active"
+  );
+  const linkValues = organizationId ? resolveDirectoryLinkPayload(row, location.id, organizationId) : null;
+  const matchingLinks = linkValues ? activeLinks.filter((link) => link.organization_id === organizationId) : [];
+  const activeEvidence = activeRows(
+    evidenceRows,
+    "evidence_status",
+    "active"
+  );
+  const evidenceValues = resolveDirectoryEvidencePayload(
+    row,
+    "ProviderLocation",
+    location.id
+  );
+  const matchingEvidence = activeEvidence.filter(
+    (evidence) => directoryFieldsEqual(evidence, evidenceValues)
+  );
+  const components = {
+    location: !directoryFieldsEqual(location, locationValues),
+    directory_state: activeStates.length !== 1 || !directoryFieldsEqual(activeStates[0], stateValues),
+    organization_link: Boolean(linkValues) && (activeLinks.length !== 1 || matchingLinks.length !== 1 || !directoryFieldsEqual(matchingLinks[0], linkValues)),
+    evidence: activeEvidence.length !== 1 || matchingEvidence.length !== 1
+  };
+  return {
+    valid: true,
+    error_code: "",
+    requires_update: Object.values(components).some(Boolean),
+    components,
+    location_values: locationValues,
+    state_values: stateValues,
+    link_values: linkValues,
+    evidence_values: evidenceValues
+  };
+}
+
 // base44/functions/directoryOps/directoryImportOps.ts
 var MAX_ROWS = 5e3;
 var EXECUTION_CHUNK = 20;
@@ -733,7 +938,7 @@ var FINALIZATION_CHUNK = 50;
 var PLANNING_CHUNK = 50;
 var LOCK_MINUTES = 5;
 var CONTROLLED_PROFILES = /* @__PURE__ */ new Set(["claimed", "verified", "suspended"]);
-function clean3(value, maxLength = 4e3) {
+function clean4(value, maxLength = 4e3) {
   return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, maxLength);
 }
 function safeJson(value, fallback = {}) {
@@ -753,9 +958,9 @@ function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 function snapshotDuplicateKey(row) {
-  const externalKey = clean3(row?.location_external_key, 220);
+  const externalKey = clean4(row?.location_external_key, 220);
   if (externalKey) return `external:${externalKey}`;
-  const addressFingerprint = clean3(row?.address_fingerprint, 220);
+  const addressFingerprint = clean4(row?.address_fingerprint, 220);
   const locationName = normalizeIdentityText(row?.location_name);
   if (!addressFingerprint || !locationName) return "";
   return `identity:${addressFingerprint}|${locationName}`;
@@ -780,24 +985,16 @@ function randomToken(prefix = "lock") {
   return `${prefix}_${Date.now()}_${crypto.randomUUID()}`;
 }
 function normalizeDate(value) {
-  const text = clean3(value, 80);
+  const text = clean4(value, 80);
   if (!text) return null;
   const parsed = new Date(text);
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
-}
-function activeStatusFor(row) {
-  return row.operational_status === "active" ? "activa" : "inactiva";
-}
-function confidenceFor(row) {
-  if (row.data_quality_status === "high") return "high";
-  if (row.data_quality_status === "medium") return "medium";
-  return "low";
 }
 function sourceSnapshotKey(sourceVersion, sha256) {
   return `snapshot:${stableTextHash(`${sourceVersion}|${sha256}`)}`;
 }
 function batchKeyFor(snapshot, sequence) {
-  return `DIR-${clean3(snapshot.source_version, 60).replace(/[^a-zA-Z0-9_-]+/g, "-")}-${String(sequence).padStart(3, "0")}`;
+  return `DIR-${clean4(snapshot.source_version, 60).replace(/[^a-zA-Z0-9_-]+/g, "-")}-${String(sequence).padStart(3, "0")}`;
 }
 function pickFields(source, keys) {
   return Object.fromEntries(keys.filter((key) => source?.[key] !== void 0).map((key) => [key, source[key]]));
@@ -869,10 +1066,10 @@ async function listSnapshots(svc, input) {
   }));
 }
 async function createSnapshot(svc, user, input) {
-  const sourceVersion = clean3(input.source_version, 160);
-  const sourceSha256 = clean3(input.source_sha256, 80).toLowerCase();
-  const sourceName = clean3(input.source_name, 200);
-  const sourceFormat = clean3(input.source_format, 30);
+  const sourceVersion = clean4(input.source_version, 160);
+  const sourceSha256 = clean4(input.source_sha256, 80).toLowerCase();
+  const sourceName = clean4(input.source_name, 200);
+  const sourceFormat = clean4(input.source_format, 30);
   if (!sourceVersion || !sourceName || !/^[a-f0-9]{64}$/.test(sourceSha256)) {
     return response({ error: "Versiunea, numele sursei si SHA-256 valid sunt obligatorii." }, 400);
   }
@@ -889,7 +1086,7 @@ async function createSnapshot(svc, user, input) {
     source_version: sourceVersion,
     source_sha256: sourceSha256,
     source_format: sourceFormat,
-    original_filename: clean3(input.original_filename, 240),
+    original_filename: clean4(input.original_filename, 240),
     column_map_json: JSON.stringify(input.column_map || {}),
     status: "uploading",
     total_rows: Number(input.total_rows || 0),
@@ -902,7 +1099,7 @@ async function createSnapshot(svc, user, input) {
     created_by_user_id: user.id,
     created_by_email: user.email || "",
     created_at_source: normalizeDate(input.created_at_source),
-    notes: clean3(input.notes, 2e3)
+    notes: clean4(input.notes, 2e3)
   });
   await writeAudit(svc, user, "DirectorySourceSnapshot", snapshot.id, "directory_snapshot_created", {}, {
     source_version: sourceVersion,
@@ -912,7 +1109,7 @@ async function createSnapshot(svc, user, input) {
   return response({ success: true, reused: false, snapshot });
 }
 async function appendRows(svc, user, input) {
-  const snapshot = await svc.entities.DirectorySourceSnapshot.get(clean3(input.snapshot_id, 120)).catch(() => null);
+  const snapshot = await svc.entities.DirectorySourceSnapshot.get(clean4(input.snapshot_id, 120)).catch(() => null);
   if (!snapshot) return response({ error: "Snapshotul nu a fost gasit." }, 404);
   if (!["draft", "uploading"].includes(snapshot.status) || snapshot.immutable_at) {
     return response({ error: "Snapshotul este blocat si nu mai accepta randuri." }, 409);
@@ -926,7 +1123,7 @@ async function appendRows(svc, user, input) {
   for (let index = 0; index < rows.length; index += 1) {
     const sourceRow = rows[index] && typeof rows[index] === "object" ? rows[index] : {};
     const rowNumber = Number(sourceRow.__row_number || input.start_row_number || 0) + (sourceRow.__row_number ? 0 : index);
-    const sourceRowKey = clean3(sourceRow.__source_row_key || `${snapshot.snapshot_key}:${rowNumber}`, 220);
+    const sourceRowKey = clean4(sourceRow.__source_row_key || `${snapshot.snapshot_key}:${rowNumber}`, 220);
     const raw = Object.fromEntries(Object.entries(sourceRow).filter(([key]) => !key.startsWith("__")));
     const rawPayload = stableStringify(raw);
     const rowHash = stableTextHash(rawPayload);
@@ -967,7 +1164,7 @@ async function appendRows(svc, user, input) {
   return response({ success: true, created, reused, uploaded_rows: uploadedRows });
 }
 async function finalizeSnapshot(svc, user, input) {
-  const snapshot = await svc.entities.DirectorySourceSnapshot.get(clean3(input.snapshot_id, 120)).catch(() => null);
+  const snapshot = await svc.entities.DirectorySourceSnapshot.get(clean4(input.snapshot_id, 120)).catch(() => null);
   if (!snapshot) return response({ error: "Snapshotul nu a fost gasit." }, 404);
   if (snapshot.immutable_at) {
     return response({
@@ -1102,107 +1299,31 @@ async function finalizeSnapshot(svc, user, input) {
     snapshot: { ...snapshot, ...finalUpdates }
   });
 }
-function locationComparablePayload(location) {
-  return {
-    name: location.name || "",
-    city: location.city || "",
-    county_name: location.county_name || "",
-    locality_name: location.locality_name || "",
-    locality_siruta_code: location.locality_siruta_code || "",
-    address: location.address || "",
-    phone_public: location.phone_public || "",
-    public_email: location.public_email || "",
-    website: location.website || "",
-    opening_hours: location.opening_hours || "",
-    active_status: location.active_status || "activa"
-  };
-}
-function locationUpdatePayload(row) {
-  return {
-    name: row.location_name,
-    city: row.locality_name,
-    locality_name: row.locality_name,
-    locality_siruta_code: row.locality_siruta_code,
-    county: row.county_name,
-    county_name: row.county_name,
-    address: row.address,
-    phone_public: row.phone,
-    public_email: row.email,
-    website: row.website,
-    opening_hours: row.schedule,
-    active_status: activeStatusFor(row),
-    source_url: row.source_url,
-    source_name: row.source_name || row.organization_name || row.location_name,
-    source_type: row.source_type || "official",
-    source_checked_at: normalizeDate(row.source_checked_at),
-    data_confidence: confidenceFor(row),
-    data_source: "public_source",
-    last_confirmed_at: normalizeDate(row.source_checked_at) || now(),
-    migration_review_required: false
-  };
-}
 function locationCreatePayload(row, organizationId = null) {
+  const canonical = resolveDirectoryLocationUpdatePayload(row);
   return {
     organization_id: organizationId || null,
-    name: row.location_name,
-    provider_type: row.provider_type,
-    provider_profile_type: row.provider_profile_type,
-    city: row.locality_name,
-    county: row.county_name,
-    locality_siruta_code: row.locality_siruta_code,
-    locality_name: row.locality_name,
-    county_name: row.county_name,
-    address: row.address,
-    phone_public: row.phone,
-    public_email: row.email,
-    website: row.website,
-    opening_hours: row.schedule,
+    ...canonical,
     request_intake_status: "inactive",
     public_visibility_status: "draft",
     status: "draft",
     profile_control_status: "directory",
     claim_verification_status: "none",
     verification_state: "unclaimed",
-    active_status: activeStatusFor(row),
     is_verified: false,
-    source_url: row.source_url,
-    source_name: row.source_name || row.organization_name || row.location_name,
-    source_type: row.source_type || "official",
-    source_checked_at: normalizeDate(row.source_checked_at),
-    data_confidence: confidenceFor(row),
-    data_source: "public_source",
-    last_confirmed_at: normalizeDate(row.source_checked_at) || now(),
-    migration_review_required: false
-  };
-}
-function directoryStatePayload(row, locationId, organizationLinked) {
-  return {
-    location_id: locationId,
-    directory_external_key: row.location_external_key,
-    directory_source_version: row.source_version,
-    address_fingerprint: row.address_fingerprint,
-    location_type_code: row.location_type_code,
-    care_setting_code: row.care_setting_code,
-    ownership_type_code: row.ownership_type_code || "unknown",
-    operational_status: row.operational_status,
-    publication_status: "draft",
-    control_status: "directory",
-    data_quality_status: row.data_quality_status,
-    directory_detail_level: "summary",
-    directory_basic_details_approved: false,
-    organization_link_status: organizationLinked ? "confirmed" : "unassigned",
-    organization_link_confidence: organizationLinked ? confidenceFor(row) : "low",
-    organization_link_review_note: organizationLinked ? "Confirmat prin aprobarea administrativa a lotului de import." : "Fara organizatie confirmata la import.",
-    source_checked_at: normalizeDate(row.source_checked_at),
-    normalized_at: now(),
-    state_status: "active"
+    last_confirmed_at: canonical.last_confirmed_at || now()
   };
 }
 async function loadPlanningContext(svc) {
-  const [organizations, locations, states] = await Promise.all([
+  const [organizations, locations, states, links, evidenceRows] = await Promise.all([
     svc.entities.ProviderOrganization.list("name", MAX_ROWS).catch(() => []),
     svc.entities.ProviderLocation.list("name", MAX_ROWS).catch(() => []),
-    svc.entities.ProviderLocationDirectoryState.filter({ state_status: "active" }, "-created_date", MAX_ROWS).catch(() => [])
+    svc.entities.ProviderLocationDirectoryState.filter({ state_status: "active" }, "-created_date", MAX_ROWS).catch(() => []),
+    svc.entities.DirectoryOrganizationLocationLink.filter({ link_record_status: "active" }, "-created_date", MAX_ROWS).catch(() => []),
+    svc.entities.ProviderEvidence.filter({
+      field_name: "directory_import_snapshot",
+      evidence_status: "active"
+    }, "-created_date", MAX_ROWS).catch(() => [])
   ]);
   const organizationsByExternalKey = /* @__PURE__ */ new Map();
   const organizationsByName = /* @__PURE__ */ new Map();
@@ -1223,9 +1344,17 @@ async function loadPlanningContext(svc) {
   }
   const statesByExternalKey = /* @__PURE__ */ new Map();
   const statesByAddress = /* @__PURE__ */ new Map();
+  const statesByLocationId = /* @__PURE__ */ new Map();
   for (const state of states) {
     append(statesByExternalKey, state.directory_external_key, state);
     append(statesByAddress, state.address_fingerprint, state);
+    append(statesByLocationId, state.location_id, state);
+  }
+  const linksByLocationId = /* @__PURE__ */ new Map();
+  for (const link of links) append(linksByLocationId, link.location_id, link);
+  const evidenceByLocationId = /* @__PURE__ */ new Map();
+  for (const evidence of evidenceRows) {
+    append(evidenceByLocationId, evidence.entity_id, evidence);
   }
   const locationsById = new Map(locations.map((location) => [location.id, location]));
   const locationsByFallback = /* @__PURE__ */ new Map();
@@ -1233,7 +1362,17 @@ async function loadPlanningContext(svc) {
     const key = [normalizeIdentityText(location.locality_name || location.city), normalizeIdentityText(location.address), normalizeIdentityText(location.public_display_name || location.name)].join("|");
     if (key.replace(/\|/g, "")) append(locationsByFallback, key, location);
   }
-  return { organizationsByExternalKey, organizationsByName, statesByExternalKey, statesByAddress, locationsById, locationsByFallback };
+  return {
+    organizationsByExternalKey,
+    organizationsByName,
+    statesByExternalKey,
+    statesByAddress,
+    statesByLocationId,
+    linksByLocationId,
+    evidenceByLocationId,
+    locationsById,
+    locationsByFallback
+  };
 }
 function applyAdminOverride(normalized, row) {
   const override = safeJson(row.admin_override_json, {});
@@ -1245,7 +1384,7 @@ function applyAdminOverride(normalized, row) {
     contract_version: normalized.contract_version
   };
   if (Object.prototype.hasOwnProperty.call(override, "organization_type_code")) {
-    const organizationTypeCode = clean3(override.organization_type_code, 120);
+    const organizationTypeCode = clean4(override.organization_type_code, 120);
     merged.organization_type_code = organizationTypeCode;
     merged.organization_type_source = "admin_override";
     merged.organization_type_invalid = Boolean(organizationTypeCode) && !isDirectoryOrganizationTypeCode(organizationTypeCode);
@@ -1254,7 +1393,7 @@ function applyAdminOverride(normalized, row) {
   return merged;
 }
 async function planBatch(svc, user, input) {
-  const snapshot = await svc.entities.DirectorySourceSnapshot.get(clean3(input.snapshot_id, 120)).catch(() => null);
+  const snapshot = await svc.entities.DirectorySourceSnapshot.get(clean4(input.snapshot_id, 120)).catch(() => null);
   if (!snapshot) return response({ error: "Snapshotul nu a fost gasit." }, 404);
   if (!["ready", "blocked"].includes(snapshot.status) || !snapshot.immutable_at) {
     return response({ error: "Finalizeaza snapshotul inainte de dry-run." }, 409);
@@ -1310,7 +1449,7 @@ async function planBatch(svc, user, input) {
   const organizationsPlannedForUpdate = /* @__PURE__ */ new Set();
   const alreadyPlannedRows = rows.filter((row) => row.batch_id === batch.id);
   for (const row of alreadyPlannedRows) {
-    const action = clean3(row.planned_action, 80);
+    const action = clean4(row.planned_action, 80);
     if (Object.prototype.hasOwnProperty.call(counts, action)) counts[action] += 1;
     if (row.status === "ready") readyRows += 1;
     else blockedRows += 1;
@@ -1340,6 +1479,7 @@ async function planBatch(svc, user, input) {
     const candidates = [];
     const supplementalActions = [];
     let organizationReconciliation = null;
+    let locationReconciliation = null;
     let organizationMatchError = "";
     let locationMatchError = "";
     if (!validation.valid) {
@@ -1413,11 +1553,15 @@ async function planBatch(svc, user, input) {
         validation.errors.push("controlled_profile_requires_manual_update");
         validation.validation_codes.push("controlled_profile_requires_manual_update");
       } else if (targetLocation) {
-        const updates2 = locationUpdatePayload(normalized);
-        const comparable = locationComparablePayload(targetLocation);
-        const expectedComparable = pickFields(updates2, Object.keys(comparable));
-        const same = equalFieldSubset(comparable, expectedComparable);
-        if (same && (!targetOrganization || targetLocation.organization_id === targetOrganization.id)) plannedAction = "skip_unchanged";
+        locationReconciliation = planDirectoryLocationReconciliation({
+          location: targetLocation,
+          directoryStates: context.statesByLocationId.get(targetLocation.id) || [],
+          organizationLinks: context.linksByLocationId.get(targetLocation.id) || [],
+          evidenceRows: context.evidenceByLocationId.get(targetLocation.id) || [],
+          row: normalized,
+          organizationId: targetOrganization?.id || ""
+        });
+        if (!locationReconciliation.requires_update && (!targetOrganization || targetLocation.organization_id === targetOrganization.id)) plannedAction = "skip_unchanged";
         else if (targetOrganization && targetLocation.organization_id !== targetOrganization.id) plannedAction = "link_existing_location";
         else plannedAction = "update_existing_location";
       } else if (targetOrganization) {
@@ -1432,6 +1576,13 @@ async function planBatch(svc, user, input) {
     if (rowReady && organizationReconciliation?.requires_update) {
       supplementalActions.push("update_directory_organization");
       organizationsPlannedForUpdate.add(targetOrganization.id);
+    }
+    if (rowReady && locationReconciliation?.components) {
+      for (const [component, requiresUpdate] of Object.entries(
+        locationReconciliation.components
+      )) {
+        if (requiresUpdate) supplementalActions.push(`reconcile_${component}`);
+      }
     }
     if (rowReady) readyRows += 1;
     else blockedRows += 1;
@@ -1511,7 +1662,7 @@ async function planBatch(svc, user, input) {
   });
 }
 async function overrideRow(svc, user, input) {
-  const row = await svc.entities.DirectoryImportRow.get(clean3(input.row_id, 120)).catch(() => null);
+  const row = await svc.entities.DirectoryImportRow.get(clean4(input.row_id, 120)).catch(() => null);
   if (!row) return response({ error: "Randul nu a fost gasit." }, 404);
   if (["applied", "rolled_back"].includes(row.status)) return response({ error: "Randul executat nu mai poate fi modificat." }, 409);
   const allowedKeys = [
@@ -1560,15 +1711,15 @@ async function overrideRow(svc, user, input) {
     planned_actions_json: "[]",
     error_message: ""
   });
-  await writeAudit(svc, user, "DirectoryImportRow", row.id, "directory_import_row_overridden", previous, override, clean3(input.note, 1200));
+  await writeAudit(svc, user, "DirectoryImportRow", row.id, "directory_import_row_overridden", previous, override, clean4(input.note, 1200));
   return response({ success: true, row_id: row.id });
 }
 async function approveBatch(svc, user, input) {
-  const batch = await svc.entities.DirectoryImportBatch.get(clean3(input.batch_id, 120)).catch(() => null);
+  const batch = await svc.entities.DirectoryImportBatch.get(clean4(input.batch_id, 120)).catch(() => null);
   if (!batch) return response({ error: "Lotul nu a fost gasit." }, 404);
   if (batch.status !== "ready") return response({ error: "Lotul nu este pregatit pentru aprobare." }, 409);
   const expected = batchApprovalToken(batch.batch_key, batch.source_sha256, batch.ready_rows);
-  if (clean3(input.confirmation, 240) !== expected) {
+  if (clean4(input.confirmation, 240) !== expected) {
     return response({ error: "Confirmarea nu corespunde lotului curent.", expected_confirmation: expected }, 400);
   }
   const approvalTokenHash = stableTextHash(expected);
@@ -1670,22 +1821,54 @@ async function ensureOrganization(svc, user, batch, rowRecord, row, allowDirecto
   await writeAudit(svc, user, "ProviderOrganization", organization.id, "directory_import_organization_created", {}, values, `Lot ${batch.batch_key}`);
   return { organization, created: true, updated: false };
 }
-async function createEvidence(svc, user, batch, rowRecord, row, entityType, entityId, sequence) {
-  if (!row.source_url) return null;
-  const values = {
+async function ensureEvidence(svc, user, batch, rowRecord, row, entityType, entityId, sequence) {
+  if (!row.source_url) {
+    return { id: null, created: false, superseded: 0 };
+  }
+  const expected = resolveDirectoryEvidencePayload(row, entityType, entityId);
+  const active = await svc.entities.ProviderEvidence.filter({
     entity_type: entityType,
     entity_id: entityId,
     field_name: "directory_import_snapshot",
-    value_snapshot: JSON.stringify({ source_version: row.source_version, source_row_key: row.source_row_key }),
-    source_url: row.source_url,
-    source_type: row.source_type || "official",
-    source_title: row.source_name || row.organization_name || row.location_name,
+    evidence_status: "active"
+  }, "-created_date", 20).catch(() => []);
+  const retained = active.find((item) => directoryFieldsEqual(item, expected)) || null;
+  const stale = active.filter((item) => item.id !== retained?.id);
+  for (const [index, existing] of stale.entries()) {
+    const before = { evidence_status: existing.evidence_status };
+    const after = { evidence_status: "superseded" };
+    await svc.entities.ProviderEvidence.update(existing.id, after);
+    await createMutation(svc, {
+      batch_id: batch.id,
+      row_id: rowRecord.id,
+      sequence: sequence - 0.5 + index / 100,
+      mutation_key: `${batch.id}:${rowRecord.id}:ProviderEvidence:${existing.id}:update`,
+      entity_type: "ProviderEvidence",
+      entity_id: existing.id,
+      operation: "update",
+      before_json: JSON.stringify(before),
+      after_json: JSON.stringify(after),
+      rollback_status: "pending",
+      applied_at: now()
+    });
+    await writeAudit(
+      svc,
+      user,
+      "ProviderEvidence",
+      existing.id,
+      "directory_import_evidence_superseded",
+      before,
+      after,
+      `Lot ${batch.batch_key}`
+    );
+  }
+  if (retained) {
+    return { id: retained.id, created: false, superseded: stale.length };
+  }
+  const values = {
+    ...expected,
     collected_at: now(),
-    collected_by: user.id,
-    checked_at: normalizeDate(row.source_checked_at),
-    confidence: confidenceFor(row),
-    evidence_status: "active",
-    notes: clean3([row.evidence_note, row.observations].filter(Boolean).join(" | "), 2e3)
+    collected_by: user.id
   };
   const evidence = await svc.entities.ProviderEvidence.create(values);
   await createMutation(svc, {
@@ -1701,58 +1884,134 @@ async function createEvidence(svc, user, batch, rowRecord, row, entityType, enti
     rollback_status: "pending",
     applied_at: now()
   });
-  return evidence;
+  return { id: evidence.id, created: true, superseded: stale.length };
 }
 async function ensureDirectoryState(svc, user, batch, rowRecord, row, location, organizationLinked, sequence) {
-  const existing = await svc.entities.ProviderLocationDirectoryState.filter({ location_id: location.id, state_status: "active" }, "-created_date", 5).catch(() => []);
-  const values = directoryStatePayload(row, location.id, organizationLinked);
-  if (existing[0]) {
-    const before = pickFields(existing[0], Object.keys(values));
-    await svc.entities.ProviderLocationDirectoryState.update(existing[0].id, values);
+  const active = await svc.entities.ProviderLocationDirectoryState.filter({
+    location_id: location.id,
+    state_status: "active"
+  }, "-created_date", 20).catch(() => []);
+  const current = active[0] || null;
+  const duplicates = active.slice(1);
+  const expected = resolveDirectoryStateUpdatePayload(
+    row,
+    location.id,
+    organizationLinked
+  );
+  let stateId = current?.id || null;
+  let created = false;
+  let updated = false;
+  if (current && !directoryFieldsEqual(current, expected)) {
+    const values = { ...expected, normalized_at: now() };
+    const before = pickFields(current, Object.keys(values));
+    await svc.entities.ProviderLocationDirectoryState.update(current.id, values);
     await createMutation(svc, {
       batch_id: batch.id,
       row_id: rowRecord.id,
       sequence,
-      mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocationDirectoryState:${existing[0].id}:update`,
+      mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocationDirectoryState:${current.id}:update`,
       entity_type: "ProviderLocationDirectoryState",
-      entity_id: existing[0].id,
+      entity_id: current.id,
       operation: "update",
       before_json: JSON.stringify(before),
       after_json: JSON.stringify(values),
       rollback_status: "pending",
       applied_at: now()
     });
-    return existing[0].id;
+    await writeAudit(
+      svc,
+      user,
+      "ProviderLocationDirectoryState",
+      current.id,
+      "directory_import_state_updated",
+      before,
+      values,
+      `Lot ${batch.batch_key}`
+    );
+    updated = true;
+  } else if (!current) {
+    const values = {
+      ...resolveDirectoryStateCreatePayload(
+        row,
+        location.id,
+        organizationLinked
+      ),
+      normalized_at: now()
+    };
+    const state = await svc.entities.ProviderLocationDirectoryState.create(values);
+    stateId = state.id;
+    created = true;
+    await createMutation(svc, {
+      batch_id: batch.id,
+      row_id: rowRecord.id,
+      sequence,
+      mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocationDirectoryState:${state.id}:create`,
+      entity_type: "ProviderLocationDirectoryState",
+      entity_id: state.id,
+      operation: "create",
+      before_json: "{}",
+      after_json: JSON.stringify(values),
+      rollback_status: "pending",
+      applied_at: now()
+    });
+    await writeAudit(
+      svc,
+      user,
+      "ProviderLocationDirectoryState",
+      state.id,
+      "directory_import_state_created",
+      {},
+      values,
+      `Lot ${batch.batch_key}`
+    );
   }
-  const state = await svc.entities.ProviderLocationDirectoryState.create(values);
-  await createMutation(svc, {
-    batch_id: batch.id,
-    row_id: rowRecord.id,
-    sequence,
-    mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocationDirectoryState:${state.id}:create`,
-    entity_type: "ProviderLocationDirectoryState",
-    entity_id: state.id,
-    operation: "create",
-    before_json: "{}",
-    after_json: JSON.stringify(values),
-    rollback_status: "pending",
-    applied_at: now()
-  });
-  await writeAudit(svc, user, "ProviderLocationDirectoryState", state.id, "directory_import_state_created", {}, values, `Lot ${batch.batch_key}`);
-  return state.id;
+  for (const [index, duplicate] of duplicates.entries()) {
+    const before = { state_status: duplicate.state_status };
+    const after = { state_status: "superseded" };
+    await svc.entities.ProviderLocationDirectoryState.update(duplicate.id, after);
+    await createMutation(svc, {
+      batch_id: batch.id,
+      row_id: rowRecord.id,
+      sequence: sequence - 0.5 + index / 100,
+      mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocationDirectoryState:${duplicate.id}:update`,
+      entity_type: "ProviderLocationDirectoryState",
+      entity_id: duplicate.id,
+      operation: "update",
+      before_json: JSON.stringify(before),
+      after_json: JSON.stringify(after),
+      rollback_status: "pending",
+      applied_at: now()
+    });
+    updated = true;
+  }
+  return {
+    id: stateId,
+    created,
+    updated,
+    superseded: duplicates.length
+  };
 }
 async function ensureOrganizationLink(svc, user, batch, rowRecord, row, locationId, organizationId, sequence) {
-  if (!organizationId) return null;
-  const active = await svc.entities.DirectoryOrganizationLocationLink.filter({ location_id: locationId, link_record_status: "active" }, "-created_date", 20).catch(() => []);
-  for (const existing of active) {
-    if (existing.organization_id === organizationId && existing.link_status === "confirmed") return existing.id;
+  if (!organizationId) {
+    return { id: null, created: false, updated: false, superseded: 0 };
+  }
+  const active = await svc.entities.DirectoryOrganizationLocationLink.filter({
+    location_id: locationId,
+    link_record_status: "active"
+  }, "-created_date", 20).catch(() => []);
+  const matching = active.filter(
+    (item) => item.organization_id === organizationId
+  );
+  const current = matching[0] || null;
+  const stale = active.filter((item) => item.id !== current?.id);
+  for (const [index, existing] of stale.entries()) {
     const before = { link_record_status: existing.link_record_status };
     const after = { link_record_status: "superseded" };
     await svc.entities.DirectoryOrganizationLocationLink.update(existing.id, after);
     await createMutation(svc, {
       batch_id: batch.id,
       row_id: rowRecord.id,
-      sequence: sequence - 1,
+      sequence: sequence - 0.5 + index / 100,
       mutation_key: `${batch.id}:${rowRecord.id}:DirectoryOrganizationLocationLink:${existing.id}:update`,
       entity_type: "DirectoryOrganizationLocationLink",
       entity_id: existing.id,
@@ -1763,18 +2022,59 @@ async function ensureOrganizationLink(svc, user, batch, rowRecord, row, location
       applied_at: now()
     });
   }
+  const expected = resolveDirectoryLinkPayload(
+    row,
+    locationId,
+    organizationId
+  );
+  if (current) {
+    let updated = stale.length > 0;
+    if (!directoryFieldsEqual(current, expected)) {
+      const values2 = {
+        ...expected,
+        review_note: `Confirmata la aprobarea lotului de import ${batch.batch_key}.`,
+        reviewed_by_user_id: user.id,
+        reviewed_at: now()
+      };
+      const before = pickFields(current, Object.keys(values2));
+      await svc.entities.DirectoryOrganizationLocationLink.update(current.id, values2);
+      await createMutation(svc, {
+        batch_id: batch.id,
+        row_id: rowRecord.id,
+        sequence,
+        mutation_key: `${batch.id}:${rowRecord.id}:DirectoryOrganizationLocationLink:${current.id}:update`,
+        entity_type: "DirectoryOrganizationLocationLink",
+        entity_id: current.id,
+        operation: "update",
+        before_json: JSON.stringify(before),
+        after_json: JSON.stringify(values2),
+        rollback_status: "pending",
+        applied_at: now()
+      });
+      await writeAudit(
+        svc,
+        user,
+        "DirectoryOrganizationLocationLink",
+        current.id,
+        "directory_import_organization_link_updated",
+        before,
+        values2,
+        `Lot ${batch.batch_key}`
+      );
+      updated = true;
+    }
+    return {
+      id: current.id,
+      created: false,
+      updated,
+      superseded: stale.length
+    };
+  }
   const values = {
-    organization_id: organizationId,
-    location_id: locationId,
-    source_row_key: row.source_row_key,
-    source_version: row.source_version,
-    link_status: "confirmed",
-    confidence: confidenceFor(row),
-    evidence_summary: row.evidence_note || `Asociere aprobata prin lotul ${batch.batch_key}.`,
+    ...expected,
     review_note: `Confirmata la aprobarea lotului de import ${batch.batch_key}.`,
     reviewed_by_user_id: user.id,
-    reviewed_at: now(),
-    link_record_status: "active"
+    reviewed_at: now()
   };
   const link = await svc.entities.DirectoryOrganizationLocationLink.create(values);
   await createMutation(svc, {
@@ -1790,8 +2090,41 @@ async function ensureOrganizationLink(svc, user, batch, rowRecord, row, location
     rollback_status: "pending",
     applied_at: now()
   });
-  await writeAudit(svc, user, "DirectoryOrganizationLocationLink", link.id, "directory_import_organization_link_created", {}, values, `Lot ${batch.batch_key}`);
-  return link.id;
+  await writeAudit(
+    svc,
+    user,
+    "DirectoryOrganizationLocationLink",
+    link.id,
+    "directory_import_organization_link_created",
+    {},
+    values,
+    `Lot ${batch.batch_key}`
+  );
+  return {
+    id: link.id,
+    created: true,
+    updated: stale.length > 0,
+    superseded: stale.length
+  };
+}
+async function loadLocationReconciliationArtifacts(svc, locationId) {
+  const [directoryStates, organizationLinks, evidenceRows] = await Promise.all([
+    svc.entities.ProviderLocationDirectoryState.filter({
+      location_id: locationId,
+      state_status: "active"
+    }, "-created_date", 20).catch(() => []),
+    svc.entities.DirectoryOrganizationLocationLink.filter({
+      location_id: locationId,
+      link_record_status: "active"
+    }, "-created_date", 20).catch(() => []),
+    svc.entities.ProviderEvidence.filter({
+      entity_type: "ProviderLocation",
+      entity_id: locationId,
+      field_name: "directory_import_snapshot",
+      evidence_status: "active"
+    }, "-created_date", 20).catch(() => [])
+  ]);
+  return { directoryStates, organizationLinks, evidenceRows };
 }
 async function executeRow(svc, user, batch, rowRecord) {
   const row = applyAdminOverride(safeJson(rowRecord.normalized_payload_json, {}), rowRecord);
@@ -1803,9 +2136,16 @@ async function executeRow(svc, user, batch, rowRecord) {
     updated_organization: false,
     created_location: false,
     updated_location: false,
-    created_link: false
+    created_directory_state: false,
+    updated_directory_state: false,
+    superseded_directory_states: 0,
+    created_link: false,
+    updated_link: false,
+    superseded_links: 0,
+    created_evidence: false,
+    superseded_evidence: 0
   };
-  if (rowRecord.planned_action === "skip_unchanged" && !updatesDirectoryOrganization || rowRecord.planned_action === "skip_duplicate") {
+  if (rowRecord.planned_action === "skip_duplicate") {
     await svc.entities.DirectoryImportRow.update(rowRecord.id, { status: "skipped", result_json: JSON.stringify(result), applied_at: now(), rollback_status: "not_required" });
     return { status: "skipped", result };
   }
@@ -1824,21 +2164,34 @@ async function executeRow(svc, user, batch, rowRecord) {
     result.created_organization = organizationResult.created;
     result.updated_organization = organizationResult.updated;
   }
-  if (rowRecord.planned_action === "skip_unchanged") {
-    result.organization_id = organization?.id || null;
-    result.location_id = rowRecord.target_location_id || null;
-    const status = result.created_organization || result.updated_organization ? "applied" : "skipped";
-    await svc.entities.DirectoryImportRow.update(rowRecord.id, {
-      status,
-      result_json: JSON.stringify(result),
-      applied_at: now(),
-      rollback_status: status === "applied" ? "pending" : "not_required",
-      error_message: ""
-    });
-    return { status, result };
-  }
   let location = rowRecord.target_location_id ? await svc.entities.ProviderLocation.get(rowRecord.target_location_id).catch(() => null) : null;
   if (location && CONTROLLED_PROFILES.has(location.profile_control_status || "directory")) throw new Error("Profilul este controlat si necesita actualizare manuala.");
+  if (rowRecord.planned_action === "skip_unchanged") {
+    if (!location) {
+      throw new Error("Locatia existenta nu mai poate fi gasita; regenereaza dry-run-ul.");
+    }
+    const artifacts = await loadLocationReconciliationArtifacts(svc, location.id);
+    const currentPlan = planDirectoryLocationReconciliation({
+      location,
+      ...artifacts,
+      row,
+      organizationId: organization?.id || ""
+    });
+    if (currentPlan.requires_update || organization?.id && location.organization_id !== organization.id) {
+      throw new Error("Locatia s-a schimbat dupa dry-run; regenereaza planul inainte de executie.");
+    }
+    result.organization_id = organization?.id || null;
+    result.location_id = location.id;
+    const status2 = result.created_organization || result.updated_organization ? "applied" : "skipped";
+    await svc.entities.DirectoryImportRow.update(rowRecord.id, {
+      status: status2,
+      result_json: JSON.stringify(result),
+      applied_at: now(),
+      rollback_status: status2 === "applied" ? "pending" : "not_required",
+      error_message: ""
+    });
+    return { status: status2, result };
+  }
   if (!location) {
     const values = locationCreatePayload(row, organization?.id || null);
     location = await svc.entities.ProviderLocation.create(values);
@@ -1858,56 +2211,105 @@ async function executeRow(svc, user, batch, rowRecord) {
     });
     await writeAudit(svc, user, "ProviderLocation", location.id, "directory_import_location_created", {}, values, `Lot ${batch.batch_key}`);
   } else {
-    const updates = locationUpdatePayload(row);
+    const updates = resolveDirectoryLocationUpdatePayload(row);
     if (organization?.id) updates.organization_id = organization.id;
-    const before = pickFields(location, Object.keys(updates));
-    await svc.entities.ProviderLocation.update(location.id, updates);
-    result.updated_location = true;
-    await createMutation(svc, {
-      batch_id: batch.id,
-      row_id: rowRecord.id,
-      sequence: Number(batch.applied_rows || 0) * 10 + 2,
-      mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocation:${location.id}:update`,
-      entity_type: "ProviderLocation",
-      entity_id: location.id,
-      operation: "update",
-      before_json: JSON.stringify(before),
-      after_json: JSON.stringify(updates),
-      rollback_status: "pending",
-      applied_at: now()
-    });
-    await writeAudit(svc, user, "ProviderLocation", location.id, "directory_import_location_updated", before, updates, `Lot ${batch.batch_key}`);
+    if (!directoryFieldsEqual(location, updates)) {
+      const before = pickFields(location, Object.keys(updates));
+      await svc.entities.ProviderLocation.update(location.id, updates);
+      result.updated_location = true;
+      await createMutation(svc, {
+        batch_id: batch.id,
+        row_id: rowRecord.id,
+        sequence: Number(batch.applied_rows || 0) * 10 + 2,
+        mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocation:${location.id}:update`,
+        entity_type: "ProviderLocation",
+        entity_id: location.id,
+        operation: "update",
+        before_json: JSON.stringify(before),
+        after_json: JSON.stringify(updates),
+        rollback_status: "pending",
+        applied_at: now()
+      });
+      await writeAudit(svc, user, "ProviderLocation", location.id, "directory_import_location_updated", before, updates, `Lot ${batch.batch_key}`);
+      location = { ...location, ...updates };
+    }
   }
-  await ensureDirectoryState(svc, user, batch, rowRecord, row, location, Boolean(organization?.id), Number(batch.applied_rows || 0) * 10 + 4);
+  const stateResult = await ensureDirectoryState(
+    svc,
+    user,
+    batch,
+    rowRecord,
+    row,
+    location,
+    Boolean(organization?.id),
+    Number(batch.applied_rows || 0) * 10 + 4
+  );
+  result.created_directory_state = stateResult.created;
+  result.updated_directory_state = stateResult.updated;
+  result.superseded_directory_states = stateResult.superseded;
   if (organization?.id) {
-    await ensureOrganizationLink(svc, user, batch, rowRecord, row, location.id, organization.id, Number(batch.applied_rows || 0) * 10 + 6);
-    result.created_link = true;
+    const linkResult = await ensureOrganizationLink(
+      svc,
+      user,
+      batch,
+      rowRecord,
+      row,
+      location.id,
+      organization.id,
+      Number(batch.applied_rows || 0) * 10 + 6
+    );
+    result.created_link = linkResult.created;
+    result.updated_link = linkResult.updated;
+    result.superseded_links = linkResult.superseded;
   }
-  await createEvidence(svc, user, batch, rowRecord, row, "ProviderLocation", location.id, Number(batch.applied_rows || 0) * 10 + 8);
+  const evidenceResult = await ensureEvidence(
+    svc,
+    user,
+    batch,
+    rowRecord,
+    row,
+    "ProviderLocation",
+    location.id,
+    Number(batch.applied_rows || 0) * 10 + 8
+  );
+  result.created_evidence = evidenceResult.created;
+  result.superseded_evidence = evidenceResult.superseded;
   result.organization_id = organization?.id || null;
   result.location_id = location.id;
+  const status = [
+    result.created_organization,
+    result.updated_organization,
+    result.created_location,
+    result.updated_location,
+    result.created_directory_state,
+    result.updated_directory_state,
+    result.created_link,
+    result.updated_link,
+    result.created_evidence,
+    result.superseded_evidence > 0
+  ].some(Boolean) ? "applied" : "skipped";
   await svc.entities.DirectoryImportRow.update(rowRecord.id, {
-    status: "applied",
+    status,
     target_organization_id: organization?.id || "",
     target_location_id: location.id,
     result_json: JSON.stringify(result),
     applied_at: now(),
-    rollback_status: "pending",
+    rollback_status: status === "applied" ? "pending" : "not_required",
     error_message: ""
   });
-  return { status: "applied", result };
+  return { status, result };
 }
 async function acquireBatchLock(svc, batch, requestedToken = "") {
   const currentExpiry = batch.execution_lock_expires_at ? new Date(batch.execution_lock_expires_at).getTime() : 0;
-  const currentToken = clean3(batch.execution_lock_token, 200);
-  const supplied = clean3(requestedToken, 200);
+  const currentToken = clean4(batch.execution_lock_token, 200);
+  const supplied = clean4(requestedToken, 200);
   if (currentToken && currentExpiry > Date.now() && supplied !== currentToken) return { error: "Lotul este procesat de alta executie." };
   const token = supplied && supplied === currentToken ? supplied : randomToken("import");
   await svc.entities.DirectoryImportBatch.update(batch.id, { execution_lock_token: token, execution_lock_expires_at: lockExpiry() });
   return { token };
 }
 async function executeBatch(svc, user, input) {
-  const batch = await svc.entities.DirectoryImportBatch.get(clean3(input.batch_id, 120)).catch(() => null);
+  const batch = await svc.entities.DirectoryImportBatch.get(clean4(input.batch_id, 120)).catch(() => null);
   if (!batch) return response({ error: "Lotul nu a fost gasit." }, 404);
   if (!["approved", "running"].includes(batch.status)) return response({ error: "Lotul nu este aprobat sau nu poate continua." }, 409);
   const lock = await acquireBatchLock(svc, batch, input.lock_token);
@@ -2016,13 +2418,13 @@ async function rollbackMutation(svc, mutation) {
   return { success: true };
 }
 async function rollbackBatch(svc, user, input) {
-  const batch = await svc.entities.DirectoryImportBatch.get(clean3(input.batch_id, 120)).catch(() => null);
+  const batch = await svc.entities.DirectoryImportBatch.get(clean4(input.batch_id, 120)).catch(() => null);
   if (!batch) return response({ error: "Lotul nu a fost gasit." }, 404);
   if (!["completed", "completed_with_errors", "rollback_failed", "rolling_back"].includes(batch.status)) {
     return response({ error: "Lotul nu poate fi retras in starea curenta." }, 409);
   }
   const expected = rollbackApprovalToken(batch.batch_key, batch.applied_rows);
-  if (clean3(input.confirmation, 240) !== expected) return response({ error: "Confirmarea de rollback nu corespunde.", expected_confirmation: expected }, 400);
+  if (clean4(input.confirmation, 240) !== expected) return response({ error: "Confirmarea de rollback nu corespunde.", expected_confirmation: expected }, 400);
   const lock = await acquireBatchLock(svc, batch, input.lock_token);
   if (lock.error) return response({ error: lock.error }, 409);
   if (batch.status !== "rolling_back") await svc.entities.DirectoryImportBatch.update(batch.id, { status: "rolling_back", rollback_started_at: now() });
@@ -2060,22 +2462,22 @@ async function rollbackBatch(svc, user, input) {
   return response({ success: true, status, lock_token: done ? "" : lock.token, processed: mutations.length, completed, failed, remaining: !done });
 }
 async function getSnapshotDetail(svc, input) {
-  const snapshot = await svc.entities.DirectorySourceSnapshot.get(clean3(input.snapshot_id, 120)).catch(() => null);
+  const snapshot = await svc.entities.DirectorySourceSnapshot.get(clean4(input.snapshot_id, 120)).catch(() => null);
   if (!snapshot) return response({ error: "Snapshotul nu a fost gasit." }, 404);
   const limit = Math.max(1, Math.min(250, Number(input.limit || 100)));
   const skip = Math.max(0, Number(input.skip || 0));
   const query = { snapshot_id: snapshot.id };
-  if (input.status) query.status = clean3(input.status, 40);
+  if (input.status) query.status = clean4(input.status, 40);
   const all = await svc.entities.DirectoryImportRow.filter(query, "row_number", Math.min(MAX_ROWS, skip + limit)).catch(() => []);
   const rows = all.slice(skip, skip + limit);
   const batches = await svc.entities.DirectoryImportBatch.filter({ snapshot_id: snapshot.id }, "-created_date", 100).catch(() => []);
   return response({ success: true, snapshot, rows, batches, pagination: { skip, limit, returned: rows.length } });
 }
 async function getBatchDetail(svc, input) {
-  const batch = await svc.entities.DirectoryImportBatch.get(clean3(input.batch_id, 120)).catch(() => null);
+  const batch = await svc.entities.DirectoryImportBatch.get(clean4(input.batch_id, 120)).catch(() => null);
   if (!batch) return response({ error: "Lotul nu a fost gasit." }, 404);
   const limit = Math.max(1, Math.min(250, Number(input.limit || 100)));
-  const status = clean3(input.status, 40);
+  const status = clean4(input.status, 40);
   const query = { batch_id: batch.id };
   if (status) query.status = status;
   const rows = await svc.entities.DirectoryImportRow.filter(query, "row_number", limit).catch(() => []);
@@ -2094,7 +2496,7 @@ async function handle(req) {
     if (auth.error) return auth.error;
     const { user, svc } = auth;
     const input = await req.json().catch(() => ({}));
-    const action = clean3(input.action, 80);
+    const action = clean4(input.action, 80);
     if (action === "list_snapshots") return response({ success: true, snapshots: await listSnapshots(svc, input), contract_version: DIRECTORY_IMPORT_CONTRACT_VERSION });
     if (action === "create_snapshot") return createSnapshot(svc, user, input);
     if (action === "append_rows") return appendRows(svc, user, input);
@@ -2113,13 +2515,13 @@ async function handle(req) {
 }
 
 // base44/functions/directoryOps/directoryImportOpsLocationFirst.ts
-var DIRECTORY_IMPORT_RUNTIME_REVISION = "directory-import-runtime-identity-safe-4";
-function clean4(value, maxLength = 4e3) {
+var DIRECTORY_IMPORT_RUNTIME_REVISION = "directory-import-runtime-reconciliation-safe-5";
+function clean5(value, maxLength = 4e3) {
   return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, maxLength);
 }
 async function handle2(req) {
   const input = await req.clone().json().catch(() => ({}));
-  if (clean4(input.action, 80) === "runtime_info") {
+  if (clean5(input.action, 80) === "runtime_info") {
     return Response.json({
       success: true,
       runtime_revision: DIRECTORY_IMPORT_RUNTIME_REVISION,
@@ -2131,14 +2533,18 @@ async function handle2(req) {
       rejects_address_only_location_match: true,
       rejects_ambiguous_organization_match: true,
       chunked_snapshot_finalization: true,
-      chunked_batch_planning: true
+      chunked_batch_planning: true,
+      reconciles_existing_location_metadata: true,
+      reconciles_directory_state: true,
+      reconciles_directory_evidence: true,
+      preserves_directory_publication_state: true
     });
   }
   return handle(req);
 }
 
 // base44/functions/directoryOps/directoryImportOpsLatest.ts
-var DIRECTORY_IMPORT_RUNTIME_REVISION2 = "directory-import-runtime-identity-safe-4";
+var DIRECTORY_IMPORT_RUNTIME_REVISION2 = "directory-import-runtime-reconciliation-safe-5";
 async function handle3(req) {
   const input = await req.clone().json().catch(() => ({}));
   if (input?.action === "runtime_info") {
@@ -2153,7 +2559,11 @@ async function handle3(req) {
       rejects_address_only_location_match: true,
       rejects_ambiguous_organization_match: true,
       chunked_snapshot_finalization: true,
-      chunked_batch_planning: true
+      chunked_batch_planning: true,
+      reconciles_existing_location_metadata: true,
+      reconciles_directory_state: true,
+      reconciles_directory_evidence: true,
+      preserves_directory_publication_state: true
     });
   }
   return handle2(req);
@@ -2162,7 +2572,7 @@ async function handle3(req) {
 // scripts/bridge-sources/listProviderMemberInvitations.entry.ts
 var ROLES = ["organization_owner", "location_manager", "location_staff"];
 var DIRECTORY_IMPORT_LOGICAL_NAME = "directoryImportOps";
-var FUNCTION_DEPLOY_REVISION = "viasee-directory-import-single-file-6";
+var FUNCTION_DEPLOY_REVISION = "viasee-directory-import-single-file-7";
 console.info(`[VIASEE] listProviderMemberInvitations ${FUNCTION_DEPLOY_REVISION}`);
 function res(body, status = 200) {
   return Response.json(body, { status });

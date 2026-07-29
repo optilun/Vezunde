@@ -3,7 +3,7 @@ import { handle as directoryImportOpsHandle } from '../../base44/functions/direc
 
 const ROLES = ['organization_owner', 'location_manager', 'location_staff'];
 const DIRECTORY_IMPORT_LOGICAL_NAME = 'directoryImportOps';
-const FUNCTION_DEPLOY_REVISION = 'viasee-directory-import-single-file-6';
+const FUNCTION_DEPLOY_REVISION = 'viasee-directory-import-single-file-7';
 console.info(`[VIASEE] listProviderMemberInvitations ${FUNCTION_DEPLOY_REVISION}`);
 
 function res(body, status = 200) {

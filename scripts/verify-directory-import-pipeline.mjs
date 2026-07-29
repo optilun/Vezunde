@@ -25,6 +25,13 @@ import {
   resolveDirectoryLocationMatch,
   resolveDirectoryOrganizationMatch,
 } from '../base44/shared/directoryIdentityMatchPolicy.js';
+import {
+  planDirectoryLocationReconciliation,
+  resolveDirectoryEvidencePayload,
+  resolveDirectoryLinkPayload,
+  resolveDirectoryLocationUpdatePayload,
+  resolveDirectoryStateUpdatePayload,
+} from '../base44/shared/directoryLocationReconciliation.js';
 
 assert.equal(DIRECTORY_IMPORT_CONTRACT_VERSION, 'viasee-directory-import-v1');
 assert.equal(DIRECTORY_CLASSIFICATION_CONTRACT_VERSION, 'viasee-directory-location-first-v1');
@@ -260,9 +267,13 @@ assert.equal(
 const normalized = normalizeDirectoryImportRow({
   location_display_name: 'Optica Test Centru',
   organization_display_name: 'Optica Test',
-  official_locality: 'Timisoara',
+  official_locality: 'Timișoara',
+  locality_name: 'Timisoara',
   county_if_confirmed: 'Timis',
+  county_code: '35',
   siruta: '155243',
+  uat_code: '155243',
+  uat_name: 'Timisoara',
   confirmed_address: 'Str. Exemplu nr. 10',
   confirmed_location_phone: '0256000000',
   official_source_url: 'https://example.com/locatie',
@@ -275,6 +286,10 @@ const normalized = normalizeDirectoryImportRow({
 }, { source_version: 'V3-test', source_row_key: 'row-1', row_number: 1 });
 assert.equal(normalized.classification_contract_version, 'viasee-directory-location-first-v1');
 assert.equal(normalized.location_name, 'Optica Test Centru');
+assert.equal(normalized.locality_name, 'Timișoara');
+assert.equal(normalized.county_code, '35');
+assert.equal(normalized.uat_code, '155243');
+assert.equal(normalized.uat_name, 'Timisoara');
 assert.equal(normalized.provider_type, 'optica_medicala');
 assert.equal(normalized.provider_profile_type, 'independent_optical_store');
 assert.equal(normalized.organization_type_code, 'independent_optical_store');
@@ -287,6 +302,174 @@ assert.ok(normalized.location_external_key.startsWith('loc:'));
 assert.ok(normalized.address_fingerprint.startsWith('addr:'));
 assert.equal(validateNormalizedDirectoryRow(normalized).valid, true);
 assert.ok(validateNormalizedDirectoryRow(normalized).warnings.includes('organization_type_inferred_from_legacy_profile'));
+
+const correctedPilotRow = normalizeDirectoryImportRow({
+  location_display_name: 'Centrul Oftalmologic Prof. Dr. Munteanu',
+  organization_display_name: 'Centrul Oftalmologic Prof. Dr. Munteanu',
+  official_locality: 'Timișoara',
+  locality_name: 'Timisoara',
+  county_if_confirmed: 'Timis',
+  county_code: '35',
+  locality_siruta_code: '155243',
+  uat_code: '155243',
+  uat_name: 'Timisoara',
+  confirmed_address: 'Str. 3 August 1919 nr. 2, Timișoara',
+  confirmed_location_phone: '0711 955 525 / 0744 559 070',
+  confirmed_location_email: 'receptie@profmunteanu.ro',
+  official_source_url: 'https://www.facebook.com/drmihneamunteanu/',
+  official_source_type: 'official_social',
+  source_checked_at: '2026-07-29',
+  research_status: 'official_confirmed',
+  operational_status: 'active_confirmed',
+  import_readiness: 'candidate_for_manual_review',
+  confirmed_activity_category: 'clinica oftalmologica',
+  evidence_note: 'Canalul social oficial confirma activitatea curenta.',
+  observations: 'Domeniul propriu nu mai este folosit ca dovada.',
+  organization_external_key: 'org:86f1fcdc',
+  location_external_key: 'loc:17ba81c4',
+  provider_type: 'clinica_oftalmologica',
+  provider_profile_type: 'ophthalmology_clinic',
+  organization_type_code: 'ophthalmology_clinic',
+  location_type_code: 'ophthalmology_clinic',
+  care_setting_code: 'outpatient',
+  ownership_type_code: 'private',
+}, {
+  source_version: 'viasee-directory-v8',
+  source_row_key: 'v6:316:7fa0465f',
+  row_number: 315,
+});
+const correctedLocationValues = resolveDirectoryLocationUpdatePayload(
+  correctedPilotRow,
+);
+assert.equal(correctedLocationValues.county_code, '35');
+assert.equal(correctedLocationValues.uat_code, '155243');
+assert.equal(correctedLocationValues.uat_name, 'Timisoara');
+assert.equal(correctedLocationValues.locality_name, 'Timișoara');
+assert.equal(
+  correctedLocationValues.source_url,
+  'https://www.facebook.com/drmihneamunteanu/',
+);
+
+const stalePilotLocation = {
+  id: 'loc-munteanu',
+  organization_id: 'org-munteanu',
+  ...correctedLocationValues,
+  county_code: null,
+  uat_code: null,
+  uat_name: null,
+  source_url: 'https://profmunteanu.ro/',
+  source_type: 'official_website',
+  source_checked_at: '2026-07-18T00:00:00.000Z',
+  last_confirmed_at: '2026-07-18T00:00:00.000Z',
+  profile_control_status: 'directory',
+};
+const stalePilotState = {
+  id: 'state-munteanu',
+  location_id: stalePilotLocation.id,
+  directory_external_key: correctedPilotRow.location_external_key,
+  directory_source_version: 'pilot-v10',
+  address_fingerprint: correctedPilotRow.address_fingerprint,
+  location_type_code: correctedPilotRow.location_type_code,
+  care_setting_code: correctedPilotRow.care_setting_code,
+  ownership_type_code: 'unknown',
+  operational_status: 'active',
+  data_quality_status: 'high',
+  organization_link_status: 'confirmed',
+  organization_link_confidence: 'high',
+  source_checked_at: '2026-07-18T00:00:00.000Z',
+  state_status: 'active',
+};
+const stalePilotLink = {
+  id: 'link-munteanu',
+  organization_id: 'org-munteanu',
+  location_id: stalePilotLocation.id,
+  source_row_key: 'v2-md-line:993',
+  source_version: 'pilot-v10',
+  link_status: 'confirmed',
+  confidence: 'high',
+  evidence_summary: 'Vechea dovada.',
+  link_record_status: 'active',
+};
+const stalePilotEvidence = {
+  id: 'evidence-munteanu',
+  entity_type: 'ProviderLocation',
+  entity_id: stalePilotLocation.id,
+  field_name: 'directory_import_snapshot',
+  value_snapshot: JSON.stringify({
+    source_version: 'pilot-v10',
+    source_row_key: 'v2-md-line:993',
+  }),
+  source_url: 'https://profmunteanu.ro/',
+  source_type: 'official_website',
+  source_title: correctedPilotRow.location_name,
+  checked_at: '2026-07-18T00:00:00.000Z',
+  confidence: 'high',
+  evidence_status: 'active',
+  notes: 'Vechea dovada.',
+};
+const stalePilotPlan = planDirectoryLocationReconciliation({
+  location: stalePilotLocation,
+  directoryStates: [stalePilotState],
+  organizationLinks: [stalePilotLink],
+  evidenceRows: [stalePilotEvidence],
+  row: correctedPilotRow,
+  organizationId: 'org-munteanu',
+});
+assert.equal(stalePilotPlan.requires_update, true);
+assert.deepEqual(stalePilotPlan.components, {
+  location: true,
+  directory_state: true,
+  organization_link: true,
+  evidence: true,
+});
+
+const reconciledPilotPlan = planDirectoryLocationReconciliation({
+  location: {
+    id: stalePilotLocation.id,
+    organization_id: 'org-munteanu',
+    ...correctedLocationValues,
+    profile_control_status: 'directory',
+  },
+  directoryStates: [{
+    id: stalePilotState.id,
+    ...resolveDirectoryStateUpdatePayload(
+      correctedPilotRow,
+      stalePilotLocation.id,
+      true,
+    ),
+    publication_status: 'published',
+    control_status: 'directory',
+    directory_detail_level: 'basic',
+    directory_basic_details_approved: true,
+    state_status: 'active',
+  }],
+  organizationLinks: [{
+    id: stalePilotLink.id,
+    ...resolveDirectoryLinkPayload(
+      correctedPilotRow,
+      stalePilotLocation.id,
+      'org-munteanu',
+    ),
+    reviewed_at: '2026-07-29T12:00:00.000Z',
+  }],
+  evidenceRows: [{
+    id: stalePilotEvidence.id,
+    ...resolveDirectoryEvidencePayload(
+      correctedPilotRow,
+      'ProviderLocation',
+      stalePilotLocation.id,
+    ),
+  }],
+  row: correctedPilotRow,
+  organizationId: 'org-munteanu',
+});
+assert.equal(reconciledPilotPlan.requires_update, false);
+assert.deepEqual(reconciledPilotPlan.components, {
+  location: false,
+  directory_state: false,
+  organization_link: false,
+  evidence: false,
+});
 
 const mixedOptical = normalizeDirectoryImportRow({
   location_display_name: 'Optica si optometrie Test',
@@ -505,6 +688,9 @@ const base44Pipeline = await readFile(new URL('../base44/shared/directoryImportP
 assert.equal(base44Pipeline, sharedPipeline);
 assert.match(sharedPipeline, /DIRECTORY_CLASSIFICATION_CONTRACT_VERSION/);
 assert.match(sharedPipeline, /organization_type_code/);
+assert.match(sharedPipeline, /county_code/);
+assert.match(sharedPipeline, /uat_code/);
+assert.match(sharedPipeline, /uat_name/);
 assert.match(sharedPipeline, /location_type_code; network\/brand identity belongs to organization_type_code/);
 assert.match(backend, /user\.role !== 'admin'/);
 assert.match(backend, /batchApprovalToken/);
@@ -530,6 +716,13 @@ assert.match(backend, /update_directory_organization/);
 assert.match(backend, /updates_controlled_organizations: false/);
 assert.match(backend, /directory_import_organization_updated/);
 assert.match(backend, /Organizatia s-a schimbat dupa dry-run/);
+assert.match(backend, /planDirectoryLocationReconciliation/);
+assert.match(backend, /resolveDirectoryLocationUpdatePayload/);
+assert.match(backend, /resolveDirectoryStateUpdatePayload/);
+assert.match(backend, /directory_import_evidence_superseded/);
+assert.match(backend, /evidence_status: 'superseded'/);
+assert.match(backend, /Locatia s-a schimbat dupa dry-run/);
+assert.doesNotMatch(backend, /locationComparablePayload/);
 assert.match(backend, /FINALIZATION_CHUNK = 50/);
 assert.match(backend, /PLANNING_CHUNK = 50/);
 assert.match(backend, /boundedChunkSize/);

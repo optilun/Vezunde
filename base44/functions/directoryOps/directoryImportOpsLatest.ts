@@ -1,6 +1,6 @@
 import { handle as directoryImportOpsLocationFirstHandle } from './directoryImportOpsLocationFirst.ts';
 
-export const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-identity-safe-4';
+export const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-reconciliation-safe-5';
 
 export async function handle(req: Request) {
   const input = await req.clone().json().catch(() => ({}));
@@ -18,6 +18,10 @@ export async function handle(req: Request) {
       rejects_ambiguous_organization_match: true,
       chunked_snapshot_finalization: true,
       chunked_batch_planning: true,
+      reconciles_existing_location_metadata: true,
+      reconciles_directory_state: true,
+      reconciles_directory_evidence: true,
+      preserves_directory_publication_state: true,
     });
   }
 
