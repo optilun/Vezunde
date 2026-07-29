@@ -2020,7 +2020,7 @@ async function repairTransientRowArtifacts(svc, batch, rowRecord, mutations) {
       'ProviderOrganization',
       organization,
       organizationCreatePayload(row),
-      Number(rowRecord.row_number || 0) * 10 + 1,
+      Number(batch.applied_rows || 0) * 10 + 1,
     );
   }
 
@@ -2054,7 +2054,7 @@ async function repairTransientRowArtifacts(svc, batch, rowRecord, mutations) {
       'ProviderLocation',
       location,
       expectedLocation,
-      Number(rowRecord.row_number || 0) * 10 + 2,
+      Number(batch.applied_rows || 0) * 10 + 2,
     );
   }
 
@@ -2087,7 +2087,7 @@ async function repairTransientRowArtifacts(svc, batch, rowRecord, mutations) {
       'ProviderLocationDirectoryState',
       state,
       resolveDirectoryStateCreatePayload(row, location.id, Boolean(organization?.id)),
-      Number(rowRecord.row_number || 0) * 10 + 4,
+      Number(batch.applied_rows || 0) * 10 + 4,
     );
   }
 
@@ -2121,7 +2121,7 @@ async function repairTransientRowArtifacts(svc, batch, rowRecord, mutations) {
       'DirectoryOrganizationLocationLink',
       link,
       resolveDirectoryLinkPayload(row, location.id, organization.id),
-      Number(rowRecord.row_number || 0) * 10 + 6,
+      Number(batch.applied_rows || 0) * 10 + 6,
     );
   }
 
@@ -2153,7 +2153,7 @@ async function repairTransientRowArtifacts(svc, batch, rowRecord, mutations) {
         'ProviderEvidence',
         evidence,
         resolveDirectoryEvidencePayload(row, 'ProviderLocation', location.id),
-        Number(rowRecord.row_number || 0) * 10 + 8,
+        Number(batch.applied_rows || 0) * 10 + 8,
       );
     }
   }
