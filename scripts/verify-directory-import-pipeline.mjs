@@ -35,6 +35,7 @@ import {
 import {
   getDirectoryEntityOrNull,
   isDirectoryReadFailure,
+  isTransientDirectoryExecutionFailure,
   requireDirectoryRows,
 } from '../base44/shared/directoryImportReadPolicy.js';
 import {
@@ -137,6 +138,10 @@ assert.equal(
   true,
 );
 assert.equal(isDirectoryReadFailure(new Error('alta eroare')), false);
+assert.equal(isTransientDirectoryExecutionFailure(new Error('Rate limit exceeded')), true);
+assert.equal(isTransientDirectoryExecutionFailure(Object.assign(new Error('prea multe cereri'), { status: 429 })), true);
+assert.equal(isTransientDirectoryExecutionFailure(Object.assign(new Error('indisponibil'), { response: { status: 503 } })), true);
+assert.equal(isTransientDirectoryExecutionFailure(new Error('conflict de identitate')), false);
 await assert.rejects(
   requireDirectoryRows(Promise.resolve(null), 'locatiilor de test'),
   (error) => (
@@ -906,9 +911,11 @@ assert.match(backend, /evidence_status: 'superseded'/);
 assert.match(backend, /Locatia s-a schimbat dupa dry-run/);
 assert.match(backend, /requireDirectoryRows/);
 assert.match(backend, /getDirectoryEntityOrNull/);
-assert.match(backend, /releaseBatchLockAfterReadFailure/);
-assert.match(backend, /isDirectoryReadFailure\(error\)/);
-assert.match(backend, /readFailure \? 503 : 500/);
+assert.match(backend, /persistBatchInterruption/);
+assert.match(backend, /resumeBatchAfterTransientFailure/);
+assert.match(backend, /isTransientDirectoryExecutionFailure\(error\)/);
+assert.match(backend, /EXECUTION_CHUNK = 5/);
+assert.match(backend, /retryableFailure \? 503 : 500/);
 assert.doesNotMatch(backend, /\.catch\(\(\) => \[\]\)/);
 assert.doesNotMatch(backend, /locationComparablePayload/);
 assert.match(backend, /FINALIZATION_CHUNK = 50/);
@@ -926,6 +933,11 @@ assert.match(ui, /Confirmare pentru import/);
 assert.match(ui, /Genereaza dry-run nou/);
 assert.match(ui, /batch\.failure_message/);
 assert.match(ui, /retryableDryRunFailure/);
+assert.match(ui, /Pregateste reluarea/);
+assert.match(ui, /resume_batch/);
+assert.match(ui, /EXECUTION_CHUNK_SIZE = 5/);
+assert.match(ui, /EXECUTION_PAUSE_MS = 2500/);
+assert.match(ui, /Pana la final, cu pauze/);
 assert.match(ui, /Rollback controlat/);
 assert.match(ui, /finishSnapshotValidation/);
 assert.match(ui, /snapshot\.status !== "validating"/);
