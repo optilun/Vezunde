@@ -2214,11 +2214,21 @@ async function resumeBatchAfterTransientFailure(svc, user, input) {
     row.status === 'failed'
     && isTransientDirectoryExecutionFailure(new Error(clean(row.error_message, 1200)))
   ));
+  const mutations = await requireDirectoryRows(
+    svc.entities.DirectoryImportMutation.filter(
+      { batch_id: batch.id },
+      'sequence',
+      MAX_ROWS,
+    ),
+    'mutatiilor lotului pentru reluare',
+  );
   const limit = boundedChunkSize(input.limit, EXECUTION_CHUNK);
   const rowsToRecover = retryableRows.slice(0, limit);
   const recoveredIds = new Set(rowsToRecover.map((row) => row.id));
+  let repairedArtifacts = 0;
 
   for (const row of rowsToRecover) {
+    repairedArtifacts += await repairTransientRowArtifacts(svc, batch, row, mutations);
     await svc.entities.DirectoryImportRow.update(row.id, {
       status: 'ready',
       error_message: '',
@@ -2233,7 +2243,7 @@ async function resumeBatchAfterTransientFailure(svc, user, input) {
       ? { ...row, status: 'ready', error_message: '', result_json: '{}', applied_at: null }
       : row
   ));
-  const progress = executionProgressFromRows(reconciledRows);
+  const progress = executionProgressFromRows(reconciledRows, mutations);
   const previousSummary = safeJson(batch.summary_json, {});
   const executionCounts = {
     ...(previousSummary.execution_counts || {}),
@@ -2259,13 +2269,18 @@ async function resumeBatchAfterTransientFailure(svc, user, input) {
     batch.id,
     'directory_import_batch_transient_rows_recovered',
     { transient_failed_rows: retryableRows.length },
-    { recovered_rows: rowsToRecover.length, remaining_transient_rows: remainingTransientRows },
+    {
+      recovered_rows: rowsToRecover.length,
+      repaired_partial_artifacts: repairedArtifacts,
+      remaining_transient_rows: remainingTransientRows,
+    },
   );
 
   return response({
     success: true,
     batch_id: batch.id,
     recovered: rowsToRecover.length,
+    repaired_artifacts: repairedArtifacts,
     remaining: remainingTransientRows > 0,
     totals: { ...progress.totals, updated_organizations: progress.updatedOrganizations },
   });
