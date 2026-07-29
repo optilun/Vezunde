@@ -2361,15 +2361,17 @@ export async function handle(req: Request) {
     if (action === 'plan_batch') return planBatch(svc, user, input);
     if (action === 'override_row') return overrideRow(svc, user, input);
     if (action === 'approve_batch') return approveBatch(svc, user, input);
+    if (action === 'resume_batch') return resumeBatchAfterTransientFailure(svc, user, input);
     if (action === 'execute_batch') return executeBatch(svc, user, input);
     if (action === 'rollback_batch') return rollbackBatch(svc, user, input);
     if (action === 'get_batch') return getBatchDetail(svc, input);
     return response({ error: 'Actiune necunoscuta.' }, 400);
   } catch (error) {
-    const readFailure = isDirectoryReadFailure(error);
+    const retryableFailure = isDirectoryReadFailure(error)
+      || isTransientDirectoryExecutionFailure(error);
     return response({
       error: error?.message || 'Eroare neasteptata in pipeline-ul directorului.',
-      retryable: readFailure,
-    }, readFailure ? 503 : 500);
+      retryable: retryableFailure,
+    }, retryableFailure ? 503 : 500);
   }
 }
