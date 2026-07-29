@@ -292,7 +292,11 @@ function pseudoRowReason(fields) {
   const locality = clean(fields.locality_name);
   const address = normalizeIdentityText(fields.address);
   if (!name) return "missing_location_name";
-  if (name === "organizatie" || /^(locatii|locatii deja|acoperire|retea|network|total)/.test(name)) return "aggregate_or_summary_row";
+  if (
+    name === "organizatie"
+    || /^(?:locatii|acoperire|retea|network)(?:\s|$)/.test(name)
+    || /^total(?:\s*:?\s*\d|\s+(?:locatii|puncte|sedii)\b)/.test(name)
+  ) return "aggregate_or_summary_row";
   if (/^~?\d+\+?$/.test(locality)) return "aggregate_count_row";
   if (/^~?\d+\+?$/.test(clean(fields.location_name))) return "aggregate_count_row";
   if (!address && /\b(locatii|puncte|sedii)\b/.test(name)) return "aggregate_without_address";

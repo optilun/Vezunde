@@ -5,7 +5,7 @@ import { handle as legacyDirectoryImportOpsHandle } from './directoryImportOps.t
 const MAX_ROWS = 5000;
 const CLASSIFICATION_CONTRACT_VERSION = 'viasee-directory-location-first-v1';
 const RUNTIME_ADAPTER_REVISION = 'directory-location-first-runtime-adapter-1';
-const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-latest-1';
+const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-extended-organization-types-3';
 
 const PROVIDER_TYPES = new Set([
   'optica_medicala',
@@ -271,6 +271,8 @@ export async function handle(req: Request) {
       classification_contract_version: CLASSIFICATION_CONTRACT_VERSION,
       preserves_explicit_location_type: true,
       preserves_explicit_organization_type: true,
+      supports_extended_organization_types: true,
+      reconciles_directory_organizations: true,
     });
   }
 
