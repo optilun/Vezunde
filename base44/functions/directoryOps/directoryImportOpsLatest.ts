@@ -1,6 +1,6 @@
 import { handle as directoryImportOpsLocationFirstHandle } from './directoryImportOpsLocationFirst.ts';
 
-export const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-reconciliation-safe-5';
+export const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-read-safe-6';
 
 export async function handle(req: Request) {
   const input = await req.clone().json().catch(() => ({}));
@@ -22,6 +22,8 @@ export async function handle(req: Request) {
       reconciles_directory_state: true,
       reconciles_directory_evidence: true,
       preserves_directory_publication_state: true,
+      preserves_existing_optional_fields: true,
+      fails_closed_on_directory_read_errors: true,
     });
   }
 

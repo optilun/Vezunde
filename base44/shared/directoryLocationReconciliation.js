@@ -46,10 +46,6 @@ export function resolveDirectoryLocationUpdatePayload(row = {}) {
     county: clean(row.county_name, 160),
     county_name: clean(row.county_name, 160),
     address: clean(row.address, 600),
-    phone_public: clean(row.phone, 160),
-    public_email: clean(row.email, 240),
-    website: clean(row.website, 600),
-    opening_hours: clean(row.schedule, 1200),
     active_status: row.operational_status === 'active' ? 'activa' : 'inactiva',
     source_url: clean(row.source_url, 1200),
     source_name: clean(
@@ -61,6 +57,16 @@ export function resolveDirectoryLocationUpdatePayload(row = {}) {
     data_source: 'public_source',
     migration_review_required: false,
   };
+
+  for (const [key, value, maxLength] of [
+    ['phone_public', row.phone, 160],
+    ['public_email', row.email, 240],
+    ['website', row.website, 600],
+    ['opening_hours', row.schedule, 1200],
+  ]) {
+    const normalized = clean(value, maxLength);
+    if (normalized) values[key] = normalized;
+  }
 
   for (const [key, value, maxLength] of [
     ['county_code', row.county_code, 40],

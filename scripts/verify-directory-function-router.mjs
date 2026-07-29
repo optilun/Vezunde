@@ -63,8 +63,8 @@ assert.match(routerSource, /status: 404/, 'Numele logice necunoscute trebuie res
 const bridgeRoot = 'base44/functions/listProviderMemberInvitations';
 const bridgeEntrySource = source(`${bridgeRoot}/entry.ts`);
 assert.match(bridgeEntrySource, /Bundled single-file Base44 function/);
-assert.match(bridgeEntrySource, /viasee-directory-import-single-file-7/);
-assert.match(bridgeEntrySource, /directory-import-runtime-reconciliation-safe-5/);
+assert.match(bridgeEntrySource, /viasee-directory-import-single-file-8/);
+assert.match(bridgeEntrySource, /directory-import-runtime-read-safe-6/);
 assert.match(bridgeEntrySource, /supports_extended_organization_types:\s*true/);
 assert.match(bridgeEntrySource, /reconciles_directory_organizations:\s*true/);
 assert.match(bridgeEntrySource, /rejects_address_only_location_match:\s*true/);
@@ -75,6 +75,8 @@ assert.match(bridgeEntrySource, /reconciles_existing_location_metadata:\s*true/)
 assert.match(bridgeEntrySource, /reconciles_directory_state:\s*true/);
 assert.match(bridgeEntrySource, /reconciles_directory_evidence:\s*true/);
 assert.match(bridgeEntrySource, /preserves_directory_publication_state:\s*true/);
+assert.match(bridgeEntrySource, /preserves_existing_optional_fields:\s*true/);
+assert.match(bridgeEntrySource, /fails_closed_on_directory_read_errors:\s*true/);
 assert.doesNotMatch(bridgeEntrySource, /from ['"]\.\.?\//, 'Functia Base44 trebuie sa fie complet autonoma, fara importuri locale');
 assert.match(bridgeEntrySource, /DIRECTORY_IMPORT_LOGICAL_NAME/);
 assert.match(bridgeEntrySource, /handleInvitationList/);

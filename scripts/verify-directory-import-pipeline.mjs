@@ -32,9 +32,60 @@ import {
   resolveDirectoryLocationUpdatePayload,
   resolveDirectoryStateUpdatePayload,
 } from '../base44/shared/directoryLocationReconciliation.js';
+import {
+  getDirectoryEntityOrNull,
+  isDirectoryReadFailure,
+  requireDirectoryRows,
+} from '../base44/shared/directoryImportReadPolicy.js';
 
 assert.equal(DIRECTORY_IMPORT_CONTRACT_VERSION, 'viasee-directory-import-v1');
 assert.equal(DIRECTORY_CLASSIFICATION_CONTRACT_VERSION, 'viasee-directory-location-first-v1');
+
+assert.deepEqual(
+  await requireDirectoryRows(Promise.resolve([]), 'locatiilor de test'),
+  [],
+);
+await assert.rejects(
+  requireDirectoryRows(
+    Promise.reject(Object.assign(new Error('indisponibil temporar'), { status: 503 })),
+    'locatiilor de test',
+  ),
+  (error) => (
+    error?.code === 'directory_read_failed'
+    && error?.status === 503
+    && /Importul a fost oprit/.test(error.message)
+  ),
+);
+assert.equal(
+  isDirectoryReadFailure({ code: 'directory_read_failed' }),
+  true,
+);
+assert.equal(isDirectoryReadFailure(new Error('alta eroare')), false);
+await assert.rejects(
+  requireDirectoryRows(Promise.resolve(null), 'locatiilor de test'),
+  (error) => (
+    error?.code === 'directory_read_failed'
+    && /nu este o lista/.test(error.message)
+  ),
+);
+assert.equal(
+  await getDirectoryEntityOrNull(
+    Promise.reject(Object.assign(new Error('nu exista'), { response: { status: 404 } })),
+    'locatiei de test',
+  ),
+  null,
+);
+await assert.rejects(
+  getDirectoryEntityOrNull(
+    Promise.reject(Object.assign(new Error('indisponibil temporar'), { response: { status: 503 } })),
+    'locatiei de test',
+  ),
+  (error) => (
+    error?.code === 'directory_read_failed'
+    && error?.status === 503
+    && /Importul a fost oprit/.test(error.message)
+  ),
+);
 
 for (const [organizationTypeCode, providerProfileType, expectedLegacyType] of [
   ['independent_optical_store', 'independent_optical_store', 'independent_optical_store'],
@@ -349,6 +400,54 @@ assert.equal(
   correctedLocationValues.source_url,
   'https://www.facebook.com/drmihneamunteanu/',
 );
+
+const sparseOptionalPilotRow = {
+  ...correctedPilotRow,
+  phone: '',
+  email: '',
+  website: '',
+  schedule: '',
+};
+const sparseOptionalValues = resolveDirectoryLocationUpdatePayload(
+  sparseOptionalPilotRow,
+);
+for (const key of [
+  'phone_public',
+  'public_email',
+  'website',
+  'opening_hours',
+]) {
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(sparseOptionalValues, key),
+    false,
+    `${key} gol nu trebuie inclus in update`,
+  );
+}
+const existingOptionalFields = {
+  phone_public: '0256 111 222',
+  public_email: 'contact@existent.ro',
+  website: 'https://existent.ro',
+  opening_hours: 'Luni-Vineri 09:00-18:00',
+};
+assert.deepEqual(
+  {
+    ...existingOptionalFields,
+    ...sparseOptionalValues,
+  },
+  {
+    ...sparseOptionalValues,
+    ...existingOptionalFields,
+  },
+);
+const sparseLocationPlan = planDirectoryLocationReconciliation({
+  location: {
+    id: 'loc-with-existing-optional-fields',
+    ...sparseOptionalValues,
+    ...existingOptionalFields,
+  },
+  row: sparseOptionalPilotRow,
+});
+assert.equal(sparseLocationPlan.components.location, false);
 
 const stalePilotLocation = {
   id: 'loc-munteanu',
@@ -722,6 +821,12 @@ assert.match(backend, /resolveDirectoryStateUpdatePayload/);
 assert.match(backend, /directory_import_evidence_superseded/);
 assert.match(backend, /evidence_status: 'superseded'/);
 assert.match(backend, /Locatia s-a schimbat dupa dry-run/);
+assert.match(backend, /requireDirectoryRows/);
+assert.match(backend, /getDirectoryEntityOrNull/);
+assert.match(backend, /releaseBatchLockAfterReadFailure/);
+assert.match(backend, /isDirectoryReadFailure\(error\)/);
+assert.match(backend, /readFailure \? 503 : 500/);
+assert.doesNotMatch(backend, /\.catch\(\(\) => \[\]\)/);
 assert.doesNotMatch(backend, /locationComparablePayload/);
 assert.match(backend, /FINALIZATION_CHUNK = 50/);
 assert.match(backend, /PLANNING_CHUNK = 50/);
