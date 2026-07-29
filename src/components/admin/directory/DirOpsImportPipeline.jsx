@@ -25,7 +25,7 @@ import {
 
 const CHUNK_SIZE = 50;
 const EXECUTION_CHUNK_SIZE = 5;
-const EXECUTION_PAUSE_MS = 1600;
+const EXECUTION_PAUSE_MS = 2500;
 const pause = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 const LABELS = {
   draft: "Draft", uploading: "Se incarca", validating: "Se valideaza", ready: "Pregatit",
@@ -208,18 +208,18 @@ function Batch({ batch, reload, continuePlanning }) {
   const approve = async () => { setBusy(true); const result = await call({ action: "approve_batch", batch_id: batch.id, confirmation }); setBusy(false); if (result.error) setError(result.error); else { setMessage("Lot aprobat."); reload(); } };
   const recover = async () => {
     setBusy(true); setError(""); setMessage("");
-    let remaining = true; let recovered = 0; let calls = 0;
+    let remaining = true; let recovered = 0; let calls = 0; let failed = false;
     while (remaining && calls < 100) {
       const result = await call({ action: "resume_batch", batch_id: batch.id, limit: EXECUTION_CHUNK_SIZE });
-      if (result.error) { setError(result.error); break; }
+      if (result.error) { setError(result.error); failed = true; break; }
       recovered += Number(result.recovered || 0);
       remaining = result.remaining === true;
       calls += 1;
       await reload(false);
       if (remaining) await pause(EXECUTION_PAUSE_MS);
     }
-    if (!remaining) setMessage(`Reluarea este pregatita. ${recovered} randuri temporar esuate au fost repuse in asteptare.`);
-    else if (!error) setError("Reluarea nu s-a finalizat in limita de siguranta.");
+    if (!failed && !remaining) setMessage(`Reluarea este pregatita. ${recovered} randuri temporar esuate au fost repuse in asteptare.`);
+    else if (!failed) setError("Reluarea nu s-a finalizat in limita de siguranta.");
     setBusy(false); await reload();
   };
   const process = async (action, continuous) => {
