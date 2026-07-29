@@ -53,3 +53,37 @@ export async function getDirectoryEntityOrNull(readPromise, resourceName = '') {
 export function isDirectoryReadFailure(error) {
   return error?.code === 'directory_read_failed';
 }
+
+function transientStatus(error) {
+  for (const candidate of [
+    error,
+    error?.cause,
+    error?.response,
+    error?.response?.data,
+  ]) {
+    const status = errorStatus(candidate);
+    if ([408, 425, 429, 502, 503, 504].includes(status)) return status;
+  }
+  return null;
+}
+
+function transientMessage(error) {
+  const parts = [];
+  const seen = new Set();
+  let current = error;
+  for (let depth = 0; current && depth < 5; depth += 1) {
+    if (seen.has(current)) break;
+    seen.add(current);
+    parts.push(clean(current?.message, 500));
+    parts.push(clean(current?.response?.data?.error, 500));
+    current = current?.cause;
+  }
+  return parts.filter(Boolean).join(' ').toLowerCase();
+}
+
+export function isTransientDirectoryExecutionFailure(error) {
+  if (transientStatus(error)) return true;
+  return /(rate\s*limit|too\s*many\s*requests|throttl|temporar(?:y|ily)?\s+unavailable|service\s+unavailable|gateway\s+timeout|timed?\s*out)/i.test(
+    transientMessage(error),
+  );
+}
