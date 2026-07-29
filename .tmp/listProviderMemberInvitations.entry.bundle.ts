@@ -1,3 +1,4 @@
+// Bundled single-file Base44 function. Do not add local project imports.
 // base44/functions/listProviderMemberInvitations/entry.ts
 import { createClientFromRequest as createClientFromRequest3 } from "npm:@base44/sdk@0.8.31";
 
@@ -1678,7 +1679,7 @@ async function handle3(req) {
 // base44/functions/listProviderMemberInvitations/entry.ts
 var ROLES = ["organization_owner", "location_manager", "location_staff"];
 var DIRECTORY_IMPORT_LOGICAL_NAME = "directoryImportOps";
-var FUNCTION_DEPLOY_REVISION = "viasee-directory-import-self-contained-bridge-2";
+var FUNCTION_DEPLOY_REVISION = "viasee-directory-import-single-file-3";
 console.info(`[VIASEE] listProviderMemberInvitations ${FUNCTION_DEPLOY_REVISION}`);
 function res(body, status = 200) {
   return Response.json(body, { status });
