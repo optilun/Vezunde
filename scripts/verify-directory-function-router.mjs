@@ -62,23 +62,20 @@ assert.match(routerSource, /status: 404/, 'Numele logice necunoscute trebuie res
 
 const bridgeRoot = 'base44/functions/listProviderMemberInvitations';
 const bridgeEntrySource = source(`${bridgeRoot}/entry.ts`);
-assert.match(bridgeEntrySource, /from '\.\/directoryImportOpsLatest\.ts'/);
-assert.doesNotMatch(bridgeEntrySource, /from '\.\.\/directoryOps\//);
-assert.match(bridgeEntrySource, /body\?\.__function === DIRECTORY_IMPORT_LOGICAL_NAME/);
-assert.match(bridgeEntrySource, /return handleInvitationList\(req\)/);
-assert.match(bridgeEntrySource, /viasee-directory-import-self-contained-bridge-2/);
+assert.match(bridgeEntrySource, /Bundled single-file Base44 function/);
+assert.match(bridgeEntrySource, /viasee-directory-import-single-file-3/);
+assert.doesNotMatch(bridgeEntrySource, /from ['"]\.\.?\//, 'Functia Base44 trebuie sa fie complet autonoma, fara importuri locale');
+assert.match(bridgeEntrySource, /DIRECTORY_IMPORT_LOGICAL_NAME/);
+assert.match(bridgeEntrySource, /handleInvitationList/);
 
 for (const fileName of [
   'directoryImportOps.ts',
   'directoryImportOpsLocationFirst.ts',
   'directoryImportOpsLatest.ts',
 ]) {
-  const bridgePath = `${bridgeRoot}/${fileName}`;
-  assert.ok(existsSync(path.join(root, bridgePath)), `Copia locala lipseste pentru ${fileName}`);
-  assert.equal(
-    source(bridgePath),
-    source(`base44/functions/directoryOps/${fileName}`),
-    `${fileName} trebuie sa ramana identic cu implementarea canonica`,
+  assert.ok(
+    !existsSync(path.join(root, bridgeRoot, fileName)),
+    `${fileName} nu trebuie sa existe ca utilitar separat in /functions`,
   );
 }
 
