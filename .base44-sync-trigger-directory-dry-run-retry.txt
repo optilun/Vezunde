@@ -1,0 +1,2 @@
+Force GitHub to Base44 synchronization for directory dry-run retry UI.
+Source commit: 5645e94d2aa12686a7e89d3ec7e51e6432b407f7
