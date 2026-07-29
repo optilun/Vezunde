@@ -510,6 +510,24 @@ async function finalizeSnapshot(svc, user, input) {
   });
 }
 
+function organizationCreatePayload(row) {
+  const canonical = resolveDirectoryOrganizationCanonicalPayload(row);
+  if (!canonical.valid) {
+    throw new Error(`Tipul organizatiei nu poate fi rezolvat: ${canonical.error_code}.`);
+  }
+  return {
+    ...canonical.values,
+    legal_name: '',
+    website: row.website || '',
+    control_status: 'directory',
+    publication_status: 'draft',
+    data_quality_status: row.data_quality_status,
+    source_checked_at: normalizeDate(row.source_checked_at),
+    public_visibility_status: 'draft',
+    status: 'activa',
+  };
+}
+
 function locationCreatePayload(row, organizationId = null) {
   const canonical = resolveDirectoryLocationUpdatePayload(row);
   return {
@@ -1260,21 +1278,7 @@ async function ensureOrganization(
     throw new Error('Organizatia planificata anterior nu a fost creata; executia randului a fost oprita pentru a preveni o dublura.');
   }
 
-  const canonical = resolveDirectoryOrganizationCanonicalPayload(row);
-  if (!canonical.valid) {
-    throw new Error(`Tipul organizatiei nu poate fi rezolvat: ${canonical.error_code}.`);
-  }
-  const values = {
-    ...canonical.values,
-    legal_name: '',
-    website: row.website || '',
-    control_status: 'directory',
-    publication_status: 'draft',
-    data_quality_status: row.data_quality_status,
-    source_checked_at: normalizeDate(row.source_checked_at),
-    public_visibility_status: 'draft',
-    status: 'activa',
-  };
+  const values = organizationCreatePayload(row);
   const organization = await svc.entities.ProviderOrganization.create(values);
   await createMutation(svc, {
     batch_id: batch.id,
