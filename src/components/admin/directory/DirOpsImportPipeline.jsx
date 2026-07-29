@@ -23,7 +23,7 @@ import {
   sourceColumns,
 } from "@/lib/directoryImportFileParser";
 
-const CHUNK_SIZE = 100;
+const CHUNK_SIZE = 50;
 const LABELS = {
   draft: "Draft", uploading: "Se incarca", validating: "Se valideaza", ready: "Pregatit",
   blocked: "Blocat", imported: "Importat", archived: "Arhivat", planning: "Dry-run in lucru",
@@ -49,6 +49,28 @@ function call(payload) {
   return base44.functions.invoke("directoryImportOps", payload)
     .then((response) => response.data)
     .catch((error) => ({ error: error.response?.data?.error || error.message || "Operatia a esuat." }));
+}
+async function finishSnapshotValidation(snapshotId) {
+  let remaining = true;
+  let calls = 0;
+  while (remaining && calls < 100) {
+    const result = await call({
+      action: "finalize_snapshot",
+      snapshot_id: snapshotId,
+      require_siruta: true,
+      limit: CHUNK_SIZE,
+    });
+    if (result.error) return { error: result.error };
+    remaining = result.remaining === true;
+    calls += 1;
+    if (remaining && Number(result.processed || 0) < 1) {
+      return { error: "Validarea s-a oprit fara progres. Reincarca starea inainte sa continui." };
+    }
+  }
+  if (remaining) {
+    return { error: "Validarea nu s-a putut finaliza in limita de siguranta." };
+  }
+  return { success: true };
 }
 function tone(status) {
   if (["ready", "completed", "imported", "rolled_back", "applied"].includes(status)) return "border-green-200 bg-green-50 text-green-900";
@@ -101,14 +123,27 @@ function UploadPanel({ onDone }) {
     if (created.error) { setError(created.error); setBusy(false); return; }
     const snapshot = created.snapshot;
     if (!created.reused || !snapshot.immutable_at) {
-      for (let start = 0; start < rows.length; start += CHUNK_SIZE) {
-        const chunk = rows.slice(start, start + CHUNK_SIZE);
-        const result = await call({ action: "append_rows", snapshot_id: snapshot.id, start_row_number: start + 1, rows: chunk });
-        if (result.error) { setError(`Rand ${start + 1}: ${result.error}`); setBusy(false); return; }
-        setProgress({ value: Math.min(rows.length, start + chunk.length), total: rows.length });
+      if (!["draft", "uploading", "validating"].includes(snapshot.status)) {
+        setError("Snapshotul existent nu poate fi reluat din starea curenta.");
+        setBusy(false);
+        return;
       }
-      const finalized = await call({ action: "finalize_snapshot", snapshot_id: snapshot.id, require_siruta: true });
-      if (finalized.error) { setError(finalized.error); setBusy(false); return; }
+      if (snapshot.status !== "validating") {
+        for (let start = 0; start < rows.length; start += CHUNK_SIZE) {
+          const chunk = rows.slice(start, start + CHUNK_SIZE);
+          const result = await call({ action: "append_rows", snapshot_id: snapshot.id, start_row_number: start + 1, rows: chunk });
+          if (result.error) { setError(`Rand ${start + 1}: ${result.error}`); setBusy(false); return; }
+          setProgress({ value: Math.min(rows.length, start + chunk.length), total: rows.length });
+        }
+      } else {
+        setProgress({ value: rows.length, total: rows.length });
+      }
+      const finalized = await finishSnapshotValidation(snapshot.id);
+      if (finalized.error) {
+        setError(finalized.error);
+        setBusy(false);
+        return;
+      }
     }
     setBusy(false); onDone(snapshot.id);
   };
@@ -148,7 +183,7 @@ function Rows({ rows, onEdit }) {
   })}{rows.length === 0 && <div className="rounded-2xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">Nu exista randuri.</div>}</div>;
 }
 
-function Batch({ batch, reload }) {
+function Batch({ batch, reload, continuePlanning }) {
   const stop = useRef(false);
   const summary = json(batch.summary_json, {});
   const approvalPhrase = summary.approval_token || `IMPORT ${batch.batch_key} ${String(batch.source_sha256 || "").slice(0, 12)} ${batch.ready_rows || 0}`;
@@ -172,6 +207,7 @@ function Batch({ batch, reload }) {
   };
 
   return <section className="rounded-3xl border border-border bg-card p-5 shadow-sm"><div className="flex justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase text-muted-foreground">Lot {batch.batch_key}</div><h3 className="mt-1 font-bold">Dry-run si executie</h3></div><Badge status={batch.status} /></div><div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4"><Stat label="Pregatite" value={batch.ready_rows} /><Stat label="Blocate" value={batch.blocked_rows} /><Stat label="Aplicate" value={batch.applied_rows} /><Stat label="Esuate" value={batch.failed_rows} /></div>
+    {batch.status === "planning" && <button type="button" onClick={continuePlanning} disabled={busy} className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-border px-5 text-sm font-semibold sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileCheck2 className="h-4 w-4" />} Continua dry-run</button>}
     {batch.status === "ready" && <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4"><div className="text-xs font-bold text-amber-950">Confirmare pentru import</div><code className="mt-3 block overflow-x-auto rounded-xl bg-white/70 p-3 text-[11px]">{approvalPhrase}</code><input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} className="mt-3 min-h-11 w-full rounded-xl border border-amber-300 bg-white px-3 text-sm" /><button type="button" onClick={approve} disabled={busy || confirmation !== approvalPhrase} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-full bg-foreground px-5 text-xs font-semibold text-background disabled:opacity-40"><ShieldCheck className="h-4 w-4" /> Aproba lotul</button></div>}
     {["approved", "running"].includes(batch.status) && <div className="mt-5 flex flex-col gap-2 sm:flex-row"><button type="button" onClick={() => process("execute_batch", false)} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border px-5 text-sm font-semibold"><Play className="h-4 w-4" /> Urmatoarele 20</button><button type="button" onClick={() => process("execute_batch", true)} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />} Pana la final</button>{busy && <button type="button" onClick={() => { stop.current = true; }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-red-200 px-5 text-sm font-semibold text-red-700"><Square className="h-4 w-4" /> Opreste dupa lot</button>}</div>}
     {["completed", "completed_with_errors", "rollback_failed", "rolling_back"].includes(batch.status) && <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4"><div className="text-xs font-bold text-red-950">Rollback controlat</div><p className="mt-1 text-xs text-red-900">Se blocheaza daca datele au fost modificate sau revendicate dupa import.</p><code className="mt-3 block overflow-x-auto rounded-xl bg-white/70 p-3 text-[11px]">{rollbackPhrase}</code><input value={rollbackText} onChange={(event) => setRollbackText(event.target.value)} className="mt-3 min-h-11 w-full rounded-xl border border-red-300 bg-white px-3 text-sm" /><div className="mt-3 flex flex-col gap-2 sm:flex-row"><button type="button" onClick={() => process("rollback_batch", false)} disabled={busy || rollbackText !== rollbackPhrase} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-red-300 px-5 text-xs font-semibold text-red-800 disabled:opacity-40"><RotateCcw className="h-4 w-4" /> Urmatorul lot</button><button type="button" onClick={() => process("rollback_batch", true)} disabled={busy || rollbackText !== rollbackPhrase} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-red-700 px-5 text-xs font-semibold text-white disabled:opacity-40"><Archive className="h-4 w-4" /> Pana la final</button></div></div>}
@@ -183,11 +219,35 @@ function Workspace({ snapshotId, refreshList }) {
   const [detail, setDetail] = useState(null); const [filter, setFilter] = useState(""); const [busy, setBusy] = useState(true); const [error, setError] = useState(""); const [edit, setEdit] = useState(null);
   const load = useCallback(async (showBusy = true) => { if (showBusy) setBusy(true); const result = await call({ action: "get_snapshot", snapshot_id: snapshotId, status: filter, limit: 200 }); if (showBusy) setBusy(false); if (result.error) { setError(result.error); setDetail(null); } else { setDetail(result); setError(""); } }, [filter, snapshotId]);
   useEffect(() => { load(); }, [load]);
-  const plan = async () => { setBusy(true); const result = await call({ action: "plan_batch", snapshot_id: snapshotId }); setBusy(false); if (result.error) setError(result.error); else { await load(); await refreshList(); } };
+  const finalize = async () => {
+    setBusy(true); setError("");
+    const result = await finishSnapshotValidation(snapshotId);
+    setBusy(false);
+    if (result.error) setError(result.error);
+    else { await load(); await refreshList(); }
+  };
+  const plan = async () => {
+    setBusy(true); setError(""); let remaining = true; let calls = 0;
+    while (remaining && calls < 100) {
+      const result = await call({ action: "plan_batch", snapshot_id: snapshotId, limit: CHUNK_SIZE });
+      if (result.error) { setError(result.error); setBusy(false); return; }
+      remaining = result.remaining === true;
+      calls += 1;
+      if (remaining && Number(result.processed || 0) < 1) {
+        setError("Dry-run-ul s-a oprit fara progres. Reincarca starea inainte sa continui.");
+        setBusy(false);
+        return;
+      }
+      if (remaining) await load(false);
+    }
+    setBusy(false);
+    if (remaining) setError("Dry-run-ul nu s-a putut finaliza in limita de siguranta.");
+    else { await load(); await refreshList(); }
+  };
   if (busy && !detail) return <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se incarca...</div>;
   if (!detail) return <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div>;
   const snapshot = detail.snapshot; const batch = detail.batches?.[0] || null;
-  return <div className="space-y-5"><section className="rounded-3xl border border-border bg-card p-5 shadow-sm"><div className="flex justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase text-muted-foreground">Snapshot imuabil</div><h2 className="mt-1 text-lg font-extrabold">{snapshot.source_version}</h2><p className="mt-1 text-xs text-muted-foreground">{snapshot.original_filename}</p></div><Badge status={snapshot.status} /></div><div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5"><Stat label="Total" value={snapshot.total_rows} /><Stat label="Valide" value={snapshot.valid_rows} /><Stat label="Blocate" value={snapshot.blocked_rows} /><Stat label="Duplicate" value={snapshot.duplicate_rows} /><Stat label="Avertismente" value={snapshot.warning_rows} /></div><div className="mt-4 break-all rounded-2xl bg-secondary/35 p-3 font-mono text-[10px] text-muted-foreground">{snapshot.source_sha256}</div>{!batch && ["ready", "blocked"].includes(snapshot.status) && <button type="button" onClick={plan} disabled={busy || !snapshot.valid_rows} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-40 sm:w-auto"><FileCheck2 className="h-4 w-4" /> Genereaza dry-run</button>}</section>{batch && <Batch batch={batch} reload={async (showBusy = true) => { await load(showBusy); await refreshList(); }} />}<section className="rounded-3xl border border-border bg-card p-5 shadow-sm"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h3 className="text-sm font-bold">Randurile snapshotului</h3><p className="mt-1 text-xs text-muted-foreground">Corectiile nu modifica sursa originala.</p></div><div className="flex gap-2"><select value={filter} onChange={(event) => setFilter(event.target.value)} className="min-h-10 rounded-xl border border-border bg-background px-3 text-xs">{ROW_FILTERS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><button type="button" onClick={() => load()} className="h-10 w-10 rounded-xl border border-border"><RefreshCw className="mx-auto h-4 w-4" /></button></div></div><div className="mt-4"><Rows rows={detail.rows || []} onEdit={setEdit} /></div></section>{edit && <EditRow row={edit} onClose={() => setEdit(null)} onSaved={async () => { setEdit(null); await load(); }} />}</div>;
+  return <div className="space-y-5"><section className="rounded-3xl border border-border bg-card p-5 shadow-sm"><div className="flex justify-between gap-3"><div><div className="text-[10px] font-semibold uppercase text-muted-foreground">Snapshot imuabil</div><h2 className="mt-1 text-lg font-extrabold">{snapshot.source_version}</h2><p className="mt-1 text-xs text-muted-foreground">{snapshot.original_filename}</p></div><Badge status={snapshot.status} /></div><div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5"><Stat label="Total" value={snapshot.total_rows} /><Stat label="Valide" value={snapshot.valid_rows} /><Stat label="Blocate" value={snapshot.blocked_rows} /><Stat label="Duplicate" value={snapshot.duplicate_rows} /><Stat label="Avertismente" value={snapshot.warning_rows} /></div><div className="mt-4 break-all rounded-2xl bg-secondary/35 p-3 font-mono text-[10px] text-muted-foreground">{snapshot.source_sha256}</div>{snapshot.status === "validating" && <button type="button" onClick={finalize} disabled={busy} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-border px-5 text-sm font-semibold disabled:opacity-40 sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileCheck2 className="h-4 w-4" />} Continua validarea</button>}{!batch && ["ready", "blocked"].includes(snapshot.status) && <button type="button" onClick={plan} disabled={busy || !snapshot.valid_rows} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-40 sm:w-auto"><FileCheck2 className="h-4 w-4" /> Genereaza dry-run</button>}</section>{batch && <Batch batch={batch} continuePlanning={plan} reload={async (showBusy = true) => { await load(showBusy); await refreshList(); }} />}<section className="rounded-3xl border border-border bg-card p-5 shadow-sm"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h3 className="text-sm font-bold">Randurile snapshotului</h3><p className="mt-1 text-xs text-muted-foreground">Corectiile nu modifica sursa originala.</p></div><div className="flex gap-2"><select value={filter} onChange={(event) => setFilter(event.target.value)} className="min-h-10 rounded-xl border border-border bg-background px-3 text-xs">{ROW_FILTERS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><button type="button" onClick={() => load()} className="h-10 w-10 rounded-xl border border-border"><RefreshCw className="mx-auto h-4 w-4" /></button></div></div><div className="mt-4"><Rows rows={detail.rows || []} onEdit={setEdit} /></div></section>{edit && <EditRow row={edit} onClose={() => setEdit(null)} onSaved={async () => { setEdit(null); await load(); }} />}</div>;
 }
 
 export default function DirOpsImportPipeline() {

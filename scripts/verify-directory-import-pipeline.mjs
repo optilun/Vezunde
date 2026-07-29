@@ -12,9 +12,250 @@ import {
   parseDirectorySource,
   sourceColumns,
 } from '../src/lib/directoryImportFileParser.js';
+import {
+  isDirectoryOrganizationTypeCode,
+  resolveProviderOrganizationType,
+} from '../base44/shared/directoryOrganizationTypeMapping.js';
+import {
+  isMutableDirectoryOrganization,
+  planDirectoryOrganizationReconciliation,
+  resolveDirectoryOrganizationCanonicalPayload,
+} from '../base44/shared/directoryOrganizationReconciliation.js';
+import {
+  resolveDirectoryLocationMatch,
+  resolveDirectoryOrganizationMatch,
+} from '../base44/shared/directoryIdentityMatchPolicy.js';
 
 assert.equal(DIRECTORY_IMPORT_CONTRACT_VERSION, 'viasee-directory-import-v1');
 assert.equal(DIRECTORY_CLASSIFICATION_CONTRACT_VERSION, 'viasee-directory-location-first-v1');
+
+for (const [organizationTypeCode, providerProfileType, expectedLegacyType] of [
+  ['independent_optical_store', 'independent_optical_store', 'independent_optical_store'],
+  ['optical_chain', 'optical_chain', 'optical_chain'],
+  ['ophthalmology_clinic', 'ophthalmology_clinic', 'ophthalmology_clinic'],
+  ['ophthalmology_office', 'ophthalmology_office', 'ophthalmology_office'],
+  ['healthcare_network', 'ophthalmology_clinic', 'ophthalmology_clinic'],
+  ['multi_specialty_healthcare_provider', 'ophthalmology_clinic', 'ophthalmology_clinic'],
+  ['public_healthcare_institution', 'ophthalmology_clinic', 'ophthalmology_clinic'],
+  ['independent_professional', 'independent_ophthalmologist', 'independent_ophthalmologist'],
+  ['optical_laboratory', 'optical_laboratory_b2b', 'optical_laboratory_b2b'],
+  ['b2b_distributor', 'future_b2b_distributor', 'future_b2b_distributor'],
+]) {
+  const resolution = resolveProviderOrganizationType({
+    organization_type_code: organizationTypeCode,
+    provider_profile_type: providerProfileType,
+  });
+  assert.equal(resolution.valid, true, organizationTypeCode);
+  assert.equal(resolution.organization_type_code, organizationTypeCode);
+  assert.equal(resolution.organization_type, expectedLegacyType);
+  assert.equal(resolution.error_code, '');
+  assert.equal(isDirectoryOrganizationTypeCode(organizationTypeCode), true);
+}
+
+assert.deepEqual(
+  resolveProviderOrganizationType({
+    organization_type_code: 'independent_professional',
+    provider_profile_type: 'ophthalmology_clinic',
+  }),
+  {
+    valid: false,
+    organization_type_code: 'independent_professional',
+    organization_type: '',
+    error_code: 'organization_type_legacy_mapping_not_resolved',
+  },
+);
+assert.equal(
+  resolveProviderOrganizationType({
+    organization_type_code: 'other',
+    provider_profile_type: 'ophthalmology_clinic',
+  }).error_code,
+  'organization_type_legacy_mapping_not_resolved',
+);
+assert.equal(
+  resolveProviderOrganizationType({
+    organization_type_code: 'tip_organizatie_inexistent',
+    provider_profile_type: 'ophthalmology_clinic',
+  }).error_code,
+  'invalid_explicit_organization_type',
+);
+assert.equal(
+  resolveProviderOrganizationType({
+    organization_type_code: '',
+    provider_profile_type: 'ophthalmology_clinic',
+  }).error_code,
+  'organization_type_not_resolved',
+);
+
+const extendedOrganizationRow = {
+  organization_name: 'Vista Vision',
+  organization_external_key: 'org:vista-vision',
+  source_version: 'V7-test',
+  organization_type_code: 'healthcare_network',
+  provider_profile_type: 'ophthalmology_clinic',
+};
+assert.deepEqual(
+  resolveDirectoryOrganizationCanonicalPayload(extendedOrganizationRow).values,
+  {
+    name: 'Vista Vision',
+    public_display_name: 'Vista Vision',
+    organization_type: 'ophthalmology_clinic',
+    organization_type_code: 'healthcare_network',
+    directory_external_key: 'org:vista-vision',
+    directory_source_version: 'V7-test',
+  },
+);
+assert.equal(isMutableDirectoryOrganization({
+  control_status: 'directory',
+  publication_status: 'draft',
+  public_visibility_status: 'draft',
+}), true);
+assert.equal(isMutableDirectoryOrganization({
+  control_status: 'claimed',
+  publication_status: 'draft',
+  public_visibility_status: 'draft',
+}), false);
+
+const organizationOne = { id: 'org-1', name: 'Vista Vision' };
+const organizationTwo = { id: 'org-2', name: 'Vista Vision' };
+assert.equal(
+  resolveDirectoryOrganizationMatch({
+    externalCandidates: [organizationOne],
+    nameCandidates: [organizationOne, organizationTwo],
+  }).target.id,
+  'org-1',
+);
+assert.equal(
+  resolveDirectoryOrganizationMatch({
+    externalCandidates: [organizationOne, organizationTwo],
+  }).error_code,
+  'multiple_organizations_for_external_key',
+);
+assert.equal(
+  resolveDirectoryOrganizationMatch({
+    nameCandidates: [organizationOne, organizationTwo],
+  }).error_code,
+  'multiple_organizations_for_exact_name',
+);
+
+const locationOne = { id: 'loc-1', name: 'Optica Unu' };
+const locationTwo = { id: 'loc-2', name: 'Optica Doi' };
+const locationsById = new Map([
+  [locationOne.id, locationOne],
+  [locationTwo.id, locationTwo],
+]);
+assert.equal(
+  resolveDirectoryLocationMatch({
+    externalStates: [{ id: 'state-1', location_id: 'loc-1' }],
+    addressStates: [
+      { id: 'state-1', location_id: 'loc-1' },
+      { id: 'state-2', location_id: 'loc-2' },
+    ],
+    locationsById,
+  }).target.id,
+  'loc-1',
+);
+assert.equal(
+  resolveDirectoryLocationMatch({
+    exactFallbackCandidates: [locationTwo],
+    addressStates: [{ id: 'state-1', location_id: 'loc-1' }],
+    locationsById,
+  }).target.id,
+  'loc-2',
+);
+assert.equal(
+  resolveDirectoryLocationMatch({
+    addressStates: [
+      { id: 'state-1', location_id: 'loc-1' },
+      { id: 'state-2', location_id: 'loc-2' },
+    ],
+    locationsById,
+  }).error_code,
+  'address_match_requires_manual_identity_review',
+);
+assert.equal(
+  resolveDirectoryLocationMatch({
+    externalStates: [{ id: 'orphan-state', location_id: 'missing-location' }],
+    locationsById,
+  }).error_code,
+  'location_external_state_target_missing',
+);
+assert.equal(
+  resolveDirectoryLocationMatch({
+    addressStates: [{ id: 'orphan-state', location_id: 'missing-location' }],
+    locationsById,
+  }).error_code,
+  'address_state_target_missing',
+);
+
+const mutableOrganizationPlan = planDirectoryOrganizationReconciliation({
+  id: 'org-1',
+  name: 'Vista Vision',
+  public_display_name: 'Vista Vision',
+  organization_type: 'ophthalmology_clinic',
+  organization_type_code: 'ophthalmology_clinic',
+  directory_external_key: 'org:vista-vision',
+  directory_source_version: 'V6-test',
+  control_status: 'directory',
+  publication_status: 'draft',
+  public_visibility_status: 'draft',
+}, extendedOrganizationRow);
+assert.equal(mutableOrganizationPlan.valid, true);
+assert.equal(mutableOrganizationPlan.requires_update, true);
+assert.deepEqual(mutableOrganizationPlan.updates, {
+  organization_type_code: 'healthcare_network',
+  directory_source_version: 'V7-test',
+});
+
+const protectedCompatiblePlan = planDirectoryOrganizationReconciliation({
+  id: 'org-2',
+  name: 'Lensa',
+  organization_type: 'optical_chain',
+  organization_type_code: 'optical_chain',
+  control_status: 'verified',
+  publication_status: 'published',
+}, {
+  organization_name: 'LENSA',
+  organization_external_key: 'org:lensa',
+  source_version: 'V7-test',
+  organization_type_code: 'optical_chain',
+  provider_profile_type: 'optical_chain',
+});
+assert.equal(protectedCompatiblePlan.valid, true);
+assert.equal(protectedCompatiblePlan.requires_update, false);
+assert.deepEqual(protectedCompatiblePlan.updates, {});
+
+assert.equal(
+  planDirectoryOrganizationReconciliation({
+    name: 'Vista Vision',
+    organization_type: 'ophthalmology_clinic',
+    control_status: 'claimed',
+    publication_status: 'published',
+  }, extendedOrganizationRow).error_code,
+  'controlled_organization_canonical_type_missing',
+);
+assert.equal(
+  planDirectoryOrganizationReconciliation({
+    name: 'Vista Vision',
+    organization_type: 'ophthalmology_clinic',
+    directory_external_key: 'org:vista-vision',
+    control_status: 'directory',
+    publication_status: 'draft',
+    public_visibility_status: 'draft',
+  }, extendedOrganizationRow).error_code,
+  'directory_organization_canonical_type_missing',
+);
+assert.equal(
+  planDirectoryOrganizationReconciliation({
+    name: 'Vista Vision',
+    organization_type: 'ophthalmology_clinic',
+    organization_type_code: 'healthcare_network',
+    directory_external_key: 'org:alta-retea',
+    control_status: 'directory',
+    publication_status: 'draft',
+    public_visibility_status: 'draft',
+  }, extendedOrganizationRow).error_code,
+  'organization_external_key_conflict',
+);
 
 const normalized = normalizeDirectoryImportRow({
   location_display_name: 'Optica Test Centru',
@@ -194,6 +435,36 @@ const aggregateNetwork = normalizeDirectoryImportRow({
 assert.equal(aggregateNetwork.pseudo_row_reason, 'aggregate_count_row');
 assert.equal(validateNormalizedDirectoryRow(aggregateNetwork).valid, false);
 
+const legitimateTotalBrand = normalizeDirectoryImportRow({
+  location_display_name: 'Total Clinic Barlad — Oftalmologie',
+  organization_display_name: 'Total Clinic',
+  official_locality: 'Barlad',
+  county_if_confirmed: 'Vaslui',
+  locality_siruta_code: '161794',
+  confirmed_address: 'Str. Republicii nr. 1',
+  official_source_url: 'https://example.com/total-clinic',
+  research_status: 'official_confirmed',
+  operational_status: 'active_confirmed',
+  import_readiness: 'candidate_for_manual_review',
+  provider_type: 'clinica_oftalmologica',
+  provider_profile_type: 'ophthalmology_clinic',
+  organization_type_code: 'multi_specialty_healthcare_provider',
+  location_type_code: 'multi_specialty_clinic',
+  care_setting_code: 'outpatient',
+});
+assert.equal(legitimateTotalBrand.pseudo_row_reason, '');
+assert.equal(validateNormalizedDirectoryRow(legitimateTotalBrand).valid, true);
+
+const aggregateTotal = normalizeDirectoryImportRow({
+  location_display_name: 'Total 25 locatii',
+  organization_display_name: 'Retea',
+  official_locality: 'Bucuresti',
+  confirmed_address: '',
+  official_source_url: 'https://example.com',
+});
+assert.equal(aggregateTotal.pseudo_row_reason, 'aggregate_or_summary_row');
+assert.equal(validateNormalizedDirectoryRow(aggregateTotal).valid, false);
+
 assert.equal(batchApprovalToken('DIR-TEST-001', 'abcdef1234567890', 3), 'IMPORT DIR-TEST-001 abcdef123456 3');
 assert.equal(rollbackApprovalToken('DIR-TEST-001', 3), 'ROLLBACK DIR-TEST-001 3');
 
@@ -250,12 +521,30 @@ assert.match(backend, /rollbackMutation/);
 assert.match(backend, /public_visibility_status: 'draft'/);
 assert.match(backend, /profile_control_status: 'directory'/);
 assert.match(backend, /request_intake_status: 'inactive'/);
+assert.match(backend, /resolveProviderOrganizationType/);
+assert.match(backend, /'organization_type_code', 'location_type_code'/);
+assert.match(backend, /resolveDirectoryOrganizationCanonicalPayload/);
+assert.doesNotMatch(backend, /row\.provider_profile_type === 'optical_chain'/);
+assert.match(backend, /planDirectoryOrganizationReconciliation/);
+assert.match(backend, /update_directory_organization/);
+assert.match(backend, /updates_controlled_organizations: false/);
+assert.match(backend, /directory_import_organization_updated/);
+assert.match(backend, /Organizatia s-a schimbat dupa dry-run/);
+assert.match(backend, /FINALIZATION_CHUNK = 50/);
+assert.match(backend, /PLANNING_CHUNK = 50/);
+assert.match(backend, /boundedChunkSize/);
+assert.match(backend, /snapshotDuplicateKey/);
+assert.match(backend, /remaining_rows: remainingRows/);
 assert.doesNotMatch(backend, /LocationService\.create|ProfessionalProfile\.create|ProviderMembership\.create/);
 
 assert.match(ui, /directoryImportOps/);
 assert.match(ui, /Snapshot imuabil/);
 assert.match(ui, /Confirmare pentru import/);
 assert.match(ui, /Rollback controlat/);
+assert.match(ui, /finishSnapshotValidation/);
+assert.match(ui, /snapshot\.status !== "validating"/);
+assert.match(ui, /Continua validarea/);
+assert.match(ui, /s-a oprit fara progres/);
 assert.match(ui, /sm:w-auto/);
 assert.match(ui, /xl:grid-cols-\[320px_minmax\(0,1fr\)\]/);
 assert.match(parser, /parseMarkdownTables/);
