@@ -39,11 +39,12 @@ import {
 import {
   getDirectoryEntityOrNull,
   isDirectoryReadFailure,
+  isTransientDirectoryExecutionFailure,
   requireDirectoryRows,
 } from '../../shared/directoryImportReadPolicy.js';
 
 const MAX_ROWS = 5000;
-const EXECUTION_CHUNK = 20;
+const EXECUTION_CHUNK = 5;
 const FINALIZATION_CHUNK = 50;
 const PLANNING_CHUNK = 50;
 const LOCK_MINUTES = 5;
