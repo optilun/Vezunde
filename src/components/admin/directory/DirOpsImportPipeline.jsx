@@ -24,6 +24,9 @@ import {
 } from "@/lib/directoryImportFileParser";
 
 const CHUNK_SIZE = 50;
+const EXECUTION_CHUNK_SIZE = 5;
+const EXECUTION_PAUSE_MS = 1600;
+const pause = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 const LABELS = {
   draft: "Draft", uploading: "Se incarca", validating: "Se valideaza", ready: "Pregatit",
   blocked: "Blocat", imported: "Importat", archived: "Arhivat", planning: "Dry-run in lucru",
