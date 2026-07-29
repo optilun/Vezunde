@@ -202,15 +202,34 @@ function Batch({ batch, reload, continuePlanning }) {
     && Number(batch.applied_rows || 0) === 0
     && !batch.approved_at
     && !batch.started_at;
+  const hasExecutionInterruption = ["approved", "running"].includes(batch.status)
+    && Boolean(batch.failure_message);
 
   const approve = async () => { setBusy(true); const result = await call({ action: "approve_batch", batch_id: batch.id, confirmation }); setBusy(false); if (result.error) setError(result.error); else { setMessage("Lot aprobat."); reload(); } };
+  const recover = async () => {
+    setBusy(true); setError(""); setMessage("");
+    let remaining = true; let recovered = 0; let calls = 0;
+    while (remaining && calls < 100) {
+      const result = await call({ action: "resume_batch", batch_id: batch.id, limit: EXECUTION_CHUNK_SIZE });
+      if (result.error) { setError(result.error); break; }
+      recovered += Number(result.recovered || 0);
+      remaining = result.remaining === true;
+      calls += 1;
+      await reload(false);
+      if (remaining) await pause(EXECUTION_PAUSE_MS);
+    }
+    if (!remaining) setMessage(`Reluarea este pregatita. ${recovered} randuri temporar esuate au fost repuse in asteptare.`);
+    else if (!error) setError("Reluarea nu s-a finalizat in limita de siguranta.");
+    setBusy(false); await reload();
+  };
   const process = async (action, continuous) => {
     setBusy(true); setError(""); stop.current = false; let lockToken = "";
     do {
-      const result = await call({ action, batch_id: batch.id, confirmation: action === "rollback_batch" ? rollbackText : undefined, lock_token: lockToken, limit: action === "execute_batch" ? 20 : 40 });
+      const result = await call({ action, batch_id: batch.id, confirmation: action === "rollback_batch" ? rollbackText : undefined, lock_token: lockToken, limit: action === "execute_batch" ? EXECUTION_CHUNK_SIZE : 40 });
       if (result.error) { setError(result.error); break; }
       lockToken = result.lock_token || ""; setMessage(action === "execute_batch" ? `Procesate ${result.processed}: ${result.applied} aplicate, ${result.failed} esuate.` : `Rollback: ${result.completed} inversate, ${result.failed} blocate.`);
       await reload(false); if (!continuous || !result.remaining || stop.current) break;
+      await pause(EXECUTION_PAUSE_MS);
     } while (true);
     setBusy(false); await reload();
   };
