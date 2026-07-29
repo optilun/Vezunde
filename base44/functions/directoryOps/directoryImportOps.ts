@@ -1880,19 +1880,147 @@ async function acquireBatchLock(svc, batch, requestedToken = '') {
   return { token };
 }
 
-async function releaseBatchLockAfterReadFailure(svc, batch, error) {
+function executionProgressFromRows(rows) {
+  const totals = {
+    execution_cursor: 0,
+    applied_rows: 0,
+    skipped_rows: 0,
+    failed_rows: 0,
+    created_organizations: 0,
+    created_locations: 0,
+    updated_locations: 0,
+    created_links: 0,
+  };
+  let updatedOrganizations = 0;
+  for (const row of rows) {
+    if (row.status === 'applied') {
+      totals.applied_rows += 1;
+      totals.execution_cursor += 1;
+      const result = safeJson(row.result_json, {});
+      if (result.created_organization) totals.created_organizations += 1;
+      if (result.created_location) totals.created_locations += 1;
+      if (result.updated_location) totals.updated_locations += 1;
+      if (result.created_link) totals.created_links += 1;
+      if (result.updated_organization) updatedOrganizations += 1;
+    } else if (row.status === 'skipped') {
+      totals.skipped_rows += 1;
+      totals.execution_cursor += 1;
+    } else if (row.status === 'failed' && !isTransientDirectoryExecutionFailure(new Error(clean(row.error_message, 1200)))) {
+      totals.failed_rows += 1;
+      totals.execution_cursor += 1;
+    }
+  }
+  return { totals, updatedOrganizations };
+}
+
+async function persistBatchInterruption(svc, batch, progress, error) {
+  const previousSummary = safeJson(batch.summary_json, {});
+  const executionCounts = {
+    ...(previousSummary.execution_counts || {}),
+    updated_organizations: Number(previousSummary.execution_counts?.updated_organizations || 0)
+      + Number(progress.updatedOrganizations || 0),
+  };
   try {
     await svc.entities.DirectoryImportBatch.update(batch.id, {
+      execution_cursor: Number(batch.execution_cursor || 0) + Number(progress.processed || 0),
+      applied_rows: Number(batch.applied_rows || 0) + Number(progress.applied || 0),
+      skipped_rows: Number(batch.skipped_rows || 0) + Number(progress.skipped || 0),
+      failed_rows: Number(batch.failed_rows || 0) + Number(progress.failed || 0),
+      created_organizations: Number(batch.created_organizations || 0) + Number(progress.createdOrganizations || 0),
+      created_locations: Number(batch.created_locations || 0) + Number(progress.createdLocations || 0),
+      updated_locations: Number(batch.updated_locations || 0) + Number(progress.updatedLocations || 0),
+      created_links: Number(batch.created_links || 0) + Number(progress.createdLinks || 0),
+      summary_json: JSON.stringify({ ...previousSummary, execution_counts: executionCounts }),
+      status: 'running',
       execution_lock_token: '',
       execution_lock_expires_at: null,
       failure_message: clean(
-        error?.message || 'Citirea datelor a esuat. Lotul poate fi reluat.',
+        error?.message || 'Executia a fost intrerupta temporar. Lotul poate fi reluat.',
         1200,
       ),
     });
   } catch (_cleanupError) {
-    // Blocarea expira automat; eroarea de citire initiala ramane autoritara.
+    // Blocarea expira automat; eroarea initiala ramane autoritara.
   }
+}
+
+async function resumeBatchAfterTransientFailure(svc, user, input) {
+  const batch = await getDirectoryEntityOrNull(
+    svc.entities.DirectoryImportBatch.get(clean(input.batch_id, 120)),
+    'lotului pentru reluare',
+  );
+  if (!batch) return response({ error: 'Lotul nu a fost gasit.' }, 404);
+  if (!['approved', 'running'].includes(batch.status)) {
+    return response({ error: 'Lotul nu poate fi reluat din starea curenta.' }, 409);
+  }
+
+  const rows = await requireDirectoryRows(
+    svc.entities.DirectoryImportRow.filter(
+      { batch_id: batch.id },
+      'row_number',
+      MAX_ROWS,
+    ),
+    'randurilor lotului pentru reluare',
+  );
+  const retryableRows = rows.filter((row) => (
+    row.status === 'failed'
+    && isTransientDirectoryExecutionFailure(new Error(clean(row.error_message, 1200)))
+  ));
+  const limit = boundedChunkSize(input.limit, EXECUTION_CHUNK);
+  const rowsToRecover = retryableRows.slice(0, limit);
+  const recoveredIds = new Set(rowsToRecover.map((row) => row.id));
+
+  for (const row of rowsToRecover) {
+    await svc.entities.DirectoryImportRow.update(row.id, {
+      status: 'ready',
+      error_message: '',
+      result_json: '{}',
+      applied_at: null,
+      rollback_status: 'not_required',
+    });
+  }
+
+  const reconciledRows = rows.map((row) => (
+    recoveredIds.has(row.id)
+      ? { ...row, status: 'ready', error_message: '', result_json: '{}', applied_at: null }
+      : row
+  ));
+  const progress = executionProgressFromRows(reconciledRows);
+  const previousSummary = safeJson(batch.summary_json, {});
+  const executionCounts = {
+    ...(previousSummary.execution_counts || {}),
+    updated_organizations: progress.updatedOrganizations,
+  };
+  const remainingTransientRows = Math.max(0, retryableRows.length - rowsToRecover.length);
+  const failureMessage = remainingTransientRows > 0
+    ? `${remainingTransientRows} randuri intrerupte temporar mai trebuie pregatite pentru reluare.`
+    : '';
+
+  await svc.entities.DirectoryImportBatch.update(batch.id, {
+    ...progress.totals,
+    summary_json: JSON.stringify({ ...previousSummary, execution_counts: executionCounts }),
+    status: 'running',
+    execution_lock_token: '',
+    execution_lock_expires_at: null,
+    failure_message: failureMessage,
+  });
+  await writeAudit(
+    svc,
+    user,
+    'DirectoryImportBatch',
+    batch.id,
+    'directory_import_batch_transient_rows_recovered',
+    { transient_failed_rows: retryableRows.length },
+    { recovered_rows: rowsToRecover.length, remaining_transient_rows: remainingTransientRows },
+  );
+
+  return response({
+    success: true,
+    batch_id: batch.id,
+    recovered: rowsToRecover.length,
+    remaining: remainingTransientRows > 0,
+    totals: { ...progress.totals, updated_organizations: progress.updatedOrganizations },
+  });
 }
 
 async function executeBatch(svc, user, input) {
@@ -1902,6 +2030,13 @@ async function executeBatch(svc, user, input) {
   );
   if (!batch) return response({ error: 'Lotul nu a fost gasit.' }, 404);
   if (!['approved', 'running'].includes(batch.status)) return response({ error: 'Lotul nu este aprobat sau nu poate continua.' }, 409);
+  if (clean(batch.failure_message, 1200)) {
+    return response({
+      error: 'Lotul are o intrerupere temporara nereconciliata. Pregateste reluarea inainte de executie.',
+      retryable: true,
+      requires_resume: true,
+    }, 409);
+  }
   const lock = await acquireBatchLock(svc, batch, input.lock_token);
   if (lock.error) return response({ error: lock.error }, 409);
 
@@ -1938,8 +2073,18 @@ async function executeBatch(svc, user, input) {
         if (outcome.result.created_link) createdLinks += 1;
       } else skipped += 1;
     } catch (error) {
-      if (isDirectoryReadFailure(error)) {
-        await releaseBatchLockAfterReadFailure(svc, batch, error);
+      if (isDirectoryReadFailure(error) || isTransientDirectoryExecutionFailure(error)) {
+        await persistBatchInterruption(svc, batch, {
+          processed: applied + skipped + failed,
+          applied,
+          skipped,
+          failed,
+          createdOrganizations,
+          updatedOrganizations,
+          createdLocations,
+          updatedLocations,
+          createdLinks,
+        }, error);
         throw error;
       }
       failed += 1;
@@ -1979,6 +2124,7 @@ async function executeBatch(svc, user, input) {
     finished_at: completed ? now() : null,
     execution_lock_token: completed ? '' : lock.token,
     execution_lock_expires_at: completed ? null : lockExpiry(),
+    failure_message: '',
   });
   if (completed) {
     await svc.entities.DirectorySourceSnapshot.update(batch.snapshot_id, { status: 'imported' });
