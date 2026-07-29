@@ -1884,7 +1884,7 @@ async function acquireBatchLock(svc, batch, requestedToken = '') {
   return { token };
 }
 
-function executionProgressFromRows(rows) {
+function executionProgressFromRows(rows, mutations = []) {
   const totals = {
     execution_cursor: 0,
     applied_rows: 0,
@@ -1900,12 +1900,6 @@ function executionProgressFromRows(rows) {
     if (row.status === 'applied') {
       totals.applied_rows += 1;
       totals.execution_cursor += 1;
-      const result = safeJson(row.result_json, {});
-      if (result.created_organization) totals.created_organizations += 1;
-      if (result.created_location) totals.created_locations += 1;
-      if (result.updated_location) totals.updated_locations += 1;
-      if (result.created_link) totals.created_links += 1;
-      if (result.updated_organization) updatedOrganizations += 1;
     } else if (row.status === 'skipped') {
       totals.skipped_rows += 1;
       totals.execution_cursor += 1;
@@ -1914,7 +1908,257 @@ function executionProgressFromRows(rows) {
       totals.execution_cursor += 1;
     }
   }
+
+  if (mutations.length > 0) {
+    const uniqueMutations = new Map();
+    for (const mutation of mutations) {
+      const key = `${mutation.entity_type}:${mutation.entity_id}:${mutation.operation}`;
+      if (!uniqueMutations.has(key)) uniqueMutations.set(key, mutation);
+    }
+    for (const mutation of uniqueMutations.values()) {
+      if (mutation.operation === 'create' && mutation.entity_type === 'ProviderOrganization') totals.created_organizations += 1;
+      if (mutation.operation === 'create' && mutation.entity_type === 'ProviderLocation') totals.created_locations += 1;
+      if (mutation.operation === 'update' && mutation.entity_type === 'ProviderLocation') totals.updated_locations += 1;
+      if (mutation.operation === 'create' && mutation.entity_type === 'DirectoryOrganizationLocationLink') totals.created_links += 1;
+      if (mutation.operation === 'update' && mutation.entity_type === 'ProviderOrganization') updatedOrganizations += 1;
+    }
+  } else {
+    for (const row of rows) {
+      if (row.status !== 'applied') continue;
+      const result = safeJson(row.result_json, {});
+      if (result.created_organization) totals.created_organizations += 1;
+      if (result.created_location) totals.created_locations += 1;
+      if (result.updated_location) totals.updated_locations += 1;
+      if (result.created_link) totals.created_links += 1;
+      if (result.updated_organization) updatedOrganizations += 1;
+    }
+  }
   return { totals, updatedOrganizations };
+}
+
+function createdDuringBatch(entity, batch) {
+  const createdAt = entity?.created_date ? new Date(entity.created_date).getTime() : 0;
+  const startedAt = batch?.started_at ? new Date(batch.started_at).getTime() : 0;
+  return Boolean(createdAt && startedAt && createdAt >= startedAt - 5_000);
+}
+
+function hasCreateMutation(mutations, entityType, entityId) {
+  return mutations.some((mutation) => (
+    mutation.entity_type === entityType
+    && mutation.entity_id === entityId
+    && mutation.operation === 'create'
+  ));
+}
+
+async function recoverCreateMutation(
+  svc,
+  batch,
+  rowRecord,
+  mutations,
+  entityType,
+  entity,
+  expectedValues,
+  sequence,
+) {
+  if (!entity || !createdDuringBatch(entity, batch)) return 0;
+  if (hasCreateMutation(mutations, entityType, entity.id)) return 0;
+  if (!equalFieldSubset(entity, expectedValues)) {
+    throw new Error(`Entitatea partiala ${entityType} nu mai corespunde sursei si necesita verificare manuala.`);
+  }
+  const mutation = await createMutation(svc, {
+    batch_id: batch.id,
+    row_id: rowRecord.id,
+    sequence,
+    mutation_key: `${batch.id}:${rowRecord.id}:${entityType}:${entity.id}:create`,
+    entity_type: entityType,
+    entity_id: entity.id,
+    operation: 'create',
+    before_json: '{}',
+    after_json: JSON.stringify(expectedValues),
+    rollback_status: 'pending',
+    applied_at: now(),
+  });
+  mutations.push(mutation);
+  return 1;
+}
+
+async function repairTransientRowArtifacts(svc, batch, rowRecord, mutations) {
+  const row = applyAdminOverride(safeJson(rowRecord.normalized_payload_json, {}), rowRecord);
+  let repaired = 0;
+  let organization = null;
+
+  if (rowRecord.target_organization_id) {
+    organization = await getDirectoryEntityOrNull(
+      svc.entities.ProviderOrganization.get(rowRecord.target_organization_id),
+      'organizatiei mapate pentru repararea reluarii',
+    );
+  } else if (row.organization_external_key) {
+    const organizations = await requireDirectoryRows(
+      svc.entities.ProviderOrganization.filter(
+        { directory_external_key: row.organization_external_key },
+        '-created_date',
+        5,
+      ),
+      'organizatiilor partiale pentru reluare',
+    );
+    if (organizations.length > 1) {
+      throw new Error('Mai multe organizatii partiale folosesc aceeasi cheie externa.');
+    }
+    organization = organizations[0] || null;
+  }
+
+  if (
+    organization
+    && organization.control_status === 'directory'
+    && clean(organization.directory_source_version, 160) === clean(row.source_version, 160)
+  ) {
+    repaired += await recoverCreateMutation(
+      svc,
+      batch,
+      rowRecord,
+      mutations,
+      'ProviderOrganization',
+      organization,
+      organizationCreatePayload(row),
+      Number(rowRecord.row_number || 0) * 10 + 1,
+    );
+  }
+
+  const locationCandidates = await requireDirectoryRows(
+    svc.entities.ProviderLocation.filter(
+      {
+        name: row.location_name,
+        address: row.address,
+        profile_control_status: 'directory',
+      },
+      '-created_date',
+      5,
+    ),
+    'locatiilor partiale pentru reluare',
+  );
+  const recentLocations = locationCandidates.filter((location) => createdDuringBatch(location, batch));
+  if (recentLocations.length > 1) {
+    throw new Error('Mai multe locatii partiale corespund aceluiasi rand.');
+  }
+  const location = recentLocations[0] || null;
+  if (location) {
+    const expectedLocation = locationCreatePayload(
+      row,
+      organization?.id || location.organization_id || null,
+    );
+    repaired += await recoverCreateMutation(
+      svc,
+      batch,
+      rowRecord,
+      mutations,
+      'ProviderLocation',
+      location,
+      expectedLocation,
+      Number(rowRecord.row_number || 0) * 10 + 2,
+    );
+  }
+
+  let state = null;
+  if (row.location_external_key) {
+    const states = await requireDirectoryRows(
+      svc.entities.ProviderLocationDirectoryState.filter(
+        {
+          directory_external_key: row.location_external_key,
+          state_status: 'active',
+        },
+        '-created_date',
+        5,
+      ),
+      'starilor partiale pentru reluare',
+    );
+    const matchingStates = states.filter((candidate) => (
+      (!location || candidate.location_id === location.id)
+      && clean(candidate.directory_source_version, 160) === clean(row.source_version, 160)
+    ));
+    if (matchingStates.length > 1) throw new Error('Mai multe stari partiale corespund aceluiasi rand.');
+    state = matchingStates[0] || null;
+  }
+  if (state && location) {
+    repaired += await recoverCreateMutation(
+      svc,
+      batch,
+      rowRecord,
+      mutations,
+      'ProviderLocationDirectoryState',
+      state,
+      resolveDirectoryStateCreatePayload(row, location.id, Boolean(organization?.id)),
+      Number(rowRecord.row_number || 0) * 10 + 4,
+    );
+  }
+
+  let link = null;
+  if (location && organization) {
+    const links = await requireDirectoryRows(
+      svc.entities.DirectoryOrganizationLocationLink.filter(
+        {
+          source_version: row.source_version,
+          source_row_key: row.source_row_key,
+          link_record_status: 'active',
+        },
+        '-created_date',
+        5,
+      ),
+      'legaturilor partiale pentru reluare',
+    );
+    const matchingLinks = links.filter((candidate) => (
+      candidate.location_id === location.id
+      && candidate.organization_id === organization.id
+    ));
+    if (matchingLinks.length > 1) throw new Error('Mai multe legaturi partiale corespund aceluiasi rand.');
+    link = matchingLinks[0] || null;
+  }
+  if (link && location && organization) {
+    repaired += await recoverCreateMutation(
+      svc,
+      batch,
+      rowRecord,
+      mutations,
+      'DirectoryOrganizationLocationLink',
+      link,
+      resolveDirectoryLinkPayload(row, location.id, organization.id),
+      Number(rowRecord.row_number || 0) * 10 + 6,
+    );
+  }
+
+  if (location && row.source_url) {
+    const evidenceRows = await requireDirectoryRows(
+      svc.entities.ProviderEvidence.filter(
+        {
+          entity_type: 'ProviderLocation',
+          entity_id: location.id,
+          field_name: 'directory_import_snapshot',
+          evidence_status: 'active',
+        },
+        '-created_date',
+        20,
+      ),
+      'dovezilor partiale pentru reluare',
+    );
+    const evidence = evidenceRows.find((candidate) => {
+      const snapshot = safeJson(candidate.value_snapshot, {});
+      return clean(snapshot.source_version, 160) === clean(row.source_version, 160)
+        && clean(snapshot.source_row_key, 240) === clean(row.source_row_key, 240);
+    }) || null;
+    if (evidence) {
+      repaired += await recoverCreateMutation(
+        svc,
+        batch,
+        rowRecord,
+        mutations,
+        'ProviderEvidence',
+        evidence,
+        resolveDirectoryEvidencePayload(row, 'ProviderLocation', location.id),
+        Number(rowRecord.row_number || 0) * 10 + 8,
+      );
+    }
+  }
+
+  return repaired;
 }
 
 async function persistBatchInterruption(svc, batch, progress, error) {
