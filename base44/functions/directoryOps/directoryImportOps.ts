@@ -23,6 +23,11 @@ import {
   resolveDirectoryOrganizationMatch,
 } from '../../shared/directoryIdentityMatchPolicy.js';
 import {
+  directoryBatchOrganizationDescriptor,
+  validateDirectoryBatchOrganizationCompatibility,
+  validateExplicitDirectoryOrganizationTarget,
+} from '../../shared/directoryBatchOrganizationPlanning.js';
+import {
   directoryFieldsEqual,
   planDirectoryLocationReconciliation,
   resolveDirectoryEvidencePayload,
@@ -558,6 +563,7 @@ async function loadPlanningContext(svc) {
       'dovezilor active pentru dry-run',
     ),
   ]);
+  const organizationsById = new Map(organizations.map((organization) => [organization.id, organization]));
   const organizationsByExternalKey = new Map();
   const organizationsByName = new Map();
   const append = (map, key, value) => {
@@ -596,6 +602,7 @@ async function loadPlanningContext(svc) {
     if (key.replace(/\|/g, '')) append(locationsByFallback, key, location);
   }
   return {
+    organizationsById,
     organizationsByExternalKey,
     organizationsByName,
     statesByExternalKey,
@@ -624,6 +631,9 @@ function applyAdminOverride(normalized, row) {
     merged.organization_type_invalid = Boolean(organizationTypeCode)
       && !isDirectoryOrganizationTypeCode(organizationTypeCode);
     merged.organization_type_legacy_fallback = false;
+  }
+  if (Object.prototype.hasOwnProperty.call(override, 'target_organization_id')) {
+    merged.target_organization_id = clean(override.target_organization_id, 160);
   }
   return merged;
 }
@@ -687,6 +697,22 @@ async function planBatch(svc, user, input) {
     'randurilor snapshotului pentru dry-run',
   );
   const context = await loadPlanningContext(svc);
+  const explicitOrganizationTargetsByGroup = new Map();
+  const explicitOrganizationTargetConflicts = new Set();
+  for (const row of rows) {
+    const normalized = applyAdminOverride(safeJson(row.normalized_payload_json, {}), row);
+    const targetOrganizationId = clean(normalized.target_organization_id, 160);
+    if (!targetOrganizationId || !normalized.organization_name) continue;
+    const descriptor = directoryBatchOrganizationDescriptor(normalized);
+    if (!descriptor.valid) continue;
+    const previousTargetId = explicitOrganizationTargetsByGroup.get(descriptor.group_key);
+    if (previousTargetId && previousTargetId !== targetOrganizationId) {
+      explicitOrganizationTargetConflicts.add(descriptor.group_key);
+      continue;
+    }
+    explicitOrganizationTargetsByGroup.set(descriptor.group_key, targetOrganizationId);
+  }
+  const plannedOrganizationGroups = new Map();
   const actionNames = [
     'create_organization_and_location',
     'create_location_use_existing_organization',
@@ -703,6 +729,8 @@ async function planBatch(svc, user, input) {
   let blockedRows = 0;
   let validRows = 0;
   const organizationsPlannedForUpdate = new Set();
+  const organizationsPlannedForCreate = new Set();
+  let plannedOrganizationReuseRows = 0;
   const alreadyPlannedRows = rows.filter((row) => row.batch_id === batch.id);
   for (const row of alreadyPlannedRows) {
     const action = clean(row.planned_action, 80);
@@ -710,6 +738,30 @@ async function planBatch(svc, user, input) {
     if (row.status === 'ready') readyRows += 1;
     else blockedRows += 1;
     const normalized = applyAdminOverride(safeJson(row.normalized_payload_json, {}), row);
+    const organizationDescriptor = normalized.organization_name
+      ? directoryBatchOrganizationDescriptor(normalized)
+      : null;
+    const plannedActions = asArray(safeJson(row.planned_actions_json, []));
+    if (organizationDescriptor?.valid) {
+      const targetOrganizationId = clean(row.target_organization_id, 160);
+      if (targetOrganizationId) {
+        plannedOrganizationGroups.set(organizationDescriptor.group_key, {
+          descriptor: organizationDescriptor,
+          target_organization_id: targetOrganizationId,
+          planned_new: false,
+        });
+      } else if (action === 'create_organization_and_location') {
+        plannedOrganizationGroups.set(organizationDescriptor.group_key, {
+          descriptor: organizationDescriptor,
+          target_organization_id: '',
+          planned_new: true,
+        });
+        organizationsPlannedForCreate.add(organizationDescriptor.group_key);
+      }
+      if (plannedActions.includes('reuse_planned_organization')) {
+        plannedOrganizationReuseRows += 1;
+      }
+    }
     const validation = validateNormalizedDirectoryRow(normalized, { require_siruta: true });
     const organizationTypeResolution = normalized.organization_name
       ? resolveProviderOrganizationType(normalized)
@@ -724,7 +776,6 @@ async function planBatch(svc, user, input) {
     ) {
       validRows += 1;
     }
-    const plannedActions = asArray(safeJson(row.planned_actions_json, []));
     if (
       plannedActions.includes('update_directory_organization')
       && row.target_organization_id
@@ -753,6 +804,14 @@ async function planBatch(svc, user, input) {
     let locationReconciliation = null;
     let organizationMatchError = '';
     let locationMatchError = '';
+    let usesExplicitOrganizationTarget = false;
+    let reusesPlannedOrganization = false;
+    const organizationDescriptor = normalized.organization_name
+      ? directoryBatchOrganizationDescriptor(normalized)
+      : null;
+    let organizationGroup = organizationDescriptor?.valid
+      ? plannedOrganizationGroups.get(organizationDescriptor.group_key) || null
+      : null;
 
     if (!validation.valid) {
       plannedAction = normalized.pseudo_row_reason || validation.errors.includes('source_row_not_eligible') ? 'reject_invalid' : 'block_conflict';
@@ -766,29 +825,97 @@ async function planBatch(svc, user, input) {
       validation.validation_codes.push(organizationTypeResolution.error_code);
     } else {
       validRows += 1;
-      const organizationMatch = resolveDirectoryOrganizationMatch({
-        externalCandidates: normalized.organization_external_key
-          ? context.organizationsByExternalKey.get(normalized.organization_external_key) || []
-          : [],
-        nameCandidates: normalized.organization_name
-          ? context.organizationsByName.get(normalizeIdentityText(normalized.organization_name)) || []
-          : [],
-      });
-      targetOrganization = organizationMatch.target;
-      organizationMatchError = organizationMatch.error_code;
-      for (const id of organizationMatch.candidate_ids) {
-        candidates.push({
-          entity_type: 'ProviderOrganization',
-          id,
-          strategy: organizationMatch.strategy,
-          confidence: organizationMatch.confidence,
+      const organizationGroupKey = organizationDescriptor?.group_key || '';
+      const explicitTargetConflict = organizationGroupKey
+        && explicitOrganizationTargetConflicts.has(organizationGroupKey);
+      const explicitTargetOrganizationId = organizationGroupKey
+        ? clean(explicitOrganizationTargetsByGroup.get(organizationGroupKey), 160)
+        : '';
+      if (explicitTargetConflict) {
+        organizationMatchError = 'admin_target_organization_group_conflict';
+      } else if (explicitTargetOrganizationId) {
+        targetOrganization = context.organizationsById.get(explicitTargetOrganizationId) || null;
+        if (!targetOrganization) {
+          organizationMatchError = 'admin_target_organization_not_found';
+        } else {
+          const explicitTargetValidation = validateExplicitDirectoryOrganizationTarget(
+            targetOrganization,
+            normalized,
+          );
+          if (!explicitTargetValidation.valid) {
+            organizationMatchError = explicitTargetValidation.error_code;
+          } else {
+            usesExplicitOrganizationTarget = true;
+            candidates.push({
+              entity_type: 'ProviderOrganization',
+              id: targetOrganization.id,
+              strategy: 'admin_target_organization_id',
+              confidence: 'high',
+            });
+          }
+        }
+      } else {
+        const organizationMatch = resolveDirectoryOrganizationMatch({
+          externalCandidates: normalized.organization_external_key
+            ? context.organizationsByExternalKey.get(normalized.organization_external_key) || []
+            : [],
+          nameCandidates: normalized.organization_name
+            ? context.organizationsByName.get(normalizeIdentityText(normalized.organization_name)) || []
+            : [],
         });
+        targetOrganization = organizationMatch.target;
+        organizationMatchError = organizationMatch.error_code;
+        for (const id of organizationMatch.candidate_ids) {
+          candidates.push({
+            entity_type: 'ProviderOrganization',
+            id,
+            strategy: organizationMatch.strategy,
+            confidence: organizationMatch.confidence,
+          });
+        }
+      }
+      if (!organizationMatchError && organizationGroup) {
+        const compatibility = validateDirectoryBatchOrganizationCompatibility(
+          organizationGroup.descriptor,
+          organizationDescriptor,
+        );
+        if (!compatibility.valid) {
+          organizationMatchError = compatibility.error_code;
+        } else if (
+          targetOrganization
+          && organizationGroup.target_organization_id
+          && organizationGroup.target_organization_id !== targetOrganization.id
+        ) {
+          organizationMatchError = 'batch_organization_target_conflict';
+        } else if (!targetOrganization && organizationGroup.target_organization_id) {
+          targetOrganization = context.organizationsById.get(
+            organizationGroup.target_organization_id,
+          ) || null;
+          if (!targetOrganization) {
+            organizationMatchError = 'batch_target_organization_not_found';
+          } else {
+            candidates.push({
+              entity_type: 'ProviderOrganization',
+              id: targetOrganization.id,
+              strategy: 'batch_organization_group',
+              confidence: 'high',
+            });
+          }
+        } else if (!targetOrganization && organizationGroup.planned_new) {
+          reusesPlannedOrganization = true;
+          candidates.push({
+            entity_type: 'ProviderOrganizationBatchPlan',
+            id: organizationDescriptor.group_key,
+            strategy: 'batch_organization_group',
+            confidence: 'high',
+          });
+        }
       }
       if (organizationMatchError) {
         validation.errors.push(organizationMatchError);
         validation.validation_codes.push(organizationMatchError);
       }
-      if (targetOrganization) {
+      if (targetOrganization && !usesExplicitOrganizationTarget) {
         organizationReconciliation = planDirectoryOrganizationReconciliation(targetOrganization, normalized);
         if (!organizationReconciliation.valid) {
           validation.errors.push(organizationReconciliation.error_code);
@@ -850,7 +977,7 @@ async function planBatch(svc, user, input) {
         ) plannedAction = 'skip_unchanged';
         else if (targetOrganization && targetLocation.organization_id !== targetOrganization.id) plannedAction = 'link_existing_location';
         else plannedAction = 'update_existing_location';
-      } else if (targetOrganization) {
+      } else if (targetOrganization || reusesPlannedOrganization) {
         plannedAction = 'create_location_use_existing_organization';
       } else if (normalized.organization_name) {
         plannedAction = 'create_organization_and_location';
@@ -860,6 +987,24 @@ async function planBatch(svc, user, input) {
     }
 
     const rowReady = !['block_conflict', 'reject_invalid'].includes(plannedAction);
+    if (rowReady && usesExplicitOrganizationTarget) {
+      supplementalActions.push('use_admin_target_organization');
+    }
+    if (rowReady && reusesPlannedOrganization) {
+      supplementalActions.push('reuse_planned_organization');
+      plannedOrganizationReuseRows += 1;
+    }
+    if (rowReady && organizationDescriptor?.valid && !organizationGroup) {
+      organizationGroup = {
+        descriptor: organizationDescriptor,
+        target_organization_id: targetOrganization?.id || '',
+        planned_new: !targetOrganization,
+      };
+      plannedOrganizationGroups.set(organizationDescriptor.group_key, organizationGroup);
+      if (!targetOrganization) {
+        organizationsPlannedForCreate.add(organizationDescriptor.group_key);
+      }
+    }
     if (rowReady && organizationReconciliation?.requires_update) {
       supplementalActions.push('update_directory_organization');
       organizationsPlannedForUpdate.add(targetOrganization.id);
@@ -898,12 +1043,17 @@ async function planBatch(svc, user, input) {
     processed_rows: rows.length - remainingRows,
     remaining_rows: remainingRows,
     organization_update_ids: [...organizationsPlannedForUpdate].sort(),
+    planned_new_organization_keys: [...organizationsPlannedForCreate].sort(),
+    planned_new_organization_count: organizationsPlannedForCreate.size,
+    planned_organization_reuse_rows: plannedOrganizationReuseRows,
   };
   const summary = {
     contract_version: DIRECTORY_IMPORT_CONTRACT_VERSION,
     action_counts: counts,
     supplemental_action_counts: {
       update_directory_organization: organizationsPlannedForUpdate.size,
+      create_directory_organization: organizationsPlannedForCreate.size,
+      reuse_planned_organization: plannedOrganizationReuseRows,
     },
     planning_state: planningState,
     approval_token: remainingRows > 0
@@ -963,7 +1113,7 @@ async function overrideRow(svc, user, input) {
   if (!row) return response({ error: 'Randul nu a fost gasit.' }, 404);
   if (['applied', 'rolled_back'].includes(row.status)) return response({ error: 'Randul executat nu mai poate fi modificat.' }, 409);
   const allowedKeys = [
-    'organization_name', 'organization_external_key', 'location_name', 'location_external_key',
+    'organization_name', 'organization_external_key', 'target_organization_id', 'location_name', 'location_external_key',
     'locality_name', 'county_name', 'locality_siruta_code', 'address', 'address_fingerprint',
     'provider_type', 'provider_profile_type', 'organization_type_code', 'location_type_code', 'care_setting_code',
     'ownership_type_code', 'operational_status', 'source_url', 'source_name', 'source_type',
@@ -1028,6 +1178,8 @@ async function ensureOrganization(
   rowRecord,
   row,
   allowDirectoryOrganizationUpdate = false,
+  preserveExplicitOrganizationTarget = false,
+  requireExistingPlannedOrganization = false,
 ) {
   if (!row.organization_name) return { organization: null, created: false, updated: false };
   let target = null;
@@ -1054,6 +1206,13 @@ async function ensureOrganization(
     target = existing[0] || null;
   }
   if (target) {
+    if (preserveExplicitOrganizationTarget) {
+      const explicitTargetValidation = validateExplicitDirectoryOrganizationTarget(target, row);
+      if (!explicitTargetValidation.valid) {
+        throw new Error(`Maparea administrativa a organizatiei nu mai este valida: ${explicitTargetValidation.error_code}.`);
+      }
+      return { organization: target, created: false, updated: false };
+    }
     const reconciliation = planDirectoryOrganizationReconciliation(target, row);
     if (!reconciliation.valid) {
       throw new Error(`Organizatia existenta necesita verificare manuala: ${reconciliation.error_code}.`);
@@ -1094,6 +1253,10 @@ async function ensureOrganization(
       created: false,
       updated: true,
     };
+  }
+
+  if (requireExistingPlannedOrganization) {
+    throw new Error('Organizatia planificata anterior nu a fost creata; executia randului a fost oprita pentru a preveni o dublura.');
   }
 
   const canonical = resolveDirectoryOrganizationCanonicalPayload(row);
@@ -1550,6 +1713,8 @@ async function executeRow(svc, user, batch, rowRecord) {
       rowRecord,
       row,
       updatesDirectoryOrganization,
+      Array.isArray(plannedActions) && plannedActions.includes('use_admin_target_organization'),
+      Array.isArray(plannedActions) && plannedActions.includes('reuse_planned_organization'),
     );
     organization = organizationResult.organization;
     result.created_organization = organizationResult.created;

@@ -37,9 +37,85 @@ import {
   isDirectoryReadFailure,
   requireDirectoryRows,
 } from '../base44/shared/directoryImportReadPolicy.js';
+import {
+  directoryBatchOrganizationDescriptor,
+  validateDirectoryBatchOrganizationCompatibility,
+  validateExplicitDirectoryOrganizationTarget,
+} from '../base44/shared/directoryBatchOrganizationPlanning.js';
 
 assert.equal(DIRECTORY_IMPORT_CONTRACT_VERSION, 'viasee-directory-import-v1');
 assert.equal(DIRECTORY_CLASSIFICATION_CONTRACT_VERSION, 'viasee-directory-location-first-v1');
+
+
+const networkOrganizationRow = {
+  organization_name: 'Vitreum',
+  organization_external_key: 'org:vitreum',
+  organization_type_code: 'healthcare_network',
+  provider_profile_type: 'ophthalmology_clinic',
+};
+const networkOrganizationDescriptor = directoryBatchOrganizationDescriptor(networkOrganizationRow);
+assert.equal(networkOrganizationDescriptor.valid, true);
+assert.equal(networkOrganizationDescriptor.group_key, 'external:org:vitreum');
+assert.deepEqual(
+  validateDirectoryBatchOrganizationCompatibility(
+    networkOrganizationDescriptor,
+    directoryBatchOrganizationDescriptor({ ...networkOrganizationRow }),
+  ),
+  { valid: true, error_code: '' },
+);
+assert.equal(
+  validateDirectoryBatchOrganizationCompatibility(
+    networkOrganizationDescriptor,
+    directoryBatchOrganizationDescriptor({
+      ...networkOrganizationRow,
+      organization_type_code: 'optical_chain',
+      provider_profile_type: 'optical_chain',
+    }),
+  ).error_code,
+  'batch_organization_type_conflict',
+);
+assert.deepEqual(
+  validateExplicitDirectoryOrganizationTarget(
+    {
+      id: 'org-dr-holhos',
+      name: 'Clinica Dr. Holhos Sibiu',
+      organization_type: 'ophthalmology_clinic',
+      control_status: 'verified',
+      publication_status: 'approved',
+    },
+    {
+      organization_name: 'Dr. Holhos',
+      organization_external_key: 'org:ef547aca',
+      organization_type_code: 'healthcare_network',
+      provider_profile_type: 'ophthalmology_clinic',
+    },
+  ),
+  {
+    valid: true,
+    error_code: '',
+    descriptor: {
+      valid: true,
+      error_code: '',
+      group_key: 'external:org:ef547aca',
+      organization_name_normalized: 'dr holhos',
+      organization_external_key: 'org:ef547aca',
+      organization_type_code: 'healthcare_network',
+      organization_type: 'ophthalmology_clinic',
+    },
+    organization_id: 'org-dr-holhos',
+    preserves_controlled_organization: true,
+  },
+);
+assert.equal(
+  validateExplicitDirectoryOrganizationTarget(
+    {
+      id: 'org-conflict',
+      organization_type: 'optical_chain',
+    },
+    networkOrganizationRow,
+  ).error_code,
+  'admin_target_organization_legacy_type_conflict',
+);
 
 assert.deepEqual(
   await requireDirectoryRows(Promise.resolve([]), 'locatiilor de test'),
@@ -783,8 +859,11 @@ const nav = await readFile(new URL('../src/lib/adminNavConfig.js', import.meta.u
 const page = await readFile(new URL('../src/pages/AdminDirectoryOps.jsx', import.meta.url), 'utf8');
 const sharedPipeline = await readFile(new URL('../shared/directoryImportPipeline.js', import.meta.url), 'utf8');
 const base44Pipeline = await readFile(new URL('../base44/shared/directoryImportPipeline.js', import.meta.url), 'utf8');
+const sharedBatchPlanning = await readFile(new URL('../shared/directoryBatchOrganizationPlanning.js', import.meta.url), 'utf8');
+const base44BatchPlanning = await readFile(new URL('../base44/shared/directoryBatchOrganizationPlanning.js', import.meta.url), 'utf8');
 
 assert.equal(base44Pipeline, sharedPipeline);
+assert.equal(base44BatchPlanning, sharedBatchPlanning);
 assert.match(sharedPipeline, /DIRECTORY_CLASSIFICATION_CONTRACT_VERSION/);
 assert.match(sharedPipeline, /organization_type_code/);
 assert.match(sharedPipeline, /county_code/);
@@ -812,6 +891,10 @@ assert.match(backend, /resolveDirectoryOrganizationCanonicalPayload/);
 assert.doesNotMatch(backend, /row\.provider_profile_type === 'optical_chain'/);
 assert.match(backend, /planDirectoryOrganizationReconciliation/);
 assert.match(backend, /update_directory_organization/);
+assert.match(backend, /reuse_planned_organization/);
+assert.match(backend, /use_admin_target_organization/);
+assert.match(backend, /target_organization_id/);
+assert.match(backend, /planned_new_organization_count/);
 assert.match(backend, /updates_controlled_organizations: false/);
 assert.match(backend, /directory_import_organization_updated/);
 assert.match(backend, /Organizatia s-a schimbat dupa dry-run/);
@@ -836,6 +919,8 @@ assert.match(backend, /remaining_rows: remainingRows/);
 assert.doesNotMatch(backend, /LocationService\.create|ProfessionalProfile\.create|ProviderMembership\.create/);
 
 assert.match(ui, /directoryImportOps/);
+assert.match(ui, /target_organization_id/);
+assert.match(ui, /mapare explicita/);
 assert.match(ui, /Snapshot imuabil/);
 assert.match(ui, /Confirmare pentru import/);
 assert.match(ui, /Rollback controlat/);

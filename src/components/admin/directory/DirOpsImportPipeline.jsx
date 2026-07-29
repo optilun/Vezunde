@@ -37,6 +37,7 @@ const ROW_FILTERS = [
 ];
 const EDIT_FIELDS = [
   ["location_name", "Nume locatie"], ["organization_name", "Organizatie"],
+  ["target_organization_id", "ID organizatie existenta (mapare explicita)"],
   ["locality_name", "Localitate"], ["county_name", "Judet"],
   ["locality_siruta_code", "Cod SIRUTA"], ["address", "Adresa"],
   ["provider_type", "Provider type"], ["provider_profile_type", "Profile type"],
