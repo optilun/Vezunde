@@ -2161,6 +2161,21 @@ async function repairTransientRowArtifacts(svc, batch, rowRecord, mutations) {
   return repaired;
 }
 
+async function releaseBatchLockAfterTransientFailure(svc, batch, error) {
+  try {
+    await svc.entities.DirectoryImportBatch.update(batch.id, {
+      execution_lock_token: '',
+      execution_lock_expires_at: null,
+      failure_message: clean(
+        error?.message || 'Operatia a fost intrerupta temporar si poate fi reluata.',
+        1200,
+      ),
+    });
+  } catch (_cleanupError) {
+    // Blocarea expira automat; eroarea initiala ramane autoritara.
+  }
+}
+
 async function persistBatchInterruption(svc, batch, progress, error) {
   const previousSummary = safeJson(batch.summary_json, {});
   const executionCounts = {
@@ -2494,8 +2509,8 @@ async function rollbackBatch(svc, user, input) {
       await svc.entities.DirectoryImportMutation.update(mutation.id, { rollback_status: 'completed', rolled_back_at: now(), rollback_error: '' });
       completed += 1;
     } catch (error) {
-      if (isDirectoryReadFailure(error)) {
-        await releaseBatchLockAfterReadFailure(svc, batch, error);
+      if (isDirectoryReadFailure(error) || isTransientDirectoryExecutionFailure(error)) {
+        await releaseBatchLockAfterTransientFailure(svc, batch, error);
         throw error;
       }
       failed += 1;
