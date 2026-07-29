@@ -21,6 +21,10 @@ import {
   planDirectoryOrganizationReconciliation,
   resolveDirectoryOrganizationCanonicalPayload,
 } from '../base44/shared/directoryOrganizationReconciliation.js';
+import {
+  resolveDirectoryLocationMatch,
+  resolveDirectoryOrganizationMatch,
+} from '../base44/shared/directoryIdentityMatchPolicy.js';
 
 assert.equal(DIRECTORY_IMPORT_CONTRACT_VERSION, 'viasee-directory-import-v1');
 assert.equal(DIRECTORY_CLASSIFICATION_CONTRACT_VERSION, 'viasee-directory-location-first-v1');
@@ -110,6 +114,78 @@ assert.equal(isMutableDirectoryOrganization({
   publication_status: 'draft',
   public_visibility_status: 'draft',
 }), false);
+
+const organizationOne = { id: 'org-1', name: 'Vista Vision' };
+const organizationTwo = { id: 'org-2', name: 'Vista Vision' };
+assert.equal(
+  resolveDirectoryOrganizationMatch({
+    externalCandidates: [organizationOne],
+    nameCandidates: [organizationOne, organizationTwo],
+  }).target.id,
+  'org-1',
+);
+assert.equal(
+  resolveDirectoryOrganizationMatch({
+    externalCandidates: [organizationOne, organizationTwo],
+  }).error_code,
+  'multiple_organizations_for_external_key',
+);
+assert.equal(
+  resolveDirectoryOrganizationMatch({
+    nameCandidates: [organizationOne, organizationTwo],
+  }).error_code,
+  'multiple_organizations_for_exact_name',
+);
+
+const locationOne = { id: 'loc-1', name: 'Optica Unu' };
+const locationTwo = { id: 'loc-2', name: 'Optica Doi' };
+const locationsById = new Map([
+  [locationOne.id, locationOne],
+  [locationTwo.id, locationTwo],
+]);
+assert.equal(
+  resolveDirectoryLocationMatch({
+    externalStates: [{ id: 'state-1', location_id: 'loc-1' }],
+    addressStates: [
+      { id: 'state-1', location_id: 'loc-1' },
+      { id: 'state-2', location_id: 'loc-2' },
+    ],
+    locationsById,
+  }).target.id,
+  'loc-1',
+);
+assert.equal(
+  resolveDirectoryLocationMatch({
+    exactFallbackCandidates: [locationTwo],
+    addressStates: [{ id: 'state-1', location_id: 'loc-1' }],
+    locationsById,
+  }).target.id,
+  'loc-2',
+);
+assert.equal(
+  resolveDirectoryLocationMatch({
+    addressStates: [
+      { id: 'state-1', location_id: 'loc-1' },
+      { id: 'state-2', location_id: 'loc-2' },
+    ],
+    locationsById,
+  }).error_code,
+  'address_match_requires_manual_identity_review',
+);
+assert.equal(
+  resolveDirectoryLocationMatch({
+    externalStates: [{ id: 'orphan-state', location_id: 'missing-location' }],
+    locationsById,
+  }).error_code,
+  'location_external_state_target_missing',
+);
+assert.equal(
+  resolveDirectoryLocationMatch({
+    addressStates: [{ id: 'orphan-state', location_id: 'missing-location' }],
+    locationsById,
+  }).error_code,
+  'address_state_target_missing',
+);
 
 const mutableOrganizationPlan = planDirectoryOrganizationReconciliation({
   id: 'org-1',
@@ -454,12 +530,21 @@ assert.match(backend, /update_directory_organization/);
 assert.match(backend, /updates_controlled_organizations: false/);
 assert.match(backend, /directory_import_organization_updated/);
 assert.match(backend, /Organizatia s-a schimbat dupa dry-run/);
+assert.match(backend, /FINALIZATION_CHUNK = 50/);
+assert.match(backend, /PLANNING_CHUNK = 50/);
+assert.match(backend, /boundedChunkSize/);
+assert.match(backend, /snapshotDuplicateKey/);
+assert.match(backend, /remaining_rows: remainingRows/);
 assert.doesNotMatch(backend, /LocationService\.create|ProfessionalProfile\.create|ProviderMembership\.create/);
 
 assert.match(ui, /directoryImportOps/);
 assert.match(ui, /Snapshot imuabil/);
 assert.match(ui, /Confirmare pentru import/);
 assert.match(ui, /Rollback controlat/);
+assert.match(ui, /finishSnapshotValidation/);
+assert.match(ui, /snapshot\.status !== "validating"/);
+assert.match(ui, /Continua validarea/);
+assert.match(ui, /s-a oprit fara progres/);
 assert.match(ui, /sm:w-auto/);
 assert.match(ui, /xl:grid-cols-\[320px_minmax\(0,1fr\)\]/);
 assert.match(parser, /parseMarkdownTables/);

@@ -18,9 +18,15 @@ import {
   planDirectoryOrganizationReconciliation,
   resolveDirectoryOrganizationCanonicalPayload,
 } from '../../shared/directoryOrganizationReconciliation.js';
+import {
+  resolveDirectoryLocationMatch,
+  resolveDirectoryOrganizationMatch,
+} from '../../shared/directoryIdentityMatchPolicy.js';
 
 const MAX_ROWS = 5000;
 const EXECUTION_CHUNK = 20;
+const FINALIZATION_CHUNK = 50;
+const PLANNING_CHUNK = 50;
 const LOCK_MINUTES = 5;
 const CONTROLLED_PROFILES = new Set(['claimed', 'verified', 'suspended']);
 
@@ -31,6 +37,25 @@ function clean(value, maxLength = 4000) {
 function safeJson(value, fallback = {}) {
   if (value && typeof value === 'object') return value;
   try { return value ? JSON.parse(value) : fallback; } catch (_error) { return fallback; }
+}
+
+function boundedChunkSize(value, maximum, fallback = maximum) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(1, Math.min(maximum, Math.floor(parsed)));
+}
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function snapshotDuplicateKey(row) {
+  const externalKey = clean(row?.location_external_key, 220);
+  if (externalKey) return `external:${externalKey}`;
+  const addressFingerprint = clean(row?.address_fingerprint, 220);
+  const locationName = normalizeIdentityText(row?.location_name);
+  if (!addressFingerprint || !locationName) return '';
+  return `identity:${addressFingerprint}|${locationName}`;
 }
 
 function stableStringify(value) {
@@ -266,9 +291,22 @@ async function appendRows(svc, user, input) {
 async function finalizeSnapshot(svc, user, input) {
   const snapshot = await svc.entities.DirectorySourceSnapshot.get(clean(input.snapshot_id, 120)).catch(() => null);
   if (!snapshot) return response({ error: 'Snapshotul nu a fost gasit.' }, 404);
-  if (snapshot.immutable_at) return response({ error: 'Snapshotul a fost deja finalizat.' }, 409);
+  if (snapshot.immutable_at) {
+    return response({
+      success: true,
+      reused: true,
+      remaining: false,
+      processed: 0,
+      snapshot,
+    });
+  }
+  if (!['draft', 'uploading', 'validating'].includes(snapshot.status)) {
+    return response({ error: 'Snapshotul nu poate fi finalizat din starea curenta.' }, 409);
+  }
 
-  await svc.entities.DirectorySourceSnapshot.update(snapshot.id, { status: 'validating' });
+  if (snapshot.status !== 'validating') {
+    await svc.entities.DirectorySourceSnapshot.update(snapshot.id, { status: 'validating' });
+  }
   const rows = await svc.entities.DirectoryImportRow.filter({ snapshot_id: snapshot.id }, 'row_number', MAX_ROWS).catch(() => []);
   const seenKeys = new Map();
   let validRows = 0;
@@ -276,8 +314,34 @@ async function finalizeSnapshot(svc, user, input) {
   let duplicateRows = 0;
   let warningRows = 0;
   const codeCounts = {};
+  const rawRows = [];
 
   for (const row of rows) {
+    if (row.status === 'raw') {
+      rawRows.push(row);
+      continue;
+    }
+    const validationCodes = Array.isArray(row.validation_codes) ? row.validation_codes : [];
+    const normalized = safeJson(row.normalized_payload_json, {});
+    for (const code of validationCodes) codeCounts[code] = (codeCounts[code] || 0) + 1;
+    if (asArray(safeJson(row.validation_warnings_json, [])).length) warningRows += 1;
+    if (row.status === 'valid') validRows += 1;
+    else blockedRows += 1;
+    if (validationCodes.includes('duplicate_within_snapshot')) duplicateRows += 1;
+    const duplicateKey = snapshotDuplicateKey({
+      ...normalized,
+      location_external_key: row.location_external_key || normalized.location_external_key,
+      address_fingerprint: row.address_fingerprint || normalized.address_fingerprint,
+    });
+    if (duplicateKey) seenKeys.set(duplicateKey, row.id);
+  }
+
+  const requestedLimit = boundedChunkSize(
+    input.limit,
+    FINALIZATION_CHUNK,
+  );
+  const processingRows = rawRows.slice(0, requestedLimit);
+  for (const row of processingRows) {
     const raw = safeJson(row.raw_payload_json, {});
     const normalized = normalizeDirectoryImportRow(raw, {
       source_version: snapshot.source_version,
@@ -285,7 +349,7 @@ async function finalizeSnapshot(svc, user, input) {
       row_number: row.row_number,
     });
     const validation = validateNormalizedDirectoryRow(normalized, { require_siruta: input.require_siruta !== false });
-    const duplicateKey = normalized.location_external_key || `${normalized.address_fingerprint}|${normalizeIdentityText(normalized.location_name)}`;
+    const duplicateKey = snapshotDuplicateKey(normalized);
     if (duplicateKey && seenKeys.has(duplicateKey)) {
       validation.errors.push('duplicate_within_snapshot');
       validation.validation_codes.push('duplicate_within_snapshot');
@@ -313,15 +377,17 @@ async function finalizeSnapshot(svc, user, input) {
     });
   }
 
-  const status = validRows > 0 ? 'ready' : 'blocked';
-  const finalizedAt = now();
+  const remainingRows = rawRows.length - processingRows.length;
   const summary = {
     contract_version: DIRECTORY_IMPORT_CONTRACT_VERSION,
     code_counts: codeCounts,
     require_siruta: input.require_siruta !== false,
+    finalization_chunk_size: requestedLimit,
+    finalization_processed_rows: rows.length - remainingRows,
+    finalization_remaining_rows: remainingRows,
   };
-  await svc.entities.DirectorySourceSnapshot.update(snapshot.id, {
-    status,
+  const progressUpdates = {
+    status: remainingRows > 0 ? 'validating' : (validRows > 0 ? 'ready' : 'blocked'),
     total_rows: rows.length,
     uploaded_rows: rows.length,
     valid_rows: validRows,
@@ -329,17 +395,39 @@ async function finalizeSnapshot(svc, user, input) {
     duplicate_rows: duplicateRows,
     warning_rows: warningRows,
     summary_json: JSON.stringify(summary),
+  };
+  if (remainingRows > 0) {
+    await svc.entities.DirectorySourceSnapshot.update(snapshot.id, progressUpdates);
+    return response({
+      success: true,
+      remaining: true,
+      processed: processingRows.length,
+      remaining_rows: remainingRows,
+      snapshot: { ...snapshot, ...progressUpdates },
+    });
+  }
+
+  const finalizedAt = now();
+  const finalUpdates = {
+    ...progressUpdates,
     finalized_at: finalizedAt,
     immutable_at: finalizedAt,
-  });
+  };
+  await svc.entities.DirectorySourceSnapshot.update(snapshot.id, finalUpdates);
   await writeAudit(svc, user, 'DirectorySourceSnapshot', snapshot.id, 'directory_snapshot_finalized', {}, {
-    status,
+    status: finalUpdates.status,
     total_rows: rows.length,
     valid_rows: validRows,
     blocked_rows: blockedRows,
     duplicate_rows: duplicateRows,
   });
-  return response({ success: true, snapshot: { ...snapshot, status, total_rows: rows.length, valid_rows: validRows, blocked_rows: blockedRows, duplicate_rows: duplicateRows, warning_rows: warningRows, summary_json: JSON.stringify(summary), finalized_at: finalizedAt, immutable_at: finalizedAt } });
+  return response({
+    success: true,
+    remaining: false,
+    processed: processingRows.length,
+    remaining_rows: 0,
+    snapshot: { ...snapshot, ...finalUpdates },
+  });
 }
 
 function locationComparablePayload(location) {
@@ -450,22 +538,32 @@ async function loadPlanningContext(svc) {
   ]);
   const organizationsByExternalKey = new Map();
   const organizationsByName = new Map();
+  const append = (map, key, value) => {
+    if (!key) return;
+    const rows = map.get(key) || [];
+    rows.push(value);
+    map.set(key, rows);
+  };
   for (const organization of organizations) {
-    if (organization.directory_external_key) organizationsByExternalKey.set(organization.directory_external_key, organization);
+    append(
+      organizationsByExternalKey,
+      organization.directory_external_key,
+      organization,
+    );
     const normalizedName = normalizeIdentityText(organization.public_display_name || organization.name);
-    if (normalizedName && !organizationsByName.has(normalizedName)) organizationsByName.set(normalizedName, organization);
+    append(organizationsByName, normalizedName, organization);
   }
   const statesByExternalKey = new Map();
   const statesByAddress = new Map();
   for (const state of states) {
-    if (state.directory_external_key && !statesByExternalKey.has(state.directory_external_key)) statesByExternalKey.set(state.directory_external_key, state);
-    if (state.address_fingerprint && !statesByAddress.has(state.address_fingerprint)) statesByAddress.set(state.address_fingerprint, state);
+    append(statesByExternalKey, state.directory_external_key, state);
+    append(statesByAddress, state.address_fingerprint, state);
   }
   const locationsById = new Map(locations.map((location) => [location.id, location]));
   const locationsByFallback = new Map();
   for (const location of locations) {
     const key = [normalizeIdentityText(location.locality_name || location.city), normalizeIdentityText(location.address), normalizeIdentityText(location.public_display_name || location.name)].join('|');
-    if (key.replace(/\|/g, '') && !locationsByFallback.has(key)) locationsByFallback.set(key, location);
+    if (key.replace(/\|/g, '')) append(locationsByFallback, key, location);
   }
   return { organizationsByExternalKey, organizationsByName, statesByExternalKey, statesByAddress, locationsById, locationsByFallback };
 }
@@ -498,10 +596,13 @@ async function planBatch(svc, user, input) {
   }
   const existingBatches = await svc.entities.DirectoryImportBatch.filter({ snapshot_id: snapshot.id }, '-created_date', 100).catch(() => []);
   const active = existingBatches.find((batch) => !['completed', 'completed_with_errors', 'failed', 'rolled_back', 'rollback_failed'].includes(batch.status));
-  if (active) return response({ success: true, reused: true, batch: active });
+  if (active && active.status !== 'planning') {
+    return response({ success: true, reused: true, remaining: false, batch: active });
+  }
 
-  const batchKey = batchKeyFor(snapshot, existingBatches.length + 1);
-  const batch = await svc.entities.DirectoryImportBatch.create({
+  const batchKey = active?.batch_key
+    || batchKeyFor(snapshot, existingBatches.length + 1);
+  const batch = active || await svc.entities.DirectoryImportBatch.create({
     batch_key: batchKey,
     snapshot_id: snapshot.id,
     contract_version: DIRECTORY_IMPORT_CONTRACT_VERSION,
@@ -529,7 +630,7 @@ async function planBatch(svc, user, input) {
 
   const rows = await svc.entities.DirectoryImportRow.filter({ snapshot_id: snapshot.id }, 'row_number', MAX_ROWS).catch(() => []);
   const context = await loadPlanningContext(svc);
-  const counts = Object.fromEntries([
+  const actionNames = [
     'create_organization_and_location',
     'create_location_use_existing_organization',
     'create_location_without_organization',
@@ -539,13 +640,46 @@ async function planBatch(svc, user, input) {
     'skip_duplicate',
     'block_conflict',
     'reject_invalid',
-  ].map((key) => [key, 0]));
+  ];
+  const counts = Object.fromEntries(actionNames.map((key) => [key, 0]));
   let readyRows = 0;
   let blockedRows = 0;
   let validRows = 0;
   const organizationsPlannedForUpdate = new Set();
+  const alreadyPlannedRows = rows.filter((row) => row.batch_id === batch.id);
+  for (const row of alreadyPlannedRows) {
+    const action = clean(row.planned_action, 80);
+    if (Object.prototype.hasOwnProperty.call(counts, action)) counts[action] += 1;
+    if (row.status === 'ready') readyRows += 1;
+    else blockedRows += 1;
+    const normalized = applyAdminOverride(safeJson(row.normalized_payload_json, {}), row);
+    const validation = validateNormalizedDirectoryRow(normalized, { require_siruta: true });
+    const organizationTypeResolution = normalized.organization_name
+      ? resolveProviderOrganizationType(normalized)
+      : null;
+    if (
+      validation.valid
+      && normalized.provider_type
+      && normalized.provider_profile_type
+      && normalized.location_type_code
+      && normalized.care_setting_code
+      && (!organizationTypeResolution || organizationTypeResolution.valid)
+    ) {
+      validRows += 1;
+    }
+    const plannedActions = asArray(safeJson(row.planned_actions_json, []));
+    if (
+      plannedActions.includes('update_directory_organization')
+      && row.target_organization_id
+    ) {
+      organizationsPlannedForUpdate.add(row.target_organization_id);
+    }
+  }
+  const requestedLimit = boundedChunkSize(input.limit, PLANNING_CHUNK);
+  const unplannedRows = rows.filter((row) => row.batch_id !== batch.id);
+  const planningRows = unplannedRows.slice(0, requestedLimit);
 
-  for (const row of rows) {
+  for (const row of planningRows) {
     const normalized = applyAdminOverride(safeJson(row.normalized_payload_json, {}), row);
     const validation = validateNormalizedDirectoryRow(normalized, { require_siruta: true });
     const organizationTypeResolution = normalized.organization_name
@@ -559,6 +693,8 @@ async function planBatch(svc, user, input) {
     const candidates = [];
     const supplementalActions = [];
     let organizationReconciliation = null;
+    let organizationMatchError = '';
+    let locationMatchError = '';
 
     if (!validation.valid) {
       plannedAction = normalized.pseudo_row_reason || validation.errors.includes('source_row_not_eligible') ? 'reject_invalid' : 'block_conflict';
@@ -572,14 +708,29 @@ async function planBatch(svc, user, input) {
       validation.validation_codes.push(organizationTypeResolution.error_code);
     } else {
       validRows += 1;
-      targetOrganization = normalized.organization_external_key
-        ? context.organizationsByExternalKey.get(normalized.organization_external_key) || null
-        : null;
-      if (!targetOrganization && normalized.organization_name) {
-        targetOrganization = context.organizationsByName.get(normalizeIdentityText(normalized.organization_name)) || null;
+      const organizationMatch = resolveDirectoryOrganizationMatch({
+        externalCandidates: normalized.organization_external_key
+          ? context.organizationsByExternalKey.get(normalized.organization_external_key) || []
+          : [],
+        nameCandidates: normalized.organization_name
+          ? context.organizationsByName.get(normalizeIdentityText(normalized.organization_name)) || []
+          : [],
+      });
+      targetOrganization = organizationMatch.target;
+      organizationMatchError = organizationMatch.error_code;
+      for (const id of organizationMatch.candidate_ids) {
+        candidates.push({
+          entity_type: 'ProviderOrganization',
+          id,
+          strategy: organizationMatch.strategy,
+          confidence: organizationMatch.confidence,
+        });
+      }
+      if (organizationMatchError) {
+        validation.errors.push(organizationMatchError);
+        validation.validation_codes.push(organizationMatchError);
       }
       if (targetOrganization) {
-        candidates.push({ entity_type: 'ProviderOrganization', id: targetOrganization.id, strategy: 'external_key_or_exact_name', confidence: 'high' });
         organizationReconciliation = planDirectoryOrganizationReconciliation(targetOrganization, normalized);
         if (!organizationReconciliation.valid) {
           validation.errors.push(organizationReconciliation.error_code);
@@ -587,25 +738,40 @@ async function planBatch(svc, user, input) {
         }
       }
 
-      const state = context.statesByExternalKey.get(normalized.location_external_key)
-        || context.statesByAddress.get(normalized.address_fingerprint)
-        || null;
-      if (state) {
-        targetLocation = context.locationsById.get(state.location_id) || null;
-        matchStrategy = state.directory_external_key === normalized.location_external_key ? 'location_external_key' : 'address_fingerprint';
-        matchConfidence = state.directory_external_key === normalized.location_external_key ? 'high' : 'medium';
+      const fallbackKey = [
+        normalizeIdentityText(normalized.locality_name),
+        normalizeIdentityText(normalized.address),
+        normalizeIdentityText(normalized.location_name),
+      ].join('|');
+      const locationMatch = resolveDirectoryLocationMatch({
+        externalStates:
+          context.statesByExternalKey.get(normalized.location_external_key) || [],
+        exactFallbackCandidates: context.locationsByFallback.get(fallbackKey) || [],
+        addressStates: context.statesByAddress.get(normalized.address_fingerprint) || [],
+        locationsById: context.locationsById,
+      });
+      targetLocation = locationMatch.target;
+      matchStrategy = locationMatch.strategy;
+      matchConfidence = locationMatch.confidence;
+      locationMatchError = locationMatch.error_code;
+      for (const id of locationMatch.candidate_ids) {
+        candidates.push({
+          entity_type: 'ProviderLocation',
+          id,
+          strategy: locationMatch.strategy,
+          confidence: locationMatch.confidence,
+        });
       }
-      if (!targetLocation) {
-        const fallbackKey = [normalizeIdentityText(normalized.locality_name), normalizeIdentityText(normalized.address), normalizeIdentityText(normalized.location_name)].join('|');
-        targetLocation = context.locationsByFallback.get(fallbackKey) || null;
-        if (targetLocation) {
-          matchStrategy = 'exact_name_locality_address';
-          matchConfidence = 'high';
-        }
+      if (locationMatchError) {
+        validation.errors.push(locationMatchError);
+        validation.validation_codes.push(locationMatchError);
       }
-      if (targetLocation) candidates.push({ entity_type: 'ProviderLocation', id: targetLocation.id, strategy: matchStrategy, confidence: matchConfidence });
 
-      if (organizationReconciliation && !organizationReconciliation.valid) {
+      if (
+        organizationMatchError
+        || locationMatchError
+        || (organizationReconciliation && !organizationReconciliation.valid)
+      ) {
         plannedAction = 'block_conflict';
       } else if (targetLocation && CONTROLLED_PROFILES.has(targetLocation.profile_control_status || 'directory')) {
         plannedAction = 'block_conflict';
@@ -654,13 +820,23 @@ async function planBatch(svc, user, input) {
     });
   }
 
+  const remainingRows = unplannedRows.length - planningRows.length;
+  const planningState = {
+    chunk_size: requestedLimit,
+    processed_rows: rows.length - remainingRows,
+    remaining_rows: remainingRows,
+    organization_update_ids: [...organizationsPlannedForUpdate].sort(),
+  };
   const summary = {
     contract_version: DIRECTORY_IMPORT_CONTRACT_VERSION,
     action_counts: counts,
     supplemental_action_counts: {
       update_directory_organization: organizationsPlannedForUpdate.size,
     },
-    approval_token: batchApprovalToken(batchKey, snapshot.source_sha256, readyRows),
+    planning_state: planningState,
+    approval_token: remainingRows > 0
+      ? ''
+      : batchApprovalToken(batchKey, snapshot.source_sha256, readyRows),
     safety: {
       publishes_profiles: false,
       verifies_profiles: false,
@@ -672,17 +848,39 @@ async function planBatch(svc, user, input) {
     },
   };
   const updates = {
-    status: readyRows > 0 ? 'ready' : 'failed',
+    status: remainingRows > 0 ? 'planning' : (readyRows > 0 ? 'ready' : 'failed'),
     total_rows: rows.length,
     valid_rows: validRows,
     blocked_rows: blockedRows,
     ready_rows: readyRows,
     summary_json: JSON.stringify(summary),
-    failure_message: readyRows > 0 ? '' : 'Nu exista randuri pregatite pentru import.',
+    failure_message:
+      remainingRows > 0 || readyRows > 0
+        ? ''
+        : 'Nu exista randuri pregatite pentru import.',
   };
   await svc.entities.DirectoryImportBatch.update(batch.id, updates);
+  if (remainingRows > 0) {
+    return response({
+      success: true,
+      reused: Boolean(active),
+      remaining: true,
+      processed: planningRows.length,
+      remaining_rows: remainingRows,
+      batch: { ...batch, ...updates },
+      summary,
+    });
+  }
   await writeAudit(svc, user, 'DirectoryImportBatch', batch.id, 'directory_import_dry_run_created', {}, { ...updates, summary });
-  return response({ success: true, reused: false, batch: { ...batch, ...updates }, summary });
+  return response({
+    success: true,
+    reused: Boolean(active),
+    remaining: false,
+    processed: planningRows.length,
+    remaining_rows: 0,
+    batch: { ...batch, ...updates },
+    summary,
+  });
 }
 
 async function overrideRow(svc, user, input) {
@@ -699,6 +897,16 @@ async function overrideRow(svc, user, input) {
   const override = pickFields(input.override || {}, allowedKeys);
   if (!Object.keys(override).length) return response({ error: 'Nu exista campuri de corectat.' }, 400);
   const previous = safeJson(row.admin_override_json, {});
+  if (row.batch_id) {
+    const batch = await svc.entities.DirectoryImportBatch.get(row.batch_id).catch(() => null);
+    if (batch && ['planning', 'ready'].includes(batch.status)) {
+      await svc.entities.DirectoryImportBatch.update(batch.id, {
+        status: 'failed',
+        failure_message:
+          `Randul ${row.row_number} a fost modificat dupa dry-run. Genereaza un dry-run nou.`,
+      });
+    }
+  }
   await svc.entities.DirectoryImportRow.update(row.id, {
     admin_override_json: JSON.stringify({ ...previous, ...override }),
     status: 'valid',
@@ -749,6 +957,9 @@ async function ensureOrganization(
     const existing = row.organization_external_key
       ? await svc.entities.ProviderOrganization.filter({ directory_external_key: row.organization_external_key }, '-created_date', 5).catch(() => [])
       : [];
+    if (existing.length > 1) {
+      throw new Error('Mai multe organizatii folosesc aceeasi cheie externa; executia este blocata pentru verificare manuala.');
+    }
     target = existing[0] || null;
   }
   if (target) {
@@ -1090,7 +1301,7 @@ async function executeBatch(svc, user, input) {
   if (batch.status === 'approved') {
     await svc.entities.DirectoryImportBatch.update(batch.id, { status: 'running', started_at: now() });
   }
-  const limit = Math.max(1, Math.min(EXECUTION_CHUNK, Number(input.limit || EXECUTION_CHUNK)));
+  const limit = boundedChunkSize(input.limit, EXECUTION_CHUNK);
   const rows = await svc.entities.DirectoryImportRow.filter({ batch_id: batch.id, status: 'ready' }, 'row_number', limit).catch(() => []);
   let applied = 0;
   let skipped = 0;
