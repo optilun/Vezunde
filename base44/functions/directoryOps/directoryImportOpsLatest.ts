@@ -1,7 +1,7 @@
 import { handle as directoryImportOpsLocationFirstHandle } from './directoryImportOpsLocationFirst.ts';
 import { handleDirectoryAutoImport } from './directoryAutoImportOps.ts';
 
-export const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-auto-orchestrator-3';
+export const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-national-directory-4';
 
 export async function handle(req: Request) {
   const input = await req.clone().json().catch(() => ({}));
@@ -26,7 +26,7 @@ export async function handle(req: Request) {
       preserves_existing_optional_fields: true,
       fails_closed_on_directory_read_errors: true,
       supports_automated_controlled_import: true,
-      automated_import_contract_version: 'viasee-directory-auto-import-v1',
+      automated_import_contract_version: 'viasee-directory-auto-import-v2',
       automated_import_schedule_minutes: 5,
       automated_controlled_import_orchestrator: true,
       scheduled_auto_import_runner: true,
@@ -35,6 +35,11 @@ export async function handle(req: Request) {
       persists_approved_source_subset: true,
       uses_chunked_private_payload_storage: true,
       repairs_partial_preflight_runs: true,
+      supports_national_directory_campaign: true,
+      publishes_unclaimed_unverified_directory_profiles: true,
+      excludes_controlled_profiles_from_national_import: true,
+      publishes_basic_directory_details_only_when_quality_allows: true,
+      preserves_top_three_isolation: true,
     });
   }
 
