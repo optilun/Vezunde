@@ -47,6 +47,21 @@
       "type": "number",
       "default": 0
     },
+    "source_rows": {
+      "type": "number",
+      "default": 0
+    },
+    "selected_rows": {
+      "type": "number",
+      "default": 0
+    },
+    "excluded_rows": {
+      "type": "number",
+      "default": 0
+    },
+    "selection_result_json": {
+      "type": "string"
+    },
     "organization_count": {
       "type": "number",
       "default": 0
