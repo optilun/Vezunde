@@ -3,7 +3,7 @@ import { handle as directoryImportOpsHandle } from '../../base44/functions/direc
 
 const ROLES = ['organization_owner', 'location_manager', 'location_staff'];
 const DIRECTORY_IMPORT_LOGICAL_NAME = 'directoryImportOps';
-const FUNCTION_DEPLOY_REVISION = 'viasee-directory-import-single-file-10';
+const FUNCTION_DEPLOY_REVISION = 'viasee-directory-import-single-file-11';
 console.info(`[VIASEE] listProviderMemberInvitations ${FUNCTION_DEPLOY_REVISION}`);
 
 function res(body, status = 200) {
@@ -111,6 +111,12 @@ async function handleInvitationList(req) {
 
 Deno.serve(async (req) => {
   const body = await req.clone().json().catch(() => null);
+  if (body?.args?.action === 'advance_auto_import_runs') {
+    return directoryImportOpsHandle(routedRequest(req, {
+      action: 'advance_auto_import_runs',
+      __automation_trigger: true,
+    }));
+  }
   if (body?.__function === DIRECTORY_IMPORT_LOGICAL_NAME) {
     return directoryImportOpsHandle(routedRequest(req, body.payload));
   }
