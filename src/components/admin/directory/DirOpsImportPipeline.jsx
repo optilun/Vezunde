@@ -178,7 +178,7 @@ function AutoImportPanel() {
         <div><div className="font-mono text-[10px] text-muted-foreground">{latest.run_key}</div><div className="mt-1 text-sm font-bold">{latest.completed_batches || 0} din {latest.total_batches || 0} loturi finalizate</div><p className="mt-1 text-xs text-muted-foreground">Pas curent: {latest.current_step || "-"}{currentItem ? ` · lot ${currentItem.sequence}/${latest.total_batches}` : ""}</p></div>
         <Badge status={latest.status} />
       </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4"><Stat label="Randuri" value={latest.total_rows} /><Stat label="Aplicate" value={latest.applied_rows} /><Stat label="Blocate" value={latest.blocked_batches} /><Stat label="Esuate" value={latest.failed_rows} /></div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5"><Stat label="Eligibile" value={latest.total_rows} /><Stat label="Aplicate" value={latest.applied_rows} /><Stat label="Excluse automat" value={latest.excluded_rows} /><Stat label="Blocate" value={latest.blocked_batches} /><Stat label="Esuate" value={latest.failed_rows} /></div>
       <div><div className="mb-1 flex justify-between text-[11px] text-muted-foreground"><span>Progres import</span><span>{percent}%</span></div><div className="h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-foreground" style={{ width: `${percent}%` }} /></div></div>
       {latest.failure_message && <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">{latest.failure_message}</div>}
 
