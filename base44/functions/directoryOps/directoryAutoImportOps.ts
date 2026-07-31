@@ -511,6 +511,39 @@ function runKeyFor(packageSha256) {
   return `AUTODIR-${clean(packageSha256, 80).slice(0, 12)}`;
 }
 
+function autoItemRecord(runId, runKey, index, item) {
+  const itemKey = `${runKey}-${String(index + 1).padStart(3, '0')}`;
+  return {
+    run_id: runId,
+    sequence: index + 1,
+    item_key: itemKey,
+    status: item.selected_rows > 0 ? 'pending' : 'skipped',
+    step: item.selected_rows > 0 ? 'fetch_source' : 'skipped_no_strictly_clean_rows',
+    source_url: item.source_url,
+    source_filename: item.source_filename,
+    source_sha256: item.source_sha256,
+    selected_sha256: item.selected_sha256,
+    expected_sha256: item.expected_sha256,
+    expected_rows: item.selected_rows,
+    source_rows: item.source_rows,
+    selected_rows: item.selected_rows,
+    excluded_rows: item.excluded_rows,
+    selection_result_json: JSON.stringify(item.selection_summary),
+    source_payload_json: '',
+    organization_count: item.organization_count,
+    snapshot_id: '',
+    batch_id: '',
+    execution_lock_token: '',
+    applied_rows: 0,
+    skipped_rows: 0,
+    failed_rows: 0,
+    safety_result_json: '{}',
+    result_json: item.selected_rows > 0 ? '{}' : JSON.stringify({ selection: item.selection_summary }),
+    failure_message: '',
+    ...(item.selected_rows > 0 ? {} : { started_at: now(), finished_at: now() }),
+  };
+}
+
 async function createRun(svc, user, input) {
   const manifestUrl = clean(input.manifest_url, 2000);
   let archiveMetadata = null;
