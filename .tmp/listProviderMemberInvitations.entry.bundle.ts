@@ -3948,8 +3948,8 @@ async function inspectSafety(svc, snapshot, batch) {
     if (Object.keys(override).length) errors.push(`row_${row.row_number}:admin_override_present`);
     if (row.planned_action === "create_location_use_existing_organization") {
       if (plannedActions.includes("reuse_planned_organization") && !row.target_organization_id) continue;
-      if (!row.target_organization_id || row.match_confidence !== "high") {
-        errors.push(`row_${row.row_number}:existing_organization_not_high_confidence`);
+      if (!row.target_organization_id) {
+        errors.push(`row_${row.row_number}:existing_organization_target_missing`);
         continue;
       }
       const organization = await getDirectoryEntityOrNull(
@@ -4240,7 +4240,7 @@ async function handleDirectoryAutoImport(req) {
 }
 
 // base44/functions/directoryOps/directoryImportOpsLatest.ts
-var DIRECTORY_IMPORT_RUNTIME_REVISION2 = "directory-import-runtime-read-safe-6";
+var DIRECTORY_IMPORT_RUNTIME_REVISION2 = "directory-import-runtime-auto-orchestrator-1";
 async function handle3(req) {
   const input = await req.clone().json().catch(() => ({}));
   if (input?.action === "runtime_info") {
@@ -4261,7 +4261,10 @@ async function handle3(req) {
       reconciles_directory_evidence: true,
       preserves_directory_publication_state: true,
       preserves_existing_optional_fields: true,
-      fails_closed_on_directory_read_errors: true
+      fails_closed_on_directory_read_errors: true,
+      automated_controlled_import_orchestrator: true,
+      scheduled_auto_import_runner: true,
+      max_automatic_execution_chunk: 5
     });
   }
   if (String(input?.action || "").startsWith("auto_") || input?.action === "advance_auto_import_runs" || input?.action === "list_auto_import_runs" || input?.action === "create_auto_import_run" || input?.action === "approve_auto_import_run" || input?.action === "pause_auto_import_run" || input?.action === "resume_auto_import_run" || input?.action === "cancel_auto_import_run" || input?.action === "advance_auto_import_run_now") {
