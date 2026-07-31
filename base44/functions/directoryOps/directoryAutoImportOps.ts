@@ -1782,6 +1782,27 @@ async function advanceRuns(svc, input = {}) {
     runs = [...approved, ...running]
       .sort((left, right) => String(left.created_date || '').localeCompare(String(right.created_date || '')))
       .slice(0, 1);
+    if (!runs.length) {
+      const completed = await requireDirectoryRows(
+        svc.entities.DirectoryAutoImportRun.filter({ status: 'completed' }, '-finished_at', 10),
+        'rularilor finalizate pentru reconcilierea publicarii',
+      );
+      for (const candidate of completed) {
+        const items = await requireDirectoryRows(
+          svc.entities.DirectoryAutoImportItem.filter({ run_id: candidate.id }, 'sequence', 100),
+          'loturilor finalizate pentru reconcilierea publicarii',
+        );
+        const missingPublication = items.some((item) => (
+          item.status === 'completed'
+          && clean(item.batch_id, 160)
+          && safeJson(item.result_json, {}).publication?.success !== true
+        ));
+        if (missingPublication) {
+          runs = [candidate];
+          break;
+        }
+      }
+    }
   }
   if (!runs.length) return response({ success: true, processed_runs: 0, message: 'Nu exista rulare automata aprobata.' });
   const outcomes = [];
