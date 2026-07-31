@@ -1,7 +1,7 @@
 // Bundled single-file Base44 function. Do not add local project imports.
 
 // scripts/bridge-sources/listProviderMemberInvitations.entry.ts
-import { createClientFromRequest as createClientFromRequest2 } from "npm:@base44/sdk@0.8.31";
+import { createClientFromRequest as createClientFromRequest3 } from "npm:@base44/sdk@0.8.31";
 
 // base44/functions/directoryOps/directoryImportOps.ts
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.31";
@@ -3536,6 +3536,709 @@ async function handle2(req) {
   return handle(req);
 }
 
+// base44/functions/directoryOps/directoryAutoImportOps.ts
+import { createClientFromRequest as createClientFromRequest2 } from "npm:@base44/sdk@0.8.31";
+var DIRECTORY_AUTO_IMPORT_CONTRACT_VERSION = "viasee-directory-auto-import-v1";
+var MAX_BATCHES = 50;
+var MAX_ROWS_PER_BATCH = 40;
+var EXECUTION_CHUNK2 = 5;
+var LOCK_MINUTES2 = 4;
+var ALLOWED_ACTIONS = /* @__PURE__ */ new Set([
+  "create_organization_and_location",
+  "create_location_use_existing_organization"
+]);
+var TERMINAL_ITEM_STATUSES = /* @__PURE__ */ new Set(["completed", "blocked", "failed", "skipped"]);
+function clean8(value, maxLength = 4e3) {
+  return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, maxLength);
+}
+function now2() {
+  return (/* @__PURE__ */ new Date()).toISOString();
+}
+function response2(body, status = 200) {
+  return Response.json(body, { status });
+}
+function safeJson2(value, fallback = {}) {
+  if (value && typeof value === "object") return value;
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch (_error) {
+    return fallback;
+  }
+}
+function asArray2(value) {
+  return Array.isArray(value) ? value : [];
+}
+function stableStringify2(value) {
+  if (Array.isArray(value)) return `[${value.map(stableStringify2).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify2(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+async function responsePayload(value) {
+  if (!(value instanceof Response)) return value || {};
+  return value.clone().json().catch(() => ({}));
+}
+async function requireAdmin2(base44) {
+  const user = await base44.auth.me().catch(() => null);
+  if (!user) return { error: response2({ error: "Autentificare necesara." }, 401) };
+  if (user.role !== "admin") return { error: response2({ error: "Acces administrativ necesar." }, 403) };
+  return { user, svc: base44.asServiceRole };
+}
+function automationUser(run = {}) {
+  return {
+    id: clean8(run.approved_by_user_id || run.created_by_user_id || "directory-auto-import", 160),
+    email: clean8(run.approved_by_email || run.created_by_email || "automation@viasee.internal", 240),
+    role: "admin"
+  };
+}
+async function writeAudit2(svc, user, entityType, entityId, actionType, previousValues, nextValues, note = "") {
+  await svc.entities.DirectoryAuditRecord.create({
+    entity_type: entityType,
+    entity_id: entityId,
+    action_type: actionType,
+    changed_fields: Object.keys(nextValues || {}),
+    previous_values: JSON.stringify(previousValues || {}),
+    new_values: JSON.stringify(nextValues || {}),
+    admin_user_id: user.id,
+    admin_email: user.email || "",
+    note,
+    performed_at: now2()
+  });
+}
+async function sha256HexBytes(bytes) {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map((value) => value.toString(16).padStart(2, "0")).join("");
+}
+async function sha256HexText(value) {
+  return sha256HexBytes(new TextEncoder().encode(String(value ?? "")));
+}
+async function fetchJson(sourceUrl, expectedSha256 = "") {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 3e4);
+  try {
+    const result = await fetch(sourceUrl, {
+      method: "GET",
+      redirect: "follow",
+      signal: controller.signal,
+      headers: { accept: "application/json" }
+    });
+    if (!result.ok) throw new Error(`Fisierul sursa nu poate fi descarcat (${result.status}).`);
+    const bytes = await result.arrayBuffer();
+    if (bytes.byteLength > 8e6) throw new Error("Fisierul sursa depaseste limita de 8 MB.");
+    const sha256 = await sha256HexBytes(bytes);
+    const expected = clean8(expectedSha256, 80).toLowerCase();
+    if (expected && expected !== sha256) throw new Error("SHA-256 al fisierului nu corespunde manifestului.");
+    return {
+      payload: JSON.parse(new TextDecoder().decode(bytes)),
+      sha256,
+      bytes: bytes.byteLength
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+function sourceUrlFor(entry) {
+  if (typeof entry === "string") return clean8(entry, 2e3);
+  return clean8(
+    entry?.source_url || entry?.file_url || entry?.url || entry?.batch_url || entry?.batch_file_url || entry?.clean_batch_file_url,
+    2e3
+  );
+}
+function descriptorFor(entry, index = 0) {
+  const sourceUrl = sourceUrlFor(entry);
+  if (!/^https:\/\//i.test(sourceUrl)) return null;
+  const expectedRows = Number(
+    entry?.row_count ?? entry?.location_count ?? entry?.expected_rows ?? 0
+  );
+  return {
+    source_url: sourceUrl,
+    source_filename: clean8(
+      entry?.file_name || entry?.filename || sourceUrl.split("/").pop()?.split("?")[0] || `batch-${index + 1}.json`,
+      240
+    ),
+    expected_sha256: clean8(
+      entry?.clean_batch_file_sha256 || entry?.file_sha256 || entry?.sha256 || "",
+      80
+    ).toLowerCase(),
+    expected_rows: Number.isFinite(expectedRows) && expectedRows > 0 ? expectedRows : 0,
+    organization_count: Math.max(0, Number(entry?.organization_count || 0))
+  };
+}
+function descriptorsFromManifest(payload, manifestUrl = "") {
+  const collections = [
+    payload?.clean_batches,
+    payload?.batches,
+    payload?.batch_files,
+    payload?.files,
+    payload?.items
+  ].filter(Array.isArray);
+  const descriptors = (collections[0] || []).map((entry, index) => descriptorFor(entry, index)).filter(Boolean).filter((entry) => /\.json(?:$|\?)/i.test(entry.source_url));
+  if (descriptors.length) return descriptors;
+  if (Array.isArray(payload?.rows)) {
+    const direct = descriptorFor({
+      source_url: manifestUrl,
+      file_name: payload?.batch_key ? `${payload.batch_key}.json` : void 0,
+      row_count: payload.rows.length,
+      organization_count: payload?.organization_count,
+      file_sha256: payload?.clean_batch_file_sha256 || payload?.file_sha256 || ""
+    });
+    return direct ? [direct] : [];
+  }
+  return [];
+}
+function rowsFromPayload(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.rows)) return payload.rows;
+  return [];
+}
+function approvalPhrase(run) {
+  return `AUTOIMPORT ${clean8(run.run_key, 120)} ${clean8(run.package_sha256, 80).slice(0, 12)} ${Number(run.total_batches || 0)}`;
+}
+function runKeyFor(packageSha256) {
+  return `AUTODIR-${clean8(packageSha256, 80).slice(0, 12)}`;
+}
+async function createRun(svc, user, input) {
+  const manifestUrl = clean8(input.manifest_url, 2e3);
+  let descriptors = asArray2(input.batch_urls).map((entry, index) => descriptorFor(entry, index)).filter(Boolean);
+  if (manifestUrl) {
+    const manifest = await fetchJson(manifestUrl, clean8(input.manifest_sha256, 80));
+    descriptors = descriptorsFromManifest(manifest.payload, manifestUrl);
+  }
+  const unique = /* @__PURE__ */ new Map();
+  for (const descriptor of descriptors) {
+    if (!unique.has(descriptor.source_url)) unique.set(descriptor.source_url, descriptor);
+  }
+  descriptors = Array.from(unique.values()).slice(0, MAX_BATCHES);
+  if (!descriptors.length) return response2({ error: "Nu au fost gasite URL-uri JSON de lot valide." }, 400);
+  for (const descriptor of descriptors) {
+    if (descriptor.expected_rows > MAX_ROWS_PER_BATCH) {
+      return response2({ error: `${descriptor.source_filename} depaseste ${MAX_ROWS_PER_BATCH} de randuri.` }, 400);
+    }
+    if (descriptor.expected_sha256 && !/^[a-f0-9]{64}$/.test(descriptor.expected_sha256)) {
+      return response2({ error: `SHA-256 invalid pentru ${descriptor.source_filename}.` }, 400);
+    }
+  }
+  const packageSha256 = await sha256HexText(stableStringify2(descriptors));
+  const runKey = clean8(input.run_key, 120) || runKeyFor(packageSha256);
+  const existing = await requireDirectoryRows(
+    svc.entities.DirectoryAutoImportRun.filter({ run_key: runKey }, "-created_date", 5),
+    "rularilor automate existente"
+  );
+  if (existing[0]) {
+    const items = await requireDirectoryRows(
+      svc.entities.DirectoryAutoImportItem.filter({ run_id: existing[0].id }, "sequence", 100),
+      "loturilor rularii automate existente"
+    );
+    return response2({
+      success: true,
+      reused: true,
+      run: existing[0],
+      items,
+      approval_confirmation: approvalPhrase(existing[0])
+    });
+  }
+  const safetyPolicy = {
+    max_rows_per_batch: MAX_ROWS_PER_BATCH,
+    execution_chunk: EXECUTION_CHUNK2,
+    requires_zero_snapshot_blocks: true,
+    requires_zero_snapshot_duplicates: true,
+    requires_zero_snapshot_warnings: true,
+    allowed_actions: Array.from(ALLOWED_ACTIONS),
+    exact_external_key_required_for_existing_organization: true,
+    publishes_profiles: false,
+    verifies_profiles: false,
+    creates_services: false,
+    grants_access: false
+  };
+  const run = await svc.entities.DirectoryAutoImportRun.create({
+    run_key: runKey,
+    contract_version: DIRECTORY_AUTO_IMPORT_CONTRACT_VERSION,
+    status: "awaiting_approval",
+    manifest_url: manifestUrl,
+    package_sha256: packageSha256,
+    total_batches: descriptors.length,
+    completed_batches: 0,
+    blocked_batches: 0,
+    failed_batches: 0,
+    total_rows: descriptors.reduce((total, item) => total + Number(item.expected_rows || 0), 0),
+    applied_rows: 0,
+    skipped_rows: 0,
+    failed_rows: 0,
+    current_sequence: 1,
+    current_step: "awaiting_approval",
+    safety_policy_json: JSON.stringify(safetyPolicy),
+    result_json: "{}",
+    approval_token_hash: "",
+    created_by_user_id: user.id,
+    created_by_email: user.email || "",
+    failure_message: "",
+    notes: clean8(input.notes, 2e3)
+  });
+  for (let index = 0; index < descriptors.length; index += 1) {
+    const item = descriptors[index];
+    await svc.entities.DirectoryAutoImportItem.create({
+      run_id: run.id,
+      sequence: index + 1,
+      item_key: `${runKey}-${String(index + 1).padStart(3, "0")}`,
+      status: "pending",
+      step: "fetch_source",
+      source_url: item.source_url,
+      source_filename: item.source_filename,
+      source_sha256: "",
+      expected_sha256: item.expected_sha256,
+      expected_rows: item.expected_rows,
+      organization_count: item.organization_count,
+      snapshot_id: "",
+      batch_id: "",
+      execution_lock_token: "",
+      applied_rows: 0,
+      skipped_rows: 0,
+      failed_rows: 0,
+      safety_result_json: "{}",
+      result_json: "{}",
+      failure_message: ""
+    });
+  }
+  await writeAudit2(svc, user, "DirectoryAutoImportRun", run.id, "directory_auto_import_run_created", {}, {
+    run_key: runKey,
+    package_sha256: packageSha256,
+    total_batches: descriptors.length
+  });
+  return response2({ success: true, run, approval_confirmation: approvalPhrase(run) });
+}
+async function listRuns(svc, input) {
+  const limit = Math.max(1, Math.min(50, Number(input.limit || 20)));
+  const runs = await requireDirectoryRows(
+    svc.entities.DirectoryAutoImportRun.list("-created_date", limit),
+    "rularilor automate de import"
+  );
+  const result = [];
+  for (const run of runs) {
+    const items = await requireDirectoryRows(
+      svc.entities.DirectoryAutoImportItem.filter({ run_id: run.id }, "sequence", 100),
+      "loturilor rularii automate"
+    );
+    result.push({ ...run, items, approval_confirmation: approvalPhrase(run) });
+  }
+  return response2({ success: true, runs: result, contract_version: DIRECTORY_AUTO_IMPORT_CONTRACT_VERSION });
+}
+async function approveRun(svc, user, input) {
+  const run = await getDirectoryEntityOrNull(
+    svc.entities.DirectoryAutoImportRun.get(clean8(input.run_id, 120)),
+    "rularii automate pentru aprobare"
+  );
+  if (!run) return response2({ error: "Rularea automata nu a fost gasita." }, 404);
+  if (run.status !== "awaiting_approval") return response2({ error: "Rularea nu mai asteapta aprobarea." }, 409);
+  const expected = approvalPhrase(run);
+  if (clean8(input.confirmation, 300) !== expected) {
+    return response2({ error: "Confirmarea nu corespunde.", expected_confirmation: expected }, 400);
+  }
+  const approvedAt = now2();
+  await svc.entities.DirectoryAutoImportRun.update(run.id, {
+    status: "approved",
+    current_step: "scheduled",
+    approval_token_hash: stableTextHash(expected),
+    approved_by_user_id: user.id,
+    approved_by_email: user.email || "",
+    approved_at: approvedAt,
+    started_at: approvedAt,
+    failure_message: ""
+  });
+  await writeAudit2(svc, user, "DirectoryAutoImportRun", run.id, "directory_auto_import_run_approved", {}, {
+    run_key: run.run_key,
+    total_batches: run.total_batches
+  });
+  return response2({ success: true, run_id: run.id, status: "approved" });
+}
+async function changeRunStatus(svc, user, input, nextStatus) {
+  const run = await getDirectoryEntityOrNull(
+    svc.entities.DirectoryAutoImportRun.get(clean8(input.run_id, 120)),
+    "rularii automate pentru schimbarea starii"
+  );
+  if (!run) return response2({ error: "Rularea automata nu a fost gasita." }, 404);
+  const allowed = {
+    paused: /* @__PURE__ */ new Set(["approved", "running"]),
+    approved: /* @__PURE__ */ new Set(["paused"]),
+    cancelled: /* @__PURE__ */ new Set(["awaiting_approval", "approved", "running", "paused", "blocked"])
+  };
+  if (!allowed[nextStatus]?.has(run.status)) {
+    return response2({ error: `Tranzitie invalida: ${run.status} -> ${nextStatus}.` }, 409);
+  }
+  await svc.entities.DirectoryAutoImportRun.update(run.id, {
+    status: nextStatus,
+    current_step: nextStatus === "approved" ? "scheduled" : nextStatus,
+    failure_message: nextStatus === "approved" ? "" : run.failure_message || "",
+    finished_at: nextStatus === "cancelled" ? now2() : null,
+    execution_lock_token: "",
+    execution_lock_expires_at: null
+  });
+  await writeAudit2(svc, user, "DirectoryAutoImportRun", run.id, `directory_auto_import_run_${nextStatus}`, { status: run.status }, { status: nextStatus });
+  return response2({ success: true, run_id: run.id, status: nextStatus });
+}
+function lockExpiry2() {
+  return new Date(Date.now() + LOCK_MINUTES2 * 6e4).toISOString();
+}
+async function acquireRunLock(svc, run) {
+  const expiry = run.execution_lock_expires_at ? new Date(run.execution_lock_expires_at).getTime() : 0;
+  if (clean8(run.execution_lock_token, 200) && expiry > Date.now()) return null;
+  const token = `auto_${Date.now()}_${crypto.randomUUID()}`;
+  await svc.entities.DirectoryAutoImportRun.update(run.id, {
+    execution_lock_token: token,
+    execution_lock_expires_at: lockExpiry2(),
+    last_heartbeat_at: now2()
+  });
+  return token;
+}
+async function releaseRunLock(svc, runId, values = {}) {
+  await svc.entities.DirectoryAutoImportRun.update(runId, {
+    ...values,
+    execution_lock_token: "",
+    execution_lock_expires_at: null,
+    last_heartbeat_at: now2()
+  });
+}
+async function blockItem(svc, run, item, errors, stage) {
+  const message = asArray2(errors).map((value) => clean8(value, 500)).filter(Boolean).join(" | ") || "Lot blocat de verificarea automata.";
+  await svc.entities.DirectoryAutoImportItem.update(item.id, {
+    status: "blocked",
+    step: stage,
+    failure_message: message,
+    safety_result_json: JSON.stringify({ safe: false, stage, errors: asArray2(errors) }),
+    finished_at: now2(),
+    last_heartbeat_at: now2()
+  });
+  await releaseRunLock(svc, run.id, {
+    status: "blocked",
+    current_step: stage,
+    failure_message: message
+  });
+  return { success: false, blocked: true, error: message };
+}
+async function inspectSafety(svc, snapshot, batch) {
+  const errors = [];
+  if (!snapshot || snapshot.status !== "ready" || !snapshot.immutable_at) errors.push("snapshot_not_ready");
+  if (Number(snapshot?.total_rows || 0) < 1 || Number(snapshot?.total_rows || 0) > MAX_ROWS_PER_BATCH) errors.push("snapshot_row_count_out_of_bounds");
+  if (Number(snapshot?.valid_rows || 0) !== Number(snapshot?.total_rows || 0)) errors.push("snapshot_not_all_valid");
+  if (Number(snapshot?.blocked_rows || 0)) errors.push("snapshot_has_blocked_rows");
+  if (Number(snapshot?.duplicate_rows || 0)) errors.push("snapshot_has_duplicates");
+  if (Number(snapshot?.warning_rows || 0)) errors.push("snapshot_has_warnings");
+  if (!batch || batch.status !== "ready") errors.push("batch_not_ready");
+  if (Number(batch?.blocked_rows || 0)) errors.push("batch_has_blocked_rows");
+  if (Number(batch?.ready_rows || 0) !== Number(batch?.total_rows || 0)) errors.push("batch_not_all_ready");
+  const summary = safeJson2(batch?.summary_json, {});
+  for (const key of ["publishes_profiles", "verifies_profiles", "creates_services", "grants_access", "updates_controlled_profiles", "updates_controlled_organizations"]) {
+    if (summary.safety?.[key] === true) errors.push(`unsafe_batch_flag:${key}`);
+  }
+  const rows = batch?.id ? await requireDirectoryRows(
+    svc.entities.DirectoryImportRow.filter({ batch_id: batch.id }, "row_number", MAX_ROWS_PER_BATCH + 5),
+    "randurilor lotului automat pentru verificare"
+  ) : [];
+  if (rows.length !== Number(batch?.total_rows || 0)) errors.push("batch_row_count_mismatch");
+  for (const row of rows) {
+    const warnings = asArray2(safeJson2(row.validation_warnings_json, []));
+    const validationErrors = asArray2(safeJson2(row.validation_errors_json, []));
+    const normalized = safeJson2(row.normalized_payload_json, {});
+    const override = safeJson2(row.admin_override_json, {});
+    const plannedActions = asArray2(safeJson2(row.planned_actions_json, []));
+    if (warnings.length) errors.push(`row_${row.row_number}:warnings:${warnings.join(",")}`);
+    if (validationErrors.length) errors.push(`row_${row.row_number}:errors:${validationErrors.join(",")}`);
+    if (!ALLOWED_ACTIONS.has(row.planned_action)) errors.push(`row_${row.row_number}:unsafe_action:${row.planned_action}`);
+    if (clean8(row.target_location_id, 160)) errors.push(`row_${row.row_number}:existing_location_target`);
+    if (Object.keys(override).length) errors.push(`row_${row.row_number}:admin_override_present`);
+    if (row.planned_action === "create_location_use_existing_organization") {
+      if (plannedActions.includes("reuse_planned_organization") && !row.target_organization_id) continue;
+      if (!row.target_organization_id || row.match_confidence !== "high") {
+        errors.push(`row_${row.row_number}:existing_organization_not_high_confidence`);
+        continue;
+      }
+      const organization = await getDirectoryEntityOrNull(
+        svc.entities.ProviderOrganization.get(row.target_organization_id),
+        "organizatiei reutilizate de importul automat"
+      );
+      if (!organization || !normalized.organization_external_key || organization.directory_external_key !== normalized.organization_external_key) {
+        errors.push(`row_${row.row_number}:existing_organization_external_key_mismatch`);
+      }
+    }
+  }
+  return { safe: errors.length === 0, errors, checked_rows: rows.length };
+}
+async function refreshProgress(svc, run) {
+  const items = await requireDirectoryRows(
+    svc.entities.DirectoryAutoImportItem.filter({ run_id: run.id }, "sequence", 100),
+    "loturilor rularii automate pentru progres"
+  );
+  const totals = items.reduce((acc, item) => {
+    if (item.status === "completed") acc.completed_batches += 1;
+    if (item.status === "blocked") acc.blocked_batches += 1;
+    if (item.status === "failed") acc.failed_batches += 1;
+    acc.total_rows += Number(item.expected_rows || 0);
+    acc.applied_rows += Number(item.applied_rows || 0);
+    acc.skipped_rows += Number(item.skipped_rows || 0);
+    acc.failed_rows += Number(item.failed_rows || 0);
+    return acc;
+  }, { completed_batches: 0, blocked_batches: 0, failed_batches: 0, total_rows: 0, applied_rows: 0, skipped_rows: 0, failed_rows: 0 });
+  const nextItem = items.find((item) => !TERMINAL_ITEM_STATUSES.has(item.status)) || null;
+  const completed = !nextItem && totals.completed_batches === items.length;
+  const values = {
+    ...totals,
+    current_sequence: nextItem?.sequence || items.length + 1,
+    current_step: completed ? "completed" : nextItem?.step || run.current_step || "scheduled",
+    status: completed ? "completed" : run.status,
+    finished_at: completed ? now2() : null,
+    result_json: JSON.stringify({ total_items: items.length, ...totals })
+  };
+  await svc.entities.DirectoryAutoImportRun.update(run.id, values);
+  return { items, nextItem, completed, values };
+}
+async function advanceRun(svc, run) {
+  if (!["approved", "running"].includes(run.status)) return { success: true, skipped: true, reason: `status:${run.status}` };
+  const token = await acquireRunLock(svc, run);
+  if (!token) return { success: true, skipped: true, reason: "locked" };
+  try {
+    if (run.status === "approved") {
+      await svc.entities.DirectoryAutoImportRun.update(run.id, { status: "running", current_step: "starting", started_at: run.started_at || now2() });
+      run = { ...run, status: "running" };
+    }
+    const progress = await refreshProgress(svc, run);
+    if (progress.completed) {
+      await releaseRunLock(svc, run.id, { status: "completed", current_step: "completed", finished_at: now2(), failure_message: "" });
+      return { success: true, completed: true };
+    }
+    const item = progress.nextItem;
+    if (!item) {
+      await releaseRunLock(svc, run.id, { status: "failed", current_step: "missing_item", failure_message: "Nu exista un lot curent." });
+      return { success: false, error: "Nu exista un lot curent." };
+    }
+    const user = automationUser(run);
+    const heartbeat = { last_heartbeat_at: now2(), failure_message: "" };
+    if (item.step === "fetch_source" || item.status === "pending") {
+      const fetched = await fetchJson(item.source_url, item.expected_sha256);
+      const rows = rowsFromPayload(fetched.payload);
+      if (!rows.length || rows.length > MAX_ROWS_PER_BATCH) return blockItem(svc, run, item, [`source_row_count:${rows.length}`], "fetch_source");
+      if (Number(item.expected_rows || 0) > 0 && Number(item.expected_rows) !== rows.length) {
+        return blockItem(svc, run, item, [`expected_rows:${item.expected_rows}`, `actual_rows:${rows.length}`], "fetch_source");
+      }
+      const sourceVersion = `${clean8(run.run_key, 70)}_${String(item.sequence).padStart(3, "0")}`;
+      const created = await responsePayload(await createSnapshot(svc, user, {
+        source_name: "Registru privat VIASEE - import automat controlat",
+        source_version: sourceVersion,
+        source_sha256: fetched.sha256,
+        source_format: "json",
+        original_filename: item.source_filename || `auto-batch-${item.sequence}.json`,
+        total_rows: rows.length,
+        notes: `Rulare automata aprobata ${run.run_key}; lot ${item.sequence}/${run.total_batches}.`,
+        column_map: Object.fromEntries(Object.keys(rows[0] || {}).map((key) => [key, key]))
+      }));
+      if (created.error) return blockItem(svc, run, item, [created.error], "create_snapshot");
+      await svc.entities.DirectoryAutoImportItem.update(item.id, {
+        status: "snapshot_created",
+        step: "append_rows",
+        source_sha256: fetched.sha256,
+        expected_rows: rows.length,
+        snapshot_id: created.snapshot.id,
+        started_at: item.started_at || now2(),
+        ...heartbeat
+      });
+      await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:append_rows`, failure_message: "" });
+      return { success: true, step: "snapshot_created" };
+    }
+    if (item.step === "append_rows") {
+      const fetched = await fetchJson(item.source_url, item.source_sha256 || item.expected_sha256);
+      const appended = await responsePayload(await appendRows(svc, user, {
+        snapshot_id: item.snapshot_id,
+        start_row_number: 1,
+        rows: rowsFromPayload(fetched.payload)
+      }));
+      if (appended.error) return blockItem(svc, run, item, [appended.error], "append_rows");
+      await svc.entities.DirectoryAutoImportItem.update(item.id, { status: "rows_appended", step: "validate_snapshot", ...heartbeat });
+      await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:validate_snapshot`, failure_message: "" });
+      return { success: true, step: "rows_appended", created: appended.created, reused: appended.reused };
+    }
+    if (item.step === "validate_snapshot") {
+      const finalized = await responsePayload(await finalizeSnapshot(svc, user, {
+        snapshot_id: item.snapshot_id,
+        require_siruta: true,
+        limit: 50
+      }));
+      if (finalized.error) return blockItem(svc, run, item, [finalized.error], "validate_snapshot");
+      if (finalized.remaining) {
+        await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:validate_snapshot`, failure_message: "" });
+        return { success: true, step: "validate_snapshot", remaining: true };
+      }
+      const snapshot = finalized.snapshot;
+      const errors = [];
+      if (snapshot.status !== "ready") errors.push(`snapshot_status:${snapshot.status}`);
+      if (Number(snapshot.valid_rows || 0) !== Number(snapshot.total_rows || 0)) errors.push("not_all_rows_valid");
+      if (Number(snapshot.blocked_rows || 0)) errors.push(`blocked_rows:${snapshot.blocked_rows}`);
+      if (Number(snapshot.duplicate_rows || 0)) errors.push(`duplicate_rows:${snapshot.duplicate_rows}`);
+      if (Number(snapshot.warning_rows || 0)) errors.push(`warning_rows:${snapshot.warning_rows}`);
+      if (errors.length) return blockItem(svc, run, item, errors, "validate_snapshot");
+      await svc.entities.DirectoryAutoImportItem.update(item.id, { status: "validated", step: "plan_batch", ...heartbeat });
+      await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:plan_batch`, failure_message: "" });
+      return { success: true, step: "validated" };
+    }
+    if (item.step === "plan_batch") {
+      const planned = await responsePayload(await planBatch(svc, user, { snapshot_id: item.snapshot_id, limit: 50 }));
+      if (planned.error) return blockItem(svc, run, item, [planned.error], "plan_batch");
+      if (planned.remaining) {
+        await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:plan_batch`, failure_message: "" });
+        return { success: true, step: "plan_batch", remaining: true };
+      }
+      await svc.entities.DirectoryAutoImportItem.update(item.id, { status: "planned", step: "inspect_batch", batch_id: planned.batch.id, ...heartbeat });
+      await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:inspect_batch`, failure_message: "" });
+      return { success: true, step: "planned", batch_id: planned.batch.id };
+    }
+    if (item.step === "inspect_batch") {
+      const [snapshot, batch] = await Promise.all([
+        getDirectoryEntityOrNull(svc.entities.DirectorySourceSnapshot.get(item.snapshot_id), "snapshotului automat pentru inspectie"),
+        getDirectoryEntityOrNull(svc.entities.DirectoryImportBatch.get(item.batch_id), "lotului automat pentru inspectie")
+      ]);
+      const safety = await inspectSafety(svc, snapshot, batch);
+      if (!safety.safe) return blockItem(svc, run, item, safety.errors, "inspect_batch");
+      const approved = await responsePayload(await approveBatch(svc, user, {
+        batch_id: batch.id,
+        confirmation: batchApprovalToken(batch.batch_key, batch.source_sha256, batch.ready_rows)
+      }));
+      if (approved.error) return blockItem(svc, run, item, [approved.error], "approve_batch");
+      await svc.entities.DirectoryAutoImportItem.update(item.id, { status: "approved", step: "execute_batch", safety_result_json: JSON.stringify(safety), ...heartbeat });
+      await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:execute_batch`, failure_message: "" });
+      return { success: true, step: "approved" };
+    }
+    if (item.step === "execute_batch") {
+      const batch = await getDirectoryEntityOrNull(svc.entities.DirectoryImportBatch.get(item.batch_id), "lotului automat pentru executie");
+      if (!batch) return blockItem(svc, run, item, ["batch_not_found"], "execute_batch");
+      if (clean8(batch.failure_message, 1200)) {
+        const recovered = await responsePayload(await resumeBatchAfterTransientFailure(svc, user, { batch_id: batch.id, limit: 1 }));
+        if (recovered.error) {
+          await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:recover_batch`, failure_message: recovered.error });
+          return { success: false, retryable: true, error: recovered.error };
+        }
+        await svc.entities.DirectoryAutoImportItem.update(item.id, { status: "running", step: "execute_batch", ...heartbeat });
+        await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:execute_batch`, failure_message: "" });
+        return { success: true, step: "recovered_batch", recovered: recovered.recovered };
+      }
+      let executed;
+      try {
+        executed = await responsePayload(await executeBatch(svc, user, {
+          batch_id: batch.id,
+          lock_token: item.execution_lock_token || "",
+          limit: EXECUTION_CHUNK2
+        }));
+      } catch (error) {
+        if (isTransientDirectoryExecutionFailure(error) || isDirectoryReadFailure(error)) {
+          await svc.entities.DirectoryAutoImportItem.update(item.id, {
+            status: "running",
+            step: "execute_batch",
+            failure_message: clean8(error?.message || "Intrerupere temporara.", 1200),
+            last_heartbeat_at: now2()
+          });
+          await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:recover_batch`, failure_message: clean8(error?.message || "Intrerupere temporara.", 1200) });
+          return { success: false, retryable: true, error: error?.message || "Intrerupere temporara." };
+        }
+        throw error;
+      }
+      if (executed.error) {
+        if (executed.retryable || executed.requires_resume) {
+          await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:recover_batch`, failure_message: executed.error });
+          return { success: false, retryable: true, error: executed.error };
+        }
+        return blockItem(svc, run, item, [executed.error], "execute_batch");
+      }
+      await svc.entities.DirectoryAutoImportItem.update(item.id, {
+        status: "running",
+        step: executed.remaining ? "execute_batch" : "verify_batch",
+        execution_lock_token: executed.lock_token || "",
+        applied_rows: Number(executed.totals?.applied_rows || 0),
+        skipped_rows: Number(executed.totals?.skipped_rows || 0),
+        failed_rows: Number(executed.totals?.failed_rows || 0),
+        result_json: JSON.stringify(executed),
+        failure_message: "",
+        last_heartbeat_at: now2()
+      });
+      await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:${executed.remaining ? "execute_batch" : "verify_batch"}`, failure_message: "" });
+      return { success: true, step: executed.remaining ? "execute_batch" : "verify_batch", processed: executed.processed, remaining: executed.remaining };
+    }
+    if (item.step === "verify_batch") {
+      const batch = await getDirectoryEntityOrNull(svc.entities.DirectoryImportBatch.get(item.batch_id), "lotului automat pentru verificarea finala");
+      const errors = [];
+      if (!batch || batch.status !== "completed") errors.push(`batch_status:${batch?.status || "missing"}`);
+      if (Number(batch?.failed_rows || 0)) errors.push(`failed_rows:${batch?.failed_rows || 0}`);
+      if (Number(batch?.skipped_rows || 0)) errors.push(`skipped_rows:${batch?.skipped_rows || 0}`);
+      if (Number(batch?.applied_rows || 0) !== Number(batch?.ready_rows || 0)) errors.push("applied_rows_mismatch");
+      if (errors.length) return blockItem(svc, run, item, errors, "verify_batch");
+      await svc.entities.DirectoryAutoImportItem.update(item.id, {
+        status: "completed",
+        step: "completed",
+        applied_rows: Number(batch.applied_rows || 0),
+        skipped_rows: 0,
+        failed_rows: 0,
+        result_json: JSON.stringify({ batch_id: batch.id, status: batch.status, applied_rows: batch.applied_rows }),
+        failure_message: "",
+        finished_at: now2(),
+        last_heartbeat_at: now2()
+      });
+      const latestRun = await getDirectoryEntityOrNull(svc.entities.DirectoryAutoImportRun.get(run.id), "rularii automate dupa finalizarea lotului") || run;
+      const refreshed = await refreshProgress(svc, latestRun);
+      await releaseRunLock(svc, run.id, {
+        status: refreshed.completed ? "completed" : "running",
+        current_step: refreshed.completed ? "completed" : `batch_${refreshed.nextItem?.sequence || item.sequence + 1}:fetch_source`,
+        finished_at: refreshed.completed ? now2() : null,
+        failure_message: ""
+      });
+      return { success: true, step: "completed", run_completed: refreshed.completed };
+    }
+    return blockItem(svc, run, item, [`unknown_step:${item.step}`], "unknown_step");
+  } catch (error) {
+    if (isTransientDirectoryExecutionFailure(error) || isDirectoryReadFailure(error)) {
+      await releaseRunLock(svc, run.id, { status: "running", current_step: run.current_step || "retry_scheduled", failure_message: clean8(error?.message || "Intrerupere temporara.", 1200) });
+      return { success: false, retryable: true, error: error?.message || "Intrerupere temporara." };
+    }
+    await releaseRunLock(svc, run.id, { status: "failed", current_step: "failed", failure_message: clean8(error?.message || "Rularea automata a esuat.", 1200) });
+    return { success: false, error: error?.message || "Rularea automata a esuat." };
+  }
+}
+async function advanceRuns(svc, input = {}) {
+  const runId = clean8(input.run_id, 120);
+  let runs = [];
+  if (runId) {
+    const run = await getDirectoryEntityOrNull(svc.entities.DirectoryAutoImportRun.get(runId), "rularii automate pentru avansare");
+    if (run) runs = [run];
+  } else {
+    const approved = await requireDirectoryRows(svc.entities.DirectoryAutoImportRun.filter({ status: "approved" }, "created_date", 10), "rularilor automate aprobate");
+    const running = await requireDirectoryRows(svc.entities.DirectoryAutoImportRun.filter({ status: "running" }, "created_date", 10), "rularilor automate in curs");
+    runs = [...approved, ...running].sort((left, right) => String(left.created_date || "").localeCompare(String(right.created_date || ""))).slice(0, 1);
+  }
+  if (!runs.length) return response2({ success: true, processed_runs: 0, message: "Nu exista rulare automata aprobata." });
+  const outcomes = [];
+  for (const run of runs) outcomes.push(await advanceRun(svc, run));
+  return response2({ success: true, processed_runs: outcomes.length, outcomes });
+}
+async function handleDirectoryAutoImport(req) {
+  try {
+    const input = await req.clone().json().catch(() => ({}));
+    const action = clean8(input.action, 100);
+    const base44 = createClientFromRequest2(req);
+    if (action === "advance_auto_import_runs" && input.__automation_trigger === true) {
+      return advanceRuns(base44.asServiceRole, input);
+    }
+    const auth = await requireAdmin2(base44);
+    if (auth.error) return auth.error;
+    const { user, svc } = auth;
+    if (action === "list_auto_import_runs") return listRuns(svc, input);
+    if (action === "create_auto_import_run") return createRun(svc, user, input);
+    if (action === "approve_auto_import_run") return approveRun(svc, user, input);
+    if (action === "pause_auto_import_run") return changeRunStatus(svc, user, input, "paused");
+    if (action === "resume_auto_import_run") return changeRunStatus(svc, user, input, "approved");
+    if (action === "cancel_auto_import_run") return changeRunStatus(svc, user, input, "cancelled");
+    if (action === "advance_auto_import_run_now") return advanceRuns(svc, { run_id: input.run_id });
+    return response2({ error: "Actiune automata necunoscuta." }, 400);
+  } catch (error) {
+    const retryable = isDirectoryReadFailure(error) || isTransientDirectoryExecutionFailure(error);
+    return response2({ error: error?.message || "Eroare in orchestratorul automat.", retryable }, retryable ? 503 : 500);
+  }
+}
+
 // base44/functions/directoryOps/directoryImportOpsLatest.ts
 var DIRECTORY_IMPORT_RUNTIME_REVISION2 = "directory-import-runtime-read-safe-6";
 async function handle3(req) {
@@ -3561,13 +4264,16 @@ async function handle3(req) {
       fails_closed_on_directory_read_errors: true
     });
   }
+  if (String(input?.action || "").startsWith("auto_") || input?.action === "advance_auto_import_runs" || input?.action === "list_auto_import_runs" || input?.action === "create_auto_import_run" || input?.action === "approve_auto_import_run" || input?.action === "pause_auto_import_run" || input?.action === "resume_auto_import_run" || input?.action === "cancel_auto_import_run" || input?.action === "advance_auto_import_run_now") {
+    return handleDirectoryAutoImport(req);
+  }
   return handle2(req);
 }
 
 // scripts/bridge-sources/listProviderMemberInvitations.entry.ts
 var ROLES = ["organization_owner", "location_manager", "location_staff"];
 var DIRECTORY_IMPORT_LOGICAL_NAME = "directoryImportOps";
-var FUNCTION_DEPLOY_REVISION = "viasee-directory-import-single-file-10";
+var FUNCTION_DEPLOY_REVISION = "viasee-directory-import-single-file-11";
 console.info(`[VIASEE] listProviderMemberInvitations ${FUNCTION_DEPLOY_REVISION}`);
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -3628,7 +4334,7 @@ function routedRequest(req, payload) {
 }
 async function handleInvitationList(req) {
   try {
-    const base44 = createClientFromRequest2(req);
+    const base44 = createClientFromRequest3(req);
     const user = await base44.auth.me();
     if (!user) return res({ error: "Autentificare necesara" }, 401);
     const svc = base44.asServiceRole;
@@ -3657,6 +4363,12 @@ async function handleInvitationList(req) {
 }
 Deno.serve(async (req) => {
   const body = await req.clone().json().catch(() => null);
+  if (body?.args?.action === "advance_auto_import_runs") {
+    return handle3(routedRequest(req, {
+      action: "advance_auto_import_runs",
+      __automation_trigger: true
+    }));
+  }
   if (body?.__function === DIRECTORY_IMPORT_LOGICAL_NAME) {
     return handle3(routedRequest(req, body.payload));
   }
