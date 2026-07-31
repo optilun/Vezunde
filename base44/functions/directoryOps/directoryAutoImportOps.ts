@@ -1520,6 +1520,9 @@ async function refreshProgress(svc, run) {
     acc.failed_rows += Number(item.failed_rows || 0);
     return acc;
   }, { completed_batches: 0, blocked_batches: 0, failed_batches: 0, skipped_batches: 0, excluded_rows: 0, total_rows: 0, applied_rows: 0, skipped_rows: 0, failed_rows: 0 });
+  if (runCampaignMode(run) === CAMPAIGN_MODE_NATIONAL) {
+    totals.excluded_rows = Number(run.excluded_rows || 0);
+  }
   const nextItem = items.find((item) => !TERMINAL_ITEM_STATUSES.has(item.status)) || null;
   const completed = !nextItem
     && totals.blocked_batches === 0
