@@ -159,9 +159,11 @@ function AutoImportPanel() {
     setBusy(false);
     if (result?.error) { setError(result.error); await load(); return; }
     const preflight = result.preflight || {};
-    setMessage(result.reused
-      ? "Rularea existenta a fost reincarcata."
-      : `Pachet analizat: ${preflight.selected_rows ?? 0} randuri strict curate, ${preflight.excluded_rows ?? 0} excluse automat. Este necesara o singura aprobare administrativa.`);
+    setMessage(result.repaired
+      ? `Rularea partiala a fost reparata automat: ${result.repaired_items || 0} loturi completate. Pachetul are ${preflight.selected_rows ?? 0} randuri strict curate si ${preflight.excluded_rows ?? 0} excluse automat.`
+      : result.reused
+        ? "Rularea existenta a fost reincarcata."
+        : `Pachet analizat: ${preflight.selected_rows ?? 0} randuri strict curate, ${preflight.excluded_rows ?? 0} excluse automat. Este necesara o singura aprobare administrativa.`);
     setConfirmation("");
     await load();
   };
