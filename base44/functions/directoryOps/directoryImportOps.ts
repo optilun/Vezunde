@@ -1929,12 +1929,12 @@ export async function publishCompletedBatchAsBasicDirectory(svc, user, input = {
       is_verified: false,
       request_intake_status: 'inactive',
       migration_review_required: quality === 'low' || Boolean(clean(row.review_flags, 2000)),
-      profile_control_status_updated_at: now(),
       profile_control_status_reason: 'Profil de director neconfirmat publicat automat din sursa publica.',
     };
     if (!directoryFieldsEqual(location, locationValues)) {
-      const before = pickFields(location, Object.keys(locationValues));
-      await svc.entities.ProviderLocation.update(location.id, locationValues);
+      const values = { ...locationValues, profile_control_status_updated_at: now() };
+      const before = pickFields(location, Object.keys(values));
+      await svc.entities.ProviderLocation.update(location.id, values);
       await createMutation(svc, {
         batch_id: batch.id,
         row_id: rowRecord.id,
@@ -1944,11 +1944,11 @@ export async function publishCompletedBatchAsBasicDirectory(svc, user, input = {
         entity_id: location.id,
         operation: 'update',
         before_json: JSON.stringify(before),
-        after_json: JSON.stringify(locationValues),
+        after_json: JSON.stringify(values),
         rollback_status: 'pending',
         applied_at: now(),
       });
-      await writeAudit(svc, user, 'ProviderLocation', location.id, 'directory_profile_published_basic', before, locationValues, `Lot ${batch.batch_key}`);
+      await writeAudit(svc, user, 'ProviderLocation', location.id, 'directory_profile_published_basic', before, values, `Lot ${batch.batch_key}`);
       publishedLocations += 1;
     }
 
@@ -1963,13 +1963,13 @@ export async function publishCompletedBatchAsBasicDirectory(svc, user, input = {
       data_quality_status: quality,
       directory_detail_level: basicApproved ? 'basic' : 'summary',
       directory_basic_details_approved: basicApproved,
-      normalized_at: now(),
     };
     const state = activeStates[0] || null;
     if (state) {
       if (!directoryFieldsEqual(state, stateValues)) {
-        const before = pickFields(state, Object.keys(stateValues));
-        await svc.entities.ProviderLocationDirectoryState.update(state.id, stateValues);
+        const values = { ...stateValues, normalized_at: now() };
+        const before = pickFields(state, Object.keys(values));
+        await svc.entities.ProviderLocationDirectoryState.update(state.id, values);
         await createMutation(svc, {
           batch_id: batch.id,
           row_id: rowRecord.id,
@@ -1979,17 +1979,18 @@ export async function publishCompletedBatchAsBasicDirectory(svc, user, input = {
           entity_id: state.id,
           operation: 'update',
           before_json: JSON.stringify(before),
-          after_json: JSON.stringify(stateValues),
+          after_json: JSON.stringify(values),
           rollback_status: 'pending',
           applied_at: now(),
         });
-        await writeAudit(svc, user, 'ProviderLocationDirectoryState', state.id, 'directory_state_published_basic', before, stateValues, `Lot ${batch.batch_key}`);
+        await writeAudit(svc, user, 'ProviderLocationDirectoryState', state.id, 'directory_state_published_basic', before, values, `Lot ${batch.batch_key}`);
         publishedStates += 1;
       }
     } else {
       const values = {
         ...resolveDirectoryStateCreatePayload(row, location.id, Boolean(location.organization_id)),
         ...stateValues,
+        normalized_at: now(),
         state_status: 'active',
       };
       const createdState = await svc.entities.ProviderLocationDirectoryState.create(values);
