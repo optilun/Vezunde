@@ -157,7 +157,7 @@ function AutoImportPanel() {
     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
       <div className="flex items-start gap-3">
         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary"><Database className="h-5 w-5" /></span>
-        <div><h2 className="text-sm font-bold">Import automat controlat</h2><p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">O singura aprobare porneste procesarea in fundal. La fiecare 5 minute se executa un singur pas sigur: snapshot, validare, dry-run, verificare, apoi maximum 5 randuri. Orice avertisment, duplicat sau actiune neasteptata opreste automat rularea. Campania este limitata la 400 de executii si nu ramane activa la nesfarsit.</p></div>
+        <div><h2 className="text-sm font-bold">Import automat controlat</h2><p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">O singura aprobare porneste procesarea in fundal. Sistemul selecteaza automat numai randurile confirmate oficial, active, complete si fara review flags; restul sunt excluse si raportate. La fiecare 5 minute se executa un singur pas sigur: snapshot, validare, dry-run, verificare, apoi maximum 5 randuri. Orice avertisment, duplicat sau actiune neasteptata opreste automat rularea. Campania este limitata la 400 de executii si nu ramane activa la nesfarsit.</p></div>
       </div>
       <button type="button" onClick={load} disabled={busy} className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-border px-4 text-xs font-semibold"><RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} /> Actualizeaza</button>
     </div>
