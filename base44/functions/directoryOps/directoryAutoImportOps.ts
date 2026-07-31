@@ -684,6 +684,10 @@ async function excludeControlledOrAmbiguousLiveMatches(svc, selection) {
     ),
   ]);
   const locationsById = new Map(locations.map((location) => [location.id, location]));
+  const statesByLocationId = new Map();
+  for (const state of states) {
+    if (state.location_id && !statesByLocationId.has(state.location_id)) statesByLocationId.set(state.location_id, state);
+  }
   const locationIdsByExternalKey = new Map();
   const append = (map, key, value) => {
     if (!key) return;
@@ -721,6 +725,15 @@ async function excludeControlledOrAmbiguousLiveMatches(svc, selection) {
       const controlStatus = clean(location?.profile_control_status || 'directory', 80);
       if (['claimed', 'verified', 'suspended'].includes(controlStatus)) {
         excluded.push({ row, reasons: ['existing_controlled_location'] });
+        continue;
+      }
+      const state = statesByLocationId.get(location?.id) || null;
+      const alreadyPublished = location?.status === 'publicata'
+        && location?.public_visibility_status === 'approved'
+        && state?.publication_status === 'published'
+        && state?.control_status === 'directory';
+      if (alreadyPublished) {
+        excluded.push({ row, reasons: ['already_published_directory'] });
         continue;
       }
     }
