@@ -17,7 +17,7 @@ assert.equal(itemSchema.name, 'DirectoryAutoImportItem');
 for (const field of ['run_key', 'status', 'package_sha256', 'current_step', 'failure_message', 'skipped_batches', 'excluded_rows']) {
   assert.ok(runSchema.properties[field], `Lipseste campul run.${field}`);
 }
-for (const field of ['run_id', 'sequence', 'status', 'step', 'source_url', 'snapshot_id', 'batch_id', 'source_rows', 'selected_rows', 'excluded_rows', 'selection_result_json']) {
+for (const field of ['run_id', 'sequence', 'status', 'step', 'source_url', 'source_sha256', 'selected_sha256', 'snapshot_id', 'batch_id', 'source_rows', 'selected_rows', 'excluded_rows', 'selection_result_json']) {
   assert.ok(itemSchema.properties[field], `Lipseste campul item.${field}`);
 }
 
@@ -40,6 +40,9 @@ assert.match(auto, /existing_organization_external_key_mismatch/);
 assert.match(auto, /resumeBatchAfterTransientFailure/);
 assert.match(auto, /automaticSelectionReasons/);
 assert.match(auto, /selectRowsForAutomaticImport\(sourceRows\)/);
+assert.match(auto, /const preparedDescriptors = \[\]/);
+assert.match(auto, /selectedSha256 = await sha256HexText\(stableStringify\(selection\.selected\)\)/);
+assert.match(auto, /preflight_selection_changed/);
 assert.match(auto, /skipped_no_strictly_clean_rows/);
 assert.match(auto, /review_flags_present/);
 assert.match(auto, /advance_auto_import_run_now/);
