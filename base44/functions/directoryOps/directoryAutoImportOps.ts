@@ -844,9 +844,27 @@ function autoItemRecord(runId, runKey, index, item) {
 
 async function createRun(svc, user, input) {
   const manifestUrl = clean(input.manifest_url, 2000);
+  const mode = campaignMode(input.campaign_mode);
+  const publicationMode = PUBLICATION_MODE_BASIC;
   let archiveMetadata = null;
   let descriptors = [];
-  if (input.zip_base64) {
+  let campaignSourceRows = 0;
+  let campaignExcludedRows = 0;
+  let campaignSelectionSummary = null;
+  if (mode === CAMPAIGN_MODE_NATIONAL) {
+    if (!input.zip_base64) return response({ error: 'Campania nationala necesita arhiva ZIP privata cu registrul master.' }, 400);
+    archiveMetadata = await nationalRowsFromZipBase64(
+      input.zip_base64,
+      clean(input.zip_filename, 240),
+    );
+    const geographyMap = await canonicalGeographyMap(svc, archiveMetadata.rows);
+    const canonicalRows = await enrichRowsWithCanonicalGeography(svc, archiveMetadata.rows, geographyMap);
+    const nationalSelection = selectRowsForNationalDirectory(canonicalRows);
+    campaignSourceRows = nationalSelection.summary.source_rows;
+    campaignExcludedRows = nationalSelection.summary.excluded_rows;
+    campaignSelectionSummary = nationalSelection.summary;
+    descriptors = await descriptorsForNationalSelection(nationalSelection, archiveMetadata.archive_sha256);
+  } else if (input.zip_base64) {
     archiveMetadata = await descriptorsFromZipBase64(
       input.zip_base64,
       clean(input.zip_filename, 240),
