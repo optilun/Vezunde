@@ -870,8 +870,8 @@ async function advanceRun(svc, run) {
     const heartbeat = { last_heartbeat_at: now(), failure_message: '' };
 
     if (item.step === 'fetch_source' || item.status === 'pending') {
-      const fetched = await fetchJson(item.source_url, item.source_sha256 || item.expected_sha256);
-      const sourceRows = rowsFromPayload(fetched.payload);
+      const loadedSource = await loadItemSourceRows(item);
+      const sourceRows = loadedSource.rows;
       if (!sourceRows.length || sourceRows.length > MAX_ROWS_PER_BATCH) return blockItem(svc, run, item, [`source_row_count:${sourceRows.length}`], 'fetch_source');
       if (Number(item.expected_rows || 0) > 0 && Number(item.expected_rows) !== sourceRows.length) {
         return blockItem(svc, run, item, [`expected_rows:${item.expected_rows}`, `actual_rows:${sourceRows.length}`], 'fetch_source');
