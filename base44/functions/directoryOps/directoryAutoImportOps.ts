@@ -1432,6 +1432,35 @@ async function refreshProgress(svc, run) {
   return { items, nextItem, completed, values };
 }
 
+async function reopenItemsMissingPublication(svc, run) {
+  const items = await requireDirectoryRows(
+    svc.entities.DirectoryAutoImportItem.filter({ run_id: run.id }, 'sequence', 100),
+    'loturilor pentru reconcilierea publicarii',
+  );
+  let reopened = 0;
+  for (const item of items) {
+    if (item.status !== 'completed' || !clean(item.batch_id, 160)) continue;
+    const result = safeJson(item.result_json, {});
+    if (result.publication?.success === true) continue;
+    await svc.entities.DirectoryAutoImportItem.update(item.id, {
+      status: 'running',
+      step: 'publish_batch',
+      finished_at: null,
+      failure_message: '',
+    });
+    reopened += 1;
+  }
+  if (reopened > 0 && run.status === 'completed') {
+    await svc.entities.DirectoryAutoImportRun.update(run.id, {
+      status: 'running',
+      current_step: 'publication_repair',
+      finished_at: null,
+      failure_message: '',
+    });
+  }
+  return reopened;
+}
+
 async function loadItemSourceRows(svc, item) {
   const legacyPersisted = safeJson(item.source_payload_json, null);
   if (Array.isArray(legacyPersisted)) {
