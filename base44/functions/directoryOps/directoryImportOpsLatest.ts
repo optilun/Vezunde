@@ -36,6 +36,8 @@ export async function handle(req: Request) {
       uses_chunked_private_payload_storage: true,
       repairs_partial_preflight_runs: true,
       supports_national_directory_campaign: true,
+      supports_private_master_json: true,
+      excludes_ambiguous_live_matches: true,
       publishes_unclaimed_unverified_directory_profiles: true,
       excludes_controlled_profiles_from_national_import: true,
       publishes_basic_directory_details_only_when_quality_allows: true,
