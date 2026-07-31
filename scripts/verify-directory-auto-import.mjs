@@ -3,6 +3,7 @@ import fs from 'node:fs';
 
 const read = (path) => fs.readFileSync(path, 'utf8');
 const auto = read('base44/functions/directoryOps/directoryAutoImportOps.ts');
+const importOps = read('base44/functions/directoryOps/directoryImportOps.ts');
 const latest = read('base44/functions/directoryOps/directoryImportOpsLatest.ts');
 const bridge = read('scripts/bridge-sources/listProviderMemberInvitations.entry.ts');
 const deployed = read('base44/functions/listProviderMemberInvitations/entry.ts');
@@ -19,14 +20,14 @@ assert.equal(payloadChunkSchema.name, 'DirectoryAutoImportPayloadChunk');
 for (const field of ['run_id', 'item_key', 'chunk_index', 'chunk_count', 'payload_chunk', 'payload_sha256']) {
   assert.ok(payloadChunkSchema.properties[field], `Lipseste campul payloadChunk.${field}`);
 }
-for (const field of ['run_key', 'status', 'package_sha256', 'current_step', 'failure_message', 'skipped_batches', 'excluded_rows']) {
+for (const field of ['run_key', 'campaign_mode', 'publication_mode', 'status', 'package_sha256', 'current_step', 'failure_message', 'skipped_batches', 'excluded_rows']) {
   assert.ok(runSchema.properties[field], `Lipseste campul run.${field}`);
 }
 for (const field of ['run_id', 'sequence', 'status', 'step', 'source_url', 'source_sha256', 'selected_sha256', 'snapshot_id', 'batch_id', 'source_rows', 'selected_rows', 'excluded_rows', 'selection_result_json', 'source_payload_json']) {
   assert.ok(itemSchema.properties[field], `Lipseste campul item.${field}`);
 }
 
-assert.match(auto, /DIRECTORY_AUTO_IMPORT_CONTRACT_VERSION = 'viasee-directory-auto-import-v1'/);
+assert.match(auto, /DIRECTORY_AUTO_IMPORT_CONTRACT_VERSION = 'viasee-directory-auto-import-v2'/);
 assert.match(auto, /const MAX_ROWS_PER_BATCH = 40/);
 assert.match(auto, /unzipSync/);
 assert.match(auto, /descriptorsFromZipBase64/);
@@ -39,7 +40,7 @@ assert.match(auto, /DirectoryAutoImportPayloadChunk\.filter/);
 assert.match(latest, /repairs_partial_preflight_runs:\s*true/);
 assert.match(auto, /loadItemSourceRows/);
 assert.match(auto, /const EXECUTION_CHUNK = 5/);
-assert.match(auto, /requires_zero_snapshot_warnings: true/);
+assert.match(auto, /requires_zero_snapshot_warnings: mode === CAMPAIGN_MODE_STRICT/);
 assert.match(auto, /exact_external_key_required_for_existing_organization: true/);
 assert.match(auto, /function automaticSelectionReasons/);
 assert.match(auto, /candidate_for_manual_review/);
@@ -76,9 +77,9 @@ assert.match(latest, /handleDirectoryAutoImport/);
 assert.match(latest, /advance_auto_import_runs/);
 assert.match(bridge, /DIRECTORY_AUTO_IMPORT_AUTOMATION_TOKEN/);
 assert.match(bridge, /body\?\.args\?\.automation_token === DIRECTORY_AUTO_IMPORT_AUTOMATION_TOKEN/);
-assert.match(bridge, /viasee-directory-import-single-file-13/);
-assert.match(deployed, /viasee-directory-auto-import-v1/);
-assert.match(deployed, /viasee-directory-import-single-file-13/);
+assert.match(bridge, /viasee-directory-import-single-file-14/);
+assert.match(deployed, /viasee-directory-auto-import-v2/);
+assert.match(deployed, /viasee-directory-import-single-file-14/);
 assert.doesNotMatch(deployed, /from ['"]\.\.?\//);
 
 assert.equal(functionConfig.name, 'listProviderMemberInvitations');
@@ -114,5 +115,19 @@ assert.match(ui, /attempt <= 5/);
 assert.match(ui, /user-exception\|timeout\|timed out\|temporar/);
 assert.match(ui, /incompletePreflight/);
 assert.match(ui, /Repara analiza partiala/);
+assert.match(ui, /national_directory/);
+assert.match(ui, /Campanie nationala/);
+assert.match(auto, /selectRowsForNationalDirectory/);
+assert.match(auto, /excludeControlledLiveRows/);
+assert.match(auto, /nationalRowsFromZipBase64/);
+assert.match(auto, /publish_batch/);
+assert.match(auto, /publishCompletedBatchAsBasicDirectory/);
+assert.match(auto, /existing_controlled_location/);
+assert.match(importOps, /export async function publishCompletedBatchAsBasicDirectory/);
+assert.match(importOps, /public_visibility_status: 'approved'/);
+assert.match(importOps, /verification_state: 'unclaimed'/);
+assert.match(importOps, /is_verified: false/);
+assert.match(importOps, /directory_detail_level: basicApproved \? 'basic' : 'summary'/);
+assert.doesNotMatch(importOps, /directory_profile_published_basic[\s\S]{0,2000}LocationService\.(create|update|delete)/);
 
 console.log('Directory auto-import orchestrator contract verified.');
