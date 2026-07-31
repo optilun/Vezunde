@@ -206,6 +206,63 @@ function rowsFromPayload(payload) {
   return [];
 }
 
+function automaticSelectionReasons(row = {}) {
+  const reasons = [];
+  if (clean(row.import_readiness, 80) !== 'candidate_for_manual_review') reasons.push('not_candidate_for_manual_review');
+  if (clean(row.research_status, 80) !== 'official_confirmed') reasons.push('research_not_official_confirmed');
+  if (clean(row.operational_status, 80) !== 'active_confirmed') reasons.push('operational_status_not_active_confirmed');
+  if (clean(row.review_flags, 2000)) reasons.push('review_flags_present');
+  for (const field of [
+    'location_display_name',
+    'organization_display_name',
+    'official_locality',
+    'county_if_confirmed',
+    'confirmed_address',
+    'official_source_url',
+    'locality_siruta_code',
+    'provider_type',
+    'provider_profile_type',
+    'organization_type_code',
+    'location_type_code',
+    'care_setting_code',
+  ]) {
+    if (!clean(row[field], 4000)) reasons.push(`missing_${field}`);
+  }
+  if (
+    clean(row.classification_contract_version, 120)
+    && clean(row.classification_contract_version, 120) !== 'viasee-directory-location-first-v1'
+  ) reasons.push('classification_contract_version_mismatch');
+  return reasons;
+}
+
+function selectRowsForAutomaticImport(rows = []) {
+  const selected = [];
+  const excluded = [];
+  const reasonCounts = {};
+  for (const row of rows) {
+    const reasons = automaticSelectionReasons(row);
+    if (!reasons.length) selected.push(row);
+    else {
+      excluded.push({
+        source_row_key: clean(row?.source_row_key || row?.__source_row_key, 220),
+        location_name: clean(row?.location_display_name || row?.location_name, 300),
+        reasons,
+      });
+      for (const reason of reasons) reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
+    }
+  }
+  return {
+    selected,
+    excluded,
+    summary: {
+      source_rows: rows.length,
+      selected_rows: selected.length,
+      excluded_rows: excluded.length,
+      reason_counts: reasonCounts,
+    },
+  };
+}
+
 function approvalPhrase(run) {
   return `AUTOIMPORT ${clean(run.run_key, 120)} ${clean(run.package_sha256, 80).slice(0, 12)} ${Number(run.total_batches || 0)}`;
 }
