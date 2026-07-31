@@ -15,6 +15,10 @@ assert.equal(fs.existsSync('base44/entities/_noop_invalid.jsonc'), false, 'Schem
 
 assert.equal(runSchema.name, 'DirectoryAutoImportRun');
 assert.equal(itemSchema.name, 'DirectoryAutoImportItem');
+assert.equal(payloadChunkSchema.name, 'DirectoryAutoImportPayloadChunk');
+for (const field of ['run_id', 'item_key', 'chunk_index', 'chunk_count', 'payload_chunk', 'payload_sha256']) {
+  assert.ok(payloadChunkSchema.properties[field], `Lipseste campul payloadChunk.${field}`);
+}
 for (const field of ['run_key', 'status', 'package_sha256', 'current_step', 'failure_message', 'skipped_batches', 'excluded_rows']) {
   assert.ok(runSchema.properties[field], `Lipseste campul run.${field}`);
 }
@@ -28,6 +32,11 @@ assert.match(auto, /unzipSync/);
 assert.match(auto, /descriptorsFromZipBase64/);
 assert.match(auto, /archive:\/\//);
 assert.match(auto, /source_payload_json/);
+assert.match(auto, /PAYLOAD_CHUNK_SIZE = 12_000/);
+assert.match(auto, /persistPayloadChunks/);
+assert.match(auto, /loadPayloadChunks/);
+assert.match(auto, /DirectoryAutoImportPayloadChunk\.filter/);
+assert.match(auto, /repairs_partial_preflight_runs/);
 assert.match(auto, /loadItemSourceRows/);
 assert.match(auto, /const EXECUTION_CHUNK = 5/);
 assert.match(auto, /requires_zero_snapshot_warnings: true/);
@@ -64,9 +73,9 @@ assert.match(latest, /handleDirectoryAutoImport/);
 assert.match(latest, /advance_auto_import_runs/);
 assert.match(bridge, /DIRECTORY_AUTO_IMPORT_AUTOMATION_TOKEN/);
 assert.match(bridge, /body\?\.args\?\.automation_token === DIRECTORY_AUTO_IMPORT_AUTOMATION_TOKEN/);
-assert.match(bridge, /viasee-directory-import-single-file-12/);
+assert.match(bridge, /viasee-directory-import-single-file-13/);
 assert.match(deployed, /viasee-directory-auto-import-v1/);
-assert.match(deployed, /viasee-directory-import-single-file-12/);
+assert.match(deployed, /viasee-directory-import-single-file-13/);
 assert.doesNotMatch(deployed, /from ['"]\.\.?\//);
 
 assert.equal(functionConfig.name, 'listProviderMemberInvitations');
@@ -98,5 +107,7 @@ assert.match(ui, /La fiecare 5 minute/);
 assert.match(ui, /Excluse automat/);
 assert.match(ui, /Arhiva privata ZIP recomandata/);
 assert.match(ui, /zip_base64/);
+assert.match(ui, /attempt <= 5/);
+assert.match(ui, /user-exception\|timeout\|timed out\|temporar/);
 
 console.log('Directory auto-import orchestrator contract verified.');
