@@ -63,7 +63,7 @@ assert.match(routerSource, /status: 404/, 'Numele logice necunoscute trebuie res
 const bridgeRoot = 'base44/functions/listProviderMemberInvitations';
 const bridgeEntrySource = source(`${bridgeRoot}/entry.ts`);
 assert.match(bridgeEntrySource, /Bundled single-file Base44 function/);
-assert.match(bridgeEntrySource, /viasee-directory-import-single-file-10/);
+assert.match(bridgeEntrySource, /viasee-directory-import-single-file-11/);
 assert.match(bridgeEntrySource, /directory-import-runtime-read-safe-6/);
 assert.match(bridgeEntrySource, /supports_extended_organization_types:\s*true/);
 assert.match(bridgeEntrySource, /reconciles_directory_organizations:\s*true/);
