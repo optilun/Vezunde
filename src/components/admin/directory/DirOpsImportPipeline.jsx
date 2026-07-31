@@ -114,6 +114,7 @@ function AutoImportPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const autoKickRunsRef = useRef(new Set());
 
   const load = useCallback(async () => {
     const result = await call({ action: "list_auto_import_runs", limit: 10 });
@@ -133,6 +134,22 @@ function AutoImportPanel() {
   const canCreateNew = !active || incompletePreflight || !queuedNational;
   const currentItem = items.find((item) => !["completed", "blocked", "failed", "skipped"].includes(item.status)) || null;
   const approvalPhrase = latest?.approval_confirmation || "";
+
+  useEffect(() => {
+    if (!active?.id || !["approved", "running"].includes(active.status)) return;
+    const heartbeatAt = active.last_heartbeat_at ? new Date(active.last_heartbeat_at).getTime() : 0;
+    const stale = !heartbeatAt || Date.now() - heartbeatAt > 6 * 60 * 1000;
+    if (!stale || autoKickRunsRef.current.has(active.id)) return;
+    autoKickRunsRef.current.add(active.id);
+    let cancelled = false;
+    (async () => {
+      const result = await call({ action: "advance_auto_import_run_now", run_id: active.id });
+      if (cancelled) return;
+      if (result.error) setError(result.error);
+      await load();
+    })();
+    return () => { cancelled = true; };
+  }, [active?.id, active?.status, active?.last_heartbeat_at, load]);
 
   const create = async () => {
     setBusy(true); setError(""); setMessage("");
