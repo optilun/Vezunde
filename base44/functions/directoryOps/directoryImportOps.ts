@@ -1874,6 +1874,189 @@ async function executeRow(svc, user, batch, rowRecord) {
   return { status, result };
 }
 
+function directoryPublicationQuality(row = {}) {
+  const researchStatus = clean(row.research_status, 80);
+  const hasReviewFlags = Boolean(clean(row.review_flags, 2000));
+  if (researchStatus === 'official_confirmed' && !hasReviewFlags) return 'high';
+  if (['official_confirmed', 'official_partial'].includes(researchStatus)) return 'medium';
+  return 'low';
+}
+
+export async function publishCompletedBatchAsBasicDirectory(svc, user, input = {}) {
+  const batchId = clean(input.batch_id, 160);
+  const batch = await getDirectoryEntityOrNull(
+    svc.entities.DirectoryImportBatch.get(batchId),
+    'lotului finalizat pentru publicarea directorului',
+  );
+  if (!batch) return response({ error: 'Lotul nu a fost gasit.' }, 404);
+  if (batch.status !== 'completed') return response({ error: `Lotul nu este finalizat (${batch.status}).` }, 409);
+
+  const rows = await requireDirectoryRows(
+    svc.entities.DirectoryImportRow.filter({ batch_id: batch.id }, 'row_number', 200),
+    'randurilor finalizate pentru publicarea directorului',
+  );
+  let publishedLocations = 0;
+  let publishedStates = 0;
+  let publishedOrganizations = 0;
+  let skippedControlled = 0;
+
+  for (const rowRecord of rows) {
+    if (!['applied', 'skipped'].includes(rowRecord.status)) continue;
+    const result = safeJson(rowRecord.result_json, {});
+    const locationId = clean(rowRecord.target_location_id || result.location_id, 160);
+    if (!locationId) continue;
+    const location = await getDirectoryEntityOrNull(
+      svc.entities.ProviderLocation.get(locationId),
+      'locatiei pentru publicarea directorului',
+    );
+    if (!location) continue;
+    if (CONTROLLED_PROFILES.has(location.profile_control_status || 'directory')) {
+      skippedControlled += 1;
+      continue;
+    }
+
+    const row = applyAdminOverride(safeJson(rowRecord.normalized_payload_json, {}), rowRecord);
+    const quality = directoryPublicationQuality(row);
+    const basicApproved = ['high', 'medium'].includes(quality)
+      && Boolean(clean(row.address, 600))
+      && Boolean(clean(row.source_url, 1200))
+      && row.operational_status === 'active';
+    const locationValues = {
+      public_visibility_status: 'approved',
+      status: 'publicata',
+      profile_control_status: 'directory',
+      claim_verification_status: 'none',
+      verification_state: 'unclaimed',
+      is_verified: false,
+      request_intake_status: 'inactive',
+      migration_review_required: quality === 'low' || Boolean(clean(row.review_flags, 2000)),
+      profile_control_status_updated_at: now(),
+      profile_control_status_reason: 'Profil de director neconfirmat publicat automat din sursa publica.',
+    };
+    if (!directoryFieldsEqual(location, locationValues)) {
+      const before = pickFields(location, Object.keys(locationValues));
+      await svc.entities.ProviderLocation.update(location.id, locationValues);
+      await createMutation(svc, {
+        batch_id: batch.id,
+        row_id: rowRecord.id,
+        sequence: 100000 + Number(rowRecord.row_number || 0) * 10 + 1,
+        mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocation:${location.id}:publish-basic`,
+        entity_type: 'ProviderLocation',
+        entity_id: location.id,
+        operation: 'update',
+        before_json: JSON.stringify(before),
+        after_json: JSON.stringify(locationValues),
+        rollback_status: 'pending',
+        applied_at: now(),
+      });
+      await writeAudit(svc, user, 'ProviderLocation', location.id, 'directory_profile_published_basic', before, locationValues, `Lot ${batch.batch_key}`);
+      publishedLocations += 1;
+    }
+
+    const activeStates = await requireDirectoryRows(
+      svc.entities.ProviderLocationDirectoryState.filter({ location_id: location.id, state_status: 'active' }, '-created_date', 20),
+      'starii locatiei pentru publicarea directorului',
+    );
+    const stateValues = {
+      publication_status: 'published',
+      control_status: 'directory',
+      operational_status: 'active',
+      data_quality_status: quality,
+      directory_detail_level: basicApproved ? 'basic' : 'summary',
+      directory_basic_details_approved: basicApproved,
+      normalized_at: now(),
+    };
+    const state = activeStates[0] || null;
+    if (state) {
+      if (!directoryFieldsEqual(state, stateValues)) {
+        const before = pickFields(state, Object.keys(stateValues));
+        await svc.entities.ProviderLocationDirectoryState.update(state.id, stateValues);
+        await createMutation(svc, {
+          batch_id: batch.id,
+          row_id: rowRecord.id,
+          sequence: 100000 + Number(rowRecord.row_number || 0) * 10 + 2,
+          mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocationDirectoryState:${state.id}:publish-basic`,
+          entity_type: 'ProviderLocationDirectoryState',
+          entity_id: state.id,
+          operation: 'update',
+          before_json: JSON.stringify(before),
+          after_json: JSON.stringify(stateValues),
+          rollback_status: 'pending',
+          applied_at: now(),
+        });
+        await writeAudit(svc, user, 'ProviderLocationDirectoryState', state.id, 'directory_state_published_basic', before, stateValues, `Lot ${batch.batch_key}`);
+        publishedStates += 1;
+      }
+    } else {
+      const values = {
+        ...resolveDirectoryStateCreatePayload(row, location.id, Boolean(location.organization_id)),
+        ...stateValues,
+        state_status: 'active',
+      };
+      const createdState = await svc.entities.ProviderLocationDirectoryState.create(values);
+      await createMutation(svc, {
+        batch_id: batch.id,
+        row_id: rowRecord.id,
+        sequence: 100000 + Number(rowRecord.row_number || 0) * 10 + 2,
+        mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocationDirectoryState:${createdState.id}:publish-basic-create`,
+        entity_type: 'ProviderLocationDirectoryState',
+        entity_id: createdState.id,
+        operation: 'create',
+        before_json: '{}',
+        after_json: JSON.stringify(values),
+        rollback_status: 'pending',
+        applied_at: now(),
+      });
+      await writeAudit(svc, user, 'ProviderLocationDirectoryState', createdState.id, 'directory_state_published_basic', {}, values, `Lot ${batch.batch_key}`);
+      publishedStates += 1;
+    }
+
+    const organizationId = clean(location.organization_id || result.organization_id, 160);
+    if (organizationId) {
+      const organization = await getDirectoryEntityOrNull(
+        svc.entities.ProviderOrganization.get(organizationId),
+        'organizatiei pentru publicarea directorului',
+      );
+      if (organization && (organization.control_status || 'directory') === 'directory') {
+        const organizationValues = {
+          publication_status: 'published',
+          public_visibility_status: 'approved',
+          data_quality_status: quality,
+          status: 'activa',
+        };
+        if (!directoryFieldsEqual(organization, organizationValues)) {
+          const before = pickFields(organization, Object.keys(organizationValues));
+          await svc.entities.ProviderOrganization.update(organization.id, organizationValues);
+          await createMutation(svc, {
+            batch_id: batch.id,
+            row_id: rowRecord.id,
+            sequence: 100000 + Number(rowRecord.row_number || 0) * 10 + 3,
+            mutation_key: `${batch.id}:${rowRecord.id}:ProviderOrganization:${organization.id}:publish-basic`,
+            entity_type: 'ProviderOrganization',
+            entity_id: organization.id,
+            operation: 'update',
+            before_json: JSON.stringify(before),
+            after_json: JSON.stringify(organizationValues),
+            rollback_status: 'pending',
+            applied_at: now(),
+          });
+          await writeAudit(svc, user, 'ProviderOrganization', organization.id, 'directory_organization_published_basic', before, organizationValues, `Lot ${batch.batch_key}`);
+          publishedOrganizations += 1;
+        }
+      }
+    }
+  }
+
+  return response({
+    success: true,
+    batch_id: batch.id,
+    published_locations: publishedLocations,
+    published_states: publishedStates,
+    published_organizations: publishedOrganizations,
+    skipped_controlled: skippedControlled,
+  });
+}
+
 async function acquireBatchLock(svc, batch, requestedToken = '') {
   const currentExpiry = batch.execution_lock_expires_at ? new Date(batch.execution_lock_expires_at).getTime() : 0;
   const currentToken = clean(batch.execution_lock_token, 200);
