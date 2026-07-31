@@ -3538,6 +3538,7 @@ async function handle2(req) {
 
 // base44/functions/directoryOps/directoryAutoImportOps.ts
 import { createClientFromRequest as createClientFromRequest2 } from "npm:@base44/sdk@0.8.31";
+import { strFromU8, unzipSync } from "npm:fflate@0.8.2";
 var DIRECTORY_AUTO_IMPORT_CONTRACT_VERSION = "viasee-directory-auto-import-v1";
 var MAX_BATCHES = 50;
 var MAX_ROWS_PER_BATCH = 40;
@@ -3696,6 +3697,119 @@ function rowsFromPayload(payload) {
   if (Array.isArray(payload?.rows)) return payload.rows;
   return [];
 }
+function decodeBase64Bytes(value) {
+  const source = String(value || "").replace(/^data:[^,]*;base64,/i, "").replace(/\s+/g, "");
+  if (!source) throw new Error("Arhiva ZIP lipseste.");
+  if (source.length > 12e6) throw new Error("Arhiva ZIP depaseste limita acceptata.");
+  const binary = atob(source);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
+function archiveEntryByName(entries, requestedName) {
+  const expected = clean8(requestedName, 500).replace(/^\.\//, "");
+  if (!expected) return null;
+  if (entries[expected]) return { name: expected, bytes: entries[expected] };
+  const exactSuffix = Object.keys(entries).find((name) => name === expected || name.endsWith(`/${expected}`));
+  if (exactSuffix) return { name: exactSuffix, bytes: entries[exactSuffix] };
+  const baseName = expected.split("/").pop();
+  const byBaseName = Object.keys(entries).filter((name) => name.split("/").pop() === baseName);
+  if (byBaseName.length === 1) return { name: byBaseName[0], bytes: entries[byBaseName[0]] };
+  return null;
+}
+async function descriptorsFromZipBase64(zipBase64, archiveFilename = "") {
+  const zipBytes = decodeBase64Bytes(zipBase64);
+  if (zipBytes.byteLength > 8e6) throw new Error("Arhiva ZIP depaseste limita de 8 MB.");
+  const archiveSha256 = await sha256HexBytes(zipBytes);
+  let entries;
+  try {
+    entries = unzipSync(zipBytes);
+  } catch (_error) {
+    throw new Error("Arhiva ZIP nu poate fi deschisa.");
+  }
+  const names = Object.keys(entries).filter((name) => !name.endsWith("/"));
+  const manifestName = names.find((name) => /(^|\/)(manifest-index|manifest)\.json$/i.test(name));
+  let manifest = null;
+  if (manifestName) {
+    try {
+      manifest = JSON.parse(strFromU8(entries[manifestName]));
+    } catch (_error) {
+      throw new Error("Manifestul JSON din arhiva este invalid.");
+    }
+  }
+  const manifestCollections = [
+    manifest?.automatic_batches,
+    manifest?.clean_batches,
+    manifest?.batches,
+    manifest?.batch_files,
+    manifest?.files,
+    manifest?.items
+  ].filter(Array.isArray);
+  const descriptors = [];
+  if (manifestCollections[0]?.length) {
+    for (let index = 0; index < manifestCollections[0].length; index += 1) {
+      const entry = manifestCollections[0][index];
+      const fileName = clean8(
+        entry?.file || entry?.file_name || entry?.filename || entry?.path,
+        500
+      );
+      const located = archiveEntryByName(entries, fileName);
+      if (!located) throw new Error(`Fisierul ${fileName || index + 1} declarat in manifest lipseste din arhiva.`);
+      const actualSha256 = await sha256HexBytes(located.bytes);
+      const expectedSha256 = clean8(entry?.sha256 || entry?.file_sha256 || "", 80).toLowerCase();
+      if (expectedSha256 && expectedSha256 !== actualSha256) {
+        throw new Error(`SHA-256 nu corespunde pentru ${fileName}.`);
+      }
+      let payload;
+      try {
+        payload = JSON.parse(strFromU8(located.bytes));
+      } catch (_error) {
+        throw new Error(`Fisierul ${fileName} nu contine JSON valid.`);
+      }
+      const rows = rowsFromPayload(payload);
+      descriptors.push({
+        source_url: `archive://${archiveSha256}/${located.name}`,
+        source_filename: located.name.split("/").pop() || `batch-${index + 1}.json`,
+        source_sha256: actualSha256,
+        expected_sha256: actualSha256,
+        expected_rows: Math.max(0, Number(entry?.rows ?? entry?.row_count ?? entry?.location_count ?? rows.length)),
+        organization_count: Math.max(0, Number(entry?.organizations ?? entry?.organization_count ?? 0)),
+        inline_rows: rows
+      });
+    }
+  } else {
+    const batchNames = names.filter((name) => {
+      const baseName = name.split("/").pop()?.toLowerCase() || "";
+      return /\.json$/.test(baseName) && /batch/.test(baseName) && !/(needs-review|requires-review|excluded|blocked|audit|report|manifest|invalid)/.test(baseName);
+    }).sort();
+    for (let index = 0; index < batchNames.length; index += 1) {
+      const name = batchNames[index];
+      let payload;
+      try {
+        payload = JSON.parse(strFromU8(entries[name]));
+      } catch (_error) {
+        throw new Error(`Fisierul ${name} nu contine JSON valid.`);
+      }
+      const rows = rowsFromPayload(payload);
+      const sourceSha256 = await sha256HexBytes(entries[name]);
+      descriptors.push({
+        source_url: `archive://${archiveSha256}/${name}`,
+        source_filename: name.split("/").pop() || `batch-${index + 1}.json`,
+        source_sha256: sourceSha256,
+        expected_sha256: sourceSha256,
+        expected_rows: rows.length,
+        organization_count: 0,
+        inline_rows: rows
+      });
+    }
+  }
+  if (!descriptors.length) throw new Error("Arhiva nu contine loturi JSON recunoscute.");
+  return {
+    archive_filename: clean8(archiveFilename, 240),
+    archive_sha256: archiveSha256,
+    descriptors
+  };
+}
 async function enrichRowsWithCanonicalGeography(svc, rows = []) {
   const codes = Array.from(new Set(rows.map((row) => clean8(row?.locality_siruta_code, 40)).filter(Boolean)));
   const geographicRows = codes.length ? await requireDirectoryRows(
@@ -3791,10 +3905,20 @@ function runKeyFor(packageSha256) {
 }
 async function createRun(svc, user, input) {
   const manifestUrl = clean8(input.manifest_url, 2e3);
-  let descriptors = asArray2(input.batch_urls).map((entry, index) => descriptorFor(entry, index)).filter(Boolean);
-  if (manifestUrl) {
-    const manifest = await fetchJson(manifestUrl, clean8(input.manifest_sha256, 80));
-    descriptors = descriptorsFromManifest(manifest.payload, manifestUrl);
+  let archiveMetadata = null;
+  let descriptors = [];
+  if (input.zip_base64) {
+    archiveMetadata = await descriptorsFromZipBase64(
+      input.zip_base64,
+      clean8(input.zip_filename, 240)
+    );
+    descriptors = archiveMetadata.descriptors;
+  } else {
+    descriptors = asArray2(input.batch_urls).map((entry, index) => descriptorFor(entry, index)).filter(Boolean);
+    if (manifestUrl) {
+      const manifest = await fetchJson(manifestUrl, clean8(input.manifest_sha256, 80));
+      descriptors = descriptorsFromManifest(manifest.payload, manifestUrl);
+    }
   }
   const unique = /* @__PURE__ */ new Map();
   for (const descriptor of descriptors) {
@@ -3812,8 +3936,13 @@ async function createRun(svc, user, input) {
   }
   const preparedDescriptors = [];
   for (const descriptor of descriptors) {
-    const fetched = await fetchJson(descriptor.source_url, descriptor.expected_sha256);
-    const sourceRows = rowsFromPayload(fetched.payload);
+    let sourceRows = Array.isArray(descriptor.inline_rows) ? descriptor.inline_rows : [];
+    let sourceSha256 = clean8(descriptor.source_sha256, 80).toLowerCase();
+    if (!sourceRows.length) {
+      const fetched = await fetchJson(descriptor.source_url, descriptor.expected_sha256);
+      sourceRows = rowsFromPayload(fetched.payload);
+      sourceSha256 = fetched.sha256;
+    }
     if (!sourceRows.length || sourceRows.length > MAX_ROWS_PER_BATCH) {
       return response2({ error: `${descriptor.source_filename} are ${sourceRows.length} randuri; limita este ${MAX_ROWS_PER_BATCH}.` }, 400);
     }
@@ -3825,11 +3954,12 @@ async function createRun(svc, user, input) {
     const selectedSha256 = await sha256HexText(stableStringify2(selection.selected));
     preparedDescriptors.push({
       ...descriptor,
-      source_sha256: fetched.sha256,
+      source_sha256: sourceSha256,
       source_rows: sourceRows.length,
       selected_rows: selection.selected.length,
       excluded_rows: selection.excluded.length,
       selected_sha256: selectedSha256,
+      selected_payload_json: JSON.stringify(selection.selected),
       selection_summary: selection.summary,
       organization_count: new Set(selection.selected.map((row) => clean8(row.organization_external_key || row.organization_display_name, 300)).filter(Boolean)).size
     });
@@ -3920,11 +4050,12 @@ async function createRun(svc, user, input) {
       source_sha256: item.source_sha256,
       selected_sha256: item.selected_sha256,
       expected_sha256: item.expected_sha256,
-      expected_rows: item.source_rows,
+      expected_rows: item.selected_rows,
       source_rows: item.source_rows,
       selected_rows: item.selected_rows,
       excluded_rows: item.excluded_rows,
       selection_result_json: JSON.stringify(item.selection_summary),
+      source_payload_json: item.selected_payload_json,
       organization_count: item.organization_count,
       snapshot_id: "",
       batch_id: "",
@@ -4152,6 +4283,22 @@ async function refreshProgress(svc, run) {
   await svc.entities.DirectoryAutoImportRun.update(run.id, values);
   return { items, nextItem, completed, values };
 }
+async function loadItemSourceRows(item) {
+  const persisted = safeJson2(item.source_payload_json, null);
+  if (Array.isArray(persisted)) {
+    return {
+      rows: persisted,
+      source_sha256: clean8(item.source_sha256, 80),
+      persisted: true
+    };
+  }
+  const fetched = await fetchJson(item.source_url, item.source_sha256 || item.expected_sha256);
+  return {
+    rows: rowsFromPayload(fetched.payload),
+    source_sha256: fetched.sha256,
+    persisted: false
+  };
+}
 async function advanceRun(svc, run) {
   if (!["approved", "running"].includes(run.status)) return { success: true, skipped: true, reason: `status:${run.status}` };
   const token = await acquireRunLock(svc, run);
@@ -4174,8 +4321,8 @@ async function advanceRun(svc, run) {
     const user = automationUser(run);
     const heartbeat = { last_heartbeat_at: now2(), failure_message: "" };
     if (item.step === "fetch_source" || item.status === "pending") {
-      const fetched = await fetchJson(item.source_url, item.source_sha256 || item.expected_sha256);
-      const sourceRows = rowsFromPayload(fetched.payload);
+      const loadedSource = await loadItemSourceRows(item);
+      const sourceRows = loadedSource.rows;
       if (!sourceRows.length || sourceRows.length > MAX_ROWS_PER_BATCH) return blockItem(svc, run, item, [`source_row_count:${sourceRows.length}`], "fetch_source");
       if (Number(item.expected_rows || 0) > 0 && Number(item.expected_rows) !== sourceRows.length) {
         return blockItem(svc, run, item, [`expected_rows:${item.expected_rows}`, `actual_rows:${sourceRows.length}`], "fetch_source");
@@ -4193,7 +4340,7 @@ async function advanceRun(svc, run) {
         await svc.entities.DirectoryAutoImportItem.update(item.id, {
           status: "skipped",
           step: "skipped_no_strictly_clean_rows",
-          source_sha256: fetched.sha256,
+          source_sha256: loadedSource.source_sha256,
           source_rows: sourceRows.length,
           selected_rows: 0,
           excluded_rows: selection.excluded.length,
@@ -4223,28 +4370,25 @@ async function advanceRun(svc, run) {
         source_format: "json",
         original_filename: item.source_filename || `auto-batch-${item.sequence}.json`,
         total_rows: selection.selected.length,
-        notes: `Rulare automata aprobata ${run.run_key}; lot ${item.sequence}/${run.total_batches}; ${selection.excluded.length} randuri excluse de filtrul strict; SHA sursa completa ${fetched.sha256}.`,
+        notes: `Rulare automata aprobata ${run.run_key}; lot ${item.sequence}/${run.total_batches}; ${Number(item.excluded_rows || 0)} randuri excluse de filtrul strict; SHA sursa completa ${loadedSource.source_sha256}.`,
         column_map: Object.fromEntries(Object.keys(selection.selected[0] || {}).map((key) => [key, key]))
       }));
       if (created.error) return blockItem(svc, run, item, [created.error], "create_snapshot");
       await svc.entities.DirectoryAutoImportItem.update(item.id, {
         status: "snapshot_created",
         step: "append_rows",
-        source_sha256: fetched.sha256,
-        source_rows: sourceRows.length,
+        source_sha256: loadedSource.source_sha256,
         selected_rows: selection.selected.length,
-        excluded_rows: selection.excluded.length,
-        selection_result_json: JSON.stringify(selection.summary),
         snapshot_id: created.snapshot.id,
         started_at: item.started_at || now2(),
         ...heartbeat
       });
       await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:append_rows`, failure_message: "" });
-      return { success: true, step: "snapshot_created", selected_rows: selection.selected.length, excluded_rows: selection.excluded.length };
+      return { success: true, step: "snapshot_created", selected_rows: selection.selected.length, excluded_rows: Number(item.excluded_rows || 0) };
     }
     if (item.step === "append_rows") {
-      const fetched = await fetchJson(item.source_url, item.source_sha256 || item.expected_sha256);
-      const sourceRows = rowsFromPayload(fetched.payload);
+      const loadedSource = await loadItemSourceRows(item);
+      const sourceRows = loadedSource.rows;
       const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows);
       const selection = selectRowsForAutomaticImport(canonicalRows);
       const selectedSha256 = await sha256HexText(stableStringify2(selection.selected));
@@ -4449,7 +4593,7 @@ async function handleDirectoryAutoImport(req) {
 }
 
 // base44/functions/directoryOps/directoryImportOpsLatest.ts
-var DIRECTORY_IMPORT_RUNTIME_REVISION2 = "directory-import-runtime-auto-orchestrator-1";
+var DIRECTORY_IMPORT_RUNTIME_REVISION2 = "directory-import-runtime-auto-orchestrator-2";
 async function handle3(req) {
   const input = await req.clone().json().catch(() => ({}));
   if (input?.action === "runtime_info") {
@@ -4476,7 +4620,9 @@ async function handle3(req) {
       automated_import_schedule_minutes: 5,
       automated_controlled_import_orchestrator: true,
       scheduled_auto_import_runner: true,
-      max_automatic_execution_chunk: 5
+      max_automatic_execution_chunk: 5,
+      supports_private_zip_upload: true,
+      persists_approved_source_subset: true
     });
   }
   if (String(input?.action || "").startsWith("auto_") || input?.action === "advance_auto_import_runs" || input?.action === "list_auto_import_runs" || input?.action === "create_auto_import_run" || input?.action === "approve_auto_import_run" || input?.action === "pause_auto_import_run" || input?.action === "resume_auto_import_run" || input?.action === "cancel_auto_import_run" || input?.action === "advance_auto_import_run_now") {
@@ -4489,7 +4635,7 @@ async function handle3(req) {
 var ROLES = ["organization_owner", "location_manager", "location_staff"];
 var DIRECTORY_IMPORT_LOGICAL_NAME = "directoryImportOps";
 var DIRECTORY_AUTO_IMPORT_AUTOMATION_TOKEN = "viasee-auto-7f4d83b1-4d38-45aa-b558-9c20cf63c6c2";
-var FUNCTION_DEPLOY_REVISION = "viasee-directory-import-single-file-11";
+var FUNCTION_DEPLOY_REVISION = "viasee-directory-import-single-file-12";
 console.info(`[VIASEE] listProviderMemberInvitations ${FUNCTION_DEPLOY_REVISION}`);
 function res(body, status = 200) {
   return Response.json(body, { status });
