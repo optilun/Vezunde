@@ -1,4 +1,5 @@
 import { handle as directoryImportOpsLocationFirstHandle } from './directoryImportOpsLocationFirst.ts';
+import { handleDirectoryAutoImport } from './directoryAutoImportOps.ts';
 
 export const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-read-safe-6';
 
@@ -25,6 +26,20 @@ export async function handle(req: Request) {
       preserves_existing_optional_fields: true,
       fails_closed_on_directory_read_errors: true,
     });
+  }
+
+  if (
+    String(input?.action || '').startsWith('auto_')
+    || input?.action === 'advance_auto_import_runs'
+    || input?.action === 'list_auto_import_runs'
+    || input?.action === 'create_auto_import_run'
+    || input?.action === 'approve_auto_import_run'
+    || input?.action === 'pause_auto_import_run'
+    || input?.action === 'resume_auto_import_run'
+    || input?.action === 'cancel_auto_import_run'
+    || input?.action === 'advance_auto_import_run_now'
+  ) {
+    return handleDirectoryAutoImport(req);
   }
 
   return directoryImportOpsLocationFirstHandle(req);
