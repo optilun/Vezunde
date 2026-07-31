@@ -4051,7 +4051,7 @@ function nationalPseudoRowReason(row = {}) {
 }
 function nationalOrganizationTypeCode(row = {}, resolvedType = null) {
   const explicit = clean8(row.organization_type_code, 120);
-  if (explicit) return explicit;
+  if (explicit && explicit !== "other") return explicit;
   const text = normalizeIdentityText([
     row.organization_display_name,
     row.location_display_name,
@@ -4280,6 +4280,68 @@ async function excludeControlledOrAmbiguousLiveMatches(svc, selection) {
         excluded.push({ row, reasons: ["existing_controlled_location"] });
         continue;
       }
+    }
+    selected.push(row);
+  }
+  return {
+    selected,
+    excluded,
+    summary: recomputeNationalSelectionSummary(selected, excluded, selection.summary?.source_rows)
+  };
+}
+function safeHostname(value) {
+  const text = clean8(value, 1200);
+  if (!text) return "";
+  try {
+    return new URL(text).hostname.toLowerCase().replace(/^www\./, "");
+  } catch (_error) {
+    return "";
+  }
+}
+async function reconcileNationalOrganizationKeys(svc, selection) {
+  const organizations = await requireDirectoryRows(
+    svc.entities.ProviderOrganization.list("name", 5e3),
+    "organizatiilor live pentru reconcilierea campaniei nationale"
+  );
+  const byExternalKey = /* @__PURE__ */ new Map();
+  const byName = /* @__PURE__ */ new Map();
+  const byDomain = /* @__PURE__ */ new Map();
+  const append = (map, key, organization) => {
+    if (!key) return;
+    const values = map.get(key) || [];
+    values.push(organization);
+    map.set(key, values);
+  };
+  for (const organization of organizations) {
+    append(byExternalKey, clean8(organization.directory_external_key, 240), organization);
+    append(byName, normalizeIdentityText(organization.public_display_name || organization.name), organization);
+    append(byDomain, safeHostname(organization.website_url || organization.website), organization);
+  }
+  const selected = [];
+  const excluded = [...selection.excluded];
+  for (const row of selection.selected) {
+    const sourceExternalKey = clean8(row.organization_external_key, 240);
+    if (sourceExternalKey && byExternalKey.has(sourceExternalKey)) {
+      selected.push(row);
+      continue;
+    }
+    const nameMatches = byName.get(normalizeIdentityText(row.organization_display_name)) || [];
+    const domainMatches = byDomain.get(safeHostname(row.official_source_url || row.website)) || [];
+    const candidates = Array.from(new Map(
+      [...nameMatches, ...domainMatches].map((organization) => [organization.id, organization])
+    ).values());
+    if (candidates.length > 1) {
+      excluded.push({ row, reasons: ["ambiguous_existing_organization_match"] });
+      continue;
+    }
+    if (candidates.length === 1) {
+      const existingKey = clean8(candidates[0].directory_external_key, 240);
+      if (!existingKey) {
+        excluded.push({ row, reasons: ["existing_organization_without_external_key"] });
+        continue;
+      }
+      selected.push({ ...row, organization_external_key: existingKey });
+      continue;
     }
     selected.push(row);
   }
@@ -4548,7 +4610,8 @@ async function createRun(svc, user, input) {
     const geographyMap2 = await canonicalGeographyMap(svc, archiveMetadata.rows);
     const canonicalRows = await enrichRowsWithCanonicalGeography(svc, archiveMetadata.rows, geographyMap2);
     const selectedNationalRows = selectRowsForNationalDirectory(canonicalRows);
-    const nationalSelection = await excludeControlledOrAmbiguousLiveMatches(svc, selectedNationalRows);
+    const liveSafeSelection = await excludeControlledOrAmbiguousLiveMatches(svc, selectedNationalRows);
+    const nationalSelection = await reconcileNationalOrganizationKeys(svc, liveSafeSelection);
     campaignSourceRows = nationalSelection.summary.source_rows;
     campaignExcludedRows = nationalSelection.summary.excluded_rows;
     campaignSelectionSummary = {
