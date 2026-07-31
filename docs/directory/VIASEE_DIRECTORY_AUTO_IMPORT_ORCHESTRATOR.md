@@ -72,6 +72,41 @@ Administratorul poate:
 
 Orice lot blocat opreste intreaga rulare pentru inspectie administrativa.
 
+## Campania nationala de director
+
+Modul `national_directory` primeste registrul master JSON sau arhiva ZIP privata si proceseaza intregul registru fara aprobari pe fiecare lot.
+
+Sunt eligibile automat numai locatiile care:
+
+- reprezinta un punct fizic, nu un rezumat de retea;
+- au nume, localitate, adresa, sursa si geografie canonica;
+- sunt confirmate active;
+- au sursa `official_confirmed` sau `official_partial`;
+- nu sunt marcate `not_eligible` sau `blocked_conflict`;
+- au clasificare location-first explicita ori inferabila determinist.
+
+Inainte de lotizare, sistemul:
+
+- deduplica registrul national;
+- exclude locatiile live controlate (`claimed`, `verified`, `suspended`);
+- exclude potrivirile live ambigue;
+- reutilizeaza organizatiile existente numai prin cheie externa exacta, nume unic sau domeniu oficial unic;
+- exclude organizatiile existente fara cheie externa in loc sa creeze duplicate.
+
+Dupa executia fiecarui lot, locatiile sunt publicate automat ca profiluri de director neconfirmate:
+
+- `profile_control_status = directory`;
+- `verification_state = unclaimed`;
+- `is_verified = false`;
+- `request_intake_status = inactive`;
+- fara servicii create automat;
+- fara acces acordat furnizorilor;
+- excluse din Top 3 si din eligibilitatea de matching.
+
+Detaliile de baza sunt expuse numai pentru calitate `high` sau `medium`. Randurile cu calitate scazuta pot ramane profiluri `summary`, fara a prezenta datele drept confirmate.
+
+Publicarea este jurnalizata ca mutatie a lotului si poate fi retrasa prin acelasi mecanism de rollback.
+
 ## Consum operational
 
-Base44 contabilizeaza fiecare executie a automatizarii ca o rulare separata. Configuratia este limitata la 400 de executii, astfel incat procesul sa nu ramana activ la nesfarsit. Pentru pachetul national de 23 de loturi, bugetul acopera pasii de pregatire, executia in grupuri de 5 si o rezerva pentru reluari temporare.
+Base44 contabilizeaza fiecare executie programata separat. Configuratia ramane limitata la 400 de executii. In cadrul unei executii sunt compactati pana la opt pasi pregatitori, dar se executa cel mult un fragment de import de cinci locatii, pentru a reduce consumul fara a creste riscul de rate limit.
