@@ -1,0 +1,138 @@
+{
+  "name": "DirectoryAutoImportRun",
+  "type": "object",
+  "properties": {
+    "run_key": {
+      "type": "string"
+    },
+    "contract_version": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "awaiting_approval",
+        "approved",
+        "running",
+        "paused",
+        "completed",
+        "blocked",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "manifest_url": {
+      "type": "string"
+    },
+    "package_sha256": {
+      "type": "string"
+    },
+    "total_batches": {
+      "type": "number",
+      "default": 0
+    },
+    "completed_batches": {
+      "type": "number",
+      "default": 0
+    },
+    "blocked_batches": {
+      "type": "number",
+      "default": 0
+    },
+    "failed_batches": {
+      "type": "number",
+      "default": 0
+    },
+    "total_rows": {
+      "type": "number",
+      "default": 0
+    },
+    "applied_rows": {
+      "type": "number",
+      "default": 0
+    },
+    "skipped_rows": {
+      "type": "number",
+      "default": 0
+    },
+    "failed_rows": {
+      "type": "number",
+      "default": 0
+    },
+    "current_sequence": {
+      "type": "number",
+      "default": 1
+    },
+    "current_step": {
+      "type": "string"
+    },
+    "safety_policy_json": {
+      "type": "string"
+    },
+    "result_json": {
+      "type": "string"
+    },
+    "approval_token_hash": {
+      "type": "string"
+    },
+    "approved_by_user_id": {
+      "type": "string"
+    },
+    "approved_by_email": {
+      "type": "string"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "created_by_user_id": {
+      "type": "string"
+    },
+    "created_by_email": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_heartbeat_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "execution_lock_token": {
+      "type": "string"
+    },
+    "execution_lock_expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "failure_message": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_key",
+    "contract_version",
+    "status",
+    "package_sha256"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
