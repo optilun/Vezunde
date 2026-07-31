@@ -190,14 +190,19 @@ function AutoImportPanel() {
     </div>
 
     {canCreateNew && <div className="mt-5 grid gap-3 lg:grid-cols-2">
-      <label className="text-xs font-semibold">URL manifest JSON
+      <label className="rounded-2xl border border-dashed border-border bg-background p-4 text-xs font-semibold lg:col-span-2">Arhiva privata ZIP recomandata
+        <input type="file" accept=".zip,application/zip" onChange={(event) => setZipFile(event.target.files?.[0] || null)} className="mt-2 block w-full text-xs" />
+        <span className="mt-2 block font-normal text-muted-foreground">Arhiva este analizata direct in zona administrativa. Nu trebuie publicata si nu are nevoie de URL.</span>
+        {zipFile && <span className="mt-2 block font-normal text-foreground">{zipFile.name} · {Math.max(1, Math.round(zipFile.size / 1024))} KB</span>}
+      </label>
+      <label className="text-xs font-semibold">Alternativ: URL manifest JSON
         <input value={manifestUrl} onChange={(event) => setManifestUrl(event.target.value)} placeholder="https://.../manifest.json" className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" />
         <span className="mt-1 block font-normal text-muted-foreground">Manifestul poate contine campurile batches, clean_batches, files sau items.</span>
       </label>
       <label className="text-xs font-semibold">Sau URL-uri JSON, cate unul pe linie
         <textarea value={batchUrls} onChange={(event) => setBatchUrls(event.target.value)} rows={4} placeholder="https://.../batch-01.json" className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
       </label>
-      <div className="lg:col-span-2"><button type="button" onClick={create} disabled={busy || (!manifestUrl.trim() && !batchUrls.trim())} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-40 sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />} Analizeaza pachetul automat</button></div>
+      <div className="lg:col-span-2"><button type="button" onClick={create} disabled={busy || (!zipFile && !manifestUrl.trim() && !batchUrls.trim())} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-40 sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />} Analizeaza pachetul automat</button></div>
     </div>}
 
     {latest && <div className="mt-5 space-y-4">
