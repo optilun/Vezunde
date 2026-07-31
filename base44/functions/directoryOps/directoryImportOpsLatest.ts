@@ -1,7 +1,7 @@
 import { handle as directoryImportOpsLocationFirstHandle } from './directoryImportOpsLocationFirst.ts';
 import { handleDirectoryAutoImport } from './directoryAutoImportOps.ts';
 
-export const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-read-safe-6';
+export const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-auto-orchestrator-1';
 
 export async function handle(req: Request) {
   const input = await req.clone().json().catch(() => ({}));
@@ -25,6 +25,9 @@ export async function handle(req: Request) {
       preserves_directory_publication_state: true,
       preserves_existing_optional_fields: true,
       fails_closed_on_directory_read_errors: true,
+      automated_controlled_import_orchestrator: true,
+      scheduled_auto_import_runner: true,
+      max_automatic_execution_chunk: 5,
     });
   }
 
