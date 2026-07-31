@@ -1465,7 +1465,7 @@ async function advanceRun(svc, run) {
         return blockItem(svc, run, item, [`expected_rows:${item.expected_rows}`, `actual_rows:${sourceRows.length}`], 'fetch_source');
       }
       const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows);
-      const selection = selectRowsForAutomaticImport(canonicalRows);
+      const selection = selectionForRun(run, canonicalRows);
       const selectedSha256 = await sha256HexText(stableStringify(selection.selected));
       if (selection.selected.length !== Number(item.selected_rows || 0) || selectedSha256 !== clean(item.selected_sha256, 80)) {
         return blockItem(svc, run, item, [
@@ -1528,7 +1528,7 @@ async function advanceRun(svc, run) {
       const loadedSource = await loadItemSourceRows(svc, item);
       const sourceRows = loadedSource.rows;
       const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows);
-      const selection = selectRowsForAutomaticImport(canonicalRows);
+      const selection = selectionForRun(run, canonicalRows);
       const selectedSha256 = await sha256HexText(stableStringify(selection.selected));
       if (selection.selected.length !== Number(item.selected_rows || 0) || selectedSha256 !== clean(item.selected_sha256, 80)) {
         return blockItem(svc, run, item, [
