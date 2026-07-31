@@ -3925,7 +3925,7 @@ async function createRun(svc, user, input) {
     if (!unique.has(descriptor.source_url)) unique.set(descriptor.source_url, descriptor);
   }
   descriptors = Array.from(unique.values()).slice(0, MAX_BATCHES);
-  if (!descriptors.length) return response2({ error: "Nu au fost gasite URL-uri JSON de lot valide." }, 400);
+  if (!descriptors.length) return response2({ error: "Nu au fost gasite loturi JSON valide in arhiva, manifest sau lista de URL-uri." }, 400);
   for (const descriptor of descriptors) {
     if (descriptor.expected_rows > MAX_ROWS_PER_BATCH) {
       return response2({ error: `${descriptor.source_filename} depaseste ${MAX_ROWS_PER_BATCH} de randuri.` }, 400);
