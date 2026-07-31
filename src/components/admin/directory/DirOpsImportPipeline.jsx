@@ -124,8 +124,10 @@ function AutoImportPanel() {
 
   const active = runs.find((run) => !["completed", "blocked", "failed", "cancelled"].includes(run.status)) || null;
   const latest = active || runs[0] || null;
-  const canCreateNew = !active;
   const items = latest?.items || [];
+  const incompletePreflight = latest?.status === "awaiting_approval"
+    && items.length < Number(latest?.total_batches || 0);
+  const canCreateNew = !active || incompletePreflight;
   const currentItem = items.find((item) => !["completed", "blocked", "failed", "skipped"].includes(item.status)) || null;
   const approvalPhrase = latest?.approval_confirmation || "";
 
