@@ -1056,7 +1056,8 @@ async function createRun(svc, user, input) {
     const geographyMap = await canonicalGeographyMap(svc, archiveMetadata.rows);
     const canonicalRows = await enrichRowsWithCanonicalGeography(svc, archiveMetadata.rows, geographyMap);
     const selectedNationalRows = selectRowsForNationalDirectory(canonicalRows);
-    const nationalSelection = await excludeControlledOrAmbiguousLiveMatches(svc, selectedNationalRows);
+    const liveSafeSelection = await excludeControlledOrAmbiguousLiveMatches(svc, selectedNationalRows);
+    const nationalSelection = await reconcileNationalOrganizationKeys(svc, liveSafeSelection);
     campaignSourceRows = nationalSelection.summary.source_rows;
     campaignExcludedRows = nationalSelection.summary.excluded_rows;
     campaignSelectionSummary = {
