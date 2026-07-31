@@ -725,35 +725,15 @@ async function createRun(svc, user, input) {
   });
   for (let index = 0; index < descriptors.length; index += 1) {
     const item = descriptors[index];
-    await svc.entities.DirectoryAutoImportItem.create({
-      run_id: run.id,
-      sequence: index + 1,
-      item_key: `${runKey}-${String(index + 1).padStart(3, '0')}`,
-      status: item.selected_rows > 0 ? 'pending' : 'skipped',
-      step: item.selected_rows > 0 ? 'fetch_source' : 'skipped_no_strictly_clean_rows',
-      source_url: item.source_url,
-      source_filename: item.source_filename,
-      source_sha256: item.source_sha256,
-      selected_sha256: item.selected_sha256,
-      expected_sha256: item.expected_sha256,
-      expected_rows: item.selected_rows,
-      source_rows: item.source_rows,
-      selected_rows: item.selected_rows,
-      excluded_rows: item.excluded_rows,
-      selection_result_json: JSON.stringify(item.selection_summary),
-      source_payload_json: item.selected_payload_json,
-      organization_count: item.organization_count,
-      snapshot_id: '',
-      batch_id: '',
-      execution_lock_token: '',
-      applied_rows: 0,
-      skipped_rows: 0,
-      failed_rows: 0,
-      safety_result_json: '{}',
-      result_json: item.selected_rows > 0 ? '{}' : JSON.stringify({ selection: item.selection_summary }),
-      failure_message: '',
-      ...(item.selected_rows > 0 ? {} : { started_at: now(), finished_at: now() }),
-    });
+    const itemRecord = autoItemRecord(run.id, runKey, index, item);
+    await svc.entities.DirectoryAutoImportItem.create(itemRecord);
+    await persistPayloadChunks(
+      svc,
+      run.id,
+      itemRecord.item_key,
+      item.selected_payload_json,
+      item.selected_rows,
+    );
   }
   await writeAudit(svc, user, 'DirectoryAutoImportRun', run.id, 'directory_auto_import_run_created', {}, {
     run_key: runKey,
