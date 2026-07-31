@@ -648,6 +648,15 @@ async function createRun(svc, user, input) {
       svc.entities.DirectoryAutoImportItem.filter({ run_id: run.id }, 'sequence', 100),
       'loturilor rularii automate existente',
     );
+    if (run.status !== 'awaiting_approval') {
+      return response({
+        success: true,
+        reused: true,
+        run,
+        items: currentItems,
+        approval_confirmation: approvalPhrase(run),
+      });
+    }
     const bySequence = new Map(currentItems.map((entry) => [Number(entry.sequence), entry]));
     let repairedItems = 0;
     for (let index = 0; index < descriptors.length; index += 1) {
