@@ -1490,6 +1490,14 @@ async function loadItemSourceRows(svc, item) {
 }
 
 async function advanceRun(svc, run) {
+  if (run.status === 'completed') {
+    const reopened = await reopenItemsMissingPublication(svc, run);
+    if (!reopened) return { success: true, skipped: true, reason: 'completed' };
+    run = { ...run, status: 'running', current_step: 'publication_repair', finished_at: null };
+  } else if (['approved', 'running'].includes(run.status)) {
+    const reopened = await reopenItemsMissingPublication(svc, run);
+    if (reopened) run = { ...run, current_step: 'publication_repair' };
+  }
   if (!['approved', 'running'].includes(run.status)) return { success: true, skipped: true, reason: `status:${run.status}` };
   const token = await acquireRunLock(svc, run);
   if (!token) return { success: true, skipped: true, reason: 'locked' };
