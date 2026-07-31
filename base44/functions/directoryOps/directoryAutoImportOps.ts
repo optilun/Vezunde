@@ -830,6 +830,23 @@ async function refreshProgress(svc, run) {
   return { items, nextItem, completed, values };
 }
 
+async function loadItemSourceRows(item) {
+  const persisted = safeJson(item.source_payload_json, null);
+  if (Array.isArray(persisted)) {
+    return {
+      rows: persisted,
+      source_sha256: clean(item.source_sha256, 80),
+      persisted: true,
+    };
+  }
+  const fetched = await fetchJson(item.source_url, item.source_sha256 || item.expected_sha256);
+  return {
+    rows: rowsFromPayload(fetched.payload),
+    source_sha256: fetched.sha256,
+    persisted: false,
+  };
+}
+
 async function advanceRun(svc, run) {
   if (!['approved', 'running'].includes(run.status)) return { success: true, skipped: true, reason: `status:${run.status}` };
   const token = await acquireRunLock(svc, run);
