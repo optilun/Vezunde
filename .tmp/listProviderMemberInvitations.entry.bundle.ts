@@ -36,6 +36,7 @@ var FIELD_ALIASES = {
   observations: ["observations", "notes"],
   schedule: ["schedule", "confirmed_schedule", "opening_hours"],
   organization_external_key: ["organization_external_key", "organization_key"],
+  target_organization_id: ["target_organization_id"],
   location_external_key: ["location_external_key", "location_key", "directory_external_key"],
   provider_type: ["provider_type"],
   provider_profile_type: ["provider_profile_type"],
@@ -260,6 +261,7 @@ function normalizeDirectoryImportRow(raw = {}, context = {}) {
     evidence_note: fields.evidence_note,
     observations: fields.observations,
     organization_external_key: organizationKey,
+    target_organization_id: fields.target_organization_id,
     location_external_key: locationKey,
     address_fingerprint: addressFingerprint,
     provider_type: inferredType?.provider_type || "",
@@ -2844,12 +2846,12 @@ async function publishCompletedBatchAsBasicDirectory(svc, user, input = {}) {
       is_verified: false,
       request_intake_status: "inactive",
       migration_review_required: quality === "low" || Boolean(clean6(row.review_flags, 2e3)),
-      profile_control_status_updated_at: now(),
       profile_control_status_reason: "Profil de director neconfirmat publicat automat din sursa publica."
     };
     if (!directoryFieldsEqual(location, locationValues)) {
-      const before = pickFields(location, Object.keys(locationValues));
-      await svc.entities.ProviderLocation.update(location.id, locationValues);
+      const values = { ...locationValues, profile_control_status_updated_at: now() };
+      const before = pickFields(location, Object.keys(values));
+      await svc.entities.ProviderLocation.update(location.id, values);
       await createMutation(svc, {
         batch_id: batch.id,
         row_id: rowRecord.id,
@@ -2859,11 +2861,11 @@ async function publishCompletedBatchAsBasicDirectory(svc, user, input = {}) {
         entity_id: location.id,
         operation: "update",
         before_json: JSON.stringify(before),
-        after_json: JSON.stringify(locationValues),
+        after_json: JSON.stringify(values),
         rollback_status: "pending",
         applied_at: now()
       });
-      await writeAudit(svc, user, "ProviderLocation", location.id, "directory_profile_published_basic", before, locationValues, `Lot ${batch.batch_key}`);
+      await writeAudit(svc, user, "ProviderLocation", location.id, "directory_profile_published_basic", before, values, `Lot ${batch.batch_key}`);
       publishedLocations += 1;
     }
     const activeStates = await requireDirectoryRows(
@@ -2876,14 +2878,14 @@ async function publishCompletedBatchAsBasicDirectory(svc, user, input = {}) {
       operational_status: "active",
       data_quality_status: quality,
       directory_detail_level: basicApproved ? "basic" : "summary",
-      directory_basic_details_approved: basicApproved,
-      normalized_at: now()
+      directory_basic_details_approved: basicApproved
     };
     const state = activeStates[0] || null;
     if (state) {
       if (!directoryFieldsEqual(state, stateValues)) {
-        const before = pickFields(state, Object.keys(stateValues));
-        await svc.entities.ProviderLocationDirectoryState.update(state.id, stateValues);
+        const values = { ...stateValues, normalized_at: now() };
+        const before = pickFields(state, Object.keys(values));
+        await svc.entities.ProviderLocationDirectoryState.update(state.id, values);
         await createMutation(svc, {
           batch_id: batch.id,
           row_id: rowRecord.id,
@@ -2893,17 +2895,18 @@ async function publishCompletedBatchAsBasicDirectory(svc, user, input = {}) {
           entity_id: state.id,
           operation: "update",
           before_json: JSON.stringify(before),
-          after_json: JSON.stringify(stateValues),
+          after_json: JSON.stringify(values),
           rollback_status: "pending",
           applied_at: now()
         });
-        await writeAudit(svc, user, "ProviderLocationDirectoryState", state.id, "directory_state_published_basic", before, stateValues, `Lot ${batch.batch_key}`);
+        await writeAudit(svc, user, "ProviderLocationDirectoryState", state.id, "directory_state_published_basic", before, values, `Lot ${batch.batch_key}`);
         publishedStates += 1;
       }
     } else {
       const values = {
         ...resolveDirectoryStateCreatePayload(row, location.id, Boolean(location.organization_id)),
         ...stateValues,
+        normalized_at: now(),
         state_status: "active"
       };
       const createdState = await svc.entities.ProviderLocationDirectoryState.create(values);
@@ -3695,6 +3698,9 @@ function clean8(value, maxLength = 4e3) {
 function now2() {
   return (/* @__PURE__ */ new Date()).toISOString();
 }
+function pause(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
 function response2(body, status = 200) {
   return Response.json(body, { status });
 }
@@ -4321,8 +4327,13 @@ async function reconcileNationalOrganizationKeys(svc, selection) {
   const excluded = [...selection.excluded];
   for (const row of selection.selected) {
     const sourceExternalKey = clean8(row.organization_external_key, 240);
-    if (sourceExternalKey && byExternalKey.has(sourceExternalKey)) {
-      selected.push(row);
+    const externalMatches = sourceExternalKey ? byExternalKey.get(sourceExternalKey) || [] : [];
+    if (externalMatches.length > 1) {
+      excluded.push({ row, reasons: ["ambiguous_existing_organization_external_key"] });
+      continue;
+    }
+    if (externalMatches.length === 1) {
+      selected.push({ ...row, target_organization_id: externalMatches[0].id });
       continue;
     }
     const nameMatches = byName.get(normalizeIdentityText(row.organization_display_name)) || [];
@@ -4336,11 +4347,11 @@ async function reconcileNationalOrganizationKeys(svc, selection) {
     }
     if (candidates.length === 1) {
       const existingKey = clean8(candidates[0].directory_external_key, 240);
-      if (!existingKey) {
-        excluded.push({ row, reasons: ["existing_organization_without_external_key"] });
-        continue;
-      }
-      selected.push({ ...row, organization_external_key: existingKey });
+      selected.push({
+        ...row,
+        ...existingKey ? { organization_external_key: existingKey } : {},
+        target_organization_id: candidates[0].id
+      });
       continue;
     }
     selected.push(row);
@@ -5090,7 +5101,10 @@ async function inspectSafety(svc, snapshot, batch, run) {
         svc.entities.ProviderOrganization.get(row.target_organization_id),
         "organizatiei reutilizate de importul automat"
       );
-      if (!organization || !normalized.organization_external_key || organization.directory_external_key !== normalized.organization_external_key) {
+      const explicitNationalTarget = national && clean8(normalized.target_organization_id, 160) === clean8(row.target_organization_id, 160);
+      if (!organization) {
+        errors.push(`row_${row.row_number}:existing_organization_target_not_found`);
+      } else if (!explicitNationalTarget && (!normalized.organization_external_key || organization.directory_external_key !== normalized.organization_external_key)) {
         errors.push(`row_${row.row_number}:existing_organization_external_key_mismatch`);
       }
     }
@@ -5506,16 +5520,21 @@ async function advanceRuns(svc, input = {}) {
   const outcomes = [];
   for (const initialRun of runs) {
     let run = initialRun;
-    for (let stepIndex = 0; stepIndex < 8; stepIndex += 1) {
+    const initialSequence = Number(run.current_sequence || 1);
+    for (let stepIndex = 0; stepIndex < 18; stepIndex += 1) {
       const outcome = await advanceRun(svc, run);
       outcomes.push(outcome);
-      if (outcome?.blocked || outcome?.retryable || outcome?.completed || outcome?.run_completed || outcome?.error || ["execute_batch", "recovered_batch"].includes(outcome?.step)) break;
+      if (outcome?.blocked || outcome?.retryable || outcome?.completed || outcome?.run_completed || outcome?.error) break;
+      if (["execute_batch", "recovered_batch"].includes(outcome?.step)) {
+        await pause(3500);
+      }
       const refreshed = await getDirectoryEntityOrNull(
         svc.entities.DirectoryAutoImportRun.get(run.id),
         "rularii automate intre pasii aceleiasi executii"
       );
       if (!refreshed || !["approved", "running", "completed"].includes(refreshed.status)) break;
       run = refreshed;
+      if (Number(run.current_sequence || initialSequence) > initialSequence) break;
     }
   }
   return response2({ success: true, processed_runs: runs.length, processed_steps: outcomes.length, outcomes });
