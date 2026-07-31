@@ -114,7 +114,7 @@ function AutoImportPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const autoKickRunsRef = useRef(new Set());
+  const autoKickRunsRef = useRef(new Map());
 
   const load = useCallback(async () => {
     const result = await call({ action: "list_auto_import_runs", limit: 10 });
@@ -122,7 +122,11 @@ function AutoImportPanel() {
     setRuns(result.runs || []);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    const interval = window.setInterval(load, 30_000);
+    return () => window.clearInterval(interval);
+  }, [load]);
 
   const nonTerminalRuns = runs.filter((run) => !["completed", "blocked", "failed", "cancelled"].includes(run.status));
   const active = nonTerminalRuns[0] || null;
@@ -140,19 +144,21 @@ function AutoImportPanel() {
 
   useEffect(() => {
     if (!executionRun?.id) return;
+    const currentTime = Date.now();
     const heartbeatAt = executionRun.last_heartbeat_at ? new Date(executionRun.last_heartbeat_at).getTime() : 0;
-    const stale = !heartbeatAt || Date.now() - heartbeatAt > 6 * 60 * 1000;
-    if (!stale || autoKickRunsRef.current.has(executionRun.id)) return;
-    autoKickRunsRef.current.add(executionRun.id);
+    const stale = !heartbeatAt || currentTime - heartbeatAt > 2 * 60 * 1000;
+    const lastLocalKick = autoKickRunsRef.current.get(executionRun.id) || 0;
+    if (!stale || currentTime - lastLocalKick < 90_000) return;
+    autoKickRunsRef.current.set(executionRun.id, currentTime);
     let cancelled = false;
     (async () => {
       const result = await call({ action: "advance_auto_import_run_now", run_id: executionRun.id });
       if (cancelled) return;
-      if (result.error) setError(result.error);
+      if (result.error) setError(`Watchdog import: ${result.error}`);
       await load();
     })();
     return () => { cancelled = true; };
-  }, [executionRun?.id, executionRun?.status, executionRun?.last_heartbeat_at, load]);
+  }, [executionRun?.id, executionRun?.status, executionRun?.last_heartbeat_at, executionRun?.current_step, load]);
 
   const create = async () => {
     setBusy(true); setError(""); setMessage("");
