@@ -454,7 +454,7 @@ function nationalPseudoRowReason(row = {}) {
 
 function nationalOrganizationTypeCode(row = {}, resolvedType = null) {
   const explicit = clean(row.organization_type_code, 120);
-  if (explicit) return explicit;
+  if (explicit && explicit !== 'other') return explicit;
   const text = normalizeIdentityText([
     row.organization_display_name,
     row.location_display_name,
