@@ -36,7 +36,7 @@ assert.match(auto, /PAYLOAD_CHUNK_SIZE = 12_000/);
 assert.match(auto, /persistPayloadChunks/);
 assert.match(auto, /loadPayloadChunks/);
 assert.match(auto, /DirectoryAutoImportPayloadChunk\.filter/);
-assert.match(auto, /repairs_partial_preflight_runs/);
+assert.match(latest, /repairs_partial_preflight_runs:\s*true/);
 assert.match(auto, /loadItemSourceRows/);
 assert.match(auto, /const EXECUTION_CHUNK = 5/);
 assert.match(auto, /requires_zero_snapshot_warnings: true/);
