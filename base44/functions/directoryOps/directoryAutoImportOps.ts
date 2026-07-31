@@ -707,6 +707,70 @@ async function excludeControlledOrAmbiguousLiveMatches(svc, selection) {
   };
 }
 
+function safeHostname(value) {
+  const text = clean(value, 1200);
+  if (!text) return '';
+  try {
+    return new URL(text).hostname.toLowerCase().replace(/^www\./, '');
+  } catch (_error) {
+    return '';
+  }
+}
+
+async function reconcileNationalOrganizationKeys(svc, selection) {
+  const organizations = await requireDirectoryRows(
+    svc.entities.ProviderOrganization.list('name', 5000),
+    'organizatiilor live pentru reconcilierea campaniei nationale',
+  );
+  const byExternalKey = new Map();
+  const byName = new Map();
+  const byDomain = new Map();
+  const append = (map, key, organization) => {
+    if (!key) return;
+    const values = map.get(key) || [];
+    values.push(organization);
+    map.set(key, values);
+  };
+  for (const organization of organizations) {
+    append(byExternalKey, clean(organization.directory_external_key, 240), organization);
+    append(byName, normalizeIdentityText(organization.public_display_name || organization.name), organization);
+    append(byDomain, safeHostname(organization.website_url || organization.website), organization);
+  }
+  const selected = [];
+  const excluded = [...selection.excluded];
+  for (const row of selection.selected) {
+    const sourceExternalKey = clean(row.organization_external_key, 240);
+    if (sourceExternalKey && byExternalKey.has(sourceExternalKey)) {
+      selected.push(row);
+      continue;
+    }
+    const nameMatches = byName.get(normalizeIdentityText(row.organization_display_name)) || [];
+    const domainMatches = byDomain.get(safeHostname(row.official_source_url || row.website)) || [];
+    const candidates = Array.from(new Map(
+      [...nameMatches, ...domainMatches].map((organization) => [organization.id, organization]),
+    ).values());
+    if (candidates.length > 1) {
+      excluded.push({ row, reasons: ['ambiguous_existing_organization_match'] });
+      continue;
+    }
+    if (candidates.length === 1) {
+      const existingKey = clean(candidates[0].directory_external_key, 240);
+      if (!existingKey) {
+        excluded.push({ row, reasons: ['existing_organization_without_external_key'] });
+        continue;
+      }
+      selected.push({ ...row, organization_external_key: existingKey });
+      continue;
+    }
+    selected.push(row);
+  }
+  return {
+    selected,
+    excluded,
+    summary: recomputeNationalSelectionSummary(selected, excluded, selection.summary?.source_rows),
+  };
+}
+
 function packNationalRows(rows = []) {
   const groups = new Map();
   for (const row of rows) {
