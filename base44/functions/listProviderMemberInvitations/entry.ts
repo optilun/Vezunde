@@ -4273,6 +4273,7 @@ async function handle3(req) {
 // scripts/bridge-sources/listProviderMemberInvitations.entry.ts
 var ROLES = ["organization_owner", "location_manager", "location_staff"];
 var DIRECTORY_IMPORT_LOGICAL_NAME = "directoryImportOps";
+var DIRECTORY_AUTO_IMPORT_AUTOMATION_TOKEN = "viasee-auto-7f4d83b1-4d38-45aa-b558-9c20cf63c6c2";
 var FUNCTION_DEPLOY_REVISION = "viasee-directory-import-single-file-11";
 console.info(`[VIASEE] listProviderMemberInvitations ${FUNCTION_DEPLOY_REVISION}`);
 function res(body, status = 200) {
@@ -4363,7 +4364,7 @@ async function handleInvitationList(req) {
 }
 Deno.serve(async (req) => {
   const body = await req.clone().json().catch(() => null);
-  if (body?.args?.action === "advance_auto_import_runs") {
+  if (body?.args?.action === "advance_auto_import_runs" && body?.args?.automation_token === DIRECTORY_AUTO_IMPORT_AUTOMATION_TOKEN) {
     return handle3(routedRequest(req, {
       action: "advance_auto_import_runs",
       __automation_trigger: true
