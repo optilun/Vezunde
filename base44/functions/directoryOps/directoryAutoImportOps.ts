@@ -676,13 +676,20 @@ async function advanceRun(svc, run) {
     const heartbeat = { last_heartbeat_at: now(), failure_message: '' };
 
     if (item.step === 'fetch_source' || item.status === 'pending') {
-      const fetched = await fetchJson(item.source_url, item.expected_sha256);
+      const fetched = await fetchJson(item.source_url, item.source_sha256 || item.expected_sha256);
       const sourceRows = rowsFromPayload(fetched.payload);
       if (!sourceRows.length || sourceRows.length > MAX_ROWS_PER_BATCH) return blockItem(svc, run, item, [`source_row_count:${sourceRows.length}`], 'fetch_source');
       if (Number(item.expected_rows || 0) > 0 && Number(item.expected_rows) !== sourceRows.length) {
         return blockItem(svc, run, item, [`expected_rows:${item.expected_rows}`, `actual_rows:${sourceRows.length}`], 'fetch_source');
       }
       const selection = selectRowsForAutomaticImport(sourceRows);
+      const selectedSha256 = await sha256HexText(stableStringify(selection.selected));
+      if (selection.selected.length !== Number(item.selected_rows || 0) || selectedSha256 !== clean(item.selected_sha256, 80)) {
+        return blockItem(svc, run, item, [
+          `preflight_selection_changed:${item.selected_rows}->${selection.selected.length}`,
+          `preflight_selection_sha_changed:${clean(item.selected_sha256, 12)}->${selectedSha256.slice(0, 12)}`,
+        ], 'fetch_source');
+      }
       if (!selection.selected.length) {
         await svc.entities.DirectoryAutoImportItem.update(item.id, {
           status: 'skipped',
@@ -713,11 +720,11 @@ async function advanceRun(svc, run) {
       const created = await responsePayload(await createSnapshot(svc, user, {
         source_name: 'Registru privat VIASEE - import automat controlat',
         source_version: sourceVersion,
-        source_sha256: fetched.sha256,
+        source_sha256: selectedSha256,
         source_format: 'json',
         original_filename: item.source_filename || `auto-batch-${item.sequence}.json`,
         total_rows: selection.selected.length,
-        notes: `Rulare automata aprobata ${run.run_key}; lot ${item.sequence}/${run.total_batches}; ${selection.excluded.length} randuri excluse de filtrul strict.`,
+        notes: `Rulare automata aprobata ${run.run_key}; lot ${item.sequence}/${run.total_batches}; ${selection.excluded.length} randuri excluse de filtrul strict; SHA sursa completa ${fetched.sha256}.`,
         column_map: Object.fromEntries(Object.keys(selection.selected[0] || {}).map((key) => [key, key])),
       }));
       if (created.error) return blockItem(svc, run, item, [created.error], 'create_snapshot');
@@ -737,9 +744,11 @@ async function advanceRun(svc, run) {
     if (item.step === 'append_rows') {
       const fetched = await fetchJson(item.source_url, item.source_sha256 || item.expected_sha256);
       const selection = selectRowsForAutomaticImport(rowsFromPayload(fetched.payload));
-      if (selection.selected.length !== Number(item.selected_rows || 0)) {
+      const selectedSha256 = await sha256HexText(stableStringify(selection.selected));
+      if (selection.selected.length !== Number(item.selected_rows || 0) || selectedSha256 !== clean(item.selected_sha256, 80)) {
         return blockItem(svc, run, item, [
           `selected_rows_changed:${item.selected_rows}->${selection.selected.length}`,
+          `selected_sha_changed:${clean(item.selected_sha256, 12)}->${selectedSha256.slice(0, 12)}`,
         ], 'append_rows');
       }
       const appended = await responsePayload(await appendRows(svc, user, {
