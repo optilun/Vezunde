@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { strFromU8, unzipSync } from 'npm:fflate@0.8.2';
 import {
   batchApprovalToken,
+  inferCanonicalLocationType,
   normalizeIdentityText,
   stableTextHash,
 } from '../../shared/directoryImportPipeline.js';
@@ -18,10 +19,14 @@ import {
   executeBatch,
   finalizeSnapshot,
   planBatch,
+  publishCompletedBatchAsBasicDirectory,
   resumeBatchAfterTransientFailure,
 } from './directoryImportOps.ts';
 
-export const DIRECTORY_AUTO_IMPORT_CONTRACT_VERSION = 'viasee-directory-auto-import-v1';
+export const DIRECTORY_AUTO_IMPORT_CONTRACT_VERSION = 'viasee-directory-auto-import-v2';
+const CAMPAIGN_MODE_STRICT = 'strict_import';
+const CAMPAIGN_MODE_NATIONAL = 'national_directory';
+const PUBLICATION_MODE_BASIC = 'public_basic_directory';
 const MAX_BATCHES = 50;
 const MAX_ROWS_PER_BATCH = 40;
 const EXECUTION_CHUNK = 5;
