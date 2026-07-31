@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   batchApprovalToken,
+  normalizeIdentityText,
   stableTextHash,
 } from '../../shared/directoryImportPipeline.js';
 import {
@@ -209,6 +210,41 @@ function rowsFromPayload(payload) {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.rows)) return payload.rows;
   return [];
+}
+
+async function enrichRowsWithCanonicalGeography(svc, rows = []) {
+  const codes = Array.from(new Set(rows.map((row) => clean(row?.locality_siruta_code, 40)).filter(Boolean)));
+  const geographicRows = codes.length ? await requireDirectoryRows(
+    svc.entities.GeographicLocality.filter(
+      { siruta_code: { $in: codes }, is_active: true },
+      'siruta_code',
+      Math.max(10, codes.length * 3),
+    ),
+    'geografiei canonice pentru importul automat',
+  ) : [];
+  const bySiruta = new Map();
+  for (const geography of geographicRows) {
+    const code = clean(geography.siruta_code, 40);
+    if (code && !bySiruta.has(code)) bySiruta.set(code, geography);
+  }
+  return rows.map((row) => {
+    const code = clean(row?.locality_siruta_code, 40);
+    const geography = bySiruta.get(code) || null;
+    let geographyValidationError = '';
+    if (!geography) geographyValidationError = 'geography_siruta_not_found';
+    else if (
+      clean(row?.county_if_confirmed, 160)
+      && normalizeIdentityText(row.county_if_confirmed) !== normalizeIdentityText(geography.county_name)
+    ) geographyValidationError = 'geography_county_mismatch';
+    return {
+      ...row,
+      county_name: clean(geography?.county_name || row?.county_if_confirmed, 160),
+      county_code: clean(geography?.county_code, 40),
+      uat_code: clean(geography?.uat_code, 40),
+      uat_name: clean(geography?.uat_name, 160),
+      geography_validation_error: geographyValidationError,
+    };
+  });
 }
 
 function automaticSelectionReasons(row = {}) {
