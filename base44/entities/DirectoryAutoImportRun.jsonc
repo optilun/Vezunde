@@ -43,6 +43,14 @@
       "type": "number",
       "default": 0
     },
+    "skipped_batches": {
+      "type": "number",
+      "default": 0
+    },
+    "excluded_rows": {
+      "type": "number",
+      "default": 0
+    },
     "total_rows": {
       "type": "number",
       "default": 0
