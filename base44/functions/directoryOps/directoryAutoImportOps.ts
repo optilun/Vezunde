@@ -625,10 +625,37 @@ async function advanceRun(svc, run) {
 
     if (item.step === 'fetch_source' || item.status === 'pending') {
       const fetched = await fetchJson(item.source_url, item.expected_sha256);
-      const rows = rowsFromPayload(fetched.payload);
-      if (!rows.length || rows.length > MAX_ROWS_PER_BATCH) return blockItem(svc, run, item, [`source_row_count:${rows.length}`], 'fetch_source');
-      if (Number(item.expected_rows || 0) > 0 && Number(item.expected_rows) !== rows.length) {
-        return blockItem(svc, run, item, [`expected_rows:${item.expected_rows}`, `actual_rows:${rows.length}`], 'fetch_source');
+      const sourceRows = rowsFromPayload(fetched.payload);
+      if (!sourceRows.length || sourceRows.length > MAX_ROWS_PER_BATCH) return blockItem(svc, run, item, [`source_row_count:${sourceRows.length}`], 'fetch_source');
+      if (Number(item.expected_rows || 0) > 0 && Number(item.expected_rows) !== sourceRows.length) {
+        return blockItem(svc, run, item, [`expected_rows:${item.expected_rows}`, `actual_rows:${sourceRows.length}`], 'fetch_source');
+      }
+      const selection = selectRowsForAutomaticImport(sourceRows);
+      if (!selection.selected.length) {
+        await svc.entities.DirectoryAutoImportItem.update(item.id, {
+          status: 'skipped',
+          step: 'skipped_no_strictly_clean_rows',
+          source_sha256: fetched.sha256,
+          source_rows: sourceRows.length,
+          selected_rows: 0,
+          excluded_rows: selection.excluded.length,
+          selection_result_json: JSON.stringify(selection.summary),
+          skipped_rows: sourceRows.length,
+          result_json: JSON.stringify({ selection: selection.summary }),
+          failure_message: '',
+          started_at: item.started_at || now(),
+          finished_at: now(),
+          ...heartbeat,
+        });
+        const latestRun = await getDirectoryEntityOrNull(svc.entities.DirectoryAutoImportRun.get(run.id), 'rularii automate dupa filtrarea lotului') || run;
+        const refreshed = await refreshProgress(svc, latestRun);
+        await releaseRunLock(svc, run.id, {
+          status: refreshed.completed ? 'completed' : 'running',
+          current_step: refreshed.completed ? 'completed' : `batch_${refreshed.nextItem?.sequence || item.sequence + 1}:fetch_source`,
+          finished_at: refreshed.completed ? now() : null,
+          failure_message: '',
+        });
+        return { success: true, step: 'skipped_no_strictly_clean_rows', excluded_rows: sourceRows.length, run_completed: refreshed.completed };
       }
       const sourceVersion = `${clean(run.run_key, 70)}_${String(item.sequence).padStart(3, '0')}`;
       const created = await responsePayload(await createSnapshot(svc, user, {
@@ -637,18 +664,22 @@ async function advanceRun(svc, run) {
         source_sha256: fetched.sha256,
         source_format: 'json',
         original_filename: item.source_filename || `auto-batch-${item.sequence}.json`,
-        total_rows: rows.length,
-        notes: `Rulare automata aprobata ${run.run_key}; lot ${item.sequence}/${run.total_batches}.`,
-        column_map: Object.fromEntries(Object.keys(rows[0] || {}).map((key) => [key, key])),
+        total_rows: selection.selected.length,
+        notes: `Rulare automata aprobata ${run.run_key}; lot ${item.sequence}/${run.total_batches}; ${selection.excluded.length} randuri excluse de filtrul strict.`,
+        column_map: Object.fromEntries(Object.keys(selection.selected[0] || {}).map((key) => [key, key])),
       }));
       if (created.error) return blockItem(svc, run, item, [created.error], 'create_snapshot');
       await svc.entities.DirectoryAutoImportItem.update(item.id, {
         status: 'snapshot_created', step: 'append_rows', source_sha256: fetched.sha256,
-        expected_rows: rows.length, snapshot_id: created.snapshot.id,
+        source_rows: sourceRows.length,
+        selected_rows: selection.selected.length,
+        excluded_rows: selection.excluded.length,
+        selection_result_json: JSON.stringify(selection.summary),
+        snapshot_id: created.snapshot.id,
         started_at: item.started_at || now(), ...heartbeat,
       });
       await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:append_rows`, failure_message: '' });
-      return { success: true, step: 'snapshot_created' };
+      return { success: true, step: 'snapshot_created', selected_rows: selection.selected.length, excluded_rows: selection.excluded.length };
     }
 
     if (item.step === 'append_rows') {
