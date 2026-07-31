@@ -1897,7 +1897,6 @@ export async function publishCompletedBatchAsBasicDirectory(svc, user, input = {
   );
   let publishedLocations = 0;
   let publishedStates = 0;
-  let publishedOrganizations = 0;
   let skippedControlled = 0;
 
   for (const rowRecord of rows) {
@@ -2010,41 +2009,6 @@ export async function publishCompletedBatchAsBasicDirectory(svc, user, input = {
       await writeAudit(svc, user, 'ProviderLocationDirectoryState', createdState.id, 'directory_state_published_basic', {}, values, `Lot ${batch.batch_key}`);
       publishedStates += 1;
     }
-
-    const organizationId = clean(location.organization_id || result.organization_id, 160);
-    if (organizationId) {
-      const organization = await getDirectoryEntityOrNull(
-        svc.entities.ProviderOrganization.get(organizationId),
-        'organizatiei pentru publicarea directorului',
-      );
-      if (organization && (organization.control_status || 'directory') === 'directory') {
-        const organizationValues = {
-          publication_status: 'published',
-          public_visibility_status: 'approved',
-          data_quality_status: quality,
-          status: 'activa',
-        };
-        if (!directoryFieldsEqual(organization, organizationValues)) {
-          const before = pickFields(organization, Object.keys(organizationValues));
-          await svc.entities.ProviderOrganization.update(organization.id, organizationValues);
-          await createMutation(svc, {
-            batch_id: batch.id,
-            row_id: rowRecord.id,
-            sequence: 100000 + Number(rowRecord.row_number || 0) * 10 + 3,
-            mutation_key: `${batch.id}:${rowRecord.id}:ProviderOrganization:${organization.id}:publish-basic`,
-            entity_type: 'ProviderOrganization',
-            entity_id: organization.id,
-            operation: 'update',
-            before_json: JSON.stringify(before),
-            after_json: JSON.stringify(organizationValues),
-            rollback_status: 'pending',
-            applied_at: now(),
-          });
-          await writeAudit(svc, user, 'ProviderOrganization', organization.id, 'directory_organization_published_basic', before, organizationValues, `Lot ${batch.batch_key}`);
-          publishedOrganizations += 1;
-        }
-      }
-    }
   }
 
   return response({
@@ -2052,7 +2016,6 @@ export async function publishCompletedBatchAsBasicDirectory(svc, user, input = {
     batch_id: batch.id,
     published_locations: publishedLocations,
     published_states: publishedStates,
-    published_organizations: publishedOrganizations,
     skipped_controlled: skippedControlled,
   });
 }
