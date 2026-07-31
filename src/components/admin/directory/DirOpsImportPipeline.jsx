@@ -105,6 +105,7 @@ function fileAsBase64(file) {
 }
 
 function AutoImportPanel() {
+  const [zipFile, setZipFile] = useState(null);
   const [manifestUrl, setManifestUrl] = useState("");
   const [batchUrls, setBatchUrls] = useState("");
   const [runs, setRuns] = useState([]);
@@ -131,8 +132,18 @@ function AutoImportPanel() {
   const create = async () => {
     setBusy(true); setError(""); setMessage("");
     const urls = batchUrls.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+    let zipBase64 = "";
+    try {
+      if (zipFile) zipBase64 = await fileAsBase64(zipFile);
+    } catch (reason) {
+      setBusy(false);
+      setError(reason.message || "Arhiva nu a putut fi citita.");
+      return;
+    }
     const result = await call({
       action: "create_auto_import_run",
+      zip_base64: zipBase64,
+      zip_filename: zipFile?.name || "",
       manifest_url: manifestUrl.trim(),
       batch_urls: urls,
       notes: "Import automat controlat initiat din interfata administrativa VIASEE.",
