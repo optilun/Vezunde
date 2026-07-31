@@ -126,7 +126,10 @@ function AutoImportPanel() {
     });
     setBusy(false);
     if (result.error) { setError(result.error); return; }
-    setMessage(result.reused ? "Rularea existenta a fost reincarcata." : "Pachetul a fost analizat. Este necesara o singura aprobare administrativa.");
+    const preflight = result.preflight || {};
+    setMessage(result.reused
+      ? "Rularea existenta a fost reincarcata."
+      : `Pachet analizat: ${preflight.selected_rows ?? 0} randuri strict curate, ${preflight.excluded_rows ?? 0} excluse automat. Este necesara o singura aprobare administrativa.`);
     setConfirmation("");
     await load();
   };
