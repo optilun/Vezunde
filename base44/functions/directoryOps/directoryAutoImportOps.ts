@@ -1914,8 +1914,28 @@ async function advanceRuns(svc, input = {}) {
   }
   if (!runs.length) return response({ success: true, processed_runs: 0, message: 'Nu exista rulare automata aprobata.' });
   const outcomes = [];
-  for (const run of runs) outcomes.push(await advanceRun(svc, run));
-  return response({ success: true, processed_runs: outcomes.length, outcomes });
+  for (const initialRun of runs) {
+    let run = initialRun;
+    for (let stepIndex = 0; stepIndex < 8; stepIndex += 1) {
+      const outcome = await advanceRun(svc, run);
+      outcomes.push(outcome);
+      if (
+        outcome?.blocked
+        || outcome?.retryable
+        || outcome?.completed
+        || outcome?.run_completed
+        || outcome?.error
+        || ['execute_batch', 'recovered_batch'].includes(outcome?.step)
+      ) break;
+      const refreshed = await getDirectoryEntityOrNull(
+        svc.entities.DirectoryAutoImportRun.get(run.id),
+        'rularii automate intre pasii aceleiasi executii',
+      );
+      if (!refreshed || !['approved', 'running', 'completed'].includes(refreshed.status)) break;
+      run = refreshed;
+    }
+  }
+  return response({ success: true, processed_runs: runs.length, processed_steps: outcomes.length, outcomes });
 }
 
 export async function handleDirectoryAutoImport(req: Request) {
