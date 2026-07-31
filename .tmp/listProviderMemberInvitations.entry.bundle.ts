@@ -3673,7 +3673,11 @@ function descriptorsFromManifest(payload, manifestUrl = "") {
     payload?.files,
     payload?.items
   ].filter(Array.isArray);
-  const descriptors = (collections[0] || []).map((entry, index) => descriptorFor(entry, index)).filter(Boolean).filter((entry) => /\.json(?:$|\?)/i.test(entry.source_url));
+  const descriptors = (collections[0] || []).map((entry, index) => descriptorFor(entry, index)).filter(Boolean).filter((entry) => /\.json(?:$|\?)/i.test(entry.source_url)).filter((entry) => {
+    const name = clean8(entry.source_filename, 240).toLowerCase();
+    if (/(needs-review|excluded|audit|report|manifest)/.test(name)) return false;
+    return /batch/.test(name);
+  });
   if (descriptors.length) return descriptors;
   if (Array.isArray(payload?.rows)) {
     const direct = descriptorFor({
@@ -3691,6 +3695,58 @@ function rowsFromPayload(payload) {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.rows)) return payload.rows;
   return [];
+}
+function automaticSelectionReasons(row = {}) {
+  const reasons = [];
+  if (clean8(row.import_readiness, 80) !== "candidate_for_manual_review") reasons.push("not_candidate_for_manual_review");
+  if (clean8(row.research_status, 80) !== "official_confirmed") reasons.push("research_not_official_confirmed");
+  if (clean8(row.operational_status, 80) !== "active_confirmed") reasons.push("operational_status_not_active_confirmed");
+  if (clean8(row.review_flags, 2e3)) reasons.push("review_flags_present");
+  for (const field of [
+    "location_display_name",
+    "organization_display_name",
+    "official_locality",
+    "county_if_confirmed",
+    "confirmed_address",
+    "official_source_url",
+    "locality_siruta_code",
+    "provider_type",
+    "provider_profile_type",
+    "organization_type_code",
+    "location_type_code",
+    "care_setting_code"
+  ]) {
+    if (!clean8(row[field], 4e3)) reasons.push(`missing_${field}`);
+  }
+  if (clean8(row.classification_contract_version, 120) && clean8(row.classification_contract_version, 120) !== "viasee-directory-location-first-v1") reasons.push("classification_contract_version_mismatch");
+  return reasons;
+}
+function selectRowsForAutomaticImport(rows = []) {
+  const selected = [];
+  const excluded = [];
+  const reasonCounts = {};
+  for (const row of rows) {
+    const reasons = automaticSelectionReasons(row);
+    if (!reasons.length) selected.push(row);
+    else {
+      excluded.push({
+        source_row_key: clean8(row?.source_row_key || row?.__source_row_key, 220),
+        location_name: clean8(row?.location_display_name || row?.location_name, 300),
+        reasons
+      });
+      for (const reason of reasons) reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
+    }
+  }
+  return {
+    selected,
+    excluded,
+    summary: {
+      source_rows: rows.length,
+      selected_rows: selected.length,
+      excluded_rows: excluded.length,
+      reason_counts: reasonCounts
+    }
+  };
 }
 function approvalPhrase(run) {
   return `AUTOIMPORT ${clean8(run.run_key, 120)} ${clean8(run.package_sha256, 80).slice(0, 12)} ${Number(run.total_batches || 0)}`;
@@ -3746,6 +3802,13 @@ async function createRun(svc, user, input) {
     requires_zero_snapshot_warnings: true,
     allowed_actions: Array.from(ALLOWED_ACTIONS),
     exact_external_key_required_for_existing_organization: true,
+    source_filter: {
+      import_readiness: "candidate_for_manual_review",
+      research_status: "official_confirmed",
+      operational_status: "active_confirmed",
+      review_flags_must_be_empty: true,
+      explicit_location_first_classification_required: true
+    },
     publishes_profiles: false,
     verifies_profiles: false,
     creates_services: false,
@@ -3761,6 +3824,8 @@ async function createRun(svc, user, input) {
     completed_batches: 0,
     blocked_batches: 0,
     failed_batches: 0,
+    skipped_batches: 0,
+    excluded_rows: 0,
     total_rows: descriptors.reduce((total, item) => total + Number(item.expected_rows || 0), 0),
     applied_rows: 0,
     skipped_rows: 0,
@@ -3788,6 +3853,10 @@ async function createRun(svc, user, input) {
       source_sha256: "",
       expected_sha256: item.expected_sha256,
       expected_rows: item.expected_rows,
+      source_rows: 0,
+      selected_rows: 0,
+      excluded_rows: 0,
+      selection_result_json: "{}",
       organization_count: item.organization_count,
       snapshot_id: "",
       batch_id: "",
@@ -3941,6 +4010,13 @@ async function inspectSafety(svc, snapshot, batch) {
     const normalized = safeJson2(row.normalized_payload_json, {});
     const override = safeJson2(row.admin_override_json, {});
     const plannedActions = asArray2(safeJson2(row.planned_actions_json, []));
+    if (normalized.import_readiness !== "candidate_for_manual_review") errors.push(`row_${row.row_number}:not_candidate_for_manual_review`);
+    if (normalized.research_status !== "official_confirmed") errors.push(`row_${row.row_number}:research_not_official_confirmed`);
+    if (normalized.source_operational_status !== "active_confirmed" || normalized.operational_status !== "active") errors.push(`row_${row.row_number}:operational_status_not_active_confirmed`);
+    if (clean8(normalized.review_flags, 2e3)) errors.push(`row_${row.row_number}:review_flags_present`);
+    if (normalized.canonical_type_source !== "source_explicit") errors.push(`row_${row.row_number}:canonical_type_not_explicit`);
+    if (normalized.organization_type_source !== "source_explicit") errors.push(`row_${row.row_number}:organization_type_not_explicit`);
+    if (normalized.organization_type_legacy_fallback === true) errors.push(`row_${row.row_number}:organization_type_legacy_fallback`);
     if (warnings.length) errors.push(`row_${row.row_number}:warnings:${warnings.join(",")}`);
     if (validationErrors.length) errors.push(`row_${row.row_number}:errors:${validationErrors.join(",")}`);
     if (!ALLOWED_ACTIONS.has(row.planned_action)) errors.push(`row_${row.row_number}:unsafe_action:${row.planned_action}`);
@@ -3972,14 +4048,18 @@ async function refreshProgress(svc, run) {
     if (item.status === "completed") acc.completed_batches += 1;
     if (item.status === "blocked") acc.blocked_batches += 1;
     if (item.status === "failed") acc.failed_batches += 1;
-    acc.total_rows += Number(item.expected_rows || 0);
+    if (item.status === "skipped") acc.skipped_batches += 1;
+    const selectedRows = Number(item.selected_rows || 0);
+    const sourceRows = Number(item.source_rows || item.expected_rows || 0);
+    acc.total_rows += item.status === "pending" ? sourceRows : selectedRows;
+    acc.excluded_rows += Number(item.excluded_rows || 0);
     acc.applied_rows += Number(item.applied_rows || 0);
     acc.skipped_rows += Number(item.skipped_rows || 0);
     acc.failed_rows += Number(item.failed_rows || 0);
     return acc;
-  }, { completed_batches: 0, blocked_batches: 0, failed_batches: 0, total_rows: 0, applied_rows: 0, skipped_rows: 0, failed_rows: 0 });
+  }, { completed_batches: 0, blocked_batches: 0, failed_batches: 0, skipped_batches: 0, excluded_rows: 0, total_rows: 0, applied_rows: 0, skipped_rows: 0, failed_rows: 0 });
   const nextItem = items.find((item) => !TERMINAL_ITEM_STATUSES.has(item.status)) || null;
-  const completed = !nextItem && totals.completed_batches === items.length;
+  const completed = !nextItem && totals.blocked_batches === 0 && totals.failed_batches === 0 && totals.completed_batches + totals.skipped_batches === items.length;
   const values = {
     ...totals,
     current_sequence: nextItem?.sequence || items.length + 1,
@@ -4014,10 +4094,37 @@ async function advanceRun(svc, run) {
     const heartbeat = { last_heartbeat_at: now2(), failure_message: "" };
     if (item.step === "fetch_source" || item.status === "pending") {
       const fetched = await fetchJson(item.source_url, item.expected_sha256);
-      const rows = rowsFromPayload(fetched.payload);
-      if (!rows.length || rows.length > MAX_ROWS_PER_BATCH) return blockItem(svc, run, item, [`source_row_count:${rows.length}`], "fetch_source");
-      if (Number(item.expected_rows || 0) > 0 && Number(item.expected_rows) !== rows.length) {
-        return blockItem(svc, run, item, [`expected_rows:${item.expected_rows}`, `actual_rows:${rows.length}`], "fetch_source");
+      const sourceRows = rowsFromPayload(fetched.payload);
+      if (!sourceRows.length || sourceRows.length > MAX_ROWS_PER_BATCH) return blockItem(svc, run, item, [`source_row_count:${sourceRows.length}`], "fetch_source");
+      if (Number(item.expected_rows || 0) > 0 && Number(item.expected_rows) !== sourceRows.length) {
+        return blockItem(svc, run, item, [`expected_rows:${item.expected_rows}`, `actual_rows:${sourceRows.length}`], "fetch_source");
+      }
+      const selection = selectRowsForAutomaticImport(sourceRows);
+      if (!selection.selected.length) {
+        await svc.entities.DirectoryAutoImportItem.update(item.id, {
+          status: "skipped",
+          step: "skipped_no_strictly_clean_rows",
+          source_sha256: fetched.sha256,
+          source_rows: sourceRows.length,
+          selected_rows: 0,
+          excluded_rows: selection.excluded.length,
+          selection_result_json: JSON.stringify(selection.summary),
+          skipped_rows: sourceRows.length,
+          result_json: JSON.stringify({ selection: selection.summary }),
+          failure_message: "",
+          started_at: item.started_at || now2(),
+          finished_at: now2(),
+          ...heartbeat
+        });
+        const latestRun = await getDirectoryEntityOrNull(svc.entities.DirectoryAutoImportRun.get(run.id), "rularii automate dupa filtrarea lotului") || run;
+        const refreshed = await refreshProgress(svc, latestRun);
+        await releaseRunLock(svc, run.id, {
+          status: refreshed.completed ? "completed" : "running",
+          current_step: refreshed.completed ? "completed" : `batch_${refreshed.nextItem?.sequence || item.sequence + 1}:fetch_source`,
+          finished_at: refreshed.completed ? now2() : null,
+          failure_message: ""
+        });
+        return { success: true, step: "skipped_no_strictly_clean_rows", excluded_rows: sourceRows.length, run_completed: refreshed.completed };
       }
       const sourceVersion = `${clean8(run.run_key, 70)}_${String(item.sequence).padStart(3, "0")}`;
       const created = await responsePayload(await createSnapshot(svc, user, {
@@ -4026,29 +4133,38 @@ async function advanceRun(svc, run) {
         source_sha256: fetched.sha256,
         source_format: "json",
         original_filename: item.source_filename || `auto-batch-${item.sequence}.json`,
-        total_rows: rows.length,
-        notes: `Rulare automata aprobata ${run.run_key}; lot ${item.sequence}/${run.total_batches}.`,
-        column_map: Object.fromEntries(Object.keys(rows[0] || {}).map((key) => [key, key]))
+        total_rows: selection.selected.length,
+        notes: `Rulare automata aprobata ${run.run_key}; lot ${item.sequence}/${run.total_batches}; ${selection.excluded.length} randuri excluse de filtrul strict.`,
+        column_map: Object.fromEntries(Object.keys(selection.selected[0] || {}).map((key) => [key, key]))
       }));
       if (created.error) return blockItem(svc, run, item, [created.error], "create_snapshot");
       await svc.entities.DirectoryAutoImportItem.update(item.id, {
         status: "snapshot_created",
         step: "append_rows",
         source_sha256: fetched.sha256,
-        expected_rows: rows.length,
+        source_rows: sourceRows.length,
+        selected_rows: selection.selected.length,
+        excluded_rows: selection.excluded.length,
+        selection_result_json: JSON.stringify(selection.summary),
         snapshot_id: created.snapshot.id,
         started_at: item.started_at || now2(),
         ...heartbeat
       });
       await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:append_rows`, failure_message: "" });
-      return { success: true, step: "snapshot_created" };
+      return { success: true, step: "snapshot_created", selected_rows: selection.selected.length, excluded_rows: selection.excluded.length };
     }
     if (item.step === "append_rows") {
       const fetched = await fetchJson(item.source_url, item.source_sha256 || item.expected_sha256);
+      const selection = selectRowsForAutomaticImport(rowsFromPayload(fetched.payload));
+      if (selection.selected.length !== Number(item.selected_rows || 0)) {
+        return blockItem(svc, run, item, [
+          `selected_rows_changed:${item.selected_rows}->${selection.selected.length}`
+        ], "append_rows");
+      }
       const appended = await responsePayload(await appendRows(svc, user, {
         snapshot_id: item.snapshot_id,
         start_row_number: 1,
-        rows: rowsFromPayload(fetched.payload)
+        rows: selection.selected
       }));
       if (appended.error) return blockItem(svc, run, item, [appended.error], "append_rows");
       await svc.entities.DirectoryAutoImportItem.update(item.id, { status: "rows_appended", step: "validate_snapshot", ...heartbeat });
