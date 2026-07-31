@@ -1078,6 +1078,8 @@ async function createRun(svc, user, input) {
   const run = await svc.entities.DirectoryAutoImportRun.create({
     run_key: runKey,
     contract_version: DIRECTORY_AUTO_IMPORT_CONTRACT_VERSION,
+    campaign_mode: mode,
+    publication_mode: publicationMode,
     status: 'awaiting_approval',
     manifest_url: manifestUrl,
     package_sha256: packageSha256,
@@ -1086,7 +1088,7 @@ async function createRun(svc, user, input) {
     blocked_batches: 0,
     failed_batches: 0,
     skipped_batches: descriptors.filter((item) => Number(item.selected_rows || 0) === 0).length,
-    excluded_rows: descriptors.reduce((total, item) => total + Number(item.excluded_rows || 0), 0),
+    excluded_rows: campaignExcludedRows,
     total_rows: descriptors.reduce((total, item) => total + Number(item.selected_rows || 0), 0),
     applied_rows: 0,
     skipped_rows: 0,
@@ -1099,7 +1101,9 @@ async function createRun(svc, user, input) {
     created_by_user_id: user.id,
     created_by_email: user.email || '',
     failure_message: '',
-    notes: clean(input.notes, 2000),
+    notes: clean(input.notes, 2000) || (mode === CAMPAIGN_MODE_NATIONAL
+      ? 'Campanie nationala automata: profile de director neconfirmate, publicate la nivel basic sau summary.'
+      : 'Import automat controlat cu publicare ca profil de director neconfirmat.'),
   });
   for (let index = 0; index < descriptors.length; index += 1) {
     const item = descriptors[index];
@@ -1118,17 +1122,19 @@ async function createRun(svc, user, input) {
     package_sha256: packageSha256,
     total_batches: descriptors.length,
     selected_rows: descriptors.reduce((total, item) => total + Number(item.selected_rows || 0), 0),
-    excluded_rows: descriptors.reduce((total, item) => total + Number(item.excluded_rows || 0), 0),
+    excluded_rows: campaignExcludedRows,
+    campaign_mode: mode,
   });
   return response({
     success: true,
     run,
     approval_confirmation: approvalPhrase(run),
     preflight: {
-      source_rows: descriptors.reduce((total, item) => total + Number(item.source_rows || 0), 0),
+      source_rows: campaignSourceRows,
       selected_rows: descriptors.reduce((total, item) => total + Number(item.selected_rows || 0), 0),
-      excluded_rows: descriptors.reduce((total, item) => total + Number(item.excluded_rows || 0), 0),
+      excluded_rows: campaignExcludedRows,
       skipped_batches: descriptors.filter((item) => Number(item.selected_rows || 0) === 0).length,
+      campaign_mode: mode,
     },
   });
 }
