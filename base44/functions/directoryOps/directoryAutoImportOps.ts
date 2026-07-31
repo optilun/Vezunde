@@ -590,7 +590,8 @@ async function createRun(svc, user, input) {
       return response({ error: `SHA-256 invalid pentru ${descriptor.source_filename}.` }, 400);
     }
   }
-  const preparedDescriptors = [];
+  const loadedDescriptors = [];
+  const allSourceRows = [];
   for (const descriptor of descriptors) {
     let sourceRows = Array.isArray(descriptor.inline_rows) ? descriptor.inline_rows : [];
     let sourceSha256 = clean(descriptor.source_sha256, 80).toLowerCase();
@@ -605,12 +606,19 @@ async function createRun(svc, user, input) {
     if (descriptor.expected_rows > 0 && descriptor.expected_rows !== sourceRows.length) {
       return response({ error: `${descriptor.source_filename}: manifestul declara ${descriptor.expected_rows} randuri, fisierul contine ${sourceRows.length}.` }, 400);
     }
-    const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows);
+    loadedDescriptors.push({ ...descriptor, source_sha256: sourceSha256, source_rows_payload: sourceRows });
+    allSourceRows.push(...sourceRows);
+  }
+  const geographyMap = await canonicalGeographyMap(svc, allSourceRows);
+  const preparedDescriptors = [];
+  for (const descriptor of loadedDescriptors) {
+    const sourceRows = descriptor.source_rows_payload;
+    const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows, geographyMap);
     const selection = selectRowsForAutomaticImport(canonicalRows);
     const selectedSha256 = await sha256HexText(stableStringify(selection.selected));
     preparedDescriptors.push({
       ...descriptor,
-      source_sha256: sourceSha256,
+      source_rows_payload: undefined,
       source_rows: sourceRows.length,
       selected_rows: selection.selected.length,
       excluded_rows: selection.excluded.length,
