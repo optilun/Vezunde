@@ -4,6 +4,8 @@ import fs from 'node:fs';
 const read = (path) => fs.readFileSync(path, 'utf8');
 const auto = read('base44/functions/directoryOps/directoryAutoImportOps.ts');
 const importOps = read('base44/functions/directoryOps/directoryImportOps.ts');
+const importPipeline = read('base44/shared/directoryImportPipeline.js');
+const browseDirectory = read('base44/functions/browseDirectoryProviders/entry.ts');
 const latest = read('base44/functions/directoryOps/directoryImportOpsLatest.ts');
 const bridge = read('scripts/bridge-sources/listProviderMemberInvitations.entry.ts');
 const deployed = read('base44/functions/listProviderMemberInvitations/entry.ts');
@@ -119,9 +121,12 @@ assert.match(ui, /national_directory/);
 assert.match(ui, /Campanie nationala/);
 assert.match(auto, /selectRowsForNationalDirectory/);
 assert.match(auto, /excludeControlledOrAmbiguousLiveMatches/);
+assert.match(auto, /reconcileNationalOrganizationKeys/);
+assert.match(auto, /target_organization_id/);
 assert.match(auto, /nationalRowsFromPrivateSourceBase64/);
 assert.match(auto, /publish_batch/);
 assert.match(auto, /publishCompletedBatchAsBasicDirectory/);
+assert.match(auto, /stepIndex < 8/);
 assert.match(auto, /existing_controlled_location/);
 assert.match(importOps, /export async function publishCompletedBatchAsBasicDirectory/);
 assert.match(importOps, /public_visibility_status: 'approved'/);
@@ -129,5 +134,10 @@ assert.match(importOps, /verification_state: 'unclaimed'/);
 assert.match(importOps, /is_verified: false/);
 assert.match(importOps, /directory_detail_level: basicApproved \? 'basic' : 'summary'/);
 assert.doesNotMatch(importOps, /directory_profile_published_basic[\s\S]{0,2000}LocationService\.(create|update|delete)/);
+assert.match(importPipeline, /target_organization_id: \["target_organization_id"\]/);
+assert.match(importPipeline, /target_organization_id: fields\.target_organization_id/);
+for (const profileType of ['independent_ophthalmologist', 'independent_optometrist', 'independent_optician', 'optical_laboratory_b2c']) {
+  assert.match(browseDirectory, new RegExp(`'${profileType}'`));
+}
 
 console.log('Directory auto-import orchestrator contract verified.');
