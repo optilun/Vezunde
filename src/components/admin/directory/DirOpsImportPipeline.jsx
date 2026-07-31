@@ -221,9 +221,9 @@ function AutoImportPanel() {
         </select>
         <span className="mt-1 block font-normal text-muted-foreground">Campania nationala exclude automat conflictele, duplicatele, randurile generice si datele insuficiente. Nu marcheaza niciun profil ca verificat.</span>
       </label>
-      <label className="rounded-2xl border border-dashed border-border bg-background p-4 text-xs font-semibold lg:col-span-2">Arhiva privata ZIP recomandata
-        <input type="file" accept=".zip,application/zip" onChange={(event) => setZipFile(event.target.files?.[0] || null)} className="mt-2 block w-full text-xs" />
-        <span className="mt-2 block font-normal text-muted-foreground">Arhiva este analizata direct in zona administrativa. Nu trebuie publicata si nu are nevoie de URL.</span>
+      <label className="rounded-2xl border border-dashed border-border bg-background p-4 text-xs font-semibold lg:col-span-2">Fisier privat recomandat
+        <input type="file" accept={campaignMode === "national_directory" ? ".json,.zip,application/json,application/zip" : ".zip,application/zip"} onChange={(event) => setZipFile(event.target.files?.[0] || null)} className="mt-2 block w-full text-xs" />
+        <span className="mt-2 block font-normal text-muted-foreground">Pentru campania nationala foloseste registrul master JSON cu 1.329 de randuri. Este acceptata si arhiva ZIP. Fisierul este analizat privat, fara publicare si fara URL.</span>
         {zipFile && <span className="mt-2 block font-normal text-foreground">{zipFile.name} · {Math.max(1, Math.round(zipFile.size / 1024))} KB</span>}
       </label>
       {campaignMode === "strict_import" && <>
