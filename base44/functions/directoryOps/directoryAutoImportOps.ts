@@ -574,14 +574,21 @@ async function refreshProgress(svc, run) {
     if (item.status === 'completed') acc.completed_batches += 1;
     if (item.status === 'blocked') acc.blocked_batches += 1;
     if (item.status === 'failed') acc.failed_batches += 1;
-    acc.total_rows += Number(item.expected_rows || 0);
+    if (item.status === 'skipped') acc.skipped_batches += 1;
+    const selectedRows = Number(item.selected_rows || 0);
+    const sourceRows = Number(item.source_rows || item.expected_rows || 0);
+    acc.total_rows += item.status === 'pending' ? sourceRows : selectedRows;
+    acc.excluded_rows += Number(item.excluded_rows || 0);
     acc.applied_rows += Number(item.applied_rows || 0);
     acc.skipped_rows += Number(item.skipped_rows || 0);
     acc.failed_rows += Number(item.failed_rows || 0);
     return acc;
-  }, { completed_batches: 0, blocked_batches: 0, failed_batches: 0, total_rows: 0, applied_rows: 0, skipped_rows: 0, failed_rows: 0 });
+  }, { completed_batches: 0, blocked_batches: 0, failed_batches: 0, skipped_batches: 0, excluded_rows: 0, total_rows: 0, applied_rows: 0, skipped_rows: 0, failed_rows: 0 });
   const nextItem = items.find((item) => !TERMINAL_ITEM_STATUSES.has(item.status)) || null;
-  const completed = !nextItem && totals.completed_batches === items.length;
+  const completed = !nextItem
+    && totals.blocked_batches === 0
+    && totals.failed_batches === 0
+    && totals.completed_batches + totals.skipped_batches === items.length;
   const values = {
     ...totals,
     current_sequence: nextItem?.sequence || items.length + 1,
