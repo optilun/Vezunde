@@ -59,6 +59,19 @@ function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function campaignMode(value) {
+  return clean(value, 80) === CAMPAIGN_MODE_NATIONAL
+    ? CAMPAIGN_MODE_NATIONAL
+    : CAMPAIGN_MODE_STRICT;
+}
+
+function runCampaignMode(run = {}) {
+  const direct = campaignMode(run.campaign_mode);
+  if (direct === CAMPAIGN_MODE_NATIONAL) return direct;
+  const policy = safeJson(run.safety_policy_json, {});
+  return campaignMode(policy.campaign_mode);
+}
+
 function stableStringify(value) {
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
   if (value && typeof value === 'object') {
