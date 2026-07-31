@@ -8,7 +8,7 @@ Orchestratorul elimina repetarea manuala a fluxului snapshot → validare → dr
 
 1. Administratorul introduce un manifest JSON sau URL-uri JSON de lot.
 2. Sistemul calculeaza amprenta pachetului si cere o singura confirmare exacta `AUTOIMPORT ...`.
-3. Dupa aprobare, automatizarea Base44 ruleaza la fiecare 5 minute.
+3. Dupa publicarea versiunii, automatizarea Base44 ruleaza la fiecare 5 minute si este limitata la maximum 400 de executii pentru campania curenta.
 4. La fiecare executie se avanseaza un singur pas durabil:
    - descarcare si verificare SHA-256;
    - creare snapshot;
@@ -65,3 +65,7 @@ Administratorul poate:
 - executa manual un singur pas pentru testare.
 
 Orice lot blocat opreste intreaga rulare pentru inspectie administrativa.
+
+## Consum operational
+
+Base44 contabilizeaza fiecare executie a automatizarii ca o rulare separata. Configuratia este limitata la 400 de executii, astfel incat procesul sa nu ramana activ la nesfarsit. Pentru pachetul national de 23 de loturi, bugetul acopera pasii de pregatire, executia in grupuri de 5 si o rezerva pentru reluari temporare.
