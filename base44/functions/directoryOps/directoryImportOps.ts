@@ -235,7 +235,7 @@ async function listSnapshots(svc, input) {
   }));
 }
 
-async function createSnapshot(svc, user, input) {
+export async function createSnapshot(svc, user, input) {
   const sourceVersion = clean(input.source_version, 160);
   const sourceSha256 = clean(input.source_sha256, 80).toLowerCase();
   const sourceName = clean(input.source_name, 200);
@@ -287,7 +287,7 @@ async function createSnapshot(svc, user, input) {
   return response({ success: true, reused: false, snapshot });
 }
 
-async function appendRows(svc, user, input) {
+export async function appendRows(svc, user, input) {
   const snapshot = await getDirectoryEntityOrNull(
     svc.entities.DirectorySourceSnapshot.get(clean(input.snapshot_id, 120)),
     'snapshotului pentru incarcarea randurilor',
@@ -358,7 +358,7 @@ async function appendRows(svc, user, input) {
   return response({ success: true, created, reused, uploaded_rows: uploadedRows });
 }
 
-async function finalizeSnapshot(svc, user, input) {
+export async function finalizeSnapshot(svc, user, input) {
   const snapshot = await getDirectoryEntityOrNull(
     svc.entities.DirectorySourceSnapshot.get(clean(input.snapshot_id, 120)),
     'snapshotului pentru validare',
@@ -657,7 +657,7 @@ function applyAdminOverride(normalized, row) {
   return merged;
 }
 
-async function planBatch(svc, user, input) {
+export async function planBatch(svc, user, input) {
   const snapshot = await getDirectoryEntityOrNull(
     svc.entities.DirectorySourceSnapshot.get(clean(input.snapshot_id, 120)),
     'snapshotului pentru dry-run',
@@ -1166,7 +1166,7 @@ async function overrideRow(svc, user, input) {
   return response({ success: true, row_id: row.id });
 }
 
-async function approveBatch(svc, user, input) {
+export async function approveBatch(svc, user, input) {
   const batch = await getDirectoryEntityOrNull(
     svc.entities.DirectoryImportBatch.get(clean(input.batch_id, 120)),
     'lotului pentru aprobare',
@@ -2207,7 +2207,7 @@ async function persistBatchInterruption(svc, batch, progress, error) {
   }
 }
 
-async function resumeBatchAfterTransientFailure(svc, user, input) {
+export async function resumeBatchAfterTransientFailure(svc, user, input) {
   const batch = await getDirectoryEntityOrNull(
     svc.entities.DirectoryImportBatch.get(clean(input.batch_id, 120)),
     'lotului pentru reluare',
@@ -2301,7 +2301,7 @@ async function resumeBatchAfterTransientFailure(svc, user, input) {
   });
 }
 
-async function executeBatch(svc, user, input) {
+export async function executeBatch(svc, user, input) {
   const batch = await getDirectoryEntityOrNull(
     svc.entities.DirectoryImportBatch.get(clean(input.batch_id, 120)),
     'lotului pentru executie',
