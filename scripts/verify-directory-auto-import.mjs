@@ -62,6 +62,9 @@ assert.match(auto, /selectRowsForAutomaticImport\(canonicalRows\)/);
 assert.match(auto, /const preparedDescriptors = \[\]/);
 assert.match(auto, /selectedSha256 = await sha256HexText\(stableStringify\(selection\.selected\)\)/);
 assert.match(auto, /preflight_selection_changed/);
+assert.match(auto, /Analiza este partiala/);
+assert.match(auto, /requires_repair:\s*true/);
+assert.match(auto, /persistPayloadChunks/);
 assert.match(auto, /skipped_no_strictly_clean_rows/);
 assert.match(auto, /review_flags_present/);
 assert.match(auto, /advance_auto_import_run_now/);
@@ -109,5 +112,7 @@ assert.match(ui, /Arhiva privata ZIP recomandata/);
 assert.match(ui, /zip_base64/);
 assert.match(ui, /attempt <= 5/);
 assert.match(ui, /user-exception\|timeout\|timed out\|temporar/);
+assert.match(ui, /incompletePreflight/);
+assert.match(ui, /Repara analiza partiala/);
 
 console.log('Directory auto-import orchestrator contract verified.');
