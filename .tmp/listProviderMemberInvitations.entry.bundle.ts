@@ -4212,6 +4212,65 @@ function nationalIdentityKey(row = {}) {
   if (external) return `external:${external}`;
   return `identity:${clean8(row.locality_siruta_code, 40)}|${clean8(row.address_fingerprint, 240)}|${normalizeIdentityText(row.location_display_name)}`;
 }
+function nationalFallbackIdentityKey(row = {}) {
+  const siruta = clean8(row.locality_siruta_code || row.uat_code, 40);
+  const address = normalizeIdentityText(row.confirmed_address || row.address);
+  const name = normalizeIdentityText(row.location_display_name || row.location_name || row.name);
+  return siruta && address && name ? `identity:${siruta}|${address}|${name}` : "";
+}
+function nationalSummary(selected = [], excluded = [], sourceRows = 0) {
+  const reasonCounts = {};
+  for (const item of excluded) {
+    for (const reason of asArray2(item.reasons)) reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
+  }
+  return {
+    source_rows: sourceRows,
+    selected_rows: selected.length,
+    excluded_rows: excluded.length,
+    reason_counts: reasonCounts
+  };
+}
+async function excludeControlledLiveRows(svc, selection) {
+  const [locations, states] = await Promise.all([
+    requireDirectoryRows(
+      svc.entities.ProviderLocation.list("name", 5e3),
+      "locatiilor live pentru deduplicarea campaniei nationale"
+    ),
+    requireDirectoryRows(
+      svc.entities.ProviderLocationDirectoryState.filter({ state_status: "active" }, "-created_date", 5e3),
+      "starilor live pentru deduplicarea campaniei nationale"
+    )
+  ]);
+  const locationsById = new Map(locations.map((location) => [location.id, location]));
+  const controlledExternalKeys = /* @__PURE__ */ new Set();
+  const controlledIdentityKeys = /* @__PURE__ */ new Set();
+  for (const state of states) {
+    const location = locationsById.get(state.location_id) || null;
+    if (!location) continue;
+    const controlStatus = clean8(location.profile_control_status || state.control_status || "directory", 80);
+    if (!["claimed", "verified", "suspended"].includes(controlStatus)) continue;
+    const externalKey = clean8(state.directory_external_key, 240);
+    if (externalKey) controlledExternalKeys.add(externalKey);
+    const identityKey = nationalFallbackIdentityKey(location);
+    if (identityKey) controlledIdentityKeys.add(identityKey);
+  }
+  const selected = [];
+  const excluded = [...selection.excluded];
+  for (const row of selection.selected) {
+    const externalKey = clean8(row.location_external_key, 240);
+    const identityKey = nationalFallbackIdentityKey(row);
+    if (externalKey && controlledExternalKeys.has(externalKey) || identityKey && controlledIdentityKeys.has(identityKey)) {
+      excluded.push({ row, reasons: ["existing_controlled_location"] });
+      continue;
+    }
+    selected.push(row);
+  }
+  return {
+    selected,
+    excluded,
+    summary: nationalSummary(selected, excluded, selection.summary.source_rows)
+  };
+}
 function selectRowsForNationalDirectory(rows = []) {
   const excluded = [];
   const bestByIdentity = /* @__PURE__ */ new Map();
@@ -4488,7 +4547,8 @@ async function createRun(svc, user, input) {
     );
     const geographyMap2 = await canonicalGeographyMap(svc, archiveMetadata.rows);
     const canonicalRows = await enrichRowsWithCanonicalGeography(svc, archiveMetadata.rows, geographyMap2);
-    const nationalSelection = selectRowsForNationalDirectory(canonicalRows);
+    const selectedNationalRows = selectRowsForNationalDirectory(canonicalRows);
+    const nationalSelection = await excludeControlledLiveRows(svc, selectedNationalRows);
     campaignSourceRows = nationalSelection.summary.source_rows;
     campaignExcludedRows = nationalSelection.summary.excluded_rows;
     campaignSelectionSummary = nationalSelection.summary;
