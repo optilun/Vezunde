@@ -25,6 +25,7 @@ export const DIRECTORY_AUTO_IMPORT_CONTRACT_VERSION = 'viasee-directory-auto-imp
 const MAX_BATCHES = 50;
 const MAX_ROWS_PER_BATCH = 40;
 const EXECUTION_CHUNK = 5;
+const PAYLOAD_CHUNK_SIZE = 12_000;
 const LOCK_MINUTES = 4;
 const ALLOWED_ACTIONS = new Set([
   'create_organization_and_location',
