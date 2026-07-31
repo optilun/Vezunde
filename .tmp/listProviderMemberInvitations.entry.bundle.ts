@@ -3543,6 +3543,7 @@ var DIRECTORY_AUTO_IMPORT_CONTRACT_VERSION = "viasee-directory-auto-import-v1";
 var MAX_BATCHES = 50;
 var MAX_ROWS_PER_BATCH = 40;
 var EXECUTION_CHUNK2 = 5;
+var PAYLOAD_CHUNK_SIZE = 12e3;
 var LOCK_MINUTES2 = 4;
 var ALLOWED_ACTIONS = /* @__PURE__ */ new Set([
   "create_organization_and_location",
@@ -3613,6 +3614,84 @@ async function sha256HexBytes(bytes) {
 }
 async function sha256HexText(value) {
   return sha256HexBytes(new TextEncoder().encode(String(value ?? "")));
+}
+function splitPayloadText(value) {
+  const text = String(value ?? "");
+  const chunks = [];
+  for (let offset = 0; offset < text.length; offset += PAYLOAD_CHUNK_SIZE) {
+    chunks.push(text.slice(offset, offset + PAYLOAD_CHUNK_SIZE));
+  }
+  return chunks.length ? chunks : [""];
+}
+async function persistPayloadChunks(svc, runId, itemKey, payloadJson, selectedRows) {
+  const text = String(payloadJson ?? "[]");
+  const payloadSha256 = await sha256HexText(text);
+  const chunks = splitPayloadText(text);
+  const existing = await requireDirectoryRows(
+    svc.entities.DirectoryAutoImportPayloadChunk.filter(
+      { run_id: runId, item_key: itemKey },
+      "chunk_index",
+      200
+    ),
+    "fragmentelor private ale lotului automat"
+  );
+  const byIndex = /* @__PURE__ */ new Map();
+  for (const entry of existing) {
+    const index = Number(entry.chunk_index);
+    if (byIndex.has(index)) throw new Error(`Fragmente private duplicate pentru ${itemKey}.`);
+    byIndex.set(index, entry);
+  }
+  let created = 0;
+  for (let index = 0; index < chunks.length; index += 1) {
+    const current = byIndex.get(index) || null;
+    if (current) {
+      const matches = Number(current.chunk_count) === chunks.length && clean8(current.payload_sha256, 80) === payloadSha256 && current.payload_chunk === chunks[index];
+      if (!matches) throw new Error(`Persistenta privata este neconforma pentru ${itemKey}, fragmentul ${index}.`);
+      continue;
+    }
+    await svc.entities.DirectoryAutoImportPayloadChunk.create({
+      run_id: runId,
+      item_key: itemKey,
+      chunk_index: index,
+      chunk_count: chunks.length,
+      payload_chunk: chunks[index],
+      payload_sha256: payloadSha256,
+      created_for_selected_rows: Number(selectedRows || 0)
+    });
+    created += 1;
+  }
+  for (const index of byIndex.keys()) {
+    if (index < 0 || index >= chunks.length) throw new Error(`Fragment privat excedentar pentru ${itemKey}.`);
+  }
+  return { payload_sha256: payloadSha256, chunk_count: chunks.length, reused: created === 0, created };
+}
+async function loadPayloadChunks(svc, item) {
+  const chunks = await requireDirectoryRows(
+    svc.entities.DirectoryAutoImportPayloadChunk.filter(
+      { run_id: item.run_id, item_key: item.item_key },
+      "chunk_index",
+      200
+    ),
+    "fragmentelor private ale lotului automat pentru reluare"
+  );
+  if (!chunks.length) return null;
+  const expectedCount = Number(chunks[0].chunk_count || 0);
+  if (!expectedCount || chunks.length !== expectedCount) {
+    throw new Error(`Fragmente private incomplete pentru ${item.item_key}.`);
+  }
+  for (let index = 0; index < chunks.length; index += 1) {
+    if (Number(chunks[index].chunk_index) !== index || Number(chunks[index].chunk_count) !== expectedCount) {
+      throw new Error(`Ordine invalida a fragmentelor private pentru ${item.item_key}.`);
+    }
+  }
+  const text = chunks.map((entry) => entry.payload_chunk || "").join("");
+  const actualSha256 = await sha256HexText(text);
+  if (actualSha256 !== clean8(chunks[0].payload_sha256, 80)) {
+    throw new Error(`SHA invalid pentru persistenta privata a ${item.item_key}.`);
+  }
+  const payload = JSON.parse(text);
+  if (!Array.isArray(payload)) throw new Error(`Payload privat invalid pentru ${item.item_key}.`);
+  return payload;
 }
 async function fetchJson(sourceUrl, expectedSha256 = "") {
   const controller = new AbortController();
@@ -3810,7 +3889,7 @@ async function descriptorsFromZipBase64(zipBase64, archiveFilename = "") {
     descriptors
   };
 }
-async function enrichRowsWithCanonicalGeography(svc, rows = []) {
+async function canonicalGeographyMap(svc, rows = []) {
   const codes = Array.from(new Set(rows.map((row) => clean8(row?.locality_siruta_code, 40)).filter(Boolean)));
   const geographicRows = codes.length ? await requireDirectoryRows(
     svc.entities.GeographicLocality.filter(
@@ -3825,6 +3904,10 @@ async function enrichRowsWithCanonicalGeography(svc, rows = []) {
     const code = clean8(geography.siruta_code, 40);
     if (code && !bySiruta.has(code)) bySiruta.set(code, geography);
   }
+  return bySiruta;
+}
+async function enrichRowsWithCanonicalGeography(svc, rows = [], existingMap = null) {
+  const bySiruta = existingMap instanceof Map ? existingMap : await canonicalGeographyMap(svc, rows);
   return rows.map((row) => {
     const code = clean8(row?.locality_siruta_code, 40);
     const geography = bySiruta.get(code) || null;
@@ -3903,6 +3986,38 @@ function approvalPhrase(run) {
 function runKeyFor(packageSha256) {
   return `AUTODIR-${clean8(packageSha256, 80).slice(0, 12)}`;
 }
+function autoItemRecord(runId, runKey, index, item) {
+  const itemKey = `${runKey}-${String(index + 1).padStart(3, "0")}`;
+  return {
+    run_id: runId,
+    sequence: index + 1,
+    item_key: itemKey,
+    status: item.selected_rows > 0 ? "pending" : "skipped",
+    step: item.selected_rows > 0 ? "fetch_source" : "skipped_no_strictly_clean_rows",
+    source_url: item.source_url,
+    source_filename: item.source_filename,
+    source_sha256: item.source_sha256,
+    selected_sha256: item.selected_sha256,
+    expected_sha256: item.expected_sha256,
+    expected_rows: item.selected_rows,
+    source_rows: item.source_rows,
+    selected_rows: item.selected_rows,
+    excluded_rows: item.excluded_rows,
+    selection_result_json: JSON.stringify(item.selection_summary),
+    source_payload_json: "",
+    organization_count: item.organization_count,
+    snapshot_id: "",
+    batch_id: "",
+    execution_lock_token: "",
+    applied_rows: 0,
+    skipped_rows: 0,
+    failed_rows: 0,
+    safety_result_json: "{}",
+    result_json: item.selected_rows > 0 ? "{}" : JSON.stringify({ selection: item.selection_summary }),
+    failure_message: "",
+    ...item.selected_rows > 0 ? {} : { started_at: now2(), finished_at: now2() }
+  };
+}
 async function createRun(svc, user, input) {
   const manifestUrl = clean8(input.manifest_url, 2e3);
   let archiveMetadata = null;
@@ -3934,7 +4049,8 @@ async function createRun(svc, user, input) {
       return response2({ error: `SHA-256 invalid pentru ${descriptor.source_filename}.` }, 400);
     }
   }
-  const preparedDescriptors = [];
+  const loadedDescriptors = [];
+  const allSourceRows = [];
   for (const descriptor of descriptors) {
     let sourceRows = Array.isArray(descriptor.inline_rows) ? descriptor.inline_rows : [];
     let sourceSha256 = clean8(descriptor.source_sha256, 80).toLowerCase();
@@ -3949,12 +4065,19 @@ async function createRun(svc, user, input) {
     if (descriptor.expected_rows > 0 && descriptor.expected_rows !== sourceRows.length) {
       return response2({ error: `${descriptor.source_filename}: manifestul declara ${descriptor.expected_rows} randuri, fisierul contine ${sourceRows.length}.` }, 400);
     }
-    const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows);
+    loadedDescriptors.push({ ...descriptor, source_sha256: sourceSha256, source_rows_payload: sourceRows });
+    allSourceRows.push(...sourceRows);
+  }
+  const geographyMap = await canonicalGeographyMap(svc, allSourceRows);
+  const preparedDescriptors = [];
+  for (const descriptor of loadedDescriptors) {
+    const sourceRows = descriptor.source_rows_payload;
+    const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows, geographyMap);
     const selection = selectRowsForAutomaticImport(canonicalRows);
     const selectedSha256 = await sha256HexText(stableStringify2(selection.selected));
     preparedDescriptors.push({
       ...descriptor,
-      source_sha256: sourceSha256,
+      source_rows_payload: void 0,
       source_rows: sourceRows.length,
       selected_rows: selection.selected.length,
       excluded_rows: selection.excluded.length,
@@ -3979,16 +4102,59 @@ async function createRun(svc, user, input) {
     "rularilor automate existente"
   );
   if (existing[0]) {
-    const items = await requireDirectoryRows(
-      svc.entities.DirectoryAutoImportItem.filter({ run_id: existing[0].id }, "sequence", 100),
+    const run2 = existing[0];
+    const currentItems = await requireDirectoryRows(
+      svc.entities.DirectoryAutoImportItem.filter({ run_id: run2.id }, "sequence", 100),
       "loturilor rularii automate existente"
     );
+    const bySequence = new Map(currentItems.map((entry) => [Number(entry.sequence), entry]));
+    let repairedItems = 0;
+    for (let index = 0; index < descriptors.length; index += 1) {
+      const descriptor = descriptors[index];
+      const expectedRecord = autoItemRecord(run2.id, runKey, index, descriptor);
+      let existingItem = bySequence.get(index + 1) || null;
+      if (!existingItem) {
+        existingItem = await svc.entities.DirectoryAutoImportItem.create(expectedRecord);
+        repairedItems += 1;
+      }
+      await persistPayloadChunks(
+        svc,
+        run2.id,
+        expectedRecord.item_key,
+        descriptor.selected_payload_json,
+        descriptor.selected_rows
+      );
+      if (clean8(existingItem.source_payload_json, 2e5)) {
+        await svc.entities.DirectoryAutoImportItem.update(existingItem.id, { source_payload_json: "" });
+      }
+    }
+    const runValues = {
+      total_batches: descriptors.length,
+      skipped_batches: descriptors.filter((item) => Number(item.selected_rows || 0) === 0).length,
+      excluded_rows: descriptors.reduce((total, item) => total + Number(item.excluded_rows || 0), 0),
+      total_rows: descriptors.reduce((total, item) => total + Number(item.selected_rows || 0), 0),
+      failure_message: ""
+    };
+    await svc.entities.DirectoryAutoImportRun.update(run2.id, runValues);
+    const items = await requireDirectoryRows(
+      svc.entities.DirectoryAutoImportItem.filter({ run_id: run2.id }, "sequence", 100),
+      "loturilor rularii automate reparate"
+    );
+    const repairedRun = { ...run2, ...runValues };
     return response2({
       success: true,
       reused: true,
-      run: existing[0],
+      repaired: repairedItems > 0,
+      repaired_items: repairedItems,
+      run: repairedRun,
       items,
-      approval_confirmation: approvalPhrase(existing[0])
+      approval_confirmation: approvalPhrase(repairedRun),
+      preflight: {
+        source_rows: descriptors.reduce((total, item) => total + Number(item.source_rows || 0), 0),
+        selected_rows: runValues.total_rows,
+        excluded_rows: runValues.excluded_rows,
+        skipped_batches: runValues.skipped_batches
+      }
     });
   }
   const safetyPolicy = {
@@ -4039,35 +4205,15 @@ async function createRun(svc, user, input) {
   });
   for (let index = 0; index < descriptors.length; index += 1) {
     const item = descriptors[index];
-    await svc.entities.DirectoryAutoImportItem.create({
-      run_id: run.id,
-      sequence: index + 1,
-      item_key: `${runKey}-${String(index + 1).padStart(3, "0")}`,
-      status: item.selected_rows > 0 ? "pending" : "skipped",
-      step: item.selected_rows > 0 ? "fetch_source" : "skipped_no_strictly_clean_rows",
-      source_url: item.source_url,
-      source_filename: item.source_filename,
-      source_sha256: item.source_sha256,
-      selected_sha256: item.selected_sha256,
-      expected_sha256: item.expected_sha256,
-      expected_rows: item.selected_rows,
-      source_rows: item.source_rows,
-      selected_rows: item.selected_rows,
-      excluded_rows: item.excluded_rows,
-      selection_result_json: JSON.stringify(item.selection_summary),
-      source_payload_json: item.selected_payload_json,
-      organization_count: item.organization_count,
-      snapshot_id: "",
-      batch_id: "",
-      execution_lock_token: "",
-      applied_rows: 0,
-      skipped_rows: 0,
-      failed_rows: 0,
-      safety_result_json: "{}",
-      result_json: item.selected_rows > 0 ? "{}" : JSON.stringify({ selection: item.selection_summary }),
-      failure_message: "",
-      ...item.selected_rows > 0 ? {} : { started_at: now2(), finished_at: now2() }
-    });
+    const itemRecord = autoItemRecord(run.id, runKey, index, item);
+    await svc.entities.DirectoryAutoImportItem.create(itemRecord);
+    await persistPayloadChunks(
+      svc,
+      run.id,
+      itemRecord.item_key,
+      item.selected_payload_json,
+      item.selected_rows
+    );
   }
   await writeAudit2(svc, user, "DirectoryAutoImportRun", run.id, "directory_auto_import_run_created", {}, {
     run_key: runKey,
@@ -4283,14 +4429,25 @@ async function refreshProgress(svc, run) {
   await svc.entities.DirectoryAutoImportRun.update(run.id, values);
   return { items, nextItem, completed, values };
 }
-async function loadItemSourceRows(item) {
-  const persisted = safeJson2(item.source_payload_json, null);
-  if (Array.isArray(persisted)) {
+async function loadItemSourceRows(svc, item) {
+  const legacyPersisted = safeJson2(item.source_payload_json, null);
+  if (Array.isArray(legacyPersisted)) {
     return {
-      rows: persisted,
+      rows: legacyPersisted,
       source_sha256: clean8(item.source_sha256, 80),
       persisted: true
     };
+  }
+  const chunkedPersisted = await loadPayloadChunks(svc, item);
+  if (Array.isArray(chunkedPersisted)) {
+    return {
+      rows: chunkedPersisted,
+      source_sha256: clean8(item.source_sha256, 80),
+      persisted: true
+    };
+  }
+  if (String(item.source_url || "").startsWith("archive://")) {
+    throw new Error(`Payloadul privat lipseste pentru ${item.item_key}. Reanalizeaza aceeasi arhiva pentru reparare.`);
   }
   const fetched = await fetchJson(item.source_url, item.source_sha256 || item.expected_sha256);
   return {
@@ -4321,7 +4478,7 @@ async function advanceRun(svc, run) {
     const user = automationUser(run);
     const heartbeat = { last_heartbeat_at: now2(), failure_message: "" };
     if (item.step === "fetch_source" || item.status === "pending") {
-      const loadedSource = await loadItemSourceRows(item);
+      const loadedSource = await loadItemSourceRows(svc, item);
       const sourceRows = loadedSource.rows;
       if (!sourceRows.length || sourceRows.length > MAX_ROWS_PER_BATCH) return blockItem(svc, run, item, [`source_row_count:${sourceRows.length}`], "fetch_source");
       if (Number(item.expected_rows || 0) > 0 && Number(item.expected_rows) !== sourceRows.length) {
@@ -4387,7 +4544,7 @@ async function advanceRun(svc, run) {
       return { success: true, step: "snapshot_created", selected_rows: selection.selected.length, excluded_rows: Number(item.excluded_rows || 0) };
     }
     if (item.step === "append_rows") {
-      const loadedSource = await loadItemSourceRows(item);
+      const loadedSource = await loadItemSourceRows(svc, item);
       const sourceRows = loadedSource.rows;
       const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows);
       const selection = selectRowsForAutomaticImport(canonicalRows);
@@ -4593,7 +4750,7 @@ async function handleDirectoryAutoImport(req) {
 }
 
 // base44/functions/directoryOps/directoryImportOpsLatest.ts
-var DIRECTORY_IMPORT_RUNTIME_REVISION2 = "directory-import-runtime-auto-orchestrator-2";
+var DIRECTORY_IMPORT_RUNTIME_REVISION2 = "directory-import-runtime-auto-orchestrator-3";
 async function handle3(req) {
   const input = await req.clone().json().catch(() => ({}));
   if (input?.action === "runtime_info") {
@@ -4622,7 +4779,9 @@ async function handle3(req) {
       scheduled_auto_import_runner: true,
       max_automatic_execution_chunk: 5,
       supports_private_zip_upload: true,
-      persists_approved_source_subset: true
+      persists_approved_source_subset: true,
+      uses_chunked_private_payload_storage: true,
+      repairs_partial_preflight_runs: true
     });
   }
   if (String(input?.action || "").startsWith("auto_") || input?.action === "advance_auto_import_runs" || input?.action === "list_auto_import_runs" || input?.action === "create_auto_import_run" || input?.action === "approve_auto_import_run" || input?.action === "pause_auto_import_run" || input?.action === "resume_auto_import_run" || input?.action === "cancel_auto_import_run" || input?.action === "advance_auto_import_run_now") {
@@ -4635,7 +4794,7 @@ async function handle3(req) {
 var ROLES = ["organization_owner", "location_manager", "location_staff"];
 var DIRECTORY_IMPORT_LOGICAL_NAME = "directoryImportOps";
 var DIRECTORY_AUTO_IMPORT_AUTOMATION_TOKEN = "viasee-auto-7f4d83b1-4d38-45aa-b558-9c20cf63c6c2";
-var FUNCTION_DEPLOY_REVISION = "viasee-directory-import-single-file-12";
+var FUNCTION_DEPLOY_REVISION = "viasee-directory-import-single-file-13";
 console.info(`[VIASEE] listProviderMemberInvitations ${FUNCTION_DEPLOY_REVISION}`);
 function res(body, status = 200) {
   return Response.json(body, { status });
