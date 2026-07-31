@@ -201,6 +201,8 @@ function AutoImportPanel() {
       <button type="button" onClick={load} disabled={busy} className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-border px-4 text-xs font-semibold"><RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} /> Actualizeaza</button>
     </div>
 
+    {incompletePreflight && <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-950"><strong>Analiza anterioara s-a oprit partial.</strong> Sunt salvate {items.length} din {latest.total_batches || 0} loturi. Reincarca aceeasi arhiva pentru reparare automata; aprobarea ramane blocata pana cand toate loturile sunt complete.</div>}
+
     {canCreateNew && <div className="mt-5 grid gap-3 lg:grid-cols-2">
       <label className="rounded-2xl border border-dashed border-border bg-background p-4 text-xs font-semibold lg:col-span-2">Arhiva privata ZIP recomandata
         <input type="file" accept=".zip,application/zip" onChange={(event) => setZipFile(event.target.files?.[0] || null)} className="mt-2 block w-full text-xs" />
@@ -214,7 +216,7 @@ function AutoImportPanel() {
       <label className="text-xs font-semibold">Sau URL-uri JSON, cate unul pe linie
         <textarea value={batchUrls} onChange={(event) => setBatchUrls(event.target.value)} rows={4} placeholder="https://.../batch-01.json" className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
       </label>
-      <div className="lg:col-span-2"><button type="button" onClick={create} disabled={busy || (!zipFile && !manifestUrl.trim() && !batchUrls.trim())} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-40 sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />} Analizeaza pachetul automat</button></div>
+      <div className="lg:col-span-2"><button type="button" onClick={create} disabled={busy || (!zipFile && !manifestUrl.trim() && !batchUrls.trim())} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-40 sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />} {incompletePreflight ? "Repara analiza partiala" : "Analizeaza pachetul automat"}</button></div>
     </div>}
 
     {latest && <div className="mt-5 space-y-4">
