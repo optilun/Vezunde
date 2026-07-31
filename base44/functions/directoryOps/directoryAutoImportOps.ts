@@ -1562,7 +1562,7 @@ async function advanceRun(svc, run) {
       if (Number(snapshot.valid_rows || 0) !== Number(snapshot.total_rows || 0)) errors.push('not_all_rows_valid');
       if (Number(snapshot.blocked_rows || 0)) errors.push(`blocked_rows:${snapshot.blocked_rows}`);
       if (Number(snapshot.duplicate_rows || 0)) errors.push(`duplicate_rows:${snapshot.duplicate_rows}`);
-      if (Number(snapshot.warning_rows || 0)) errors.push(`warning_rows:${snapshot.warning_rows}`);
+      if (runCampaignMode(run) === CAMPAIGN_MODE_STRICT && Number(snapshot.warning_rows || 0)) errors.push(`warning_rows:${snapshot.warning_rows}`);
       if (errors.length) return blockItem(svc, run, item, errors, 'validate_snapshot');
       await svc.entities.DirectoryAutoImportItem.update(item.id, { status: 'validated', step: 'plan_batch', ...heartbeat });
       await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:plan_batch`, failure_message: '' });
@@ -1586,7 +1586,7 @@ async function advanceRun(svc, run) {
         getDirectoryEntityOrNull(svc.entities.DirectorySourceSnapshot.get(item.snapshot_id), 'snapshotului automat pentru inspectie'),
         getDirectoryEntityOrNull(svc.entities.DirectoryImportBatch.get(item.batch_id), 'lotului automat pentru inspectie'),
       ]);
-      const safety = await inspectSafety(svc, snapshot, batch);
+      const safety = await inspectSafety(svc, snapshot, batch, run);
       if (!safety.safe) return blockItem(svc, run, item, safety.errors, 'inspect_batch');
       const approved = await responsePayload(await approveBatch(svc, user, {
         batch_id: batch.id,
@@ -1654,16 +1654,39 @@ async function advanceRun(svc, run) {
       const errors = [];
       if (!batch || batch.status !== 'completed') errors.push(`batch_status:${batch?.status || 'missing'}`);
       if (Number(batch?.failed_rows || 0)) errors.push(`failed_rows:${batch?.failed_rows || 0}`);
-      if (Number(batch?.skipped_rows || 0)) errors.push(`skipped_rows:${batch?.skipped_rows || 0}`);
-      if (Number(batch?.applied_rows || 0) !== Number(batch?.ready_rows || 0)) errors.push('applied_rows_mismatch');
+      const national = runCampaignMode(run) === CAMPAIGN_MODE_NATIONAL;
+      if (!national && Number(batch?.skipped_rows || 0)) errors.push(`skipped_rows:${batch?.skipped_rows || 0}`);
+      if (national) {
+        if (Number(batch?.applied_rows || 0) + Number(batch?.skipped_rows || 0) !== Number(batch?.ready_rows || 0)) errors.push('processed_rows_mismatch');
+      } else if (Number(batch?.applied_rows || 0) !== Number(batch?.ready_rows || 0)) errors.push('applied_rows_mismatch');
       if (errors.length) return blockItem(svc, run, item, errors, 'verify_batch');
       await svc.entities.DirectoryAutoImportItem.update(item.id, {
-        status: 'completed', step: 'completed', applied_rows: Number(batch.applied_rows || 0),
-        skipped_rows: 0, failed_rows: 0,
-        result_json: JSON.stringify({ batch_id: batch.id, status: batch.status, applied_rows: batch.applied_rows }),
+        status: 'running', step: 'publish_batch', applied_rows: Number(batch.applied_rows || 0),
+        skipped_rows: Number(batch.skipped_rows || 0), failed_rows: 0,
+        result_json: JSON.stringify({ batch_id: batch.id, status: batch.status, applied_rows: batch.applied_rows, skipped_rows: batch.skipped_rows }),
+        failure_message: '', last_heartbeat_at: now(),
+      });
+      await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:publish_batch`, failure_message: '' });
+      return { success: true, step: 'publish_batch' };
+    }
+
+    if (item.step === 'publish_batch') {
+      const publication = await responsePayload(await publishCompletedBatchAsBasicDirectory(svc, user, { batch_id: item.batch_id }));
+      if (publication.error) return blockItem(svc, run, item, [publication.error], 'publish_batch');
+      const batch = await getDirectoryEntityOrNull(svc.entities.DirectoryImportBatch.get(item.batch_id), 'lotului automat dupa publicare');
+      await svc.entities.DirectoryAutoImportItem.update(item.id, {
+        status: 'completed', step: 'completed', applied_rows: Number(batch?.applied_rows || item.applied_rows || 0),
+        skipped_rows: Number(batch?.skipped_rows || item.skipped_rows || 0), failed_rows: 0,
+        result_json: JSON.stringify({
+          batch_id: item.batch_id,
+          status: batch?.status || 'completed',
+          applied_rows: Number(batch?.applied_rows || 0),
+          skipped_rows: Number(batch?.skipped_rows || 0),
+          publication,
+        }),
         failure_message: '', finished_at: now(), last_heartbeat_at: now(),
       });
-      const latestRun = await getDirectoryEntityOrNull(svc.entities.DirectoryAutoImportRun.get(run.id), 'rularii automate dupa finalizarea lotului') || run;
+      const latestRun = await getDirectoryEntityOrNull(svc.entities.DirectoryAutoImportRun.get(run.id), 'rularii automate dupa publicarea lotului') || run;
       const refreshed = await refreshProgress(svc, latestRun);
       await releaseRunLock(svc, run.id, {
         status: refreshed.completed ? 'completed' : 'running',
@@ -1671,7 +1694,7 @@ async function advanceRun(svc, run) {
         finished_at: refreshed.completed ? now() : null,
         failure_message: '',
       });
-      return { success: true, step: 'completed', run_completed: refreshed.completed };
+      return { success: true, step: 'completed', publication, run_completed: refreshed.completed };
     }
 
     return blockItem(svc, run, item, [`unknown_step:${item.step}`], 'unknown_step');
