@@ -123,12 +123,14 @@ function AutoImportPanel() {
 
   useEffect(() => { load(); }, [load]);
 
-  const active = runs.find((run) => !["completed", "blocked", "failed", "cancelled"].includes(run.status)) || null;
+  const nonTerminalRuns = runs.filter((run) => !["completed", "blocked", "failed", "cancelled"].includes(run.status));
+  const active = nonTerminalRuns[0] || null;
   const latest = active || runs[0] || null;
   const items = latest?.items || [];
   const incompletePreflight = latest?.status === "awaiting_approval"
     && items.length < Number(latest?.total_batches || 0);
-  const canCreateNew = !active || incompletePreflight;
+  const queuedNational = nonTerminalRuns.some((run) => run.campaign_mode === "national_directory");
+  const canCreateNew = !active || incompletePreflight || !queuedNational;
   const currentItem = items.find((item) => !["completed", "blocked", "failed", "skipped"].includes(item.status)) || null;
   const approvalPhrase = latest?.approval_confirmation || "";
 
@@ -195,8 +197,9 @@ function AutoImportPanel() {
     await load();
   };
 
+  const processedRows = Number(latest?.applied_rows || 0) + Number(latest?.skipped_rows || 0);
   const percent = latest?.total_rows
-    ? Math.round((Number(latest.applied_rows || 0) / Number(latest.total_rows || 1)) * 100)
+    ? Math.round((processedRows / Number(latest.total_rows || 1)) * 100)
     : 0;
 
   return <section className="rounded-3xl border border-foreground/20 bg-card p-5 shadow-sm">
