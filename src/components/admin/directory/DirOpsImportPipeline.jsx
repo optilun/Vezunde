@@ -140,16 +140,24 @@ function AutoImportPanel() {
       setError(reason.message || "Arhiva nu a putut fi citita.");
       return;
     }
-    const result = await call({
+    const requestPayload = {
       action: "create_auto_import_run",
       zip_base64: zipBase64,
       zip_filename: zipFile?.name || "",
       manifest_url: manifestUrl.trim(),
       batch_urls: urls,
       notes: "Import automat controlat initiat din interfata administrativa VIASEE.",
-    });
+    };
+    let result = null;
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      result = await call(requestPayload);
+      if (!result?.error) break;
+      const retryable = /user-exception|timeout|timed out|temporar/i.test(String(result.error));
+      if (!retryable || attempt === 5) break;
+      await pause(1200);
+    }
     setBusy(false);
-    if (result.error) { setError(result.error); return; }
+    if (result?.error) { setError(result.error); await load(); return; }
     const preflight = result.preflight || {};
     setMessage(result.reused
       ? "Rularea existenta a fost reincarcata."
