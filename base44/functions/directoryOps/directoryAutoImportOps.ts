@@ -3,6 +3,8 @@ import { strFromU8, unzipSync } from 'npm:fflate@0.8.2';
 import {
   batchApprovalToken,
   inferCanonicalLocationType,
+  normalizeAddressForFingerprint,
+  normalizeDirectoryImportRow,
   normalizeIdentityText,
   stableTextHash,
 } from '../../shared/directoryImportPipeline.js';
