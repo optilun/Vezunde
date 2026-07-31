@@ -49,6 +49,8 @@ assert.equal(automation.type, 'scheduled');
 assert.equal(automation.schedule_type, 'simple');
 assert.equal(automation.repeat_unit, 'minutes');
 assert.equal(automation.repeat_interval, 5);
+assert.equal(automation.ends_type, 'after');
+assert.equal(automation.ends_after_count, 400);
 assert.equal(automation.function_args.action, 'advance_auto_import_runs');
 assert.ok(automation.function_args.automation_token);
 
