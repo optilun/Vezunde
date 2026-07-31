@@ -966,7 +966,7 @@ async function createRun(svc, user, input) {
   let campaignSelectionSummary = null;
   if (mode === CAMPAIGN_MODE_NATIONAL) {
     if (!input.zip_base64) return response({ error: 'Campania nationala necesita arhiva ZIP privata cu registrul master.' }, 400);
-    archiveMetadata = await nationalRowsFromZipBase64(
+    archiveMetadata = await nationalRowsFromPrivateSourceBase64(
       input.zip_base64,
       clean(input.zip_filename, 240),
     );
