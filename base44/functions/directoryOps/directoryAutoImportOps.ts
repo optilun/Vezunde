@@ -542,6 +542,13 @@ async function inspectSafety(svc, snapshot, batch) {
     const normalized = safeJson(row.normalized_payload_json, {});
     const override = safeJson(row.admin_override_json, {});
     const plannedActions = asArray(safeJson(row.planned_actions_json, []));
+    if (normalized.import_readiness !== 'candidate_for_manual_review') errors.push(`row_${row.row_number}:not_candidate_for_manual_review`);
+    if (normalized.research_status !== 'official_confirmed') errors.push(`row_${row.row_number}:research_not_official_confirmed`);
+    if (normalized.source_operational_status !== 'active_confirmed' || normalized.operational_status !== 'active') errors.push(`row_${row.row_number}:operational_status_not_active_confirmed`);
+    if (clean(normalized.review_flags, 2000)) errors.push(`row_${row.row_number}:review_flags_present`);
+    if (normalized.canonical_type_source !== 'source_explicit') errors.push(`row_${row.row_number}:canonical_type_not_explicit`);
+    if (normalized.organization_type_source !== 'source_explicit') errors.push(`row_${row.row_number}:organization_type_not_explicit`);
+    if (normalized.organization_type_legacy_fallback === true) errors.push(`row_${row.row_number}:organization_type_legacy_fallback`);
     if (warnings.length) errors.push(`row_${row.row_number}:warnings:${warnings.join(',')}`);
     if (validationErrors.length) errors.push(`row_${row.row_number}:errors:${validationErrors.join(',')}`);
     if (!ALLOWED_ACTIONS.has(row.planned_action)) errors.push(`row_${row.row_number}:unsafe_action:${row.planned_action}`);
