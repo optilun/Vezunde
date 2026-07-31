@@ -185,7 +185,12 @@ function descriptorsFromManifest(payload, manifestUrl = '') {
   const descriptors = (collections[0] || [])
     .map((entry, index) => descriptorFor(entry, index))
     .filter(Boolean)
-    .filter((entry) => /\.json(?:$|\?)/i.test(entry.source_url));
+    .filter((entry) => /\.json(?:$|\?)/i.test(entry.source_url))
+    .filter((entry) => {
+      const name = clean(entry.source_filename, 240).toLowerCase();
+      if (/(needs-review|excluded|audit|report|manifest)/.test(name)) return false;
+      return /batch/.test(name);
+    });
   if (descriptors.length) return descriptors;
   if (Array.isArray(payload?.rows)) {
     const direct = descriptorFor({
