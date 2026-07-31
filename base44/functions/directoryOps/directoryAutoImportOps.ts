@@ -437,12 +437,22 @@ function runKeyFor(packageSha256) {
 
 async function createRun(svc, user, input) {
   const manifestUrl = clean(input.manifest_url, 2000);
-  let descriptors = asArray(input.batch_urls)
-    .map((entry, index) => descriptorFor(entry, index))
-    .filter(Boolean);
-  if (manifestUrl) {
-    const manifest = await fetchJson(manifestUrl, clean(input.manifest_sha256, 80));
-    descriptors = descriptorsFromManifest(manifest.payload, manifestUrl);
+  let archiveMetadata = null;
+  let descriptors = [];
+  if (input.zip_base64) {
+    archiveMetadata = await descriptorsFromZipBase64(
+      input.zip_base64,
+      clean(input.zip_filename, 240),
+    );
+    descriptors = archiveMetadata.descriptors;
+  } else {
+    descriptors = asArray(input.batch_urls)
+      .map((entry, index) => descriptorFor(entry, index))
+      .filter(Boolean);
+    if (manifestUrl) {
+      const manifest = await fetchJson(manifestUrl, clean(input.manifest_sha256, 80));
+      descriptors = descriptorsFromManifest(manifest.payload, manifestUrl);
+    }
   }
   const unique = new Map();
   for (const descriptor of descriptors) {
