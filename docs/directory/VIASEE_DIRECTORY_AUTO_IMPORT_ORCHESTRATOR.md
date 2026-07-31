@@ -7,9 +7,10 @@ Orchestratorul elimina repetarea manuala a fluxului snapshot → validare → dr
 ## Model operational
 
 1. Administratorul introduce un manifest JSON sau URL-uri JSON de lot.
-2. Sistemul calculeaza amprenta pachetului si cere o singura confirmare exacta `AUTOIMPORT ...`.
-3. Dupa publicarea versiunii, automatizarea Base44 ruleaza la fiecare 5 minute si este limitata la maximum 400 de executii pentru campania curenta.
-4. La fiecare executie se avanseaza un singur pas durabil:
+2. Inainte de aprobare, sistemul descarca toate loturile, verifica SHA-256, aplica filtrul strict si afiseaza exact cate randuri sunt eligibile si cate sunt excluse.
+3. Amprenta aprobata include SHA-ul fiecarei surse si SHA-ul subsetului selectat; sistemul cere o singura confirmare exacta `AUTOIMPORT ...`.
+4. Dupa publicarea versiunii, automatizarea Base44 ruleaza la fiecare 5 minute si este limitata la maximum 400 de executii pentru campania curenta.
+5. La fiecare executie se avanseaza un singur pas durabil:
    - descarcare si verificare SHA-256;
    - filtrare determinista: numai candidate, confirmate oficial, active, fara `review_flags` si cu toate campurile canonice complete;
    - creare snapshot numai din randurile strict curate;
@@ -20,7 +21,7 @@ Orchestratorul elimina repetarea manuala a fluxului snapshot → validare → dr
    - aprobare interna a lotului autorizata prin aprobarea unica;
    - executie a maximum 5 randuri;
    - verificare finala.
-5. La rate limit sau citire temporar esuata, rularea ramane reluabila si foloseste mecanismul existent de reconciliere.
+6. La rate limit sau citire temporar esuata, rularea ramane reluabila si foloseste mecanismul existent de reconciliere.
 
 ## Conditii obligatorii pentru executie automata
 
