@@ -4262,6 +4262,9 @@ async function handle3(req) {
       preserves_directory_publication_state: true,
       preserves_existing_optional_fields: true,
       fails_closed_on_directory_read_errors: true,
+      supports_automated_controlled_import: true,
+      automated_import_contract_version: "viasee-directory-auto-import-v1",
+      automated_import_schedule_minutes: 5,
       automated_controlled_import_orchestrator: true,
       scheduled_auto_import_runner: true,
       max_automatic_execution_chunk: 5
