@@ -4260,7 +4260,15 @@ async function excludeControlledOrAmbiguousLiveMatches(svc, selection) {
       source_row_key: clean8(row.source_row_key || row.__source_row_key || `national:${index + 1}`, 240),
       row_number: index + 1
     });
-    const candidates = Array.from(new Set(locationIdsByExternalKey.get(normalized.location_external_key) || []));
+    const fallbackKey = existingLocationIdentityKey({
+      locality_name: normalized.locality_name,
+      address: normalized.address,
+      name: normalized.location_name
+    });
+    const candidates = Array.from(/* @__PURE__ */ new Set([
+      ...locationIdsByExternalKey.get(normalized.location_external_key) || [],
+      ...locationIdsByExternalKey.get(fallbackKey) || []
+    ]));
     if (candidates.length > 1) {
       excluded.push({ row, reasons: ["ambiguous_existing_location_match"] });
       continue;
@@ -4532,7 +4540,7 @@ async function createRun(svc, user, input) {
   let campaignExcludedRows = 0;
   let campaignSelectionSummary = null;
   if (mode === CAMPAIGN_MODE_NATIONAL) {
-    if (!input.zip_base64) return response2({ error: "Campania nationala necesita arhiva ZIP privata cu registrul master." }, 400);
+    if (!input.zip_base64) return response2({ error: "Campania nationala necesita registrul master JSON sau arhiva ZIP privata." }, 400);
     archiveMetadata = await nationalRowsFromPrivateSourceBase64(
       input.zip_base64,
       clean8(input.zip_filename, 240)
@@ -4543,7 +4551,10 @@ async function createRun(svc, user, input) {
     const nationalSelection = await excludeControlledOrAmbiguousLiveMatches(svc, selectedNationalRows);
     campaignSourceRows = nationalSelection.summary.source_rows;
     campaignExcludedRows = nationalSelection.summary.excluded_rows;
-    campaignSelectionSummary = nationalSelection.summary;
+    campaignSelectionSummary = {
+      ...nationalSelection.summary,
+      source_kind: archiveMetadata.source_kind || "private_source"
+    };
     descriptors = await descriptorsForNationalSelection(nationalSelection, archiveMetadata.archive_sha256);
   } else if (input.zip_base64) {
     archiveMetadata = await descriptorsFromZipBase64(
@@ -5042,10 +5053,14 @@ async function refreshProgress(svc, run) {
     acc.failed_rows += Number(item.failed_rows || 0);
     return acc;
   }, { completed_batches: 0, blocked_batches: 0, failed_batches: 0, skipped_batches: 0, excluded_rows: 0, total_rows: 0, applied_rows: 0, skipped_rows: 0, failed_rows: 0 });
+  if (runCampaignMode(run) === CAMPAIGN_MODE_NATIONAL) {
+    totals.excluded_rows = Number(run.excluded_rows || 0);
+  }
   const nextItem = items.find((item) => !TERMINAL_ITEM_STATUSES.has(item.status)) || null;
   const completed = !nextItem && totals.blocked_batches === 0 && totals.failed_batches === 0 && totals.completed_batches + totals.skipped_batches === items.length;
   const values = {
     ...totals,
+    excluded_rows: runCampaignMode(run) === CAMPAIGN_MODE_NATIONAL ? Number(run.excluded_rows || 0) : totals.excluded_rows,
     current_sequence: nextItem?.sequence || items.length + 1,
     current_step: completed ? "completed" : nextItem?.step || run.current_step || "scheduled",
     status: completed ? "completed" : run.status,
@@ -5426,8 +5441,21 @@ async function advanceRuns(svc, input = {}) {
   }
   if (!runs.length) return response2({ success: true, processed_runs: 0, message: "Nu exista rulare automata aprobata." });
   const outcomes = [];
-  for (const run of runs) outcomes.push(await advanceRun(svc, run));
-  return response2({ success: true, processed_runs: outcomes.length, outcomes });
+  for (const initialRun of runs) {
+    let run = initialRun;
+    for (let stepIndex = 0; stepIndex < 8; stepIndex += 1) {
+      const outcome = await advanceRun(svc, run);
+      outcomes.push(outcome);
+      if (outcome?.blocked || outcome?.retryable || outcome?.completed || outcome?.run_completed || outcome?.error || ["execute_batch", "recovered_batch"].includes(outcome?.step)) break;
+      const refreshed = await getDirectoryEntityOrNull(
+        svc.entities.DirectoryAutoImportRun.get(run.id),
+        "rularii automate intre pasii aceleiasi executii"
+      );
+      if (!refreshed || !["approved", "running", "completed"].includes(refreshed.status)) break;
+      run = refreshed;
+    }
+  }
+  return response2({ success: true, processed_runs: runs.length, processed_steps: outcomes.length, outcomes });
 }
 async function handleDirectoryAutoImport(req) {
   try {
@@ -5488,6 +5516,8 @@ async function handle3(req) {
       uses_chunked_private_payload_storage: true,
       repairs_partial_preflight_runs: true,
       supports_national_directory_campaign: true,
+      supports_private_master_json: true,
+      excludes_ambiguous_live_matches: true,
       publishes_unclaimed_unverified_directory_profiles: true,
       excludes_controlled_profiles_from_national_import: true,
       publishes_basic_directory_details_only_when_quality_allows: true,
