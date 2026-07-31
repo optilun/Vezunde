@@ -17,6 +17,10 @@ const PATIENT_FACING_PROFILE_TYPES = [
   'optical_chain',
   'ophthalmology_clinic',
   'ophthalmology_office',
+  'independent_ophthalmologist',
+  'independent_optometrist',
+  'independent_optician',
+  'optical_laboratory_b2c',
 ];
 
 function normalizedName(location) {
