@@ -523,9 +523,25 @@ function normalizeNationalDirectoryRow(row = {}) {
     care_setting_code: clean(row.care_setting_code, 120),
   } : inferNationalLocationType(activityText);
   const organizationName = clean(row.organization_display_name || row.location_display_name, 240);
+  const localityKey = normalizeIdentityText(row.official_locality || row.locality_name);
+  const addressKey = normalizeAddressForFingerprint(row.confirmed_address || row.address);
+  const locationNameKey = normalizeIdentityText(row.location_display_name || row.location_name);
+  const organizationExternalKey = clean(row.organization_external_key, 240)
+    || (organizationName ? `org:${stableTextHash(normalizeIdentityText(organizationName))}` : '');
+  const locationExternalKey = clean(row.location_external_key, 240)
+    || (localityKey && addressKey && locationNameKey
+      ? `loc:${stableTextHash([localityKey, addressKey, locationNameKey].join('|'))}`
+      : '');
+  const addressFingerprint = clean(row.address_fingerprint, 240)
+    || (localityKey && addressKey
+      ? `addr:${stableTextHash([clean(row.locality_siruta_code, 40) || localityKey, addressKey].join('|'))}`
+      : '');
   return {
     ...row,
     organization_display_name: organizationName,
+    organization_external_key: organizationExternalKey,
+    location_external_key: locationExternalKey,
+    address_fingerprint: addressFingerprint,
     provider_type: resolvedType?.provider_type || '',
     provider_profile_type: resolvedType?.provider_profile_type || '',
     location_type_code: resolvedType?.location_type_code || '',
@@ -586,7 +602,13 @@ function nationalRowScore(row = {}) {
 function nationalIdentityKey(row = {}) {
   const external = clean(row.location_external_key, 240);
   if (external) return `external:${external}`;
-  return `identity:${clean(row.locality_siruta_code, 40)}|${clean(row.address_fingerprint, 240)}|${normalizeIdentityText(row.location_display_name)}`;
+  const localityKey = normalizeIdentityText(row.official_locality || row.locality_name);
+  const addressKey = normalizeAddressForFingerprint(row.confirmed_address || row.address);
+  const nameKey = normalizeIdentityText(row.location_display_name || row.location_name);
+  if (localityKey && addressKey && nameKey) {
+    return `identity:${localityKey}|${addressKey}|${nameKey}`;
+  }
+  return `source:${clean(row.source_row_key || row.__source_row_key || row.__row_number, 260)}`;
 }
 
 function selectRowsForNationalDirectory(rows = []) {
