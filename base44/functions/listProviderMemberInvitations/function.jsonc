@@ -7,7 +7,8 @@
       "name": "viasee_directory_auto_import_runner",
       "description": "Avanseaza controlat cate un pas al importurilor automate aprobate VIASEE.",
       "function_args": {
-        "action": "advance_auto_import_runs"
+        "action": "advance_auto_import_runs",
+        "automation_token": "viasee-auto-7f4d83b1-4d38-45aa-b558-9c20cf63c6c2"
       },
       "is_active": true,
       "schedule_mode": "recurring",
