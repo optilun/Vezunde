@@ -164,16 +164,36 @@ function AutoImportPanel() {
       if (!retryable || attempt === 5) break;
       await pause(1200);
     }
-    setBusy(false);
-    if (result?.error) { setError(result.error); await load(); return; }
+    if (result?.error) { setBusy(false); setError(result.error); await load(); return; }
     const preflight = result.preflight || {};
     const national = preflight.campaign_mode === "national_directory" || campaignMode === "national_directory";
+    let autoApproved = false;
+    if (
+      national
+      && result.run?.status === "awaiting_approval"
+      && result.run?.id
+      && result.approval_confirmation
+    ) {
+      const approval = await call({
+        action: "approve_auto_import_run",
+        run_id: result.run.id,
+        confirmation: result.approval_confirmation,
+      });
+      if (approval.error) {
+        setBusy(false);
+        setError(`Campania a fost pregatita, dar aprobarea automata a esuat: ${approval.error}`);
+        await load();
+        return;
+      }
+      autoApproved = true;
+    }
+    setBusy(false);
     setMessage(result.repaired
       ? `Rularea partiala a fost reparata automat: ${result.repaired_items || 0} loturi completate. Pachetul are ${preflight.selected_rows ?? 0} locatii eligibile si ${preflight.excluded_rows ?? 0} excluse automat.`
       : result.reused
         ? "Rularea existenta a fost reincarcata."
         : national
-          ? `Campania nationala a fost pregatita: ${preflight.selected_rows ?? 0} locatii vor fi adaugate sau reconciliate automat ca profiluri neconfirmate, iar ${preflight.excluded_rows ?? 0} randuri neeligibile ori conflictuale au fost excluse.`
+          ? `Campania nationala a fost pregatita${autoApproved ? " si aprobata" : ""}: ${preflight.selected_rows ?? 0} locatii vor fi adaugate sau reconciliate automat ca profiluri neconfirmate, iar ${preflight.excluded_rows ?? 0} randuri neeligibile ori conflictuale au fost excluse.`
           : `Pachet analizat: ${preflight.selected_rows ?? 0} randuri strict curate, ${preflight.excluded_rows ?? 0} excluse automat. Este necesara o singura aprobare administrativa.`);
     setConfirmation("");
     await load();
