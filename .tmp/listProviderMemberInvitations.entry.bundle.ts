@@ -4107,6 +4107,15 @@ async function createRun(svc, user, input) {
       svc.entities.DirectoryAutoImportItem.filter({ run_id: run2.id }, "sequence", 100),
       "loturilor rularii automate existente"
     );
+    if (run2.status !== "awaiting_approval") {
+      return response2({
+        success: true,
+        reused: true,
+        run: run2,
+        items: currentItems,
+        approval_confirmation: approvalPhrase(run2)
+      });
+    }
     const bySequence = new Map(currentItems.map((entry) => [Number(entry.sequence), entry]));
     let repairedItems = 0;
     for (let index = 0; index < descriptors.length; index += 1) {
@@ -4257,6 +4266,33 @@ async function approveRun(svc, user, input) {
   );
   if (!run) return response2({ error: "Rularea automata nu a fost gasita." }, 404);
   if (run.status !== "awaiting_approval") return response2({ error: "Rularea nu mai asteapta aprobarea." }, 409);
+  const items = await requireDirectoryRows(
+    svc.entities.DirectoryAutoImportItem.filter({ run_id: run.id }, "sequence", 100),
+    "loturilor rularii automate pentru aprobarea finala"
+  );
+  if (items.length !== Number(run.total_batches || 0)) {
+    return response2({
+      error: `Analiza este partiala: ${items.length} din ${Number(run.total_batches || 0)} loturi sunt persistate. Reincarca aceeasi arhiva pentru reparare.`,
+      requires_repair: true
+    }, 409);
+  }
+  const sequences = new Set(items.map((item) => Number(item.sequence)));
+  for (let sequence = 1; sequence <= Number(run.total_batches || 0); sequence += 1) {
+    if (!sequences.has(sequence)) {
+      return response2({ error: `Lipseste lotul ${sequence}. Reincarca aceeasi arhiva pentru reparare.`, requires_repair: true }, 409);
+    }
+  }
+  for (const item of items) {
+    if (Number(item.selected_rows || 0) < 1) continue;
+    const rows = await loadItemSourceRows(svc, item);
+    if (!Array.isArray(rows.rows) || rows.rows.length !== Number(item.selected_rows || 0)) {
+      return response2({ error: `Payload incomplet pentru ${item.item_key}. Reincarca arhiva pentru reparare.`, requires_repair: true }, 409);
+    }
+    const selectedSha256 = await sha256HexText(stableStringify2(rows.rows));
+    if (selectedSha256 !== clean8(item.selected_sha256, 80)) {
+      return response2({ error: `SHA invalid pentru ${item.item_key}. Reincarca arhiva pentru reparare.`, requires_repair: true }, 409);
+    }
+  }
   const expected = approvalPhrase(run);
   if (clean8(input.confirmation, 300) !== expected) {
     return response2({ error: "Confirmarea nu corespunde.", expected_confirmation: expected }, 400);
