@@ -719,15 +719,31 @@ function packNationalRows(rows = []) {
   return batches;
 }
 
-async function nationalRowsFromZipBase64(zipBase64, archiveFilename = '') {
-  const zipBytes = decodeBase64Bytes(zipBase64);
-  if (zipBytes.byteLength > 8_000_000) throw new Error('Arhiva ZIP depaseste limita de 8 MB.');
-  const archiveSha256 = await sha256HexBytes(zipBytes);
+async function nationalRowsFromPrivateSourceBase64(sourceBase64, sourceFilename = '') {
+  const sourceBytes = decodeBase64Bytes(sourceBase64);
+  if (sourceBytes.byteLength > 8_000_000) throw new Error('Fisierul privat depaseste limita de 8 MB.');
+  const sourceSha256 = await sha256HexBytes(sourceBytes);
+  if (/\.json$/i.test(clean(sourceFilename, 240))) {
+    let payload;
+    try {
+      payload = JSON.parse(new TextDecoder().decode(sourceBytes));
+    } catch (_error) {
+      throw new Error('Registrul master JSON este invalid.');
+    }
+    const rows = rowsFromPayload(payload);
+    if (!rows.length) throw new Error('Registrul master JSON nu contine randuri de locatie.');
+    return {
+      archive_filename: clean(sourceFilename, 240),
+      archive_sha256: sourceSha256,
+      rows,
+      source_kind: 'master_json',
+    };
+  }
   let entries;
   try {
-    entries = unzipSync(zipBytes);
+    entries = unzipSync(sourceBytes);
   } catch (_error) {
-    throw new Error('Arhiva ZIP nu poate fi deschisa.');
+    throw new Error('Fisierul trebuie sa fie registrul master JSON sau o arhiva ZIP valida.');
   }
   const names = Object.keys(entries).filter((name) => !name.endsWith('/') && /\.json$/i.test(name));
   let masterRows = [];
@@ -763,9 +779,10 @@ async function nationalRowsFromZipBase64(zipBase64, archiveFilename = '') {
     if (!unique.has(key)) unique.set(key, row);
   }
   return {
-    archive_filename: clean(archiveFilename, 240),
-    archive_sha256: archiveSha256,
+    archive_filename: clean(sourceFilename, 240),
+    archive_sha256: sourceSha256,
     rows: Array.from(unique.values()),
+    source_kind: masterRows.length ? 'zip_master_json' : 'zip_aggregated_batches',
   };
 }
 
