@@ -474,8 +474,8 @@ async function inspectSafety(svc, snapshot, batch) {
     if (Object.keys(override).length) errors.push(`row_${row.row_number}:admin_override_present`);
     if (row.planned_action === 'create_location_use_existing_organization') {
       if (plannedActions.includes('reuse_planned_organization') && !row.target_organization_id) continue;
-      if (!row.target_organization_id || row.match_confidence !== 'high') {
-        errors.push(`row_${row.row_number}:existing_organization_not_high_confidence`);
+      if (!row.target_organization_id) {
+        errors.push(`row_${row.row_number}:existing_organization_target_missing`);
         continue;
       }
       const organization = await getDirectoryEntityOrNull(
