@@ -108,7 +108,9 @@ function AutoImportPanel() {
 
   useEffect(() => { load(); }, [load]);
 
-  const latest = runs[0] || null;
+  const active = runs.find((run) => !["completed", "blocked", "failed", "cancelled"].includes(run.status)) || null;
+  const latest = active || runs[0] || null;
+  const canCreateNew = !active;
   const items = latest?.items || [];
   const currentItem = items.find((item) => !["completed", "blocked", "failed", "skipped"].includes(item.status)) || null;
   const approvalPhrase = latest?.approval_confirmation || "";
@@ -160,7 +162,7 @@ function AutoImportPanel() {
       <button type="button" onClick={load} disabled={busy} className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-border px-4 text-xs font-semibold"><RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} /> Actualizeaza</button>
     </div>
 
-    {!latest && <div className="mt-5 grid gap-3 lg:grid-cols-2">
+    {canCreateNew && <div className="mt-5 grid gap-3 lg:grid-cols-2">
       <label className="text-xs font-semibold">URL manifest JSON
         <input value={manifestUrl} onChange={(event) => setManifestUrl(event.target.value)} placeholder="https://.../manifest.json" className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" />
         <span className="mt-1 block font-normal text-muted-foreground">Manifestul poate contine campurile batches, clean_batches, files sau items.</span>
