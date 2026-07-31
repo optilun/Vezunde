@@ -5590,7 +5590,7 @@ async function handleDirectoryAutoImport(req) {
 }
 
 // base44/functions/directoryOps/directoryImportOpsLatest.ts
-var DIRECTORY_IMPORT_RUNTIME_REVISION2 = "directory-import-runtime-national-directory-4";
+var DIRECTORY_IMPORT_RUNTIME_REVISION2 = "directory-import-runtime-national-directory-5";
 async function handle3(req) {
   const input = await req.clone().json().catch(() => ({}));
   if (input?.action === "runtime_info") {
@@ -5617,6 +5617,9 @@ async function handle3(req) {
       automated_import_schedule_minutes: 5,
       automated_controlled_import_orchestrator: true,
       scheduled_auto_import_runner: true,
+      scheduled_runner_uses_cron: true,
+      accepts_multiple_automation_payload_shapes: true,
+      browser_watchdog_fallback: true,
       max_automatic_execution_chunk: 5,
       supports_private_zip_upload: true,
       persists_approved_source_subset: true,
@@ -5641,7 +5644,7 @@ async function handle3(req) {
 var ROLES = ["organization_owner", "location_manager", "location_staff"];
 var DIRECTORY_IMPORT_LOGICAL_NAME = "directoryImportOps";
 var DIRECTORY_AUTO_IMPORT_AUTOMATION_TOKEN = "viasee-auto-7f4d83b1-4d38-45aa-b558-9c20cf63c6c2";
-var FUNCTION_DEPLOY_REVISION = "viasee-directory-import-single-file-14";
+var FUNCTION_DEPLOY_REVISION = "viasee-directory-import-single-file-15";
 console.info(`[VIASEE] listProviderMemberInvitations ${FUNCTION_DEPLOY_REVISION}`);
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -5731,7 +5734,8 @@ async function handleInvitationList(req) {
 }
 Deno.serve(async (req) => {
   const body = await req.clone().json().catch(() => null);
-  if (body?.args?.action === "advance_auto_import_runs" && body?.args?.automation_token === DIRECTORY_AUTO_IMPORT_AUTOMATION_TOKEN) {
+  const automationArgs = body?.args || body?.payload?.args || body || {};
+  if (automationArgs?.action === "advance_auto_import_runs" && automationArgs?.automation_token === DIRECTORY_AUTO_IMPORT_AUTOMATION_TOKEN) {
     return handle3(routedRequest(req, {
       action: "advance_auto_import_runs",
       __automation_trigger: true
