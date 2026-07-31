@@ -470,8 +470,13 @@ async function createRun(svc, user, input) {
   }
   const preparedDescriptors = [];
   for (const descriptor of descriptors) {
-    const fetched = await fetchJson(descriptor.source_url, descriptor.expected_sha256);
-    const sourceRows = rowsFromPayload(fetched.payload);
+    let sourceRows = Array.isArray(descriptor.inline_rows) ? descriptor.inline_rows : [];
+    let sourceSha256 = clean(descriptor.source_sha256, 80).toLowerCase();
+    if (!sourceRows.length) {
+      const fetched = await fetchJson(descriptor.source_url, descriptor.expected_sha256);
+      sourceRows = rowsFromPayload(fetched.payload);
+      sourceSha256 = fetched.sha256;
+    }
     if (!sourceRows.length || sourceRows.length > MAX_ROWS_PER_BATCH) {
       return response({ error: `${descriptor.source_filename} are ${sourceRows.length} randuri; limita este ${MAX_ROWS_PER_BATCH}.` }, 400);
     }
@@ -483,11 +488,12 @@ async function createRun(svc, user, input) {
     const selectedSha256 = await sha256HexText(stableStringify(selection.selected));
     preparedDescriptors.push({
       ...descriptor,
-      source_sha256: fetched.sha256,
+      source_sha256: sourceSha256,
       source_rows: sourceRows.length,
       selected_rows: selection.selected.length,
       excluded_rows: selection.excluded.length,
       selected_sha256: selectedSha256,
+      selected_payload_json: JSON.stringify(selection.selected),
       selection_summary: selection.summary,
       organization_count: new Set(selection.selected.map((row) => clean(row.organization_external_key || row.organization_display_name, 300)).filter(Boolean)).size,
     });
