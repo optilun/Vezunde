@@ -684,10 +684,16 @@ async function advanceRun(svc, run) {
 
     if (item.step === 'append_rows') {
       const fetched = await fetchJson(item.source_url, item.source_sha256 || item.expected_sha256);
+      const selection = selectRowsForAutomaticImport(rowsFromPayload(fetched.payload));
+      if (selection.selected.length !== Number(item.selected_rows || 0)) {
+        return blockItem(svc, run, item, [
+          `selected_rows_changed:${item.selected_rows}->${selection.selected.length}`,
+        ], 'append_rows');
+      }
       const appended = await responsePayload(await appendRows(svc, user, {
         snapshot_id: item.snapshot_id,
         start_row_number: 1,
-        rows: rowsFromPayload(fetched.payload),
+        rows: selection.selected,
       }));
       if (appended.error) return blockItem(svc, run, item, [appended.error], 'append_rows');
       await svc.entities.DirectoryAutoImportItem.update(item.id, { status: 'rows_appended', step: 'validate_snapshot', ...heartbeat });
