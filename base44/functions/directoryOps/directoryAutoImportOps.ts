@@ -469,7 +469,32 @@ function nationalOrganizationTypeCode(row = {}, resolvedType = null) {
   if (profileType === 'ophthalmology_office') return 'ophthalmology_office';
   if (profileType.startsWith('independent_')) return 'independent_professional';
   if (profileType.startsWith('optical_laboratory_')) return 'optical_laboratory';
-  return 'other';
+  if (resolvedType?.provider_type === 'optica_medicala') return 'independent_optical_store';
+  if (resolvedType?.provider_type === 'cabinet_oftalmologic') return 'ophthalmology_office';
+  if (resolvedType?.provider_type === 'clinica_oftalmologica') return 'ophthalmology_clinic';
+  return 'independent_professional';
+}
+
+function inferNationalLocationType(activityText = '') {
+  const text = normalizeIdentityText(activityText);
+  if (/\bspital\b|\binstitut\b|\bambulator\b|\bsectie\b|\bcompartiment\b/.test(text)) {
+    const outpatient = /\bambulator\b|\bcabinet\b/.test(text);
+    return {
+      provider_type: 'clinica_oftalmologica',
+      provider_profile_type: 'ophthalmology_clinic',
+      location_type_code: outpatient ? 'hospital_outpatient_unit' : 'hospital_department',
+      care_setting_code: outpatient ? 'hospital_outpatient' : 'hospital_inpatient',
+    };
+  }
+  if (/\bpoliclinica\b|\bhiperclinica\b|\bmulti specialitate\b|\bcentru medical\b/.test(text)) {
+    return {
+      provider_type: 'clinica_oftalmologica',
+      provider_profile_type: 'ophthalmology_clinic',
+      location_type_code: 'multi_specialty_clinic',
+      care_setting_code: 'outpatient',
+    };
+  }
+  return inferCanonicalLocationType(activityText);
 }
 
 function normalizeNationalDirectoryRow(row = {}) {
@@ -490,7 +515,7 @@ function normalizeNationalDirectoryRow(row = {}) {
     provider_profile_type: clean(row.provider_profile_type, 120),
     location_type_code: clean(row.location_type_code, 120),
     care_setting_code: clean(row.care_setting_code, 120),
-  } : inferCanonicalLocationType(activityText);
+  } : inferNationalLocationType(activityText);
   const organizationName = clean(row.organization_display_name || row.location_display_name, 240);
   return {
     ...row,
