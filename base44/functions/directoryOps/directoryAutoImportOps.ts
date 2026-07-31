@@ -962,14 +962,25 @@ async function refreshProgress(svc, run) {
   return { items, nextItem, completed, values };
 }
 
-async function loadItemSourceRows(item) {
-  const persisted = safeJson(item.source_payload_json, null);
-  if (Array.isArray(persisted)) {
+async function loadItemSourceRows(svc, item) {
+  const legacyPersisted = safeJson(item.source_payload_json, null);
+  if (Array.isArray(legacyPersisted)) {
     return {
-      rows: persisted,
+      rows: legacyPersisted,
       source_sha256: clean(item.source_sha256, 80),
       persisted: true,
     };
+  }
+  const chunkedPersisted = await loadPayloadChunks(svc, item);
+  if (Array.isArray(chunkedPersisted)) {
+    return {
+      rows: chunkedPersisted,
+      source_sha256: clean(item.source_sha256, 80),
+      persisted: true,
+    };
+  }
+  if (String(item.source_url || '').startsWith('archive://')) {
+    throw new Error(`Payloadul privat lipseste pentru ${item.item_key}. Reanalizeaza aceeasi arhiva pentru reparare.`);
   }
   const fetched = await fetchJson(item.source_url, item.source_sha256 || item.expected_sha256);
   return {
@@ -1002,7 +1013,7 @@ async function advanceRun(svc, run) {
     const heartbeat = { last_heartbeat_at: now(), failure_message: '' };
 
     if (item.step === 'fetch_source' || item.status === 'pending') {
-      const loadedSource = await loadItemSourceRows(item);
+      const loadedSource = await loadItemSourceRows(svc, item);
       const sourceRows = loadedSource.rows;
       if (!sourceRows.length || sourceRows.length > MAX_ROWS_PER_BATCH) return blockItem(svc, run, item, [`source_row_count:${sourceRows.length}`], 'fetch_source');
       if (Number(item.expected_rows || 0) > 0 && Number(item.expected_rows) !== sourceRows.length) {
@@ -1069,7 +1080,7 @@ async function advanceRun(svc, run) {
     }
 
     if (item.step === 'append_rows') {
-      const loadedSource = await loadItemSourceRows(item);
+      const loadedSource = await loadItemSourceRows(svc, item);
       const sourceRows = loadedSource.rows;
       const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows);
       const selection = selectRowsForAutomaticImport(canonicalRows);
