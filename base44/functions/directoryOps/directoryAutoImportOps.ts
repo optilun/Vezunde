@@ -801,6 +801,12 @@ function selectRowsForAutomaticImport(rows = []) {
   };
 }
 
+function selectionForRun(run, rows = []) {
+  return runCampaignMode(run) === CAMPAIGN_MODE_NATIONAL
+    ? selectRowsForNationalDirectory(rows)
+    : selectRowsForAutomaticImport(rows);
+}
+
 function approvalPhrase(run) {
   return `AUTOIMPORT ${clean(run.run_key, 120)} ${clean(run.package_sha256, 80).slice(0, 12)} ${Number(run.total_batches || 0)}`;
 }
