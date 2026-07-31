@@ -690,6 +690,80 @@ function selectRowsForNationalDirectory(rows = []) {
   };
 }
 
+function recomputeNationalSelectionSummary(selected = [], excluded = [], sourceRows = 0) {
+  const reasonCounts = {};
+  for (const item of excluded) {
+    for (const reason of asArray(item.reasons)) reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
+  }
+  return {
+    source_rows: Number(sourceRows || (selected.length + excluded.length)),
+    selected_rows: selected.length,
+    excluded_rows: excluded.length,
+    reason_counts: reasonCounts,
+  };
+}
+
+function existingLocationIdentityKey(location = {}) {
+  const localityKey = normalizeIdentityText(location.locality_name || location.city);
+  const addressKey = normalizeAddressForFingerprint(location.address);
+  const nameKey = normalizeIdentityText(location.name || location.public_display_name);
+  if (!localityKey || !addressKey || !nameKey) return '';
+  return `loc:${stableTextHash([localityKey, addressKey, nameKey].join('|'))}`;
+}
+
+async function excludeControlledOrAmbiguousLiveMatches(svc, selection) {
+  const [locations, states] = await Promise.all([
+    requireDirectoryRows(
+      svc.entities.ProviderLocation.list('name', 5000),
+      'locatiilor existente pentru deduplicarea campaniei nationale',
+    ),
+    requireDirectoryRows(
+      svc.entities.ProviderLocationDirectoryState.filter({ state_status: 'active' }, '-created_date', 5000),
+      'starilor de director pentru deduplicarea campaniei nationale',
+    ),
+  ]);
+  const locationsById = new Map(locations.map((location) => [location.id, location]));
+  const locationIdsByExternalKey = new Map();
+  const append = (map, key, value) => {
+    if (!key) return;
+    const values = map.get(key) || [];
+    if (!values.includes(value)) values.push(value);
+    map.set(key, values);
+  };
+  for (const state of states) append(locationIdsByExternalKey, clean(state.directory_external_key, 240), state.location_id);
+  for (const location of locations) append(locationIdsByExternalKey, existingLocationIdentityKey(location), location.id);
+
+  const selected = [];
+  const excluded = [...selection.excluded];
+  for (let index = 0; index < selection.selected.length; index += 1) {
+    const row = selection.selected[index];
+    const normalized = normalizeDirectoryImportRow(row, {
+      source_version: 'national-preflight',
+      source_row_key: clean(row.source_row_key || row.__source_row_key || `national:${index + 1}`, 240),
+      row_number: index + 1,
+    });
+    const candidates = Array.from(new Set(locationIdsByExternalKey.get(normalized.location_external_key) || []));
+    if (candidates.length > 1) {
+      excluded.push({ row, reasons: ['ambiguous_existing_location_match'] });
+      continue;
+    }
+    if (candidates.length === 1) {
+      const location = locationsById.get(candidates[0]) || null;
+      const controlStatus = clean(location?.profile_control_status || 'directory', 80);
+      if (['claimed', 'verified', 'suspended'].includes(controlStatus)) {
+        excluded.push({ row, reasons: ['existing_controlled_location'] });
+        continue;
+      }
+    }
+    selected.push(row);
+  }
+  return {
+    selected,
+    excluded,
+    summary: recomputeNationalSelectionSummary(selected, excluded, selection.summary?.source_rows),
+  };
+}
+
 function packNationalRows(rows = []) {
   const groups = new Map();
   for (const row of rows) {
