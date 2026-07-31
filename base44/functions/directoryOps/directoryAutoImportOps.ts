@@ -48,6 +48,10 @@ function now() {
   return new Date().toISOString();
 }
 
+function pause(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
 function response(body, status = 200) {
   return Response.json(body, { status });
 }
@@ -1984,7 +1988,8 @@ async function advanceRuns(svc, input = {}) {
   const outcomes = [];
   for (const initialRun of runs) {
     let run = initialRun;
-    for (let stepIndex = 0; stepIndex < 8; stepIndex += 1) {
+    const initialSequence = Number(run.current_sequence || 1);
+    for (let stepIndex = 0; stepIndex < 18; stepIndex += 1) {
       const outcome = await advanceRun(svc, run);
       outcomes.push(outcome);
       if (
@@ -1993,14 +1998,17 @@ async function advanceRuns(svc, input = {}) {
         || outcome?.completed
         || outcome?.run_completed
         || outcome?.error
-        || ['execute_batch', 'recovered_batch'].includes(outcome?.step)
       ) break;
+      if (['execute_batch', 'recovered_batch'].includes(outcome?.step)) {
+        await pause(3500);
+      }
       const refreshed = await getDirectoryEntityOrNull(
         svc.entities.DirectoryAutoImportRun.get(run.id),
         'rularii automate intre pasii aceleiasi executii',
       );
       if (!refreshed || !['approved', 'running', 'completed'].includes(refreshed.status)) break;
       run = refreshed;
+      if (Number(run.current_sequence || initialSequence) > initialSequence) break;
     }
   }
   return response({ success: true, processed_runs: runs.length, processed_steps: outcomes.length, outcomes });
