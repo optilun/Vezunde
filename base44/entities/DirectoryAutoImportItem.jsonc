@@ -65,6 +65,9 @@
     "selection_result_json": {
       "type": "string"
     },
+    "source_payload_json": {
+      "type": "string"
+    },
     "organization_count": {
       "type": "number",
       "default": 0
