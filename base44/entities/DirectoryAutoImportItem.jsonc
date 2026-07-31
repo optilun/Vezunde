@@ -1,0 +1,116 @@
+{
+  "name": "DirectoryAutoImportItem",
+  "type": "object",
+  "properties": {
+    "run_id": {
+      "type": "string"
+    },
+    "sequence": {
+      "type": "number"
+    },
+    "item_key": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "fetching",
+        "snapshot_created",
+        "rows_appended",
+        "validated",
+        "planned",
+        "approved",
+        "running",
+        "completed",
+        "blocked",
+        "failed",
+        "skipped"
+      ]
+    },
+    "step": {
+      "type": "string"
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "source_filename": {
+      "type": "string"
+    },
+    "source_sha256": {
+      "type": "string"
+    },
+    "expected_sha256": {
+      "type": "string"
+    },
+    "expected_rows": {
+      "type": "number",
+      "default": 0
+    },
+    "organization_count": {
+      "type": "number",
+      "default": 0
+    },
+    "snapshot_id": {
+      "type": "string"
+    },
+    "batch_id": {
+      "type": "string"
+    },
+    "execution_lock_token": {
+      "type": "string"
+    },
+    "applied_rows": {
+      "type": "number",
+      "default": 0
+    },
+    "skipped_rows": {
+      "type": "number",
+      "default": 0
+    },
+    "failed_rows": {
+      "type": "number",
+      "default": 0
+    },
+    "safety_result_json": {
+      "type": "string"
+    },
+    "result_json": {
+      "type": "string"
+    },
+    "failure_message": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_heartbeat_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "run_id",
+    "sequence",
+    "item_key",
+    "status",
+    "source_url"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
