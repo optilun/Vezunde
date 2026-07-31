@@ -622,16 +622,59 @@ async function createRun(svc, user, input) {
     'rularilor automate existente',
   );
   if (existing[0]) {
-    const items = await requireDirectoryRows(
-      svc.entities.DirectoryAutoImportItem.filter({ run_id: existing[0].id }, 'sequence', 100),
+    const run = existing[0];
+    const currentItems = await requireDirectoryRows(
+      svc.entities.DirectoryAutoImportItem.filter({ run_id: run.id }, 'sequence', 100),
       'loturilor rularii automate existente',
     );
+    const bySequence = new Map(currentItems.map((entry) => [Number(entry.sequence), entry]));
+    let repairedItems = 0;
+    for (let index = 0; index < descriptors.length; index += 1) {
+      const descriptor = descriptors[index];
+      const expectedRecord = autoItemRecord(run.id, runKey, index, descriptor);
+      let existingItem = bySequence.get(index + 1) || null;
+      if (!existingItem) {
+        existingItem = await svc.entities.DirectoryAutoImportItem.create(expectedRecord);
+        repairedItems += 1;
+      }
+      await persistPayloadChunks(
+        svc,
+        run.id,
+        expectedRecord.item_key,
+        descriptor.selected_payload_json,
+        descriptor.selected_rows,
+      );
+      if (clean(existingItem.source_payload_json, 200_000)) {
+        await svc.entities.DirectoryAutoImportItem.update(existingItem.id, { source_payload_json: '' });
+      }
+    }
+    const runValues = {
+      total_batches: descriptors.length,
+      skipped_batches: descriptors.filter((item) => Number(item.selected_rows || 0) === 0).length,
+      excluded_rows: descriptors.reduce((total, item) => total + Number(item.excluded_rows || 0), 0),
+      total_rows: descriptors.reduce((total, item) => total + Number(item.selected_rows || 0), 0),
+      failure_message: '',
+    };
+    await svc.entities.DirectoryAutoImportRun.update(run.id, runValues);
+    const items = await requireDirectoryRows(
+      svc.entities.DirectoryAutoImportItem.filter({ run_id: run.id }, 'sequence', 100),
+      'loturilor rularii automate reparate',
+    );
+    const repairedRun = { ...run, ...runValues };
     return response({
       success: true,
       reused: true,
-      run: existing[0],
+      repaired: repairedItems > 0,
+      repaired_items: repairedItems,
+      run: repairedRun,
       items,
-      approval_confirmation: approvalPhrase(existing[0]),
+      approval_confirmation: approvalPhrase(repairedRun),
+      preflight: {
+        source_rows: descriptors.reduce((total, item) => total + Number(item.source_rows || 0), 0),
+        selected_rows: runValues.total_rows,
+        excluded_rows: runValues.excluded_rows,
+        skipped_batches: runValues.skipped_batches,
+      },
     });
   }
   const safetyPolicy = {
