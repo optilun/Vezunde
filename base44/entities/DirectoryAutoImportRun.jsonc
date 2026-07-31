@@ -8,6 +8,22 @@
     "contract_version": {
       "type": "string"
     },
+    "campaign_mode": {
+      "type": "string",
+      "enum": [
+        "strict_import",
+        "national_directory"
+      ],
+      "default": "strict_import"
+    },
+    "publication_mode": {
+      "type": "string",
+      "enum": [
+        "private_draft",
+        "public_basic_directory"
+      ],
+      "default": "public_basic_directory"
+    },
     "status": {
       "type": "string",
       "enum": [
