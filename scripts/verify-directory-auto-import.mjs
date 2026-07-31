@@ -17,12 +17,17 @@ assert.equal(itemSchema.name, 'DirectoryAutoImportItem');
 for (const field of ['run_key', 'status', 'package_sha256', 'current_step', 'failure_message', 'skipped_batches', 'excluded_rows']) {
   assert.ok(runSchema.properties[field], `Lipseste campul run.${field}`);
 }
-for (const field of ['run_id', 'sequence', 'status', 'step', 'source_url', 'source_sha256', 'selected_sha256', 'snapshot_id', 'batch_id', 'source_rows', 'selected_rows', 'excluded_rows', 'selection_result_json']) {
+for (const field of ['run_id', 'sequence', 'status', 'step', 'source_url', 'source_sha256', 'selected_sha256', 'snapshot_id', 'batch_id', 'source_rows', 'selected_rows', 'excluded_rows', 'selection_result_json', 'source_payload_json']) {
   assert.ok(itemSchema.properties[field], `Lipseste campul item.${field}`);
 }
 
 assert.match(auto, /DIRECTORY_AUTO_IMPORT_CONTRACT_VERSION = 'viasee-directory-auto-import-v1'/);
 assert.match(auto, /const MAX_ROWS_PER_BATCH = 40/);
+assert.match(auto, /unzipSync/);
+assert.match(auto, /descriptorsFromZipBase64/);
+assert.match(auto, /archive:\/\//);
+assert.match(auto, /source_payload_json/);
+assert.match(auto, /loadItemSourceRows/);
 assert.match(auto, /const EXECUTION_CHUNK = 5/);
 assert.match(auto, /requires_zero_snapshot_warnings: true/);
 assert.match(auto, /exact_external_key_required_for_existing_organization: true/);
@@ -58,9 +63,9 @@ assert.match(latest, /handleDirectoryAutoImport/);
 assert.match(latest, /advance_auto_import_runs/);
 assert.match(bridge, /DIRECTORY_AUTO_IMPORT_AUTOMATION_TOKEN/);
 assert.match(bridge, /body\?\.args\?\.automation_token === DIRECTORY_AUTO_IMPORT_AUTOMATION_TOKEN/);
-assert.match(bridge, /viasee-directory-import-single-file-11/);
+assert.match(bridge, /viasee-directory-import-single-file-12/);
 assert.match(deployed, /viasee-directory-auto-import-v1/);
-assert.match(deployed, /viasee-directory-import-single-file-11/);
+assert.match(deployed, /viasee-directory-import-single-file-12/);
 assert.doesNotMatch(deployed, /from ['"]\.\.?\//);
 
 assert.equal(functionConfig.name, 'listProviderMemberInvitations');
@@ -90,5 +95,7 @@ assert.match(ui, /Import automat controlat/);
 assert.match(ui, /Aproba procesarea automata/);
 assert.match(ui, /La fiecare 5 minute/);
 assert.match(ui, /Excluse automat/);
+assert.match(ui, /Arhiva privata ZIP recomandata/);
+assert.match(ui, /zip_base64/);
 
 console.log('Directory auto-import orchestrator contract verified.');
