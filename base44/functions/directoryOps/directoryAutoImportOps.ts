@@ -585,71 +585,6 @@ function nationalIdentityKey(row = {}) {
   return `identity:${clean(row.locality_siruta_code, 40)}|${clean(row.address_fingerprint, 240)}|${normalizeIdentityText(row.location_display_name)}`;
 }
 
-function nationalFallbackIdentityKey(row = {}) {
-  const siruta = clean(row.locality_siruta_code || row.uat_code, 40);
-  const address = normalizeIdentityText(row.confirmed_address || row.address);
-  const name = normalizeIdentityText(row.location_display_name || row.location_name || row.name);
-  return siruta && address && name ? `identity:${siruta}|${address}|${name}` : '';
-}
-
-function nationalSummary(selected = [], excluded = [], sourceRows = 0) {
-  const reasonCounts = {};
-  for (const item of excluded) {
-    for (const reason of asArray(item.reasons)) reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
-  }
-  return {
-    source_rows: sourceRows,
-    selected_rows: selected.length,
-    excluded_rows: excluded.length,
-    reason_counts: reasonCounts,
-  };
-}
-
-async function excludeControlledLiveRows(svc, selection) {
-  const [locations, states] = await Promise.all([
-    requireDirectoryRows(
-      svc.entities.ProviderLocation.list('name', 5000),
-      'locatiilor live pentru deduplicarea campaniei nationale',
-    ),
-    requireDirectoryRows(
-      svc.entities.ProviderLocationDirectoryState.filter({ state_status: 'active' }, '-created_date', 5000),
-      'starilor live pentru deduplicarea campaniei nationale',
-    ),
-  ]);
-  const locationsById = new Map(locations.map((location) => [location.id, location]));
-  const controlledExternalKeys = new Set();
-  const controlledIdentityKeys = new Set();
-  for (const state of states) {
-    const location = locationsById.get(state.location_id) || null;
-    if (!location) continue;
-    const controlStatus = clean(location.profile_control_status || state.control_status || 'directory', 80);
-    if (!['claimed', 'verified', 'suspended'].includes(controlStatus)) continue;
-    const externalKey = clean(state.directory_external_key, 240);
-    if (externalKey) controlledExternalKeys.add(externalKey);
-    const identityKey = nationalFallbackIdentityKey(location);
-    if (identityKey) controlledIdentityKeys.add(identityKey);
-  }
-  const selected = [];
-  const excluded = [...selection.excluded];
-  for (const row of selection.selected) {
-    const externalKey = clean(row.location_external_key, 240);
-    const identityKey = nationalFallbackIdentityKey(row);
-    if (
-      (externalKey && controlledExternalKeys.has(externalKey))
-      || (identityKey && controlledIdentityKeys.has(identityKey))
-    ) {
-      excluded.push({ row, reasons: ['existing_controlled_location'] });
-      continue;
-    }
-    selected.push(row);
-  }
-  return {
-    selected,
-    excluded,
-    summary: nationalSummary(selected, excluded, selection.summary.source_rows),
-  };
-}
-
 function selectRowsForNationalDirectory(rows = []) {
   const excluded = [];
   const bestByIdentity = new Map();
@@ -1049,7 +984,7 @@ async function createRun(svc, user, input) {
     const geographyMap = await canonicalGeographyMap(svc, archiveMetadata.rows);
     const canonicalRows = await enrichRowsWithCanonicalGeography(svc, archiveMetadata.rows, geographyMap);
     const selectedNationalRows = selectRowsForNationalDirectory(canonicalRows);
-    const nationalSelection = await excludeControlledLiveRows(svc, selectedNationalRows);
+    const nationalSelection = await excludeControlledOrAmbiguousLiveMatches(svc, selectedNationalRows);
     campaignSourceRows = nationalSelection.summary.source_rows;
     campaignExcludedRows = nationalSelection.summary.excluded_rows;
     campaignSelectionSummary = nationalSelection.summary;
