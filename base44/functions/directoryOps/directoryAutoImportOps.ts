@@ -129,18 +129,22 @@ async function persistPayloadChunks(svc, runId, itemKey, payloadJson, selectedRo
     ),
     'fragmentelor private ale lotului automat',
   );
-  if (existing.length) {
-    const sameShape = existing.length === chunks.length
-      && existing.every((entry, index) => (
-        Number(entry.chunk_index) === index
-        && Number(entry.chunk_count) === chunks.length
-        && clean(entry.payload_sha256, 80) === payloadSha256
-        && entry.payload_chunk === chunks[index]
-      ));
-    if (!sameShape) throw new Error(`Persistenta privata este incompleta sau neconforma pentru ${itemKey}.`);
-    return { payload_sha256: payloadSha256, chunk_count: chunks.length, reused: true };
+  const byIndex = new Map();
+  for (const entry of existing) {
+    const index = Number(entry.chunk_index);
+    if (byIndex.has(index)) throw new Error(`Fragmente private duplicate pentru ${itemKey}.`);
+    byIndex.set(index, entry);
   }
+  let created = 0;
   for (let index = 0; index < chunks.length; index += 1) {
+    const current = byIndex.get(index) || null;
+    if (current) {
+      const matches = Number(current.chunk_count) === chunks.length
+        && clean(current.payload_sha256, 80) === payloadSha256
+        && current.payload_chunk === chunks[index];
+      if (!matches) throw new Error(`Persistenta privata este neconforma pentru ${itemKey}, fragmentul ${index}.`);
+      continue;
+    }
     await svc.entities.DirectoryAutoImportPayloadChunk.create({
       run_id: runId,
       item_key: itemKey,
@@ -150,8 +154,12 @@ async function persistPayloadChunks(svc, runId, itemKey, payloadJson, selectedRo
       payload_sha256: payloadSha256,
       created_for_selected_rows: Number(selectedRows || 0),
     });
+    created += 1;
   }
-  return { payload_sha256: payloadSha256, chunk_count: chunks.length, reused: false };
+  for (const index of byIndex.keys()) {
+    if (index < 0 || index >= chunks.length) throw new Error(`Fragment privat excedentar pentru ${itemKey}.`);
+  }
+  return { payload_sha256: payloadSha256, chunk_count: chunks.length, reused: created === 0, created };
 }
 
 async function loadPayloadChunks(svc, item) {
