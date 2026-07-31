@@ -108,6 +108,81 @@ async function sha256HexText(value) {
   return sha256HexBytes(new TextEncoder().encode(String(value ?? '')));
 }
 
+function splitPayloadText(value) {
+  const text = String(value ?? '');
+  const chunks = [];
+  for (let offset = 0; offset < text.length; offset += PAYLOAD_CHUNK_SIZE) {
+    chunks.push(text.slice(offset, offset + PAYLOAD_CHUNK_SIZE));
+  }
+  return chunks.length ? chunks : [''];
+}
+
+async function persistPayloadChunks(svc, runId, itemKey, payloadJson, selectedRows) {
+  const text = String(payloadJson ?? '[]');
+  const payloadSha256 = await sha256HexText(text);
+  const chunks = splitPayloadText(text);
+  const existing = await requireDirectoryRows(
+    svc.entities.DirectoryAutoImportPayloadChunk.filter(
+      { run_id: runId, item_key: itemKey },
+      'chunk_index',
+      200,
+    ),
+    'fragmentelor private ale lotului automat',
+  );
+  if (existing.length) {
+    const sameShape = existing.length === chunks.length
+      && existing.every((entry, index) => (
+        Number(entry.chunk_index) === index
+        && Number(entry.chunk_count) === chunks.length
+        && clean(entry.payload_sha256, 80) === payloadSha256
+        && entry.payload_chunk === chunks[index]
+      ));
+    if (!sameShape) throw new Error(`Persistenta privata este incompleta sau neconforma pentru ${itemKey}.`);
+    return { payload_sha256: payloadSha256, chunk_count: chunks.length, reused: true };
+  }
+  for (let index = 0; index < chunks.length; index += 1) {
+    await svc.entities.DirectoryAutoImportPayloadChunk.create({
+      run_id: runId,
+      item_key: itemKey,
+      chunk_index: index,
+      chunk_count: chunks.length,
+      payload_chunk: chunks[index],
+      payload_sha256: payloadSha256,
+      created_for_selected_rows: Number(selectedRows || 0),
+    });
+  }
+  return { payload_sha256: payloadSha256, chunk_count: chunks.length, reused: false };
+}
+
+async function loadPayloadChunks(svc, item) {
+  const chunks = await requireDirectoryRows(
+    svc.entities.DirectoryAutoImportPayloadChunk.filter(
+      { run_id: item.run_id, item_key: item.item_key },
+      'chunk_index',
+      200,
+    ),
+    'fragmentelor private ale lotului automat pentru reluare',
+  );
+  if (!chunks.length) return null;
+  const expectedCount = Number(chunks[0].chunk_count || 0);
+  if (!expectedCount || chunks.length !== expectedCount) {
+    throw new Error(`Fragmente private incomplete pentru ${item.item_key}.`);
+  }
+  for (let index = 0; index < chunks.length; index += 1) {
+    if (Number(chunks[index].chunk_index) !== index || Number(chunks[index].chunk_count) !== expectedCount) {
+      throw new Error(`Ordine invalida a fragmentelor private pentru ${item.item_key}.`);
+    }
+  }
+  const text = chunks.map((entry) => entry.payload_chunk || '').join('');
+  const actualSha256 = await sha256HexText(text);
+  if (actualSha256 !== clean(chunks[0].payload_sha256, 80)) {
+    throw new Error(`SHA invalid pentru persistenta privata a ${item.item_key}.`);
+  }
+  const payload = JSON.parse(text);
+  if (!Array.isArray(payload)) throw new Error(`Payload privat invalid pentru ${item.item_key}.`);
+  return payload;
+}
+
 async function fetchJson(sourceUrl, expectedSha256 = '') {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 30_000);
