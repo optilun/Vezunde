@@ -677,7 +677,15 @@ async function excludeControlledOrAmbiguousLiveMatches(svc, selection) {
       source_row_key: clean(row.source_row_key || row.__source_row_key || `national:${index + 1}`, 240),
       row_number: index + 1,
     });
-    const candidates = Array.from(new Set(locationIdsByExternalKey.get(normalized.location_external_key) || []));
+    const fallbackKey = existingLocationIdentityKey({
+      locality_name: normalized.locality_name,
+      address: normalized.address,
+      name: normalized.location_name,
+    });
+    const candidates = Array.from(new Set([
+      ...(locationIdsByExternalKey.get(normalized.location_external_key) || []),
+      ...(locationIdsByExternalKey.get(fallbackKey) || []),
+    ]));
     if (candidates.length > 1) {
       excluded.push({ row, reasons: ['ambiguous_existing_location_match'] });
       continue;
