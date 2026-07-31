@@ -917,7 +917,18 @@ async function createRun(svc, user, input) {
   for (const descriptor of loadedDescriptors) {
     const sourceRows = descriptor.source_rows_payload;
     const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows, geographyMap);
-    const selection = selectRowsForAutomaticImport(canonicalRows);
+    const selection = mode === CAMPAIGN_MODE_NATIONAL
+      ? {
+        selected: canonicalRows,
+        excluded: [],
+        summary: {
+          source_rows: canonicalRows.length,
+          selected_rows: canonicalRows.length,
+          excluded_rows: 0,
+          reason_counts: {},
+        },
+      }
+      : selectRowsForAutomaticImport(canonicalRows);
     const selectedSha256 = await sha256HexText(stableStringify(selection.selected));
     preparedDescriptors.push({
       ...descriptor,
@@ -932,14 +943,28 @@ async function createRun(svc, user, input) {
     });
   }
   descriptors = preparedDescriptors;
-  const packageSha256 = await sha256HexText(stableStringify(descriptors.map((item) => ({
+  if (mode === CAMPAIGN_MODE_STRICT) {
+    campaignSourceRows = descriptors.reduce((total, item) => total + Number(item.source_rows || 0), 0);
+    campaignExcludedRows = descriptors.reduce((total, item) => total + Number(item.excluded_rows || 0), 0);
+    campaignSelectionSummary = {
+      source_rows: campaignSourceRows,
+      selected_rows: descriptors.reduce((total, item) => total + Number(item.selected_rows || 0), 0),
+      excluded_rows: campaignExcludedRows,
+      reason_counts: {},
+    };
+  }
+  const packageSha256 = await sha256HexText(stableStringify({
+    campaign_mode: mode,
+    selection_summary: campaignSelectionSummary,
+    batches: descriptors.map((item) => ({
     source_url: item.source_url,
     source_sha256: item.source_sha256,
     selected_sha256: item.selected_sha256,
     source_rows: item.source_rows,
     selected_rows: item.selected_rows,
     excluded_rows: item.excluded_rows,
-  }))));
+  })),
+  }));
   const runKey = clean(input.run_key, 120) || runKeyFor(packageSha256);
   const existing = await requireDirectoryRows(
     svc.entities.DirectoryAutoImportRun.filter({ run_key: runKey }, '-created_date', 5),
