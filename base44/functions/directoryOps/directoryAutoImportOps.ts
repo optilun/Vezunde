@@ -213,6 +213,124 @@ function rowsFromPayload(payload) {
   return [];
 }
 
+function decodeBase64Bytes(value) {
+  const source = String(value || '').replace(/^data:[^,]*;base64,/i, '').replace(/\s+/g, '');
+  if (!source) throw new Error('Arhiva ZIP lipseste.');
+  if (source.length > 12_000_000) throw new Error('Arhiva ZIP depaseste limita acceptata.');
+  const binary = atob(source);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
+
+function archiveEntryByName(entries, requestedName) {
+  const expected = clean(requestedName, 500).replace(/^\.\//, '');
+  if (!expected) return null;
+  if (entries[expected]) return { name: expected, bytes: entries[expected] };
+  const exactSuffix = Object.keys(entries).find((name) => name === expected || name.endsWith(`/${expected}`));
+  if (exactSuffix) return { name: exactSuffix, bytes: entries[exactSuffix] };
+  const baseName = expected.split('/').pop();
+  const byBaseName = Object.keys(entries).filter((name) => name.split('/').pop() === baseName);
+  if (byBaseName.length === 1) return { name: byBaseName[0], bytes: entries[byBaseName[0]] };
+  return null;
+}
+
+async function descriptorsFromZipBase64(zipBase64, archiveFilename = '') {
+  const zipBytes = decodeBase64Bytes(zipBase64);
+  if (zipBytes.byteLength > 8_000_000) throw new Error('Arhiva ZIP depaseste limita de 8 MB.');
+  const archiveSha256 = await sha256HexBytes(zipBytes);
+  let entries;
+  try {
+    entries = unzipSync(zipBytes);
+  } catch (_error) {
+    throw new Error('Arhiva ZIP nu poate fi deschisa.');
+  }
+  const names = Object.keys(entries).filter((name) => !name.endsWith('/'));
+  const manifestName = names.find((name) => /(^|\/)(manifest-index|manifest)\.json$/i.test(name));
+  let manifest = null;
+  if (manifestName) {
+    try {
+      manifest = JSON.parse(strFromU8(entries[manifestName]));
+    } catch (_error) {
+      throw new Error('Manifestul JSON din arhiva este invalid.');
+    }
+  }
+  const manifestCollections = [
+    manifest?.automatic_batches,
+    manifest?.clean_batches,
+    manifest?.batches,
+    manifest?.batch_files,
+    manifest?.files,
+    manifest?.items,
+  ].filter(Array.isArray);
+  const descriptors = [];
+  if (manifestCollections[0]?.length) {
+    for (let index = 0; index < manifestCollections[0].length; index += 1) {
+      const entry = manifestCollections[0][index];
+      const fileName = clean(
+        entry?.file || entry?.file_name || entry?.filename || entry?.path,
+        500,
+      );
+      const located = archiveEntryByName(entries, fileName);
+      if (!located) throw new Error(`Fisierul ${fileName || index + 1} declarat in manifest lipseste din arhiva.`);
+      const actualSha256 = await sha256HexBytes(located.bytes);
+      const expectedSha256 = clean(entry?.sha256 || entry?.file_sha256 || '', 80).toLowerCase();
+      if (expectedSha256 && expectedSha256 !== actualSha256) {
+        throw new Error(`SHA-256 nu corespunde pentru ${fileName}.`);
+      }
+      let payload;
+      try {
+        payload = JSON.parse(strFromU8(located.bytes));
+      } catch (_error) {
+        throw new Error(`Fisierul ${fileName} nu contine JSON valid.`);
+      }
+      const rows = rowsFromPayload(payload);
+      descriptors.push({
+        source_url: `archive://${archiveSha256}/${located.name}`,
+        source_filename: located.name.split('/').pop() || `batch-${index + 1}.json`,
+        source_sha256: actualSha256,
+        expected_sha256: actualSha256,
+        expected_rows: Math.max(0, Number(entry?.rows ?? entry?.row_count ?? entry?.location_count ?? rows.length)),
+        organization_count: Math.max(0, Number(entry?.organizations ?? entry?.organization_count ?? 0)),
+        inline_rows: rows,
+      });
+    }
+  } else {
+    const batchNames = names.filter((name) => {
+      const baseName = name.split('/').pop()?.toLowerCase() || '';
+      return /\.json$/.test(baseName)
+        && /batch/.test(baseName)
+        && !/(needs-review|requires-review|excluded|blocked|audit|report|manifest|invalid)/.test(baseName);
+    }).sort();
+    for (let index = 0; index < batchNames.length; index += 1) {
+      const name = batchNames[index];
+      let payload;
+      try {
+        payload = JSON.parse(strFromU8(entries[name]));
+      } catch (_error) {
+        throw new Error(`Fisierul ${name} nu contine JSON valid.`);
+      }
+      const rows = rowsFromPayload(payload);
+      const sourceSha256 = await sha256HexBytes(entries[name]);
+      descriptors.push({
+        source_url: `archive://${archiveSha256}/${name}`,
+        source_filename: name.split('/').pop() || `batch-${index + 1}.json`,
+        source_sha256: sourceSha256,
+        expected_sha256: sourceSha256,
+        expected_rows: rows.length,
+        organization_count: 0,
+        inline_rows: rows,
+      });
+    }
+  }
+  if (!descriptors.length) throw new Error('Arhiva nu contine loturi JSON recunoscute.');
+  return {
+    archive_filename: clean(archiveFilename, 240),
+    archive_sha256: archiveSha256,
+    descriptors,
+  };
+}
+
 async function enrichRowsWithCanonicalGeography(svc, rows = []) {
   const codes = Array.from(new Set(rows.map((row) => clean(row?.locality_siruta_code, 40)).filter(Boolean)));
   const geographicRows = codes.length ? await requireDirectoryRows(
