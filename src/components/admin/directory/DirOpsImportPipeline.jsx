@@ -178,7 +178,7 @@ function AutoImportPanel() {
 
     {latest && <div className="mt-5 space-y-4">
       <div className="flex flex-col gap-3 rounded-2xl border border-border bg-background p-4 sm:flex-row sm:items-start sm:justify-between">
-        <div><div className="font-mono text-[10px] text-muted-foreground">{latest.run_key}</div><div className="mt-1 text-sm font-bold">{latest.completed_batches || 0} din {latest.total_batches || 0} loturi finalizate</div><p className="mt-1 text-xs text-muted-foreground">Pas curent: {latest.current_step || "-"}{currentItem ? ` · lot ${currentItem.sequence}/${latest.total_batches}` : ""}</p></div>
+        <div><div className="font-mono text-[10px] text-muted-foreground">{latest.run_key}</div><div className="mt-1 text-sm font-bold">{Number(latest.completed_batches || 0) + Number(latest.skipped_batches || 0)} din {latest.total_batches || 0} loturi procesate</div><p className="mt-1 text-xs text-muted-foreground">Pas curent: {latest.current_step || "-"}{currentItem ? ` · lot ${currentItem.sequence}/${latest.total_batches}` : ""}</p></div>
         <Badge status={latest.status} />
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5"><Stat label="Eligibile" value={latest.total_rows} /><Stat label="Aplicate" value={latest.applied_rows} /><Stat label="Excluse automat" value={latest.excluded_rows} /><Stat label="Blocate" value={latest.blocked_batches} /><Stat label="Esuate" value={latest.failed_rows} /></div>
