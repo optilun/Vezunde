@@ -4120,9 +4120,18 @@ function normalizeNationalDirectoryRow(row = {}) {
     care_setting_code: clean8(row.care_setting_code, 120)
   } : inferNationalLocationType(activityText);
   const organizationName = clean8(row.organization_display_name || row.location_display_name, 240);
+  const localityKey = normalizeIdentityText(row.official_locality || row.locality_name);
+  const addressKey = normalizeAddressForFingerprint(row.confirmed_address || row.address);
+  const locationNameKey = normalizeIdentityText(row.location_display_name || row.location_name);
+  const organizationExternalKey = clean8(row.organization_external_key, 240) || (organizationName ? `org:${stableTextHash(normalizeIdentityText(organizationName))}` : "");
+  const locationExternalKey = clean8(row.location_external_key, 240) || (localityKey && addressKey && locationNameKey ? `loc:${stableTextHash([localityKey, addressKey, locationNameKey].join("|"))}` : "");
+  const addressFingerprint = clean8(row.address_fingerprint, 240) || (localityKey && addressKey ? `addr:${stableTextHash([clean8(row.locality_siruta_code, 40) || localityKey, addressKey].join("|"))}` : "");
   return {
     ...row,
     organization_display_name: organizationName,
+    organization_external_key: organizationExternalKey,
+    location_external_key: locationExternalKey,
+    address_fingerprint: addressFingerprint,
     provider_type: resolvedType?.provider_type || "",
     provider_profile_type: resolvedType?.provider_profile_type || "",
     location_type_code: resolvedType?.location_type_code || "",
@@ -4180,7 +4189,13 @@ function nationalRowScore(row = {}) {
 function nationalIdentityKey(row = {}) {
   const external = clean8(row.location_external_key, 240);
   if (external) return `external:${external}`;
-  return `identity:${clean8(row.locality_siruta_code, 40)}|${clean8(row.address_fingerprint, 240)}|${normalizeIdentityText(row.location_display_name)}`;
+  const localityKey = normalizeIdentityText(row.official_locality || row.locality_name);
+  const addressKey = normalizeAddressForFingerprint(row.confirmed_address || row.address);
+  const nameKey = normalizeIdentityText(row.location_display_name || row.location_name);
+  if (localityKey && addressKey && nameKey) {
+    return `identity:${localityKey}|${addressKey}|${nameKey}`;
+  }
+  return `source:${clean8(row.source_row_key || row.__source_row_key || row.__row_number, 260)}`;
 }
 function selectRowsForNationalDirectory(rows = []) {
   const excluded = [];
@@ -4248,6 +4263,10 @@ async function excludeControlledOrAmbiguousLiveMatches(svc, selection) {
     )
   ]);
   const locationsById = new Map(locations.map((location) => [location.id, location]));
+  const statesByLocationId = /* @__PURE__ */ new Map();
+  for (const state of states) {
+    if (state.location_id && !statesByLocationId.has(state.location_id)) statesByLocationId.set(state.location_id, state);
+  }
   const locationIdsByExternalKey = /* @__PURE__ */ new Map();
   const append = (map, key, value) => {
     if (!key) return;
@@ -4284,6 +4303,12 @@ async function excludeControlledOrAmbiguousLiveMatches(svc, selection) {
       const controlStatus = clean8(location?.profile_control_status || "directory", 80);
       if (["claimed", "verified", "suspended"].includes(controlStatus)) {
         excluded.push({ row, reasons: ["existing_controlled_location"] });
+        continue;
+      }
+      const state = statesByLocationId.get(location?.id) || null;
+      const alreadyPublished = location?.status === "publicata" && location?.public_visibility_status === "approved" && state?.publication_status === "published" && state?.control_status === "directory";
+      if (alreadyPublished) {
+        excluded.push({ row, reasons: ["already_published_directory"] });
         continue;
       }
     }
