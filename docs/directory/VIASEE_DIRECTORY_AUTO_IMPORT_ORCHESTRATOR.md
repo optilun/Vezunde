@@ -12,7 +12,8 @@ Orchestratorul elimina repetarea manuala a fluxului snapshot → validare → dr
 4. Dupa publicarea versiunii, automatizarea Base44 ruleaza la fiecare 5 minute si este limitata la maximum 400 de executii pentru campania curenta.
 5. La fiecare executie se avanseaza un singur pas durabil:
    - descarcare si verificare SHA-256;
-   - filtrare determinista: numai candidate, confirmate oficial, active, fara `review_flags` si cu toate campurile canonice complete;
+   - completare si verificare a geografiei din `GeographicLocality` dupa codul SIRUTA: cod judet, UAT si denumire UAT;
+   - filtrare determinista: numai candidate, confirmate oficial, active, fara `review_flags`, cu geografie valida si cu toate campurile canonice complete;
    - creare snapshot numai din randurile strict curate;
    - incarcare randuri;
    - validare;
@@ -27,6 +28,7 @@ Orchestratorul elimina repetarea manuala a fluxului snapshot → validare → dr
 
 - maximum 40 de randuri per fisier;
 - randurile necurate sunt excluse si raportate, nu importate;
+- codul SIRUTA trebuie sa existe activ in `GeographicLocality`, iar judetul sursei trebuie sa coincida cu judetul canonic;
 - snapshot `ready` si imuabil;
 - toate randurile valide;
 - zero randuri blocate;
