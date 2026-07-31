@@ -15,7 +15,8 @@
       "schedule_type": "simple",
       "repeat_unit": "minutes",
       "repeat_interval": 5,
-      "ends_type": "never"
+      "ends_type": "after",
+      "ends_after_count": 400
     }
   ]
 }
