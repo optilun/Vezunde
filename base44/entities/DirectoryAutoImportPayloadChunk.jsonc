@@ -1,0 +1,48 @@
+{
+  "name": "DirectoryAutoImportPayloadChunk",
+  "type": "object",
+  "properties": {
+    "run_id": {
+      "type": "string"
+    },
+    "item_key": {
+      "type": "string"
+    },
+    "chunk_index": {
+      "type": "number"
+    },
+    "chunk_count": {
+      "type": "number"
+    },
+    "payload_chunk": {
+      "type": "string"
+    },
+    "payload_sha256": {
+      "type": "string"
+    },
+    "created_for_selected_rows": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "run_id",
+    "item_key",
+    "chunk_index",
+    "chunk_count",
+    "payload_chunk",
+    "payload_sha256"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
