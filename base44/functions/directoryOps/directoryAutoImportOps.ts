@@ -744,8 +744,13 @@ async function reconcileNationalOrganizationKeys(svc, selection) {
   const excluded = [...selection.excluded];
   for (const row of selection.selected) {
     const sourceExternalKey = clean(row.organization_external_key, 240);
-    if (sourceExternalKey && byExternalKey.has(sourceExternalKey)) {
-      selected.push(row);
+    const externalMatches = sourceExternalKey ? byExternalKey.get(sourceExternalKey) || [] : [];
+    if (externalMatches.length > 1) {
+      excluded.push({ row, reasons: ['ambiguous_existing_organization_external_key'] });
+      continue;
+    }
+    if (externalMatches.length === 1) {
+      selected.push({ ...row, target_organization_id: externalMatches[0].id });
       continue;
     }
     const nameMatches = byName.get(normalizeIdentityText(row.organization_display_name)) || [];
@@ -759,11 +764,11 @@ async function reconcileNationalOrganizationKeys(svc, selection) {
     }
     if (candidates.length === 1) {
       const existingKey = clean(candidates[0].directory_external_key, 240);
-      if (!existingKey) {
-        excluded.push({ row, reasons: ['existing_organization_without_external_key'] });
-        continue;
-      }
-      selected.push({ ...row, organization_external_key: existingKey });
+      selected.push({
+        ...row,
+        ...(existingKey ? { organization_external_key: existingKey } : {}),
+        target_organization_id: candidates[0].id,
+      });
       continue;
     }
     selected.push(row);
