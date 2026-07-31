@@ -33,7 +33,8 @@ const LABELS = {
   blocked: "Blocat", imported: "Importat", archived: "Arhivat", planning: "Dry-run in lucru",
   approved: "Aprobat", running: "Import in lucru", completed: "Finalizat",
   completed_with_errors: "Finalizat cu erori", failed: "Esuat", rolling_back: "Rollback in lucru",
-  rolled_back: "Retras", rollback_failed: "Rollback incomplet",
+  rolled_back: "Retras", rollback_failed: "Rollback incomplet", awaiting_approval: "Asteapta aprobarea",
+  paused: "Pauza", cancelled: "Anulat",
 };
 const ROW_FILTERS = [
   ["", "Toate randurile"], ["blocked", "Blocate"], ["ready", "Pregatite"],
@@ -79,8 +80,8 @@ async function finishSnapshotValidation(snapshotId) {
 }
 function tone(status) {
   if (["ready", "completed", "imported", "rolled_back", "applied"].includes(status)) return "border-green-200 bg-green-50 text-green-900";
-  if (["blocked", "failed", "rollback_failed", "completed_with_errors"].includes(status)) return "border-red-200 bg-red-50 text-red-900";
-  if (["uploading", "validating", "planning", "approved", "running", "rolling_back"].includes(status)) return "border-amber-200 bg-amber-50 text-amber-900";
+  if (["blocked", "failed", "rollback_failed", "completed_with_errors", "cancelled"].includes(status)) return "border-red-200 bg-red-50 text-red-900";
+  if (["uploading", "validating", "planning", "approved", "running", "rolling_back", "awaiting_approval", "paused"].includes(status)) return "border-amber-200 bg-amber-50 text-amber-900";
   return "border-border bg-secondary/40 text-foreground";
 }
 function Badge({ status }) { return <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${tone(status)}`}>{LABELS[status] || status}</span>; }
