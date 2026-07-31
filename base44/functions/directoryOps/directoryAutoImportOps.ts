@@ -937,8 +937,8 @@ async function advanceRun(svc, run) {
     }
 
     if (item.step === 'append_rows') {
-      const fetched = await fetchJson(item.source_url, item.source_sha256 || item.expected_sha256);
-      const sourceRows = rowsFromPayload(fetched.payload);
+      const loadedSource = await loadItemSourceRows(item);
+      const sourceRows = loadedSource.rows;
       const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows);
       const selection = selectRowsForAutomaticImport(canonicalRows);
       const selectedSha256 = await sha256HexText(stableStringify(selection.selected));
