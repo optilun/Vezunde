@@ -1007,9 +1007,11 @@ async function createRun(svc, user, input) {
       }
     }
     const runValues = {
+      campaign_mode: mode,
+      publication_mode: publicationMode,
       total_batches: descriptors.length,
       skipped_batches: descriptors.filter((item) => Number(item.selected_rows || 0) === 0).length,
-      excluded_rows: descriptors.reduce((total, item) => total + Number(item.excluded_rows || 0), 0),
+      excluded_rows: campaignExcludedRows,
       total_rows: descriptors.reduce((total, item) => total + Number(item.selected_rows || 0), 0),
       failure_message: '',
     };
@@ -1028,29 +1030,47 @@ async function createRun(svc, user, input) {
       items,
       approval_confirmation: approvalPhrase(repairedRun),
       preflight: {
-        source_rows: descriptors.reduce((total, item) => total + Number(item.source_rows || 0), 0),
+        source_rows: campaignSourceRows,
         selected_rows: runValues.total_rows,
-        excluded_rows: runValues.excluded_rows,
+        excluded_rows: campaignExcludedRows,
         skipped_batches: runValues.skipped_batches,
       },
     });
   }
   const safetyPolicy = {
+    campaign_mode: mode,
+    publication_mode: publicationMode,
     max_rows_per_batch: MAX_ROWS_PER_BATCH,
     execution_chunk: EXECUTION_CHUNK,
     requires_zero_snapshot_blocks: true,
     requires_zero_snapshot_duplicates: true,
-    requires_zero_snapshot_warnings: true,
-    allowed_actions: Array.from(ALLOWED_ACTIONS),
+    requires_zero_snapshot_warnings: mode === CAMPAIGN_MODE_STRICT,
+    allowed_actions: mode === CAMPAIGN_MODE_NATIONAL
+      ? [
+        'create_organization_and_location',
+        'create_location_use_existing_organization',
+        'update_existing_location',
+        'skip_unchanged',
+      ]
+      : Array.from(ALLOWED_ACTIONS),
     exact_external_key_required_for_existing_organization: true,
-    source_filter: {
-      import_readiness: 'candidate_for_manual_review',
-      research_status: 'official_confirmed',
-      operational_status: 'active_confirmed',
-      review_flags_must_be_empty: true,
-      explicit_location_first_classification_required: true,
-    },
-    publishes_profiles: false,
+    source_filter: mode === CAMPAIGN_MODE_NATIONAL
+      ? {
+        import_readiness: 'normalized_candidate',
+        research_status: ['official_confirmed', 'official_partial'],
+        operational_status: 'active_confirmed',
+        conflicts_are_excluded: true,
+        deterministic_type_inference_allowed: true,
+      }
+      : {
+        import_readiness: 'candidate_for_manual_review',
+        research_status: 'official_confirmed',
+        operational_status: 'active_confirmed',
+        review_flags_must_be_empty: true,
+        explicit_location_first_classification_required: true,
+      },
+    publishes_profiles: true,
+    publication_trust_label: 'directory_unclaimed_unverified',
     verifies_profiles: false,
     creates_services: false,
     grants_access: false,
