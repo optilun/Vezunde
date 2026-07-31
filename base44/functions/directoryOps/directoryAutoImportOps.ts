@@ -349,7 +349,8 @@ async function createRun(svc, user, input) {
     if (descriptor.expected_rows > 0 && descriptor.expected_rows !== sourceRows.length) {
       return response({ error: `${descriptor.source_filename}: manifestul declara ${descriptor.expected_rows} randuri, fisierul contine ${sourceRows.length}.` }, 400);
     }
-    const selection = selectRowsForAutomaticImport(sourceRows);
+    const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows);
+    const selection = selectRowsForAutomaticImport(canonicalRows);
     const selectedSha256 = await sha256HexText(stableStringify(selection.selected));
     preparedDescriptors.push({
       ...descriptor,
@@ -722,7 +723,8 @@ async function advanceRun(svc, run) {
       if (Number(item.expected_rows || 0) > 0 && Number(item.expected_rows) !== sourceRows.length) {
         return blockItem(svc, run, item, [`expected_rows:${item.expected_rows}`, `actual_rows:${sourceRows.length}`], 'fetch_source');
       }
-      const selection = selectRowsForAutomaticImport(sourceRows);
+      const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows);
+      const selection = selectRowsForAutomaticImport(canonicalRows);
       const selectedSha256 = await sha256HexText(stableStringify(selection.selected));
       if (selection.selected.length !== Number(item.selected_rows || 0) || selectedSha256 !== clean(item.selected_sha256, 80)) {
         return blockItem(svc, run, item, [
@@ -783,7 +785,9 @@ async function advanceRun(svc, run) {
 
     if (item.step === 'append_rows') {
       const fetched = await fetchJson(item.source_url, item.source_sha256 || item.expected_sha256);
-      const selection = selectRowsForAutomaticImport(rowsFromPayload(fetched.payload));
+      const sourceRows = rowsFromPayload(fetched.payload);
+      const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows);
+      const selection = selectRowsForAutomaticImport(canonicalRows);
       const selectedSha256 = await sha256HexText(stableStringify(selection.selected));
       if (selection.selected.length !== Number(item.selected_rows || 0) || selectedSha256 !== clean(item.selected_sha256, 80)) {
         return blockItem(svc, run, item, [
