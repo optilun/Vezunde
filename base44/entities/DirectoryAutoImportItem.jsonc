@@ -40,6 +40,9 @@
     "source_sha256": {
       "type": "string"
     },
+    "selected_sha256": {
+      "type": "string"
+    },
     "expected_sha256": {
       "type": "string"
     },
