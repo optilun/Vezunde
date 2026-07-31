@@ -10,6 +10,7 @@ const ui = read('src/components/admin/directory/DirOpsImportPipeline.jsx');
 const runSchema = JSON.parse(read('base44/entities/DirectoryAutoImportRun.jsonc'));
 const itemSchema = JSON.parse(read('base44/entities/DirectoryAutoImportItem.jsonc'));
 const functionConfig = JSON.parse(read('base44/functions/listProviderMemberInvitations/function.jsonc'));
+assert.equal(fs.existsSync('base44/entities/_noop_invalid.jsonc'), false, 'Schema temporara invalida nu trebuie publicata.');
 
 assert.equal(runSchema.name, 'DirectoryAutoImportRun');
 assert.equal(itemSchema.name, 'DirectoryAutoImportItem');
@@ -28,6 +29,10 @@ assert.match(auto, /exact_external_key_required_for_existing_organization: true/
 assert.match(auto, /snapshot_has_duplicates/);
 assert.match(auto, /existing_organization_external_key_mismatch/);
 assert.match(auto, /resumeBatchAfterTransientFailure/);
+assert.match(auto, /automaticSelectionReasons/);
+assert.match(auto, /selectRowsForAutomaticImport\(sourceRows\)/);
+assert.match(auto, /skipped_no_strictly_clean_rows/);
+assert.match(auto, /review_flags_present/);
 assert.match(auto, /advance_auto_import_run_now/);
 assert.match(auto, /__automation_trigger === true/);
 assert.doesNotMatch(auto, /LocationService\.(create|update|delete)/);
