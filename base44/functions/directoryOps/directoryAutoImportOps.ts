@@ -629,7 +629,7 @@ async function refreshProgress(svc, run) {
     if (item.status === 'skipped') acc.skipped_batches += 1;
     const selectedRows = Number(item.selected_rows || 0);
     const sourceRows = Number(item.source_rows || item.expected_rows || 0);
-    acc.total_rows += item.status === 'pending' ? sourceRows : selectedRows;
+    acc.total_rows += Number(item.source_rows || 0) > 0 ? selectedRows : sourceRows;
     acc.excluded_rows += Number(item.excluded_rows || 0);
     acc.applied_rows += Number(item.applied_rows || 0);
     acc.skipped_rows += Number(item.skipped_rows || 0);
