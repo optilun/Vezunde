@@ -976,7 +976,7 @@ async function createRun(svc, user, input) {
   let campaignExcludedRows = 0;
   let campaignSelectionSummary = null;
   if (mode === CAMPAIGN_MODE_NATIONAL) {
-    if (!input.zip_base64) return response({ error: 'Campania nationala necesita arhiva ZIP privata cu registrul master.' }, 400);
+    if (!input.zip_base64) return response({ error: 'Campania nationala necesita registrul master JSON sau arhiva ZIP privata.' }, 400);
     archiveMetadata = await nationalRowsFromPrivateSourceBase64(
       input.zip_base64,
       clean(input.zip_filename, 240),
@@ -987,7 +987,10 @@ async function createRun(svc, user, input) {
     const nationalSelection = await excludeControlledOrAmbiguousLiveMatches(svc, selectedNationalRows);
     campaignSourceRows = nationalSelection.summary.source_rows;
     campaignExcludedRows = nationalSelection.summary.excluded_rows;
-    campaignSelectionSummary = nationalSelection.summary;
+    campaignSelectionSummary = {
+      ...nationalSelection.summary,
+      source_kind: archiveMetadata.source_kind || 'private_source',
+    };
     descriptors = await descriptorsForNationalSelection(nationalSelection, archiveMetadata.archive_sha256);
   } else if (input.zip_base64) {
     archiveMetadata = await descriptorsFromZipBase64(
