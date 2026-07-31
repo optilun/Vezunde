@@ -2796,6 +2796,178 @@ async function executeRow(svc, user, batch, rowRecord) {
   });
   return { status, result };
 }
+function directoryPublicationQuality(row = {}) {
+  const researchStatus = clean6(row.research_status, 80);
+  const hasReviewFlags = Boolean(clean6(row.review_flags, 2e3));
+  if (researchStatus === "official_confirmed" && !hasReviewFlags) return "high";
+  if (["official_confirmed", "official_partial"].includes(researchStatus)) return "medium";
+  return "low";
+}
+async function publishCompletedBatchAsBasicDirectory(svc, user, input = {}) {
+  const batchId = clean6(input.batch_id, 160);
+  const batch = await getDirectoryEntityOrNull(
+    svc.entities.DirectoryImportBatch.get(batchId),
+    "lotului finalizat pentru publicarea directorului"
+  );
+  if (!batch) return response({ error: "Lotul nu a fost gasit." }, 404);
+  if (batch.status !== "completed") return response({ error: `Lotul nu este finalizat (${batch.status}).` }, 409);
+  const rows = await requireDirectoryRows(
+    svc.entities.DirectoryImportRow.filter({ batch_id: batch.id }, "row_number", 200),
+    "randurilor finalizate pentru publicarea directorului"
+  );
+  let publishedLocations = 0;
+  let publishedStates = 0;
+  let publishedOrganizations = 0;
+  let skippedControlled = 0;
+  for (const rowRecord of rows) {
+    if (!["applied", "skipped"].includes(rowRecord.status)) continue;
+    const result = safeJson(rowRecord.result_json, {});
+    const locationId = clean6(rowRecord.target_location_id || result.location_id, 160);
+    if (!locationId) continue;
+    const location = await getDirectoryEntityOrNull(
+      svc.entities.ProviderLocation.get(locationId),
+      "locatiei pentru publicarea directorului"
+    );
+    if (!location) continue;
+    if (CONTROLLED_PROFILES.has(location.profile_control_status || "directory")) {
+      skippedControlled += 1;
+      continue;
+    }
+    const row = applyAdminOverride(safeJson(rowRecord.normalized_payload_json, {}), rowRecord);
+    const quality = directoryPublicationQuality(row);
+    const basicApproved = ["high", "medium"].includes(quality) && Boolean(clean6(row.address, 600)) && Boolean(clean6(row.source_url, 1200)) && row.operational_status === "active";
+    const locationValues = {
+      public_visibility_status: "approved",
+      status: "publicata",
+      profile_control_status: "directory",
+      claim_verification_status: "none",
+      verification_state: "unclaimed",
+      is_verified: false,
+      request_intake_status: "inactive",
+      migration_review_required: quality === "low" || Boolean(clean6(row.review_flags, 2e3)),
+      profile_control_status_updated_at: now(),
+      profile_control_status_reason: "Profil de director neconfirmat publicat automat din sursa publica."
+    };
+    if (!directoryFieldsEqual(location, locationValues)) {
+      const before = pickFields(location, Object.keys(locationValues));
+      await svc.entities.ProviderLocation.update(location.id, locationValues);
+      await createMutation(svc, {
+        batch_id: batch.id,
+        row_id: rowRecord.id,
+        sequence: 1e5 + Number(rowRecord.row_number || 0) * 10 + 1,
+        mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocation:${location.id}:publish-basic`,
+        entity_type: "ProviderLocation",
+        entity_id: location.id,
+        operation: "update",
+        before_json: JSON.stringify(before),
+        after_json: JSON.stringify(locationValues),
+        rollback_status: "pending",
+        applied_at: now()
+      });
+      await writeAudit(svc, user, "ProviderLocation", location.id, "directory_profile_published_basic", before, locationValues, `Lot ${batch.batch_key}`);
+      publishedLocations += 1;
+    }
+    const activeStates = await requireDirectoryRows(
+      svc.entities.ProviderLocationDirectoryState.filter({ location_id: location.id, state_status: "active" }, "-created_date", 20),
+      "starii locatiei pentru publicarea directorului"
+    );
+    const stateValues = {
+      publication_status: "published",
+      control_status: "directory",
+      operational_status: "active",
+      data_quality_status: quality,
+      directory_detail_level: basicApproved ? "basic" : "summary",
+      directory_basic_details_approved: basicApproved,
+      normalized_at: now()
+    };
+    const state = activeStates[0] || null;
+    if (state) {
+      if (!directoryFieldsEqual(state, stateValues)) {
+        const before = pickFields(state, Object.keys(stateValues));
+        await svc.entities.ProviderLocationDirectoryState.update(state.id, stateValues);
+        await createMutation(svc, {
+          batch_id: batch.id,
+          row_id: rowRecord.id,
+          sequence: 1e5 + Number(rowRecord.row_number || 0) * 10 + 2,
+          mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocationDirectoryState:${state.id}:publish-basic`,
+          entity_type: "ProviderLocationDirectoryState",
+          entity_id: state.id,
+          operation: "update",
+          before_json: JSON.stringify(before),
+          after_json: JSON.stringify(stateValues),
+          rollback_status: "pending",
+          applied_at: now()
+        });
+        await writeAudit(svc, user, "ProviderLocationDirectoryState", state.id, "directory_state_published_basic", before, stateValues, `Lot ${batch.batch_key}`);
+        publishedStates += 1;
+      }
+    } else {
+      const values = {
+        ...resolveDirectoryStateCreatePayload(row, location.id, Boolean(location.organization_id)),
+        ...stateValues,
+        state_status: "active"
+      };
+      const createdState = await svc.entities.ProviderLocationDirectoryState.create(values);
+      await createMutation(svc, {
+        batch_id: batch.id,
+        row_id: rowRecord.id,
+        sequence: 1e5 + Number(rowRecord.row_number || 0) * 10 + 2,
+        mutation_key: `${batch.id}:${rowRecord.id}:ProviderLocationDirectoryState:${createdState.id}:publish-basic-create`,
+        entity_type: "ProviderLocationDirectoryState",
+        entity_id: createdState.id,
+        operation: "create",
+        before_json: "{}",
+        after_json: JSON.stringify(values),
+        rollback_status: "pending",
+        applied_at: now()
+      });
+      await writeAudit(svc, user, "ProviderLocationDirectoryState", createdState.id, "directory_state_published_basic", {}, values, `Lot ${batch.batch_key}`);
+      publishedStates += 1;
+    }
+    const organizationId = clean6(location.organization_id || result.organization_id, 160);
+    if (organizationId) {
+      const organization = await getDirectoryEntityOrNull(
+        svc.entities.ProviderOrganization.get(organizationId),
+        "organizatiei pentru publicarea directorului"
+      );
+      if (organization && (organization.control_status || "directory") === "directory") {
+        const organizationValues = {
+          publication_status: "published",
+          public_visibility_status: "approved",
+          data_quality_status: quality,
+          status: "activa"
+        };
+        if (!directoryFieldsEqual(organization, organizationValues)) {
+          const before = pickFields(organization, Object.keys(organizationValues));
+          await svc.entities.ProviderOrganization.update(organization.id, organizationValues);
+          await createMutation(svc, {
+            batch_id: batch.id,
+            row_id: rowRecord.id,
+            sequence: 1e5 + Number(rowRecord.row_number || 0) * 10 + 3,
+            mutation_key: `${batch.id}:${rowRecord.id}:ProviderOrganization:${organization.id}:publish-basic`,
+            entity_type: "ProviderOrganization",
+            entity_id: organization.id,
+            operation: "update",
+            before_json: JSON.stringify(before),
+            after_json: JSON.stringify(organizationValues),
+            rollback_status: "pending",
+            applied_at: now()
+          });
+          await writeAudit(svc, user, "ProviderOrganization", organization.id, "directory_organization_published_basic", before, organizationValues, `Lot ${batch.batch_key}`);
+          publishedOrganizations += 1;
+        }
+      }
+    }
+  }
+  return response({
+    success: true,
+    batch_id: batch.id,
+    published_locations: publishedLocations,
+    published_states: publishedStates,
+    published_organizations: publishedOrganizations,
+    skipped_controlled: skippedControlled
+  });
+}
 async function acquireBatchLock(svc, batch, requestedToken = "") {
   const currentExpiry = batch.execution_lock_expires_at ? new Date(batch.execution_lock_expires_at).getTime() : 0;
   const currentToken = clean6(batch.execution_lock_token, 200);
@@ -3539,7 +3711,10 @@ async function handle2(req) {
 // base44/functions/directoryOps/directoryAutoImportOps.ts
 import { createClientFromRequest as createClientFromRequest2 } from "npm:@base44/sdk@0.8.31";
 import { strFromU8, unzipSync } from "npm:fflate@0.8.2";
-var DIRECTORY_AUTO_IMPORT_CONTRACT_VERSION = "viasee-directory-auto-import-v1";
+var DIRECTORY_AUTO_IMPORT_CONTRACT_VERSION = "viasee-directory-auto-import-v2";
+var CAMPAIGN_MODE_STRICT = "strict_import";
+var CAMPAIGN_MODE_NATIONAL = "national_directory";
+var PUBLICATION_MODE_BASIC = "public_basic_directory";
 var MAX_BATCHES = 50;
 var MAX_ROWS_PER_BATCH = 40;
 var EXECUTION_CHUNK2 = 5;
@@ -3569,6 +3744,15 @@ function safeJson2(value, fallback = {}) {
 }
 function asArray2(value) {
   return Array.isArray(value) ? value : [];
+}
+function campaignMode(value) {
+  return clean8(value, 80) === CAMPAIGN_MODE_NATIONAL ? CAMPAIGN_MODE_NATIONAL : CAMPAIGN_MODE_STRICT;
+}
+function runCampaignMode(run = {}) {
+  const direct = campaignMode(run.campaign_mode);
+  if (direct === CAMPAIGN_MODE_NATIONAL) return direct;
+  const policy = safeJson2(run.safety_policy_json, {});
+  return campaignMode(policy.campaign_mode);
 }
 function stableStringify2(value) {
   if (Array.isArray(value)) return `[${value.map(stableStringify2).join(",")}]`;
@@ -3889,6 +4073,272 @@ async function descriptorsFromZipBase64(zipBase64, archiveFilename = "") {
     descriptors
   };
 }
+function nationalPseudoRowReason(row = {}) {
+  const name = normalizeIdentityText(row.location_display_name || row.location_name);
+  const locality = clean8(row.official_locality || row.locality_name, 160);
+  const address = normalizeIdentityText(row.confirmed_address || row.address);
+  if (!name) return "missing_location_name";
+  if (name === "organizatie" || /^(?:locatii|acoperire|retea|network)(?:\s|$)/.test(name) || /^total(?:\s*:?\s*\d|\s+(?:locatii|puncte|sedii)\b)/.test(name)) return "aggregate_or_summary_row";
+  if (/^~?\d+\+?$/.test(locality) || /^~?\d+\+?$/.test(clean8(row.location_display_name || row.location_name))) {
+    return "aggregate_count_row";
+  }
+  if (!address && /\b(locatii|puncte|sedii)\b/.test(name)) return "aggregate_without_address";
+  return "";
+}
+function nationalOrganizationTypeCode(row = {}, resolvedType = null) {
+  const explicit = clean8(row.organization_type_code, 120);
+  if (explicit) return explicit;
+  const text = normalizeIdentityText([
+    row.organization_display_name,
+    row.location_display_name,
+    row.confirmed_activity_category,
+    row.observations
+  ].filter(Boolean).join(" "));
+  if (/\bspital\b|\binstitut\b|\bambulator\b|\bsectie\b/.test(text)) return "public_healthcare_institution";
+  if (/\bpoliclinica\b|\bhiperclinica\b|\bmulti specialitate\b|\bcentru medical\b/.test(text)) return "multi_specialty_healthcare_provider";
+  if (/\bretea\b|\bnetwork\b/.test(text)) return "healthcare_network";
+  const profileType = clean8(resolvedType?.provider_profile_type || row.provider_profile_type, 120);
+  if (profileType === "optical_chain") return "optical_chain";
+  if (profileType === "independent_optical_store") return "independent_optical_store";
+  if (profileType === "ophthalmology_clinic") return "ophthalmology_clinic";
+  if (profileType === "ophthalmology_office") return "ophthalmology_office";
+  if (profileType.startsWith("independent_")) return "independent_professional";
+  if (profileType.startsWith("optical_laboratory_")) return "optical_laboratory";
+  if (resolvedType?.provider_type === "optica_medicala") return "independent_optical_store";
+  if (resolvedType?.provider_type === "cabinet_oftalmologic") return "ophthalmology_office";
+  if (resolvedType?.provider_type === "clinica_oftalmologica") return "ophthalmology_clinic";
+  return "independent_professional";
+}
+function inferNationalLocationType(activityText = "") {
+  const text = normalizeIdentityText(activityText);
+  if (/\bspital\b|\binstitut\b|\bambulator\b|\bsectie\b|\bcompartiment\b/.test(text)) {
+    const outpatient = /\bambulator\b|\bcabinet\b/.test(text);
+    return {
+      provider_type: "clinica_oftalmologica",
+      provider_profile_type: "ophthalmology_clinic",
+      location_type_code: outpatient ? "hospital_outpatient_unit" : "hospital_department",
+      care_setting_code: outpatient ? "hospital_outpatient" : "hospital_inpatient"
+    };
+  }
+  if (/\bpoliclinica\b|\bhiperclinica\b|\bmulti specialitate\b|\bcentru medical\b/.test(text)) {
+    return {
+      provider_type: "clinica_oftalmologica",
+      provider_profile_type: "ophthalmology_clinic",
+      location_type_code: "multi_specialty_clinic",
+      care_setting_code: "outpatient"
+    };
+  }
+  return inferCanonicalLocationType(activityText);
+}
+function normalizeNationalDirectoryRow(row = {}) {
+  const explicitComplete = [
+    row.provider_type,
+    row.provider_profile_type,
+    row.location_type_code,
+    row.care_setting_code
+  ].every((value) => Boolean(clean8(value, 120)));
+  const activityText = [
+    row.confirmed_activity_category,
+    row.location_display_name,
+    row.organization_display_name,
+    row.observations
+  ].filter(Boolean).join(" | ");
+  const resolvedType = explicitComplete ? {
+    provider_type: clean8(row.provider_type, 120),
+    provider_profile_type: clean8(row.provider_profile_type, 120),
+    location_type_code: clean8(row.location_type_code, 120),
+    care_setting_code: clean8(row.care_setting_code, 120)
+  } : inferNationalLocationType(activityText);
+  const organizationName = clean8(row.organization_display_name || row.location_display_name, 240);
+  return {
+    ...row,
+    organization_display_name: organizationName,
+    provider_type: resolvedType?.provider_type || "",
+    provider_profile_type: resolvedType?.provider_profile_type || "",
+    location_type_code: resolvedType?.location_type_code || "",
+    care_setting_code: resolvedType?.care_setting_code || "",
+    organization_type_code: nationalOrganizationTypeCode(row, resolvedType),
+    classification_contract_version: "viasee-directory-location-first-v1",
+    national_original_import_readiness: clean8(row.import_readiness, 120),
+    import_readiness: "candidate_for_manual_review",
+    national_directory_candidate: true
+  };
+}
+function nationalSelectionReasons(row = {}) {
+  const reasons = [];
+  const originalReadiness = clean8(row.national_original_import_readiness || row.import_readiness, 120);
+  const researchStatus = clean8(row.research_status, 120);
+  const operationalStatus = clean8(row.operational_status, 120);
+  if (["not_eligible"].includes(originalReadiness) || researchStatus === "excluded") reasons.push("not_eligible");
+  if (originalReadiness === "blocked_conflict") reasons.push("conflict_requires_review");
+  if (!["official_confirmed", "official_partial"].includes(researchStatus)) reasons.push("source_not_sufficiently_confirmed");
+  if (operationalStatus !== "active_confirmed") reasons.push("activity_not_confirmed");
+  if (clean8(row.geography_validation_error, 120)) reasons.push(clean8(row.geography_validation_error, 120));
+  const pseudoReason = nationalPseudoRowReason(row);
+  if (pseudoReason) reasons.push(pseudoReason);
+  for (const field of [
+    "location_display_name",
+    "organization_display_name",
+    "official_locality",
+    "county_if_confirmed",
+    "confirmed_address",
+    "official_source_url",
+    "locality_siruta_code",
+    "county_code",
+    "uat_code",
+    "uat_name",
+    "provider_type",
+    "provider_profile_type",
+    "organization_type_code",
+    "location_type_code",
+    "care_setting_code"
+  ]) {
+    if (!clean8(row[field], 4e3)) reasons.push(`missing_${field}`);
+  }
+  return Array.from(new Set(reasons));
+}
+function nationalRowScore(row = {}) {
+  let score = 0;
+  if (row.research_status === "official_confirmed") score += 100;
+  if (!clean8(row.review_flags, 2e3)) score += 20;
+  if (clean8(row.confirmed_location_phone, 240)) score += 5;
+  if (clean8(row.confirmed_location_email, 240)) score += 3;
+  if (clean8(row.confirmed_schedule, 1200)) score += 2;
+  if (clean8(row.official_source_url, 1200)) score += 10;
+  return score;
+}
+function nationalIdentityKey(row = {}) {
+  const external = clean8(row.location_external_key, 240);
+  if (external) return `external:${external}`;
+  return `identity:${clean8(row.locality_siruta_code, 40)}|${clean8(row.address_fingerprint, 240)}|${normalizeIdentityText(row.location_display_name)}`;
+}
+function selectRowsForNationalDirectory(rows = []) {
+  const excluded = [];
+  const bestByIdentity = /* @__PURE__ */ new Map();
+  for (const sourceRow of rows) {
+    const row = normalizeNationalDirectoryRow(sourceRow);
+    const reasons = nationalSelectionReasons(row);
+    if (reasons.length) {
+      excluded.push({ row, reasons });
+      continue;
+    }
+    const key = nationalIdentityKey(row);
+    const current = bestByIdentity.get(key) || null;
+    if (!current || nationalRowScore(row) > nationalRowScore(current)) {
+      if (current) excluded.push({ row: current, reasons: ["duplicate_in_national_package"] });
+      bestByIdentity.set(key, row);
+    } else {
+      excluded.push({ row, reasons: ["duplicate_in_national_package"] });
+    }
+  }
+  const selected = Array.from(bestByIdentity.values()).sort((left, right) => clean8(left.official_locality, 160).localeCompare(clean8(right.official_locality, 160), "ro") || clean8(left.organization_display_name, 240).localeCompare(clean8(right.organization_display_name, 240), "ro") || clean8(left.location_display_name, 240).localeCompare(clean8(right.location_display_name, 240), "ro"));
+  const reasonCounts = {};
+  for (const item of excluded) {
+    for (const reason of item.reasons) reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
+  }
+  return {
+    selected,
+    excluded,
+    summary: {
+      source_rows: rows.length,
+      selected_rows: selected.length,
+      excluded_rows: excluded.length,
+      reason_counts: reasonCounts
+    }
+  };
+}
+function packNationalRows(rows = []) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const row of rows) {
+    const key = clean8(row.organization_external_key, 240) || `org-name:${normalizeIdentityText(row.organization_display_name)}`;
+    const values = groups.get(key) || [];
+    values.push(row);
+    groups.set(key, values);
+  }
+  const batches = [];
+  let current = [];
+  const flush = () => {
+    if (current.length) batches.push(current);
+    current = [];
+  };
+  const orderedGroups = Array.from(groups.entries()).sort(([left], [right]) => left.localeCompare(right));
+  for (const [, groupRows] of orderedGroups) {
+    if (groupRows.length > MAX_ROWS_PER_BATCH) {
+      flush();
+      for (let offset = 0; offset < groupRows.length; offset += MAX_ROWS_PER_BATCH) {
+        batches.push(groupRows.slice(offset, offset + MAX_ROWS_PER_BATCH));
+      }
+      continue;
+    }
+    if (current.length + groupRows.length > MAX_ROWS_PER_BATCH) flush();
+    current.push(...groupRows);
+  }
+  flush();
+  return batches;
+}
+async function nationalRowsFromZipBase64(zipBase64, archiveFilename = "") {
+  const zipBytes = decodeBase64Bytes(zipBase64);
+  if (zipBytes.byteLength > 8e6) throw new Error("Arhiva ZIP depaseste limita de 8 MB.");
+  const archiveSha256 = await sha256HexBytes(zipBytes);
+  let entries;
+  try {
+    entries = unzipSync(zipBytes);
+  } catch (_error) {
+    throw new Error("Arhiva ZIP nu poate fi deschisa.");
+  }
+  const names = Object.keys(entries).filter((name) => !name.endsWith("/") && /\.json$/i.test(name));
+  let masterRows = [];
+  const aggregateRows = [];
+  for (const name of names) {
+    const baseName = name.split("/").pop()?.toLowerCase() || "";
+    if (/(audit|report|manifest|invalid_required_fields)/.test(baseName)) continue;
+    let payload;
+    try {
+      payload = JSON.parse(strFromU8(entries[name]));
+    } catch (_error) {
+      continue;
+    }
+    const rows2 = rowsFromPayload(payload);
+    if (!rows2.length) continue;
+    if (/master|registry_v8_master|registry_v4_location_first_1329/.test(baseName) || rows2.length >= 1e3) {
+      masterRows = rows2;
+      break;
+    }
+    if (/batch/.test(baseName) || /mapped_requires_review/.test(baseName) || /requires_explicit_organization_mapping/.test(baseName) || /blocked_and_not_eligible/.test(baseName)) aggregateRows.push(...rows2);
+  }
+  const rows = masterRows.length ? masterRows : aggregateRows;
+  if (!rows.length) throw new Error("Arhiva nationala nu contine registrul master sau randuri de director recunoscute.");
+  const unique = /* @__PURE__ */ new Map();
+  for (const row of rows) {
+    const key = clean8(row.__source_row_key || row.source_row_key, 260) || nationalIdentityKey(row);
+    if (!unique.has(key)) unique.set(key, row);
+  }
+  return {
+    archive_filename: clean8(archiveFilename, 240),
+    archive_sha256: archiveSha256,
+    rows: Array.from(unique.values())
+  };
+}
+async function descriptorsForNationalSelection(selection, archiveSha256) {
+  const batches = packNationalRows(selection.selected);
+  if (batches.length > MAX_BATCHES) throw new Error(`Campania nationala necesita ${batches.length} loturi; limita este ${MAX_BATCHES}.`);
+  const descriptors = [];
+  for (let index = 0; index < batches.length; index += 1) {
+    const rows = batches[index];
+    const sourceSha256 = await sha256HexText(stableStringify2(rows));
+    descriptors.push({
+      source_url: `archive://${archiveSha256}/national-directory-batch-${String(index + 1).padStart(2, "0")}.json`,
+      source_filename: `national-directory-batch-${String(index + 1).padStart(2, "0")}.json`,
+      source_sha256: sourceSha256,
+      expected_sha256: sourceSha256,
+      expected_rows: rows.length,
+      organization_count: new Set(rows.map((row) => clean8(row.organization_external_key || row.organization_display_name, 300))).size,
+      inline_rows: rows,
+      national_selection_summary: selection.summary
+    });
+  }
+  return descriptors;
+}
 async function canonicalGeographyMap(svc, rows = []) {
   const codes = Array.from(new Set(rows.map((row) => clean8(row?.locality_siruta_code, 40)).filter(Boolean)));
   const geographicRows = codes.length ? await requireDirectoryRows(
@@ -3980,6 +4430,9 @@ function selectRowsForAutomaticImport(rows = []) {
     }
   };
 }
+function selectionForRun(run, rows = []) {
+  return runCampaignMode(run) === CAMPAIGN_MODE_NATIONAL ? selectRowsForNationalDirectory(rows) : selectRowsForAutomaticImport(rows);
+}
 function approvalPhrase(run) {
   return `AUTOIMPORT ${clean8(run.run_key, 120)} ${clean8(run.package_sha256, 80).slice(0, 12)} ${Number(run.total_batches || 0)}`;
 }
@@ -4020,9 +4473,27 @@ function autoItemRecord(runId, runKey, index, item) {
 }
 async function createRun(svc, user, input) {
   const manifestUrl = clean8(input.manifest_url, 2e3);
+  const mode = campaignMode(input.campaign_mode);
+  const publicationMode = PUBLICATION_MODE_BASIC;
   let archiveMetadata = null;
   let descriptors = [];
-  if (input.zip_base64) {
+  let campaignSourceRows = 0;
+  let campaignExcludedRows = 0;
+  let campaignSelectionSummary = null;
+  if (mode === CAMPAIGN_MODE_NATIONAL) {
+    if (!input.zip_base64) return response2({ error: "Campania nationala necesita arhiva ZIP privata cu registrul master." }, 400);
+    archiveMetadata = await nationalRowsFromZipBase64(
+      input.zip_base64,
+      clean8(input.zip_filename, 240)
+    );
+    const geographyMap2 = await canonicalGeographyMap(svc, archiveMetadata.rows);
+    const canonicalRows = await enrichRowsWithCanonicalGeography(svc, archiveMetadata.rows, geographyMap2);
+    const nationalSelection = selectRowsForNationalDirectory(canonicalRows);
+    campaignSourceRows = nationalSelection.summary.source_rows;
+    campaignExcludedRows = nationalSelection.summary.excluded_rows;
+    campaignSelectionSummary = nationalSelection.summary;
+    descriptors = await descriptorsForNationalSelection(nationalSelection, archiveMetadata.archive_sha256);
+  } else if (input.zip_base64) {
     archiveMetadata = await descriptorsFromZipBase64(
       input.zip_base64,
       clean8(input.zip_filename, 240)
@@ -4073,7 +4544,16 @@ async function createRun(svc, user, input) {
   for (const descriptor of loadedDescriptors) {
     const sourceRows = descriptor.source_rows_payload;
     const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows, geographyMap);
-    const selection = selectRowsForAutomaticImport(canonicalRows);
+    const selection = mode === CAMPAIGN_MODE_NATIONAL ? {
+      selected: canonicalRows,
+      excluded: [],
+      summary: {
+        source_rows: canonicalRows.length,
+        selected_rows: canonicalRows.length,
+        excluded_rows: 0,
+        reason_counts: {}
+      }
+    } : selectRowsForAutomaticImport(canonicalRows);
     const selectedSha256 = await sha256HexText(stableStringify2(selection.selected));
     preparedDescriptors.push({
       ...descriptor,
@@ -4088,14 +4568,28 @@ async function createRun(svc, user, input) {
     });
   }
   descriptors = preparedDescriptors;
-  const packageSha256 = await sha256HexText(stableStringify2(descriptors.map((item) => ({
-    source_url: item.source_url,
-    source_sha256: item.source_sha256,
-    selected_sha256: item.selected_sha256,
-    source_rows: item.source_rows,
-    selected_rows: item.selected_rows,
-    excluded_rows: item.excluded_rows
-  }))));
+  if (mode === CAMPAIGN_MODE_STRICT) {
+    campaignSourceRows = descriptors.reduce((total, item) => total + Number(item.source_rows || 0), 0);
+    campaignExcludedRows = descriptors.reduce((total, item) => total + Number(item.excluded_rows || 0), 0);
+    campaignSelectionSummary = {
+      source_rows: campaignSourceRows,
+      selected_rows: descriptors.reduce((total, item) => total + Number(item.selected_rows || 0), 0),
+      excluded_rows: campaignExcludedRows,
+      reason_counts: {}
+    };
+  }
+  const packageSha256 = await sha256HexText(stableStringify2({
+    campaign_mode: mode,
+    selection_summary: campaignSelectionSummary,
+    batches: descriptors.map((item) => ({
+      source_url: item.source_url,
+      source_sha256: item.source_sha256,
+      selected_sha256: item.selected_sha256,
+      source_rows: item.source_rows,
+      selected_rows: item.selected_rows,
+      excluded_rows: item.excluded_rows
+    }))
+  }));
   const runKey = clean8(input.run_key, 120) || runKeyFor(packageSha256);
   const existing = await requireDirectoryRows(
     svc.entities.DirectoryAutoImportRun.filter({ run_key: runKey }, "-created_date", 5),
@@ -4138,9 +4632,11 @@ async function createRun(svc, user, input) {
       }
     }
     const runValues = {
+      campaign_mode: mode,
+      publication_mode: publicationMode,
       total_batches: descriptors.length,
       skipped_batches: descriptors.filter((item) => Number(item.selected_rows || 0) === 0).length,
-      excluded_rows: descriptors.reduce((total, item) => total + Number(item.excluded_rows || 0), 0),
+      excluded_rows: campaignExcludedRows,
       total_rows: descriptors.reduce((total, item) => total + Number(item.selected_rows || 0), 0),
       failure_message: ""
     };
@@ -4159,29 +4655,43 @@ async function createRun(svc, user, input) {
       items,
       approval_confirmation: approvalPhrase(repairedRun),
       preflight: {
-        source_rows: descriptors.reduce((total, item) => total + Number(item.source_rows || 0), 0),
+        source_rows: campaignSourceRows,
         selected_rows: runValues.total_rows,
-        excluded_rows: runValues.excluded_rows,
+        excluded_rows: campaignExcludedRows,
         skipped_batches: runValues.skipped_batches
       }
     });
   }
   const safetyPolicy = {
+    campaign_mode: mode,
+    publication_mode: publicationMode,
     max_rows_per_batch: MAX_ROWS_PER_BATCH,
     execution_chunk: EXECUTION_CHUNK2,
     requires_zero_snapshot_blocks: true,
     requires_zero_snapshot_duplicates: true,
-    requires_zero_snapshot_warnings: true,
-    allowed_actions: Array.from(ALLOWED_ACTIONS),
+    requires_zero_snapshot_warnings: mode === CAMPAIGN_MODE_STRICT,
+    allowed_actions: mode === CAMPAIGN_MODE_NATIONAL ? [
+      "create_organization_and_location",
+      "create_location_use_existing_organization",
+      "update_existing_location",
+      "skip_unchanged"
+    ] : Array.from(ALLOWED_ACTIONS),
     exact_external_key_required_for_existing_organization: true,
-    source_filter: {
+    source_filter: mode === CAMPAIGN_MODE_NATIONAL ? {
+      import_readiness: "normalized_candidate",
+      research_status: ["official_confirmed", "official_partial"],
+      operational_status: "active_confirmed",
+      conflicts_are_excluded: true,
+      deterministic_type_inference_allowed: true
+    } : {
       import_readiness: "candidate_for_manual_review",
       research_status: "official_confirmed",
       operational_status: "active_confirmed",
       review_flags_must_be_empty: true,
       explicit_location_first_classification_required: true
     },
-    publishes_profiles: false,
+    publishes_profiles: true,
+    publication_trust_label: "directory_unclaimed_unverified",
     verifies_profiles: false,
     creates_services: false,
     grants_access: false
@@ -4189,6 +4699,8 @@ async function createRun(svc, user, input) {
   const run = await svc.entities.DirectoryAutoImportRun.create({
     run_key: runKey,
     contract_version: DIRECTORY_AUTO_IMPORT_CONTRACT_VERSION,
+    campaign_mode: mode,
+    publication_mode: publicationMode,
     status: "awaiting_approval",
     manifest_url: manifestUrl,
     package_sha256: packageSha256,
@@ -4197,7 +4709,7 @@ async function createRun(svc, user, input) {
     blocked_batches: 0,
     failed_batches: 0,
     skipped_batches: descriptors.filter((item) => Number(item.selected_rows || 0) === 0).length,
-    excluded_rows: descriptors.reduce((total, item) => total + Number(item.excluded_rows || 0), 0),
+    excluded_rows: campaignExcludedRows,
     total_rows: descriptors.reduce((total, item) => total + Number(item.selected_rows || 0), 0),
     applied_rows: 0,
     skipped_rows: 0,
@@ -4210,7 +4722,7 @@ async function createRun(svc, user, input) {
     created_by_user_id: user.id,
     created_by_email: user.email || "",
     failure_message: "",
-    notes: clean8(input.notes, 2e3)
+    notes: clean8(input.notes, 2e3) || (mode === CAMPAIGN_MODE_NATIONAL ? "Campanie nationala automata: profile de director neconfirmate, publicate la nivel basic sau summary." : "Import automat controlat cu publicare ca profil de director neconfirmat.")
   });
   for (let index = 0; index < descriptors.length; index += 1) {
     const item = descriptors[index];
@@ -4229,17 +4741,19 @@ async function createRun(svc, user, input) {
     package_sha256: packageSha256,
     total_batches: descriptors.length,
     selected_rows: descriptors.reduce((total, item) => total + Number(item.selected_rows || 0), 0),
-    excluded_rows: descriptors.reduce((total, item) => total + Number(item.excluded_rows || 0), 0)
+    excluded_rows: campaignExcludedRows,
+    campaign_mode: mode
   });
   return response2({
     success: true,
     run,
     approval_confirmation: approvalPhrase(run),
     preflight: {
-      source_rows: descriptors.reduce((total, item) => total + Number(item.source_rows || 0), 0),
+      source_rows: campaignSourceRows,
       selected_rows: descriptors.reduce((total, item) => total + Number(item.selected_rows || 0), 0),
-      excluded_rows: descriptors.reduce((total, item) => total + Number(item.excluded_rows || 0), 0),
-      skipped_batches: descriptors.filter((item) => Number(item.selected_rows || 0) === 0).length
+      excluded_rows: campaignExcludedRows,
+      skipped_batches: descriptors.filter((item) => Number(item.selected_rows || 0) === 0).length,
+      campaign_mode: mode
     }
   });
 }
@@ -4378,14 +4892,18 @@ async function blockItem(svc, run, item, errors, stage) {
   });
   return { success: false, blocked: true, error: message };
 }
-async function inspectSafety(svc, snapshot, batch) {
+async function inspectSafety(svc, snapshot, batch, run) {
   const errors = [];
+  const mode = runCampaignMode(run);
+  const national = mode === CAMPAIGN_MODE_NATIONAL;
+  const allowedActions = new Set(national ? ["create_organization_and_location", "create_location_use_existing_organization", "update_existing_location", "skip_unchanged"] : Array.from(ALLOWED_ACTIONS));
+  const allowedNationalWarnings = /* @__PURE__ */ new Set(["public_contact_missing"]);
   if (!snapshot || snapshot.status !== "ready" || !snapshot.immutable_at) errors.push("snapshot_not_ready");
   if (Number(snapshot?.total_rows || 0) < 1 || Number(snapshot?.total_rows || 0) > MAX_ROWS_PER_BATCH) errors.push("snapshot_row_count_out_of_bounds");
   if (Number(snapshot?.valid_rows || 0) !== Number(snapshot?.total_rows || 0)) errors.push("snapshot_not_all_valid");
   if (Number(snapshot?.blocked_rows || 0)) errors.push("snapshot_has_blocked_rows");
   if (Number(snapshot?.duplicate_rows || 0)) errors.push("snapshot_has_duplicates");
-  if (Number(snapshot?.warning_rows || 0)) errors.push("snapshot_has_warnings");
+  if (!national && Number(snapshot?.warning_rows || 0)) errors.push("snapshot_has_warnings");
   if (!batch || batch.status !== "ready") errors.push("batch_not_ready");
   if (Number(batch?.blocked_rows || 0)) errors.push("batch_has_blocked_rows");
   if (Number(batch?.ready_rows || 0) !== Number(batch?.total_rows || 0)) errors.push("batch_not_all_ready");
@@ -4405,17 +4923,37 @@ async function inspectSafety(svc, snapshot, batch) {
     const override = safeJson2(row.admin_override_json, {});
     const plannedActions = asArray2(safeJson2(row.planned_actions_json, []));
     if (normalized.import_readiness !== "candidate_for_manual_review") errors.push(`row_${row.row_number}:not_candidate_for_manual_review`);
-    if (normalized.research_status !== "official_confirmed") errors.push(`row_${row.row_number}:research_not_official_confirmed`);
+    if (national) {
+      if (!["official_confirmed", "official_partial"].includes(normalized.research_status)) errors.push(`row_${row.row_number}:research_not_public_directory_eligible`);
+      if (!["source_explicit", "activity_inferred"].includes(normalized.canonical_type_source)) errors.push(`row_${row.row_number}:canonical_type_unresolved`);
+      const unexpectedWarnings = warnings.filter((warning) => !allowedNationalWarnings.has(warning));
+      if (unexpectedWarnings.length) errors.push(`row_${row.row_number}:warnings:${unexpectedWarnings.join(",")}`);
+    } else {
+      if (normalized.research_status !== "official_confirmed") errors.push(`row_${row.row_number}:research_not_official_confirmed`);
+      if (clean8(normalized.review_flags, 2e3)) errors.push(`row_${row.row_number}:review_flags_present`);
+      if (normalized.canonical_type_source !== "source_explicit") errors.push(`row_${row.row_number}:canonical_type_not_explicit`);
+      if (warnings.length) errors.push(`row_${row.row_number}:warnings:${warnings.join(",")}`);
+    }
     if (normalized.source_operational_status !== "active_confirmed" || normalized.operational_status !== "active") errors.push(`row_${row.row_number}:operational_status_not_active_confirmed`);
-    if (clean8(normalized.review_flags, 2e3)) errors.push(`row_${row.row_number}:review_flags_present`);
-    if (normalized.canonical_type_source !== "source_explicit") errors.push(`row_${row.row_number}:canonical_type_not_explicit`);
     if (normalized.organization_type_source !== "source_explicit") errors.push(`row_${row.row_number}:organization_type_not_explicit`);
     if (normalized.organization_type_legacy_fallback === true) errors.push(`row_${row.row_number}:organization_type_legacy_fallback`);
-    if (warnings.length) errors.push(`row_${row.row_number}:warnings:${warnings.join(",")}`);
     if (validationErrors.length) errors.push(`row_${row.row_number}:errors:${validationErrors.join(",")}`);
-    if (!ALLOWED_ACTIONS.has(row.planned_action)) errors.push(`row_${row.row_number}:unsafe_action:${row.planned_action}`);
-    if (clean8(row.target_location_id, 160)) errors.push(`row_${row.row_number}:existing_location_target`);
+    if (!allowedActions.has(row.planned_action)) errors.push(`row_${row.row_number}:unsafe_action:${row.planned_action}`);
     if (Object.keys(override).length) errors.push(`row_${row.row_number}:admin_override_present`);
+    const targetLocationId = clean8(row.target_location_id, 160);
+    if (targetLocationId) {
+      if (!national || !["update_existing_location", "skip_unchanged"].includes(row.planned_action)) {
+        errors.push(`row_${row.row_number}:existing_location_target`);
+      } else {
+        const targetLocation = await getDirectoryEntityOrNull(
+          svc.entities.ProviderLocation.get(targetLocationId),
+          "locatiei existente reutilizate de campania nationala"
+        );
+        if (!targetLocation || (targetLocation.profile_control_status || "directory") !== "directory") {
+          errors.push(`row_${row.row_number}:controlled_existing_location_target`);
+        }
+      }
+    }
     if (row.planned_action === "create_location_use_existing_organization") {
       if (plannedActions.includes("reuse_planned_organization") && !row.target_organization_id) continue;
       if (!row.target_organization_id) {
@@ -4431,7 +4969,7 @@ async function inspectSafety(svc, snapshot, batch) {
       }
     }
   }
-  return { safe: errors.length === 0, errors, checked_rows: rows.length };
+  return { safe: errors.length === 0, errors, checked_rows: rows.length, campaign_mode: mode };
 }
 async function refreshProgress(svc, run) {
   const items = await requireDirectoryRows(
@@ -4465,6 +5003,34 @@ async function refreshProgress(svc, run) {
   await svc.entities.DirectoryAutoImportRun.update(run.id, values);
   return { items, nextItem, completed, values };
 }
+async function reopenItemsMissingPublication(svc, run) {
+  const items = await requireDirectoryRows(
+    svc.entities.DirectoryAutoImportItem.filter({ run_id: run.id }, "sequence", 100),
+    "loturilor pentru reconcilierea publicarii"
+  );
+  let reopened = 0;
+  for (const item of items) {
+    if (item.status !== "completed" || !clean8(item.batch_id, 160)) continue;
+    const result = safeJson2(item.result_json, {});
+    if (result.publication?.success === true) continue;
+    await svc.entities.DirectoryAutoImportItem.update(item.id, {
+      status: "running",
+      step: "publish_batch",
+      finished_at: null,
+      failure_message: ""
+    });
+    reopened += 1;
+  }
+  if (reopened > 0 && run.status === "completed") {
+    await svc.entities.DirectoryAutoImportRun.update(run.id, {
+      status: "running",
+      current_step: "publication_repair",
+      finished_at: null,
+      failure_message: ""
+    });
+  }
+  return reopened;
+}
 async function loadItemSourceRows(svc, item) {
   const legacyPersisted = safeJson2(item.source_payload_json, null);
   if (Array.isArray(legacyPersisted)) {
@@ -4493,6 +5059,14 @@ async function loadItemSourceRows(svc, item) {
   };
 }
 async function advanceRun(svc, run) {
+  if (run.status === "completed") {
+    const reopened = await reopenItemsMissingPublication(svc, run);
+    if (!reopened) return { success: true, skipped: true, reason: "completed" };
+    run = { ...run, status: "running", current_step: "publication_repair", finished_at: null };
+  } else if (["approved", "running"].includes(run.status)) {
+    const reopened = await reopenItemsMissingPublication(svc, run);
+    if (reopened) run = { ...run, current_step: "publication_repair" };
+  }
   if (!["approved", "running"].includes(run.status)) return { success: true, skipped: true, reason: `status:${run.status}` };
   const token = await acquireRunLock(svc, run);
   if (!token) return { success: true, skipped: true, reason: "locked" };
@@ -4521,7 +5095,7 @@ async function advanceRun(svc, run) {
         return blockItem(svc, run, item, [`expected_rows:${item.expected_rows}`, `actual_rows:${sourceRows.length}`], "fetch_source");
       }
       const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows);
-      const selection = selectRowsForAutomaticImport(canonicalRows);
+      const selection = selectionForRun(run, canonicalRows);
       const selectedSha256 = await sha256HexText(stableStringify2(selection.selected));
       if (selection.selected.length !== Number(item.selected_rows || 0) || selectedSha256 !== clean8(item.selected_sha256, 80)) {
         return blockItem(svc, run, item, [
@@ -4583,7 +5157,7 @@ async function advanceRun(svc, run) {
       const loadedSource = await loadItemSourceRows(svc, item);
       const sourceRows = loadedSource.rows;
       const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows);
-      const selection = selectRowsForAutomaticImport(canonicalRows);
+      const selection = selectionForRun(run, canonicalRows);
       const selectedSha256 = await sha256HexText(stableStringify2(selection.selected));
       if (selection.selected.length !== Number(item.selected_rows || 0) || selectedSha256 !== clean8(item.selected_sha256, 80)) {
         return blockItem(svc, run, item, [
@@ -4618,7 +5192,7 @@ async function advanceRun(svc, run) {
       if (Number(snapshot.valid_rows || 0) !== Number(snapshot.total_rows || 0)) errors.push("not_all_rows_valid");
       if (Number(snapshot.blocked_rows || 0)) errors.push(`blocked_rows:${snapshot.blocked_rows}`);
       if (Number(snapshot.duplicate_rows || 0)) errors.push(`duplicate_rows:${snapshot.duplicate_rows}`);
-      if (Number(snapshot.warning_rows || 0)) errors.push(`warning_rows:${snapshot.warning_rows}`);
+      if (runCampaignMode(run) === CAMPAIGN_MODE_STRICT && Number(snapshot.warning_rows || 0)) errors.push(`warning_rows:${snapshot.warning_rows}`);
       if (errors.length) return blockItem(svc, run, item, errors, "validate_snapshot");
       await svc.entities.DirectoryAutoImportItem.update(item.id, { status: "validated", step: "plan_batch", ...heartbeat });
       await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:plan_batch`, failure_message: "" });
@@ -4640,7 +5214,7 @@ async function advanceRun(svc, run) {
         getDirectoryEntityOrNull(svc.entities.DirectorySourceSnapshot.get(item.snapshot_id), "snapshotului automat pentru inspectie"),
         getDirectoryEntityOrNull(svc.entities.DirectoryImportBatch.get(item.batch_id), "lotului automat pentru inspectie")
       ]);
-      const safety = await inspectSafety(svc, snapshot, batch);
+      const safety = await inspectSafety(svc, snapshot, batch, run);
       if (!safety.safe) return blockItem(svc, run, item, safety.errors, "inspect_batch");
       const approved = await responsePayload(await approveBatch(svc, user, {
         batch_id: batch.id,
@@ -4710,21 +5284,47 @@ async function advanceRun(svc, run) {
       const errors = [];
       if (!batch || batch.status !== "completed") errors.push(`batch_status:${batch?.status || "missing"}`);
       if (Number(batch?.failed_rows || 0)) errors.push(`failed_rows:${batch?.failed_rows || 0}`);
-      if (Number(batch?.skipped_rows || 0)) errors.push(`skipped_rows:${batch?.skipped_rows || 0}`);
-      if (Number(batch?.applied_rows || 0) !== Number(batch?.ready_rows || 0)) errors.push("applied_rows_mismatch");
+      const national = runCampaignMode(run) === CAMPAIGN_MODE_NATIONAL;
+      if (!national && Number(batch?.skipped_rows || 0)) errors.push(`skipped_rows:${batch?.skipped_rows || 0}`);
+      if (national) {
+        if (Number(batch?.applied_rows || 0) + Number(batch?.skipped_rows || 0) !== Number(batch?.ready_rows || 0)) errors.push("processed_rows_mismatch");
+      } else if (Number(batch?.applied_rows || 0) !== Number(batch?.ready_rows || 0)) errors.push("applied_rows_mismatch");
       if (errors.length) return blockItem(svc, run, item, errors, "verify_batch");
+      await svc.entities.DirectoryAutoImportItem.update(item.id, {
+        status: "running",
+        step: "publish_batch",
+        applied_rows: Number(batch.applied_rows || 0),
+        skipped_rows: Number(batch.skipped_rows || 0),
+        failed_rows: 0,
+        result_json: JSON.stringify({ batch_id: batch.id, status: batch.status, applied_rows: batch.applied_rows, skipped_rows: batch.skipped_rows }),
+        failure_message: "",
+        last_heartbeat_at: now2()
+      });
+      await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:publish_batch`, failure_message: "" });
+      return { success: true, step: "publish_batch" };
+    }
+    if (item.step === "publish_batch") {
+      const publication = await responsePayload(await publishCompletedBatchAsBasicDirectory(svc, user, { batch_id: item.batch_id }));
+      if (publication.error) return blockItem(svc, run, item, [publication.error], "publish_batch");
+      const batch = await getDirectoryEntityOrNull(svc.entities.DirectoryImportBatch.get(item.batch_id), "lotului automat dupa publicare");
       await svc.entities.DirectoryAutoImportItem.update(item.id, {
         status: "completed",
         step: "completed",
-        applied_rows: Number(batch.applied_rows || 0),
-        skipped_rows: 0,
+        applied_rows: Number(batch?.applied_rows || item.applied_rows || 0),
+        skipped_rows: Number(batch?.skipped_rows || item.skipped_rows || 0),
         failed_rows: 0,
-        result_json: JSON.stringify({ batch_id: batch.id, status: batch.status, applied_rows: batch.applied_rows }),
+        result_json: JSON.stringify({
+          batch_id: item.batch_id,
+          status: batch?.status || "completed",
+          applied_rows: Number(batch?.applied_rows || 0),
+          skipped_rows: Number(batch?.skipped_rows || 0),
+          publication
+        }),
         failure_message: "",
         finished_at: now2(),
         last_heartbeat_at: now2()
       });
-      const latestRun = await getDirectoryEntityOrNull(svc.entities.DirectoryAutoImportRun.get(run.id), "rularii automate dupa finalizarea lotului") || run;
+      const latestRun = await getDirectoryEntityOrNull(svc.entities.DirectoryAutoImportRun.get(run.id), "rularii automate dupa publicarea lotului") || run;
       const refreshed = await refreshProgress(svc, latestRun);
       await releaseRunLock(svc, run.id, {
         status: refreshed.completed ? "completed" : "running",
@@ -4732,7 +5332,7 @@ async function advanceRun(svc, run) {
         finished_at: refreshed.completed ? now2() : null,
         failure_message: ""
       });
-      return { success: true, step: "completed", run_completed: refreshed.completed };
+      return { success: true, step: "completed", publication, run_completed: refreshed.completed };
     }
     return blockItem(svc, run, item, [`unknown_step:${item.step}`], "unknown_step");
   } catch (error) {
@@ -4754,6 +5354,23 @@ async function advanceRuns(svc, input = {}) {
     const approved = await requireDirectoryRows(svc.entities.DirectoryAutoImportRun.filter({ status: "approved" }, "created_date", 10), "rularilor automate aprobate");
     const running = await requireDirectoryRows(svc.entities.DirectoryAutoImportRun.filter({ status: "running" }, "created_date", 10), "rularilor automate in curs");
     runs = [...approved, ...running].sort((left, right) => String(left.created_date || "").localeCompare(String(right.created_date || ""))).slice(0, 1);
+    if (!runs.length) {
+      const completed = await requireDirectoryRows(
+        svc.entities.DirectoryAutoImportRun.filter({ status: "completed" }, "-finished_at", 10),
+        "rularilor finalizate pentru reconcilierea publicarii"
+      );
+      for (const candidate of completed) {
+        const items = await requireDirectoryRows(
+          svc.entities.DirectoryAutoImportItem.filter({ run_id: candidate.id }, "sequence", 100),
+          "loturilor finalizate pentru reconcilierea publicarii"
+        );
+        const missingPublication = items.some((item) => item.status === "completed" && clean8(item.batch_id, 160) && safeJson2(item.result_json, {}).publication?.success !== true);
+        if (missingPublication) {
+          runs = [candidate];
+          break;
+        }
+      }
+    }
   }
   if (!runs.length) return response2({ success: true, processed_runs: 0, message: "Nu exista rulare automata aprobata." });
   const outcomes = [];
