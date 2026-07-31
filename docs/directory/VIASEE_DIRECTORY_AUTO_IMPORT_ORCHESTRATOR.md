@@ -11,7 +11,8 @@ Orchestratorul elimina repetarea manuala a fluxului snapshot → validare → dr
 3. Dupa publicarea versiunii, automatizarea Base44 ruleaza la fiecare 5 minute si este limitata la maximum 400 de executii pentru campania curenta.
 4. La fiecare executie se avanseaza un singur pas durabil:
    - descarcare si verificare SHA-256;
-   - creare snapshot;
+   - filtrare determinista: numai candidate, confirmate oficial, active, fara `review_flags` si cu toate campurile canonice complete;
+   - creare snapshot numai din randurile strict curate;
    - incarcare randuri;
    - validare;
    - dry-run;
@@ -24,6 +25,7 @@ Orchestratorul elimina repetarea manuala a fluxului snapshot → validare → dr
 ## Conditii obligatorii pentru executie automata
 
 - maximum 40 de randuri per fisier;
+- randurile necurate sunt excluse si raportate, nu importate;
 - snapshot `ready` si imuabil;
 - toate randurile valide;
 - zero randuri blocate;
