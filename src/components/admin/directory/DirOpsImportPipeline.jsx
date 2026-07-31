@@ -91,6 +91,19 @@ function Progress({ value, total }) {
   return <div><div className="mb-1 flex justify-between text-[11px] text-muted-foreground"><span>{value} din {total}</span><span>{percent}%</span></div><div className="h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-foreground" style={{ width: `${percent}%` }} /></div></div>;
 }
 
+function fileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Arhiva nu a putut fi citita."));
+    reader.onload = () => {
+      const value = String(reader.result || "");
+      const encoded = value.includes(",") ? value.split(",").pop() : value;
+      resolve(encoded || "");
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function AutoImportPanel() {
   const [manifestUrl, setManifestUrl] = useState("");
   const [batchUrls, setBatchUrls] = useState("");
