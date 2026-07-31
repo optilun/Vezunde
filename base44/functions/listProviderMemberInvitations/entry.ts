@@ -4299,15 +4299,31 @@ function packNationalRows(rows = []) {
   flush();
   return batches;
 }
-async function nationalRowsFromZipBase64(zipBase64, archiveFilename = "") {
-  const zipBytes = decodeBase64Bytes(zipBase64);
-  if (zipBytes.byteLength > 8e6) throw new Error("Arhiva ZIP depaseste limita de 8 MB.");
-  const archiveSha256 = await sha256HexBytes(zipBytes);
+async function nationalRowsFromPrivateSourceBase64(sourceBase64, sourceFilename = "") {
+  const sourceBytes = decodeBase64Bytes(sourceBase64);
+  if (sourceBytes.byteLength > 8e6) throw new Error("Fisierul privat depaseste limita de 8 MB.");
+  const sourceSha256 = await sha256HexBytes(sourceBytes);
+  if (/\.json$/i.test(clean8(sourceFilename, 240))) {
+    let payload;
+    try {
+      payload = JSON.parse(new TextDecoder().decode(sourceBytes));
+    } catch (_error) {
+      throw new Error("Registrul master JSON este invalid.");
+    }
+    const rows2 = rowsFromPayload(payload);
+    if (!rows2.length) throw new Error("Registrul master JSON nu contine randuri de locatie.");
+    return {
+      archive_filename: clean8(sourceFilename, 240),
+      archive_sha256: sourceSha256,
+      rows: rows2,
+      source_kind: "master_json"
+    };
+  }
   let entries;
   try {
-    entries = unzipSync(zipBytes);
+    entries = unzipSync(sourceBytes);
   } catch (_error) {
-    throw new Error("Arhiva ZIP nu poate fi deschisa.");
+    throw new Error("Fisierul trebuie sa fie registrul master JSON sau o arhiva ZIP valida.");
   }
   const names = Object.keys(entries).filter((name) => !name.endsWith("/") && /\.json$/i.test(name));
   let masterRows = [];
@@ -4337,9 +4353,10 @@ async function nationalRowsFromZipBase64(zipBase64, archiveFilename = "") {
     if (!unique.has(key)) unique.set(key, row);
   }
   return {
-    archive_filename: clean8(archiveFilename, 240),
-    archive_sha256: archiveSha256,
-    rows: Array.from(unique.values())
+    archive_filename: clean8(sourceFilename, 240),
+    archive_sha256: sourceSha256,
+    rows: Array.from(unique.values()),
+    source_kind: masterRows.length ? "zip_master_json" : "zip_aggregated_batches"
   };
 }
 async function descriptorsForNationalSelection(selection, archiveSha256) {
@@ -4505,7 +4522,7 @@ async function createRun(svc, user, input) {
   let campaignSelectionSummary = null;
   if (mode === CAMPAIGN_MODE_NATIONAL) {
     if (!input.zip_base64) return response2({ error: "Campania nationala necesita arhiva ZIP privata cu registrul master." }, 400);
-    archiveMetadata = await nationalRowsFromZipBase64(
+    archiveMetadata = await nationalRowsFromPrivateSourceBase64(
       input.zip_base64,
       clean8(input.zip_filename, 240)
     );
@@ -5427,7 +5444,7 @@ async function handleDirectoryAutoImport(req) {
 }
 
 // base44/functions/directoryOps/directoryImportOpsLatest.ts
-var DIRECTORY_IMPORT_RUNTIME_REVISION2 = "directory-import-runtime-auto-orchestrator-3";
+var DIRECTORY_IMPORT_RUNTIME_REVISION2 = "directory-import-runtime-national-directory-4";
 async function handle3(req) {
   const input = await req.clone().json().catch(() => ({}));
   if (input?.action === "runtime_info") {
@@ -5450,7 +5467,7 @@ async function handle3(req) {
       preserves_existing_optional_fields: true,
       fails_closed_on_directory_read_errors: true,
       supports_automated_controlled_import: true,
-      automated_import_contract_version: "viasee-directory-auto-import-v1",
+      automated_import_contract_version: "viasee-directory-auto-import-v2",
       automated_import_schedule_minutes: 5,
       automated_controlled_import_orchestrator: true,
       scheduled_auto_import_runner: true,
@@ -5458,7 +5475,12 @@ async function handle3(req) {
       supports_private_zip_upload: true,
       persists_approved_source_subset: true,
       uses_chunked_private_payload_storage: true,
-      repairs_partial_preflight_runs: true
+      repairs_partial_preflight_runs: true,
+      supports_national_directory_campaign: true,
+      publishes_unclaimed_unverified_directory_profiles: true,
+      excludes_controlled_profiles_from_national_import: true,
+      publishes_basic_directory_details_only_when_quality_allows: true,
+      preserves_top_three_isolation: true
     });
   }
   if (String(input?.action || "").startsWith("auto_") || input?.action === "advance_auto_import_runs" || input?.action === "list_auto_import_runs" || input?.action === "create_auto_import_run" || input?.action === "approve_auto_import_run" || input?.action === "pause_auto_import_run" || input?.action === "resume_auto_import_run" || input?.action === "cancel_auto_import_run" || input?.action === "advance_auto_import_run_now") {
@@ -5471,7 +5493,7 @@ async function handle3(req) {
 var ROLES = ["organization_owner", "location_manager", "location_staff"];
 var DIRECTORY_IMPORT_LOGICAL_NAME = "directoryImportOps";
 var DIRECTORY_AUTO_IMPORT_AUTOMATION_TOKEN = "viasee-auto-7f4d83b1-4d38-45aa-b558-9c20cf63c6c2";
-var FUNCTION_DEPLOY_REVISION = "viasee-directory-import-single-file-13";
+var FUNCTION_DEPLOY_REVISION = "viasee-directory-import-single-file-14";
 console.info(`[VIASEE] listProviderMemberInvitations ${FUNCTION_DEPLOY_REVISION}`);
 function res(body, status = 200) {
   return Response.json(body, { status });
