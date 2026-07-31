@@ -211,19 +211,28 @@ function AutoImportPanel() {
     {incompletePreflight && <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-950"><strong>Analiza anterioara s-a oprit partial.</strong> Sunt salvate {items.length} din {latest.total_batches || 0} loturi. Reincarca aceeasi arhiva pentru reparare automata; aprobarea ramane blocata pana cand toate loturile sunt complete.</div>}
 
     {canCreateNew && <div className="mt-5 grid gap-3 lg:grid-cols-2">
+      <label className="text-xs font-semibold lg:col-span-2">Mod campanie
+        <select value={campaignMode} onChange={(event) => setCampaignMode(event.target.value)} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm">
+          <option value="national_directory">Campanie nationala — adauga toate locatiile utilizabile si publica profiluri neconfirmate</option>
+          <option value="strict_import">Import strict — numai randuri complet curate</option>
+        </select>
+        <span className="mt-1 block font-normal text-muted-foreground">Campania nationala exclude automat conflictele, duplicatele, randurile generice si datele insuficiente. Nu marcheaza niciun profil ca verificat.</span>
+      </label>
       <label className="rounded-2xl border border-dashed border-border bg-background p-4 text-xs font-semibold lg:col-span-2">Arhiva privata ZIP recomandata
         <input type="file" accept=".zip,application/zip" onChange={(event) => setZipFile(event.target.files?.[0] || null)} className="mt-2 block w-full text-xs" />
         <span className="mt-2 block font-normal text-muted-foreground">Arhiva este analizata direct in zona administrativa. Nu trebuie publicata si nu are nevoie de URL.</span>
         {zipFile && <span className="mt-2 block font-normal text-foreground">{zipFile.name} · {Math.max(1, Math.round(zipFile.size / 1024))} KB</span>}
       </label>
-      <label className="text-xs font-semibold">Alternativ: URL manifest JSON
-        <input value={manifestUrl} onChange={(event) => setManifestUrl(event.target.value)} placeholder="https://.../manifest.json" className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" />
-        <span className="mt-1 block font-normal text-muted-foreground">Manifestul poate contine campurile batches, clean_batches, files sau items.</span>
-      </label>
-      <label className="text-xs font-semibold">Sau URL-uri JSON, cate unul pe linie
-        <textarea value={batchUrls} onChange={(event) => setBatchUrls(event.target.value)} rows={4} placeholder="https://.../batch-01.json" className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
-      </label>
-      <div className="lg:col-span-2"><button type="button" onClick={create} disabled={busy || (!zipFile && !manifestUrl.trim() && !batchUrls.trim())} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-40 sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />} {incompletePreflight ? "Repara analiza partiala" : "Analizeaza pachetul automat"}</button></div>
+      {campaignMode === "strict_import" && <>
+        <label className="text-xs font-semibold">Alternativ: URL manifest JSON
+          <input value={manifestUrl} onChange={(event) => setManifestUrl(event.target.value)} placeholder="https://.../manifest.json" className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" />
+          <span className="mt-1 block font-normal text-muted-foreground">Manifestul poate contine campurile batches, clean_batches, files sau items.</span>
+        </label>
+        <label className="text-xs font-semibold">Sau URL-uri JSON, cate unul pe linie
+          <textarea value={batchUrls} onChange={(event) => setBatchUrls(event.target.value)} rows={4} placeholder="https://.../batch-01.json" className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
+        </label>
+      </>}
+      <div className="lg:col-span-2"><button type="button" onClick={create} disabled={busy || (campaignMode === "national_directory" ? !zipFile : (!zipFile && !manifestUrl.trim() && !batchUrls.trim()))} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-40 sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />} {incompletePreflight ? "Repara analiza partiala" : campaignMode === "national_directory" ? "Pregateste campania nationala" : "Analizeaza pachetul automat"}</button></div>
     </div>}
 
     {latest && <div className="mt-5 space-y-4">
