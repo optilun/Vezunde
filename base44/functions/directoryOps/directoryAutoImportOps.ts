@@ -1567,7 +1567,14 @@ async function inspectSafety(svc, snapshot, batch, run) {
         svc.entities.ProviderOrganization.get(row.target_organization_id),
         'organizatiei reutilizate de importul automat',
       );
-      if (!organization || !normalized.organization_external_key || organization.directory_external_key !== normalized.organization_external_key) {
+      const explicitNationalTarget = national
+        && clean(normalized.target_organization_id, 160) === clean(row.target_organization_id, 160);
+      if (!organization) {
+        errors.push(`row_${row.row_number}:existing_organization_target_not_found`);
+      } else if (!explicitNationalTarget && (
+        !normalized.organization_external_key
+        || organization.directory_external_key !== normalized.organization_external_key
+      )) {
         errors.push(`row_${row.row_number}:existing_organization_external_key_mismatch`);
       }
     }
