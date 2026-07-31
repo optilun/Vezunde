@@ -889,7 +889,7 @@ async function advanceRun(svc, run) {
         await svc.entities.DirectoryAutoImportItem.update(item.id, {
           status: 'skipped',
           step: 'skipped_no_strictly_clean_rows',
-          source_sha256: fetched.sha256,
+          source_sha256: loadedSource.source_sha256,
           source_rows: sourceRows.length,
           selected_rows: 0,
           excluded_rows: selection.excluded.length,
@@ -919,21 +919,21 @@ async function advanceRun(svc, run) {
         source_format: 'json',
         original_filename: item.source_filename || `auto-batch-${item.sequence}.json`,
         total_rows: selection.selected.length,
-        notes: `Rulare automata aprobata ${run.run_key}; lot ${item.sequence}/${run.total_batches}; ${selection.excluded.length} randuri excluse de filtrul strict; SHA sursa completa ${fetched.sha256}.`,
+        notes: `Rulare automata aprobata ${run.run_key}; lot ${item.sequence}/${run.total_batches}; ${Number(item.excluded_rows || 0)} randuri excluse de filtrul strict; SHA sursa completa ${loadedSource.source_sha256}.`,
         column_map: Object.fromEntries(Object.keys(selection.selected[0] || {}).map((key) => [key, key])),
       }));
       if (created.error) return blockItem(svc, run, item, [created.error], 'create_snapshot');
       await svc.entities.DirectoryAutoImportItem.update(item.id, {
-        status: 'snapshot_created', step: 'append_rows', source_sha256: fetched.sha256,
-        source_rows: sourceRows.length,
+        status: 'snapshot_created',
+        step: 'append_rows',
+        source_sha256: loadedSource.source_sha256,
         selected_rows: selection.selected.length,
-        excluded_rows: selection.excluded.length,
-        selection_result_json: JSON.stringify(selection.summary),
         snapshot_id: created.snapshot.id,
-        started_at: item.started_at || now(), ...heartbeat,
+        started_at: item.started_at || now(),
+        ...heartbeat,
       });
       await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:append_rows`, failure_message: '' });
-      return { success: true, step: 'snapshot_created', selected_rows: selection.selected.length, excluded_rows: selection.excluded.length };
+      return { success: true, step: 'snapshot_created', selected_rows: selection.selected.length, excluded_rows: Number(item.excluded_rows || 0) };
     }
 
     if (item.step === 'append_rows') {
