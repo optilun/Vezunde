@@ -1281,14 +1281,20 @@ async function blockItem(svc, run, item, errors, stage) {
   return { success: false, blocked: true, error: message };
 }
 
-async function inspectSafety(svc, snapshot, batch) {
+async function inspectSafety(svc, snapshot, batch, run) {
   const errors = [];
+  const mode = runCampaignMode(run);
+  const national = mode === CAMPAIGN_MODE_NATIONAL;
+  const allowedActions = new Set(national
+    ? ['create_organization_and_location', 'create_location_use_existing_organization', 'update_existing_location', 'skip_unchanged']
+    : Array.from(ALLOWED_ACTIONS));
+  const allowedNationalWarnings = new Set(['public_contact_missing']);
   if (!snapshot || snapshot.status !== 'ready' || !snapshot.immutable_at) errors.push('snapshot_not_ready');
   if (Number(snapshot?.total_rows || 0) < 1 || Number(snapshot?.total_rows || 0) > MAX_ROWS_PER_BATCH) errors.push('snapshot_row_count_out_of_bounds');
   if (Number(snapshot?.valid_rows || 0) !== Number(snapshot?.total_rows || 0)) errors.push('snapshot_not_all_valid');
   if (Number(snapshot?.blocked_rows || 0)) errors.push('snapshot_has_blocked_rows');
   if (Number(snapshot?.duplicate_rows || 0)) errors.push('snapshot_has_duplicates');
-  if (Number(snapshot?.warning_rows || 0)) errors.push('snapshot_has_warnings');
+  if (!national && Number(snapshot?.warning_rows || 0)) errors.push('snapshot_has_warnings');
   if (!batch || batch.status !== 'ready') errors.push('batch_not_ready');
   if (Number(batch?.blocked_rows || 0)) errors.push('batch_has_blocked_rows');
   if (Number(batch?.ready_rows || 0) !== Number(batch?.total_rows || 0)) errors.push('batch_not_all_ready');
@@ -1308,17 +1314,39 @@ async function inspectSafety(svc, snapshot, batch) {
     const override = safeJson(row.admin_override_json, {});
     const plannedActions = asArray(safeJson(row.planned_actions_json, []));
     if (normalized.import_readiness !== 'candidate_for_manual_review') errors.push(`row_${row.row_number}:not_candidate_for_manual_review`);
-    if (normalized.research_status !== 'official_confirmed') errors.push(`row_${row.row_number}:research_not_official_confirmed`);
+    if (national) {
+      if (!['official_confirmed', 'official_partial'].includes(normalized.research_status)) errors.push(`row_${row.row_number}:research_not_public_directory_eligible`);
+      if (!['source_explicit', 'activity_inferred'].includes(normalized.canonical_type_source)) errors.push(`row_${row.row_number}:canonical_type_unresolved`);
+      const unexpectedWarnings = warnings.filter((warning) => !allowedNationalWarnings.has(warning));
+      if (unexpectedWarnings.length) errors.push(`row_${row.row_number}:warnings:${unexpectedWarnings.join(',')}`);
+    } else {
+      if (normalized.research_status !== 'official_confirmed') errors.push(`row_${row.row_number}:research_not_official_confirmed`);
+      if (clean(normalized.review_flags, 2000)) errors.push(`row_${row.row_number}:review_flags_present`);
+      if (normalized.canonical_type_source !== 'source_explicit') errors.push(`row_${row.row_number}:canonical_type_not_explicit`);
+      if (warnings.length) errors.push(`row_${row.row_number}:warnings:${warnings.join(',')}`);
+    }
     if (normalized.source_operational_status !== 'active_confirmed' || normalized.operational_status !== 'active') errors.push(`row_${row.row_number}:operational_status_not_active_confirmed`);
-    if (clean(normalized.review_flags, 2000)) errors.push(`row_${row.row_number}:review_flags_present`);
-    if (normalized.canonical_type_source !== 'source_explicit') errors.push(`row_${row.row_number}:canonical_type_not_explicit`);
     if (normalized.organization_type_source !== 'source_explicit') errors.push(`row_${row.row_number}:organization_type_not_explicit`);
     if (normalized.organization_type_legacy_fallback === true) errors.push(`row_${row.row_number}:organization_type_legacy_fallback`);
-    if (warnings.length) errors.push(`row_${row.row_number}:warnings:${warnings.join(',')}`);
     if (validationErrors.length) errors.push(`row_${row.row_number}:errors:${validationErrors.join(',')}`);
-    if (!ALLOWED_ACTIONS.has(row.planned_action)) errors.push(`row_${row.row_number}:unsafe_action:${row.planned_action}`);
-    if (clean(row.target_location_id, 160)) errors.push(`row_${row.row_number}:existing_location_target`);
+    if (!allowedActions.has(row.planned_action)) errors.push(`row_${row.row_number}:unsafe_action:${row.planned_action}`);
     if (Object.keys(override).length) errors.push(`row_${row.row_number}:admin_override_present`);
+
+    const targetLocationId = clean(row.target_location_id, 160);
+    if (targetLocationId) {
+      if (!national || !['update_existing_location', 'skip_unchanged'].includes(row.planned_action)) {
+        errors.push(`row_${row.row_number}:existing_location_target`);
+      } else {
+        const targetLocation = await getDirectoryEntityOrNull(
+          svc.entities.ProviderLocation.get(targetLocationId),
+          'locatiei existente reutilizate de campania nationala',
+        );
+        if (!targetLocation || (targetLocation.profile_control_status || 'directory') !== 'directory') {
+          errors.push(`row_${row.row_number}:controlled_existing_location_target`);
+        }
+      }
+    }
+
     if (row.planned_action === 'create_location_use_existing_organization') {
       if (plannedActions.includes('reuse_planned_organization') && !row.target_organization_id) continue;
       if (!row.target_organization_id) {
@@ -1334,7 +1362,7 @@ async function inspectSafety(svc, snapshot, batch) {
       }
     }
   }
-  return { safe: errors.length === 0, errors, checked_rows: rows.length };
+  return { safe: errors.length === 0, errors, checked_rows: rows.length, campaign_mode: mode };
 }
 
 async function refreshProgress(svc, run) {
