@@ -253,6 +253,7 @@ function automaticSelectionReasons(row = {}) {
   if (clean(row.research_status, 80) !== 'official_confirmed') reasons.push('research_not_official_confirmed');
   if (clean(row.operational_status, 80) !== 'active_confirmed') reasons.push('operational_status_not_active_confirmed');
   if (clean(row.review_flags, 2000)) reasons.push('review_flags_present');
+  if (clean(row.geography_validation_error, 120)) reasons.push(clean(row.geography_validation_error, 120));
   for (const field of [
     'location_display_name',
     'organization_display_name',
@@ -261,6 +262,9 @@ function automaticSelectionReasons(row = {}) {
     'confirmed_address',
     'official_source_url',
     'locality_siruta_code',
+    'county_code',
+    'uat_code',
+    'uat_name',
     'provider_type',
     'provider_profile_type',
     'organization_type_code',
