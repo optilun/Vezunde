@@ -91,6 +91,111 @@ function Progress({ value, total }) {
   return <div><div className="mb-1 flex justify-between text-[11px] text-muted-foreground"><span>{value} din {total}</span><span>{percent}%</span></div><div className="h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-foreground" style={{ width: `${percent}%` }} /></div></div>;
 }
 
+function AutoImportPanel() {
+  const [manifestUrl, setManifestUrl] = useState("");
+  const [batchUrls, setBatchUrls] = useState("");
+  const [runs, setRuns] = useState([]);
+  const [confirmation, setConfirmation] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  const load = useCallback(async () => {
+    const result = await call({ action: "list_auto_import_runs", limit: 10 });
+    if (result.error) { setError(result.error); return; }
+    setRuns(result.runs || []);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const latest = runs[0] || null;
+  const items = latest?.items || [];
+  const currentItem = items.find((item) => !["completed", "blocked", "failed", "skipped"].includes(item.status)) || null;
+  const approvalPhrase = latest?.approval_confirmation || "";
+
+  const create = async () => {
+    setBusy(true); setError(""); setMessage("");
+    const urls = batchUrls.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+    const result = await call({
+      action: "create_auto_import_run",
+      manifest_url: manifestUrl.trim(),
+      batch_urls: urls,
+      notes: "Import automat controlat initiat din interfata administrativa VIASEE.",
+    });
+    setBusy(false);
+    if (result.error) { setError(result.error); return; }
+    setMessage(result.reused ? "Rularea existenta a fost reincarcata." : "Pachetul a fost analizat. Este necesara o singura aprobare administrativa.");
+    setConfirmation("");
+    await load();
+  };
+
+  const act = async (action, extra = {}) => {
+    if (!latest) return;
+    setBusy(true); setError(""); setMessage("");
+    const result = await call({ action, run_id: latest.id, ...extra });
+    setBusy(false);
+    if (result.error) { setError(result.error); return; }
+    const labels = {
+      approve_auto_import_run: "Rularea automata a fost aprobata.",
+      pause_auto_import_run: "Rularea a fost pusa pe pauza.",
+      resume_auto_import_run: "Rularea va continua automat.",
+      cancel_auto_import_run: "Rularea a fost anulata.",
+      advance_auto_import_run_now: "A fost procesat un singur pas controlat.",
+    };
+    setMessage(labels[action] || "Operatia s-a finalizat.");
+    setConfirmation("");
+    await load();
+  };
+
+  const percent = latest?.total_rows
+    ? Math.round((Number(latest.applied_rows || 0) / Number(latest.total_rows || 1)) * 100)
+    : 0;
+
+  return <section className="rounded-3xl border border-foreground/20 bg-card p-5 shadow-sm">
+    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex items-start gap-3">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary"><Database className="h-5 w-5" /></span>
+        <div><h2 className="text-sm font-bold">Import automat controlat</h2><p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">O singura aprobare porneste procesarea in fundal. La fiecare 5 minute se executa un singur pas sigur: snapshot, validare, dry-run, verificare, apoi maximum 5 randuri. Orice avertisment, duplicat sau actiune neasteptata opreste automat rularea.</p></div>
+      </div>
+      <button type="button" onClick={load} disabled={busy} className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-border px-4 text-xs font-semibold"><RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} /> Actualizeaza</button>
+    </div>
+
+    {!latest && <div className="mt-5 grid gap-3 lg:grid-cols-2">
+      <label className="text-xs font-semibold">URL manifest JSON
+        <input value={manifestUrl} onChange={(event) => setManifestUrl(event.target.value)} placeholder="https://.../manifest.json" className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" />
+        <span className="mt-1 block font-normal text-muted-foreground">Manifestul poate contine campurile batches, clean_batches, files sau items.</span>
+      </label>
+      <label className="text-xs font-semibold">Sau URL-uri JSON, cate unul pe linie
+        <textarea value={batchUrls} onChange={(event) => setBatchUrls(event.target.value)} rows={4} placeholder="https://.../batch-01.json" className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
+      </label>
+      <div className="lg:col-span-2"><button type="button" onClick={create} disabled={busy || (!manifestUrl.trim() && !batchUrls.trim())} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-40 sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />} Analizeaza pachetul automat</button></div>
+    </div>}
+
+    {latest && <div className="mt-5 space-y-4">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-background p-4 sm:flex-row sm:items-start sm:justify-between">
+        <div><div className="font-mono text-[10px] text-muted-foreground">{latest.run_key}</div><div className="mt-1 text-sm font-bold">{latest.completed_batches || 0} din {latest.total_batches || 0} loturi finalizate</div><p className="mt-1 text-xs text-muted-foreground">Pas curent: {latest.current_step || "-"}{currentItem ? ` · lot ${currentItem.sequence}/${latest.total_batches}` : ""}</p></div>
+        <Badge status={latest.status} />
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4"><Stat label="Randuri" value={latest.total_rows} /><Stat label="Aplicate" value={latest.applied_rows} /><Stat label="Blocate" value={latest.blocked_batches} /><Stat label="Esuate" value={latest.failed_rows} /></div>
+      <div><div className="mb-1 flex justify-between text-[11px] text-muted-foreground"><span>Progres import</span><span>{percent}%</span></div><div className="h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-foreground" style={{ width: `${percent}%` }} /></div></div>
+      {latest.failure_message && <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">{latest.failure_message}</div>}
+
+      {latest.status === "awaiting_approval" && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><div className="text-xs font-bold text-amber-950">Aprobare unica pentru toate loturile din pachet</div><code className="mt-3 block overflow-x-auto rounded-xl bg-white/70 p-3 text-[11px]">{approvalPhrase}</code><input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} className="mt-3 min-h-11 w-full rounded-xl border border-amber-300 bg-white px-3 text-sm" /><button type="button" onClick={() => act("approve_auto_import_run", { confirmation })} disabled={busy || confirmation !== approvalPhrase} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background disabled:opacity-40 sm:w-auto"><ShieldCheck className="h-4 w-4" /> Aproba procesarea automata</button></div>}
+
+      <div className="flex flex-col gap-2 sm:flex-row">
+        {["approved", "running"].includes(latest.status) && <button type="button" onClick={() => act("pause_auto_import_run")} disabled={busy} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border px-4 text-xs font-semibold"><Square className="h-4 w-4" /> Pauza</button>}
+        {latest.status === "paused" && <button type="button" onClick={() => act("resume_auto_import_run")} disabled={busy} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-foreground px-4 text-xs font-semibold text-background"><Play className="h-4 w-4" /> Continua automat</button>}
+        {["approved", "running"].includes(latest.status) && <button type="button" onClick={() => act("advance_auto_import_run_now")} disabled={busy} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border px-4 text-xs font-semibold">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Ruleaza urmatorul pas acum</button>}
+        {["awaiting_approval", "approved", "running", "paused", "blocked"].includes(latest.status) && <button type="button" onClick={() => act("cancel_auto_import_run")} disabled={busy} className="inline-flex min-h-10 items-center justify-center rounded-full border border-red-200 px-4 text-xs font-semibold text-red-700">Anuleaza</button>}
+      </div>
+      <details className="rounded-2xl border border-border bg-background p-3"><summary className="cursor-pointer text-xs font-semibold">Detalii loturi ({items.length})</summary><div className="mt-3 space-y-2">{items.map((item) => <div key={item.id} className="flex flex-col gap-1 rounded-xl bg-secondary/35 p-3 text-xs sm:flex-row sm:items-center sm:justify-between"><div><strong>Lot {item.sequence}</strong> · {item.source_filename}<div className="mt-1 text-[10px] text-muted-foreground">{item.step || item.status}{item.failure_message ? ` · ${item.failure_message}` : ""}</div></div><Badge status={item.status} /></div>)}</div></details>
+    </div>}
+
+    {message && <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-3 text-xs text-green-900">{message}</div>}
+    {error && <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">{error}</div>}
+  </section>;
+}
+
 function UploadPanel({ onDone }) {
   const [file, setFile] = useState(null);
   const [rows, setRows] = useState([]);
