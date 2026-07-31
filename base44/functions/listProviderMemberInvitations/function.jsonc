@@ -1,0 +1,20 @@
+{
+  "name": "listProviderMemberInvitations",
+  "entry": "entry.ts",
+  "automations": [
+    {
+      "type": "scheduled",
+      "name": "viasee_directory_auto_import_runner",
+      "description": "Avanseaza controlat cate un pas al importurilor automate aprobate VIASEE.",
+      "function_args": {
+        "action": "advance_auto_import_runs"
+      },
+      "is_active": true,
+      "schedule_mode": "recurring",
+      "schedule_type": "simple",
+      "repeat_unit": "minutes",
+      "repeat_interval": 5,
+      "ends_type": "never"
+    }
+  ]
+}
