@@ -9,6 +9,7 @@ const deployed = read('base44/functions/listProviderMemberInvitations/entry.ts')
 const ui = read('src/components/admin/directory/DirOpsImportPipeline.jsx');
 const runSchema = JSON.parse(read('base44/entities/DirectoryAutoImportRun.jsonc'));
 const itemSchema = JSON.parse(read('base44/entities/DirectoryAutoImportItem.jsonc'));
+const payloadChunkSchema = JSON.parse(read('base44/entities/DirectoryAutoImportPayloadChunk.jsonc'));
 const functionConfig = JSON.parse(read('base44/functions/listProviderMemberInvitations/function.jsonc'));
 assert.equal(fs.existsSync('base44/entities/_noop_invalid.jsonc'), false, 'Schema temporara invalida nu trebuie publicata.');
 
