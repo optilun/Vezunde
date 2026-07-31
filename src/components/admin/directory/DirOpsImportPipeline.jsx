@@ -126,6 +126,9 @@ function AutoImportPanel() {
 
   const nonTerminalRuns = runs.filter((run) => !["completed", "blocked", "failed", "cancelled"].includes(run.status));
   const active = nonTerminalRuns[0] || null;
+  const executionRun = nonTerminalRuns
+    .filter((run) => ["approved", "running"].includes(run.status))
+    .sort((left, right) => String(left.created_date || "").localeCompare(String(right.created_date || "")))[0] || null;
   const latest = active || runs[0] || null;
   const items = latest?.items || [];
   const incompletePreflight = latest?.status === "awaiting_approval"
@@ -136,20 +139,20 @@ function AutoImportPanel() {
   const approvalPhrase = latest?.approval_confirmation || "";
 
   useEffect(() => {
-    if (!active?.id || !["approved", "running"].includes(active.status)) return;
-    const heartbeatAt = active.last_heartbeat_at ? new Date(active.last_heartbeat_at).getTime() : 0;
+    if (!executionRun?.id) return;
+    const heartbeatAt = executionRun.last_heartbeat_at ? new Date(executionRun.last_heartbeat_at).getTime() : 0;
     const stale = !heartbeatAt || Date.now() - heartbeatAt > 6 * 60 * 1000;
-    if (!stale || autoKickRunsRef.current.has(active.id)) return;
-    autoKickRunsRef.current.add(active.id);
+    if (!stale || autoKickRunsRef.current.has(executionRun.id)) return;
+    autoKickRunsRef.current.add(executionRun.id);
     let cancelled = false;
     (async () => {
-      const result = await call({ action: "advance_auto_import_run_now", run_id: active.id });
+      const result = await call({ action: "advance_auto_import_run_now", run_id: executionRun.id });
       if (cancelled) return;
       if (result.error) setError(result.error);
       await load();
     })();
     return () => { cancelled = true; };
-  }, [active?.id, active?.status, active?.last_heartbeat_at, load]);
+  }, [executionRun?.id, executionRun?.status, executionRun?.last_heartbeat_at, load]);
 
   const create = async () => {
     setBusy(true); setError(""); setMessage("");
