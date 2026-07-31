@@ -299,7 +299,38 @@ async function createRun(svc, user, input) {
       return response({ error: `SHA-256 invalid pentru ${descriptor.source_filename}.` }, 400);
     }
   }
-  const packageSha256 = await sha256HexText(stableStringify(descriptors));
+  const preparedDescriptors = [];
+  for (const descriptor of descriptors) {
+    const fetched = await fetchJson(descriptor.source_url, descriptor.expected_sha256);
+    const sourceRows = rowsFromPayload(fetched.payload);
+    if (!sourceRows.length || sourceRows.length > MAX_ROWS_PER_BATCH) {
+      return response({ error: `${descriptor.source_filename} are ${sourceRows.length} randuri; limita este ${MAX_ROWS_PER_BATCH}.` }, 400);
+    }
+    if (descriptor.expected_rows > 0 && descriptor.expected_rows !== sourceRows.length) {
+      return response({ error: `${descriptor.source_filename}: manifestul declara ${descriptor.expected_rows} randuri, fisierul contine ${sourceRows.length}.` }, 400);
+    }
+    const selection = selectRowsForAutomaticImport(sourceRows);
+    const selectedSha256 = await sha256HexText(stableStringify(selection.selected));
+    preparedDescriptors.push({
+      ...descriptor,
+      source_sha256: fetched.sha256,
+      source_rows: sourceRows.length,
+      selected_rows: selection.selected.length,
+      excluded_rows: selection.excluded.length,
+      selected_sha256: selectedSha256,
+      selection_summary: selection.summary,
+      organization_count: new Set(selection.selected.map((row) => clean(row.organization_external_key || row.organization_display_name, 300)).filter(Boolean)).size,
+    });
+  }
+  descriptors = preparedDescriptors;
+  const packageSha256 = await sha256HexText(stableStringify(descriptors.map((item) => ({
+    source_url: item.source_url,
+    source_sha256: item.source_sha256,
+    selected_sha256: item.selected_sha256,
+    source_rows: item.source_rows,
+    selected_rows: item.selected_rows,
+    excluded_rows: item.excluded_rows,
+  }))));
   const runKey = clean(input.run_key, 120) || runKeyFor(packageSha256);
   const existing = await requireDirectoryRows(
     svc.entities.DirectoryAutoImportRun.filter({ run_key: runKey }, '-created_date', 5),
@@ -348,9 +379,9 @@ async function createRun(svc, user, input) {
     completed_batches: 0,
     blocked_batches: 0,
     failed_batches: 0,
-    skipped_batches: 0,
-    excluded_rows: 0,
-    total_rows: descriptors.reduce((total, item) => total + Number(item.expected_rows || 0), 0),
+    skipped_batches: descriptors.filter((item) => Number(item.selected_rows || 0) === 0).length,
+    excluded_rows: descriptors.reduce((total, item) => total + Number(item.excluded_rows || 0), 0),
+    total_rows: descriptors.reduce((total, item) => total + Number(item.selected_rows || 0), 0),
     applied_rows: 0,
     skipped_rows: 0,
     failed_rows: 0,
@@ -370,17 +401,18 @@ async function createRun(svc, user, input) {
       run_id: run.id,
       sequence: index + 1,
       item_key: `${runKey}-${String(index + 1).padStart(3, '0')}`,
-      status: 'pending',
-      step: 'fetch_source',
+      status: item.selected_rows > 0 ? 'pending' : 'skipped',
+      step: item.selected_rows > 0 ? 'fetch_source' : 'skipped_no_strictly_clean_rows',
       source_url: item.source_url,
       source_filename: item.source_filename,
-      source_sha256: '',
+      source_sha256: item.source_sha256,
+      selected_sha256: item.selected_sha256,
       expected_sha256: item.expected_sha256,
-      expected_rows: item.expected_rows,
-      source_rows: 0,
-      selected_rows: 0,
-      excluded_rows: 0,
-      selection_result_json: '{}',
+      expected_rows: item.source_rows,
+      source_rows: item.source_rows,
+      selected_rows: item.selected_rows,
+      excluded_rows: item.excluded_rows,
+      selection_result_json: JSON.stringify(item.selection_summary),
       organization_count: item.organization_count,
       snapshot_id: '',
       batch_id: '',
@@ -389,16 +421,29 @@ async function createRun(svc, user, input) {
       skipped_rows: 0,
       failed_rows: 0,
       safety_result_json: '{}',
-      result_json: '{}',
+      result_json: item.selected_rows > 0 ? '{}' : JSON.stringify({ selection: item.selection_summary }),
       failure_message: '',
+      ...(item.selected_rows > 0 ? {} : { started_at: now(), finished_at: now() }),
     });
   }
   await writeAudit(svc, user, 'DirectoryAutoImportRun', run.id, 'directory_auto_import_run_created', {}, {
     run_key: runKey,
     package_sha256: packageSha256,
     total_batches: descriptors.length,
+    selected_rows: descriptors.reduce((total, item) => total + Number(item.selected_rows || 0), 0),
+    excluded_rows: descriptors.reduce((total, item) => total + Number(item.excluded_rows || 0), 0),
   });
-  return response({ success: true, run, approval_confirmation: approvalPhrase(run) });
+  return response({
+    success: true,
+    run,
+    approval_confirmation: approvalPhrase(run),
+    preflight: {
+      source_rows: descriptors.reduce((total, item) => total + Number(item.source_rows || 0), 0),
+      selected_rows: descriptors.reduce((total, item) => total + Number(item.selected_rows || 0), 0),
+      excluded_rows: descriptors.reduce((total, item) => total + Number(item.excluded_rows || 0), 0),
+      skipped_batches: descriptors.filter((item) => Number(item.selected_rows || 0) === 0).length,
+    },
+  });
 }
 
 async function listRuns(svc, input) {
