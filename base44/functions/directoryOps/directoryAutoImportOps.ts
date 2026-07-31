@@ -1530,6 +1530,9 @@ async function refreshProgress(svc, run) {
     && totals.completed_batches + totals.skipped_batches === items.length;
   const values = {
     ...totals,
+    excluded_rows: runCampaignMode(run) === CAMPAIGN_MODE_NATIONAL
+      ? Number(run.excluded_rows || 0)
+      : totals.excluded_rows,
     current_sequence: nextItem?.sequence || items.length + 1,
     current_step: completed ? 'completed' : (nextItem?.step || run.current_step || 'scheduled'),
     status: completed ? 'completed' : run.status,
