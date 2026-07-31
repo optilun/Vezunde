@@ -1,7 +1,7 @@
 import { handle as directoryImportOpsLocationFirstHandle } from './directoryImportOpsLocationFirst.ts';
 import { handleDirectoryAutoImport } from './directoryAutoImportOps.ts';
 
-export const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-national-directory-4';
+export const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-national-directory-5';
 
 export async function handle(req: Request) {
   const input = await req.clone().json().catch(() => ({}));
@@ -30,6 +30,9 @@ export async function handle(req: Request) {
       automated_import_schedule_minutes: 5,
       automated_controlled_import_orchestrator: true,
       scheduled_auto_import_runner: true,
+      scheduled_runner_uses_cron: true,
+      accepts_multiple_automation_payload_shapes: true,
+      browser_watchdog_fallback: true,
       max_automatic_execution_chunk: 5,
       supports_private_zip_upload: true,
       persists_approved_source_subset: true,
