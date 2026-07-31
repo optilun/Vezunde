@@ -415,7 +415,7 @@ async function descriptorsFromZipBase64(zipBase64, archiveFilename = '') {
   };
 }
 
-async function enrichRowsWithCanonicalGeography(svc, rows = []) {
+async function canonicalGeographyMap(svc, rows = []) {
   const codes = Array.from(new Set(rows.map((row) => clean(row?.locality_siruta_code, 40)).filter(Boolean)));
   const geographicRows = codes.length ? await requireDirectoryRows(
     svc.entities.GeographicLocality.filter(
@@ -430,6 +430,11 @@ async function enrichRowsWithCanonicalGeography(svc, rows = []) {
     const code = clean(geography.siruta_code, 40);
     if (code && !bySiruta.has(code)) bySiruta.set(code, geography);
   }
+  return bySiruta;
+}
+
+async function enrichRowsWithCanonicalGeography(svc, rows = [], existingMap = null) {
+  const bySiruta = existingMap instanceof Map ? existingMap : await canonicalGeographyMap(svc, rows);
   return rows.map((row) => {
     const code = clean(row?.locality_siruta_code, 40);
     const geography = bySiruta.get(code) || null;
