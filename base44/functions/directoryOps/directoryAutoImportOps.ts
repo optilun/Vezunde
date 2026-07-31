@@ -433,6 +433,273 @@ async function descriptorsFromZipBase64(zipBase64, archiveFilename = '') {
   };
 }
 
+function nationalPseudoRowReason(row = {}) {
+  const name = normalizeIdentityText(row.location_display_name || row.location_name);
+  const locality = clean(row.official_locality || row.locality_name, 160);
+  const address = normalizeIdentityText(row.confirmed_address || row.address);
+  if (!name) return 'missing_location_name';
+  if (
+    name === 'organizatie'
+    || /^(?:locatii|acoperire|retea|network)(?:\s|$)/.test(name)
+    || /^total(?:\s*:?\s*\d|\s+(?:locatii|puncte|sedii)\b)/.test(name)
+  ) return 'aggregate_or_summary_row';
+  if (/^~?\d+\+?$/.test(locality) || /^~?\d+\+?$/.test(clean(row.location_display_name || row.location_name))) {
+    return 'aggregate_count_row';
+  }
+  if (!address && /\b(locatii|puncte|sedii)\b/.test(name)) return 'aggregate_without_address';
+  return '';
+}
+
+function nationalOrganizationTypeCode(row = {}, resolvedType = null) {
+  const explicit = clean(row.organization_type_code, 120);
+  if (explicit) return explicit;
+  const text = normalizeIdentityText([
+    row.organization_display_name,
+    row.location_display_name,
+    row.confirmed_activity_category,
+    row.observations,
+  ].filter(Boolean).join(' '));
+  if (/\bspital\b|\binstitut\b|\bambulator\b|\bsectie\b/.test(text)) return 'public_healthcare_institution';
+  if (/\bpoliclinica\b|\bhiperclinica\b|\bmulti specialitate\b|\bcentru medical\b/.test(text)) return 'multi_specialty_healthcare_provider';
+  if (/\bretea\b|\bnetwork\b/.test(text)) return 'healthcare_network';
+  const profileType = clean(resolvedType?.provider_profile_type || row.provider_profile_type, 120);
+  if (profileType === 'optical_chain') return 'optical_chain';
+  if (profileType === 'independent_optical_store') return 'independent_optical_store';
+  if (profileType === 'ophthalmology_clinic') return 'ophthalmology_clinic';
+  if (profileType === 'ophthalmology_office') return 'ophthalmology_office';
+  if (profileType.startsWith('independent_')) return 'independent_professional';
+  if (profileType.startsWith('optical_laboratory_')) return 'optical_laboratory';
+  return 'other';
+}
+
+function normalizeNationalDirectoryRow(row = {}) {
+  const explicitComplete = [
+    row.provider_type,
+    row.provider_profile_type,
+    row.location_type_code,
+    row.care_setting_code,
+  ].every((value) => Boolean(clean(value, 120)));
+  const activityText = [
+    row.confirmed_activity_category,
+    row.location_display_name,
+    row.organization_display_name,
+    row.observations,
+  ].filter(Boolean).join(' | ');
+  const resolvedType = explicitComplete ? {
+    provider_type: clean(row.provider_type, 120),
+    provider_profile_type: clean(row.provider_profile_type, 120),
+    location_type_code: clean(row.location_type_code, 120),
+    care_setting_code: clean(row.care_setting_code, 120),
+  } : inferCanonicalLocationType(activityText);
+  const organizationName = clean(row.organization_display_name || row.location_display_name, 240);
+  return {
+    ...row,
+    organization_display_name: organizationName,
+    provider_type: resolvedType?.provider_type || '',
+    provider_profile_type: resolvedType?.provider_profile_type || '',
+    location_type_code: resolvedType?.location_type_code || '',
+    care_setting_code: resolvedType?.care_setting_code || '',
+    organization_type_code: nationalOrganizationTypeCode(row, resolvedType),
+    classification_contract_version: 'viasee-directory-location-first-v1',
+    national_original_import_readiness: clean(row.import_readiness, 120),
+    import_readiness: 'candidate_for_manual_review',
+    national_directory_candidate: true,
+  };
+}
+
+function nationalSelectionReasons(row = {}) {
+  const reasons = [];
+  const originalReadiness = clean(row.national_original_import_readiness || row.import_readiness, 120);
+  const researchStatus = clean(row.research_status, 120);
+  const operationalStatus = clean(row.operational_status, 120);
+  if (['not_eligible'].includes(originalReadiness) || researchStatus === 'excluded') reasons.push('not_eligible');
+  if (originalReadiness === 'blocked_conflict') reasons.push('conflict_requires_review');
+  if (!['official_confirmed', 'official_partial'].includes(researchStatus)) reasons.push('source_not_sufficiently_confirmed');
+  if (operationalStatus !== 'active_confirmed') reasons.push('activity_not_confirmed');
+  if (clean(row.geography_validation_error, 120)) reasons.push(clean(row.geography_validation_error, 120));
+  const pseudoReason = nationalPseudoRowReason(row);
+  if (pseudoReason) reasons.push(pseudoReason);
+  for (const field of [
+    'location_display_name',
+    'organization_display_name',
+    'official_locality',
+    'county_if_confirmed',
+    'confirmed_address',
+    'official_source_url',
+    'locality_siruta_code',
+    'county_code',
+    'uat_code',
+    'uat_name',
+    'provider_type',
+    'provider_profile_type',
+    'organization_type_code',
+    'location_type_code',
+    'care_setting_code',
+  ]) {
+    if (!clean(row[field], 4000)) reasons.push(`missing_${field}`);
+  }
+  return Array.from(new Set(reasons));
+}
+
+function nationalRowScore(row = {}) {
+  let score = 0;
+  if (row.research_status === 'official_confirmed') score += 100;
+  if (!clean(row.review_flags, 2000)) score += 20;
+  if (clean(row.confirmed_location_phone, 240)) score += 5;
+  if (clean(row.confirmed_location_email, 240)) score += 3;
+  if (clean(row.confirmed_schedule, 1200)) score += 2;
+  if (clean(row.official_source_url, 1200)) score += 10;
+  return score;
+}
+
+function nationalIdentityKey(row = {}) {
+  const external = clean(row.location_external_key, 240);
+  if (external) return `external:${external}`;
+  return `identity:${clean(row.locality_siruta_code, 40)}|${clean(row.address_fingerprint, 240)}|${normalizeIdentityText(row.location_display_name)}`;
+}
+
+function selectRowsForNationalDirectory(rows = []) {
+  const excluded = [];
+  const bestByIdentity = new Map();
+  for (const sourceRow of rows) {
+    const row = normalizeNationalDirectoryRow(sourceRow);
+    const reasons = nationalSelectionReasons(row);
+    if (reasons.length) {
+      excluded.push({ row, reasons });
+      continue;
+    }
+    const key = nationalIdentityKey(row);
+    const current = bestByIdentity.get(key) || null;
+    if (!current || nationalRowScore(row) > nationalRowScore(current)) {
+      if (current) excluded.push({ row: current, reasons: ['duplicate_in_national_package'] });
+      bestByIdentity.set(key, row);
+    } else {
+      excluded.push({ row, reasons: ['duplicate_in_national_package'] });
+    }
+  }
+  const selected = Array.from(bestByIdentity.values()).sort((left, right) => (
+    clean(left.official_locality, 160).localeCompare(clean(right.official_locality, 160), 'ro')
+    || clean(left.organization_display_name, 240).localeCompare(clean(right.organization_display_name, 240), 'ro')
+    || clean(left.location_display_name, 240).localeCompare(clean(right.location_display_name, 240), 'ro')
+  ));
+  const reasonCounts = {};
+  for (const item of excluded) {
+    for (const reason of item.reasons) reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
+  }
+  return {
+    selected,
+    excluded,
+    summary: {
+      source_rows: rows.length,
+      selected_rows: selected.length,
+      excluded_rows: excluded.length,
+      reason_counts: reasonCounts,
+    },
+  };
+}
+
+function packNationalRows(rows = []) {
+  const groups = new Map();
+  for (const row of rows) {
+    const key = clean(row.organization_external_key, 240)
+      || `org-name:${normalizeIdentityText(row.organization_display_name)}`;
+    const values = groups.get(key) || [];
+    values.push(row);
+    groups.set(key, values);
+  }
+  const batches = [];
+  let current = [];
+  const flush = () => {
+    if (current.length) batches.push(current);
+    current = [];
+  };
+  const orderedGroups = Array.from(groups.entries()).sort(([left], [right]) => left.localeCompare(right));
+  for (const [, groupRows] of orderedGroups) {
+    if (groupRows.length > MAX_ROWS_PER_BATCH) {
+      flush();
+      for (let offset = 0; offset < groupRows.length; offset += MAX_ROWS_PER_BATCH) {
+        batches.push(groupRows.slice(offset, offset + MAX_ROWS_PER_BATCH));
+      }
+      continue;
+    }
+    if (current.length + groupRows.length > MAX_ROWS_PER_BATCH) flush();
+    current.push(...groupRows);
+  }
+  flush();
+  return batches;
+}
+
+async function nationalRowsFromZipBase64(zipBase64, archiveFilename = '') {
+  const zipBytes = decodeBase64Bytes(zipBase64);
+  if (zipBytes.byteLength > 8_000_000) throw new Error('Arhiva ZIP depaseste limita de 8 MB.');
+  const archiveSha256 = await sha256HexBytes(zipBytes);
+  let entries;
+  try {
+    entries = unzipSync(zipBytes);
+  } catch (_error) {
+    throw new Error('Arhiva ZIP nu poate fi deschisa.');
+  }
+  const names = Object.keys(entries).filter((name) => !name.endsWith('/') && /\.json$/i.test(name));
+  let masterRows = [];
+  const aggregateRows = [];
+  for (const name of names) {
+    const baseName = name.split('/').pop()?.toLowerCase() || '';
+    if (/(audit|report|manifest|invalid_required_fields)/.test(baseName)) continue;
+    let payload;
+    try {
+      payload = JSON.parse(strFromU8(entries[name]));
+    } catch (_error) {
+      continue;
+    }
+    const rows = rowsFromPayload(payload);
+    if (!rows.length) continue;
+    if (/master|registry_v8_master|registry_v4_location_first_1329/.test(baseName) || rows.length >= 1000) {
+      masterRows = rows;
+      break;
+    }
+    if (
+      /batch/.test(baseName)
+      || /mapped_requires_review/.test(baseName)
+      || /requires_explicit_organization_mapping/.test(baseName)
+      || /blocked_and_not_eligible/.test(baseName)
+    ) aggregateRows.push(...rows);
+  }
+  const rows = masterRows.length ? masterRows : aggregateRows;
+  if (!rows.length) throw new Error('Arhiva nationala nu contine registrul master sau randuri de director recunoscute.');
+  const unique = new Map();
+  for (const row of rows) {
+    const key = clean(row.__source_row_key || row.source_row_key, 260)
+      || nationalIdentityKey(row);
+    if (!unique.has(key)) unique.set(key, row);
+  }
+  return {
+    archive_filename: clean(archiveFilename, 240),
+    archive_sha256: archiveSha256,
+    rows: Array.from(unique.values()),
+  };
+}
+
+async function descriptorsForNationalSelection(selection, archiveSha256) {
+  const batches = packNationalRows(selection.selected);
+  if (batches.length > MAX_BATCHES) throw new Error(`Campania nationala necesita ${batches.length} loturi; limita este ${MAX_BATCHES}.`);
+  const descriptors = [];
+  for (let index = 0; index < batches.length; index += 1) {
+    const rows = batches[index];
+    const sourceSha256 = await sha256HexText(stableStringify(rows));
+    descriptors.push({
+      source_url: `archive://${archiveSha256}/national-directory-batch-${String(index + 1).padStart(2, '0')}.json`,
+      source_filename: `national-directory-batch-${String(index + 1).padStart(2, '0')}.json`,
+      source_sha256: sourceSha256,
+      expected_sha256: sourceSha256,
+      expected_rows: rows.length,
+      organization_count: new Set(rows.map((row) => clean(row.organization_external_key || row.organization_display_name, 300))).size,
+      inline_rows: rows,
+      national_selection_summary: selection.summary,
+    });
+  }
+  return descriptors;
+}
+
 async function canonicalGeographyMap(svc, rows = []) {
   const codes = Array.from(new Set(rows.map((row) => clean(row?.locality_siruta_code, 40)).filter(Boolean)));
   const geographicRows = codes.length ? await requireDirectoryRows(
