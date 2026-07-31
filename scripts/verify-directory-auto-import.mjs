@@ -14,10 +14,10 @@ assert.equal(fs.existsSync('base44/entities/_noop_invalid.jsonc'), false, 'Schem
 
 assert.equal(runSchema.name, 'DirectoryAutoImportRun');
 assert.equal(itemSchema.name, 'DirectoryAutoImportItem');
-for (const field of ['run_key', 'status', 'package_sha256', 'current_step', 'failure_message']) {
+for (const field of ['run_key', 'status', 'package_sha256', 'current_step', 'failure_message', 'skipped_batches', 'excluded_rows']) {
   assert.ok(runSchema.properties[field], `Lipseste campul run.${field}`);
 }
-for (const field of ['run_id', 'sequence', 'status', 'step', 'source_url', 'snapshot_id', 'batch_id']) {
+for (const field of ['run_id', 'sequence', 'status', 'step', 'source_url', 'snapshot_id', 'batch_id', 'source_rows', 'selected_rows', 'excluded_rows', 'selection_result_json']) {
   assert.ok(itemSchema.properties[field], `Lipseste campul item.${field}`);
 }
 
@@ -26,6 +26,15 @@ assert.match(auto, /const MAX_ROWS_PER_BATCH = 40/);
 assert.match(auto, /const EXECUTION_CHUNK = 5/);
 assert.match(auto, /requires_zero_snapshot_warnings: true/);
 assert.match(auto, /exact_external_key_required_for_existing_organization: true/);
+assert.match(auto, /function automaticSelectionReasons/);
+assert.match(auto, /candidate_for_manual_review/);
+assert.match(auto, /research_not_official_confirmed/);
+assert.match(auto, /operational_status_not_active_confirmed/);
+assert.match(auto, /review_flags_present/);
+assert.match(auto, /skipped_no_strictly_clean_rows/);
+assert.match(auto, /canonical_type_not_explicit/);
+assert.match(auto, /organization_type_not_explicit/);
+assert.match(auto, /needs-review\|excluded\|audit\|report\|manifest/);
 assert.match(auto, /snapshot_has_duplicates/);
 assert.match(auto, /existing_organization_external_key_mismatch/);
 assert.match(auto, /resumeBatchAfterTransientFailure/);
@@ -73,5 +82,6 @@ for (const action of [
 assert.match(ui, /Import automat controlat/);
 assert.match(ui, /Aproba procesarea automata/);
 assert.match(ui, /La fiecare 5 minute/);
+assert.match(ui, /Excluse automat/);
 
 console.log('Directory auto-import orchestrator contract verified.');
