@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { strFromU8, unzipSync } from 'npm:fflate@0.8.2';
 import {
   batchApprovalToken,
   normalizeIdentityText,
