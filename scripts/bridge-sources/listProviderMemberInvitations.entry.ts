@@ -4,7 +4,7 @@ import { handle as directoryImportOpsHandle } from '../../base44/functions/direc
 const ROLES = ['organization_owner', 'location_manager', 'location_staff'];
 const DIRECTORY_IMPORT_LOGICAL_NAME = 'directoryImportOps';
 const DIRECTORY_AUTO_IMPORT_AUTOMATION_TOKEN = 'viasee-auto-7f4d83b1-4d38-45aa-b558-9c20cf63c6c2';
-const FUNCTION_DEPLOY_REVISION = 'viasee-directory-import-single-file-12';
+const FUNCTION_DEPLOY_REVISION = 'viasee-directory-import-single-file-13';
 console.info(`[VIASEE] listProviderMemberInvitations ${FUNCTION_DEPLOY_REVISION}`);
 
 function res(body, status = 200) {
