@@ -105,6 +105,7 @@ function fileAsBase64(file) {
 }
 
 function AutoImportPanel() {
+  const [campaignMode, setCampaignMode] = useState("national_directory");
   const [zipFile, setZipFile] = useState(null);
   const [manifestUrl, setManifestUrl] = useState("");
   const [batchUrls, setBatchUrls] = useState("");
@@ -144,11 +145,14 @@ function AutoImportPanel() {
     }
     const requestPayload = {
       action: "create_auto_import_run",
+      campaign_mode: campaignMode,
       zip_base64: zipBase64,
       zip_filename: zipFile?.name || "",
       manifest_url: manifestUrl.trim(),
       batch_urls: urls,
-      notes: "Import automat controlat initiat din interfata administrativa VIASEE.",
+      notes: campaignMode === "national_directory"
+        ? "Campanie nationala automata pentru publicarea profilurilor de director neconfirmate."
+        : "Import automat controlat initiat din interfata administrativa VIASEE.",
     };
     let result = null;
     for (let attempt = 1; attempt <= 5; attempt += 1) {
@@ -161,11 +165,14 @@ function AutoImportPanel() {
     setBusy(false);
     if (result?.error) { setError(result.error); await load(); return; }
     const preflight = result.preflight || {};
+    const national = preflight.campaign_mode === "national_directory" || campaignMode === "national_directory";
     setMessage(result.repaired
-      ? `Rularea partiala a fost reparata automat: ${result.repaired_items || 0} loturi completate. Pachetul are ${preflight.selected_rows ?? 0} randuri strict curate si ${preflight.excluded_rows ?? 0} excluse automat.`
+      ? `Rularea partiala a fost reparata automat: ${result.repaired_items || 0} loturi completate. Pachetul are ${preflight.selected_rows ?? 0} locatii eligibile si ${preflight.excluded_rows ?? 0} excluse automat.`
       : result.reused
         ? "Rularea existenta a fost reincarcata."
-        : `Pachet analizat: ${preflight.selected_rows ?? 0} randuri strict curate, ${preflight.excluded_rows ?? 0} excluse automat. Este necesara o singura aprobare administrativa.`);
+        : national
+          ? `Campania nationala a fost pregatita: ${preflight.selected_rows ?? 0} locatii vor fi adaugate sau reconciliate automat ca profiluri neconfirmate, iar ${preflight.excluded_rows ?? 0} randuri neeligibile ori conflictuale au fost excluse.`
+          : `Pachet analizat: ${preflight.selected_rows ?? 0} randuri strict curate, ${preflight.excluded_rows ?? 0} excluse automat. Este necesara o singura aprobare administrativa.`);
     setConfirmation("");
     await load();
   };
@@ -196,7 +203,7 @@ function AutoImportPanel() {
     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
       <div className="flex items-start gap-3">
         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary"><Database className="h-5 w-5" /></span>
-        <div><h2 className="text-sm font-bold">Import automat controlat</h2><p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">O singura aprobare porneste procesarea in fundal. Sistemul selecteaza automat numai randurile confirmate oficial, active, complete si fara review flags; restul sunt excluse si raportate. La fiecare 5 minute se executa un singur pas sigur: snapshot, validare, dry-run, verificare, apoi maximum 5 randuri. Orice avertisment, duplicat sau actiune neasteptata opreste automat rularea. Campania este limitata la 400 de executii si nu ramane activa la nesfarsit.</p></div>
+        <div><h2 className="text-sm font-bold">Import automat controlat</h2><p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">Campania nationala proceseaza automat registrul complet, deduplica, mapeaza tipurile lipsa, creeaza sau reconciliaza locatiile si le publica drept profiluri de director neconfirmate. Profilele raman directory, unclaimed si unverified, fara servicii presupuse si fara acces la Top 3. Conflictele, randurile generice si datele insuficiente sunt excluse automat. La fiecare 5 minute se executa un pas sigur, cu retry si oprire la anomalii.</p></div>
       </div>
       <button type="button" onClick={load} disabled={busy} className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-border px-4 text-xs font-semibold"><RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} /> Actualizeaza</button>
     </div>
