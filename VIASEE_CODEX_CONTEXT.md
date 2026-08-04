@@ -768,15 +768,44 @@ Abia apoi se modifica ceva.
 
 ## 8.1 CRITICAL
 
-### P-CRIT-1: Duplicare directoare shared/
-- Status: NEVERIFICAT
-- Descriere: Exista `shared/` si `base44/shared/` cu aceeasi logica
-- Impact: Cod duplicat, risca divergenta, mentenanta dubla
-- Solutie propusa: Consolidare intr-un singur director (`base44/shared/`) cu redirect-uri sau alias-uri
-- Prioritate: NEDETERMINATA pana la verificare
-- Nota: exista indicii ca separarea este impusa de modul in care Base44 bundle-uieste
-  functiile backend. A se verifica `scripts/bundle-directory-import-bridge.mjs` inainte de
-  orice consolidare.
+### P-CRIT-1: Duplicare directoare shared/ — CONCLUZIE GRESITA, INVALIDATA
+- Status: INVALIDAT 2026-08-05. NU sunt duplicate. NU se consolideaza.
+- Afirmatia initiala (gresita): `shared/` si `base44/shared/` contin "aceeasi logica, copii",
+  ar fi un "dead-end" si ar trebui consolidate intr-un singur director.
+- Realitatea verificata: cele doua directoare au fiecare 87 de fisiere, dar `diff -rq`
+  arata 21 de diferente. NU sunt copii. Este o separare deliberata frontend / backend:
+
+  - `shared/` (radacina) = logica partajata de FRONTEND.
+    16 importuri din `src/`. Contine exclusiv aici: `providerRecommendation.js`,
+    `providerPublicTrust.js`, `providerDecisionConfidence.js`, `providerStatusCenter.js`,
+    `patientSearchExpansion.js`, `serviceSemanticSearch.js`.
+
+  - `base44/shared/` = logica partajata de BACKEND.
+    140 de importuri din `base44/functions/` (prin caile relative `../../shared/`).
+    Contine exclusiv aici: `directoryImportReadPolicy.js`, `directoryIdentityMatchPolicy.js`,
+    `directory*Reconciliation.js`, `directoryOrganizationTypeMapping.js`, `patientSafety.js`.
+
+  - Puntea dintre ele: cele 3 fisiere `*FunctionRouting.js` din `base44/shared/`, singurele
+    importate si de frontend (3 importuri, toate in `src/api/base44FunctionRouting.js`).
+    Ele reprezinta contractul RPC comun FE-BE.
+
+- Cauza probabila a separarii: functiile backend Base44 sunt bundle-uite cu esbuild si nu pot
+  importa fisiere din afara arborelui `base44/`. Separarea nu este o scapare, ci o constrangere
+  de platforma.
+- PERICOL SUPLIMENTAR: o consolidare ar atinge `shared/providerRecommendation.js`, adica exact
+  zona interzisa de regula 2 din sectiunea 15 (matching, ranking, Top 3, recomandare provider).
+- Actiune ceruta: NICIUNA.
+
+- Singura observatie reala ramasa (minora, neurgenta): trei fisiere din `shared/` par orfane,
+  nefiind importate de nimeni, iar backend-ul foloseste propriile copii din `base44/shared/`:
+  `patientConversationPriorStatePolicyCore.js`, `patientRequestLifecycleLock.js`,
+  `serviceConfigurationPayload.js`.
+  Nu se sterg fara verificare individuala; castigul este neglijabil.
+
+- Atentie la divergenta: trei fisiere exista in ambele directoare CU CONTINUT DIFERIT —
+  `controlledChatLock.js`, `controlledChatPolicy.js`, `directoryImportPipeline.js`.
+  Aceasta este singura zona unde denumirea identica poate induce in eroare. La orice modificare
+  a unuia dintre ele, se verifica explicit pe care dintre cele doua versiuni se lucreaza.
 
 ### P-CRIT-2: DIRECTORY_FUNCTION_IMPORT_ENDPOINT — CONCLUZIE GRESITA, INVALIDATA
 - Status: INVALIDAT 2026-08-05. NU ESTE UN BUG. NU SE MODIFICA.
