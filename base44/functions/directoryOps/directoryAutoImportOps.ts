@@ -824,14 +824,31 @@ function packNationalRows(rows = []) {
     values.push(row);
     groups.set(key, values);
   }
+  const conflictExcluded = [];
+  const orderedGroups = Array.from(groups.entries()).sort(([left], [right]) => left.localeCompare(right));
+  const safeGroups = [];
+  for (const [groupKey, groupRows] of orderedGroups) {
+    const typeSet = new Set();
+    for (const row of groupRows) {
+      const typeCode = clean(row.organization_type_code, 120);
+      if (typeCode) typeSet.add(typeCode);
+    }
+    if (typeSet.size > 1) {
+      conflictExcluded.push(...groupRows.map((row) => ({
+        row,
+        reasons: ['batch_organization_type_conflict'],
+      })));
+      continue;
+    }
+    safeGroups.push([groupKey, groupRows]);
+  }
   const batches = [];
   let current = [];
   const flush = () => {
     if (current.length) batches.push(current);
     current = [];
   };
-  const orderedGroups = Array.from(groups.entries()).sort(([left], [right]) => left.localeCompare(right));
-  for (const [, groupRows] of orderedGroups) {
+  for (const [, groupRows] of safeGroups) {
     if (groupRows.length > MAX_ROWS_PER_BATCH) {
       flush();
       for (let offset = 0; offset < groupRows.length; offset += MAX_ROWS_PER_BATCH) {
@@ -843,7 +860,7 @@ function packNationalRows(rows = []) {
     current.push(...groupRows);
   }
   flush();
-  return batches;
+  return { batches, conflictExcluded };
 }
 
 async function nationalRowsFromPrivateSourceBase64(sourceBase64, sourceFilename = '') {
@@ -914,7 +931,11 @@ async function nationalRowsFromPrivateSourceBase64(sourceBase64, sourceFilename 
 }
 
 async function descriptorsForNationalSelection(selection, archiveSha256) {
-  const batches = packNationalRows(selection.selected);
+  const { batches, conflictExcluded } = packNationalRows(selection.selected);
+  if (conflictExcluded.length) {
+    selection.excluded.push(...conflictExcluded);
+    selection.summary = recomputeNationalSelectionSummary(selection.selected, selection.excluded, selection.summary?.source_rows);
+  }
   if (batches.length > MAX_BATCHES) throw new Error(`Campania nationala necesita ${batches.length} loturi; limita este ${MAX_BATCHES}.`);
   const descriptors = [];
   for (let index = 0; index < batches.length; index += 1) {
