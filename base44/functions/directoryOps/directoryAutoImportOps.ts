@@ -1801,13 +1801,13 @@ async function advanceRun(svc, run) {
         status: 'snapshot_created',
         step: 'append_rows',
         source_sha256: loadedSource.source_sha256,
-        selected_rows: selection.selected.length,
+        selected_rows: sourceRows.length,
         snapshot_id: created.snapshot.id,
         started_at: item.started_at || now(),
         ...heartbeat,
       });
       await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:append_rows`, failure_message: '' });
-      return { success: true, step: 'snapshot_created', selected_rows: selection.selected.length, excluded_rows: Number(item.excluded_rows || 0) };
+      return { success: true, step: 'snapshot_created', selected_rows: sourceRows.length, excluded_rows: Number(item.excluded_rows || 0) };
     }
 
     if (item.step === 'append_rows') {

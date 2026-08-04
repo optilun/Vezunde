@@ -5263,26 +5263,23 @@ async function advanceRun(svc, run) {
       if (Number(item.expected_rows || 0) > 0 && Number(item.expected_rows) !== sourceRows.length) {
         return blockItem(svc, run, item, [`expected_rows:${item.expected_rows}`, `actual_rows:${sourceRows.length}`], "fetch_source");
       }
-      const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows);
-      const selection = selectionForRun(run, canonicalRows);
-      const selectedSha256 = await sha256HexText(stableStringify2(selection.selected));
-      if (selection.selected.length !== Number(item.selected_rows || 0) || selectedSha256 !== clean8(item.selected_sha256, 80)) {
+      if (sourceRows.length !== Number(item.selected_rows || 0)) {
         return blockItem(svc, run, item, [
-          `preflight_selection_changed:${item.selected_rows}->${selection.selected.length}`,
-          `preflight_selection_sha_changed:${clean8(item.selected_sha256, 12)}->${selectedSha256.slice(0, 12)}`
+          `selected_rows_changed:${item.selected_rows}->${sourceRows.length}`
         ], "fetch_source");
       }
-      if (!selection.selected.length) {
+      const selectedSha256 = clean8(item.selected_sha256, 80) || await sha256HexText(stableStringify2(sourceRows));
+      if (!sourceRows.length) {
         await svc.entities.DirectoryAutoImportItem.update(item.id, {
           status: "skipped",
           step: "skipped_no_strictly_clean_rows",
           source_sha256: loadedSource.source_sha256,
           source_rows: sourceRows.length,
           selected_rows: 0,
-          excluded_rows: selection.excluded.length,
-          selection_result_json: JSON.stringify(selection.summary),
+          excluded_rows: Number(item.excluded_rows || 0),
+          selection_result_json: "{}",
           skipped_rows: sourceRows.length,
-          result_json: JSON.stringify({ selection: selection.summary }),
+          result_json: "{}",
           failure_message: "",
           started_at: item.started_at || now2(),
           finished_at: now2(),
@@ -5305,39 +5302,35 @@ async function advanceRun(svc, run) {
         source_sha256: selectedSha256,
         source_format: "json",
         original_filename: item.source_filename || `auto-batch-${item.sequence}.json`,
-        total_rows: selection.selected.length,
+        total_rows: sourceRows.length,
         notes: `Rulare automata aprobata ${run.run_key}; lot ${item.sequence}/${run.total_batches}; ${Number(item.excluded_rows || 0)} randuri excluse de filtrul strict; SHA sursa completa ${loadedSource.source_sha256}.`,
-        column_map: Object.fromEntries(Object.keys(selection.selected[0] || {}).map((key) => [key, key]))
+        column_map: Object.fromEntries(Object.keys(sourceRows[0] || {}).map((key) => [key, key]))
       }));
       if (created.error) return blockItem(svc, run, item, [created.error], "create_snapshot");
       await svc.entities.DirectoryAutoImportItem.update(item.id, {
         status: "snapshot_created",
         step: "append_rows",
         source_sha256: loadedSource.source_sha256,
-        selected_rows: selection.selected.length,
+        selected_rows: sourceRows.length,
         snapshot_id: created.snapshot.id,
         started_at: item.started_at || now2(),
         ...heartbeat
       });
       await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:append_rows`, failure_message: "" });
-      return { success: true, step: "snapshot_created", selected_rows: selection.selected.length, excluded_rows: Number(item.excluded_rows || 0) };
+      return { success: true, step: "snapshot_created", selected_rows: sourceRows.length, excluded_rows: Number(item.excluded_rows || 0) };
     }
     if (item.step === "append_rows") {
       const loadedSource = await loadItemSourceRows(svc, item);
       const sourceRows = loadedSource.rows;
-      const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows);
-      const selection = selectionForRun(run, canonicalRows);
-      const selectedSha256 = await sha256HexText(stableStringify2(selection.selected));
-      if (selection.selected.length !== Number(item.selected_rows || 0) || selectedSha256 !== clean8(item.selected_sha256, 80)) {
+      if (sourceRows.length !== Number(item.selected_rows || 0)) {
         return blockItem(svc, run, item, [
-          `selected_rows_changed:${item.selected_rows}->${selection.selected.length}`,
-          `selected_sha_changed:${clean8(item.selected_sha256, 12)}->${selectedSha256.slice(0, 12)}`
+          `selected_rows_changed:${item.selected_rows}->${sourceRows.length}`
         ], "append_rows");
       }
       const appended = await responsePayload(await appendRows(svc, user, {
         snapshot_id: item.snapshot_id,
         start_row_number: 1,
-        rows: selection.selected
+        rows: sourceRows
       }));
       if (appended.error) return blockItem(svc, run, item, [appended.error], "append_rows");
       await svc.entities.DirectoryAutoImportItem.update(item.id, { status: "rows_appended", step: "validate_snapshot", ...heartbeat });
