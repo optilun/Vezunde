@@ -690,14 +690,21 @@ async function excludeControlledOrAmbiguousLiveMatches(svc, selection) {
     if (state.location_id && !statesByLocationId.has(state.location_id)) statesByLocationId.set(state.location_id, state);
   }
   const locationIdsByExternalKey = new Map();
+  const locationIdsByAddressFingerprint = new Map();
   const append = (map, key, value) => {
     if (!key) return;
     const values = map.get(key) || [];
     if (!values.includes(value)) values.push(value);
     map.set(key, values);
   };
-  for (const state of states) append(locationIdsByExternalKey, clean(state.directory_external_key, 240), state.location_id);
-  for (const location of locations) append(locationIdsByExternalKey, existingLocationIdentityKey(location), location.id);
+  for (const state of states) {
+    append(locationIdsByExternalKey, clean(state.directory_external_key, 240), state.location_id);
+    append(locationIdsByAddressFingerprint, clean(state.address_fingerprint, 240), state.location_id);
+  }
+  for (const location of locations) {
+    append(locationIdsByExternalKey, existingLocationIdentityKey(location), location.id);
+    append(locationIdsByAddressFingerprint, clean(location.address_fingerprint || '', 240), location.id);
+  }
 
   const selected = [];
   const excluded = [...selection.excluded];
@@ -713,12 +720,20 @@ async function excludeControlledOrAmbiguousLiveMatches(svc, selection) {
       address: normalized.address,
       name: normalized.location_name,
     });
+    const externalKeyCandidates = locationIdsByExternalKey.get(normalized.location_external_key) || [];
+    const fallbackKeyCandidates = locationIdsByExternalKey.get(fallbackKey) || [];
+    const addressFingerprintCandidates = locationIdsByAddressFingerprint.get(normalized.address_fingerprint) || [];
     const candidates = Array.from(new Set([
-      ...(locationIdsByExternalKey.get(normalized.location_external_key) || []),
-      ...(locationIdsByExternalKey.get(fallbackKey) || []),
+      ...externalKeyCandidates,
+      ...fallbackKeyCandidates,
     ]));
+    const addressOnlyCandidates = addressFingerprintCandidates.filter((id) => !candidates.includes(id));
     if (candidates.length > 1) {
       excluded.push({ row, reasons: ['ambiguous_existing_location_match'] });
+      continue;
+    }
+    if (addressOnlyCandidates.length > 0) {
+      excluded.push({ row, reasons: ['address_match_requires_manual_identity_review'] });
       continue;
     }
     if (candidates.length === 1) {
