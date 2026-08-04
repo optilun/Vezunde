@@ -125,7 +125,7 @@ Pattern arhitectural:
 - `directoryOps` este functia umbrela cu router intern (`router.ts`)
 - Router-ul mapeaza `__function` la handlere specifice (directoryImportOps, adminProviderClaimReview, etc.)
 - Fiecare handler primeste `Request` si returneaza `Response.json()`
-- SDK: `createClientFromRequest(req)` → `base44.auth.me()`, `base44.asServiceRole`
+- SDK: `createClientFromRequest(req)` -> `base44.auth.me()`, `base44.asServiceRole`
 - Import: `npm:@base44/sdk@0.8.31`
 - Crypto: `crypto.randomUUID()`, `crypto.subtle.digest()`
 - Extern: `npm:fflate@0.8.2` pentru dezarhivare ZIP
@@ -140,7 +140,7 @@ Acest duplicat a fost identificat ca dead-end in istoricul dezvoltarii. Migrarea
 
 Fisiere shared critice (in `base44/shared/`):
 - `directoryImportPipeline.js` — Normalizare, canonicalizare, validare, hash-uri, token-uri
-- `directoryOrganizationTypeMapping.js` — Taxonomie organizatii, legacy → canonical mapping
+- `directoryOrganizationTypeMapping.js` — Taxonomie organizatii, legacy -> canonical mapping
 - `directoryOrganizationReconciliation.js` — Planificare reconciliere organizatii
 - `directoryLocationReconciliation.js` — Planificare reconciliere locatii, state, link, evidence
 - `directoryIdentityMatchPolicy.js` — Politici de potrivire identitate (external key, nume, adresa)
@@ -158,7 +158,7 @@ Fisiere shared critice (in `base44/shared/`):
 Workflow curent:
 - `Directory Auto Import Scheduler` — Cron la 5 minute (`*/5 * * * *`), timezone Europe/Bucharest
   - Trigger: scheduled
-  - Activity: `invoke_backend_function` → `directoryOps` cu `__function: directoryImportOps`, action `advance_auto_import_runs`
+  - Activity: `invoke_backend_function` -> `directoryOps` cu `__function: directoryImportOps`, action `advance_auto_import_runs`
   - Scop: avanseaza automat rularile de import aprobate/in curs, fara dependenta de browser
 
 ## 3.5 Secrets
@@ -193,13 +193,11 @@ Workflow curent:
 
 ### ProviderOrganization
 Compania juridica. Contine: name, legal_name, website, organization_type (legacy), organization_type_code (canonical), directory_external_key, control_status, publication_status, data_quality_status, profile_completeness, public_visibility_status, status (activa/inactiva).
-
-Relatii: 1 → N ProviderLocation
+Relatii: 1 -> N ProviderLocation
 
 ### ProviderLocation
 Punctul fizic. Contine: organization_id, name, provider_type, provider_profile_type, city, county, locality_siruta_code, address, lat, lng, phone_public, public_email, website, description, photo_url, opening_hours, request_intake_status, public_visibility_status, status (draft/in_verificare/publicata/suspendata), profile_control_status (directory/claimed/verified/suspended), verification_state, data_source, availability_status, research_status.
-
-Relatii: N → 1 ProviderOrganization, 1 → N LocationService, 1 → N ProfessionalLocationAssignment, 1 → N ProviderLocationDirectoryState, 1 → N DirectoryOrganizationLocationLink
+Relatii: N -> 1 ProviderOrganization, 1 -> N LocationService, 1 -> N ProfessionalLocationAssignment, 1 -> N ProviderLocationDirectoryState, 1 -> N DirectoryOrganizationLocationLink
 
 ### Location
 Entitate legacy (posibil noutilizata sau depasita). Contine campuri similare cu ProviderLocation dar mai simpla.
@@ -208,7 +206,7 @@ Entitate legacy (posibil noutilizata sau depasita). Contine campuri similare cu 
 Starea de director a unei locatii. Contine: location_id, directory_external_key, address_fingerprint, location_type_code, care_setting_code, ownership_type_code, operational_status, data_quality_status, publication_status, control_status, directory_detail_level, directory_basic_details_approved, state_status (active/superseded).
 
 ### DirectoryOrganizationLocationLink
-Legatura organizatie → locatie. Contine: organization_id, location_id, source_row_key, source_version, link_status, confidence, evidence_summary, link_record_status (active/superseded).
+Legatura organizatie -> locatie. Contine: organization_id, location_id, source_row_key, source_version, link_status, confidence, evidence_summary, link_record_status (active/superseded).
 
 ### Professional
 Persoana fizica. Specialist independent.
@@ -376,7 +374,7 @@ Configurare si usage Google Places API.
 
 # 5. MODULUL DIRECTORY — ANALIZA COMPLETA
 
-## 5.1 Pipeline-ul de import (12 etape)
+## 5.1 Pipeline-ul de import (18 etape)
 
 ### Etapa 1: Source Registry
 Datele provin din registrul national. Accepta:
@@ -388,7 +386,7 @@ Datele provin din registrul national. Accepta:
 Functie: `descriptorsFromZipBase64()`, `descriptorsFromManifest()`, `nationalRowsFromPrivateSourceBase64()`
 
 ### Etapa 2: Normalize
-Normalizare campuri prin `FIELD_ALIASES` (mapare alias → camp canonica).
+Normalizare campuri prin `FIELD_ALIASES` (mapare alias -> camp canonica).
 - `normalizeIdentityText()` — diacritice, whitespace, lowercase
 - `normalizeAddressForFingerprint()` — sterge prefixe strada/bulevard/numar
 - `mapOperationalStatus()` — mapeaza statusuri operationale
@@ -479,7 +477,7 @@ Pentru rulari automate: `approveRun()` — necesita `AUTOIMPORT ${run_key} ${sha
 - `verification_state: 'unclaimed'`
 - `is_verified: false`
 - `request_intake_status: 'inactive'`
-- Quality classification: high/medium/low → directory_detail_level: basic/summary
+- Quality classification: high/medium/low -> directory_detail_level: basic/summary
 - Sari peste profile controlled (claimed/verified/suspended)
 
 ### Etapa 13: Audit
@@ -535,10 +533,10 @@ Modul `national_directory` in `DirectoryAutoImportRun`:
 ## 6.1 Vizitator
 1. Acceseaza `/` (Home)
 2. Vede hero, categorii, showcase provideri
-3. Cauta: `/cauta` → filtrare dupa tip, localitate, servicii
+3. Cauta: `/cauta` -> filtrare dupa tip, localitate, servicii
 4. Vede rezultate (ResultCard, DirectoryResultCard)
 5. Acceseaza profil provider: `/furnizor/:id`
-6. Porneste cerere: `/cerere` → flow conversational (intake2)
+6. Porneste cerere: `/cerere` -> flow conversational (intake2)
 7. Primeste rezultate match (MatchResults, MatchResultCard)
 8. Poate incepe conversatie cu provider (PatientRequestChat)
 
@@ -546,15 +544,15 @@ Modul `national_directory` in `DirectoryAutoImportRun`:
 1. Primeste invitatie (ProfessionalInvitation / ProviderMemberInvitation)
 2. Accepta invitatie: `/accept-professional-invitation` sau `/accept-provider-invitation`
 3. Onboarding: `/profil-profesional/nou`
-4. Dashboard: `/contul-meu` → ProviderWorkspaceRoot
+4. Dashboard: `/contul-meu` -> ProviderWorkspaceRoot
 5. Moduri: overview, services, hours, media, leads, team, settings, access, articles
-6. Claim profil: `/adauga-sau-revendica` → ClaimForm / NewLocationWizard
+6. Claim profil: `/adauga-sau-revendica` -> ClaimForm / NewLocationWizard
 7. Inbox lead-uri: ProviderLeadInbox
 8. Chat controlat cu pacientii: ProviderLeadChat
 9. Contact access: ProviderLeadContactAccess
 
 ## 6.3 Administrator
-1. Acceseaza `/admin/operatiuni` → AdminDirectoryOps
+1. Acceseaza `/admin/operatiuni` -> AdminDirectoryOps
 2. Dashboard: KPIs, action queue, geo coverage, research pipeline, profiles trust
 3. Directory ops:
    - Import pipeline (DirOpsImportPipeline)
@@ -593,15 +591,15 @@ Modul `national_directory` in `DirectoryAutoImportRun`:
 3. Sistemul creeaza `DirectoryAutoImportRun` (awaiting_approval) + `DirectoryAutoImportItem` per lot + `DirectoryAutoImportPayloadChunk`
 4. Admin approveaza cu confirmation token
 5. Scheduler-ul (cron 5 min) avanseaza automat:
-   - fetch_source → loadItemSourceRows
-   - create_snapshot → createSnapshot
-   - append_rows → appendRows
-   - validate_snapshot → finalizeSnapshot
-   - plan_batch → planBatch
-   - inspect_batch → inspectSafety + approveBatch
-   - execute_batch → executeBatch (chunk-uri de 5)
-   - verify_batch → verificare finala
-   - publish_batch → publishCompletedBatchAsBasicDirectory
+   - fetch_source -> loadItemSourceRows
+   - create_snapshot -> createSnapshot
+   - append_rows -> appendRows
+   - validate_snapshot -> finalizeSnapshot
+   - plan_batch -> planBatch
+   - inspect_batch -> inspectSafety + approveBatch
+   - execute_batch -> executeBatch (chunk-uri de 5)
+   - verify_batch -> verificare finala
+   - publish_batch -> publishCompletedBatchAsBasicDirectory
 6. La finalizare: run status = completed
 7. Audit complet in DirectoryAuditRecord + DirectoryImportMutation
 
@@ -653,7 +651,7 @@ Modul `national_directory` in `DirectoryAutoImportRun`:
 | SIRUTA este sursa canonica | CONFIRMAT | GeographicLocality cu siruta_code |
 | Design minimal, premium, editorial | CONFIRMAT | Design tokens warm cream, Fraunces serif, Manrope sans |
 | i18n pentru toate textele vizibile | NEIMPLEMENTAT | Textele sunt in romana, fara sistem i18n |
-| Trust model: Imported → Claimed → Verified → Trusted | PARTIAL | Implemented: directory → claimed → verified → suspended. "Trusted" NU exista ca status |
+| Trust model: Imported -> Claimed -> Verified -> Trusted | PARTIAL | Implemented: directory -> claimed -> verified -> suspended. "Trusted" NU exista ca status |
 
 ## 7.2 VIASEE_ARCHITECTURE.md
 
@@ -668,7 +666,7 @@ Modul `national_directory` in `DirectoryAutoImportRun`:
 | Logica mutata in hook-uri sau shared | PARTIAL | Exista lib/ cu logica, dar si logica in componente |
 | Fara dependente circulare | CONFIRMAT | Nu s-au identificat dependente circulare |
 | Audit complet | CONFIRMAT | DirectoryAuditRecord + AuditLog |
-| Organization → Location → Professional → Services | CONFIRMAT | Model ierarhic respectat |
+| Organization -> Location -> Professional -> Services | CONFIRMAT | Model ierarhic respectat |
 | Directory este entitatea centrala | CONFIRMAT | ProviderLocation + ProviderLocationDirectoryState |
 | Automatizarile trebuie sa suporte retry, reluare, heartbeat, logging | CONFIRMAT | Toate implementate |
 | Nu trebuie sa proceseze doua campanii simultan | CONFIRMAT | Lock-uri pe run si batch |
@@ -679,9 +677,9 @@ Modul `national_directory` in `DirectoryAutoImportRun`:
 | Afirmatie | Status | Observatie |
 |-----------|--------|-----------|
 | Importul poate fi reluat de 100 de ori fara efecte secundare | CONFIRMAT | Idempotency keys pe randuri, snapshots, batches |
-| Pipeline: Source → Normalize → Canonicalize → Geography → Identity → Dedup → Snapshot → Dry Run → Approval → Execution → Publication → Audit → Rollback | CONFIRMAT | Toate etapele implementate |
+| Pipeline complet cu toate etapele | CONFIRMAT | Toate etapele implementate |
 | Niciun pas nu trebuie sarit | CONFIRMAT | Safety inspection verifica toate etapele |
-| Deduplication: location_external_key → address_fingerprint → organization_external_key → manual review | CONFIRMAT | resolveDirectoryLocationMatch respecta ordinea |
+| Deduplication: location_external_key -> address_fingerprint -> organization_external_key -> manual review | CONFIRMAT | resolveDirectoryLocationMatch respecta ordinea |
 | Nu se compara doar numele | CONFIRMAT |
 | Heartbeat | CONFIRMAT | last_heartbeat_at pe run/item/batch |
 | Watchdog | CONFIRMAT | advanceRuns verifica progres, heartbeat, blocaje |
@@ -700,7 +698,7 @@ Modul `national_directory` in `DirectoryAutoImportRun`:
 | Conflictele nu sunt importate automat | CONFIRMAT | block_conflict planned action |
 | Rollback nu lasa orfane | CONFIRMAT | canDeleteCreatedLocation/canDeleteCreatedOrganization |
 | Doar profile publicate indexabile | CONFIRMAT |
-| Directory trebuie sa suporte Romania → Moldova → Europa | PARTIAL | Arhitectura suporta, dar nu exista implementare multi-tara |
+| Directory trebuie sa suporte Romania -> Moldova -> Europa | PARTIAL | Arhitectura suporta, dar nu exista implementare multi-tara |
 
 ## 7.4 VIASEE_HANDOVER.md
 
@@ -733,7 +731,7 @@ Modul `national_directory` in `DirectoryAutoImportRun`:
 | Search before sales | CONFIRMAT |
 | Every location matters | CONFIRMAT | Fara favoritisme in ranking |
 | No pay to win | CONFIRMAT | Abonamentele NU influenteaza ranking |
-| Trust model: Imported → Claimed → Verified → Trusted | PARTIAL | "Trusted" nu este implementat |
+| Trust model: Imported -> Claimed -> Verified -> Trusted | PARTIAL | "Trusted" nu este implementat |
 | SEO pentru fiecare locatie | PARTIAL | RouteSeo exista dar nu pentru toate locatiile individual |
 | Interfata premium, curata, editoriala | CONFIRMAT |
 | Nu copiem Google Maps, Yelp, Booking, eMAG | CONFIRMAT | Model propriu |
@@ -783,7 +781,7 @@ Modul `national_directory` in `DirectoryAutoImportRun`:
 - Prioritate: HIGH (necesita decizie)
 
 ### P-HIGH-4: Trust model incomplet
-- Descriere: Documentul strategic defineste 4 niveluri (Imported → Claimed → Verified → Trusted), dar implementarea are doar 3 (directory → claimed → verified) + suspended
+- Descriere: Documentul strategic defineste 4 niveluri (Imported -> Claimed -> Verified -> Trusted), dar implementarea are doar 3 (directory -> claimed -> verified) + suspended
 - Impact: "Trusted" nu este implementat ca status distinct
 - Solutie: Adauga `trusted` in enum-ul `profile_control_status` sau clarifica ca "verified" = "trusted"
 - Prioritate: MEDIUM
@@ -872,7 +870,7 @@ Codul nu contine marcatori TODO sau FIXME explicizi. Logica neterminata este rep
 # 10. ISTORICUL DEZVOLTARII
 
 ## 10.1 Module terminate
-- Directory Import Pipeline (12 etape, idempotent, rollback complet)
+- Directory Import Pipeline (18 etape, idempotent, rollback complet)
 - National Campaign mode
 - Snapshot/Dry-Run/Approval/Execution/Publication
 - Audit complet (DirectoryAuditRecord + DirectoryImportMutation)
@@ -911,7 +909,7 @@ Codul nu contine marcatori TODO sau FIXME explicizi. Logica neterminata este rep
 ## 10.5 Module care necesita refactorizare
 - `directoryAutoImportOps.ts` — prea mare (~2100 linii)
 - `directoryImportOps.ts` — prea mare (~900 linii)
-- Consolidare `shared/` → `base44/shared/`
+- Consolidare `shared/` -> `base44/shared/`
 
 ---
 
@@ -943,13 +941,13 @@ Codul nu contine marcatori TODO sau FIXME explicizi. Logica neterminata este rep
 5. **API public** — API pentru integrari terte
 
 ## Ce NU trebuie schimbat
-- Modelul de date ierarhic (Organization → Location → Professional → Services)
-- Pipeline-ul de import (12 etape)
+- Modelul de date ierarhic (Organization -> Location -> Professional -> Services)
+- Pipeline-ul de import (18 etape)
 - Idempotency keys si snapshot-uri
 - Safety inspection
 - Audit complet
 - Lock-uri si heartbeat
-- Trust model (directory → claimed → verified)
+- Trust model (directory -> claimed -> verified)
 - "No pay to win" in ranking
 - Design tokens (warm cream, Manrope, Fraunces)
 
@@ -981,7 +979,7 @@ Codul nu contine marcatori TODO sau FIXME explicizi. Logica neterminata este rep
 6. Lock-uri si heartbeat — previn rulare paralela
 7. "No pay to win" — principiu corect
 8. Design tokens — sunt premium si editoriale
-9. Trust model (directory → claimed → verified) — cu exceptia adaugarii "trusted"
+9. Trust model (directory -> claimed -> verified) — cu exceptia adaugarii "trusted"
 10. Filtrarea stricta in campania nationala — calitate > viteza
 
 ## Ce trebuie refactorizat
@@ -991,7 +989,7 @@ Codul nu contine marcatori TODO sau FIXME explicizi. Logica neterminata este rep
 4. Scripturile de verificare — transforma in teste Vitest reale
 
 ## Ce trebuie pastrat
-1. Pipeline-ul de import cu 12 etape
+1. Pipeline-ul de import cu 18 etape
 2. Modelul de date ierarhic
 3. Safety inspection
 4. Audit complet
@@ -1018,7 +1016,7 @@ Codul nu contine marcatori TODO sau FIXME explicizi. Logica neterminata este rep
 ## Ordine recomandat pentru dezvoltare
 1. **Bug fix: DIRECTORY_FUNCTION_IMPORT_ENDPOINT** — 1 zi
 2. **Bug fix: base44/config.jsonc** — 1 zi
-3. **Consolidare shared/ → base44/shared/** — 2-3 saptamani
+3. **Consolidare shared/ -> base44/shared/** — 2-3 saptamani
 4. **Refactoring directoryAutoImportOps.ts** — 1-2 saptamani
 5. **Teste unitare (Vitest)** — 2-3 saptamani
 6. **SEO complet** — 2-3 saptamani
@@ -1053,7 +1051,18 @@ Codul nu contine marcatori TODO sau FIXME explicizi. Logica neterminata este rep
 
 ---
 
-# 14. REGULI DE BAZA PENTRU ORICE AI
+# 14. STAREA CURENTA A IMPORTULUI NATIONAL
+
+La data generarii acestui document (2026-08-04):
+- Rularea nationala `AUTODIR-5de9fd0f4baa` este in desfasurare
+- 2 loturi finalizate cu succes (78 locatii aplicate, 38 publicate)
+- Loturile 3-20 sunt pendinte (procesare automata prin scheduler-ul de 5 minute)
+- Total: 671 randuri in 20 loturi, 438 randuri excluse de filtrul strict
+- Bug-uri rezolvate recent: ordonarea randurilor create inainte de reuse, permiterea actualizarilor de organizatie pentru `reuse_planned_organization`
+
+---
+
+# 15. REGULI DE BAZA PENTRU ORICE AI
 
 1. Citeste acest document inainte de orice implementare
 2. Nu modifica matchingul, rankingul, Top 3, provider recommendation sau distribuirea cererilor fara cerere explicita
@@ -1068,7 +1077,7 @@ Codul nu contine marcatori TODO sau FIXME explicizi. Logica neterminata este rep
 
 ---
 
-# 15. CONCLUZIE
+# 16. CONCLUZIE
 
 VIASEE este un proiect matur cu o arhitectura solida pentru modulul Directory. Pipeline-ul de import este complet si robust, cu idempotency, audit, rollback si safety inspection. Principalele probleme sunt:
 1. Duplicare shared/ vs base44/shared/
