@@ -1,5 +1,5 @@
 import { normalizeIdentityText } from './directoryImportPipeline.js';
-import { resolveProviderOrganizationType } from './directoryOrganizationTypeMapping.js';
+import { legacyTypeToOrganizationTypeCode, resolveProviderOrganizationType } from './directoryOrganizationTypeMapping.js';
 
 function clean(value, maxLength = 400) {
   return String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
@@ -84,7 +84,18 @@ export function validateExplicitDirectoryOrganizationTarget(organization = {}, r
   }
   const existingLegacyType = clean(organization.organization_type, 120);
   if (existingLegacyType && existingLegacyType !== descriptor.organization_type) {
-    return { valid: false, error_code: 'admin_target_organization_legacy_type_conflict', descriptor };
+    const existingTypeCode = legacyTypeToOrganizationTypeCode(existingLegacyType);
+    return {
+      valid: true,
+      error_code: '',
+      descriptor: {
+        ...descriptor,
+        organization_type: existingLegacyType,
+        organization_type_code: existingTypeCode || descriptor.organization_type_code,
+      },
+      organization_id: organizationId,
+      preserves_controlled_organization: true,
+    };
   }
   return {
     valid: true,
