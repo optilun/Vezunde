@@ -785,7 +785,13 @@ async function reconcileNationalOrganizationKeys(svc, selection) {
       continue;
     }
     if (externalMatches.length === 1) {
-      selected.push({ ...row, target_organization_id: externalMatches[0].id });
+      const existingOrg = externalMatches[0];
+      const existingLegacyType = clean(existingOrg.organization_type, 120);
+      selected.push({
+        ...row,
+        target_organization_id: existingOrg.id,
+        ...(existingLegacyType ? { organization_type_code: existingLegacyType } : {}),
+      });
       continue;
     }
     const nameMatches = byName.get(normalizeIdentityText(row.organization_display_name)) || [];
