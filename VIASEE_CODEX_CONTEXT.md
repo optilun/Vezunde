@@ -858,6 +858,7 @@ Abia apoi se modifica ceva.
 - Actiune: NU se dezactiveaza niciuna fara confirmarea owner-ului. Ambele sunt inofensive
   din punct de vedere al integritatii datelor; costul este doar contentie pe lock.
 
+## 8.3 MEDIUM
 
 ### P-MED-1: Fara teste unitare
 - Descriere: Exista 200+ scripturi de verificare (`scripts/verify-*.mjs`) dar nu exista un framework de testare unitara (Jest, Vitest)
