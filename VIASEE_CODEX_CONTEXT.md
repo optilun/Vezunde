@@ -831,7 +831,33 @@ Abia apoi se modifica ceva.
 - Solutie: Adauga `trusted` in enum-ul `profile_control_status` sau clarifica ca "verified" = "trusted"
 - Prioritate: MEDIUM
 
-## 8.3 MEDIUM
+### P-HIGH-5: Doua automatizari cron concurente pe aceeasi actiune (OBSERVATIE VERIFICATA)
+- Status: VERIFICAT IN COD 2026-08-05. Nu s-a intervenit. Necesita decizia owner-ului.
+- Descriere: exista DOUA automatizari programate, ambele la `*/5 * * * *`, ambele ajungand
+  la aceeasi functie `advanceRuns()`:
+
+  1. `base44/functions/listProviderMemberInvitations/function.jsonc`
+     - automatizare `viasee_directory_auto_import_runner_v2`
+     - autentificare prin `automation_token`
+     - `ends_after_count: 400`
+     - ESTE cea documentata in `docs/directory/VIASEE_DIRECTORY_AUTO_IMPORT_ORCHESTRATOR.md`
+       ("limitata la maximum 400 de executii")
+
+  2. `base44/workflows/Directory Auto Import Scheduler.jsonc`
+     - apeleaza `directoryOps` cu `__function: directoryImportOps`
+     - autentificare prin `__automation_trigger: true`
+     - `ends_type: never`
+     - NU apare in `docs/`
+
+- Impact: la fiecare ciclu de 5 minute, doua declansatoare independente incearca sa avanseze
+  aceleasi rulari. Lock-urile din `acquireRunLock` previn coruperea datelor, dar apar
+  rezultate "locked" si pasi sariti. Aceasta explica mai bine P-MED-4 decat ipoteza initiala.
+- Ipoteza (NECONFIRMATA): workflow-ul 2 a fost probabil adaugat ulterior, ca sa acopere
+  expirarea celor 400 de executii ale automatizarii 1. Ar fi deci o tranzitie neterminata,
+  nu o greseala.
+- Actiune: NU se dezactiveaza niciuna fara confirmarea owner-ului. Ambele sunt inofensive
+  din punct de vedere al integritatii datelor; costul este doar contentie pe lock.
+
 
 ### P-MED-1: Fara teste unitare
 - Descriere: Exista 200+ scripturi de verificare (`scripts/verify-*.mjs`) dar nu exista un framework de testare unitara (Jest, Vitest)
