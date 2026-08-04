@@ -56,6 +56,23 @@ export function isDirectoryOrganizationTypeCode(value) {
   return DIRECTORY_ORGANIZATION_TYPE_CODES.has(cleanType(value));
 }
 
+const CODE_BY_LEGACY_TYPE = Object.freeze({
+  independent_optical_store: 'independent_optical_store',
+  optical_chain: 'optical_chain',
+  ophthalmology_clinic: 'ophthalmology_clinic',
+  ophthalmology_office: 'ophthalmology_office',
+  independent_ophthalmologist: 'independent_professional',
+  independent_optometrist: 'independent_professional',
+  independent_optician: 'independent_professional',
+  optical_laboratory_b2c: 'optical_laboratory',
+  optical_laboratory_b2b: 'optical_laboratory',
+  future_b2b_distributor: 'b2b_distributor',
+});
+
+export function legacyTypeToOrganizationTypeCode(legacyType) {
+  return CODE_BY_LEGACY_TYPE[cleanType(legacyType)] || '';
+}
+
 export function resolveProviderOrganizationType(row = {}) {
   const organizationTypeCode = cleanType(row.organization_type_code);
   const providerProfileType = cleanType(row.provider_profile_type);

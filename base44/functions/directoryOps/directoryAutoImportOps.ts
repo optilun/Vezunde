@@ -14,6 +14,7 @@ import {
   isTransientDirectoryExecutionFailure,
   requireDirectoryRows,
 } from '../../shared/directoryImportReadPolicy.js';
+import { legacyTypeToOrganizationTypeCode } from '../../shared/directoryOrganizationTypeMapping.js';
 import {
   appendRows,
   approveBatch,
@@ -786,11 +787,11 @@ async function reconcileNationalOrganizationKeys(svc, selection) {
     }
     if (externalMatches.length === 1) {
       const existingOrg = externalMatches[0];
-      const existingLegacyType = clean(existingOrg.organization_type, 120);
+      const existingTypeCode = legacyTypeToOrganizationTypeCode(clean(existingOrg.organization_type, 120));
       selected.push({
         ...row,
         target_organization_id: existingOrg.id,
-        ...(existingLegacyType ? { organization_type_code: existingLegacyType } : {}),
+        ...(existingTypeCode ? { organization_type_code: existingTypeCode } : {}),
       });
       continue;
     }
@@ -804,11 +805,14 @@ async function reconcileNationalOrganizationKeys(svc, selection) {
       continue;
     }
     if (candidates.length === 1) {
-      const existingKey = clean(candidates[0].directory_external_key, 240);
+      const existingOrg = candidates[0];
+      const existingKey = clean(existingOrg.directory_external_key, 240);
+      const existingTypeCode = legacyTypeToOrganizationTypeCode(clean(existingOrg.organization_type, 120));
       selected.push({
         ...row,
         ...(existingKey ? { organization_external_key: existingKey } : {}),
-        target_organization_id: candidates[0].id,
+        target_organization_id: existingOrg.id,
+        ...(existingTypeCode ? { organization_type_code: existingTypeCode } : {}),
       });
       continue;
     }
