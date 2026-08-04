@@ -1,0 +1,48 @@
+{
+  "description": "La fiecare 5 minute avanseaza automat rularile de import director aprobate/in curs (inclusiv campania nationala), fara sa depinda de un browser deschis.",
+  "name": "Directory Auto Import Scheduler",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "*/5 * * * *",
+      "one_time_date": null,
+      "timezone": "Europe/Bucharest",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "directory_auto_import_scheduler",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "advance_auto_import_runs": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "listProviderMemberInvitations",
+            "args": {
+              "action": "advance_auto_import_runs",
+              "automation_token": "viasee-auto-7f4d83b1-4d38-45aa-b558-9c20cf63c6c2"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Avanseaza importul director",
+            "description": "Un pas sigur pentru rularea aprobata/in curs"
+          }
+        }
+      }
+    ]
+  }
+}

@@ -5522,7 +5522,7 @@ async function advanceRuns(svc, input = {}) {
   } else {
     const approved = await requireDirectoryRows(svc.entities.DirectoryAutoImportRun.filter({ status: "approved" }, "created_date", 10), "rularilor automate aprobate");
     const running = await requireDirectoryRows(svc.entities.DirectoryAutoImportRun.filter({ status: "running" }, "created_date", 10), "rularilor automate in curs");
-    runs = [...approved, ...running].sort((left, right) => String(left.created_date || "").localeCompare(String(right.created_date || ""))).slice(0, 1);
+    runs = [approved.sort((left, right) => String(left.created_date || "").localeCompare(String(right.created_date || "")))[0], running.sort((left, right) => String(left.created_date || "").localeCompare(String(right.created_date || "")))[0]].filter(Boolean);
     if (!runs.length) {
       const completed = await requireDirectoryRows(
         svc.entities.DirectoryAutoImportRun.filter({ status: "completed" }, "-finished_at", 10),
