@@ -1711,15 +1711,12 @@ async function executeRow(svc, user, batch, rowRecord) {
 
   let organization = null;
   if (row.organization_name) {
+    const reusesPlanned = Array.isArray(plannedActions) && plannedActions.includes('reuse_planned_organization');
     const organizationResult = await ensureOrganization(
-      svc,
-      user,
-      batch,
-      rowRecord,
-      row,
-      updatesDirectoryOrganization,
+      svc, user, batch, rowRecord, row,
+      updatesDirectoryOrganization || reusesPlanned,
       Array.isArray(plannedActions) && plannedActions.includes('use_admin_target_organization'),
-      Array.isArray(plannedActions) && plannedActions.includes('reuse_planned_organization'),
+      reusesPlanned,
     );
     organization = organizationResult.organization;
     result.created_organization = organizationResult.created;
@@ -2469,14 +2466,10 @@ export async function executeBatch(svc, user, input) {
     await svc.entities.DirectoryImportBatch.update(batch.id, { status: 'running', started_at: now() });
   }
   const limit = boundedChunkSize(input.limit, EXECUTION_CHUNK);
-  const rows = await requireDirectoryRows(
-    svc.entities.DirectoryImportRow.filter(
-      { batch_id: batch.id, status: 'ready' },
-      'row_number',
-      limit,
-    ),
+  const rows = (await requireDirectoryRows(
+    svc.entities.DirectoryImportRow.filter({ batch_id: batch.id, status: 'ready' }, 'row_number', limit),
     'randurilor pregatite pentru executie',
-  );
+  )).sort((a, b) => (a.planned_action === 'create_organization_and_location' ? 0 : 1) - (b.planned_action === 'create_organization_and_location' ? 0 : 1) || Number(a.row_number || 0) - Number(b.row_number || 0));
   let applied = 0;
   let skipped = 0;
   let failed = 0;
