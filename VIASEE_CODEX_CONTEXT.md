@@ -756,25 +756,54 @@ Modul `national_directory` in `DirectoryAutoImportRun`:
 
 # 8. PROBLEME IDENTIFICATE
 
+AVERTISMENT. Lista de mai jos a fost dedusa automat, prin analiza statica, FARA verificare
+in `docs/` si fara testare. P-CRIT-2 s-a dovedit complet gresita la verificare (2026-08-05).
+Prin urmare, TOATE intrarile de mai jos trebuie tratate ca IPOTEZE NEVERIFICATE, nu ca sarcini.
+
+Protocol obligatoriu inainte de a actiona pe oricare dintre ele:
+1. Se citeste codul real.
+2. Se cauta in `docs/` o justificare deliberata.
+3. Se cere confirmarea owner-ului.
+Abia apoi se modifica ceva.
+
 ## 8.1 CRITICAL
 
 ### P-CRIT-1: Duplicare directoare shared/
+- Status: NEVERIFICAT
 - Descriere: Exista `shared/` si `base44/shared/` cu aceeasi logica
 - Impact: Cod duplicat, risca divergenta, mentenanta dubla
-- Solutie: Consolidare intr-un singur director (`base44/shared/`) cu redirect-uri sau alias-uri
-- Prioritate: CRITICAL — trebuie rezolvat inainte de orice refactoring major
+- Solutie propusa: Consolidare intr-un singur director (`base44/shared/`) cu redirect-uri sau alias-uri
+- Prioritate: NEDETERMINATA pana la verificare
+- Nota: exista indicii ca separarea este impusa de modul in care Base44 bundle-uieste
+  functiile backend. A se verifica `scripts/bundle-directory-import-bridge.mjs` inainte de
+  orice consolidare.
 
-### P-CRIT-2: DIRECTORY_FUNCTION_IMPORT_ENDPOINT gresit
-- Descriere: In `directoryFunctionRouting.js`, `DIRECTORY_IMPORT_FUNCTION_ENDPOINT = 'listProviderMemberInvitations'` — este mapat la o functie care nu are legatura cu importul
-- Impact: Apelurile frontend catre `invokeDirectoryFunction(client, 'directoryImportOps', payload)` vor fi directionate gresit
-- Solutie: Schimba la `'directoryOps'` — toate functiile directory folosesc acelasi endpoint
-- Prioritate: CRITICAL
+### P-CRIT-2: DIRECTORY_FUNCTION_IMPORT_ENDPOINT — CONCLUZIE GRESITA, INVALIDATA
+- Status: INVALIDAT 2026-08-05. NU ESTE UN BUG. NU SE MODIFICA.
+- Afirmatia initiala (gresita): `DIRECTORY_IMPORT_FUNCTION_ENDPOINT = 'listProviderMemberInvitations'`
+  ar fi o eroare de rutare si ar trebui schimbata la `'directoryOps'`.
+- Realitatea: rutarea este o decizie de arhitectura DELIBERATA, documentata explicit in
+  `docs/directory/VIASEE_DIRECTORY_AUTO_IMPORT_ORCHESTRATOR.md`, linia 62:
+  "Automatizarea foloseste functia fizica existenta `listProviderMemberInvitations`,
+  astfel incat numarul de functii backend nu creste."
+- Dovezi suplimentare in cod:
+  - `scripts/bundle-directory-import-bridge.mjs` — script dedicat care bundle-uieste
+    import ops intr-un fisier unic, cu esbuild
+  - `base44/functions/listProviderMemberInvitations/entry.ts` — bundle generat, ~5760 linii,
+    care dispecerizeaza pe `__function === 'directoryImportOps'`
+  - revizia `viasee-directory-import-single-file-15` — 15 iteratii de lucru pe acest bridge
+- Consecinta: aplicarea "solutiei" ar redirectiona apelurile de import ale frontend-ului
+  catre o functie fara bundle-ul corect si ar rupe pipeline-ul de import in productie.
+- Actiune ceruta: NICIUNA. Se pastreaza codul asa cum este.
 
 ### P-CRIT-3: base44/config.jsonc stale
+- Status: NEVERIFICAT, RISC NEJUSTIFICAT
 - Descriere: `base44/config.jsonc` are `name: "New App"` in loc de "VIASEE"
-- Impact: Configuratie aplicatie incorecta
-- Solutie: Actualizeaza name la "VIASEE"
-- Prioritate: HIGH
+- Realitatea: fisierul nu a mai fost modificat de la commit-ul de scaffolding
+  (`chore: add base44 CLI config files`), iar aplicatia s-a publicat corect cu aceasta valoare.
+- Evaluare: beneficiul este pur cosmetic, iar efectul asupra deploy-ului Base44 CLI este necunoscut.
+- Actiune recomandata: NICIUNA, pana cand se confirma ca `name` nu influenteaza tintirea
+  deploy-ului. S-a incercat modificarea pe 2026-08-05 si s-a revenit din precautie.
 
 ## 8.2 HIGH
 
