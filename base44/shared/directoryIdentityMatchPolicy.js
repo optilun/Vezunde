@@ -128,26 +128,13 @@ export function resolveDirectoryLocationMatch({
     };
   }
 
-  const uniqueAddressStates = uniqueBy(
-    addressStates,
-    (row) => row.location_id || row.id,
-  );
   const addressTargets = locationTargets(addressStates, locationsById);
   if (addressTargets.length > 0) {
     return {
       target: null,
-      strategy: 'address_fingerprint',
+      strategy: 'none',
       confidence: 'none',
-      error_code: 'address_match_requires_manual_identity_review',
-      candidate_ids: addressTargets.map((row) => row.id),
-    };
-  }
-  if (uniqueAddressStates.length > 0) {
-    return {
-      target: null,
-      strategy: 'address_fingerprint',
-      confidence: 'none',
-      error_code: 'address_state_target_missing',
+      error_code: '',
       candidate_ids: [],
     };
   }
