@@ -254,7 +254,7 @@ export async function createSnapshot(svc, user, input) {
     ),
     'snapshoturilor cu acelasi SHA-256',
   );
-  const same = existing.find((item) => item.source_version === sourceVersion && item.status !== 'archived');
+  const same = existing.find((item) => item.source_version === sourceVersion && !['archived', 'blocked', 'ready', 'imported'].includes(item.status));
   if (same) return response({ success: true, reused: true, snapshot: same });
 
   const snapshot = await svc.entities.DirectorySourceSnapshot.create({
