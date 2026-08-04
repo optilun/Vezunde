@@ -30,10 +30,13 @@
         "advance_auto_import_runs": {
           "call": "invoke_backend_function",
           "with": {
-            "function_name": "listProviderMemberInvitations",
+            "function_name": "directoryOps",
             "args": {
-              "action": "advance_auto_import_runs",
-              "automation_token": "viasee-auto-7f4d83b1-4d38-45aa-b558-9c20cf63c6c2"
+              "__function": "directoryImportOps",
+              "payload": {
+                "action": "advance_auto_import_runs",
+                "__automation_trigger": true
+              }
             }
           },
           "then": "end",
