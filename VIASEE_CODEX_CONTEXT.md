@@ -1,18 +1,34 @@
 # VIASEE CODEX CONTEXT
 
-Version: 1.0
-Status: Canonical Implementation Reference
-Date: 2026-08-04
+Version: 1.1
+Status: ANALIZA AUTOMATA NEVERIFICATA — NU este sursa de adevar
+Date: 2026-08-04 (revizuit 2026-08-05)
 Owner: VIASEE
 
 ---
 
 # 0. SCOPUL DOCUMENTULUI
 
-Acest document este sursa unica de adevar pentru proiectul VIASEE.
+ATENTIE. Acest document a fost generat automat de un LLM prin analiza codului si NU a fost
+validat linie cu linie de un om. Cel putin o concluzie majora s-a dovedit GRESITA
+(vezi sectiunea 8.1, P-CRIT-2), iar aplicarea ei ar fi rupt pipeline-ul de import in productie.
+
+ORDINEA SURSELOR DE ADEVAR, obligatorie inainte de orice modificare:
+
+1. Codul real din repository
+2. Directorul `docs/` — documentatia scrisa de echipa
+3. Abia apoi acest document
+
+Daca acest document afirma ca ceva este un bug, o problema sau o inconsistenta,
+se verifica INTAI in cod si in `docs/` daca exista o justificare deliberata.
+Multe decizii care par gresite sunt compromisuri intentionate impuse de platforma Base44.
+
+Documentul ramane util ca inventar (entitati, fluxuri, structura). Nu ca lista de sarcini.
+
 El compara documentele strategice cu implementarea reala si prezinta arhitectura completa, toate entitatile, toate fluxurile, toate problemele si toate recomandarile.
 
-Acest document poate fi citit de orice LLM (Claude, Codex, etc.) ca baza de lucru.
+Acest document poate fi citit de orice LLM (Claude, Codex, etc.) ca baza de lucru,
+cu rezervele de mai sus.
 
 ---
 
