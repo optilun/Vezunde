@@ -639,7 +639,10 @@ Deno.serve(async (request) => {
         const canonicalKey = normalizeServiceKey(row.service_key).canonicalKey;
         return Boolean(canonicalKey && requestedSet.has(canonicalKey));
       });
-      if (candidateRows.length === 0) continue;
+      if (candidateRows.length === 0) {
+        collectStructuralCandidate(location, sirutaCode, countyName, structuralCandidates);
+        continue;
+      }
       configuredMatchingProviderCount += 1;
       if (locationSirutaCode(location) === sirutaCode) localConfiguredMatchingProviderCount += 1;
 
