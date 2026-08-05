@@ -54,6 +54,47 @@ const REPAIR_FACILITIES = [
 const FACILITY_INTENTS = ['reparatii_ochelari', 'ochelari_lentile', 'lentile_contact'];
 const NEED_ORDER = { general: 0, technical: 1, specialized_medical: 2, unknown: 3 };
 
+// --- Structural directory fallback -------------------------------------------------
+// Profilurile importate din surse oficiale nu au inregistrari LocationService, pentru ca
+// importul NU presupune niciodata servicii. Fara un fallback, ele devin invizibile la orice
+// cautare pe nevoie, desi tipul lor este confirmat prin cercetare.
+//
+// Acest fallback NU scrie nimic in date si NU inventeaza servicii specifice. Foloseste doar
+// capacitatea structurala implicita a tipului de locatie, si doar ca ultim nivel de rezultate,
+// clar etichetat, sub orice rezultat confirmat.
+const STRUCTURAL_CAPABILITY_BY_PROVIDER_TYPE = {
+  optica_medicala: 'optical',
+  cabinet_optometric: 'optical',
+  cabinet_oftalmologic: 'medical',
+  clinica_oftalmologica: 'medical',
+};
+
+// Se activeaza doar cand rezultatele confirmate sunt insuficiente pentru localitate.
+const STRUCTURAL_FALLBACK_MIN_CONFIRMED = 3;
+const STRUCTURAL_FALLBACK_MAX_RESULTS = 3;
+
+// Texte distincte: optica este o nevoie generala, oftalmologia este o nevoie medicala si
+// primeste un indemn explicit de verificare telefonica prealabila.
+const STRUCTURAL_FALLBACK_NOTICES = {
+  optical: 'Profil din director \u2014 servicii neconfirmate inca. Sunteti reprezentantul acestei locatii? Revendicati profilul gratuit.',
+  medical: 'Profil din director, preluat din surse oficiale. Serviciile nu sunt confirmate de furnizor. Sunati inainte pentru a verifica disponibilitatea si tipul consultatiei.',
+};
+
+const STRUCTURAL_FALLBACK_GROUP_LABELS = {
+  optical: 'Alte optici din zona',
+  medical: 'Alte cabinete si clinici oftalmologice din zona',
+};
+
+// Profilurile revendicate/verificate nu intra niciodata pe acest traseu: ele au deja
+// posibilitatea de a-si declara serviciile, iar absenta lor este o informatie reala.
+function structuralFallbackCandidate(loc, pcs) {
+  if (pcs !== 'directory') return null;
+  if (loc?.migration_review_required) return null;
+  const capability = STRUCTURAL_CAPABILITY_BY_PROVIDER_TYPE[loc?.provider_type];
+  if (!capability) return null;
+  return capability;
+}
+
 function needLevelOf(rawKey) {
   return getCanonicalServiceDefinition(rawKey)?.service_need_level || 'unknown';
 }
