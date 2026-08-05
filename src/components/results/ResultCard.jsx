@@ -1,7 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Clock, MapPin, Phone, Route } from "lucide-react";
-import { PROVIDER_TYPES } from "@/lib/vezunde";
 import { summarizePublicServices } from "@/lib/servicePresentation";
 import { buildProviderDecisionConfidence } from "../../../shared/providerDecisionConfidence.js";
 import TrustBadge from "@/components/results/TrustBadge";
