@@ -16,7 +16,11 @@ export const SEMANTIC_INTENT_RULES = [
   },
   {
     key: 'blurred_vision_refraction',
-    phrases: ['vad in ceata', 'vad incetosat', 'control ochelari', 'mi au crescut dioptriile', 'nu mai vad bine', 'schimbat dioptrii'],
+    phrases: [
+      'vad in ceata', 'vad incetosat', 'control ochelari', 'mi au crescut dioptriile', 'nu mai vad bine', 'schimbat dioptrii',
+      'control la ochi', 'control de vedere', 'control ochi', 'nu am mai fost de mult la control',
+      'vreau sa fac un control', 'vederea incetosata seara', 'mi se incetoseaza vederea',
+    ],
     targets: [
       ['optometry_consultation', 1],
       ['refraction', 0.96],
