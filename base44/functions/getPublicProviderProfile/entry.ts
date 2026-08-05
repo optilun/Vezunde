@@ -118,6 +118,91 @@ function exactMapPosition(location) {
   return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
 }
 
+async function handleOrganizationProfile(svc, organizationId) {
+  const organization = await svc.entities.ProviderOrganization.get(organizationId).catch(() => null);
+  if (!organization || organization.status === 'inactiva') {
+    return Response.json({ error: 'Organizatia nu a fost gasita' }, { status: 404 });
+  }
+
+  const rawLocations = await svc.entities.ProviderLocation.filter(
+    { organization_id: organizationId },
+    'city',
+    500,
+  ).catch(() => []);
+
+  // Aceeasi politica de vizibilitate ca pentru profilul de locatie: nu se expune nimic
+  // ce nu ar fi vizibil in pagina locatiei.
+  const states = await svc.entities.ProviderLocationDirectoryState.filter(
+    { state_status: 'active' },
+    '-normalized_at',
+    2000,
+  ).catch(() => []);
+  const stateByLocation = new Map();
+  for (const state of states) {
+    if (state?.location_id && !stateByLocation.has(state.location_id)) {
+      stateByLocation.set(state.location_id, state);
+    }
+  }
+
+  const publicLocations = [];
+  const countyCounts = new Map();
+  for (const location of rawLocations) {
+    if (!PATIENT_FACING_PROFILE_TYPES.includes(location.provider_profile_type)) continue;
+    const merged = { ...location, ...(stateByLocation.get(location.id) || {}) };
+    const disclosure = getPublicLocationDisclosure(merged);
+    if (disclosure?.is_publicly_available !== true) continue;
+
+    const county = location.county_name || location.county || null;
+    if (county) countyCounts.set(county, (countyCounts.get(county) || 0) + 1);
+
+    publicLocations.push({
+      id: location.id,
+      name: location.public_display_name || location.name,
+      provider_type: location.provider_type,
+      provider_profile_type: location.provider_profile_type,
+      city: location.locality_name || location.city || null,
+      county,
+      address: disclosure.address,
+      phone: disclosure.phone,
+      website: disclosure.website,
+      opening_hours: disclosure.opening_hours,
+      profile_control_status: disclosure.profile_control_status,
+      public_detail_level: disclosure.public_detail_level,
+      status_label: STATUS_LABELS[disclosure.profile_control_status] || null,
+    });
+  }
+
+  if (publicLocations.length === 0) {
+    return Response.json({ error: 'Organizatia nu are locatii publice' }, { status: 404 });
+  }
+
+  const counties = [...countyCounts.entries()]
+    .map(([name, count]) => ({ county: name, location_count: count }))
+    .sort((a, b) => b.location_count - a.location_count || String(a.county).localeCompare(String(b.county)));
+
+  const logoUrl = publicUrl(organization.logo_url);
+
+  return Response.json({
+    organization: {
+      id: organization.id,
+      name: organization.public_display_name || organization.name,
+      legal_name: organization.legal_name || null,
+      organization_type_code: organization.organization_type_code || null,
+      description: organization.public_description || organization.description || null,
+      website: publicUrl(organization.website),
+      logo_url: logoUrl,
+      logo_configured: Boolean(logoUrl),
+      profile_control_status: organization.control_status || 'directory',
+    },
+    locations: publicLocations,
+    summary: {
+      location_count: publicLocations.length,
+      county_count: counties.length,
+      counties,
+    },
+  });
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
