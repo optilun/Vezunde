@@ -833,7 +833,7 @@ Deno.serve(async (request) => {
 
     return Response.json({
       recommendation_contract_version: PROVIDER_RECOMMENDATION_CONTRACT_VERSION,
-      results: bucketedResults,
+      results: visibleResults,
       resolved_service_keys: requestedKeys,
       semantic_resolution: semantic,
       need_level: needLevel,
