@@ -471,6 +471,7 @@ Deno.serve(async (req) => {
         name: entry.loc.public_display_name || entry.loc.name,
         provider_type: entry.loc.provider_type,
         provider_profile_type: entry.loc.provider_profile_type,
+        photo_url: publicDisclosure.expose_full_details ? (entry.loc.photo_url || null) : null,
         city: entry.loc.city,
         county: entry.loc.county || null,
         address: publicDisclosure.address,
