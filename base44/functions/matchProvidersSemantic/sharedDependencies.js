@@ -1677,7 +1677,7 @@ function getServiceOperationalContext2(serviceKey) {
 var SEMANTIC_INTENT_RULES = [
   {
     key: "dry_eye_symptoms",
-    phrases: ["ma ustura ochii", "ochi uscati", "ochi uscat", "roseata", "nisip in ochi", "ma ard ochii", "lacrimeaza ochii"],
+    phrases: ["ma ustura ochii", "ochi uscati", "ochi uscat", "roseata", "nisip in ochi", "ma ard ochii", "lacrimeaza ochii", "imi lacrimeaza ochiul", "lacrimeaza de cateva zile"],
     targets: [
       ["dry_eye_management", 1],
       ["dry_eye_screening", 0.9],
