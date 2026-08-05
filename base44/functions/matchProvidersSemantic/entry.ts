@@ -631,6 +631,7 @@ Deno.serve(async (request) => {
     let configuredMatchingProviderCount = 0;
     let localConfiguredMatchingProviderCount = 0;
     const results = [];
+    const structuralCandidates = [];
 
     for (const location of scopedLocations) {
       const locationRows = servicesByLocation[location.id] || [];
