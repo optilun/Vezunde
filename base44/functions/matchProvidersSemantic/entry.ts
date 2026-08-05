@@ -73,6 +73,57 @@ const STRUCTURAL_FALLBACK_GROUP_LABELS = {
   medical: 'Alte cabinete si clinici oftalmologice din zona',
 };
 
+// Profilurile revendicate/verificate nu intra pe acest traseu: ele isi pot declara serviciile,
+// iar absenta lor este o informatie reala despre furnizor.
+function collectStructuralCandidate(location, sirutaCode, countyName, bucket) {
+  const disclosure = getPublicLocationDisclosure(location);
+  if (disclosure.profile_control_status !== 'directory') return;
+  if (location?.migration_review_required) return;
+  const capability = STRUCTURAL_CAPABILITY_BY_PROVIDER_TYPE[location?.provider_type];
+  if (!capability) return;
+
+  const tier = expansionTier(location, sirutaCode);
+  bucket.push({
+    id: location.id,
+    name: location.public_display_name || location.name,
+    provider_type: location.provider_type,
+    provider_profile_type: location.provider_profile_type,
+    city: location.locality_name || location.city || null,
+    county: location.county_name || location.county || null,
+    address: disclosure.address,
+    phone: disclosure.phone,
+    website: disclosure.website,
+    opening_hours: disclosure.opening_hours,
+    saturday_hours: disclosure.saturday_hours,
+    profile_control_status: disclosure.profile_control_status,
+    public_detail_level: disclosure.public_detail_level,
+    exact_location_visible: disclosure.exact_location_visible,
+    contact_details_visible: disclosure.contact_details_visible,
+    public_services: [],
+    matched_public_services: [],
+    matched_service_keys: [],
+    semantic_matched_service_keys: [],
+    semantic_match_score: 0,
+    availability_label: null,
+    recommendation_contract_version: PROVIDER_RECOMMENDATION_CONTRACT_VERSION,
+    recommendation_group: 'structural_directory',
+    recommendation_score: 0,
+    recommendation_score_components: {},
+    recommendation_confidence: 'unconfirmed',
+    recommendation_explanations: [],
+    match_reasons: [STRUCTURAL_FALLBACK_NOTICES[capability]],
+    structural_fallback: true,
+    structural_capability: capability,
+    structural_group_label: STRUCTURAL_FALLBACK_GROUP_LABELS[capability],
+    has_service_records: false,
+    is_top3_eligible: false,
+    result_bucket: 'structural_directory',
+    expansion_tier: tier,
+    routing_reason: resultRoutingReason(tier, countyName),
+    score: 0,
+  });
+}
+
 function clean(value) {
   return String(value || '').trim();
 }
