@@ -749,6 +749,9 @@ Deno.serve(async (request) => {
         name: location.public_display_name || location.name,
         provider_type: location.provider_type,
         provider_profile_type: location.provider_profile_type,
+        // Fotografia urmeaza aceeasi regula ca restul detaliilor complete: profilurile
+        // nerevendicate nu expun media, chiar daca ar avea-o setata.
+        photo_url: publicDisclosure.expose_full_details ? (location.photo_url || null) : null,
         city: location.locality_name || location.city || null,
         county: location.county_name || location.county || null,
         address: publicDisclosure.address,
