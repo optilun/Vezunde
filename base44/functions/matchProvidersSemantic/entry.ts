@@ -48,6 +48,31 @@ const NEED_ORDER = {
 
 const PATIENT_CONVERSATION_SHADOW_MODE = 'patient_conversation_shadow';
 
+// --- Structural directory fallback -------------------------------------------------
+// Identic ca mecanism cu cel din matchProviders/entry.ts. A se modifica in ambele locuri.
+// Profilurile importate nu au LocationService, deci ar fi complet invizibile la orice
+// cautare pe nevoie. Nu se inventeaza servicii: se foloseste doar capacitatea structurala
+// a tipului de locatie, ca ultim nivel de rezultate, clar etichetat.
+const STRUCTURAL_CAPABILITY_BY_PROVIDER_TYPE = {
+  optica_medicala: 'optical',
+  cabinet_optometric: 'optical',
+  cabinet_oftalmologic: 'medical',
+  clinica_oftalmologica: 'medical',
+};
+
+const STRUCTURAL_FALLBACK_MIN_CONFIRMED = 3;
+const STRUCTURAL_FALLBACK_MAX_RESULTS = 3;
+
+const STRUCTURAL_FALLBACK_NOTICES = {
+  optical: 'Profil din director \u2014 servicii neconfirmate inca. Sunteti reprezentantul acestei locatii? Revendicati profilul gratuit.',
+  medical: 'Profil din director, preluat din surse oficiale. Serviciile nu sunt confirmate de furnizor. Sunati inainte pentru a verifica disponibilitatea si tipul consultatiei.',
+};
+
+const STRUCTURAL_FALLBACK_GROUP_LABELS = {
+  optical: 'Alte optici din zona',
+  medical: 'Alte cabinete si clinici oftalmologice din zona',
+};
+
 function clean(value) {
   return String(value || '').trim();
 }
