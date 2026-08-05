@@ -221,7 +221,14 @@ export default function Search() {
         </div>
       </section>
 
-      {!hasCanonicalLocality ? (
+      {showSafetyBanner ? (
+        <div className="mt-6">
+          <UrgencyInterruption
+            assessment={{ blocking: true, blocking_flags: safetyFlags }}
+            onCorrect={() => setDismissedFor(debouncedQuery)}
+          />
+        </div>
+      ) : !hasCanonicalLocality ? (
         <SelectLocalityNotice />
       ) : isDirectoryBrowseView ? (
         <div className="mt-8">
