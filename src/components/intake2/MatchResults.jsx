@@ -367,6 +367,32 @@ export default function MatchResults({
         </div>
       )}
 
+      {expanded && structural.length > 0 && (
+        <div className="mt-8">
+          <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            {structural[0]?.structural_group_label
+              || (structuralCapability === "medical"
+                ? "Alte cabinete și clinici oftalmologice din zonă"
+                : "Alte optici din zonă")}
+          </div>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+            {structuralCapability === "medical"
+              ? "Aceste profiluri provin din surse oficiale, dar serviciile nu sunt confirmate de furnizor. Sunați înainte pentru a verifica disponibilitatea și tipul consultației."
+              : "Aceste profiluri provin din surse oficiale, dar serviciile nu sunt încă declarate de furnizor. Vă recomandăm să confirmați telefonic înainte de deplasare."}
+          </p>
+          <div className="mt-3">
+            <ResultScopeGroups items={structural} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} />
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground/80">
+            Sunteți reprezentantul uneia dintre aceste locații?{" "}
+            <a href="/adauga-sau-revendica" className="font-medium text-foreground underline underline-offset-2">
+              Revendicați profilul gratuit
+            </a>{" "}
+            pentru a vă declara serviciile.
+          </p>
+        </div>
+      )}
+
       <p className="mt-6 text-xs text-muted-foreground/80">
         Ordinea reflectă serviciile confirmate, relevanța căutării și verificarea profilului. Extinderea geografică nu modifică regulile de eligibilitate și VIASEE nu oferă diagnostic medical.
       </p>
