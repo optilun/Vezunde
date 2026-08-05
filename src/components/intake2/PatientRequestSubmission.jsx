@@ -309,17 +309,21 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
         <span className="mt-1 block text-[11px] font-normal text-muted-foreground">Acest mesaj este vizibil numai locațiilor Pro din Top 3.</span>
       </label>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      <p className="mt-5 rounded-xl border border-border bg-muted/40 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+        Lasă cel puțin un mod prin care locațiile te pot contacta. Numărul de telefon rămâne ascuns până când îl aprobi tu, separat, pentru fiecare locație.
+      </p>
+
+      <div className="mt-3 grid gap-4 sm:grid-cols-2">
         <label className="text-xs font-semibold text-foreground">
           Nume și prenume
           <input required value={contact.name} onChange={(event) => setContact((current) => ({ ...current, name: event.target.value }))} autoComplete="name" maxLength={120} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-primary" />
         </label>
         <label className="text-xs font-semibold text-foreground">
-          Email <span className="font-normal text-muted-foreground">(email sau telefon obligatoriu)</span>
+          Email
           <input type="email" value={contact.email} onChange={(event) => setContact((current) => ({ ...current, email: event.target.value }))} autoComplete="email" maxLength={254} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-primary" />
         </label>
         <label className="text-xs font-semibold text-foreground">
-          Telefon <span className="font-normal text-muted-foreground">(email sau telefon obligatoriu)</span>
+          Telefon <span className="font-normal text-muted-foreground">(rămâne ascuns)</span>
           <input type="tel" value={contact.phone} onChange={(event) => setContact((current) => ({ ...current, phone: event.target.value }))} autoComplete="tel" maxLength={32} className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-primary" />
         </label>
         <label className="text-xs font-semibold text-foreground">
