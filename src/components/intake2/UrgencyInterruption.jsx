@@ -48,8 +48,8 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
       )}
 
       <div className="mt-5 space-y-3 text-sm leading-relaxed text-red-950">
-        <p><strong>Mergi imediat la UPU, camera de garda sau un serviciu de urgente oftalmologice.</strong></p>
-        <p>Suna la 112 daca nu te poti deplasa in siguranta, vederea s-a pierdut brusc, exista un traumatism sever sau starea se agraveaza. Nu conduce.</p>
+        <p><strong>Mergi la UPU, camera de garda sau un serviciu de urgente oftalmologice cat mai curand.</strong></p>
+        <p>VIASEE nu poate confirma care locatii au garda activa acum — suna inainte, sau mergi direct la cea mai apropiata unitate de urgenta.</p>
       </div>
 
       {chemical && (
@@ -59,15 +59,23 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
         </div>
       )}
 
-      <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-        <a href="tel:112" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-red-700 px-5 text-sm font-extrabold text-white transition-opacity hover:opacity-90">
-          <PhoneCall className="h-4 w-4" /> Suna la 112
-        </a>
-        {onCorrect && (
-          <button type="button" onClick={onCorrect} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-red-300 bg-white px-5 text-sm font-bold text-red-950 hover:bg-red-100/60">
-            <ArrowLeft className="h-4 w-4" /> Am selectat gresit. Corecteaza raspunsul
-          </button>
-        )}
+      <div className="mt-5 flex flex-col gap-2.5">
+        <Link
+          to="/cauta?q=oftalmolog"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-red-700 px-5 text-sm font-extrabold text-white transition-opacity hover:opacity-90"
+        >
+          <Search className="h-4 w-4" /> Gaseste clinici si cabinete oftalmologice langa tine
+        </Link>
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <a href="tel:112" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-red-300 bg-white px-5 text-xs font-bold text-red-950 hover:bg-red-100/60">
+            <PhoneCall className="h-3.5 w-3.5" /> Suna la 112 (daca nu te poti deplasa singur sau starea se agraveaza)
+          </a>
+          {onCorrect && (
+            <button type="button" onClick={onCorrect} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-red-300 bg-white px-5 text-xs font-bold text-red-950 hover:bg-red-100/60">
+              <ArrowLeft className="h-3.5 w-3.5" /> Am selectat gresit. Corecteaza raspunsul
+            </button>
+          )}
+        </div>
       </div>
 
       <p className="mt-5 text-[11px] leading-relaxed text-red-900/70">Acest mesaj este informational si nu reprezinta diagnostic sau triaj medical.</p>
