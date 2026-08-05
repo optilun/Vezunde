@@ -48,9 +48,20 @@ export default function ResultCard({ location, variant = "neutral", onProfileCli
   return (
     <div className={`rounded-2xl p-5 transition-all ${VARIANT_STYLES[variant] || VARIANT_STYLES.neutral}`}>
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-xs font-medium text-muted-foreground">{PROVIDER_TYPES[location.provider_type] || location.provider_type}</div>
-          <h3 className="mt-1 font-heading font-bold text-lg leading-snug tracking-tight">{location.name}</h3>
+        <div className="flex min-w-0 items-start gap-3.5">
+          <LocationThumb
+            name={location.name}
+            photoUrl={location.photo_url}
+            providerType={location.provider_type}
+          />
+          <div className="min-w-0">
+            <div className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+              {typeVisual(location.provider_type).label}
+            </div>
+            <h3 className="mt-1 font-display text-xl font-bold leading-tight tracking-tight text-foreground">
+              {location.name}
+            </h3>
+          </div>
         </div>
         {location.profile_control_status && <TrustBadge status={location.profile_control_status} />}
       </div>
