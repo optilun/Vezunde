@@ -497,7 +497,7 @@ Deno.serve(async (req) => {
         structural_group_label: entry.bucket === 'structural_directory'
           ? STRUCTURAL_FALLBACK_GROUP_LABELS[entry.capability]
           : null,
-        services_confirmed_by_provider: entry.bucket !== 'structural_directory',
+        has_service_records: entry.bucket !== 'structural_directory',
         directory_match_type: entry.directoryMatchType || null,
         expansion_tier: entry.tier,
         result_bucket: entry.finalBucket,
