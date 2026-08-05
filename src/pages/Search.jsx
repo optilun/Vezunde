@@ -47,6 +47,17 @@ export default function Search() {
   );
   const debouncedQuery = useDebouncedValue(query.trim(), 350);
 
+  // Verificare deterministica de siguranta, identica cu cea din fluxul ghidat /cerere.
+  // Cautarea libera de aici nu trece prin QuestionText.jsx, deci fara acest control
+  // un pacient care descrie un simptom grav direct in caseta de cautare nu ar primi
+  // niciun avertisment.
+  const safetyFlags = useMemo(
+    () => deterministicSafetyFlagsFromText(debouncedQuery),
+    [debouncedQuery],
+  );
+  const [dismissedFor, setDismissedFor] = useState("");
+  const showSafetyBanner = safetyFlags.length > 0 && dismissedFor !== debouncedQuery;
+
   const suggestions = useMemo(
     () => getServiceSearchSuggestions(query, { limit: 6 }),
     [query],
