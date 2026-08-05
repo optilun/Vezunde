@@ -444,9 +444,12 @@ Deno.serve(async (req) => {
         .filter((entry) => entry.capability === requiredCapability)
         .sort((a, b) => {
           // Prioritizeaza profilurile cu date de contact publice, ca pacientul sa poata verifica.
-          const contactA = (a.loc.phone_public || a.loc.website) ? 1 : 0;
-          const contactB = (b.loc.phone_public || b.loc.website) ? 1 : 0;
-          if (contactA !== contactB) return contactB - contactA;
+          // Variantele de camp trebuie sa le oglindeasca pe cele din getPublicLocationDisclosure.
+          const hasContact = (loc) => (
+            loc.public_phone || loc.phone_public || loc.website_url || loc.website
+          ) ? 1 : 0;
+          const contactDelta = hasContact(b.loc) - hasContact(a.loc);
+          if (contactDelta !== 0) return contactDelta;
           return String(a.loc.name || '').localeCompare(String(b.loc.name || ''));
         })
         .slice(0, STRUCTURAL_FALLBACK_MAX_RESULTS);
