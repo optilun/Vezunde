@@ -1,5 +1,6 @@
 import React from "react";
-import { AlertTriangle, ArrowLeft, Droplets, PhoneCall, ShieldAlert } from "lucide-react";
+import { Link } from "react-router-dom";
+import { AlertTriangle, ArrowLeft, Droplets, PhoneCall, Search, ShieldAlert } from "lucide-react";
 import { PATIENT_SAFETY_FLAG_PRESENTATION } from "@/lib/patientSafety";
 
 function flagLabels(assessment) {
