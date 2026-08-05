@@ -5,6 +5,8 @@ import { base44 } from "@/api/base44Client";
 import { SERVICES, PROVIDER_TYPES } from "@/lib/vezunde";
 import { getServiceSearchSuggestions } from "@/lib/serviceSemanticSearch";
 import { matchProvidersWithSemanticFallback } from "@/lib/providerSemanticSearch";
+import { deterministicSafetyFlagsFromText } from "@/lib/patientSafety";
+import UrgencyInterruption from "@/components/intake2/UrgencyInterruption";
 import ProviderCard from "@/components/ProviderCard";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
