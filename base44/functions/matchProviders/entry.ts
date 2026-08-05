@@ -331,8 +331,12 @@ Deno.serve(async (req) => {
       if (intent === 'reparatii_ochelari') {
         if (!OPTICAL_TYPES.includes(loc.provider_type)) continue;
         const hasRepairFacility = locFacilities.some((facility) => REPAIR_FACILITIES.includes(facility.facility_key));
-        if (matched.length === 0 && !hasRepairFacility) continue;
+        if (matched.length === 0 && !hasRepairFacility) {
+          collectStructuralCandidate(loc, structuralList);
+          continue;
+        }
       } else if (serviceKeys.length > 0 && matchedRows.length === 0) {
+        collectStructuralCandidate(loc, structuralList);
         continue;
       }
       const tier = 'oras';
