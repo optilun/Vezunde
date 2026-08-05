@@ -327,7 +327,11 @@ export const AMBIGUOUS_LEGACY_SERVICE_KEYS = [
 const GROUP_POLICY = {
   optical_retail: { kind: "product", need: "general", review: false, specialist: false, equipment: false, infrastructure: false, professionalTypes: [], patientFacing: true, b2bOnly: false },
   lenses_and_measurements: { kind: "product", need: "general", review: false, specialist: false, equipment: false, infrastructure: false, professionalTypes: [], patientFacing: true, b2bOnly: false },
-  optometry: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["optometrist", "ophthalmologist"], patientFacing: true, b2bOnly: false },
+  // Reclasificat 2026-08-05: controlul de vedere de rutina (refractie, acuitate vizuala) e un
+  // serviciu comun oferit si de optici cu optometrist propriu, nu doar de cabinete medicale.
+  // Ramane distinct de ophthalmology_consults/investigations/specialties/procedures_surgery,
+  // care raman specialized_medical si pastreaza toata bariera de excludere din matching.
+  optometry: { kind: "service", need: "technical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["optometrist", "ophthalmologist"], patientFacing: true, b2bOnly: false },
   contact_lenses: { kind: "product", need: "general", review: false, specialist: false, equipment: false, infrastructure: false, professionalTypes: [], patientFacing: true, b2bOnly: false },
   ophthalmology_consults: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["ophthalmologist"], patientFacing: true, b2bOnly: false },
   investigations: { kind: "investigation", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["ophthalmologist"], patientFacing: true, b2bOnly: false },
