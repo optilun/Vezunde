@@ -2,9 +2,8 @@ import { createClient } from '@base44/sdk';
 
 const base44 = createClient({
   appId: '6a48cb9d04fa7f999d8a8054',
-  serverUrl: '',
+  serverUrl: 'https://base44.app',
   requiresAuth: false,
-  appBaseUrl: 'https://base44.app',
 });
 
 // Fraze romanesti tipice de pacient, informale, acoperind toate cele 4 zone:
