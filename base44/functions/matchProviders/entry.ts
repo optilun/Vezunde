@@ -433,7 +433,30 @@ Deno.serve(async (req) => {
       entry.bucketRank = index + 1;
     });
 
-    const finalVisible = [...eligibleSorted, ...directorySorted].slice(0, limit);
+    // Fallback structural: se activeaza doar cand rezultatele confirmate sunt insuficiente.
+    // Capacitatea ceruta se potriveste cu nivelul nevoii, ca sa nu propunem optici pentru o
+    // problema medicala sau cabinete pentru o pereche de ochelari.
+    const requiredCapability = needLevel === 'specialized_medical' ? 'medical' : 'optical';
+    const confirmedCount = eligibleSorted.length;
+    let structuralSorted = [];
+    if (confirmedCount < STRUCTURAL_FALLBACK_MIN_CONFIRMED) {
+      structuralSorted = structuralList
+        .filter((entry) => entry.capability === requiredCapability)
+        .sort((a, b) => {
+          // Prioritizeaza profilurile cu date de contact publice, ca pacientul sa poata verifica.
+          const contactA = (a.loc.phone_public || a.loc.website) ? 1 : 0;
+          const contactB = (b.loc.phone_public || b.loc.website) ? 1 : 0;
+          if (contactA !== contactB) return contactB - contactA;
+          return String(a.loc.name || '').localeCompare(String(b.loc.name || ''));
+        })
+        .slice(0, STRUCTURAL_FALLBACK_MAX_RESULTS);
+      structuralSorted.forEach((entry, index) => {
+        entry.finalBucket = 'structural_directory';
+        entry.bucketRank = index + 1;
+      });
+    }
+
+    const finalVisible = [...eligibleSorted, ...directorySorted, ...structuralSorted].slice(0, limit);
     const results = finalVisible.map((entry) => {
       const publicDisclosure = getPublicLocationDisclosure(entry.loc, entry.eligibility.pcs);
       return {
