@@ -226,6 +226,7 @@ export default function Search() {
           <UrgencyInterruption
             assessment={{ blocking: true, blocking_flags: safetyFlags }}
             onCorrect={() => setDismissedFor(debouncedQuery)}
+            correctLabel="Nu e o urgenta, continua cautarea"
           />
         </div>
       ) : !hasCanonicalLocality ? (
