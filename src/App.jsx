@@ -28,6 +28,7 @@ const PageNotFound = lazy(() => import("./lib/PageNotFound"));
 const Home = lazy(() => import("./pages/Home"));
 const Search = lazy(() => import("./pages/Search"));
 const ProviderProfile = lazy(() => import("./pages/ProviderProfile"));
+const OrganizationProfile = lazy(() => import("./pages/OrganizationProfile"));
 const ProfessionalProfile = lazy(() => import("./pages/ProfessionalProfile"));
 const RequestFlow = lazy(() => import("./pages/RequestFlow"));
 const ForSpecialists = lazy(() => import("./pages/ForSpecialists"));
