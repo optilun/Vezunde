@@ -129,7 +129,10 @@ export default function MatchResults({
   const top3 = list.filter((result) => result.result_bucket === "top3");
   const confirmed = list.filter((result) => result.result_bucket === "extended_confirmed");
   const directory = list.filter((result) => result.result_bucket === "extended_directory");
-  const moreCount = confirmed.length + directory.length;
+  // Profiluri din director fara servicii declarate, afisate doar cand nu exista optiuni mai bune.
+  const structural = list.filter((result) => result.result_bucket === "structural_directory");
+  const structuralCapability = structural[0]?.structural_capability || null;
+  const moreCount = confirmed.length + directory.length + structural.length;
   const recommendationState = top3.length === 0 && moreCount === 0 ? "empty" : (top3.length < 3 ? "insufficient" : "sufficient");
   const queryScope = activeMeta.query_scope || activeMeta.routing_mode || "locality";
   const storedDraft = readPatientRequestDraft();
