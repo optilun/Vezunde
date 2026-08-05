@@ -437,7 +437,9 @@ Deno.serve(async (req) => {
     // Capacitatea ceruta se potriveste cu nivelul nevoii, ca sa nu propunem optici pentru o
     // problema medicala sau cabinete pentru o pereche de ochelari.
     const requiredCapability = needLevel === 'specialized_medical' ? 'medical' : 'optical';
-    const confirmedCount = eligibleSorted.length;
+    // Pragul numara si rezultatele extended_directory: acelea au inregistrari reale de serviciu,
+    // chiar daca profilul nu e revendicat. Sunt intotdeauna preferabile unui fallback structural.
+    const confirmedCount = eligibleSorted.length + directorySorted.length;
     let structuralSorted = [];
     if (confirmedCount < STRUCTURAL_FALLBACK_MIN_CONFIRMED) {
       structuralSorted = structuralList
