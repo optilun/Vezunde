@@ -8,6 +8,7 @@ import TrustBadge from "@/components/results/TrustBadge";
 import ServiceChip from "@/components/results/ServiceChip";
 import DecisionConfidencePanel from "@/components/results/DecisionConfidencePanel";
 import DirectoryProfileNotice from "@/components/provider/DirectoryProfileNotice";
+import LocationThumb, { typeVisual } from "@/components/results/LocationThumb";
 
 const TIER_LABELS = {
   apropiere: "In zona ta",
