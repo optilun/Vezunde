@@ -819,10 +819,11 @@ Deno.serve(async (request) => {
       eligible_provider_count: results.length,
       local_eligible_provider_count: localEligibleProviderCount,
       county_eligible_provider_count: countyEligibleProviderCount,
-      result_count: bucketedResults.length,
+      result_count: visibleResults.length,
+      structural_fallback_count: structuralResults.length,
     };
     const coverageStatus = getRecommendationCoverageStatus({
-      resultCount: coverageCounts.result_count,
+      resultCount: bucketedResults.length,
       localProviderCount: coverageCounts.scope_provider_count,
       configuredMatchingProviderCount: coverageCounts.configured_matching_provider_count,
     });
