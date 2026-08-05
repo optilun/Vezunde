@@ -72,7 +72,7 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
           </a>
           {onCorrect && (
             <button type="button" onClick={onCorrect} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-red-300 bg-white px-5 text-xs font-bold text-red-950 hover:bg-red-100/60">
-              <ArrowLeft className="h-3.5 w-3.5" /> Am selectat gresit. Corecteaza raspunsul
+              <ArrowLeft className="h-3.5 w-3.5" /> {correctLabel}
             </button>
           )}
         </div>
