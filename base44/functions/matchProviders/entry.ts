@@ -64,6 +64,8 @@ const NEED_ORDER = { general: 0, technical: 1, specialized_medical: 2, unknown: 
 // clar etichetat, sub orice rezultat confirmat.
 const STRUCTURAL_CAPABILITY_BY_PROVIDER_TYPE = {
   optica_medicala: 'optical',
+  // Inactiv in practica: profilul 'independent_optometrist' nu trece de PATIENT_FACING_PROFILE_TYPES,
+  // iar in date nu exista inca nicio locatie de acest tip. Pastrat pentru cand va exista.
   cabinet_optometric: 'optical',
   cabinet_oftalmologic: 'medical',
   clinica_oftalmologica: 'medical',
