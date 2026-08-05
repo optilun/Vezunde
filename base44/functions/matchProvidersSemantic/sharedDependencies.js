@@ -1707,7 +1707,16 @@ var SEMANTIC_INTENT_RULES = [
   },
   {
     key: "ophthalmology_emergency",
-    phrases: ["mi a intrat ceva in ochi", "durere insuportabila", "durere oculara brusca", "pierdere brusca vedere", "lovitura in ochi", "ochi rosu foarte dureros"],
+    phrases: [
+      "mi a intrat ceva in ochi", "durere insuportabila", "durere oculara brusca", "pierdere brusca vedere",
+      "lovitura in ochi", "ochi rosu foarte dureros",
+      "nu mai vad deloc", "nu mai vad cu un ochi", "mi am pierdut vederea brusc", "am pierdut vederea",
+      "durere foarte tare la ochi", "durere mare la ochi si greata", "ma doare ochiul foarte tare",
+      "substanta chimica in ochi", "mi a sarit ceva chimic in ochi", "inalbitor in ochi", "detergent in ochi",
+      "soda caustica in ochi", "a sarit ceva in ochi",
+      "obiect infipt in ochi", "obiect patruns in ochi", "sticla in ochi", "aschie in ochi",
+      "dupa operatie la ochi nu mai vad", "durere dupa operatie la ochi"
+    ],
     targets: [
       ["emergency_ophthalmology", 1],
       ["ocular_trauma", 0.88],
