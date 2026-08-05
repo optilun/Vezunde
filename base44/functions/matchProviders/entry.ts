@@ -307,6 +307,7 @@ Deno.serve(async (req) => {
     const now = Date.now();
     const scored = [];
     const excludedList = [];
+    const structuralList = [];
 
     for (const loc of locations) {
       const locRows = serviceRowsByLocation[loc.id] || [];
