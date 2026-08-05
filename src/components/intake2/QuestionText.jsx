@@ -57,17 +57,21 @@ export default function QuestionText({ question, onSubmit }) {
   if (!screeningCleared) {
     return (
       <div className="mt-6">
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
-          <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-amber-800">Verificare de siguranta</p>
-          <p className="mt-1 text-sm font-bold">Se aplica acum una dintre situatiile de mai jos?</p>
-          <p className="mt-1 text-xs leading-relaxed text-amber-900/80">Selecteaza situatia exacta. VIASEE nu stabileste diagnosticul, dar nu continua cautarea obisnuita cand exista un semnal clar de urgenta.</p>
-          <div className="mt-4 grid gap-2">
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Verificare de siguranta</p>
+          <p className="mt-1.5 font-heading text-base font-bold leading-snug tracking-tight text-foreground">
+            Se aplica acum una dintre situatiile de mai jos?
+          </p>
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+            Selecteaza situatia exacta. VIASEE nu stabileste diagnosticul, dar nu continua cautarea obisnuita cand exista un semnal clar de urgenta.
+          </p>
+          <div className="mt-4 grid gap-2.5">
             {SAFETY_CHOICES.map((choice) => (
               <button
                 key={choice.key}
                 type="button"
                 onClick={() => setUrgentChoice(choice.key)}
-                className="min-h-11 rounded-xl border border-amber-200 bg-white px-4 py-3 text-left text-xs font-semibold leading-relaxed text-foreground transition-colors hover:border-amber-400 hover:bg-amber-100/50"
+                className="min-h-[56px] rounded-2xl border border-border bg-background px-4 py-3 text-left text-sm font-semibold leading-snug text-foreground transition-all duration-200 hover:border-foreground/40 hover:bg-secondary/50"
               >
                 {choice.label}
               </button>
@@ -75,7 +79,7 @@ export default function QuestionText({ question, onSubmit }) {
             <button
               type="button"
               onClick={() => setScreeningCleared(true)}
-              className="min-h-11 rounded-xl bg-foreground px-4 py-3 text-left text-xs font-bold text-background transition-opacity hover:opacity-90"
+              className="min-h-[56px] rounded-2xl bg-primary px-4 py-3 text-left text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
             >
               Niciuna dintre acestea
             </button>
