@@ -123,8 +123,17 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const svc = base44.asServiceRole;
     const payload = await req.json().catch(() => ({}));
+
+    // Mod organizatie: profil de lant/organizatie cu locatiile sale publice.
+    // Traieste in aceeasi functie fizica pentru a nu creste numarul de functii backend,
+    // conform deciziei din docs/directory. Refoloseste aceeasi politica de disclosure.
+    const organizationId = payload.organization_id ? String(payload.organization_id) : null;
+    if (organizationId) {
+      return await handleOrganizationProfile(svc, organizationId);
+    }
+
     const locationId = payload.location_id ? String(payload.location_id) : null;
-    if (!locationId) return Response.json({ error: 'location_id este obligatoriu' }, { status: 400 });
+    if (!locationId) return Response.json({ error: 'location_id sau organization_id este obligatoriu' }, { status: 400 });
 
     const location = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
     const directoryStates = location
