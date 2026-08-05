@@ -788,6 +788,26 @@ Deno.serve(async (request) => {
     }
 
     const bucketedResults = assignRecommendationBuckets(results, limit);
+
+    // Fallback structural: doar cand rezultatele cu servicii reale sunt insuficiente.
+    // Capacitatea ceruta urmeaza nivelul nevoii, ca sa nu propunem optici pentru o problema
+    // medicala sau cabinete pentru o pereche de ochelari.
+    const requiredCapability = needLevel === 'specialized_medical' ? 'medical' : 'optical';
+    let structuralResults = [];
+    if (bucketedResults.length < STRUCTURAL_FALLBACK_MIN_CONFIRMED) {
+      structuralResults = structuralCandidates
+        .filter((entry) => entry.structural_capability === requiredCapability)
+        .sort((a, b) => {
+          const hasContact = (entry) => (entry.phone || entry.website) ? 1 : 0;
+          const contactDelta = hasContact(b) - hasContact(a);
+          if (contactDelta !== 0) return contactDelta;
+          return String(a.name || '').localeCompare(String(b.name || ''));
+        })
+        .slice(0, STRUCTURAL_FALLBACK_MAX_RESULTS)
+        .map((entry, index) => ({ ...entry, bucket_rank: index + 1 }));
+    }
+
+    const visibleResults = [...bucketedResults, ...structuralResults];
     const localEligibleProviderCount = results.filter((result) => result.expansion_tier === 'oras').length;
     const countyEligibleProviderCount = results.filter((result) => result.expansion_tier === 'judet').length;
     const coverageCounts = {
