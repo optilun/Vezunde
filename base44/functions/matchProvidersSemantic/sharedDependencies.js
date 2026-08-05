@@ -350,7 +350,7 @@ var AMBIGUOUS_LEGACY_SERVICE_KEYS = [
 var GROUP_POLICY = {
   optical_retail: { kind: "product", need: "general", review: false, specialist: false, equipment: false, infrastructure: false, professionalTypes: [], patientFacing: true, b2bOnly: false },
   lenses_and_measurements: { kind: "product", need: "general", review: false, specialist: false, equipment: false, infrastructure: false, professionalTypes: [], patientFacing: true, b2bOnly: false },
-  optometry: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["optometrist", "ophthalmologist"], patientFacing: true, b2bOnly: false },
+  optometry: { kind: "service", need: "technical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["optometrist", "ophthalmologist"], patientFacing: true, b2bOnly: false },
   contact_lenses: { kind: "product", need: "general", review: false, specialist: false, equipment: false, infrastructure: false, professionalTypes: [], patientFacing: true, b2bOnly: false },
   ophthalmology_consults: { kind: "service", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["ophthalmologist"], patientFacing: true, b2bOnly: false },
   investigations: { kind: "investigation", need: "specialized_medical", review: true, specialist: true, equipment: true, infrastructure: false, professionalTypes: ["ophthalmologist"], patientFacing: true, b2bOnly: false },
