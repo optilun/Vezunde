@@ -482,9 +482,17 @@ Deno.serve(async (req) => {
           ? entry.safeMatchedRows.map(toPublicService).filter(Boolean)
           : [],
         availability_label: publicDisclosure.expose_full_details ? entry.availabilityLabel : null,
-        match_reasons: publicDisclosure.expose_full_details
+        match_reasons: entry.bucket === 'structural_directory'
           ? entry.reasons
-          : ['Profil din director pentru localitatea selectata'],
+          : (publicDisclosure.expose_full_details
+            ? entry.reasons
+            : ['Profil din director pentru localitatea selectata']),
+        structural_fallback: entry.bucket === 'structural_directory',
+        structural_capability: entry.capability || null,
+        structural_group_label: entry.bucket === 'structural_directory'
+          ? STRUCTURAL_FALLBACK_GROUP_LABELS[entry.capability]
+          : null,
+        services_confirmed_by_provider: entry.bucket !== 'structural_directory',
         directory_match_type: entry.directoryMatchType || null,
         expansion_tier: entry.tier,
         result_bucket: entry.finalBucket,
