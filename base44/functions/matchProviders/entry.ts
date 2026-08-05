@@ -95,6 +95,29 @@ function structuralFallbackCandidate(loc, pcs) {
   return capability;
 }
 
+// Construieste o intrare de fallback cu scor 0. Scorul nu conteaza pentru ordonarea finala:
+// aceste intrari sunt intotdeauna adaugate DUPA rezultatele confirmate, niciodata amestecate.
+function collectStructuralCandidate(loc, structuralList) {
+  const pcs = getPublicLocationDisclosure(loc).profile_control_status;
+  const capability = structuralFallbackCandidate(loc, pcs);
+  if (!capability) return;
+  structuralList.push({
+    loc,
+    capability,
+    matched: [],
+    tier: 'oras',
+    score: 0,
+    reasons: [STRUCTURAL_FALLBACK_NOTICES[capability]],
+    availabilityLabel: null,
+    safeLocRows: [],
+    safeMatchedRows: [],
+    eligibility: { eligible: false, reasons: ['structural_directory_fallback'], pcs, qualifying: [] },
+    bucket: 'structural_directory',
+    directoryMatchType: null,
+    routing_reason: routingReason(),
+  });
+}
+
 function needLevelOf(rawKey) {
   return getCanonicalServiceDefinition(rawKey)?.service_need_level || 'unknown';
 }
