@@ -362,6 +362,31 @@ export default function ProviderProfile() {
             <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
               <h2 className="font-heading font-bold">Despre organizație</h2>
               <p className="mt-2 text-[15px] leading-7 text-foreground/75">{organizationDescription}</p>
+              {profile.organization_id && (
+                <Link
+                  to={`/organizatie/${profile.organization_id}`}
+                  className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-foreground underline underline-offset-4"
+                >
+                  Vezi toate locațiile organizației
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
+              )}
+            </div>
+          )}
+
+          {!organizationDescription && profile.organization_id && (
+            <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+              <h2 className="font-heading font-bold">Organizație</h2>
+              <p className="mt-2 text-[15px] leading-7 text-foreground/75">
+                Această locație face parte din {profile.organization_name || "o organizație"}.
+              </p>
+              <Link
+                to={`/organizatie/${profile.organization_id}`}
+                className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-foreground underline underline-offset-4"
+              >
+                Vezi toate locațiile organizației
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
             </div>
           )}
 
