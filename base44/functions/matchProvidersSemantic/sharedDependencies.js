@@ -1725,7 +1725,7 @@ var SEMANTIC_INTENT_RULES = [
   },
   {
     key: "pediatric_eye_care",
-    phrases: ["control ochelari copii", "control ochi copil", "ochi lenes", "medici copii", "oftalmolog copii", "strabism copil"],
+    phrases: ["control ochelari copii", "control ochi copil", "ochi lenes", "medici copii", "oftalmolog copii", "strabism copil", "control vedere copil", "control vedere pentru scoala", "control vedere scoala", "copilul meu trebuie sa faca un control"],
     targets: [
       ["children_eye_exam", 1],
       ["pediatric_ophthalmology", 0.98],
