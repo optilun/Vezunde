@@ -12,7 +12,7 @@ function flagLabels(assessment) {
     .filter(Boolean);
 }
 
-export default function UrgencyInterruption({ assessment, mode = "blocking", onCorrect }) {
+export default function UrgencyInterruption({ assessment, mode = "blocking", onCorrect, correctLabel = "Am selectat gresit. Corecteaza raspunsul" }) {
   const labels = flagLabels(assessment);
   const chemical = [...(assessment?.blocking_flags || []), ...(assessment?.advisory_flags || [])].includes("chemical_injury");
   const blocking = mode === "blocking";
