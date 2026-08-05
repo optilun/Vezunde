@@ -172,6 +172,7 @@ const AppRoutes = () => {
           <Route path="/parteneri" element={<Partners />} />
           <Route path="/despre-viasee" element={<AboutViasee />} />
           <Route path="/furnizor/:id" element={<ProviderProfile />} />
+          <Route path="/organizatie/:id" element={<OrganizationProfile />} />
           <Route path="/specialist/:id" element={<ProfessionalProfile />} />
           <Route path="/cerere" element={<RequestFlow />} />
           <Route path="/ghid" element={<GuideIndex />} />
