@@ -4,7 +4,14 @@ import { base44 } from "@/api/base44Client";
 
 // Module UI-1: variant is derived strictly from the existing result_bucket
 // value returned by matchProviders — never recomputed or overridden here.
-const BUCKET_VARIANT = { top3: "top3", extended_confirmed: "confirmed", extended_directory: "directory" };
+const BUCKET_VARIANT = {
+  top3: "top3",
+  extended_confirmed: "confirmed",
+  extended_directory: "directory",
+  // Profil din director fara servicii declarate: acelasi tratament vizual ca directory,
+  // avertismentul suplimentar este afisat la nivel de sectiune in MatchResults.
+  structural_directory: "directory",
+};
 
 export default function MatchResultCard({ location }) {
   const trackAction = (action) => {
