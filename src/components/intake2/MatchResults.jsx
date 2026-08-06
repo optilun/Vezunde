@@ -392,7 +392,7 @@ export default function MatchResults({
             Aceste profiluri provin din surse publice. VIASEE nu a confirmat toate informațiile afișate.
           </p>
           <div className="mt-3">
-            <ResultScopeGroups items={directory} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} />
+            <ResultScopeGroups items={directory} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} />
           </div>
         </div>
       )}
