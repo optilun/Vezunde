@@ -152,6 +152,7 @@ function trackPatientSearchEvent(eventName, properties = {}) {
 
 export default function ConversationalCard({ initialMessage = "", initialIntent = null }) {
   const reduceMotion = useReducedMotion();
+  const navigate = useNavigate();
   const entrySignatureRef = useRef("");
   if (!entrySignatureRef.current) {
     entrySignatureRef.current = createPatientIntakeEntrySignature({
