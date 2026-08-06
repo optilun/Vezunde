@@ -130,43 +130,55 @@ function PinnedTakeover() {
       <section
         ref={sceneRef}
         aria-label="Tranziție către conținutul homepage-ului"
-        className="pointer-events-none relative z-30 h-[calc(170svh-5rem)]"
+        className={started ? "relative z-30" : "pointer-events-none relative z-30 h-[calc(170svh-5rem)]"}
       >
         <motion.div
-          style={{ visibility: stageVisibility }}
-          className="sticky top-20 h-[calc(100svh-5rem)] overflow-hidden bg-[#F7F2E8]"
+          style={started ? undefined : { visibility: stageVisibility }}
+          className={
+            started
+              ? "relative bg-[#F7F2E8]"
+              : "sticky top-20 h-[calc(100svh-5rem)] overflow-hidden bg-[#F7F2E8]"
+          }
         >
           <motion.div
-            className="absolute inset-0 origin-top will-change-transform"
-            style={{
-              scale: heroScale,
-              opacity: heroOpacity,
-              y: heroY,
-              pointerEvents: heroPointerEvents,
-            }}
+            className={started ? "relative" : "absolute inset-0 origin-top will-change-transform"}
+            style={
+              started
+                ? undefined
+                : {
+                    scale: heroScale,
+                    opacity: heroOpacity,
+                    y: heroY,
+                    pointerEvents: heroPointerEvents,
+                  }
+            }
           >
-            <Hero />
+            <Hero onStartedChange={setStarted} />
           </motion.div>
 
-          <motion.div
-            style={{ y: sheetY }}
-            className="pointer-events-none absolute inset-0 z-20 isolate overflow-hidden rounded-t-[2rem] border-t border-white/80 bg-[#F8F4EC] shadow-[0_-18px_65px_rgba(28,24,18,0.13)] will-change-transform sm:rounded-t-[2.75rem] lg:rounded-t-[3.25rem]"
-          >
+          {!started && (
             <motion.div
-              aria-hidden="true"
-              inert=""
-              style={{ opacity: previewContentOpacity }}
-              className="pointer-events-none min-h-full"
+              style={{ y: sheetY }}
+              className="pointer-events-none absolute inset-0 z-20 isolate overflow-hidden rounded-t-[2rem] border-t border-white/80 bg-[#F8F4EC] shadow-[0_-18px_65px_rgba(28,24,18,0.13)] will-change-transform sm:rounded-t-[2.75rem] lg:rounded-t-[3.25rem]"
             >
-              <HomeCanvas preview />
+              <motion.div
+                aria-hidden="true"
+                inert=""
+                style={{ opacity: previewContentOpacity }}
+                className="pointer-events-none min-h-full"
+              >
+                <HomeCanvas preview />
+              </motion.div>
             </motion.div>
-          </motion.div>
+          )}
         </motion.div>
       </section>
 
-      <div className="relative z-20 mt-[calc(-100svh+5rem)] isolate overflow-hidden rounded-t-[2rem] border-t border-white/80 bg-[#F8F4EC] pb-16 shadow-[0_-18px_65px_rgba(28,24,18,0.13)] sm:rounded-t-[2.75rem] lg:rounded-t-[3.25rem]">
-        <HomeCanvas />
-      </div>
+      {!started && (
+        <div className="relative z-20 mt-[calc(-100svh+5rem)] isolate overflow-hidden rounded-t-[2rem] border-t border-white/80 bg-[#F8F4EC] pb-16 shadow-[0_-18px_65px_rgba(28,24,18,0.13)] sm:rounded-t-[2.75rem] lg:rounded-t-[3.25rem]">
+          <HomeCanvas />
+        </div>
+      )}
     </>
   );
 }
