@@ -85,7 +85,7 @@ export default function Hero() {
     <section
       className={`relative flex items-center justify-center ${
         started
-          ? "min-h-[calc(100svh-4rem)] overflow-visible py-10 sm:min-h-0"
+          ? "items-start overflow-visible py-10"
           : "min-h-[calc(100svh-4rem)] overflow-hidden sm:min-h-[92vh]"
       }`}
     >
