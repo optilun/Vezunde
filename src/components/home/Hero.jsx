@@ -134,7 +134,11 @@ export default function Hero({ onStartedChange } = {}) {
         }}
       />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-3xl flex-col items-center px-4 py-16 text-center sm:px-5 sm:py-28">
+      <div
+        className={`relative z-10 mx-auto flex w-full max-w-3xl flex-col items-center px-4 text-center sm:px-5 ${
+          started ? "py-6 sm:py-10" : "py-16 sm:py-28"
+        }`}
+      >
         {started ? (
           <div className="w-full max-w-2xl text-left">
             <Suspense
