@@ -38,6 +38,8 @@ export default function MatchResultCard({ location, onSelect, selected = false }
       variant={BUCKET_VARIANT[location.result_bucket] || "neutral"}
       onProfileClick={() => trackAction("profile_opened")}
       onPhoneClick={() => trackAction("phone_clicked")}
+      onSelect={onSelect}
+      selected={selected}
     />
   );
 }
