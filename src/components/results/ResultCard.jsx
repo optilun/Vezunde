@@ -45,7 +45,15 @@ export default function ResultCard({ location, variant = "neutral", onProfileCli
   const confidence = confidenceForLocation(location);
 
   return (
-    <div className={`rounded-2xl p-5 transition-all ${VARIANT_STYLES[variant] || VARIANT_STYLES.neutral}`}>
+    <div
+      onClick={onSelect ? () => onSelect(location) : undefined}
+      role={onSelect ? "button" : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      onKeyDown={onSelect ? (event) => { if (event.key === "Enter") onSelect(location); } : undefined}
+      className={`rounded-2xl p-5 transition-all ${VARIANT_STYLES[variant] || VARIANT_STYLES.neutral} ${
+        onSelect ? "cursor-pointer" : ""
+      } ${selected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3.5">
           <LocationThumb
