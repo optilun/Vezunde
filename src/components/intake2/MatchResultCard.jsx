@@ -13,7 +13,7 @@ const BUCKET_VARIANT = {
   structural_directory: "directory",
 };
 
-export default function MatchResultCard({ location }) {
+export default function MatchResultCard({ location, onSelect, selected = false }) {
   const trackAction = (action) => {
     try {
       base44.analytics.track({
