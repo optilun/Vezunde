@@ -66,12 +66,16 @@ function useTypingPlaceholder(active) {
   return display;
 }
 
-export default function Hero() {
+export default function Hero({ onStartedChange } = {}) {
   const [text, setText] = useState("");
   const [animating, setAnimating] = useState(true);
   const [started, setStarted] = useState(false);
   const prefersReducedMotion = useReducedMotion();
   const typed = useTypingPlaceholder(animating && !started && !prefersReducedMotion);
+
+  useEffect(() => {
+    onStartedChange?.(started);
+  }, [started, onStartedChange]);
   const promptPreview = prefersReducedMotion ? PROMPTS[0] : typed;
 
   const submit = (event) => {
