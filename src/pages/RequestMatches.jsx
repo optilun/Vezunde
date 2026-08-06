@@ -2,6 +2,7 @@ import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import MatchResults from "@/components/intake2/MatchResults";
+import { clearPatientIntakeSession } from "@/lib/patientIntakeSession";
 
 // Pagina dedicata de rezultate. ConversationalCard din hero navigheaza aici cand
 // fluxul de intrebari ajunge la faza "results", in loc sa afiseze rezultatele
