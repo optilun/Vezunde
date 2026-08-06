@@ -82,7 +82,13 @@ export default function Hero() {
   const stopAnimation = () => setAnimating(false);
 
   return (
-    <section className="relative flex min-h-[calc(100svh-4rem)] items-center justify-center overflow-hidden sm:min-h-[92vh]">
+    <section
+      className={`relative flex items-center justify-center ${
+        started
+          ? "min-h-[calc(100svh-4rem)] overflow-visible py-10 sm:min-h-0"
+          : "min-h-[calc(100svh-4rem)] overflow-hidden sm:min-h-[92vh]"
+      }`}
+    >
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
