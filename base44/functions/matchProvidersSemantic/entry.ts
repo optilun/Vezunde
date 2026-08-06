@@ -480,10 +480,15 @@ async function interpretPatientNeed(
     });
   } catch (_error) {
     // AI is advisory in shadow mode. Its failure must never block deterministic search.
+    // Diagnostic temporar: clasificam eroarea reala, ca sa stim de ce esueaza, fara sa
+    // afectam deloc cautarea reala (ramane strict pe ramura shadow/interpret_only).
+    const diagnosis = classifyPatientConversationModelFailure(_error);
     const liveResult = {
       mode: 'shadow',
       status: 'unavailable',
       reason: 'ai_interpretation_unavailable',
+      diagnosis,
+      raw_error_message: String(_error?.message || '').slice(0, 300),
     };
     return observePatientGuidanceShadow({
       liveResult,
