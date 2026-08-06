@@ -91,6 +91,7 @@ function HomeCanvas({ preview = false }) {
 
 function PinnedTakeover() {
   const sceneRef = useRef(null);
+  const [started, setStarted] = useState(false);
   const { scrollYProgress } = useScroll({
     target: sceneRef,
     offset: ["start 80px", "end end"],
