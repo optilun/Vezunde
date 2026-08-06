@@ -753,7 +753,11 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
 
       {phase === "submitting" && <SearchingTransition />}
 
-      {phase === "results" && <MatchResults results={results} meta={matchMeta} onRequestCreated={handleRequestCreated} />}
+      {phase === "results" && (
+        <div className="rounded-2xl border border-border bg-card p-6 text-center" role="status">
+          <p className="text-sm text-muted-foreground">Te ducem catre rezultate...</p>
+        </div>
+      )}
 
       {phase === "error" && (
         <div className="py-6">
