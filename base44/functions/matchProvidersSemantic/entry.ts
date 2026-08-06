@@ -26,6 +26,7 @@ import {
   isApprovedPatientGuidanceQuestionKey,
 } from '../../shared/patientGuidanceQuestionCatalog.js';
 import { buildPatientSafetyAssessment } from '../../shared/patientSafety.js';
+import { classifyPatientConversationModelFailure } from './patientConversationModelFailureDiagnostics.js';
 import {
   loadPublicLocationsForLocality,
   loadRowsForLocationIds,
