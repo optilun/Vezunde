@@ -66,7 +66,11 @@ export function getPatientNeedResponseSchema() {
     type: 'object',
     properties: {
       intent: { type: 'string', enum: [...PATIENT_INTENT_KEYS] },
-      service_keys: { type: 'array', items: { type: 'string', enum: serviceKeys } },
+      // Gemini respinge cu 400 INVALID_ARGUMENT cand un enum are prea multe valori
+      // (limita practica documentata e ~120; catalogul VIASEE are 133 chei). Nu mai
+      // impunem enum-ul in schema; lista completa e oricum in prompt, iar raspunsul
+      // e revalidat integral prin canonicalServiceKeys() in sanitizePatientNeedInterpretation.
+      service_keys: { type: 'array', items: { type: 'string' } },
       for_whom: { type: 'string', enum: [...FOR_WHOM_KEYS] },
       age_group: { type: 'string', enum: [...AGE_GROUP_KEYS] },
       timing_key: { type: 'string', enum: [...TIMING_KEYS] },
