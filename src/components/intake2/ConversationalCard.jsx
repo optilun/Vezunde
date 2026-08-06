@@ -404,10 +404,6 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     setPhase("questions");
   };
 
-  const handleRequestCreated = () => {
-    clearPatientIntakeSession();
-  };
-
   const retrySearch = () => {
     trackPatientSearchEvent("patient_search_retry_clicked", {
       intent: state.intent || "unknown",
