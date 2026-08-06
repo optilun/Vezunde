@@ -1912,12 +1912,11 @@ function getPatientFacingServiceCatalog() {
   }));
 }
 function getPatientNeedResponseSchema() {
-  const serviceKeys = getPatientFacingServiceCatalog().map((service) => service.key);
   return {
     type: "object",
     properties: {
       intent: { type: "string", enum: [...PATIENT_INTENT_KEYS] },
-      service_keys: { type: "array", items: { type: "string", enum: serviceKeys } },
+      service_keys: { type: "array", items: { type: "string" } },
       for_whom: { type: "string", enum: [...FOR_WHOM_KEYS] },
       age_group: { type: "string", enum: [...AGE_GROUP_KEYS] },
       timing_key: { type: "string", enum: [...TIMING_KEYS] },
