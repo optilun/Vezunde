@@ -61,7 +61,6 @@ export function getPatientFacingServiceCatalog() {
 }
 
 export function getPatientNeedResponseSchema() {
-  const serviceKeys = getPatientFacingServiceCatalog().map((service) => service.key);
   return {
     type: 'object',
     properties: {
