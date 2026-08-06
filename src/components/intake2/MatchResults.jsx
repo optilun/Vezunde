@@ -347,7 +347,7 @@ export default function MatchResults({
           </p>
           <RoutingNotice meta={activeMeta} />
           <div className="mt-5">
-            <ResultScopeGroups items={top3} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} />
+            <ResultScopeGroups items={top3} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} />
           </div>
         </>
       )}
