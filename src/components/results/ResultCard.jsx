@@ -34,7 +34,7 @@ function confidenceForLocation(location) {
   });
 }
 
-export default function ResultCard({ location, variant = "neutral", onProfileClick, onPhoneClick }) {
+export default function ResultCard({ location, variant = "neutral", onProfileClick, onPhoneClick, onSelect, selected = false }) {
   const isDirectoryProfile = location.profile_control_status === "directory";
   const allServices = location.public_services || [];
   const matchedServices = location.matched_public_services?.length ? location.matched_public_services : allServices;
