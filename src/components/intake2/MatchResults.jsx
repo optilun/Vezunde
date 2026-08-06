@@ -143,6 +143,8 @@ export default function MatchResults({
   onChangeLocation = null,
   onReviewCriteria = null,
   onRequestCreated = null,
+  onSelectLocation = null,
+  selectedLocationId = null,
 }) {
   const [showMore, setShowMore] = useState(false);
   const [feedback, setFeedback] = useState(null);
