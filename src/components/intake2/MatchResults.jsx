@@ -411,7 +411,7 @@ export default function MatchResults({
               : "Aceste profiluri provin din surse oficiale, dar serviciile nu sunt încă declarate de furnizor. Vă recomandăm să confirmați telefonic înainte de deplasare."}
           </p>
           <div className="mt-3">
-            <ResultScopeGroups items={structural} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} />
+            <ResultScopeGroups items={structural} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} />
           </div>
           <p className="mt-3 text-xs text-muted-foreground/80">
             Sunteți reprezentantul uneia dintre aceste locații?{" "}
