@@ -63,11 +63,18 @@ function metaFromExpandedResponse(data, previousMeta) {
   };
 }
 
-function ResultScopeGroups({ items, queryScope, selectedCity, countyName }) {
+function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSelectLocation, selectedId }) {
   if (queryScope !== "county") {
     return (
       <div className="space-y-3">
-        {items.map((location) => <MatchResultCard key={location.id} location={location} />)}
+        {items.map((location) => (
+          <MatchResultCard
+            key={location.id}
+            location={location}
+            onSelect={onSelectLocation}
+            selected={selectedId === location.id}
+          />
+        ))}
       </div>
     );
   }
@@ -84,7 +91,14 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName }) {
             În {selectedCity || "localitatea selectată"}
           </div>
           <div className="space-y-3">
-            {local.map((location) => <MatchResultCard key={location.id} location={location} />)}
+            {local.map((location) => (
+              <MatchResultCard
+                key={location.id}
+                location={location}
+                onSelect={onSelectLocation}
+                selected={selectedId === location.id}
+              />
+            ))}
           </div>
         </section>
       )}
@@ -94,13 +108,27 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName }) {
             În restul județului {countyName || "selectat"}
           </div>
           <div className="space-y-3">
-            {county.map((location) => <MatchResultCard key={location.id} location={location} />)}
+            {county.map((location) => (
+              <MatchResultCard
+                key={location.id}
+                location={location}
+                onSelect={onSelectLocation}
+                selected={selectedId === location.id}
+              />
+            ))}
           </div>
         </section>
       )}
       {other.length > 0 && (
         <div className="space-y-3">
-          {other.map((location) => <MatchResultCard key={location.id} location={location} />)}
+          {other.map((location) => (
+            <MatchResultCard
+              key={location.id}
+              location={location}
+              onSelect={onSelectLocation}
+              selected={selectedId === location.id}
+            />
+          ))}
         </div>
       )}
     </div>
