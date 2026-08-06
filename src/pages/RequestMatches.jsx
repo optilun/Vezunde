@@ -41,7 +41,7 @@ export default function RequestMatches() {
         <ArrowLeft className="h-4 w-4" /> Inapoi
       </button>
       <div className="mt-4">
-        <MatchResults results={results} meta={meta} />
+        <MatchResults results={results} meta={meta} onRequestCreated={() => clearPatientIntakeSession()} />
       </div>
     </div>
   );
