@@ -32,7 +32,6 @@ export default function RequestMatches() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
-      <RouteSeo title="Rezultate cerere | VIASEE" description="Rezultatele cautarii tale pe VIASEE." noindex />
       <button
         type="button"
         onClick={() => navigate(-1)}
