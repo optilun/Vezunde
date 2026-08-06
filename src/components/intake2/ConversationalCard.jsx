@@ -490,6 +490,14 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     state.city,
   ]);
 
+  // Rezultatele nu se mai afiseaza inghesuite in cardul din hero: cand faza devine
+  // rezultate, navigam pe pagina dedicata /rezultate, care are spatiu pentru
+  // lista de locatii, detalii si (ulterior) chat, la fel ca RequestWorkspace.
+  useEffect(() => {
+    if (phase !== "results" || !Array.isArray(results)) return;
+    navigate("/rezultate", { state: { results, meta: matchMeta } });
+  }, [phase, results, matchMeta, navigate]);
+
   useEffect(() => {
     if (phase !== "interpreting" || interpretationAttemptedRef.current) return;
     interpretationAttemptedRef.current = true;
