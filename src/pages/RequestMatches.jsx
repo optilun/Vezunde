@@ -16,7 +16,6 @@ export default function RequestMatches() {
   if (!Array.isArray(results)) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-20 text-center">
-        <RouteSeo title="Rezultate cerere | VIASEE" description="Rezultatele cautarii tale pe VIASEE." noindex />
         <h1 className="font-display text-2xl font-bold text-foreground">Nu am gasit rezultate de afisat</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Este posibil sa fi ajuns direct pe aceasta pagina, fara sa treci prin cautare.
