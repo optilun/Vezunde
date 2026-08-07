@@ -60,10 +60,13 @@ export default function NoResultsFlow({
   directoryCount = 0,
   countyName = "",
   onExpandCounty,
+  onExpandNational,
   onChangeLocation,
   onReviewCriteria,
   isExpandingCounty = false,
+  isExpandingNational = false,
   actionError = "",
+  nationalActionError = "",
 }) {
   const emptyState = EMPTY_STATES[meta?.coverage_status] || DEFAULT_EMPTY_STATE;
   const insufficient = mode === "insufficient";
