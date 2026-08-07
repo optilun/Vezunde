@@ -205,8 +205,15 @@ function expansionTier(location, selectedSirutaCode) {
   return locationSirutaCode(location) === selectedSirutaCode ? 'oras' : 'judet';
 }
 
+function expansionTier(location, selectedSirutaCode, scope) {
+  if (locationSirutaCode(location) === selectedSirutaCode) return 'oras';
+  if (scope === 'national') return 'tara';
+  return 'judet';
+}
+
 function resultRoutingReason(tier, countyName) {
   if (tier === 'oras') return 'Potrivire din localitatea selectata.';
+  if (tier === 'tara') return 'Potrivire la nivel national - singura optiune confirmata gasita.';
   return countyName
     ? `Potrivire din alta localitate din judetul ${countyName}.`
     : 'Potrivire din alta localitate din acelasi judet.';
