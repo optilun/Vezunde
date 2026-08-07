@@ -163,10 +163,12 @@ export default function NoResultsFlow({
             <BookOpen className="h-3.5 w-3.5" /> Explorează directorul complet
           </Link>
 
-          <p className="mt-4 flex items-start gap-2 border-t border-border/70 pt-4 text-[11px] leading-relaxed text-muted-foreground">
-            <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-            VIASEE nu completează lista cu profiluri slab potrivite doar pentru a afișa mai multe rezultate și nu oferă diagnostic medical.
-          </p>
+          {!insufficient && (
+            <p className="mt-4 flex items-start gap-2 border-t border-border/70 pt-4 text-[11px] leading-relaxed text-muted-foreground">
+              <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+              VIASEE nu completează lista cu profiluri slab potrivite doar pentru a afișa mai multe rezultate și nu oferă diagnostic medical.
+            </p>
+          )}
         </div>
       </div>
     </section>
