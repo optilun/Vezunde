@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Expand, MapPin, SearchX, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { BookOpen, Expand, Globe, MapPin, SearchX, ShieldCheck, SlidersHorizontal } from "lucide-react";
 
 const EMPTY_STATES = {
   no_local_providers: {
