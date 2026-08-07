@@ -387,7 +387,7 @@ export default function MatchResults({
 
       {expanded && directory.length > 0 && (
         <div className="mt-8">
-          <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Opțiuni din director</div>
+          <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Opțiuni din director</div>
           <div className="mt-3">
             <ResultScopeGroups items={directory} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} />
           </div>
