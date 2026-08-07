@@ -764,7 +764,7 @@ Deno.serve(async (request) => {
         profileControlStatus,
         availability: publicDisclosure.expose_full_details ? availability : null,
       });
-      const tier = expansionTier(location, sirutaCode);
+      const tier = expansionTier(location, sirutaCode, queryScope);
 
       results.push({
         id: location.id,
