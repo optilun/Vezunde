@@ -104,7 +104,7 @@ export default function NoResultsFlow({
           <h2 className="font-heading text-lg font-bold tracking-tight text-foreground sm:text-xl">{title}</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
 
-          {(meta?.client_address_text || resolvedCountyName) && (
+          {!insufficient && (meta?.client_address_text || resolvedCountyName) && (
             <p className="mt-3 inline-flex items-start gap-2 text-xs text-muted-foreground">
               <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               {countyExpanded
