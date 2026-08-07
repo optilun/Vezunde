@@ -128,7 +128,7 @@ export default function NoResultsFlow({
             </div>
           )}
 
-          <div className={`mt-5 grid gap-2 ${canExpandCounty ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+          <div className={`mt-5 grid gap-2 ${gridColsClass}`}>
             {canExpandCounty && (
               <button
                 type="button"
@@ -138,6 +138,17 @@ export default function NoResultsFlow({
               >
                 <Expand className="h-4 w-4" />
                 {isExpandingCounty ? "Extindem căutarea..." : `Extinde în județul ${resolvedCountyName}`}
+              </button>
+            )}
+            {canExpandNational && (
+              <button
+                type="button"
+                onClick={onExpandNational}
+                disabled={isExpandingNational}
+                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${canExpandCounty ? "border border-border bg-background text-foreground hover:bg-secondary" : "bg-primary text-primary-foreground hover:opacity-90"}`}
+              >
+                <Globe className="h-4 w-4" />
+                {isExpandingNational ? "Căutăm în toată țara..." : "Caută în toată țara"}
               </button>
             )}
             <button
