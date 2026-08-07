@@ -316,6 +316,68 @@ export default function MatchResults({
     }
   };
 
+  const expandNational = async () => {
+    if (isExpandingNational || queryScope === "national") return;
+    const draft = readPatientRequestDraft();
+    if (!draft) {
+      setNationalExpansionError("Rezumatul cererii nu mai este disponibil. Reia căutarea.");
+      return;
+    }
+
+    setIsExpandingNational(true);
+    setNationalExpansionError("");
+    try {
+      base44.analytics.track({
+        eventName: "patient_search_national_expansion_started",
+        properties: {
+          analytics_version: "patient-search-v1",
+          expansion_version: "patient-national-expansion-v1",
+          original_coverage_status: activeMeta?.coverage_status || "unknown",
+          original_result_count: list.length,
+        },
+      });
+    } catch (_error) {
+      // Expansion must not depend on analytics.
+    }
+
+    try {
+      const data = await matchProvidersNationally(draft);
+      const nextDraft = nationalExpansionDraft(draft);
+      storePatientRequestDraft(nextDraft);
+      const nextMeta = metaFromExpandedResponse(data, activeMeta);
+      setExpandedSnapshot({ results: Array.isArray(data.results) ? data.results : [], meta: nextMeta });
+      setShowMore(false);
+      try {
+        base44.analytics.track({
+          eventName: "patient_search_national_expansion_completed",
+          properties: {
+            analytics_version: "patient-search-v1",
+            expansion_version: "patient-national-expansion-v1",
+            coverage_status: data.coverage_status || "unknown",
+            result_count: data.results?.length || 0,
+          },
+        });
+      } catch (_error) {
+        // Expansion must not depend on analytics.
+      }
+    } catch (error) {
+      setNationalExpansionError(error?.message || "Căutarea nu a putut fi extinsă la nivel național.");
+      try {
+        base44.analytics.track({
+          eventName: "patient_search_national_expansion_failed",
+          properties: {
+            analytics_version: "patient-search-v1",
+            expansion_version: "patient-national-expansion-v1",
+          },
+        });
+      } catch (_error) {
+        // Expansion must not depend on analytics.
+      }
+    } finally {
+      setIsExpandingNational(false);
+    }
+  };
+
   const expansionProps = {
     countyName,
     onExpandCounty: queryScope === "county" || !countyName ? undefined : expandCounty,
