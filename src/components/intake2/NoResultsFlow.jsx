@@ -95,9 +95,9 @@ export default function NoResultsFlow({
   const canExpandCounty = Boolean(onExpandCounty && !countyExpanded && resolvedCountyName);
 
   return (
-    <section className={`rounded-2xl border p-5 sm:p-6 ${insufficient ? "border-amber-200/80 bg-amber-50/60" : "border-border bg-secondary/25"}`}>
+    <section className={`rounded-2xl border p-5 sm:p-6 ${insufficient ? "border-border bg-secondary/25" : "border-amber-200/80 bg-amber-50/60"}`}>
       <div className="flex items-start gap-3">
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${insufficient ? "bg-amber-100 text-amber-800" : "bg-primary/10 text-primary"}`}>
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${insufficient ? "bg-primary/10 text-primary" : "bg-amber-100 text-amber-800"}`}>
           <SearchX className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
