@@ -75,6 +75,12 @@ const MATRIX = /** @type {Record<string, any>} */ ({
     optional_facts: ["last_eye_exam", "prescription_status"],
     inferable_facts: ["for_whom"],
     exact_service_can_skip_search_facts: ["routine_vs_symptom"],
+    conditional_required_for_search: [
+      {
+        when: { investigation_type: "not_sure", confirmed_service_required: false },
+        facts: ["investigation_reference_text"],
+      },
+    ],
     skip_question_keys: [
       "child_age_group",
       "contact_lens_experience",
