@@ -419,6 +419,37 @@ export default function MatchResults({
           <div className="mt-5">
             <ResultScopeGroups items={top3} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} />
           </div>
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+            <a href="/cauta" className="font-medium text-foreground underline underline-offset-2">
+              Vezi toate opțiunile din zonă
+            </a>
+            {expansionProps.onExpandCounty && (
+              <button
+                type="button"
+                onClick={expandCounty}
+                disabled={isExpandingCounty}
+                className="font-medium text-foreground underline underline-offset-2 disabled:opacity-60"
+              >
+                {isExpandingCounty ? "Extindem..." : `Extinde în județul ${countyName || "selectat"}`}
+              </button>
+            )}
+            {expansionProps.onExpandNational && (
+              <button
+                type="button"
+                onClick={expandNational}
+                disabled={isExpandingNational}
+                className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-2 disabled:opacity-60"
+              >
+                <Globe className="h-3 w-3" />
+                {isExpandingNational ? "Căutăm în toată țara..." : "Caută în toată țara"}
+              </button>
+            )}
+          </div>
+          {(expansionError || nationalExpansionError) && (
+            <p role="alert" className="mt-2 text-xs text-destructive">
+              {expansionError || nationalExpansionError}
+            </p>
+          )}
         </>
       )}
 
