@@ -118,6 +118,12 @@ const MATRIX = /** @type {Record<string, any>} */ ({
     ],
     optional_facts: [],
     inferable_facts: [],
+    conditional_required_for_search: [
+      {
+        when: { investigation_type: "not_sure", confirmed_service_required: false },
+        facts: ["investigation_reference_text"],
+      },
+    ],
     skip_question_keys: [
       "optical_product_type",
       "contact_lens_experience",
