@@ -1,4 +1,5 @@
 export const PATIENT_COUNTY_EXPANSION_VERSION = 'patient-county-expansion-v1';
+export const PATIENT_NATIONAL_EXPANSION_VERSION = 'patient-national-expansion-v1';
 
 function clean(value, maxLength = 800) {
   return String(value || '').trim().slice(0, maxLength);
