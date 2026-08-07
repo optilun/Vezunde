@@ -383,6 +383,9 @@ export default function MatchResults({
     onExpandCounty: queryScope === "county" || !countyName ? undefined : expandCounty,
     isExpandingCounty,
     actionError: expansionError,
+    onExpandNational: queryScope === "national" ? undefined : expandNational,
+    isExpandingNational,
+    nationalActionError: nationalExpansionError,
   };
 
   if (top3.length === 0 && moreCount === 0) {
