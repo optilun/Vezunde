@@ -154,6 +154,8 @@ export default function MatchResults({
   const [expandedSnapshot, setExpandedSnapshot] = useState(null);
   const [isExpandingCounty, setIsExpandingCounty] = useState(false);
   const [expansionError, setExpansionError] = useState("");
+  const [isExpandingNational, setIsExpandingNational] = useState(false);
+  const [nationalExpansionError, setNationalExpansionError] = useState("");
   const lastImpressionKey = useRef("");
   const activeMeta = expandedSnapshot?.meta || meta || {};
   const list = Array.isArray(expandedSnapshot?.results)
