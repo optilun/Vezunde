@@ -100,11 +100,12 @@ const MATRIX = /** @type {Record<string, any>} */ ({
     ],
   },
   simptome_oftalmologice: {
-    required_for_search: ["symptom_description", "safety_targeted_check", "locality"],
+    required_for_search: ["symptom_description", "safety_targeted_check", "investigation_type", "locality"],
     required_for_provider_request: [
       "symptom_description",
       "symptom_timing_or_acuity",
       "safety_targeted_check",
+      "investigation_type",
       "for_whom",
       "locality",
       "timing",
@@ -112,7 +113,6 @@ const MATRIX = /** @type {Record<string, any>} */ ({
     optional_facts: [],
     inferable_facts: [],
     skip_question_keys: [
-      "investigation_type",
       "optical_product_type",
       "contact_lens_experience",
       "repair_type",
