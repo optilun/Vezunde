@@ -349,7 +349,17 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     // acelasi tipar folosit deja la acceptarea cu incredere mare (initState mai jos,
     // linia ~326). Motorul de intrebari aprobate va sti astfel sa sara direct la
     // intrebarea specifica ce lipseste, in loc sa reporneasca de la intrebarea generica.
-    setState(initState(intentProposal?.intent || null, initialMessage));
+    const correctedState = initState(intentProposal?.intent || null, initialMessage);
+    // initState populeaza serviceKeys din lista generica a categoriei (ex: control_vedere
+    // -> control_vedere_adulti). Dar AI-ul a fost adesea mai precis (ex: distinge intre
+    // ophthalmology_consultation - un medic - si optometry_consultation - un optometrist).
+    // Cand AI-ul a dat o lista explicita de servicii, o folosim pe aceea, nu pe cea generica,
+    // ca sa nu pierdem exact distinctia pentru care AI-ul a fost util.
+    if (Array.isArray(intentProposal?.service_keys) && intentProposal.service_keys.length > 0) {
+      correctedState.serviceKeys = [...intentProposal.service_keys];
+      correctedState.explicitServiceKeys = [...intentProposal.service_keys];
+    }
+    setState(correctedState);
     setHistory([]);
     setRequestDraft(null);
     markSearchStarted(intentProposal?.intent || state.intent);
