@@ -1,13 +1,17 @@
 import { base44 } from "@/api/base44Client";
 import {
   PATIENT_COUNTY_EXPANSION_VERSION,
+  PATIENT_NATIONAL_EXPANSION_VERSION,
   countyExpansionDraft,
+  nationalExpansionDraft,
   patientSearchTextFromDraft,
 } from "../../shared/patientSearchExpansion.js";
 
 export {
   PATIENT_COUNTY_EXPANSION_VERSION,
+  PATIENT_NATIONAL_EXPANSION_VERSION,
   countyExpansionDraft,
+  nationalExpansionDraft,
   patientSearchTextFromDraft,
 };
 
