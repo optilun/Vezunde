@@ -418,11 +418,11 @@ export default function MatchResults({
         </div>
       )}
 
-      <p className="mt-6 text-xs text-muted-foreground/80">
-        Ordinea reflectă serviciile confirmate, relevanța căutării și verificarea profilului. Extinderea geografică nu modifică regulile de eligibilitate și VIASEE nu oferă diagnostic medical.
-      </p>
-
       <PatientRequestSubmission results={list} meta={activeMeta} onRequestCreated={onRequestCreated} />
+
+      <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground/70">
+        VIASEE nu oferă diagnostic medical. Ordinea rezultatelor reflectă serviciile confirmate și verificarea profilului.
+      </p>
 
       <div className="mt-5 flex flex-col items-stretch gap-2 border-t border-border pt-4 sm:flex-row sm:items-center">
         {feedback === null ? (
