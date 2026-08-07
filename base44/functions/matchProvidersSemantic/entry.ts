@@ -221,6 +221,16 @@ async function resolveSelectedLocality(svc, sirutaCode) {
 }
 
 async function loadPublicLocationsForScope(svc, scope, selectedLocality, sirutaCode) {
+  if (scope === 'national') {
+    // Extindere nationala: doar profiluri revendicate/verificate, filtrate direct in
+    // interogare (nu incarcate integral si filtrate dupa). Locatiile din director nu
+    // apar niciodata aici - riscul de a trimite un pacient sute de km pe baza unui
+    // profil neconfirmat nu e acceptabil la aceasta scara.
+    return svc.entities.ProviderLocation.filter({
+      status: 'publicata',
+      profile_control_status: { $in: ['claimed', 'verified'] },
+    }, 'name', 2000);
+  }
   if (scope !== 'county') return loadPublicLocationsForLocality(svc, sirutaCode);
   const countyCode = clean(selectedLocality?.county_code);
   if (!countyCode) return [];
