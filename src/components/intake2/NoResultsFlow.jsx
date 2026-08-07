@@ -96,6 +96,9 @@ export default function NoResultsFlow({
       : emptyState.description);
   const facts = coverageFacts(meta, countyExpanded);
   const canExpandCounty = Boolean(onExpandCounty && !countyExpanded && resolvedCountyName);
+  const canExpandNational = Boolean(onExpandNational && meta?.query_scope !== "national" && meta?.routing_mode !== "national");
+  const buttonCount = 2 + (canExpandCounty ? 1 : 0) + (canExpandNational ? 1 : 0);
+  const gridColsClass = buttonCount >= 4 ? "sm:grid-cols-2" : buttonCount === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2";
 
   return (
     <section className={`rounded-2xl border p-5 sm:p-6 ${insufficient ? "border-border bg-secondary/25" : "border-amber-200/80 bg-amber-50/60"}`}>
