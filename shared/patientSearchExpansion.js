@@ -24,3 +24,11 @@ export function countyExpansionDraft(draft = {}, data = {}) {
     county_code: clean(safeData.selected_county_code || safeDraft.county_code, 10),
   };
 }
+
+export function nationalExpansionDraft(draft = {}) {
+  const safeDraft = /** @type {any} */ (draft || {});
+  return {
+    ...safeDraft,
+    location_scope: 'national',
+  };
+}
