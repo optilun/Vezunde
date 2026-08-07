@@ -324,6 +324,13 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     interpretationRequestRef.current.invalidate();
     if (!intentProposal?.intent || !INTENTS[intentProposal.intent]) return;
     const confirmedState = initState(intentProposal.intent, initialMessage);
+    // Acelasi fix ca la handleCorrectInterpretation: nu lasam categoria generica sa
+    // suprascrie lista precisa de servicii pe care AI-ul a identificat-o deja (ex:
+    // ophthalmology_consultation vs optometry_consultation - medic vs optometrist).
+    if (Array.isArray(intentProposal?.service_keys) && intentProposal.service_keys.length > 0) {
+      confirmedState.serviceKeys = [...intentProposal.service_keys];
+      confirmedState.explicitServiceKeys = [...intentProposal.service_keys];
+    }
     setState(confirmedState);
     setHistory([]);
     setRequestDraft(null);
