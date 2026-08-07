@@ -201,10 +201,6 @@ function locationSirutaCode(location) {
   return clean(location?.locality_siruta_code);
 }
 
-function expansionTier(location, selectedSirutaCode) {
-  return locationSirutaCode(location) === selectedSirutaCode ? 'oras' : 'judet';
-}
-
 function expansionTier(location, selectedSirutaCode, scope) {
   if (locationSirutaCode(location) === selectedSirutaCode) return 'oras';
   if (scope === 'national') return 'tara';
