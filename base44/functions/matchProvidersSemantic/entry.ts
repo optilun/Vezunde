@@ -854,7 +854,9 @@ Deno.serve(async (request) => {
     });
     const routingReason = queryScope === 'county'
       ? `Cautare extinsa explicit in judetul ${countyName || 'selectat'}.`
-      : 'Potrivire dupa localitatea selectata.';
+      : (queryScope === 'national'
+        ? 'Cautare extinsa explicit la nivel national.'
+        : 'Potrivire dupa localitatea selectata.');
 
     return Response.json({
       recommendation_contract_version: PROVIDER_RECOMMENDATION_CONTRACT_VERSION,
