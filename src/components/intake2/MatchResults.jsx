@@ -388,9 +388,6 @@ export default function MatchResults({
       {expanded && directory.length > 0 && (
         <div className="mt-8">
           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Opțiuni din director</div>
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            Aceste profiluri provin din surse publice. VIASEE nu a confirmat toate informațiile afișate.
-          </p>
           <div className="mt-3">
             <ResultScopeGroups items={directory} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} />
           </div>
