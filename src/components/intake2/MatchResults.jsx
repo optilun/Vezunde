@@ -396,27 +396,25 @@ export default function MatchResults({
 
       {expanded && structural.length > 0 && (
         <div className="mt-8">
-          <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            {structural[0]?.structural_group_label
-              || (structuralCapability === "medical"
-                ? "Alte cabinete și clinici oftalmologice din zonă"
-                : "Alte optici din zonă")}
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              {structural[0]?.structural_group_label
+                || (structuralCapability === "medical"
+                  ? "Alte cabinete și clinici oftalmologice din zonă"
+                  : "Alte optici din zonă")}
+            </div>
+            <a href="/adauga-sau-revendica" className="text-[11px] font-medium text-foreground underline underline-offset-2">
+              Sunteți reprezentantul uneia dintre acestea?
+            </a>
           </div>
           <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
             {structuralCapability === "medical"
-              ? "Aceste profiluri provin din surse oficiale, dar serviciile nu sunt confirmate de furnizor. Sunați înainte pentru a verifica disponibilitatea și tipul consultației."
-              : "Aceste profiluri provin din surse oficiale, dar serviciile nu sunt încă declarate de furnizor. Vă recomandăm să confirmați telefonic înainte de deplasare."}
+              ? "Servicii neconfirmate de furnizor — sunați înainte să mergeti."
+              : "Servicii neconfirmate de furnizor — confirmați telefonic înainte de deplasare."}
           </p>
           <div className="mt-3">
             <ResultScopeGroups items={structural} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} />
           </div>
-          <p className="mt-3 text-xs text-muted-foreground/80">
-            Sunteți reprezentantul uneia dintre aceste locații?{" "}
-            <a href="/adauga-sau-revendica" className="font-medium text-foreground underline underline-offset-2">
-              Revendicați profilul gratuit
-            </a>{" "}
-            pentru a vă declara serviciile.
-          </p>
         </div>
       )}
 
