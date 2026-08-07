@@ -192,7 +192,9 @@ function toPublicService(row) {
 }
 
 function patientSearchScope(value) {
-  return value === 'county' ? 'county' : 'locality';
+  if (value === 'county') return 'county';
+  if (value === 'national') return 'national';
+  return 'locality';
 }
 
 function locationSirutaCode(location) {
