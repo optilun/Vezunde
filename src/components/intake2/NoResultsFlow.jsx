@@ -154,7 +154,7 @@ export default function NoResultsFlow({
             <button
               type="button"
               onClick={onChangeLocation}
-              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors ${canExpandCounty ? "border border-border bg-background text-foreground hover:bg-secondary" : "bg-primary text-primary-foreground transition-opacity hover:opacity-90"}`}
+              className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors ${(canExpandCounty || canExpandNational) ? "border border-border bg-background text-foreground hover:bg-secondary" : "bg-primary text-primary-foreground transition-opacity hover:opacity-90"}`}
             >
               <MapPin className="h-4 w-4" /> Schimbă localitatea
             </button>
