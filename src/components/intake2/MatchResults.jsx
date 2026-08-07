@@ -397,8 +397,7 @@ export default function MatchResults({
       {expanded && structural.length > 0 && (
         <div className="mt-8">
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              {structural[0]?.structural_group_label
+            <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">
                 || (structuralCapability === "medical"
                   ? "Alte cabinete și clinici oftalmologice din zonă"
                   : "Alte optici din zonă")}
