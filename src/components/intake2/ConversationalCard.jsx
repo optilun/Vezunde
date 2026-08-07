@@ -344,7 +344,12 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     abandonAllPatientRequestIdempotency();
     interpretationRequestRef.current.invalidate();
     matchingRequestRef.current.invalidate();
-    setState(initState(null, ""));
+    // Nu stergem intelegerea AI-ului doar pentru ca increderea a fost medie, nu mare.
+    // Daca AI-ul a identificat o intentie (chiar daca a cerut clarificare), o pastram —
+    // acelasi tipar folosit deja la acceptarea cu incredere mare (initState mai jos,
+    // linia ~326). Motorul de intrebari aprobate va sti astfel sa sara direct la
+    // intrebarea specifica ce lipseste, in loc sa reporneasca de la intrebarea generica.
+    setState(initState(intentProposal?.intent || null, initialMessage));
     setHistory([]);
     setRequestDraft(null);
     markSearchStarted(intentProposal?.intent || state.intent);
