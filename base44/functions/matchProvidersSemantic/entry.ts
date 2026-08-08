@@ -121,7 +121,11 @@ function collectStructuralCandidate(location, sirutaCode, countyName, bucket) {
     recommendation_score_components: {},
     recommendation_confidence: 'unconfirmed',
     recommendation_explanations: [],
-    match_reasons: [STRUCTURAL_FALLBACK_NOTICES[capability]],
+    match_reasons: [
+      disclosure.profile_control_status === 'directory'
+        ? STRUCTURAL_FALLBACK_NOTICES[capability]
+        : 'Profil revendicat, dar serviciile nu sunt inca declarate. Sunati inainte pentru a confirma disponibilitatea.',
+    ],
     structural_fallback: true,
     structural_capability: capability,
     structural_group_label: STRUCTURAL_FALLBACK_GROUP_LABELS[capability],
