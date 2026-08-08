@@ -138,9 +138,9 @@ const CATALOG = {
   },
   safety_targeted_check: {
     type: "choice",
-    title: "Se aplica acum una dintre situatiile de mai jos?",
+    title: "Ti s-a intamplat recent una dintre situatiile de mai jos?",
     legacy_question_keys: ["safety_screening"],
-    helper: "Selecteaza situatia exacta. VIASEE nu stabileste diagnosticul, dar nu continua cautarea obisnuita cand exista un semnal clar de urgenta.",
+    helper: "Intrebam doar despre situatii aparute brusc, in ultimele ore sau zile. Daca ai o problema de vedere de mai mult timp (de exemplu nu vezi bine la distanta sau la aproape), alege \"Niciuna dintre acestea\" si continuam cautarea normal.",
     options: SAFETY_OPTIONS,
     safety_copy: APPROVED_PATIENT_SAFETY_COPY,
   },
