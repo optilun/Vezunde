@@ -20,6 +20,11 @@ export const SEMANTIC_INTENT_RULES = [
       'vad in ceata', 'vad incetosat', 'control ochelari', 'mi au crescut dioptriile', 'nu mai vad bine', 'schimbat dioptrii',
       'control la ochi', 'control de vedere', 'control ochi', 'nu am mai fost de mult la control',
       'vreau sa fac un control', 'vederea incetosata seara', 'mi se incetoseaza vederea',
+      // Cele mai comune formulari de miopie / presbiopie - lipseau complet si trimiteau
+      // pacientul pe fluxul de simptome, unde risca sa bifeze gresit un semnal de urgenta.
+      'nu vad bine la distanta', 'nu vad bine la aproape', 'nu mai vad bine la distanta',
+      'nu mai vad bine la aproape', 'nu vad bine de departe', 'nu vad de aproape',
+      'vad greu la distanta', 'vad greu de aproape', 'nu disting literele', 'nu vad la tabla',
     ],
     targets: [
       ['optometry_consultation', 1],
