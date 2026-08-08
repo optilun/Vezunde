@@ -79,8 +79,9 @@ const STRUCTURAL_FALLBACK_GROUP_LABELS = {
   medical: 'Alte cabinete si clinici oftalmologice din zona',
 };
 
-// Profilurile revendicate/verificate nu intra pe acest traseu: ele isi pot declara serviciile,
-// iar absenta lor este o informatie reala despre furnizor.
+// Include si profilurile revendicate/verificate care nu si-au declarat inca serviciile:
+// in faza de pornire a directorului, absenta serviciilor nu trebuie sa ascunda complet
+// exact profilurile cu cea mai mare incredere. Eticheta afisata difera insa clar.
 function collectStructuralCandidate(location, sirutaCode, countyName, bucket, scope) {
   const disclosure = getPublicLocationDisclosure(location);
   // Accepta si profilurile revendicate/verificate care nu si-au declarat inca serviciile.
