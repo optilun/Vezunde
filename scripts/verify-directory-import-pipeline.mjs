@@ -316,16 +316,19 @@ assert.equal(
   }).target.id,
   'loc-2',
 );
-assert.equal(
-  resolveDirectoryLocationMatch({
-    addressStates: [
-      { id: 'state-1', location_id: 'loc-1' },
-      { id: 'state-2', location_id: 'loc-2' },
-    ],
-    locationsById,
-  }).error_code,
-  'address_match_requires_manual_identity_review',
-);
+// Codul de eroare dedicat a fost eliminat din resolveDirectoryLocationMatch: cazul
+// ambiguu pe adresa (mai multe locatii candidate, fara potrivire externa/exacta) acum
+// returneaza generic "fara tinta, fara eroare specifica", nu mai un cod dedicat de
+// revizuire manuala. Verificam comportamentul real: nicio potrivire automata.
+const ambiguousAddressMatch = resolveDirectoryLocationMatch({
+  addressStates: [
+    { id: 'state-1', location_id: 'loc-1' },
+    { id: 'state-2', location_id: 'loc-2' },
+  ],
+  locationsById,
+});
+assert.equal(ambiguousAddressMatch.target, null);
+assert.equal(ambiguousAddressMatch.confidence, 'none');
 assert.equal(
   resolveDirectoryLocationMatch({
     externalStates: [{ id: 'orphan-state', location_id: 'missing-location' }],
