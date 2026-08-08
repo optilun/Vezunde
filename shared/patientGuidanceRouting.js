@@ -106,7 +106,11 @@ const MATRIX = /** @type {Record<string, any>} */ ({
     ],
   },
   simptome_oftalmologice: {
-    required_for_search: ["symptom_description", "safety_targeted_check", "investigation_type", "locality"],
+    // investigation_type NU e obligatorie pentru cautare: majoritatea celor cu un simptom
+    // (ex: "am ochii rosii") nu au nicio recomandare de investigatie si ar fi o intrebare
+    // in plus, irelevanta. Ramane insa in lista pentru cererea catre furnizori, unde
+    // informatia chiar ajuta furnizorul sa pregateasca vizita.
+    required_for_search: ["symptom_description", "safety_targeted_check", "locality"],
     required_for_provider_request: [
       "symptom_description",
       "symptom_timing_or_acuity",
