@@ -61,8 +61,13 @@ const STRUCTURAL_CAPABILITY_BY_PROVIDER_TYPE = {
   clinica_oftalmologica: 'medical',
 };
 
-const STRUCTURAL_FALLBACK_MIN_CONFIRMED = 3;
-const STRUCTURAL_FALLBACK_MAX_RESULTS = 3;
+// Faza de pornire a directorului (2026-08): doar 4 profiluri sunt revendicate national,
+// deci aproape orice cautare returneaza zero rezultate confirmate. Pana cand furnizorii
+// isi revendica profilurile si isi declara serviciile, fallback-ul structural e principala
+// sursa de rezultate, nu o completare marginala - de aceea pragul si plafonul sunt generoase.
+// De revizuit in jos pe masura ce creste numarul de profiluri cu servicii confirmate.
+const STRUCTURAL_FALLBACK_MIN_CONFIRMED = 8;
+const STRUCTURAL_FALLBACK_MAX_RESULTS = 12;
 
 const STRUCTURAL_FALLBACK_NOTICES = {
   optical: 'Profil din director \u2014 servicii neconfirmate inca. Sunteti reprezentantul acestei locatii? Revendicati profilul gratuit.',
