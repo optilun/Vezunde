@@ -83,7 +83,10 @@ const STRUCTURAL_FALLBACK_GROUP_LABELS = {
 // iar absenta lor este o informatie reala despre furnizor.
 function collectStructuralCandidate(location, sirutaCode, countyName, bucket) {
   const disclosure = getPublicLocationDisclosure(location);
-  if (disclosure.profile_control_status !== 'directory') return;
+  // Accepta si profilurile revendicate/verificate care nu si-au declarat inca serviciile.
+  // Altfel, exact profilurile cu cea mai mare incredere devin invizibile la cautari pe
+  // nevoie doar pentru ca lista lor de servicii e inca goala - inversul a ce vrem.
+  if (!['directory', 'claimed', 'verified'].includes(disclosure.profile_control_status)) return;
   if (location?.migration_review_required) return;
   const capability = STRUCTURAL_CAPABILITY_BY_PROVIDER_TYPE[location?.provider_type];
   if (!capability) return;
