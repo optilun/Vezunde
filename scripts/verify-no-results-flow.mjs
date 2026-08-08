@@ -40,7 +40,10 @@ assert.match(matchResults, /window\.location\.assign/);
 assert.match(matchResults, /params\.delete\("ref"\)/);
 assert.match(matchResults, /result_bucket === "top3"/);
 assert.match(matchResults, /result_bucket === "extended_directory"/);
-assert.match(matchResults, /VIASEE nu a confirmat toate informațiile/);
+// Avertismentul despre profilurile neconfirmate a fost consolidat (2026-08-06): nu mai
+// e repetat ca paragraf la fiecare sectiune, ci apare pe fiecare card (TrustBadge) plus
+// o singura mentiune la finalul paginii. Verificam ca avertizarea exista in forma noua.
+assert.match(matchResults, /servicii neconfirmate|nu ofer\u0103 diagnostic medical/);
 assert.doesNotMatch(matchResults.toLowerCase(), /cel mai bun furnizor|rezultat garantat/);
 
 console.log('No-results and insufficient-results recovery checks passed.');
