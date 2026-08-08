@@ -60,7 +60,12 @@ assert.match(client, /query_scope: "county"/);
 assert.match(client, /data\.query_scope !== expectedScope/);
 assert.match(client, /matchProvidersNationally/);
 assert.doesNotMatch(client, /matchProviders"/);
-assert.doesNotMatch(client, /query_scope: "national"/);
+// Interdictia veche pe query_scope national a fost RIDICATA deliberat (2026-08-06), la
+// cererea explicita a owner-ului: pacientul poate extinde cautarea la nivel national
+// pentru investigatii rare, disponibile doar in cateva orase. Restrictia de siguranta
+// care ramane: la nivel national se returneaza DOAR profiluri revendicate/verificate,
+// niciodata din director (vezi loadPublicLocationsForScope in matchProvidersSemantic).
+assert.match(client, /query_scope: "national"/);
 
 assert.match(emptyFlow, /onClick=\{onExpandCounty\}/);
 assert.match(results, /matchProvidersInSelectedCounty\(draft\)/);
