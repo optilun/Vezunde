@@ -81,7 +81,7 @@ const STRUCTURAL_FALLBACK_GROUP_LABELS = {
 
 // Profilurile revendicate/verificate nu intra pe acest traseu: ele isi pot declara serviciile,
 // iar absenta lor este o informatie reala despre furnizor.
-function collectStructuralCandidate(location, sirutaCode, countyName, bucket) {
+function collectStructuralCandidate(location, sirutaCode, countyName, bucket, scope) {
   const disclosure = getPublicLocationDisclosure(location);
   // Accepta si profilurile revendicate/verificate care nu si-au declarat inca serviciile.
   // Altfel, exact profilurile cu cea mai mare incredere devin invizibile la cautari pe
