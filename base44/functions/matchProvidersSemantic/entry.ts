@@ -91,7 +91,7 @@ function collectStructuralCandidate(location, sirutaCode, countyName, bucket, sc
   const capability = STRUCTURAL_CAPABILITY_BY_PROVIDER_TYPE[location?.provider_type];
   if (!capability) return;
 
-  const tier = expansionTier(location, sirutaCode);
+  const tier = expansionTier(location, sirutaCode, scope);
   bucket.push({
     id: location.id,
     name: location.public_display_name || location.name,
