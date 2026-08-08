@@ -1689,7 +1689,10 @@ var SEMANTIC_INTENT_RULES = [
     phrases: [
       "vad in ceata", "vad incetosat", "control ochelari", "mi au crescut dioptriile", "nu mai vad bine", "schimbat dioptrii",
       "control la ochi", "control de vedere", "control ochi", "nu am mai fost de mult la control",
-      "vreau sa fac un control", "vederea incetosata seara", "mi se incetoseaza vederea"
+      "vreau sa fac un control", "vederea incetosata seara", "mi se incetoseaza vederea",
+      "nu vad bine la distanta", "nu vad bine la aproape", "nu mai vad bine la distanta",
+      "nu mai vad bine la aproape", "nu vad bine de departe", "nu vad de aproape",
+      "vad greu la distanta", "vad greu de aproape", "nu disting literele", "nu vad la tabla"
     ],
     targets: [
       ["optometry_consultation", 1],
