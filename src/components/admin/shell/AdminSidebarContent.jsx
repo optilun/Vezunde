@@ -28,7 +28,14 @@ export default function AdminSidebarContent({ activeKey, onNavigate, user, onLog
 
       <nav className="flex-1 overflow-y-auto px-3 space-y-0.5">
         {ADMIN_NAV_PRIMARY.map((item) => (
-          <NavButton key={item.key} item={item} active={activeKey === item.key} onClick={() => onNavigate(item.key)} />
+          <div key={item.key}>
+            {item.groupLabel && (
+              <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {item.groupLabel}
+              </p>
+            )}
+            <NavButton item={item} active={activeKey === item.key} onClick={() => onNavigate(item.key)} />
+          </div>
         ))}
       </nav>
 
