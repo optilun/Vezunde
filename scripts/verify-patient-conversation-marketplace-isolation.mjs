@@ -15,9 +15,16 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
   ]),
   'base44/functions/matchProviders/entry.ts': Object.freeze([
     '5dcbdff68ab17dc489b48baee8283db1d234da51',
+    // 2026-08-05: fallback structural (profiluri din director fara servicii declarate
+    // apar ca ultim nivel, etichetate). Aprobat explicit de owner.
+    '384ce3e3190b4ae223d906574d8d7b976799c5dd',
   ]),
   'base44/functions/matchProvidersSemantic/sharedDependencies.js': Object.freeze([
     '134166b15ecce5cd52b32f3d3dca05b27ae14e81',
+    // 2026-08-06: sinonime extinse (miopie/presbiopie), reclasificare optometrie
+    // (specialized_medical -> technical), catalog cu performed_by si raspunsuri
+    // traduse pentru interpretarea LLM. Toate aprobate explicit de owner.
+    'e5d784a3a961249ef15cdea4abc13179e6a5334c',
   ]),
 });
 
