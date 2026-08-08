@@ -54,7 +54,11 @@ assert.doesNotMatch(matcher, /distance_km/);
 
 assert.match(client, /base44\.functions\.invoke\("matchProvidersSemantic"/);
 assert.match(client, /query_scope: "county"/);
-assert.match(client, /data\.query_scope !== "county"/);
+// Validarea scopului a fost generalizata (2026-08-06) ca sa acopere si extinderea
+// nationala: responseData primeste scopul asteptat ca parametru, in loc sa verifice
+// hardcodat "county". Protectia ramane aceeasi - un raspuns cu alt scop e respins.
+assert.match(client, /data\.query_scope !== expectedScope/);
+assert.match(client, /matchProvidersNationally/);
 assert.doesNotMatch(client, /matchProviders"/);
 assert.doesNotMatch(client, /query_scope: "national"/);
 
