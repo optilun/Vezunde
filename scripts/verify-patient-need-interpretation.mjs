@@ -6,7 +6,12 @@ import {
 } from '../shared/patientNeedInterpretation.js';
 
 const schema = getPatientNeedResponseSchema();
-assert(schema.properties.service_keys.items.enum.includes('oct'));
+// service_keys NU mai are enum in schema (2026-08-06): catalogul are 133 de chei, peste
+// limita practica Gemini (~120), iar schema era respinsa cu 400 INVALID_ARGUMENT la
+// fiecare apel. Lista completa ramane in prompt, iar raspunsul e revalidat integral prin
+// canonicalServiceKeys() in sanitizePatientNeedInterpretation - vezi testul de mai jos.
+assert.equal(schema.properties.service_keys.items.enum, undefined);
+assert.equal(schema.properties.service_keys.items.type, 'string');
 assert(schema.properties.intent.enum.includes('control_copil'));
 
 const prompt = buildPatientNeedPrompt({
