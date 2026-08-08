@@ -46,7 +46,9 @@ const interruption = await readFile(new URL('../src/components/intake2/UrgencyIn
 const safetyPolicy = await readFile(new URL('../src/lib/patientSafety.js', import.meta.url), 'utf8');
 
 for (const label of [
-  'Nu mai vad brusc sau vederea a scazut mult',
+  // Formularea a fost clarificata (2026-08-06): varianta veche "vederea a scazut mult"
+  // prindea si miopia cronica, generand alarme false. Acum e explicit acuta.
+  'vederea a disparut brusc la un ochi',
   'A ajuns o substanta chimica in ochi',
   'Un obiect a patruns in ochi sau a existat o lovitura puternica',
   'Am durere oculara foarte mare',
