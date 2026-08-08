@@ -1896,12 +1896,42 @@ var SAFETY_FLAG_SET = new Set(PATIENT_SAFETY_FLAG_KEYS);
 function clean(value, maxLength = 200) {
   return String(value || "").trim().slice(0, maxLength);
 }
+var GUIDED_ANSWER_LABELS = {
+  routine_vs_symptom: {
+    question: "Cauti un control de rutina sau ai o problema la ochi?",
+    options: { routine: "Control de rutina", symptom: "Am o problema sau un simptom la ochi", not_sure: "Nu sunt sigur" }
+  },
+  for_whom: {
+    question: "Este pentru tine sau pentru un copil?",
+    options: { adult: "Pentru mine", child: "Pentru un copil" }
+  },
+  investigation_type: {
+    question: "Ce investigatie cauti?",
+    options: { oct: "OCT", visual_field_analyzer: "Camp vizual", tonometry: "Tonometrie", fundus_exam: "Fund de ochi", corneal_topography: "Topografie corneana", not_sure: "Nu stiu ce investigatie este" }
+  },
+  symptom_timing_or_acuity: {
+    question: "Cand a aparut si cum a evoluat problema?",
+    options: { sudden: "A aparut brusc", recent: "A aparut recent si persista", gradual: "A aparut treptat", recurrent: "A mai aparut si inainte", not_sure: "Nu sunt sigur" }
+  },
+  optical_product_type: {
+    question: "Ce cauti?",
+    options: { new_eyeglasses: "Ochelari noi", progressive_lenses: "Lentile progresive", lens_replacement: "Schimbare lentile", contact_lenses: "Lentile de contact", not_sure: "Nu sunt sigur" }
+  }
+};
 function cleanAnswers(answers) {
   if (!Array.isArray(answers)) return [];
-  return answers.slice(0, 20).map((answer) => ({
-    question_key: clean(answer?.question_key, 80),
-    answer_value: clean(answer?.answer_value, 240)
-  })).filter((answer) => answer.question_key && answer.answer_value);
+  return answers.slice(0, 20).map((answer) => {
+    const questionKey = clean(answer?.question_key, 80);
+    const answerValue = clean(answer?.answer_value, 240);
+    if (!questionKey || !answerValue) return null;
+    const meta = GUIDED_ANSWER_LABELS[questionKey];
+    return {
+      question_key: questionKey,
+      answer_value: answerValue,
+      question_text: meta?.question,
+      answer_text: meta?.options?.[answerValue]
+    };
+  }).filter(Boolean);
 }
 function canonicalServiceKeys(values) {
   if (!Array.isArray(values)) return [];
