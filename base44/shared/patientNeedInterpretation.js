@@ -3,6 +3,7 @@ import {
   getCanonicalServiceDefinition,
   normalizeServiceKey,
 } from './canonicalServiceRegistryExtended.js';
+import { getApprovedPatientGuidanceQuestion } from './patientGuidanceQuestionCatalog.js';
 
 export const PATIENT_NEED_INTERPRETATION_VERSION = 'patient-need-ai-v1';
 
@@ -39,10 +40,23 @@ function clean(value, maxLength = 200) {
 
 function cleanAnswers(answers) {
   if (!Array.isArray(answers)) return [];
-  return answers.slice(0, 20).map((answer) => ({
-    question_key: clean(answer?.question_key, 80),
-    answer_value: clean(answer?.answer_value, 240),
-  })).filter((answer) => answer.question_key && answer.answer_value);
+  return answers.slice(0, 20).map((answer) => {
+    const questionKey = clean(answer?.question_key, 80);
+    const answerValue = clean(answer?.answer_value, 240);
+    if (!questionKey || !answerValue) return null;
+    // Trimitem si textul in romana pe care l-a vazut efectiv pacientul, nu doar cheia
+    // tehnica (ex: routine_vs_symptom=symptom -> "Cauti un control de rutina sau ai o
+    // problema la ochi?" / "Am o problema sau un simptom la ochi"). Fara asta, modelul
+    // trebuie sa ghiceasca sensul codurilor interne.
+    const question = getApprovedPatientGuidanceQuestion(questionKey);
+    const optionLabel = question?.options?.find((option) => option.key === answerValue)?.label;
+    return {
+      question_key: questionKey,
+      answer_value: answerValue,
+      question_text: question?.title ? clean(question.title, 200) : undefined,
+      answer_text: optionLabel ? clean(optionLabel, 200) : undefined,
+    };
+  }).filter(Boolean);
 }
 
 function canonicalServiceKeys(values) {
@@ -57,6 +71,10 @@ export function getPatientFacingServiceCatalog() {
       key: definition.key,
       label: definition.label,
       need_level: definition.service_need_level,
+      // Cine presteaza serviciul. Fara asta, modelul nu poate distinge corect intre
+      // ophthalmology_consultation (medic oftalmolog) si optometry_consultation
+      // (optometrist) - o distinctie importanta pentru pacienti si pentru matching.
+      performed_by: definition.required_professional_types || [],
     }));
 }
 
@@ -65,6 +83,10 @@ export function getPatientNeedResponseSchema() {
     type: 'object',
     properties: {
       intent: { type: 'string', enum: [...PATIENT_INTENT_KEYS] },
+      // Gemini respinge cu 400 INVALID_ARGUMENT cand un enum are prea multe valori
+      // (limita practica documentata e ~120; catalogul VIASEE are 133 chei). Nu mai
+      // impunem enum-ul in schema; lista completa e oricum in prompt, iar raspunsul
+      // e revalidat integral prin canonicalServiceKeys() in sanitizePatientNeedInterpretation.
       service_keys: { type: 'array', items: { type: 'string' } },
       for_whom: { type: 'string', enum: [...FOR_WHOM_KEYS] },
       age_group: { type: 'string', enum: [...AGE_GROUP_KEYS] },
@@ -114,6 +136,10 @@ export function buildPatientNeedPrompt({
     'A possible safety flag is advisory only. Never conclude that a case is safe or non-urgent.',
     'If the meaning is ambiguous, set clarification_required to true and ask one short neutral question in Romanian.',
     'Keep evidence_phrases short and copy only phrases that appear in the patient input.',
+    // Ghidaj adaugat 2026-08-06 dupa analiza calitatii interpretarii.
+    'Each catalog entry has performed_by listing which professionals deliver it. When the patient explicitly asks for a doctor ("medic", "doctor", "oftalmolog"), prefer services performed_by ophthalmologist. When the request is a routine vision check without asking for a doctor, prefer optometry services. Do not silently upgrade a routine request into a medical consultation.',
+    'Romanian patients commonly describe refractive problems as "nu vad bine la distanta" (myopia), "nu vad bine la aproape" (presbyopia/hyperopia), "nu vad la tabla". These are ordinary, long-standing vision problems: map them to routine optometry services and do NOT set safety flags for them.',
+    'Only set possible_safety_flags when the text describes something acute and recent (sudden onset in hours or days, trauma, chemicals, severe pain). A long-standing or gradual complaint is never a safety flag.',
     `INPUT_JSON=${JSON.stringify(input)}`,
     `VIASEE_SERVICE_CATALOG_JSON=${JSON.stringify(catalog)}`,
   ].join('\n');
