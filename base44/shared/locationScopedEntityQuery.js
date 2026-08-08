@@ -1,6 +1,5 @@
 const DEFAULT_LOCALITY_LOCATION_LIMIT = 1000;
 const DEFAULT_PER_LOCATION_LIMIT = 300;
-const DEFAULT_CONCURRENCY = 12;
 const ROMANIA_COUNTY_CODES = [
   'AB', 'AR', 'AG', 'BC', 'BH', 'BN', 'BT', 'BV', 'BR', 'BZ',
   'CS', 'CL', 'CJ', 'CT', 'CV', 'DB', 'DJ', 'GL', 'GR', 'GJ',
