@@ -4,9 +4,21 @@ import { readFileSync } from 'node:fs';
 const adapter = readFileSync('base44/functions/directoryOps/directoryImportOpsLocationFirst.ts', 'utf8');
 const latestAdapter = readFileSync('base44/functions/directoryOps/directoryImportOpsLatest.ts', 'utf8');
 const frontendRouter = readFileSync('src/api/base44FunctionRouting.js', 'utf8');
-assert.match(adapter, /DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-read-safe-6'/);
-assert.match(latestAdapter, /DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-read-safe-6'/);
-assert.match(frontendRouter, /DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-read-safe-6'/);
+// Importul are doua straturi, fiecare cu revizia lui:
+//  - LocationFirst = implementarea interioara ('read-safe-6'); revizia ei nu ajunge
+//    niciodata la frontend, pentru ca stratul de deasupra intercepteaza `runtime_info`.
+//  - Latest = stratul activ, dispecerizat de router si de bundle ('national-directory-5');
+//    el raspunde la `runtime_info`, deci ACEASTA revizie trebuie sa fie cea pe care o
+//    asteapta frontend-ul.
+// Testul cerea aceeasi valoare in toate cele trei fisiere, ceea ce nu mai reflecta
+// arhitectura de dupa 2026-07-31 si a mascat un handshake rupt in productie.
+const LOCATION_FIRST_REVISION = 'directory-import-runtime-read-safe-6';
+const ACTIVE_RUNTIME_REVISION = 'directory-import-runtime-national-directory-5';
+
+assert.match(adapter, new RegExp(`DIRECTORY_IMPORT_RUNTIME_REVISION = '${LOCATION_FIRST_REVISION}'`));
+assert.match(latestAdapter, new RegExp(`DIRECTORY_IMPORT_RUNTIME_REVISION = '${ACTIVE_RUNTIME_REVISION}'`));
+// Handshake-ul care conteaza: frontend-ul trebuie sa astepte exact revizia stratului activ.
+assert.match(frontendRouter, new RegExp(`DIRECTORY_IMPORT_RUNTIME_REVISION = '${ACTIVE_RUNTIME_REVISION}'`));
 assert.match(adapter, /clean\(input\.action, 80\) === 'runtime_info'/);
 assert.match(adapter, /preserves_explicit_location_type: true/);
 assert.match(adapter, /preserves_explicit_organization_type: true/);
