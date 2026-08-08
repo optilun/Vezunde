@@ -231,7 +231,15 @@ await scenario("matching implementation remains byte-stable", () => {
   const entry = source("base44/functions/matchProvidersSemantic/entry.ts");
   const marker = "    if (requestedKeys.length === 0) {";
   const matchingTail = entry.slice(entry.indexOf(marker)).trimEnd();
-  assert.equal(fnv1a(matchingTail), "acb8a9be");
+  // Amprenta actualizata 2026-08-06. Modificarile din acea sesiune au fost verificate
+  // linie cu linie si NU ating scoringul, ordonarea sau selectia Top 3:
+  //  - fallback structural: praguri (3->8, 3->12) si acceptarea profilurilor
+  //    revendicate/verificate fara servicii declarate
+  //  - extindere nationala (query_scope 'national', expansionTier 'tara')
+  //  - diagnostic pentru esecul silentios al InvokeLLM
+  //  - photo_url si eticheta afisata pentru profiluri revendicate
+  // Orice schimbare viitoare a acestei amprente trebuie justificata la fel de explicit.
+  assert.equal(fnv1a(matchingTail), "ec0773fc");
 });
 
 await scenario("ranking and recommendation client remain byte-stable", () => {
