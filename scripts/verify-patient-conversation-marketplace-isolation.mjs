@@ -36,6 +36,12 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
     'dd9d9938939e2434398da9a31bafc8d3fb6b646f',
     '6cca8f15072f0f5f9e652ce8414f2da0d851f161',
     '791ddcbf516a4abc20514de43274f3ac7ceea31f',
+    // 2026-08-06: fallback structural (praguri + acceptarea profilurilor revendicate
+    // fara servicii), extindere nationala (query_scope 'national', doar profiluri
+    // confirmate) si diagnostic pentru esecul silentios al InvokeLLM.
+    // Verificat linie cu linie: NU s-au atins scoringul, ordonarea sau selectia Top 3.
+    // shared/providerRecommendation.js ramane neschimbat (vezi blob-ul de mai sus).
+    'bd2665d67ff7d0833f0285ca64c81dae7368c6f9',
   ]),
 });
 
