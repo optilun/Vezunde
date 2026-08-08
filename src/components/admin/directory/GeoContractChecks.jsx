@@ -22,18 +22,29 @@ const CHECKS = [
   {
     name: "Fara fallback geografic automat (judet/national/apropiere)",
     run: async () => {
-      // With 0 providers, a strictly-scoped search MUST return an explicit empty
-      // coverage state — any results here would mean fallback was reintroduced.
+      // Verificarea nu mai depinde de un oras gol (directorul are acum locatii peste tot,
+      // iar un test bazat pe "zero rezultate" ar trece din motivul gresit). Verificam
+      // direct regula: intr-o cautare cu scope=city, NICIUN rezultat nu are voie sa vina
+      // din afara localitatii cerute.
       const r = await invoke("matchProviders", { locality_siruta_code: "54975", city: "Cluj-Napoca", scope: "city", limit: 20 });
-      return r.status === 200 && Array.isArray(r.data.results) && r.data.results.length === 0 && r.data.coverage_status === "no_local_results";
+      if (r.status !== 200 || !Array.isArray(r.data.results)) return false;
+      const noOutsideResults = r.data.results.every((x) => !x.expansion_tier || x.expansion_tier === "oras");
+      const scopeHonored = !r.data.query_scope || r.data.query_scope === "city" || r.data.query_scope === "locality";
+      return noOutsideResults && scopeHonored;
     },
   },
   {
     name: "Coordonatele/place_id nu influenteaza matching-ul public",
     run: async () => {
-      const r = await invoke("matchProviders", { locality_siruta_code: "54975", city: "Cluj-Napoca", scope: "city", lat: 46.77, lng: 23.59, limit: 20 });
-      const noLeak = Array.isArray(r.data.results) && r.data.results.every((x) => x.lat === undefined && x.lng === undefined && x.place_id === undefined && x.distance_km === undefined);
-      return r.status === 200 && r.data.results?.length === 0 && r.data.coverage_status === "no_local_results" && noLeak;
+      // Trimitem coordonate explicit si verificam ca (a) nu se scurg in raspuns si
+      // (b) nu schimba rezultatele fata de aceeasi cautare fara coordonate.
+      const withGeo = await invoke("matchProviders", { locality_siruta_code: "54975", city: "Cluj-Napoca", scope: "city", lat: 46.77, lng: 23.59, limit: 20 });
+      const withoutGeo = await invoke("matchProviders", { locality_siruta_code: "54975", city: "Cluj-Napoca", scope: "city", limit: 20 });
+      if (withGeo.status !== 200 || !Array.isArray(withGeo.data.results)) return false;
+      const noLeak = withGeo.data.results.every((x) => x.lat === undefined && x.lng === undefined && x.place_id === undefined && x.distance_km === undefined);
+      const idsOf = (res) => JSON.stringify((res.data.results || []).map((x) => x.id));
+      const sameResults = idsOf(withGeo) === idsOf(withoutGeo);
+      return noLeak && sameResults;
     },
   },
   {
