@@ -378,6 +378,21 @@ function cleanType(value) {
 function isDirectoryOrganizationTypeCode(value) {
   return DIRECTORY_ORGANIZATION_TYPE_CODES.has(cleanType(value));
 }
+var CODE_BY_LEGACY_TYPE = Object.freeze({
+  independent_optical_store: "independent_optical_store",
+  optical_chain: "optical_chain",
+  ophthalmology_clinic: "ophthalmology_clinic",
+  ophthalmology_office: "ophthalmology_office",
+  independent_ophthalmologist: "independent_professional",
+  independent_optometrist: "independent_professional",
+  independent_optician: "independent_professional",
+  optical_laboratory_b2c: "optical_laboratory",
+  optical_laboratory_b2b: "optical_laboratory",
+  future_b2b_distributor: "b2b_distributor"
+});
+function legacyTypeToOrganizationTypeCode(legacyType) {
+  return CODE_BY_LEGACY_TYPE[cleanType(legacyType)] || "";
+}
 function resolveProviderOrganizationType(row = {}) {
   const organizationTypeCode = cleanType(row.organization_type_code);
   const providerProfileType = cleanType(row.provider_profile_type);
@@ -702,26 +717,13 @@ function resolveDirectoryLocationMatch({
       candidate_ids: [exactFallback[0].id]
     };
   }
-  const uniqueAddressStates = uniqueBy(
-    addressStates,
-    (row) => row.location_id || row.id
-  );
   const addressTargets = locationTargets(addressStates, locationsById);
   if (addressTargets.length > 0) {
     return {
       target: null,
-      strategy: "address_fingerprint",
+      strategy: "none",
       confidence: "none",
-      error_code: "address_match_requires_manual_identity_review",
-      candidate_ids: addressTargets.map((row) => row.id)
-    };
-  }
-  if (uniqueAddressStates.length > 0) {
-    return {
-      target: null,
-      strategy: "address_fingerprint",
-      confidence: "none",
-      error_code: "address_state_target_missing",
+      error_code: "",
       candidate_ids: []
     };
   }
@@ -806,7 +808,18 @@ function validateExplicitDirectoryOrganizationTarget(organization = {}, row = {}
   }
   const existingLegacyType = clean3(organization.organization_type, 120);
   if (existingLegacyType && existingLegacyType !== descriptor.organization_type) {
-    return { valid: false, error_code: "admin_target_organization_legacy_type_conflict", descriptor };
+    const existingTypeCode = legacyTypeToOrganizationTypeCode(existingLegacyType);
+    return {
+      valid: true,
+      error_code: "",
+      descriptor: {
+        ...descriptor,
+        organization_type: existingLegacyType,
+        organization_type_code: existingTypeCode || descriptor.organization_type_code
+      },
+      organization_id: organizationId,
+      preserves_controlled_organization: true
+    };
   }
   return {
     valid: true,
@@ -1297,7 +1310,7 @@ async function createSnapshot(svc, user, input) {
     ),
     "snapshoturilor cu acelasi SHA-256"
   );
-  const same = existing.find((item) => item.source_version === sourceVersion && item.status !== "archived");
+  const same = existing.find((item) => item.source_version === sourceVersion && !["archived", "blocked", "ready", "imported"].includes(item.status));
   if (same) return response({ success: true, reused: true, snapshot: same });
   const snapshot = await svc.entities.DirectorySourceSnapshot.create({
     snapshot_key: sourceSnapshotKey(sourceVersion, sourceSha256),
@@ -2646,15 +2659,16 @@ async function executeRow(svc, user, batch, rowRecord) {
   if (["block_conflict", "reject_invalid"].includes(rowRecord.planned_action)) throw new Error("Randul nu este eligibil pentru executie.");
   let organization = null;
   if (row.organization_name) {
+    const reusesPlanned = Array.isArray(plannedActions) && plannedActions.includes("reuse_planned_organization");
     const organizationResult = await ensureOrganization(
       svc,
       user,
       batch,
       rowRecord,
       row,
-      updatesDirectoryOrganization,
+      updatesDirectoryOrganization || reusesPlanned,
       Array.isArray(plannedActions) && plannedActions.includes("use_admin_target_organization"),
-      Array.isArray(plannedActions) && plannedActions.includes("reuse_planned_organization")
+      reusesPlanned
     );
     organization = organizationResult.organization;
     result.created_organization = organizationResult.created;
@@ -3324,14 +3338,10 @@ async function executeBatch(svc, user, input) {
     await svc.entities.DirectoryImportBatch.update(batch.id, { status: "running", started_at: now() });
   }
   const limit = boundedChunkSize(input.limit, EXECUTION_CHUNK);
-  const rows = await requireDirectoryRows(
-    svc.entities.DirectoryImportRow.filter(
-      { batch_id: batch.id, status: "ready" },
-      "row_number",
-      limit
-    ),
+  const rows = (await requireDirectoryRows(
+    svc.entities.DirectoryImportRow.filter({ batch_id: batch.id, status: "ready" }, "row_number", limit),
     "randurilor pregatite pentru executie"
-  );
+  )).sort((a, b) => (a.planned_action === "create_organization_and_location" ? 0 : 1) - (b.planned_action === "create_organization_and_location" ? 0 : 1) || Number(a.row_number || 0) - Number(b.row_number || 0));
   let applied = 0;
   let skipped = 0;
   let failed = 0;
@@ -4268,14 +4278,21 @@ async function excludeControlledOrAmbiguousLiveMatches(svc, selection) {
     if (state.location_id && !statesByLocationId.has(state.location_id)) statesByLocationId.set(state.location_id, state);
   }
   const locationIdsByExternalKey = /* @__PURE__ */ new Map();
+  const locationIdsByAddressFingerprint = /* @__PURE__ */ new Map();
   const append = (map, key, value) => {
     if (!key) return;
     const values = map.get(key) || [];
     if (!values.includes(value)) values.push(value);
     map.set(key, values);
   };
-  for (const state of states) append(locationIdsByExternalKey, clean8(state.directory_external_key, 240), state.location_id);
-  for (const location of locations) append(locationIdsByExternalKey, existingLocationIdentityKey(location), location.id);
+  for (const state of states) {
+    append(locationIdsByExternalKey, clean8(state.directory_external_key, 240), state.location_id);
+    append(locationIdsByAddressFingerprint, clean8(state.address_fingerprint, 240), state.location_id);
+  }
+  for (const location of locations) {
+    append(locationIdsByExternalKey, existingLocationIdentityKey(location), location.id);
+    append(locationIdsByAddressFingerprint, clean8(location.address_fingerprint || "", 240), location.id);
+  }
   const selected = [];
   const excluded = [...selection.excluded];
   for (let index = 0; index < selection.selected.length; index += 1) {
@@ -4290,12 +4307,20 @@ async function excludeControlledOrAmbiguousLiveMatches(svc, selection) {
       address: normalized.address,
       name: normalized.location_name
     });
+    const externalKeyCandidates = locationIdsByExternalKey.get(normalized.location_external_key) || [];
+    const fallbackKeyCandidates = locationIdsByExternalKey.get(fallbackKey) || [];
+    const addressFingerprintCandidates = locationIdsByAddressFingerprint.get(normalized.address_fingerprint) || [];
     const candidates = Array.from(/* @__PURE__ */ new Set([
-      ...locationIdsByExternalKey.get(normalized.location_external_key) || [],
-      ...locationIdsByExternalKey.get(fallbackKey) || []
+      ...externalKeyCandidates,
+      ...fallbackKeyCandidates
     ]));
+    const addressOnlyCandidates = addressFingerprintCandidates.filter((id) => !candidates.includes(id));
     if (candidates.length > 1) {
       excluded.push({ row, reasons: ["ambiguous_existing_location_match"] });
+      continue;
+    }
+    if (addressOnlyCandidates.length > 0) {
+      excluded.push({ row, reasons: ["address_match_requires_manual_identity_review"] });
       continue;
     }
     if (candidates.length === 1) {
@@ -4358,7 +4383,13 @@ async function reconcileNationalOrganizationKeys(svc, selection) {
       continue;
     }
     if (externalMatches.length === 1) {
-      selected.push({ ...row, target_organization_id: externalMatches[0].id });
+      const existingOrg = externalMatches[0];
+      const existingTypeCode = legacyTypeToOrganizationTypeCode(clean8(existingOrg.organization_type, 120));
+      selected.push({
+        ...row,
+        target_organization_id: existingOrg.id,
+        ...existingTypeCode ? { organization_type_code: existingTypeCode } : {}
+      });
       continue;
     }
     const nameMatches = byName.get(normalizeIdentityText(row.organization_display_name)) || [];
@@ -4371,11 +4402,14 @@ async function reconcileNationalOrganizationKeys(svc, selection) {
       continue;
     }
     if (candidates.length === 1) {
-      const existingKey = clean8(candidates[0].directory_external_key, 240);
+      const existingOrg = candidates[0];
+      const existingKey = clean8(existingOrg.directory_external_key, 240);
+      const existingTypeCode = legacyTypeToOrganizationTypeCode(clean8(existingOrg.organization_type, 120));
       selected.push({
         ...row,
         ...existingKey ? { organization_external_key: existingKey } : {},
-        target_organization_id: candidates[0].id
+        target_organization_id: existingOrg.id,
+        ...existingTypeCode ? { organization_type_code: existingTypeCode } : {}
       });
       continue;
     }
@@ -4395,14 +4429,31 @@ function packNationalRows(rows = []) {
     values.push(row);
     groups.set(key, values);
   }
+  const conflictExcluded = [];
+  const orderedGroups = Array.from(groups.entries()).sort(([left], [right]) => left.localeCompare(right));
+  const safeGroups = [];
+  for (const [groupKey, groupRows] of orderedGroups) {
+    const typeSet = /* @__PURE__ */ new Set();
+    for (const row of groupRows) {
+      const typeCode = clean8(row.organization_type_code, 120);
+      if (typeCode) typeSet.add(typeCode);
+    }
+    if (typeSet.size > 1) {
+      conflictExcluded.push(...groupRows.map((row) => ({
+        row,
+        reasons: ["batch_organization_type_conflict"]
+      })));
+      continue;
+    }
+    safeGroups.push([groupKey, groupRows]);
+  }
   const batches = [];
   let current = [];
   const flush = () => {
     if (current.length) batches.push(current);
     current = [];
   };
-  const orderedGroups = Array.from(groups.entries()).sort(([left], [right]) => left.localeCompare(right));
-  for (const [, groupRows] of orderedGroups) {
+  for (const [, groupRows] of safeGroups) {
     if (groupRows.length > MAX_ROWS_PER_BATCH) {
       flush();
       for (let offset = 0; offset < groupRows.length; offset += MAX_ROWS_PER_BATCH) {
@@ -4414,7 +4465,7 @@ function packNationalRows(rows = []) {
     current.push(...groupRows);
   }
   flush();
-  return batches;
+  return { batches, conflictExcluded };
 }
 async function nationalRowsFromPrivateSourceBase64(sourceBase64, sourceFilename = "") {
   const sourceBytes = decodeBase64Bytes(sourceBase64);
@@ -4477,7 +4528,11 @@ async function nationalRowsFromPrivateSourceBase64(sourceBase64, sourceFilename 
   };
 }
 async function descriptorsForNationalSelection(selection, archiveSha256) {
-  const batches = packNationalRows(selection.selected);
+  const { batches, conflictExcluded } = packNationalRows(selection.selected);
+  if (conflictExcluded.length) {
+    selection.excluded.push(...conflictExcluded);
+    selection.summary = recomputeNationalSelectionSummary(selection.selected, selection.excluded, selection.summary?.source_rows);
+  }
   if (batches.length > MAX_BATCHES) throw new Error(`Campania nationala necesita ${batches.length} loturi; limita este ${MAX_BATCHES}.`);
   const descriptors = [];
   for (let index = 0; index < batches.length; index += 1) {
@@ -4586,9 +4641,6 @@ function selectRowsForAutomaticImport(rows = []) {
       reason_counts: reasonCounts
     }
   };
-}
-function selectionForRun(run, rows = []) {
-  return runCampaignMode(run) === CAMPAIGN_MODE_NATIONAL ? selectRowsForNationalDirectory(rows) : selectRowsForAutomaticImport(rows);
 }
 function approvalPhrase(run) {
   return `AUTOIMPORT ${clean8(run.run_key, 120)} ${clean8(run.package_sha256, 80).slice(0, 12)} ${Number(run.total_batches || 0)}`;
@@ -5263,26 +5315,23 @@ async function advanceRun(svc, run) {
       if (Number(item.expected_rows || 0) > 0 && Number(item.expected_rows) !== sourceRows.length) {
         return blockItem(svc, run, item, [`expected_rows:${item.expected_rows}`, `actual_rows:${sourceRows.length}`], "fetch_source");
       }
-      const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows);
-      const selection = selectionForRun(run, canonicalRows);
-      const selectedSha256 = await sha256HexText(stableStringify2(selection.selected));
-      if (selection.selected.length !== Number(item.selected_rows || 0) || selectedSha256 !== clean8(item.selected_sha256, 80)) {
+      if (sourceRows.length !== Number(item.selected_rows || 0)) {
         return blockItem(svc, run, item, [
-          `preflight_selection_changed:${item.selected_rows}->${selection.selected.length}`,
-          `preflight_selection_sha_changed:${clean8(item.selected_sha256, 12)}->${selectedSha256.slice(0, 12)}`
+          `selected_rows_changed:${item.selected_rows}->${sourceRows.length}`
         ], "fetch_source");
       }
-      if (!selection.selected.length) {
+      const selectedSha256 = clean8(item.selected_sha256, 80) || await sha256HexText(stableStringify2(sourceRows));
+      if (!sourceRows.length) {
         await svc.entities.DirectoryAutoImportItem.update(item.id, {
           status: "skipped",
           step: "skipped_no_strictly_clean_rows",
           source_sha256: loadedSource.source_sha256,
           source_rows: sourceRows.length,
           selected_rows: 0,
-          excluded_rows: selection.excluded.length,
-          selection_result_json: JSON.stringify(selection.summary),
+          excluded_rows: Number(item.excluded_rows || 0),
+          selection_result_json: "{}",
           skipped_rows: sourceRows.length,
-          result_json: JSON.stringify({ selection: selection.summary }),
+          result_json: "{}",
           failure_message: "",
           started_at: item.started_at || now2(),
           finished_at: now2(),
@@ -5305,39 +5354,35 @@ async function advanceRun(svc, run) {
         source_sha256: selectedSha256,
         source_format: "json",
         original_filename: item.source_filename || `auto-batch-${item.sequence}.json`,
-        total_rows: selection.selected.length,
+        total_rows: sourceRows.length,
         notes: `Rulare automata aprobata ${run.run_key}; lot ${item.sequence}/${run.total_batches}; ${Number(item.excluded_rows || 0)} randuri excluse de filtrul strict; SHA sursa completa ${loadedSource.source_sha256}.`,
-        column_map: Object.fromEntries(Object.keys(selection.selected[0] || {}).map((key) => [key, key]))
+        column_map: Object.fromEntries(Object.keys(sourceRows[0] || {}).map((key) => [key, key]))
       }));
       if (created.error) return blockItem(svc, run, item, [created.error], "create_snapshot");
       await svc.entities.DirectoryAutoImportItem.update(item.id, {
         status: "snapshot_created",
         step: "append_rows",
         source_sha256: loadedSource.source_sha256,
-        selected_rows: selection.selected.length,
+        selected_rows: sourceRows.length,
         snapshot_id: created.snapshot.id,
         started_at: item.started_at || now2(),
         ...heartbeat
       });
       await releaseRunLock(svc, run.id, { current_step: `batch_${item.sequence}:append_rows`, failure_message: "" });
-      return { success: true, step: "snapshot_created", selected_rows: selection.selected.length, excluded_rows: Number(item.excluded_rows || 0) };
+      return { success: true, step: "snapshot_created", selected_rows: sourceRows.length, excluded_rows: Number(item.excluded_rows || 0) };
     }
     if (item.step === "append_rows") {
       const loadedSource = await loadItemSourceRows(svc, item);
       const sourceRows = loadedSource.rows;
-      const canonicalRows = await enrichRowsWithCanonicalGeography(svc, sourceRows);
-      const selection = selectionForRun(run, canonicalRows);
-      const selectedSha256 = await sha256HexText(stableStringify2(selection.selected));
-      if (selection.selected.length !== Number(item.selected_rows || 0) || selectedSha256 !== clean8(item.selected_sha256, 80)) {
+      if (sourceRows.length !== Number(item.selected_rows || 0)) {
         return blockItem(svc, run, item, [
-          `selected_rows_changed:${item.selected_rows}->${selection.selected.length}`,
-          `selected_sha_changed:${clean8(item.selected_sha256, 12)}->${selectedSha256.slice(0, 12)}`
+          `selected_rows_changed:${item.selected_rows}->${sourceRows.length}`
         ], "append_rows");
       }
       const appended = await responsePayload(await appendRows(svc, user, {
         snapshot_id: item.snapshot_id,
         start_row_number: 1,
-        rows: selection.selected
+        rows: sourceRows
       }));
       if (appended.error) return blockItem(svc, run, item, [appended.error], "append_rows");
       await svc.entities.DirectoryAutoImportItem.update(item.id, { status: "rows_appended", step: "validate_snapshot", ...heartbeat });
@@ -5522,7 +5567,9 @@ async function advanceRuns(svc, input = {}) {
   } else {
     const approved = await requireDirectoryRows(svc.entities.DirectoryAutoImportRun.filter({ status: "approved" }, "created_date", 10), "rularilor automate aprobate");
     const running = await requireDirectoryRows(svc.entities.DirectoryAutoImportRun.filter({ status: "running" }, "created_date", 10), "rularilor automate in curs");
-    runs = [...approved, ...running].sort((left, right) => String(left.created_date || "").localeCompare(String(right.created_date || ""))).slice(0, 1);
+    const oldestApproved = approved.sort((left, right) => String(left.created_date || "").localeCompare(String(right.created_date || "")))[0] || null;
+    const oldestRunning = running.sort((left, right) => String(left.created_date || "").localeCompare(String(right.created_date || "")))[0] || null;
+    runs = [oldestApproved, oldestRunning].filter(Boolean);
     if (!runs.length) {
       const completed = await requireDirectoryRows(
         svc.entities.DirectoryAutoImportRun.filter({ status: "completed" }, "-finished_at", 10),
