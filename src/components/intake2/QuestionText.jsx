@@ -3,8 +3,12 @@ import ContinueButton from "@/components/intake/ContinueButton";
 import UrgencyInterruption from "./UrgencyInterruption";
 import { buildPatientSafetyAssessment } from "@/lib/patientSafety";
 
+// Aceste etichete trebuie sa ramana identice cu SAFETY_OPTIONS din
+// shared/patientGuidanceQuestionCatalog.js (si copia din base44/shared/).
+// Formularea a fost clarificata in 2026-08-06: varianta veche "vederea a scazut mult"
+// era bifata si de pacienti cu miopie cronica, generand blocaje false de urgenta.
 const SAFETY_CHOICES = [
-  { key: "pierdere_brusca_vedere", label: "Nu mai vad brusc sau vederea a scazut mult" },
+  { key: "pierdere_brusca_vedere", label: "In ultimele ore sau zile, vederea a disparut brusc la un ochi (nu vedere slaba de mai mult timp)" },
   { key: "substanta_chimica", label: "A ajuns o substanta chimica in ochi" },
   { key: "traumatism_obiect", label: "Un obiect a patruns in ochi sau a existat o lovitura puternica" },
   { key: "durere_severa", label: "Am durere oculara foarte mare, mai ales cu vedere modificata, greata sau cefalee" },
