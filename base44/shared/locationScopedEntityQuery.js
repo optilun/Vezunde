@@ -59,17 +59,26 @@ export async function loadRowsForLocationIds(entity, locationIds, options = {}) 
   if (ids.length === 0) return [];
 
   const perLocationLimit = Math.max(1, Math.min(Number(options.perLocationLimit) || DEFAULT_PER_LOCATION_LIMIT, 1000));
-  const concurrency = Math.max(1, Math.min(Number(options.concurrency) || DEFAULT_CONCURRENCY, 25));
   const baseQuery = options.query && typeof options.query === 'object' ? options.query : {};
   const rows = [];
 
-  for (let offset = 0; offset < ids.length; offset += concurrency) {
-    const batch = ids.slice(offset, offset + concurrency);
-    const results = await Promise.all(batch.map((locationId) => entity.filter({
+  // Grupam ID-urile in loturi si folosim $in intr-o singura interogare per lot, in loc
+  // de un apel separat pentru fiecare locatie. Fix 2026-08-06: pentru un oras mare (ex.
+  // Bucuresti, 170+ locatii), varianta veche (un apel per locatie, concurenta 12) insemna
+  // ~15 valuri secventiale de retea DOAR pentru acest tabel - iar functia apeleaza acest
+  // helper de 6 ori (servicii, asignari, echipament, facilitati, unitati, capabilitati),
+  // deci ~90 valuri secventiale in total. Timpul cumulat putea depasi limita de executie
+  // a functiei, dand eroare generica pentru orasele mari, indiferent de alte date.
+  const idsPerBatch = Math.max(1, Math.min(Number(options.idsPerBatch) || 200, 500));
+  const limitPerBatch = Math.min(perLocationLimit * idsPerBatch, 5000);
+
+  for (let offset = 0; offset < ids.length; offset += idsPerBatch) {
+    const batch = ids.slice(offset, offset + idsPerBatch);
+    const result = await entity.filter({
       ...baseQuery,
-      location_id: locationId,
-    }, options.sort || null, perLocationLimit).catch(() => [])));
-    for (const result of results) rows.push(...(Array.isArray(result) ? result : []));
+      location_id: { $in: batch },
+    }, options.sort || null, limitPerBatch).catch(() => []);
+    if (Array.isArray(result)) rows.push(...result);
   }
 
   return rows;
