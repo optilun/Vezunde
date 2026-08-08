@@ -3,6 +3,7 @@ import {
   getCanonicalServiceDefinition,
   normalizeServiceKey,
 } from './canonicalServiceRegistryExtended.js';
+import { getApprovedPatientGuidanceQuestion } from './patientGuidanceQuestionCatalog.js';
 
 export const PATIENT_NEED_INTERPRETATION_VERSION = 'patient-need-ai-v1';
 
