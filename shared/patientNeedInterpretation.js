@@ -40,10 +40,23 @@ function clean(value, maxLength = 200) {
 
 function cleanAnswers(answers) {
   if (!Array.isArray(answers)) return [];
-  return answers.slice(0, 20).map((answer) => ({
-    question_key: clean(answer?.question_key, 80),
-    answer_value: clean(answer?.answer_value, 240),
-  })).filter((answer) => answer.question_key && answer.answer_value);
+  return answers.slice(0, 20).map((answer) => {
+    const questionKey = clean(answer?.question_key, 80);
+    const answerValue = clean(answer?.answer_value, 240);
+    if (!questionKey || !answerValue) return null;
+    // Trimitem si textul in romana pe care l-a vazut efectiv pacientul, nu doar cheia
+    // tehnica (ex: routine_vs_symptom=symptom -> "Cauti un control de rutina sau ai o
+    // problema la ochi?" / "Am o problema sau un simptom la ochi"). Fara asta, modelul
+    // trebuie sa ghiceasca sensul codurilor interne.
+    const question = getApprovedPatientGuidanceQuestion(questionKey);
+    const optionLabel = question?.options?.find((option) => option.key === answerValue)?.label;
+    return {
+      question_key: questionKey,
+      answer_value: answerValue,
+      question_text: question?.title ? clean(question.title, 200) : undefined,
+      answer_text: optionLabel ? clean(optionLabel, 200) : undefined,
+    };
+  }).filter(Boolean);
 }
 
 function canonicalServiceKeys(values) {
