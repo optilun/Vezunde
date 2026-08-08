@@ -35,7 +35,12 @@ const persistence = await readFile(new URL("../shared/patientRequestPersistence.
 const conversationalCard = await readFile(new URL("../src/components/intake2/ConversationalCard.jsx", import.meta.url), "utf8");
 
 assert.match(matcher, /function patientSearchScope\(value\)/);
-assert.match(matcher, /value === 'county' \? 'county' : 'locality'/);
+// patientSearchScope accepta acum si 'national' (2026-08-06), pe langa 'county' si
+// 'locality'. Verificam ca toate cele trei scopuri sunt tratate explicit si ca orice
+// valoare necunoscuta cade in continuare pe 'locality' (comportamentul sigur).
+assert.match(matcher, /if \(value === 'county'\) return 'county';/);
+assert.match(matcher, /if \(value === 'national'\) return 'national';/);
+assert.match(matcher, /return 'locality';/);
 assert.match(matcher, /svc\.entities\.GeographicLocality\.filter/);
 assert.match(matcher, /county_code: countyCode/);
 assert.match(matcher, /queryScope === 'county'/);
