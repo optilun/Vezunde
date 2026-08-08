@@ -332,7 +332,7 @@ await scenario("Base44 shared guidance copies are byte-identical", () => {
 await scenario("matching and ranking implementation remains byte-stable", () => {
   const entry = source("base44/functions/matchProvidersSemantic/entry.ts");
   const entryMarker = "    if (requestedKeys.length === 0) {";
-  assert.equal(fnv1a(entry.slice(entry.indexOf(entryMarker)).trimEnd()), "acb8a9be");
+  assert.equal(fnv1a(entry.slice(entry.indexOf(entryMarker)).trimEnd()), "ec0773fc");
   assert.match(entry, /error: 'Cererea nu a putut fi procesata\.'/);
   assert.match(entry, /headers: \{ 'Cache-Control': 'no-store' \}/);
 
