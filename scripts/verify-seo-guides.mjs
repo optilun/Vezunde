@@ -63,7 +63,7 @@ assert.equal(sitemapUrls.length, new Set(sitemapUrls).size, "Sitemap-ul conține
 assert.ok(sitemapUrls.length >= 27, "Sitemap-ul nu conține întreaga bibliotecă editorială.");
 for (const key of topicKeys) {
   assert.ok(
-    sitemapUrls.includes(`https://vezunde-core-link.base44.app/ghid/${key}`),
+    sitemapUrls.includes(`https://viasee.ro/ghid/${key}`),
     `Lipsește din sitemap ghidul ${key}.`,
   );
 }
