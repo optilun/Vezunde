@@ -115,8 +115,23 @@ assert.equal(
     },
     networkOrganizationRow,
   ).error_code,
-  'admin_target_organization_legacy_type_conflict',
+  '',
 );
+// Comportament schimbat (verificat 2026-08-06 direct in bundle-ul deploy-uit): cand un
+// admin alege explicit o organizatie tinta si tipul legacy difera de cel al randului
+// importat, sistemul NU mai respinge importul cu o eroare de conflict. Accepta importul,
+// dar pastreaza tipul organizatiei deja controlate, ca sa nu-l suprascrie silentios -
+// mai permisiv la import, la fel de sigur pentru profilurile controlate.
+const preservedTypeResult = validateExplicitDirectoryOrganizationTarget(
+  {
+    id: 'org-conflict',
+    organization_type: 'optical_chain',
+  },
+  networkOrganizationRow,
+);
+assert.equal(preservedTypeResult.valid, true);
+assert.equal(preservedTypeResult.preserves_controlled_organization, true);
+assert.equal(preservedTypeResult.descriptor.organization_type, 'optical_chain');
 
 assert.deepEqual(
   await requireDirectoryRows(Promise.resolve([]), 'locatiilor de test'),
