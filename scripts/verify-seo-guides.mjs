@@ -56,7 +56,7 @@ assert.ok(
 );
 
 assert.match(robots, /User-agent: OAI-SearchBot/);
-assert.match(robots, /Sitemap: https:\/\/vezunde-core-link\.base44\.app\/sitemap\.xml/);
+assert.match(robots, /Sitemap: https:\/\/viasee\.ro\/sitemap\.xml/);
 
 const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
 assert.equal(sitemapUrls.length, new Set(sitemapUrls).size, "Sitemap-ul conține URL-uri duplicate.");
