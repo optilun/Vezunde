@@ -57,6 +57,10 @@ export function getPatientFacingServiceCatalog() {
       key: definition.key,
       label: definition.label,
       need_level: definition.service_need_level,
+      // Cine presteaza serviciul. Fara asta, modelul nu poate distinge corect intre
+      // ophthalmology_consultation (medic oftalmolog) si optometry_consultation
+      // (optometrist) - o distinctie importanta pentru pacienti si pentru matching.
+      performed_by: definition.required_professional_types || [],
     }));
 }
 
