@@ -76,7 +76,9 @@ for (const source of [deterministicSource, browseSource]) {
 assert.match(semanticSource, /loadPublicLocationsForLocality/);
 assert.match(semanticSource, /loadRowsForLocationIds/);
 assert.match(semanticSource, /function patientSearchScope\(value\)/);
-assert.match(semanticSource, /value === 'county' \? 'county' : 'locality'/);
+// patientSearchScope trateaza acum si 'national' (2026-08-06), pe langa county/locality.
+assert.match(semanticSource, /if \(value === 'county'\) return 'county';/);
+assert.match(semanticSource, /if \(value === 'national'\) return 'national';/);
 assert.match(semanticSource, /query_scope: queryScope/);
 assert.match(semanticSource, /scope !== 'county'/);
 assert.match(semanticSource, /county_code: countyCode/);
