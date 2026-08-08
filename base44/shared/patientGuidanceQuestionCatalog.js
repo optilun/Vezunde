@@ -8,7 +8,7 @@ const TIMING_OPTIONS = Object.freeze([
 ]);
 
 const SAFETY_OPTIONS = Object.freeze([
-  { key: "pierdere_brusca_vedere", label: "Nu mai vad brusc sau vederea a scazut mult" },
+  { key: "pierdere_brusca_vedere", label: "In ultimele ore sau zile, vederea a disparut brusc la un ochi (nu vedere slaba de mai mult timp)" },
   { key: "substanta_chimica", label: "A ajuns o substanta chimica in ochi" },
   { key: "traumatism_obiect", label: "Un obiect a patruns in ochi sau a existat o lovitura puternica" },
   { key: "durere_severa", label: "Am durere oculara foarte mare, mai ales cu vedere modificata, greata sau cefalee" },
