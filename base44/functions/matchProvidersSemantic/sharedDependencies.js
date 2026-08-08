@@ -1911,7 +1911,8 @@ function getPatientFacingServiceCatalog() {
   return CANONICAL_SERVICE_KEYS2.map((key) => getCanonicalServiceDefinition2(key)).filter((definition) => definition?.patient_facing !== false && definition?.b2b_only !== true).map((definition) => ({
     key: definition.key,
     label: definition.label,
-    need_level: definition.service_need_level
+    need_level: definition.service_need_level,
+    performed_by: definition.required_professional_types || []
   }));
 }
 function getPatientNeedResponseSchema() {
