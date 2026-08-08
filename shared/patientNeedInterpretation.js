@@ -122,6 +122,10 @@ export function buildPatientNeedPrompt({
     'A possible safety flag is advisory only. Never conclude that a case is safe or non-urgent.',
     'If the meaning is ambiguous, set clarification_required to true and ask one short neutral question in Romanian.',
     'Keep evidence_phrases short and copy only phrases that appear in the patient input.',
+    // Ghidaj adaugat 2026-08-06 dupa analiza calitatii interpretarii.
+    'Each catalog entry has performed_by listing which professionals deliver it. When the patient explicitly asks for a doctor ("medic", "doctor", "oftalmolog"), prefer services performed_by ophthalmologist. When the request is a routine vision check without asking for a doctor, prefer optometry services. Do not silently upgrade a routine request into a medical consultation.',
+    'Romanian patients commonly describe refractive problems as "nu vad bine la distanta" (myopia), "nu vad bine la aproape" (presbyopia/hyperopia), "nu vad la tabla". These are ordinary, long-standing vision problems: map them to routine optometry services and do NOT set safety flags for them.',
+    'Only set possible_safety_flags when the text describes something acute and recent (sudden onset in hours or days, trauma, chemicals, severe pain). A long-standing or gradual complaint is never a safety flag.',
     `INPUT_JSON=${JSON.stringify(input)}`,
     `VIASEE_SERVICE_CATALOG_JSON=${JSON.stringify(catalog)}`,
   ].join('\n');
