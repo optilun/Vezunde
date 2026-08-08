@@ -12,7 +12,14 @@ import {
 } from '../../base44/shared/providerWorkspaceFunctionRouting.js';
 import { getBase44LatestFunctionClient } from './base44LatestFunctionClient.js';
 
-export const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-read-safe-6';
+// Trebuie sa fie identica cu DIRECTORY_IMPORT_RUNTIME_REVISION din
+// base44/functions/directoryOps/directoryImportOpsLatest.ts - adaptorul care raspunde
+// efectiv la `runtime_info` (verificat live 2026-08-06).
+// Istoric: pe 2026-07-31 s-a introdus stratul "Latest" (campanie nationala + import
+// automat) cu revizie proprie, dar constanta de aici a ramas la 'read-safe-6'. Rezultat:
+// handshake-ul esua si crearea unui snapshot nou din admin era blocata cu mesajul
+// "Runtime-ul actual al importului nu este versiunea location-first publicata".
+export const DIRECTORY_IMPORT_RUNTIME_REVISION = 'directory-import-runtime-national-directory-5';
 
 const directoryImportRuntimeChecks = new WeakMap();
 
