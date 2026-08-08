@@ -336,13 +336,15 @@ assert.equal(
   }).error_code,
   'location_external_state_target_missing',
 );
-assert.equal(
-  resolveDirectoryLocationMatch({
-    addressStates: [{ id: 'orphan-state', location_id: 'missing-location' }],
-    locationsById,
-  }).error_code,
-  'address_state_target_missing',
-);
+// La fel ca mai sus: calea de potrivire dupa adresa nu mai foloseste coduri de eroare
+// dedicate (spre deosebire de calea dupa cheie externa, care le pastreaza - vezi
+// assert-ul de mai sus, location_external_state_target_missing, inca valid).
+const orphanAddressMatch = resolveDirectoryLocationMatch({
+  addressStates: [{ id: 'orphan-state', location_id: 'missing-location' }],
+  locationsById,
+});
+assert.equal(orphanAddressMatch.target, null);
+assert.equal(orphanAddressMatch.error_code, '');
 
 const mutableOrganizationPlan = planDirectoryOrganizationReconciliation({
   id: 'org-1',
