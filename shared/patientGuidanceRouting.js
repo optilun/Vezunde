@@ -70,7 +70,10 @@ const SAFETY_STATES = new Set(["unchecked", "clear", "advisory", "blocking"]);
 
 const MATRIX = /** @type {Record<string, any>} */ ({
   control_vedere: {
-    required_for_search: ["routine_vs_symptom", "investigation_type", "locality"],
+    // Ca la simptome: investigation_type nu blocheaza cautarea (cine vrea doar un control
+    // de rutina nu are recomandare de investigatie), dar se cere inainte de trimiterea
+    // cererii catre furnizori.
+    required_for_search: ["routine_vs_symptom", "locality"],
     required_for_provider_request: ["routine_vs_symptom", "investigation_type", "locality", "timing"],
     optional_facts: ["last_eye_exam", "prescription_status"],
     inferable_facts: ["for_whom"],
