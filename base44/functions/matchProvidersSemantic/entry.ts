@@ -97,7 +97,7 @@ function collectStructuralCandidate(location, sirutaCode, countyName, bucket) {
     name: location.public_display_name || location.name,
     provider_type: location.provider_type,
     provider_profile_type: location.provider_profile_type,
-    photo_url: null,
+    photo_url: disclosure.expose_full_details ? (location.photo_url || null) : null,
     city: location.locality_name || location.city || null,
     county: location.county_name || location.county || null,
     address: disclosure.address,
