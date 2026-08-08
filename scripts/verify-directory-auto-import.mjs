@@ -67,7 +67,15 @@ assert.match(auto, /geography_county_mismatch/);
 assert.match(auto, /selectRowsForAutomaticImport\(canonicalRows\)/);
 assert.match(auto, /const preparedDescriptors = \[\]/);
 assert.match(auto, /selectedSha256 = await sha256HexText\(stableStringify\(selection\.selected\)\)/);
-assert.match(auto, /preflight_selection_changed/);
+// Arhitectura verificarii s-a schimbat pe 2026-08-04 si e mai stricta, nu mai slaba:
+// selectia se face O SINGURA DATA la preflight (createRun), iar subsetul aprobat se
+// persista in fragmente. La executie nu se mai re-ruleaza filtrul (ceea ce ar putea da
+// alt rezultat daca datele de referinta s-au schimbat intre timp), ci se verifica:
+//   1. numarul de randuri (`selected_rows_changed`, mai jos)
+//   2. integritatea criptografica a payloadului persistat (SHA per fragment, in
+//      loadPayloadChunks - vezi assert-ul dedicat)
+assert.match(auto, /selected_rows_changed/);
+assert.match(auto, /actualSha256 !== clean\(chunks\[0\]\.payload_sha256, 80\)/);
 assert.match(auto, /Analiza este partiala/);
 assert.match(auto, /requires_repair:\s*true/);
 assert.match(auto, /persistPayloadChunks/);
