@@ -63,7 +63,7 @@ assert.match(questionText, /if \(assessment\.blocking\)/);
 assert.match(questionChoice, /safety_targeted_check/);
 assert.match(questionChoice, /UrgencyInterruption/);
 assert.match(interruption, /Opreste cautarea si solicita ajutor medical imediat/);
-assert.match(interruption, /Mergi imediat la UPU, camera de garda/);
+assert.match(interruption, /Mergi la UPU, camera de garda/);
 assert.match(interruption, /href="tel:112"/);
 assert.match(interruption, /cel putin 20 de minute/);
 assert.match(interruption, /Nu conduce/);
