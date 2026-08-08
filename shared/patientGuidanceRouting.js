@@ -70,11 +70,11 @@ const SAFETY_STATES = new Set(["unchecked", "clear", "advisory", "blocking"]);
 
 const MATRIX = /** @type {Record<string, any>} */ ({
   control_vedere: {
-    // Ca la simptome: investigation_type nu blocheaza cautarea (cine vrea doar un control
-    // de rutina nu are recomandare de investigatie), dar se cere inainte de trimiterea
-    // cererii catre furnizori.
+    // Ca la simptome: investigation_type nu blocheaza nici cautarea, nici cererea. Cine
+    // vrea doar un control de rutina nu are recomandare de investigatie. Intrebarea ramane
+    // in catalog, folosita de intentia "investigatii" si de regula conditionala de mai jos.
     required_for_search: ["routine_vs_symptom", "locality"],
-    required_for_provider_request: ["routine_vs_symptom", "investigation_type", "locality", "timing"],
+    required_for_provider_request: ["routine_vs_symptom", "locality", "timing"],
     optional_facts: ["last_eye_exam", "prescription_status"],
     inferable_facts: ["for_whom"],
     exact_service_can_skip_search_facts: ["routine_vs_symptom"],
