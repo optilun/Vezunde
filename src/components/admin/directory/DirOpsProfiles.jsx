@@ -350,7 +350,43 @@ export default function DirOpsProfiles() {
         );
       })}
 
-      {action && (
+      {action && action.type === "edit" && (
+        <DirOpsActionNote
+          title="Editare rapida profil"
+          onConfirm={runEdit}
+          onCancel={() => { setAction(null); setEditForm({}); }}
+          noteOptional
+        >
+          <div className="space-y-3">
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] leading-relaxed text-amber-900">
+              Modificarea se aplica imediat, direct pe profilul public. Numele, adresa si tipul de furnizor nu sunt editabile aici — folositi fluxul de corectie pentru acestea.
+            </p>
+            {EDIT_FIELDS.map((field) => (
+              <div key={field.key}>
+                <label className="text-xs font-semibold text-foreground">{field.label}</label>
+                {field.multiline ? (
+                  <textarea
+                    value={editForm[field.key] || ""}
+                    onChange={(event) => setEditForm((form) => ({ ...form, [field.key]: event.target.value }))}
+                    placeholder={field.placeholder}
+                    rows={3}
+                    className="mt-1.5 w-full resize-y rounded-xl border border-input bg-card px-3 py-2.5 text-sm outline-none focus:border-foreground/40"
+                  />
+                ) : (
+                  <input
+                    value={editForm[field.key] || ""}
+                    onChange={(event) => setEditForm((form) => ({ ...form, [field.key]: event.target.value }))}
+                    placeholder={field.placeholder}
+                    className="mt-1.5 w-full rounded-xl border border-input bg-card px-3 py-2.5 text-sm outline-none focus:border-foreground/40"
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </DirOpsActionNote>
+      )}
+
+      {action && action.type !== "edit" && (
         <DirOpsActionNote
           title={action.type === "verify" ? "Verificare profil - nota obligatorie" : "Suspendare profil - nota obligatorie"}
           onConfirm={run}
