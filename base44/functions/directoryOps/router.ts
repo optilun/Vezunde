@@ -7,6 +7,7 @@ import { handle as adminProviderClaimReviewHandle } from './adminProviderClaimRe
 import { handle as adminProviderScopedClaimReviewHandle } from './adminProviderScopedClaimReview.ts';
 import { handle as adminServiceConfigurationReviewHandle } from './adminServiceConfigurationReview.ts';
 import { handle as adminServicePrerequisiteReviewHandle } from './adminServicePrerequisiteReview.ts';
+import { handle as adminSetLocationHoursHandle } from './adminSetLocationHours.ts';
 import { handle as adminWorkspaceReviewHandle } from './adminWorkspaceReview.ts';
 import { handle as aiResearchOpsHandle } from './aiResearchOps.ts';
 import { handle as backfillLocationServiceMatchingHandle } from './backfillLocationServiceMatching.ts';
