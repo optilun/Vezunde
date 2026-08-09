@@ -35,7 +35,12 @@ export default function AdminDashboardHome({ onNavigate }) {
 
   useEffect(() => {
     Promise.all([
-      base44.entities.ProviderLocation.list(null, 500),
+      // Limita ridicata la 5000 (era 500) - cu 500 se incarcau doar primele 500 din
+      // baza (neordonate explicit), iar toate statisticile de mai jos (publicate,
+      // distributie Directory/Revendicat/Verificat, judete acoperite) se calculau doar
+      // pe acel esantion trunchiat, nu pe intreg directorul. Descoperit 2026-08-06 cand
+      // panoul arata 494 de locatii publicate desi baza reala are ~500+.
+      base44.entities.ProviderLocation.list(null, 5000),
       base44.entities.LocationService.list(null, 2000),
       base44.entities.ProviderClaimRequest.filter({ status: "in_asteptare" }, null, 200),
       base44.entities.SupportTicket.list("-updated_date", 500),
