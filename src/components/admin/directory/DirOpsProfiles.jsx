@@ -112,7 +112,9 @@ export default function DirOpsProfiles() {
     setError("");
     try {
       const [locationRows, organizationRows] = await Promise.all([
-        base44.entities.ProviderLocation.list("-updated_date", 500),
+        // Limita ridicata la 5000 (era 500) - descoperit 2026-08-06 ca 500 trunchia
+        // silentios lista, ascunzand pana la ~30 de locatii din vizualizarea admin.
+        base44.entities.ProviderLocation.list("-updated_date", 5000),
         base44.entities.ProviderOrganization.list("name", 500),
       ]);
       setLocations(locationRows);
