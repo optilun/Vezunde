@@ -310,6 +310,22 @@ export default function DirOpsProfiles() {
               </div>
 
               <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditForm({
+                      phone_public: location.phone_public || "",
+                      website: location.website || "",
+                      public_email: location.public_email || "",
+                      opening_hours: location.opening_hours || "",
+                      description: location.description || "",
+                    });
+                    setAction({ locationId: location.id, type: "edit" });
+                  }}
+                  className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-semibold hover:bg-secondary sm:rounded-full"
+                >
+                  <Pencil className="h-3.5 w-3.5" /> Editeaza
+                </button>
                 {pcs !== "verified" && (
                   <button
                     type="button"
