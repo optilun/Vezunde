@@ -5,6 +5,7 @@ import MatchResults from "@/components/intake2/MatchResults";
 import LocationThumb, { typeVisual } from "@/components/results/LocationThumb";
 import TrustBadge from "@/components/results/TrustBadge";
 import { clearPatientIntakeSession } from "@/lib/patientIntakeSession";
+import { buildGoogleMapsEmbedUrl, hasMapLocation } from "@/lib/maps";
 
 // Panou de detalii, populat cand pacientul apasa pe un card din lista.
 // Ramane doar o previzualizare compacta - profilul complet e o pagina separata,
