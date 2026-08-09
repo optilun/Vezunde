@@ -102,6 +102,8 @@ export default function DirOpsProfiles() {
   const [organizations, setOrganizations] = useState({});
   const [action, setAction] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [hoursAction, setHoursAction] = useState(null);
+  const [weeklyForm, setWeeklyForm] = useState({});
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
