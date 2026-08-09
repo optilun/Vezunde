@@ -409,9 +409,7 @@ export default function DirOpsProfiles() {
         >
           <div className="space-y-3">
             <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] leading-relaxed text-amber-900">
-              Modificarea se aplica imediat, direct pe profilul public. Numele, adresa si tipul de furnizor nu sunt editabile aici — folositi fluxul de corectie pentru acestea.
-              <br /><br />
-              <strong>Orar:</strong> acest camp e ignorat pe profilul public daca locatia are deja un program structurat pe zile (orice locatie revendicata sau editata de furnizor). Functioneaza sigur doar pentru profiluri neatinse inca, din import.
+              Modificarea se aplica imediat, direct pe profilul public. Numele, adresa si tipul de furnizor nu sunt editabile aici — folositi fluxul de corectie pentru acestea. Orarul se editeaza separat, cu butonul "Orar".
             </p>
             {EDIT_FIELDS.map((field) => (
               <div key={field.key}>
