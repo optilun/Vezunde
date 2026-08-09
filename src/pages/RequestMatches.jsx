@@ -22,6 +22,7 @@ function DetailPanel({ location }) {
   }
 
   const visual = typeVisual(location.provider_type);
+  const mapEmbedUrl = hasMapLocation(location) ? buildGoogleMapsEmbedUrl(location) : "";
 
   return (
     <div className="rounded-3xl border border-border bg-card p-6">
