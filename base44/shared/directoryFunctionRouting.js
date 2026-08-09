@@ -10,6 +10,7 @@ export const DIRECTORY_FUNCTION_ROUTES = Object.freeze({
   adminProviderScopedClaimReview: DIRECTORY_FUNCTION_ENDPOINT,
   adminServiceConfigurationReview: DIRECTORY_FUNCTION_ENDPOINT,
   adminServicePrerequisiteReview: DIRECTORY_FUNCTION_ENDPOINT,
+  adminSetLocationHours: DIRECTORY_FUNCTION_ENDPOINT,
   adminWorkspaceReview: DIRECTORY_FUNCTION_ENDPOINT,
   aiResearchOps: DIRECTORY_FUNCTION_ENDPOINT,
   backfillLocationServiceMatching: DIRECTORY_FUNCTION_ENDPOINT,
