@@ -31,6 +31,7 @@ export const DIRECTORY_FUNCTION_HANDLERS: Record<string, DirectoryFunctionHandle
   adminProviderScopedClaimReview: adminProviderScopedClaimReviewHandle,
   adminServiceConfigurationReview: adminServiceConfigurationReviewHandle,
   adminServicePrerequisiteReview: adminServicePrerequisiteReviewHandle,
+  adminSetLocationHours: adminSetLocationHoursHandle,
   adminWorkspaceReview: adminWorkspaceReviewHandle,
   aiResearchOps: aiResearchOpsHandle,
   backfillLocationServiceMatching: backfillLocationServiceMatchingHandle,
