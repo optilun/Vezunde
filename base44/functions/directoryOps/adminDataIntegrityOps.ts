@@ -112,8 +112,8 @@ async function audit(svc, user, record) {
 
 async function loadData(svc) {
   const [organizations, locations, activeSubmissions] = await Promise.all([
-    svc.entities.ProviderOrganization.filter({}, 'name', 500),
-    svc.entities.ProviderLocation.filter({}, 'name', 500),
+    svc.entities.ProviderOrganization.filter({}, 'name', 5000),
+    svc.entities.ProviderLocation.filter({}, 'name', 5000),
     svc.entities.ProviderWorkspaceSubmission.filter({ status: { $in: ACTIVE_SUBMISSION_STATUSES } }, '-created_date', 500),
   ]);
   return { organizations, locations, activeSubmissions };
