@@ -115,7 +115,7 @@ export default function DirOpsProfiles() {
         // Limita ridicata la 5000 (era 500) - descoperit 2026-08-06 ca 500 trunchia
         // silentios lista, ascunzand pana la ~30 de locatii din vizualizarea admin.
         base44.entities.ProviderLocation.list("-updated_date", 5000),
-        base44.entities.ProviderOrganization.list("name", 500),
+        base44.entities.ProviderOrganization.list("name", 5000),
       ]);
       setLocations(locationRows);
       setOrganizations(
