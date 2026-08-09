@@ -1,5 +1,5 @@
-const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-const DAY_LABELS = {
+export const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+export const DAY_LABELS = {
   monday: 'Luni',
   tuesday: 'Marti',
   wednesday: 'Miercuri',
