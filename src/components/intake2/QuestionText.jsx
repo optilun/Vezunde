@@ -22,7 +22,7 @@ function assessmentForChoice(answerValue) {
   });
 }
 
-export default function QuestionText({ question, onSubmit }) {
+export default function QuestionText({ question, onSubmit, onPhaseChange }) {
   const [value, setValue] = useState("");
   const [screeningCleared, setScreeningCleared] = useState(question.key !== "descriere");
   const [urgentChoice, setUrgentChoice] = useState("");
@@ -31,6 +31,13 @@ export default function QuestionText({ question, onSubmit }) {
     () => (urgentChoice ? assessmentForChoice(urgentChoice) : null),
     [urgentChoice],
   );
+
+  // Anuntam parintele cand suntem pe ecranul de siguranta (nu inca pe intrebarea reala),
+  // ca sa poata ascunde titlul generic al intrebarii ('Descrie pe scurt...'), care nu are
+  // legatura cu verificarea de siguranta si crea impresia de doua ecrane suprapuse.
+  React.useEffect(() => {
+    onPhaseChange?.(screeningCleared ? "answer" : "safety");
+  }, [screeningCleared, onPhaseChange]);
 
   const submit = () => {
     const nextValue = value.trim();
