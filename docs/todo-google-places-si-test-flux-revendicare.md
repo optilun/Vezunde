@@ -43,11 +43,19 @@ tuturor locatiilor - ar contrazice filozofia "automation first" si ar bloca tot
 directorul pana la revizuire manuala a ~1300 de locatii. Unealta de editare rapida e
 solutia potrivita pentru ingrijorarea lui Alex, nu aprobarea universala.
 
-## 3ter. Harta pe profilurile cu adresa (discutat 2026-08-06)
-`react-leaflet` e instalat ca dependenta, dar NU e folosit nicaieri in cod (verificat:
-zero rezultate in src/). Depinde de acelasi blocaj ca mai sus - are nevoie de
-coordonate (lat/lng), care lipsesc aproape peste tot. Se rezolva natural cand se
-activeaza Google Places (fiecare furnizor revendicat isi aduce coordonatele corecte).
+## 3ter. Harta pe profilurile cu adresa - CORECTIE (2026-08-06, aceeasi zi)
+GRESEALA INITIALA: am presupus ca harta are nevoie de coordonate (lat/lng). FALS.
+Sistemul de harta EXISTA DEJA, functional, pe pagina publica de profil
+(`ProviderProfile.jsx`, foloseste `src/lib/maps.js` -> embed Google Maps simplu).
+`buildGoogleMapsEmbedUrl` foloseste DOAR textul de adresa (`buildAddressQuery`), nu
+coordonatele - lat/lng sunt doar un fallback daca adresa lipseste.
+
+Verificat live: profilul iOptik Timisoara - Stadion are adresa completa, lat/lng null,
+si genereaza corect un URL de harta functional. Ar trebui sa functioneze deja pentru
+aproape toate cele ~1300 de locatii, FARA sa astepte Google Places API.
+
+De verificat de Alex direct pe site: confirma vizual ca harta chiar apare pe un profil
+real. Daca nu apare, e o problema separata de UI/randare, nu de date lipsa.
 
 ## 3. Test complet flux revendicare (netestat pana acum)
 Dupa activarea contului, de parcurs cap-coada, ca un furnizor real:
