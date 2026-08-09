@@ -274,11 +274,14 @@ export default function AdminDataIntegrity() {
     setError("");
     try {
       const [organizations, locations, submissions, claims, services] = await Promise.all([
-        base44.entities.ProviderOrganization.list("name", 500),
-        base44.entities.ProviderLocation.list("name", 500),
-        base44.entities.ProviderWorkspaceSubmission.list("-created_date", 500),
-        base44.entities.ProviderClaimRequest.list("-created_date", 500),
-        base44.entities.LocationService.list(null, 500),
+        // Verificatorul de integritate trebuie sa vada TOATE inregistrarile, altfel poate
+        // rata exact problemele pe care e menit sa le gaseasca. Limita de 500 trunchia
+        // silentios analiza (descoperit 2026-08-06).
+        base44.entities.ProviderOrganization.list("name", 5000),
+        base44.entities.ProviderLocation.list("name", 5000),
+        base44.entities.ProviderWorkspaceSubmission.list("-created_date", 5000),
+        base44.entities.ProviderClaimRequest.list("-created_date", 5000),
+        base44.entities.LocationService.list(null, 5000),
       ]);
       setData({ organizations, locations, submissions, claims, services });
     } catch (reason) {
