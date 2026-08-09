@@ -73,8 +73,8 @@ async function audit(svc, user, rec) {
 // domain, public phone. READ-ONLY — never merges, never blocks, never writes.
 async function findDuplicates(svc, cand, excludeId) {
   const [locs, orgs] = await Promise.all([
-    svc.entities.ProviderLocation.list(null, 500),
-    svc.entities.ProviderOrganization.list(null, 500),
+    svc.entities.ProviderLocation.list(null, 5000),
+    svc.entities.ProviderOrganization.list(null, 5000),
   ]);
   const orgMap = {};
   for (const o of orgs) orgMap[o.id] = o.name || '';
