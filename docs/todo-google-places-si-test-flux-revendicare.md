@@ -32,6 +32,23 @@ coordonatelor pentru cele 1300 de locatii importate. Sistemul se auto-completeaz
 pe masura ce furnizorii isi revendica profilurile, cu date confirmate chiar de ei —
 mai de incredere decat potrivire automata in masa.
 
+## 3bis. Unealta admin pentru editare manuala (gasita 2026-08-06)
+Confirmat in cod: pagina de admin cu profiluri (`DirOpsProfiles.jsx`) are doar doua
+butoane - "Verifica profil" si "Suspenda". NICIUN camp editabil. Functia backend
+`updateProviderLocation` exista deja, dar e folosita doar in workspace-ul furnizorului
+(`MyLocationCard.jsx`) si in teste - nicaieri in admin.
+
+Decizie de produs discutata cu Alex: NU se trece la aprobare manuala universala a
+tuturor locatiilor - ar contrazice filozofia "automation first" si ar bloca tot
+directorul pana la revizuire manuala a ~1300 de locatii. Unealta de editare rapida e
+solutia potrivita pentru ingrijorarea lui Alex, nu aprobarea universala.
+
+## 3ter. Harta pe profilurile cu adresa (discutat 2026-08-06)
+`react-leaflet` e instalat ca dependenta, dar NU e folosit nicaieri in cod (verificat:
+zero rezultate in src/). Depinde de acelasi blocaj ca mai sus - are nevoie de
+coordonate (lat/lng), care lipsesc aproape peste tot. Se rezolva natural cand se
+activeaza Google Places (fiecare furnizor revendicat isi aduce coordonatele corecte).
+
 ## 3. Test complet flux revendicare (netestat pana acum)
 Dupa activarea contului, de parcurs cap-coada, ca un furnizor real:
 /adauga-sau-revendica -> cautare locatie -> formular claim -> review admin ->
