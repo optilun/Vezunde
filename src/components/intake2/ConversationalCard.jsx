@@ -174,6 +174,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   ));
   const [history, setHistory] = useState(() => restoredSession?.history || []);
   const [phase, setPhase] = useState(initialPhase);
+  const [questionPhase, setQuestionPhase] = useState("answer");
   const [results, setResults] = useState(null);
   const [matchMeta, setMatchMeta] = useState(null);
   const [intentProposal, setIntentProposal] = useState(null);
