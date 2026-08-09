@@ -1,10 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Building2, Search } from "lucide-react";
+import { AlertTriangle, Building2, Pencil, Search } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PCS_LABELS } from "@/lib/directoryOpsCatalog";
 import DirOpsActionNote from "@/components/admin/directory/DirOpsActionNote";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import EmptyState from "@/components/admin/ui/EmptyState";
+
+// Campuri editabile manual de admin - deliberat NU includ nume, adresa sau tipul de
+// furnizor: acelea ating potrivirea geografica si medicala (SIRUTA, capacitate
+// medical/optic) si merita fluxul de corectie/revendicare, nu un patch rapid.
+const EDIT_FIELDS = [
+  { key: "phone_public", label: "Telefon", placeholder: "07xx xxx xxx" },
+  { key: "website", label: "Website", placeholder: "https://..." },
+  { key: "public_email", label: "Email", placeholder: "contact@..." },
+  { key: "opening_hours", label: "Orar", placeholder: "Luni-Vineri 09:00-18:00" },
+  { key: "description", label: "Descriere", placeholder: "Cateva propozitii despre locatie", multiline: true },
+];
 
 const FILTERS = [
   { key: "all", label: "Toate" },
