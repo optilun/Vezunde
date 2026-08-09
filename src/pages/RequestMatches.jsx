@@ -63,6 +63,18 @@ function DetailPanel({ location }) {
         )}
       </div>
 
+      {mapEmbedUrl && (
+        <div className="mt-4 h-40 overflow-hidden rounded-2xl border border-border">
+          <iframe
+            title={`Harta ${location.name}`}
+            src={mapEmbedUrl}
+            className="h-full w-full border-0"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        </div>
+      )}
+
       {Array.isArray(location.public_services) && location.public_services.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-1.5">
           {location.public_services.slice(0, 6).map((service) => (
