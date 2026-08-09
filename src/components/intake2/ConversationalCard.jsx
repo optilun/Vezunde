@@ -752,11 +752,13 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
               exit={reduceMotion ? undefined : { opacity: 0, x: -14 }}
               transition={{ duration: reduceMotion ? 0 : 0.2 }}
             >
-              <h2 className="font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+              <h2 className={`font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl ${current.type === "text" && questionPhase === "safety" ? "sr-only" : ""}`}>
                 {current.title}
               </h2>
               {current.type === "choice" && <QuestionChoice question={current} onSelect={handleChoice} />}
-              {current.type === "text" && <QuestionText question={current} onSubmit={handleText} />}
+              {current.type === "text" && (
+                <QuestionText question={current} onSubmit={handleText} onPhaseChange={setQuestionPhase} />
+              )}
               {current.type === "location" && (
                 <QuestionLocation onAnswer={(answer) => handleLocation(current, answer)} />
               )}
