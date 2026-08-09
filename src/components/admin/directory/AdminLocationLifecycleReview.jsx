@@ -101,7 +101,7 @@ export default function AdminLocationLifecycleReview() {
     const [response, locationRows, organizationRows] = await Promise.all([
       base44.functions.invoke("providerLocationLifecycleOps", { action: "admin_list" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, submissions: [] } })),
       base44.entities.ProviderLocation.list("name", 1000).catch(() => []),
-      base44.entities.ProviderOrganization.list("name", 500).catch(() => []),
+      base44.entities.ProviderOrganization.list("name", 5000).catch(() => []),
     ]);
     if (response.data?.error) setError(response.data.error);
     setSubmissions(response.data?.submissions || []);
