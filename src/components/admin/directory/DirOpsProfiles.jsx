@@ -180,6 +180,20 @@ export default function DirOpsProfiles() {
     await load();
   };
 
+  // Foloseste noua functie exclusiv de admin (adminSetLocationHours), construita azi
+  // special pentru acest caz: saveProviderRoutineProfile (folosita de furnizori) cere
+  // ProviderMembership, pe care admin-ul nu o are pe locatiile din import.
+  const runHours = async (note) => {
+    const applied = await base44.functions.invoke("directoryOps", {
+      __function: "adminSetLocationHours",
+      payload: { location_id: hoursAction.locationId, weekly: weeklyForm, note },
+    });
+    if (applied?.data?.error) throw new Error(applied.data.error);
+    setHoursAction(null);
+    setWeeklyForm({});
+    await load();
+  };
+
   const visibleLocations = useMemo(() => {
     if (!locations) return [];
     const normalizedQuery = query.trim().toLowerCase();
