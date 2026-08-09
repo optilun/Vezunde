@@ -1,21 +1,45 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Building2, Pencil, Search } from "lucide-react";
+import { AlertTriangle, Building2, Clock, Pencil, Search } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PCS_LABELS } from "@/lib/directoryOpsCatalog";
+import { DAY_KEYS, DAY_LABELS } from "../../../../shared/providerOpeningHours.js";
 import DirOpsActionNote from "@/components/admin/directory/DirOpsActionNote";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import EmptyState from "@/components/admin/ui/EmptyState";
 
-// Campuri editabile manual de admin - deliberat NU includ nume, adresa sau tipul de
-// furnizor: acelea ating potrivirea geografica si medicala (SIRUTA, capacitate
+// Campuri text editabile manual de admin - deliberat NU includ nume, adresa sau tipul
+// de furnizor: acelea ating potrivirea geografica si medicala (SIRUTA, capacitate
 // medical/optic) si merita fluxul de corectie/revendicare, nu un patch rapid.
+// Orarul e tratat separat (vezi butonul "Orar"), pentru ca profilul public foloseste
+// un camp structurat pe zile (opening_hours_json), nu text liber.
 const EDIT_FIELDS = [
   { key: "phone_public", label: "Telefon", placeholder: "07xx xxx xxx" },
   { key: "website", label: "Website", placeholder: "https://..." },
   { key: "public_email", label: "Email", placeholder: "contact@..." },
-  { key: "opening_hours", label: "Orar", placeholder: "Luni-Vineri 09:00-18:00" },
   { key: "description", label: "Descriere", placeholder: "Cateva propozitii despre locatie", multiline: true },
 ];
+
+function safeParseHours(raw) {
+  try {
+    const parsed = JSON.parse(raw || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function defaultWeekly(existingJson) {
+  const parsed = safeParseHours(existingJson);
+  const weekly = parsed.weekly && typeof parsed.weekly === "object" ? parsed.weekly : {};
+  return Object.fromEntries(
+    DAY_KEYS.map((key) => [
+      key,
+      weekly[key] && typeof weekly[key] === "object"
+        ? { open: Boolean(weekly[key].open), from: weekly[key].from || "09:00", to: weekly[key].to || "18:00" }
+        : { open: false, from: "09:00", to: "18:00" },
+    ]),
+  );
+}
 
 const FILTERS = [
   { key: "all", label: "Toate" },
