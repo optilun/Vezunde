@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ContinueButton from "@/components/intake/ContinueButton";
 import UrgencyInterruption from "./UrgencyInterruption";
 import { buildPatientSafetyAssessment } from "@/lib/patientSafety";
