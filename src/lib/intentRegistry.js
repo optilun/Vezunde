@@ -143,6 +143,21 @@ export const INTENTS = {
           { key: "copil", label: "Pentru un copil" },
         ],
       },
+      // Adaugat 2026-08-06, la cererea explicita a lui Alex: cine merge la medic pentru
+      // o problema are adesea deja o recomandare de investigatie de la alt medic (familie,
+      // urgenta). Optiunea "Nu am o recomandare" evita frictiune pentru restul pacientilor.
+      {
+        key: "investigatie_recomandata", type: "choice", title: "Ai o recomandare pentru o investigatie anume?",
+        options: [
+          { key: "oct", label: "Da - OCT", service_keys: ["oct"] },
+          { key: "visual_field_analyzer", label: "Da - Camp vizual", service_keys: ["visual_field_analyzer"] },
+          { key: "tonometry", label: "Da - Tonometrie", service_keys: ["tonometry"] },
+          { key: "fundus_exam", label: "Da - Fund de ochi", service_keys: ["fundus_exam"] },
+          { key: "corneal_topography", label: "Da - Topografie corneana", service_keys: ["corneal_topography"] },
+          { key: "nu_stiu", label: "Da, dar nu stiu ce investigatie este", service_keys: ["consult_oftalmologic"] },
+          { key: "nu_am", label: "Nu am o recomandare", service_keys: [] },
+        ],
+      },
       LOCATION_QUESTION,
       TIMING_QUESTION,
     ],
