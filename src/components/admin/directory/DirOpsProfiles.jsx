@@ -118,6 +118,42 @@ export default function DirOpsProfiles() {
     }
   };
 
+  // Editare rapida de admin: propune modificarea (updateProviderLocation, functia
+  // deja folosita de furnizori in workspace-ul lor) apoi o aproba imediat, in acelasi
+  // pas (reviewProfileChanges, deja folosita de admin la revizuirea modificarilor
+  // propuse de furnizori). Refolosim ambele functii existente si testate, in loc sa
+  // scriem logica de scriere de la zero.
+  const runEdit = async (note) => {
+    setError("");
+    const fields = {};
+    for (const field of EDIT_FIELDS) {
+      if (field.key === "opening_hours") continue;
+      fields[field.key] = String(editForm[field.key] || "").trim();
+    }
+    const openingHours = String(editForm.opening_hours || "").trim();
+
+    const staged = await base44.functions.invoke("updateProviderLocation", {
+      location_id: action.locationId,
+      direct: { opening_hours: openingHours },
+      staged: { fields },
+    });
+    if (staged?.data?.error) throw new Error(staged.data.error);
+
+    const applied = await base44.functions.invoke("directoryOps", {
+      __function: "reviewProfileChanges",
+      payload: {
+        location_id: action.locationId,
+        decision: "aproba",
+        notes: note || "Editat direct de admin",
+      },
+    });
+    if (applied?.data?.error) throw new Error(applied.data.error);
+
+    setAction(null);
+    setEditForm({});
+    await load();
+  };
+
   const visibleLocations = useMemo(() => {
     if (!locations) return [];
     const normalizedQuery = query.trim().toLowerCase();
