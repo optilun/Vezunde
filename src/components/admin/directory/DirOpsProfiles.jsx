@@ -366,6 +366,16 @@ export default function DirOpsProfiles() {
                 >
                   <Pencil className="h-3.5 w-3.5" /> Editeaza
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWeeklyForm(defaultWeekly(location.opening_hours_json));
+                    setHoursAction({ locationId: location.id });
+                  }}
+                  className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-semibold hover:bg-secondary sm:rounded-full"
+                >
+                  <Clock className="h-3.5 w-3.5" /> Orar
+                </button>
                 {pcs !== "verified" && (
                   <button
                     type="button"
