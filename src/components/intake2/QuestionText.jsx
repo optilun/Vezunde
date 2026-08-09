@@ -71,10 +71,10 @@ export default function QuestionText({ question, onSubmit, onPhaseChange }) {
         <div className="rounded-2xl border border-border bg-card p-5">
           <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Verificare de siguranta</p>
           <p className="mt-1.5 font-heading text-base font-bold leading-snug tracking-tight text-foreground">
-            Se aplica acum una dintre situatiile de mai jos?
+            Ti s-a intamplat recent una dintre situatiile de mai jos?
           </p>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            Selecteaza situatia exacta. VIASEE nu stabileste diagnosticul, dar nu continua cautarea obisnuita cand exista un semnal clar de urgenta.
+            Intrebam doar despre situatii aparute brusc, in ultimele ore sau zile. Daca ai o problema de vedere de mai mult timp, alege "Niciuna dintre acestea" mai jos.
           </p>
           <div className="mt-4 grid gap-2.5">
             {SAFETY_CHOICES.map((choice) => (
