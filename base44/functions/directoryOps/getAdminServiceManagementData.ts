@@ -57,7 +57,7 @@ export async function handle(req: Request) {
     const locationId = cleanString(payload.location_id);
     const svc = base44.asServiceRole;
 
-    const rawLocations = await svc.entities.ProviderLocation.list('name', 500);
+    const rawLocations = await svc.entities.ProviderLocation.list('name', 5000);
     const locations = rawLocations.map(sanitizeLocation);
 
     if (!locationId) {
