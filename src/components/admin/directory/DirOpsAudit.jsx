@@ -147,7 +147,7 @@ export default function DirOpsAudit() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    base44.entities.DirectoryAuditRecord.list("-created_date", 500)
+    base44.entities.DirectoryAuditRecord.list("-created_date", 2000)
       .then(setRecords)
       .catch((reason) => {
         setError(reason.response?.data?.error || reason.message || "Nu am putut incarca istoricul.");
