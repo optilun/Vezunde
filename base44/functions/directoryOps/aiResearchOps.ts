@@ -627,8 +627,8 @@ export async function handle(req: Request) {
       const locToks = toks(locName);
 
       const [allLocs, allOrgs] = await Promise.all([
-        svc.entities.ProviderLocation.list(null, 500),
-        svc.entities.ProviderOrganization.list(null, 500),
+        svc.entities.ProviderLocation.list(null, 5000),
+        svc.entities.ProviderOrganization.list(null, 5000),
       ]);
       const orgNames = {};
       for (const o of allOrgs) orgNames[o.id] = o.name || '';
