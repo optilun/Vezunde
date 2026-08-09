@@ -16,7 +16,7 @@ export default function DirOpsMigrationQueue() {
       base44.entities.LocationService.filter({ migration_review_required: true }, null, 500),
       base44.entities.ProviderClaimRequest.list(null, 200),
     ]);
-    const allLocations = await base44.entities.ProviderLocation.list(null, 500);
+    const allLocations = await base44.entities.ProviderLocation.list(null, 5000);
     const locationMap = Object.fromEntries(allLocations.map((location) => [location.id, location]));
     setItems([
       ...locations.map((location) => ({
