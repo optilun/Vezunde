@@ -113,10 +113,10 @@ export async function handle(req: Request) {
     if (action === 'queue') {
       const f = p.filters || {};
       const [locs, services, evidences, orgs] = await Promise.all([
-        svc.entities.ProviderLocation.list(null, 500),
+        svc.entities.ProviderLocation.list(null, 5000),
         svc.entities.LocationService.list(null, 2000),
         svc.entities.ProviderEvidence.list(null, 2000),
-        svc.entities.ProviderOrganization.list(null, 500),
+        svc.entities.ProviderOrganization.list(null, 5000),
       ]);
       const orgMap = {};
       for (const o of orgs) orgMap[o.id] = o.name || '';
