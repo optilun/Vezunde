@@ -443,6 +443,64 @@ export default function DirOpsProfiles() {
           onCancel={() => setAction(null)}
         />
       )}
+
+      {hoursAction && (
+        <DirOpsActionNote
+          title="Orar saptamanal"
+          onConfirm={runHours}
+          onCancel={() => { setHoursAction(null); setWeeklyForm({}); }}
+          noteOptional
+        >
+          <div className="space-y-2">
+            <p className="rounded-xl border border-border bg-secondary/40 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+              Acesta e campul real folosit de profilul public. Setati doar zilele confirmate — restul raman "Inchis".
+            </p>
+            {DAY_KEYS.map((dayKey) => {
+              const day = weeklyForm[dayKey] || { open: false, from: "09:00", to: "18:00" };
+              return (
+                <div key={dayKey} className="flex items-center gap-2 rounded-xl border border-border px-3 py-2">
+                  <label className="flex min-w-24 items-center gap-2 text-xs font-semibold text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={day.open}
+                      onChange={(event) => setWeeklyForm((form) => ({
+                        ...form,
+                        [dayKey]: { ...day, open: event.target.checked },
+                      }))}
+                    />
+                    {DAY_LABELS[dayKey]}
+                  </label>
+                  {day.open ? (
+                    <div className="flex flex-1 items-center gap-1.5">
+                      <input
+                        type="time"
+                        value={day.from}
+                        onChange={(event) => setWeeklyForm((form) => ({
+                          ...form,
+                          [dayKey]: { ...day, from: event.target.value },
+                        }))}
+                        className="min-w-0 flex-1 rounded-lg border border-input bg-card px-2 py-1.5 text-sm outline-none focus:border-foreground/40"
+                      />
+                      <span className="text-xs text-muted-foreground">–</span>
+                      <input
+                        type="time"
+                        value={day.to}
+                        onChange={(event) => setWeeklyForm((form) => ({
+                          ...form,
+                          [dayKey]: { ...day, to: event.target.value },
+                        }))}
+                        className="min-w-0 flex-1 rounded-lg border border-input bg-card px-2 py-1.5 text-sm outline-none focus:border-foreground/40"
+                      />
+                    </div>
+                  ) : (
+                    <span className="flex-1 text-xs text-muted-foreground">Inchis</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </DirOpsActionNote>
+      )}
     </div>
   );
 }
