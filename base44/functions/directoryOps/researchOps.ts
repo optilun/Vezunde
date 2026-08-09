@@ -328,7 +328,7 @@ export async function handle(req: Request) {
     // ---------- COVERAGE OVERVIEW (read-only) ----------
     if (action === 'coverage') {
       const [locs, services, evidences] = await Promise.all([
-        svc.entities.ProviderLocation.list(null, 500),
+        svc.entities.ProviderLocation.list(null, 5000),
         svc.entities.LocationService.list(null, 2000),
         svc.entities.ProviderEvidence.list(null, 2000),
       ]);
