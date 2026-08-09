@@ -77,6 +77,7 @@ export default function DirOpsProfiles() {
   const [locations, setLocations] = useState(null);
   const [organizations, setOrganizations] = useState({});
   const [action, setAction] = useState(null);
+  const [editForm, setEditForm] = useState({});
   const [filter, setFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
