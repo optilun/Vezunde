@@ -81,7 +81,7 @@ export default function AdminPatientRequestRecoveryQueue() {
   const load = useCallback(async ({ preserveSelection = true } = {}) => {
     setError("");
     try {
-      const rows = await base44.entities.PatientRequestRecoveryCase.list("-created_date", 500);
+      const rows = await base44.entities.PatientRequestRecoveryCase.list("-created_date", 2000);
       const nextCases = rows || [];
       setCases(nextCases);
       setSelectedId((current) => {
