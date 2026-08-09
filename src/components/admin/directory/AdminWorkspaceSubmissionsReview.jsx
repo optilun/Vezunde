@@ -341,8 +341,8 @@ export default function AdminWorkspaceSubmissionsReview() {
     const [pendingResponse, organizationResponse, locationRows, organizationRows] = await Promise.all([
       base44.functions.invoke("adminServiceConfigurationReview", { action: "list", status: "pending_review" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, submissions: [] } })),
       base44.functions.invoke("adminOrganizationProfileReview", { action: "list", status: "pending_review" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, submissions: [] } })),
-      base44.entities.ProviderLocation.list("name", 500).catch(() => []),
-      base44.entities.ProviderOrganization.list("name", 500).catch(() => []),
+      base44.entities.ProviderLocation.list("name", 5000).catch(() => []),
+      base44.entities.ProviderOrganization.list("name", 5000).catch(() => []),
     ]);
     const errors = [pendingResponse.data?.error, organizationResponse.data?.error].filter(Boolean);
     if (errors.length > 0) setError(errors.join(" "));
