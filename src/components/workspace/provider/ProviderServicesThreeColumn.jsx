@@ -228,6 +228,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   const chooseView = useCallback((nextView) => {
     setQuery("");
     setView(nextView);
+    if (nextView === "configuration") setConfigStep(1);
     requestAnimationFrame(() => {
       contentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
