@@ -1110,8 +1110,9 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
       hasSave: true,
       hasSubmit: Boolean(draft && draft.status !== "pending_review"),
       hasWithdraw: Boolean(pendingReview && persistenceMode === "v2"),
+      ...stableActions,
     };
-  }, [activeUnits, capabilities.length, careSetting, conflicts, dirty, draft, editable, pendingReview, persistenceMode, profileSections, readiness, saving, sectionsByUnit, selectedByUnit, suggestions.length, visibleUnits]);
+  }, [activeUnits, capabilities.length, careSetting, conflicts, dirty, draft, editable, pendingReview, persistenceMode, profileSections, readiness, saving, sectionsByUnit, selectedByUnit, stableActions, suggestions.length, visibleUnits]);
 
   useEffect(() => {
     onWorkspaceSnapshot?.(workspaceSnapshot);
