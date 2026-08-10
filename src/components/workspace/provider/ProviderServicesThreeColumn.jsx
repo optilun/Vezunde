@@ -372,7 +372,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                     ))}
                   </optgroup>
                 )}
-                <optgroup label="Oferta locației">
+                <optgroup label="Verificare (nu sunt pași)">
                   <option value="all">Oferta completă</option>
                   <option value="selected">Oferta selectată · {snapshot.selectedCount}</option>
                   <option value="issues">Observații de catalog · {snapshot.issueCount}</option>
