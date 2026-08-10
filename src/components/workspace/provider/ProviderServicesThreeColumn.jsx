@@ -362,7 +362,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   };
 
   return (
-    <div className="provider-services-three" data-view={dataView} data-filter={filter}>
+    <div className="provider-services-three" data-view={dataView} data-filter={filter} data-mobile-home={mobileHome ? "true" : "false"}>
       <div className="provider-services-three__layout">
         <aside className="provider-services-three__left" aria-label="Organizarea serviciilor">
           <div className="provider-services-three__left-sticky">
