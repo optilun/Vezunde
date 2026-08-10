@@ -419,7 +419,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                     {group.rows.map((row) => (
                       <button key={row.value} type="button" onClick={() => openFromHome(row.value)}>
                         <span className={`provider-services-three__home-mark${row.done ? " is-done" : ""}`} aria-hidden="true">
-                          {row.done && <Check />}
+                          {row.done && <CheckCircle2 />}
                         </span>
                         <span className="provider-services-three__home-label">{row.label}</span>
                         <small>{row.meta}</small>
