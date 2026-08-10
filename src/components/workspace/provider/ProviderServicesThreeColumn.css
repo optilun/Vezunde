@@ -2373,11 +2373,16 @@
     transform: rotate(90deg);
   }
 
-  /* In modul lista, continutul si actiunile nu se vad - lista e ecranul intreg. */
+  /* In modul lista, continutul si actiunile nu se vad - lista e ecranul intreg.
+     "Rezumatul locatiei" e ascuns si in interiorul unei sectiuni: repeta numere care
+     apar deja pe ecranul-lista si adauga inca un antet inainte de prima bifa. */
+  .provider-services-three__mobile-overview {
+    display: none !important;
+  }
+
   .provider-services-three[data-mobile-home="true"] .provider-services-three__native,
   .provider-services-three[data-mobile-home="true"] .provider-services-three__center-header,
-  .provider-services-three[data-mobile-home="true"] .provider-services-three__flow-next,
-  .provider-services-three[data-mobile-home="true"] .provider-services-three__mobile-overview {
+  .provider-services-three[data-mobile-home="true"] .provider-services-three__flow-next {
     display: none !important;
   }
 
