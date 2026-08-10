@@ -362,7 +362,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                 <span>{isReviewView ? "Verificare" : "Pasul curent"}</span>
                 <strong>{centerTitle}</strong>
               </div>
-              {!isReviewView && <small>Pasul {flowIndex + 1} din {flowValues.length}</small>}
+              {!isReviewView && <small>Pasul {flowIndex + 1} din {flowSteps.length}</small>}
             </div>
             <label htmlFor="provider-services-mobile-view">Sari la altă secțiune</label>
             <div className="provider-services-three__mobile-select">
