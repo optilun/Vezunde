@@ -260,7 +260,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   const centerTitle = query
     ? `Rezultate pentru „${query}”`
     : view === "configuration"
-      ? "Zone și tip de activitate"
+      ? CONFIG_STEP_TITLES[configStep]
       : view === "options"
         ? "La nivelul locației"
         : view === "selected"
