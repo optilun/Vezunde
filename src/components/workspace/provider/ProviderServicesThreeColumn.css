@@ -2330,11 +2330,12 @@
   color: hsl(var(--muted-foreground));
 }
 
-/* Antetul central e redundant pe telefon (2026-08-06): titlul zonei apare deja in
-   antetul de navigare de deasupra, iar descrierea se repeta imediat mai jos, in
-   continutul propriu-zis. Ramane vizibil pe desktop, unde nu exista antetul mobil. */
+/* Textul din antetul central e redundant pe telefon (2026-08-06): titlul zonei apare
+   deja in antetul de navigare de deasupra, iar descrierea se repeta imediat mai jos, in
+   continutul propriu-zis. Ascundem DOAR textul - caseta de cautare, care e in acelasi
+   antet, ramane. Pe desktop totul ramane vizibil. */
 @media (max-width: 820px) {
-  .provider-services-three__center-header {
+  .provider-services-three__center-copy {
     display: none !important;
   }
 }
