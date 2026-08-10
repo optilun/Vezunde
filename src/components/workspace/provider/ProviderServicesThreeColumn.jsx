@@ -300,7 +300,6 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
       label: unit.title,
     })),
   ];
-  const mobileNavValues = ["configuration", "options", ...snapshot.units.map((unit) => `unit:${unit.index}`), "all", "selected", "issues"];
   const flowIndex = flowSteps.findIndex((entry) => (
     entry.value === mobileNavValue && (entry.step === null || entry.step === configStep)
   ));
