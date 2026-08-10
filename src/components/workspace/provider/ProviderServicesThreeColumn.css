@@ -2371,6 +2371,71 @@
     display: none !important;
   }
 
+  .provider-services-three__status {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 14px 15px;
+    border-radius: 16px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+  }
+
+  .provider-services-three__status div {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .provider-services-three__status strong {
+    font-size: 14px;
+    font-weight: 800;
+    color: hsl(var(--foreground));
+  }
+
+  .provider-services-three__status small {
+    font-size: 12px;
+    line-height: 1.45;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .provider-services-three__status-dot {
+    margin-top: 5px;
+    height: 9px;
+    width: 9px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: hsl(var(--muted-foreground));
+  }
+
+  .provider-services-three__status[data-tone="live"] {
+    border-color: #b6d7bd;
+    background: #f2f8f3;
+  }
+
+  .provider-services-three__status[data-tone="live"] .provider-services-three__status-dot {
+    background: #2f7d43;
+  }
+
+  .provider-services-three__status[data-tone="pending"] {
+    border-color: #e7d9ae;
+    background: #fdf9ee;
+  }
+
+  .provider-services-three__status[data-tone="pending"] .provider-services-three__status-dot {
+    background: #a8801f;
+  }
+
+  .provider-services-three__status[data-tone="action"] {
+    border-color: hsl(var(--foreground) / 0.35);
+  }
+
+  .provider-services-three__status[data-tone="action"] .provider-services-three__status-dot {
+    background: hsl(var(--foreground));
+  }
+
   .provider-services-three__home-head {
     display: flex;
     flex-direction: column;
