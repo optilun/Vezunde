@@ -2208,11 +2208,30 @@
 /* Butonul "Continua catre..." - drumul liniar prin configurare (2026-08-06) */
 .provider-services-three__flow-next {
   margin-top: 16px;
+  display: flex;
+  gap: 8px;
 }
 
-.provider-services-three__flow-next button {
+.provider-services-three__flow-next button.is-back {
+  flex-shrink: 0;
+  border-radius: 18px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  padding: 14px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.provider-services-three__flow-next button.is-back:hover {
+  background: hsl(var(--secondary));
+}
+
+.provider-services-three__flow-next button.is-primary {
   display: flex;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   align-items: center;
   gap: 8px;
   border-radius: 18px;
@@ -2224,17 +2243,17 @@
   cursor: pointer;
 }
 
-.provider-services-three__flow-next button:hover {
+.provider-services-three__flow-next button.is-primary:hover {
   opacity: 0.92;
 }
 
-.provider-services-three__flow-next button span {
+.provider-services-three__flow-next button.is-primary span {
   font-size: 11px;
   font-weight: 600;
   opacity: 0.75;
 }
 
-.provider-services-three__flow-next button strong {
+.provider-services-three__flow-next button.is-primary strong {
   flex: 1;
   min-width: 0;
   font-size: 14px;
@@ -2244,7 +2263,7 @@
   white-space: nowrap;
 }
 
-.provider-services-three__flow-next button svg {
+.provider-services-three__flow-next button.is-primary svg {
   height: 16px;
   width: 16px;
   flex-shrink: 0;
@@ -2252,12 +2271,12 @@
 }
 
 @media (max-width: 620px) {
-  .provider-services-three__flow-next button {
+  .provider-services-three__flow-next button.is-primary {
     flex-wrap: wrap;
     gap: 2px 8px;
   }
 
-  .provider-services-three__flow-next button span {
+  .provider-services-three__flow-next button.is-primary span {
     width: 100%;
   }
 }
