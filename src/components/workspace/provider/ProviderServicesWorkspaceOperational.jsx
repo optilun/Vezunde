@@ -1142,9 +1142,17 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
       hasSave: true,
       hasSubmit: Boolean(draft && draft.status !== "pending_review"),
       hasWithdraw: Boolean(pendingReview && persistenceMode === "v2"),
+      // Cate servicii sunt APROBATE, adica vizibile efectiv pacientilor - distinct de
+      // cele doar bifate in draft. Pragul "profilul apare in cautari" e cel putin unul
+      // aprobat: verificat in motorul de cautare, asta e linia intre rezultat confirmat
+      // si profil aratat doar ca alternativa neconfirmata, cu avertisment.
+      approvedCount: selectedServiceKeys(approvedSelected).filter(
+        (serviceKey) => getServiceOperationalContext(serviceKey)?.sectionKey !== "business_attributes",
+      ).length,
+      pendingReview,
       ...stableActions,
     };
-  }, [activeUnits, capabilities.length, careSetting, conflicts, dirty, draft, editable, pendingReview, persistenceMode, profileSections, readiness, saving, sectionsByUnit, selectedByUnit, stableActions, suggestions.length, visibleUnits]);
+  }, [activeUnits, approvedSelected, capabilities.length, careSetting, conflicts, dirty, draft, editable, pendingReview, persistenceMode, profileSections, readiness, saving, sectionsByUnit, selectedByUnit, stableActions, suggestions.length, visibleUnits]);
 
   useEffect(() => {
     onWorkspaceSnapshot?.(workspaceSnapshot);
