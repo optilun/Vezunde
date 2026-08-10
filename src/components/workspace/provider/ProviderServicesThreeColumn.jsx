@@ -90,6 +90,10 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   const [query, setQuery] = useState("");
   const [snapshot, setSnapshot] = useState(INITIAL_SNAPSHOT);
   const [configStep, setConfigStep] = useState(1);
+  // Ecranul-lista e "acasa" pe telefon (2026-08-06): apesi un rand, intri in el, te
+  // intorci la lista. Tiparul standard folosit de Apple in Setari si de Google in
+  // Business Profile pentru configurari mari - in locul unui selector de navigare.
+  const [mobileHome, setMobileHome] = useState(true);
   const CONFIG_STEP_TITLES = { 1: "Zonele existente", 2: "Activități asociate", 3: "Tipul activității" };
 
   const updateWorkspaceSnapshot = useCallback((nextSnapshot) => {
