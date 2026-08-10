@@ -457,23 +457,26 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
 
           {/* Butonul de avansare: raspunsul direct la "nu stiu ce urmeaza". Duce la
               urmatoarea destinatie din drumul liniar, fara sa fie nevoie de dropdown. */}
-          {!query && nextFlowValue && (
+          {!query && !isReviewView && (
             <div className="provider-services-three__flow-next">
-              <button type="button" onClick={() => chooseMobileView(nextFlowValue)}>
-                <span>Continuă către</span>
-                <strong>{nextFlowLabel}</strong>
-                <ChevronDown aria-hidden="true" />
-              </button>
-            </div>
-          )}
-
-          {!query && !nextFlowValue && !isReviewView && (
-            <div className="provider-services-three__flow-next">
-              <button type="button" onClick={() => chooseMobileView("selected")}>
-                <span>Ai parcurs toate zonele</span>
-                <strong>Verifică oferta selectată</strong>
-                <ChevronDown aria-hidden="true" />
-              </button>
+              {previousFlowEntry && (
+                <button type="button" className="is-back" onClick={() => goToFlowEntry(previousFlowEntry)}>
+                  Înapoi
+                </button>
+              )}
+              {nextFlowEntry ? (
+                <button type="button" className="is-primary" onClick={() => goToFlowEntry(nextFlowEntry)}>
+                  <span>Continuă către</span>
+                  <strong>{nextFlowEntry.label}</strong>
+                  <ChevronDown aria-hidden="true" />
+                </button>
+              ) : (
+                <button type="button" className="is-primary" onClick={() => chooseMobileView("selected")}>
+                  <span>Ai parcurs toate zonele</span>
+                  <strong>Verifică oferta selectată</strong>
+                  <ChevronDown aria-hidden="true" />
+                </button>
+              )}
             </div>
           )}
         </section>
