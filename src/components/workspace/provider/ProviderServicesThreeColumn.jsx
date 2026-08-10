@@ -135,7 +135,10 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
 
     [1, 2, 3].forEach((number) => {
       const section = numberedSections.get(number);
-      if (section) section.dataset.servicesPanel = "configuration";
+      if (section) {
+        section.dataset.servicesPanel = "configuration";
+        section.dataset.servicesSubstep = String(number);
+      }
     });
     if (numberedSections.get(4)) numberedSections.get(4).dataset.servicesPanel = "options";
     if (numberedSections.get(5)) numberedSections.get(5).dataset.servicesRole = "catalog-intro";
