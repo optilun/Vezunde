@@ -90,6 +90,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   const [query, setQuery] = useState("");
   const [snapshot, setSnapshot] = useState(INITIAL_SNAPSHOT);
   const [configStep, setConfigStep] = useState(1);
+  const [jumpOpen, setJumpOpen] = useState(false);
   const CONFIG_STEP_TITLES = { 1: "Zonele existente", 2: "Activități asociate", 3: "Tipul activității" };
 
   const updateWorkspaceSnapshot = useCallback((nextSnapshot) => {
