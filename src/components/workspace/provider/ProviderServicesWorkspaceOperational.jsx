@@ -653,24 +653,35 @@ function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceU
             const suggestions = customSuggestions.filter((item) => item.functional_unit_key === unitKey && item.group === section.items[0]?.group);
             return (
               <div key={section.key} className="border-t border-border/60 first:border-t-0">
-                <div className="flex flex-wrap items-start justify-between gap-3 bg-card px-4 py-3 sm:px-5">
-                  <div className="min-w-0"><h3 className="text-xs font-bold">{section.title}</h3><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{section.description}</p></div>
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold">{selectedCountForSection(selected, section)} din {section.items.length} selectate</span>
-                    {availableParents.length > 1 && (
-                      <label className="text-[10px] font-semibold text-muted-foreground">Se realizează în
-                        <select disabled={disabled} value={activeUnit} onChange={(event) => onChangeSectionUnit(section, event.target.value)} className="ml-2 rounded-lg border border-border bg-background px-2 py-1.5 text-[11px] font-semibold text-foreground">
-                          {availableParents.map((key) => <option key={key} value={key}>{getFunctionalUnitDefinition(key)?.shortTitle || key}</option>)}
-                        </select>
-                      </label>
-                    )}
-                  </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-card px-4 py-2.5 sm:px-5">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(section.key)}
+                    aria-expanded={openSections.has(section.key)}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  >
+                    <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition ${openSections.has(section.key) ? "rotate-180" : ""}`} />
+                    <h3 className="min-w-0 truncate text-xs font-bold">{section.title}</h3>
+                    <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold">{selectedCountForSection(selected, section)} din {section.items.length}</span>
+                  </button>
+                  {openSections.has(section.key) && availableParents.length > 1 && (
+                    <label className="text-[10px] font-semibold text-muted-foreground">Se realizează în
+                      <select disabled={disabled} value={activeUnit} onChange={(event) => onChangeSectionUnit(section, event.target.value)} className="ml-2 rounded-lg border border-border bg-background px-2 py-1.5 text-[11px] font-semibold text-foreground">
+                        {availableParents.map((key) => <option key={key} value={key}>{getFunctionalUnitDefinition(key)?.shortTitle || key}</option>)}
+                      </select>
+                    </label>
+                  )}
                 </div>
-                {section.note && <div className="mx-4 mb-3 flex gap-2 rounded-xl border border-border bg-secondary/25 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground sm:mx-5"><Info className="mt-0.5 h-4 w-4 shrink-0" /> {section.note}</div>}
-                <div className="border-t border-border/50">
-                  {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={prerequisites[item.id]} unitKey={activeUnit} disabled={disabled} onToggle={onToggleService} />)}
-                </div>
-                <CustomSuggestion unitKey={unitKey} section={section} disabled={disabled} items={suggestions} onAdd={onAddSuggestion} onRemove={onRemoveSuggestion} />
+                {openSections.has(section.key) && (
+                  <>
+                    {section.description && <p className="px-4 pb-3 text-[11px] leading-relaxed text-muted-foreground sm:px-5">{section.description}</p>}
+                    {section.note && <div className="mx-4 mb-3 flex gap-2 rounded-xl border border-border bg-secondary/25 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground sm:mx-5"><Info className="mt-0.5 h-4 w-4 shrink-0" /> {section.note}</div>}
+                    <div className="border-t border-border/50">
+                      {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={prerequisites[item.id]} unitKey={activeUnit} disabled={disabled} onToggle={onToggleService} />)}
+                    </div>
+                    <CustomSuggestion unitKey={unitKey} section={section} disabled={disabled} items={suggestions} onAdd={onAddSuggestion} onRemove={onRemoveSuggestion} />
+                  </>
+                )}
               </div>
             );
           })}
