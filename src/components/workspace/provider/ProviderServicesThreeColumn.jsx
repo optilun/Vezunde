@@ -365,75 +365,38 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
               </div>
               {!isReviewView && <small>Pasul {flowIndex + 1} din {flowSteps.length}</small>}
             </div>
-            {/* Panou propriu in locul selectorului nativ (2026-08-06): cel nativ e gri,
-                strain de restul aplicatiei si nu poate arata contorul pe randuri clare. */}
-            <button
-              type="button"
-              className="provider-services-three__jump-trigger"
-              onClick={() => setJumpOpen(true)}
-              aria-haspopup="dialog"
-            >
-              <span>Sari la altă secțiune</span>
+            {/* Revenit la selectorul nativ (2026-08-06): panoul propriu se randa in
+                pagina, nu peste ea - `position: fixed` esueaza cand un parinte are
+                transform/filter, ceea ce se intampla in acest layout. Selectorul nativ
+                se afiseaza corect peste tot continutul, pe orice telefon. */}
+            <label htmlFor="provider-services-mobile-view">Sari la altă secțiune</label>
+            <div className="provider-services-three__mobile-select">
+              <select
+                id="provider-services-mobile-view"
+                value={mobileNavValue}
+                onChange={(event) => chooseMobileView(event.target.value)}
+              >
+                <optgroup label="Structura locației">
+                  <option value="configuration">Zone și tip de activitate</option>
+                  <option value="options">La nivelul locației</option>
+                </optgroup>
+                {snapshot.units.length > 0 && (
+                  <optgroup label="Oferta pe zone">
+                    {snapshot.units.map((unit) => (
+                      <option key={`mobile-${unit.title}-${unit.index}`} value={`unit:${unit.index}`}>
+                        {unit.title} · {unit.selected} selectate
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                <optgroup label="Verificare">
+                  <option value="all">Oferta completă</option>
+                  <option value="selected">Oferta selectată · {snapshot.selectedCount}</option>
+                  <option value="issues">Observații de catalog · {snapshot.issueCount}</option>
+                </optgroup>
+              </select>
               <ChevronDown aria-hidden="true" />
-            </button>
-
-            {jumpOpen && (
-              <div className="provider-services-three__jump" role="dialog" aria-label="Sari la altă secțiune">
-                <button type="button" className="provider-services-three__jump-scrim" aria-label="Închide" onClick={() => setJumpOpen(false)} />
-                <div className="provider-services-three__jump-sheet">
-                  <div className="provider-services-three__jump-handle" aria-hidden="true" />
-                  <p className="provider-services-three__jump-group">Structura locației</p>
-                  {[
-                    { value: "configuration", label: "Zone și tip de activitate", meta: snapshot.unitCount > 0 ? `${snapshot.unitCount} zone` : "" },
-                    { value: "options", label: "La nivelul locației", meta: "" },
-                  ].map((entry) => (
-                    <button
-                      key={entry.value}
-                      type="button"
-                      className={mobileNavValue === entry.value ? "is-active" : ""}
-                      onClick={() => { chooseMobileView(entry.value); setJumpOpen(false); }}
-                    >
-                      <span>{entry.label}</span>
-                      {entry.meta && <small>{entry.meta}</small>}
-                    </button>
-                  ))}
-
-                  {snapshot.units.length > 0 && (
-                    <>
-                      <p className="provider-services-three__jump-group">Oferta pe zone</p>
-                      {snapshot.units.map((unit) => (
-                        <button
-                          key={`jump-${unit.index}`}
-                          type="button"
-                          className={mobileNavValue === `unit:${unit.index}` ? "is-active" : ""}
-                          onClick={() => { chooseMobileView(`unit:${unit.index}`); setJumpOpen(false); }}
-                        >
-                          <span>{unit.title}</span>
-                          <small>{unit.selected} selectate</small>
-                        </button>
-                      ))}
-                    </>
-                  )}
-
-                  <p className="provider-services-three__jump-group">Verificare</p>
-                  {[
-                    { value: "all", label: "Oferta completă", meta: "" },
-                    { value: "selected", label: "Oferta selectată", meta: String(snapshot.selectedCount) },
-                    { value: "issues", label: "Observații de catalog", meta: String(snapshot.issueCount) },
-                  ].map((entry) => (
-                    <button
-                      key={entry.value}
-                      type="button"
-                      className={mobileNavValue === entry.value ? "is-active" : ""}
-                      onClick={() => { chooseMobileView(entry.value); setJumpOpen(false); }}
-                    >
-                      <span>{entry.label}</span>
-                      {entry.meta && <small>{entry.meta}</small>}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            </div>
           </div>
 
           <details className="provider-services-three__mobile-overview">
