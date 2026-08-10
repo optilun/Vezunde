@@ -111,8 +111,6 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
 
     const intro = operationalRoot.querySelector(":scope > section:first-child");
     if (intro) intro.dataset.servicesRole = "native-intro";
-    const nativeSearch = intro?.querySelector('input[placeholder^="Caută"], input[placeholder^="Cauta"]');
-    if (nativeSearch && nativeSearch.value !== query) setNativeInputValue(nativeSearch, query);
 
     const mainGrid = findMainGrid(root);
     if (!mainGrid) return;
