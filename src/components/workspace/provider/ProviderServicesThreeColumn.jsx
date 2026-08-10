@@ -347,12 +347,12 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
           <div className="provider-services-three__mobile-nav" aria-label="Navigarea serviciilor pe telefon">
             <div className="provider-services-three__mobile-nav-heading">
               <div>
-                <span>Pasul curent</span>
+                <span>{isReviewView ? "Verificare" : "Pasul curent"}</span>
                 <strong>{centerTitle}</strong>
               </div>
-              <small>{mobileStepPosition} din {mobileNavValues.length}</small>
+              {!isReviewView && <small>Pasul {flowIndex + 1} din {flowValues.length}</small>}
             </div>
-            <label htmlFor="provider-services-mobile-view">Alege ce configurezi</label>
+            <label htmlFor="provider-services-mobile-view">Sari la altă secțiune</label>
             <div className="provider-services-three__mobile-select">
               <select
                 id="provider-services-mobile-view"
