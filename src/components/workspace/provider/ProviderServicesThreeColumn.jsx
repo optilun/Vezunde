@@ -140,6 +140,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
       if (section) {
         section.dataset.servicesPanel = "configuration";
         section.dataset.servicesSubstep = String(number);
+        section.dataset.servicesSubstepVisible = number === configStep ? "true" : "false";
       }
     });
     if (numberedSections.get(4)) numberedSections.get(4).dataset.servicesPanel = "options";
