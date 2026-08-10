@@ -1355,8 +1355,8 @@
 }
 
 .provider-services-three__native [data-services-panel="configuration"] > div.mt-4 > button {
-  min-height: 72px !important;
-  padding: 14px 3px !important;
+  min-height: 64px !important;
+  padding: 14px 16px !important;
 }
 
 .provider-services-three__native [data-services-panel="configuration"] > div.mt-4 > button:hover:not(:disabled) {
