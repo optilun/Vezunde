@@ -37,6 +37,9 @@ const Partners = lazy(() => import("./pages/Partners"));
 const AboutViasee = lazy(() => import("./pages/AboutViasee"));
 const AddOrClaim = lazy(() => import("./pages/AddOrClaim"));
 const GuideIndex = lazy(() => import("./pages/GuideIndex"));
+// PROTOTIP temporar (2026-08-06) - ecran de validare a directiei pentru configurarea
+// serviciilor. Nu e legat de date reale; de sters daca directia nu se confirma.
+const PrototipServicii = lazy(() => import("./pages/PrototipServicii"));
 const SpecialistGuide = lazy(() => import("./pages/SpecialistGuide"));
 const TopicGuide = lazy(() => import("./pages/TopicGuide"));
 const SpecialistComparison = lazy(
