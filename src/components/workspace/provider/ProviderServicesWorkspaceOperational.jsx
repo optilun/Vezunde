@@ -1535,6 +1535,11 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     await load();
   };
 
+  // Conectam handlerii reali la ref, dupa ce toti trei sunt definiti. Functiile expuse in
+  // snapshot (stableActions) citesc de aici la momentul apelului, deci raman mereu
+  // actuale fara sa schimbe identitatea snapshot-ului.
+  actionsRef.current = { save, submit, withdraw };
+
   if (loading) return <div className="rounded-[24px] border border-border bg-card px-5 py-8 text-sm text-muted-foreground">Se încarcă structura profesională a locației...</div>;
   if (error && !config) return <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-5 text-sm text-amber-950"><p>{error}</p><button type="button" onClick={load} className="mt-3 rounded-full border border-amber-300 bg-white px-4 py-2 text-xs font-semibold">Încearcă din nou</button></div>;
 
