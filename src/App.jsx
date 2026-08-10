@@ -181,6 +181,7 @@ const AppRoutes = () => {
           <Route path="/specialist/:id" element={<ProfessionalProfile />} />
           <Route path="/cerere" element={<RequestFlow />} />
           <Route path="/ghid" element={<GuideIndex />} />
+          <Route path="/prototip-servicii" element={<PrototipServicii />} />
           <Route
             path="/ghid/optometrist-optician-oftalmolog"
             element={<SpecialistComparison />}
