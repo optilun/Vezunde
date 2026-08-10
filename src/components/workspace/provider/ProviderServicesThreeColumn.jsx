@@ -431,24 +431,6 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
               <PanelLabel index="02" label="Configurare" />
               <h2 id="provider-services-center-title">{centerTitle}</h2>
               <p>{centerDescription}</p>
-              {view === "configuration" && !query && (
-                <div className="provider-services-three__substeps">
-                  <div className="provider-services-three__substep-dots" aria-hidden="true">
-                    {[1, 2, 3].map((step) => (
-                      <span key={step} className={step === configStep ? "is-active" : step < configStep ? "is-done" : ""} />
-                    ))}
-                  </div>
-                  <span className="provider-services-three__substep-count">Pasul {configStep} din 3</span>
-                  <div className="provider-services-three__substep-buttons">
-                    <button type="button" disabled={configStep === 1} onClick={() => setConfigStep((step) => Math.max(1, step - 1))}>
-                      Înapoi
-                    </button>
-                    <button type="button" className="is-primary" disabled={configStep === 3} onClick={() => setConfigStep((step) => Math.min(3, step + 1))}>
-                      Continuă
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
             {!(["configuration", "options", "advanced"].includes(view)) && (
               <div className="provider-services-three__search">
