@@ -460,6 +460,28 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
           <div ref={contentRef} className="provider-services-three__native">
             <ProviderServicesWorkspaceRuntime location={location} {...props} query={query} onQueryChange={setQuery} onWorkspaceSnapshot={updateWorkspaceSnapshot} />
           </div>
+
+          {/* Butonul de avansare: raspunsul direct la "nu stiu ce urmeaza". Duce la
+              urmatoarea destinatie din drumul liniar, fara sa fie nevoie de dropdown. */}
+          {!query && nextFlowValue && (
+            <div className="provider-services-three__flow-next">
+              <button type="button" onClick={() => chooseMobileView(nextFlowValue)}>
+                <span>Continuă către</span>
+                <strong>{nextFlowLabel}</strong>
+                <ChevronDown aria-hidden="true" />
+              </button>
+            </div>
+          )}
+
+          {!query && !nextFlowValue && !isReviewView && (
+            <div className="provider-services-three__flow-next">
+              <button type="button" onClick={() => chooseMobileView("selected")}>
+                <span>Ai parcurs toate zonele</span>
+                <strong>Verifică oferta selectată</strong>
+                <ChevronDown aria-hidden="true" />
+              </button>
+            </div>
+          )}
         </section>
 
         <aside className="provider-services-three__right" aria-label="Previzualizarea configurației">
