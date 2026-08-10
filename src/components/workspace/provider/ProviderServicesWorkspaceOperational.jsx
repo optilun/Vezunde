@@ -874,6 +874,18 @@ function LegacyServices({ services, rawRemovalKeys, disabled, onToggle }) {
 }
 
 export default function ProviderServicesWorkspaceOperational({ locationId, location, onWorkspaceSnapshot }) {
+  // Actiunile (save/submit/withdraw) sunt expuse in sus prin snapshot, ca invelisul de
+  // trei coloane sa le poata apela direct. Inainte (pana in 2026-08-06) invelisul gasea
+  // butoanele cautand textul romanesc exact ("Salveaza draftul" etc.) si le da click prin
+  // DOM - o legatura care se rupea silentios la orice redenumire de buton.
+  // Ref-ul tine mereu ultimele handlere; functiile expuse raman stabile ca identitate,
+  // altfel snapshot-ul s-ar schimba la fiecare randare si ar declansa o bucla.
+  const actionsRef = useRef({});
+  const stableActions = useMemo(() => ({
+    onSave: () => actionsRef.current.save?.(),
+    onSubmit: () => actionsRef.current.submit?.(),
+    onWithdraw: () => actionsRef.current.withdraw?.(),
+  }), []);
   const [config, setConfig] = useState(null);
   const [remoteCatalog, setRemoteCatalog] = useState(null);
   const [persistenceMode, setPersistenceMode] = useState("v2");
