@@ -347,13 +347,14 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
     }] : []),
     {
       label: "Verificare",
+      isReview: true,
       rows: [
         { value: "selected", label: "Oferta selectată", meta: String(snapshot.selectedCount), done: false },
         { value: "issues", label: "Observații de catalog", meta: String(snapshot.issueCount), done: false },
       ],
     },
   ];
-  const homeProgressRows = homeGroups.flatMap((group) => (group.label === "Verificare" ? [] : group.rows));
+  const homeProgressRows = homeGroups.flatMap((group) => (group.isReview ? [] : group.rows));
   const homeDoneCount = homeProgressRows.filter((row) => row.done).length;
 
   const openFromHome = (value) => {
