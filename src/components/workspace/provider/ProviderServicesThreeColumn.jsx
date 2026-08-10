@@ -163,7 +163,11 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
       }
     });
 
-    const rows = [...operationalRoot.querySelectorAll("button.grid")];
+    // Randurile de servicii se gasesc dupa atributul stabil data-service-key, nu dupa
+    // clasa de stil "grid" (2026-08-06). Varianta veche lega filtrele de o clasa
+    // Tailwind - orice schimbare de aspect a randului rupea tacit "Oferta selectata"
+    // si "Observatii de catalog".
+    const rows = [...operationalRoot.querySelectorAll("button[data-service-key]")];
     const issueKeys = new Set(snapshot.issueServiceKeys || []);
     rows.forEach((row) => {
       const selected = row.getAttribute("aria-pressed") === "true";
