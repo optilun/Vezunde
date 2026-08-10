@@ -367,9 +367,9 @@ function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, d
       aria-pressed={active}
       disabled={disabled}
       onClick={() => onToggle(item, unitKey)}
-      className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 px-4 py-3 text-left transition last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-55 ${removalRequested ? "bg-amber-50/70 hover:bg-amber-50" : active ? "bg-secondary/35" : "bg-card hover:bg-secondary/20"}`}
+      className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-55 ${removalRequested ? "border-amber-200 bg-amber-50/70 hover:bg-amber-50" : active ? "border-foreground/70 bg-card shadow-sm" : "border-border bg-card/60 hover:bg-card"}`}
     >
-      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${removalRequested ? "border-amber-300 bg-amber-100 text-amber-900" : active ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`}>
+      <span className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md border ${removalRequested ? "border-amber-300 bg-amber-100 text-amber-900" : active ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`}>
         {removalRequested ? <X className="h-3.5 w-3.5" /> : active && <Check className="h-3.5 w-3.5" />}
       </span>
       <span className="min-w-0">
