@@ -2205,6 +2205,19 @@
   }
 }
 
+/* Titlul numerotat din interiorul sectiunii de configurare ("1. Zonele existente") e
+   ascuns vizual (2026-08-06): antetul de sus arata deja acelasi titlu, iar pe telefon
+   aparea de trei ori pe acelasi ecran. Ramane in DOM, pentru ca invelisul identifica
+   sectiunile chiar dupa numarul din acest titlu. */
+.provider-services-three__native [data-services-panel="configuration"] > h2:first-child {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+}
+
 /* Butonul "Continua catre..." - drumul liniar prin configurare (2026-08-06) */
 .provider-services-three__flow-next {
   margin-top: 16px;
