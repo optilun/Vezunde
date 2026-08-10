@@ -19,6 +19,8 @@ import ProviderServicesWorkspaceRuntime from "./ProviderServicesWorkspaceRuntime
 const INITIAL_SNAPSHOT = {
   units: [],
   selectedCount: 0,
+  approvedCount: 0,
+  pendingReview: false,
   globalOptionCount: 0,
   suggestionCount: 0,
   unitCount: 0,
