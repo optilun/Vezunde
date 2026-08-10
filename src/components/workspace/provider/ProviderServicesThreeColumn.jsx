@@ -249,13 +249,6 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
     if (input) setNativeInputValue(input, value);
   }, []);
 
-  const clickNativeAction = useCallback((pattern) => {
-    const actions = contentRef.current?.querySelector('[data-services-role="native-actions"]');
-    const button = [...(actions?.querySelectorAll("button") || [])]
-      .find((item) => pattern.test(cleanText(item)));
-    button?.click();
-  }, []);
-
   const activeUnit = snapshot.units.find((unit) => unit.index === activeUnitIndex);
   const centerTitle = query
     ? `Rezultate pentru „${query}”`
