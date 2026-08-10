@@ -375,8 +375,13 @@
   padding: 12px 14px !important;
   border: 1px solid var(--services-border-soft) !important;
   border-radius: 14px !important;
-  background: transparent !important;
+  background: var(--services-surface) !important;
   box-shadow: none !important;
+}
+
+/* Cardul selectat primeste contur inchis, la fel ca la servicii */
+.provider-services-three__native [data-services-panel="configuration"] > div.mt-4 > button[aria-pressed="true"] {
+  border-color: hsl(var(--foreground) / 0.7) !important;
 }
 
 .provider-services-three__native [data-services-panel="configuration"] > div.mt-4 > button:last-child {
