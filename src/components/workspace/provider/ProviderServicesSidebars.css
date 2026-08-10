@@ -71,7 +71,7 @@
   }
 
   .provider-services-three__native [data-services-panel="configuration"] > div.mt-4 > button {
-    padding-inline: 4px !important;
+    padding-inline: 14px !important;
   }
 
   .provider-services-three__native [data-services-panel="units"] > section,
