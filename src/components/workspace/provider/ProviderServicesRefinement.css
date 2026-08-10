@@ -161,8 +161,9 @@
   }
 
   .provider-services-three__native button[data-service-key] {
-    min-height: 62px;
-    padding: 12px 22px !important;
+    min-height: 58px;
+    padding: 11px 14px !important;
+    border-radius: 14px !important;
   }
 
   .provider-services-three__native button[data-services-disclosure="true"] {
