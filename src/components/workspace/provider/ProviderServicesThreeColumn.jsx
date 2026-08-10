@@ -475,10 +475,9 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                 </button>
                 <div className="provider-services-three__mobile-nav-heading">
                   <div>
-                    <span>{isReviewView ? "Verificare" : "Pasul curent"}</span>
+                    <span>{isReviewView ? "Verificare" : "Configurezi acum"}</span>
                     <strong>{centerTitle}</strong>
                   </div>
-                  {!isReviewView && <small>Pasul {flowIndex + 1} din {flowSteps.length}</small>}
                 </div>
               </>
             )}
