@@ -437,6 +437,13 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
           <div className="provider-services-three__mobile-nav" aria-label="Navigarea serviciilor pe telefon">
             {mobileHome ? (
               <div className="provider-services-three__home">
+                <div className="provider-services-three__status" data-tone={readinessBanner.tone}>
+                  <span className="provider-services-three__status-dot" aria-hidden="true" />
+                  <div>
+                    <strong>{readinessBanner.title}</strong>
+                    <small>{readinessBanner.detail}</small>
+                  </div>
+                </div>
                 <div className="provider-services-three__home-head">
                   <span>Configurarea serviciilor</span>
                   <strong>{homeDoneCount} din {homeProgressRows.length} completate</strong>
