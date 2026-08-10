@@ -407,45 +407,46 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
 
         <section className="provider-services-three__center" aria-labelledby="provider-services-center-title">
           <div className="provider-services-three__mobile-nav" aria-label="Navigarea serviciilor pe telefon">
-            <div className="provider-services-three__mobile-nav-heading">
-              <div>
-                <span>{isReviewView ? "Verificare" : "Pasul curent"}</span>
-                <strong>{centerTitle}</strong>
-              </div>
-              {!isReviewView && <small>Pasul {flowIndex + 1} din {flowSteps.length}</small>}
-            </div>
-            {/* Revenit la selectorul nativ (2026-08-06): panoul propriu se randa in
-                pagina, nu peste ea - `position: fixed` esueaza cand un parinte are
-                transform/filter, ceea ce se intampla in acest layout. Selectorul nativ
-                se afiseaza corect peste tot continutul, pe orice telefon. */}
-            <label htmlFor="provider-services-mobile-view">Sari la altă secțiune</label>
-            <div className="provider-services-three__mobile-select">
-              <select
-                id="provider-services-mobile-view"
-                value={mobileNavValue}
-                onChange={(event) => chooseMobileView(event.target.value)}
-              >
-                <optgroup label="Structura locației">
-                  <option value="configuration">Zone și tip de activitate</option>
-                  <option value="options">La nivelul locației</option>
-                </optgroup>
-                {snapshot.units.length > 0 && (
-                  <optgroup label="Oferta pe zone">
-                    {snapshot.units.map((unit) => (
-                      <option key={`mobile-${unit.title}-${unit.index}`} value={`unit:${unit.index}`}>
-                        {unit.title} · {unit.selected} selectate
-                      </option>
+            {mobileHome ? (
+              <div className="provider-services-three__home">
+                <div className="provider-services-three__home-head">
+                  <span>Configurarea serviciilor</span>
+                  <strong>{homeDoneCount} din {homeProgressRows.length} completate</strong>
+                </div>
+                {homeGroups.map((group) => (
+                  <div key={group.label} className="provider-services-three__home-group">
+                    <p>{group.label}</p>
+                    {group.rows.map((row) => (
+                      <button key={row.value} type="button" onClick={() => openFromHome(row.value)}>
+                        <span className={`provider-services-three__home-mark${row.done ? " is-done" : ""}`} aria-hidden="true">
+                          {row.done && <Check />}
+                        </span>
+                        <span className="provider-services-three__home-label">{row.label}</span>
+                        <small>{row.meta}</small>
+                        <ChevronDown aria-hidden="true" />
+                      </button>
                     ))}
-                  </optgroup>
-                )}
-                <optgroup label="Verificare">
-                  <option value="all">Oferta completă</option>
-                  <option value="selected">Oferta selectată · {snapshot.selectedCount}</option>
-                  <option value="issues">Observații de catalog · {snapshot.issueCount}</option>
-                </optgroup>
-              </select>
-              <ChevronDown aria-hidden="true" />
-            </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="provider-services-three__home-back"
+                  onClick={() => setMobileHome(true)}
+                >
+                  <ChevronDown aria-hidden="true" /> Toate secțiunile
+                </button>
+                <div className="provider-services-three__mobile-nav-heading">
+                  <div>
+                    <span>{isReviewView ? "Verificare" : "Pasul curent"}</span>
+                    <strong>{centerTitle}</strong>
+                  </div>
+                  {!isReviewView && <small>Pasul {flowIndex + 1} din {flowSteps.length}</small>}
+                </div>
+              </>
+            )}
           </div>
 
           <details className="provider-services-three__mobile-overview">
