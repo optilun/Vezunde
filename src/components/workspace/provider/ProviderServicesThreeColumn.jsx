@@ -48,12 +48,6 @@ function cleanText(element) {
   return String(element?.textContent || "").trim().replace(/\s+/g, " ");
 }
 
-function setNativeInputValue(input, value) {
-  const descriptor = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
-  descriptor?.set?.call(input, value);
-  input.dispatchEvent(new Event("input", { bubbles: true }));
-}
-
 function findMainGrid(root) {
   const operationalRoot = root?.querySelector(":scope > div");
   if (!operationalRoot) return null;
