@@ -195,7 +195,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
       element.classList?.contains("sticky") && element.classList?.contains("bottom-0")
     ));
     if (actions) actions.dataset.servicesRole = "native-actions";
-  }, [activeUnitIndex, filter, query, snapshot.issueServiceKeys, view]);
+  }, [activeUnitIndex, configStep, filter, query, snapshot.issueServiceKeys, view]);
 
   useEffect(() => {
     const root = contentRef.current;
