@@ -627,6 +627,16 @@ function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceU
   const Icon = UNIT_ICONS[unitKey] || Building2;
   const selectedCount = sections.reduce((sum, section) => sum + selectedCountForSection(selected, section), 0);
   const total = sections.reduce((sum, section) => sum + section.items.length, 0);
+  // Sectiunile dintr-o zona sunt pliabile (2026-08-06). Inainte, deschiderea unei zone
+  // randa toate sectiunile cu toate randurile lor simultan - pana la ~24 de randuri per
+  // sectiune, plus titlu si paragraf de descriere pentru fiecare. Contorul "x din y
+  // selectate" ramane vizibil cand sunt inchise, deci nu se pierde nicio informatie.
+  const [openSections, setOpenSections] = useState(() => new Set());
+  const toggleSection = (sectionKey) => setOpenSections((current) => {
+    const next = new Set(current);
+    if (next.has(sectionKey)) next.delete(sectionKey); else next.add(sectionKey);
+    return next;
+  });
   return (
     <section className={`overflow-hidden rounded-[22px] border bg-card transition ${open ? "border-foreground/20 shadow-sm" : "border-border"}`}>
       <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-secondary/20 sm:px-5">
