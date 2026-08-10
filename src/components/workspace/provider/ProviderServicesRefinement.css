@@ -147,8 +147,8 @@
   }
 
   .provider-services-three__native [data-services-panel="configuration"] > div.mt-4 > button {
-    min-height: 64px !important;
-    padding: 11px 2px !important;
+    min-height: 60px !important;
+    padding: 12px 14px !important;
   }
 
   .provider-services-three__native [data-services-panel="units"] > section > button:first-child {
