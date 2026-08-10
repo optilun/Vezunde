@@ -315,6 +315,52 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
     chooseMobileView(entry.value);
   };
 
+  // Randurile ecranului-lista. Bifa apare cand pasul are un rezultat vizibil, ca sa
+  // vezi dintr-o privire ce ai terminat si ce a ramas.
+  const homeGroups = [
+    {
+      label: "Structura locației",
+      rows: [
+        {
+          value: "configuration",
+          label: "Zone și tip de activitate",
+          meta: snapshot.unitCount > 0 ? `${snapshot.unitCount} zone` : "Neconfigurat",
+          done: snapshot.unitCount > 0,
+        },
+        {
+          value: "options",
+          label: "La nivelul locației",
+          meta: "Opțional",
+          done: false,
+        },
+      ],
+    },
+    ...(snapshot.units.length > 0 ? [{
+      label: "Oferta pe zone",
+      rows: snapshot.units.map((unit) => ({
+        value: `unit:${unit.index}`,
+        label: unit.title,
+        meta: unit.selected > 0 ? `${unit.selected} selectate` : "Nimic selectat",
+        done: unit.selected > 0,
+      })),
+    }] : []),
+    {
+      label: "Verificare",
+      rows: [
+        { value: "selected", label: "Oferta selectată", meta: String(snapshot.selectedCount), done: false },
+        { value: "issues", label: "Observații de catalog", meta: String(snapshot.issueCount), done: false },
+      ],
+    },
+  ];
+  const homeProgressRows = homeGroups.flatMap((group) => (group.label === "Verificare" ? [] : group.rows));
+  const homeDoneCount = homeProgressRows.filter((row) => row.done).length;
+
+  const openFromHome = (value) => {
+    if (value === "configuration") setConfigStep(1);
+    chooseMobileView(value);
+    setMobileHome(false);
+  };
+
   return (
     <div className="provider-services-three" data-view={dataView} data-filter={filter}>
       <div className="provider-services-three__layout">
