@@ -481,16 +481,15 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
               {snapshot.status && <em>{snapshot.status}</em>}
             </div>
 
-            <section className="provider-services-three__preview-section">
-              <h3>Structura locației</h3>
-              {snapshot.units.length > 0 ? (
-                <ul>
-                  {snapshot.units.slice(0, 4).map((unit) => <li key={unit.index}><Building2 aria-hidden="true" /> {unit.title}</li>)}
-                  {snapshot.units.length > 4 && <li className="is-more">+ {snapshot.units.length - 4} alte zone</li>}
-                </ul>
-              ) : <p>Configurează cel puțin o zonă pentru locație.</p>}
-              {snapshot.careSetting && <div className="provider-services-three__care"><span>Tipul activității</span><strong>{snapshot.careSetting}</strong></div>}
-            </section>
+            {/* Lista de zone a fost eliminata de aici (2026-08-06): era identica, cuvant
+                cu cuvant, cu lista deja clicabila din navigarea din stanga ("Oferta pe
+                zone"). Pastram doar tipul activitatii, singura informatie care nu apare
+                deja in alta parte a ecranului. */}
+            {snapshot.careSetting && (
+              <section className="provider-services-three__preview-section">
+                <div className="provider-services-three__care"><span>Tipul activității</span><strong>{snapshot.careSetting}</strong></div>
+              </section>
+            )}
 
             <section className="provider-services-three__preview-section">
               <h3>Oferta și informațiile opționale</h3>
