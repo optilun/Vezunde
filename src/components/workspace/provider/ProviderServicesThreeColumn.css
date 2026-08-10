@@ -2191,6 +2191,63 @@
   }
 }
 
+/* Butonul "Continua catre..." - drumul liniar prin configurare (2026-08-06) */
+.provider-services-three__flow-next {
+  margin-top: 16px;
+}
+
+.provider-services-three__flow-next button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  border-radius: 18px;
+  border: 1px solid hsl(var(--foreground));
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  padding: 14px 18px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.provider-services-three__flow-next button:hover {
+  opacity: 0.92;
+}
+
+.provider-services-three__flow-next button span {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.provider-services-three__flow-next button strong {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-services-three__flow-next button svg {
+  height: 16px;
+  width: 16px;
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+}
+
+@media (max-width: 620px) {
+  .provider-services-three__flow-next button {
+    flex-wrap: wrap;
+    gap: 2px 8px;
+  }
+
+  .provider-services-three__flow-next button span {
+    width: 100%;
+  }
+}
+
 /* Pasi adevarati - puncte de progres si butoane Inapoi/Continua (2026-08-06) */
 .provider-services-three__substeps {
   display: flex;
