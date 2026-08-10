@@ -280,28 +280,36 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   const showActionBar = snapshot.hasSave || snapshot.hasSubmit || snapshot.hasWithdraw || Boolean(snapshot.actionStatus);
   const dataView = query ? "search" : view;
   const mobileNavValue = view === "unit" ? `unit:${activeUnitIndex}` : view;
-  // Separam drumul liniar (configurare -> zone) de vederile de verificare (filtre peste
-  // ce ai facut deja). Inainte, toate 9 erau numarate la un loc, iar antetul arata
-  // "4 din 9" - pozitie in lista - exact langa "4 selectate" din dropdown, care insemna
-  // cu totul altceva. Acum numaram doar pasii reali, iar filtrele nu mai sunt "pasi".
-  const flowValues = [
-    "configuration",
-    "options",
-    ...snapshot.units.map((unit) => `unit:${unit.index}`),
+  // UN SINGUR sir de pasi (2026-08-06). Inainte existau doua numaratori suprapuse pe
+  // acelasi ecran - "Pasul 1 din 6" (navigare) si "Pasul 1 din 3" (subpasii de
+  // configurare) - plus acelasi titlu repetat de trei ori. Acum configurarea isi
+  // desfasoara subpasii in acelasi sir, deci exista o singura numaratoare si un singur
+  // buton de avansare. Filtrele de verificare raman in afara numaratorii.
+  const flowSteps = [
+    { value: "configuration", step: 1, label: "Zonele existente" },
+    { value: "configuration", step: 2, label: "Activități asociate" },
+    { value: "configuration", step: 3, label: "Tipul activității" },
+    { value: "options", step: null, label: "La nivelul locației" },
+    ...snapshot.units.map((unit) => ({
+      value: `unit:${unit.index}`,
+      step: null,
+      label: unit.title,
+    })),
   ];
-  const mobileNavValues = [...flowValues, "all", "selected", "issues"];
-  const flowIndex = flowValues.indexOf(mobileNavValue);
+  const mobileNavValues = ["configuration", "options", ...snapshot.units.map((unit) => `unit:${unit.index}`), "all", "selected", "issues"];
+  const flowIndex = flowSteps.findIndex((entry) => (
+    entry.value === mobileNavValue && (entry.step === null || entry.step === configStep)
+  ));
   const isReviewView = flowIndex < 0;
-  const nextFlowValue = flowIndex >= 0 && flowIndex < flowValues.length - 1
-    ? flowValues[flowIndex + 1]
-    : "";
-  const nextFlowLabel = !nextFlowValue
-    ? ""
-    : nextFlowValue === "options"
-      ? "La nivelul locației"
-      : nextFlowValue.startsWith("unit:")
-        ? snapshot.units.find((unit) => `unit:${unit.index}` === nextFlowValue)?.title || "Următoarea zonă"
-        : "Zone și tip de activitate";
+  const nextFlowEntry = flowIndex >= 0 && flowIndex < flowSteps.length - 1
+    ? flowSteps[flowIndex + 1]
+    : null;
+  const previousFlowEntry = flowIndex > 0 ? flowSteps[flowIndex - 1] : null;
+  const goToFlowEntry = (entry) => {
+    if (!entry) return;
+    if (entry.step !== null) setConfigStep(entry.step);
+    chooseMobileView(entry.value);
+  };
 
   return (
     <div className="provider-services-three" data-view={dataView} data-filter={filter}>
