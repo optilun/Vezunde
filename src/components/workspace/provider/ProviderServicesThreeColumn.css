@@ -2330,6 +2330,15 @@
   color: hsl(var(--muted-foreground));
 }
 
+/* Antetul central e redundant pe telefon (2026-08-06): titlul zonei apare deja in
+   antetul de navigare de deasupra, iar descrierea se repeta imediat mai jos, in
+   continutul propriu-zis. Ramane vizibil pe desktop, unde nu exista antetul mobil. */
+@media (max-width: 820px) {
+  .provider-services-three__center-header {
+    display: none !important;
+  }
+}
+
 /* Ecranul-lista ("acasa") pe telefon - drill-down in loc de selector (2026-08-06).
    Doar sub 820px: pe desktop, coloana din stanga face deja acelasi lucru. */
 .provider-services-three__home,
