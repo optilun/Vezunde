@@ -362,6 +362,33 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
     setMobileHome(false);
   };
 
+  // Starea profilului, in stilul Uber/Revolut: spune raspicat daca esti sau nu vizibil
+  // pacientilor, si care e singurul lucru ramas de facut. Pragul e cel putin un serviciu
+  // APROBAT - sub el, profilul apare doar ca alternativa neconfirmata, cu avertisment.
+  const readinessBanner = snapshot.approvedCount > 0
+    ? {
+      tone: "live",
+      title: "Profilul apare la căutările pacienților",
+      detail: `${snapshot.approvedCount} ${snapshot.approvedCount === 1 ? "serviciu confirmat" : "servicii confirmate"}`,
+    }
+    : snapshot.pendingReview
+      ? {
+        tone: "pending",
+        title: "Modificările sunt în verificare",
+        detail: "Te anunțăm când sunt aprobate. Până atunci nu poți edita.",
+      }
+      : snapshot.selectedCount > 0
+        ? {
+          tone: "action",
+          title: "Nu apari încă la căutări",
+          detail: `Ai ${snapshot.selectedCount} ${snapshot.selectedCount === 1 ? "serviciu pregătit" : "servicii pregătite"}. Trimite-le spre aprobare.`,
+        }
+        : {
+          tone: "empty",
+          title: "Nu apari încă la căutări",
+          detail: "Alege cel puțin un serviciu într-o zonă, apoi trimite spre aprobare.",
+        };
+
   return (
     <div className="provider-services-three" data-view={dataView} data-filter={filter} data-mobile-home={mobileHome ? "true" : "false"}>
       <div className="provider-services-three__layout">
