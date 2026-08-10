@@ -95,8 +95,9 @@
   }
 
   .provider-services-three__native button[data-service-key] {
-    padding-inline: 4px !important;
-    background: transparent !important;
+    padding-inline: 14px !important;
+    border-radius: 14px !important;
+    background: var(--services-surface) !important;
   }
 
   .provider-services-three__native button[data-service-key]:hover:not(:disabled) {
