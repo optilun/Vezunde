@@ -873,7 +873,7 @@ function LegacyServices({ services, rawRemovalKeys, disabled, onToggle }) {
   );
 }
 
-export default function ProviderServicesWorkspaceOperational({ locationId, location, onWorkspaceSnapshot }) {
+export default function ProviderServicesWorkspaceOperational({ locationId, location, onWorkspaceSnapshot, query: externalQuery, onQueryChange }) {
   // Actiunile (save/submit/withdraw) sunt expuse in sus prin snapshot, ca invelisul de
   // trei coloane sa le poata apela direct. Inainte (pana in 2026-08-06) invelisul gasea
   // butoanele cautand textul romanesc exact ("Salveaza draftul" etc.) si le da click prin
