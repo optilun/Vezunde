@@ -445,7 +445,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
           </header>
 
           <div ref={contentRef} className="provider-services-three__native">
-            <ProviderServicesWorkspaceRuntime location={location} {...props} onWorkspaceSnapshot={updateWorkspaceSnapshot} />
+            <ProviderServicesWorkspaceRuntime location={location} {...props} query={query} onQueryChange={setQuery} onWorkspaceSnapshot={updateWorkspaceSnapshot} />
           </div>
         </section>
 
