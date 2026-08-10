@@ -905,7 +905,13 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
   const [suggestions, setSuggestions] = useState([]);
   const [rawRemovalKeys, setRawRemovalKeys] = useState([]);
   const [openUnit, setOpenUnit] = useState("");
-  const [query, setQuery] = useState("");
+  // Cautarea poate fi controlata din exterior (invelisul de trei coloane are propria
+  // caseta de cautare in antet). Inainte, invelisul scria valoarea direct in input prin
+  // setter-ul nativ al React-ului si un eveniment sintetic - un truc pe interiorul
+  // bibliotecii, care s-ar rupe tacit la o schimbare de versiune React.
+  const [internalQuery, setInternalQuery] = useState("");
+  const query = externalQuery !== undefined ? externalQuery : internalQuery;
+  const setQuery = onQueryChange || setInternalQuery;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [baselineSignature, setBaselineSignature] = useState(null);
