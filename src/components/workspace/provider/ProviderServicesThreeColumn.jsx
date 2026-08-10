@@ -547,21 +547,21 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
           </div>
           <div className="provider-services-three__action-buttons">
             {snapshot.hasSave && (
-              <button type="button" disabled={!snapshot.canSave} onClick={() => clickNativeAction(/Salvează draftul|Salveaza draftul/i)}>
+              <button type="button" disabled={!snapshot.canSave} onClick={() => snapshot.onSave?.()}>
                 <Save aria-hidden="true" />
                 <span className="provider-services-three__action-label-desktop">Salvează draftul</span>
                 <span className="provider-services-three__action-label-mobile">Salvează</span>
               </button>
             )}
             {snapshot.hasSubmit && (
-              <button type="button" className="is-primary" disabled={!snapshot.canSubmit} onClick={() => clickNativeAction(/Trimite modificările spre aprobare/i)}>
+              <button type="button" className="is-primary" disabled={!snapshot.canSubmit} onClick={() => snapshot.onSubmit?.()}>
                 <Send aria-hidden="true" />
                 <span className="provider-services-three__action-label-desktop">Trimite spre aprobare</span>
                 <span className="provider-services-three__action-label-mobile">Trimite</span>
               </button>
             )}
             {snapshot.hasWithdraw && (
-              <button type="button" disabled={!snapshot.canWithdraw} onClick={() => clickNativeAction(/Retrage cererea/i)}>
+              <button type="button" disabled={!snapshot.canWithdraw} onClick={() => snapshot.onWithdraw?.()}>
                 <X aria-hidden="true" />
                 <span className="provider-services-three__action-label-desktop">Retrage cererea</span>
                 <span className="provider-services-three__action-label-mobile">Retrage</span>
