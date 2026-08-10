@@ -629,9 +629,14 @@ function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceU
   const total = sections.reduce((sum, section) => sum + section.items.length, 0);
   // Sectiunile dintr-o zona sunt pliabile (2026-08-06). Inainte, deschiderea unei zone
   // randa toate sectiunile cu toate randurile lor simultan - pana la ~24 de randuri per
-  // sectiune, plus titlu si paragraf de descriere pentru fiecare. Contorul "x din y
-  // selectate" ramane vizibil cand sunt inchise, deci nu se pierde nicio informatie.
-  const [openSections, setOpenSections] = useState(() => new Set());
+  // sectiune, plus titlu si paragraf de descriere pentru fiecare.
+  // Pornesc DESCHISE doar sectiunile care au deja selectii. Doua motive:
+  //  1. utilizatorul vede imediat ce si-a configurat, fara sa caute;
+  //  2. filtrele din invelis ("Oferta selectata", "Observatii") scaneaza randurile din
+  //     DOM - daca sectiunile cu selectii ar fi inchise, acele filtre ar afisa gol.
+  const [openSections, setOpenSections] = useState(() => new Set(
+    sections.filter((section) => selectedCountForSection(selected, section) > 0).map((section) => section.key),
+  ));
   const toggleSection = (sectionKey) => setOpenSections((current) => {
     const next = new Set(current);
     if (next.has(sectionKey)) next.delete(sectionKey); else next.add(sectionKey);
