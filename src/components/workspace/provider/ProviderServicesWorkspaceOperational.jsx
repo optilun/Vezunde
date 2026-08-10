@@ -651,7 +651,10 @@ function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceU
       </button>
       {open && (
         <div className="border-t border-border/70">
-          <div className="bg-secondary/10 px-4 py-3 sm:px-5"><p className="text-xs leading-relaxed text-muted-foreground">{definition?.description}</p></div>
+          {/* Descrierea zonei a fost eliminata (2026-08-06): pe telefon aparea imediat
+              dupa titlul zonei, care era deja repetat de doua ori mai sus, si impingea
+              prima bifa reala si mai jos. Aceeasi informatie exista in pasul de alegere
+              a zonelor, unde chiar ajuta la decizie. */}
           {sections.map((section) => {
             const activeUnit = resolveSectionUnit(section, selected, serviceUnitMap, [unitKey]);
             const availableParents = possibleUnits(section).filter((key) => config.activeUnits.includes(key));
