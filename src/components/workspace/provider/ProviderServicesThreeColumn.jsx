@@ -245,8 +245,6 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
 
   const updateSearch = useCallback((value) => {
     setQuery(value);
-    const input = contentRef.current?.querySelector('input[placeholder^="Caută"], input[placeholder^="Cauta"]');
-    if (input) setNativeInputValue(input, value);
   }, []);
 
   const activeUnit = snapshot.units.find((unit) => unit.index === activeUnitIndex);
