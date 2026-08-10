@@ -322,6 +322,12 @@
   display: none !important;
 }
 
+/* Pasi adevarati in loc de 3 sectiuni afisate simultan (2026-08-06): in pasul de
+   "configurare", doar sectiunea numerotata curenta ramane vizibila. */
+.provider-services-three[data-view="configuration"] [data-services-substep-visible="false"] {
+  display: none !important;
+}
+
 /* Configuration, options, advanced data and search results are sections, not cards. */
 .provider-services-three__native [data-services-panel="configuration"],
 .provider-services-three__native [data-services-panel="options"],
