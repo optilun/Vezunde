@@ -60,11 +60,11 @@
 
 .provider-services-three__native [data-services-panel="configuration"] button[aria-pressed="true"],
 .provider-services-three__native [data-services-panel="options"] button[aria-pressed="true"],
-.provider-services-three__native button.grid[aria-pressed="true"] {
+.provider-services-three__native button[data-service-key][aria-pressed="true"] {
   background: #f7f4ed !important;
 }
 
-.provider-services-three__native button.grid:hover:not(:disabled) {
+.provider-services-three__native button[data-service-key]:hover:not(:disabled) {
   background: #fbfaf7 !important;
 }
 
@@ -160,7 +160,7 @@
     padding-inline: 22px !important;
   }
 
-  .provider-services-three__native button.grid {
+  .provider-services-three__native button[data-service-key] {
     min-height: 62px;
     padding: 12px 22px !important;
   }
