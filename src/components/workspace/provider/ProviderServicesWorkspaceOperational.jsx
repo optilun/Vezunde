@@ -362,6 +362,7 @@ function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, d
     ? "La trimiterea cererii, elementul este ascuns public până la soluționare."
     : blockerDetail || helperText;
   return (
+    <>
     <button
       type="button"
       data-service-key={item.id}
