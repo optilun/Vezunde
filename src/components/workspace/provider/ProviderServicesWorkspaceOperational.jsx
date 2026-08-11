@@ -1306,9 +1306,8 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     setCapabilities(initialCapabilities);
     setApprovedServiceUnitMap(nextConfig.service_unit_map || {});
     setServiceUnitMap(initialMap);
-    // CAS: aprobat = ce e deja publicat; draftul are prioritate daca exista.
+    // CAS: draftul are prioritate; daca nu exista draft, luam ce e deja publicat.
     const persistedCas = Array.isArray(nextConfig.cas_service_keys) ? nextConfig.cas_service_keys : [];
-    setApprovedCasServiceKeys(persistedCas);
     setCasServiceKeys(Array.isArray(payload.cas_service_keys) ? payload.cas_service_keys : persistedCas);
     setApprovedResourceLinks(approvedLinks);
     setResourceLinks(initialResourceLinks);
