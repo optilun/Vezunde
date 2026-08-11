@@ -2155,7 +2155,10 @@
   .provider-services-three__actions {
     gap: 8px;
     margin-top: 0;
-    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    /* Bara de navigare de jos (adaugata 2026-08-06) sta la ~62px inaltime pe telefon.
+       Ridicam bara de actiuni deasupra ei, altfel butonul "Salveaza" ramane acoperit. */
+    bottom: calc(62px + env(safe-area-inset-bottom));
+    padding: 8px 10px;
     border-bottom: 0;
   }
 
