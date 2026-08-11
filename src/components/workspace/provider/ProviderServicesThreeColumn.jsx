@@ -374,9 +374,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
         label: unit.title,
         hint: unit.description,
         icon: UNIT_CARD_ICONS[unit.key] || Building2,
-        meta: unit.selected > 0
-          ? `${unit.selected} din ${unit.total} servicii`
-          : `0 din ${unit.total} servicii`,
+        meta: `${unit.selected} din ${unit.total} servicii`,
         done: unit.selected > 0,
       })),
     }] : []),
