@@ -376,7 +376,7 @@ async function applyServices(svc, submission, payload) {
       const definition = getCanonicalServiceDefinition(serviceKey);
       if (!definition) throw new Error(`Serviciu canonic necunoscut: ${serviceKey}`);
       const rows = await svc.entities.LocationService.filter({ location_id: submission.location_id, service_key: serviceKey });
-      const data = serviceApplyData(serviceKey, rows[0]);
+      const data = serviceApplyData(serviceKey, rows[0], Array.isArray(payload.cas_service_keys) ? payload.cas_service_keys : []);
       if (rows[0]) await svc.entities.LocationService.update(rows[0].id, data);
       else await svc.entities.LocationService.create({ location_id: submission.location_id, service_key: serviceKey, ...data });
       if (group === 'specialties' || definition.group === 'specialties') await mirrorSpecialization(serviceKey, true);
