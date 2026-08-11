@@ -2453,9 +2453,17 @@
 
   .provider-services-three__home-head {
     display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 2px 16px;
+  }
+
+  .provider-services-three__home-head > div {
+    display: flex;
+    min-width: 0;
     flex-direction: column;
     gap: 2px;
-    padding: 0 2px 14px;
   }
 
   .provider-services-three__home-head span {
@@ -2472,12 +2480,48 @@
     color: hsl(var(--foreground));
   }
 
+  .provider-services-three__home-ring {
+    position: relative;
+    display: flex;
+    height: 52px;
+    width: 52px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .provider-services-three__home-ring svg {
+    height: 52px;
+    width: 52px;
+    transform: rotate(-90deg);
+  }
+
+  .provider-services-three__home-ring circle {
+    fill: none;
+    stroke: hsl(var(--border));
+    stroke-width: 3;
+  }
+
+  .provider-services-three__home-ring circle.is-value {
+    stroke: hsl(var(--foreground));
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.4s ease;
+  }
+
+  .provider-services-three__home-ring em {
+    position: absolute;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 800;
+    color: hsl(var(--foreground));
+  }
+
   .provider-services-three__home-group {
     margin-bottom: 18px;
   }
 
   .provider-services-three__home-group > p {
-    margin: 0 4px 7px;
+    margin: 0 4px 8px;
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
@@ -2489,59 +2533,93 @@
     display: flex;
     width: 100%;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 7px;
-    padding: 14px 14px;
-    border-radius: 14px;
+    gap: 12px;
+    margin-bottom: 8px;
+    padding: 14px;
+    border-radius: 18px;
     border: 1px solid hsl(var(--border));
     background: hsl(var(--card));
     text-align: left;
     cursor: pointer;
   }
 
-  .provider-services-three__home-mark {
+  .provider-services-three__home-group > button.is-done {
+    border-color: hsl(var(--foreground) / 0.4);
+  }
+
+  .provider-services-three__home-group > button.is-review {
+    padding: 12px 14px;
+    background: transparent;
+  }
+
+  .provider-services-three__home-icon {
     display: flex;
-    height: 20px;
-    width: 20px;
+    height: 44px;
+    width: 44px;
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    border-radius: 999px;
-    border: 1.5px solid hsl(var(--border));
+    border-radius: 14px;
+    background: hsl(var(--secondary));
+    color: hsl(var(--foreground));
   }
 
-  .provider-services-three__home-mark.is-done {
-    border-color: hsl(var(--foreground));
+  .provider-services-three__home-group > button.is-done .provider-services-three__home-icon {
     background: hsl(var(--foreground));
     color: hsl(var(--background));
   }
 
-  .provider-services-three__home-mark svg {
-    height: 13px;
-    width: 13px;
+  .provider-services-three__home-icon svg {
+    height: 20px;
+    width: 20px;
+  }
+
+  .provider-services-three__home-body {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
   }
 
   .provider-services-three__home-label {
-    flex: 1;
-    min-width: 0;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 700;
     color: hsl(var(--foreground));
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
-  .provider-services-three__home-group > button small {
-    flex-shrink: 0;
+  .provider-services-three__home-hint {
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: hsl(var(--muted-foreground));
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .provider-services-three__home-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 3px;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
     color: hsl(var(--muted-foreground));
   }
 
+  .provider-services-three__home-group > button.is-done .provider-services-three__home-meta {
+    color: hsl(var(--foreground));
+  }
+
+  .provider-services-three__home-meta svg {
+    height: 12px;
+    width: 12px;
+  }
+
   .provider-services-three__home-group > button > svg:last-child {
-    height: 15px;
-    width: 15px;
+    height: 16px;
+    width: 16px;
     flex-shrink: 0;
     transform: rotate(-90deg);
     color: hsl(var(--muted-foreground));
