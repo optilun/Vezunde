@@ -604,8 +604,26 @@ var {
   SERVICE_GROUPS: SERVICE_GROUPS2
 } = canonicalServiceRegistry_exports;
 var NEW_KEYS = {
-  cas_reimbursed_services: {
-    label: "Servicii decontate prin CAS",
+  home_visit_eye_care: {
+    label: "Consulta\u021Bii la domiciliul pacientului",
+    group: "business_attributes",
+    kind: "service",
+    need: "specialized_medical",
+    review: true,
+    specialist: true,
+    professionalTypes: ["optometrist", "ophthalmologist"]
+  },
+  workplace_vision_screening: {
+    label: "Screening de vedere la sediul companiei",
+    group: "business_attributes",
+    kind: "service",
+    need: "specialized_medical",
+    review: true,
+    specialist: true,
+    professionalTypes: ["optometrist", "ophthalmologist"]
+  },
+  employer_glasses_reimbursement: {
+    label: "Documente pentru decontarea ochelarilor de c\u0103tre angajator (HG 1028)",
     group: "business_attributes",
     kind: "service",
     need: "general",
@@ -613,8 +631,17 @@ var NEW_KEYS = {
     specialist: false,
     professionalTypes: []
   },
-  onsite_eye_testing_b2b: {
-    label: "Consulta\u021Bii/Test\u0103ri la domiciliu sau sediul firmelor (B2B)",
+  mobile_optical_unit: {
+    label: "Unitate optic\u0103 mobil\u0103 (se deplaseaz\u0103 la client)",
+    group: "business_attributes",
+    kind: "service",
+    need: "specialized_medical",
+    review: true,
+    specialist: true,
+    professionalTypes: ["optometrist", "ophthalmologist"]
+  },
+  school_vision_screening: {
+    label: "Screening de vedere \u00EEn \u0219coli \u0219i gr\u0103dini\u021Be",
     group: "business_attributes",
     kind: "service",
     need: "specialized_medical",
@@ -643,8 +670,11 @@ var NEW_KEYS = {
   }
 };
 var SPECIFIC_SEARCH_KEYWORDS = {
-  cas_reimbursed_services: ["cas", "cnas", "decontat", "decontare", "bilet de trimitere", "asigurare de sanatate"],
-  onsite_eye_testing_b2b: ["testare la sediu", "control vedere la birou", "testare angajati", "consultatie la domiciliu", "control acasa", "screening vedere firma"],
+  home_visit_eye_care: ["consultatie la domiciliu", "control acasa", "la domiciliu", "oftalmolog acasa"],
+  workplace_vision_screening: ["testare la sediu", "control vedere la birou", "testare angajati", "screening vedere firma", "medicina muncii"],
+  employer_glasses_reimbursement: ["decontare ochelari", "hg 1028", "ochelari pe firma", "adeverinta ochelari"],
+  mobile_optical_unit: ["optica mobila", "unitate mobila", "caravana"],
+  school_vision_screening: ["screening scoala", "testare vedere copii scoala", "gradinita"],
   computer_screen_glasses: ["ochelari calculator", "ochelari pentru ecran", "protectie ecrane", "ochelari lumina albastra", "ochelari birou"],
   myopia_control_spectacle_lenses: ["stellest", "miyosmart", "mi yosmart", "lentile control miopie", "lentile speciale miopie copii"],
   orthokeratology: ["ortokeratologie", "lentile de noapte", "lentile purtate noaptea", "ortho k", "fara ochelari ziua"],
@@ -737,8 +767,11 @@ function addGroupAndKeys() {
     label: "Op\u021Biuni generale ale loca\u021Biei",
     helper: "Atribute comerciale \u0219i de acces valabile la nivelul \xEEntregii loca\u021Bii.",
     ids: {
-      cas_reimbursed_services: NEW_KEYS.cas_reimbursed_services.label,
-      onsite_eye_testing_b2b: NEW_KEYS.onsite_eye_testing_b2b.label
+      home_visit_eye_care: NEW_KEYS.home_visit_eye_care.label,
+      workplace_vision_screening: NEW_KEYS.workplace_vision_screening.label,
+      employer_glasses_reimbursement: NEW_KEYS.employer_glasses_reimbursement.label,
+      mobile_optical_unit: NEW_KEYS.mobile_optical_unit.label,
+      school_vision_screening: NEW_KEYS.school_vision_screening.label
     }
   };
   SERVICE_GROUPS2.optical_retail.ids.computer_screen_glasses = NEW_KEYS.computer_screen_glasses.label;
@@ -764,8 +797,7 @@ function addGroupAndKeys() {
   if (!CLAIM_PREP_SERVICE_GROUPS2.includes("business_attributes")) CLAIM_PREP_SERVICE_GROUPS2.unshift("business_attributes");
   Object.assign(LEGACY_SERVICE_ALIASES2, {
     microscopie_endoteliala: "specular_microscopy",
-    servicii_cas: "cas_reimbursed_services",
-    testare_la_sediu: "onsite_eye_testing_b2b",
+    testare_la_sediu: "workplace_vision_screening",
     ochelari_calculator: "computer_screen_glasses",
     lentile_noapte: "orthokeratology",
     stellest_miyosmart: "myopia_control_spectacle_lenses",
