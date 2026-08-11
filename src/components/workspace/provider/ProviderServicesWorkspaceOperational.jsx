@@ -1112,6 +1112,9 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
       index,
       key: unitKey,
       title: getFunctionalUnitDefinition(unitKey)?.shortTitle || getFunctionalUnitDefinition(unitKey)?.title || unitKey,
+      // Descrierea ajunge pe cardul din ecranul-lista, unde chiar ajuta la decizie
+      // inainte sa intri. In interiorul zonei era doar o repetare (2026-08-06).
+      description: getFunctionalUnitDefinition(unitKey)?.description || "",
       selected: selectedByUnit[unitKey] || 0,
       total: [...new Set((sectionsByUnit[unitKey] || []).flatMap((section) => section.items.map((item) => item.id)))].length,
     }));
