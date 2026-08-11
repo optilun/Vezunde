@@ -740,8 +740,11 @@ function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceU
 function GlobalServiceSections({ sections, selected, approvedSelected, prerequisites, disabled, onToggleService }) {
   if (sections.length === 0) return null;
   const helperText = {
-    cas_reimbursed_services: "Informație declarată de furnizor. Nu cerem documente. Disponibilitatea poate varia; pacientul confirmă direct cu locația.",
-    onsite_eye_testing_b2b: "Include consultații sau testări la domiciliu și screening ori testări de vedere la sediul companiilor.",
+    home_visit_eye_care: "Te deplasezi la domiciliul pacientului, pentru persoane care nu pot ajunge la locație.",
+    workplace_vision_screening: "Testezi vederea angajaților la sediul companiei, inclusiv pentru medicina muncii.",
+    employer_glasses_reimbursement: "Emiți documentele de care are nevoie angajatorul ca să deconteze ochelarii (HG 1028/2006).",
+    mobile_optical_unit: "Ai o unitate mobilă dotată, care se deplasează la client.",
+    school_vision_screening: "Faci screening de vedere în școli și grădinițe.",
   };
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
