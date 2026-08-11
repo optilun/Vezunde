@@ -217,6 +217,11 @@ function addGroupAndKeys() {
     ids: {
       cas_reimbursed_services: NEW_KEYS.cas_reimbursed_services.label,
       onsite_eye_testing_b2b: NEW_KEYS.onsite_eye_testing_b2b.label,
+      home_visit_eye_care: NEW_KEYS.home_visit_eye_care.label,
+      workplace_vision_screening: NEW_KEYS.workplace_vision_screening.label,
+      employer_glasses_reimbursement: NEW_KEYS.employer_glasses_reimbursement.label,
+      mobile_optical_unit: NEW_KEYS.mobile_optical_unit.label,
+      school_vision_screening: NEW_KEYS.school_vision_screening.label,
     },
   };
   SERVICE_GROUPS.optical_retail.ids.computer_screen_glasses = NEW_KEYS.computer_screen_glasses.label;
