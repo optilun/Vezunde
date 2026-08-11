@@ -23,12 +23,16 @@ import ProviderServicesWorkspaceRuntime from "./ProviderServicesWorkspaceRuntime
 // imaginile AI ar consuma credite la fiecare afisare, s-ar incarca lent si ar bate cap
 // in cap cu estetica editoriala a aplicatiei.
 const UNIT_CARD_ICONS = {
-  optical_shop: Store,
-  optical_showroom: Store,
-  optometry_room: Eye,
-  optics_room: Glasses,
-  optical_lab: Wrench,
-  workshop: Wrench,
+  optical_store: Store,
+  optical_cabinet: Glasses,
+  optometry_cabinet: Eye,
+  ophthalmology_office: Stethoscope,
+  optical_workshop: Wrench,
+  optical_laboratory: FlaskConical,
+  ophthalmology_diagnostics: Microscope,
+  ophthalmology_procedure_room: CircleDot,
+  ophthalmology_surgery_unit: Hospital,
+  b2b_distribution_center: PackageOpen,
 };
 
 const INITIAL_SNAPSHOT = {
