@@ -1522,6 +1522,15 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
   };
 
   const removeSuggestion = (suggestion) => setSuggestions((current) => current.filter((item) => item !== suggestion));
+
+  const toggleCasService = (serviceKey) => {
+    if (!editable) return;
+    setCasServiceKeys((current) => (
+      current.includes(serviceKey)
+        ? current.filter((key) => key !== serviceKey)
+        : [...current, serviceKey]
+    ));
+  };
   const toggleRawRemoval = (rawKey) => setRawRemovalKeys((current) => current.includes(rawKey) ? current.filter((key) => key !== rawKey) : [...current, rawKey]);
 
   const save = async () => {
