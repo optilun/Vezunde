@@ -350,12 +350,18 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
         {
           value: "configuration",
           label: "Zone și tip de activitate",
-          meta: snapshot.unitCount > 0 ? `${snapshot.unitCount} zone` : "Neconfigurat",
+          hint: "Ce spații ai la această locație: magazin, cabinet, atelier.",
+          icon: Building2,
+          meta: snapshot.unitCount > 0
+            ? `${snapshot.unitCount} ${snapshot.unitCount === 1 ? "zonă" : "zone"}`
+            : "Nicio zonă aleasă",
           done: snapshot.unitCount > 0,
         },
         {
           value: "options",
           label: "La nivelul locației",
+          hint: "Detalii care se aplică întregii locații, nu unei singure zone.",
+          icon: Settings2,
           meta: "Opțional",
           done: false,
         },
