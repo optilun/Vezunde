@@ -754,7 +754,16 @@ function GlobalServiceSections({ sections, selected, approvedSelected, prerequis
       </div>
       {sections.map((section) => (
         <div key={section.key} className="border-b border-border/60 last:border-b-0">
-          <div className="bg-card px-4 py-3 sm:px-5"><h3 className="text-xs font-bold">{section.title}</h3><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{section.description}</p></div>
+          <div className="bg-card px-4 py-3 sm:px-5">
+            <h3 className="text-xs font-bold">{section.title}</h3>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{section.description}</p>
+            {/* Principiul declarativ, la nivel de sectiune (2026-08-06): se aplica tuturor
+                optiunilor de aici, nu doar uneia. Inainte era ascuns in textul de ajutor
+                al bifei CAS, care a fost eliminata. */}
+            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+              Informații declarate de furnizor. Nu cerem documente; pacientul confirmă direct cu locația.
+            </p>
+          </div>
           <div className="border-t border-border/50">
             {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={prerequisites[item.id]} unitKey="" disabled={disabled} helperText={helperText[item.id] || ""} onToggle={onToggleService} />)}
           </div>
