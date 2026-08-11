@@ -350,6 +350,18 @@ function ChangeBadge({ draftAddition, removalRequested, modified }) {
   return null;
 }
 
+// Grupurile de servicii pentru care decontarea CAS are sens. Deliberat NU includem
+// vanzarea de rame/ochelari sau reparatiile: acelea nu se deconteaza prin casa de
+// asigurari, iar un marcaj acolo ar deruta furnizorul (2026-08-06).
+const CAS_ELIGIBLE_GROUPS = new Set([
+  "ophthalmology_consults",
+  "optometry",
+  "investigations",
+  "procedures_surgery",
+  "specialties",
+  "children_and_prevention",
+]);
+
 function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, disabled, helperText = "", onToggle, casActive = false, casEligible = false, onToggleCas }) {
   const active = isSelected(selected, item);
   const approved = isSelected(approvedSelected, item);
