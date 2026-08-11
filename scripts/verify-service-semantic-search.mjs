@@ -31,8 +31,8 @@ for (const serviceKey of CANONICAL_SERVICE_KEYS) {
 }
 
 for (const requiredKey of [
-  'cas_reimbursed_services',
-  'onsite_eye_testing_b2b',
+  'home_visit_eye_care',
+  'workplace_vision_screening',
   'computer_screen_glasses',
   'orthokeratology',
   'myopia_control_spectacle_lenses',
@@ -61,12 +61,12 @@ assert.ok(
 const taxonomy = validateOperationalTaxonomy();
 assert.equal(taxonomy.valid, true, JSON.stringify(taxonomy));
 assert.equal(getServiceOperationalContext('emergency_ophthalmology').unitKey, 'ophthalmology_office');
-assert.equal(getServiceOperationalContext('cas_reimbursed_services').scope, 'location');
-assert.equal(getServiceOperationalContext('onsite_eye_testing_b2b').scope, 'location');
+assert.equal(getServiceOperationalContext('home_visit_eye_care').scope, 'location');
+assert.equal(getServiceOperationalContext('workplace_vision_screening').scope, 'location');
 
 const extendedPayload = validateServiceConfigurationPayload({
   selected_ids: {
-    business_attributes: ['cas_reimbursed_services', 'onsite_eye_testing_b2b'],
+    business_attributes: ['home_visit_eye_care', 'workplace_vision_screening'],
     optical_retail: ['computer_screen_glasses'],
     children_and_prevention: ['myopia_control_spectacle_lenses', 'vision_therapy'],
     contact_lenses: ['orthokeratology'],
@@ -92,12 +92,12 @@ const extendedPayload = validateServiceConfigurationPayload({
   care_setting: 'mixed',
 });
 assert.equal(extendedPayload.valid, true, extendedPayload.error || JSON.stringify(extendedPayload.fields));
-assert.equal(Object.hasOwn(extendedPayload.clean.service_unit_map, 'cas_reimbursed_services'), false, 'Atributul CAS are scope=location, nu unitate fizică');
-assert.equal(Object.hasOwn(extendedPayload.clean.service_unit_map, 'onsite_eye_testing_b2b'), false, 'Testarea externă are scope=location, nu unitate fizică');
+assert.equal(Object.hasOwn(extendedPayload.clean.service_unit_map, 'home_visit_eye_care'), false, 'Atributul CAS are scope=location, nu unitate fizică');
+assert.equal(Object.hasOwn(extendedPayload.clean.service_unit_map, 'workplace_vision_screening'), false, 'Testarea externă are scope=location, nu unitate fizică');
 
 assert.deepEqual(
   extendedPayload.clean.selected_ids.business_attributes,
-  ['cas_reimbursed_services', 'onsite_eye_testing_b2b'],
+  ['home_visit_eye_care', 'workplace_vision_screening'],
 );
 
 const dryEye = keys('mă ustură ochii și am roșeață');
@@ -121,7 +121,7 @@ assert.ok(children.includes('pediatric_ophthalmology'));
 assert.ok(children.includes('vision_therapy'));
 
 const onsite = keys('testare ochelari la birou pentru angajați');
-assert.ok(onsite.includes('onsite_eye_testing_b2b'));
+assert.ok(onsite.includes('workplace_vision_screening'));
 
 const computer = keys('ochelari pentru calculator și protecție ecrane');
 assert.ok(computer.includes('computer_screen_glasses'));
