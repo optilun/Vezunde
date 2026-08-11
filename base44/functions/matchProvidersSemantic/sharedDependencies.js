@@ -1596,8 +1596,11 @@ function applyTaxonomyExtensions() {
       "screening firma"
     ],
     items: [
-      item("business_attributes", "cas_reimbursed_services"),
-      item("business_attributes", "onsite_eye_testing_b2b")
+      item("business_attributes", "home_visit_eye_care"),
+      item("business_attributes", "workplace_vision_screening"),
+      item("business_attributes", "employer_glasses_reimbursement"),
+      item("business_attributes", "mobile_optical_unit"),
+      item("business_attributes", "school_vision_screening")
     ]
   };
   const myopiaSection = {
@@ -1659,8 +1662,11 @@ function applyTaxonomyExtensions() {
   const corneaNeedIndex = PUBLIC_NEED_SECTIONS2.findIndex((entry) => entry.key === "cornea_dry_eye");
   addPublicNeed("myopia_management", "Managementul miopiei", corneaNeedIndex >= 0 ? corneaNeedIndex + 1 : PUBLIC_NEED_SECTIONS2.length);
   Object.assign(CURATED_SERVICE_SEARCH_SYNONYMS2, {
-    cas_reimbursed_services: ["servicii decontate cas", "decontare cas", "cnas", "bilet de trimitere"],
-    onsite_eye_testing_b2b: ["testare ochelari la birou", "testare angajati", "control vedere la sediu", "testare la domiciliu"],
+    home_visit_eye_care: ["testare la domiciliu", "consultatie acasa", "control vedere la domiciliu", "oftalmolog la domiciliu"],
+    workplace_vision_screening: ["testare ochelari la birou", "testare angajati", "control vedere la sediu", "screening firma", "medicina muncii vedere"],
+    employer_glasses_reimbursement: ["decontare ochelari angajator", "hg 1028", "ochelari decontati de firma", "adeverinta ochelari"],
+    mobile_optical_unit: ["optica mobila", "unitate mobila", "caravana optica"],
+    school_vision_screening: ["screening scoala", "control vedere scoala", "testare vedere gradinita"],
     computer_screen_glasses: ["ochelari calculator", "protectie ecrane", "ochelari lumina albastra"],
     orthokeratology: ["lentile de noapte", "ortokeratologie", "ortho k"],
     myopia_control_spectacle_lenses: ["stellest", "miyosmart", "mi yosmart", "lentile control miopie"],
@@ -1770,8 +1776,18 @@ var SEMANTIC_INTENT_RULES = [
   },
   {
     key: "onsite_employee_testing",
-    phrases: ["testare ochelari la birou", "testare angajati", "control vedere la sediu", "control ochelari angajati", "screening vedere firma", "testare la domiciliu"],
-    targets: [["onsite_eye_testing_b2b", 1]]
+    phrases: ["testare ochelari la birou", "testare angajati", "control vedere la sediu", "control ochelari angajati", "screening vedere firma", "medicina muncii vedere"],
+    targets: [["workplace_vision_screening", 1]]
+  },
+  {
+    key: "home_visit_eye_care",
+    phrases: ["testare la domiciliu", "consultatie acasa", "control vedere la domiciliu", "oftalmolog la domiciliu", "nu ma pot deplasa"],
+    targets: [["home_visit_eye_care", 1]]
+  },
+  {
+    key: "employer_reimbursement",
+    phrases: ["decontare ochelari angajator", "ochelari decontati de firma", "hg 1028", "adeverinta pentru ochelari", "ochelari pe firma"],
+    targets: [["employer_glasses_reimbursement", 1]]
   },
   {
     key: "computer_screen",
@@ -1782,11 +1798,6 @@ var SEMANTIC_INTENT_RULES = [
       ["office_lenses", 0.76],
       ["occupational_vision", 0.65]
     ]
-  },
-  {
-    key: "cas_reimbursement",
-    phrases: ["servicii decontate cas", "decontare cas", "cu bilet de trimitere", "prin cnas", "gratuit cu asigurare"],
-    targets: [["cas_reimbursed_services", 1]]
   },
   {
     key: "myopia_control",
