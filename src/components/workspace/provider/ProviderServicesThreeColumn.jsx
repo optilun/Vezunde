@@ -481,8 +481,26 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                   </div>
                 </div>
                 <div className="provider-services-three__home-head">
-                  <span>Configurarea serviciilor</span>
-                  <strong>{homeDoneCount} din {homeProgressRows.length} completate</strong>
+                  <div>
+                    <span>Configurarea serviciilor</span>
+                    <strong>{homeDoneCount} din {homeProgressRows.length} secțiuni</strong>
+                  </div>
+                  {/* Procent doar aici, unde tinta e reala (chiar vrei sa treci prin toate
+                      sectiunile). Pe carduri NU punem procent: o optica ce ofera 8 din 17
+                      servicii posibile e gata 100%, nu 47%. */}
+                  <span className="provider-services-three__home-ring" aria-hidden="true">
+                    <svg viewBox="0 0 36 36">
+                      <circle cx="18" cy="18" r="15.5" />
+                      <circle
+                        cx="18"
+                        cy="18"
+                        r="15.5"
+                        className="is-value"
+                        style={{ strokeDasharray: `${Math.round((homeDoneCount / Math.max(1, homeProgressRows.length)) * 97.4)} 97.4` }}
+                      />
+                    </svg>
+                    <em>{Math.round((homeDoneCount / Math.max(1, homeProgressRows.length)) * 100)}%</em>
+                  </span>
                 </div>
                 {homeGroups.map((group) => (
                   <div key={group.label} className="provider-services-three__home-group">
