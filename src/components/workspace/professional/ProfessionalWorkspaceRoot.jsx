@@ -30,10 +30,10 @@ function WorkspaceSectionLoading() {
 }
 
 const NAV_ITEMS = [
-  { key: "overview", label: "Prezentare generală", icon: LayoutDashboard },
-  { key: "profile", label: "Profil profesional", icon: UserRound },
-  { key: "locations", label: "Locații asociate", icon: Building2 },
-  { key: "settings", label: "Setări", icon: Settings },
+  { key: "overview", label: "Prezentare generală", shortLabel: "Acasă", icon: LayoutDashboard },
+  { key: "profile", label: "Profil profesional", shortLabel: "Profil", icon: UserRound },
+  { key: "locations", label: "Locații asociate", shortLabel: "Locații", icon: Building2 },
+  { key: "settings", label: "Setări", shortLabel: "Setări", icon: Settings },
 ];
 
 function InfoCard({ label, value, hint }) {
