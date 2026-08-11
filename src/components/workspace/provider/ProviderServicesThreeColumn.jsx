@@ -5,6 +5,8 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Eye,
+  Glasses,
   ListFilter,
   Save,
   Search,
@@ -12,9 +14,22 @@ import {
   Settings2,
   SlidersHorizontal,
   Store,
+  Wrench,
   X,
 } from "lucide-react";
 import ProviderServicesWorkspaceRuntime from "./ProviderServicesWorkspaceRuntime";
+
+// Iconita fiecarei zone, dupa cheia ei. Deliberat iconite, nu imagini generate:
+// imaginile AI ar consuma credite la fiecare afisare, s-ar incarca lent si ar bate cap
+// in cap cu estetica editoriala a aplicatiei.
+const UNIT_CARD_ICONS = {
+  optical_shop: Store,
+  optical_showroom: Store,
+  optometry_room: Eye,
+  optics_room: Glasses,
+  optical_lab: Wrench,
+  workshop: Wrench,
+};
 
 const INITIAL_SNAPSHOT = {
   units: [],
