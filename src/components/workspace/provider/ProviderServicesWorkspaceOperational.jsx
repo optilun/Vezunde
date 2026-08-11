@@ -198,6 +198,7 @@ function configurationSignature(payload = {}) {
     capabilities: sortRows(payload.capabilities || [], ["capability_key", "parent_unit_key"]),
     removal_capabilities: sortRows(payload.removal_capabilities || [], ["capability_key", "parent_unit_key"]),
     service_unit_map: serviceMap,
+    cas_service_keys: [...new Set(payload.cas_service_keys || [])].sort(),
     resource_links: {
       professionals: sortRows((links.professionals || []).map((item) => ({ ...item, unit_keys: [...(item.unit_keys || [])].sort() })), ["assignment_id"]),
       equipment: sortRows(links.equipment || [], ["equipment_id", "unit_key"]),
