@@ -487,18 +487,32 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                 {homeGroups.map((group) => (
                   <div key={group.label} className="provider-services-three__home-group">
                     <p>{group.label}</p>
-                    {group.rows.map((row) => (
-                      <button key={row.value} type="button" onClick={() => openFromHome(row.value)}>
-                        {!group.isReview && (
-                          <span className={`provider-services-three__home-mark${row.done ? " is-done" : ""}`} aria-hidden="true">
-                            {row.done && <CheckCircle2 />}
+                    {group.rows.map((row) => {
+                      const RowIcon = row.icon;
+                      return (
+                        <button
+                          key={row.value}
+                          type="button"
+                          onClick={() => openFromHome(row.value)}
+                          className={group.isReview ? "is-review" : row.done ? "is-done" : ""}
+                        >
+                          {RowIcon && (
+                            <span className="provider-services-three__home-icon" aria-hidden="true">
+                              <RowIcon />
+                            </span>
+                          )}
+                          <span className="provider-services-three__home-body">
+                            <span className="provider-services-three__home-label">{row.label}</span>
+                            {row.hint && <span className="provider-services-three__home-hint">{row.hint}</span>}
+                            <span className="provider-services-three__home-meta">
+                              {row.done && <CheckCircle2 aria-hidden="true" />}
+                              {row.meta}
+                            </span>
                           </span>
-                        )}
-                        <span className="provider-services-three__home-label">{row.label}</span>
-                        <small>{row.meta}</small>
-                        <ChevronDown aria-hidden="true" />
-                      </button>
-                    ))}
+                          <ChevronDown aria-hidden="true" />
+                        </button>
+                      );
+                    })}
                   </div>
                 ))}
               </div>
