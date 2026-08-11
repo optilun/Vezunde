@@ -14,33 +14,8 @@ const {
 } = base;
 
 const NEW_KEYS = {
-  // Serviciile prestate in afara locatiei, la nivel de locatie (2026-08-06).
-  // Inainte exista o singura bifa combinata "la domiciliu SAU la sediul firmelor";
-  // separate, pentru ca sunt piete complet diferite: una e ingrijire pentru varstnici
-  // si imobilizati, cealalta e medicina muncii, obligatorie prin HG 1028/2006.
-  home_visit_eye_care: {
-    label: 'Consultații la domiciliul pacientului',
-    group: 'business_attributes',
-    kind: 'service',
-    need: 'specialized_medical',
-    review: true,
-    specialist: true,
-    professionalTypes: ['optometrist', 'ophthalmologist'],
-  },
-  workplace_vision_screening: {
-    label: 'Screening de vedere la sediul companiei',
-    group: 'business_attributes',
-    kind: 'service',
-    need: 'specialized_medical',
-    review: true,
-    specialist: true,
-    professionalTypes: ['optometrist', 'ophthalmologist'],
-  },
-  // Nu e o deplasare, ci capacitatea de a emite documentele necesare angajatorului.
-  // HG 1028/2006: angajatorul e obligat sa suporte costul ochelarilor pentru lucrul la
-  // ecran, daca oftalmologul ii recomanda expres. Un HR cauta exact acest lucru.
-  employer_glasses_reimbursement: {
-    label: 'Documente pentru decontarea ochelarilor de către angajator (HG 1028)',
+  cas_reimbursed_services: {
+    label: 'Servicii decontate prin CAS',
     group: 'business_attributes',
     kind: 'service',
     need: 'general',
@@ -48,17 +23,8 @@ const NEW_KEYS = {
     specialist: false,
     professionalTypes: [],
   },
-  mobile_optical_unit: {
-    label: 'Unitate optică mobilă (se deplasează la client)',
-    group: 'business_attributes',
-    kind: 'service',
-    need: 'specialized_medical',
-    review: true,
-    specialist: true,
-    professionalTypes: ['optometrist', 'ophthalmologist'],
-  },
-  school_vision_screening: {
-    label: 'Screening de vedere în școli și grădinițe',
+  onsite_eye_testing_b2b: {
+    label: 'Consultații/Testări la domiciliu sau sediul firmelor (B2B)',
     group: 'business_attributes',
     kind: 'service',
     need: 'specialized_medical',
