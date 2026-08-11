@@ -934,6 +934,9 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
   const [capabilities, setCapabilities] = useState([]);
   const [approvedServiceUnitMap, setApprovedServiceUnitMap] = useState({});
   const [serviceUnitMap, setServiceUnitMap] = useState({});
+  // Cheile serviciilor marcate ca decontate prin CAS (2026-08-06).
+  const [casServiceKeys, setCasServiceKeys] = useState([]);
+  const [approvedCasServiceKeys, setApprovedCasServiceKeys] = useState([]);
   const [approvedResourceLinks, setApprovedResourceLinks] = useState({ professionals: [], equipment: [], facilities: [] });
   const [resourceLinks, setResourceLinks] = useState({ professionals: [], equipment: [], facilities: [] });
   const [approvedCareSetting, setApprovedCareSetting] = useState("not_applicable");
