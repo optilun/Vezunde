@@ -108,10 +108,8 @@ function applyTaxonomyExtensions() {
       'screening firma',
     ],
     items: [
-      // Afisate in interfata (2026-08-06). Cheile vechi cas_reimbursed_services si
-      // onsite_eye_testing_b2b raman DEFINITE in registru, ca sa nu se rupa referintele
-      // existente, dar nu mai apar aici: CAS se marcheaza acum per serviciu, iar
-      // serviciile in afara locatiei sunt separate pe tipuri reale.
+      item('business_attributes', 'cas_reimbursed_services'),
+      item('business_attributes', 'onsite_eye_testing_b2b'),
       item('business_attributes', 'home_visit_eye_care'),
       item('business_attributes', 'workplace_vision_screening'),
       item('business_attributes', 'employer_glasses_reimbursement'),
