@@ -350,7 +350,7 @@ function ChangeBadge({ draftAddition, removalRequested, modified }) {
   return null;
 }
 
-function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, disabled, helperText = "", onToggle }) {
+function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, disabled, helperText = "", onToggle, casActive = false, casEligible = false, onToggleCas }) {
   const active = isSelected(selected, item);
   const approved = isSelected(approvedSelected, item);
   const removalRequested = approved && !active;
