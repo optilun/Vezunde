@@ -2480,42 +2480,6 @@
     color: hsl(var(--foreground));
   }
 
-  .provider-services-three__home-ring {
-    position: relative;
-    display: flex;
-    height: 52px;
-    width: 52px;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .provider-services-three__home-ring svg {
-    height: 52px;
-    width: 52px;
-    transform: rotate(-90deg);
-  }
-
-  .provider-services-three__home-ring circle {
-    fill: none;
-    stroke: hsl(var(--border));
-    stroke-width: 3;
-  }
-
-  .provider-services-three__home-ring circle.is-value {
-    stroke: hsl(var(--foreground));
-    stroke-linecap: round;
-    transition: stroke-dasharray 0.4s ease;
-  }
-
-  .provider-services-three__home-ring em {
-    position: absolute;
-    font-size: 12px;
-    font-style: normal;
-    font-weight: 800;
-    color: hsl(var(--foreground));
-  }
-
   .provider-services-three__home-group {
     margin-bottom: 18px;
   }
