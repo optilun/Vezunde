@@ -42,8 +42,9 @@ for (const serviceKey of [
   'metal_frame_soldering',
   'cataract_surgery',
   'orthokeratology',
-  'cas_reimbursed_services',
-  'onsite_eye_testing_b2b',
+  'home_visit_eye_care',
+  'workplace_vision_screening',
+  'employer_glasses_reimbursement',
 ]) {
   const result = evaluateServicePrerequisites(serviceKey, emptyContext);
   assert.equal(result.eligible, true, serviceKey + ' trebuie să fie non-blocant la lansare');
