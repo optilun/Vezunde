@@ -154,10 +154,48 @@ export default function ProviderAppShell({
         <main
           id="main-content"
           tabIndex={-1}
-          className={`mx-auto w-full ${wideContent ? "max-w-[1664px]" : "max-w-7xl"} overflow-x-clip px-3 py-5 outline-none workspace-mobile-surface sm:px-6 sm:py-7 lg:px-10 lg:py-8`}
+          className={`mx-auto w-full ${wideContent ? "max-w-[1664px]" : "max-w-7xl"} overflow-x-clip px-3 py-5 pb-24 outline-none workspace-mobile-surface sm:px-6 sm:py-7 lg:px-10 lg:py-8 lg:pb-8`}
         >
           {children}
         </main>
+
+        {/* Bara de jos, doar pe telefon (2026-08-06). Foloseste exact aceleasi navItems
+            ca meniul lateral, deci respecta automat permisiunile: cine nu poate vedea
+            locatiile sau lead-urile nu primeste butonul. Maxim 4 destinatii + Meniu;
+            restul raman in meniul lateral, deschis din ultimul buton. */}
+        <nav
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-card/80 backdrop-blur-xl supports-[backdrop-filter]:bg-card/70 lg:hidden"
+          aria-label="Navigare rapidă"
+        >
+          <div className="mx-auto flex max-w-lg items-stretch justify-around gap-1 px-2 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1.5">
+            {navItems.slice(0, 4).map((item) => {
+              const Icon = item.icon;
+              const isActive = item.key === activeKey;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => onNavigate(item.key)}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`flex min-h-[52px] flex-1 touch-manipulation flex-col items-center justify-center gap-1 rounded-xl px-1 transition-colors ${isActive ? "text-foreground" : "text-muted-foreground"}`}
+                >
+                  {Icon && <Icon className={`h-[22px] w-[22px] ${isActive ? "" : "opacity-80"}`} aria-hidden="true" />}
+                  <span className="w-full truncate text-center text-[10px] font-semibold leading-tight">
+                    {item.shortLabel || item.label}
+                  </span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              className="flex min-h-[52px] flex-1 touch-manipulation flex-col items-center justify-center gap-1 rounded-xl px-1 text-muted-foreground transition-colors"
+            >
+              <Menu className="h-[22px] w-[22px] opacity-80" aria-hidden="true" />
+              <span className="text-[10px] font-semibold leading-tight">Meniu</span>
+            </button>
+          </div>
+        </nav>
       </div>
     </div>
   );
