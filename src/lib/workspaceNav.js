@@ -24,11 +24,11 @@ export function getProviderNav({
 }) {
   void canManageMembers;
   const nav = [
-    { key: "overview", label: "Prezentare generala", icon: LayoutDashboard },
+    { key: "overview", label: "Prezentare generala", shortLabel: "Acasă", icon: LayoutDashboard },
   ];
-  if (canManageOrganizationProfile) nav.push({ key: "profile", label: "Profil public", icon: Building2 });
-  if (canViewLocations) nav.push({ key: "locations", label: "Locatii", icon: Building2 });
-  if (canManageRequests) nav.push({ key: "leads", label: "Leaduri", icon: Inbox });
-  if (canManageSettings) nav.push({ key: "settings", label: "Setari", icon: Settings });
+  if (canManageOrganizationProfile) nav.push({ key: "profile", label: "Profil public", shortLabel: "Profil", icon: Building2 });
+  if (canViewLocations) nav.push({ key: "locations", label: "Locatii", shortLabel: "Locații", icon: Building2 });
+  if (canManageRequests) nav.push({ key: "leads", label: "Leaduri", shortLabel: "Cereri", icon: Inbox });
+  if (canManageSettings) nav.push({ key: "settings", label: "Setari", shortLabel: "Setări", icon: Settings });
   return nav;
 }
