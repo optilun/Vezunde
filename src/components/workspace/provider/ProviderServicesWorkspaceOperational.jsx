@@ -1032,6 +1032,10 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
       capabilities,
       removal_capabilities: approvedCapabilities.filter((item) => !capabilities.some((current) => capabilityIdentity(current) === capabilityIdentity(item))),
       service_unit_map: completeServiceMap,
+      // Serviciile marcate ca decontate prin CAS (2026-08-06). Lista paralela, dupa
+      // acelasi tipar ca service_unit_map: nu schimba structura serviciilor, doar
+      // adauga o proprietate pe cele deja selectate. Absenta unei chei = nedecontat.
+      cas_service_keys: selectedKeys.filter((serviceKey) => casServiceKeys.includes(serviceKey)),
       resource_links: resourceLinks,
       resource_removals: resourceRemovalPayload(approvedResourceLinks, resourceLinks),
       care_setting: careSetting,
