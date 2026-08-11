@@ -232,8 +232,9 @@ function addGroupAndKeys() {
 
   Object.assign(LEGACY_SERVICE_ALIASES, {
     microscopie_endoteliala: 'specular_microscopy',
-    servicii_cas: 'cas_reimbursed_services',
-    testare_la_sediu: 'onsite_eye_testing_b2b',
+    // Alias-uri vechi redirectionate catre cheile noi (2026-08-06). "servicii_cas" nu
+    // mai are corespondent - CAS se marcheaza per serviciu, nu ca serviciu separat.
+    testare_la_sediu: 'workplace_vision_screening',
     ochelari_calculator: 'computer_screen_glasses',
     lentile_noapte: 'orthokeratology',
     stellest_miyosmart: 'myopia_control_spectacle_lenses',
