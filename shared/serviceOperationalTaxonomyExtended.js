@@ -180,8 +180,11 @@ function applyTaxonomyExtensions() {
   addPublicNeed('myopia_management', 'Managementul miopiei', corneaNeedIndex >= 0 ? corneaNeedIndex + 1 : PUBLIC_NEED_SECTIONS.length);
 
   Object.assign(CURATED_SERVICE_SEARCH_SYNONYMS, {
-    cas_reimbursed_services: ['servicii decontate cas', 'decontare cas', 'cnas', 'bilet de trimitere'],
-    onsite_eye_testing_b2b: ['testare ochelari la birou', 'testare angajati', 'control vedere la sediu', 'testare la domiciliu'],
+    home_visit_eye_care: ['testare la domiciliu', 'consultatie acasa', 'control vedere la domiciliu', 'oftalmolog la domiciliu'],
+    workplace_vision_screening: ['testare ochelari la birou', 'testare angajati', 'control vedere la sediu', 'screening firma', 'medicina muncii vedere'],
+    employer_glasses_reimbursement: ['decontare ochelari angajator', 'hg 1028', 'ochelari decontati de firma', 'adeverinta ochelari'],
+    mobile_optical_unit: ['optica mobila', 'unitate mobila', 'caravana optica'],
+    school_vision_screening: ['screening scoala', 'control vedere scoala', 'testare vedere gradinita'],
     computer_screen_glasses: ['ochelari calculator', 'protectie ecrane', 'ochelari lumina albastra'],
     orthokeratology: ['lentile de noapte', 'ortokeratologie', 'ortho k'],
     myopia_control_spectacle_lenses: ['stellest', 'miyosmart', 'mi yosmart', 'lentile control miopie'],
