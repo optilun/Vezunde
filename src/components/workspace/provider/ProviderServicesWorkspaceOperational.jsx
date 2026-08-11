@@ -1047,7 +1047,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
 
   const currentSignature = useMemo(
     () => configurationSignature(buildPayload()),
-    [selected, approvedSelected, approvedUnits, activeUnits, approvedCapabilities, capabilities, serviceUnitMap, approvedResourceLinks, resourceLinks, careSetting, suggestions, rawRemovalKeys],
+    [selected, approvedSelected, approvedUnits, activeUnits, approvedCapabilities, capabilities, serviceUnitMap, casServiceKeys, approvedResourceLinks, resourceLinks, careSetting, suggestions, rawRemovalKeys],
   );
   const dirty = baselineSignature !== null && currentSignature !== baselineSignature;
 
