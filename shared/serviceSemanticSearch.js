@@ -96,11 +96,6 @@ export const SEMANTIC_INTENT_RULES = [
     ],
   },
   {
-    key: 'cas_reimbursement',
-    phrases: ['servicii decontate cas', 'decontare cas', 'cu bilet de trimitere', 'prin cnas', 'gratuit cu asigurare'],
-    targets: [['cas_reimbursed_services', 1]],
-  },
-  {
     key: 'myopia_control',
     phrases: ['control miopie', 'miopie progresiva', 'lentile de noapte', 'ortokeratologie', 'stellest', 'miyosmart', 'mi yosmart'],
     targets: [
