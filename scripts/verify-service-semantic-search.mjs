@@ -92,7 +92,7 @@ const extendedPayload = validateServiceConfigurationPayload({
   care_setting: 'mixed',
 });
 assert.equal(extendedPayload.valid, true, extendedPayload.error || JSON.stringify(extendedPayload.fields));
-assert.equal(Object.hasOwn(extendedPayload.clean.service_unit_map, 'home_visit_eye_care'), false, 'Atributul CAS are scope=location, nu unitate fizică');
+assert.equal(Object.hasOwn(extendedPayload.clean.service_unit_map, 'home_visit_eye_care'), false, 'Consultatia la domiciliu are scope=location, nu unitate fizică');
 assert.equal(Object.hasOwn(extendedPayload.clean.service_unit_map, 'workplace_vision_screening'), false, 'Testarea externă are scope=location, nu unitate fizică');
 
 assert.deepEqual(
