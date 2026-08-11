@@ -25,6 +25,11 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
     // (specialized_medical -> technical), catalog cu performed_by si raspunsuri
     // traduse pentru interpretarea LLM. Toate aprobate explicit de owner.
     'e5d784a3a961249ef15cdea4abc13179e6a5334c',
+    // 2026-08-06: serviciile in afara locatiei separate pe tipuri reale (domiciliu,
+    // sediul companiei, documente HG 1028, optica mobila, screening scoli), in locul
+    // celor doua chei vechi combinate. Doar catalog si sinonime de cautare;
+    // shared/providerRecommendation.js ramane neschimbat (vezi blob-ul de mai sus).
+    '310e66c8633d966022449c03ab6b308b4853dc88',
   ]),
 });
 
