@@ -32,6 +32,59 @@ const NEW_KEYS = {
     specialist: true,
     professionalTypes: ['optometrist', 'ophthalmologist'],
   },
+  // Serviciile in afara locatiei, separate pe tipuri (2026-08-06). Cheia combinata de
+  // mai sus ramane definita, ca sa nu se rupa cele ~20 de referinte existente
+  // (taxonomie, cautare semantica, pachete, teste), dar e scoasa din interfata.
+  // Motivul separarii: sunt piete complet diferite - ingrijire la domiciliu pentru
+  // varstnici versus medicina muncii, obligatorie prin HG 1028/2006.
+  home_visit_eye_care: {
+    label: 'Consultații la domiciliul pacientului',
+    group: 'business_attributes',
+    kind: 'service',
+    need: 'specialized_medical',
+    review: true,
+    specialist: true,
+    professionalTypes: ['optometrist', 'ophthalmologist'],
+  },
+  workplace_vision_screening: {
+    label: 'Screening de vedere la sediul companiei',
+    group: 'business_attributes',
+    kind: 'service',
+    need: 'specialized_medical',
+    review: true,
+    specialist: true,
+    professionalTypes: ['optometrist', 'ophthalmologist'],
+  },
+  // Nu e o deplasare, ci capacitatea de a emite documentele de care are nevoie
+  // angajatorul. HG 1028/2006: angajatorul e obligat sa suporte costul ochelarilor
+  // pentru lucrul la ecran cand oftalmologul ii recomanda expres.
+  employer_glasses_reimbursement: {
+    label: 'Documente pentru decontarea ochelarilor de către angajator (HG 1028)',
+    group: 'business_attributes',
+    kind: 'service',
+    need: 'general',
+    review: false,
+    specialist: false,
+    professionalTypes: [],
+  },
+  mobile_optical_unit: {
+    label: 'Unitate optică mobilă (se deplasează la client)',
+    group: 'business_attributes',
+    kind: 'service',
+    need: 'specialized_medical',
+    review: true,
+    specialist: true,
+    professionalTypes: ['optometrist', 'ophthalmologist'],
+  },
+  school_vision_screening: {
+    label: 'Screening de vedere în școli și grădinițe',
+    group: 'business_attributes',
+    kind: 'service',
+    need: 'specialized_medical',
+    review: true,
+    specialist: true,
+    professionalTypes: ['optometrist', 'ophthalmologist'],
+  },
   computer_screen_glasses: {
     label: 'Ochelari pentru calculator / protecție ecrane',
     group: 'optical_retail',
