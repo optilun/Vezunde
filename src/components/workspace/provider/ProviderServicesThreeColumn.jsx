@@ -366,7 +366,11 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
       rows: snapshot.units.map((unit) => ({
         value: `unit:${unit.index}`,
         label: unit.title,
-        meta: unit.selected > 0 ? `${unit.selected} selectate` : "Nimic selectat",
+        hint: unit.description,
+        icon: UNIT_CARD_ICONS[unit.key] || Building2,
+        meta: unit.selected > 0
+          ? `${unit.selected} ${unit.selected === 1 ? "serviciu ales" : "servicii alese"}`
+          : "Niciun serviciu ales",
         done: unit.selected > 0,
       })),
     }] : []),
