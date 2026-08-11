@@ -72,8 +72,18 @@ export const SEMANTIC_INTENT_RULES = [
   },
   {
     key: 'onsite_employee_testing',
-    phrases: ['testare ochelari la birou', 'testare angajati', 'control vedere la sediu', 'control ochelari angajati', 'screening vedere firma', 'testare la domiciliu'],
-    targets: [['onsite_eye_testing_b2b', 1]],
+    phrases: ['testare ochelari la birou', 'testare angajati', 'control vedere la sediu', 'control ochelari angajati', 'screening vedere firma', 'medicina muncii vedere'],
+    targets: [['workplace_vision_screening', 1]],
+  },
+  {
+    key: 'home_visit_eye_care',
+    phrases: ['testare la domiciliu', 'consultatie acasa', 'control vedere la domiciliu', 'oftalmolog la domiciliu', 'nu ma pot deplasa'],
+    targets: [['home_visit_eye_care', 1]],
+  },
+  {
+    key: 'employer_reimbursement',
+    phrases: ['decontare ochelari angajator', 'ochelari decontati de firma', 'hg 1028', 'adeverinta pentru ochelari', 'ochelari pe firma'],
+    targets: [['employer_glasses_reimbursement', 1]],
   },
   {
     key: 'computer_screen',
