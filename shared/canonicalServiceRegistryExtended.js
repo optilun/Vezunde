@@ -89,8 +89,11 @@ const NEW_KEYS = {
 };
 
 const SPECIFIC_SEARCH_KEYWORDS = {
-  cas_reimbursed_services: ['cas', 'cnas', 'decontat', 'decontare', 'bilet de trimitere', 'asigurare de sanatate'],
-  onsite_eye_testing_b2b: ['testare la sediu', 'control vedere la birou', 'testare angajati', 'consultatie la domiciliu', 'control acasa', 'screening vedere firma'],
+  home_visit_eye_care: ['consultatie la domiciliu', 'control acasa', 'la domiciliu', 'oftalmolog acasa'],
+  workplace_vision_screening: ['testare la sediu', 'control vedere la birou', 'testare angajati', 'screening vedere firma', 'medicina muncii'],
+  employer_glasses_reimbursement: ['decontare ochelari', 'hg 1028', 'ochelari pe firma', 'adeverinta ochelari'],
+  mobile_optical_unit: ['optica mobila', 'unitate mobila', 'caravana'],
+  school_vision_screening: ['screening scoala', 'testare vedere copii scoala', 'gradinita'],
   computer_screen_glasses: ['ochelari calculator', 'ochelari pentru ecran', 'protectie ecrane', 'ochelari lumina albastra', 'ochelari birou'],
   myopia_control_spectacle_lenses: ['stellest', 'miyosmart', 'mi yosmart', 'lentile control miopie', 'lentile speciale miopie copii'],
   orthokeratology: ['ortokeratologie', 'lentile de noapte', 'lentile purtate noaptea', 'ortho k', 'fara ochelari ziua'],
