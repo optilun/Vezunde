@@ -14,29 +14,11 @@ const {
 } = base;
 
 const NEW_KEYS = {
-  cas_reimbursed_services: {
-    label: 'Servicii decontate prin CAS',
-    group: 'business_attributes',
-    kind: 'service',
-    need: 'general',
-    review: false,
-    specialist: false,
-    professionalTypes: [],
-  },
-  onsite_eye_testing_b2b: {
-    label: 'Consultații/Testări la domiciliu sau sediul firmelor (B2B)',
-    group: 'business_attributes',
-    kind: 'service',
-    need: 'specialized_medical',
-    review: true,
-    specialist: true,
-    professionalTypes: ['optometrist', 'ophthalmologist'],
-  },
-  // Serviciile in afara locatiei, separate pe tipuri (2026-08-06). Cheia combinata de
-  // mai sus ramane definita, ca sa nu se rupa cele ~20 de referinte existente
-  // (taxonomie, cautare semantica, pachete, teste), dar e scoasa din interfata.
-  // Motivul separarii: sunt piete complet diferite - ingrijire la domiciliu pentru
-  // varstnici versus medicina muncii, obligatorie prin HG 1028/2006.
+  // Serviciile prestate in afara locatiei (2026-08-06). Inainte existau doua chei:
+  // cas_reimbursed_services (bifa globala de decontare) si onsite_eye_testing_b2b
+  // ("la domiciliu SAU la sediul firmelor", combinate). Ambele au fost eliminate:
+  // CAS se marcheaza acum per serviciu, iar deplasarile sunt piete diferite -
+  // ingrijire la domiciliu versus medicina muncii (obligatorie prin HG 1028/2006).
   home_visit_eye_care: {
     label: 'Consultații la domiciliul pacientului',
     group: 'business_attributes',
