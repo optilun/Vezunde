@@ -341,7 +341,7 @@ async function writeAudit(svc, user, submission, actionType, changedFields, next
   });
 }
 
-function serviceApplyData(serviceKey, existing) {
+function serviceApplyData(serviceKey, existing, casServiceKeys = []) {
   const definition = getCanonicalServiceDefinition(serviceKey);
   if (!definition) throw new Error(`Serviciu canonic necunoscut: ${serviceKey}`);
   const previousConfirmation = clean(existing?.confirmation_level);
@@ -355,6 +355,9 @@ function serviceApplyData(serviceKey, existing) {
     matching_allowed: definition.patient_facing !== false
       && definition.b2b_only !== true
       && definition.matching_allowed_when_provider_confirmed === true,
+    // Decontare CAS, declarata de furnizor per serviciu (2026-08-06). Informatie
+    // declarativa, nu verificata cu documente - la fel ca restul serviciilor.
+    cas_reimbursed: casServiceKeys.includes(serviceKey),
     migration_review_required: false,
     provider_visibility_status: 'active',
     removal_submission_id: '',
