@@ -74,9 +74,11 @@ assert.equal(incompleteOperationalContext.status, 'available');
 const incompatibleProfile = evaluateServicePrerequisites('cataract_surgery', emptyContext);
 assert.equal(incompatibleProfile.eligible, true, 'Tipul profilului rămâne informație, nu blocaj de serviciu');
 
-const cas = evaluateServicePrerequisites('cas_reimbursed_services', emptyContext);
-assert.equal(cas.eligible, true);
-assert.equal(cas.status, 'available', 'CAS este doar informație declarată de furnizor');
+// Decontarea CAS nu mai e un serviciu separat (2026-08-06): se marcheaza per serviciu.
+// Verificam in schimb ca declararea documentelor pentru angajator ramane non-blocanta.
+const employerDocs = evaluateServicePrerequisites('employer_glasses_reimbursement', emptyContext);
+assert.equal(employerDocs.eligible, true);
+assert.equal(employerDocs.status, 'available', 'Documentele HG 1028 sunt doar informatie declarata de furnizor');
 
 assert.ok(
   getServicePrerequisiteDefinition('orthokeratology').required_equipment_types.includes('corneal_topographer'),
