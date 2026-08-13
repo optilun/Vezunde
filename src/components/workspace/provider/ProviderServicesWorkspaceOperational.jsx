@@ -1596,6 +1596,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
           removal_ids: payload.removal_ids,
           raw_removal_keys: payload.raw_removal_keys,
           suggestions: payload.suggestions,
+          cas_service_keys: payload.cas_service_keys,
         },
       }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, fields: requestError.response?.data?.fields || [] } }));
     setSaving(false);
