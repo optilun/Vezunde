@@ -396,22 +396,24 @@ function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, d
         {!removalRequested && <StatusBadge prerequisite={prerequisite} />}
       </span>
     </button>
-    {/* Marcajul CAS e un buton separat, langa card - nu poate fi imbricat in el, pentru
-        ca randul de serviciu e el insusi un buton. Apare doar pe serviciile medicale
-        deja bifate: pe rame sau reparatii n-are sens (2026-08-06). */}
-    {active && !removalRequested && casEligible && (
-      <button
-        type="button"
-        disabled={disabled}
-        aria-pressed={casActive}
-        onClick={() => onToggleCas?.(item.id)}
-        className={`mt-1 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold transition disabled:cursor-not-allowed disabled:opacity-55 ${casActive ? "border-foreground bg-foreground text-background" : "border-border bg-background text-muted-foreground hover:bg-secondary"}`}
-      >
-        {casActive && <Check className="h-3 w-3" />}
-        Decontat CAS
-      </button>
+    {/* Marcajul CAS: buton separat, dar in interiorul aceluiasi chenar (2026-08-06).
+        Nu poate fi imbricat in butonul serviciului, dar vizual apartine cardului -
+        inainte aparea sub el, la marginea stanga, ca element orfan. */}
+    {casVisible && (
+      <div className="flex justify-end border-t border-border/50 px-3.5 py-2">
+        <button
+          type="button"
+          disabled={disabled}
+          aria-pressed={casActive}
+          onClick={() => onToggleCas?.(item.id)}
+          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold transition disabled:cursor-not-allowed disabled:opacity-55 ${casActive ? "border-foreground bg-foreground text-background" : "border-border bg-background text-muted-foreground hover:bg-secondary"}`}
+        >
+          {casActive && <Check className="h-3 w-3" />}
+          Decontat CAS
+        </button>
+      </div>
     )}
-    </>
+    </div>
   );
 }
 
