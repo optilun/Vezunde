@@ -1512,6 +1512,9 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     if (current.has(item.id)) {
       current.delete(item.id);
       setServiceUnitMap((map) => { const next = { ...map }; delete next[item.id]; return next; });
+      // Marcajul CAS dispare odata cu serviciul debifat (2026-08-06): altfel ar ramane
+      // in draft si ar reaparea daca serviciul e rebifat, fara ca utilizatorul sa ceara.
+      setCasServiceKeys((keys) => keys.filter((serviceKey) => serviceKey !== item.id));
     } else {
       current.add(item.id);
       const context = getServiceOperationalContext(item.id);
