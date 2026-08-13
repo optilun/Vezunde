@@ -2607,6 +2607,124 @@
   }
 }
 
+/* Coloana ca indicator de pasi (2026-08-06). Verdele e --chart-2 din paleta existenta,
+   nu o culoare noua - singurul accent, folosit doar pentru "terminat". */
+.provider-services-three__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.provider-services-three__step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 9px 11px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.provider-services-three__step:hover {
+  background: hsl(var(--secondary));
+}
+
+.provider-services-three__step.is-active {
+  background: hsl(var(--card));
+  box-shadow: inset 2px 0 0 hsl(var(--foreground));
+}
+
+/* Linia care leaga pasii, ca sa se citeasca drept parcurs, nu lista de linkuri */
+.provider-services-three__step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 22px;
+  top: 32px;
+  bottom: -2px;
+  width: 1px;
+  background: hsl(var(--border));
+}
+
+.provider-services-three__step-mark {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 23px;
+  width: 23px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1.5px solid hsl(var(--border));
+  background: hsl(var(--background));
+  font-size: 11px;
+  font-weight: 700;
+  color: hsl(var(--muted-foreground));
+}
+
+.provider-services-three__step.is-done .provider-services-three__step-mark {
+  border-color: hsl(var(--chart-2));
+  background: hsl(var(--chart-2));
+  color: #fff;
+}
+
+.provider-services-three__step.is-active .provider-services-three__step-mark {
+  border-color: hsl(var(--foreground));
+  color: hsl(var(--foreground));
+}
+
+.provider-services-three__step.is-active.is-done .provider-services-three__step-mark {
+  border-color: hsl(var(--chart-2));
+  color: #fff;
+}
+
+.provider-services-three__step-mark svg {
+  height: 13px;
+  width: 13px;
+}
+
+.provider-services-three__step-body {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.provider-services-three__step-body > span {
+  font-size: 13px;
+  font-weight: 650;
+  color: hsl(var(--foreground));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-services-three__step-body > small {
+  font-size: 11px;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Verificarea, despartita clar de pasi */
+.provider-services-three__review {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.provider-services-three__review > p {
+  margin: 0 0 6px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: hsl(var(--muted-foreground));
+}
+
 /* Butonul "Continua catre..." - drumul liniar prin configurare (2026-08-06) */
 .provider-services-three__flow-next {
   margin-top: 16px;
