@@ -2712,23 +2712,24 @@
   }
 }
 
-/* Coloana ca indicator de pasi (2026-08-06). Verdele e --chart-2 din paleta existenta,
-   nu o culoare noua - singurul accent, folosit doar pentru "terminat". */
+/* Coloana de pasi, in stilul unui meniu de setari (2026-08-06): text simplu, fara
+   cerculete numerotate si fara linie de legatura. Doar elementul activ primeste fundal,
+   iar bifa verde marcheaza ce e terminat. Verdele e --chart-2 din paleta existenta. */
 .provider-services-three__steps {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .provider-services-three__step {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 9px;
   width: 100%;
-  padding: 9px 11px;
+  padding: 8px 10px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 8px;
   background: transparent;
   text-align: left;
   cursor: pointer;
@@ -2739,79 +2740,56 @@
 }
 
 .provider-services-three__step.is-active {
-  background: hsl(var(--card));
-  box-shadow: inset 2px 0 0 hsl(var(--foreground));
-}
-
-/* Linia care leaga pasii, ca sa se citeasca drept parcurs, nu lista de linkuri */
-.provider-services-three__step:not(:last-child)::after {
-  content: "";
-  position: absolute;
-  left: 22px;
-  top: 32px;
-  bottom: -2px;
-  width: 1px;
-  background: hsl(var(--border));
+  background: hsl(var(--secondary));
 }
 
 .provider-services-three__step-mark {
-  position: relative;
-  z-index: 1;
   display: flex;
-  height: 23px;
-  width: 23px;
+  height: 15px;
+  width: 15px;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  border: 1.5px solid hsl(var(--border));
-  background: hsl(var(--background));
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground) / 0.55);
 }
 
 .provider-services-three__step.is-done .provider-services-three__step-mark {
-  border-color: hsl(var(--chart-2));
-  background: hsl(var(--chart-2));
-  color: #fff;
-}
-
-.provider-services-three__step.is-active .provider-services-three__step-mark {
-  border-color: hsl(var(--foreground));
-  color: hsl(var(--foreground));
-}
-
-.provider-services-three__step.is-active.is-done .provider-services-three__step-mark {
-  border-color: hsl(var(--chart-2));
-  color: #fff;
+  color: hsl(var(--chart-2));
 }
 
 .provider-services-three__step-mark svg {
-  height: 13px;
-  width: 13px;
+  height: 14px;
+  width: 14px;
 }
 
 .provider-services-three__step-body {
   display: flex;
   min-width: 0;
   flex: 1;
-  flex-direction: column;
-  gap: 1px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .provider-services-three__step-body > span {
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 550;
   color: hsl(var(--foreground));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.provider-services-three__step.is-active .provider-services-three__step-body > span {
+  font-weight: 700;
+}
+
 .provider-services-three__step-body > small {
+  flex-shrink: 0;
   font-size: 11px;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground) / 0.8);
 }
 
 /* Verificarea, despartita clar de pasi */
