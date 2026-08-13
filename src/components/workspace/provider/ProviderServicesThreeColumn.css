@@ -1417,12 +1417,14 @@
 }
 
 .provider-services-three__native button[data-service-key] {
-  min-height: 62px;
-  padding: 12px 16px !important;
+  min-height: 56px;
+  padding: 12px 26px !important;
 }
 
 .provider-services-three__native div:has(> button[data-service-key]) {
-  border-radius: 14px !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
   background: var(--services-surface) !important;
 }
 
