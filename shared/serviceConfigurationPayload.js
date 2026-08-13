@@ -316,6 +316,13 @@ export function validateServiceConfigurationPayload(payload, options = {}) {
     return resultError('Payload gol');
   }
 
+  // Serviciile marcate ca decontate prin CAS (2026-08-06). Pastram doar cheile care
+  // sunt si efectiv selectate, ca un marcaj sa nu supravietuiasca stergerii serviciului.
+  const selectedServiceKeySet = new Set(Object.values(selected.clean).flat());
+  const casServiceKeys = Array.isArray(payload.cas_service_keys)
+    ? [...new Set(payload.cas_service_keys.map((key) => String(key || '').trim()).filter((key) => selectedServiceKeySet.has(key)))]
+    : [];
+
   return {
     valid: true,
     clean: {
@@ -323,6 +330,7 @@ export function validateServiceConfigurationPayload(payload, options = {}) {
       removal_ids: removals.clean,
       raw_removal_keys: rawRemovals.clean,
       suggestions: suggestions.clean,
+      cas_service_keys: casServiceKeys,
       functional_units: functionalUnits.clean,
       capabilities: capabilities.clean,
       service_unit_map: serviceUnitMap.clean,
