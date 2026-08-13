@@ -400,22 +400,20 @@ function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, d
         <span className={`absolute h-[16px] w-[16px] rounded-full bg-background shadow-sm transition-all ${active || removalRequested ? "left-[19px]" : "left-[3px]"}`} />
       </span>
     </button>
-    {/* Marcajul CAS: buton separat, dar in interiorul aceluiasi chenar (2026-08-06).
-        Nu poate fi imbricat in butonul serviciului, dar vizual apartine cardului -
-        inainte aparea sub el, la marginea stanga, ca element orfan. */}
+    {/* CAS ca rand-comutator, la fel ca serviciul de deasupra (2026-08-06) */}
     {casVisible && (
-      <div className="flex justify-end border-t border-border/50 px-3.5 py-2">
-        <button
-          type="button"
-          disabled={disabled}
-          aria-pressed={casActive}
-          onClick={() => onToggleCas?.(item.id)}
-          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold transition disabled:cursor-not-allowed disabled:opacity-55 ${casActive ? "border-foreground bg-foreground text-background" : "border-border bg-background text-muted-foreground hover:bg-secondary"}`}
-        >
-          {casActive && <Check className="h-3 w-3" />}
-          Decontat CAS
-        </button>
-      </div>
+      <button
+        type="button"
+        disabled={disabled}
+        aria-pressed={casActive}
+        onClick={() => onToggleCas?.(item.id)}
+        className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-t border-border/40 px-3.5 py-2 pl-7 text-left transition hover:bg-card disabled:cursor-not-allowed disabled:opacity-55"
+      >
+        <span className="text-[11px] font-semibold text-muted-foreground">Decontat prin CAS</span>
+        <span className={`relative inline-flex h-[18px] w-[32px] shrink-0 items-center rounded-full transition-colors ${casActive ? "bg-foreground" : "bg-border"}`}>
+          <span className={`absolute h-[13px] w-[13px] rounded-full bg-background shadow-sm transition-all ${casActive ? "left-[16px]" : "left-[3px]"}`} />
+        </span>
+      </button>
     )}
     </div>
   );
