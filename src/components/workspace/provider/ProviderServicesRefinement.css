@@ -60,11 +60,11 @@
 
 .provider-services-three__native [data-services-panel="configuration"] button[aria-pressed="true"],
 .provider-services-three__native [data-services-panel="options"] button[aria-pressed="true"],
-.provider-services-three__native button[data-service-key][aria-pressed="true"] {
+.provider-services-three__native div:has(> button[data-service-key][aria-pressed="true"]) {
   background: #f7f4ed !important;
 }
 
-.provider-services-three__native button[data-service-key]:hover:not(:disabled) {
+.provider-services-three__native div:has(> button[data-service-key]):hover {
   background: #fbfaf7 !important;
 }
 
