@@ -382,18 +382,22 @@ function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, d
       aria-pressed={active}
       disabled={disabled}
       onClick={() => onToggle(item, unitKey)}
-      className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl px-3.5 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-55 ${removalRequested ? "hover:bg-amber-50" : active ? "" : "hover:bg-card"}`}
+      className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl px-3.5 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-55 ${removalRequested ? "hover:bg-amber-50" : active ? "" : "hover:bg-card"}`}
     >
-      <span className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md border ${removalRequested ? "border-amber-300 bg-amber-100 text-amber-900" : active ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`}>
-        {removalRequested ? <X className="h-3.5 w-3.5" /> : active && <Check className="h-3.5 w-3.5" />}
-      </span>
       <span className="min-w-0">
         <span className="block text-sm font-semibold leading-snug text-foreground">{serviceLabel(item)}</span>
         {detail && <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">{detail}</span>}
+        <span className="mt-1 flex flex-wrap items-center gap-1.5 empty:hidden">
+          <ChangeBadge draftAddition={draftAddition} removalRequested={removalRequested} />
+          {!removalRequested && <StatusBadge prerequisite={prerequisite} />}
+        </span>
       </span>
-      <span className="flex flex-wrap items-center justify-end gap-1.5">
-        <ChangeBadge draftAddition={draftAddition} removalRequested={removalRequested} />
-        {!removalRequested && <StatusBadge prerequisite={prerequisite} />}
+      {/* Comutator, ca in ecranele de setari (2026-08-06): starea se citeste dintr-o
+          privire, iar randul nu mai are nevoie de chenar sau bifa patrata. */}
+      <span
+        className={`relative inline-flex h-[22px] w-[38px] shrink-0 items-center rounded-full transition-colors ${removalRequested ? "bg-amber-300" : active ? "bg-foreground" : "bg-border"}`}
+      >
+        <span className={`absolute h-[16px] w-[16px] rounded-full bg-background shadow-sm transition-all ${active || removalRequested ? "left-[19px]" : "left-[3px]"}`} />
       </span>
     </button>
     {/* Marcajul CAS: buton separat, dar in interiorul aceluiasi chenar (2026-08-06).
