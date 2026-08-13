@@ -1425,8 +1425,6 @@
   border-radius: 0 !important;
   background: transparent !important;
 }
-  background: var(--services-surface) !important;
-}
 
 .provider-services-three__native div:has(> button[data-service-key]):hover {
   background: rgb(248 244 236 / 0.56) !important;
