@@ -501,9 +501,11 @@ export async function handle(req: Request) {
       try {
         await applyServices(svc, submission, payload);
       } catch (applyError) {
-        const failureNote = `Aplicare intrerupta: ${applyError.message}. O parte din servicii pot fi deja scrise. Reincearca aprobarea - operatia e idempotenta si va relua de la starea curenta.`;
+        const failureNote = `Aplicare intrerupta: ${applyError.message}. O parte din servicii pot fi deja scrise. Reincearca aprobarea - operatia e idempotenta si reia de la starea curenta.`;
+        // Cererea RAMANE in pending_review, ca aprobarea sa poata fi reluata (linia de
+        // mai sus accepta doar acest status). Scriem doar nota, ca adminul sa stie ce
+        // s-a intamplat, plus o inregistrare de audit.
         await svc.entities.ProviderWorkspaceSubmission.update(submission.id, {
-          status: 'needs_more_info',
           admin_note: failureNote,
         }).catch(() => {});
         await writeAudit(
