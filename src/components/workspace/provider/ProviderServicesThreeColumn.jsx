@@ -467,7 +467,10 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                 })}
               </nav>
 
-              <nav className="provider-services-three__review" aria-label="Verificare">
+              {/* Pastram si clasa nav-group: stilurile butoanelor (iconita, contor,
+                  aliniere) sunt legate de ea in trei fisiere CSS. Fara ea, randurile
+                  se stricau - text lipit de numar, iconite pe randuri separate. */}
+              <nav className="provider-services-three__nav-group provider-services-three__review" aria-label="Verificare">
                 <p>Verificare</p>
                 <NavButton active={view === "all" && !query} icon={ListFilter} label="Oferta completă" count={snapshot.units.reduce((sum, unit) => sum + unit.total, 0)} onClick={() => chooseView("all")} />
                 <NavButton active={view === "selected" && !query} icon={CheckCircle2} label="Oferta selectată" count={snapshot.selectedCount} onClick={() => chooseView("selected")} />
