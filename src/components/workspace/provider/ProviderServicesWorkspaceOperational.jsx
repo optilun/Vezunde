@@ -1417,6 +1417,10 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     const serviceKeys = new Set(servicesForUnit(unitKey));
     setSelected((current) => Object.fromEntries(Object.entries(current).map(([group, ids]) => [group, (ids || []).filter((id) => !serviceKeys.has(id))])));
     setServiceUnitMap((current) => Object.fromEntries(Object.entries(current).filter(([serviceKey, mappedUnit]) => mappedUnit !== unitKey && !serviceKeys.has(serviceKey))));
+    // Marcajele CAS ale serviciilor eliminate odata cu zona (2026-08-06). Fara asta ar
+    // ramane orfane in draft; validatorul le-ar taia la salvare, dar interfata ar arata
+    // pana atunci o stare care nu se va salva.
+    setCasServiceKeys((current) => current.filter((serviceKey) => !serviceKeys.has(serviceKey)));
     setCapabilities((current) => current.filter((item) => item.parent_unit_key !== unitKey));
     setResourceLinks((current) => ({
       professionals: current.professionals.map((item) => ({ ...item, unit_keys: (item.unit_keys || []).filter((key) => key !== unitKey) })).filter((item) => item.unit_keys.length > 0),
