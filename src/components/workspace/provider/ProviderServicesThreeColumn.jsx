@@ -635,77 +635,11 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
           )}
         </section>
 
-        <aside className="provider-services-three__right" aria-label="Previzualizarea configurației">
-          <div className="provider-services-three__preview-card">
-            <div className="provider-services-three__preview-heading">
-              <div>
-                <PanelLabel index="03" label="Rezumat" />
-                <strong>Rezumat configurație</strong>
-              </div>
-            </div>
-
-            <div className="provider-services-three__location">
-              <strong>{locationName}</strong>
-              {locationPlace && <span>{locationPlace}</span>}
-              {snapshot.status && <em>{snapshot.status}</em>}
-            </div>
-
-            {/* Lista de zone a fost eliminata de aici (2026-08-06): era identica, cuvant
-                cu cuvant, cu lista deja clicabila din navigarea din stanga ("Oferta pe
-                zone"). Pastram doar tipul activitatii, singura informatie care nu apare
-                deja in alta parte a ecranului. */}
-            {snapshot.careSetting && (
-              <section className="provider-services-three__preview-section">
-                <div className="provider-services-three__care"><span>Tipul activității</span><strong>{snapshot.careSetting}</strong></div>
-              </section>
-            )}
-
-            <section className="provider-services-three__preview-section">
-              <h3>Oferta și informațiile opționale</h3>
-              <dl>
-                <div><dt>În ofertă</dt><dd>{snapshot.selectedCount}</dd></div>
-                <div><dt>Zone</dt><dd>{snapshot.unitCount}</dd></div>
-                <div><dt>Activități asociate</dt><dd>{snapshot.capabilityCount}</dd></div>
-                {snapshot.globalOptionCount > 0 && <div><dt>La nivelul locației</dt><dd>{snapshot.globalOptionCount}</dd></div>}
-                {snapshot.issueCount > 0 && <div className="has-issues"><dt>Observații</dt><dd>{snapshot.issueCount}</dd></div>}
-              </dl>
-              {snapshot.configurationComplete && !snapshot.dirty && (
-                <div className="provider-services-three__complete-state">
-                  <CheckCircle2 aria-hidden="true" />
-                  <span>Pregătită pentru trimitere</span>
-                </div>
-              )}
-            </section>
-
-            {snapshot.issueCount > 0 && (
-              <button type="button" className="provider-services-three__requirements" onClick={() => chooseView("issues")}>
-                <AlertTriangle aria-hidden="true" />
-                <span><strong>{snapshot.issueCount} observații de catalog</strong><small>Clarifică opțiunile necunoscute; specialiștii și resursele nu sunt obligatorii.</small></span>
-                <ChevronRight aria-hidden="true" />
-              </button>
-            )}
-
-            <section className="provider-services-three__preview-section">
-              <div className="provider-services-three__preview-section-heading">
-                <h3>Oferta selectată</h3>
-                {snapshot.selectedCount > selectedPreview.length && <button type="button" onClick={() => chooseView("selected")}>Vezi toate</button>}
-              </div>
-              {selectedPreview.length > 0 ? (
-                <ul className="provider-services-three__selected-list">
-                  {selectedPreview.map((service) => <li key={service}><CheckCircle2 aria-hidden="true" /> {service}</li>)}
-                  {snapshot.selectedCount > selectedPreview.length && <li className="is-more">+ {snapshot.selectedCount - selectedPreview.length} alte opțiuni</li>}
-                </ul>
-              ) : <p>Oferta publică nu conține încă servicii sau produse.</p>}
-            </section>
-
-            {snapshot.adminNote && (
-              <section className="provider-services-three__preview-section">
-                <h3>Completări solicitate</h3>
-                <p>{snapshot.adminNote}</p>
-              </section>
-            )}
-          </div>
-        </aside>
+        {/* Coloana din dreapta a fost eliminata (2026-08-06): repeta informatie deja
+            vizibila in coloana de pasi si in continut - zone, numar de servicii, lista
+            selectata. Ce era unic (tipul activitatii, starea de trimitere, nota de la
+            admin, observatiile) urca in antetul continutului, pe un rand.
+            Rezultat: doua coloane in loc de trei, continutul primeste tot spatiul. */}
       </div>
 
       {showActionBar && (
