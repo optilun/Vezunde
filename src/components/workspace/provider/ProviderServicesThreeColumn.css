@@ -512,11 +512,20 @@
   box-shadow: none !important;
 }
 
+/* Randuri simple, in stilul unui ecran de setari (2026-08-06): fara chenar si fara
+   fundal propriu, doar o linie fina de separare. Cardurile cu contur raman pe telefon,
+   unde ajuta la atins; pe desktop, la 28 de servicii intr-o zona, deveneau zgomot. */
 .provider-services-three__native div:has(> button[data-service-key]) {
-  min-height: 56px;
-  border-radius: 14px !important;
-  border-color: var(--services-border-soft) !important;
-  background: var(--services-surface) !important;
+  min-height: 0;
+  border: 0 !important;
+  border-radius: 0 !important;
+  border-bottom: 1px solid var(--services-border-soft) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.provider-services-three__native div:has(> button[data-service-key]):last-child {
+  border-bottom: 0 !important;
 }
 
 .provider-services-three__native div:has(> button[data-service-key][aria-pressed="true"]) {
