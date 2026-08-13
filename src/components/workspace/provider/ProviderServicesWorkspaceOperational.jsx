@@ -373,15 +373,16 @@ function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, d
   const detail = removalRequested
     ? "La trimiterea cererii, elementul este ascuns public până la soluționare."
     : blockerDetail || helperText;
+  const casVisible = active && !removalRequested && casEligible;
   return (
-    <>
+    <div className={`relative rounded-xl border transition ${removalRequested ? "border-amber-200 bg-amber-50/70" : active ? "border-foreground/70 bg-card shadow-sm" : "border-border bg-card/60"}`}>
     <button
       type="button"
       data-service-key={item.id}
       aria-pressed={active}
       disabled={disabled}
       onClick={() => onToggle(item, unitKey)}
-      className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-55 ${removalRequested ? "border-amber-200 bg-amber-50/70 hover:bg-amber-50" : active ? "border-foreground/70 bg-card shadow-sm" : "border-border bg-card/60 hover:bg-card"}`}
+      className={`grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl px-3.5 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-55 ${removalRequested ? "hover:bg-amber-50" : active ? "" : "hover:bg-card"}`}
     >
       <span className={`flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md border ${removalRequested ? "border-amber-300 bg-amber-100 text-amber-900" : active ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`}>
         {removalRequested ? <X className="h-3.5 w-3.5" /> : active && <Check className="h-3.5 w-3.5" />}
