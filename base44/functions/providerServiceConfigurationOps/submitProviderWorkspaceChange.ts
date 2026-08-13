@@ -212,6 +212,12 @@ function validateServices(payload, options = {}) {
   if (!hasSelected && !hasRemoved && rawRemovals.clean.length === 0 && suggestions.suggestions.length === 0) {
     return bad({ error: 'Payload gol' });
   }
+  // Serviciile marcate ca decontate prin CAS. Se pastreaza doar cheile care sunt si
+  // efectiv selectate: altfel un marcaj ar putea supravietui stergerii serviciului.
+  const selectedKeySet = new Set(Object.values(selected.clean).flat());
+  const casKeys = Array.isArray(payload.cas_service_keys)
+    ? [...new Set(payload.cas_service_keys.map((key) => cleanString(key)).filter((key) => selectedKeySet.has(key)))]
+    : [];
   return {
     valid: true,
     clean: {
@@ -219,6 +225,7 @@ function validateServices(payload, options = {}) {
       removal_ids: removals.clean,
       raw_removal_keys: rawRemovals.clean,
       suggestions: suggestions.suggestions,
+      cas_service_keys: casKeys,
     },
   };
 }
