@@ -493,7 +493,29 @@ export async function handle(req: Request) {
 
       // Services are provider-declared at launch. Approval keeps the generic
       // administrative workflow, but does not promote declarations to verified.
-      await applyServices(svc, submission, payload);
+      // Aplicarea nu e tranzactionala: scrie serviciu cu serviciu. Daca esueaza la
+      // jumatate (retea, limita, serviciu necunoscut), o parte raman scrise iar cererea
+      // ar ramane blocata in "pending_review", fara ca cineva sa stie ce s-a aplicat.
+      // Marcam progresul in nota de audit si, la esec, lasam cererea intr-o stare
+      // recuperabila cu mesaj explicit pentru admin (2026-08-06).
+      try {
+        await applyServices(svc, submission, payload);
+      } catch (applyError) {
+        const failureNote = `Aplicare intrerupta: ${applyError.message}. O parte din servicii pot fi deja scrise. Reincearca aprobarea - operatia e idempotenta si va relua de la starea curenta.`;
+        await svc.entities.ProviderWorkspaceSubmission.update(submission.id, {
+          status: 'needs_more_info',
+          admin_note: failureNote,
+        }).catch(() => {});
+        await writeAudit(
+          svc,
+          user,
+          submission,
+          'approve_service_configuration_failed',
+          ['status'],
+          { error: applyError.message },
+        ).catch(() => {});
+        return Response.json({ error: failureNote }, { status: 500 });
+      }
       const postApplyContext = await loadContext(svc, submission.location_id, payload, false);
       const postEvaluation = evaluatePayload(payload, {
         ...postApplyContext,
