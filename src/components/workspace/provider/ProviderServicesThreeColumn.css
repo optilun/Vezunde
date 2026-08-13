@@ -44,7 +44,9 @@
 /* One continuous workspace surface, separated by lines rather than nested cards. */
 .provider-services-three__layout {
   display: grid;
-  grid-template-columns: minmax(210px, 238px) minmax(470px, 1fr) minmax(265px, 300px);
+  /* Doua coloane (2026-08-06): coloana de rezumat din dreapta a fost eliminata,
+     continutul primeste spatiul ei. */
+  grid-template-columns: minmax(210px, 250px) minmax(0, 1fr);
   min-height: 680px;
   overflow: clip;
   border-top: 1px solid var(--services-border);
