@@ -49,7 +49,7 @@ const SECTION_FIELDS = {
   public_profile: ['public_display_name', 'public_description', 'website_url', 'facebook_url', 'instagram_url', 'linkedin_url', 'public_phone', 'public_email'],
   location_details: ['address', 'public_display_name', 'public_phone', 'public_email', 'lat', 'lng', 'place_id'],
   operating_hours: ['opening_hours', 'saturday_hours', 'availability_status'],
-  services: ['selected_ids', 'removal_ids', 'raw_removal_keys', 'suggestions', 'custom_requests'],
+  services: ['selected_ids', 'removal_ids', 'raw_removal_keys', 'suggestions', 'custom_requests', 'cas_service_keys'],
   team: ['members', 'removal_professional_ids', 'invitations', 'invite_flow', 'invitation_channel'],
   media: ['assets', 'removal_media_ids'],
   article: ['title', 'excerpt', 'body', 'cover_media_id', 'author_professional_id'],
