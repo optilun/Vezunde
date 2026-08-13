@@ -306,7 +306,8 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
     .filter(Boolean)
     .join(", ");
 
-  const selectedPreview = useMemo(() => snapshot.selectedServices.slice(0, 5), [snapshot.selectedServices]);
+  // selectedPreview a fost eliminat odata cu coloana de rezumat (2026-08-06): lista
+  // primelor 5 servicii selectate repeta ce se vede deja in continut.
   const showActionBar = snapshot.hasSave || snapshot.hasSubmit || snapshot.hasWithdraw || Boolean(snapshot.actionStatus);
   const dataView = query ? "search" : view;
   const mobileNavValue = view === "unit" ? `unit:${activeUnitIndex}` : view;
