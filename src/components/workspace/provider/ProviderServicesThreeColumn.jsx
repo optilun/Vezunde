@@ -580,6 +580,36 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
             </div>
           </details>
 
+          {/* Rezumatul util, mutat din coloana eliminata (2026-08-06): doar informatia
+              care nu apare deja in alta parte - tipul activitatii, starea si eventualele
+              observatii sau cerinte de la admin. */}
+          <div className="provider-services-three__meta">
+            {snapshot.careSetting && (
+              <span className="provider-services-three__meta-item">
+                <small>Tipul activității</small>
+                <strong>{snapshot.careSetting}</strong>
+              </span>
+            )}
+            {snapshot.configurationComplete && !snapshot.dirty && (
+              <span className="provider-services-three__meta-badge is-ready">
+                <CheckCircle2 aria-hidden="true" /> Pregătită pentru trimitere
+              </span>
+            )}
+            {snapshot.issueCount > 0 && (
+              <button type="button" className="provider-services-three__meta-badge is-issues" onClick={() => chooseView("issues")}>
+                <AlertTriangle aria-hidden="true" /> {snapshot.issueCount} observații
+                <ChevronRight aria-hidden="true" />
+              </button>
+            )}
+          </div>
+
+          {snapshot.adminNote && (
+            <div className="provider-services-three__admin-note">
+              <strong>Completări solicitate</strong>
+              <p>{snapshot.adminNote}</p>
+            </div>
+          )}
+
           <header className="provider-services-three__center-header">
             <div className="provider-services-three__center-copy">
               <PanelLabel index="02" label="Configurare" />
