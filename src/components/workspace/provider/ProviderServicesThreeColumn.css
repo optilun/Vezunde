@@ -527,11 +527,11 @@
   padding: 11px 14px !important;
 }
 
-.provider-services-three__native button[data-service-key]:hover:not(:disabled) {
+.provider-services-three__native div:has(> button[data-service-key]):hover {
   background: #fbfaf7 !important;
 }
 
-.provider-services-three__native button[data-service-key][aria-pressed="true"]:hover:not(:disabled) {
+.provider-services-three__native div:has(> button[data-service-key][aria-pressed="true"]):hover {
   background: var(--services-canvas) !important;
 }
 
