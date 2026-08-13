@@ -1467,6 +1467,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
     const serviceKeys = new Set(selectedServiceKeys(selected).filter((serviceKey) => getServiceOperationalContext(serviceKey)?.capabilityKey === capabilityKey));
     setSelected((current) => Object.fromEntries(Object.entries(current).map(([group, ids]) => [group, (ids || []).filter((id) => !serviceKeys.has(id))])));
     setServiceUnitMap((current) => Object.fromEntries(Object.entries(current).filter(([serviceKey]) => !serviceKeys.has(serviceKey))));
+    setCasServiceKeys((current) => current.filter((serviceKey) => !serviceKeys.has(serviceKey)));
     setCapabilities((current) => current.filter((item) => item.capability_key !== capabilityKey));
     setPendingRemoval(null);
     setMessage(approvedCapabilities.some((item) => item.capability_key === capabilityKey) ? "Activitatea și serviciile dependente au fost marcate pentru eliminare." : "Activitatea și serviciile dependente au fost eliminate din draft.");
