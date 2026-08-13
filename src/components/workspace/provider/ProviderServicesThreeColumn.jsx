@@ -17,7 +17,6 @@ import {
   Search,
   Send,
   Settings2,
-  SlidersHorizontal,
   Stethoscope,
   Store,
   Wrench,
