@@ -428,40 +428,51 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
       <div className="provider-services-three__layout">
         <aside className="provider-services-three__left" aria-label="Organizarea serviciilor">
           <div className="provider-services-three__left-sticky">
+            {/* Coloana e un indicator de pasi, nu o lista de linkuri egale (2026-08-06).
+                Pasii sunt numerotati, cei terminati primesc bifa verde, iar filtrele de
+                verificare sunt clar despartite - inainte erau al patrulea grup identic,
+                desi se comporta complet diferit. */}
             <div className="provider-services-three__left-heading">
-              <PanelLabel index="01" label="Navigare" />
-              <strong>Alege ce configurezi</strong>
-              <small>Fiecare opțiune deschide partea corespunzătoare a configurației.</small>
+              <PanelLabel index="01" label="Configurare" />
+              <strong>{homeDoneCount} din {homeProgressRows.length} secțiuni</strong>
             </div>
 
             <div className="provider-services-three__nav-groups">
-              <nav className="provider-services-three__nav-group" aria-label="Configurarea locației">
-                <p>Structura locației</p>
-                <NavButton active={view === "configuration" && !query} icon={Settings2} label="Zone și tip de activitate" status={snapshot.unitCount > 0 ? `${snapshot.unitCount} zone` : "Opțional"} onClick={() => chooseView("configuration")} />
-                <NavButton active={view === "options" && !query} icon={SlidersHorizontal} label="La nivelul locației" onClick={() => chooseView("options")} />
+              <nav className="provider-services-three__steps" aria-label="Pașii configurării">
+                {homeProgressRows.map((row, index) => {
+                  const isActive = !query && (
+                    (row.value === "configuration" && view === "configuration")
+                    || (row.value === "options" && view === "options")
+                    || (row.value.startsWith("unit:") && view === "unit" && `unit:${activeUnitIndex}` === row.value)
+                  );
+                  return (
+                    <button
+                      key={row.value}
+                      type="button"
+                      className={`provider-services-three__step${isActive ? " is-active" : ""}${row.done ? " is-done" : ""}`}
+                      onClick={() => {
+                        if (row.value === "configuration") { setConfigStep(1); chooseView("configuration"); }
+                        else if (row.value.startsWith("unit:")) openUnit(Number(row.value.slice(5)));
+                        else chooseView(row.value);
+                      }}
+                    >
+                      <span className="provider-services-three__step-mark" aria-hidden="true">
+                        {row.done ? <CheckCircle2 /> : index + 1}
+                      </span>
+                      <span className="provider-services-three__step-body">
+                        <span>{row.label}</span>
+                        <small>{row.meta}</small>
+                      </span>
+                    </button>
+                  );
+                })}
               </nav>
 
-              {snapshot.units.length > 0 && (
-                <nav className="provider-services-three__nav-group provider-services-three__units" aria-label="Servicii după spațiu">
-                  <p>Oferta pe zone</p>
-                  {snapshot.units.map((unit) => (
-                    <NavButton
-                      key={`${unit.title}-${unit.index}`}
-                      active={view === "unit" && !query && activeUnitIndex === unit.index}
-                      icon={unit.index === 0 ? Store : Building2}
-                      label={unit.title}
-                      count={unit.selected}
-                      onClick={() => openUnit(unit.index)}
-                    />
-                  ))}
-                </nav>
-              )}
-
-              <nav className="provider-services-three__nav-group" aria-label="Filtrarea serviciilor">
-                <p>Oferta locației</p>
+              <nav className="provider-services-three__review" aria-label="Verificare">
+                <p>Verificare</p>
                 <NavButton active={view === "all" && !query} icon={ListFilter} label="Oferta completă" count={snapshot.units.reduce((sum, unit) => sum + unit.total, 0)} onClick={() => chooseView("all")} />
                 <NavButton active={view === "selected" && !query} icon={CheckCircle2} label="Oferta selectată" count={snapshot.selectedCount} onClick={() => chooseView("selected")} />
-                <NavButton active={view === "issues" && !query} icon={AlertTriangle} label="Observații de catalog" count={snapshot.issueCount} onClick={() => chooseView("issues")} />
+                <NavButton active={view === "issues" && !query} icon={AlertTriangle} label="Observații" count={snapshot.issueCount} onClick={() => chooseView("issues")} />
               </nav>
             </div>
           </div>
