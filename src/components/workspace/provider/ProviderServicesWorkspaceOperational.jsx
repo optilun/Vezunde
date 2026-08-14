@@ -1225,7 +1225,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
       pendingReview,
       ...stableActions,
     };
-  }, [activeUnits, approvedSelected, capabilities.length, careSetting, conflicts, dirty, draft, editable, pendingReview, persistenceMode, profileSections, readiness, saving, sectionsByUnit, selectedByUnit, stableActions, suggestions.length, visibleUnits]);
+  }, [activeUnits, approvedSelected, capabilities.length, careSetting, conflicts, dirty, draft, editable, operationalLayout, pendingReview, persistenceMode, profileSections, readiness, saving, sectionsByUnit, selectableCapabilities, selectedByUnit, stableActions, suggestions.length, visibleUnits]);
 
   useEffect(() => {
     onWorkspaceSnapshot?.(workspaceSnapshot);
