@@ -409,16 +409,17 @@
 
 /* Selected controls follow Profile and Locations: black control, restrained background. */
 .provider-services-three__native [data-services-panel="configuration"] button[aria-pressed="true"] span[class*="bg-foreground"],
-.provider-services-three__native [data-services-panel="options"] button[aria-pressed="true"] > span:first-child,
-.provider-services-three__native button[data-service-key][aria-pressed="true"] > span:first-child {
+.provider-services-three__native [data-services-panel="options"] button[aria-pressed="true"] > span:first-child {
   border-color: var(--services-text) !important;
   background: var(--services-text) !important;
   color: #ffffff !important;
 }
 
+/* Randul de serviciu NU mai primeste fundal cand e selectat (2026-08-06): starea se
+   citeste din comutatorul din dreapta, ca in ecranele de setari. Fundalul colorat pe
+   rand facea lista sa arate ca un tabel bifat, nu ca un panou de setari. */
 .provider-services-three__native [data-services-panel="configuration"] button[aria-pressed="true"],
-.provider-services-three__native [data-services-panel="options"] button[aria-pressed="true"],
-.provider-services-three__native div:has(> button[data-service-key][aria-pressed="true"]) {
+.provider-services-three__native [data-services-panel="options"] button[aria-pressed="true"] {
   background: var(--services-canvas) !important;
 }
 
