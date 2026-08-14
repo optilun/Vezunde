@@ -343,13 +343,17 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
 
   // Randurile ecranului-lista. Bifa apare cand pasul are un rezultat vizibil, ca sa
   // vezi dintr-o privire ce ai terminat si ce a ramas.
+  // Doua grupuri distincte (2026-08-06): structura (ce ai) si oferta (ce faci in
+  // fiecare zona). Inainte erau amestecate la acelasi nivel, iar cele trei subsectiuni
+  // de configurare - inclusiv dotarile - erau ascunse intr-un singur rand.
   const homeGroups = [
     {
       label: "Structura locației",
       rows: [
         {
           value: "configuration",
-          label: "Zone și tip de activitate",
+          step: 1,
+          label: "Zonele existente",
           hint: "Ce spații ai la această locație: magazin, cabinet, atelier.",
           icon: Building2,
           meta: snapshot.unitCount > 0
@@ -358,12 +362,33 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
           done: snapshot.unitCount > 0,
         },
         {
-          value: "options",
-          label: "La nivelul locației",
-          hint: "Detalii care se aplică întregii locații, nu unei singure zone.",
+          value: "configuration",
+          step: 2,
+          label: "Dotări și activități",
+          hint: "Ce poți face efectiv în fiecare zonă.",
+          icon: Wrench,
+          meta: snapshot.capabilityCount > 0
+            ? `${snapshot.capabilityCount} ${snapshot.capabilityCount === 1 ? "activitate" : "activități"}`
+            : "Opțional",
+          done: snapshot.capabilityCount > 0,
+        },
+        {
+          value: "configuration",
+          step: 3,
+          label: "Tipul activității",
+          hint: "Comercială, medicală sau mixtă.",
           icon: Settings2,
-          meta: "Opțional",
-          done: false,
+          meta: snapshot.careSetting || "Nedefinit",
+          done: Boolean(snapshot.careSetting),
+        },
+        {
+          value: "options",
+          step: null,
+          label: "La nivelul locației",
+          hint: "Servicii la domiciliu, la sediul firmelor, optică mobilă.",
+          icon: Store,
+          meta: snapshot.globalOptionCount > 0 ? `${snapshot.globalOptionCount} opțiuni` : "Opțional",
+          done: snapshot.globalOptionCount > 0,
         },
       ],
     },
@@ -371,6 +396,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
       label: "Oferta pe zone",
       rows: snapshot.units.map((unit) => ({
         value: `unit:${unit.index}`,
+        step: null,
         label: unit.title,
         hint: unit.description,
         icon: UNIT_CARD_ICONS[unit.key] || Building2,
