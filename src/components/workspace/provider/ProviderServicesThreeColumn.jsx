@@ -361,7 +361,9 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
             : "Nicio zonă aleasă",
           done: snapshot.unitCount > 0,
         },
-        {
+        // Randurile 2 si 3 apar doar cand sectiunea are efectiv continut de aratat.
+        // Altfel apasarea nu deschidea nimic - sectiunile se randeaza conditionat.
+        ...(snapshot.hasCapabilitySection ? [{
           value: "configuration",
           step: 2,
           label: "Dotări și activități",
@@ -371,8 +373,8 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
             ? `${snapshot.capabilityCount} ${snapshot.capabilityCount === 1 ? "activitate" : "activități"}`
             : "Opțional",
           done: snapshot.capabilityCount > 0,
-        },
-        {
+        }] : []),
+        ...(snapshot.hasCareSettingSection ? [{
           value: "configuration",
           step: 3,
           label: "Tipul activității",
@@ -380,7 +382,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
           icon: Settings2,
           meta: snapshot.careSetting || "Nedefinit",
           done: Boolean(snapshot.careSetting),
-        },
+        }] : []),
         {
           value: "options",
           step: null,
