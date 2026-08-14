@@ -318,8 +318,9 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   // buton de avansare. Filtrele de verificare raman in afara numaratorii.
   const flowSteps = [
     { value: "configuration", step: 1, label: "Zonele existente" },
-    { value: "configuration", step: 2, label: "Dotări și activități" },
-    { value: "configuration", step: 3, label: "Tipul activității" },
+    // Aceleasi conditii ca in sidebar: sarim pasii care nu au continut de aratat.
+    ...(snapshot.hasCapabilitySection ? [{ value: "configuration", step: 2, label: "Dotări și activități" }] : []),
+    ...(snapshot.hasCareSettingSection ? [{ value: "configuration", step: 3, label: "Tipul activității" }] : []),
     { value: "options", step: null, label: "La nivelul locației" },
     ...snapshot.units.map((unit) => ({
       value: `unit:${unit.index}`,
