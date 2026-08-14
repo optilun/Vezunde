@@ -1189,6 +1189,13 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
       suggestionCount: suggestions.length,
       unitCount: activeUnits.length,
       capabilityCount: capabilities.length,
+      // Sectiunile 2 si 3 se randeaza doar cand au continut (CapabilitySelection si
+      // CareSettingSelector returneaza null altfel). Trimitem asta in sus ca sidebar-ul
+      // sa nu afiseze randuri care nu deschid nimic la apasare (2026-08-06).
+      hasCapabilitySection: (config?.capabilityKeys || []).length > 0,
+      hasCareSettingSection: ((operationalLayout?.careSettings) || []).filter(
+        (key) => key !== "not_applicable" && key !== "retail_only",
+      ).length > 0,
       issueCount: readiness.blockers.length,
       issueServiceKeys: readiness.issueServiceKeys,
       blockers: readiness.blockers,
