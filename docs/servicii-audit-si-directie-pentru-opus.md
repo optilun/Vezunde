@@ -68,8 +68,8 @@ a alege o directie.
 
 ## Referinta vizuala directa (pozele lui Alex din Setarile Claude Desktop)
 
-Alex a trimis 4 capturi din Setarile Claude Desktop ca referinta explicita de
-design "asa vreau sa arate". Trei elemente confirmate ca inca lipsesc:
+Aceleasi 4 poze arata SI fereastra (sectiunea de mai sus), SI stilul randurilor.
+Din unghiul de stil al randurilor, trei elemente:
 
 1. **Randul cu doua niveluri de text** — titlu normal (nu bold) + propozitie
    gri dedesubt, care explica ce face optiunea ("Search and reference chats" /
