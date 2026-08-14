@@ -41,6 +41,25 @@ Fisiere principale:
   logica reala: randare servicii, salvare, validare (NEATINSA structural azi,
   doar clase vizuale schimbate)
 
+## Referinta vizuala directa (pozele lui Alex din Setarile Claude Desktop)
+
+Alex a trimis 4 capturi din Setarile Claude Desktop ca referinta explicita de
+design "asa vreau sa arate". Trei elemente confirmate ca inca lipsesc:
+
+1. **Randul cu doua niveluri de text** — titlu normal (nu bold) + propozitie
+   gri dedesubt, care explica ce face optiunea ("Search and reference chats" /
+   "Allow Claude to search for relevant details in past chats. Learn more").
+   ASTA e diferenta cea mai mare ramasa, si tine strict de continut (vezi
+   sectiunea "Ce NU s-a facut" mai jos) — fara descrieri in catalog, orice
+   ajustare de stil nu poate reproduce acest efect.
+2. Comutatoare albastre/negre, rotunde, la dreapta randului — DEJA implementat.
+3. Randuri fara chenar, spatiu generos, fara fundal pe randul activ — DEJA
+   implementat (a necesitat reparatii CSS in 3 fisiere diferite).
+
+Daca Opus vrea sa vada exact referinta, cere-i lui Alex sa retrimita cele 4
+poze din acest schimb — arata Setari > Privacy, Setari > Capabilities si
+Setari > Account din Claude Desktop.
+
 ## Ce s-a facut azi, in ordine
 
 1. **Pasi adevarati pe telefon** — in loc de 3 sectiuni afisate simultan, un
