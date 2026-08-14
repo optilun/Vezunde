@@ -546,23 +546,17 @@
   background: var(--services-canvas) !important;
 }
 
-.provider-services-three__native button[data-service-key] > span:first-child {
-  border-radius: 5px !important;
-}
-
-.provider-services-three__native button[data-service-key] > span:nth-child(2) > span:first-child {
+/* Structura randului s-a schimbat (2026-08-06): span:first-child e acum blocul de text
+   (era bifa patrata), iar span:nth-child(2) e comutatorul. */
+.provider-services-three__native button[data-service-key] > span:first-child > span:first-child {
   font-size: 13px !important;
   font-weight: 750 !important;
 }
 
-.provider-services-three__native button[data-service-key] > span:nth-child(2) > span:last-child {
+.provider-services-three__native button[data-service-key] > span:first-child > span:nth-child(2) {
   color: var(--services-muted) !important;
   font-size: 11px !important;
   line-height: 1.5 !important;
-}
-
-.provider-services-three__native button[data-service-key] > span:last-child > span {
-  box-shadow: none !important;
 }
 
 .provider-services-three__native [data-services-panel="options"] {
