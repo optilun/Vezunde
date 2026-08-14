@@ -1407,8 +1407,8 @@
 }
 
 .provider-services-three__native button[data-service-key] {
-  min-height: 56px;
-  padding: 12px 26px !important;
+  min-height: 0;
+  padding: 15px 4px !important;
 }
 
 .provider-services-three__native div:has(> button[data-service-key]) {

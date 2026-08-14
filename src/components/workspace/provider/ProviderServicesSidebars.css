@@ -95,7 +95,7 @@
   }
 
   .provider-services-three__native button[data-service-key] {
-    padding-inline: 14px !important;
+    padding-inline: 2px !important;
   }
 
   .provider-services-three__native div:has(> button[data-service-key]) {
