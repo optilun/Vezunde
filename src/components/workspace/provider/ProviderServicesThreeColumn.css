@@ -535,8 +535,8 @@
 
 .provider-services-three__native button[data-service-key] {
   grid-template-columns: minmax(0, 1fr) auto !important;
-  gap: 11px !important;
-  padding: 11px 14px !important;
+  gap: 16px !important;
+  padding: 15px 4px !important;
 }
 
 .provider-services-three__native div:has(> button[data-service-key]):hover {
