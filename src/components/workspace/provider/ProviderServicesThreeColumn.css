@@ -2697,9 +2697,9 @@
   }
 }
 
-/* Coloana de pasi, in stilul unui meniu de setari (2026-08-06): text simplu, fara
-   cerculete numerotate si fara linie de legatura. Doar elementul activ primeste fundal,
-   iar bifa verde marcheaza ce e terminat. Verdele e --chart-2 din paleta existenta. */
+/* Sidebar in stilul unui meniu de setari (2026-08-06): iconita + nume intreg, atat.
+   Contoarele au fost scoase - sunt oricum vizibile in continut, iar aici faceau ca
+   fiecare rand sa duca trei informatii si sa taie numele ("Cabinet opto..."). */
 .provider-services-three__steps {
   display: flex;
   flex-direction: column;
@@ -2707,10 +2707,9 @@
 }
 
 .provider-services-three__step {
-  position: relative;
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   width: 100%;
   padding: 8px 10px;
   border: 0;
@@ -2730,37 +2729,37 @@
 
 .provider-services-three__step-mark {
   display: flex;
-  height: 15px;
-  width: 15px;
+  height: 17px;
+  width: 17px;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
   font-size: 10px;
   font-weight: 700;
-  color: hsl(var(--muted-foreground) / 0.55);
-}
-
-.provider-services-three__step.is-done .provider-services-three__step-mark {
-  color: hsl(var(--chart-2));
+  color: hsl(var(--muted-foreground));
 }
 
 .provider-services-three__step-mark svg {
-  height: 14px;
-  width: 14px;
+  height: 16px;
+  width: 16px;
+}
+
+.provider-services-three__step.is-active .provider-services-three__step-mark {
+  color: hsl(var(--foreground));
 }
 
 .provider-services-three__step-body {
   display: flex;
   min-width: 0;
   flex: 1;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
 .provider-services-three__step-body > span {
-  font-size: 13px;
-  font-weight: 550;
+  font-size: 13.5px;
+  font-weight: 500;
   color: hsl(var(--foreground));
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2768,13 +2767,14 @@
 }
 
 .provider-services-three__step.is-active .provider-services-three__step-body > span {
-  font-weight: 700;
+  font-weight: 650;
 }
 
-.provider-services-three__step-body > small {
+.provider-services-three__step-done {
+  height: 14px;
+  width: 14px;
   flex-shrink: 0;
-  font-size: 11px;
-  color: hsl(var(--muted-foreground) / 0.8);
+  color: hsl(var(--chart-2));
 }
 
 /* Verificarea, despartita clar de pasi */
