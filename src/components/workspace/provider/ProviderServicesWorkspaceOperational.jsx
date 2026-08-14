@@ -1192,7 +1192,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
       // Sectiunile 2 si 3 se randeaza doar cand au continut (CapabilitySelection si
       // CareSettingSelector returneaza null altfel). Trimitem asta in sus ca sidebar-ul
       // sa nu afiseze randuri care nu deschid nimic la apasare (2026-08-06).
-      hasCapabilitySection: (config?.capabilityKeys || []).length > 0,
+      hasCapabilitySection: (selectableCapabilities || []).length > 0,
       hasCareSettingSection: ((operationalLayout?.careSettings) || []).filter(
         (key) => key !== "not_applicable" && key !== "retail_only",
       ).length > 0,
