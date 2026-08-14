@@ -120,7 +120,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   // intorci la lista. Tiparul standard folosit de Apple in Setari si de Google in
   // Business Profile pentru configurari mari - in locul unui selector de navigare.
   const [mobileHome, setMobileHome] = useState(true);
-  const CONFIG_STEP_TITLES = { 1: "Zonele existente", 2: "Activități asociate", 3: "Tipul activității" };
+  const CONFIG_STEP_TITLES = { 1: "Zonele existente", 2: "Dotări și activități", 3: "Tipul activității" };
 
   const updateWorkspaceSnapshot = useCallback((nextSnapshot) => {
     setSnapshot((current) => ({ ...current, ...nextSnapshot }));
