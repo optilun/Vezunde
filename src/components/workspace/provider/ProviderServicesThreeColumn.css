@@ -2706,6 +2706,19 @@
   gap: 1px;
 }
 
+.provider-services-three__steps + .provider-services-three__steps {
+  margin-top: 16px;
+}
+
+.provider-services-three__steps-label {
+  margin: 0 0 6px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: hsl(var(--muted-foreground));
+}
+
 .provider-services-three__step {
   display: flex;
   align-items: center;
