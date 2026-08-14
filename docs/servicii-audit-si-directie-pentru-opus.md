@@ -41,6 +41,31 @@ Fisiere principale:
   logica reala: randare servicii, salvare, validare (NEATINSA structural azi,
   doar clase vizuale schimbate)
 
+## Decizie de arhitectura ramasa DESCHISA — Opus trebuie s-o discute cu Alex
+
+Alex a intrebat explicit: cand apesi "Servicii", ar trebui sa se deschida ca
+panou SUPRAPUS peste ecranul curent (exact ca in Claude Desktop cand apesi
+Settings sau Connectors — panou alb, X in colt, restul ecranului intunecat
+in spate), sau sa ramana pagina separata cum e acum?
+
+**Raspunsul meu initial a fost "ramane pagina separata"**, motivat de volumul
+de continut (8 sectiuni). Alex a corectat: pozele trimise nu erau doar despre
+stilul randurilor, erau explicit despre FEREASTRA insasi — cum arata panoul
+suprapus la Claude. Asta inseamna ca decizia mea a fost prea rapida si NU
+trebuie tratata ca finala.
+
+**Ce trebuie clarificat cu Alex, inainte de orice implementare:**
+- Vrea panou suprapus chiar si pentru un continut de 8 sectiuni / zeci de
+  servicii? (Posibil raspunsul e da, cu propria navigare interna in panou,
+  nu doar un formular scurt)
+- Sau vrea DOAR stilul vizual al panoului (alb, umbra, X in colt) aplicat
+  peste actuala pagina separata, fara sa schimbe navigarea?
+- Sau vrea suprapunere pentru module mici (Program, Fotografie) si pagina
+  separata doar pentru Servicii, care e genuinely mare?
+
+Nu presupune raspunsul — intreaba explicit, cu exemple concrete, inainte de
+a alege o directie.
+
 ## Referinta vizuala directa (pozele lui Alex din Setarile Claude Desktop)
 
 Alex a trimis 4 capturi din Setarile Claude Desktop ca referinta explicita de
