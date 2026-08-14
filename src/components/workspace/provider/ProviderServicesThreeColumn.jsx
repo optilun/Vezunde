@@ -457,11 +457,11 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                       }}
                     >
                       <span className="provider-services-three__step-mark" aria-hidden="true">
-                        {row.done ? <CheckCircle2 /> : index + 1}
+                        {row.icon ? <row.icon /> : row.done ? <CheckCircle2 /> : index + 1}
                       </span>
                       <span className="provider-services-three__step-body">
                         <span>{row.label}</span>
-                        <small>{row.meta}</small>
+                        {row.done && <CheckCircle2 className="provider-services-three__step-done" aria-hidden="true" />}
                       </span>
                     </button>
                   );
