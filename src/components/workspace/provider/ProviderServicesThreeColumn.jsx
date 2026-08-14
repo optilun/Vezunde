@@ -318,7 +318,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   // buton de avansare. Filtrele de verificare raman in afara numaratorii.
   const flowSteps = [
     { value: "configuration", step: 1, label: "Zonele existente" },
-    { value: "configuration", step: 2, label: "Activități asociate" },
+    { value: "configuration", step: 2, label: "Dotări și activități" },
     { value: "configuration", step: 3, label: "Tipul activității" },
     { value: "options", step: null, label: "La nivelul locației" },
     ...snapshot.units.map((unit) => ({
