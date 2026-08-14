@@ -464,35 +464,38 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
             </div>
 
             <div className="provider-services-three__nav-groups">
-              <nav className="provider-services-three__steps" aria-label="Pașii configurării">
-                {homeProgressRows.map((row, index) => {
-                  const isActive = !query && (
-                    (row.value === "configuration" && view === "configuration")
-                    || (row.value === "options" && view === "options")
-                    || (row.value.startsWith("unit:") && view === "unit" && `unit:${activeUnitIndex}` === row.value)
-                  );
-                  return (
-                    <button
-                      key={row.value}
-                      type="button"
-                      className={`provider-services-three__step${isActive ? " is-active" : ""}${row.done ? " is-done" : ""}`}
-                      onClick={() => {
-                        if (row.value === "configuration") { setConfigStep(1); chooseView("configuration"); }
-                        else if (row.value.startsWith("unit:")) openUnit(Number(row.value.slice(5)));
-                        else chooseView(row.value);
-                      }}
-                    >
-                      <span className="provider-services-three__step-mark" aria-hidden="true">
-                        {row.icon ? <row.icon /> : row.done ? <CheckCircle2 /> : index + 1}
-                      </span>
-                      <span className="provider-services-three__step-body">
-                        <span>{row.label}</span>
-                        {row.done && <CheckCircle2 className="provider-services-three__step-done" aria-hidden="true" />}
-                      </span>
-                    </button>
-                  );
-                })}
-              </nav>
+              {homeGroups.filter((group) => !group.isReview).map((group) => (
+                <nav key={group.label} className="provider-services-three__steps" aria-label={group.label}>
+                  <p className="provider-services-three__steps-label">{group.label}</p>
+                  {group.rows.map((row) => {
+                    const isActive = !query && (
+                      (row.value === "configuration" && view === "configuration" && row.step === configStep)
+                      || (row.value === "options" && view === "options")
+                      || (row.value.startsWith("unit:") && view === "unit" && `unit:${activeUnitIndex}` === row.value)
+                    );
+                    return (
+                      <button
+                        key={`${row.value}-${row.step || 0}`}
+                        type="button"
+                        className={`provider-services-three__step${isActive ? " is-active" : ""}${row.done ? " is-done" : ""}`}
+                        onClick={() => {
+                          if (row.value === "configuration") { setConfigStep(row.step || 1); chooseView("configuration"); }
+                          else if (row.value.startsWith("unit:")) openUnit(Number(row.value.slice(5)));
+                          else chooseView(row.value);
+                        }}
+                      >
+                        <span className="provider-services-three__step-mark" aria-hidden="true">
+                          {row.icon ? <row.icon /> : <CheckCircle2 />}
+                        </span>
+                        <span className="provider-services-three__step-body">
+                          <span>{row.label}</span>
+                          {row.done && <CheckCircle2 className="provider-services-three__step-done" aria-hidden="true" />}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </nav>
+              ))}
 
               {/* Pastram si clasa nav-group: stilurile butoanelor (iconita, contor,
                   aliniere) sunt legate de ea in trei fisiere CSS. Fara ea, randurile
