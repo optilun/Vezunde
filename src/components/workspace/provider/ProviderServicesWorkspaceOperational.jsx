@@ -706,8 +706,8 @@ function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceU
             const availableParents = possibleUnits(section).filter((key) => config.activeUnits.includes(key));
             const suggestions = customSuggestions.filter((item) => item.functional_unit_key === unitKey && item.group === section.items[0]?.group);
             return (
-              <div key={section.key} className="border-t border-border/60 first:border-t-0">
-                <div className="flex flex-wrap items-center justify-between gap-2 bg-card px-4 py-2.5 sm:px-5">
+              <div key={section.key} className="pt-7 first:pt-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-1 sm:px-5">
                   <button
                     type="button"
                     onClick={() => toggleSection(section.key)}
