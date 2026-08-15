@@ -4,15 +4,16 @@ Data: 2026-08-06. Scris de Claude Sonnet dupa o sesiune lunga de reproiectare
 vizuala a tabului Servicii din workspace-ul furnizorului. Alex vrea sa continue
 cu Opus pentru urmatorul pas de design. Acest document e rezumatul complet.
 
-## Decizie deja luata: pagina separata, NU suprapunere
+## Fereastra: pagina separata sau panou suprapus? (discutat cu Opus, 2026-08-06)
 
-Am discutat cu Alex daca Servicii ar trebui sa se deschida ca panou suprapus
-(stil Setari Claude Desktop, cu X in colt) sau ca pagina separata (cum e acum).
+Vezi sectiunea dedicata mai jos ("Decizie de arhitectura"). Pe scurt:
+recomandarea lui Opus e **pagina separata, dar imbracata vizual ca panou**
+(fundal intunecat pe margini, continut in panou alb centrat, X in colt care
+duce inapoi la Locatii). Motivul nu e volumul de continut, ci ca Serviciile
+nu sunt o destinatie finala: furnizorul trimite spre aprobare, revine sa vada
+statusul, comuta intre module, vrea link direct. Toate cer URL propriu.
 
-**Decizie: ramane pagina separata.** Motiv: configurarea are 8 sectiuni si zeci
-de servicii, e o sesiune de lucru de minute, nu un reglaj rapid de comutator.
-O suprapunere fara URL propriu si fara "inapoi" real din browser ar fi o
-capcana pentru o sesiune atat de lunga.
+Pentru modulele mici (Program, Fotografie) suprapunerea reala ar avea sens.
 
 **Ce ramane valabil din Setarile Claude**: aspectul continutului — randuri
 simple fara chenar, comutatoare, spatiere generoasa, text asezat pe doua
