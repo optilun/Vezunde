@@ -370,9 +370,12 @@ function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, d
   const blockerDetail = active && prerequisite?.eligible === false
     ? prerequisite.blockers?.[0]?.message
     : "";
+  // Descrierea din catalog e textul implicit al randului (2026-08-06). Mesajele de
+  // stare (eliminare ceruta, prerechizita neindeplinita) au prioritate, pentru ca
+  // sunt informatie mai urgenta decat explicatia serviciului.
   const detail = removalRequested
     ? "La trimiterea cererii, elementul este ascuns public până la soluționare."
-    : blockerDetail || helperText;
+    : blockerDetail || helperText || getServiceDescription(item.id);
   const casVisible = active && !removalRequested && casEligible;
   return (
     <div className={`relative rounded-xl border transition ${removalRequested ? "border-amber-200 bg-amber-50/70" : active ? "border-foreground/70 bg-card shadow-sm" : "border-border bg-card/60"}`}>
