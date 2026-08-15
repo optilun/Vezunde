@@ -715,8 +715,8 @@ function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceU
                     className="flex min-w-0 flex-1 items-center gap-2 text-left"
                   >
                     <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition ${openSections.has(section.key) ? "rotate-180" : ""}`} />
-                    <h3 className="min-w-0 truncate text-xs font-bold">{section.title}</h3>
-                    <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold">{selectedCountForSection(selected, section)} din {section.items.length}</span>
+                    <h3 className="min-w-0 truncate text-[15px] font-bold tracking-tight">{section.title}</h3>
+                    <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">{selectedCountForSection(selected, section)} din {section.items.length}</span>
                   </button>
                   {openSections.has(section.key) && availableParents.length > 1 && (
                     <label className="text-[10px] font-semibold text-muted-foreground">Se realizează în
