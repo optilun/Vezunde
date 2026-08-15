@@ -135,9 +135,25 @@ face un rand de forma "Ochelari de vedere" sa arate ca "Search and reference
 chats / Allow Claude to search for relevant details in past chats."
 
 **Aceasta e o decizie de continut, nu de cod** — cineva trebuie sa scrie
-~146 propozitii scurte, care explica ce inseamna fiecare serviciu pentru un
+propozitii scurte, care explica ce inseamna fiecare serviciu pentru un
 optician. Nu poate fi inventat de AI fara sa riste enunturi gresite despre
 ce presupune un serviciu medical.
+
+### Amploarea reala (verificat de Opus, 2026-08-06)
+
+Cifra "146" e catalogul complet, dar nu e ce trebuie scris acum:
+- **136** sunt vizibile pacientilor (10 sunt marcate b2b_only)
+- **21** sunt efectiv configurate pe singurul cont real (Lunera Optic Store)
+- cel mai mare grup are 24 de servicii (technical_activities)
+
+**Plan propus**: se incepe cu cele 21 de pe Lunera — exact ce vede Alex zilnic
+in testare. Claude scrie prima varianta, Alex corecteaza intr-o sedinta scurta.
+Restul se completeaza pe grupuri, cand se ajunge la ele.
+
+**Atentie la cele ~47 medicale** (investigations, procedures_surgery,
+specialties): descrierile trebuie validate de cineva cu pregatire medicala
+inainte de publicare. "Ce presupune un OCT" scris gresit intr-un director
+medical e o problema reala, nu o scapare de redactare.
 
 ## Verificare tehnica standard, de respectat
 
