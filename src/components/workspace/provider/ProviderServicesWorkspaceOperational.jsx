@@ -40,6 +40,7 @@ import {
 } from "@/lib/serviceOperationalTaxonomy";
 import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 import { evaluateServicePrerequisites } from "../../../../shared/servicePrerequisiteEngine.js";
+import { getServiceDescription } from "../../../../shared/serviceDescriptions.js";
 
 const inputClass = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-foreground/35 focus:ring-2 focus:ring-foreground/5";
 
