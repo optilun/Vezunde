@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ArrowLeft, Clock, Info, MapPin, Users, Wrench } from "lucide-react";
+import { ArrowLeft, Clock, Info, MapPin, Users, Wrench, X } from "lucide-react";
 import { resolveProviderLocationAccess } from "@/lib/providerWorkspaceAccess";
 import ProviderServices from "./ProviderServices";
 import ProviderServicesCopyPanel from "./ProviderServicesCopyPanel";
