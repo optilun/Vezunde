@@ -73,25 +73,27 @@ export default function ProviderLocationModulePage({
       }
     >
       {moduleKey === "servicii" ? (
+        // Antet in stil fereastra de setari (2026-08-06): titlu compact, locatia ca
+        // subtitlu, X in dreapta care inchide catre lista de locatii. Inainte era un
+        // antet de pagina cu eyebrow, titlu mare si subtitlu lung - trei randuri
+        // inainte de continut. Ramane pagina cu URL propriu, doar imbracata ca panou.
         <header className="provider-location-services-header">
-          <button type="button" onClick={onBack} className="provider-location-services-header__back">
-            <ArrowLeft aria-hidden="true" /> Înapoi la locații
-          </button>
-          <div className="provider-location-services-header__content">
-            <div className="provider-location-services-header__eyebrow">
-              <span aria-hidden="true" />
-              <strong>Configurare locație</strong>
-            </div>
-            <div className="provider-location-services-header__row">
-              <div>
-                <h1>Serviciile locației</h1>
-                <p>Alege serviciile, spațiile și activitățile pe care clienții le pot găsi la această locație.</p>
-              </div>
-              <div className="provider-location-services-header__location">
+          <div className="provider-location-services-header__bar">
+            <div className="provider-location-services-header__titles">
+              <h1>Serviciile locației</h1>
+              <p>
                 <MapPin aria-hidden="true" />
-                <span><strong>{locationName}</strong>{locationPlace && <> · {locationPlace}</>}</span>
-              </div>
+                <strong>{locationName}</strong>{locationPlace && <> · {locationPlace}</>}
+              </p>
             </div>
+            <button
+              type="button"
+              onClick={onBack}
+              className="provider-location-services-header__close"
+              aria-label="Închide și revino la locații"
+            >
+              <X aria-hidden="true" />
+            </button>
           </div>
         </header>
       ) : (
