@@ -363,7 +363,7 @@ const CAS_ELIGIBLE_GROUPS = new Set([
   "children_and_prevention",
 ]);
 
-function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, disabled, helperText = "", onToggle, casActive = false, casEligible = false, onToggleCas }) {
+function ServiceRow({ item, index = 0, selected, approvedSelected, prerequisite, unitKey, disabled, helperText = "", onToggle, casActive = false, casEligible = false, onToggleCas }) {
   const active = isSelected(selected, item);
   const approved = isSelected(approvedSelected, item);
   const removalRequested = approved && !active;
