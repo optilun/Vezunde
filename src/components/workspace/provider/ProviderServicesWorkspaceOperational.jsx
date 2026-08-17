@@ -395,7 +395,7 @@ function ServiceRow({ item, index = 0, selected, approvedSelected, prerequisite,
       aria-pressed={active}
       disabled={disabled}
       onClick={() => onToggle(item, unitKey)}
-      className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-border/50 px-4 py-4 text-left transition last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-55 ${removalRequested ? "hover:bg-amber-50" : active ? "" : "hover:bg-card/60"}`}
+      className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-55 ${removalRequested ? "hover:bg-amber-50" : active ? "" : "hover:bg-card/60"}`}
     >
       <span className="min-w-0">
         <span className="block text-sm font-semibold leading-snug text-foreground">{serviceLabel(item)}</span>
