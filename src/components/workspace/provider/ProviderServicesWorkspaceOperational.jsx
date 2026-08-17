@@ -417,8 +417,8 @@ function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, d
         className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-t border-border/40 px-3.5 py-2 pl-7 text-left transition hover:bg-card disabled:cursor-not-allowed disabled:opacity-55"
       >
         <span className="text-[11px] font-semibold text-muted-foreground">Decontat prin CAS</span>
-        <span className={`relative inline-flex h-[18px] w-[32px] shrink-0 items-center rounded-full transition-colors ${casActive ? "bg-foreground" : "bg-border"}`}>
-          <span className={`absolute h-[13px] w-[13px] rounded-full bg-background shadow-sm transition-all ${casActive ? "left-[16px]" : "left-[3px]"}`} />
+        <span className={`flex h-[16px] w-[16px] shrink-0 items-center justify-center rounded-[4px] border-[1.5px] transition-colors ${casActive ? "border-foreground bg-foreground" : "border-border bg-background"}`}>
+          {casActive && <Check className="h-2.5 w-2.5 text-background" />}
         </span>
       </button>
     )}
