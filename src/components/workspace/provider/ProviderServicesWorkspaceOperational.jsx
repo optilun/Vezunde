@@ -396,12 +396,15 @@ function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, d
           {!removalRequested && <StatusBadge prerequisite={prerequisite} />}
         </span>
       </span>
-      {/* Comutator, ca in ecranele de setari (2026-08-06): starea se citeste dintr-o
-          privire, iar randul nu mai are nevoie de chenar sau bifa patrata. */}
+      {/* Bifa, nu comutator (2026-08-06, corectat dupa research): nimic din selectia
+          de servicii nu se aplica imediat - trece prin draft, apoi "Salveaza" sau
+          "Trimite spre aprobare". Comutatorul implica efect instant si induce in
+          eroare aici; bifa e controlul corect pentru selectie multipla confirmata
+          printr-o actiune separata (regula standard: NN/g, UX Collective). */}
       <span
-        className={`relative inline-flex h-[22px] w-[38px] shrink-0 items-center rounded-full transition-colors ${removalRequested ? "bg-amber-300" : active ? "bg-foreground" : "bg-border"}`}
+        className={`flex h-[19px] w-[19px] shrink-0 items-center justify-center rounded-[5px] border-[1.5px] transition-colors ${removalRequested ? "border-amber-400 bg-amber-100" : active ? "border-foreground bg-foreground" : "border-border bg-background"}`}
       >
-        <span className={`absolute h-[16px] w-[16px] rounded-full bg-background shadow-sm transition-all ${active || removalRequested ? "left-[19px]" : "left-[3px]"}`} />
+        {removalRequested ? <X className="h-3 w-3 text-amber-800" /> : active && <Check className="h-3 w-3 text-background" />}
       </span>
     </button>
     {/* CAS ca rand-comutator, la fel ca serviciul de deasupra (2026-08-06) */}
