@@ -367,6 +367,24 @@ const CAS_ELIGIBLE_GROUPS = new Set([
   "children_and_prevention",
 ]);
 
+// Culorile exacte din CategoryShowcase.jsx (homepage), pe categoriile lui, mapate pe
+// grupurile canonice de servicii (2026-08-06). Nu sunt culori noi - sunt identitatea
+// deja folosita pe homepage, adusa si in configurare, ca reper vizual pe liste lungi.
+// business_attributes ramane fara culoare - nu e o categorie de pe homepage, e un
+// atribut de afacere, de alta natura (are deja tratament propriu, cu carduri mari).
+const GROUP_TONE = {
+  optical_retail: { bg: "#efd5c5", border: "#e1bda8", text: "#8a4a28" },
+  lenses_and_measurements: { bg: "#efd5c5", border: "#e1bda8", text: "#8a4a28" },
+  optometry: { bg: "#dce5e9", border: "#c6d3da", text: "#3d5a68" },
+  contact_lenses: { bg: "#dce5e9", border: "#c6d3da", text: "#3d5a68" },
+  ophthalmology_consults: { bg: "#e8e0ea", border: "#d4c6d8", text: "#5c4566" },
+  specialties: { bg: "#e8e0ea", border: "#d4c6d8", text: "#5c4566" },
+  procedures_surgery: { bg: "#e8e0ea", border: "#d4c6d8", text: "#5c4566" },
+  children_and_prevention: { bg: "#e8e0ea", border: "#d4c6d8", text: "#5c4566" },
+  investigations: { bg: "#dfe3d2", border: "#ccd2ba", text: "#565f3c" },
+  technical_activities: { bg: "#eadcba", border: "#dac69b", text: "#6b551f" },
+};
+
 function ServiceRow({ item, index = 0, selected, approvedSelected, prerequisite, unitKey, disabled, helperText = "", onToggle, casActive = false, casEligible = false, onToggleCas }) {
   const active = isSelected(selected, item);
   const approved = isSelected(approvedSelected, item);
