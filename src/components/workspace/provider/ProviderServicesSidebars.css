@@ -99,8 +99,7 @@
   }
 
   .provider-services-three__native div:has(> button[data-service-key]) {
-    border-radius: 14px !important;
-    background: var(--services-surface) !important;
+    border-radius: 0 !important;
   }
 
   .provider-services-three__native div:has(> button[data-service-key]):hover {
