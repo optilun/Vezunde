@@ -515,13 +515,14 @@
 
 /* Randuri simple, in stilul unui ecran de setari (2026-08-06): fara chenar si fara
    fundal propriu, doar o linie fina de separare. Cardurile cu contur raman pe telefon,
-   unde ajuta la atins; pe desktop, la 28 de servicii intr-o zona, deveneau zgomot. */
+   unde ajuta la atins; pe desktop, la 28 de servicii intr-o zona, deveneau zgomot.
+   Fundalul NU e transparent fortat - JSX pune o tenta foarte discreta pe randul par,
+   ca reper vizual pe liste lungi; regula veche de aici o anula. */
 .provider-services-three__native div:has(> button[data-service-key]) {
   min-height: 0;
   border: 0 !important;
   border-radius: 0 !important;
   border-bottom: 1px solid var(--services-border-soft) !important;
-  background: transparent !important;
   box-shadow: none !important;
 }
 
