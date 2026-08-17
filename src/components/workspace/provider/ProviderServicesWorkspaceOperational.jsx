@@ -22,6 +22,7 @@ import {
   Stethoscope,
   Store,
   Users,
+  FileCheck,
   GraduationCap,
   Home,
   Truck,
