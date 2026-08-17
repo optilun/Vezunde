@@ -388,7 +388,7 @@ function ServiceRow({ item, index = 0, selected, approvedSelected, prerequisite,
   // spatiu si o linie fina intre randuri din acelasi grup. Tenta alternanta ramane, doar
   // ca zona plata, nu cutie.
   return (
-    <div className={`relative transition ${removalRequested ? "bg-amber-50/60" : active ? "bg-transparent" : rowTint}`}>
+    <div className={`relative border-b border-border/50 transition last:border-b-0 ${removalRequested ? "bg-amber-50/60" : active ? "bg-transparent" : rowTint}`}>
     <button
       type="button"
       data-service-key={item.id}
