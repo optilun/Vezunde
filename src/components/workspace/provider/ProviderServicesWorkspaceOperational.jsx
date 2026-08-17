@@ -762,6 +762,15 @@ function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceU
   );
 }
 
+// Iconita fiecarui atribut de la nivelul locatiei (2026-08-06).
+const BUSINESS_ATTRIBUTE_ICONS = {
+  home_visit_eye_care: Home,
+  workplace_vision_screening: Building2,
+  employer_glasses_reimbursement: FileCheck,
+  mobile_optical_unit: Truck,
+  school_vision_screening: GraduationCap,
+};
+
 function GlobalServiceSections({ sections, selected, approvedSelected, prerequisites, disabled, onToggleService }) {
   if (sections.length === 0) return null;
   const helperText = {
@@ -775,23 +784,30 @@ function GlobalServiceSections({ sections, selected, approvedSelected, prerequis
     <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
       <div className="border-b border-border bg-secondary/10 px-4 py-4 sm:px-5">
         <h2 className="text-sm font-bold">4. La nivelul locației</h2>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Aceste opțiuni se aplică întregii locații, nu unei singure zone.</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Aceste opțiuni se aplică întregii locații, nu unei singure zone. Informații declarate de furnizor - nu cerem documente.</p>
       </div>
-      {sections.map((section) => (
-        <div key={section.key} className="border-b border-border/60 last:border-b-0">
-          <div className="bg-card px-4 py-3 sm:px-5">
-            <h3 className="text-xs font-bold">{section.title}</h3>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{section.description}</p>
-            {/* Principiul declarativ, la nivel de sectiune (2026-08-06): se aplica tuturor
-                optiunilor de aici, nu doar uneia. Inainte era ascuns in textul de ajutor
-                al bifei CAS, care a fost eliminata. */}
-            <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-              Informații declarate de furnizor. Nu cerem documente; pacientul confirmă direct cu locația.
-            </p>
-          </div>
-          <div className="border-t border-border/50">
-            {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={prerequisites[item.id]} unitKey="" disabled={disabled} helperText={helperText[item.id] || ""} onToggle={onToggleService} />)}
-          </div>
+      {/* Carduri mari, ca la zone si dotari (2026-08-06), nu randuri inguste ca la
+          catalogul de servicii: astea nu sunt produse dintr-un catalog, sunt atribute
+          despre cum functioneaza afacerea - se citesc mai bine cu spatiu si iconita. */}
+      <div className="space-y-2 p-4 sm:p-5">
+        {sections.flatMap((section) => section.items).map((item) => {
+          const active = isSelected(selected, item);
+          const approved = isSelected(approvedSelected, item);
+          const Icon = BUSINESS_ATTRIBUTE_ICONS[item.id] || Building2;
+          return (
+            <SelectionCard
+              key={`${item.group}:${item.id}`}
+              active={active}
+              approved={approved}
+              title={serviceLabel(item)}
+              description={helperText[item.id] || ""}
+              icon={Icon}
+              disabled={disabled}
+              onClick={() => onToggleService(item, "")}
+            />
+          );
+        })}
+      </div>
         </div>
       ))}
     </section>
