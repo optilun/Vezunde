@@ -22,6 +22,9 @@ import {
   Stethoscope,
   Store,
   Users,
+  GraduationCap,
+  Home,
+  Truck,
   Wrench,
   X,
 } from "lucide-react";
