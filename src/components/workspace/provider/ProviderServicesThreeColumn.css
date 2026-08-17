@@ -540,17 +540,6 @@
   padding: 16px 4px !important;
 }
 
-/* Linia fina de despartire, ca in Setari (2026-08-06): pe invelisul din jurul
-   randului, nu pe buton - invelisul e cel care e cu adevarat ultimul din lista cand
-   nu are CAS dupa el. */
-.provider-services-three__native div:has(> button[data-service-key]) {
-  border-bottom: 1px solid var(--services-border-soft) !important;
-}
-
-.provider-services-three__native div:has(> button[data-service-key]):last-child {
-  border-bottom: 0 !important;
-}
-
 .provider-services-three__native div:has(> button[data-service-key]):hover {
   background: #fbfaf7 !important;
 }
