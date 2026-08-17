@@ -378,8 +378,12 @@ function ServiceRow({ item, index = 0, selected, approvedSelected, prerequisite,
     ? "La trimiterea cererii, elementul este ascuns public până la soluționare."
     : blockerDetail || helperText || getServiceDescription(item.id);
   const casVisible = active && !removalRequested && casEligible;
+  // Fundal alternant, ca intr-un tabel (2026-08-06): la 17-28 de randuri identice pe
+  // rand, ochiul pierde reperul. Randul par primeste un fundal foarte discret -
+  // suficient sa desparta vizual, fara sa arate ca o selectie.
+  const rowTint = index % 2 === 1 ? "bg-secondary/25" : "bg-transparent";
   return (
-    <div className={`relative rounded-xl border transition ${removalRequested ? "border-amber-200 bg-amber-50/70" : active ? "border-foreground/70 bg-card shadow-sm" : "border-border bg-card/60"}`}>
+    <div className={`relative rounded-xl border transition ${removalRequested ? "border-amber-200 bg-amber-50/70" : active ? "border-foreground/70 bg-card shadow-sm" : `border-border ${rowTint}`}`}>
     <button
       type="button"
       data-service-key={item.id}
