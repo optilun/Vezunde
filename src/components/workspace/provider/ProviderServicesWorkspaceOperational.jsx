@@ -808,8 +808,6 @@ function GlobalServiceSections({ sections, selected, approvedSelected, prerequis
           );
         })}
       </div>
-        </div>
-      ))}
     </section>
   );
 }
