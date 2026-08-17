@@ -1414,7 +1414,6 @@
 
 .provider-services-three__native div:has(> button[data-service-key]) {
   border-radius: 0 !important;
-  background: transparent !important;
 }
 
 .provider-services-three__native div:has(> button[data-service-key]):hover {
