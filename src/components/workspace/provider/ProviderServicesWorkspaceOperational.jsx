@@ -784,7 +784,7 @@ function GlobalServiceSections({ sections, selected, approvedSelected, prerequis
     <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
       <div className="border-b border-border bg-secondary/10 px-4 py-4 sm:px-5">
         <h2 className="text-sm font-bold">4. La nivelul locației</h2>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Aceste opțiuni se aplică întregii locații, nu unei singure zone. Informații declarate de furnizor - nu cerem documente.</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Aceste opțiuni se aplică întregii locații, nu unei singure zone. Nu cerem documente - informațiile sunt declarate de furnizor.</p>
       </div>
       {/* Carduri mari, ca la zone si dotari (2026-08-06), nu randuri inguste ca la
           catalogul de servicii: astea nu sunt produse dintr-un catalog, sunt atribute
