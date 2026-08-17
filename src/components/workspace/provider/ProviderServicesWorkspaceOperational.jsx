@@ -382,8 +382,13 @@ function ServiceRow({ item, index = 0, selected, approvedSelected, prerequisite,
   // rand, ochiul pierde reperul. Randul par primeste un fundal foarte discret -
   // suficient sa desparta vizual, fara sa arate ca o selectie.
   const rowTint = index % 2 === 1 ? "bg-secondary/25" : "bg-transparent";
+  // Fara chenar sau colturi rotunjite pe rand (2026-08-06): invelisul de mai jos exista
+  // doar ca sa poata gazdui si butonul CAS sub serviciu, dar chenarul propriu il facea
+  // sa arate ca o cutie separata - opusul modelului Settings, unde nu exista cutii, doar
+  // spatiu si o linie fina intre randuri din acelasi grup. Tenta alternanta ramane, doar
+  // ca zona plata, nu cutie.
   return (
-    <div className={`relative rounded-xl border transition ${removalRequested ? "border-amber-200 bg-amber-50/70" : active ? "border-foreground/70 bg-card shadow-sm" : `border-border ${rowTint}`}`}>
+    <div className={`relative transition ${removalRequested ? "bg-amber-50/60" : active ? "bg-transparent" : rowTint}`}>
     <button
       type="button"
       data-service-key={item.id}
