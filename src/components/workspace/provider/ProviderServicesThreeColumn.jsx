@@ -65,7 +65,6 @@ const INITIAL_SNAPSHOT = {
   unitCount: 0,
   capabilityCount: 0,
   hasCapabilitySection: false,
-  hasCareSettingSection: false,
   issueCount: 0,
   issueServiceKeys: [],
   blockers: [],
