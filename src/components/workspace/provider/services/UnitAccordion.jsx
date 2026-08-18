@@ -98,12 +98,32 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
             const activeUnit = resolveSectionUnit(section, selected, serviceUnitMap, [unitKey]);
             const availableParents = possibleUnits(section).filter((key) => config.activeUnits.includes(key));
             const suggestions = customSuggestions.filter((item) => item.functional_unit_key === unitKey && item.group === section.items[0]?.group);
+            // Comutator inline (2026-08-18): sectiunile cu o capabilitate proprie, care NU
+            // e deja tratata la nivel de zona mai sus, primesc un comutator chiar aici -
+            // fostul card din "Dotari si activitati", mutat langa ce controleaza efectiv.
+            // Deduplicat: doua sectiuni cu aceeasi capabilitate (ex. cele doua sectiuni de
+            // lentile de contact profesionale) arata comutatorul o singura data.
+            const sectionCapabilityKey = section.capabilityKey && !zoneCapabilityKeys.includes(section.capabilityKey) && !inlineCapabilityRendered.has(section.capabilityKey)
+              ? section.capabilityKey
+              : null;
+            if (sectionCapabilityKey) inlineCapabilityRendered.add(sectionCapabilityKey);
             return (
               <div key={section.key} className="pt-4 first:pt-2">
                 {activeSection && (
                   <button type="button" onClick={() => setActiveSectionKey("")} className="mb-1 flex items-center gap-1.5 px-4 py-1 text-[12px] font-bold text-muted-foreground hover:text-foreground sm:px-5">
                     <ChevronLeft aria-hidden="true" className="h-4 w-4" /> Toate grupurile
                   </button>
+                )}
+                {sectionCapabilityKey && (
+                  <div className="px-4 pb-3 sm:px-5">
+                    <CapabilityToggle
+                      capabilityKey={sectionCapabilityKey}
+                      activeRow={findCapabilityRow(sectionCapabilityKey)}
+                      approved={isCapabilityApproved(sectionCapabilityKey)}
+                      disabled={disabled}
+                      onToggle={() => toggleZoneCapability(sectionCapabilityKey)}
+                    />
+                  </div>
                 )}
                 <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-1 sm:px-5">
                   <div className="flex min-w-0 flex-1 items-center gap-2.5">
