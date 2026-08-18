@@ -572,12 +572,22 @@
   padding: 0 !important;
 }
 
-.provider-services-three__native [data-services-panel="options"] > div:first-child {
+/* Excludem CareSettingPicker din regulile de mai jos (2026-08-18): acestea presupun UN
+   SINGUR container cu mai multe grupuri inauntru (structura veche). Acum sunt doua
+   sectiuni separate cu acelasi data-services-panel="options" - CareSettingPicker si
+   GlobalServiceSections - iar regulile pozitionale ("primul copil", "al doilea copil")
+   loveau accidental noul titlu "Tipul activitatii", fortand padding gandit pentru alta
+   structura si producand spatiu in plus. */
+.provider-services-three__native .services-care-setting {
+  padding: 16px !important;
+}
+
+.provider-services-three__native [data-services-panel="options"]:not(.services-care-setting) > div:first-child {
   padding: 19px 22px !important;
   background: var(--services-surface) !important;
 }
 
-.provider-services-three__native [data-services-panel="options"] > div:not(:first-child) > div:first-child {
+.provider-services-three__native [data-services-panel="options"]:not(.services-care-setting) > div:not(:first-child) > div:first-child {
   padding: 14px 22px !important;
 }
 
