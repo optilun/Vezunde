@@ -246,7 +246,11 @@ export const PROVIDER_SERVICE_SECTIONS = [
   },
   {
     key: 'low_vision', unitKey: 'optometry_cabinet', fallbackUnitKeys: ['ophthalmology_office'], capabilityKey: 'low_vision_rehabilitation',
-    area: 'medical_specialties', kind: 'rehabilitation_service', title: 'Vedere slabă și reabilitare vizuală',
+    // Titlul sectiunii era identic, cuvant cu cuvant, cu eticheta singurului serviciu
+    // din ea (2026-08-18) - pe ecran aparea acelasi text de doua ori, unul sub altul.
+    // Eticheta serviciului nu s-a schimbat (e refolosita si in lista de specializari
+    // medicale, unde e corecta); doar titlul sectiunii a devenit distinct.
+    area: 'medical_specialties', kind: 'rehabilitation_service', title: 'Reabilitare vizuală',
     publicNeedKey: 'low_vision', publicLabel: 'Vedere slabă și reabilitare',
     description: 'Evaluare funcțională și recomandări pentru persoanele cu vedere slabă.',
     searchTerms: ['vedere slaba', 'low vision', 'reabilitare vizuala', 'ajutoare vedere'],
