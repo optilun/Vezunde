@@ -182,7 +182,9 @@ export const PROVIDER_SERVICE_SECTIONS = [
   },
   {
     key: 'glaucoma', unitKey: 'ophthalmology_office', capabilityKey: 'ophthalmology_specialties',
-    area: 'medical_specialties', kind: 'specialty', title: 'Glaucom',
+    // Titlul distinct de eticheta singurului serviciu (2026-08-18) - acelasi tipar de
+    // bug ca la "low_vision".
+    area: 'medical_specialties', kind: 'specialty', title: 'Monitorizare glaucom',
     publicNeedKey: 'glaucoma', publicLabel: 'Glaucom',
     description: 'Consultație și monitorizare specializată pentru glaucom.',
     searchTerms: ['glaucom', 'presiune oculara', 'tensiune ochi'],
