@@ -600,12 +600,10 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
               Iar "Pregatita pentru trimitere" aparea si cu zero servicii alese, ceea ce
               spunea exact invers de ce arata contorul din stanga. */}
           <div className="provider-services-three__meta">
-            {snapshot.careSetting && view === "configuration" && configStep === 3 && (
-              <span className="provider-services-three__meta-item">
-                <small>Tipul activității</small>
-                <strong>{snapshot.careSetting}</strong>
-              </span>
-            )}
+            {/* Meta-informatia despre "Tipul activitatii" a fost eliminata (2026-08-18):
+                pasul 3 nu mai exista, iar acest camp aparea doar in acel pas - nu se mai
+                activa niciodata. Tipul activitatii se vede acum in ecranul La nivelul
+                locatiei, unde s-a mutat. */}
             {snapshot.configurationComplete && !snapshot.dirty && snapshot.selectedCount > 0 && (
               <span className="provider-services-three__meta-badge is-ready">
                 <CheckCircle2 aria-hidden="true" /> Pregătită pentru trimitere
