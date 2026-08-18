@@ -128,7 +128,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   // Cererea de deschidere a unei zone: "indexZona#nonce". Nonce-ul permite redeschiderea
   // aceleiasi zone dupa ce utilizatorul a pliat-o din continut.
   const [unitOpenRequest, setUnitOpenRequest] = useState("");
-  const CONFIG_STEP_TITLES = { 1: "Spațiile existente", 2: "Dotări și activități", 3: "Tipul activității" };
+  const CONFIG_STEP_TITLES = { 1: "Spațiile existente", 2: "Dotări și activități" };
 
   // Plasa de siguranta: daca snapshotul primit e identic pe valori cu cel curent, nu
   // mai declansam o randare. Fara asta, orice valoare derivata instabila din hook
