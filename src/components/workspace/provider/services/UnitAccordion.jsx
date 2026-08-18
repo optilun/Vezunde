@@ -127,13 +127,12 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
                 )}
                 <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-1 sm:px-5">
                   <div className="flex min-w-0 flex-1 items-center gap-2.5">
-                    {/* Bulina de culoare, dupa identitatea de pe homepage. */}
+                    {/* Simbolul VIASEE, colorat pe categorie (2026-08-18, la cererea lui
+                        Alex) - aceeasi forma ca logo-ul de pe homepage (ViaseeBrand.jsx),
+                        dar cu fill solid in loc de gradient negru, cate o culoare pe
+                        categorie. Inlocuieste bulina simpla folosita pana acum. */}
                     {GROUP_TONE[section.group] && (
-                      <span
-                        aria-hidden="true"
-                        className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ background: GROUP_TONE[section.group].bg, border: `1.5px solid ${GROUP_TONE[section.group].border}` }}
-                      />
+                      <CategorySymbol color={GROUP_TONE[section.group].border} className="h-3 w-3 shrink-0" />
                     )}
                     <h3 className="min-w-0 truncate text-[15px] font-bold tracking-tight">{section.title}</h3>
                     <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">{selectedCountForSection(selected, section)} din {section.items.length}</span>
