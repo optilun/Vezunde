@@ -428,7 +428,9 @@ function ServiceRow({ item, index = 0, selected, approvedSelected, prerequisite,
   // Fundal alternant, ca intr-un tabel (2026-08-06): la 17-28 de randuri identice pe
   // rand, ochiul pierde reperul. Randul par primeste un fundal foarte discret -
   // suficient sa desparta vizual, fara sa arate ca o selectie.
-  const rowTint = index % 2 === 1 ? "bg-secondary/25" : "bg-transparent";
+  // Fara fundal alternant (2026-08-06): briefingul cere separare DOAR prin linii fine,
+  // ca in referinta. Tenta pe randul par crea un aspect de tabel, nu de panou.
+  const rowTint = "bg-transparent";
   // Fara chenar sau colturi rotunjite pe rand (2026-08-06): invelisul de mai jos exista
   // doar ca sa poata gazdui si butonul CAS sub serviciu, dar chenarul propriu il facea
   // sa arate ca o cutie separata - opusul modelului Settings, unde nu exista cutii, doar
