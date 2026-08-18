@@ -1,8 +1,9 @@
 // Faza 2: zona (unit) cu grupurile ei de servicii, extrasa 1:1.
 import React, { useState } from "react";
-import { ChevronDown, Info } from "lucide-react";
+import { ChevronDown, ChevronLeft, Info } from "lucide-react";
 import { getFunctionalUnitDefinition } from "@/lib/providerLocationFunctionalUnits";
 import ServiceRow from "./ServiceRow";
+import SectionListRow from "./SectionListRow";
 import CustomSuggestion from "./CustomSuggestion";
 import UnitResourcesPanel from "./UnitResourcesPanel";
 import { isSelected, possibleUnits, resolveSectionUnit, selectedCountForSection } from "./servicesConfigModel";
@@ -13,16 +14,11 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
   const Icon = UNIT_ICONS[unitKey] || UNIT_FALLBACK_ICON;
   const selectedCount = sections.reduce((sum, section) => sum + selectedCountForSection(selected, section), 0);
   const total = sections.reduce((sum, section) => sum + section.items.length, 0);
-  // Pornesc DESCHISE doar sectiunile care au deja selectii: utilizatorul vede imediat
-  // ce si-a configurat, iar filtrele din invelis scaneaza randurile din DOM.
-  const [openSections, setOpenSections] = useState(() => new Set(
-    sections.filter((section) => selectedCountForSection(selected, section) > 0).map((section) => section.key),
-  ));
-  const toggleSection = (sectionKey) => setOpenSections((current) => {
-    const next = new Set(current);
-    if (next.has(sectionKey)) next.delete(sectionKey); else next.add(sectionKey);
-    return next;
-  });
+  // Drill-down (2026-08-18): in loc de toate grupurile deschise simultan intr-o lista
+  // foarte lunga, zona arata randurile grupurilor; apesi unul si intri doar in el.
+  // Cu un filtru activ (selectate / observatii) randam plat, ca sa se vada tot ce trece
+  // filtrul fara sa fie nevoie sa intri in fiecare grup.
+  const [activeSectionKey, setActiveSectionKey] = useState("");
   // Aceeasi regula de vizibilitate ca in ServiceRow. Cand un filtru e activ, grupurile
   // fara niciun rand vizibil nu se mai randeaza - inainte rămâneau antetele goale.
   const rowVisible = (item) => {
@@ -31,9 +27,15 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
     if (filter === "selected") return active;
     return active && prerequisites[item.id]?.eligible === false;
   };
-  const visibleSections = filter === "all"
+  const allVisibleSections = filter === "all"
     ? sections
     : sections.filter((section) => section.items.some(rowVisible));
+  const activeSection = filter === "all"
+    ? allVisibleSections.find((section) => section.key === activeSectionKey) || null
+    : null;
+  // Lista de grupuri se arata doar cand nu esti intr-un grup si nu e activ niciun filtru.
+  const inGroupList = filter === "all" && !activeSection;
+  const visibleSections = activeSection ? [activeSection] : allVisibleSections;
   return (
     <section {...dataAttrs} className={`overflow-hidden rounded-[22px] border bg-card transition ${open ? "border-foreground/20 shadow-sm" : "border-border"}`}>
       <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-secondary/20 sm:px-5">
@@ -46,19 +48,31 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
       </button>
       {open && (
         <div className="border-t border-border/70">
-          {visibleSections.map((section) => {
+          {inGroupList && (
+            <div className="divide-y divide-border/50">
+              {visibleSections.map((section) => (
+                <SectionListRow
+                  key={section.key}
+                  section={section}
+                  selectedCount={selectedCountForSection(selected, section)}
+                  onOpen={() => setActiveSectionKey(section.key)}
+                />
+              ))}
+            </div>
+          )}
+          {(inGroupList ? [] : visibleSections).map((section) => {
             const activeUnit = resolveSectionUnit(section, selected, serviceUnitMap, [unitKey]);
             const availableParents = possibleUnits(section).filter((key) => config.activeUnits.includes(key));
             const suggestions = customSuggestions.filter((item) => item.functional_unit_key === unitKey && item.group === section.items[0]?.group);
             return (
-              <div key={section.key} className="pt-7 first:pt-2">
+              <div key={section.key} className="pt-4 first:pt-2">
+                {activeSection && (
+                  <button type="button" onClick={() => setActiveSectionKey("")} className="mb-1 flex items-center gap-1.5 px-4 py-1 text-[12px] font-bold text-muted-foreground hover:text-foreground sm:px-5">
+                    <ChevronLeft aria-hidden="true" className="h-4 w-4" /> Toate grupurile
+                  </button>
+                )}
                 <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-1 sm:px-5">
-                  <button
-                    type="button"
-                    onClick={() => toggleSection(section.key)}
-                    aria-expanded={openSections.has(section.key)}
-                    className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
-                  >
+                  <div className="flex min-w-0 flex-1 items-center gap-2.5">
                     {/* Bulina de culoare, dupa identitatea de pe homepage. */}
                     {GROUP_TONE[section.group] && (
                       <span
@@ -67,11 +81,10 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
                         style={{ background: GROUP_TONE[section.group].bg, border: `1.5px solid ${GROUP_TONE[section.group].border}` }}
                       />
                     )}
-                    <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition ${openSections.has(section.key) ? "rotate-180" : ""}`} />
                     <h3 className="min-w-0 truncate text-[15px] font-bold tracking-tight">{section.title}</h3>
                     <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">{selectedCountForSection(selected, section)} din {section.items.length}</span>
-                  </button>
-                  {openSections.has(section.key) && availableParents.length > 1 && (
+                  </div>
+                  {availableParents.length > 1 && (
                     <label className="text-[10px] font-semibold text-muted-foreground">Se realizează în
                       <select disabled={disabled} value={activeUnit} onChange={(event) => onChangeSectionUnit(section, event.target.value)} className="ml-2 rounded-lg border border-border bg-background px-2 py-1.5 text-[11px] font-semibold text-foreground">
                         {availableParents.map((key) => <option key={key} value={key}>{getFunctionalUnitDefinition(key)?.shortTitle || key}</option>)}
@@ -79,20 +92,16 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
                     </label>
                   )}
                 </div>
-                {openSections.has(section.key) && (
-                  <>
-                    {section.description && <p className="px-4 pb-3 text-[11px] leading-relaxed text-muted-foreground sm:px-5">{section.description}</p>}
-                    {section.note && <div className="services-note mx-4 mb-3 flex gap-2 rounded-xl border border-border bg-secondary/25 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground sm:mx-5"><Info className="mt-0.5 h-4 w-4 shrink-0" /> {section.note}</div>}
-                    <div className="border-t border-border/50">
-                      {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={prerequisites[item.id]} unitKey={activeUnit} disabled={disabled} onToggle={onToggleService} casEligible={CAS_ELIGIBLE_GROUPS.has(item.group)} casActive={casServiceKeys.includes(item.id)} onToggleCas={onToggleCas} filter={filter} />)}
-                    </div>
-                    {filter === "all" && <CustomSuggestion unitKey={unitKey} section={section} disabled={disabled} items={suggestions} onAdd={onAddSuggestion} onRemove={onRemoveSuggestion} />}
-                  </>
-                )}
+                {section.description && <p className="px-4 pb-3 text-[11px] leading-relaxed text-muted-foreground sm:px-5">{section.description}</p>}
+                {section.note && <div className="services-note mx-4 mb-3 flex gap-2 rounded-xl border border-border bg-secondary/25 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground sm:mx-5"><Info className="mt-0.5 h-4 w-4 shrink-0" /> {section.note}</div>}
+                <div className="border-t border-border/50">
+                  {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={prerequisites[item.id]} unitKey={activeUnit} disabled={disabled} onToggle={onToggleService} casEligible={CAS_ELIGIBLE_GROUPS.has(item.group)} casActive={casServiceKeys.includes(item.id)} onToggleCas={onToggleCas} filter={filter} />)}
+                </div>
+                {filter === "all" && <CustomSuggestion unitKey={unitKey} section={section} disabled={disabled} items={suggestions} onAdd={onAddSuggestion} onRemove={onRemoveSuggestion} />}
               </div>
             );
           })}
-          {filter === "all" && <UnitResourcesPanel unitKey={unitKey} config={config} disabled={disabled} links={resourceLinks} approvedLinks={approvedResourceLinks} onToggle={onToggleResource} />}
+          {filter === "all" && inGroupList && <UnitResourcesPanel unitKey={unitKey} config={config} disabled={disabled} links={resourceLinks} approvedLinks={approvedResourceLinks} onToggle={onToggleResource} />}
         </div>
       )}
     </section>
