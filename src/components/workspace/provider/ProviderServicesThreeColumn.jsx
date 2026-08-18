@@ -320,14 +320,12 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
         done: unit.selected > 0,
       })),
     }] : []),
-    {
-      label: "Verificare",
-      isReview: true,
-      rows: [
-        { value: "selected", label: "Oferta selectată", meta: String(snapshot.selectedCount), done: false },
-        { value: "issues", label: "Observații de catalog", meta: String(snapshot.issueCount), done: false },
-      ],
-    },
+    // Grupul "Verificare" de aici a fost ELIMINAT (2026-08-19, gasit la audit): avea
+    // doua randuri hardcodate ("Oferta selectata", "Observatii de catalog") care nu
+    // erau randate NICIODATA - group.rows nu era citit nicaieri (isReview:true il
+    // excludea din ambele locuri unde s-ar fi folosit). Textul real, cel care chiar
+    // apare in sidebar, traieste in <nav aria-label="Verificare"> mai jos (3 randuri:
+    // Oferta completa / Oferta selectata / Observatii - fara "de catalog").
   ];
   const homeProgressRows = homeGroups.flatMap((group) => (group.isReview ? [] : group.rows));
   const homeDoneCount = homeProgressRows.filter((row) => row.done).length;
