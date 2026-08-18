@@ -408,7 +408,7 @@
   margin-top: 0;
 }
 
-.provider-services-three__native [data-services-panel="configuration"] .services-card:last-child {
+.provider-services-three__native [data-services-panel="configuration"] .services-card:last-child:not(.services-card--square) {
   border-bottom: 0 !important;
 }
 
