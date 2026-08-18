@@ -285,7 +285,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
         {
           value: "configuration",
           step: 1,
-          label: "Zonele existente",
+          label: "Spațiile existente",
           hint: "Ce spații ai la această locație: magazin, cabinet, atelier.",
           icon: Building2,
           meta: snapshot.unitCount > 0
