@@ -12,6 +12,14 @@ export default function CareSettingPicker({ options, approvedValue, value, disab
     <section {...dataAttrs} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       {value !== approvedValue && <div className="mb-2 flex"><ChangeBadge modified /></div>}
       {!hasVisibleSelection && <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">Alege o opțiune pentru a continua.</div>}
+      {/* Titlu vizibil, adaugat (2026-08-18): dropdown-ul avea doar aria-label "Tipul
+          activitatii", invizibil pentru cine vede ecranul - ramasese eticheta generica
+          "Varianta selectata", fara sa spuna ce anume selectezi. Stil aliniat cu
+          celelalte carduri de pe acest ecran (titlu bold + descriere). */}
+      <div className="mb-3">
+        <span className="block text-sm font-bold leading-snug text-foreground">Tipul activității</span>
+        <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">Descrie activitatea locației, fără să schimbe tipul organizației.</span>
+      </div>
       {/* Lista derulanta, nu butoane-pastila: o singura alegere dintr-un set numit. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-[13px] font-semibold text-foreground">Varianta selectată</span>
