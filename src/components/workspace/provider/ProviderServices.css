@@ -395,6 +395,19 @@
   border-color: hsl(var(--foreground) / 0.7) !important;
 }
 
+/* Varianta patrata (grila de spatii, 2026-08-18) are nevoie de inaltime si padding
+   diferite fata de randul lung obisnuit - regula de mai sus fortase 58px si padding
+   de rand pe orice .services-card, ceea ce ar fi anulat forma patrata. Sursa vine dupa
+   in fisier, deci castiga la egalitate de specificitate. */
+.provider-services-three__native [data-services-panel="configuration"] .services-card--square {
+  min-height: 132px !important;
+  padding: 14px !important;
+}
+
+.services-unit-group-label:first-child {
+  margin-top: 0;
+}
+
 .provider-services-three__native [data-services-panel="configuration"] .services-card:last-child {
   border-bottom: 0 !important;
 }
