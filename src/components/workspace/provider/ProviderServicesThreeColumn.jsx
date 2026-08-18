@@ -661,39 +661,11 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
             Rezultat: doua coloane in loc de trei, continutul primeste tot spatiul. */}
       </div>
 
-      {showActionBar && (
-        <div className="provider-services-three__actions" data-tone={snapshot.actionTone} role="region" aria-label="Acțiuni servicii">
-          <div>
-            <strong>{snapshot.saving ? "Se salvează..." : snapshot.actionStatus || "Configurația serviciilor"}</strong>
-            {snapshot.actionMessage && (
-              <span role={snapshot.actionTone === "error" ? "alert" : "status"} aria-live="polite">{snapshot.actionMessage}</span>
-            )}
-          </div>
-          <div className="provider-services-three__action-buttons">
-            {snapshot.hasSave && (
-              <button type="button" disabled={!snapshot.canSave} onClick={() => snapshot.onSave?.()}>
-                <Save aria-hidden="true" />
-                <span className="provider-services-three__action-label-desktop">Salvează draftul</span>
-                <span className="provider-services-three__action-label-mobile">Salvează</span>
-              </button>
-            )}
-            {snapshot.hasSubmit && (
-              <button type="button" className="is-primary" disabled={!snapshot.canSubmit} onClick={() => snapshot.onSubmit?.()}>
-                <Send aria-hidden="true" />
-                <span className="provider-services-three__action-label-desktop">Trimite spre aprobare</span>
-                <span className="provider-services-three__action-label-mobile">Trimite</span>
-              </button>
-            )}
-            {snapshot.hasWithdraw && (
-              <button type="button" disabled={!snapshot.canWithdraw} onClick={() => snapshot.onWithdraw?.()}>
-                <X aria-hidden="true" />
-                <span className="provider-services-three__action-label-desktop">Retrage cererea</span>
-                <span className="provider-services-three__action-label-mobile">Retrage</span>
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Bara de actiuni duplicata ELIMINATA (2026-08-18, audit dupa restructurarea
+          Fazei 2). ServicesActionBar.jsx, folosita in interiorul componentei
+          operationale, acopera 1:1 acelasi comportament (Salveaza/Trimite/Retrage).
+          Aici, hasSave era mereu true - deci amandoua barele se afisau simultan,
+          de fiecare data. Planul cerea explicit "O singura bara". */}
     </div>
   );
 }
