@@ -2,9 +2,9 @@
 import React from "react";
 import { Save, Send, X } from "lucide-react";
 
-export default function ServicesActionBar({ pendingReview, dirty, draft, saving, editable, persistenceMode, configurationComplete, blockerMessage, message, onSave, onSubmit, onWithdraw }) {
+export default function ServicesActionBar({ pendingReview, dirty, draft, saving, editable, persistenceMode, configurationComplete, blockerMessage, message, onSave, onSubmit, onWithdraw, dataAttrs = {} }) {
   return (
-    <div className="sticky bottom-0 z-20 -mx-1 rounded-[22px] border border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/90">
+    <div {...dataAttrs} className="sticky bottom-0 z-20 -mx-1 rounded-[22px] border border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/90">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className={`text-xs ${dirty ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{pendingReview ? "Modificări trimise spre aprobare" : dirty ? "Ai modificări nesalvate" : draft ? "Draft salvat" : "Nu există modificări nesalvate"}</div>
         <div className="flex flex-wrap gap-2">

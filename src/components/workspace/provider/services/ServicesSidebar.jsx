@@ -5,7 +5,7 @@ import { CARE_SETTINGS, getCapabilityDefinition, getFunctionalUnitDefinition } f
 import { selectedCountForSection } from "./servicesConfigModel";
 import { UNIT_FALLBACK_ICON, UNIT_ICONS } from "./servicesUiTokens";
 
-export default function ServicesSidebar({ activeUnits, capabilities, selectedCount, selectedByUnit, sections, selected, b2b, careSetting, allowedCareSettings, resourceLinks, unitOrder }) {
+export default function ServicesSidebar({ activeUnits, capabilities, selectedCount, selectedByUnit, sections, selected, b2b, careSetting, allowedCareSettings, resourceLinks, unitOrder, dataAttrs = {} }) {
   const publicRows = sections
     .map((section) => ({ ...section, count: selectedCountForSection(selected, section) }))
     .filter((section) => section.count > 0 && section.publicLabel);
@@ -32,7 +32,7 @@ export default function ServicesSidebar({ activeUnits, capabilities, selectedCou
   ];
 
   return (
-    <aside className="rounded-2xl border border-border bg-card p-4 shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
+    <aside {...dataAttrs} className="rounded-2xl border border-border bg-card p-4 shadow-sm xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
       <div className="mb-4 flex items-center gap-2">
         <Eye className="h-4 w-4" />
         <h2 className="text-sm font-bold">Progres configurare</h2>

@@ -42,7 +42,7 @@ import {
   unitRow,
 } from "./servicesConfigModel";
 
-export function useProviderServicesConfig({ locationId, location, onWorkspaceSnapshot, query: externalQuery, onQueryChange }) {
+export function useProviderServicesConfig({ locationId, location, onWorkspaceSnapshot, query: externalQuery, onQueryChange, requestedOpenUnitKey }) {
   // Actiunile (save/submit/withdraw) sunt expuse in sus prin snapshot, ca invelisul
   // sa le poata apela direct. Ref-ul tine mereu ultimele handlere; functiile expuse
   // raman stabile ca identitate, altfel snapshot-ul s-ar schimba la fiecare randare.
@@ -420,6 +420,14 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
     setQuery("");
     load();
   }, [locationId]);
+
+  // Faza 3: invelisul cere deschiderea unei zone printr-o proprietate. Inainte apasa
+  // programatic butonul de antet gasit in DOM (`header?.click()`).
+  useEffect(() => {
+    // Formatul e "cheieZona#nonce": nonce-ul permite redeschiderea aceleiasi zone.
+    const key = String(requestedOpenUnitKey || "").split("#")[0];
+    if (key) setOpenUnit(key);
+  }, [requestedOpenUnitKey]);
 
   const servicesForUnit = (unitKey) => selectedServiceKeys(selected).filter((serviceKey) => {
     const context = getServiceOperationalContext(serviceKey);

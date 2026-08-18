@@ -5,7 +5,7 @@ import { getFunctionalUnitDefinition } from "@/lib/providerLocationFunctionalUni
 import SelectionCard from "./SelectionCard";
 import { UNIT_FALLBACK_ICON, UNIT_ICONS } from "./servicesUiTokens";
 
-export default function UnitPicker({ units, approvedUnits, activeUnits, selectedByUnit, primaryUnits, disabled, onToggle }) {
+export default function UnitPicker({ units, approvedUnits, activeUnits, selectedByUnit, primaryUnits, disabled, onToggle, dataAttrs = {} }) {
   const [showOptional, setShowOptional] = useState(false);
   const hiddenUnits = units.filter((unitKey) => !primaryUnits.includes(unitKey) && !activeUnits.includes(unitKey) && !approvedUnits.includes(unitKey));
   const visibleUnits = showOptional
@@ -13,7 +13,7 @@ export default function UnitPicker({ units, approvedUnits, activeUnits, selected
     : units.filter((unitKey) => primaryUnits.includes(unitKey) || activeUnits.includes(unitKey) || approvedUnits.includes(unitKey));
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <section {...dataAttrs} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div>
         <h2 className="text-sm font-bold">1. Zonele existente</h2>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Selectează tipurile de zone existente în locație. Nu este necesar să introduci separat fiecare cameră.</p>

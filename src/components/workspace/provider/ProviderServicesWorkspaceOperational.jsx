@@ -30,6 +30,22 @@ export default function ProviderServicesWorkspaceOperational(props) {
     confirmDependencyRemoval, cancelDependencyRemoval, save, submit, withdraw,
   } = useProviderServicesConfig(props);
 
+  // Faza 3 din docs/plan-refactor-servicii-2026-08-18.md: sectiunea activa, filtrul si
+  // zona deschisa vin acum ca proprietati de la invelis. Atributele data-* sunt scrise
+  // declarativ aici, nu de un MutationObserver care citea titlurile din DOM.
+  const nav = props.navigation || {};
+  const navView = nav.view || "all";
+  const navFilter = nav.filter || "all";
+  const navConfigStep = nav.configStep || 1;
+  const substep = (step) => ({
+    "data-services-panel": "configuration",
+    "data-services-substep": String(step),
+    "data-services-substep-visible": navConfigStep === step ? "true" : "false",
+  });
+  const unitVisible = (index) => (
+    navView === "unit" ? index === (nav.activeUnitIndex || 0) : true
+  );
+
   if (loading) return <div className="rounded-[24px] border border-border bg-card px-5 py-8 text-sm text-muted-foreground">Se încarcă structura profesională a locației...</div>;
   if (error && !config) return <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-5 text-sm text-amber-950"><p>{error}</p><button type="button" onClick={load} className="mt-3 rounded-full border border-amber-300 bg-white px-4 py-2 text-xs font-semibold">Încearcă din nou</button></div>;
 
@@ -48,17 +64,19 @@ export default function ProviderServicesWorkspaceOperational(props) {
       {config?.can_edit_services === false && !pendingReview && <div className="rounded-2xl border border-border bg-secondary/30 px-4 py-3 text-xs text-muted-foreground">Ai acces de vizualizare. Modificarea serviciilor publice este disponibilă ownerului și managerului locației.</div>}
       {error && config && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">{error}</div>}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)] xl:items-start">
-        <div className="space-y-4">
-          {!query && <UnitPicker units={selectableUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={!editable} onToggle={toggleUnit} />}
-          {!query && <CapabilityPicker capabilityKeys={selectableCapabilities} approvedCapabilities={approvedCapabilities} capabilities={capabilities} activeUnits={activeUnits} primaryCapabilities={primaryCapabilities} disabled={!editable} onToggle={toggleCapability} />}
-          {!query && <CareSettingPicker options={operationalLayout.careSettings || []} approvedValue={approvedCareSetting} value={careSetting} disabled={!editable} onChange={setCareSetting} />}
-          {!query && <GlobalServiceSections sections={globalSections} selected={selected} approvedSelected={approvedSelected} disabled={!editable} onToggleService={toggleService} />}
+      <div data-services-role="workspace" className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)] xl:items-start">
+        <div data-services-role="content" className="space-y-4">
+          {!query && <UnitPicker dataAttrs={substep(1)} units={selectableUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={!editable} onToggle={toggleUnit} />}
+          {!query && <CapabilityPicker dataAttrs={substep(2)} capabilityKeys={selectableCapabilities} approvedCapabilities={approvedCapabilities} capabilities={capabilities} activeUnits={activeUnits} primaryCapabilities={primaryCapabilities} disabled={!editable} onToggle={toggleCapability} />}
+          {!query && <CareSettingPicker dataAttrs={substep(3)} options={operationalLayout.careSettings || []} approvedValue={approvedCareSetting} value={careSetting} disabled={!editable} onChange={setCareSetting} />}
+          {!query && <GlobalServiceSections dataAttrs={{ "data-services-panel": "options" }} sections={globalSections} selected={selected} approvedSelected={approvedSelected} disabled={!editable} onToggleService={toggleService} />}
 
-          {!query && <ServiceCatalogIntro activeUnits={activeUnits} selectedCount={selectedCount} />}
+          {!query && <ServiceCatalogIntro dataAttrs={{ "data-services-role": "catalog-intro" }} activeUnits={activeUnits} selectedCount={selectedCount} />}
 
           {query ? (
             <ServicesSearchResults
+              dataAttrs={{ "data-services-panel": "search-results" }}
+              filter={navFilter}
               query={query}
               results={searchResults}
               selected={selected}
@@ -70,16 +88,17 @@ export default function ProviderServicesWorkspaceOperational(props) {
               onToggleService={toggleService}
             />
           ) : (
-            <div className="space-y-3">
-              {visibleUnits.map((unitKey) => <UnitAccordion key={unitKey} unitKey={unitKey} sections={sectionsByUnit[unitKey] || []} selected={selected} approvedSelected={approvedSelected} serviceUnitMap={serviceUnitMap} prerequisites={draftPrerequisites} config={{ ...config, activeUnits }} resourceLinks={resourceLinks} approvedResourceLinks={approvedResourceLinks} customSuggestions={suggestions} open={openUnit === unitKey} disabled={!editable} onOpen={() => setOpenUnit((current) => current === unitKey ? "" : unitKey)} onToggleService={toggleService} casServiceKeys={casServiceKeys} onToggleCas={toggleCasService} onChangeSectionUnit={changeSectionUnit} onToggleResource={toggleResource} onAddSuggestion={addSuggestion} onRemoveSuggestion={removeSuggestion} />)}
+            <div data-services-panel="units" className="space-y-3">
+              {visibleUnits.map((unitKey, unitIndex) => <UnitAccordion key={unitKey} unitKey={unitKey} filter={navFilter} dataAttrs={{ "data-services-unit-index": String(unitIndex), "data-services-unit-visible": unitVisible(unitIndex) ? "true" : "false" }} sections={sectionsByUnit[unitKey] || []} selected={selected} approvedSelected={approvedSelected} serviceUnitMap={serviceUnitMap} prerequisites={draftPrerequisites} config={{ ...config, activeUnits }} resourceLinks={resourceLinks} approvedResourceLinks={approvedResourceLinks} customSuggestions={suggestions} open={openUnit === unitKey} disabled={!editable} onOpen={() => setOpenUnit((current) => current === unitKey ? "" : unitKey)} onToggleService={toggleService} casServiceKeys={casServiceKeys} onToggleCas={toggleCasService} onChangeSectionUnit={changeSectionUnit} onToggleResource={toggleResource} onAddSuggestion={addSuggestion} onRemoveSuggestion={removeSuggestion} />)}
               {visibleUnits.length === 0 && <div className="rounded-2xl border border-dashed border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground">Selectează cel puțin o zonă care există în locație.</div>}
             </div>
           )}
 
-          <LegacyServices services={config?.legacy_or_unknown_services || []} rawRemovalKeys={rawRemovalKeys} disabled={!editable} onToggle={toggleRawRemoval} />
+          <LegacyServices dataAttrs={{ "data-services-panel": "advanced" }} services={config?.legacy_or_unknown_services || []} rawRemovalKeys={rawRemovalKeys} disabled={!editable} onToggle={toggleRawRemoval} />
         </div>
 
         <ServicesSidebar
+          dataAttrs={{ "data-services-role": "native-summary" }}
           activeUnits={activeUnits}
           capabilities={capabilities}
           selectedCount={selectedCount}
@@ -97,6 +116,7 @@ export default function ProviderServicesWorkspaceOperational(props) {
       <DependencyRemovalDialog request={pendingRemoval} onCancel={cancelDependencyRemoval} onConfirm={confirmDependencyRemoval} />
 
       <ServicesActionBar
+        dataAttrs={{ "data-services-role": "native-actions" }}
         pendingReview={pendingReview}
         dirty={dirty}
         draft={draft}

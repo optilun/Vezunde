@@ -5,7 +5,7 @@ import { getCapabilityDefinition, getFunctionalUnitDefinition } from "@/lib/prov
 import SelectionCard from "./SelectionCard";
 import { CAPABILITY_FALLBACK_ICON, CAPABILITY_ICONS } from "./servicesUiTokens";
 
-export default function CapabilityPicker({ capabilityKeys, approvedCapabilities, capabilities, activeUnits, primaryCapabilities, disabled, onToggle }) {
+export default function CapabilityPicker({ capabilityKeys, approvedCapabilities, capabilities, activeUnits, primaryCapabilities, disabled, onToggle, dataAttrs = {} }) {
   const [showOptional, setShowOptional] = useState(false);
   if (capabilityKeys.length === 0) return null;
   const activeCapabilityKeys = new Set(capabilities.map((item) => item.capability_key));
@@ -16,7 +16,7 @@ export default function CapabilityPicker({ capabilityKeys, approvedCapabilities,
     : capabilityKeys.filter((key) => primaryCapabilities.includes(key) || activeCapabilityKeys.has(key) || approvedCapabilityKeys.has(key));
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <section {...dataAttrs} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div>
         <h2 className="text-sm font-bold">2. Activități asociate</h2>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Selectează activitățile oferite și asociază-le zonei în care se desfășoară. Acestea activează numai serviciile compatibile.</p>

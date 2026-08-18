@@ -5,7 +5,7 @@ import { getServiceDescription } from "../../../../../shared/serviceDescriptions
 import { ChangeBadge, StatusBadge } from "./ServiceBadges";
 import { isSelected, serviceLabel } from "./servicesConfigModel";
 
-export default function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, disabled, helperText = "", onToggle, casActive = false, casEligible = false, onToggleCas }) {
+export default function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, disabled, helperText = "", onToggle, casActive = false, casEligible = false, onToggleCas, filter = "all" }) {
   const active = isSelected(selected, item);
   const approved = isSelected(approvedSelected, item);
   const removalRequested = approved && !active;
@@ -18,8 +18,15 @@ export default function ServiceRow({ item, selected, approvedSelected, prerequis
     ? "La trimiterea cererii, elementul este ascuns public până la soluționare."
     : blockerDetail || helperText || getServiceDescription(item.id);
   const casVisible = active && !removalRequested && casEligible;
+  // Faza 3: filtrele de verificare ("Oferta selectata", "Observatii") se aplica aici,
+  // din props. Inainte invelisul scana DOM-ul si scria data-service-filter-visible.
+  const blocked = active && prerequisite?.eligible === false;
+  const filterVisible = filter === "all"
+    || (filter === "selected" && active)
+    || (filter === "issues" && blocked);
   return (
     <div
+      data-service-filter-visible={filterVisible ? "true" : "false"}
       className={`relative border-b border-border/50 transition last:border-b-0 ${removalRequested ? "bg-amber-50/60" : "bg-transparent"}`}
     >
     <button

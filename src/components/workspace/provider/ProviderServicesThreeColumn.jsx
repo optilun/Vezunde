@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   AlertTriangle,
   Building2,
@@ -88,20 +88,6 @@ const INITIAL_SNAPSHOT = {
   hasWithdraw: false,
 };
 
-function cleanText(element) {
-  return String(element?.textContent || "").trim().replace(/\s+/g, " ");
-}
-
-function findMainGrid(root) {
-  const operationalRoot = root?.querySelector(":scope > div");
-  if (!operationalRoot) return null;
-  return [...operationalRoot.children].find((element) => (
-    element instanceof HTMLElement
-    && element.classList.contains("grid")
-    && String(element.className).includes("xl:grid-cols")
-  )) || null;
-}
-
 function NavButton({ active, icon: Icon, label, count, status, onClick }) {
   return (
     <button
@@ -138,6 +124,9 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   // intorci la lista. Tiparul standard folosit de Apple in Setari si de Google in
   // Business Profile pentru configurari mari - in locul unui selector de navigare.
   const [mobileHome, setMobileHome] = useState(true);
+  // Cererea de deschidere a unei zone: "indexZona#nonce". Nonce-ul permite redeschiderea
+  // aceleiasi zone dupa ce utilizatorul a pliat-o din continut.
+  const [unitOpenRequest, setUnitOpenRequest] = useState("");
   const CONFIG_STEP_TITLES = { 1: "Zonele existente", 2: "Dotări și activități", 3: "Tipul activității" };
 
   const updateWorkspaceSnapshot = useCallback((nextSnapshot) => {
@@ -146,126 +135,21 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
 
   const filter = ["selected", "issues"].includes(view) ? view : "all";
 
-  const decorate = useCallback(() => {
-    const root = contentRef.current;
-    const operationalRoot = root?.querySelector(":scope > div");
-    if (!operationalRoot) return;
-
-    const intro = operationalRoot.querySelector(":scope > section:first-child");
-    if (intro) intro.dataset.servicesRole = "native-intro";
-
-    const mainGrid = findMainGrid(root);
-    if (!mainGrid) return;
-    mainGrid.dataset.servicesRole = "workspace";
-
-    const mainColumn = [...mainGrid.children].find((element) => element.classList?.contains("space-y-4"));
-    const nativeSidebar = [...mainGrid.children].find((element) => element.tagName === "ASIDE");
-    if (!mainColumn) return;
-    mainColumn.dataset.servicesRole = "content";
-    if (nativeSidebar) nativeSidebar.dataset.servicesRole = "native-summary";
-
-    const directSections = [...mainColumn.children].filter((element) => element.tagName === "SECTION");
-    const numberedSections = new Map();
-    directSections.forEach((section) => {
-      const heading = cleanText(section.querySelector("h2"));
-      const match = heading.match(/^(\d+)\./);
-      if (!match) return;
-      const number = Number(match[1]);
-      numberedSections.set(number, section);
-      section.dataset.servicesSection = String(number);
-    });
-
-    [1, 2, 3].forEach((number) => {
-      const section = numberedSections.get(number);
-      if (section) {
-        section.dataset.servicesPanel = "configuration";
-        section.dataset.servicesSubstep = String(number);
-        section.dataset.servicesSubstepVisible = number === configStep ? "true" : "false";
-      }
-    });
-    if (numberedSections.get(4)) numberedSections.get(4).dataset.servicesPanel = "options";
-    if (numberedSections.get(5)) numberedSections.get(5).dataset.servicesRole = "catalog-intro";
-
-    const searchResults = directSections.find((section) => /Rezultate pentru/i.test(cleanText(section.querySelector("h2"))));
-    if (searchResults) searchResults.dataset.servicesPanel = "search-results";
-
-    const legacy = directSections.find((section) => /Date existente care necesită migrare/i.test(cleanText(section)));
-    if (legacy) legacy.dataset.servicesPanel = "advanced";
-
-    const unitList = [...mainColumn.children].find((element) => element.classList?.contains("space-y-3"));
-    if (unitList) unitList.dataset.servicesPanel = "units";
-
-    [...operationalRoot.querySelectorAll("button")].forEach((button) => {
-      if (/^Arată alte (spații|activități)/i.test(cleanText(button))) {
-        button.dataset.servicesDisclosure = "true";
-      } else {
-        delete button.dataset.servicesDisclosure;
-      }
-    });
-
-    [...operationalRoot.querySelectorAll("span")].forEach((badge) => {
-      if (/^Nou în draft$/i.test(cleanText(badge))) {
-        badge.dataset.servicesDraftBadge = "true";
-      } else {
-        delete badge.dataset.servicesDraftBadge;
-      }
-    });
-
-    // Randurile de servicii se gasesc dupa atributul stabil data-service-key, nu dupa
-    // clasa de stil "grid" (2026-08-06). Varianta veche lega filtrele de o clasa
-    // Tailwind - orice schimbare de aspect a randului rupea tacit "Oferta selectata"
-    // si "Observatii de catalog".
-    const rows = [...operationalRoot.querySelectorAll("button[data-service-key]")];
-    const issueKeys = new Set(snapshot.issueServiceKeys || []);
-    rows.forEach((row) => {
-      const selected = row.getAttribute("aria-pressed") === "true";
-      const issue = issueKeys.has(row.dataset.serviceKey || "");
-      row.dataset.serviceSelected = selected ? "true" : "false";
-      row.dataset.serviceIssue = issue ? "true" : "false";
-      const visible = filter === "all" || (filter === "selected" && selected) || (filter === "issues" && selected && issue);
-      row.dataset.serviceFilterVisible = visible ? "true" : "false";
-    });
-
-    if (unitList) {
-      [...unitList.children].forEach((unitSection, index) => {
-        if (!(unitSection instanceof HTMLElement) || unitSection.tagName !== "SECTION") return;
-        const visible = view === "all" || view === "selected" || view === "issues" || (view === "unit" && index === activeUnitIndex);
-        unitSection.dataset.servicesUnitIndex = String(index);
-        unitSection.dataset.servicesUnitVisible = visible ? "true" : "false";
-      });
-    }
-
-    const actions = [...operationalRoot.children].find((element) => (
-      element.classList?.contains("sticky") && element.classList?.contains("bottom-0")
-    ));
-    if (actions) actions.dataset.servicesRole = "native-actions";
-  }, [activeUnitIndex, configStep, filter, snapshot.issueServiceKeys, view]);
-
-  useEffect(() => {
-    const root = contentRef.current;
-    if (!root) return undefined;
-    decorate();
-    const observer = new MutationObserver(decorate);
-    observer.observe(root, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-      attributes: true,
-      attributeFilter: ["aria-pressed", "class", "disabled"],
-    });
-    return () => observer.disconnect();
-  }, [decorate]);
-
+  // Faza 3 (docs/plan-refactor-servicii-2026-08-18.md): decorarea DOM prin
+  // MutationObserver a fost eliminata. Sectiunea activa, filtrul si zona deschisa se
+  // transmit ca proprietati catre componenta operationala, care scrie atributele
+  // data-* declarativ, in randare.
   const openUnit = useCallback((index) => {
     setQuery("");
     setView("unit");
     setActiveUnitIndex(index);
+    setUnitOpenRequest((current) => {
+      const nonce = Number(String(current).split("#")[1] || 0) + 1;
+      return `${index}#${nonce}`;
+    });
     requestAnimationFrame(() => {
-      const section = contentRef.current?.querySelector(`[data-services-unit-index="${index}"]`);
-      const header = section?.querySelector(":scope > button:first-child");
-      const hasContent = section && section.children.length > 1;
-      if (!hasContent) header?.click();
-      section?.scrollIntoView({ behavior: "smooth", block: "start" });
+      contentRef.current?.querySelector(`[data-services-unit-index="${index}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }, []);
 
@@ -305,6 +189,9 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   }, []);
 
   const activeUnit = snapshot.units.find((unit) => unit.index === activeUnitIndex);
+  const [requestedUnitIndex, requestedUnitNonce] = String(unitOpenRequest).split("#");
+  const requestedUnitKey = snapshot.units.find((unit) => unit.index === Number(requestedUnitIndex))?.key || "";
+  const requestedOpenUnitKey = requestedUnitKey ? `${requestedUnitKey}#${requestedUnitNonce}` : "";
   const centerTitle = query
     ? `Rezultate pentru „${query}”`
     : view === "configuration"
@@ -722,7 +609,15 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
           </header>
 
           <div ref={contentRef} className="provider-services-three__native">
-            <ProviderServicesWorkspaceRuntime location={location} {...props} query={query} onQueryChange={setQuery} onWorkspaceSnapshot={updateWorkspaceSnapshot} />
+            <ProviderServicesWorkspaceRuntime
+              location={location}
+              {...props}
+              query={query}
+              onQueryChange={setQuery}
+              onWorkspaceSnapshot={updateWorkspaceSnapshot}
+              navigation={{ view, filter, configStep, activeUnitIndex }}
+              requestedOpenUnitKey={requestedOpenUnitKey}
+            />
           </div>
 
           {/* Butonul de avansare: raspunsul direct la "nu stiu ce urmeaza". Duce la

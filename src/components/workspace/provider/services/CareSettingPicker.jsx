@@ -4,12 +4,12 @@ import { ChevronDown } from "lucide-react";
 import { CARE_SETTINGS } from "@/lib/providerLocationFunctionalUnits";
 import { ChangeBadge } from "./ServiceBadges";
 
-export default function CareSettingPicker({ options, approvedValue, value, disabled, onChange }) {
+export default function CareSettingPicker({ options, approvedValue, value, disabled, onChange, dataAttrs = {} }) {
   const visibleOptions = options.filter((key) => CARE_SETTINGS[key]);
   if (visibleOptions.length <= 1 || visibleOptions.every((key) => key === "not_applicable" || key === "retail_only")) return null;
   const hasVisibleSelection = visibleOptions.includes(value);
   return (
-    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <section {...dataAttrs} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-sm font-bold">3. Tipul activității</h2>
         {value !== approvedValue && <ChangeBadge modified />}

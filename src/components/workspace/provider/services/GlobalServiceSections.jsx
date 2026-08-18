@@ -12,10 +12,10 @@ const HELPER_TEXT = {
   school_vision_screening: "Faci screening de vedere în școli și grădinițe.",
 };
 
-export default function GlobalServiceSections({ sections, selected, approvedSelected, disabled, onToggleService }) {
+export default function GlobalServiceSections({ sections, selected, approvedSelected, disabled, onToggleService, dataAttrs = {} }) {
   if (sections.length === 0) return null;
   return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+    <section {...dataAttrs} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
       <div className="border-b border-border bg-secondary/10 px-4 py-4 sm:px-5">
         <h2 className="text-sm font-bold">4. La nivelul locației</h2>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Aceste opțiuni se aplică întregii locații, nu unei singure zone. Nu cerem documente - informațiile sunt declarate de furnizor.</p>
