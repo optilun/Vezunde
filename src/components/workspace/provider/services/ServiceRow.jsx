@@ -27,7 +27,7 @@ export default function ServiceRow({ item, selected, approvedSelected, prerequis
   return (
     <div
       data-service-filter-visible={filterVisible ? "true" : "false"}
-      className={`relative border-b border-border/50 transition last:border-b-0 ${removalRequested ? "bg-amber-50/60" : "bg-transparent"}`}
+      className={`services-row relative border-b border-border/50 transition last:border-b-0 ${removalRequested ? "bg-amber-50/60" : "bg-transparent"}`}
     >
     <button
       type="button"
@@ -38,8 +38,8 @@ export default function ServiceRow({ item, selected, approvedSelected, prerequis
       className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-55 ${removalRequested ? "hover:bg-amber-50" : active ? "" : "hover:bg-card/60"}`}
     >
       <span className="min-w-0">
-        <span className="block text-sm font-semibold leading-snug text-foreground">{serviceLabel(item)}</span>
-        {detail && <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">{detail}</span>}
+        <span className="services-row__title block text-sm font-semibold leading-snug text-foreground">{serviceLabel(item)}</span>
+        {detail && <span className="services-row__detail mt-1 block text-[11px] leading-relaxed text-muted-foreground">{detail}</span>}
         <span className="mt-1 flex flex-wrap items-center gap-1.5 empty:hidden">
           <ChangeBadge draftAddition={draftAddition} removalRequested={removalRequested} />
           {!removalRequested && <StatusBadge prerequisite={prerequisite} />}

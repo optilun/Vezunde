@@ -57,12 +57,12 @@ export default function ProviderServicesWorkspaceOperational(props) {
         </div>
       )}
 
-      {persistenceMode === "legacy" && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">Catalogul V2 este disponibil local. Draftul de servicii folosește fluxul compatibil până când endpointurile de configurare sunt publicate.</div>}
-      {pendingReview && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">Modificările sunt în curs de aprobare. Editarea este blocată până la decizia administratorului.</div>}
-      {draft?.admin_note && ["needs_more_info", "rejected"].includes(draft.status) && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-950"><strong className="block">Completări solicitate</strong><span className="mt-1 block">{draft.admin_note}</span></div>}
-      {conflicts.length > 0 && !draft && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950">{conflicts[0].message}</div>}
-      {config?.can_edit_services === false && !pendingReview && <div className="rounded-2xl border border-border bg-secondary/30 px-4 py-3 text-xs text-muted-foreground">Ai acces de vizualizare. Modificarea serviciilor publice este disponibilă ownerului și managerului locației.</div>}
-      {error && config && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">{error}</div>}
+      {persistenceMode === "legacy" && <div className="services-alert rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">Catalogul V2 este disponibil local. Draftul de servicii folosește fluxul compatibil până când endpointurile de configurare sunt publicate.</div>}
+      {pendingReview && <div className="services-alert rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">Modificările sunt în curs de aprobare. Editarea este blocată până la decizia administratorului.</div>}
+      {draft?.admin_note && ["needs_more_info", "rejected"].includes(draft.status) && <div className="services-alert rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-950"><strong className="block">Completări solicitate</strong><span className="mt-1 block">{draft.admin_note}</span></div>}
+      {conflicts.length > 0 && !draft && <div className="services-alert rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950">{conflicts[0].message}</div>}
+      {config?.can_edit_services === false && !pendingReview && <div className="services-alert rounded-2xl border border-border bg-secondary/30 px-4 py-3 text-xs text-muted-foreground">Ai acces de vizualizare. Modificarea serviciilor publice este disponibilă ownerului și managerului locației.</div>}
+      {error && config && <div className="services-alert rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">{error}</div>}
 
       <div data-services-role="workspace" className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)] xl:items-start">
         <div data-services-role="content" className="space-y-4">

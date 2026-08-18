@@ -21,7 +21,7 @@ export default function CapabilityPicker({ capabilityKeys, approvedCapabilities,
         <h2 className="text-sm font-bold">2. Activități asociate</h2>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Selectează activitățile oferite și asociază-le zonei în care se desfășoară. Acestea activează numai serviciile compatibile.</p>
       </div>
-      <div className="mt-4 space-y-2">
+      <div className="services-card-grid mt-4 space-y-2">
         {visibleCapabilities.map((capabilityKey) => {
           const definition = getCapabilityDefinition(capabilityKey);
           const activeRow = capabilities.find((item) => item.capability_key === capabilityKey);
@@ -43,7 +43,7 @@ export default function CapabilityPicker({ capabilityKeys, approvedCapabilities,
         })}
       </div>
       {hiddenCapabilities.length > 0 && (
-        <button type="button" onClick={() => setShowOptional((value) => !value)} className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-secondary">
+        <button type="button" onClick={() => setShowOptional((value) => !value)} className="services-more-toggle mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-secondary">
           <ChevronDown className={`h-3.5 w-3.5 transition ${showOptional ? "rotate-180" : ""}`} />
           {showOptional ? "Ascunde activitățile opționale" : `Arată alte activități (${hiddenCapabilities.length})`}
         </button>

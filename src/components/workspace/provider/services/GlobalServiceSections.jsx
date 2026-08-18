@@ -21,7 +21,7 @@ export default function GlobalServiceSections({ sections, selected, approvedSele
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Aceste opțiuni se aplică întregii locații, nu unei singure zone. Nu cerem documente - informațiile sunt declarate de furnizor.</p>
       </div>
       {/* Carduri mari: sunt atribute despre cum functioneaza afacerea, nu produse. */}
-      <div className="space-y-2 p-4 sm:p-5">
+      <div className="services-card-grid space-y-2 p-4 sm:p-5">
         {sections.flatMap((section) => section.items).map((item) => {
           const Icon = BUSINESS_ATTRIBUTE_ICONS[item.id] || UNIT_FALLBACK_ICON;
           return (

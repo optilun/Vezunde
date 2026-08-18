@@ -203,7 +203,7 @@
   background: transparent !important;
 }
 
-.provider-services-three__native div:has(> button[data-service-key]):hover {
+.provider-services-three__native .services-row:hover {
   background: #fbfaf7 !important;
 }
 
@@ -367,14 +367,14 @@
     background: transparent !important;
   }
 
-  .provider-services-three__native [data-services-panel="configuration"] > div.mt-4 > button {
+  .provider-services-three__native [data-services-panel="configuration"] .services-card {
     min-height: 60px !important;
     padding: 12px 14px !important;
   }
 
   .provider-services-three__native [data-services-panel="units"] > section,
   .provider-services-three__native [data-services-panel="units"] > section > div > div:first-child,
-  .provider-services-three__native [data-services-panel="units"] > section > div > div[class*="border-t"] > div:first-child,
+  .provider-services-three__native [data-services-panel="units"] .services-resources > div:first-child,
   .provider-services-three__native [data-services-panel="options"] > div:first-child {
     background: transparent !important;
   }
@@ -389,7 +389,7 @@
     background: rgb(255 255 255 / 0.58) !important;
   }
 
-  .provider-services-three__native [data-services-panel="units"] > section > div > div[class*="border-t"] > div:first-child {
+  .provider-services-three__native [data-services-panel="units"] .services-resources > div:first-child {
     padding-inline: 4px !important;
   }
 
@@ -398,11 +398,11 @@
     padding: 14px 2px !important;
   }
 
-  .provider-services-three__native div:has(> button[data-service-key]) {
+  .provider-services-three__native .services-row {
     border-radius: 0 !important;
   }
 
-  .provider-services-three__native div:has(> button[data-service-key]):hover {
+  .provider-services-three__native .services-row:hover {
     background: rgb(255 255 255 / 0.58) !important;
   }
 

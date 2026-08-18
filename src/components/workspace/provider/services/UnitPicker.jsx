@@ -18,7 +18,7 @@ export default function UnitPicker({ units, approvedUnits, activeUnits, selected
         <h2 className="text-sm font-bold">1. Zonele existente</h2>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Selectează tipurile de zone existente în locație. Nu este necesar să introduci separat fiecare cameră.</p>
       </div>
-      <div className="mt-4 space-y-2">
+      <div className="services-card-grid mt-4 space-y-2">
         {visibleUnits.map((unitKey) => {
           const definition = getFunctionalUnitDefinition(unitKey);
           const Icon = UNIT_ICONS[unitKey] || UNIT_FALLBACK_ICON;
@@ -40,7 +40,7 @@ export default function UnitPicker({ units, approvedUnits, activeUnits, selected
         })}
       </div>
       {hiddenUnits.length > 0 && (
-        <button type="button" onClick={() => setShowOptional((value) => !value)} className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-secondary">
+        <button type="button" onClick={() => setShowOptional((value) => !value)} className="services-more-toggle mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-secondary">
           <ChevronDown className={`h-3.5 w-3.5 transition ${showOptional ? "rotate-180" : ""}`} />
           {showOptional ? "Ascunde zonele opționale" : `Arată alte zone disponibile (${hiddenUnits.length})`}
         </button>

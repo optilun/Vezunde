@@ -4,9 +4,9 @@ import { Check, ChevronDown, Users, X } from "lucide-react";
 import { ChangeBadge } from "./ServiceBadges";
 
 function ResourceGroup({ title, emptyText, items, unitKey, type, disabled, links, approvedLinks, onToggle }) {
-  if (items.length === 0) return <div className="rounded-xl border border-dashed border-border px-3 py-4 text-[11px] text-muted-foreground"><strong className="text-foreground">{title}</strong><div className="mt-1">{emptyText}</div></div>;
+  if (items.length === 0) return <div className="services-resource-group rounded-xl border border-dashed border-border px-3 py-4 text-[11px] text-muted-foreground"><strong className="text-foreground">{title}</strong><div className="mt-1">{emptyText}</div></div>;
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
+    <div className="services-resource-group rounded-xl border border-border bg-card p-3">
       <div className="text-xs font-bold">{title}</div>
       <div className="mt-2 space-y-1.5">
         {items.map((item) => {
@@ -43,7 +43,7 @@ export default function UnitResourcesPanel({ unitKey, config, disabled, links, a
   const facilityCount = (links.facilities || []).filter((item) => item.unit_key === unitKey).length;
   const resourceCount = professionalCount + equipmentCount + facilityCount;
   return (
-    <div className="border-t border-border/60 bg-secondary/10">
+    <div className="services-resources border-t border-border/60 bg-secondary/10">
       <button type="button" onClick={() => setOpen((value) => !value)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left sm:px-5">
         <span className="flex min-w-0 items-center gap-2">
           <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
