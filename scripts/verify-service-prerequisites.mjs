@@ -116,11 +116,16 @@ assert.match(adminUiSource, /Servicii declarate de furnizor/);
 assert.doesNotMatch(adminUiSource, /const blocked/);
 assert.doesNotMatch(adminUiSource, /Aprobarea este blocata/);
 
-const providerUiSource = await source('src/components/workspace/provider/ProviderServicesWorkspaceOperational.jsx');
+// Modulul Servicii a fost restructurat (Faza 2, plan-refactor-servicii-2026-08-18.md):
+// ProviderServicesWorkspaceOperational.jsx a devenit compozitor subtire. Textele si
+// starea verificate mai jos traiesc acum in fisiere separate din services/.
+const providerUiSource = await source('src/components/workspace/provider/services/GlobalServiceSections.jsx');
 assert.match(providerUiSource, /Nu cerem documente/);
-assert.match(providerUiSource, /configurationComplete: true/);
-assert.doesNotMatch(providerUiSource, /disabled=\{disabled \|\| !capabilityActive\}/);
-assert.doesNotMatch(providerUiSource, /Activează mai întâi capabilitatea/);
+const providerConfigSource = await source('src/components/workspace/provider/services/useProviderServicesConfig.js');
+assert.match(providerConfigSource, /configurationComplete: true/);
+const providerCapabilitySource = await source('src/components/workspace/provider/services/CapabilityPicker.jsx');
+assert.doesNotMatch(providerCapabilitySource, /disabled=\{disabled \|\| !capabilityActive\}/);
+assert.doesNotMatch(providerCapabilitySource, /Activează mai întâi capabilitatea/);
 
 const providerOpsSource = await source('base44/functions/providerServiceConfigurationOps/providerServiceConfigurationOps.ts');
 assert.match(providerOpsSource, /function validateSubmissionReadiness\(\)/);
