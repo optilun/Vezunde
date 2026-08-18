@@ -272,7 +272,9 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
       suggestionCount: suggestions.length,
       unitCount: activeUnits.length,
       capabilityCount: capabilities.length,
-      hasCapabilitySection: (selectableCapabilities || []).length > 0,
+      // hasCapabilitySection a fost eliminat (2026-08-18): "Dotari si activitati" nu mai e
+      // pas separat, modulul a fost desfiintat - fiecare capabilitate traieste inline,
+      // in UnitAccordion.
       // hasCareSettingSection a fost eliminat (2026-08-18): Tipul activitatii nu mai e
       // pas separat, s-a mutat sub La nivelul locatiei. CareSettingPicker isi are
       // propria regula de vizibilitate (options.length <= 1 => null).
