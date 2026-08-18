@@ -131,8 +131,21 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   const [unitOpenRequest, setUnitOpenRequest] = useState("");
   const CONFIG_STEP_TITLES = { 1: "Zonele existente", 2: "Dotări și activități", 3: "Tipul activității" };
 
+  // Plasa de siguranta: daca snapshotul primit e identic pe valori cu cel curent, nu
+  // mai declansam o randare. Fara asta, orice valoare derivata instabila din hook
+  // devine o bucla de randari (vezi useProviderServicesConfig).
   const updateWorkspaceSnapshot = useCallback((nextSnapshot) => {
-    setSnapshot((current) => ({ ...current, ...nextSnapshot }));
+    setSnapshot((current) => {
+      const merged = { ...current, ...nextSnapshot };
+      const unchanged = Object.keys(merged).every((key) => {
+        const before = current[key];
+        const after = merged[key];
+        if (typeof after === "function") return typeof before === "function";
+        if (before === after) return true;
+        return JSON.stringify(before) === JSON.stringify(after);
+      });
+      return unchanged ? current : merged;
+    });
   }, []);
 
   const filter = ["selected", "issues"].includes(view) ? view : "all";

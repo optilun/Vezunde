@@ -88,12 +88,16 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
   const profileSections = useMemo(() => sectionsForProfile(serviceLayout, selected, remoteCatalog?.provider_sections?.length ? remoteCatalog.provider_sections : PROVIDER_SERVICE_SECTIONS), [serviceLayout, selected, remoteCatalog]);
   const globalSections = useMemo(() => profileSections.filter((section) => section.key === "business_attributes"), [profileSections]);
   const unitSections = useMemo(() => profileSections.filter((section) => section.key !== "business_attributes"), [profileSections]);
-  const primaryUnits = operationalLayout.primaryUnits || operationalLayout.primary || [];
-  const optionalUnits = operationalLayout.optionalUnits || operationalLayout.optional || [];
-  const selectableUnits = [...new Set([...primaryUnits, ...optionalUnits])];
-  const primaryCapabilities = operationalLayout.primaryCapabilities || [];
-  const optionalCapabilities = operationalLayout.optionalCapabilities || [];
-  const selectableCapabilities = [...new Set([...primaryCapabilities, ...optionalCapabilities])];
+  // BUG REAL (2026-08-18): aceste liste erau recreate la FIECARE randare. Fiind in
+  // dependintele `workspaceSnapshot`, produceau un snapshot nou de fiecare data, iar
+  // invelisul il salva in state -> randare -> snapshot nou... de unde avertismentul
+  // "Maximum update depth exceeded". Sunt derivate dintr-un layout deja memoizat.
+  const primaryUnits = useMemo(() => operationalLayout.primaryUnits || operationalLayout.primary || [], [operationalLayout]);
+  const optionalUnits = useMemo(() => operationalLayout.optionalUnits || operationalLayout.optional || [], [operationalLayout]);
+  const selectableUnits = useMemo(() => [...new Set([...primaryUnits, ...optionalUnits])], [primaryUnits, optionalUnits]);
+  const primaryCapabilities = useMemo(() => operationalLayout.primaryCapabilities || [], [operationalLayout]);
+  const optionalCapabilities = useMemo(() => operationalLayout.optionalCapabilities || [], [operationalLayout]);
+  const selectableCapabilities = useMemo(() => [...new Set([...primaryCapabilities, ...optionalCapabilities])], [primaryCapabilities, optionalCapabilities]);
 
   const sectionsByUnit = useMemo(() => {
     const map = {};
