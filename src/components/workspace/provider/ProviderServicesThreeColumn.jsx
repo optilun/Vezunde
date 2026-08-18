@@ -206,10 +206,17 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
               ? activeUnit?.title || "Oferta zonei"
               : "Oferta completă";
 
+  // O singura linie de context, specifica pasului. Inainte descrierea era generica aici
+  // si se repeta, mai lunga, in interiorul fiecarei sectiuni.
+  const CONFIG_STEP_HINTS = {
+    1: "Tipurile de spații existente. Nu e nevoie să treci fiecare cameră.",
+    2: "Activează numai serviciile compatibile cu zonele alese.",
+    3: "Descrie activitatea locației, fără să schimbe tipul organizației.",
+  };
   const centerDescription = view === "configuration"
-    ? "Alege zonele existente, activitățile asociate și tipul activității."
+    ? CONFIG_STEP_HINTS[configStep]
     : view === "options"
-      ? "Configurează opțiunile valabile pentru întreaga locație, inclusiv decontarea CAS și serviciile oferite în afara locației."
+      ? "Opțiuni valabile pentru întreaga locație, nu pentru o singură zonă."
       : view === "issues"
         ? "Sunt afișate numai observațiile de catalog. Acestea nu cer acte, specialiști sau echipamente."
         : view === "selected"
@@ -250,18 +257,6 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
     entry.value === mobileNavValue && (entry.step === null || entry.step === configStep)
   ));
   const isReviewView = flowIndex < 0;
-  const nextFlowEntry = flowIndex >= 0 && flowIndex < flowSteps.length - 1
-    ? flowSteps[flowIndex + 1]
-    : null;
-  const previousFlowEntry = flowIndex > 0 ? flowSteps[flowIndex - 1] : null;
-  // Acelasi bug ca la sidebar (2026-08-06): daca entry.value e "configuration",
-  // chooseMobileView -> chooseView reseta configStep la 1 imediat dupa ce il setam.
-  // Butonul "Continua catre..." catre pasul 2 sau 3 nu avansa niciodata cu adevarat.
-  const goToFlowEntry = (entry) => {
-    if (!entry) return;
-    if (entry.value === "configuration") { goToConfigStep(entry.step || 1); return; }
-    chooseMobileView(entry.value);
-  };
 
   // Randurile ecranului-lista. Bifa apare cand pasul are un rezultat vizibil, ca sa
   // vezi dintr-o privire ce ai terminat si ce a ramas.
@@ -622,30 +617,9 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
             />
           </div>
 
-          {/* Butonul de avansare: raspunsul direct la "nu stiu ce urmeaza". Duce la
-              urmatoarea destinatie din drumul liniar, fara sa fie nevoie de dropdown. */}
-          {!query && !isReviewView && (
-            <div className="provider-services-three__flow-next">
-              {previousFlowEntry && (
-                <button type="button" className="is-back" onClick={() => goToFlowEntry(previousFlowEntry)}>
-                  Înapoi
-                </button>
-              )}
-              {nextFlowEntry ? (
-                <button type="button" className="is-primary" onClick={() => goToFlowEntry(nextFlowEntry)}>
-                  <span>Continuă către</span>
-                  <strong>{nextFlowEntry.label}</strong>
-                  <ChevronDown aria-hidden="true" />
-                </button>
-              ) : (
-                <button type="button" className="is-primary" onClick={() => chooseMobileView("selected")}>
-                  <span>Ai parcurs toate zonele</span>
-                  <strong>Verifică oferta selectată</strong>
-                  <ChevronDown aria-hidden="true" />
-                </button>
-              )}
-            </div>
-          )}
+          {/* Butonul "Continua catre..." a fost eliminat (2026-08-18): navigarea o face
+              coloana de pasi din stanga, iar pe telefon ecranul-lista. Doua mecanisme de
+              avansare pe acelasi ecran se bat cap in cap. */}
         </section>
 
         {/* Coloana din dreapta a fost eliminata (2026-08-06): repeta informatie deja

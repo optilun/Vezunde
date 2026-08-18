@@ -1116,7 +1116,7 @@
 }
 
 .provider-services-three__native [data-services-panel="units"] > section > button:first-child {
-  min-height: 70px;
+  min-height: 62px;
   padding-inline: 26px !important;
   background: rgb(248 244 236 / 0.52) !important;
 }
@@ -1133,9 +1133,11 @@
   padding-inline: 26px !important;
 }
 
+/* Densitate deliberata: listele lungi de servicii se parcurg mai repede, in timp ce
+   cardurile de structura rămân aerisite. */
 .provider-services-three__native button[data-service-key] {
   min-height: 0;
-  padding: 15px 4px !important;
+  padding: 13px 4px !important;
 }
 
 .provider-services-three__native .services-row {

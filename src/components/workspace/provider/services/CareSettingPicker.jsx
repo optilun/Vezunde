@@ -10,14 +10,10 @@ export default function CareSettingPicker({ options, approvedValue, value, disab
   const hasVisibleSelection = visibleOptions.includes(value);
   return (
     <section {...dataAttrs} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-sm font-bold">3. Tipul activității</h2>
-        {value !== approvedValue && <ChangeBadge modified />}
-      </div>
-      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Alege varianta care descrie cel mai bine activitatea acestei locații. Aceasta nu modifică tipul organizației.</p>
-      {!hasVisibleSelection && <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">Alege o opțiune pentru a continua configurarea completă.</div>}
+      {value !== approvedValue && <div className="mb-2 flex"><ChangeBadge modified /></div>}
+      {!hasVisibleSelection && <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">Alege o opțiune pentru a continua.</div>}
       {/* Lista derulanta, nu butoane-pastila: o singura alegere dintr-un set numit. */}
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-[13px] font-semibold text-foreground">Varianta selectată</span>
         <div className="relative">
           <select

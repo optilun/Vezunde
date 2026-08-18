@@ -14,11 +14,9 @@ export default function UnitPicker({ units, approvedUnits, activeUnits, selected
 
   return (
     <section {...dataAttrs} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-      <div>
-        <h2 className="text-sm font-bold">1. Zonele existente</h2>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Selectează tipurile de zone existente în locație. Nu este necesar să introduci separat fiecare cameră.</p>
-      </div>
-      <div className="services-card-grid mt-4 space-y-2">
+      {/* Titlul si contextul stau in antetul ecranului. Aici era acelasi titlu, numerotat,
+          plus o descriere care repeta antetul - trei straturi de text pentru o singura lista. */}
+      <div className="services-card-grid space-y-2">
         {visibleUnits.map((unitKey) => {
           const definition = getFunctionalUnitDefinition(unitKey);
           const Icon = UNIT_ICONS[unitKey] || UNIT_FALLBACK_ICON;

@@ -17,11 +17,7 @@ export default function CapabilityPicker({ capabilityKeys, approvedCapabilities,
 
   return (
     <section {...dataAttrs} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-      <div>
-        <h2 className="text-sm font-bold">2. Activități asociate</h2>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Selectează activitățile oferite și asociază-le zonei în care se desfășoară. Acestea activează numai serviciile compatibile.</p>
-      </div>
-      <div className="services-card-grid mt-4 space-y-2">
+      <div className="services-card-grid space-y-2">
         {visibleCapabilities.map((capabilityKey) => {
           const definition = getCapabilityDefinition(capabilityKey);
           const activeRow = capabilities.find((item) => item.capability_key === capabilityKey);

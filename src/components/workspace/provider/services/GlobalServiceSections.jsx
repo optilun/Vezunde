@@ -16,11 +16,8 @@ export default function GlobalServiceSections({ sections, selected, approvedSele
   if (sections.length === 0) return null;
   return (
     <section {...dataAttrs} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <div className="border-b border-border bg-secondary/10 px-4 py-4 sm:px-5">
-        <h2 className="text-sm font-bold">4. La nivelul locației</h2>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Aceste opțiuni se aplică întregii locații, nu unei singure zone. Nu cerem documente - informațiile sunt declarate de furnizor.</p>
-      </div>
-      {/* Carduri mari: sunt atribute despre cum functioneaza afacerea, nu produse. */}
+      {/* Carduri mari: sunt atribute despre cum functioneaza afacerea, nu produse.
+          Titlul si contextul vin din antetul ecranului. */}
       <div className="services-card-grid space-y-2 p-4 sm:p-5">
         {sections.flatMap((section) => section.items).map((item) => {
           const Icon = BUSINESS_ATTRIBUTE_ICONS[item.id] || UNIT_FALLBACK_ICON;
