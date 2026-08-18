@@ -20,9 +20,10 @@ export default function CareSettingPicker({ options, approvedValue, value, disab
         <span className="block text-sm font-bold leading-snug text-foreground">Tipul activității</span>
         <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">Descrie activitatea locației, fără să schimbe tipul organizației.</span>
       </div>
-      {/* Lista derulanta, nu butoane-pastila: o singura alegere dintr-un set numit. */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="text-[13px] font-semibold text-foreground">Varianta selectată</span>
+      {/* Lista derulanta, nu butoane-pastila: o singura alegere dintr-un set numit.
+          Eticheta separata "Varianta selectata" a fost eliminata (2026-08-18) - titlul
+          de mai sus explica deja contextul, era redundanta. */}
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <div className="relative">
           <select
             value={hasVisibleSelection ? value : ""}
