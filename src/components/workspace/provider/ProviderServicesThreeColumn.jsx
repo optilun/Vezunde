@@ -15,7 +15,6 @@ import {
   Microscope,
   PackageOpen,
   Search,
-  Settings2,
   Stethoscope,
   Store,
   Wrench,
