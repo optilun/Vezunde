@@ -535,6 +535,17 @@
   }
 }
 
+/* Tonul mesajului din bara de actiuni: confirmare sau eroare, nu doar text gri. */
+.provider-services-three__actions[data-tone="success"] > div:first-child > span {
+  color: #315c3a;
+  font-weight: 650;
+}
+
+.provider-services-three__actions[data-tone="error"] > div:first-child > span {
+  color: #9a3412;
+  font-weight: 650;
+}
+
 /* ==========================================================================
    17. Etapa 2: marcaje de stare si tipografie pe telefon (2026-08-18)
    Trei tipuri fixe de marcaj (atentie, informativ, draft) si o scara de text

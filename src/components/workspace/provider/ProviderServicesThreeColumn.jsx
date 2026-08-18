@@ -80,6 +80,8 @@ const INITIAL_SNAPSHOT = {
   conflictMessage: "",
   actionStatus: "",
   actionMessage: "",
+  actionTone: "info",
+  saving: false,
   canSave: false,
   canSubmit: false,
   canWithdraw: false,
@@ -634,10 +636,12 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
       </div>
 
       {showActionBar && (
-        <div className="provider-services-three__actions" role="region" aria-label="Acțiuni servicii">
+        <div className="provider-services-three__actions" data-tone={snapshot.actionTone} role="region" aria-label="Acțiuni servicii">
           <div>
-            <strong>{snapshot.actionStatus || "Configurația serviciilor"}</strong>
-            {snapshot.actionMessage && <span>{snapshot.actionMessage}</span>}
+            <strong>{snapshot.saving ? "Se salvează..." : snapshot.actionStatus || "Configurația serviciilor"}</strong>
+            {snapshot.actionMessage && (
+              <span role={snapshot.actionTone === "error" ? "alert" : "status"} aria-live="polite">{snapshot.actionMessage}</span>
+            )}
           </div>
           <div className="provider-services-three__action-buttons">
             {snapshot.hasSave && (

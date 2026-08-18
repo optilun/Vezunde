@@ -252,9 +252,15 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
         : draft
           ? "Draft salvat"
           : "Nu există modificări nesalvate";
-    const actionMessage = adminNote
+    // Rezultatul ultimei operatii (salvare, trimitere, retragere, eroare de server) se
+    // vedea doar in bara veche, ascunsa de invelisul actual - deci utilizatorul apasa
+    // "Salvează" si nu primea nicio confirmare. Acum urca in bara vizibila, cu ton.
+    const actionMessage = error
+      || message
+      || adminNote
       || (dirty ? "Salvează modificările înainte de trimitere." : "")
       || (readiness.configurationComplete ? "Configurația este pregătită pentru trimitere." : readiness.blockers[0]?.message || "");
+    const actionTone = error ? "error" : message ? "success" : "info";
     return {
       units,
       selectedCount: readiness.publicServiceKeys.length,
@@ -279,6 +285,8 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
       conflictMessage: conflicts[0]?.message || "",
       actionStatus,
       actionMessage,
+      actionTone,
+      saving,
       canSave: Boolean(!saving && editable && dirty),
       canSubmit: Boolean(!saving && draft && editable && !dirty && readiness.configurationComplete),
       canWithdraw: Boolean(!saving && pendingReview && persistenceMode === "v2"),
@@ -291,7 +299,7 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
       pendingReview,
       ...stableActions,
     };
-  }, [activeUnits, approvedSelected, capabilities.length, careSetting, conflicts, dirty, draft, editable, operationalLayout, pendingReview, persistenceMode, profileSections, readiness, saving, sectionsByUnit, selectableCapabilities, selectedByUnit, stableActions, suggestions.length, visibleUnits]);
+  }, [activeUnits, approvedSelected, capabilities.length, careSetting, conflicts, dirty, draft, editable, error, message, operationalLayout, pendingReview, persistenceMode, profileSections, readiness, saving, sectionsByUnit, selectableCapabilities, selectedByUnit, stableActions, suggestions.length, visibleUnits]);
 
   useEffect(() => {
     onWorkspaceSnapshot?.(workspaceSnapshot);
