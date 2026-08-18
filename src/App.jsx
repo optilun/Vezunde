@@ -200,7 +200,12 @@ const AppRoutes = () => {
             path="/inscriere"
             element={<Navigate to="/adauga-sau-revendica" replace />}
           />
-          <Route path="/adauga-sau-revendica" element={<AddOrClaim />} />
+          {/* Inscrierea/revendicarea cere cont de la primul pas (2026-08-18): orice tip de
+              cont are nevoie de autentificare, deci poarta sta la intrare, o singura data,
+              in loc de redirecturi la mijlocul formularului. */}
+          <Route element={<RequireAuth />}>
+            <Route path="/adauga-sau-revendica" element={<AddOrClaim />} />
+          </Route>
           <Route path="/confidentialitate" element={<Privacy />} />
           <Route path="/termeni" element={<Terms />} />
           <Route path="/cookies" element={<Cookies />} />

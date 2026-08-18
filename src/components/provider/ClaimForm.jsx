@@ -92,7 +92,6 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
   const [scopeLoading, setScopeLoading] = useState(false);
   const [scopeError, setScopeError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [authChecking, setAuthChecking] = useState(false);
   const [error, setError] = useState("");
   const scopeRequestInFlight = useRef(false);
   const scopeLoadAttempted = useRef(false);
@@ -177,15 +176,9 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
     onStepChange(nextStep);
   };
 
-  const continueAfterRelation = async () => {
+  // Fara verificare de autentificare aici (2026-08-18): ruta cere cont la intrare.
+  const continueAfterRelation = () => {
     persistClaimResumeState(location, contact, scope, "scope");
-    setAuthChecking(true);
-    const authenticated = await base44.auth.isAuthenticated().catch(() => false);
-    setAuthChecking(false);
-    if (!authenticated) {
-      base44.auth.redirectToLogin(window.location.href);
-      return;
-    }
     onStepChange("scope");
   };
 
@@ -220,11 +213,6 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
     if (!String(contact.contact_name || "").trim() || !String(contact.email || "").trim()) {
       setError("Completeaza numele si emailul inainte de trimitere.");
       onStepChange("contact");
-      return;
-    }
-    const authed = await base44.auth.isAuthenticated();
-    if (!authed) {
-      base44.auth.redirectToLogin(window.location.href);
       return;
     }
     setSubmitting(true);
@@ -291,7 +279,6 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
       contact={contact}
       onChange={setContact}
       onContinue={continueAfterRelation}
-      loading={authChecking}
     />
   );
 }

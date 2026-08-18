@@ -82,7 +82,6 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
   });
   const [step, setStep] = useState(() => resume?.data ? Math.min(Number(resume.step) || 0, STEPS.length - 1) : 0);
   const [submitting, setSubmitting] = useState(false);
-  const [authChecking, setAuthChecking] = useState(false);
   const [error, setError] = useState("");
   const [identityCheck, setIdentityCheck] = useState(null);
 
@@ -110,35 +109,13 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
 
   const update = (patch) => setData((current) => ({ ...current, ...patch, claimSubjectType: "organization" }));
 
-  const next = async () => {
-    const currentKey = STEPS[step].key;
-    if (currentKey === "relation") {
-      const nextStep = Math.min(step + 1, STEPS.length - 1);
-      sessionStorage.setItem(WIZARD_RESUME_KEY, JSON.stringify({ data, step: nextStep }));
-      setAuthChecking(true);
-      const authenticated = await base44.auth.isAuthenticated().catch(() => false);
-      setAuthChecking(false);
-      if (!authenticated) {
-        base44.auth.redirectToLogin(window.location.href);
-        return;
-      }
-      sessionStorage.removeItem(WIZARD_RESUME_KEY);
-      setStep(nextStep);
-      return;
-    }
-    setStep((current) => Math.min(current + 1, STEPS.length - 1));
-  };
+  // Fara poarta de autentificare la mijlocul wizardului (2026-08-18): ruta cere cont
+  // de la intrare, deci pasii curg fara redirect si fara pierdere de date.
+  const next = () => setStep((current) => Math.min(current + 1, STEPS.length - 1));
 
   const back = () => (step === 0 ? onExit() : setStep((current) => current - 1));
 
   const submit = async (identityExtra = {}) => {
-    const authed = await base44.auth.isAuthenticated();
-    if (!authed) {
-      sessionStorage.setItem(WIZARD_RESUME_KEY, JSON.stringify({ data, step: STEPS.length - 1, identityExtra }));
-      base44.auth.redirectToLogin(window.location.href);
-      return;
-    }
-
     setSubmitting(true);
     setError("");
     const res = await base44.functions
@@ -201,7 +178,6 @@ export default function NewLocationWizard({ onDone, onExit, prefill, onClaimExis
         next={next}
         onSubmit={() => submit()}
         submitting={submitting}
-        loading={authChecking}
         error={error}
       />
     </WizardShell>
