@@ -273,9 +273,9 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
       unitCount: activeUnits.length,
       capabilityCount: capabilities.length,
       hasCapabilitySection: (selectableCapabilities || []).length > 0,
-      hasCareSettingSection: ((operationalLayout?.careSettings) || []).filter(
-        (key) => key !== "not_applicable" && key !== "retail_only",
-      ).length > 0,
+      // hasCareSettingSection a fost eliminat (2026-08-18): Tipul activitatii nu mai e
+      // pas separat, s-a mutat sub La nivelul locatiei. CareSettingPicker isi are
+      // propria regula de vizibilitate (options.length <= 1 => null).
       issueCount: readiness.blockers.length,
       issueServiceKeys: readiness.issueServiceKeys,
       blockers: readiness.blockers,
