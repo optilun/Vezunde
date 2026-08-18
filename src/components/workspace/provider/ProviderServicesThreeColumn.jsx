@@ -506,7 +506,11 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                           else chooseView(row.value);
                         }}
                       >
-                        <span className="provider-services-three__step-mark" aria-hidden="true">
+                        <span
+                          className="provider-services-three__step-mark"
+                          aria-hidden="true"
+                          style={row.unitKey && UNIT_CARD_TONE[row.unitKey] ? { background: UNIT_CARD_TONE[row.unitKey].bg, borderColor: UNIT_CARD_TONE[row.unitKey].border } : undefined}
+                        >
                           {row.icon ? <row.icon /> : <CheckCircle2 />}
                         </span>
                         <span className="provider-services-three__step-body">
