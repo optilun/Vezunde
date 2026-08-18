@@ -66,6 +66,22 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
       </button>
       {open && (
         <div className="border-t border-border/70">
+          {zoneCapabilityKeys.length > 0 && (
+            <div className="space-y-2 border-b border-border/60 bg-secondary/10 p-4 sm:px-5">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Activități pentru această zonă</p>
+              {zoneCapabilityKeys.map((capabilityKey) => (
+                <CapabilityToggle
+                  key={capabilityKey}
+                  capabilityKey={capabilityKey}
+                  activeRow={findCapabilityRow(capabilityKey)}
+                  approved={isCapabilityApproved(capabilityKey)}
+                  disabled={disabled}
+                  onToggle={() => toggleZoneCapability(capabilityKey)}
+                  compact
+                />
+              ))}
+            </div>
+          )}
           {inGroupList && (
             <div className="divide-y divide-border/50">
               {visibleSections.map((section) => (
