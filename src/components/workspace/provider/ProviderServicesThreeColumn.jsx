@@ -40,6 +40,22 @@ const UNIT_CARD_ICONS = {
   b2b_distribution_center: PackageOpen,
 };
 
+// Aceleasi culori de categorie ca in continut (ProviderServicesWorkspaceOperational.jsx,
+// GROUP_TONE), aplicate pe placile mici din sidebar (2026-08-06). Duplicat mic si
+// intentionat: cele doua fisiere nu impart module, iar valorile sunt scurte si stabile
+// - preluate din CategoryShowcase.jsx (homepage), nu inventate.
+const UNIT_CARD_TONE = {
+  optical_store: { bg: "#efd5c5", border: "#e1bda8" },
+  optical_cabinet: { bg: "#efd5c5", border: "#e1bda8" },
+  optometry_cabinet: { bg: "#dce5e9", border: "#c6d3da" },
+  ophthalmology_office: { bg: "#e8e0ea", border: "#d4c6d8" },
+  optical_workshop: { bg: "#eadcba", border: "#dac69b" },
+  optical_laboratory: { bg: "#eadcba", border: "#dac69b" },
+  ophthalmology_diagnostics: { bg: "#dfe3d2", border: "#ccd2ba" },
+  ophthalmology_procedure_room: { bg: "#e8e0ea", border: "#d4c6d8" },
+  ophthalmology_surgery_unit: { bg: "#e8e0ea", border: "#d4c6d8" },
+};
+
 const INITIAL_SNAPSHOT = {
   units: [],
   selectedCount: 0,
