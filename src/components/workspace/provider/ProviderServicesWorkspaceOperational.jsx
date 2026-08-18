@@ -385,6 +385,23 @@ const GROUP_TONE = {
   technical_activities: { bg: "#eadcba", border: "#dac69b", text: "#6b551f" },
 };
 
+// Zonele fizice (2026-08-06), mapate pe descrierea lor reala din registru, nu pe
+// presupuneri: optical_store/optical_cabinet vand produse, optometry_cabinet masoara
+// vederea, ophthalmology_* sunt medicale, workshop/laboratory repara si prelucreaza,
+// diagnostics investigheaza. b2b_distribution_center nu are culoare - nu e o categorie
+// vizibila pacientului, e distributie catre alte optici.
+const UNIT_TONE = {
+  optical_store: GROUP_TONE.optical_retail,
+  optical_cabinet: GROUP_TONE.optical_retail,
+  optometry_cabinet: GROUP_TONE.optometry,
+  ophthalmology_office: GROUP_TONE.ophthalmology_consults,
+  optical_workshop: GROUP_TONE.technical_activities,
+  optical_laboratory: GROUP_TONE.technical_activities,
+  ophthalmology_diagnostics: GROUP_TONE.investigations,
+  ophthalmology_procedure_room: GROUP_TONE.ophthalmology_consults,
+  ophthalmology_surgery_unit: GROUP_TONE.ophthalmology_consults,
+};
+
 function ServiceRow({ item, index = 0, selected, approvedSelected, prerequisite, unitKey, disabled, helperText = "", onToggle, casActive = false, casEligible = false, onToggleCas }) {
   const active = isSelected(selected, item);
   const approved = isSelected(approvedSelected, item);
