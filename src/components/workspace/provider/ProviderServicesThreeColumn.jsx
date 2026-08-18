@@ -597,14 +597,19 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
 
           {/* Rezumatul si starea vin DUPA titlu (2026-08-18): inainte stateau deasupra lui,
               deci ochiul citea meta inainte de a sti pe ce ecran se afla. */}
+          {/* Rezumatul de stare apare doar unde are sens (2026-08-18): inainte randul
+              "Tipul activitatii" si marcajul de trimitere se vedeau pe TOATE ecranele,
+              inclusiv pe cel al zonelor - informatie despre alt pas, chiar sub titlu.
+              Iar "Pregatita pentru trimitere" aparea si cu zero servicii alese, ceea ce
+              spunea exact invers de ce arata contorul din stanga. */}
           <div className="provider-services-three__meta">
-            {snapshot.careSetting && (
+            {snapshot.careSetting && view === "configuration" && configStep === 3 && (
               <span className="provider-services-three__meta-item">
                 <small>Tipul activității</small>
                 <strong>{snapshot.careSetting}</strong>
               </span>
             )}
-            {snapshot.configurationComplete && !snapshot.dirty && (
+            {snapshot.configurationComplete && !snapshot.dirty && snapshot.selectedCount > 0 && (
               <span className="provider-services-three__meta-badge is-ready">
                 <CheckCircle2 aria-hidden="true" /> Pregătită pentru trimitere
               </span>

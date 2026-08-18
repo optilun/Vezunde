@@ -547,6 +547,30 @@
 }
 
 /* ==========================================================================
+   18. Etapa 3: sfarsitul continutului (2026-08-18)
+   Doua defecte vizibile la orice latime: sub continut rămânea un dreptunghi gol
+   inalt (layoutul avea o inaltime minima fixa de 680px, gandita pentru liste
+   lungi), iar fiecare panou isi tragea o linie de despartire jos - deci ultimul
+   panou punea o linie orizontala care nu despartea nimic.
+   ========================================================================== */
+
+.provider-services-three__layout {
+  min-height: 0;
+}
+
+.provider-services-three__native [data-services-panel]:last-child,
+.provider-services-three__native [data-services-panel="configuration"],
+.provider-services-three__native [data-services-panel="options"],
+.provider-services-three__native [data-services-panel="search-results"] {
+  border-bottom: 0 !important;
+}
+
+/* Linia de sub antet raman doar cat tine continutul, nu peste toata pagina. */
+.provider-services-three__center {
+  align-self: start;
+}
+
+/* ==========================================================================
    17. Etapa 2: marcaje de stare si tipografie pe telefon (2026-08-18)
    Trei tipuri fixe de marcaj (atentie, informativ, draft) si o scara de text
    citibila pe ecran mic, fara sa modifice structura.
