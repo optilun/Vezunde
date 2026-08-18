@@ -468,7 +468,8 @@ function ServiceRow({ item, index = 0, selected, approvedSelected, prerequisite,
         <span className={`absolute h-[18px] w-[18px] rounded-full bg-background shadow-sm transition-all ${active || removalRequested ? "left-[21px]" : "left-[3px]"}`} />
       </span>
     </button>
-    {/* CAS ca rand-comutator, la fel ca serviciul de deasupra (2026-08-06) */}
+    {/* CAS ramane BIFA, deliberat diferit de comutatorul serviciului (2026-08-06):
+        e un atribut al serviciului de deasupra, nu o activare de sine statatoare. */}
     {casVisible && (
       <button
         type="button"
