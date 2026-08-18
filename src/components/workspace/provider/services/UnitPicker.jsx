@@ -1,6 +1,5 @@
 // Faza 2: pasul 1 - spatiile existente in locatie.
-import React, { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import React from "react";
 import { getFunctionalUnitDefinition } from "@/lib/providerLocationFunctionalUnits";
 import SelectionCard from "./SelectionCard";
 import { UNIT_FALLBACK_ICON, UNIT_ICONS } from "./servicesUiTokens";
