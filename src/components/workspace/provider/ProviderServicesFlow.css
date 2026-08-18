@@ -1,0 +1,962 @@
+/* Faza 4a - partea 2 din stratul unic de styling al modulului de servicii.
+   Se importa DUPA ProviderServices.css: fluxul de pe telefon (antet lipit,
+   ecranul-lista, rezumatul de pe rand) si coloana de pasi. */
+
+/* ==========================================================================
+   7. Fluxul de pe telefon
+   ========================================================================== */
+
+.provider-services-three__mobile-nav,
+.provider-services-three__mobile-overview,
+.provider-services-three__action-label-mobile {
+  display: none;
+}
+
+.provider-services-three__action-buttons span {
+  color: inherit;
+  font-size: inherit;
+}
+
+@media (max-width: 820px) {
+  .provider-services-three__layout {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .provider-services-three__left {
+    display: none;
+  }
+
+  .provider-services-three__mobile-nav {
+    position: sticky;
+    top: 0;
+    z-index: 26;
+    display: grid;
+    gap: 9px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--services-border);
+    background: rgb(248 244 236 / 0.96);
+    box-shadow: 0 8px 22px rgb(23 23 23 / 0.045);
+    backdrop-filter: blur(14px);
+  }
+
+  .provider-services-three__mobile-nav-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .provider-services-three__mobile-nav-heading > div {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+  }
+
+  .provider-services-three__mobile-nav-heading span {
+    color: var(--services-muted);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.09em;
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+
+  .provider-services-three__mobile-nav-heading strong {
+    overflow: hidden;
+    font-family: var(--font-heading);
+    font-size: 16px;
+    font-weight: 820;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .provider-services-three__mobile-nav-heading > small {
+    flex: 0 0 auto;
+    padding: 4px 8px;
+    border: 1px solid rgb(52 91 200 / 0.16);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.72);
+    color: var(--services-accent-strong);
+    font-size: 11px;
+    font-weight: 780;
+    line-height: 1.35;
+  }
+
+  .provider-services-three__mobile-nav {
+    box-shadow: 0 5px 14px rgb(23 23 23 / 0.035);
+  }
+}
+
+@media (max-width: 620px) {
+  .provider-location-services-page {
+    gap: 12px;
+  }
+
+  .provider-location-services-header {
+    padding-bottom: 13px;
+  }
+
+  .provider-location-services-header__content {
+    margin-top: 8px;
+  }
+
+  .provider-location-services-header__row {
+    gap: 9px;
+    margin-top: 7px;
+  }
+
+  .provider-location-services-header h1 {
+    font-size: 1.75rem;
+    line-height: 1.08;
+  }
+
+  .provider-location-services-header p {
+    margin-top: 7px;
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+
+  .provider-location-services-header__location {
+    min-height: 34px;
+    padding-bottom: 0;
+    font-size: 12.5px;
+  }
+
+  .provider-services-three {
+    gap: 0;
+    scroll-padding-bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+
+  .provider-services-three__layout {
+    border-top: 0;
+  }
+
+  .provider-services-three__mobile-nav {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .provider-services-three__mobile-nav-heading strong {
+    font-size: 15px;
+  }
+
+  .provider-services-three__mobile-overview {
+    display: block;
+    border-bottom: 1px solid var(--services-border);
+    background: #f7f5f0;
+  }
+
+  .provider-services-three__mobile-overview > summary {
+    display: flex;
+    min-height: 60px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 11px 14px;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .provider-services-three__mobile-overview > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .provider-services-three__mobile-overview > summary > span {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+  }
+
+  .provider-services-three__mobile-overview > summary small {
+    color: var(--services-muted);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .provider-services-three__mobile-overview > summary strong {
+    font-size: 13px;
+    font-weight: 780;
+    line-height: 1.4;
+  }
+
+  .provider-services-three__mobile-overview > summary > svg {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    color: var(--services-accent);
+    transition: transform 150ms ease;
+  }
+
+  .provider-services-three__mobile-overview[open] > summary > svg {
+    transform: rotate(180deg);
+  }
+
+  .provider-services-three__mobile-overview-body {
+    display: grid;
+    gap: 14px;
+    padding: 2px 14px 15px;
+  }
+
+  .provider-services-three__mobile-overview-body > div:first-child {
+    display: grid;
+    gap: 3px;
+    padding-top: 12px;
+    border-top: 1px solid rgb(52 91 200 / 0.13);
+  }
+
+  .provider-services-three__mobile-overview-body > div:first-child > strong {
+    font-family: var(--font-heading);
+    font-size: 14px;
+  }
+
+  .provider-services-three__mobile-overview-body > div:first-child > span {
+    color: var(--services-muted);
+    font-size: 12px;
+  }
+
+  .provider-services-three__mobile-overview-body > div:first-child > em {
+    width: fit-content;
+    margin-top: 3px;
+    padding: 3px 7px;
+    border: 1px solid rgb(52 91 200 / 0.16);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.7);
+    color: var(--services-muted);
+    font-size: 10px;
+    font-style: normal;
+    font-weight: 750;
+  }
+
+  .provider-services-three__mobile-overview-body dl {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    margin: 0;
+  }
+
+  .provider-services-three__mobile-overview-body dl > div {
+    display: grid;
+    gap: 3px;
+    padding: 9px;
+    border: 1px solid rgb(52 91 200 / 0.12);
+    border-radius: 10px;
+    background: rgb(255 255 255 / 0.66);
+  }
+
+  .provider-services-three__mobile-overview-body dt {
+    overflow: hidden;
+    color: var(--services-muted);
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .provider-services-three__mobile-overview-body dd {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 820;
+  }
+
+  .provider-services-three__mobile-overview-links {
+    display: grid;
+    gap: 1px;
+    border-top: 1px solid rgb(52 91 200 / 0.13);
+  }
+
+  .provider-services-three__mobile-overview-links button {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 1px;
+    border: 0;
+    border-bottom: 1px solid rgb(52 91 200 / 0.1);
+    background: transparent;
+    color: var(--services-text);
+    font-size: 13px;
+    font-weight: 740;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .provider-services-three__mobile-overview-links button:last-child {
+    border-bottom: 0;
+  }
+
+  .provider-services-three__mobile-overview-links svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    color: var(--services-accent);
+  }
+
+  .provider-services-three__center-copy > .provider-services-three__panel-label {
+    display: none;
+  }
+
+  .provider-services-three__center-header {
+    gap: 11px;
+    padding: 15px 14px;
+  }
+
+  .provider-services-three__center-header h2 {
+    font-size: 19px;
+  }
+
+  .provider-services-three__center-header p {
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+
+  .provider-services-three__native [data-services-panel="configuration"],
+  .provider-services-three__native [data-services-panel="advanced"],
+  .provider-services-three__native [data-services-panel="search-results"] {
+    padding: 16px 14px !important;
+  }
+
+  .provider-services-three__native [data-services-panel="options"] > div:first-child,
+  .provider-services-three__native [data-services-panel="options"] > div:not(:first-child) > div:first-child,
+  .provider-services-three__native [data-services-panel="units"] > section > button:first-child,
+  .provider-services-three__native [data-services-panel="units"] > section > div > div[class*="border-t"] > div:first-child {
+    padding-inline: 14px !important;
+  }
+
+  .provider-services-three__native button[data-service-key] {
+    min-height: 72px;
+    gap: 10px !important;
+    padding: 13px 14px !important;
+  }
+
+  .provider-services-three__native button[data-service-key] > span:first-child {
+    display: grid;
+    gap: 3px;
+  }
+
+  .provider-services-three__native button[data-service-key] > span:first-child > span:first-child {
+    font-size: 14.5px !important;
+    line-height: 1.35 !important;
+  }
+
+  .provider-services-three__native button[data-service-key] > span:first-child > span:nth-child(2) {
+    font-size: 12.5px !important;
+    line-height: 1.45 !important;
+  }
+
+  .provider-services-three__actions {
+    gap: 8px;
+    margin-top: 0;
+    /* Bara de navigare de jos sta la ~62px inaltime pe telefon. Ridicam bara de
+       actiuni deasupra ei, altfel butonul "Salveaza" ramane acoperit. */
+    bottom: calc(62px + env(safe-area-inset-bottom));
+    padding: 8px 10px;
+    border-bottom: 0;
+  }
+
+  .provider-services-three__actions > div:first-child {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    padding: 0 2px;
+  }
+
+  .provider-services-three__actions > div:first-child strong {
+    overflow: hidden;
+    font-size: 11.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .provider-services-three__actions > div:first-child span {
+    display: none;
+  }
+
+  .provider-services-three__action-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+    gap: 8px;
+    padding: 0;
+  }
+
+  .provider-services-three__action-buttons button {
+    width: 100%;
+    min-height: 48px;
+    padding: 9px 11px;
+    white-space: nowrap;
+  }
+
+  .provider-services-three__action-buttons button:nth-child(3):last-child {
+    grid-column: 1 / -1;
+  }
+
+  .provider-services-three__action-label-desktop {
+    display: none;
+  }
+
+  .provider-services-three__action-label-mobile {
+    display: inline;
+  }
+}
+
+/* Titlul numerotat din interiorul sectiunii de configurare ("1. Zonele existente") e
+   ascuns vizual: antetul de sus arata deja acelasi titlu. */
+.provider-services-three__native [data-services-panel="configuration"] > h2:first-child {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+}
+
+/* Textul din antetul central e redundant pe telefon: titlul zonei apare deja in
+   antetul de navigare, iar descrierea se repeta imediat mai jos. */
+@media (max-width: 820px) {
+  .provider-services-three__center-copy {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   8. Ecranul-lista de pe telefon (drill-down)
+   ========================================================================== */
+
+.provider-services-three__home,
+.provider-services-three__home-back {
+  display: none;
+}
+
+@media (max-width: 820px) {
+  .provider-services-three__home {
+    display: block;
+  }
+
+  .provider-services-three__home-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+    padding: 8px 14px 8px 10px;
+    border-radius: 999px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+    font-size: 12px;
+    font-weight: 700;
+    color: hsl(var(--foreground));
+    cursor: pointer;
+  }
+
+  .provider-services-three__home-back svg {
+    height: 14px;
+    width: 14px;
+    transform: rotate(90deg);
+  }
+
+  /* In modul lista, continutul si actiunile nu se vad - lista e ecranul intreg. */
+  .provider-services-three__mobile-overview {
+    display: none !important;
+  }
+
+  .provider-services-three[data-mobile-home="true"] .provider-services-three__native,
+  .provider-services-three[data-mobile-home="true"] .provider-services-three__center-header,
+  .provider-services-three[data-mobile-home="true"] .provider-services-three__flow-next {
+    display: none !important;
+  }
+
+  .provider-services-three__status {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 14px 15px;
+    border-radius: 16px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+  }
+
+  .provider-services-three__status div {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .provider-services-three__status strong {
+    font-size: 14px;
+    font-weight: 800;
+    color: hsl(var(--foreground));
+  }
+
+  .provider-services-three__status small {
+    font-size: 12px;
+    line-height: 1.45;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .provider-services-three__status-dot {
+    margin-top: 5px;
+    height: 9px;
+    width: 9px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: hsl(var(--muted-foreground));
+  }
+
+  .provider-services-three__status[data-tone="live"] {
+    border-color: #b6d7bd;
+    background: #f2f8f3;
+  }
+
+  .provider-services-three__status[data-tone="live"] .provider-services-three__status-dot {
+    background: #2f7d43;
+  }
+
+  .provider-services-three__status[data-tone="pending"] {
+    border-color: #e7d9ae;
+    background: #fdf9ee;
+  }
+
+  .provider-services-three__status[data-tone="pending"] .provider-services-three__status-dot {
+    background: #a8801f;
+  }
+
+  .provider-services-three__status[data-tone="action"] {
+    border-color: hsl(var(--foreground) / 0.35);
+  }
+
+  .provider-services-three__status[data-tone="action"] .provider-services-three__status-dot {
+    background: hsl(var(--foreground));
+  }
+
+  .provider-services-three__home-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 2px 16px;
+  }
+
+  .provider-services-three__home-head > div {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .provider-services-three__home-head span {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .provider-services-three__home-head strong {
+    font-size: 17px;
+    font-weight: 800;
+    color: hsl(var(--foreground));
+  }
+
+  .provider-services-three__home-group {
+    margin-bottom: 18px;
+  }
+
+  .provider-services-three__home-group > p {
+    margin: 0 4px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .provider-services-three__home-group > button {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    padding: 14px;
+    border-radius: 18px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .provider-services-three__home-group > button.is-done {
+    border-color: hsl(var(--foreground) / 0.4);
+  }
+
+  .provider-services-three__home-group > button.is-review {
+    padding: 12px 14px;
+    background: transparent;
+  }
+
+  .provider-services-three__home-icon {
+    display: flex;
+    height: 44px;
+    width: 44px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: hsl(var(--secondary));
+    color: hsl(var(--foreground));
+  }
+
+  .provider-services-three__home-group > button.is-done .provider-services-three__home-icon {
+    background: hsl(var(--foreground));
+    color: hsl(var(--background));
+  }
+
+  .provider-services-three__home-icon svg {
+    height: 20px;
+    width: 20px;
+  }
+
+  .provider-services-three__home-body {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .provider-services-three__home-label {
+    font-size: 15px;
+    font-weight: 700;
+    color: hsl(var(--foreground));
+  }
+
+  .provider-services-three__home-hint {
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: hsl(var(--muted-foreground));
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .provider-services-three__home-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 3px;
+    font-size: 11px;
+    font-weight: 700;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .provider-services-three__home-group > button.is-done .provider-services-three__home-meta {
+    color: hsl(var(--foreground));
+  }
+
+  .provider-services-three__home-meta svg {
+    height: 12px;
+    width: 12px;
+  }
+
+  .provider-services-three__home-group > button > svg:last-child {
+    height: 16px;
+    width: 16px;
+    flex-shrink: 0;
+    transform: rotate(-90deg);
+    color: hsl(var(--muted-foreground));
+  }
+}
+
+/* ==========================================================================
+   9. Rezumatul de pe randul din capul continutului
+   ========================================================================== */
+
+.provider-services-three__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  padding: 14px 26px 0;
+}
+
+.provider-services-three__meta:empty {
+  display: none;
+}
+
+.provider-services-three__meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.provider-services-three__meta-item small {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: hsl(var(--muted-foreground));
+}
+
+.provider-services-three__meta-item strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+}
+
+.provider-services-three__meta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  font-size: 12px;
+  font-weight: 650;
+  color: hsl(var(--muted-foreground));
+}
+
+.provider-services-three__meta-badge svg {
+  height: 14px;
+  width: 14px;
+}
+
+.provider-services-three__meta-badge.is-ready {
+  border-color: hsl(var(--chart-2) / 0.35);
+  background: hsl(var(--chart-2) / 0.08);
+  color: hsl(var(--chart-2));
+}
+
+.provider-services-three__meta-badge.is-issues {
+  border-color: #e7d9ae;
+  background: #fdf9ee;
+  color: #8a6d1f;
+  cursor: pointer;
+}
+
+.provider-services-three__admin-note {
+  margin: 12px 26px 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid #e7d9ae;
+  background: #fdf9ee;
+}
+
+.provider-services-three__admin-note strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b5514;
+}
+
+.provider-services-three__admin-note p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #6b5514;
+}
+
+@media (max-width: 820px) {
+  .provider-services-three__meta,
+  .provider-services-three__admin-note {
+    padding-inline: 16px;
+    margin-inline: 0;
+  }
+}
+
+/* ==========================================================================
+   10. Coloana de pasi, in stilul unui meniu de setari
+   ========================================================================== */
+
+.provider-services-three__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.provider-services-three__steps + .provider-services-three__steps {
+  margin-top: 16px;
+}
+
+.provider-services-three__steps-label {
+  margin: 0 0 6px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: hsl(var(--muted-foreground));
+}
+
+.provider-services-three__step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.provider-services-three__step:hover,
+.provider-services-three__step.is-active {
+  background: hsl(var(--secondary));
+}
+
+.provider-services-three__step-mark {
+  display: flex;
+  height: 17px;
+  width: 17px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Placa colorata: cand primeste fundal inline (culoare de categorie), creste usor si
+   capata contur, ca sa se citeasca drept insigna. */
+.provider-services-three__step-mark[style*="background"] {
+  height: 20px;
+  width: 20px;
+  border: 1px solid transparent;
+  color: #2c2c2c;
+}
+
+.provider-services-three__step-mark svg {
+  height: 16px;
+  width: 16px;
+}
+
+.provider-services-three__step.is-active .provider-services-three__step-mark {
+  color: hsl(var(--foreground));
+}
+
+.provider-services-three__step-body {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.provider-services-three__step-body > span {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-services-three__step.is-active .provider-services-three__step-body > span {
+  font-weight: 650;
+}
+
+.provider-services-three__step-done {
+  height: 14px;
+  width: 14px;
+  flex-shrink: 0;
+  color: hsl(var(--chart-2));
+}
+
+.provider-services-three__review {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.provider-services-three__review > p {
+  margin: 0 0 6px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Butonul "Continua catre..." - drumul liniar prin configurare */
+.provider-services-three__flow-next {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.provider-services-three__flow-next button.is-back {
+  flex-shrink: 0;
+  border-radius: 18px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  padding: 14px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.provider-services-three__flow-next button.is-back:hover {
+  background: hsl(var(--secondary));
+}
+
+.provider-services-three__flow-next button.is-primary {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  border-radius: 18px;
+  border: 1px solid hsl(var(--foreground));
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  padding: 14px 18px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.provider-services-three__flow-next button.is-primary:hover {
+  opacity: 0.92;
+}
+
+.provider-services-three__flow-next button.is-primary span {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.provider-services-three__flow-next button.is-primary strong {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-services-three__flow-next button.is-primary svg {
+  height: 16px;
+  width: 16px;
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+}
+
+@media (max-width: 620px) {
+  .provider-services-three__flow-next button.is-primary {
+    flex-wrap: wrap;
+    gap: 2px 8px;
+  }
+
+  .provider-services-three__flow-next button.is-primary span {
+    width: 100%;
+  }
+}
