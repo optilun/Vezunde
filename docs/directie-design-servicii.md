@@ -4,7 +4,17 @@ Data: 2026-08-06. Sursa unica de adevar pentru cum arata si se comporta
 configurarea serviciilor. Orice schimbare viitoare de design se verifica
 fata de acest document inainte de implementare.
 
-## Regula controalelor — NU e preferinta, e comportament verificat in cod
+## Regula controalelor
+
+> **DECIZIE DE OWNER (2026-08-06):** serviciile folosesc **comutator**, nu bifa.
+> Recomandarea initiala de mai jos a fost argumentata de trei ori si respinsa;
+> decizia finala apartine owner-ului si e implementata ca atare.
+> **CAS ramane bifa**, deliberat diferit: e un atribut al serviciului deja
+> activat, nu o activare de sine statatoare.
+> Nota tehnica ramasa valabila: selectia NU se aplica imediat, trece prin draft
+> si "Trimite spre aprobare" — bara de actiuni de jos e singurul indiciu ca
+> modificarile trebuie salvate. Tabelul de mai jos se pastreaza ca istoric al
+> rationamentului, nu ca regula activa pentru servicii.
 
 | Control | Cand se foloseste | De ce |
 |---|---|---|
