@@ -1,4 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+// Faza 1 din docs/plan-refactor-servicii-2026-08-18.md: acest fisier a ramas STRICT
+// de prezentare. Starea, incarcarea, dependentele, CAS si persistenta au fost mutate
+// in services/useProviderServicesConfig.js, iar functiile pure in
+// services/servicesConfigModel.js. Randarea si stilurile nu s-au schimbat.
+import React, { useState } from "react";
 import {
   AlertTriangle,
   Building2,
@@ -28,47 +32,24 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import { base44 } from "@/api/base44Client";
-import { getServiceGroupLayout, SERVICE_GROUPS } from "@/lib/canonicalServiceCatalog";
-import { PROVIDER_SERVICE_SECTIONS } from "@/lib/providerServiceWorkspaceSections";
 import {
   CARE_SETTINGS,
   getCapabilityDefinition,
   getFunctionalUnitDefinition,
-  getFunctionalUnitLayout,
 } from "@/lib/providerLocationFunctionalUnits";
-import {
-  getServiceOperationalContext,
-  getServiceSearchTerms,
-} from "@/lib/serviceOperationalTaxonomy";
 import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
-import { evaluateServicePrerequisites } from "../../../../shared/servicePrerequisiteEngine.js";
 import { getServiceDescription } from "../../../../shared/serviceDescriptions.js";
+import { useProviderServicesConfig } from "./services/useProviderServicesConfig";
+import {
+  cleanText,
+  isSelected,
+  possibleUnits,
+  resolveSectionUnit,
+  selectedCountForSection,
+  serviceLabel,
+} from "./services/servicesConfigModel";
 
 const inputClass = "w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm outline-none transition focus:border-foreground/35 focus:ring-2 focus:ring-foreground/5";
-
-const PROFILE_LABELS = {
-  independent_optical_store: "optică medicală",
-  optical_chain: "locație dintr-un lanț de optică",
-  ophthalmology_clinic: "clinică de oftalmologie",
-  ophthalmology_office: "cabinet de oftalmologie",
-  independent_ophthalmologist: "medic oftalmolog",
-  independent_optometrist: "cabinet de optometrie",
-  independent_optician: "optician independent",
-  optical_laboratory_b2c: "laborator optic",
-  optical_laboratory_b2b: "laborator optic B2B",
-  future_b2b_distributor: "furnizor B2B",
-};
-
-const LEGACY_PROFILE_LABELS = {
-  optica_medicala: "optică medicală",
-  clinica_oftalmologica: "clinică de oftalmologie",
-  cabinet_oftalmologic: "cabinet de oftalmologie",
-  cabinet_optometric: "cabinet de optometrie",
-  laborator_optic: "laborator optic",
-  optometrist_independent: "optometrist independent",
-  medic_oftalmolog_independent: "medic oftalmolog",
-};
 
 const UNIT_ICONS = {
   optical_store: Store,
@@ -94,256 +75,6 @@ const CAPABILITY_ICONS = {
   b2b_logistics: Building2,
   b2b_technical_support: Settings2,
 };
-
-const SERVICE_GROUP_BY_KEY = Object.fromEntries(
-  Object.entries(SERVICE_GROUPS).flatMap(([group, config]) => (
-    Object.keys(config.ids || {}).map((serviceKey) => [serviceKey, group])
-  )),
-);
-
-function cleanText(value) {
-  return String(value || "").trim().replace(/\s+/g, " ");
-}
-
-function normalizedSearch(value) {
-  return cleanText(value)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
-
-function safeParse(raw) {
-  try { return JSON.parse(raw || "{}") || {}; } catch { return {}; }
-}
-function backendFunctionMissing(error) {
-  const message = String(error?.message || error?.error || error || "").toLowerCase();
-  const status = Number(error?.status || error?.response?.status || 0);
-  return status === 404 || /not found|not deployed|backend function|404/.test(message);
-}
-
-function legacyServiceRows(serviceKeys = []) {
-  return [...new Set(serviceKeys || [])]
-    .filter((serviceKey) => !SERVICE_GROUP_BY_KEY[serviceKey])
-    .map((serviceKey) => ({
-      id: `legacy:${serviceKey}`,
-      raw_key: serviceKey,
-      label: serviceKey,
-      catalog_status: "legacy_or_unknown",
-      is_active: true,
-    }));
-}
-
-function serviceLabel(item) {
-  return SERVICE_GROUPS[item.group]?.ids?.[item.id] || item.id;
-}
-
-function groupServiceKeys(serviceKeys = []) {
-  const grouped = {};
-  for (const serviceKey of serviceKeys) {
-    const group = SERVICE_GROUP_BY_KEY[serviceKey];
-    if (!group) continue;
-    grouped[group] = grouped[group] || [];
-    if (!grouped[group].includes(serviceKey)) grouped[group].push(serviceKey);
-  }
-  return normalizeSelected(grouped);
-}
-
-function normalizeSelected(selected = {}) {
-  const result = {};
-  Object.keys(selected).sort().forEach((group) => {
-    if (!SERVICE_GROUPS[group]) return;
-    const allowed = new Set(Object.keys(SERVICE_GROUPS[group].ids || {}));
-    const ids = [...new Set((selected[group] || []).filter((id) => allowed.has(id)))].sort();
-    if (ids.length > 0) result[group] = ids;
-  });
-  return result;
-}
-
-function applyDraft(approved, payload = {}) {
-  const result = Object.fromEntries(Object.entries(normalizeSelected(approved)).map(([group, ids]) => [group, [...ids]]));
-  for (const [group, ids] of Object.entries(normalizeSelected(payload.selected_ids || {}))) {
-    result[group] = [...new Set([...(result[group] || []), ...ids])];
-  }
-  for (const [group, ids] of Object.entries(normalizeSelected(payload.removal_ids || {}))) {
-    const removed = new Set(ids);
-    result[group] = (result[group] || []).filter((id) => !removed.has(id));
-  }
-  return normalizeSelected(result);
-}
-
-function removalPayload(approved, desired) {
-  const removals = {};
-  const normalizedApproved = normalizeSelected(approved);
-  const normalizedDesired = normalizeSelected(desired);
-  for (const [group, ids] of Object.entries(normalizedApproved)) {
-    const desiredIds = new Set(normalizedDesired[group] || []);
-    const removed = ids.filter((id) => !desiredIds.has(id));
-    if (removed.length > 0) removals[group] = removed;
-  }
-  return removals;
-}
-
-function countSelected(selected) {
-  return Object.values(selected || {}).reduce((sum, ids) => sum + (ids?.length || 0), 0);
-}
-
-function configurationSignature(payload = {}) {
-  const sortRows = (rows, keys) => [...(rows || [])]
-    .map((row) => ({ ...row }))
-    .sort((a, b) => keys.map((key) => String(a?.[key] || "")).join(":").localeCompare(keys.map((key) => String(b?.[key] || "")).join(":")));
-  const serviceMap = Object.fromEntries(Object.entries(payload.service_unit_map || {}).sort(([a], [b]) => a.localeCompare(b)));
-  const links = payload.resource_links || {};
-  return JSON.stringify({
-    selected_ids: normalizeSelected(payload.selected_ids || {}),
-    raw_removal_keys: [...new Set(payload.raw_removal_keys || [])].sort(),
-    suggestions: sortRows(payload.suggestions || [], ["group", "label", "functional_unit_key", "capability_key"]),
-    functional_units: sortRows(payload.functional_units || [], ["unit_key", "care_setting"]),
-    removal_unit_keys: [...new Set(payload.removal_unit_keys || [])].sort(),
-    capabilities: sortRows(payload.capabilities || [], ["capability_key", "parent_unit_key"]),
-    removal_capabilities: sortRows(payload.removal_capabilities || [], ["capability_key", "parent_unit_key"]),
-    service_unit_map: serviceMap,
-    cas_service_keys: [...new Set(payload.cas_service_keys || [])].sort(),
-    resource_links: {
-      professionals: sortRows((links.professionals || []).map((item) => ({ ...item, unit_keys: [...(item.unit_keys || [])].sort() })), ["assignment_id"]),
-      equipment: sortRows(links.equipment || [], ["equipment_id", "unit_key"]),
-      facilities: sortRows(links.facilities || [], ["facility_id", "unit_key"]),
-    },
-    resource_removals: {
-      professionals: sortRows(payload.resource_removals?.professionals || [], ["assignment_id"]),
-      equipment: sortRows(payload.resource_removals?.equipment || [], ["equipment_id"]),
-      facilities: sortRows(payload.resource_removals?.facilities || [], ["facility_id"]),
-    },
-    care_setting: payload.care_setting || "",
-  });
-}
-
-function selectedServiceKeys(selected) {
-  return [...new Set(Object.values(selected || {}).flat())];
-}
-
-function isSelected(selected, item) {
-  return (selected[item.group] || []).includes(item.id);
-}
-
-function profileLabel(location) {
-  return PROFILE_LABELS[location?.provider_profile_type]
-    || LEGACY_PROFILE_LABELS[location?.provider_type]
-    || "profilul acestei locații";
-}
-
-function isB2B(location) {
-  return ["optical_laboratory_b2b", "future_b2b_distributor"].includes(location?.provider_profile_type);
-}
-
-function possibleUnits(section) {
-  return [...new Set([section.unitKey, ...(section.fallbackUnitKeys || [])].filter(Boolean))];
-}
-
-function defaultUnitForSection(section, activeUnits) {
-  return possibleUnits(section).find((unitKey) => activeUnits.includes(unitKey)) || section.unitKey;
-}
-
-function resolveSectionUnit(section, selected, serviceUnitMap, activeUnits) {
-  const mapped = section.items
-    .filter((item) => isSelected(selected, item))
-    .map((item) => serviceUnitMap[item.id])
-    .find((unitKey) => activeUnits.includes(unitKey) && possibleUnits(section).includes(unitKey));
-  return mapped || defaultUnitForSection(section, activeUnits);
-}
-
-function sectionsForProfile(layout, selected, sourceSections = PROVIDER_SERVICE_SECTIONS) {
-  const allowed = new Set([...(layout.primary || []), ...(layout.secondary || [])]);
-  const hidden = new Set(layout.hidden || []);
-  return sourceSections.map((section) => {
-    const items = section.items.filter((item) => allowed.has(item.group) || (hidden.has(item.group) && isSelected(selected, item)));
-    return {
-      ...section,
-      // BUG REAL gasit si reparat (2026-08-06): sectiunea sursa (PROVIDER_SERVICE_SECTIONS)
-      // nu are niciodata camp "group" propriu - avea doar key/title/items. Codul de
-      // culoare scris mai devreme citea section.group, care era mereu undefined, deci
-      // bulina din titlul sectiunii nu aparea NICIODATA. Calculam group aici, din primul
-      // serviciu al sectiunii, o singura data, la sursa.
-      group: items[0]?.group || section.items[0]?.group || "",
-      items,
-    };
-  }).filter((section) => section.items.length > 0);
-}
-
-function unitRow(unitKey, careSetting) {
-  const definition = getFunctionalUnitDefinition(unitKey);
-  const medical = definition?.kind?.startsWith("medical");
-  return {
-    unit_key: unitKey,
-    care_setting: medical ? careSetting : (definition?.defaultCareSetting || "not_applicable"),
-    note: "",
-  };
-}
-
-function inferCapabilities(selected, serviceUnitMap, activeUnits) {
-  const map = new Map();
-  for (const serviceKey of selectedServiceKeys(selected)) {
-    const context = getServiceOperationalContext(serviceKey);
-    if (!context?.capabilityKey) continue;
-    const parent = serviceUnitMap[serviceKey]
-      || [context.unitKey, ...(context.fallbackUnitKeys || [])].find((unitKey) => activeUnits.includes(unitKey));
-    if (parent) map.set(`${context.capabilityKey}:${parent}`, { capability_key: context.capabilityKey, parent_unit_key: parent, note: "" });
-  }
-  return [...map.values()];
-}
-
-function buildResourceLinks(config) {
-  return {
-    professionals: (config.assignments || [])
-      .filter((item) => (item.functional_unit_keys || []).length > 0)
-      .map((item) => ({ assignment_id: item.id, unit_keys: [...item.functional_unit_keys] })),
-    equipment: (config.equipment || [])
-      .filter((item) => item.functional_unit_key)
-      .map((item) => ({ equipment_id: item.id, unit_key: item.functional_unit_key })),
-    facilities: (config.facilities || [])
-      .filter((item) => item.functional_unit_key)
-      .map((item) => ({ facility_id: item.id, unit_key: item.functional_unit_key })),
-  };
-}
-
-function capabilityIdentity(item) {
-  return `${item?.capability_key || ""}:${item?.parent_unit_key || ""}`;
-}
-
-function resourceRemovalPayload(approved, desired) {
-  const current = desired || { professionals: [], equipment: [], facilities: [] };
-  const removals = { professionals: [], equipment: [], facilities: [] };
-
-  const currentProfessionals = new Map((current.professionals || []).map((item) => [item.assignment_id, new Set(item.unit_keys || [])]));
-  for (const item of approved.professionals || []) {
-    const desiredUnits = currentProfessionals.get(item.assignment_id) || new Set();
-    const removedUnits = (item.unit_keys || []).filter((unitKey) => !desiredUnits.has(unitKey));
-    if (removedUnits.length > 0) removals.professionals.push({ assignment_id: item.assignment_id, unit_keys: removedUnits });
-  }
-
-  const currentEquipment = new Map((current.equipment || []).map((item) => [item.equipment_id, item.unit_key]));
-  for (const item of approved.equipment || []) {
-    if (currentEquipment.get(item.equipment_id) !== item.unit_key) removals.equipment.push({ equipment_id: item.equipment_id });
-  }
-
-  const currentFacilities = new Map((current.facilities || []).map((item) => [item.facility_id, item.unit_key]));
-  for (const item of approved.facilities || []) {
-    if (currentFacilities.get(item.facility_id) !== item.unit_key) removals.facilities.push({ facility_id: item.facility_id });
-  }
-
-  return removals;
-}
-
-function normalizeSuggestions(payload = {}) {
-  return Array.isArray(payload.suggestions)
-    ? payload.suggestions
-    : Array.isArray(payload.custom_requests)
-      ? payload.custom_requests
-      : [];
-}
-
-function selectedCountForSection(selected, section) {
-  return section.items.reduce((sum, item) => sum + (isSelected(selected, item) ? 1 : 0), 0);
-}
 
 function StatusBadge({ prerequisite }) {
   if (!prerequisite || prerequisite.status === "available") return null;
@@ -375,11 +106,9 @@ const CAS_ELIGIBLE_GROUPS = new Set([
   "children_and_prevention",
 ]);
 
-// Culorile exacte din CategoryShowcase.jsx (homepage), pe categoriile lui, mapate pe
-// grupurile canonice de servicii (2026-08-06). Nu sunt culori noi - sunt identitatea
-// deja folosita pe homepage, adusa si in configurare, ca reper vizual pe liste lungi.
-// business_attributes ramane fara culoare - nu e o categorie de pe homepage, e un
-// atribut de afacere, de alta natura (are deja tratament propriu, cu carduri mari).
+// Culorile exacte din CategoryShowcase.jsx (homepage), mapate pe grupurile canonice
+// de servicii (2026-08-06). business_attributes ramane fara culoare - nu e o
+// categorie de pe homepage, e un atribut de afacere.
 const GROUP_TONE = {
   optical_retail: { bg: "#efd5c5", border: "#e1bda8", text: "#8a4a28" },
   lenses_and_measurements: { bg: "#efd5c5", border: "#e1bda8", text: "#8a4a28" },
@@ -393,11 +122,6 @@ const GROUP_TONE = {
   technical_activities: { bg: "#eadcba", border: "#dac69b", text: "#6b551f" },
 };
 
-// Zonele fizice (2026-08-06), mapate pe descrierea lor reala din registru, nu pe
-// presupuneri: optical_store/optical_cabinet vand produse, optometry_cabinet masoara
-// vederea, ophthalmology_* sunt medicale, workshop/laboratory repara si prelucreaza,
-// diagnostics investigheaza. b2b_distribution_center nu are culoare - nu e o categorie
-// vizibila pacientului, e distributie catre alte optici.
 const UNIT_TONE = {
   optical_store: GROUP_TONE.optical_retail,
   optical_cabinet: GROUP_TONE.optical_retail,
@@ -410,7 +134,7 @@ const UNIT_TONE = {
   ophthalmology_surgery_unit: GROUP_TONE.ophthalmology_consults,
 };
 
-function ServiceRow({ item, index = 0, selected, approvedSelected, prerequisite, unitKey, disabled, helperText = "", onToggle, casActive = false, casEligible = false, onToggleCas }) {
+function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, disabled, helperText = "", onToggle, casActive = false, casEligible = false, onToggleCas }) {
   const active = isSelected(selected, item);
   const approved = isSelected(approvedSelected, item);
   const removalRequested = approved && !active;
@@ -418,30 +142,14 @@ function ServiceRow({ item, index = 0, selected, approvedSelected, prerequisite,
   const blockerDetail = active && prerequisite?.eligible === false
     ? prerequisite.blockers?.[0]?.message
     : "";
-  // Descrierea din catalog e textul implicit al randului (2026-08-06). Mesajele de
-  // stare (eliminare ceruta, prerechizita neindeplinita) au prioritate, pentru ca
-  // sunt informatie mai urgenta decat explicatia serviciului.
+  // Descrierea din catalog e textul implicit al randului; mesajele de stare au prioritate.
   const detail = removalRequested
     ? "La trimiterea cererii, elementul este ascuns public până la soluționare."
     : blockerDetail || helperText || getServiceDescription(item.id);
   const casVisible = active && !removalRequested && casEligible;
-  // Fundal alternant, ca intr-un tabel (2026-08-06): la 17-28 de randuri identice pe
-  // rand, ochiul pierde reperul. Randul par primeste un fundal foarte discret -
-  // suficient sa desparta vizual, fara sa arate ca o selectie.
-  // Fara fundal alternant (2026-08-06): briefingul cere separare DOAR prin linii fine,
-  // ca in referinta. Tenta pe randul par crea un aspect de tabel, nu de panou.
-  const rowTint = "bg-transparent";
-  // Fara chenar sau colturi rotunjite pe rand (2026-08-06): invelisul de mai jos exista
-  // doar ca sa poata gazdui si butonul CAS sub serviciu, dar chenarul propriu il facea
-  // sa arate ca o cutie separata - opusul modelului Settings, unde nu exista cutii, doar
-  // spatiu si o linie fina intre randuri din acelasi grup. Tenta alternanta ramane, doar
-  // ca zona plata, nu cutie.
-  // Linia colorata din stanga a fost ELIMINATA (2026-08-06): in practica arata ca o
-  // eroare de randare, nu ca accent - taia prin text, nu se aliniaza cu nimic. Bulina
-  // din titlul sectiunii ramane singurul reper de culoare la nivel de serviciu.
   return (
     <div
-      className={`relative border-b border-border/50 transition last:border-b-0 ${removalRequested ? "bg-amber-50/60" : active ? "bg-transparent" : rowTint}`}
+      className={`relative border-b border-border/50 transition last:border-b-0 ${removalRequested ? "bg-amber-50/60" : "bg-transparent"}`}
     >
     <button
       type="button"
@@ -459,17 +167,14 @@ function ServiceRow({ item, index = 0, selected, approvedSelected, prerequisite,
           {!removalRequested && <StatusBadge prerequisite={prerequisite} />}
         </span>
       </span>
-      {/* Comutator pentru activarea serviciului (2026-08-06). Decizie a owner-ului,
-          care suprascrie recomandarea din docs/directie-design-servicii.md (bifa).
-          Culoarea "pornit" e foreground-ul VIASEE, nu albastrul din referinta. */}
+      {/* Comutator pentru activarea serviciului: decizie de owner (2026-08-06). */}
       <span
         className={`relative inline-flex h-[24px] w-[42px] shrink-0 items-center rounded-full transition-colors ${removalRequested ? "bg-amber-300" : active ? "bg-foreground" : "bg-border"}`}
       >
         <span className={`absolute h-[18px] w-[18px] rounded-full bg-background shadow-sm transition-all ${active || removalRequested ? "left-[21px]" : "left-[3px]"}`} />
       </span>
     </button>
-    {/* CAS ramane BIFA, deliberat diferit de comutatorul serviciului (2026-08-06):
-        e un atribut al serviciului de deasupra, nu o activare de sine statatoare. */}
+    {/* CAS ramane BIFA, deliberat diferit de comutatorul serviciului. */}
     {casVisible && (
       <button
         type="button"
@@ -622,9 +327,7 @@ function CareSettingSelector({ options, approvedValue, value, disabled, onChange
       </div>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Alege varianta care descrie cel mai bine activitatea acestei locații. Aceasta nu modifică tipul organizației.</p>
       {!hasVisibleSelection && <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">Alege o opțiune pentru a continua configurarea completă.</div>}
-      {/* Lista derulanta, nu butoane-pastila (2026-08-06): e o singura alegere dintr-un
-          set de optiuni numite - acelasi tipar ca "Tool access mode" din referinta,
-          unde eticheta sta la stanga si controlul la dreapta. */}
+      {/* Lista derulanta, nu butoane-pastila: o singura alegere dintr-un set numit. */}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-3">
         <span className="text-[13px] font-semibold text-foreground">Varianta selectată</span>
         <div className="relative">
@@ -731,9 +434,6 @@ function CustomSuggestion({ unitKey, section, disabled, items, onAdd, onRemove }
   return (
     <div className="border-t border-border/60 px-4 py-2.5 sm:px-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Redus la un singur rand (2026-08-06): blocul cu titlu si explicatie aparea
-            dupa FIECARE grup de servicii si rupea lista de bife. Explicatia ramane
-            vizibila cand deschizi formularul. */}
         <button type="button" disabled={disabled} onClick={() => setOpen((value) => !value)} className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground underline underline-offset-4 disabled:opacity-50"><Plus className="h-3.5 w-3.5" /> Nu găsești opțiunea? Propune manual</button>
       </div>
       {open && (
@@ -752,13 +452,8 @@ function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceU
   const Icon = UNIT_ICONS[unitKey] || Building2;
   const selectedCount = sections.reduce((sum, section) => sum + selectedCountForSection(selected, section), 0);
   const total = sections.reduce((sum, section) => sum + section.items.length, 0);
-  // Sectiunile dintr-o zona sunt pliabile (2026-08-06). Inainte, deschiderea unei zone
-  // randa toate sectiunile cu toate randurile lor simultan - pana la ~24 de randuri per
-  // sectiune, plus titlu si paragraf de descriere pentru fiecare.
-  // Pornesc DESCHISE doar sectiunile care au deja selectii. Doua motive:
-  //  1. utilizatorul vede imediat ce si-a configurat, fara sa caute;
-  //  2. filtrele din invelis ("Oferta selectata", "Observatii") scaneaza randurile din
-  //     DOM - daca sectiunile cu selectii ar fi inchise, acele filtre ar afisa gol.
+  // Pornesc DESCHISE doar sectiunile care au deja selectii: utilizatorul vede imediat
+  // ce si-a configurat, iar filtrele din invelis scaneaza randurile din DOM.
   const [openSections, setOpenSections] = useState(() => new Set(
     sections.filter((section) => selectedCountForSection(selected, section) > 0).map((section) => section.key),
   ));
@@ -779,10 +474,6 @@ function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceU
       </button>
       {open && (
         <div className="border-t border-border/70">
-          {/* Descrierea zonei a fost eliminata (2026-08-06): pe telefon aparea imediat
-              dupa titlul zonei, care era deja repetat de doua ori mai sus, si impingea
-              prima bifa reala si mai jos. Aceeasi informatie exista in pasul de alegere
-              a zonelor, unde chiar ajuta la decizie. */}
           {sections.map((section) => {
             const activeUnit = resolveSectionUnit(section, selected, serviceUnitMap, [unitKey]);
             const availableParents = possibleUnits(section).filter((key) => config.activeUnits.includes(key));
@@ -796,10 +487,7 @@ function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceU
                     aria-expanded={openSections.has(section.key)}
                     className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
                   >
-                    {/* Placa de culoare, dupa identitatea de pe homepage (2026-08-06):
-                        acelasi reper pe care il inveti deja de pe pagina principala -
-                        piersica pentru ochelari, mov pentru medici, verde pentru
-                        investigatii - adus aici, ca reper la derulare pe liste lungi. */}
+                    {/* Bulina de culoare, dupa identitatea de pe homepage. */}
                     {GROUP_TONE[section.group] && (
                       <span
                         aria-hidden="true"
@@ -824,7 +512,7 @@ function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceU
                     {section.description && <p className="px-4 pb-3 text-[11px] leading-relaxed text-muted-foreground sm:px-5">{section.description}</p>}
                     {section.note && <div className="mx-4 mb-3 flex gap-2 rounded-xl border border-border bg-secondary/25 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground sm:mx-5"><Info className="mt-0.5 h-4 w-4 shrink-0" /> {section.note}</div>}
                     <div className="border-t border-border/50">
-                      {section.items.map((item, index) => <ServiceRow key={`${item.group}:${item.id}`} item={item} index={index} selected={selected} approvedSelected={approvedSelected} prerequisite={prerequisites[item.id]} unitKey={activeUnit} disabled={disabled} onToggle={onToggleService} casEligible={CAS_ELIGIBLE_GROUPS.has(item.group)} casActive={casServiceKeys.includes(item.id)} onToggleCas={onToggleCas} />)}
+                      {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={prerequisites[item.id]} unitKey={activeUnit} disabled={disabled} onToggle={onToggleService} casEligible={CAS_ELIGIBLE_GROUPS.has(item.group)} casActive={casServiceKeys.includes(item.id)} onToggleCas={onToggleCas} />)}
                     </div>
                     <CustomSuggestion unitKey={unitKey} section={section} disabled={disabled} items={suggestions} onAdd={onAddSuggestion} onRemove={onRemoveSuggestion} />
                   </>
@@ -839,7 +527,6 @@ function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceU
   );
 }
 
-// Iconita fiecarui atribut de la nivelul locatiei (2026-08-06).
 const BUSINESS_ATTRIBUTE_ICONS = {
   home_visit_eye_care: Home,
   workplace_vision_screening: Building2,
@@ -848,7 +535,7 @@ const BUSINESS_ATTRIBUTE_ICONS = {
   school_vision_screening: GraduationCap,
 };
 
-function GlobalServiceSections({ sections, selected, approvedSelected, prerequisites, disabled, onToggleService }) {
+function GlobalServiceSections({ sections, selected, approvedSelected, disabled, onToggleService }) {
   if (sections.length === 0) return null;
   const helperText = {
     home_visit_eye_care: "Te deplasezi la domiciliul pacientului, pentru persoane care nu pot ajunge la locație.",
@@ -863,9 +550,7 @@ function GlobalServiceSections({ sections, selected, approvedSelected, prerequis
         <h2 className="text-sm font-bold">4. La nivelul locației</h2>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Aceste opțiuni se aplică întregii locații, nu unei singure zone. Nu cerem documente - informațiile sunt declarate de furnizor.</p>
       </div>
-      {/* Carduri mari, ca la zone si dotari (2026-08-06), nu randuri inguste ca la
-          catalogul de servicii: astea nu sunt produse dintr-un catalog, sunt atribute
-          despre cum functioneaza afacerea - se citesc mai bine cu spatiu si iconita. */}
+      {/* Carduri mari: sunt atribute despre cum functioneaza afacerea, nu produse. */}
       <div className="space-y-2 p-4 sm:p-5">
         {sections.flatMap((section) => section.items).map((item) => {
           const active = isSelected(selected, item);
@@ -1067,733 +752,25 @@ function LegacyServices({ services, rawRemovalKeys, disabled, onToggle }) {
   );
 }
 
-export default function ProviderServicesWorkspaceOperational({ locationId, location, onWorkspaceSnapshot, query: externalQuery, onQueryChange }) {
-  // Actiunile (save/submit/withdraw) sunt expuse in sus prin snapshot, ca invelisul de
-  // trei coloane sa le poata apela direct. Inainte (pana in 2026-08-06) invelisul gasea
-  // butoanele cautand textul romanesc exact ("Salveaza draftul" etc.) si le da click prin
-  // DOM - o legatura care se rupea silentios la orice redenumire de buton.
-  // Ref-ul tine mereu ultimele handlere; functiile expuse raman stabile ca identitate,
-  // altfel snapshot-ul s-ar schimba la fiecare randare si ar declansa o bucla.
-  const actionsRef = useRef({});
-  const stableActions = useMemo(() => ({
-    onSave: () => actionsRef.current.save?.(),
-    onSubmit: () => actionsRef.current.submit?.(),
-    onWithdraw: () => actionsRef.current.withdraw?.(),
-  }), []);
-  const [config, setConfig] = useState(null);
-  const [remoteCatalog, setRemoteCatalog] = useState(null);
-  const [persistenceMode, setPersistenceMode] = useState("v2");
-  const [draft, setDraft] = useState(null);
-  const [approvedSelected, setApprovedSelected] = useState({});
-  const [selected, setSelected] = useState({});
-  const [approvedUnits, setApprovedUnits] = useState([]);
-  const [activeUnits, setActiveUnits] = useState([]);
-  const [approvedCapabilities, setApprovedCapabilities] = useState([]);
-  const [capabilities, setCapabilities] = useState([]);
-  const [approvedServiceUnitMap, setApprovedServiceUnitMap] = useState({});
-  const [serviceUnitMap, setServiceUnitMap] = useState({});
-  // Cheile serviciilor marcate ca decontate prin CAS (2026-08-06).
-  const [casServiceKeys, setCasServiceKeys] = useState([]);
-  const [approvedResourceLinks, setApprovedResourceLinks] = useState({ professionals: [], equipment: [], facilities: [] });
-  const [resourceLinks, setResourceLinks] = useState({ professionals: [], equipment: [], facilities: [] });
-  const [approvedCareSetting, setApprovedCareSetting] = useState("not_applicable");
-  const [careSetting, setCareSetting] = useState("not_applicable");
-  const [suggestions, setSuggestions] = useState([]);
-  const [rawRemovalKeys, setRawRemovalKeys] = useState([]);
-  const [openUnit, setOpenUnit] = useState("");
-  // Cautarea poate fi controlata din exterior (invelisul de trei coloane are propria
-  // caseta de cautare in antet). Inainte, invelisul scria valoarea direct in input prin
-  // setter-ul nativ al React-ului si un eveniment sintetic - un truc pe interiorul
-  // bibliotecii, care s-ar rupe tacit la o schimbare de versiune React.
-  const [internalQuery, setInternalQuery] = useState("");
-  const query = externalQuery !== undefined ? externalQuery : internalQuery;
-  const setQuery = onQueryChange || setInternalQuery;
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [baselineSignature, setBaselineSignature] = useState(null);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [conflicts, setConflicts] = useState([]);
-  const [pendingRemoval, setPendingRemoval] = useState(null);
-
-  const serviceLayout = useMemo(() => remoteCatalog?.group_layout || getServiceGroupLayout(location?.provider_profile_type, location?.provider_type), [location?.provider_profile_type, location?.provider_type, remoteCatalog]);
-  const operationalLayout = useMemo(() => getFunctionalUnitLayout(location?.provider_profile_type, location?.provider_type), [location?.provider_profile_type, location?.provider_type]);
-  const profileSections = useMemo(() => sectionsForProfile(serviceLayout, selected, remoteCatalog?.provider_sections?.length ? remoteCatalog.provider_sections : PROVIDER_SERVICE_SECTIONS), [serviceLayout, selected, remoteCatalog]);
-  const globalSections = useMemo(() => profileSections.filter((section) => section.key === "business_attributes"), [profileSections]);
-  const unitSections = useMemo(() => profileSections.filter((section) => section.key !== "business_attributes"), [profileSections]);
-  const primaryUnits = operationalLayout.primaryUnits || operationalLayout.primary || [];
-  const optionalUnits = operationalLayout.optionalUnits || operationalLayout.optional || [];
-  const selectableUnits = [...new Set([...primaryUnits, ...optionalUnits])];
-  const primaryCapabilities = operationalLayout.primaryCapabilities || [];
-  const optionalCapabilities = operationalLayout.optionalCapabilities || [];
-  const selectableCapabilities = [...new Set([...primaryCapabilities, ...optionalCapabilities])];
-
-  const sectionsByUnit = useMemo(() => {
-    const map = {};
-    for (const section of unitSections) {
-      const unitKey = resolveSectionUnit(section, selected, serviceUnitMap, activeUnits);
-      if (!unitKey || !activeUnits.includes(unitKey)) continue;
-      map[unitKey] = map[unitKey] || [];
-      map[unitKey].push(section);
-    }
-    return map;
-  }, [profileSections, selected, serviceUnitMap, activeUnits]);
-
-  const selectedByUnit = useMemo(() => {
-    const result = {};
-    for (const serviceKey of selectedServiceKeys(selected)) {
-      const context = getServiceOperationalContext(serviceKey);
-      if (context?.sectionKey === "business_attributes") continue;
-      const unitKey = serviceUnitMap[serviceKey] || context?.unitKey;
-      if (unitKey) result[unitKey] = (result[unitKey] || 0) + 1;
-    }
-    return result;
-  }, [selected, serviceUnitMap]);
-
-  const searchResults = useMemo(() => {
-    const needle = normalizedSearch(query);
-    if (!needle) return [];
-    return profileSections.flatMap((section) => section.items.map((item) => ({ section, item })))
-      .filter(({ section, item }) => normalizedSearch([
-        section.title,
-        section.description,
-        serviceLabel(item),
-        ...getServiceSearchTerms(item.id),
-      ].join(" ")).includes(needle));
-  }, [query, profileSections]);
-
-  const selectedCount = countSelected(selected) + suggestions.length;
-  const pendingReview = draft?.status === "pending_review";
-  const editable = config?.can_edit_services !== false && !pendingReview;
-  const visibleUnits = useMemo(
-    () => activeUnits.filter((unitKey) => sectionsByUnit[unitKey]?.length > 0),
-    [activeUnits, sectionsByUnit],
-  );
-  const isB2BProfile = isB2B(location);
-
-  const buildPayload = () => {
-    const normalizedSelected = normalizeSelected(selected);
-    const unitRows = activeUnits.map((unitKey) => unitRow(unitKey, careSetting));
-    const selectedKeys = selectedServiceKeys(normalizedSelected);
-    const completeServiceMap = Object.fromEntries(selectedKeys.map((serviceKey) => {
-      const context = getServiceOperationalContext(serviceKey);
-      if (context?.sectionKey === "business_attributes") return [serviceKey, ""];
-      const current = serviceUnitMap[serviceKey];
-      const fallback = [context?.unitKey, ...(context?.fallbackUnitKeys || [])].find((unitKey) => activeUnits.includes(unitKey));
-      return [serviceKey, current && activeUnits.includes(current) ? current : fallback || ""];
-    }).filter(([, unitKey]) => unitKey));
-    return {
-      selected_ids: normalizedSelected,
-      removal_ids: removalPayload(approvedSelected, normalizedSelected),
-      raw_removal_keys: [...new Set(rawRemovalKeys)],
-      suggestions,
-      functional_units: unitRows,
-      removal_unit_keys: approvedUnits.filter((unitKey) => !activeUnits.includes(unitKey)),
-      capabilities,
-      removal_capabilities: approvedCapabilities.filter((item) => !capabilities.some((current) => capabilityIdentity(current) === capabilityIdentity(item))),
-      service_unit_map: completeServiceMap,
-      // Serviciile marcate ca decontate prin CAS (2026-08-06). Lista paralela, dupa
-      // acelasi tipar ca service_unit_map: nu schimba structura serviciilor, doar
-      // adauga o proprietate pe cele deja selectate. Absenta unei chei = nedecontat.
-      cas_service_keys: selectedKeys.filter((serviceKey) => casServiceKeys.includes(serviceKey)),
-      resource_links: resourceLinks,
-      resource_removals: resourceRemovalPayload(approvedResourceLinks, resourceLinks),
-      care_setting: careSetting,
-    };
-  };
-
-  const currentSignature = useMemo(
-    () => configurationSignature(buildPayload()),
-    [selected, approvedSelected, approvedUnits, activeUnits, approvedCapabilities, capabilities, serviceUnitMap, casServiceKeys, approvedResourceLinks, resourceLinks, careSetting, suggestions, rawRemovalKeys],
-  );
-  const dirty = baselineSignature !== null && currentSignature !== baselineSignature;
-
-  const draftPrerequisites = useMemo(() => {
-    if (!config) return {};
-    const professionalUnits = Object.fromEntries(
-      (resourceLinks.professionals || []).map((item) => [item.assignment_id, item.unit_keys || []]),
-    );
-    const equipmentUnits = Object.fromEntries(
-      (resourceLinks.equipment || []).map((item) => [item.equipment_id, item.unit_key || ""]),
-    );
-    const facilityUnits = Object.fromEntries(
-      (resourceLinks.facilities || []).map((item) => [item.facility_id, item.unit_key || ""]),
-    );
-    const assignments = (config.assignments || []).map((item) => ({
-      ...item,
-      functional_unit_keys: professionalUnits[item.id] || [],
-    }));
-    const professionals = (config.assignments || []).map((item) => ({
-      id: item.professional_id,
-      verification_status: item.verification_status,
-      professional_type: item.professional_type,
-    }));
-    const equipment = (config.equipment || []).map((item) => ({
-      ...item,
-      functional_unit_key: equipmentUnits[item.id] || "",
-    }));
-    const facilities = (config.facilities || []).map((item) => ({
-      ...item,
-      functional_unit_key: facilityUnits[item.id] || "",
-    }));
-    const context = {
-      location,
-      assignments,
-      professionals,
-      equipment,
-      facilities,
-      functionalUnits: activeUnits.map((unitKey) => ({ ...unitRow(unitKey, careSetting), is_active: true })),
-      capabilities: capabilities.map((item) => ({ ...item, is_active: true })),
-      service_unit_map: serviceUnitMap,
-      enforceUnitScope: true,
-    };
-    return Object.fromEntries(selectedServiceKeys(selected).map((serviceKey) => {
-      const operationalContext = getServiceOperationalContext(serviceKey);
-      return [serviceKey, evaluateServicePrerequisites(serviceKey, {
-        ...context,
-        serviceUnitKey: serviceUnitMap[serviceKey] || operationalContext?.unitKey || "",
-        capabilityKey: operationalContext?.capabilityKey || "",
-      })];
-    }));
-  }, [activeUnits, capabilities, careSetting, config, location, resourceLinks, selected, serviceUnitMap]);
-
-  const readiness = useMemo(() => {
-    const selectedKeys = selectedServiceKeys(selected);
-    const publicServiceKeys = selectedKeys.filter((serviceKey) => getServiceOperationalContext(serviceKey)?.sectionKey !== "business_attributes");
-    const globalOptionCount = selectedKeys.length - publicServiceKeys.length;
-    return {
-      publicServiceKeys,
-      globalOptionCount,
-      issueServiceKeys: [],
-      blockers: [],
-      configurationComplete: true,
-    };
-  }, [selected]);
-
-  const workspaceSnapshot = useMemo(() => {
-    const itemByKey = Object.fromEntries(profileSections.flatMap((section) => section.items.map((item) => [item.id, item])));
-    const units = visibleUnits.map((unitKey, index) => ({
-      index,
-      key: unitKey,
-      title: getFunctionalUnitDefinition(unitKey)?.shortTitle || getFunctionalUnitDefinition(unitKey)?.title || unitKey,
-      // Descrierea ajunge pe cardul din ecranul-lista, unde chiar ajuta la decizie
-      // inainte sa intri. In interiorul zonei era doar o repetare (2026-08-06).
-      description: getFunctionalUnitDefinition(unitKey)?.description || "",
-      selected: selectedByUnit[unitKey] || 0,
-      total: [...new Set((sectionsByUnit[unitKey] || []).flatMap((section) => section.items.map((item) => item.id)))].length,
-    }));
-    const adminNote = ["needs_more_info", "rejected"].includes(draft?.status) ? cleanText(draft?.admin_note) : "";
-    const actionStatus = pendingReview
-      ? "Modificări trimise spre aprobare"
-      : dirty
-        ? "Ai modificări nesalvate"
-        : draft
-          ? "Draft salvat"
-          : "Nu există modificări nesalvate";
-    const actionMessage = adminNote
-      || (dirty ? "Salvează modificările înainte de trimitere." : "")
-      || (readiness.configurationComplete ? "Configurația este pregătită pentru trimitere." : readiness.blockers[0]?.message || "");
-    return {
-      units,
-      selectedCount: readiness.publicServiceKeys.length,
-      globalOptionCount: readiness.globalOptionCount,
-      suggestionCount: suggestions.length,
-      unitCount: activeUnits.length,
-      capabilityCount: capabilities.length,
-      // Sectiunile 2 si 3 se randeaza doar cand au continut (CapabilitySelection si
-      // CareSettingSelector returneaza null altfel). Trimitem asta in sus ca sidebar-ul
-      // sa nu afiseze randuri care nu deschid nimic la apasare (2026-08-06).
-      hasCapabilitySection: (selectableCapabilities || []).length > 0,
-      hasCareSettingSection: ((operationalLayout?.careSettings) || []).filter(
-        (key) => key !== "not_applicable" && key !== "retail_only",
-      ).length > 0,
-      issueCount: readiness.blockers.length,
-      issueServiceKeys: readiness.issueServiceKeys,
-      blockers: readiness.blockers,
-      selectedServices: readiness.publicServiceKeys.map((serviceKey) => serviceLabel(itemByKey[serviceKey] || { id: serviceKey, label: serviceKey })),
-      careSetting: CARE_SETTINGS[careSetting]?.label || "",
-      status: draft ? (SUBMISSION_STATUS_LABELS[draft.status] || draft.status) : "",
-      dirty,
-      configurationComplete: readiness.configurationComplete,
-      readyToSubmit: Boolean(draft && editable && !dirty && readiness.configurationComplete),
-      adminNote,
-      conflictMessage: conflicts[0]?.message || "",
-      actionStatus,
-      actionMessage,
-      canSave: Boolean(!saving && editable && dirty),
-      canSubmit: Boolean(!saving && draft && editable && !dirty && readiness.configurationComplete),
-      canWithdraw: Boolean(!saving && pendingReview && persistenceMode === "v2"),
-      hasSave: true,
-      hasSubmit: Boolean(draft && draft.status !== "pending_review"),
-      hasWithdraw: Boolean(pendingReview && persistenceMode === "v2"),
-      // Cate servicii sunt APROBATE, adica vizibile efectiv pacientilor - distinct de
-      // cele doar bifate in draft. Pragul "profilul apare in cautari" e cel putin unul
-      // aprobat: verificat in motorul de cautare, asta e linia intre rezultat confirmat
-      // si profil aratat doar ca alternativa neconfirmata, cu avertisment.
-      approvedCount: selectedServiceKeys(approvedSelected).filter(
-        (serviceKey) => getServiceOperationalContext(serviceKey)?.sectionKey !== "business_attributes",
-      ).length,
-      pendingReview,
-      ...stableActions,
-    };
-  }, [activeUnits, approvedSelected, capabilities.length, careSetting, conflicts, dirty, draft, editable, operationalLayout, pendingReview, persistenceMode, profileSections, readiness, saving, sectionsByUnit, selectableCapabilities, selectedByUnit, stableActions, suggestions.length, visibleUnits]);
-
-  useEffect(() => {
-    onWorkspaceSnapshot?.(workspaceSnapshot);
-  }, [onWorkspaceSnapshot, workspaceSnapshot]);
-
-  useEffect(() => {
-    if (!loading && baselineSignature === null) setBaselineSignature(currentSignature);
-  }, [loading, baselineSignature, currentSignature]);
-
-  const load = async () => {
-    if (!locationId) return;
-    setLoading(true);
-    setBaselineSignature(null);
-    setError("");
-    setMessage("");
-    setConflicts([]);
-
-    const invoke = (name, payload) => base44.functions.invoke(name, payload)
-      .catch((requestError) => ({
-        data: {
-          error: requestError.response?.data?.error || requestError.message,
-          status: requestError.response?.status || 0,
-        },
-      }));
-
-    const [catalogResponse, configResponse, submissionResponse] = await Promise.all([
-      invoke("getServiceSearchCatalog", {
-        profile_type: location?.provider_profile_type || "",
-        provider_type: location?.provider_type || "",
-      }),
-      invoke("getProviderServiceConfiguration", { location_id: locationId }),
-      invoke("providerServiceConfigurationOps", { action: "list_mine", location_id: locationId }),
-    ]);
-
-    if (!catalogResponse.data?.error && catalogResponse.data?.catalog_version === 2) {
-      setRemoteCatalog(catalogResponse.data);
-    } else {
-      setRemoteCatalog(null);
-    }
-
-    let nextConfig;
-    let submissions;
-    let compatibility = false;
-    if (!configResponse.data?.error && !submissionResponse.data?.error) {
-      nextConfig = configResponse.data || {};
-      submissions = submissionResponse.data?.submissions || [];
-      setConflicts(submissionResponse.data?.conflicts || []);
-    } else if (backendFunctionMissing(configResponse.data) || backendFunctionMissing(submissionResponse.data)) {
-      const [legacyServices, legacySubmissions] = await Promise.all([
-        invoke("getProviderLocationServices", { location_id: locationId }),
-        invoke("submitProviderWorkspaceChange", { action: "list_mine", location_id: locationId }),
-      ]);
-      if (legacyServices.data?.error || legacySubmissions.data?.error) {
-        setError(legacyServices.data?.error || legacySubmissions.data?.error || "Nu am putut încărca configurația.");
-        setLoading(false);
-        return;
-      }
-      const serviceKeys = legacyServices.data?.service_keys || [];
-      nextConfig = {
-        service_keys: serviceKeys,
-        legacy_or_unknown_services: legacyServiceRows(serviceKeys),
-        functional_units: [],
-        capabilities: [],
-        service_unit_map: {},
-        prerequisites_by_key: {},
-        can_edit_services: true,
-      };
-      submissions = legacySubmissions.data?.submissions || [];
-      setConflicts([]);
-      compatibility = true;
-      setMessage("Catalogul semantic V2 este disponibil local. Asocierea avansată a spațiilor și resurselor se salvează după publicarea endpointurilor V2.");
-    } else {
-      setError(configResponse.data?.error || submissionResponse.data?.error || "Nu am putut încărca configurația.");
-      setLoading(false);
-      return;
-    }
-
-    setPersistenceMode(compatibility ? "legacy" : "v2");
-    const approved = groupServiceKeys(nextConfig.service_keys || []);
-    const activeSubmissions = submissions.filter((submission) => submission.section === "services" && ["draft", "needs_more_info", "pending_review"].includes(submission.status));
-    const ownDraft = activeSubmissions.find((submission) => submission.status === "pending_review") || activeSubmissions.find((submission) => ["draft", "needs_more_info"].includes(submission.status)) || null;
-    const payload = safeParse(ownDraft?.payload_json);
-    const desired = ownDraft ? applyDraft(approved, payload) : approved;
-    const persistedUnits = (nextConfig.functional_units || []).filter((item) => item.is_active !== false).map((item) => item.unit_key);
-    const initialUnits = [...new Set(payload.functional_units?.map((item) => item.unit_key)
-      || (persistedUnits.length > 0 ? persistedUnits : nextConfig.inferred_functional_unit_keys || primaryUnits))]
-      .filter((unitKey) => selectableUnits.includes(unitKey));
-    const initialMap = { ...(nextConfig.service_unit_map || {}), ...(payload.service_unit_map || {}) };
-    const persistedCapabilities = (nextConfig.capabilities || []).filter((item) => item.is_active !== false).map((item) => ({ capability_key: item.capability_key, parent_unit_key: item.parent_unit_key, note: item.note || "" }));
-    const inferred = inferCapabilities(desired, initialMap, initialUnits);
-    const initialCapabilities = payload.capabilities || (persistedCapabilities.length > 0 ? persistedCapabilities : inferred)
-      .filter((item) => selectableCapabilities.includes(item.capability_key) && initialUnits.includes(item.parent_unit_key));
-    setConfig(nextConfig);
-    setDraft(ownDraft);
-    const approvedLinks = buildResourceLinks(nextConfig);
-    const initialResourceLinks = payload.resource_links || approvedLinks;
-    setApprovedSelected(approved);
-    setSelected(desired);
-    setApprovedUnits(persistedUnits);
-    setActiveUnits(initialUnits);
-    setApprovedCapabilities(persistedCapabilities);
-    setCapabilities(initialCapabilities);
-    setApprovedServiceUnitMap(nextConfig.service_unit_map || {});
-    setServiceUnitMap(initialMap);
-    // CAS: draftul are prioritate; daca nu exista draft, luam ce e deja publicat.
-    const persistedCas = Array.isArray(nextConfig.cas_service_keys) ? nextConfig.cas_service_keys : [];
-    setCasServiceKeys(Array.isArray(payload.cas_service_keys) ? payload.cas_service_keys : persistedCas);
-    setApprovedResourceLinks(approvedLinks);
-    setResourceLinks(initialResourceLinks);
-    const allowedCareSettings = operationalLayout.careSettings || [];
-    const persistedCareSetting = payload.care_setting || nextConfig.care_setting || "";
-    const hasCommercialSpace = initialUnits.includes("optical_store");
-    const hasClinicalSpace = initialUnits.some((unitKey) => ["optical_cabinet", "optometry_cabinet", "ophthalmology_office", "ophthalmology_diagnostics", "ophthalmology_procedure_room", "ophthalmology_surgery_unit"].includes(unitKey));
-    const recommendedCareSetting = hasCommercialSpace && hasClinicalSpace && allowedCareSettings.includes("mixed")
-      ? "mixed"
-      : allowedCareSettings[0] || "not_applicable";
-    const approvedCare = nextConfig.care_setting || recommendedCareSetting;
-    setApprovedCareSetting(approvedCare);
-    setCareSetting(allowedCareSettings.includes(persistedCareSetting) ? persistedCareSetting : recommendedCareSetting);
-    setSuggestions(normalizeSuggestions(payload));
-    setRawRemovalKeys(payload.raw_removal_keys || []);
-    setOpenUnit(initialUnits[0] || "");
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    setQuery("");
-    load();
-  }, [locationId]);
-
-  const servicesForUnit = (unitKey) => selectedServiceKeys(selected).filter((serviceKey) => {
-    const context = getServiceOperationalContext(serviceKey);
-    if (context?.sectionKey === "business_attributes") return false;
-    return (serviceUnitMap[serviceKey] || context?.unitKey || "") === unitKey;
-  });
-
-  const restoreApprovedServices = (predicate) => {
-    const keys = selectedServiceKeys(approvedSelected).filter(predicate);
-    if (keys.length === 0) return;
-    setSelected((current) => {
-      const next = Object.fromEntries(Object.entries(current).map(([group, ids]) => [group, [...(ids || [])]]));
-      for (const serviceKey of keys) {
-        const group = SERVICE_GROUP_BY_KEY[serviceKey];
-        if (!group) continue;
-        next[group] = [...new Set([...(next[group] || []), serviceKey])];
-      }
-      return next;
-    });
-    setServiceUnitMap((current) => ({
-      ...current,
-      ...Object.fromEntries(keys.map((serviceKey) => [serviceKey, approvedServiceUnitMap[serviceKey]]).filter(([, unitKey]) => unitKey)),
-    }));
-  };
-
-  const restoreApprovedResourcesForUnit = (unitKey) => {
-    setResourceLinks((current) => {
-      const next = {
-        professionals: current.professionals.map((item) => ({ ...item, unit_keys: [...(item.unit_keys || [])] })),
-        equipment: [...current.equipment],
-        facilities: [...current.facilities],
-      };
-      for (const approved of approvedResourceLinks.professionals || []) {
-        if (!(approved.unit_keys || []).includes(unitKey)) continue;
-        const index = next.professionals.findIndex((item) => item.assignment_id === approved.assignment_id);
-        if (index >= 0) next.professionals[index] = { ...next.professionals[index], unit_keys: [...new Set([...(next.professionals[index].unit_keys || []), unitKey])] };
-        else next.professionals.push({ assignment_id: approved.assignment_id, unit_keys: [unitKey] });
-      }
-      for (const type of ["equipment", "facilities"]) {
-        const idField = type === "equipment" ? "equipment_id" : "facility_id";
-        for (const approved of approvedResourceLinks[type] || []) {
-          if (approved.unit_key !== unitKey) continue;
-          const index = next[type].findIndex((item) => item[idField] === approved[idField]);
-          if (index >= 0) next[type][index] = { ...approved };
-          else next[type].push({ ...approved });
-        }
-      }
-      return next;
-    });
-  };
-
-  const restoreApprovedUnit = (unitKey) => {
-    setActiveUnits((current) => [...new Set([...current, unitKey])]);
-    setCapabilities((current) => {
-      const restored = approvedCapabilities.filter((item) => item.parent_unit_key === unitKey);
-      const existing = new Set(current.map(capabilityIdentity));
-      return [...current, ...restored.filter((item) => !existing.has(capabilityIdentity(item)))];
-    });
-    restoreApprovedServices((serviceKey) => approvedServiceUnitMap[serviceKey] === unitKey);
-    restoreApprovedResourcesForUnit(unitKey);
-    setOpenUnit(unitKey);
-    setMessage("Solicitarea de eliminare a spațiului și a dependențelor aprobate a fost anulată.");
-  };
-
-  const restoreApprovedCapability = (capabilityKey, approvedRow) => {
-    setCapabilities((current) => [...current, { ...approvedRow }]);
-    restoreApprovedServices((serviceKey) => getServiceOperationalContext(serviceKey)?.capabilityKey === capabilityKey);
-    setMessage("Solicitarea de eliminare a activității și a serviciilor aprobate a fost anulată.");
-  };
-
-  const applyUnitRemoval = (unitKey) => {
-    const serviceKeys = new Set(servicesForUnit(unitKey));
-    setSelected((current) => Object.fromEntries(Object.entries(current).map(([group, ids]) => [group, (ids || []).filter((id) => !serviceKeys.has(id))])));
-    setServiceUnitMap((current) => Object.fromEntries(Object.entries(current).filter(([serviceKey, mappedUnit]) => mappedUnit !== unitKey && !serviceKeys.has(serviceKey))));
-    // Marcajele CAS ale serviciilor eliminate odata cu zona (2026-08-06). Fara asta ar
-    // ramane orfane in draft; validatorul le-ar taia la salvare, dar interfata ar arata
-    // pana atunci o stare care nu se va salva.
-    setCasServiceKeys((current) => current.filter((serviceKey) => !serviceKeys.has(serviceKey)));
-    setCapabilities((current) => current.filter((item) => item.parent_unit_key !== unitKey));
-    setResourceLinks((current) => ({
-      professionals: current.professionals.map((item) => ({ ...item, unit_keys: (item.unit_keys || []).filter((key) => key !== unitKey) })).filter((item) => item.unit_keys.length > 0),
-      equipment: current.equipment.filter((item) => item.unit_key !== unitKey),
-      facilities: current.facilities.filter((item) => item.unit_key !== unitKey),
-    }));
-    setActiveUnits((current) => current.filter((key) => key !== unitKey));
-    if (openUnit === unitKey) setOpenUnit("");
-    setPendingRemoval(null);
-    setMessage(approvedUnits.includes(unitKey) ? "Spațiul și dependențele sale au fost marcate pentru eliminare." : "Spațiul și dependențele sale au fost eliminate din draft.");
-  };
-
-  const toggleUnit = (unitKey) => {
-    if (!editable) return;
-    if (activeUnits.includes(unitKey)) {
-      const serviceKeys = servicesForUnit(unitKey);
-      const capabilityCount = capabilities.filter((item) => item.parent_unit_key === unitKey).length;
-      const resourceCount = resourceLinks.professionals.filter((item) => (item.unit_keys || []).includes(unitKey)).length
-        + resourceLinks.equipment.filter((item) => item.unit_key === unitKey).length
-        + resourceLinks.facilities.filter((item) => item.unit_key === unitKey).length;
-      if (serviceKeys.length > 0 || capabilityCount > 0 || resourceCount > 0) {
-        setPendingRemoval({
-          type: "unit",
-          key: unitKey,
-          label: getFunctionalUnitDefinition(unitKey)?.title || unitKey,
-          approved: approvedUnits.includes(unitKey),
-          serviceCount: serviceKeys.length,
-          capabilityCount,
-          resourceCount,
-        });
-        return;
-      }
-      applyUnitRemoval(unitKey);
-      return;
-    }
-    if (approvedUnits.includes(unitKey)) restoreApprovedUnit(unitKey);
-    else {
-      setActiveUnits((current) => [...current, unitKey]);
-      setOpenUnit(unitKey);
-    }
-  };
-
-  const applyCapabilityRemoval = (capabilityKey) => {
-    const serviceKeys = new Set(selectedServiceKeys(selected).filter((serviceKey) => getServiceOperationalContext(serviceKey)?.capabilityKey === capabilityKey));
-    setSelected((current) => Object.fromEntries(Object.entries(current).map(([group, ids]) => [group, (ids || []).filter((id) => !serviceKeys.has(id))])));
-    setServiceUnitMap((current) => Object.fromEntries(Object.entries(current).filter(([serviceKey]) => !serviceKeys.has(serviceKey))));
-    setCasServiceKeys((current) => current.filter((serviceKey) => !serviceKeys.has(serviceKey)));
-    setCapabilities((current) => current.filter((item) => item.capability_key !== capabilityKey));
-    setPendingRemoval(null);
-    setMessage(approvedCapabilities.some((item) => item.capability_key === capabilityKey) ? "Activitatea și serviciile dependente au fost marcate pentru eliminare." : "Activitatea și serviciile dependente au fost eliminate din draft.");
-  };
-
-  const toggleCapability = (capabilityKey, parentOptions) => {
-    if (!editable) return;
-    const existing = capabilities.find((item) => item.capability_key === capabilityKey);
-    if (existing) {
-      const dependentServices = selectedServiceKeys(selected).filter((serviceKey) => getServiceOperationalContext(serviceKey)?.capabilityKey === capabilityKey);
-      if (dependentServices.length > 0) {
-        setPendingRemoval({
-          type: "capability",
-          key: capabilityKey,
-          label: getCapabilityDefinition(capabilityKey)?.title || capabilityKey,
-          approved: approvedCapabilities.some((item) => item.capability_key === capabilityKey),
-          serviceCount: dependentServices.length,
-          capabilityCount: 1,
-          resourceCount: 0,
-        });
-        return;
-      }
-      applyCapabilityRemoval(capabilityKey);
-      return;
-    }
-    const approvedRow = approvedCapabilities.find((item) => item.capability_key === capabilityKey && activeUnits.includes(item.parent_unit_key));
-    if (approvedRow) restoreApprovedCapability(capabilityKey, approvedRow);
-    else {
-      const parent = parentOptions[0];
-      setCapabilities((current) => [...current, { capability_key: capabilityKey, parent_unit_key: parent, note: "" }]);
-    }
-  };
-
-  const confirmDependencyRemoval = () => {
-    if (pendingRemoval?.type === "unit") applyUnitRemoval(pendingRemoval.key);
-    else if (pendingRemoval?.type === "capability") applyCapabilityRemoval(pendingRemoval.key);
-  };
-
-  const toggleService = (item, unitKey) => {
-    if (!editable) return;
-    const current = new Set(selected[item.group] || []);
-    if (current.has(item.id)) {
-      current.delete(item.id);
-      setServiceUnitMap((map) => { const next = { ...map }; delete next[item.id]; return next; });
-      // Marcajul CAS dispare odata cu serviciul debifat (2026-08-06): altfel ar ramane
-      // in draft si ar reaparea daca serviciul e rebifat, fara ca utilizatorul sa ceara.
-      setCasServiceKeys((keys) => keys.filter((serviceKey) => serviceKey !== item.id));
-    } else {
-      current.add(item.id);
-      const context = getServiceOperationalContext(item.id);
-      setServiceUnitMap((map) => {
-        const next = { ...map };
-        if (context?.sectionKey === "business_attributes") delete next[item.id];
-        else next[item.id] = unitKey;
-        return next;
-      });
-    }
-    setSelected((value) => ({ ...value, [item.group]: [...current] }));
-  };
-
-  const changeSectionUnit = (section, unitKey) => {
-    if (!editable) return;
-    setServiceUnitMap((current) => {
-      const next = { ...current };
-      section.items.filter((item) => isSelected(selected, item)).forEach((item) => { next[item.id] = unitKey; });
-      return next;
-    });
-    if (section.capabilityKey) {
-      setCapabilities((current) => current.map((item) => item.capability_key === section.capabilityKey ? { ...item, parent_unit_key: unitKey } : item));
-    }
-  };
-
-  const toggleResource = (type, id, unitKey) => {
-    if (!editable) return;
-    setResourceLinks((current) => {
-      const next = { professionals: [...current.professionals], equipment: [...current.equipment], facilities: [...current.facilities] };
-      if (type === "professionals") {
-        const index = next.professionals.findIndex((item) => item.assignment_id === id);
-        const existing = index >= 0 ? next.professionals[index] : { assignment_id: id, unit_keys: [] };
-        const units = existing.unit_keys.includes(unitKey) ? existing.unit_keys.filter((key) => key !== unitKey) : [...existing.unit_keys, unitKey];
-        if (units.length === 0 && index >= 0) next.professionals.splice(index, 1);
-        else if (index >= 0) next.professionals[index] = { ...existing, unit_keys: units };
-        else next.professionals.push({ ...existing, unit_keys: units });
-      } else {
-        const idField = type === "equipment" ? "equipment_id" : "facility_id";
-        const index = next[type].findIndex((item) => item[idField] === id);
-        if (index >= 0 && next[type][index].unit_key === unitKey) next[type].splice(index, 1);
-        else if (index >= 0) next[type][index] = { [idField]: id, unit_key: unitKey };
-        else next[type].push({ [idField]: id, unit_key: unitKey });
-      }
-      return next;
-    });
-  };
-
-  const addSuggestion = (suggestion) => {
-    if (!editable) return;
-    const duplicate = suggestions.some((item) => item.group === suggestion.group && item.label.toLowerCase() === suggestion.label.toLowerCase());
-    if (!duplicate) setSuggestions((current) => [...current, suggestion]);
-  };
-
-  const removeSuggestion = (suggestion) => setSuggestions((current) => current.filter((item) => item !== suggestion));
-
-  const toggleCasService = (serviceKey) => {
-    if (!editable) return;
-    setCasServiceKeys((current) => (
-      current.includes(serviceKey)
-        ? current.filter((key) => key !== serviceKey)
-        : [...current, serviceKey]
-    ));
-  };
-  const toggleRawRemoval = (rawKey) => setRawRemovalKeys((current) => current.includes(rawKey) ? current.filter((key) => key !== rawKey) : [...current, rawKey]);
-
-  const save = async () => {
-    if (!editable || !dirty) return;
-    setSaving(true);
-    setMessage("");
-    setError("");
-    const payload = buildPayload();
-    const response = persistenceMode === "v2"
-      ? await base44.functions.invoke("providerServiceConfigurationOps", {
-        action: draft && draft.status !== "pending_review" ? "update_draft" : "create_draft",
-        submission_id: draft?.id,
-        location_id: locationId,
-        section: "services",
-        payload,
-      }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, fields: requestError.response?.data?.fields || [] } }))
-      : await base44.functions.invoke("submitProviderWorkspaceChange", {
-        action: draft && draft.status !== "pending_review" ? "update_draft" : "create_draft",
-        submission_id: draft?.id,
-        location_id: locationId,
-        section: "services",
-        payload: {
-          selected_ids: payload.selected_ids,
-          removal_ids: payload.removal_ids,
-          raw_removal_keys: payload.raw_removal_keys,
-          suggestions: payload.suggestions,
-          cas_service_keys: payload.cas_service_keys,
-        },
-      }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message, fields: requestError.response?.data?.fields || [] } }));
-    setSaving(false);
-    if (response.data?.error) {
-      setError(response.data.fields?.length ? `${response.data.error}: ${response.data.fields.join(", ")}` : response.data.error);
-      return;
-    }
-    setMessage(persistenceMode === "v2" ? "Draftul complet a fost salvat." : "Draftul a fost salvat prin fluxul compatibil." );
-    await load();
-  };
-
-  const submit = async () => {
-    if (!draft || !editable) return;
-    if (dirty) {
-      setError("Salvează modificările înainte de trimitere.");
-      return;
-    }
-    if (!readiness.configurationComplete) {
-      setError(readiness.blockers[0]?.message || "Configurația nu este pregătită pentru trimitere.");
-      return;
-    }
-    setSaving(true);
-    setMessage("");
-    setError("");
-    const response = persistenceMode === "v2"
-      ? await base44.functions.invoke("providerServiceConfigurationOps", { action: "submit", submission_id: draft.id, location_id: locationId, section: "services" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }))
-      : await base44.functions.invoke("submitProviderWorkspaceChange", { action: "submit", submission_id: draft.id, location_id: locationId, section: "services" }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }));
-    setSaving(false);
-    if (response.data?.error) { setError(response.data.error); return; }
-    setMessage("Modificările au fost trimise spre aprobare.");
-    await load();
-  };
-
-  const withdraw = async () => {
-    if (!draft || !pendingReview || persistenceMode !== "v2") return;
-    const confirmed = window.confirm("Retragi modificările din procesul de aprobare? Configurația aprobată rămâne neschimbată.");
-    if (!confirmed) return;
-    setSaving(true);
-    setMessage("");
-    setError("");
-    const response = await base44.functions.invoke("providerServiceConfigurationOps", {
-      action: "withdraw",
-      submission_id: draft.id,
-      location_id: locationId,
-      section: "services",
-    }).catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }));
-    setSaving(false);
-    if (response.data?.error) { setError(response.data.error); return; }
-    setMessage("Cererea a fost retrasă.");
-    await load();
-  };
-
-  // Conectam handlerii reali la ref, dupa ce toti trei sunt definiti. Functiile expuse in
-  // snapshot (stableActions) citesc de aici la momentul apelului, deci raman mereu
-  // actuale fara sa schimbe identitatea snapshot-ului.
-  actionsRef.current = { save, submit, withdraw };
+export default function ProviderServicesWorkspaceOperational(props) {
+  const state = useProviderServicesConfig(props);
+  const {
+    config, draft, persistenceMode, loading, saving, message, error, conflicts, pendingRemoval,
+    query, selected, approvedSelected, activeUnits, approvedUnits, capabilities, approvedCapabilities,
+    serviceUnitMap, casServiceKeys, resourceLinks, approvedResourceLinks, careSetting, approvedCareSetting,
+    setCareSetting, suggestions, rawRemovalKeys, openUnit, setOpenUnit, operationalLayout, profileSections,
+    globalSections, sectionsByUnit, selectableUnits, primaryUnits, selectableCapabilities, primaryCapabilities,
+    visibleUnits, searchResults, selectedCount, selectedByUnit, draftPrerequisites, readiness, dirty, editable,
+    pendingReview, isB2BProfile, load, toggleUnit, toggleCapability, toggleService, toggleCasService,
+    changeSectionUnit, toggleResource, addSuggestion, removeSuggestion, toggleRawRemoval,
+    confirmDependencyRemoval, cancelDependencyRemoval, save, submit, withdraw,
+  } = state;
 
   if (loading) return <div className="rounded-[24px] border border-border bg-card px-5 py-8 text-sm text-muted-foreground">Se încarcă structura profesională a locației...</div>;
   if (error && !config) return <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-5 py-5 text-sm text-amber-950"><p>{error}</p><button type="button" onClick={load} className="mt-3 rounded-full border border-amber-300 bg-white px-4 py-2 text-xs font-semibold">Încearcă din nou</button></div>;
 
   return (
     <div className="space-y-4 pb-20">
-      {/* Blocul "Configureaza oferta" + cautare a fost eliminat de aici (2026-08-06):
-          se dubla cu antetul invelisului (ProviderServicesThreeColumn), care are
-          propriul titlu si propria cautare in stil fereastra. Statusul draftului, daca
-          exista, se muta intr-o insigna discreta - nu se pierde informatia. */}
       {draft && (
         <div className="flex items-center gap-2 px-1">
           <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>
@@ -1812,7 +789,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
           {!query && <UnitSelection units={selectableUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={!editable} onToggle={toggleUnit} />}
           {!query && <CapabilitySelection capabilityKeys={selectableCapabilities} approvedCapabilities={approvedCapabilities} capabilities={capabilities} activeUnits={activeUnits} primaryCapabilities={primaryCapabilities} disabled={!editable} onToggle={toggleCapability} />}
           {!query && <CareSettingSelector options={operationalLayout.careSettings || []} approvedValue={approvedCareSetting} value={careSetting} disabled={!editable} onChange={setCareSetting} />}
-          {!query && <GlobalServiceSections sections={globalSections} selected={selected} approvedSelected={approvedSelected} prerequisites={draftPrerequisites} disabled={!editable} onToggleService={toggleService} />}
+          {!query && <GlobalServiceSections sections={globalSections} selected={selected} approvedSelected={approvedSelected} disabled={!editable} onToggleService={toggleService} />}
 
           {!query && <ServiceCatalogIntro activeUnits={activeUnits} selectedCount={selectedCount} />}
 
@@ -1846,7 +823,7 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
         />
       </div>
 
-      <DependencyRemovalDialog request={pendingRemoval} onCancel={() => setPendingRemoval(null)} onConfirm={confirmDependencyRemoval} />
+      <DependencyRemovalDialog request={pendingRemoval} onCancel={cancelDependencyRemoval} onConfirm={confirmDependencyRemoval} />
 
       <div className="sticky bottom-0 z-20 -mx-1 rounded-[22px] border border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-card/90">
         <div className="flex flex-wrap items-center justify-between gap-3"><div className={`text-xs ${dirty ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{pendingReview ? "Modificări trimise spre aprobare" : dirty ? "Ai modificări nesalvate" : draft ? "Draft salvat" : "Nu există modificări nesalvate"}</div><div className="flex flex-wrap gap-2"><button type="button" disabled={saving || !editable || !dirty} onClick={save} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><Save className="h-4 w-4" /> Salvează draftul</button>{draft && draft.status !== "pending_review" && <button type="button" disabled={saving || !editable || dirty || !readiness.configurationComplete} onClick={submit} title={dirty ? "Salvează modificările înainte de trimitere" : readiness.blockers[0]?.message || ""} className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background disabled:opacity-50"><Send className="h-4 w-4" /> Trimite modificările spre aprobare</button>}{pendingReview && persistenceMode === "v2" && <button type="button" disabled={saving} onClick={withdraw} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"><X className="h-4 w-4" /> Retrage cererea</button>}</div></div>
