@@ -269,6 +269,19 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
     });
   }, []);
 
+  // BUG REAL (2026-08-06): chooseView("configuration") face mereu setConfigStep(1).
+  // Randurile "Dotari si activitati" (pas 2) si "Tipul activitatii" (pas 3) apelau
+  // setConfigStep(row.step) INAINTE de chooseView, care il suprascria imediat inapoi
+  // la 1 - deci apasarea parea sa nu faca nimic, te trimitea mereu la pasul 1.
+  const goToConfigStep = (step) => {
+    setQuery("");
+    setView("configuration");
+    setConfigStep(step);
+    requestAnimationFrame(() => {
+      contentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
   const chooseView = useCallback((nextView) => {
     setQuery("");
     setView(nextView);
