@@ -6,8 +6,19 @@ import ServiceRow from "./ServiceRow";
 import SectionListRow from "./SectionListRow";
 import CustomSuggestion from "./CustomSuggestion";
 import UnitResourcesPanel from "./UnitResourcesPanel";
+import CapabilityToggle from "./CapabilityToggle";
 import { isSelected, possibleUnits, resolveSectionUnit, selectedCountForSection } from "./servicesConfigModel";
 import { CAS_ELIGIBLE_GROUPS, GROUP_TONE, UNIT_FALLBACK_ICON, UNIT_ICONS, UNIT_TONE } from "./servicesUiTokens";
+
+// Capabilitati grupate la nivel de zona (2026-08-18): cand o capabilitate deschide mai
+// multe sectiuni in ACEEASI zona (ophthalmology_specialties -> 7 sectiuni) sau cand o
+// zona intreaga e dedicata unei activitati (B2B), comutatorul sta o singura data, in
+// capul zonei - nu repetat la fiecare sectiune. Restul capabilitatilor sunt inline,
+// direct deasupra sectiunii unice pe care o deschid.
+const ZONE_LEVEL_CAPABILITY_KEYS = {
+  ophthalmology_office: ["ophthalmology_specialties"],
+  b2b_distribution_center: ["b2b_distribution", "b2b_logistics", "b2b_technical_support"],
+};
 
 export default function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceUnitMap, prerequisites, config, resourceLinks, approvedResourceLinks, customSuggestions, open, disabled, casServiceKeys = [], onToggleCas, onOpen, onToggleService, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion, filter = "all", dataAttrs = {} }) {
   const definition = getFunctionalUnitDefinition(unitKey);
