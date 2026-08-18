@@ -257,7 +257,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   // desfasoara subpasii in acelasi sir, deci exista o singura numaratoare si un singur
   // buton de avansare. Filtrele de verificare raman in afara numaratorii.
   const flowSteps = [
-    { value: "configuration", step: 1, label: "Zonele existente" },
+    { value: "configuration", step: 1, label: "Spațiile existente" },
     // Aceleasi conditii ca in sidebar: sarim pasii care nu au continut de aratat.
     ...(snapshot.hasCapabilitySection ? [{ value: "configuration", step: 2, label: "Dotări și activități" }] : []),
     ...(snapshot.hasCareSettingSection ? [{ value: "configuration", step: 3, label: "Tipul activității" }] : []),
