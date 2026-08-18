@@ -622,12 +622,26 @@ function CareSettingSelector({ options, approvedValue, value, disabled, onChange
       </div>
       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Alege varianta care descrie cel mai bine activitatea acestei locații. Aceasta nu modifică tipul organizației.</p>
       {!hasVisibleSelection && <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">Alege o opțiune pentru a continua configurarea completă.</div>}
-      <div className="mt-3 flex flex-wrap gap-2">
-        {visibleOptions.map((key) => (
-          <button key={key} type="button" aria-pressed={value === key} disabled={disabled} onClick={() => onChange(key)} className={`rounded-full border px-3 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 ${value === key ? "border-foreground bg-foreground text-background" : "border-border bg-card hover:bg-secondary"}`}>
-            {CARE_SETTINGS[key].label}
-          </button>
-        ))}
+      {/* Lista derulanta, nu butoane-pastila (2026-08-06): e o singura alegere dintr-un
+          set de optiuni numite - acelasi tipar ca "Tool access mode" din referinta,
+          unde eticheta sta la stanga si controlul la dreapta. */}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-3">
+        <span className="text-[13px] font-semibold text-foreground">Varianta selectată</span>
+        <div className="relative">
+          <select
+            value={hasVisibleSelection ? value : ""}
+            disabled={disabled}
+            onChange={(event) => onChange(event.target.value)}
+            aria-label="Tipul activității"
+            className="appearance-none rounded-lg border border-border bg-background py-2 pl-3 pr-9 text-[13px] font-medium text-foreground outline-none transition focus:border-foreground/35 disabled:cursor-not-allowed disabled:opacity-55"
+          >
+            {!hasVisibleSelection && <option value="" disabled>Alege o opțiune</option>}
+            {visibleOptions.map((key) => (
+              <option key={key} value={key}>{CARE_SETTINGS[key].label}</option>
+            ))}
+          </select>
+          <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        </div>
       </div>
     </section>
   );
