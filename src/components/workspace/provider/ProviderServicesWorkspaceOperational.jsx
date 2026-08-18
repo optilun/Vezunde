@@ -1769,12 +1769,15 @@ export default function ProviderServicesWorkspaceOperational({ locationId, locat
 
   return (
     <div className="space-y-4 pb-20">
-      <section className="rounded-[24px] border border-border bg-card p-4 shadow-sm sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold">Configurează oferta pentru {profileLabel(location)}.</p>{draft && <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>}</div><p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Selectează produsele și serviciile declarate ca disponibile. Zonele, activitățile, specialiștii și dotările sunt informații opționale și nu blochează trimiterea.</p></div>
+      {/* Blocul "Configureaza oferta" + cautare a fost eliminat de aici (2026-08-06):
+          se dubla cu antetul invelisului (ProviderServicesThreeColumn), care are
+          propriul titlu si propria cautare in stil fereastra. Statusul draftului, daca
+          exista, se muta intr-o insigna discreta - nu se pierde informatia. */}
+      {draft && (
+        <div className="flex items-center gap-2 px-1">
+          <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold">{SUBMISSION_STATUS_LABELS[draft.status] || draft.status}</span>
         </div>
-        <div className="relative mt-4"><Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><input className={`${inputClass} pl-10`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Caută un serviciu..." />{query && <button type="button" onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted-foreground hover:bg-secondary"><X className="h-4 w-4" /></button>}</div>
-      </section>
+      )}
 
       {persistenceMode === "legacy" && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">Catalogul V2 este disponibil local. Draftul de servicii folosește fluxul compatibil până când endpointurile de configurare sunt publicate.</div>}
       {pendingReview && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">Modificările sunt în curs de aprobare. Editarea este blocată până la decizia administratorului.</div>}
