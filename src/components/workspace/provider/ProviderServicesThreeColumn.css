@@ -2747,9 +2747,20 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
+  border-radius: 6px;
   font-size: 10px;
   font-weight: 700;
   color: hsl(var(--muted-foreground));
+}
+
+/* Placa colorata (2026-08-06): cand primeste fundal inline (culoare de categorie),
+   creste usor si capata contur - la 17px simplu, fundalul plin ar arata ca un patrat
+   lipit de text; asa se citeste ca insigna. */
+.provider-services-three__step-mark[style*="background"] {
+  height: 20px;
+  width: 20px;
+  border: 1px solid transparent;
+  color: #2c2c2c;
 }
 
 .provider-services-three__step-mark svg {
