@@ -417,6 +417,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
       label: "Oferta pe zone",
       rows: snapshot.units.map((unit) => ({
         value: `unit:${unit.index}`,
+        unitKey: unit.key,
         step: null,
         label: unit.title,
         hint: unit.description,
