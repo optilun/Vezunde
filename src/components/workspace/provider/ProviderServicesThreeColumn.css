@@ -496,7 +496,6 @@
   border-bottom: 0 !important;
   border-left: 0 !important;
   border-radius: 0 !important;
-  box-shadow: none !important;
 }
 
 .provider-services-three__native [data-services-panel="units"] > section > div > div[class*="border-t"] > div:first-child {
