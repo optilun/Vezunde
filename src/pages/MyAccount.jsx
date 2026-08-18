@@ -17,7 +17,7 @@ const MODE_LABELS = {
   personal: "Cont personal",
   provider: "Organizații",
   professional: "Cont profesional",
-  applicant: "Organizații · Pregătire profil",
+  applicant: "Organizații · Solicitare în verificare",
 };
 
 const PROVIDER_ROLE_LABELS = {
@@ -409,8 +409,8 @@ export default function MyAccount() {
       key: "applicant",
       kind: "applicant",
       group: "organizations",
-      label: onboardingWorkspace.location_summary?.name || "Pregătire profil",
-      subtitle: "Solicitare în pregătire",
+      label: onboardingWorkspace.location_summary?.name || "Solicitare în verificare",
+      subtitle: "Solicitare în verificare",
       active: resolvedMode === "applicant",
       onClick: () => switchMode("applicant"),
     }] : []),
@@ -454,7 +454,6 @@ export default function MyAccount() {
         user={user}
         workspace={onboardingWorkspace}
         onLogout={onLogout}
-        onRefresh={refreshOnboardingWorkspace}
         modeSwitches={modeSwitches}
         />
       </Suspense>

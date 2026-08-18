@@ -1,4 +1,4 @@
-import { LayoutDashboard, FileText, Bookmark, Settings, Building2, Clock3, ListChecks, Inbox } from "lucide-react";
+import { LayoutDashboard, FileText, Bookmark, Settings, Building2, Inbox } from "lucide-react";
 
 export const PERSONAL_NAV = [
   { key: "overview", label: "Prezentare generala", shortLabel: "Acasă", icon: LayoutDashboard },
@@ -7,11 +7,9 @@ export const PERSONAL_NAV = [
   { key: "settings", label: "Setari", shortLabel: "Setări", icon: Settings },
 ];
 
+// O singura interfata de organizatie: spatiul de furnizor. Pana la aprobarea
+// revendicarii, contul vede doar starea solicitarii - fara ecrane de ciorna paralele.
 export const APPLICANT_NAV = [
-  { key: "overview", label: "Prezentare generala", shortLabel: "Acasă", icon: LayoutDashboard },
-  { key: "profile", label: "Profil public", shortLabel: "Profil", icon: Building2 },
-  { key: "hours", label: "Program", shortLabel: "Program", icon: Clock3 },
-  { key: "services", label: "Servicii", shortLabel: "Servicii", icon: ListChecks },
   { key: "status", label: "Status solicitare", shortLabel: "Status", icon: FileText },
 ];
 
