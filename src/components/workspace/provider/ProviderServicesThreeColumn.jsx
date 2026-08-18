@@ -443,12 +443,29 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
               {/* Pastram si clasa nav-group: stilurile butoanelor (iconita, contor,
                   aliniere) sunt legate de ea in trei fisiere CSS. Fara ea, randurile
                   se stricau - text lipit de numar, iconite pe randuri separate. */}
-              <nav className="provider-services-three__nav-group provider-services-three__review" aria-label="Verificare">
+              {/* Sir compact de statistici (2026-08-19), nu lista de butoane cu iconita:
+                  Alex a semnalat ca formatul vechi (identic cu "Oferta pe zone") facea
+                  aceste trei numere sa para o alta lista de navigare, desi "Oferta
+                  completa" si "Oferta selectata" sunt de fapt suma celor de mai sus.
+                  Ramane functional (click schimba vederea), dar arata diferit -
+                  statistici, nu zone de navigat. */}
+              <div className="provider-services-three__stats" aria-label="Verificare">
                 <p>Verificare</p>
-                <NavButton active={view === "all" && !query} icon={ListFilter} label="Oferta completă" count={snapshot.units.reduce((sum, unit) => sum + unit.total, 0)} onClick={() => chooseView("all")} />
-                <NavButton active={view === "selected" && !query} icon={CheckCircle2} label="Oferta selectată" count={snapshot.selectedCount} onClick={() => chooseView("selected")} />
-                <NavButton active={view === "issues" && !query} icon={AlertTriangle} label="Observații" count={snapshot.issueCount} onClick={() => chooseView("issues")} />
-              </nav>
+                <div className="provider-services-three__stats-row">
+                  <button type="button" className={view === "all" && !query ? "is-active" : ""} onClick={() => chooseView("all")}>
+                    <strong>{snapshot.units.reduce((sum, unit) => sum + unit.total, 0)}</strong>
+                    <span>oferta completa</span>
+                  </button>
+                  <button type="button" className={view === "selected" && !query ? "is-active" : ""} onClick={() => chooseView("selected")}>
+                    <strong>{snapshot.selectedCount}</strong>
+                    <span>selectate</span>
+                  </button>
+                  <button type="button" className={view === "issues" && !query ? "is-active" : ""} onClick={() => chooseView("issues")}>
+                    <strong>{snapshot.issueCount}</strong>
+                    <span>observatii</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </aside>
