@@ -514,7 +514,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                         type="button"
                         className={`provider-services-three__step${isActive ? " is-active" : ""}${row.done ? " is-done" : ""}`}
                         onClick={() => {
-                          if (row.value === "configuration") { setConfigStep(row.step || 1); chooseView("configuration"); }
+                          if (row.value === "configuration") { goToConfigStep(row.step || 1); }
                           else if (row.value.startsWith("unit:")) openUnit(Number(row.value.slice(5)));
                           else chooseView(row.value);
                         }}
