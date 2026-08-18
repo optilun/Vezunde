@@ -20,11 +20,18 @@ const ZONE_LEVEL_CAPABILITY_KEYS = {
   b2b_distribution_center: ["b2b_distribution", "b2b_logistics", "b2b_technical_support"],
 };
 
-export default function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceUnitMap, prerequisites, config, resourceLinks, approvedResourceLinks, customSuggestions, open, disabled, casServiceKeys = [], onToggleCas, onOpen, onToggleService, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion, filter = "all", dataAttrs = {} }) {
+export default function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceUnitMap, prerequisites, config, resourceLinks, approvedResourceLinks, customSuggestions, capabilities = [], approvedCapabilities = [], onToggleCapability, open, disabled, casServiceKeys = [], onToggleCas, onOpen, onToggleService, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion, filter = "all", dataAttrs = {} }) {
   const definition = getFunctionalUnitDefinition(unitKey);
   const Icon = UNIT_ICONS[unitKey] || UNIT_FALLBACK_ICON;
   const selectedCount = sections.reduce((sum, section) => sum + selectedCountForSection(selected, section), 0);
   const total = sections.reduce((sum, section) => sum + section.items.length, 0);
+  // Capabilitatile atasate acestei zone (2026-08-18): fostul modul separat "Dotari si
+  // activitati" - fiecare comutator se muta acum langa ce controleaza (vezi mai jos).
+  const zoneCapabilityKeys = ZONE_LEVEL_CAPABILITY_KEYS[unitKey] || [];
+  const findCapabilityRow = (capabilityKey) => capabilities.find((item) => item.capability_key === capabilityKey);
+  const isCapabilityApproved = (capabilityKey) => approvedCapabilities.some((item) => item.capability_key === capabilityKey);
+  const toggleZoneCapability = (capabilityKey) => onToggleCapability?.(capabilityKey, [unitKey]);
+  const inlineCapabilityRendered = new Set();
   // Drill-down (2026-08-18): in loc de toate grupurile deschise simultan intr-o lista
   // foarte lunga, zona arata randurile grupurilor; apesi unul si intri doar in el.
   // Cu un filtru activ (selectate / observatii) randam plat, ca sa se vada tot ce trece
