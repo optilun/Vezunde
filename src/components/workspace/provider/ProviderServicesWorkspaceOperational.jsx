@@ -434,14 +434,12 @@ function ServiceRow({ item, index = 0, selected, approvedSelected, prerequisite,
   // sa arate ca o cutie separata - opusul modelului Settings, unde nu exista cutii, doar
   // spatiu si o linie fina intre randuri din acelasi grup. Tenta alternanta ramane, doar
   // ca zona plata, nu cutie.
-  // Linia colorata din stanga (2026-08-06): aceeasi culoare de categorie ca placa din
-  // titlul sectiunii, dar foarte discreta - doar cand serviciul e bifat, ca sa nu
-  // aglomereze o lista lunga de servicii nebifate.
-  const groupTone = GROUP_TONE[item.group];
+  // Linia colorata din stanga a fost ELIMINATA (2026-08-06): in practica arata ca o
+  // eroare de randare, nu ca accent - taia prin text, nu se aliniaza cu nimic. Bulina
+  // din titlul sectiunii ramane singurul reper de culoare la nivel de serviciu.
   return (
     <div
       className={`relative border-b border-border/50 transition last:border-b-0 ${removalRequested ? "bg-amber-50/60" : active ? "bg-transparent" : rowTint}`}
-      style={active && groupTone ? { boxShadow: `inset 3px 0 0 ${groupTone.border}` } : undefined}
     >
     <button
       type="button"
