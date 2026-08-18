@@ -501,6 +501,20 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
               <strong>{homeDoneCount} din {homeProgressRows.length} secțiuni</strong>
             </div>
 
+            {/* Cautarea sta in sidebar, deasupra categoriilor (2026-08-06), ca in
+                referinta - nu in antetul continutului. Aceeasi stare `query`, doar
+                mutata vizual; comportamentul de filtrare ramane neschimbat. */}
+            <div className="provider-services-three__left-search">
+              <Search aria-hidden="true" />
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => updateSearch(event.target.value)}
+                placeholder="Caută un serviciu"
+                aria-label="Caută un serviciu"
+              />
+            </div>
+
             <div className="provider-services-three__nav-groups">
               {homeGroups.filter((group) => !group.isReview).map((group) => (
                 <nav key={group.label} className="provider-services-three__steps" aria-label={group.label}>
