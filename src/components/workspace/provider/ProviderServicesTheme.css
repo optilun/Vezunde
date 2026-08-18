@@ -426,8 +426,111 @@
 
 @media (max-width: 820px) {
   .provider-services-three__nav-group > button.is-active {
-    border-color: rgb(52 91 200 / 0.18);
+    border-color: rgb(23 23 23 / 0.14);
     background: #f5f2eb;
     box-shadow: none;
+  }
+}
+
+/* ==========================================================================
+   16. Etapa 1: fundatia vizuala (2026-08-18)
+   Ordonare, latime de citire, grid de 8px si o singura familie de accent.
+   Culoarea are voie sa insemne DOAR stare: verde = gata, portocaliu = atentie.
+   ========================================================================== */
+
+.provider-services-three {
+  /* Accentul devine cerneala neutra: albastrul concura cu verdele de stare. */
+  --services-accent: #171717;
+  --services-accent-strong: #171717;
+  --services-accent-soft: #f3f1eb;
+}
+
+/* Bara de progres a configurarii */
+.provider-services-three__progress {
+  display: block;
+  overflow: hidden;
+  height: 4px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: rgb(23 23 23 / 0.09);
+}
+
+.provider-services-three__progress > i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #315c3a;
+  transition: width 240ms ease;
+}
+
+/* Latime de citire: pe ecrane late, textul si comutatorul nu mai stau la capete opuse. */
+.provider-services-three__native [data-services-panel],
+.provider-services-three__meta,
+.provider-services-three__admin-note,
+.provider-services-three__center-copy {
+  max-width: 880px;
+}
+
+/* Grid de 8px, uniform pe toate panourile si randurile. */
+.provider-services-three__native [data-services-panel="configuration"],
+.provider-services-three__native [data-services-panel="options"],
+.provider-services-three__native [data-services-panel="advanced"],
+.provider-services-three__native [data-services-panel="search-results"] {
+  padding: 24px 16px !important;
+}
+
+.provider-services-three__native [data-services-panel="configuration"] .services-card {
+  min-height: 64px !important;
+  padding: 16px !important;
+}
+
+.provider-services-three__native button[data-service-key] {
+  min-height: 48px;
+  padding: 12px 16px !important;
+}
+
+.provider-services-three__native [data-services-panel="units"] > section > button:first-child {
+  min-height: 56px;
+  padding: 12px 16px !important;
+}
+
+.provider-services-three__meta {
+  padding-inline: 16px;
+}
+
+/* Iconita zonei din antetul acordeonului: neutra, nu albastra. */
+.provider-services-three__native [data-services-panel="units"] > section > button:first-child > span:first-child {
+  background: #f3f1eb !important;
+  color: #57534e !important;
+}
+
+@media (min-width: 1321px) {
+  .provider-services-three__native [data-services-panel="configuration"],
+  .provider-services-three__native [data-services-panel="options"],
+  .provider-services-three__native [data-services-panel="advanced"],
+  .provider-services-three__native [data-services-panel="search-results"] {
+    padding: 24px 8px !important;
+  }
+
+  .provider-services-three__native button[data-service-key] {
+    min-height: 48px;
+    padding: 12px 8px !important;
+  }
+
+  .provider-services-three__native [data-services-panel="units"] > section > button:first-child {
+    min-height: 56px;
+    padding: 12px 8px !important;
+  }
+
+  .provider-services-three__meta {
+    padding-inline: 8px;
+  }
+}
+
+@media (max-width: 620px) {
+  .provider-services-three__native [data-services-panel="configuration"],
+  .provider-services-three__native [data-services-panel="advanced"],
+  .provider-services-three__native [data-services-panel="search-results"] {
+    padding: 16px !important;
   }
 }

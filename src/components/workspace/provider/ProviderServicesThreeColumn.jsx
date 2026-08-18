@@ -383,6 +383,11 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
             <div className="provider-services-three__left-heading">
               <PanelLabel index="01" label="Configurare" />
               <strong>{homeDoneCount} din {homeProgressRows.length} secțiuni</strong>
+              {/* Progresul se arata si vizual, nu doar in text - acelasi tipar folosit de
+                  Stripe si Google Business Profile pentru configurari cu mai multi pasi. */}
+              <span className="provider-services-three__progress" aria-hidden="true">
+                <i style={{ width: `${Math.round((homeDoneCount / Math.max(homeProgressRows.length, 1)) * 100)}%` }} />
+              </span>
             </div>
 
             {/* Cautarea sta in sidebar, deasupra categoriilor (2026-08-06), ca in
@@ -550,9 +555,33 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
             </div>
           </details>
 
-          {/* Rezumatul util, mutat din coloana eliminata (2026-08-06): doar informatia
-              care nu apare deja in alta parte - tipul activitatii, starea si eventualele
-              observatii sau cerinte de la admin. */}
+          <header className="provider-services-three__center-header">
+            <div className="provider-services-three__center-copy">
+              <PanelLabel index="02" label="Configurare" />
+              <h2 id="provider-services-center-title">{centerTitle}</h2>
+              <p>{centerDescription}</p>
+            </div>
+            {!(["configuration", "options", "advanced"].includes(view)) && (
+              <div className="provider-services-three__search">
+                <Search aria-hidden="true" />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(event) => updateSearch(event.target.value)}
+                  placeholder="Caută un serviciu"
+                  aria-label="Caută un serviciu"
+                />
+                {query && (
+                  <button type="button" onClick={() => updateSearch("")} aria-label="Șterge căutarea">
+                    <X aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+            )}
+          </header>
+
+          {/* Rezumatul si starea vin DUPA titlu (2026-08-18): inainte stateau deasupra lui,
+              deci ochiul citea meta inainte de a sti pe ce ecran se afla. */}
           <div className="provider-services-three__meta">
             {snapshot.careSetting && (
               <span className="provider-services-three__meta-item">
@@ -579,31 +608,6 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
               <p>{snapshot.adminNote}</p>
             </div>
           )}
-
-          <header className="provider-services-three__center-header">
-            <div className="provider-services-three__center-copy">
-              <PanelLabel index="02" label="Configurare" />
-              <h2 id="provider-services-center-title">{centerTitle}</h2>
-              <p>{centerDescription}</p>
-            </div>
-            {!(["configuration", "options", "advanced"].includes(view)) && (
-              <div className="provider-services-three__search">
-                <Search aria-hidden="true" />
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(event) => updateSearch(event.target.value)}
-                  placeholder="Caută un serviciu"
-                  aria-label="Caută un serviciu"
-                />
-                {query && (
-                  <button type="button" onClick={() => updateSearch("")} aria-label="Șterge căutarea">
-                    <X aria-hidden="true" />
-                  </button>
-                )}
-              </div>
-            )}
-          </header>
 
           <div ref={contentRef} className="provider-services-three__native">
             <ProviderServicesWorkspaceRuntime
