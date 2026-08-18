@@ -290,19 +290,9 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
             : "Nicio zonă aleasă",
           done: snapshot.unitCount > 0,
         },
-        // Randul 2 apare doar cand sectiunea are efectiv continut de aratat. Altfel
-        // apasarea nu deschidea nimic - sectiunea se randeaza conditionat.
-        ...(snapshot.hasCapabilitySection ? [{
-          value: "configuration",
-          step: 2,
-          label: "Dotări și activități",
-          hint: "Ce poți face efectiv în fiecare zonă.",
-          icon: Wrench,
-          meta: snapshot.capabilityCount > 0
-            ? `${snapshot.capabilityCount} ${snapshot.capabilityCount === 1 ? "activitate" : "activități"}`
-            : "Opțional",
-          done: snapshot.capabilityCount > 0,
-        }] : []),
+        // "Dotari si activitati" a fost desfiintat complet (2026-08-18, la cererea lui
+        // Alex): fiecare capabilitate traieste acum inline, in zona pe care o controleaza
+        // (vezi UnitAccordion.jsx), nu intr-un pas separat de sidebar.
         {
           value: "options",
           step: null,
