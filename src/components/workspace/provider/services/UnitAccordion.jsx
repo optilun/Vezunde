@@ -7,6 +7,7 @@ import SectionListRow from "./SectionListRow";
 import CustomSuggestion from "./CustomSuggestion";
 import UnitResourcesPanel from "./UnitResourcesPanel";
 import CapabilityToggle from "./CapabilityToggle";
+import CategorySymbol from "./CategorySymbol";
 import { isSelected, possibleUnits, resolveSectionUnit, selectedCountForSection } from "./servicesConfigModel";
 import { CAS_ELIGIBLE_GROUPS, GROUP_TONE, UNIT_FALLBACK_ICON, UNIT_ICONS, UNIT_TONE } from "./servicesUiTokens";
 
