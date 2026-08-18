@@ -133,7 +133,7 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
                         dar cu fill solid in loc de gradient negru, cate o culoare pe
                         categorie. Inlocuieste bulina simpla folosita pana acum. */}
                     {GROUP_TONE[section.group] && (
-                      <CategorySymbol color={GROUP_TONE[section.group].border} className="h-[18px] w-[18px] shrink-0" />
+                      <CategorySymbol color={GROUP_TONE[section.group].border} className="h-5 w-5 shrink-0" />
                     )}
                     <h3 className="min-w-0 truncate text-[15px] font-bold tracking-tight">{section.title}</h3>
                     <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">{selectedCountForSection(selected, section)} din {section.items.length}</span>
