@@ -367,9 +367,12 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
     ? flowSteps[flowIndex + 1]
     : null;
   const previousFlowEntry = flowIndex > 0 ? flowSteps[flowIndex - 1] : null;
+  // Acelasi bug ca la sidebar (2026-08-06): daca entry.value e "configuration",
+  // chooseMobileView -> chooseView reseta configStep la 1 imediat dupa ce il setam.
+  // Butonul "Continua catre..." catre pasul 2 sau 3 nu avansa niciodata cu adevarat.
   const goToFlowEntry = (entry) => {
     if (!entry) return;
-    if (entry.step !== null) setConfigStep(entry.step);
+    if (entry.value === "configuration") { goToConfigStep(entry.step || 1); return; }
     chooseMobileView(entry.value);
   };
 
