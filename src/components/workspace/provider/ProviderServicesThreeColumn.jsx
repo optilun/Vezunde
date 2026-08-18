@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import ProviderServicesWorkspaceRuntime from "./ProviderServicesWorkspaceRuntime";
+import ServicesHeaderActions from "./services/ServicesHeaderActions";
 
 // Iconita fiecarei zone, dupa cheia ei. Deliberat iconite, nu imagini generate:
 // imaginile AI ar consuma credite la fiecare afisare, s-ar incarca lent si ar bate cap
@@ -560,6 +561,9 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
               <h2 id="provider-services-center-title">{centerTitle}</h2>
               <p>{centerDescription}</p>
             </div>
+            {/* Actiunile stau langa titlu (2026-08-18): o singura actiune primara pe
+                ecran, in dreapta. Pe telefon rămâne bara sticky de jos. */}
+            <ServicesHeaderActions snapshot={snapshot} />
             {!(["configuration", "options", "advanced"].includes(view)) && (
               <div className="provider-services-three__search">
                 <Search aria-hidden="true" />
