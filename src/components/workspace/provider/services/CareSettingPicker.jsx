@@ -9,7 +9,7 @@ export default function CareSettingPicker({ options, approvedValue, value, disab
   if (visibleOptions.length <= 1 || visibleOptions.every((key) => key === "not_applicable" || key === "retail_only")) return null;
   const hasVisibleSelection = visibleOptions.includes(value);
   return (
-    <section {...dataAttrs} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <section {...dataAttrs} className="services-care-setting rounded-2xl border border-border bg-card p-4 shadow-sm">
       {value !== approvedValue && <div className="mb-2 flex"><ChangeBadge modified /></div>}
       {!hasVisibleSelection && <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">Alege o opțiune pentru a continua.</div>}
       {/* Titlu vizibil, adaugat (2026-08-18): dropdown-ul avea doar aria-label "Tipul
