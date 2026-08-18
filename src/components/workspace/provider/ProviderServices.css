@@ -303,9 +303,15 @@
 
 .provider-services-three__native [data-services-role="native-intro"],
 .provider-services-three__native [data-services-role="native-summary"],
-.provider-services-three__native [data-services-role="catalog-intro"],
-.provider-services-three__native [data-services-role="native-actions"] {
+.provider-services-three__native [data-services-role="catalog-intro"] {
   display: none !important;
+}
+
+/* native-actions NU se mai ascunde (2026-08-18): auditul anterior a sters bara
+   vizibila din ProviderServicesThreeColumn si a lasat ascunsa singura bara reala,
+   deci nu exista niciun buton de salvare/trimitere spre aprobare. */
+.provider-services-three__native [data-services-role="native-actions"] {
+  margin: 16px 22px 0;
 }
 
 .provider-services-three__native [data-services-role="workspace"],
