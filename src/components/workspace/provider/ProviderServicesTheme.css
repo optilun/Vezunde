@@ -547,6 +547,48 @@
 }
 
 /* ==========================================================================
+   19. Coloana de pasi: o singura gramatica vizuala (2026-08-18)
+   Inainte marginea dreapta insemna cand stare (cerc verde), cand cantitate (numar),
+   iar randul activ se distingea doar prin text mai gros. Acum: dreapta = mereu
+   cantitate, bifa e mica si neutra, iar randul curent primeste fundal alb si o bara
+   verticala. Verdele rămâne doar in bara de progres.
+   ========================================================================== */
+
+.provider-services-three__step {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.provider-services-three__step.is-active {
+  background: #ffffff;
+  box-shadow: inset 2px 0 0 #171717;
+}
+
+.provider-services-three__step-count {
+  justify-self: end;
+  color: var(--services-muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.provider-services-three__step.is-active .provider-services-three__step-count {
+  color: #171717;
+}
+
+.provider-services-three__step-done {
+  width: 14px;
+  height: 14px;
+  justify-self: end;
+  color: #315c3a;
+}
+
+/* ==========================================================================
    18. Etapa 3: sfarsitul continutului (2026-08-18)
    Doua defecte vizibile la orice latime: sub continut rămânea un dreptunghi gol
    inalt (layoutul avea o inaltime minima fixa de 680px, gandita pentru liste

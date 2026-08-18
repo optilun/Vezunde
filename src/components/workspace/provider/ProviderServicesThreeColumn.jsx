@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from "react";
 import {
   AlertTriangle,
   Building2,
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -336,6 +337,9 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
         hint: unit.description,
         icon: UNIT_CARD_ICONS[unit.key] || Building2,
         meta: `${unit.selected} din ${unit.total} servicii`,
+        // Forma scurta, pentru coloana de pasi: acolo marginea dreapta arata mereu o
+        // cantitate, nu cand o bifa si cand un numar (2026-08-18).
+        count: `${unit.selected}/${unit.total}`,
         done: unit.selected > 0,
       })),
     }] : []),
@@ -449,8 +453,12 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                         </span>
                         <span className="provider-services-three__step-body">
                           <span>{row.label}</span>
-                          {row.done && <CheckCircle2 className="provider-services-three__step-done" aria-hidden="true" />}
                         </span>
+                        {row.count ? (
+                          <em className="provider-services-three__step-count">{row.count}</em>
+                        ) : row.done ? (
+                          <Check className="provider-services-three__step-done" aria-hidden="true" />
+                        ) : null}
                       </button>
                     );
                   })}
