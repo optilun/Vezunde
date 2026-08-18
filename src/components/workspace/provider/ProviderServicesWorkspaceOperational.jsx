@@ -414,7 +414,10 @@ function ServiceRow({ item, index = 0, selected, approvedSelected, prerequisite,
   // aglomereze o lista lunga de servicii nebifate.
   const groupTone = GROUP_TONE[item.group];
   return (
-    <div className={`relative border-b border-border/50 transition last:border-b-0 ${removalRequested ? "bg-amber-50/60" : active ? "bg-transparent" : rowTint}`}>
+    <div
+      className={`relative border-b border-border/50 transition last:border-b-0 ${removalRequested ? "bg-amber-50/60" : active ? "bg-transparent" : rowTint}`}
+      style={active && groupTone ? { boxShadow: `inset 3px 0 0 ${groupTone.border}` } : undefined}
+    >
     <button
       type="button"
       data-service-key={item.id}
