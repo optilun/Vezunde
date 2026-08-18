@@ -79,7 +79,7 @@ const persistClaimResumeState = (location, contact, scope, step = "review") => {
   }
 };
 
-export default function ClaimForm({ location, step, onStepChange, onDone }) {
+export default function ClaimForm({ location, step, preferredScope = "", onStepChange, onDone }) {
   const [contact, setContactState] = useState(() => ({
     ...DEFAULT_CONTACT,
     ...(readSessionJson(CONTACT_RESUME_KEY) || {}),
@@ -144,6 +144,12 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
     const options = response.data || null;
     setScopeOptions(options);
     setScopeState((current) => {
+      // Aria propusa din cautare (card de organizatie) se aplica o singura data, doar
+      // daca utilizatorul nu a ales deja altceva si daca aria e permisa.
+      const requestedScope = current.claim_scope === CLAIM_SCOPE.LOCATION && preferredScope
+        ? preferredScope
+        : current.claim_scope;
+      current = { ...current, claim_scope: requestedScope };
       const availableScope = current.claim_scope === CLAIM_SCOPE.ORGANIZATION && !options?.supports_organization_claim
         ? CLAIM_SCOPE.LOCATION
         : current.claim_scope === CLAIM_SCOPE.SELECTED_LOCATIONS && !options?.supports_selected_locations
@@ -153,7 +159,7 @@ export default function ClaimForm({ location, step, onStepChange, onDone }) {
       persistClaimResumeState(location, contact, next, step || "scope");
       return next;
     });
-  }, [contact, location, step]);
+  }, [contact, location, preferredScope, step]);
 
   useEffect(() => {
     if (["scope", "contact", "review"].includes(step) && !scopeOptions) loadScopeOptions();

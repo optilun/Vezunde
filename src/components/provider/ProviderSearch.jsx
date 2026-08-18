@@ -3,12 +3,14 @@ import { Search, BadgeCheck, MapPin, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
 import SimilarLocationCard from "@/components/provider/SimilarLocationCard";
+import OrganizationSearchResult from "@/components/provider/OrganizationSearchResult";
 
 const GooglePlacesResults = lazy(() => import("@/components/provider/GooglePlacesResults"));
 
 export default function ProviderSearch({ onClaim, onNew }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [googleMode, setGoogleMode] = useState(false);
   const [similar, setSimilar] = useState(null);
@@ -16,7 +18,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
 
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) { setResults([]); return; }
+    if (q.length < 2) { setResults([]); setOrganizations([]); return; }
     const reqId = ++reqRef.current;
     const t = setTimeout(async () => {
       setLoading(true);
@@ -24,12 +26,13 @@ export default function ProviderSearch({ onClaim, onNew }) {
       if (reqId !== reqRef.current) return;
       setLoading(false);
       setResults(res.data?.locations || []);
+      setOrganizations(res.data?.organizations || []);
     }, 300);
     return () => clearTimeout(t);
   }, [query]);
 
-  const handleClaim = (location) => onClaim(location);
-  const showGoogleTrigger = query.trim().length >= 3 && !loading && results.length === 0;
+  const handleClaim = (location, options) => onClaim(location, options);
+  const showGoogleTrigger = query.trim().length >= 3 && !loading && results.length === 0 && organizations.length === 0;
 
   if (similar) {
     return (
@@ -62,6 +65,17 @@ export default function ProviderSearch({ onClaim, onNew }) {
       )}
 
       <div className="mt-4 space-y-3">
+        {organizations.map((organization) => (
+          <OrganizationSearchResult
+            key={organization.id}
+            organization={organization}
+            onClaimOrganization={(org) => {
+              const primary = org.locations.find((item) => item.id === org.primary_location_id) || org.locations[0];
+              if (primary) handleClaim(primary, { preferredScope: "organization" });
+            }}
+            onClaimLocation={(location) => handleClaim(location)}
+          />
+        ))}
         {results.map((location) => {
           const requestsAccess = location.claim_action === "request_access";
           return (
@@ -91,7 +105,7 @@ export default function ProviderSearch({ onClaim, onNew }) {
             </div>
           );
         })}
-        {query.trim().length >= 2 && !loading && results.length === 0 && !googleMode && <p className="text-sm text-muted-foreground">Nicio locatie gasita.</p>}
+        {query.trim().length >= 2 && !loading && results.length === 0 && organizations.length === 0 && !googleMode && <p className="text-sm text-muted-foreground">Nicio locatie gasita.</p>}
       </div>
 
       {showGoogleTrigger && !googleMode && (

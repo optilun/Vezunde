@@ -91,6 +91,8 @@ export default function AddOrClaim() {
   });
   const [selected, setSelected] = useState(initialSelectedLocation);
   const [draft, setDraft] = useState(null);
+  // Aria propusa cand solicitarea porneste de la un card de organizatie (2026-08-18).
+  const [preferredScope, setPreferredScope] = useState("");
   const [claimStep, setClaimStep] = useState(() => resumedClaimLocation
     ? getResumeClaimStep(resumedClaimContact, resumedClaimScope, resumedClaimStep)
     : "relation");
@@ -157,12 +159,18 @@ export default function AddOrClaim() {
             else setClaimStep("contact");
           }}
         >
-          <ClaimForm location={selected} step={claimStep} onStepChange={setClaimStep} onDone={completeOnboardingRequest} />
+          <ClaimForm location={selected} step={claimStep} preferredScope={preferredScope} onStepChange={setClaimStep} onDone={completeOnboardingRequest} />
         </WizardShell>
       ) : (
         <WizardShell phases={PHASES} phaseStep={1} title="Gaseste profilul locatiei tale" subtitle="Verificam mai intai daca profilul exista deja.">
           <ProviderSearch
-            onClaim={(loc) => { clearResumeState(); setSelected(loc); setClaimStep("relation"); setStage("confirm"); }}
+            onClaim={(loc, options) => {
+              clearResumeState();
+              setSelected(loc);
+              setPreferredScope(options?.preferredScope || "");
+              setClaimStep("relation");
+              setStage("confirm");
+            }}
             onNew={(d) => { clearResumeState(); setDraft(d && d.place_id ? d : null); setStage("wizard"); }}
           />
         </WizardShell>

@@ -52,7 +52,56 @@ Deno.serve(async (req) => {
         };
       });
 
-    return Response.json({ locations: publicList });
+    // Grupare pe organizatie (2026-08-18): daca brandul potrivit are mai multe locatii
+    // mapate, il aratam ca rezultat propriu, ca sa poti porni direct de la organizatie
+    // in loc sa cauti locatie cu locatie. Nu se schimba nicio regula de acces sau
+    // aprobare - aria efectiva se confirma tot la pasul "Alege accesul".
+    const claimableByOrganization = new Map();
+    for (const location of locations) {
+      const organizationId = String(location.organization_id || '').trim();
+      if (!organizationId || !organizationNames[organizationId]) continue;
+      if (location.active_status === 'inactiva') continue;
+      if ((location.profile_control_status || 'directory') === 'suspended') continue;
+      const profileType = String(location.provider_profile_type || '').trim();
+      if (profileType === '' || EXCLUDED_PROFILE_TYPES.includes(profileType)) continue;
+      if (!claimableByOrganization.has(organizationId)) claimableByOrganization.set(organizationId, []);
+      claimableByOrganization.get(organizationId).push(location);
+    }
+
+    const matchedOrganizationIds = new Set();
+    for (const organization of organizations) {
+      if (norm(organization.name).includes(q) || norm(organization.public_display_name).includes(q)) {
+        matchedOrganizationIds.add(organization.id);
+      }
+    }
+    for (const location of publicList) {
+      const source = locations.find((row) => row.id === location.id);
+      if (source?.organization_id) matchedOrganizationIds.add(source.organization_id);
+    }
+
+    const organizationResults = organizations
+      .filter((organization) => matchedOrganizationIds.has(organization.id))
+      .map((organization) => {
+        const organizationLocations = claimableByOrganization.get(organization.id) || [];
+        return {
+          id: organization.id,
+          name: organization.public_display_name || organization.name,
+          organization_type: organization.organization_type_code || organization.organization_type || null,
+          location_count: organizationLocations.length,
+          cities: [...new Set(organizationLocations.map((row) => row.city).filter(Boolean))].slice(0, 6),
+          primary_location_id: organizationLocations[0]?.id || null,
+          locations: organizationLocations.slice(0, 25).map((row) => ({
+            id: row.id,
+            name: row.name,
+            city: row.city,
+            address: row.address || null,
+          })),
+        };
+      })
+      .filter((organization) => organization.location_count > 1)
+      .slice(0, 5);
+
+    return Response.json({ locations: publicList, organizations: organizationResults });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
