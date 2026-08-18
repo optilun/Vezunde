@@ -260,7 +260,8 @@ export const PROVIDER_SERVICE_SECTIONS = [
   },
   {
     key: 'ocular_oncology', unitKey: 'ophthalmology_office', capabilityKey: 'ophthalmology_specialties',
-    area: 'medical_specialties', kind: 'specialty', title: 'Oncologie oculară',
+    // Titlul distinct de eticheta singurului serviciu (2026-08-18), acelasi tipar.
+    area: 'medical_specialties', kind: 'specialty', title: 'Evaluare tumori oculare',
     publicNeedKey: 'ocular_oncology', publicLabel: 'Oncologie oculară',
     description: 'Evaluare specializată pentru tumori oculare și ale anexelor.',
     searchTerms: ['oncologie oculara', 'tumora ochi', 'tumora pleoapa'],
