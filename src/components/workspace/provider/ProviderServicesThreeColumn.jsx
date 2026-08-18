@@ -11,7 +11,6 @@ import {
   FlaskConical,
   Glasses,
   Hospital,
-  ListFilter,
   Microscope,
   PackageOpen,
   Search,
