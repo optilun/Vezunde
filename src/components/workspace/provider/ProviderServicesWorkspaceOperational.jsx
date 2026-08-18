@@ -254,10 +254,19 @@ function resolveSectionUnit(section, selected, serviceUnitMap, activeUnits) {
 function sectionsForProfile(layout, selected, sourceSections = PROVIDER_SERVICE_SECTIONS) {
   const allowed = new Set([...(layout.primary || []), ...(layout.secondary || [])]);
   const hidden = new Set(layout.hidden || []);
-  return sourceSections.map((section) => ({
-    ...section,
-    items: section.items.filter((item) => allowed.has(item.group) || (hidden.has(item.group) && isSelected(selected, item))),
-  })).filter((section) => section.items.length > 0);
+  return sourceSections.map((section) => {
+    const items = section.items.filter((item) => allowed.has(item.group) || (hidden.has(item.group) && isSelected(selected, item)));
+    return {
+      ...section,
+      // BUG REAL gasit si reparat (2026-08-06): sectiunea sursa (PROVIDER_SERVICE_SECTIONS)
+      // nu are niciodata camp "group" propriu - avea doar key/title/items. Codul de
+      // culoare scris mai devreme citea section.group, care era mereu undefined, deci
+      // bulina din titlul sectiunii nu aparea NICIODATA. Calculam group aici, din primul
+      // serviciu al sectiunii, o singura data, la sursa.
+      group: items[0]?.group || section.items[0]?.group || "",
+      items,
+    };
+  }).filter((section) => section.items.length > 0);
 }
 
 function unitRow(unitKey, careSetting) {
