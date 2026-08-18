@@ -137,7 +137,7 @@ export default function ProviderLeadInbox({ locationId, location }) {
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((item) => (
-          <button key={item.key} type="button" onClick={() => setFilter(item.key)} className={`rounded-full px-3 py-1.5 text-[11px] font-bold transition-colors ${filter === item.key ? "bg-foreground text-background" : "border border-border bg-card text-foreground hover:bg-secondary"}`}>{item.label}</button>
+          <button key={item.key} type="button" onClick={() => setFilter(item.key)} className={`rounded-full px-3.5 py-1.5 text-[11px] font-extrabold transition-all ${filter === item.key ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_6px_16px_rgba(37,99,235,0.28)]" : "border border-border bg-card text-foreground hover:border-blue-200 hover:text-blue-700"}`}>{item.label}</button>
         ))}
       </div>
 
@@ -188,19 +188,28 @@ export default function ProviderLeadInbox({ locationId, location }) {
 
   return (
     <section className="space-y-5">
-      <header className="rounded-[22px] border border-foreground/10 bg-card p-6 shadow-[0_14px_40px_rgba(23,23,23,0.04)]">
+      {/* Antet in registru comercial (2026-08-18): fundal colorat, contoare ca statistici de
+          vanzare. Nu s-a schimbat nicio valoare - doar prezentarea lor. */}
+      <header className="overflow-hidden rounded-[22px] border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-amber-50 p-6 shadow-[0_16px_44px_rgba(37,99,235,0.1)]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-primary"><Inbox className="h-4 w-4" /> Inbox furnizor</div>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <h1 className="font-heading text-2xl font-extrabold tracking-tight text-foreground">Leaduri</h1>
-              <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${entitlement?.plan_code === "pro" ? "bg-foreground text-background" : "bg-secondary text-foreground"}`}>Plan {entitlement?.plan_code === "pro" ? "Pro" : "Free"}</span>
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.16em] text-white"><Inbox className="h-3.5 w-3.5" /> Inbox furnizor</div>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <h1 className="font-heading text-3xl font-extrabold tracking-tight text-foreground">Leaduri</h1>
+              <span className={`rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide ${entitlement?.plan_code === "pro" ? "bg-gradient-to-r from-amber-400 to-amber-600 text-white shadow-sm" : "bg-secondary text-foreground"}`}>Plan {entitlement?.plan_code === "pro" ? "Pro" : "Free"}</span>
             </div>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Cereri relevante pentru {locationName}. Cererile active și cele încheiate sunt păstrate separat.</p>
-            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground">
-              <span><strong className="text-foreground">{data?.counters?.new || 0}</strong> noi</span>
-              <span><strong className="text-foreground">{data?.counters?.active || 0}</strong> active</span>
-              <span><strong className="text-foreground">{data?.counters?.history || 0}</strong> în istoric</span>
+            <div className="mt-5 grid max-w-lg grid-cols-3 gap-2.5">
+              {[
+                { value: data?.counters?.new || 0, label: "Noi", tone: "border-emerald-200 bg-emerald-50 text-emerald-700" },
+                { value: data?.counters?.active || 0, label: "Active", tone: "border-blue-200 bg-blue-50 text-blue-700" },
+                { value: data?.counters?.history || 0, label: "Istoric", tone: "border-border bg-card text-muted-foreground" },
+              ].map((item) => (
+                <div key={item.label} className={`rounded-2xl border px-3 py-2.5 ${item.tone}`}>
+                  <p className="font-heading text-xl font-extrabold leading-none">{item.value}</p>
+                  <p className="mt-1 text-[11px] font-bold uppercase tracking-wide">{item.label}</p>
+                </div>
+              ))}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">

@@ -8,9 +8,9 @@ import ProviderLeadChat from "../ProviderLeadChat";
 import LeadFullDetails from "./LeadFullDetails";
 
 const RESPONSE_OPTIONS = [
-  { key: "can_help", label: "Putem ajuta", icon: CheckCircle2 },
-  { key: "needs_details", label: "Avem nevoie de detalii", icon: HelpCircle },
-  { key: "cannot_help", label: "Nu putem ajuta", icon: XCircle },
+  { key: "can_help", label: "Putem ajuta", icon: CheckCircle2, active: "border-transparent bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-[0_8px_18px_rgba(16,185,129,0.3)]", idle: "hover:border-emerald-300 hover:text-emerald-700" },
+  { key: "needs_details", label: "Avem nevoie de detalii", icon: HelpCircle, active: "border-transparent bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-[0_8px_18px_rgba(245,158,11,0.3)]", idle: "hover:border-amber-300 hover:text-amber-700" },
+  { key: "cannot_help", label: "Nu putem ajuta", icon: XCircle, active: "border-transparent bg-gradient-to-r from-rose-500 to-rose-600 text-white shadow-[0_8px_18px_rgba(244,63,94,0.28)]", idle: "hover:border-rose-300 hover:text-rose-700" },
 ];
 
 const CLOSURE_PRESENTATION = {
@@ -48,13 +48,13 @@ export default function LeadDetailPanel({ lead, response, locationId, canRespond
   };
 
   return (
-    <article className="space-y-5 rounded-2xl border border-border bg-card p-5">
+    <article className="space-y-5 rounded-[22px] border border-blue-100 bg-card p-5 shadow-[0_14px_38px_rgba(37,99,235,0.07)]">
       <header>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="font-heading text-lg font-extrabold tracking-tight text-foreground">{lead.intent_label || "Cerere client"}</h2>
-              {lead.status === "new" && !terminal && <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">Nou</span>}
+              {lead.status === "new" && !terminal && <span className="rounded-full bg-emerald-500 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white">Nou</span>}
               {terminal && <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-foreground"><Archive className="h-3 w-3" /> Încheiată</span>}
               {response?.response_label && <span className="rounded-full bg-foreground px-2.5 py-1 text-[11px] font-bold text-background">{response.response_label}</span>}
             </div>
@@ -64,7 +64,7 @@ export default function LeadDetailPanel({ lead, response, locationId, canRespond
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          {(services || []).slice(0, 5).map((service) => <span key={service} className="rounded-full border border-border bg-secondary/50 px-3 py-1 text-xs font-semibold text-foreground">{serviceLabel(service)}</span>)}
+          {(services || []).slice(0, 5).map((service) => <span key={service} className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">{serviceLabel(service)}</span>)}
         </div>
 
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
@@ -96,7 +96,7 @@ export default function LeadDetailPanel({ lead, response, locationId, canRespond
               const Icon = option.icon;
               const selected = response?.response_type === option.key;
               return (
-                <button key={option.key} type="button" onClick={() => onRespond(lead.id, option.key)} disabled={responding} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-bold transition-colors disabled:opacity-60 ${selected ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground hover:bg-secondary"}`}>
+                <button key={option.key} type="button" onClick={() => onRespond(lead.id, option.key)} disabled={responding} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-extrabold transition-all disabled:opacity-60 ${selected ? option.active : `border-border bg-background text-foreground ${option.idle}`}`}>
                   {responding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Icon className="h-3.5 w-3.5" />}{option.label}
                 </button>
               );
