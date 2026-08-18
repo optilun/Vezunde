@@ -137,17 +137,17 @@ export default function ProviderLeadInbox({ locationId, location }) {
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((item) => (
-          <button key={item.key} type="button" onClick={() => setFilter(item.key)} className={`rounded-full px-3.5 py-1.5 text-[11px] font-extrabold transition-all ${filter === item.key ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-[0_6px_16px_rgba(37,99,235,0.28)]" : "border border-border bg-card text-foreground hover:border-blue-200 hover:text-blue-700"}`}>{item.label}</button>
+          <button key={item.key} type="button" onClick={() => setFilter(item.key)} className={`rounded-full px-3.5 py-1.5 font-heading text-[12px] font-bold tracking-[-0.015em] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-[#F8F4EC] ${filter === item.key ? "bg-[#171717] text-white" : "border border-foreground/15 bg-white/70 text-foreground hover:border-foreground/40"}`}>{item.label}</button>
         ))}
       </div>
 
       {loading ? (
-        <div className="flex min-h-40 items-center justify-center rounded-2xl border border-border bg-card text-xs text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă leadurile...</div>
+        <div className="flex min-h-40 items-center justify-center rounded-[1.4rem] border border-[#e3ddd0] bg-[#fdfbf6] font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă cererile</div>
       ) : leads.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card p-6 text-center">
-          <Inbox className="mx-auto h-7 w-7 text-muted-foreground" />
-          <h2 className="mt-3 font-heading text-sm font-extrabold text-foreground">{historySelected ? "Nu există cereri încheiate" : "Nu există leaduri în această categorie"}</h2>
-          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{historySelected ? "Cererile rezolvate, închise sau expirate vor apărea aici." : "Leadurile eligibile vor apărea aici după acordul clientului."}</p>
+        <div className="rounded-[1.4rem] border border-[#e3ddd0] bg-[#fdfbf6] p-6">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75">Nicio cerere</p>
+          <h2 className="mt-2 font-heading text-xl font-extrabold leading-[1.08] tracking-[-0.035em]">{historySelected ? "Nu există cereri încheiate" : "Nu există cereri în această categorie"}</h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{historySelected ? "Cererile rezolvate, închise sau expirate apar aici." : "Cererile eligibile apar aici după acordul clientului."}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -179,61 +179,73 @@ export default function ProviderLeadInbox({ locationId, location }) {
       responding={respondingId === selectedLead.id}
     />
   ) : (
-    <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card p-8 text-center">
-      <Inbox className="h-7 w-7 text-muted-foreground" />
-      <p className="mt-3 text-sm font-bold text-foreground">Selectează o cerere</p>
-      <p className="mt-1 text-xs text-muted-foreground">Detaliile, răspunsul și conversația apar aici.</p>
+    <div className="flex min-h-72 flex-col justify-center rounded-[1.75rem] border border-[#e3ddd0] bg-[#fdfbf6] px-8 py-10">
+      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75">Nicio cerere selectată</p>
+      <h2 className="mt-3 max-w-md font-heading text-[2rem] font-extrabold leading-[1.02] tracking-[-0.045em]">Alege o cerere din listă.</h2>
+      <p className="mt-3 max-w-md text-base leading-relaxed text-muted-foreground">Detaliile clientului, răspunsul locației și conversația apar aici.</p>
     </div>
   );
 
   return (
     <section className="space-y-5">
-      {/* Antet in registru comercial (2026-08-18): fundal colorat, contoare ca statistici de
-          vanzare. Nu s-a schimbat nicio valoare - doar prezentarea lor. */}
-      <header className="overflow-hidden rounded-[22px] border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-amber-50 p-6 shadow-[0_16px_44px_rgba(37,99,235,0.1)]">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.16em] text-white"><Inbox className="h-3.5 w-3.5" /> Inbox furnizor</div>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <h1 className="font-heading text-3xl font-extrabold tracking-tight text-foreground">Leaduri</h1>
-              <span className={`rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide ${entitlement?.plan_code === "pro" ? "bg-gradient-to-r from-amber-400 to-amber-600 text-white shadow-sm" : "bg-secondary text-foreground"}`}>Plan {entitlement?.plan_code === "pro" ? "Pro" : "Free"}</span>
-            </div>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">Cereri relevante pentru {locationName}. Cererile active și cele încheiate sunt păstrate separat.</p>
-            <div className="mt-5 grid max-w-lg grid-cols-3 gap-2.5">
-              {[
-                { value: data?.counters?.new || 0, label: "Noi", tone: "border-emerald-200 bg-emerald-50 text-emerald-700" },
-                { value: data?.counters?.active || 0, label: "Active", tone: "border-blue-200 bg-blue-50 text-blue-700" },
-                { value: data?.counters?.history || 0, label: "Istoric", tone: "border-border bg-card text-muted-foreground" },
-              ].map((item) => (
-                <div key={item.label} className={`rounded-2xl border px-3 py-2.5 ${item.tone}`}>
-                  <p className="font-heading text-xl font-extrabold leading-none">{item.value}</p>
-                  <p className="mt-1 text-[11px] font-bold uppercase tracking-wide">{item.label}</p>
-                </div>
-              ))}
-            </div>
+      {/* Antet editorial (2026-08-19): acelasi registru ca homepage - eyebrow mono, titlu mare
+          strans, banda subtire cu jaloane si contoare in placi tonale din paleta de categorii.
+          Valorile contoarelor vin neschimbate din providerLeadInboxOps. */}
+      <header>
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75 sm:text-[11px]">
+              Cereri primite · {locationName}
+            </p>
+            <h1 className="mt-4 max-w-3xl font-heading text-[2.6rem] font-extrabold leading-[0.98] tracking-[-0.055em] sm:text-[3.4rem]">
+              <span className="block">Cererile clienților tăi.</span>
+              <span className="block">Într-un singur loc.</span>
+            </h1>
+            <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+              Cererile active și cele încheiate sunt păstrate separat.
+            </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className={`rounded-full px-3.5 py-1.5 font-heading text-[12px] font-bold tracking-[-0.015em] ${entitlement?.plan_code === "pro" ? "bg-[#171717] text-white" : "border border-foreground/15 bg-white/70 text-foreground"}`}>Plan {entitlement?.plan_code === "pro" ? "Pro" : "Free"}</span>
             <ProviderNotificationCenter locationId={locationId} onOpenTarget={openNotificationTarget} />
-            <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-60"><RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Actualizează</button>
+            <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-foreground/20 bg-white/70 px-4 font-heading text-[12px] font-bold text-foreground transition-colors hover:border-foreground/45 disabled:opacity-60"><RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Actualizează</button>
           </div>
+        </div>
+
+        <div className="relative mt-9 h-px bg-[#9a8668]/45">
+          {[16, 50, 84].map((position) => (
+            <span key={position} aria-hidden="true" className="absolute -top-1 h-[9px] w-[9px] -translate-x-1/2 rounded-full border border-[#8d7658] bg-[#f8f4ec]" style={{ left: `${position}%` }} />
+          ))}
+        </div>
+
+        <div className="mt-7 grid gap-3 sm:grid-cols-3">
+          {[
+            { value: data?.counters?.new || 0, label: "Cereri noi", border: "#ccd2ba", bg: "#dfe3d2" },
+            { value: data?.counters?.active || 0, label: "În lucru", border: "#c6d3da", bg: "#dce5e9" },
+            { value: data?.counters?.history || 0, label: "În istoric", border: "#dac69b", bg: "#eadcba" },
+          ].map((item) => (
+            <div key={item.label} style={{ borderColor: item.border, backgroundColor: item.bg }} className="relative overflow-hidden rounded-[1.4rem] border px-5 py-4 shadow-[0_10px_30px_rgba(34,30,24,0.028)]">
+              <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={{ backgroundImage: "url('/images/home/viasee-technical-grain.svg')", backgroundSize: "180px 180px" }} />
+              <p className="relative z-10 font-heading text-[2.4rem] font-extrabold leading-none tracking-[-0.05em] text-[#1c1c1c]">{item.value}</p>
+              <p className="relative z-10 mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-black/55">{item.label}</p>
+            </div>
+          ))}
         </div>
       </header>
 
-      <div className="rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3 text-xs text-foreground">
-        <div className="flex items-start gap-2.5">
-          <LockKeyhole className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-          <p><strong>Acces controlat.</strong> Free vede rezumatul anonim. Pro primește detaliile și chatul numai în Top 3. După încheiere, datele private și acțiunile sunt retrase.</p>
-        </div>
+      <div className="flex items-start gap-2.5 border-y border-border py-4 text-sm leading-relaxed text-muted-foreground">
+        <LockKeyhole aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
+        <p><strong className="font-heading font-bold text-foreground">Acces controlat.</strong> Free vede rezumatul anonim. Pro primește detaliile și chatul numai în Top 3. După încheiere, datele private și acțiunile sunt retrase.</p>
       </div>
 
-      {error && <p role="alert" className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}
+      {error && <p role="alert" className="rounded-[1.4rem] border border-destructive/25 bg-destructive/5 p-4 text-sm text-destructive">{error}</p>}
 
       {/* Pe telefon lista si detaliul nu incap alaturi, deci lista e "acasa" si intri in
           cerere, cu buton de intoarcere - acelasi tipar ca in spatiul cererii pacientului. */}
       <div className="lg:hidden">
         {selectedLead ? (
           <div className="space-y-3">
-            <button type="button" onClick={() => setSelectedLeadId("")} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border bg-card px-4 text-xs font-bold text-foreground hover:bg-secondary">
+            <button type="button" onClick={() => setSelectedLeadId("")} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-foreground/20 bg-white/70 px-4 font-heading text-[12px] font-bold text-foreground transition-colors hover:border-foreground/45">
               <ArrowLeft className="h-3.5 w-3.5" /> Toate cererile
             </button>
             {detailColumn}

@@ -24,12 +24,13 @@ export default function LeadFullDetails({ lead }) {
   }
 
   return (
-    <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-primary">Detalii Pro · Top 3</p>
-        <span className="rounded-full bg-foreground px-2.5 py-1 text-[11px] font-bold text-background">Acces auditat</span>
+    <div className="relative overflow-hidden rounded-[1.4rem] border border-[#d4c6d8] bg-[#e8e0ea] p-5">
+      <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={{ backgroundImage: "url('/images/home/viasee-technical-grain.svg')", backgroundSize: "180px 180px" }} />
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-2">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-black/55">Detalii Pro · Top 3</p>
+        <span className="rounded-full bg-[#171717] px-2.5 py-1 font-mono text-[9.5px] uppercase tracking-[0.12em] text-white">Acces auditat</span>
       </div>
-      <div className="mt-4 grid gap-3 text-sm">
+      <div className="relative z-10 mt-4 grid gap-3 text-sm">
         <div className="flex items-start gap-2">
           <UserRound className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <div><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Client</p><p className="font-semibold text-foreground">{details.client_name || "Nume indisponibil"}</p></div>
@@ -43,7 +44,7 @@ export default function LeadFullDetails({ lead }) {
           <div><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Mesajul clientului</p><p className="whitespace-pre-wrap leading-relaxed text-foreground">{details.detailed_message}</p></div>
         </div>
       </div>
-      <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
+      <p className="relative z-10 mt-4 text-[12px] leading-relaxed text-black/60">
         {details.phone_available_for_request
           ? "Clientul a lăsat și un număr de telefon. Numărul rămâne ascuns și poate fi solicitat separat."
           : "Clientul nu a lăsat un număr de telefon. Comunicarea poate continua prin email și prin chatul VIASEE deschis de client."}
