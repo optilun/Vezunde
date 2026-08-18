@@ -255,9 +255,8 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   // buton de avansare. Filtrele de verificare raman in afara numaratorii.
   const flowSteps = [
     { value: "configuration", step: 1, label: "Spațiile existente" },
-    // Aceeasi conditie ca in sidebar: sarim pasul daca sectiunea n-are continut de aratat.
-    ...(snapshot.hasCapabilitySection ? [{ value: "configuration", step: 2, label: "Dotări și activități" }] : []),
-    // Tipul activitatii mutat in "La nivelul locatiei" (2026-08-18) - nu mai e pas numerotat.
+    // Dotari si activitati (pas 2) si Tipul activitatii (pas 3) au fost desfiintate ca
+    // pasi separati (2026-08-18) - vezi comentariile din UnitAccordion.jsx si mai jos.
     { value: "options", step: null, label: "La nivelul locației" },
     ...snapshot.units.map((unit) => ({
       value: `unit:${unit.index}`,
