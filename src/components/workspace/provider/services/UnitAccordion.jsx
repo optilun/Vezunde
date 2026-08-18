@@ -5,7 +5,7 @@ import { getFunctionalUnitDefinition } from "@/lib/providerLocationFunctionalUni
 import ServiceRow from "./ServiceRow";
 import CustomSuggestion from "./CustomSuggestion";
 import UnitResourcesPanel from "./UnitResourcesPanel";
-import { possibleUnits, resolveSectionUnit, selectedCountForSection } from "./servicesConfigModel";
+import { isSelected, possibleUnits, resolveSectionUnit, selectedCountForSection } from "./servicesConfigModel";
 import { CAS_ELIGIBLE_GROUPS, GROUP_TONE, UNIT_FALLBACK_ICON, UNIT_ICONS, UNIT_TONE } from "./servicesUiTokens";
 
 export default function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceUnitMap, prerequisites, config, resourceLinks, approvedResourceLinks, customSuggestions, open, disabled, casServiceKeys = [], onToggleCas, onOpen, onToggleService, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion, filter = "all", dataAttrs = {} }) {
@@ -23,6 +23,17 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
     if (next.has(sectionKey)) next.delete(sectionKey); else next.add(sectionKey);
     return next;
   });
+  // Aceeasi regula de vizibilitate ca in ServiceRow. Cand un filtru e activ, grupurile
+  // fara niciun rand vizibil nu se mai randeaza - inainte rămâneau antetele goale.
+  const rowVisible = (item) => {
+    if (filter === "all") return true;
+    const active = isSelected(selected, item);
+    if (filter === "selected") return active;
+    return active && prerequisites[item.id]?.eligible === false;
+  };
+  const visibleSections = filter === "all"
+    ? sections
+    : sections.filter((section) => section.items.some(rowVisible));
   return (
     <section {...dataAttrs} className={`overflow-hidden rounded-[22px] border bg-card transition ${open ? "border-foreground/20 shadow-sm" : "border-border"}`}>
       <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-secondary/20 sm:px-5">
@@ -35,7 +46,7 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
       </button>
       {open && (
         <div className="border-t border-border/70">
-          {sections.map((section) => {
+          {visibleSections.map((section) => {
             const activeUnit = resolveSectionUnit(section, selected, serviceUnitMap, [unitKey]);
             const availableParents = possibleUnits(section).filter((key) => config.activeUnits.includes(key));
             const suggestions = customSuggestions.filter((item) => item.functional_unit_key === unitKey && item.group === section.items[0]?.group);
@@ -75,13 +86,13 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
                     <div className="border-t border-border/50">
                       {section.items.map((item) => <ServiceRow key={`${item.group}:${item.id}`} item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={prerequisites[item.id]} unitKey={activeUnit} disabled={disabled} onToggle={onToggleService} casEligible={CAS_ELIGIBLE_GROUPS.has(item.group)} casActive={casServiceKeys.includes(item.id)} onToggleCas={onToggleCas} filter={filter} />)}
                     </div>
-                    <CustomSuggestion unitKey={unitKey} section={section} disabled={disabled} items={suggestions} onAdd={onAddSuggestion} onRemove={onRemoveSuggestion} />
+                    {filter === "all" && <CustomSuggestion unitKey={unitKey} section={section} disabled={disabled} items={suggestions} onAdd={onAddSuggestion} onRemove={onRemoveSuggestion} />}
                   </>
                 )}
               </div>
             );
           })}
-          <UnitResourcesPanel unitKey={unitKey} config={config} disabled={disabled} links={resourceLinks} approvedLinks={approvedResourceLinks} onToggle={onToggleResource} />
+          {filter === "all" && <UnitResourcesPanel unitKey={unitKey} config={config} disabled={disabled} links={resourceLinks} approvedLinks={approvedResourceLinks} onToggle={onToggleResource} />}
         </div>
       )}
     </section>

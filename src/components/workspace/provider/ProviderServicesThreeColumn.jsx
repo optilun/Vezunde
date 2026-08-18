@@ -341,9 +341,11 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   const homeProgressRows = homeGroups.flatMap((group) => (group.isReview ? [] : group.rows));
   const homeDoneCount = homeProgressRows.filter((row) => row.done).length;
 
-  const openFromHome = (value) => {
-    if (value === "configuration") setConfigStep(1);
-    chooseMobileView(value);
+  // Acelasi bug ca in sidebar: pe telefon randurile pasilor 2 si 3 trimiteau tot la
+  // pasul 1, pentru ca chooseView("configuration") reseta subpasul.
+  const openFromHome = (value, step) => {
+    if (value === "configuration") goToConfigStep(step || 1);
+    else chooseMobileView(value);
     setMobileHome(false);
   };
 
@@ -477,9 +479,9 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                       const RowIcon = row.icon;
                       return (
                         <button
-                          key={row.value}
+                          key={`${row.value}-${row.step || 0}`}
                           type="button"
-                          onClick={() => openFromHome(row.value)}
+                          onClick={() => openFromHome(row.value, row.step)}
                           className={group.isReview ? "is-review" : row.done ? "is-done" : ""}
                         >
                           {RowIcon && (
