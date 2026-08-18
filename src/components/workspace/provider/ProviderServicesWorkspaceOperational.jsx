@@ -68,7 +68,11 @@ export default function ProviderServicesWorkspaceOperational(props) {
         <div data-services-role="content" className="space-y-4">
           {!query && <UnitPicker dataAttrs={substep(1)} units={selectableUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={!editable} onToggle={toggleUnit} />}
           {!query && <CapabilityPicker dataAttrs={substep(2)} capabilityKeys={selectableCapabilities} approvedCapabilities={approvedCapabilities} capabilities={capabilities} activeUnits={activeUnits} primaryCapabilities={primaryCapabilities} disabled={!editable} onToggle={toggleCapability} />}
-          {!query && <CareSettingPicker dataAttrs={substep(3)} options={operationalLayout.careSettings || []} approvedValue={approvedCareSetting} value={careSetting} disabled={!editable} onChange={setCareSetting} />}
+          {/* CareSettingPicker mutat aici (2026-08-18, la cererea lui Alex): era pasul 3,
+              de sine statator, pentru o singura lista derulanta - disproportionat pentru
+              un modul intreg. "Tipul activitatii" e un atribut la nivel de locatie, ca si
+              cele de mai jos (domiciliu, sediul firmei etc.), nu legat de o zona anume. */}
+          {!query && <CareSettingPicker dataAttrs={{ "data-services-panel": "options" }} options={operationalLayout.careSettings || []} approvedValue={approvedCareSetting} value={careSetting} disabled={!editable} onChange={setCareSetting} />}
           {!query && <GlobalServiceSections dataAttrs={{ "data-services-panel": "options" }} sections={globalSections} selected={selected} approvedSelected={approvedSelected} disabled={!editable} onToggleService={toggleService} />}
 
           {!query && <ServiceCatalogIntro dataAttrs={{ "data-services-role": "catalog-intro" }} activeUnits={activeUnits} selectedCount={selectedCount} />}
