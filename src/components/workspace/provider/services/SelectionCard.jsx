@@ -50,8 +50,12 @@ export default function SelectionCard({ active, approved = false, title, descrip
       <span className="min-w-0 flex-1">
         <span className="flex items-start justify-between gap-3">
           <span className="text-sm font-bold leading-snug text-foreground">{title}</span>
-          <span className={`services-card__check flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${removalRequested ? "border-amber-300 bg-amber-100 text-amber-900" : active ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`}>
-            {removalRequested ? <X className="h-3.5 w-3.5" /> : active && <Check className="h-3.5 w-3.5" />}
+          {/* Comutator, nu bifa (2026-08-18): singurul consumator ramas al acestei
+              variante e "La nivelul locatiei" - atribute care se comporta identic cu
+              serviciile (selectie confirmata prin salvare), deci acelasi control ca
+              acolo, pentru consecventa. Bifa patrata ramane doar la varianta "square". */}
+          <span className={`relative inline-flex h-[20px] w-[34px] shrink-0 items-center rounded-full transition-colors ${removalRequested ? "bg-amber-300" : active ? "bg-foreground" : "bg-border"}`}>
+            <span className={`absolute h-[14px] w-[14px] rounded-full bg-background shadow-sm transition-all ${active || removalRequested ? "left-[18px]" : "left-[3px]"}`} />
           </span>
         </span>
         <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{description}</span>
