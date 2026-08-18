@@ -43,14 +43,11 @@ function UnitGroup({ label, unitKeys, approvedUnits, activeUnits, selectedByUnit
 }
 
 export default function UnitPicker({ units, approvedUnits, activeUnits, selectedByUnit, primaryUnits, disabled, onToggle, dataAttrs = {} }) {
-  const [showOptional, setShowOptional] = useState(false);
-  const hiddenUnits = units.filter((unitKey) => !primaryUnits.includes(unitKey) && !activeUnits.includes(unitKey) && !approvedUnits.includes(unitKey));
-  const visibleUnits = showOptional
-    ? units
-    : units.filter((unitKey) => primaryUnits.includes(unitKey) || activeUnits.includes(unitKey) || approvedUnits.includes(unitKey));
-  const opticalUnits = visibleUnits.filter((key) => OPTICAL_UNIT_KEYS.has(key));
-  const medicalUnits = visibleUnits.filter((key) => MEDICAL_UNIT_KEYS.has(key));
-  const otherUnits = visibleUnits.filter((key) => !OPTICAL_UNIT_KEYS.has(key) && !MEDICAL_UNIT_KEYS.has(key));
+  // Toate spatiile raman vizibile permanent (2026-08-18, la cererea lui Alex) - fara
+  // comutator "Arata alte spatii" care ascundea unele carduri implicit.
+  const opticalUnits = units.filter((key) => OPTICAL_UNIT_KEYS.has(key));
+  const medicalUnits = units.filter((key) => MEDICAL_UNIT_KEYS.has(key));
+  const otherUnits = units.filter((key) => !OPTICAL_UNIT_KEYS.has(key) && !MEDICAL_UNIT_KEYS.has(key));
 
   return (
     <section {...dataAttrs} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -63,12 +60,6 @@ export default function UnitPicker({ units, approvedUnits, activeUnits, selected
         <UnitGroup label="Oftalmologie și evaluare medicală" unitKeys={medicalUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={disabled} onToggle={onToggle} />
         <UnitGroup label="Alte spații" unitKeys={otherUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={disabled} onToggle={onToggle} />
       </div>
-      {hiddenUnits.length > 0 && (
-        <button type="button" onClick={() => setShowOptional((value) => !value)} className="services-more-toggle mt-4 inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-xs font-semibold hover:bg-secondary">
-          <ChevronDown className={`h-3.5 w-3.5 transition ${showOptional ? "rotate-180" : ""}`} />
-          {showOptional ? "Ascunde spațiile opționale" : `Arată alte spații disponibile (${hiddenUnits.length})`}
-        </button>
-      )}
     </section>
   );
 }
