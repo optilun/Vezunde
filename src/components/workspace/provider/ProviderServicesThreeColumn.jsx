@@ -247,7 +247,8 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
 
   // selectedPreview a fost eliminat odata cu coloana de rezumat (2026-08-06): lista
   // primelor 5 servicii selectate repeta ce se vede deja in continut.
-  const showActionBar = snapshot.hasSave || snapshot.hasSubmit || snapshot.hasWithdraw || Boolean(snapshot.actionStatus);
+  // showActionBar a fost eliminat (2026-08-18): pilota bara duplicata, stearsa in
+  // acelasi audit.
   const dataView = query ? "search" : view;
   const mobileNavValue = view === "unit" ? `unit:${activeUnitIndex}` : view;
   // UN SINGUR sir de pasi (2026-08-06). Inainte existau doua numaratori suprapuse pe
