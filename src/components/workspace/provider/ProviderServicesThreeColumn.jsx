@@ -293,8 +293,8 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
             : "Nicio zonă aleasă",
           done: snapshot.unitCount > 0,
         },
-        // Randurile 2 si 3 apar doar cand sectiunea are efectiv continut de aratat.
-        // Altfel apasarea nu deschidea nimic - sectiunile se randeaza conditionat.
+        // Randul 2 apare doar cand sectiunea are efectiv continut de aratat. Altfel
+        // apasarea nu deschidea nimic - sectiunea se randeaza conditionat.
         ...(snapshot.hasCapabilitySection ? [{
           value: "configuration",
           step: 2,
@@ -306,20 +306,12 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
             : "Opțional",
           done: snapshot.capabilityCount > 0,
         }] : []),
-        ...(snapshot.hasCareSettingSection ? [{
-          value: "configuration",
-          step: 3,
-          label: "Tipul activității",
-          hint: "Comercială, medicală sau mixtă.",
-          icon: Settings2,
-          meta: snapshot.careSetting || "Nedefinit",
-          done: Boolean(snapshot.careSetting),
-        }] : []),
         {
           value: "options",
           step: null,
           label: "La nivelul locației",
-          hint: "Servicii la domiciliu, la sediul firmelor, optică mobilă.",
+          // Tipul activitatii mutat aici (2026-08-18) - atribut de locatie, nu pas separat.
+          hint: "Tipul activității, servicii la domiciliu, la sediul firmelor, optică mobilă.",
           icon: Store,
           meta: snapshot.globalOptionCount > 0 ? `${snapshot.globalOptionCount} opțiuni` : "Opțional",
           done: snapshot.globalOptionCount > 0,
