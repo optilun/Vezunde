@@ -6,7 +6,6 @@ import React from "react";
 import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 import { useProviderServicesConfig } from "./services/useProviderServicesConfig";
 import UnitPicker from "./services/UnitPicker";
-import CapabilityPicker from "./services/CapabilityPicker";
 import CareSettingPicker from "./services/CareSettingPicker";
 import GlobalServiceSections from "./services/GlobalServiceSections";
 import ServiceCatalogIntro from "./services/ServiceCatalogIntro";
