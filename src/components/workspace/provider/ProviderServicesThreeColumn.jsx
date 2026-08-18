@@ -225,7 +225,6 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   const CONFIG_STEP_HINTS = {
     1: "Tipurile de spații existente. Nu e nevoie să treci fiecare cameră.",
     2: "Activează numai serviciile compatibile cu spațiile alese.",
-    3: "Descrie activitatea locației, fără să schimbe tipul organizației.",
   };
   const centerDescription = view === "configuration"
     ? CONFIG_STEP_HINTS[configStep]
