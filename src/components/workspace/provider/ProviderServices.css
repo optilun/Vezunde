@@ -311,7 +311,16 @@
    vizibila din ProviderServicesThreeColumn si a lasat ascunsa singura bara reala,
    deci nu exista niciun buton de salvare/trimitere spre aprobare. */
 .provider-services-three__native [data-services-role="native-actions"] {
-  margin: 16px 22px 0;
+  /* Bara sta lipita de baza coloanei de continut, ca un rand de actiuni al ecranului -
+     nu ca un card plutitor cu umbra si margini proprii (2026-08-18). */
+  margin: 20px 0 0 !important;
+  border-radius: 0 !important;
+  border-width: 1px 0 0 !important;
+  border-top: 1px solid var(--services-border, rgb(23 23 23 / 0.1)) !important;
+  padding: 14px 22px !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
 }
 
 .provider-services-three__native [data-services-role="workspace"],
