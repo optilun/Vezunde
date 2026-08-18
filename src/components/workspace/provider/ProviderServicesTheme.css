@@ -534,3 +534,77 @@
     padding: 16px !important;
   }
 }
+
+/* ==========================================================================
+   17. Etapa 2: marcaje de stare si tipografie pe telefon (2026-08-18)
+   Trei tipuri fixe de marcaj (atentie, informativ, draft) si o scara de text
+   citibila pe ecran mic, fara sa modifice structura.
+   ========================================================================== */
+
+.services-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.services-badge svg {
+  width: 12px;
+  height: 12px;
+}
+
+.services-badge.is-attention {
+  border-color: #f5c9a1;
+  background: #fdf3e9;
+  color: #8a4b12;
+}
+
+.services-badge.is-info,
+.services-badge.is-draft {
+  border-color: rgb(23 23 23 / 0.12);
+  background: #f5f2eb;
+  color: #57534e;
+}
+
+@media (max-width: 620px) {
+  .provider-services-three__center-header h2 {
+    font-size: 19px;
+  }
+
+  .provider-services-three__center-header p {
+    font-size: 13.5px;
+    line-height: 1.55;
+  }
+
+  .provider-services-three__native .services-row__title {
+    font-size: 15px !important;
+  }
+
+  .provider-services-three__native .services-row__detail {
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+  }
+
+  .provider-services-three__native [data-services-panel] h2 {
+    font-size: 15px !important;
+  }
+
+  .provider-services-three__native [data-services-panel] h3 {
+    font-size: 14px !important;
+  }
+
+  .provider-services-three__native [data-services-panel] p {
+    font-size: 13.5px !important;
+  }
+
+  .services-badge {
+    font-size: 11px;
+  }
+}
