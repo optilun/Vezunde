@@ -960,3 +960,64 @@
     width: 100%;
   }
 }
+/* Sirul de statistici "Verificare" (2026-08-19): distinct de listele de navigare
+   (Structura locatiei, Oferta pe zone), care folosesc randuri late cu iconita. Aici,
+   trei coloane egale, cu numarul mare deasupra si eticheta mica dedesubt - se citeste
+   ca statistica, nu ca "inca o zona de intrat". */
+.provider-services-three__stats {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.provider-services-three__stats > p {
+  margin: 0 0 8px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: hsl(var(--muted-foreground));
+}
+
+.provider-services-three__stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.provider-services-three__stats-row button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 8px 9px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.provider-services-three__stats-row button:hover {
+  background: hsl(var(--secondary) / 0.4);
+}
+
+.provider-services-three__stats-row button.is-active {
+  border-color: hsl(var(--foreground) / 0.18);
+  background: hsl(var(--secondary) / 0.55);
+}
+
+.provider-services-three__stats-row strong {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+  color: hsl(var(--foreground));
+}
+
+.provider-services-three__stats-row span {
+  font-size: 10px;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.2;
+}
