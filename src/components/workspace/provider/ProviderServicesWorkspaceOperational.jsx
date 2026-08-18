@@ -15,7 +15,6 @@ import {
   PackageOpen,
   Plus,
   Save,
-  Search,
   Send,
   Settings2,
   ShieldCheck,
