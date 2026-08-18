@@ -440,9 +440,6 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                 </nav>
               ))}
 
-              {/* Pastram si clasa nav-group: stilurile butoanelor (iconita, contor,
-                  aliniere) sunt legate de ea in trei fisiere CSS. Fara ea, randurile
-                  se stricau - text lipit de numar, iconite pe randuri separate. */}
               {/* Sir compact de statistici (2026-08-19), nu lista de butoane cu iconita:
                   Alex a semnalat ca formatul vechi (identic cu "Oferta pe zone") facea
                   aceste trei numere sa para o alta lista de navigare, desi "Oferta
