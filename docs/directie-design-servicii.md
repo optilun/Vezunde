@@ -52,24 +52,37 @@ Cabinet optometric → albastru-gri etc.) — vezi `UNIT_TONE` in
 `ProviderServicesWorkspaceOperational.jsx` pentru maparea completa pe toate
 cele 10 zone, cu justificarea fiecareia in comentariu.
 
-Unde apare culoarea: placa mica langa titlul fiecarei sectiuni de servicii,
-linie discreta in stanga serviciilor bifate, placa iconitei fiecarei zone
-(in continut si in sidebar).
+Unde apare culoarea: placa mica (bulina) langa titlul fiecarei sectiuni de
+servicii si placa iconitei fiecarei zone, in continut si in sidebar.
 
-Unde NU apare culoarea, deliberat: randurile nebifate (ar aglomera lista),
-atributele de la nivelul locatiei (nu sunt categorie de pe homepage).
+Unde NU apare culoarea, deliberat: pe randul de serviciu, indiferent daca e
+activat sau nu; atributele de la nivelul locatiei (nu sunt categorie de pe
+homepage).
+
+Corectie 2026-08-18: linia colorata din stanga serviciilor activate a fost
+ELIMINATA din implementare inca din 2026-08-06 (arata ca o eroare de randare).
+Descrierea anterioara de aici o mai cerea si contrazicea codul.
 
 ## Spatiere si tipografie
 
-- Randurile de servicii: fara chenar, fara colturi rotunjite — doar linie fina
-  de separare (`border-bottom`) intre randuri din acelasi grup. Fundal alternant
-  foarte discret (`bg-secondary/25` pe randul par) ca reper vizual pe liste lungi.
+- Randurile de servicii: fara chenar, fara colturi rotunjite, fara fundal
+  propriu — doar linie fina de separare (`border-bottom`) intre randuri din
+  acelasi grup.
+  Corectie 2026-08-18: fundalul alternant pe randul par a fost ELIMINAT din
+  implementare (facea lista sa arate ca tabel bifat, nu ca panou de setari).
+  Nu se reintroduce.
 - Titlurile de grup: 15px, bold, cu spatiu generos deasupra (`pt-7`), fara linie
   de separare intre grupuri — spatiul singur marcheaza trecerea la alt subiect.
 - Randul de serviciu: doua niveluri de text — titlu (14px, semibold) si
   descriere (11px, gri) dedesubt. Vezi `shared/serviceDescriptions.js`.
 - Antetul paginii: un singur rand, titlu compact + locatia ca subtitlu, X in
   dreapta care duce inapoi la lista de locatii (nu antet de pagina pe 3-4 randuri).
+
+## Planul de refactorizare
+
+Structura, arhitectura si ordinea fazelor sunt descrise in
+`docs/plan-refactor-servicii-2026-08-18.md`. Documentul de fata ramane sursa
+pentru regulile vizuale; planul este sursa pentru arhitectura si pasii de lucru.
 
 ## Ce ramane deschis (nu inca decis)
 
