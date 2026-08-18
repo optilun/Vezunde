@@ -66,8 +66,10 @@ export default function ProviderServicesWorkspaceOperational(props) {
 
       <div data-services-role="workspace" className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)] xl:items-start">
         <div data-services-role="content" className="space-y-4">
+          {/* CapabilityPicker eliminat complet (2026-08-18, la cererea lui Alex): modulul
+              separat "Dotari si activitati" a fost desfiintat. Fiecare comutator traieste
+              acum inline, in UnitAccordion, langa sectiunea sau zona pe care o controleaza. */}
           {!query && <UnitPicker dataAttrs={substep(1)} units={selectableUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={!editable} onToggle={toggleUnit} />}
-          {!query && <CapabilityPicker dataAttrs={substep(2)} capabilityKeys={selectableCapabilities} approvedCapabilities={approvedCapabilities} capabilities={capabilities} activeUnits={activeUnits} primaryCapabilities={primaryCapabilities} disabled={!editable} onToggle={toggleCapability} />}
           {/* CareSettingPicker mutat aici (2026-08-18, la cererea lui Alex): era pasul 3,
               de sine statator, pentru o singura lista derulanta - disproportionat pentru
               un modul intreg. "Tipul activitatii" e un atribut la nivel de locatie, ca si
