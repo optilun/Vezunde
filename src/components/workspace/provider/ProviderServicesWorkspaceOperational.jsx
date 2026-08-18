@@ -457,15 +457,13 @@ function ServiceRow({ item, index = 0, selected, approvedSelected, prerequisite,
           {!removalRequested && <StatusBadge prerequisite={prerequisite} />}
         </span>
       </span>
-      {/* Bifa, nu comutator (2026-08-06, corectat dupa research): nimic din selectia
-          de servicii nu se aplica imediat - trece prin draft, apoi "Salveaza" sau
-          "Trimite spre aprobare". Comutatorul implica efect instant si induce in
-          eroare aici; bifa e controlul corect pentru selectie multipla confirmata
-          printr-o actiune separata (regula standard: NN/g, UX Collective). */}
+      {/* Comutator pentru activarea serviciului (2026-08-06). Decizie a owner-ului,
+          care suprascrie recomandarea din docs/directie-design-servicii.md (bifa).
+          Culoarea "pornit" e foreground-ul VIASEE, nu albastrul din referinta. */}
       <span
-        className={`flex h-[19px] w-[19px] shrink-0 items-center justify-center rounded-[5px] border-[1.5px] transition-colors ${removalRequested ? "border-amber-400 bg-amber-100" : active ? "border-foreground bg-foreground" : "border-border bg-background"}`}
+        className={`relative inline-flex h-[24px] w-[42px] shrink-0 items-center rounded-full transition-colors ${removalRequested ? "bg-amber-300" : active ? "bg-foreground" : "bg-border"}`}
       >
-        {removalRequested ? <X className="h-3 w-3 text-amber-800" /> : active && <Check className="h-3 w-3 text-background" />}
+        <span className={`absolute h-[18px] w-[18px] rounded-full bg-background shadow-sm transition-all ${active || removalRequested ? "left-[21px]" : "left-[3px]"}`} />
       </span>
     </button>
     {/* CAS ca rand-comutator, la fel ca serviciul de deasupra (2026-08-06) */}
