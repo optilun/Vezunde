@@ -274,6 +274,9 @@ export function validateServiceConfigurationPayload(payload, options = {}) {
     'selected_ids', 'removal_ids', 'raw_removal_keys', 'suggestions', 'custom_requests',
     'functional_units', 'capabilities', 'service_unit_map', 'resource_links', 'care_setting',
     'removal_unit_keys', 'removal_capabilities', 'resource_removals',
+    // cas_service_keys era deja procesat mai jos, dar lipsea din lista permisa:
+    // orice draft cu marcaj CAS era respins cu "Camp nepermis" (2026-08-18).
+    'cas_service_keys',
   ]);
   const unknown = Object.keys(payload).filter((key) => !allowedFields.has(key));
   if (unknown.length > 0) return resultError('Câmp nepermis', unknown);
