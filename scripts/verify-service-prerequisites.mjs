@@ -123,7 +123,10 @@ const providerUiSource = await source('src/components/workspace/provider/service
 assert.match(providerUiSource, /Nu cerem documente/);
 const providerConfigSource = await source('src/components/workspace/provider/services/useProviderServicesConfig.js');
 assert.match(providerConfigSource, /configurationComplete: true/);
-const providerCapabilitySource = await source('src/components/workspace/provider/services/CapabilityPicker.jsx');
+// CapabilityPicker.jsx a fost eliminat (2026-08-18): modulul "Dotari si activitati" a
+// fost desfiintat, capabilitatile traiesc acum inline, in UnitAccordion.jsx, prin
+// CapabilityToggle.jsx. Acelasi principiu se verifica acolo.
+const providerCapabilitySource = await source('src/components/workspace/provider/services/CapabilityToggle.jsx');
 assert.doesNotMatch(providerCapabilitySource, /disabled=\{disabled \|\| !capabilityActive\}/);
 assert.doesNotMatch(providerCapabilitySource, /Activează mai întâi capabilitatea/);
 
