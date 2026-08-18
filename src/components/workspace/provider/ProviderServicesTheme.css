@@ -372,6 +372,11 @@
     padding: 12px 14px !important;
   }
 
+  .provider-services-three__native [data-services-panel="configuration"] .services-card--square {
+    min-height: 118px !important;
+    padding: 12px !important;
+  }
+
   .provider-services-three__native [data-services-panel="units"] > section,
   .provider-services-three__native [data-services-panel="units"] > section > div > div:first-child,
   .provider-services-three__native [data-services-panel="units"] .services-resources > div:first-child,
