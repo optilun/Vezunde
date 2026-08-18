@@ -1111,6 +1111,11 @@
   padding: 14px 16px !important;
 }
 
+.provider-services-three__native [data-services-panel="configuration"] .services-card--square {
+  min-height: 132px !important;
+  padding: 14px !important;
+}
+
 .provider-services-three__native [data-services-panel="configuration"] .services-card:hover:not(:disabled) {
   background: rgb(248 244 236 / 0.62) !important;
 }
