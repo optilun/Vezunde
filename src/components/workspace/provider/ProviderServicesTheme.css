@@ -380,7 +380,7 @@
   .provider-services-three__native [data-services-panel="units"] > section,
   .provider-services-three__native [data-services-panel="units"] > section > div > div:first-child,
   .provider-services-three__native [data-services-panel="units"] .services-resources > div:first-child,
-  .provider-services-three__native [data-services-panel="options"] > div:first-child {
+  .provider-services-three__native [data-services-panel="options"]:not(.services-care-setting) > div:first-child {
     background: transparent !important;
   }
 
