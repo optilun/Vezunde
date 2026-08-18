@@ -319,8 +319,8 @@
     padding: 16px 14px !important;
   }
 
-  .provider-services-three__native [data-services-panel="options"] > div:first-child,
-  .provider-services-three__native [data-services-panel="options"] > div:not(:first-child) > div:first-child,
+  .provider-services-three__native [data-services-panel="options"]:not(.services-care-setting) > div:first-child,
+  .provider-services-three__native [data-services-panel="options"]:not(.services-care-setting) > div:not(:first-child) > div:first-child,
   .provider-services-three__native [data-services-panel="units"] > section > button:first-child,
   .provider-services-three__native [data-services-panel="units"] .services-resources > div:first-child {
     padding-inline: 14px !important;
