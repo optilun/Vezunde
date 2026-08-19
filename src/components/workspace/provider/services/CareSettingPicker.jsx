@@ -20,7 +20,7 @@ export default function CareSettingPicker({ options, approvedValue, value, disab
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <span className="block text-sm font-bold leading-snug text-foreground">Tipul activității</span>
-          <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">Descrie activitatea locației, fără să schimbe tipul organizației.</span>
+          <span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground">Descrie activitatea locației, fără să schimbe tipul organizației.</span>
         </div>
         <div className="relative shrink-0">
           <select
