@@ -429,18 +429,6 @@
   .workspace-neutral textarea {
     font-size: 16px;
   }
-
-  /* Acelasi tratament, fara sa depinda de clasa workspace-neutral (2026-08-19):
-     contul de specialist (ProfessionalWorkspaceRoot / ProfessionalProfileEditor)
-     NU are acea clasa - nu exista un invelis echivalent cu ProviderAppShell. Fara
-     regula asta, campurile lui raman la 14px intre 768-1023px, iar iOS Safari
-     mareste automat pagina la fiecare atingere de camp (comportament declansat de
-     orice input sub 16px). Regula generica de mai jos se opreste la 767px. */
-  input,
-  select,
-  textarea {
-    font-size: 16px;
-  }
 }
 
 @media (max-width: 767px) {
