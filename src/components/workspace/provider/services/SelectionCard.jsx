@@ -58,7 +58,7 @@ export default function SelectionCard({ active, approved = false, title, descrip
             <span className={`absolute h-[14px] w-[14px] rounded-full bg-background shadow-sm transition-all ${active || removalRequested ? "left-[18px]" : "left-[3px]"}`} />
           </span>
         </span>
-        <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{description}</span>
+        <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">{description}</span>
         <span className="mt-2 flex flex-wrap items-center gap-2">
           {helper && <span className="text-[10px] font-semibold text-muted-foreground">{helper}</span>}
           <ChangeBadge draftAddition={draftAddition} removalRequested={removalRequested} />
