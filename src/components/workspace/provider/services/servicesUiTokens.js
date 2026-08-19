@@ -89,6 +89,12 @@ export const GROUP_TONE = {
   technical_activities: { bg: "#eadcba", border: "#dac69b", text: "#6b551f" },
 };
 
+// b2b_capabilities (al 11-lea grup canonic, gasit la audit 2026-08-19) ramane
+// DELIBERAT fara culoare - acelasi motiv ca la zona B2B (UNIT_TONE mai jos): nu e
+// una din cele 5 categorii de pe homepage, e ofertă catre alte optici, nu catre
+// pacienti. Simbolul de categorie pur si simplu nu se afiseaza la acele 3 sectiuni -
+// comportament corect, nu o scapare.
+
 export const UNIT_TONE = {
   optical_store: GROUP_TONE.optical_retail,
   optical_cabinet: GROUP_TONE.optical_retail,
