@@ -443,6 +443,22 @@ export default function ProfessionalWorkspaceRoot({
       statusBadge={<span className="hidden rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold sm:inline-flex">{PROFESSIONAL_REVIEW_STATUS_LABELS[reviewStatus] || reviewStatus}</span>}
     >
       <Suspense fallback={<WorkspaceSectionLoading />}>
+        {/* Confirmarea crearii profilului (2026-08-19, gasit la audit): fluxul de
+            onboarding trimitea deja ?onboarding=created in adresa, dar nimeni nu citea
+            parametrul - utilizatorul isi crea profilul si ajungea intr-un ecran care
+            nu-i confirma nimic. Celalalt drum de intrare (acceptarea unei invitatii)
+            confirma corect reusita; asta era o inconsecventa reala intre cele doua. */}
+        {params.get("onboarding") === "created" && (
+          <div role="status" className="mb-4 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3.5">
+            <Check aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-emerald-900">Profilul profesional a fost creat.</p>
+              <p className="mt-0.5 text-[13px] leading-relaxed text-emerald-800">
+                Completează datele de mai jos și trimite profilul spre verificare. Până atunci rămâne privat.
+              </p>
+            </div>
+          </div>
+        )}
         {safeSection === "overview" && <Overview workspace={workspace} onNavigate={navigate} />}
         {safeSection === "profile" && <ProfessionalProfileEditor workspace={workspace} onRefresh={onRefresh} />}
         {safeSection === "locations" && <Locations workspace={workspace} onRefresh={onRefresh} />}
