@@ -26,7 +26,7 @@ export default function SelectionCard({ active, approved = false, title, descrip
         </span>
         <span className="min-w-0">
           <span className="block text-sm font-bold leading-snug text-foreground">{title}</span>
-          <span className="mt-1 block text-xs leading-relaxed text-muted-foreground line-clamp-2">{description}</span>
+          <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground line-clamp-2">{description}</span>
         </span>
         <span className="mt-auto flex flex-wrap items-center gap-2 pt-1">
           {helper && <span className="text-[10px] font-semibold text-muted-foreground">{helper}</span>}
