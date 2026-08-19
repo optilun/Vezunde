@@ -429,6 +429,17 @@
   .workspace-neutral textarea {
     font-size: 16px;
   }
+
+  /* Zona minima de atingere in tot contul (2026-08-19, audit mobil): acelasi
+     tratament pe care paginile de autentificare il aveau deja (.auth-neutral mai sus).
+     Minim Apple 44pt / Android 48dp - butoanele din contul de specialist aveau py-1.5
+     (~28px inaltime), mult sub prag.
+     Exceptii deliberate: controalele deja dimensionate explicit (min-h-*, h-*) si
+     comutatoarele/bifele din modulul Servicii, care sunt in interiorul unui rand
+     mare, deja peste 44px - randul intreg e zona de atingere, nu doar controlul. */
+  .workspace-neutral button:not([class*="min-h-"]):not([class*=" h-"]):not(.services-row):not([data-service-key]) {
+    min-height: 44px;
+  }
 }
 
 @media (max-width: 767px) {
