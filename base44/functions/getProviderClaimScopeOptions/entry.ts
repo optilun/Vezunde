@@ -173,6 +173,10 @@ Deno.serve(async (req) => {
       candidate_locations: candidateLocations,
       supports_selected_locations: candidateLocations.filter((location) => !location.already_has_access).length > 1,
       supports_organization_claim: Boolean(organization),
+      // Sugestii de retea, doar cand nu exista organizatie (2026-08-19). Interfata le
+      // propune explicit; nu intra automat in revendicare.
+      network_suggestions: networkSuggestions,
+      supports_organization_creation: !organization && networkSuggestions.length > 0,
     });
   } catch (error) {
     return Response.json({ error: error?.message || 'Optiunile de revendicare nu au putut fi incarcate.' }, { status: 500 });
