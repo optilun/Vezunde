@@ -193,6 +193,15 @@ Deno.serve(async (req) => {
       claimant_relationship: relationship,
       reported_missing_location: normalized.reported_missing_location || '',
       candidate_location_count: candidateIds.length,
+      // Sugestii de retea acceptate de furnizor (2026-08-19). Tinute SEPARAT de
+      // requested_location_ids: adminul trebuie sa distinga ce a cerut explicit
+      // furnizorul de ce a acceptat dintr-o sugestie a sistemului. La aprobare, daca
+      // steagul e activ si nu exista organizatie, se creeaza una comuna.
+      network_suggestion_accepted: input.include_network_suggestions === true,
+      network_suggested_location_ids: Array.isArray(input.suggested_location_ids)
+        ? input.suggested_location_ids.filter((id) => clean(id, 160)).slice(0, 12)
+        : [],
+      requires_organization_creation: input.include_network_suggestions === true && !organizationId,
       contact: {
         contact_name: clean(contact.contact_name, 160),
         email: clean(contact.email, 240),
