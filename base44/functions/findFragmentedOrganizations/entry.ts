@@ -74,6 +74,11 @@ function compareOrganizations(leftName, rightName) {
 
   // 3. Un nume il contine integral pe celalalt, la nivel de cuvinte
   //    ("Claroptic" in "Claroptic Iris"; "Top Optica" in "Top Optica Boutique").
+  //    ATENTIE - scor mai mic, deliberat: acest tipar produce si perechi legitime,
+  //    distincte. Verificat pe date reale: "New Optic" (Pitesti + Sector 1) si
+  //    "New Optic Medical" (Sector 6) au adrese complet diferite - sunt, cel mai
+  //    probabil, firme separate cu nume asemanator. De aceea 85, nu 95, si de aceea
+  //    intreaga functie e o unealta de REVIZUIRE, nu de fuziune automata.
   const leftTokens = nameTokens(leftName);
   const rightTokens = nameTokens(rightName);
   const shorter = leftTokens.length <= rightTokens.length ? leftTokens : rightTokens;
