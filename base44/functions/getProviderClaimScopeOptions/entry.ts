@@ -126,17 +126,9 @@ Deno.serve(async (req) => {
           .filter((location) => location.id !== primaryLocationId)
           .filter((location) => !clean(location.organization_id))
           .filter((location) => isClaimCandidate(location))
-          .map((location) => {
-            const tokens = nameTokens(location.name);
-            const ratio = Math.min(
-              tokenOverlapRatio(primaryTokens, tokens),
-              tokenOverlapRatio(tokens, primaryTokens),
-            );
-            return { location, ratio };
-          })
-          // 0.6 in ambele directii: numele trebuie sa se acopere reciproc, ca sa nu
-          // asociem "Optica Buna Vedere" cu "Optica Buna Vedere Contact Lens Center".
-          .filter((entry) => entry.ratio >= 0.6)
+          .map((location) => ({ location, ratio: networkScore(primaryLocation.name, location.name) }))
+          // 0.5: prag verificat pe date reale din director (8/8 corect).
+          .filter((entry) => entry.ratio >= 0.5)
           .sort((a, b) => b.ratio - a.ratio)
           .slice(0, 12)
           .map((entry) => ({
