@@ -93,6 +93,40 @@ Deno.serve(async (req) => {
       ? await svc.entities.ProviderLocation.filter({ organization_id: organizationId }, 'name', 1000).catch(() => [])
       : [primaryLocation];
 
+    // Fara organizatie legata, sistemul arata doar locatia curenta - chiar daca in
+    // director exista alte locatii evident din aceeasi retea (2026-08-19). Cautam
+    // dupa nucleul comun al numelui si le propunem ca SUGESTIE; decizia ramane a
+    // furnizorului, iar aprobarea a adminului. Nu modificam nimic automat.
+    let networkSuggestions = [];
+    if (!organizationId) {
+      const primaryTokens = nameTokens(primaryLocation.name);
+      // Sub 2 cuvinte utile, orice potrivire ar fi zgomot ("Optica", "Clinica").
+      if (primaryTokens.length >= 2) {
+        const pool = await svc.entities.ProviderLocation.list(null, 1000).catch(() => []);
+        networkSuggestions = pool
+          .filter((location) => location.id !== primaryLocationId)
+          .filter((location) => !clean(location.organization_id))
+          .filter((location) => isClaimCandidate(location))
+          .map((location) => {
+            const tokens = nameTokens(location.name);
+            const ratio = Math.min(
+              tokenOverlapRatio(primaryTokens, tokens),
+              tokenOverlapRatio(tokens, primaryTokens),
+            );
+            return { location, ratio };
+          })
+          // 0.6 in ambele directii: numele trebuie sa se acopere reciproc, ca sa nu
+          // asociem "Optica Buna Vedere" cu "Optica Buna Vedere Contact Lens Center".
+          .filter((entry) => entry.ratio >= 0.6)
+          .sort((a, b) => b.ratio - a.ratio)
+          .slice(0, 12)
+          .map((entry) => ({
+            ...safeLocation(entry.location, 'unassigned', false, false),
+            match_confidence: Math.round(entry.ratio * 100),
+          }));
+      }
+    }
+
     const links = organizationId
       ? await svc.entities.DirectoryOrganizationLocationLink.filter({
           organization_id: organizationId,
