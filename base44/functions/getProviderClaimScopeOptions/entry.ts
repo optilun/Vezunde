@@ -17,6 +17,33 @@ function clean(value) {
   return String(value || '').trim();
 }
 
+// Detectie retea dupa nume, cand locatia NU are organizatie legata (2026-08-19).
+// Aceeasi normalizare ca in findProviderIdentityCandidates: fara diacritice,
+// fara punctuatie, cuvinte de minim 3 litere. Reteaua se recunoaste dupa nucleul
+// comun al numelui ("Optica Dr. Demian" din "Optica Dr. Demian - Vlaicu"), asa ca
+// pragul e pe cuvintele care se repeta, nu pe numele intreg.
+function normalizeName(value) {
+  return clean(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function nameTokens(value) {
+  return normalizeName(value).split(' ').filter((token) => token.length >= 3);
+}
+
+// Cate din cuvintele candidatului se regasesc in cealalta locatie.
+function tokenOverlapRatio(sourceTokens, targetTokens) {
+  if (sourceTokens.length === 0 || targetTokens.length === 0) return 0;
+  const target = new Set(targetTokens);
+  const shared = sourceTokens.filter((token) => target.has(token)).length;
+  return shared / sourceTokens.length;
+}
+
 function isClaimCandidate(location) {
   if (!location || !PATIENT_FACING_PROFILE_TYPES.has(clean(location.provider_profile_type))) return false;
   const state = deriveCanonicalDirectoryState(location);
