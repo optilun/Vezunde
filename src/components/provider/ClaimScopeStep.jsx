@@ -92,6 +92,59 @@ export default function ClaimScopeStep({
             </div>
           )}
 
+          {/* Sugestii de retea (2026-08-19): apar DOAR cand locatia nu are organizatie
+              legata. Pana acum, sistemul arata o singura locatie si proprietarul unei
+              retele trebuia sa le revendice pe rand, fara sa afle vreodata ca celelalte
+              sunt ale lui. Backendul le detecteaza dupa nucleul comun al numelui.
+              Raman SUGESTII: furnizorul alege, adminul aproba. */}
+          {options.network_suggestions?.length > 0 && (
+            <div className="mb-4 rounded-2xl border border-border bg-secondary/30 p-4">
+              <div className="flex items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-card"><Building2 className="h-4 w-4" /></span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-bold">
+                    Am găsit {options.network_suggestions.length} {options.network_suggestions.length === 1 ? "locație" : "locații"} cu nume asemănător
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Dacă fac parte din aceeași rețea, le poți revendica împreună. VIASEE le va lega sub o organizație comună, după verificare.
+                  </p>
+                </div>
+              </div>
+              <ul className="mt-3 space-y-1.5">
+                {options.network_suggestions.map((item) => (
+                  <li key={item.id} className="flex items-start justify-between gap-3 rounded-xl bg-card px-3 py-2.5">
+                    <div className="min-w-0">
+                      <div className="break-words text-[13px] font-semibold">{item.name}</div>
+                      <div className="mt-0.5 text-[11px] text-muted-foreground">
+                        {[item.city, item.county].filter(Boolean).join(", ") || "Localitate nespecificată"}
+                      </div>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                      {item.match_confidence}% potrivire
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <label className="mt-3 flex cursor-pointer items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={Boolean(scope.include_network_suggestions)}
+                  onChange={(event) => onChange({
+                    ...scope,
+                    include_network_suggestions: event.target.checked,
+                    suggested_location_ids: event.target.checked
+                      ? options.network_suggestions.map((item) => item.id)
+                      : [],
+                  })}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-border"
+                />
+                <span className="text-xs leading-relaxed">
+                  Da, fac parte din aceeași rețea — include-le în revendicare și creează organizația
+                </span>
+              </label>
+            </div>
+          )}
+
           <div className="space-y-2.5">
             {scopeChoices.map(({ value }) => (
               <ChoiceCard
