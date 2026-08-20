@@ -231,6 +231,11 @@ export default function ClaimForm({ location, step, preferredScope = "", onStepC
         requested_location_ids: scope.requested_location_ids,
         excluded_location_ids: scope.excluded_location_ids,
         reported_missing_location: scope.reported_missing_location,
+        // Sugestiile de retea (2026-08-19): trimise separat de requested_location_ids,
+        // ca adminul sa vada clar ce a cerut furnizorul explicit si ce a acceptat
+        // dintr-o sugestie automata a sistemului.
+        include_network_suggestions: Boolean(scope.include_network_suggestions),
+        suggested_location_ids: scope.suggested_location_ids || [],
         contact,
         claimant_relationship: contact.claimant_relationship,
         representation_confirmed: contact.representation_confirmed,
