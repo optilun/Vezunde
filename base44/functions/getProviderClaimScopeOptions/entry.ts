@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
           .slice(0, 12)
           .map((entry) => ({
             ...safeLocation(entry.location, 'unassigned', false, false),
-            match_confidence: Math.round(entry.ratio * 100),
+            match_confidence: Math.min(100, Math.round(entry.ratio * 100)),
           }));
       }
     }
