@@ -95,7 +95,7 @@ export default function AdminFragmentedOrganizations() {
       {!error && !result && !loading && (
         <EmptyState
           title="Nicio scanare rulata"
-          description="Apasa „Scaneaza directorul” pentru a cauta organizatii duplicate."
+          subtitle="Apasa „Scaneaza directorul” pentru a cauta organizatii duplicate."
         />
       )}
 
@@ -109,7 +109,7 @@ export default function AdminFragmentedOrganizations() {
           </div>
 
           {result.candidate_pairs.length === 0 ? (
-            <EmptyState title="Nicio pereche gasita" description="Directorul nu contine organizatii duplicate detectabile." />
+            <EmptyState title="Nicio pereche gasita" subtitle="Directorul nu contine organizatii duplicate detectabile." />
           ) : (
             <ul className="space-y-3">
               {result.candidate_pairs.map((pair) => {
