@@ -123,6 +123,18 @@ export default function AdminFragmentedOrganizations() {
         </div>
       )}
 
+      {mergeResult && (
+        <div role="status" className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+          <div className="text-xs font-semibold text-emerald-900">
+            Fuziune finalizată: {mergeResult.moved_count} {mergeResult.moved_count === 1 ? "locație mutată" : "locații mutate"}
+            {mergeResult.source_deactivated ? ", organizația sursa dezactivată" : ""}.
+          </div>
+          {mergeResult.warning && (
+            <div className="mt-1 text-[11px] font-semibold text-amber-800">{mergeResult.warning}</div>
+          )}
+        </div>
+      )}
+
       {!error && !result && !loading && (
         <EmptyState
           title="Nicio scanare rulata"
