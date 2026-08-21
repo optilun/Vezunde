@@ -145,6 +145,10 @@ export default function AdminFragmentedOrganizations() {
             <ul className="space-y-3">
               {result.candidate_pairs.map((pair) => {
                 const tone = scoreTone(pair.score);
+                const pairIds = [pair.organizations[0].id, pair.organizations[1].id];
+                const isPending = Boolean(pendingMerge)
+                  && pairIds.includes(pendingMerge.sourceId)
+                  && pairIds.includes(pendingMerge.targetId);
                 return (
                   <li key={`${pair.organizations[0].id}-${pair.organizations[1].id}`} className="rounded-2xl border border-border bg-secondary/20 p-3">
                     <div className="mb-2.5 flex flex-wrap items-center gap-2">
