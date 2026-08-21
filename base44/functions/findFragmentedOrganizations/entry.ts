@@ -176,6 +176,46 @@ Deno.serve(async (req) => {
         }
       }
 
+      // BUG REAL prins la audit (2026-08-19): locatiile NU sunt singurele entitati
+      // legate de organizatie. ProviderMembership (accesul echipei) si
+      // ProviderWorkspaceSubmission (cererile de modificare) refera si ele
+      // organization_id. Fara mutarea lor, membrii ar pierde accesul si cererile ar
+      // ramane atasate unei organizatii inactive - fuziunea ar strica mai mult decat
+      // repara. Verificat: exista deja ProviderMembership cu date reale in baza.
+      const relatedEntities = [
+        { name: 'ProviderMembership', label: 'membri' },
+        { name: 'ProviderWorkspaceSubmission', label: 'cereri de modificare' },
+      ];
+      const relatedMoved = {};
+      for (const related of relatedEntities) {
+        const collection = svc.entities[related.name];
+        if (!collection) continue;
+        const records = await collection
+          .filter({ organization_id: sourceId }, null, 500).catch(() => []);
+        let count = 0;
+        for (const record of records) {
+          try {
+            await collection.update(record.id, { organization_id: targetId });
+            await auditMerge(svc, user, {
+              entity_type: related.name,
+              entity_id: record.id,
+              changed_fields: ['organization_id'],
+              previous: { organization_id: sourceId },
+              next: { organization_id: targetId },
+              note: `Fuziune organizatii: "${source.name}" -> "${target.name}".`,
+            });
+            count += 1;
+          } catch (relatedError) {
+            failed.push({
+              id: record.id,
+              name: `${related.label} (${related.name})`,
+              error: relatedError?.message || 'eroare',
+            });
+          }
+        }
+        relatedMoved[related.name] = count;
+      }
+
       // Sursa se dezactiveaza DOAR daca toate locatiile au fost mutate. Altfel ar
       // ramane locatii legate de o organizatie inactiva - stare mai rea decat
       // cea de dinainte de fuziune.
