@@ -66,21 +66,26 @@ export default function AdminFragmentedOrganizations() {
   }, []);
 
   return (
-    <AdminCard
-      title="Organizatii fragmentate"
-      description="Aceeasi firma inregistrata ca doua organizatii diferite. Scanarea nu modifica nimic - propune perechi pentru verificare."
-      action={(
+    <AdminCard className="p-4">
+      {/* AdminCard primeste doar children (verificat semnatura reala), deci antetul
+          il construim aici, in acelasi registru cu celelalte ecrane de sistem. */}
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-sm font-bold">Organizatii fragmentate</h3>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+            Aceeasi firma inregistrata ca doua organizatii diferite. Scanarea nu modifica nimic - propune perechi pentru verificare.
+          </p>
+        </div>
         <button
           type="button"
           onClick={scan}
           disabled={loading}
-          className="inline-flex min-h-9 items-center gap-2 rounded-full border border-border bg-background px-3.5 text-xs font-semibold hover:bg-secondary disabled:opacity-60"
+          className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full border border-border bg-background px-3.5 text-xs font-semibold hover:bg-secondary disabled:opacity-60"
         >
           {loading ? <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw aria-hidden="true" className="h-3.5 w-3.5" />}
           {loading ? "Se scaneaza..." : "Scaneaza directorul"}
         </button>
-      )}
-    >
+      </div>
       {error && (
         <div role="alert" className="flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-xs text-destructive">
           <AlertTriangle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" /> {error}
