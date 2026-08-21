@@ -177,6 +177,7 @@ export default function AdminDirectoryOps() {
               {tab === "data_integrity" && (
                 <div className="space-y-5">
                   <AdminDataIntegrity />
+                  <AdminFragmentedOrganizations />
                   <AdminDataRepairs />
                 </div>
               )}
