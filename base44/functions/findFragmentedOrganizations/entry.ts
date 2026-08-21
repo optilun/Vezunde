@@ -50,6 +50,24 @@ function hasOwnBrand(tokens) {
   return tokens.some((token) => !GENERIC_TOKENS.has(token));
 }
 
+// Audit pentru fiecare modificare din fuziune. Acelasi tipar ca in
+// directoryOps/adminDataIntegrityOps.ts, ca inregistrarile sa fie citibile in
+// acelasi ecran de audit ca restul operatiunilor de directory.
+async function auditMerge(svc, user, record) {
+  await svc.entities.DirectoryAuditRecord.create({
+    entity_type: record.entity_type,
+    entity_id: record.entity_id || '',
+    action_type: 'organization_merge',
+    changed_fields: record.changed_fields || [],
+    previous_values: JSON.stringify(record.previous || {}),
+    new_values: JSON.stringify(record.next || {}),
+    admin_user_id: user.id,
+    admin_email: user.email,
+    note: record.note || '',
+    performed_at: new Date().toISOString(),
+  });
+}
+
 // Scor intre doua nume de organizatie. Returneaza { score, reason } sau null.
 function compareOrganizations(leftName, rightName) {
   const leftNorm = normalizeName(leftName);
