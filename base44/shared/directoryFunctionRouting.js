@@ -4,6 +4,7 @@ export const DIRECTORY_IMPORT_FUNCTION_ENDPOINT = 'listProviderMemberInvitations
 export const DIRECTORY_FUNCTION_ROUTES = Object.freeze({
   adminDataIntegrityOps: DIRECTORY_FUNCTION_ENDPOINT,
   adminDirectoryCorrectionReview: DIRECTORY_FUNCTION_ENDPOINT,
+  adminFragmentedOrganizations: DIRECTORY_FUNCTION_ENDPOINT,
   adminOrganizationProfileReview: DIRECTORY_FUNCTION_ENDPOINT,
   adminProfessionalProfileReview: DIRECTORY_FUNCTION_ENDPOINT,
   adminProviderClaimReview: DIRECTORY_FUNCTION_ENDPOINT,
