@@ -53,6 +53,10 @@ const AdminDataIntegrity = lazy(
 const AdminDataRepairs = lazy(
   () => import("@/components/admin/system/AdminDataRepairs"),
 );
+// Organizatii fragmentate (2026-08-19): scanare proactiva dupa duplicate in director.
+const AdminFragmentedOrganizations = lazy(
+  () => import("@/components/admin/system/AdminFragmentedOrganizations"),
+);
 
 const SIMPLE_HEADERS = {
   adauga:
