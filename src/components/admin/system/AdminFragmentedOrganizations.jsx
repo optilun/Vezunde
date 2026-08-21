@@ -50,10 +50,17 @@ export default function AdminFragmentedOrganizations() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+  // Fuziunea cere doua actiuni separate: alegi directia, apoi confirmi. Fara pasul
+  // de confirmare, un clic gresit ar muta locatii reale in productie.
+  const [pendingMerge, setPendingMerge] = useState(null);
+  const [merging, setMerging] = useState(false);
+  const [mergeResult, setMergeResult] = useState(null);
 
   const scan = useCallback(async () => {
     setLoading(true);
     setError("");
+    setMergeResult(null);
+    setPendingMerge(null);
     const response = await base44.functions
       .invoke("findFragmentedOrganizations", {})
       .catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }));
@@ -64,6 +71,30 @@ export default function AdminFragmentedOrganizations() {
     }
     setResult(response?.data || null);
   }, []);
+
+  const runMerge = useCallback(async () => {
+    if (!pendingMerge) return;
+    setMerging(true);
+    setError("");
+    const { sourceId, targetId } = pendingMerge;
+    const response = await base44.functions
+      .invoke("findFragmentedOrganizations", {
+        action: "merge",
+        source_organization_id: sourceId,
+        target_organization_id: targetId,
+        // Acelasi format pe care il asteapta backendul.
+        confirmation: `MERGE ${sourceId.slice(0, 8)} ${targetId.slice(0, 8)}`,
+      })
+      .catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }));
+    setMerging(false);
+    setPendingMerge(null);
+    if (response?.data?.error) {
+      setError(response.data.error);
+      return;
+    }
+    setMergeResult(response?.data || null);
+    await scan();
+  }, [pendingMerge, scan]);
 
   return (
     <AdminCard className="p-4">
