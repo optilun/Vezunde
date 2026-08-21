@@ -237,10 +237,11 @@ Deno.serve(async (req) => {
         merged: true,
         moved_count: moved.length,
         moved,
+        related_moved: relatedMoved,
         failed,
         source_deactivated: sourceDeactivated,
         warning: failed.length > 0
-          ? 'Unele locatii nu au putut fi mutate. Organizatia sursa a ramas activa - reia fuziunea.'
+          ? 'Unele elemente nu au putut fi mutate. Organizatia sursa a ramas activa - reia fuziunea.'
           : '',
       });
     }
