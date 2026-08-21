@@ -216,9 +216,9 @@ Deno.serve(async (req) => {
         relatedMoved[related.name] = count;
       }
 
-      // Sursa se dezactiveaza DOAR daca toate locatiile au fost mutate. Altfel ar
-      // ramane locatii legate de o organizatie inactiva - stare mai rea decat
-      // cea de dinainte de fuziune.
+      // Sursa se dezactiveaza DOAR daca TOT s-a mutat (locatii + membri + cereri).
+      // Altfel ar ramane elemente legate de o organizatie inactiva - stare mai rea
+      // decat cea de dinainte de fuziune.
       let sourceDeactivated = false;
       if (failed.length === 0) {
         await svc.entities.ProviderOrganization.update(sourceId, { status: 'inactiva' });
