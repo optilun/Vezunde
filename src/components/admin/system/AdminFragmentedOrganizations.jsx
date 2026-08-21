@@ -127,6 +127,8 @@ export default function AdminFragmentedOrganizations() {
         <div role="status" className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
           <div className="text-xs font-semibold text-emerald-900">
             Fuziune finalizată: {mergeResult.moved_count} {mergeResult.moved_count === 1 ? "locație mutată" : "locații mutate"}
+            {mergeResult.related_moved?.ProviderMembership > 0 ? `, ${mergeResult.related_moved.ProviderMembership} membri` : ""}
+            {mergeResult.related_moved?.ProviderWorkspaceSubmission > 0 ? `, ${mergeResult.related_moved.ProviderWorkspaceSubmission} cereri` : ""}
             {mergeResult.source_deactivated ? ", organizația sursa dezactivată" : ""}.
           </div>
           {mergeResult.warning && (
