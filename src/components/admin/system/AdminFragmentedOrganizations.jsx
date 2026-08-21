@@ -62,7 +62,7 @@ export default function AdminFragmentedOrganizations() {
     setMergeResult(null);
     setPendingMerge(null);
     const response = await base44.functions
-      .invoke("findFragmentedOrganizations", {})
+      .invoke("adminFragmentedOrganizations", {})
       .catch((requestError) => ({ data: { error: requestError.response?.data?.error || requestError.message } }));
     setLoading(false);
     if (response?.data?.error) {
@@ -78,7 +78,7 @@ export default function AdminFragmentedOrganizations() {
     setError("");
     const { sourceId, targetId } = pendingMerge;
     const response = await base44.functions
-      .invoke("findFragmentedOrganizations", {
+      .invoke("adminFragmentedOrganizations", {
         action: "merge",
         source_organization_id: sourceId,
         target_organization_id: targetId,
