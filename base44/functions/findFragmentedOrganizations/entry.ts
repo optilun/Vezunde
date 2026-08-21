@@ -103,6 +103,93 @@ Deno.serve(async (req) => {
     }
 
     const svc = base44.asServiceRole;
+    const input = await req.json().catch(() => ({}));
+
+    // ------------------------------------------------------------------
+    // ACTIUNE: fuziune. Muta locatiile din organizatia sursa in cea tinta si
+    // marcheaza sursa ca inactiva. NU sterge nimic - sursa ramane in baza,
+    // inactiva, ca sa poata fi refacuta manual daca fuziunea a fost gresita.
+    // Fiecare mutare primeste inregistrare de audit proprie.
+    // ------------------------------------------------------------------
+    if (clean(input.action) === 'merge') {
+      const sourceId = clean(input.source_organization_id);
+      const targetId = clean(input.target_organization_id);
+      if (!sourceId || !targetId) {
+        return Response.json({ error: 'Ambele organizatii sunt obligatorii.' }, { status: 400 });
+      }
+      if (sourceId === targetId) {
+        return Response.json({ error: 'Sursa si tinta nu pot fi aceeasi organizatie.' }, { status: 400 });
+      }
+      // Confirmare explicita, ca la restul operatiunilor ireversibile din directory.
+      const expectedToken = `MERGE ${sourceId.slice(0, 8)} ${targetId.slice(0, 8)}`;
+      if (clean(input.confirmation) !== expectedToken) {
+        return Response.json({
+          error: `Confirmare invalida. Trimite exact: ${expectedToken}`,
+          expected_confirmation: expectedToken,
+        }, { status: 400 });
+      }
+
+      const [source, target] = await Promise.all([
+        svc.entities.ProviderOrganization.get(sourceId).catch(() => null),
+        svc.entities.ProviderOrganization.get(targetId).catch(() => null),
+      ]);
+      if (!source) return Response.json({ error: 'Organizatia sursa nu exista.' }, { status: 404 });
+      if (!target) return Response.json({ error: 'Organizatia tinta nu exista.' }, { status: 404 });
+
+      const sourceLocations = await svc.entities.ProviderLocation
+        .filter({ organization_id: sourceId }, 'name', 500).catch(() => []);
+
+      const moved = [];
+      const failed = [];
+      for (const location of sourceLocations) {
+        try {
+          await svc.entities.ProviderLocation.update(location.id, { organization_id: targetId });
+          await auditMerge(svc, user, {
+            entity_type: 'ProviderLocation',
+            entity_id: location.id,
+            changed_fields: ['organization_id'],
+            previous: { organization_id: sourceId },
+            next: { organization_id: targetId },
+            note: `Fuziune organizatii: "${source.name}" -> "${target.name}".`,
+          });
+          moved.push({ id: location.id, name: location.name || '' });
+        } catch (moveError) {
+          failed.push({ id: location.id, name: location.name || '', error: moveError?.message || 'eroare' });
+        }
+      }
+
+      // Sursa se dezactiveaza DOAR daca toate locatiile au fost mutate. Altfel ar
+      // ramane locatii legate de o organizatie inactiva - stare mai rea decat
+      // cea de dinainte de fuziune.
+      let sourceDeactivated = false;
+      if (failed.length === 0) {
+        await svc.entities.ProviderOrganization.update(sourceId, { status: 'inactiva' });
+        await auditMerge(svc, user, {
+          entity_type: 'ProviderOrganization',
+          entity_id: sourceId,
+          changed_fields: ['status'],
+          previous: { status: source.status || '' },
+          next: { status: 'inactiva' },
+          note: `Dezactivata dupa fuziune in "${target.name}" (${moved.length} locatii mutate).`,
+        });
+        sourceDeactivated = true;
+      }
+
+      return Response.json({
+        merged: true,
+        moved_count: moved.length,
+        moved,
+        failed,
+        source_deactivated: sourceDeactivated,
+        warning: failed.length > 0
+          ? 'Unele locatii nu au putut fi mutate. Organizatia sursa a ramas activa - reia fuziunea.'
+          : '',
+      });
+    }
+
+    // ------------------------------------------------------------------
+    // IMPLICIT: scanare. Nu modifica nimic.
+    // ------------------------------------------------------------------
     const organizations = await svc.entities.ProviderOrganization.list(null, 1000).catch(() => []);
 
     const pairs = [];
