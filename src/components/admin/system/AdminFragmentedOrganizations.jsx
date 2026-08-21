@@ -167,6 +167,63 @@ export default function AdminFragmentedOrganizations() {
                         </ul>
                       </div>
                     )}
+
+                    {/* Fuziune: alegi ce organizatie ramane. Locatiile celeilalte se
+                        muta sub ea, iar cealalta devine inactiva (NU se sterge). */}
+                    {isPending ? (
+                      <div className="mt-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3">
+                        <p className="text-xs font-semibold text-amber-900">
+                          Confirmi fuziunea? Locatiile din „{pendingMerge.sourceName}” se mută sub „{pendingMerge.targetName}”, iar prima devine inactivă.
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={runMerge}
+                            disabled={merging}
+                            className="inline-flex min-h-9 items-center gap-2 rounded-full bg-foreground px-3.5 text-xs font-semibold text-background disabled:opacity-60"
+                          >
+                            {merging ? <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> : null}
+                            {merging ? "Se fuzionează..." : "Da, fuzionează"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPendingMerge(null)}
+                            disabled={merging}
+                            className="inline-flex min-h-9 items-center rounded-full border border-border bg-background px-3.5 text-xs font-semibold hover:bg-secondary disabled:opacity-60"
+                          >
+                            Renunță
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] font-semibold text-muted-foreground">Fuzionează, păstrând:</span>
+                        <button
+                          type="button"
+                          onClick={() => setPendingMerge({
+                            sourceId: pair.organizations[1].id,
+                            targetId: pair.organizations[0].id,
+                            sourceName: pair.organizations[1].name,
+                            targetName: pair.organizations[0].name,
+                          })}
+                          className="inline-flex min-h-9 items-center rounded-full border border-border bg-background px-3 text-[11px] font-semibold hover:bg-secondary"
+                        >
+                          {pair.organizations[0].name}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPendingMerge({
+                            sourceId: pair.organizations[0].id,
+                            targetId: pair.organizations[1].id,
+                            sourceName: pair.organizations[0].name,
+                            targetName: pair.organizations[1].name,
+                          })}
+                          className="inline-flex min-h-9 items-center rounded-full border border-border bg-background px-3 text-[11px] font-semibold hover:bg-secondary"
+                        >
+                          {pair.organizations[1].name}
+                        </button>
+                      </div>
+                    )}
                   </li>
                 );
               })}
