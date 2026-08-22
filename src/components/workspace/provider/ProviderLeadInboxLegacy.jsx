@@ -205,10 +205,12 @@ export default function ProviderLeadInbox({ locationId, location }) {
     // pozitia lui de sub lista.
     <div className="space-y-5">
       {showUpgradeCard && <ProviderUpgradeCard variant="wide" />}
-      <div className={`flex flex-col justify-center rounded-[1.75rem] border border-[#e3ddd0] bg-[#fdfbf6] px-8 py-10 ${showUpgradeCard ? "" : "min-h-72"}`}>
+      {/* Cand blocul de upgrade este vizibil, nota asta trece pe planul doi: altfel doua
+          titluri mari se bat cap in cap in aceeasi coloana. */}
+      <div className={`flex flex-col justify-center rounded-[1.75rem] border border-[#e3ddd0] bg-[#fdfbf6] ${showUpgradeCard ? "px-8 py-7" : "min-h-72 px-8 py-10"}`}>
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75">Nicio cerere selectată</p>
-        <h2 className="mt-3 max-w-md font-heading text-[2rem] font-extrabold leading-[1.02] tracking-[-0.045em]">Alege o cerere din listă.</h2>
-        <p className="mt-3 max-w-md text-base leading-relaxed text-muted-foreground">Detaliile clientului, răspunsul locației și conversația apar aici.</p>
+        <h2 className={`mt-3 max-w-md font-heading font-extrabold leading-[1.02] tracking-[-0.045em] ${showUpgradeCard ? "text-[1.3rem]" : "text-[2rem]"}`}>Alege o cerere din listă.</h2>
+        <p className={`mt-3 max-w-md leading-relaxed text-muted-foreground ${showUpgradeCard ? "text-sm" : "text-base"}`}>Detaliile clientului, răspunsul locației și conversația apar aici.</p>
       </div>
     </div>
   );
