@@ -302,8 +302,37 @@ export default function AdminDataIntegrity() {
       if (!output.has(issue.category)) output.set(issue.category, []);
       output.get(issue.category).push(issue);
     }
-    return [...output.entries()];
+    // Categoriile cu cele mai multe probleme critice apar primele - admin-ul vede
+    // intai ce conteaza. Inainte, lista unica nepaginata devenea imposibil de
+    // navigat cand o categorie avea 900+ randuri ("Statusuri", verificat 2026-08-22).
+    return [...output.entries()].sort((left, right) => {
+      const leftCritical = left[1].filter((item) => item.severity === "error").length;
+      const rightCritical = right[1].filter((item) => item.severity === "error").length;
+      return rightCritical - leftCritical || right[1].length - left[1].length;
+    });
   }, [issues]);
+
+  // Navigare pe categorii + paginare (2026-08-22): pagina randa altfel TOATE
+  // categoriile si TOATE problemele deodata - cu 944 de intrari doar la
+  // "Statusuri", devenea o lista interminabila si o pagina extrem de grea.
+  const PAGE_SIZE = 40;
+  const [activeCategory, setActiveCategory] = useState("");
+  const [page, setPage] = useState(0);
+
+  useEffect(() => {
+    if (!groups.length) { setActiveCategory(""); return; }
+    if (!groups.some(([category]) => category === activeCategory)) {
+      setActiveCategory(groups[0][0]);
+      setPage(0);
+    }
+  }, [groups, activeCategory]);
+
+  const activeIssues = useMemo(
+    () => groups.find(([category]) => category === activeCategory)?.[1] || [],
+    [groups, activeCategory],
+  );
+  const pageCount = Math.max(1, Math.ceil(activeIssues.length / PAGE_SIZE));
+  const pagedIssues = activeIssues.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
     <div className="space-y-5">
@@ -333,15 +362,60 @@ export default function AdminDataIntegrity() {
         <AdminCard className="p-5"><EmptyState icon={CheckCircle2} title="Nu au fost detectate neconcordante." subtitle="Verificarea este read-only si reflecta regulile curente ale aplicatiei." /></AdminCard>
       )}
 
-      {data && groups.map(([category, categoryIssues]) => (
-        <AdminCard key={category} className="p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="font-heading text-sm font-bold">{category}</h3>
-            <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold">{categoryIssues.length}</span>
+      {data && groups.length > 0 && (
+        <>
+          <div className="flex flex-wrap gap-2">
+            {groups.map(([category, categoryIssues]) => {
+              const critical = categoryIssues.filter((item) => item.severity === "error").length;
+              const active = category === activeCategory;
+              return (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => { setActiveCategory(category); setPage(0); }}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors ${active ? "border-foreground bg-foreground text-background" : "border-border hover:bg-secondary"}`}
+                >
+                  {category}
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${active ? "bg-background/20" : "bg-secondary"}`}>
+                    {critical > 0 ? `${critical} critice din ${categoryIssues.length}` : categoryIssues.length}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-          <div className="mt-3 space-y-2">{categoryIssues.map((issue, index) => <IssueRow key={`${issue.title}-${index}`} issue={issue} />)}</div>
-        </AdminCard>
-      ))}
+
+          <AdminCard className="p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="font-heading text-sm font-bold">{activeCategory}</h3>
+              <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold">{activeIssues.length}</span>
+            </div>
+            <div className="mt-3 space-y-2">
+              {pagedIssues.map((issue, index) => <IssueRow key={`${issue.title}-${page}-${index}`} issue={issue} />)}
+            </div>
+            {pageCount > 1 && (
+              <div className="mt-4 flex items-center justify-between gap-3 text-xs">
+                <button
+                  type="button"
+                  disabled={page === 0}
+                  onClick={() => setPage((current) => Math.max(0, current - 1))}
+                  className="rounded-full border border-border px-3 py-1.5 font-semibold hover:bg-secondary disabled:opacity-40"
+                >
+                  Anterior
+                </button>
+                <span className="text-muted-foreground">Pagina {page + 1} din {pageCount} · {activeIssues.length} probleme in aceasta categorie</span>
+                <button
+                  type="button"
+                  disabled={page >= pageCount - 1}
+                  onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))}
+                  className="rounded-full border border-border px-3 py-1.5 font-semibold hover:bg-secondary disabled:opacity-40"
+                >
+                  Urmator
+                </button>
+              </div>
+            )}
+          </AdminCard>
+        </>
+      )}
     </div>
   );
 }
