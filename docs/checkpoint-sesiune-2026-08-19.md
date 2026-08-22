@@ -8,16 +8,15 @@ verificat vizual.
 
 ## 1. STARE TEHNICA
 
-**Teste: 112/118.** Cele 6 care esueaza, cu cauza:
+**Teste: 115/118** (actualizat 2026-08-22). Cele 3 ramase, cu cauza:
 
 | Test | Cauza | Cine repara |
 |---|---|---|
 | `verify-directory-auto-import` | fisier `_noop_invalid.jsonc` de sters din dashboard | Alex, din Base44 |
 | `verify-typecheck-baseline-delta` | rulează doar in CI | nu e o problema |
-| `verify-provider-contact-access-ui` | modul Lead-uri, editat in paralel | de investigat |
-| `verify-provider-lead-response` | idem | de investigat |
-| `verify-provider-status-center` | idem | de investigat |
 | `verify-provider-onboarding-continuity` | `NewLocationWizard.jsx` — poarta de autentificare eliminata deliberat (ruta cere cont de la intrare); testul cauta cod care nu mai exista | testul e invechit, nu codul |
+
+**Rezolvate pe 2026-08-22:** `verify-provider-contact-access-ui`, `verify-provider-lead-response`, `verify-provider-status-center` esuau pentru ca verificau siruri de cod direct in `ProviderLeadInboxLegacy.jsx`, dar redesign-ul pe doua coloane din 18-19 august a mutat randarea `<ProviderLeadContactAccess>` / `<ProviderLeadChat>` in `leads/LeadDetailPanel.jsx`, eticheta "Detalii Pro · Top 3" in `leads/LeadFullDetails.jsx`, iar `id={`provider-lead-${lead.id}`}` a disparut (inlocuit cu `onOpenTarget` din stare React, mecanism mai robust). Un al doilea refactor separat (chat unificat cu partea pacientului) a mutat si `<textarea>` din `ProviderLeadChat.jsx` in `ChatComposer.jsx`. Codul functioneaza corect in toate cazurile — doar cele 3 scripturi de verificare au fost actualizate sa citeasca fisierele corecte, pastrand toate garantiile de siguranta originale (nimic slabit). Verificat si ca celelalte teste care ating acelasi modul (`verify-in-app-notification-center`, `verify-controlled-pro-chat`, `verify-provider-lead-inbox-free`, `verify-provider-lead-preparation`) trec in continuare.
 
 **Build si ESLint: curate.**
 
