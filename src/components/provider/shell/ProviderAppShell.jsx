@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Menu, ExternalLink } from "lucide-react";
+import { Menu, ExternalLink, Sparkles } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import ProviderSidebarContent from "./ProviderSidebarContent";
 import ProviderTeamHeaderAccess from "./ProviderTeamHeaderAccess";
+import { openUpgradeSpotlight, useUpgradeSpotlight } from "@/lib/providerUpgradeSpotlight";
 import "@/styles/workspace-mobile.css";
 
 export default function ProviderAppShell({
@@ -22,6 +23,9 @@ export default function ProviderAppShell({
   children,
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Butonul "Upgrade" apare numai cand sectiunea curenta l-a anuntat ca relevant (modulul de
+  // leaduri, pentru locatiile fara Pro). Recheama blocul dupa ce a fost inchis cu X.
+  const upgradeSpotlight = useUpgradeSpotlight();
   const initials = (user?.full_name || "U").trim().charAt(0).toUpperCase();
   const profilePhotoUrl = user?.profile_photo_url || "";
   const providerLocationId = publicProfileUrl.match(/^\/furnizor\/([^/?#]+)/)?.[1] || "";
@@ -121,6 +125,15 @@ export default function ProviderAppShell({
             </div>
 
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+              {upgradeSpotlight.available && (
+                <button
+                  type="button"
+                  onClick={openUpgradeSpotlight}
+                  className="inline-flex min-h-9 touch-manipulation items-center justify-center gap-1.5 rounded-full bg-[#171717] px-3.5 font-heading text-xs font-bold text-white outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2"
+                >
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Upgrade
+                </button>
+              )}
               {subtitle === "Spațiu furnizor" && (
                 <ProviderTeamHeaderAccess
                   userId={user?.id || ""}
