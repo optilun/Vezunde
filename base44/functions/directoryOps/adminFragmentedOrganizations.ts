@@ -154,8 +154,22 @@ export async function handle(req: Request) {
       if (!source) return Response.json({ error: 'Organizatia sursa nu exista.' }, { status: 404 });
       if (!target) return Response.json({ error: 'Organizatia tinta nu exista.' }, { status: 404 });
 
-      const sourceLocations = await svc.entities.ProviderLocation
-        .filter({ organization_id: sourceId }, 'name', 500).catch(() => []);
+      // FIX (2026-08-22): citirea locatiilor sursa NU mai este inghitita silentios.
+      // Bug real prins in productie - daca acest fetch esua (eroare tranzitorie),
+      // .catch(() => []) transforma esecul intr-o lista goala, codul credea ca
+      // sursa nu are nicio locatie, iar la final "failed.length === 0" era
+      // adevarat din intamplare -> sursa era dezactivata cu locatii reale ramase
+      // agatate de ea (caz Corocularia, 2026-08-22). Acum orice eroare de citire
+      // opreste fuziunea complet, inainte de a atinge ceva.
+      let sourceLocations;
+      try {
+        sourceLocations = await svc.entities.ProviderLocation
+          .filter({ organization_id: sourceId }, 'name', 500);
+      } catch (fetchError) {
+        return Response.json({
+          error: `Nu am putut citi locatiile organizatiei sursa - fuziunea a fost oprita inainte de orice modificare. ${fetchError?.message || 'eroare'}`,
+        }, { status: 500 });
+      }
 
       const moved = [];
       const failed = [];
@@ -190,8 +204,18 @@ export async function handle(req: Request) {
       for (const related of relatedEntities) {
         const collection = svc.entities[related.name];
         if (!collection) continue;
-        const records = await collection
-          .filter({ organization_id: sourceId }, null, 500).catch(() => []);
+        // Acelasi fix ca mai sus: o eroare la citire nu mai devine "0 inregistrari".
+        let records;
+        try {
+          records = await collection.filter({ organization_id: sourceId }, null, 500);
+        } catch (fetchError) {
+          failed.push({
+            id: '',
+            name: `${related.label} (${related.name}) - citire esuata`,
+            error: fetchError?.message || 'eroare la citire',
+          });
+          continue;
+        }
         let count = 0;
         for (const record of records) {
           try {
