@@ -1,11 +1,15 @@
-// Randul de lead, in limbajul vizual al homepage-ului (2026-08-19): placa tonala pastelata
-// cu textura tehnica, colturi marcate, meta in mono. Culorile sunt exact paleta din
-// CategoryShowcase.jsx - nu introducem un al doilea sistem de culoare in aplicatie.
-// Doar prezentare: starea si eticheta de raspuns vin din backend.
+// Randul de conversatie din inboxul de leaduri (2026-08-22).
+//
+// Inainte, fiecare cerere era o placa tonala mare, in registrul editorial al homepage-ului.
+// Acum lista se citeste ca intr-o aplicatie de mesagerie: avatar, titlu, ultimul rezumat pe
+// un singur rand, ora la dreapta si un punct pentru cererile necitite. Paleta si fonturile
+// raman cele din design system - se schimba doar structura, nu identitatea vizuala.
+//
+// Doar prezentare: starea si eticheta de raspuns vin neschimbate din backend.
 import React from "react";
 import { Archive } from "lucide-react";
 
-// Aceleasi tonuri ca placile de categorii din homepage.
+// Aceleasi tonuri ca placile de categorii din homepage, pastrate acum pe avatar.
 const TONES = [
   { border: "#c6d3da", bg: "#dce5e9" },
   { border: "#e1bda8", bg: "#efd5c5" },
@@ -21,53 +25,80 @@ function toneFor(lead) {
   return TONES[sum % TONES.length];
 }
 
-function formatDate(value) {
+// Ora pentru azi, "Ieri" pentru ziua precedenta, data scurta mai departe - conventia din
+// aplicatiile de mesagerie, care face lista mult mai usor de scanat decat data completa.
+function formatWhen(value) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("ro-RO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(date);
+  const now = new Date();
+  if (date.toDateString() === now.toDateString()) {
+    return new Intl.DateTimeFormat("ro-RO", { hour: "2-digit", minute: "2-digit" }).format(date);
+  }
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) return "Ieri";
+  return new Intl.DateTimeFormat("ro-RO", { day: "2-digit", month: "short" }).format(date);
+}
+
+function initial(value) {
+  return String(value || "").trim().charAt(0).toUpperCase() || "C";
 }
 
 export default function LeadListItem({ lead, response, selected, onSelect }) {
   const terminal = lead.is_historical === true;
+  const unread = !terminal && lead.status === "new";
   const tone = terminal ? { border: "#d9d4ca", bg: "#f1ede4" } : toneFor(lead);
+  const title = lead.intent_label || "Cerere client";
+  const place = [lead.city, lead.county].filter(Boolean).join(" · ");
 
   return (
     <button
       type="button"
       onClick={onSelect}
       aria-current={selected ? "true" : undefined}
-      style={{ borderColor: tone.border, backgroundColor: tone.bg }}
-      className={`group relative w-full overflow-hidden rounded-[1.4rem] border px-4 py-3.5 text-left outline-none transition-[transform,box-shadow] duration-500 hover:-translate-y-1 hover:shadow-[0_18px_42px_rgba(34,30,24,0.07)] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-4 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none ${selected ? "shadow-[0_18px_42px_rgba(34,30,24,0.09)] ring-2 ring-foreground ring-offset-4 ring-offset-[#F8F4EC]" : "shadow-[0_10px_30px_rgba(34,30,24,0.028)]"}`}
+      className={`flex w-full items-start gap-3 rounded-2xl px-3 py-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-[#F8F4EC] ${
+        selected ? "bg-foreground/[0.07]" : "hover:bg-foreground/[0.035]"
+      }`}
     >
-      <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={{ backgroundImage: "url('/images/home/viasee-technical-grain.svg')", backgroundSize: "180px 180px" }} />
-      <span aria-hidden="true" className="absolute left-2.5 top-2.5 h-2.5 w-2.5 border-l border-t border-black/25" />
-      <span aria-hidden="true" className="absolute bottom-2.5 right-2.5 h-2.5 w-2.5 border-b border-r border-black/25" />
+      <span
+        aria-hidden="true"
+        style={{ borderColor: tone.border, backgroundColor: tone.bg }}
+        className="relative mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border font-heading text-[15px] font-extrabold text-[#1c1c1c]"
+      >
+        {terminal ? <Archive className="h-4 w-4 text-black/45" /> : initial(title)}
+        {unread && (
+          <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-[#F8F4EC] bg-[#171717]" />
+        )}
+      </span>
 
-      <div className="relative z-10">
-        <p className="font-mono text-[9.5px] font-medium uppercase tracking-[0.2em] text-black/50">
-          {terminal ? "Încheiată" : lead.status === "new" ? "Cerere nouă" : "În lucru"} · {formatDate(lead.created_date)}
-        </p>
-        <p className="mt-1.5 font-heading text-[1.0625rem] font-extrabold leading-[1.12] tracking-[-0.03em] text-[#1c1c1c]">
-          {lead.intent_label || "Cerere client"}
-        </p>
-        <p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-black/60">
-          {lead.preview_summary || "Rezumatul cererii nu este disponibil."}
-        </p>
-
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-black/[0.09] pt-2.5">
-          <span className="min-w-0 truncate font-mono text-[10px] uppercase tracking-[0.14em] text-black/55">
-            {[lead.city, lead.county].filter(Boolean).join(" · ") || "Localitate indisponibilă"}
+      <span className="min-w-0 flex-1">
+        <span className="flex items-baseline justify-between gap-2">
+          <span className={`min-w-0 truncate font-heading text-[14px] tracking-[-0.02em] text-foreground ${unread ? "font-extrabold" : "font-bold"}`}>
+            {title}
           </span>
-          {terminal ? (
-            <Archive aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-black/45" />
-          ) : response?.response_label ? (
-            <span className="shrink-0 rounded-full bg-[#171717] px-2.5 py-0.5 font-mono text-[9.5px] uppercase tracking-[0.12em] text-white">{response.response_label}</span>
-          ) : lead.status === "new" ? (
-            <span aria-hidden="true" className="h-[9px] w-[9px] shrink-0 rounded-full border border-[#8d7658] bg-[#f8f4ec]" />
-          ) : null}
-        </div>
-      </div>
+          <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground/80">
+            {formatWhen(lead.created_date)}
+          </span>
+        </span>
+
+        <span className="mt-1 flex items-center gap-2">
+          <span className={`min-w-0 flex-1 truncate text-[12.5px] leading-relaxed ${unread ? "font-medium text-foreground/85" : "text-muted-foreground"}`}>
+            {lead.preview_summary || "Rezumatul cererii nu este disponibil."}
+          </span>
+          {response?.response_label && (
+            <span className="shrink-0 rounded-full bg-[#171717] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] text-white">
+              {response.response_label}
+            </span>
+          )}
+        </span>
+
+        {place && (
+          <span className="mt-1 block truncate font-mono text-[9.5px] uppercase tracking-[0.16em] text-muted-foreground/65">
+            {place}
+          </span>
+        )}
+      </span>
     </button>
   );
 }
