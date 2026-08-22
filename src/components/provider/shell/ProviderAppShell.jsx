@@ -25,8 +25,13 @@ export default function ProviderAppShell({
   const initials = (user?.full_name || "U").trim().charAt(0).toUpperCase();
   const profilePhotoUrl = user?.profile_photo_url || "";
   const providerLocationId = publicProfileUrl.match(/^\/furnizor\/([^/?#]+)/)?.[1] || "";
+  // Some sections (e.g. "access") are reachable without being a persistent
+  // sidebar tab — navItems won't contain them, so the breadcrumb needs an
+  // explicit label instead of silently falling back to the first nav item.
+  const SECONDARY_SECTION_LABELS = { access: "Acces si utilizatori" };
   const activeLabel =
     navItems.find((item) => item.key === activeKey)?.label ||
+    SECONDARY_SECTION_LABELS[activeKey] ||
     navItems[0]?.label ||
     "";
   const mobileModeSwitches = modeSwitches?.map((item) => ({
