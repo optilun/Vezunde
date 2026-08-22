@@ -56,39 +56,49 @@ function LensIllustration() {
   );
 }
 
-export default function ProviderUpgradeCard() {
+function Benefits({ columns }) {
   return (
-    <aside className="overflow-hidden rounded-[1.4rem] border border-[#e3ddd0] bg-[#fdfbf6]">
-      <div className="relative h-40 overflow-hidden border-b border-[#e3ddd0] bg-[#f2ece0] px-4 py-3">
+    <ul className={`mt-4 gap-2.5 ${columns ? "grid sm:grid-cols-2" : "space-y-2.5"}`}>
+      {BENEFITS.map((benefit) => (
+        <li key={benefit} className="flex items-start gap-2.5 text-[13px] leading-relaxed text-foreground">
+          <span aria-hidden="true" className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#ccd2ba] bg-[#dfe3d2]">
+            <Check className="h-2.5 w-2.5 text-black/60" />
+          </span>
+          {benefit}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// "wide" sta in coloana din dreapta, in locul gol de sub cererea neselectata - acolo se
+// vede fara sa derulezi. "sidebar" ramane pentru coloana ingusta si pentru telefon.
+export default function ProviderUpgradeCard({ variant = "sidebar" }) {
+  const wide = variant === "wide";
+
+  return (
+    <aside className={`overflow-hidden rounded-[1.75rem] border border-[#e3ddd0] bg-[#fdfbf6] ${wide ? "sm:grid sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]" : ""}`}>
+      <div className={`relative overflow-hidden bg-[#f2ece0] px-4 py-3 ${wide ? "h-44 border-b border-[#e3ddd0] sm:h-auto sm:border-b-0 sm:border-r" : "h-40 border-b border-[#e3ddd0]"}`}>
         <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={GRAIN} />
-        <div className="relative z-10 h-full w-full">
+        <div className="relative z-10 flex h-full w-full items-center">
           <LensIllustration />
         </div>
       </div>
 
-      <div className="px-5 py-5">
+      <div className={wide ? "px-6 py-6" : "px-5 py-5"}>
         <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75">Plan Pro</p>
-        <h3 className="mt-2 font-heading text-[1.35rem] font-extrabold leading-[1.06] tracking-[-0.035em]">
+        <h3 className={`mt-2 font-heading font-extrabold leading-[1.04] tracking-[-0.04em] ${wide ? "text-[1.9rem]" : "text-[1.35rem]"}`}>
           Vezi cererile în întregime.
         </h3>
-        <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+        <p className={`mt-2 leading-relaxed text-muted-foreground ${wide ? "max-w-md text-[14px]" : "text-[13px]"}`}>
           Rezumatul rămâne gratuit. Restul se deschide pentru locațiile Pro aflate în Top 3.
         </p>
 
-        <ul className="mt-4 space-y-2.5">
-          {BENEFITS.map((benefit) => (
-            <li key={benefit} className="flex items-start gap-2.5 text-[13px] leading-relaxed text-foreground">
-              <span aria-hidden="true" className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#ccd2ba] bg-[#dfe3d2]">
-                <Check className="h-2.5 w-2.5 text-black/60" />
-              </span>
-              {benefit}
-            </li>
-          ))}
-        </ul>
+        <Benefits columns={wide} />
 
         <Link
           to="/plati-si-abonamente"
-          className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[#171717] px-5 font-heading text-[13px] font-bold text-white transition-opacity hover:opacity-90"
+          className={`mt-5 inline-flex min-h-11 items-center justify-center rounded-full bg-[#171717] px-6 font-heading text-[13px] font-bold text-white transition-opacity hover:opacity-90 ${wide ? "" : "w-full"}`}
         >
           Vezi planurile
         </Link>
