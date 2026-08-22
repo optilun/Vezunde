@@ -78,7 +78,12 @@ assert.ok(leadSchema.properties.last_response_at);
 assert.ok(leadSchema.properties.conversation_lock_token);
 
 const backend = await readFile(new URL('../base44/functions/providerLeadResponseOps/entry.ts', import.meta.url), 'utf8');
+// Redesign pe doua coloane (2026-08-18): componenta ProviderLeadInboxLegacy.jsx mai
+// orchestreaza doar cererea de raspuns; textul de siguranta si <ProviderLeadChat> s-au
+// mutat in leads/LeadDetailPanel.jsx, iar eticheta Top 3 in leads/LeadFullDetails.jsx.
 const component = await readFile(new URL('../src/components/workspace/provider/ProviderLeadInboxLegacy.jsx', import.meta.url), 'utf8');
+const detailPanel = await readFile(new URL('../src/components/workspace/provider/leads/LeadDetailPanel.jsx', import.meta.url), 'utf8');
+const fullDetails = await readFile(new URL('../src/components/workspace/provider/leads/LeadFullDetails.jsx', import.meta.url), 'utf8');
 const chatComponent = await readFile(new URL('../src/components/workspace/provider/ProviderLeadChat.jsx', import.meta.url), 'utf8');
 assert.match(backend, /base44\.auth\.me\(\)/);
 assert.match(backend, /ProviderMembership\.filter/);
@@ -99,12 +104,16 @@ assert.doesNotMatch(backend, /PatientRequestContact/);
 assert.match(component, /providerLeadResponseOps/);
 assert.match(component, /provider_leads\.respond/);
 assert.match(component, /response_type: responseType/);
-assert.match(component, /Telefonul rămâne separat/);
-assert.match(component, /nu deschide unilateral chatul/);
-assert.match(component, /Detalii Pro · Top 3/);
-assert.match(component, /<ProviderLeadChat/);
 assert.doesNotMatch(component, /<textarea|contentEditable/);
 assert.doesNotMatch(component, /contact_phone\s*:|original_message|PatientRequestContact/);
+
+assert.match(detailPanel, /Telefonul rămâne separat/);
+assert.match(detailPanel, /nu deschide unilateral chatul/);
+assert.match(detailPanel, /<ProviderLeadChat/);
+assert.doesNotMatch(detailPanel, /<textarea|contentEditable/);
+assert.doesNotMatch(detailPanel, /contact_phone\s*:|original_message|PatientRequestContact/);
+
+assert.match(fullDetails, /Detalii Pro · Top 3/);
 assert.match(chatComponent, /<textarea/);
 assert.match(chatComponent, /Locația nu poate iniția chatul unilateral/);
 assert.match(chatComponent, /controlledChatOps/);
