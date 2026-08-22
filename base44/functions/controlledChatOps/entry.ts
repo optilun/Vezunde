@@ -192,6 +192,22 @@ async function buildStatusPayload(svc, context) {
     ? conversation?.provider_unread_count
     : conversation?.patient_unread_count;
 
+  // "Vazut" pentru ultimul mesaj propriu: comparam momentul ultimului mesaj trimis de cel
+  // care priveste cu momentul in care celalalt a citit ultima oara. Ambele campuri exista
+  // deja pe conversatie; pana acum nu erau folosite nicaieri in interfata. Trimitem catre
+  // client doar rezultatul boolean, nu si timestamp-ul celuilalt.
+  const ownLastMessageAt = context.actor === 'provider'
+    ? conversation?.provider_last_message_at
+    : conversation?.patient_last_message_at;
+  const otherLastReadAt = context.actor === 'provider'
+    ? conversation?.patient_last_read_at
+    : conversation?.provider_last_read_at;
+  const ownLastMessageMs = Date.parse(String(ownLastMessageAt || ''));
+  const otherLastReadMs = Date.parse(String(otherLastReadAt || ''));
+  const lastOwnMessageSeen = Number.isFinite(ownLastMessageMs)
+    && Number.isFinite(otherLastReadMs)
+    && otherLastReadMs >= ownLastMessageMs;
+
   return {
     chat_contract_version: CONTROLLED_CHAT_CONTRACT_VERSION,
     location: {
@@ -202,6 +218,7 @@ async function buildStatusPayload(svc, context) {
       canOpen: context.actor === 'patient' && baseEligibility.eligible && !isOpen,
       canSend: baseEligibility.eligible && isOpen,
       unreadCount,
+      lastOwnMessageSeen,
     }),
     messages: messages.map(sanitizeControlledChatMessage),
     eligibility_reasons: baseEligibility.reasons,
