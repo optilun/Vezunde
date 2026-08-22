@@ -29,44 +29,42 @@ const BENEFITS = [
   "Telefon, după acordul clientului",
 ];
 
-// viewBox decupat putin fata de desen, ca lentila sa umple panoul in loc sa pluteasca.
+// Compozitie aproape patrata, nu lata: panoul ilustratiei este inalt in formatul plutitor
+// si lat pe telefon, iar un desen lat lasa gol jumatate din panou. Asa umple ambele forme.
+// Lentila sus, conversatia dedesubt - exact ce deblocheaza planul.
 function LensIllustration() {
   return (
-    <svg viewBox="18 18 288 154" role="img" aria-label="Ilustrație VIASEE" className="h-full w-full">
-      <g stroke="#8d7658" strokeWidth="1" fill="none" opacity="0.5">
-        <path d="M144 95c14-27 36-41 62-41s48 14 62 41c-14 27-36 41-62 41s-48-14-62-41z" />
-        <circle cx="206" cy="95" r="64" strokeDasharray="3 7" opacity="0.6" />
+    <svg viewBox="0 0 240 264" role="img" aria-label="Ilustrație VIASEE" className="h-full w-full">
+      <g stroke="#8d7658" strokeWidth="1.2" fill="none" opacity="0.5">
+        <path d="M42 96c17-33 44-50 78-50s61 17 78 50c-17 33-44 50-78 50s-61-17-78-50z" />
+        <circle cx="120" cy="96" r="74" strokeDasharray="3 8" opacity="0.6" />
       </g>
 
-      <circle cx="206" cy="95" r="44" fill="#dce5e9" stroke="#c6d3da" />
-      <circle cx="206" cy="95" r="26" fill="#efd5c5" stroke="#e1bda8" />
-      <circle cx="206" cy="95" r="11" fill="#171717" />
-      <circle cx="197" cy="85" r="4.5" fill="#ffffff" opacity="0.85" />
+      <circle cx="120" cy="96" r="54" fill="#dce5e9" stroke="#c6d3da" strokeWidth="1.2" />
+      <circle cx="120" cy="96" r="32" fill="#efd5c5" stroke="#e1bda8" strokeWidth="1.2" />
+      <circle cx="120" cy="96" r="13" fill="#171717" />
+      <circle cx="109" cy="84" r="5.5" fill="#ffffff" opacity="0.85" />
 
       <g>
-        <rect x="22" y="46" width="104" height="34" rx="15" fill="#ffffff" stroke="#e3ddd0" />
-        <rect x="38" y="57" width="60" height="4" rx="2" fill="#171717" opacity="0.3" />
-        <rect x="38" y="66" width="40" height="4" rx="2" fill="#171717" opacity="0.16" />
+        <rect x="14" y="186" width="132" height="36" rx="16" fill="#ffffff" stroke="#e3ddd0" strokeWidth="1.2" />
+        <rect x="32" y="198" width="76" height="5" rx="2.5" fill="#171717" opacity="0.28" />
+        <rect x="32" y="209" width="50" height="5" rx="2.5" fill="#171717" opacity="0.15" />
       </g>
 
       <g>
-        <rect x="48" y="100" width="92" height="32" rx="15" fill="#171717" />
-        <rect x="64" y="110" width="52" height="4" rx="2" fill="#ffffff" opacity="0.6" />
-        <rect x="64" y="119" width="34" height="4" rx="2" fill="#ffffff" opacity="0.35" />
-      </g>
-
-      <g fill="#ffffff" stroke="#e3ddd0">
-        <circle cx="140" cy="28" r="6" />
-        <circle cx="282" cy="158" r="8" />
-        <circle cx="26" cy="150" r="4" />
+        <rect x="86" y="228" width="140" height="36" rx="16" fill="#171717" />
+        <rect x="104" y="240" width="70" height="5" rx="2.5" fill="#ffffff" opacity="0.6" />
+        <rect x="104" y="251" width="46" height="5" rx="2.5" fill="#ffffff" opacity="0.32" />
       </g>
     </svg>
   );
 }
 
-function Benefits({ columns }) {
+// O singura coloana, indiferent de latime: pe doua coloane, pe latimea blocului plutitor,
+// jumatate din randuri se rupeau in doua ("Datele complete ale / clientului").
+function Benefits() {
   return (
-    <ul className={`mt-5 gap-3 ${columns ? "grid sm:grid-cols-2" : "space-y-3"}`}>
+    <ul className="mt-5 space-y-2.5">
       {BENEFITS.map((benefit) => (
         <li key={benefit} className="flex items-start gap-2.5 text-[13px] leading-relaxed text-white/85">
           <span
@@ -89,8 +87,10 @@ export default function ProviderUpgradeCard({ variant = "sidebar" }) {
   const wide = variant === "wide";
 
   return (
+    // Conturul subtire detaseaza cardul de fundal: panoul chihlimbar are exact tonul placii
+    // "In istoric" din antet, iar fara linie marginile se topesc una in alta.
     <aside
-      className={`overflow-hidden rounded-[1.75rem] bg-[#171717] shadow-[0_24px_60px_rgba(23,23,23,0.22)] ${
+      className={`overflow-hidden rounded-[1.75rem] bg-[#171717] ring-1 ring-[#171717]/15 shadow-[0_26px_64px_rgba(23,23,23,0.3)] ${
         wide ? "sm:grid sm:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]" : ""
       }`}
     >
@@ -113,7 +113,7 @@ export default function ProviderUpgradeCard({ variant = "sidebar" }) {
           Rezumatul rămâne gratuit. Restul se deschide pentru locațiile Pro aflate în Top 3.
         </p>
 
-        <Benefits columns={wide} />
+        <Benefits />
 
         <Link
           to="/plati-si-abonamente"
