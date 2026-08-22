@@ -165,6 +165,7 @@ export default function ProviderWorkspaceRoot({
   const accessMetaRequestRef = useRef(0);
   const accessMetaOrganizationRef = useRef("");
   const previousSectionRef = useRef(requestedSection);
+  const hasCompletedInitialSectionSyncRef = useRef(false);
 
   const allLocations = useMemo(() => workspace.locations || [], [workspace.locations]);
   const organizationContexts = useMemo(() => organizationContextsFor(workspace), [workspace]);
@@ -371,7 +372,13 @@ export default function ProviderWorkspaceRoot({
     } else if (!silent) {
       setOverviewError(true);
     }
-    if (!silent) setLoadingOverview(false);
+    // Always clear the loading gate once a request settles, even for a silent
+    // background refresh: if a silent call is the one whose requestId survives
+    // (it superseded an earlier non-silent call that raced it), that earlier
+    // call's own "silent === false" cleanup never runs, and the initial
+    // loading spinner would otherwise stay stuck forever even though fresh
+    // data (or a definitive failure) has already arrived.
+    setLoadingOverview(false);
   };
 
   const refreshOverviewInPlace = async () => {
@@ -509,7 +516,15 @@ export default function ProviderWorkspaceRoot({
   useEffect(() => {
     const previousSection = previousSectionRef.current;
     previousSectionRef.current = safeSection;
-    if (safeSection === "overview" && previousSection !== "overview" && selectedLocationId) void refreshOverviewInPlace();
+    // Skip the very first run after mount: permission-gated sections (e.g.
+    // "profile", "settings") transiently resolve to the "overview" fallback
+    // on the initial render, before the async access-meta check confirms the
+    // real allowed section — that is not a genuine user-driven navigation
+    // back to "overview" and must not trigger a duplicate, redundant refresh
+    // that races the mount-time load in loadOverview.
+    const isInitialSectionSync = !hasCompletedInitialSectionSyncRef.current;
+    hasCompletedInitialSectionSyncRef.current = true;
+    if (!isInitialSectionSync && safeSection === "overview" && previousSection !== "overview" && selectedLocationId) void refreshOverviewInPlace();
   }, [safeSection, selectedLocationId]);
 
   useEffect(() => {
