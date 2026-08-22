@@ -7,6 +7,7 @@ import { Archive, CheckCircle2, HelpCircle, Loader2, LockKeyhole, XCircle } from
 import ProviderLeadContactAccess from "../ProviderLeadContactAccess";
 import ProviderLeadChat from "../ProviderLeadChat";
 import LeadFullDetails from "./LeadFullDetails";
+import LockedPreview, { ActionsSkeleton, ConversationSkeleton, DetailsSkeleton } from "./LockedPreview";
 
 const RESPONSE_OPTIONS = [
   { key: "can_help", label: "Putem ajuta", icon: CheckCircle2 },
@@ -51,6 +52,14 @@ export default function LeadDetailPanel({ lead, response, locationId, canRespond
     title: lead.status === "expired" ? "Cerere expirată" : "Cerere încheiată",
     description: "Cererea nu mai acceptă acțiuni noi. Informațiile disponibile sunt păstrate numai ca istoric.",
   };
+
+  // Ce se vede estompat in loc de gol. Estomparea se aplica numai cererilor active: pe una
+  // incheiata un indemn la upgrade ar fi deplasat, acolo ramane nota de istoric.
+  // Conditiile de acces raman exact cele dinainte - se schimba doar ce afisam cand lipsesc.
+  const chatEnabled = canChat && lead.access_tier === "pro_full";
+  const chatLocked = !terminal && !chatEnabled;
+  const detailsLocked = !terminal && (!lead.full_details_status?.available || !lead.full_details);
+  const contactLocked = !terminal && !canAccessContact;
 
   return (
     <article className="relative overflow-hidden rounded-[1.75rem] border border-[#e3ddd0] bg-[#fdfbf6] px-6 py-7 shadow-[0_10px_30px_rgba(34,30,24,0.03)]">
@@ -107,9 +116,36 @@ export default function LeadDetailPanel({ lead, response, locationId, canRespond
         <section className="mt-8 border-t border-border pt-6">
           <Eyebrow>Datele clientului</Eyebrow>
           <div className="mt-3">
-            <LeadFullDetails lead={lead} />
+            {/* Aceeasi structura pentru toata lumea: cine nu are inca acces vede fisa
+                estompata, nu un gol. Sub estompare exista doar o schita decorativa - datele
+                reale nu ajung niciodata in pagina fara drept (vezi LockedPreview). */}
+            {detailsLocked ? (
+              <LockedPreview
+                title="Datele clientului sunt disponibile în Pro"
+                description="Numele, emailul verificat și mesajul detaliat se deblochează pentru locațiile Pro aflate în Top 3, cu acordul activ al clientului."
+              >
+                <DetailsSkeleton />
+              </LockedPreview>
+            ) : (
+              <LeadFullDetails lead={lead} />
+            )}
           </div>
         </section>
+
+        {!canRespond && !terminal && (
+          <section className="mt-8 border-t border-border pt-6">
+            <Eyebrow>Răspunsul locației</Eyebrow>
+            <h3 className="mt-2 font-heading text-xl font-extrabold tracking-[-0.03em]">Ce transmiți clientului</h3>
+            <div className="mt-4">
+              <LockedPreview
+                title="Răspunsurile sunt disponibile în Pro"
+                description="Locațiile Pro pot transmite clientului dacă pot ajuta, dacă au nevoie de detalii sau dacă nu pot prelua cererea."
+              >
+                <ActionsSkeleton />
+              </LockedPreview>
+            </div>
+          </section>
+        )}
 
         {canRespond && !terminal && (
           <section className="mt-8 border-t border-border pt-6">
@@ -142,12 +178,21 @@ export default function LeadDetailPanel({ lead, response, locationId, canRespond
           <section className="mt-8 border-t border-border pt-6">
             <Eyebrow>Contact telefonic</Eyebrow>
             <div className="mt-3">
-              <ProviderLeadContactAccess
-                leadId={lead.id}
-                locationId={locationId}
-                enabled={canAccessContact && lead.full_details?.phone_available_for_request === true}
-                responseType={response?.response_type || ""}
-              />
+              {contactLocked ? (
+                <LockedPreview
+                  title="Telefonul aprobat este disponibil în Pro"
+                  description="Numărul se poate solicita separat, doar după ce clientul îl aprobă explicit pentru locația ta. Fiecare accesare rămâne auditată."
+                >
+                  <DetailsSkeleton />
+                </LockedPreview>
+              ) : (
+                <ProviderLeadContactAccess
+                  leadId={lead.id}
+                  locationId={locationId}
+                  enabled={canAccessContact && lead.full_details?.phone_available_for_request === true}
+                  responseType={response?.response_type || ""}
+                />
+              )}
             </div>
           </section>
         )}
@@ -155,13 +200,22 @@ export default function LeadDetailPanel({ lead, response, locationId, canRespond
         <section className="mt-8 border-t border-border pt-6">
           <Eyebrow>Conversație</Eyebrow>
           <div className="mt-3">
-            <ProviderLeadChat
-              leadId={lead.id}
-              locationId={locationId}
-              enabled={canChat && lead.access_tier === "pro_full"}
-              responseType={response?.response_type || ""}
-              terminal={terminal}
-            />
+            {chatLocked ? (
+              <LockedPreview
+                title="Conversațiile sunt disponibile în Pro"
+                description="Chatul VIASEE se deblochează pentru locațiile Pro aflate în Top 3. Clientul rămâne cel care deschide conversația."
+              >
+                <ConversationSkeleton />
+              </LockedPreview>
+            ) : (
+              <ProviderLeadChat
+                leadId={lead.id}
+                locationId={locationId}
+                enabled={chatEnabled}
+                responseType={response?.response_type || ""}
+                terminal={terminal}
+              />
+            )}
           </div>
         </section>
 
