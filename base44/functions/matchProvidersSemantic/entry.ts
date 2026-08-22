@@ -222,7 +222,11 @@ function expansionTier(location, selectedSirutaCode, scope) {
 
 function resultRoutingReason(tier, countyName) {
   if (tier === 'oras') return 'Potrivire din localitatea selectata.';
-  if (tier === 'tara') return 'Potrivire la nivel national - singura optiune confirmata gasita.';
+  // Nu afirma "confirmata" necondiționat: acest rezultat poate proveni si din
+  // fallback-ul structural (structural_directory, recommendation_confidence:
+  // 'unconfirmed'), unde afirmatia ar fi falsa. Textul de mai jos nu presupune
+  // nici ca ar fi singura optiune - la nivel national pot exista mai multe.
+  if (tier === 'tara') return 'Potrivire la nivel national.';
   return countyName
     ? `Potrivire din alta localitate din judetul ${countyName}.`
     : 'Potrivire din alta localitate din acelasi judet.';
