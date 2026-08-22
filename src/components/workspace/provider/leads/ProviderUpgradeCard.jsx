@@ -21,9 +21,10 @@ const BENEFITS = [
   "Telefon, după acordul clientului",
 ];
 
+// viewBox decupat putin fata de desen, ca lentila sa umple panoul in loc sa pluteasca.
 function LensIllustration() {
   return (
-    <svg viewBox="0 0 320 190" role="img" aria-label="Ilustrație VIASEE" className="h-full w-full">
+    <svg viewBox="18 18 288 154" role="img" aria-label="Ilustrație VIASEE" className="h-full w-full">
       <defs>
         <radialGradient id="viasee-upgrade-glow" cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#dce5e9" stopOpacity="0.28" />
@@ -87,7 +88,7 @@ export default function ProviderUpgradeCard({ variant = "sidebar" }) {
   return (
     <aside
       className={`overflow-hidden rounded-[1.75rem] bg-[#171717] shadow-[0_24px_60px_rgba(23,23,23,0.22)] ${
-        wide ? "sm:grid sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]" : ""
+        wide ? "sm:grid sm:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]" : ""
       }`}
     >
       <div className={`relative overflow-hidden bg-white/[0.04] px-3 py-3 ${wide ? "h-48 sm:h-auto" : "h-44"}`}>
