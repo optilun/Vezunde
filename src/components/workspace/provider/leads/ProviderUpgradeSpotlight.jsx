@@ -33,7 +33,7 @@ export default function ProviderUpgradeSpotlight() {
           type="button"
           onClick={closeUpgradeSpotlight}
           aria-label="Închide"
-          className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/70 outline-none transition-colors hover:bg-white/20 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60"
+          className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/30 outline-none transition-colors hover:bg-white/25 focus-visible:ring-2 focus-visible:ring-white/70"
         >
           <X className="h-4 w-4" />
         </button>
