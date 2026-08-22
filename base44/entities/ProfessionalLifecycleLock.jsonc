@@ -1,0 +1,45 @@
+{
+  "name": "ProfessionalLifecycleLock",
+  "type": "object",
+  "description": "Inregistrare interna de blocare atomica pentru operatiile de ciclu de viata ale profilului profesional (creare profil, acceptare invitatie). Folosita doar de functiile backend prin service role.",
+  "properties": {
+    "email": {
+      "type": "string",
+      "description": "Emailul normalizat (lowercase) al utilizatorului pentru care se aplica blocarea. Cheie unica logica per utilizator."
+    },
+    "lock_token": {
+      "type": "string",
+      "description": "Tokenul curent de blocare, gol daca nu exista o blocare activa."
+    },
+    "lock_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Momentul la care a fost acordata blocarea curenta."
+    }
+  },
+  "required": [
+    "email"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
