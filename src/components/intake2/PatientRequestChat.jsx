@@ -7,6 +7,7 @@ import {
   patientControlledChat,
 } from "@/lib/patientRequestPersistenceClient";
 import ChatThread from "@/components/chat/ChatThread";
+import useChatLivePolling from "@/components/chat/useChatLivePolling";
 
 const ELIGIBLE_RESPONSES = new Set(["can_help", "needs_details"]);
 
@@ -24,22 +25,32 @@ export default function PatientRequestChat({ requestId, accessToken, locationId,
     ...values,
   }), [accessToken, locationId, requestId]);
 
-  const load = useCallback(async () => {
+  // silent = reimprospatare de fundal (polling): nu aprinde spinnerul si nu afiseaza erori
+  // tranzitorii, ca sa nu palpaie conversatia la fiecare ciclu.
+  const load = useCallback(async ({ silent = false } = {}) => {
     if (!requestId || !locationId || !ELIGIBLE_RESPONSES.has(responseType)) return;
-    setLoading(true);
-    setError("");
+    if (!silent) {
+      setLoading(true);
+      setError("");
+    }
     try {
       let next = await invoke("status");
       if (Number(next.chat?.unread_count) > 0) next = await invoke("mark_read");
       setData(next);
     } catch (loadError) {
-      setError(loadError?.message || "Conversația nu a putut fi încărcată.");
+      if (!silent) setError(loadError?.message || "Conversația nu a putut fi încărcată.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [invoke, locationId, requestId, responseType]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useChatLivePolling({
+    active: data?.chat?.status === "open",
+    busy: loading || Boolean(action),
+    onPoll: () => load({ silent: true }),
+  });
 
   const open = async () => {
     setAction("open");
@@ -115,6 +126,7 @@ export default function PatientRequestChat({ requestId, accessToken, locationId,
         error={error}
         emptyNote="Conversația este deschisă. Poți trimite primul mesaj."
         canSend={opened && Boolean(data?.chat?.can_send)}
+        lastOwnMessageSeen={Boolean(data?.chat?.last_own_message_seen)}
         footerNote={closed ? "Conversația este închisă. O poți redeschide cât timp locația rămâne eligibilă." : ""}
         onSend={send}
         onClose={close}
