@@ -9,6 +9,7 @@ import { base44 } from "@/api/base44Client";
 import ProviderNotificationCenter from "@/components/notifications/ProviderNotificationCenter";
 import LeadListItem from "./leads/LeadListItem";
 import LeadDetailPanel from "./leads/LeadDetailPanel";
+import ProviderUpgradeCard from "./leads/ProviderUpgradeCard";
 
 const FILTERS = [
   { key: "all", label: "Active", scope: "active", status: "" },
@@ -131,6 +132,8 @@ export default function ProviderLeadInbox({ locationId, location }) {
 
   const locationName = data?.location?.name || location?.public_display_name || location?.name || "Locația selectată";
   const historySelected = filter === "history";
+  // Blocul de upgrade apare numai cat timp locatia nu are inca plan Pro activ.
+  const showUpgradeCard = entitlement?.plan_code !== "pro";
   const selectedLead = leads.find((lead) => lead.id === selectedLeadId) || null;
 
   // Coloana din stanga, in tiparul unei aplicatii de mesagerie (2026-08-22): un panou unic
@@ -268,11 +271,21 @@ export default function ProviderLeadInbox({ locationId, location }) {
             </button>
             {detailColumn}
           </div>
-        ) : listColumn}
+        ) : (
+          <div className="space-y-4">
+            {listColumn}
+            {showUpgradeCard && <ProviderUpgradeCard />}
+          </div>
+        )}
       </div>
 
+      {/* Coloana din stanga tine navigatia listei si, dedesubt, blocul de upgrade cu
+          ilustratie - acelasi tipar ca intr-un layout editorial cu bara laterala. */}
       <div className="hidden gap-5 lg:grid lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
-        <aside className="min-w-0">{listColumn}</aside>
+        <aside className="min-w-0 space-y-4">
+          {listColumn}
+          {showUpgradeCard && <ProviderUpgradeCard />}
+        </aside>
         <main className="min-w-0">{detailColumn}</main>
       </div>
     </section>
