@@ -51,7 +51,13 @@ assert.match(wrapper, /ProviderLeadInboxLegacy/);
 assert.match(wrapper, /providerLeadInboxOps/);
 assert.match(inbox, /providerLeadResponseOps/);
 assert.match(inbox, /ProviderNotificationCenter/);
-assert.match(inbox, /id=\{`provider-lead-\$\{lead\.id\}`\}/);
+// Redesign pe doua coloane (2026-08-18): un click pe notificare nu mai cauta un element DOM
+// prin id (`provider-lead-${lead.id}` a disparut din randare, LeadListItem.jsx nu-l mai
+// seteaza) - in schimb ProviderLeadInboxLegacy.jsx primeste notificarea direct prin
+// onOpenTarget si schimba filtrul + selectia din stare React, mecanism mai robust.
+assert.match(inbox, /onOpenTarget=\{openNotificationTarget\}/);
+assert.match(inbox, /const openNotificationTarget = useCallback/);
+assert.match(inbox, /setSelectedLeadId\(notification\.action_target_id\)/);
 assert.doesNotMatch(policy, /recommendation_score|bucket_rank|paid_visibility|ranking/);
 
 console.log('Provider status center verified.');
