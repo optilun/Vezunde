@@ -20,6 +20,7 @@ export default function ChatThread({
   lockedNote = "",
   footerNote = "",
   canSend = false,
+  lastOwnMessageSeen = false,
   onSend,
   onClose,
   onRefresh,
@@ -29,6 +30,16 @@ export default function ChatThread({
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "nearest" });
   }, [messages.length]);
+
+  // Indicatorul "Vazut" se afiseaza o singura data, sub ultimul mesaj trimis de mine:
+  // ca in aplicatiile de mesagerie, nu are sens repetat pe fiecare bula.
+  let lastOwnIndex = -1;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index]?.sender_type === mineSenderType) {
+      lastOwnIndex = index;
+      break;
+    }
+  }
 
   return (
     <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-secondary/25">
@@ -61,8 +72,13 @@ export default function ChatThread({
         ) : messages.length === 0 ? (
           <p className="py-6 text-center text-xs text-muted-foreground">{emptyNote}</p>
         ) : (
-          messages.map((item) => (
-            <ChatMessageBubble key={item.id} message={item} mine={item.sender_type === mineSenderType} meLabel={meLabel} otherLabel={otherLabel} />
+          messages.map((item, index) => (
+            <React.Fragment key={item.id}>
+              <ChatMessageBubble message={item} mine={item.sender_type === mineSenderType} meLabel={meLabel} otherLabel={otherLabel} />
+              {lastOwnMessageSeen && index === lastOwnIndex && (
+                <p className="pr-1 text-right text-[10px] font-medium text-muted-foreground">Văzut</p>
+              )}
+            </React.Fragment>
           ))
         )}
         <div ref={endRef} />
