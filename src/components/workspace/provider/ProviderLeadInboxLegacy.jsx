@@ -9,7 +9,8 @@ import { base44 } from "@/api/base44Client";
 import ProviderNotificationCenter from "@/components/notifications/ProviderNotificationCenter";
 import LeadListItem from "./leads/LeadListItem";
 import LeadDetailPanel from "./leads/LeadDetailPanel";
-import ProviderUpgradeCard from "./leads/ProviderUpgradeCard";
+import ProviderUpgradeSpotlight from "./leads/ProviderUpgradeSpotlight";
+import { openUpgradeSpotlight, setUpgradeSpotlightAvailable } from "@/lib/providerUpgradeSpotlight";
 
 const FILTERS = [
   { key: "all", label: "Active", scope: "active", status: "" },
@@ -132,8 +133,17 @@ export default function ProviderLeadInbox({ locationId, location }) {
 
   const locationName = data?.location?.name || location?.public_display_name || location?.name || "Locația selectată";
   const historySelected = filter === "history";
-  // Blocul de upgrade apare numai cat timp locatia nu are inca plan Pro activ.
-  const showUpgradeCard = entitlement?.plan_code !== "pro";
+  // Blocul de upgrade apare numai cat timp locatia nu are inca plan Pro activ. Asteptam
+  // raspunsul backendului: altfel, cu planul implicit Free, ar clipi si pentru locatiile Pro.
+  const showUpgradeCard = Boolean(data) && entitlement?.plan_code !== "pro";
+
+  // Se deschide singur la fiecare intrare in modul si la fiecare reincarcare. Cand pleci din
+  // modul il scoatem din bara de sus, ca butonul "Upgrade" sa nu ramana pe alte sectiuni.
+  useEffect(() => {
+    setUpgradeSpotlightAvailable(showUpgradeCard);
+    if (showUpgradeCard) openUpgradeSpotlight();
+    return () => setUpgradeSpotlightAvailable(false);
+  }, [showUpgradeCard]);
   const selectedLead = leads.find((lead) => lead.id === selectedLeadId) || null;
 
   // Coloana din stanga, in tiparul unei aplicatii de mesagerie (2026-08-22): un panou unic
@@ -200,18 +210,10 @@ export default function ProviderLeadInbox({ locationId, location }) {
       responding={respondingId === selectedLead.id}
     />
   ) : (
-    // Cat timp nu e nimic selectat, coloana din dreapta era o cutie goala mare. Acolo intra
-    // acum blocul de upgrade, in format lat - se vede fara sa derulezi, spre deosebire de
-    // pozitia lui de sub lista.
-    <div className="space-y-5">
-      {showUpgradeCard && <ProviderUpgradeCard variant="wide" />}
-      {/* Cand blocul de upgrade este vizibil, nota asta trece pe planul doi: altfel doua
-          titluri mari se bat cap in cap in aceeasi coloana. */}
-      <div className={`flex flex-col justify-center rounded-[1.75rem] border border-[#e3ddd0] bg-[#fdfbf6] ${showUpgradeCard ? "px-8 py-7" : "min-h-72 px-8 py-10"}`}>
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75">Nicio cerere selectată</p>
-        <h2 className={`mt-3 max-w-md font-heading font-extrabold leading-[1.02] tracking-[-0.045em] ${showUpgradeCard ? "text-[1.3rem]" : "text-[2rem]"}`}>Alege o cerere din listă.</h2>
-        <p className={`mt-3 max-w-md leading-relaxed text-muted-foreground ${showUpgradeCard ? "text-sm" : "text-base"}`}>Detaliile clientului, răspunsul locației și conversația apar aici.</p>
-      </div>
+    <div className="flex min-h-72 flex-col justify-center rounded-[1.75rem] border border-[#e3ddd0] bg-[#fdfbf6] px-8 py-10">
+      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75">Nicio cerere selectată</p>
+      <h2 className="mt-3 max-w-md font-heading text-[2rem] font-extrabold leading-[1.02] tracking-[-0.045em]">Alege o cerere din listă.</h2>
+      <p className="mt-3 max-w-md text-base leading-relaxed text-muted-foreground">Detaliile clientului, răspunsul locației și conversația apar aici.</p>
     </div>
   );
 
@@ -279,20 +281,16 @@ export default function ProviderLeadInbox({ locationId, location }) {
             </button>
             {detailColumn}
           </div>
-        ) : (
-          <div className="space-y-4">
-            {listColumn}
-            {showUpgradeCard && <ProviderUpgradeCard />}
-          </div>
-        )}
+        ) : listColumn}
       </div>
 
-      {/* Pe desktop lista ramane in stanga, iar blocul de upgrade traieste in coloana din
-          dreapta (vezi detailColumn), unde se vede imediat. */}
       <div className="hidden gap-5 lg:grid lg:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
         <aside className="min-w-0">{listColumn}</aside>
         <main className="min-w-0">{detailColumn}</main>
       </div>
+
+      {/* Blocul de upgrade sta peste continut, nu in coloane: acolo se pierdea. */}
+      <ProviderUpgradeSpotlight />
     </section>
   );
 }
