@@ -102,6 +102,41 @@ function SectionLoading() {
   );
 }
 
+// Integritate date (2026-08-22): cele trei ecrane (probleme de date, organizatii
+// fragmentate, reparatii controlate) erau stivuite pe aceeasi pagina - impreuna,
+// insumau mii de randuri randate si deveneau greu de navigat. Le separam pe
+// sub-taburi, dupa functie, fara sa schimbam nimic din logica lor interna.
+const DATA_INTEGRITY_SUBTABS = [
+  { key: "probleme", label: "Probleme de date" },
+  { key: "organizatii_fragmentate", label: "Organizatii fragmentate" },
+  { key: "reparatii", label: "Reparatii controlate" },
+];
+
+function DataIntegrityWorkspace() {
+  const [subTab, setSubTab] = useState("probleme");
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2 border-b border-border pb-4">
+        {DATA_INTEGRITY_SUBTABS.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => setSubTab(item.key)}
+            className={`rounded-full px-4 py-2 text-xs font-semibold transition-colors ${subTab === item.key ? "bg-foreground text-background" : "border border-border hover:bg-secondary"}`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <div className="mt-5 space-y-5">
+        {subTab === "probleme" && <AdminDataIntegrity />}
+        {subTab === "organizatii_fragmentate" && <AdminFragmentedOrganizations />}
+        {subTab === "reparatii" && <AdminDataRepairs />}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDirectoryOps() {
   const [tab, setTab] = useState("dashboard");
   const { logout, user } = useAuth();
@@ -174,13 +209,7 @@ export default function AdminDirectoryOps() {
               {tab === "revendicari" && <DirOpsClaims />}
               {tab === "geografie" && <GeoImport />}
               {tab === "audit" && <DirOpsAudit />}
-              {tab === "data_integrity" && (
-                <div className="space-y-5">
-                  <AdminDataIntegrity />
-                  <AdminFragmentedOrganizations />
-                  <AdminDataRepairs />
-                </div>
-              )}
+              {tab === "data_integrity" && <DataIntegrityWorkspace />}
               {tab === "contract_geo" && <GeoContractChecks />}
             </div>
           </div>
