@@ -133,24 +133,36 @@ export default function ProviderLeadInbox({ locationId, location }) {
   const historySelected = filter === "history";
   const selectedLead = leads.find((lead) => lead.id === selectedLeadId) || null;
 
+  // Coloana din stanga, in tiparul unei aplicatii de mesagerie (2026-08-22): un panou unic
+  // cu filtrele sus, ca bara de segmente, si conversatiile dedesubt, despartite prin linii
+  // subtiri - nu carduri separate, plutind fiecare pe fundal.
   const listColumn = (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
+    <div className="overflow-hidden rounded-[1.4rem] border border-[#e3ddd0] bg-[#fdfbf6]">
+      <div className="flex gap-1.5 overflow-x-auto border-b border-[#e3ddd0] px-2.5 py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {FILTERS.map((item) => (
-          <button key={item.key} type="button" onClick={() => setFilter(item.key)} className={`rounded-full px-3.5 py-1.5 font-heading text-[12px] font-bold tracking-[-0.015em] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-[#F8F4EC] ${filter === item.key ? "bg-[#171717] text-white" : "border border-foreground/15 bg-white/70 text-foreground hover:border-foreground/40"}`}>{item.label}</button>
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => setFilter(item.key)}
+            className={`shrink-0 rounded-full px-3 py-1.5 font-heading text-[11.5px] font-bold tracking-[-0.015em] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-[#fdfbf6] ${filter === item.key ? "bg-[#171717] text-white" : "text-muted-foreground hover:bg-foreground/[0.05] hover:text-foreground"}`}
+          >
+            {item.label}
+          </button>
         ))}
       </div>
 
       {loading ? (
-        <div className="flex min-h-40 items-center justify-center rounded-[1.4rem] border border-[#e3ddd0] bg-[#fdfbf6] font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă cererile</div>
+        <div className="flex min-h-40 items-center justify-center font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se încarcă cererile</div>
       ) : leads.length === 0 ? (
-        <div className="rounded-[1.4rem] border border-[#e3ddd0] bg-[#fdfbf6] p-6">
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75">Nicio cerere</p>
-          <h2 className="mt-2 font-heading text-xl font-extrabold leading-[1.08] tracking-[-0.035em]">{historySelected ? "Nu există cereri încheiate" : "Nu există cereri în această categorie"}</h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{historySelected ? "Cererile rezolvate, închise sau expirate apar aici." : "Cererile eligibile apar aici după acordul clientului."}</p>
+        <div className="px-6 py-12 text-center">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-[#e3ddd0] bg-white/70">
+            <Inbox aria-hidden="true" className="h-5 w-5 text-muted-foreground" />
+          </span>
+          <h2 className="mt-4 font-heading text-[15px] font-extrabold leading-snug tracking-[-0.025em]">{historySelected ? "Nu există cereri încheiate" : "Nicio conversație aici"}</h2>
+          <p className="mx-auto mt-2 max-w-xs text-[12.5px] leading-relaxed text-muted-foreground">{historySelected ? "Cererile rezolvate, închise sau expirate apar aici." : "Cererile eligibile apar aici după acordul clientului."}</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="divide-y divide-[#e3ddd0] p-1.5">
           {leads.map((lead) => (
             <LeadListItem
               key={lead.id}
@@ -197,11 +209,13 @@ export default function ProviderLeadInbox({ locationId, location }) {
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75 sm:text-[11px]">
               Cereri primite · {locationName}
             </p>
-            <h1 className="mt-4 max-w-3xl font-heading text-[2.6rem] font-extrabold leading-[0.98] tracking-[-0.055em] sm:text-[3.4rem]">
-              <span className="block">Cererile clienților tăi.</span>
-              <span className="block">Într-un singur loc.</span>
+            {/* Antet compact (2026-08-22): titlul editorial ocupa mai putin pe verticala,
+                ca lista de conversatii sa fie ce vezi primul, ca intr-o aplicatie de
+                mesagerie. Registrul tipografic ramane cel din design system. */}
+            <h1 className="mt-3 max-w-3xl font-heading text-[1.75rem] font-extrabold leading-[1.02] tracking-[-0.045em] sm:text-[2.1rem]">
+              Cererile clienților tăi.
             </h1>
-            <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+            <p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-muted-foreground">
               Cererile active și cele încheiate sunt păstrate separat.
             </p>
           </div>
@@ -212,22 +226,21 @@ export default function ProviderLeadInbox({ locationId, location }) {
           </div>
         </div>
 
-        <div className="relative mt-9 h-px bg-[#9a8668]/45">
-          {[16, 50, 84].map((position) => (
-            <span key={position} aria-hidden="true" className="absolute -top-1 h-[9px] w-[9px] -translate-x-1/2 rounded-full border border-[#8d7658] bg-[#f8f4ec]" style={{ left: `${position}%` }} />
-          ))}
-        </div>
-
-        <div className="mt-7 grid gap-3 sm:grid-cols-3">
+        {/* Contoarele, stranse intr-o singura banda in loc de trei placi mari: aceleasi
+            valori, venite neschimbat din providerLeadInboxOps, dar fara sa impinga lista
+            de conversatii sub linia de plutire. */}
+        <div className="mt-5 grid grid-cols-3 divide-x divide-[#e3ddd0] overflow-hidden rounded-[1.2rem] border border-[#e3ddd0] bg-[#fdfbf6]">
           {[
-            { value: data?.counters?.new || 0, label: "Cereri noi", border: "#ccd2ba", bg: "#dfe3d2" },
-            { value: data?.counters?.active || 0, label: "În lucru", border: "#c6d3da", bg: "#dce5e9" },
-            { value: data?.counters?.history || 0, label: "În istoric", border: "#dac69b", bg: "#eadcba" },
+            { value: data?.counters?.new || 0, label: "Noi", dot: "#8d9c6f" },
+            { value: data?.counters?.active || 0, label: "În lucru", dot: "#7e9aa8" },
+            { value: data?.counters?.history || 0, label: "Istoric", dot: "#bda06a" },
           ].map((item) => (
-            <div key={item.label} style={{ borderColor: item.border, backgroundColor: item.bg }} className="relative overflow-hidden rounded-[1.4rem] border px-5 py-4 shadow-[0_10px_30px_rgba(34,30,24,0.028)]">
-              <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={{ backgroundImage: "url('/images/home/viasee-technical-grain.svg')", backgroundSize: "180px 180px" }} />
-              <p className="relative z-10 font-heading text-[2.4rem] font-extrabold leading-none tracking-[-0.05em] text-[#1c1c1c]">{item.value}</p>
-              <p className="relative z-10 mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-black/55">{item.label}</p>
+            <div key={item.label} className="px-4 py-3">
+              <p className="font-heading text-[1.5rem] font-extrabold leading-none tracking-[-0.04em] text-[#1c1c1c]">{item.value}</p>
+              <p className="mt-1.5 inline-flex items-center gap-1.5 font-mono text-[9.5px] uppercase tracking-[0.16em] text-black/55">
+                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: item.dot }} />
+                {item.label}
+              </p>
             </div>
           ))}
         </div>
