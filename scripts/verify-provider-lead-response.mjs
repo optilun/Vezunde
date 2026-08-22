@@ -85,6 +85,9 @@ const component = await readFile(new URL('../src/components/workspace/provider/P
 const detailPanel = await readFile(new URL('../src/components/workspace/provider/leads/LeadDetailPanel.jsx', import.meta.url), 'utf8');
 const fullDetails = await readFile(new URL('../src/components/workspace/provider/leads/LeadFullDetails.jsx', import.meta.url), 'utf8');
 const chatComponent = await readFile(new URL('../src/components/workspace/provider/ProviderLeadChat.jsx', import.meta.url), 'utf8');
+// Chat unificat cu partea pacientului: ProviderLeadChat.jsx randeaza <ChatThread>, iar
+// campul de scris (<textarea>) traieste acum in ChatComposer.jsx, comun ambelor parti.
+const chatComposer = await readFile(new URL('../src/components/chat/ChatComposer.jsx', import.meta.url), 'utf8');
 assert.match(backend, /base44\.auth\.me\(\)/);
 assert.match(backend, /ProviderMembership\.filter/);
 assert.match(backend, /ProviderSubscription\.filter/);
@@ -114,7 +117,7 @@ assert.doesNotMatch(detailPanel, /<textarea|contentEditable/);
 assert.doesNotMatch(detailPanel, /contact_phone\s*:|original_message|PatientRequestContact/);
 
 assert.match(fullDetails, /Detalii Pro · Top 3/);
-assert.match(chatComponent, /<textarea/);
+assert.match(chatComposer, /<textarea/);
 assert.match(chatComponent, /Locația nu poate iniția chatul unilateral/);
 assert.match(chatComponent, /controlledChatOps/);
 
