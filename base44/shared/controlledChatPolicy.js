@@ -71,7 +71,11 @@ export function controlledChatEligibility({ request, lead, response, entitlement
   return { eligible: reasons.length === 0, reasons };
 }
 
-export function sanitizeControlledChatConversation(conversation, { canOpen = false, canSend = false, unreadCount = 0 } = {}) {
+// lastOwnMessageSeen: indicatorul "Vazut" pentru ultimul mesaj trimis de cel care priveste.
+// Expunem intentionat DOAR un boolean derivat, calculat pe server, nu momentul in care
+// celalalt a citit: destinatarul afla ca mesajul lui a ajuns sub ochii partenerului, fara sa
+// primeasca un istoric al activitatii acestuia.
+export function sanitizeControlledChatConversation(conversation, { canOpen = false, canSend = false, unreadCount = 0, lastOwnMessageSeen = false } = {}) {
   return {
     id: String(conversation?.id || '').slice(0, 120),
     status: conversation?.status === 'open' ? 'open' : (conversation?.status === 'closed' ? 'closed' : 'not_opened'),
@@ -81,6 +85,7 @@ export function sanitizeControlledChatConversation(conversation, { canOpen = fal
     closed_at: conversation?.closed_at || null,
     last_message_at: conversation?.last_message_at || null,
     unread_count: Math.max(0, Number(unreadCount) || 0),
+    last_own_message_seen: lastOwnMessageSeen === true,
     contact_fields_blocked: true,
   };
 }
