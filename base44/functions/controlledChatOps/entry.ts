@@ -16,6 +16,11 @@ import {
   releaseControlledChatMessageLock,
   releaseControlledChatOpenLock,
 } from '../../shared/controlledChatLock.js';
+import {
+  notifyPatientRequestInApp,
+  notifyProviderUsersInApp,
+} from '../../shared/inAppNotificationDelivery.js';
+import { IN_APP_NOTIFICATION_EVENT_KEYS } from '../../shared/inAppNotificationPolicy.js';
 
 const ACTORS = new Set(['patient', 'provider']);
 const ACTIONS = new Set(['status', 'open', 'send', 'mark_read', 'close']);
@@ -202,6 +207,130 @@ async function buildStatusPayload(svc, context) {
     eligibility_reasons: baseEligibility.reasons,
     provider_plan: context.entitlement?.plan_code || 'free',
   };
+}
+
+function locationLabel(location) {
+  return location?.public_display_name || location?.name || 'Locatie';
+}
+
+// Notificarile in-app pentru chat se creau pana acum DOAR lene, la urmatoarea citire a listei
+// de notificari (ensureProviderInAppNotifications / ensurePatientInAppNotifications). Efectul
+// practic: destinatarul afla de un mesaj nou abia cand deschidea clopotelul, deci conversatia
+// parea moarta chiar daca celalalt raspunsese deja.
+//
+// Le cream acum si in momentul evenimentului, cu EXACT aceleasi chei de idempotenta ca
+// proiectia lenesa (acelasi eventKey, recipientType, recipientRefId, sourceEntityId si
+// variant), astfel incat proiectia ulterioara sa gaseasca notificarea deja existenta si sa
+// fie un no-op. Nu se schimba nici cine primeste notificarea, nici ce contine - doar cand
+// apare.
+//
+// Orice esec de aici este inghitit intentionat: o notificare ratata nu trebuie sa strice
+// trimiterea mesajului, iar proiectia lenesa ramane plasa de siguranta care o va crea oricum
+// la urmatoarea citire.
+async function notifyChatEvent(svc, context, event) {
+  try {
+    if (event.kind === 'message') {
+      const message = event.message;
+      if (!message?.id) return;
+      const variant = clean(message.sent_at || message.created_date, 80);
+      if (context.actor === 'patient') {
+        await notifyProviderUsersInApp({
+          svc,
+          locationId: context.location.id,
+          eventKey: IN_APP_NOTIFICATION_EVENT_KEYS.PROVIDER_CHAT_MESSAGE_RECEIVED,
+          sourceEntityType: 'PatientRequestMessage',
+          sourceEntityId: message.id,
+          requestId: message.request_id || '',
+          leadId: message.lead_id || '',
+          organizationId: message.organization_id || '',
+          title: 'Mesaj nou de la client',
+          body: 'Ai primit un mesaj nou in chatul VIASEE.',
+          actionKind: 'chat',
+          actionTargetId: message.lead_id || '',
+          variant,
+        });
+        return;
+      }
+      await notifyPatientRequestInApp({
+        svc,
+        requestId: message.request_id || context.request?.id || '',
+        eventKey: IN_APP_NOTIFICATION_EVENT_KEYS.PATIENT_CHAT_MESSAGE_RECEIVED,
+        sourceEntityType: 'PatientRequestMessage',
+        sourceEntityId: message.id,
+        leadId: message.lead_id || '',
+        organizationId: message.organization_id || '',
+        locationId: message.location_id || '',
+        title: `Mesaj nou de la ${locationLabel(context.location)}`,
+        body: 'Ai primit un mesaj nou in chatul VIASEE.',
+        actionKind: 'chat',
+        actionTargetId: message.location_id || '',
+        variant,
+      });
+      return;
+    }
+
+    const conversation = event.conversation;
+    if (!conversation?.id) return;
+
+    if (event.kind === 'opened') {
+      // Conversatia poate fi deschisa numai de pacient, deci destinatarul e mereu locatia.
+      await notifyProviderUsersInApp({
+        svc,
+        locationId: context.location.id,
+        eventKey: IN_APP_NOTIFICATION_EVENT_KEYS.PROVIDER_CHAT_OPENED,
+        sourceEntityType: 'PatientRequestConversation',
+        sourceEntityId: conversation.id,
+        requestId: conversation.request_id || '',
+        leadId: conversation.lead_id || '',
+        organizationId: conversation.organization_id || '',
+        title: 'Clientul a deschis conversatia',
+        body: 'Poti raspunde in chatul VIASEE din leadul asociat.',
+        actionKind: 'chat',
+        actionTargetId: conversation.lead_id || '',
+        variant: clean(conversation.reopened_at || conversation.opened_at, 80),
+      });
+      return;
+    }
+
+    if (event.kind === 'closed') {
+      const variant = clean(conversation.closed_at, 80);
+      if (conversation.closed_by === 'patient') {
+        await notifyProviderUsersInApp({
+          svc,
+          locationId: context.location.id,
+          eventKey: IN_APP_NOTIFICATION_EVENT_KEYS.PROVIDER_CONVERSATION_CLOSED,
+          sourceEntityType: 'PatientRequestConversation',
+          sourceEntityId: conversation.id,
+          requestId: conversation.request_id || '',
+          leadId: conversation.lead_id || '',
+          organizationId: conversation.organization_id || '',
+          title: 'Clientul a inchis conversatia',
+          body: 'Istoricul ramane disponibil conform regulilor planului.',
+          actionKind: 'chat',
+          actionTargetId: conversation.lead_id || '',
+          variant,
+        });
+        return;
+      }
+      await notifyPatientRequestInApp({
+        svc,
+        requestId: conversation.request_id || context.request?.id || '',
+        eventKey: IN_APP_NOTIFICATION_EVENT_KEYS.PATIENT_CONVERSATION_CLOSED,
+        sourceEntityType: 'PatientRequestConversation',
+        sourceEntityId: conversation.id,
+        leadId: conversation.lead_id || '',
+        organizationId: conversation.organization_id || '',
+        locationId: conversation.location_id || '',
+        title: `Conversatie inchisa de ${locationLabel(context.location)}`,
+        body: 'Istoricul conversatiei ramane vizibil in cererea ta.',
+        actionKind: 'chat',
+        actionTargetId: conversation.location_id || '',
+        variant,
+      });
+    }
+  } catch (_error) {
+    // Proiectia lenesa ramane plasa de siguranta pentru notificarea ratata aici.
+  }
 }
 
 async function openConversation(svc, context) {
@@ -440,6 +569,9 @@ Deno.serve(async (req) => {
       const opened = await openConversation(svc, context);
       if (opened.error) return res({ error: opened.error, reasons: opened.reasons || [] }, opened.status);
       context = opened.context;
+      if (!opened.idempotent_replay) {
+        await notifyChatEvent(svc, context, { kind: 'opened', conversation: opened.conversation });
+      }
       return res({ ...(await buildStatusPayload(svc, context)), idempotent_replay: opened.idempotent_replay });
     }
 
@@ -447,6 +579,9 @@ Deno.serve(async (req) => {
       const sent = await sendMessage(base44, svc, context, input);
       if (sent.error) return res({ error: sent.error, reasons: sent.reasons || [] }, sent.status);
       context = { ...context, conversation: sent.conversation };
+      if (!sent.idempotent_replay) {
+        await notifyChatEvent(svc, context, { kind: 'message', message: sent.message });
+      }
       return res({
         ...(await buildStatusPayload(svc, context)),
         sent_message: sanitizeControlledChatMessage(sent.message),
@@ -463,6 +598,9 @@ Deno.serve(async (req) => {
     const closed = await closeConversation(svc, context);
     if (closed.error) return res({ error: closed.error }, closed.status);
     context = { ...context, conversation: closed.conversation };
+    if (!closed.idempotent_replay) {
+      await notifyChatEvent(svc, context, { kind: 'closed', conversation: closed.conversation });
+    }
     return res({ ...(await buildStatusPayload(svc, context)), idempotent_replay: closed.idempotent_replay });
   } catch (_error) {
     return res({ error: 'Conversatia nu a putut fi procesata.' }, 500);
