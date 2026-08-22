@@ -6,6 +6,7 @@ import {
   CONTROLLED_CHAT_MESSAGE_CONTRACT_VERSION,
   controlledChatEligibility,
   controlledChatRateLimitState,
+  sanitizeControlledChatConversation,
   sanitizeControlledChatMessage,
   validateControlledChatMessage,
 } from '../shared/controlledChatPolicy.js';
@@ -127,5 +128,56 @@ assert.match(providerInbox, /<ProviderLeadChat/);
 for (const source of [patientPanel, providerPanel]) {
   assert.doesNotMatch(source, /base44\.entities\.PatientRequestMessage|base44\.entities\.PatientRequestConversation/);
 }
+
+// --- Indicatorul "Vazut" -----------------------------------------------------------------
+// Se expune DOAR un boolean derivat pe server. Momentul in care celalalt a citit nu trebuie
+// sa ajunga niciodata la client: ar oferi un istoric al activitatii partenerului.
+const conversationRow = {
+  id: 'conversation-1',
+  status: 'open',
+  patient_last_read_at: '2026-07-20T10:05:00.000Z',
+  provider_last_read_at: '2026-07-20T10:06:00.000Z',
+  patient_unread_count: 3,
+  provider_unread_count: 4,
+};
+const safeConversation = sanitizeControlledChatConversation(conversationRow, { lastOwnMessageSeen: true });
+assert.equal(safeConversation.last_own_message_seen, true);
+assert.equal(sanitizeControlledChatConversation(conversationRow).last_own_message_seen, false);
+assert.equal(sanitizeControlledChatConversation(conversationRow, { lastOwnMessageSeen: 'da' }).last_own_message_seen, false);
+for (const field of ['patient_last_read_at', 'provider_last_read_at', 'patient_unread_count', 'provider_unread_count']) {
+  assert.equal(safeConversation[field], undefined, `${field} nu trebuie expus catre client`);
+}
+
+// --- Notificari in-app create imediat, nu doar prin proiectia lenesa ----------------------
+assert.match(backend, /notifyChatEvent/);
+assert.match(backend, /notifyProviderUsersInApp/);
+assert.match(backend, /notifyPatientRequestInApp/);
+assert.match(backend, /PROVIDER_CHAT_MESSAGE_RECEIVED/);
+assert.match(backend, /PATIENT_CHAT_MESSAGE_RECEIVED/);
+assert.match(backend, /PROVIDER_CHAT_OPENED/);
+// Notificarea se emite numai pentru mutatii reale: un replay idempotent nu trebuie sa
+// genereze o a doua notificare.
+assert.match(backend, /if \(!sent\.idempotent_replay\)/);
+assert.match(backend, /if \(!opened\.idempotent_replay\)/);
+assert.match(backend, /if \(!closed\.idempotent_replay\)/);
+// Regula "doar pacientul deschide conversatia" ramane neatinsa de aceste adaugiri.
+assert.match(backend, /Conversatia poate fi deschisa numai de client/);
+
+// --- Actualizare aproape live -------------------------------------------------------------
+const pollingHook = await readFile(new URL('../src/components/chat/useChatLivePolling.js', import.meta.url), 'utf8');
+const pollInterval = Number(pollingHook.match(/CHAT_POLL_INTERVAL_MS = (\d+)/)?.[1]);
+assert.ok(Number.isFinite(pollInterval) && pollInterval >= 5000, 'intervalul de polling nu trebuie sa scada sub 5s');
+// Polling-ul se opreste cand fila nu e vizibila si nu se suprapune peste o actiune in curs.
+assert.match(pollingHook, /visibilityState/);
+assert.match(pollingHook, /busyRef\.current \|\| inFlightRef\.current/);
+assert.match(pollingHook, /clearInterval/);
+for (const source of [patientPanel, providerPanel]) {
+  assert.match(source, /useChatLivePolling/);
+  assert.match(source, /silent: true/);
+  // Polling-ul porneste numai pe conversatii deschise.
+  assert.match(source, /status === "open"/);
+}
+// Istoricul (cererile incheiate) nu se reimprospateaza in fundal.
+assert.match(providerPanel, /active: !terminal && conversationOpen/);
 
 console.log('Controlled Pro chat checks passed.');
