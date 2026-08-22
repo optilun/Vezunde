@@ -56,6 +56,36 @@ const STATIC_META = {
       "Adaugă sau revendică profilul tău profesional ori profilul unei locații pe VIASEE.",
     noindex: true,
   },
+  "/cauta": {
+    title: "Caută furnizori | VIASEE",
+    description: DEFAULT_DESCRIPTION,
+  },
+  "/cerere": {
+    title: "Cererea ta | VIASEE",
+    description: DEFAULT_DESCRIPTION,
+  },
+  "/rezultate": {
+    title: "Rezultatele cererii tale | VIASEE",
+    description: DEFAULT_DESCRIPTION,
+    noindex: true,
+  },
+  "/login": { title: "Autentificare | VIASEE" },
+  "/register": { title: "Creează cont | VIASEE" },
+  "/forgot-password": { title: "Recuperare parolă | VIASEE" },
+  "/reset-password": { title: "Resetare parolă | VIASEE" },
+  "/accept-professional-invitation": {
+    title: "Acceptă invitația profesională | VIASEE",
+  },
+  "/accept-provider-invitation": {
+    title: "Acceptă invitația de furnizor | VIASEE",
+  },
+  "/profil-profesional/nou": {
+    title: "Creează profilul profesional | VIASEE",
+  },
+  "/contul-meu": { title: "Contul meu | VIASEE" },
+  "/dupa-login": { title: "Se încarcă contul | VIASEE" },
+  "/ajutor-si-suport": { title: "Ajutor și suport | VIASEE" },
+  "/admin/operatiuni": { title: "Administrare VIASEE" },
 };
 
 const NOINDEX_PREFIXES = [
@@ -122,6 +152,13 @@ async function getMetadata(pathname) {
   if (pathname.startsWith("/specialist/")) {
     return {
       title: "Profil specialist | VIASEE",
+      description: DEFAULT_DESCRIPTION,
+    };
+  }
+
+  if (pathname.startsWith("/organizatie/")) {
+    return {
+      title: "Profil organizație | VIASEE",
       description: DEFAULT_DESCRIPTION,
     };
   }
