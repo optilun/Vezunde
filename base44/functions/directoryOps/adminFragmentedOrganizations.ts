@@ -154,6 +154,24 @@ export async function handle(req: Request) {
       if (!source) return Response.json({ error: 'Organizatia sursa nu exista.' }, { status: 404 });
       if (!target) return Response.json({ error: 'Organizatia tinta nu exista.' }, { status: 404 });
 
+      // FIX (2026-08-22): fara asta, un clic pe o pereche deja fuzionata (posibil
+      // pentru ca scanarea nu excludea organizatiile inactive - vezi fix-ul de mai
+      // jos) putea muta locatiile INAPOI si dezactiva organizatia care tocmai
+      // fusese pastrata activa - de doua ori la rand, ambele organizatii ramaneau
+      // inactive, cu locatiile agatate de un profil mort (cazurile Sf. Pantelimon
+      // si Kolumban Optika, 2026-08-22). Acum fuziunea refuza sa porneasca daca
+      // oricare parte e deja inactiva.
+      if (clean(source.status) === 'inactiva') {
+        return Response.json({
+          error: `„${source.name}” este deja dezactivata (fuzionata anterior). Aceasta fuziune nu se poate repeta.`,
+        }, { status: 400 });
+      }
+      if (clean(target.status) === 'inactiva') {
+        return Response.json({
+          error: `„${target.name}” este inactiva. Nu poti fuziona o alta organizatie intr-o organizatie inactiva.`,
+        }, { status: 400 });
+      }
+
       // FIX (2026-08-22): citirea locatiilor sursa NU mai este inghitita silentios.
       // Bug real prins in productie - daca acest fetch esua (eroare tranzitorie),
       // .catch(() => []) transforma esecul intr-o lista goala, codul credea ca
@@ -273,7 +291,13 @@ export async function handle(req: Request) {
     // ------------------------------------------------------------------
     // IMPLICIT: scanare. Nu modifica nimic.
     // ------------------------------------------------------------------
-    const organizations = await svc.entities.ProviderOrganization.list(null, 1000).catch(() => []);
+    // FIX (2026-08-22): scanarea nu excludea organizatiile deja dezactivate
+    // (fuzionate anterior) - o pereche deja rezolvata reaparea la fiecare
+    // rescanare, cu butoanele de fuziune tot active, invitand un nou clic care
+    // putea inversa fuziunea anterioara. Organizatiile inactive nu mai sunt
+    // candidate - o data fuzionata, o pereche nu mai revine in lista.
+    const organizations = (await svc.entities.ProviderOrganization.list(null, 1000).catch(() => []))
+      .filter((organization) => clean(organization.status) !== 'inactiva');
 
     const pairs = [];
     for (let i = 0; i < organizations.length; i += 1) {
