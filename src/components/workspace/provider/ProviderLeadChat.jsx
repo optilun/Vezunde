@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import ChatThread from "@/components/chat/ChatThread";
+import useChatLivePolling from "@/components/chat/useChatLivePolling";
 
 const ELIGIBLE_RESPONSES = new Set(["can_help", "needs_details"]);
 
@@ -34,22 +35,33 @@ export default function ProviderLeadChat({ leadId, locationId, enabled, response
     return responseData(response);
   }, [leadId, locationId]);
 
-  const load = useCallback(async () => {
+  // silent = reimprospatare de fundal (polling): nu aprinde spinnerul si nu afiseaza erori
+  // tranzitorii, ca sa nu palpaie conversatia la fiecare ciclu.
+  const load = useCallback(async ({ silent = false } = {}) => {
     if (!enabled || !ELIGIBLE_RESPONSES.has(responseType)) return;
-    setLoading(true);
-    setError("");
+    if (!silent) {
+      setLoading(true);
+      setError("");
+    }
     try {
       let next = await invoke("status");
       if (!terminal && Number(next.chat?.unread_count) > 0) next = await invoke("mark_read");
       setData(next);
     } catch (loadError) {
-      setError(loadError?.message || "Conversația nu a putut fi încărcată.");
+      if (!silent) setError(loadError?.message || "Conversația nu a putut fi încărcată.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [enabled, invoke, responseType, terminal]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const conversationOpen = data?.chat?.status === "open";
+  useChatLivePolling({
+    active: !terminal && conversationOpen,
+    busy: loading || Boolean(action),
+    onPoll: () => load({ silent: true }),
+  });
 
   const send = async (message) => {
     if (terminal) return false;
@@ -81,7 +93,7 @@ export default function ProviderLeadChat({ leadId, locationId, enabled, response
 
   if (!enabled || !ELIGIBLE_RESPONSES.has(responseType)) return null;
 
-  const opened = data?.chat?.status === "open";
+  const opened = conversationOpen;
   const closed = data?.chat?.status === "closed";
   const notOpened = !opened && !closed;
 
@@ -105,6 +117,7 @@ export default function ProviderLeadChat({ leadId, locationId, enabled, response
             : "Clientul nu a deschis încă această conversație. Locația nu poate iniția chatul unilateral.")
           : ""}
         canSend={!terminal && opened && Boolean(data?.chat?.can_send)}
+        lastOwnMessageSeen={Boolean(data?.chat?.last_own_message_seen)}
         footerNote={terminal
           ? "Cererea este încheiată. Istoricul rămâne numai pentru consultare."
           : closed
