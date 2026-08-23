@@ -39,6 +39,9 @@
     "payload_json": {
       "type": "string"
     },
+    "submitted_payload_json": {
+      "type": "string"
+    },
     "status": {
       "type": "string",
       "enum": [
