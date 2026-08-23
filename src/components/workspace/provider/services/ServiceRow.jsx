@@ -27,7 +27,7 @@ export default function ServiceRow({ item, selected, approvedSelected, prerequis
   return (
     <div
       data-service-filter-visible={filterVisible ? "true" : "false"}
-      className={`services-row relative border-b border-border/50 transition last:border-b-0 ${removalRequested ? "bg-amber-50/60" : "bg-transparent"}`}
+      className={`services-row relative border-b border-border/50 transition last:border-b-0 ${removalRequested ? "bg-[#efd5c5]" : "bg-transparent"}`}
     >
     <button
       type="button"
@@ -35,7 +35,7 @@ export default function ServiceRow({ item, selected, approvedSelected, prerequis
       aria-pressed={active}
       disabled={disabled}
       onClick={() => onToggle(item, unitKey)}
-      className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-55 ${removalRequested ? "hover:bg-amber-50" : active ? "" : "hover:bg-card/60"}`}
+      className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-55 ${removalRequested ? "hover:bg-[#efd5c5]" : active ? "" : "hover:bg-card/60"}`}
     >
       <span className="min-w-0">
         <span className="services-row__title block text-sm font-semibold leading-snug text-foreground">{serviceLabel(item)}</span>
@@ -47,7 +47,7 @@ export default function ServiceRow({ item, selected, approvedSelected, prerequis
       </span>
       {/* Comutator pentru activarea serviciului: decizie de owner (2026-08-06). */}
       <span
-        className={`relative inline-flex h-[24px] w-[42px] shrink-0 items-center rounded-full transition-colors ${removalRequested ? "bg-amber-300" : active ? "bg-foreground" : "bg-border"}`}
+        className={`relative inline-flex h-[24px] w-[42px] shrink-0 items-center rounded-full transition-colors ${removalRequested ? "bg-[#e1bda8]" : active ? "bg-foreground" : "bg-border"}`}
       >
         <span className={`absolute h-[18px] w-[18px] rounded-full bg-background shadow-sm transition-all ${active || removalRequested ? "left-[21px]" : "left-[3px]"}`} />
       </span>

@@ -647,9 +647,9 @@
 }
 
 .services-badge.is-attention {
-  border-color: #f5c9a1;
-  background: #fdf3e9;
-  color: #8a4b12;
+  border-color: #e1bda8;
+  background: #efd5c5;
+  color: #6b3f22;
 }
 
 .services-badge.is-info,

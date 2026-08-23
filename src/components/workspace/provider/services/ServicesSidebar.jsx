@@ -63,7 +63,7 @@ export default function ServicesSidebar({ activeUnits, capabilities, selectedCou
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-xs font-bold">{step.label}</span>
-                <span className={`mt-0.5 block truncate text-[10px] ${!step.done && !step.optional ? "text-amber-700" : "text-muted-foreground"}`}>{step.detail}</span>
+                <span className={`mt-0.5 block truncate text-[10px] ${!step.done && !step.optional ? "text-[#8a5a20]" : "text-muted-foreground"}`}>{step.detail}</span>
               </span>
             </li>
           ))}

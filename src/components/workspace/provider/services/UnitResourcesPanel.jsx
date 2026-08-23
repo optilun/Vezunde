@@ -23,8 +23,8 @@ function ResourceGroup({ title, emptyText, items, unitKey, type, disabled, links
             : type === "equipment" ? item.equipment_label
               : item.facility_key;
           return (
-            <button key={id} type="button" disabled={disabled} onClick={() => onToggle(type, id, unitKey)} className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs disabled:opacity-60 ${removalRequested ? "bg-amber-50 hover:bg-amber-50" : "hover:bg-secondary/40"}`}>
-              <span className={`flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded border ${removalRequested ? "border-amber-300 bg-amber-100 text-amber-900" : assigned ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`}>{removalRequested ? <X className="h-3 w-3" /> : assigned && <Check className="h-3 w-3" />}</span>
+            <button key={id} type="button" disabled={disabled} onClick={() => onToggle(type, id, unitKey)} className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs disabled:opacity-60 ${removalRequested ? "bg-[#efd5c5] hover:bg-[#efd5c5]" : "hover:bg-secondary/40"}`}>
+              <span className={`flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded border ${removalRequested ? "border-[#e1bda8] bg-[#efd5c5] text-black/70" : assigned ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`}>{removalRequested ? <X className="h-3 w-3" /> : assigned && <Check className="h-3 w-3" />}</span>
               <span className="min-w-0 flex-1 truncate">{label}</span>
               <ChangeBadge draftAddition={draftAddition} removalRequested={removalRequested} />
               {item.verification_status && !removalRequested && !draftAddition && <span className="text-[10px] text-muted-foreground">{item.verification_status}</span>}

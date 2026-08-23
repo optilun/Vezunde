@@ -11,7 +11,7 @@ export default function CareSettingPicker({ options, approvedValue, value, disab
   return (
     <section {...dataAttrs} className="services-care-setting rounded-2xl border border-border bg-card p-4 shadow-sm">
       {value !== approvedValue && <div className="mb-2 flex"><ChangeBadge modified /></div>}
-      {!hasVisibleSelection && <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">Alege o opțiune pentru a continua.</div>}
+      {!hasVisibleSelection && <div className="mb-3 rounded-2xl border border-[#e1bda8] bg-[#efd5c5] px-3 py-2.5 text-xs text-black/70">Alege o opțiune pentru a continua.</div>}
       {/* Titlu + descriere in stanga, select in dreapta, PE ACELASI RAND (2026-08-18) -
           inainte erau doua randuri stivuite (titlu deasupra, select dedesubt, impins la
           justify-end), ceea ce lasa un gol vizual intre text si control. Acum e un
