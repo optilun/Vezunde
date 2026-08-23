@@ -139,7 +139,6 @@
    ========================================================================== */
 
 .provider-services-three {
-  --services-accent-soft: #f3f1eb;
   --services-canvas: #f8f4ec;
   --services-preview: #f8f4ec;
   --services-soft: #f7f4ed;
@@ -444,10 +443,15 @@
    ========================================================================== */
 
 .provider-services-three {
-  /* Accentul devine cerneala neutra: albastrul concura cu verdele de stare. */
-  --services-accent: #171717;
-  --services-accent-strong: #171717;
-  --services-accent-soft: #f3f1eb;
+  /* 2026-08-23: accentul revine la albastrul VIASEE. Neutralizarea din august
+     izola modulul de restul aplicatiei - Locatii, Profil public si spatiul
+     furnizor folosesc acelasi #345bc8 - si lasa selectia fara niciun semn de
+     culoare, imposibil de urmarit pe un ecran cu zeci de carduri. Verdele de
+     stare (--chart-2, pastila "Pregatita pentru trimitere") si portocaliul de
+     atentie raman neatinse: albastrul inseamna "ales de tine", nu "gata". */
+  --services-accent: #345bc8;
+  --services-accent-strong: #294a9f;
+  --services-accent-soft: #f4f6fb;
 }
 
 /* Bara de progres a configurarii */
