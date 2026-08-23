@@ -11,6 +11,14 @@
 //     "Descrieri" pornit. Mesajele de stare - eliminare propusa, blocaj de
 //     prerechizita - se arata mereu, indiferent de comutator: acelea nu sunt text de
 //     lectura, sunt avertismente.
+//
+// 2026-08-23 (a doua trecere, tot la cererea lui Alex): pastila CAS s-a mutat DE PE
+// randul de dedesubt PE randul serviciului, in dreapta. A fost posibil abia dupa ce
+// cardul de grup a devenit cu o singura coloana (vezi GroupCard/UnitAccordion,
+// services-group-card__rows): la doua coloane inguste pastila nu avea loc alaturi de
+// eticheta. Randul de aici e acum <div flex> cu doua elemente FRATE - butonul de
+// bifare si (cand e vizibila) pastila CAS - nu buton in buton, ceea ce ar fi HTML
+// invalid si ar sparge click-ul.
 import React from "react";
 import { Check } from "lucide-react";
 import { getServiceDescription } from "../../../../../shared/serviceDescriptions.js";
@@ -42,7 +50,7 @@ export default function ServiceRow({ item, selected, approvedSelected, prerequis
   return (
     <div
       data-service-filter-visible={filterVisible ? "true" : "false"}
-      className={`services-row relative border-b border-border/50 transition last:border-b-0 ${removalRequested ? "bg-[#efd5c5]" : "bg-transparent"}`}
+      className={`services-row relative flex items-center border-b border-border/50 transition last:border-b-0 ${removalRequested ? "bg-[#efd5c5]" : "bg-transparent"}`}
     >
     <button
       type="button"
@@ -50,7 +58,7 @@ export default function ServiceRow({ item, selected, approvedSelected, prerequis
       aria-pressed={active}
       disabled={disabled}
       onClick={() => onToggle(item, unitKey)}
-      className={`grid w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-55 ${compact ? "px-3 py-2.5" : "px-4 py-3.5"} ${removalRequested ? "hover:bg-[#efd5c5]" : active ? "" : "hover:bg-card/60"}`}
+      className={`grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] items-start gap-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-55 ${compact ? "px-3 py-2.5" : "px-4 py-3.5"} ${removalRequested ? "hover:bg-[#efd5c5]" : active ? "" : "hover:bg-card/60"}`}
     >
       {/* Bifa. Cerneala plina = ales, contur = neales, portocaliul de atentie = se
           elimina la trimitere. Aceleasi trei stari ca in restul modulului. */}
@@ -70,16 +78,13 @@ export default function ServiceRow({ item, selected, approvedSelected, prerequis
         </span>
       </span>
     </button>
-    {/* DECONTAREA CAS: eticheta, nu al doilea rand (2026-08-23).
-        Pana acum era un rand intreg, cu propria linie despartitoare si cu o bifa in
-        marginea DREAPTA - adica exact forma unui serviciu, doar mai mic. De cand randul
-        de serviciu are bifa la STANGA, cele doua bife stateau in colturi opuse si
-        ambiguitatea se vedea: parea ca bifezi inca un serviciu.
-        CAS nu e o actiune de acelasi rang, e o insusire a serviciului de deasupra. Deci
-        primeste alta forma - pastila, nu bifa - si sta indentata exact sub eticheta
-        serviciului, in coloana lui de text, nu pe un rand propriu. */}
+    {/* DECONTAREA CAS: eticheta pe randul serviciului, nu pe un rand propriu.
+        Ramane o pastila, nu o bifa - nu e o actiune de acelasi rang cu serviciul, e o
+        insusire a lui. Dar sta acum LANGA eticheta (frate cu butonul de bifare, nu
+        continut in el), in dreapta randului - posibil de cand cardul de grup a devenit
+        cu o singura coloana si a ramas loc. */}
     {casVisible && (
-      <div className={`services-cas-slot ${compact ? "pl-[41px] pr-3 pb-2.5" : "pl-[47px] pr-4 pb-3"}`}>
+      <div className={`services-cas-slot shrink-0 ${compact ? "pr-3" : "pr-4"}`}>
         <button
           type="button"
           disabled={disabled}
