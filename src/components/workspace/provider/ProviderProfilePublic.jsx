@@ -23,7 +23,7 @@ import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
 import SocialBrandIcon from "@/components/common/SocialBrandIcon";
 
 const inputCls =
-  "min-h-12 w-full rounded-[14px] border border-[#d9d4ca] bg-white px-4 py-3 text-[16px] leading-relaxed text-[#171717] outline-none transition-[border-color,box-shadow] focus:border-[#345bc8] focus:ring-4 focus:ring-[#345bc8]/10 disabled:cursor-not-allowed disabled:opacity-60 sm:text-[15px]";
+  "min-h-12 w-full rounded-[14px] border border-[#d9d4ca] bg-white px-4 py-3 text-[16px] leading-relaxed text-[#171717] outline-none transition-[border-color,box-shadow] focus:border-[#8d7658] focus:ring-4 focus:ring-[#8d7658]/15 disabled:cursor-not-allowed disabled:opacity-60 sm:text-[15px]";
 const DESCRIPTION_MAX_LENGTH = 500;
 const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const LOGO_MAX_BYTES = 4 * 1024 * 1024;
@@ -298,7 +298,7 @@ function InlineProfileEditor({
   return (
     <div className="mt-7 rounded-[22px] border border-[#171717]/10 bg-white p-5 shadow-[0_12px_32px_rgba(23,23,23,0.05)] sm:p-7">
       <div className="mb-6 flex items-start gap-3 border-b border-[#171717]/10 pb-5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#e9eef8] text-[#345bc8]">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#c6d3da] bg-[#dce5e9] text-[#1c1c1c]">
           <Pencil className="h-4 w-4" />
         </span>
         <div>
@@ -313,11 +313,11 @@ function InlineProfileEditor({
       </div>
 
       {availableFallbackFields.length > 0 && !pendingReview && (
-        <div className="mb-6 rounded-[16px] border border-[#a97825]/25 bg-[#f5ead0] p-4">
+        <div className="mb-6 rounded-[16px] border border-[#dac69b] bg-[#eadcba] p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#76551f]" />
-              <p className="text-sm leading-relaxed text-[#76551f]">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-black/65" />
+              <p className="text-sm leading-relaxed text-black/65">
                 Exista date in {fallbackLocationName} pentru:{" "}
                 {availableFallbackFields
                   .map((key) => FIELD_LABELS[key])
@@ -518,7 +518,7 @@ function OrganizationProfile({
         className="relative h-36 overflow-hidden rounded-[22px] border border-[#171717]/10 sm:h-44 lg:h-48"
         style={{
           background:
-            "linear-gradient(180deg, #DCE4F2 0%, #E9ECF4 30%, #F5F3EE 72%, #F7F2E8 100%)",
+            "linear-gradient(180deg, #dce5e9 0%, #e8e3d6 46%, #eadcba 100%)",
         }}
       >
         <span
@@ -539,7 +539,7 @@ function OrganizationProfile({
           className="absolute -right-3 -top-14 h-44 w-44 rounded-full border border-white/40"
         />
         <div className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full border border-white/55 bg-white/75 px-3 py-1.5 text-xs font-semibold text-[#4e4b46] backdrop-blur-sm sm:left-7 sm:top-6">
-          <span className="h-2 w-2 bg-[#345bc8]" />
+          <span className="h-2 w-2 bg-[#dac69b]" />
           {editing ? "Editare profil" : "Profil public organizatie"}
         </div>
         {draft && (
@@ -561,13 +561,13 @@ function OrganizationProfile({
 
           <div className="min-w-0 flex-1 pb-1 sm:pb-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-[#d8ddea] bg-[#f4f6fb] px-3 py-1 text-xs font-semibold text-[#42577d]">
+              <span className="rounded-full border border-[#c6d3da] bg-[#dce5e9] px-3 py-1 text-xs font-semibold text-[#1c1c1c]">
                 {profileTypeLabel}
               </span>
               <span
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
                   verified
-                    ? "bg-[#dcead8] text-[#315c3a]"
+                    ? "border border-[#ccd2ba] bg-[#dfe3d2] text-[#1c1c1c]"
                     : "border border-[#171717]/10 bg-[#f8f4ec] text-[#5d5a54]"
                 }`}
               >
@@ -614,7 +614,7 @@ function OrganizationProfile({
                 type="button"
                 onClick={onEdit}
                 disabled={pendingReview}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#171717]/15 bg-transparent px-5 text-sm font-semibold text-[#171717] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#c6d3da] bg-[#dce5e9] px-5 text-sm font-semibold text-[#1c1c1c] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(34,30,24,0.08)] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none"
               >
                 <Pencil className="h-4 w-4" />
                 {pendingReview ? "Profil in verificare" : "Editeaza profilul"}
@@ -737,11 +737,11 @@ function LocationRow({ location, selected, onManage }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-[#42577d]">
+            <span className="rounded-full border border-[#c6d3da] bg-[#dce5e9] px-2.5 py-0.5 text-xs font-semibold text-[#1c1c1c]">
               {typeLabel}
             </span>
             {verified && (
-              <span className="inline-flex items-center gap-1 text-xs font-bold text-[#315c3a]">
+              <span className="inline-flex items-center gap-1 rounded-full border border-[#ccd2ba] bg-[#dfe3d2] px-2.5 py-0.5 text-xs font-bold text-[#1c1c1c]">
                 <ShieldCheck className="h-3 w-3" /> Verificata
               </span>
             )}
@@ -761,7 +761,7 @@ function LocationRow({ location, selected, onManage }) {
       <button
         type="button"
         onClick={() => onManage(location?.id)}
-        className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-[#171717]/15 bg-transparent px-5 text-sm font-semibold text-[#171717] hover:bg-white sm:w-auto"
+        className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-[#ccd2ba] bg-[#dfe3d2] px-5 text-sm font-semibold text-[#1c1c1c] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(34,30,24,0.08)] sm:w-auto motion-reduce:transform-none"
       >
         Gestioneaza
         <ChevronRight className="h-4 w-4" />
@@ -775,7 +775,7 @@ function LocationsSection({ locations, selectedLocationId, onManage, onManageAll
     <section className="pt-3">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="inline-flex items-center gap-2 text-sm font-semibold text-[#345bc8]">
+          <div className="inline-flex items-center gap-2 text-sm font-semibold text-[#8d7658]">
             <Store className="h-4 w-4" /> Gestionare locatii
           </div>
           <h2 className="mt-2 font-heading text-2xl font-extrabold tracking-[-0.035em] text-[#171717]">
@@ -789,7 +789,7 @@ function LocationsSection({ locations, selectedLocationId, onManage, onManageAll
         <button
           type="button"
           onClick={onManageAll}
-          className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-[#171717]/15 bg-transparent px-5 text-sm font-semibold text-[#171717] transition-colors hover:bg-white sm:w-auto"
+          className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-[#ccd2ba] bg-[#dfe3d2] px-5 text-sm font-semibold text-[#1c1c1c] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(34,30,24,0.08)] sm:w-auto motion-reduce:transform-none"
         >
           Gestioneaza toate
           <ChevronRight className="h-4 w-4" />
@@ -1115,20 +1115,6 @@ export default function ProviderProfilePublic({
 
   return (
     <div className="space-y-8 pb-8">
-      <header>
-        <div className="inline-flex items-center gap-2 text-sm font-semibold text-[#345bc8]">
-          <span className="h-2 w-2 bg-[#345bc8]" />
-          Identitate publica · organizatie
-        </div>
-        <h1 className="mt-3 max-w-3xl font-heading text-[2.05rem] font-extrabold leading-[1.05] tracking-[-0.04em] text-[#171717] sm:text-[2.45rem]">
-          Profilul organizatiei tale.
-        </h1>
-        <p className="mt-2.5 max-w-3xl text-base leading-[1.65] text-[#615e57]">
-          Vezi profilul asa cum este prezentat public si editeaza informatiile
-          direct in acelasi loc.
-        </p>
-      </header>
-
       <OrganizationProfile
         organizationName={organizationName}
         profileTypeLabel={profileTypeLabel}
@@ -1168,16 +1154,16 @@ export default function ProviderProfilePublic({
       )}
 
       {!editing && canSubmitDraft && (
-        <div className="flex flex-col gap-4 rounded-[18px] border border-[#345bc8]/20 bg-[#eef3fb] p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 rounded-[18px] border border-[#dac69b] bg-[#eadcba] p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-start gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#345bc8] text-white">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#171717] text-white">
               <Save className="h-4 w-4" />
             </span>
             <div>
-              <div className="font-semibold text-[#243b66]">
+              <div className="font-semibold text-[#1c1c1c]">
                 Modificarile sunt salvate ca draft
               </div>
-              <p className="mt-1 text-sm leading-relaxed text-[#526789]">
+              <p className="mt-1 text-sm leading-relaxed text-black/60">
                 Verifica profilul, apoi trimite modificarile pentru aprobare.
               </p>
             </div>
