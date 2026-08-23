@@ -1678,28 +1678,33 @@
 }
 
 /* Blocul Verificare: trei placi, ca in Prezentare generala, nu trei coloane de text pe
-   fond alb. Tonurile spun ce fel de numar este fiecare. */
-.provider-services-three__stats-row button {
+   fond alb. Tonurile spun ce fel de numar este fiecare.
+   2026-08-23: doar "observatii" mai e <button> - "in catalog" si "selectate" sunt
+   <div>, fara mod de selectie. Selectoarele tintesc clasa comuna .provider-services-
+   three__stat, nu tag-ul button, ca toate trei sa pastreze aceeasi placa vizuala;
+   hover si is-active raman legate explicit de tag-ul button, deci ating doar placa
+   actionabila. */
+.provider-services-three__stat {
   border-color: rgb(23 23 23 / 0.08) !important;
   border-radius: 10px !important;
   background: #f7f4ed !important;
 }
 
-.provider-services-three__stats-row button:hover {
+button.provider-services-three__stat:hover {
   border-color: rgb(23 23 23 / 0.22) !important;
 }
 
-.provider-services-three__stats-row button.is-active {
+button.provider-services-three__stat.is-active {
   border-color: rgb(23 23 23 / 0.35) !important;
   background: #ffffff !important;
 }
 
-.provider-services-three__stats-row button:nth-child(2) {
+.provider-services-three__stat:nth-child(2) {
   background: #dfe3d2 !important;
   border-color: #ccd2ba !important;
 }
 
-.provider-services-three__stats-row button.has-issues {
+.provider-services-three__stat.has-issues {
   background: #eadcba !important;
   border-color: #dac69b !important;
 }
