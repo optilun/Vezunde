@@ -1431,15 +1431,27 @@
   padding-top: 12px;
 }
 
-/* Doua coloane, ca inainte (2026-08-23: Alex a incercat o singura coloana si a cerut
-   inapoi la doua - se citea mai bine cu mai putin gol pe rand). Randul singur
-   (ServiceRow.jsx) e cel care a primit loc pentru pastila CAS langa eticheta, nu
-   coloana - deci cele doua coloane raman late (minmax 280px) fara sa strice asezarea. */
+/* Doua coloane, FIXE (2026-08-23: Alex a incercat o singura coloana si a cerut inapoi
+   la doua - se citea mai bine cu mai putin gol pe rand). Cand cardul de zona s-a
+   latit pana la antet (vezi max-width mai sus in fisier), auto-fill cu minmax(280px)
+   a inceput sa incapa TREI coloane pe ecrane late - exact ce Alex nu vrea, mai ales
+   cu servicii cu nume lungi, care ar ramane inguste pe a treia coloana. repeat(2, 1fr)
+   tine mereu doua, indiferent de latimea cardului; randul singur (ServiceRow.jsx) e
+   cel care are grija ca pastila CAS incapa langa eticheta. */
 .provider-services-three__native .services-group-card--wide .services-group-card__rows {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 2px 10px;
   padding: 12px;
+}
+
+/* Pe telefon (820px, pragul real al aplicatiei - vezi AUDIT MOBIL mai sus in fisier),
+   doua coloane fixe ar strange fiecare la ~150px. Acolo cardul revine la o singura
+   coloana, ca inainte de tot - late fixe (repeat(2,1fr)) e o decizie de desktop. */
+@media (max-width: 820px) {
+  .provider-services-three__native .services-group-card--wide .services-group-card__rows {
+    grid-template-columns: 1fr;
+  }
 }
 
 .provider-services-three__native .services-group-card--wide .services-group-card__foot {
