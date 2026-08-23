@@ -316,6 +316,8 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
         // Forma scurta, pentru coloana de pasi: acolo marginea dreapta arata mereu o
         // cantitate, nu cand o bifa si cand un numar (2026-08-18).
         count: `${unit.selected}/${unit.total}`,
+        selected: unit.selected,
+        total: unit.total,
         done: unit.selected > 0,
       })),
     }] : []),
@@ -427,6 +429,11 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                         </span>
                         <span className="provider-services-three__step-body">
                           <span>{row.label}</span>
+                          {Number(row.total) > 0 && (
+                            <span className="provider-services-three__step-bar" aria-hidden="true">
+                              <span style={{ width: `${Math.round((Number(row.selected) / Number(row.total)) * 100)}%` }} />
+                            </span>
+                          )}
                         </span>
                         {row.count ? (
                           <em className="provider-services-three__step-count">{row.count}</em>
@@ -456,7 +463,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                     <strong>{snapshot.selectedCount}</strong>
                     <span>selectate</span>
                   </button>
-                  <button type="button" className={view === "issues" && !query ? "is-active" : ""} onClick={() => chooseView("issues")}>
+                  <button type="button" className={`${view === "issues" && !query ? "is-active" : ""}${snapshot.issueCount > 0 ? " has-issues" : ""}`} onClick={() => chooseView("issues")}>
                     <strong>{snapshot.issueCount}</strong>
                     <span>observatii</span>
                   </button>

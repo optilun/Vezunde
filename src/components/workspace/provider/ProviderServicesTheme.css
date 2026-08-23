@@ -872,3 +872,32 @@
   background: #ffffff !important;
   box-shadow: inset 2px 0 0 #171717 !important;
 }
+
+/* Bara de sub numele zonei: cat din oferta ei este selectata. Cerneala pe crem,
+   aceleasi doua culori ca restul modulului. */
+.provider-services-three__step-bar {
+  display: block;
+  margin-top: 6px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgb(23 23 23 / 0.08);
+  overflow: hidden;
+}
+
+.provider-services-three__step-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: rgb(23 23 23 / 0.45);
+}
+
+.provider-services-three__step[aria-current="true"] .provider-services-three__step-bar > span,
+.provider-services-three__step.is-active .provider-services-three__step-bar > span {
+  background: #171717;
+}
+
+/* Observatiile primesc portocaliul de atentie doar cand exista. */
+.provider-services-three__stats-row button.has-issues strong,
+.provider-services-three__stats-row button.has-issues span {
+  color: #8a4b12;
+}
