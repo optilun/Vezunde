@@ -407,7 +407,9 @@ export async function handle(req: Request) {
             // draft creat in alta parte (alt tab, alta sesiune) si trimite create_draft.
             if (incoming !== stored) {
               await svc.entities.ProviderWorkspaceSubmission.update(own.id, { payload_json: incoming, status: 'draft' });
-              if (own.submitted_at) await syncRemovalVisibility(svc, user, own, validation.clean);
+              // Aceeasi regula ca in update_draft: randul redevine draft, deci eliminarile
+              // lui nu mai sunt in curs si serviciile trebuie sa fie vizibile.
+              if (own.submitted_at) await restoreRemovalVisibility(svc, own.location_id, own.id);
               await audit(svc, user, {
                 entity_type: 'ProviderWorkspaceSubmission', entity_id: own.id,
                 action_type: 'update_service_configuration_draft',
@@ -451,7 +453,14 @@ export async function handle(req: Request) {
       if (submission.submitted_by_user_id !== user.id) return Response.json({ error: 'Nu poți modifica acest draft' }, { status: 403 });
       if (!['draft', 'needs_more_info'].includes(submission.status)) return Response.json({ error: 'Doar drafturile pot fi modificate' }, { status: 400 });
       await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { payload_json: JSON.stringify(validation.clean), status: 'draft' });
-      if (submission.submitted_at) await syncRemovalVisibility(svc, user, submission, validation.clean);
+      // Aici era syncRemovalVisibility, adica RE-ascundea serviciile la prima tasta apasata
+      // pe un draft care fusese trimis o data. Cu regula noua (ascuns doar cat timp cererea
+      // e in verificare) asta ar fi anulat, la prima editare, exact restaurarea facuta de
+      // admin la "Cere informatii". Randul ajunge aici doar din draft sau needs_more_info -
+      // niciodata din pending_review, oprit mai sus - deci starea corecta e "vizibil", si
+      // restaurarea curata si eventualele etichete ramase de la trimiterea anterioara.
+      // Reascunderea se face la loc in `submit`, unde ii e locul.
+      if (submission.submitted_at) await restoreRemovalVisibility(svc, submission.location_id, submission.id);
       await audit(svc, user, {
         entity_type: 'ProviderWorkspaceSubmission', entity_id: submission.id,
         action_type: 'update_service_configuration_draft',
