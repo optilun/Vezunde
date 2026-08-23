@@ -579,7 +579,29 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
             <div className="provider-services-three__center-copy">
               <PanelLabel index="02" label="Configurare" />
               <h2 id="provider-services-center-title">{centerTitle}</h2>
-              <p>{centerDescription}</p>
+              {/* 2026-08-23: in interiorul unei zone, propozitia generica de sub titlu a
+                  fost scoasa. Impingea cardul cu un rand mai jos fara sa spuna nimic ce
+                  nu se vede deja din sirul de grupuri. Ramane pe celelalte ecrane, unde
+                  chiar explica pasul. */}
+              {!(view === "unit" && !query) && <p>{centerDescription}</p>}
+            </div>
+            {/* 2026-08-23: marcajele de stare stau in randul titlului, nu pe un rand
+                al lor sub el. Erau al treilea rand de antet inainte de continut, iar
+                cardul incepea mult sub inaltimea coloanei din stanga.
+                (2026-08-18: fusesera mutate SUB titlu, ca ochiul sa nu citeasca meta
+                inainte de a sti pe ce ecran e; randul titlului pastreaza si asta.) */}
+            <div className="provider-services-three__meta">
+              {snapshot.configurationComplete && !snapshot.dirty && snapshot.selectedCount > 0 && (
+                <span className="provider-services-three__meta-badge is-ready">
+                  <CheckCircle2 aria-hidden="true" /> Pregătită pentru trimitere
+                </span>
+              )}
+              {snapshot.issueCount > 0 && (
+                <button type="button" className="provider-services-three__meta-badge is-issues" onClick={() => chooseView("issues")}>
+                  <AlertTriangle aria-hidden="true" /> {snapshot.issueCount} observații
+                  <ChevronRight aria-hidden="true" />
+                </button>
+              )}
             </div>
             {/* Actiunile stau langa titlu (2026-08-18): o singura actiune primara pe
                 ecran, in dreapta. Pe telefon rămâne bara sticky de jos. */}
@@ -602,31 +624,6 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
               </div>
             )}
           </header>
-
-          {/* Rezumatul si starea vin DUPA titlu (2026-08-18): inainte stateau deasupra lui,
-              deci ochiul citea meta inainte de a sti pe ce ecran se afla. */}
-          {/* Rezumatul de stare apare doar unde are sens (2026-08-18): inainte randul
-              "Tipul activitatii" si marcajul de trimitere se vedeau pe TOATE ecranele,
-              inclusiv pe cel al zonelor - informatie despre alt pas, chiar sub titlu.
-              Iar "Pregatita pentru trimitere" aparea si cu zero servicii alese, ceea ce
-              spunea exact invers de ce arata contorul din stanga. */}
-          <div className="provider-services-three__meta">
-            {/* Meta-informatia despre "Tipul activitatii" a fost eliminata (2026-08-18):
-                pasul 3 nu mai exista, iar acest camp aparea doar in acel pas - nu se mai
-                activa niciodata. Tipul activitatii se vede acum in ecranul La nivelul
-                locatiei, unde s-a mutat. */}
-            {snapshot.configurationComplete && !snapshot.dirty && snapshot.selectedCount > 0 && (
-              <span className="provider-services-three__meta-badge is-ready">
-                <CheckCircle2 aria-hidden="true" /> Pregătită pentru trimitere
-              </span>
-            )}
-            {snapshot.issueCount > 0 && (
-              <button type="button" className="provider-services-three__meta-badge is-issues" onClick={() => chooseView("issues")}>
-                <AlertTriangle aria-hidden="true" /> {snapshot.issueCount} observații
-                <ChevronRight aria-hidden="true" />
-              </button>
-            )}
-          </div>
 
           {snapshot.adminNote && (
             <div className="provider-services-three__admin-note">

@@ -28,7 +28,7 @@ const ZONE_LEVEL_CAPABILITY_KEYS = {
   b2b_distribution_center: ["b2b_distribution", "b2b_logistics", "b2b_technical_support"],
 };
 
-export default function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceUnitMap, prerequisites, config, resourceLinks, approvedResourceLinks, customSuggestions, capabilities = [], approvedCapabilities = [], onToggleCapability, open, disabled, casServiceKeys = [], onToggleCas, onOpen, onToggleService, onSetSelection, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion, filter = "all", dataAttrs = {}, stepIndex = 0, stepMode = false, onGoToUnit, onChooseView, unitTitles = [] }) {
+export default function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceUnitMap, prerequisites, config, resourceLinks, approvedResourceLinks, customSuggestions, capabilities = [], approvedCapabilities = [], onToggleCapability, open, disabled, casServiceKeys = [], onToggleCas, onOpen, onToggleService, onSetSelection, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion, filter = "all", dataAttrs = {}, stepIndex = 0, stepMode = false, active = true, onGoToUnit, onChooseView, unitTitles = [] }) {
   const definition = getFunctionalUnitDefinition(unitKey);
   const Icon = UNIT_ICONS[unitKey] || UNIT_FALLBACK_ICON;
   const selectedCount = sections.reduce((sum, section) => sum + selectedCountForSection(selected, section), 0);
@@ -73,6 +73,13 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
   // Subsolul apare ori de cate ori exista grupuri de parcurs. Trecerea la zona
   // urmatoare ramane doar in stepMode (esti intr-o zona, nu in lista completa).
   const showStepFooter = filter === "all" && groupCount > 0;
+  // Zona singura pe ecran (2026-08-23): antetul de acordeon repeta cuvant cu cuvant
+  // titlul paginii ("Cabinet de optica"), iar contorul lui - "6 selectate din 11" -
+  // repeta si bara de dedesubt, si coloana din stanga. Acelasi numar de trei ori, pe
+  // trei randuri. Cand esti in zona, antetul dispare si zona ramane deschisa;
+  // pliatul nu are sens acolo unde tocmai ai navigat inauntru.
+  const solo = stepMode && active;
+  const expanded = open || solo;
   const goBack = () => {
     if (safeGroupIndex > 0) { setGroupIndex(safeGroupIndex - 1); return; }
     if (stepMode && stepIndex > 0) onGoToUnit?.(stepIndex - 1);
@@ -89,7 +96,8 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
       : "Vezi oferta selectată";
   const canGoBack = safeGroupIndex > 0 || (stepMode && stepIndex > 0);
   return (
-    <section {...dataAttrs} data-services-step={showStepFooter ? "true" : "false"} className={`services-unit overflow-hidden rounded-[22px] border bg-card transition ${open ? "border-foreground/20 shadow-sm" : "border-border"}`}>
+    <section {...dataAttrs} data-services-step={showStepFooter ? "true" : "false"} className={`services-unit overflow-hidden rounded-[22px] border bg-card transition ${expanded ? "border-foreground/20 shadow-sm" : "border-border"}`}>
+      {!solo && (
       <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-secondary/20 sm:px-5">
         <span
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${UNIT_TONE[unitKey] ? "" : open ? "border-foreground/15 bg-secondary/55" : "border-border bg-background text-muted-foreground"}`}
@@ -98,8 +106,9 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
         <span className="min-w-0 flex-1"><span className="services-unit__title block text-sm font-semibold sm:text-base">{definition?.title || unitKey}</span><span className="mt-0.5 block text-[11px] text-muted-foreground">{selectedCount} selectate din {total}</span></span>
         <ChevronDown className={`h-4 w-4 text-muted-foreground transition ${open ? "rotate-180" : ""}`} />
       </button>
-      {open && (
-        <div className="border-t border-border/70">
+      )}
+      {expanded && (
+        <div className={solo ? "" : "border-t border-border/70"}>
           {zoneCapabilityKeys.length > 0 && (
             <div className="space-y-2 border-b border-border/60 bg-secondary/10 p-4 sm:px-5">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Activități pentru această zonă</p>
