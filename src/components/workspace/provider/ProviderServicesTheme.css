@@ -1735,12 +1735,15 @@ button.provider-services-three__stat.is-active {
   border-color: #ccd2ba !important;
 }
 
-/* Modificarile in draft imprumuta tonul pastilei "Nou in draft" din randuri (§ services-
-   badge.is-draft): acelasi lucru, acelasi ton, in doua locuri. Deliberat NU e nici verde
-   (aprobat) nici chihlimbariu (atentie) - un draft nu e nici una, nici alta. */
+/* Modificarile in draft primesc albastrul paletei. Prima incercare a fost cremul pastilei
+   "Nou in draft" (#f5f2eb), dar la randare pe placa s-a dovedit ca nu se distinge de fondul
+   implicit (#f7f4ed) - adica placa arata identic si cand ai modificari, si cand nu ai, exact
+   invers decat ii e rostul. Albastrul e singurul ton din paleta ramas liber aici: verdele
+   inseamna ALES, chihlimbariul ATENTIE, iar caramiziul e deja eliminarea. Un draft nu e
+   niciuna din ele - e informatie in curs. */
 .provider-services-three__stat.has-changes {
-  background: #f5f2eb !important;
-  border-color: rgb(23 23 23 / 0.16) !important;
+  background: #dce5e9 !important;
+  border-color: #c6d3da !important;
 }
 
 .provider-services-three__stat.has-issues {
