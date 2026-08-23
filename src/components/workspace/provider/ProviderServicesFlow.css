@@ -823,14 +823,8 @@
   color: hsl(var(--muted-foreground));
 }
 
-/* Placa colorata: cand primeste fundal inline (culoare de categorie), creste usor si
-   capata contur, ca sa se citeasca drept insigna. */
-.provider-services-three__step-mark[style*="background"] {
-  height: 20px;
-  width: 20px;
-  border: 1px solid transparent;
-  color: #2c2c2c;
-}
+/* Placa colorata pe categorie a fost eliminata (2026-08-23): iconitele din "Oferta pe
+   zone" nu mai primesc fundal inline, deci acest selector nu se mai potriveste nimic. */
 
 .provider-services-three__step-mark svg {
   height: 16px;
