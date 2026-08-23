@@ -73,8 +73,30 @@ export default function ProviderServicesWorkspaceOperational(props) {
               de sine statator, pentru o singura lista derulanta - disproportionat pentru
               un modul intreg. "Tipul activitatii" e un atribut la nivel de locatie, ca si
               cele de mai jos (domiciliu, sediul firmei etc.), nu legat de o zona anume. */}
-          {!query && <CareSettingPicker dataAttrs={{ "data-services-panel": "options" }} options={operationalLayout.careSettings || []} approvedValue={approvedCareSetting} value={careSetting} disabled={!editable} onChange={setCareSetting} />}
-          {!query && <GlobalServiceSections dataAttrs={{ "data-services-panel": "options" }} sections={globalSections} selected={selected} approvedSelected={approvedSelected} disabled={!editable} onToggleService={toggleService} />}
+          {/* 2026-08-23: cele doua bucati ale ecranului "La nivelul locatiei" intra in
+              acelasi panou. Tipul activitatii devine primul rand, nu un card separat cu
+              gol dupa el. Atributul data-services-panel ramane pe UN singur element. */}
+          {!query && (
+            <GlobalServiceSections
+              dataAttrs={{ "data-services-panel": "options" }}
+              sections={globalSections}
+              selected={selected}
+              approvedSelected={approvedSelected}
+              disabled={!editable}
+              onToggleService={toggleService}
+              onSetSelection={setServicesSelection}
+              careSettingSlot={(
+                <CareSettingPicker
+                  embedded
+                  options={operationalLayout.careSettings || []}
+                  approvedValue={approvedCareSetting}
+                  value={careSetting}
+                  disabled={!editable}
+                  onChange={setCareSetting}
+                />
+              )}
+            />
+          )}
 
           {!query && <ServiceCatalogIntro dataAttrs={{ "data-services-role": "catalog-intro" }} activeUnits={activeUnits} selectedCount={selectedCount} />}
 

@@ -4,12 +4,15 @@ import { ChevronDown } from "lucide-react";
 import { CARE_SETTINGS } from "@/lib/providerLocationFunctionalUnits";
 import { ChangeBadge } from "./ServiceBadges";
 
-export default function CareSettingPicker({ options, approvedValue, value, disabled, onChange, dataAttrs = {} }) {
+// 2026-08-23: `embedded` il face primul rand al panoului "La nivelul locatiei" in loc de
+// card de sine statator - tipul activitatii e un atribut al locatiei, ca si cele de sub
+// el, iar doua chenare pentru acelasi ecran lasau un gol vizual la mijloc.
+export default function CareSettingPicker({ options, approvedValue, value, disabled, onChange, embedded = false, dataAttrs = {} }) {
   const visibleOptions = options.filter((key) => CARE_SETTINGS[key]);
   if (visibleOptions.length <= 1 || visibleOptions.every((key) => key === "not_applicable" || key === "retail_only")) return null;
   const hasVisibleSelection = visibleOptions.includes(value);
   return (
-    <section {...dataAttrs} className="services-care-setting rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <section {...dataAttrs} className={`services-care-setting ${embedded ? "border-b border-border/70 p-4 sm:px-5" : "rounded-2xl border border-border bg-card p-4 shadow-sm"}`}>
       {value !== approvedValue && <div className="mb-2 flex"><ChangeBadge modified /></div>}
       {!hasVisibleSelection && <div className="mb-3 rounded-2xl border border-[#e1bda8] bg-[#efd5c5] px-3 py-2.5 text-xs text-black/70">Alege o opțiune pentru a continua.</div>}
       {/* Titlu + descriere in stanga, select in dreapta, PE ACELASI RAND (2026-08-18) -

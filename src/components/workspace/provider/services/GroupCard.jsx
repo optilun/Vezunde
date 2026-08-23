@@ -13,7 +13,7 @@
 //   - numele zonei nu se mai repeta in card: e scris o data, in antetul zonei.
 import React from "react";
 import { getCapabilityDefinition, getFunctionalUnitDefinition } from "@/lib/providerLocationFunctionalUnits";
-import { Info } from "lucide-react";
+import { Check, Info, Minus } from "lucide-react";
 import ServiceRow from "./ServiceRow";
 import CapabilityToggle from "./CapabilityToggle";
 import CategorySymbol from "./CategorySymbol";
@@ -42,6 +42,22 @@ export default function GroupCard({
   return (
     <article className={`services-group-card${wide ? " services-group-card--wide" : ""}`} data-services-group={section.key}>
       <header className="services-group-card__head">
+        {/* BIFA PARINTE (2026-08-23), in locul celor doua butoane din subsol. Carbon si
+            W3C ARIA descriu acelasi tipar: bifa din antetul grupului selecteaza sau
+            goleste tot grupul SI arata starea lui - goala, plina sau intermediara. Un
+            buton "Selecteaza toate" nu putea spune nimic despre stare, deci era nevoie
+            si de un al doilea, "Goleste", si de contorul de langa el. */}
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={allSelected ? "true" : selectedCount > 0 ? "mixed" : "false"}
+          aria-label={allSelected ? `Golește grupul ${section.title}` : `Selectează tot grupul ${section.title}`}
+          disabled={disabled}
+          onClick={() => (allSelected ? onSetSelection?.(section.items, activeUnit, false) : onSetSelection?.(missing, activeUnit, true))}
+          className="services-group-card__all"
+        >
+          {allSelected ? <Check aria-hidden="true" /> : selectedCount > 0 ? <Minus aria-hidden="true" /> : null}
+        </button>
         {tone && <CategorySymbol color={tone.border} className={wide ? "h-7 w-7" : "h-5 w-5"} />}
         <h3 className="services-group-card__title">{section.title}</h3>
         {/* Cat din grup e acoperit. Bara sta LANGA contor, nu pe toata latimea cardului
@@ -99,23 +115,17 @@ export default function GroupCard({
         ))}
       </div>
 
-      <footer className="services-group-card__foot">
-        {allSelected ? (
-          <button type="button" disabled={disabled} onClick={() => onSetSelection?.(section.items, activeUnit, false)} className="services-group-card__bulk">Golește grupul</button>
-        ) : (
-          <button type="button" disabled={disabled} onClick={() => onSetSelection?.(missing, activeUnit, true)} className="services-group-card__bulk">Selectează toate ({missing.length})</button>
-        )}
-        {selectedCount > 0 && !allSelected && (
-          <button type="button" disabled={disabled} onClick={() => onSetSelection?.(section.items, activeUnit, false)} className="services-group-card__bulk is-quiet">Golește</button>
-        )}
-        {availableParents.length > 1 && (
+      {/* Subsolul ramane doar pentru alegerea zonei in care se face grupul. Actiunile in
+          masa au urcat in bifa din antet. */}
+      {availableParents.length > 1 && (
+        <footer className="services-group-card__foot">
           <label className="services-group-card__parent">Se realizează în
             <select disabled={disabled} value={activeUnit} onChange={(event) => onChangeSectionUnit(section, event.target.value)}>
               {availableParents.map((key) => <option key={key} value={key}>{getFunctionalUnitDefinition(key)?.shortTitle || key}</option>)}
             </select>
           </label>
-        )}
-      </footer>
+        </footer>
+      )}
 
       <CustomSuggestion unitKey={unitKey} section={section} disabled={disabled} items={suggestions} onAdd={onAddSuggestion} onRemove={onRemoveSuggestion} />
     </article>

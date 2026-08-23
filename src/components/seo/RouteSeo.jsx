@@ -88,6 +88,14 @@ const STATIC_META = {
   "/admin/operatiuni": { title: "Administrare VIASEE" },
 };
 
+// Titlurile modulelor unei locatii, pentru tabul din browser (2026-08-23).
+const LOCATION_MODULE_TITLES = {
+  servicii: "Serviciile locației",
+  program: "Programul locației",
+  specialisti: "Specialiștii locației",
+  fotografie: "Fotografia locației",
+};
+
 const NOINDEX_PREFIXES = [
   "/admin",
   "/contul-meu",
@@ -160,6 +168,21 @@ async function getMetadata(pathname) {
     return {
       title: "Profil organizație | VIASEE",
       description: DEFAULT_DESCRIPTION,
+    };
+  }
+
+  // Subrutele contului de furnizor (2026-08-23). "/contul-meu" avea intrare in
+  // STATIC_META, dar copiii lui - /contul-meu/locatii/:id/servicii si surorile ei -
+  // cadeau pe fallback-ul de 404, deci titlul din tab spunea "Pagina nu a fost gasita"
+  // desi pagina se randa corect. Gasit in Chrome, la verificarea vizuala a modulului
+  // Servicii. Indexarea nu se schimba: /contul-meu era deja in NOINDEX_PREFIXES.
+  if (pathname.startsWith("/contul-meu/")) {
+    const moduleMatch = pathname.match(/^\/contul-meu\/locatii\/[^/]+\/([^/]+)/);
+    const moduleTitle = moduleMatch ? LOCATION_MODULE_TITLES[moduleMatch[1]] : "";
+    return {
+      title: `${moduleTitle || "Contul meu"} | VIASEE`,
+      description: "Administrarea profilului de furnizor VIASEE.",
+      noindex: true,
     };
   }
 
