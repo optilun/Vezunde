@@ -2,6 +2,7 @@
 // ProviderServicesWorkspaceOperational.jsx. Culorile sunt cele din
 // src/components/home/CategoryShowcase.jsx (identitatea de pe homepage).
 import {
+  Briefcase,
   Building2,
   CheckCircle2,
   CircleDot,
@@ -52,7 +53,7 @@ export const CAPABILITY_ICONS = {
 
 export const BUSINESS_ATTRIBUTE_ICONS = {
   home_visit_eye_care: Home,
-  workplace_vision_screening: Building2,
+  workplace_vision_screening: Briefcase,
   employer_glasses_reimbursement: FileCheck,
   mobile_optical_unit: Truck,
   school_vision_screening: GraduationCap,

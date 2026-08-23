@@ -459,7 +459,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                 <div className="provider-services-three__stats-row">
                   <button type="button" className={view === "all" && !query ? "is-active" : ""} onClick={() => chooseView("all")}>
                     <strong>{snapshot.units.reduce((sum, unit) => sum + unit.total, 0)}</strong>
-                    <span>oferta completa</span>
+                    <span>in catalog</span>
                   </button>
                   <button type="button" className={view === "selected" && !query ? "is-active" : ""} onClick={() => chooseView("selected")}>
                     <strong>{snapshot.selectedCount}</strong>

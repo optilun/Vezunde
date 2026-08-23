@@ -2,7 +2,7 @@
 import React from "react";
 import SelectionCard from "./SelectionCard";
 import { isSelected, serviceLabel } from "./servicesConfigModel";
-import { BUSINESS_ATTRIBUTE_ICONS, UNIT_FALLBACK_ICON } from "./servicesUiTokens";
+import { BUSINESS_ATTRIBUTE_ICONS, GROUP_TONE, UNIT_FALLBACK_ICON } from "./servicesUiTokens";
 
 const HELPER_TEXT = {
   home_visit_eye_care: "Te deplasezi la domiciliul pacientului, pentru persoane care nu pot ajunge la locație.",
@@ -34,6 +34,7 @@ export default function GlobalServiceSections({ sections, selected, approvedSele
               title={serviceLabel(item)}
               description={HELPER_TEXT[item.id] || ""}
               icon={Icon}
+              tone={GROUP_TONE.optometry}
               disabled={disabled}
               onClick={() => onToggleService(item, "")}
             />

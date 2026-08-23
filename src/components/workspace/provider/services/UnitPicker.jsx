@@ -2,7 +2,7 @@
 import React from "react";
 import { getFunctionalUnitDefinition } from "@/lib/providerLocationFunctionalUnits";
 import SelectionCard from "./SelectionCard";
-import { UNIT_FALLBACK_ICON, UNIT_ICONS } from "./servicesUiTokens";
+import { UNIT_FALLBACK_ICON, UNIT_ICONS, UNIT_TONE } from "./servicesUiTokens";
 
 // Doua grupuri vizuale, cerute explicit (2026-08-18): optica (vanzare, tehnic) separata
 // de oftalmologie/medical (evaluare, diagnostic). Cabinet optometric intra la medical -
@@ -32,6 +32,7 @@ function UnitGroup({ label, unitKeys, approvedUnits, activeUnits, selectedByUnit
               description={definition?.description || ""}
               helper={count > 0 ? `${count} opțiuni asociate` : primaryUnits.includes(unitKey) ? "Recomandat pentru acest profil" : "Opțional"}
               icon={Icon}
+              tone={UNIT_TONE[unitKey] || null}
               disabled={disabled}
               onClick={() => onToggle(unitKey)}
             />

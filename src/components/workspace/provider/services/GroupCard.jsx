@@ -44,13 +44,16 @@ export default function GroupCard({
       <header className="services-group-card__head">
         {tone && <CategorySymbol color={tone.border} className={wide ? "h-7 w-7" : "h-5 w-5"} />}
         <h3 className="services-group-card__title">{section.title}</h3>
+        {/* Cat din grup e acoperit. Bara sta LANGA contor, nu pe toata latimea cardului
+            (2026-08-23): acolo se citea ca linie despartitoare prost desenata, nu ca
+            progres. Aici, lipita de cifra pe care o ilustreaza, nu poate fi confundata. */}
+        {wide && total > 0 && (
+          <span aria-hidden="true" className="services-group-card__bar">
+            <i style={{ width: `${Math.round((selectedCount / total) * 100)}%` }} />
+          </span>
+        )}
         <span className="services-group-card__count" data-full={allSelected ? "true" : "false"}>{selectedCount}/{total}</span>
       </header>
-
-      {/* Cat din grup e acoperit. O linie, nu un procent scris - se citeste mai repede. */}
-      <span aria-hidden="true" className="services-group-card__bar">
-        <i style={{ width: `${total > 0 ? Math.round((selectedCount / total) * 100) : 0}%` }} />
-      </span>
 
       {capabilityKey && (
         <div className="services-group-card__capability">
