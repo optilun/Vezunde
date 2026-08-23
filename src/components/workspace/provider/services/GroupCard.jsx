@@ -25,7 +25,7 @@ export default function GroupCard({
   section, unitKey, activeUnit, selected, approvedSelected, prerequisites, disabled,
   availableParents = [], capabilityKey = "", capabilityRow, capabilityApproved, onToggleCapability,
   casServiceKeys = [], onToggleCas, onToggleService, onSetSelection, onChangeSectionUnit,
-  suggestions = [], onAddSuggestion, onRemoveSuggestion, showDescription = false, filter = "all",
+  suggestions = [], onAddSuggestion, onRemoveSuggestion, showDescription = false, filter = "all", wide = false,
 }) {
   const tone = GROUP_TONE[section.group];
   const total = section.items.length;
@@ -40,12 +40,17 @@ export default function GroupCard({
     ? "Activează acest grup"
     : "";
   return (
-    <article className="services-group-card" data-services-group={section.key}>
+    <article className={`services-group-card${wide ? " services-group-card--wide" : ""}`} data-services-group={section.key}>
       <header className="services-group-card__head">
-        {tone && <CategorySymbol color={tone.border} className="h-5 w-5" />}
+        {tone && <CategorySymbol color={tone.border} className={wide ? "h-7 w-7" : "h-5 w-5"} />}
         <h3 className="services-group-card__title">{section.title}</h3>
         <span className="services-group-card__count" data-full={allSelected ? "true" : "false"}>{selectedCount}/{total}</span>
       </header>
+
+      {/* Cat din grup e acoperit. O linie, nu un procent scris - se citeste mai repede. */}
+      <span aria-hidden="true" className="services-group-card__bar">
+        <i style={{ width: `${total > 0 ? Math.round((selectedCount / total) * 100) : 0}%` }} />
+      </span>
 
       {capabilityKey && (
         <div className="services-group-card__capability">

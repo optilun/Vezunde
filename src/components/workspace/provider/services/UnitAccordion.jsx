@@ -8,7 +8,7 @@
 // Zona are acum o bara proprie, deasupra cardurilor: contorul ei, comutatorul
 // "Descrieri" (descrierile de catalog sunt ascunse implicit - de acolo venea cea mai
 // mare parte a textului de citit) si actiunile in masa pe toata zona.
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, ChevronDown, Eraser, ListChecks, Text } from "lucide-react";
 import { getFunctionalUnitDefinition } from "@/lib/providerLocationFunctionalUnits";
 import ServiceRow from "./ServiceRow";
@@ -54,13 +54,40 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
     : sections.filter((section) => section.items.some(rowVisible));
   const allItems = sections.flatMap((section) => section.items);
   const missingItems = allItems.filter((item) => !isSelected(selected, item));
-  // Subsolul de pas (2026-08-23, la cererea lui Alex): cadrul zonei se inchide cu
-  // pozitia in sir si cu butonul catre zona urmatoare, ca intr-o aplicatie. Apare doar
-  // cand esti INTR-o zona (stepMode) si fara filtru - la lista completa sau la un filtru
-  // de verificare nu exista "urmatorul".
+
+  // UN SINGUR GRUP PE ECRAN (2026-08-23, corectat dupa Alex: "cardurile sa fie cate unu
+  // si cu next"). Prima incercare arata toate grupurile deodata si muta butonul de
+  // avansare la nivel de zona - gresit de doua ori: cardurile ieseau inguste si
+  // inegale, iar "urmatorul" sarea in alt modul in loc sa treaca la grupul urmator.
+  // Acum: cardul e lat, ocupa tot randul, iar avansarea merge din grup in grup. Abia la
+  // ultimul grup al zonei butonul preia zona urmatoare.
+  const [groupIndex, setGroupIndex] = useState(0);
+  useEffect(() => { setGroupIndex(0); }, [unitKey, filter]);
+  const groupCount = visibleSections.length;
+  const safeGroupIndex = groupCount > 0 ? Math.min(groupIndex, groupCount - 1) : 0;
+  const activeSection = visibleSections[safeGroupIndex] || null;
+  const nextSection = visibleSections[safeGroupIndex + 1] || null;
+
   const nextUnitKey = unitTitles[stepIndex + 1] || "";
   const nextUnitTitle = nextUnitKey ? (getFunctionalUnitDefinition(nextUnitKey)?.shortTitle || getFunctionalUnitDefinition(nextUnitKey)?.title || "") : "";
-  const showStepFooter = stepMode && filter === "all" && stepCount > 0;
+  // Subsolul apare ori de cate ori exista grupuri de parcurs. Trecerea la zona
+  // urmatoare ramane doar in stepMode (esti intr-o zona, nu in lista completa).
+  const showStepFooter = filter === "all" && groupCount > 0;
+  const goBack = () => {
+    if (safeGroupIndex > 0) { setGroupIndex(safeGroupIndex - 1); return; }
+    if (stepMode && stepIndex > 0) onGoToUnit?.(stepIndex - 1);
+  };
+  const goNext = () => {
+    if (nextSection) { setGroupIndex(safeGroupIndex + 1); return; }
+    if (stepMode && nextUnitTitle) { onGoToUnit?.(stepIndex + 1); return; }
+    onChooseView?.("selected");
+  };
+  const nextLabel = nextSection
+    ? `Continuă: ${nextSection.title}`
+    : stepMode && nextUnitTitle
+      ? `Continuă: ${nextUnitTitle}`
+      : "Vezi oferta selectată";
+  const canGoBack = safeGroupIndex > 0 || (stepMode && stepIndex > 0);
   return (
     <section {...dataAttrs} data-services-step={showStepFooter ? "true" : "false"} className={`services-unit overflow-hidden rounded-[22px] border bg-card transition ${open ? "border-foreground/20 shadow-sm" : "border-border"}`}>
       <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-secondary/20 sm:px-5">
@@ -111,8 +138,29 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
           )}
 
           {filter === "all" ? (
-            <div className="services-group-grid">
-              {visibleSections.map((section) => {
+            <>
+              {/* Sirul grupurilor zonei: vezi tot ce urmeaza si sari direct unde vrei,
+                  fara sa pierzi din ochi cate ai bifat in fiecare. */}
+              {groupCount > 1 && (
+                <div className="services-unit__groups" role="tablist" aria-label="Grupurile zonei">
+                  {visibleSections.map((section, index) => (
+                    <button
+                      key={section.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={index === safeGroupIndex}
+                      onClick={() => setGroupIndex(index)}
+                      className="services-unit__group-chip"
+                    >
+                      <span>{section.title}</span>
+                      <em>{selectedCountForSection(selected, section)}/{section.items.length}</em>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {activeSection && (() => {
+                const section = activeSection;
                 const activeUnit = resolveSectionUnit(section, selected, serviceUnitMap, [unitKey]);
                 const availableParents = possibleUnits(section).filter((key) => config.activeUnits.includes(key));
                 const suggestions = customSuggestions.filter((item) => item.functional_unit_key === unitKey && item.group === section.items[0]?.group);
@@ -124,34 +172,37 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
                   : "";
                 if (sectionCapabilityKey) inlineCapabilityRendered.add(sectionCapabilityKey);
                 return (
-                  <GroupCard
-                    key={section.key}
-                    section={section}
-                    unitKey={unitKey}
-                    activeUnit={activeUnit}
-                    selected={selected}
-                    approvedSelected={approvedSelected}
-                    prerequisites={prerequisites}
-                    disabled={disabled}
-                    availableParents={availableParents}
-                    capabilityKey={sectionCapabilityKey}
-                    capabilityRow={findCapabilityRow(sectionCapabilityKey)}
-                    capabilityApproved={isCapabilityApproved(sectionCapabilityKey)}
-                    onToggleCapability={onToggleCapability}
-                    casServiceKeys={casServiceKeys}
-                    onToggleCas={onToggleCas}
-                    onToggleService={onToggleService}
-                    onSetSelection={onSetSelection}
-                    onChangeSectionUnit={onChangeSectionUnit}
-                    suggestions={suggestions}
-                    onAddSuggestion={onAddSuggestion}
-                    onRemoveSuggestion={onRemoveSuggestion}
-                    showDescription={showDescriptions}
-                    filter={filter}
-                  />
+                  <div className="services-group-stage">
+                    <GroupCard
+                      key={section.key}
+                      section={section}
+                      unitKey={unitKey}
+                      activeUnit={activeUnit}
+                      selected={selected}
+                      approvedSelected={approvedSelected}
+                      prerequisites={prerequisites}
+                      disabled={disabled}
+                      availableParents={availableParents}
+                      capabilityKey={sectionCapabilityKey}
+                      capabilityRow={findCapabilityRow(sectionCapabilityKey)}
+                      capabilityApproved={isCapabilityApproved(sectionCapabilityKey)}
+                      onToggleCapability={onToggleCapability}
+                      casServiceKeys={casServiceKeys}
+                      onToggleCas={onToggleCas}
+                      onToggleService={onToggleService}
+                      onSetSelection={onSetSelection}
+                      onChangeSectionUnit={onChangeSectionUnit}
+                      suggestions={suggestions}
+                      onAddSuggestion={onAddSuggestion}
+                      onRemoveSuggestion={onRemoveSuggestion}
+                      showDescription={showDescriptions}
+                      filter={filter}
+                      wide
+                    />
+                  </div>
                 );
-              })}
-            </div>
+              })()}
+            </>
           ) : (
             // Cu un filtru activ (selectate / observatii) randam plat: se vede tot ce
             // trece filtrul, fara carduri si fara actiuni in masa.
@@ -188,27 +239,21 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
 
           {showStepFooter && (
             <div className="services-unit__footer">
-              <span className="services-unit__footer-step">Zona {stepIndex + 1} din {stepCount}</span>
+              <span className="services-unit__footer-step">Grup {safeGroupIndex + 1} din {groupCount}</span>
               <span aria-hidden="true" className="services-unit__footer-dots">
-                {Array.from({ length: stepCount }).map((_, index) => (
-                  <i key={index} data-active={index === stepIndex ? "true" : "false"} data-done={index < stepIndex ? "true" : "false"} />
+                {visibleSections.map((section, index) => (
+                  <i key={section.key} data-active={index === safeGroupIndex ? "true" : "false"} data-done={index < safeGroupIndex ? "true" : "false"} />
                 ))}
               </span>
               <span className="services-unit__toolbar-spacer" />
-              {stepIndex > 0 && (
-                <button type="button" onClick={() => onGoToUnit?.(stepIndex - 1)} className="services-unit__footer-back">
+              {canGoBack && (
+                <button type="button" onClick={goBack} className="services-unit__footer-back">
                   <ArrowLeft aria-hidden="true" /> Înapoi
                 </button>
               )}
-              {nextUnitTitle ? (
-                <button type="button" onClick={() => onGoToUnit?.(stepIndex + 1)} className="services-unit__footer-next">
-                  Continuă: {nextUnitTitle} <ArrowRight aria-hidden="true" />
-                </button>
-              ) : (
-                <button type="button" onClick={() => onChooseView?.("selected")} className="services-unit__footer-next">
-                  Vezi oferta selectată <ArrowRight aria-hidden="true" />
-                </button>
-              )}
+              <button type="button" onClick={goNext} className="services-unit__footer-next">
+                <span>{nextLabel}</span> <ArrowRight aria-hidden="true" />
+              </button>
             </div>
           )}
         </div>

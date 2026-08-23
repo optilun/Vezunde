@@ -910,26 +910,21 @@
 }
 
 /* ==========================================================================
-   20. GRUPURILE UNEI ZONE, TOATE DEODATA (2026-08-23, varianta A aprobata de Alex)
+   20. GRUPURILE UNEI ZONE, UNUL PE ECRAN (2026-08-23)
    --------------------------------------------------------------------------
-   Grupurile nu se mai deschid pe rand. Stau unul langa altul, in carduri, ca sa
-   vezi toata oferta zonei dintr-o privire. Aceleasi doua culori ca in tot modulul:
-   crem #f5f1e9 pentru cardul in repaus, alb pentru randul ales, cerneala #171717
-   pentru marcaj. Fara culori noi.
+   Prima forma (varianta A) le arata pe toate deodata, in coloane. Alex a corectat:
+   "cardurile sa fie cate unu si cu next". Acum cardul e lat cat continutul, iar
+   deasupra lui sta sirul grupurilor zonei, ca sa se vada tot ce urmeaza si cat e
+   bifat in fiecare. Aceleasi culori ca in tot modulul: crem #f5f1e9, alb pentru
+   ce e ales, cerneala #171717 pentru marcaj. Fara culori noi.
    ========================================================================== */
 
-.provider-services-three__native .services-group-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-  gap: 14px;
+.provider-services-three__native .services-group-stage {
   padding: 14px;
-  align-items: start;
 }
 
 @media (max-width: 640px) {
-  .provider-services-three__native .services-group-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
+  .provider-services-three__native .services-group-stage {
     padding: 12px;
   }
 }
@@ -1202,7 +1197,7 @@
   box-shadow: 0 10px 30px rgb(23 23 23 / 0.05);
 }
 
-.provider-services-three__native .services-unit[data-services-step="true"] .services-group-grid {
+.provider-services-three__native .services-unit[data-services-step="true"] .services-group-stage {
   background: #fdfbf6;
 }
 
