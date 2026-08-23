@@ -5,7 +5,7 @@ import React from "react";
 import { Check, X } from "lucide-react";
 import { ChangeBadge } from "./ServiceBadges";
 
-export default function SelectionCard({ active, approved = false, title, description, helper, icon: Icon, disabled, onClick, variant = "row", tone = null }) {
+export default function SelectionCard({ active, approved = false, title, description, helper, icon: Icon, disabled, onClick, variant = "row", tone = null, badge = "" }) {
   const removalRequested = approved && !active;
   const draftAddition = active && !approved;
   // Tonul categoriei pe placa iconitei (2026-08-23). Regula modulului spune ca fondul
@@ -38,8 +38,12 @@ export default function SelectionCard({ active, approved = false, title, descrip
           <span className="block text-sm font-semibold leading-snug text-foreground">{title}</span>
           <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground line-clamp-2">{description}</span>
         </span>
+        {/* Recomandarea e o pastila, contorul ramane text (2026-08-23): pana acum
+            "8 optiuni asociate" (fapt) si "Optional" (recomandare) stateau in acelasi
+            loc, in aceeasi culoare, desi sunt lucruri diferite. */}
+        {badge && <span className="services-card__badge">{badge}</span>}
         <span className="mt-auto flex flex-wrap items-center gap-2 pt-1">
-          {helper && <span className="text-[10px] font-semibold text-muted-foreground">{helper}</span>}
+          {helper && <span className="text-[10px] font-medium text-muted-foreground">{helper}</span>}
           <ChangeBadge draftAddition={draftAddition} removalRequested={removalRequested} />
         </span>
       </button>

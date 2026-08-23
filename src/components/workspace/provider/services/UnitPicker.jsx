@@ -15,7 +15,10 @@ function UnitGroup({ label, unitKeys, approvedUnits, activeUnits, selectedByUnit
   if (unitKeys.length === 0) return null;
   return (
     <div>
-      <p className="services-unit-group-label mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      {/* Aceeasi eticheta ca in Prezentare generala (componenta Eyebrow): mono, 10px,
+          tracking larg. Inainte era uppercase obisnuit, deci alt limbaj vizual pentru
+          exact acelasi rol. */}
+      <p className="services-unit-group-label mb-2.5 font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/75">{label}</p>
       <div className="services-card-grid services-card-grid--square grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
         {unitKeys.map((unitKey) => {
           const definition = getFunctionalUnitDefinition(unitKey);
@@ -30,7 +33,8 @@ function UnitGroup({ label, unitKeys, approvedUnits, activeUnits, selectedByUnit
               approved={approvedUnits.includes(unitKey)}
               title={definition?.title || unitKey}
               description={definition?.description || ""}
-              helper={count > 0 ? `${count} opțiuni asociate` : primaryUnits.includes(unitKey) ? "Recomandat pentru acest profil" : "Opțional"}
+              helper={count > 0 ? `${count} opțiuni asociate` : ""}
+              badge={count > 0 ? "" : primaryUnits.includes(unitKey) ? "Recomandat" : "Opțional"}
               icon={Icon}
               tone={UNIT_TONE[unitKey] || null}
               disabled={disabled}

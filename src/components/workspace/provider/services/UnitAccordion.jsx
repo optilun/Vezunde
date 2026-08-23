@@ -244,8 +244,6 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
             })
           )}
 
-          {filter === "all" && <UnitResourcesPanel unitKey={unitKey} config={config} disabled={disabled} links={resourceLinks} approvedLinks={approvedResourceLinks} onToggle={onToggleResource} />}
-
           {showStepFooter && (
             <div className="services-unit__footer">
               <span className="services-unit__footer-step">Grup {safeGroupIndex + 1} din {groupCount}</span>
@@ -265,6 +263,10 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
               </button>
             </div>
           )}
+
+          {/* Resursele stau DUPA subsolul de pas (2026-08-23): sunt o anexa a zonei, nu
+              un pas de parcurs. Intre card si subsol aratau ca al doilea card. */}
+          {filter === "all" && <UnitResourcesPanel unitKey={unitKey} config={config} disabled={disabled} links={resourceLinks} approvedLinks={approvedResourceLinks} onToggle={onToggleResource} />}
         </div>
       )}
     </section>

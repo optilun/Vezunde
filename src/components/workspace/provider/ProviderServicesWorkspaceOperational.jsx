@@ -11,6 +11,7 @@ import GlobalServiceSections from "./services/GlobalServiceSections";
 import ServiceCatalogIntro from "./services/ServiceCatalogIntro";
 import ServicesSearchResults from "./services/ServicesSearchResults";
 import UnitAccordion from "./services/UnitAccordion";
+import { FigureNothingSelected } from "./services/ServicesFigures";
 import LegacyServices from "./services/LegacyServices";
 import ServicesSidebar from "./services/ServicesSidebar";
 import DependencyRemovalDialog from "./services/DependencyRemovalDialog";
@@ -117,6 +118,25 @@ export default function ProviderServicesWorkspaceOperational(props) {
             />
           ) : (
             <div data-services-panel="units" className="space-y-3">
+              {/* Filtrele de verificare fara niciun rezultat lasau ecranul complet gol
+                  (2026-08-23): apasai "Oferta selectata" cu zero servicii alese si nu
+                  primeai nimic, nici macar o propozitie. */}
+              {navFilter !== "all" && !visibleUnits.some((unitKey) => (sectionsByUnit[unitKey] || []).some((section) => section.items.some((item) => {
+                const active = (selected[item.group] || []).includes(item.id);
+                return navFilter === "selected" ? active : active && draftPrerequisites[item.id]?.eligible === false;
+              }))) && (
+                <div className="flex flex-col items-center rounded-[22px] border border-border bg-card px-6 py-12 text-center">
+                  <FigureNothingSelected />
+                  <p className="mt-4 text-[15px] font-semibold tracking-[-0.01em] text-foreground">
+                    {navFilter === "selected" ? "Nu ai ales încă niciun serviciu" : "Nicio observație de catalog"}
+                  </p>
+                  <p className="mt-1.5 max-w-sm text-[13px] leading-relaxed text-muted-foreground">
+                    {navFilter === "selected"
+                      ? "Deschide o zonă din stânga și bifează serviciile pe care le oferi."
+                      : "Nimic de corectat: niciun serviciu ales nu cere o condiție pe care locația nu o îndeplinește."}
+                  </p>
+                </div>
+              )}
               {visibleUnits.map((unitKey, unitIndex) => <UnitAccordion key={unitKey} unitKey={unitKey} filter={navFilter} dataAttrs={{ "data-services-unit-index": String(unitIndex), "data-services-unit-visible": unitVisible(unitIndex) ? "true" : "false" }} sections={sectionsByUnit[unitKey] || []} selected={selected} approvedSelected={approvedSelected} serviceUnitMap={serviceUnitMap} prerequisites={draftPrerequisites} config={{ ...config, activeUnits }} resourceLinks={resourceLinks} approvedResourceLinks={approvedResourceLinks} customSuggestions={suggestions} capabilities={capabilities} approvedCapabilities={approvedCapabilities} onToggleCapability={toggleCapability} open={openUnit === unitKey} disabled={!editable} onOpen={() => setOpenUnit((current) => current === unitKey ? "" : unitKey)} onToggleService={toggleService} onSetSelection={setServicesSelection} stepIndex={unitIndex} stepMode={navView === "unit"} active={unitVisible(unitIndex)} onGoToUnit={nav.onOpenUnit} onChooseView={nav.onChooseView} unitTitles={visibleUnits} casServiceKeys={casServiceKeys} onToggleCas={toggleCasService} onChangeSectionUnit={changeSectionUnit} onToggleResource={toggleResource} onAddSuggestion={addSuggestion} onRemoveSuggestion={removeSuggestion} />)}
               {visibleUnits.length === 0 && <div className="rounded-2xl border border-dashed border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground">Selectează cel puțin o zonă care există în locație.</div>}
             </div>

@@ -40,7 +40,7 @@ export default function GroupCard({
     ? "Activează acest grup"
     : "";
   return (
-    <article className={`services-group-card${wide ? " services-group-card--wide" : ""}`} data-services-group={section.key}>
+    <article className={`services-group-card${wide ? " services-group-card--wide" : ""}`} data-services-group={section.key} data-complete={allSelected ? "true" : "false"}>
       <header className="services-group-card__head">
         {/* BIFA PARINTE (2026-08-23), in locul celor doua butoane din subsol. Carbon si
             W3C ARIA descriu acelasi tipar: bifa din antetul grupului selecteaza sau

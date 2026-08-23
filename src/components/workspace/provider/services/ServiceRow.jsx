@@ -70,20 +70,28 @@ export default function ServiceRow({ item, selected, approvedSelected, prerequis
         </span>
       </span>
     </button>
-    {/* CAS ramane un rand secundar, indentat sub serviciul pe care il insoteste. */}
+    {/* DECONTAREA CAS: eticheta, nu al doilea rand (2026-08-23).
+        Pana acum era un rand intreg, cu propria linie despartitoare si cu o bifa in
+        marginea DREAPTA - adica exact forma unui serviciu, doar mai mic. De cand randul
+        de serviciu are bifa la STANGA, cele doua bife stateau in colturi opuse si
+        ambiguitatea se vedea: parea ca bifezi inca un serviciu.
+        CAS nu e o actiune de acelasi rang, e o insusire a serviciului de deasupra. Deci
+        primeste alta forma - pastila, nu bifa - si sta indentata exact sub eticheta
+        serviciului, in coloana lui de text, nu pe un rand propriu. */}
     {casVisible && (
-      <button
-        type="button"
-        disabled={disabled}
-        aria-pressed={casActive}
-        onClick={() => onToggleCas?.(item.id)}
-        className={`services-cas-row grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-t border-border/40 text-left transition hover:bg-card/60 disabled:cursor-not-allowed disabled:opacity-55 ${compact ? "px-3 py-2 pl-9" : "px-4 py-2.5 pl-10"}`}
-      >
-        <span className="text-[11px] font-semibold text-muted-foreground">Decontat prin CAS</span>
-        <span className={`flex h-[16px] w-[16px] shrink-0 items-center justify-center rounded-[4px] border-[1.5px] transition-colors ${casActive ? "border-foreground bg-foreground" : "border-border bg-background"}`}>
-          {casActive && <Check className="h-2.5 w-2.5 text-background" />}
-        </span>
-      </button>
+      <div className={`services-cas-slot ${compact ? "pl-[41px] pr-3 pb-2.5" : "pl-[47px] pr-4 pb-3"}`}>
+        <button
+          type="button"
+          disabled={disabled}
+          aria-pressed={casActive}
+          data-on={casActive ? "true" : "false"}
+          onClick={() => onToggleCas?.(item.id)}
+          className="services-cas-chip"
+        >
+          {casActive && <Check aria-hidden="true" />}
+          Decontat CAS
+        </button>
+      </div>
     )}
     </div>
   );

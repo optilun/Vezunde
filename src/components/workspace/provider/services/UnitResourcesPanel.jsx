@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { Check, ChevronDown, Users, X } from "lucide-react";
 import { ChangeBadge } from "./ServiceBadges";
+import { FigureNoResources } from "./ServicesFigures";
 
 function ResourceGroup({ title, emptyText, items, unitKey, type, disabled, links, approvedLinks, onToggle }) {
   if (items.length === 0) return <div className="services-resource-group rounded-xl border border-dashed border-border px-3 py-4 text-[11px] text-muted-foreground"><strong className="text-foreground">{title}</strong><div className="mt-1">{emptyText}</div></div>;
@@ -57,7 +58,16 @@ export default function UnitResourcesPanel({ unitKey, config, disabled, links, a
           <ChevronDown className={`h-4 w-4 text-muted-foreground transition ${open ? "rotate-180" : ""}`} />
         </span>
       </button>
-      {open && (
+      {open && resourceCount === 0 && (config.assignments || []).length === 0 && (config.equipment || []).length === 0 && (config.facilities || []).length === 0 && (
+        // Nu exista nimic de asociat: in loc de trei cutii punctate cu acelasi mesaj
+        // repetat de trei ori, o singura figurina si o singura propozitie (2026-08-23).
+        <div className="flex flex-col items-center border-t border-border/60 px-4 py-7 text-center sm:px-5">
+          <FigureNoResources />
+          <p className="mt-3 text-[13px] font-semibold text-foreground">Nu ai încă specialiști, echipamente sau facilități</p>
+          <p className="mt-1 max-w-sm text-[11.5px] leading-relaxed text-muted-foreground">Le adaugi din modulele Specialiști și Fotografie locație; apoi le poți asocia zonei de aici.</p>
+        </div>
+      )}
+      {open && !(resourceCount === 0 && (config.assignments || []).length === 0 && (config.equipment || []).length === 0 && (config.facilities || []).length === 0) && (
         <div className="grid gap-3 border-t border-border/60 p-4 md:grid-cols-3 sm:p-5">
           <ResourceGroup title="Specialiști" emptyText="Nu există specialiști activi asociați locației." items={config.assignments || []} unitKey={unitKey} type="professionals" disabled={disabled} links={links} approvedLinks={approvedLinks} onToggle={onToggle} />
           <ResourceGroup title="Echipamente" emptyText="Nu există echipamente declarate." items={(config.equipment || []).filter((item) => item.is_active !== false)} unitKey={unitKey} type="equipment" disabled={disabled} links={links} approvedLinks={approvedLinks} onToggle={onToggle} />
