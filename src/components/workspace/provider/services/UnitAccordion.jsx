@@ -47,6 +47,10 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
     if (filter === "all") return true;
     const active = isSelected(selected, item);
     if (filter === "selected") return active;
+    // Filtrul "changes" (2026-08-23): tot ce difera fata de starea aprobata. Testul e pe
+    // DIFERENTA, nu pe selectie, pentru ca eliminarile propuse nu sunt bifate - un test
+    // pe "active" le-ar sari exact pe cele care conteaza cel mai mult la verificare.
+    if (filter === "changes") return active !== isSelected(approvedSelected, item);
     return active && prerequisites[item.id]?.eligible === false;
   };
   const visibleSections = filter === "all"
