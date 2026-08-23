@@ -1422,13 +1422,14 @@
   padding-top: 12px;
 }
 
-/* O singura coloana (2026-08-23, la cererea lui Alex): cu doua coloane inguste,
-   pastila "Decontat CAS" nu avea loc langa eticheta serviciului si cadea pe randul
-   de dedesubt. Randul intreg, cat latimea cardului, ii face loc alaturi. */
+/* Doua coloane, ca inainte (2026-08-23: Alex a incercat o singura coloana si a cerut
+   inapoi la doua - se citea mai bine cu mai putin gol pe rand). Randul singur
+   (ServiceRow.jsx) e cel care a primit loc pentru pastila CAS langa eticheta, nu
+   coloana - deci cele doua coloane raman late (minmax 280px) fara sa strice asezarea. */
 .provider-services-three__native .services-group-card--wide .services-group-card__rows {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 2px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 2px 10px;
   padding: 12px;
 }
 
