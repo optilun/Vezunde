@@ -618,7 +618,14 @@ export default function ProviderWorkspaceRoot({
         <Suspense fallback={<WorkspaceSectionLoading />}>
           <>
             {safeSection === "overview" && (
-              <ProviderOverview overview={overview} onNavigate={goToSection} canManageOrganizationProfile={canManageOrganizationProfile} canManageLocations={canManageAnyLocation} />
+              <ProviderOverview
+                overview={overview}
+                onNavigate={goToSection}
+                canManageOrganizationProfile={canManageOrganizationProfile}
+                canManageLocations={canManageAnyLocation}
+                canManageRequests={canManageRequests}
+                publicProfileUrl={selectedLocationId ? `/furnizor/${selectedLocationId}` : ""}
+              />
             )}
             {safeSection === "profile" && (
               <div className="[&>div>header:first-child]:hidden">
