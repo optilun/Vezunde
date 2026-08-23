@@ -31,6 +31,8 @@ import {
 } from "lucide-react";
 import { SUBMISSION_STATUS_LABELS } from "@/lib/workspaceStatusLabels";
 import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
+import OverviewLeadsCard from "./overview/OverviewLeadsCard";
+import OverviewPublicProfileCard from "./overview/OverviewPublicProfileCard";
 
 const GRAIN = { backgroundImage: "url('/images/home/viasee-technical-grain.svg')", backgroundSize: "180px 180px" };
 
@@ -362,6 +364,8 @@ export default function ProviderOverview({
   onNavigate,
   canManageOrganizationProfile = false,
   canManageLocations = false,
+  canManageRequests = false,
+  publicProfileUrl = "",
 }) {
   const organization = overview.organization || {};
   const location = overview.location || {};
@@ -474,6 +478,23 @@ export default function ProviderOverview({
           </div>
         )}
       </header>
+
+      {/* Ce aduce clienti si cum arati in afara - inaintea rezumatelor administrative. */}
+      <div className="grid items-start gap-5 lg:grid-cols-2">
+        {canManageRequests && (
+          <OverviewLeadsCard
+            locationIds={(overview.locations || []).map((item) => item.id).filter(Boolean)}
+            onNavigate={onNavigate}
+          />
+        )}
+        <OverviewPublicProfileCard
+          organizationName={organizationName}
+          organizationType={organizationType}
+          localityName={locationItems[0]?.locality_name || ""}
+          publicProfileUrl={publicProfileUrl}
+          published={profileStatus === "approved"}
+        />
+      </div>
 
       {/* Randul de scanare: ce ai publicat, in placi tonale clickabile. */}
       <section>
