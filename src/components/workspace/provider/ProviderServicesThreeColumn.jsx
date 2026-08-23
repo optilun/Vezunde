@@ -341,19 +341,26 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   // Starea profilului, in stilul Uber/Revolut: spune raspicat daca esti sau nu vizibil
   // pacientilor, si care e singurul lucru ramas de facut. Pragul e cel putin un serviciu
   // APROBAT - sub el, profilul apare doar ca alternativa neconfirmata, cu avertisment.
-  const readinessBanner = snapshot.approvedCount > 0
+  // Ordinea conteaza: pendingReview se verifica INAINTE de approvedCount (2026-08-23).
+  // Inainte era invers, deci o locatie cu servicii deja aprobate vedea "Profilul apare la
+  // cautarile pacientilor" si nu afla de nicaieri, pe telefon, ca editarea e blocata -
+  // exact cazul obisnuit, nu unul marginal. Cand ambele sunt adevarate, faptul care il
+  // priveste acum e blocajul; ca profilul e vizibil ramane spus in detaliu.
+  const readinessBanner = snapshot.pendingReview
+    ? {
+      tone: "pending",
+      title: "Modificările sunt în verificare",
+      detail: snapshot.approvedCount > 0
+        ? `Profilul rămâne vizibil cu ${snapshot.approvedCount} ${snapshot.approvedCount === 1 ? "serviciu confirmat" : "servicii confirmate"}. Până la decizie nu poți edita.`
+        : "Te anunțăm când sunt aprobate. Până atunci nu poți edita.",
+    }
+    : snapshot.approvedCount > 0
     ? {
       tone: "live",
       title: "Profilul apare la căutările pacienților",
       detail: `${snapshot.approvedCount} ${snapshot.approvedCount === 1 ? "serviciu confirmat" : "servicii confirmate"}`,
     }
-    : snapshot.pendingReview
-      ? {
-        tone: "pending",
-        title: "Modificările sunt în verificare",
-        detail: "Te anunțăm când sunt aprobate. Până atunci nu poți edita.",
-      }
-      : snapshot.selectedCount > 0
+    : snapshot.selectedCount > 0
         ? {
           tone: "action",
           title: "Nu apari încă la căutări",
@@ -594,7 +601,11 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                 (2026-08-18: fusesera mutate SUB titlu, ca ochiul sa nu citeasca meta
                 inainte de a sti pe ce ecran e; randul titlului pastreaza si asta.) */}
             <div className="provider-services-three__meta">
-              {snapshot.configurationComplete && !snapshot.dirty && snapshot.selectedCount > 0 && (
+              {/* !pendingReview adaugat 2026-08-23: in verificare, dirty e fals si
+                  configurationComplete e true prin constructie, deci badge-ul "Pregatita
+                  pentru trimitere" aparea fix deasupra bannerului "editarea este blocata",
+                  fara buton de trimitere nicaieri. Trei mesaje care se contraziceau. */}
+              {!snapshot.pendingReview && snapshot.configurationComplete && !snapshot.dirty && snapshot.selectedCount > 0 && (
                 <span className="provider-services-three__meta-badge is-ready">
                   <CheckCircle2 aria-hidden="true" /> Pregătită pentru trimitere
                 </span>
