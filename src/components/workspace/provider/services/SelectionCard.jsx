@@ -26,7 +26,7 @@ export default function SelectionCard({ active, approved = false, title, descrip
           <Icon className="h-4 w-4" />
         </span>
         <span className="min-w-0">
-          <span className="block text-sm font-bold leading-snug text-foreground">{title}</span>
+          <span className="block text-sm font-semibold leading-snug text-foreground">{title}</span>
           <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground line-clamp-2">{description}</span>
         </span>
         <span className="mt-auto flex flex-wrap items-center gap-2 pt-1">
@@ -51,7 +51,7 @@ export default function SelectionCard({ active, approved = false, title, descrip
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-start justify-between gap-3">
-          <span className="text-sm font-bold leading-snug text-foreground">{title}</span>
+          <span className="text-sm font-semibold leading-snug text-foreground">{title}</span>
           {/* Comutator, nu bifa (2026-08-18): singurul consumator ramas al acestei
               variante e "La nivelul locatiei" - atribute care se comporta identic cu
               serviciile (selectie confirmata prin salvare), deci acelasi control ca

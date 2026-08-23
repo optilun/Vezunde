@@ -15,7 +15,7 @@ function UnitGroup({ label, unitKeys, approvedUnits, activeUnits, selectedByUnit
   if (unitKeys.length === 0) return null;
   return (
     <div>
-      <p className="services-unit-group-label mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="services-unit-group-label mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
       <div className="services-card-grid services-card-grid--square grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
         {unitKeys.map((unitKey) => {
           const definition = getFunctionalUnitDefinition(unitKey);

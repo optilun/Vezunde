@@ -95,14 +95,14 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${UNIT_TONE[unitKey] ? "" : open ? "border-foreground/15 bg-secondary/55" : "border-border bg-background text-muted-foreground"}`}
           style={UNIT_TONE[unitKey] ? { background: UNIT_TONE[unitKey].bg, borderColor: UNIT_TONE[unitKey].border, color: UNIT_TONE[unitKey].text } : undefined}
         ><Icon className="h-4 w-4" /></span>
-        <span className="min-w-0 flex-1"><span className="services-unit__title block text-sm font-bold sm:text-base">{definition?.title || unitKey}</span><span className="mt-0.5 block text-[11px] text-muted-foreground">{selectedCount} selectate din {total}</span></span>
+        <span className="min-w-0 flex-1"><span className="services-unit__title block text-sm font-semibold sm:text-base">{definition?.title || unitKey}</span><span className="mt-0.5 block text-[11px] text-muted-foreground">{selectedCount} selectate din {total}</span></span>
         <ChevronDown className={`h-4 w-4 text-muted-foreground transition ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
         <div className="border-t border-border/70">
           {zoneCapabilityKeys.length > 0 && (
             <div className="space-y-2 border-b border-border/60 bg-secondary/10 p-4 sm:px-5">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Activități pentru această zonă</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Activități pentru această zonă</p>
               {zoneCapabilityKeys.map((capabilityKey) => (
                 <CapabilityToggle
                   key={capabilityKey}
@@ -210,7 +210,7 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
               const activeUnit = resolveSectionUnit(section, selected, serviceUnitMap, [unitKey]);
               return (
                 <div key={section.key} className="pt-3 first:pt-1">
-                  <h3 className="px-4 pb-1 text-[13px] font-bold tracking-tight sm:px-5">{section.title}</h3>
+                  <h3 className="px-4 pb-1 text-[13px] font-semibold tracking-tight sm:px-5">{section.title}</h3>
                   <div className="border-t border-border/50">
                     {section.items.map((item) => (
                       <ServiceRow

@@ -7,7 +7,7 @@ function ResourceGroup({ title, emptyText, items, unitKey, type, disabled, links
   if (items.length === 0) return <div className="services-resource-group rounded-xl border border-dashed border-border px-3 py-4 text-[11px] text-muted-foreground"><strong className="text-foreground">{title}</strong><div className="mt-1">{emptyText}</div></div>;
   return (
     <div className="services-resource-group rounded-xl border border-border bg-card p-3">
-      <div className="text-xs font-bold">{title}</div>
+      <div className="text-xs font-semibold">{title}</div>
       <div className="mt-2 space-y-1.5">
         {items.map((item) => {
           const id = item.id;
@@ -48,7 +48,7 @@ export default function UnitResourcesPanel({ unitKey, config, disabled, links, a
         <span className="flex min-w-0 items-center gap-2">
           <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span className="min-w-0">
-            <span className="block text-xs font-bold">Resurse asociate zonei</span>
+            <span className="block text-xs font-semibold">Resurse asociate zonei</span>
             <span className="mt-0.5 block text-[10px] text-muted-foreground">{resourceCount > 0 ? `${professionalCount} specialiști · ${equipmentCount} echipamente · ${facilityCount} facilități` : "Nicio resursă asociată încă"}</span>
           </span>
         </span>

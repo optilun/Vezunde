@@ -27,14 +27,14 @@ export default function ServicesSearchResults({ query, results, selected, approv
         const unitKey = isLocationWide ? "" : resolveSectionUnit(section, selected, serviceUnitMap, activeUnits);
         return (
           <div key={`${section.key}:${item.id}`}>
-            <div className="border-b border-border/60 bg-secondary/10 px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{isLocationWide ? "Valabil la nivelul locației" : getFunctionalUnitDefinition(unitKey)?.shortTitle || "Zonă neconfigurată"} · {section.title}</div>
+            <div className="border-b border-border/60 bg-secondary/10 px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{isLocationWide ? "Valabil la nivelul locației" : getFunctionalUnitDefinition(unitKey)?.shortTitle || "Zonă neconfigurată"} · {section.title}</div>
             <ServiceRow item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={prerequisites[item.id]} unitKey={unitKey} disabled={disabled} onToggle={onToggleService} filter={filter} />
           </div>
         );
       }) : (
         <div className="flex flex-col items-center px-6 py-12 text-center">
           <NoResultsFigure />
-          <p className="mt-4 font-heading text-[15px] font-extrabold tracking-[-0.02em] text-foreground">Nicio potrivire pentru „{query}”</p>
+          <p className="mt-4 font-heading text-[15px] font-semibold tracking-[-0.02em] text-foreground">Nicio potrivire pentru „{query}”</p>
           <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-muted-foreground">
             Caută după ce face serviciul, nu după denumirea din catalog: „control”, „lentile”, „reparație”, „copii”.
           </p>
@@ -42,7 +42,7 @@ export default function ServicesSearchResults({ query, results, selected, approv
             <button
               type="button"
               onClick={onClearQuery}
-              className="mt-5 inline-flex min-h-10 items-center rounded-full border border-foreground/20 bg-background px-4 text-[12.5px] font-bold text-foreground transition-colors hover:border-foreground/45"
+              className="mt-5 inline-flex min-h-10 items-center rounded-full border border-foreground/20 bg-background px-4 text-[12.5px] font-semibold text-foreground transition-colors hover:border-foreground/45"
             >
               Șterge căutarea
             </button>

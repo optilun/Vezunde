@@ -86,14 +86,14 @@
 .provider-services-three__left-heading span {
   color: var(--services-accent);
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 600;
   line-height: 1.3;
 }
 
 .provider-services-three__left-heading strong {
   font-family: var(--font-heading);
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1.35;
   letter-spacing: -0.018em;
 }
@@ -113,7 +113,7 @@
   margin: 0 8px 7px;
   color: var(--services-muted);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0.055em;
   text-transform: uppercase;
 }
@@ -160,7 +160,7 @@
   min-width: 0;
   overflow: hidden;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -172,7 +172,7 @@
   color: var(--services-muted);
   font-size: 10px;
   font-style: normal;
-  font-weight: 750;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -212,7 +212,7 @@
   margin: 0;
   font-family: var(--font-heading);
   font-size: 19px;
-  font-weight: 800;
+  font-weight: 600;
   line-height: 1.25;
   letter-spacing: -0.026em;
 }
@@ -362,7 +362,7 @@
 }
 
 .services-header-actions__btn.is-primary:hover:not(:disabled) {
-  background: #000000;
+  background: #0d0d0d;
 }
 
 .services-header-actions__btn:disabled {
@@ -463,7 +463,7 @@
 .provider-services-three__native [data-services-panel="search-results"] h2 {
   font-family: var(--font-heading);
   font-size: 14px !important;
-  font-weight: 800 !important;
+  font-weight: 600 !important;
   letter-spacing: -0.016em;
 }
 
@@ -590,7 +590,7 @@
 .provider-services-three__native [data-services-panel="units"] .services-unit__title {
   font-family: var(--font-heading);
   font-size: 14px !important;
-  font-weight: 800 !important;
+  font-weight: 600 !important;
 }
 
 .provider-services-three__native [data-services-panel="units"] > section > div {
@@ -604,7 +604,7 @@
 .provider-services-three__native [data-services-panel="units"] h3 {
   font-family: var(--font-heading);
   font-size: 13px !important;
-  font-weight: 800 !important;
+  font-weight: 600 !important;
 }
 
 .provider-services-three__native [data-services-panel="units"] .services-resources {
@@ -659,7 +659,7 @@
 
 .provider-services-three__native .services-row__title {
   font-size: 13px !important;
-  font-weight: 750 !important;
+  font-weight: 600 !important;
 }
 
 .provider-services-three__native .services-row__detail {
@@ -732,7 +732,7 @@
 
 .provider-services-three__actions strong {
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .provider-services-three__actions span {
@@ -760,7 +760,7 @@
   background: transparent;
   color: var(--services-text);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -972,7 +972,7 @@
   background: transparent;
   color: #706c64;
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -1002,7 +1002,7 @@
   color: #345bc8;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -1030,7 +1030,7 @@
   margin: 0;
   font-family: var(--font-heading);
   font-size: clamp(2rem, 3vw, 2.65rem);
-  font-weight: 850;
+  font-weight: 700;
   line-height: 1.05;
   letter-spacing: -0.04em;
 }
@@ -1065,7 +1065,7 @@
 
 .provider-location-services-header__location strong {
   color: #171717;
-  font-weight: 750;
+  font-weight: 600;
 }
 
 /* ==========================================================================
@@ -1093,7 +1093,7 @@
   color: var(--services-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 10px;
-  font-weight: 750;
+  font-weight: 600;
   letter-spacing: 0.12em;
   line-height: 1.3;
   text-transform: uppercase;
@@ -1416,7 +1416,7 @@
   box-shadow: none !important;
   color: var(--services-text) !important;
   font-size: 13px !important;
-  font-weight: 720 !important;
+  font-weight: 600 !important;
   text-decoration: underline;
   text-decoration-color: rgb(23 23 23 / 0.34);
   text-underline-offset: 4px;
@@ -1434,7 +1434,7 @@
   background: transparent !important;
   color: var(--services-muted) !important;
   font-size: 11px !important;
-  font-weight: 620 !important;
+  font-weight: 600 !important;
 }
 
 .provider-services-three__actions {

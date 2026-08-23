@@ -11,14 +11,14 @@ export default function DependencyRemovalDialog({ request, onCancel, onConfirm }
         <div className="flex items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#efd5c5] text-black/70"><AlertTriangle className="h-4 w-4" /></span>
           <div>
-            <h2 id="dependency-removal-title" className="text-base font-bold">{approved ? "Propune eliminarea cu dependențe" : "Elimină opțiunea din draft"}</h2>
+            <h2 id="dependency-removal-title" className="text-base font-semibold">{approved ? "Propune eliminarea cu dependențe" : "Elimină opțiunea din draft"}</h2>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">„{request.label}” are elemente asociate. Confirmarea le va marca împreună, astfel încât configurația să rămână coerentă.</p>
           </div>
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2">
-          <div className="rounded-2xl bg-secondary/45 p-3 text-center"><div className="text-xl font-extrabold">{request.serviceCount || 0}</div><div className="mt-1 text-[10px] font-semibold text-muted-foreground">Servicii</div></div>
-          <div className="rounded-2xl bg-secondary/45 p-3 text-center"><div className="text-xl font-extrabold">{request.capabilityCount || 0}</div><div className="mt-1 text-[10px] font-semibold text-muted-foreground">Activități</div></div>
-          <div className="rounded-2xl bg-secondary/45 p-3 text-center"><div className="text-xl font-extrabold">{request.resourceCount || 0}</div><div className="mt-1 text-[10px] font-semibold text-muted-foreground">Resurse</div></div>
+          <div className="rounded-2xl bg-secondary/45 p-3 text-center"><div className="text-xl font-semibold">{request.serviceCount || 0}</div><div className="mt-1 text-[10px] font-semibold text-muted-foreground">Servicii</div></div>
+          <div className="rounded-2xl bg-secondary/45 p-3 text-center"><div className="text-xl font-semibold">{request.capabilityCount || 0}</div><div className="mt-1 text-[10px] font-semibold text-muted-foreground">Activități</div></div>
+          <div className="rounded-2xl bg-secondary/45 p-3 text-center"><div className="text-xl font-semibold">{request.resourceCount || 0}</div><div className="mt-1 text-[10px] font-semibold text-muted-foreground">Resurse</div></div>
         </div>
         {approved && <p className="mt-4 rounded-2xl border border-[#e1bda8] bg-[#efd5c5] px-3 py-3 text-xs leading-relaxed text-black/70">Configurația aprobată nu este ștearsă imediat. După trimiterea cererii, serviciile afectate sunt ascunse public până la soluționare.</p>}
         <div className="mt-5 flex flex-wrap justify-end gap-2">
