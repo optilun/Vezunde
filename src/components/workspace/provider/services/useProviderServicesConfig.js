@@ -81,6 +81,9 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [conflicts, setConflicts] = useState([]);
+  // Al treilea strat (2026-08-23, opusul C): ce se afla EFECTIV in verificare. Cheie de
+  // serviciu sau de zona -> "added" | "removed". Gol cand nu exista nicio cerere trimisa.
+  const [reviewState, setReviewState] = useState({});
   const [pendingRemoval, setPendingRemoval] = useState(null);
 
   const serviceLayout = useMemo(() => remoteCatalog?.group_layout || getServiceGroupLayout(location?.provider_profile_type, location?.provider_type), [location?.provider_profile_type, location?.provider_type, remoteCatalog]);
@@ -140,7 +143,11 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
   // aparea abia la salvare - adica dupa ce utilizatorul isi facuse toata munca. Aceeasi
   // conditie ca a bannerului care anunta conflictul, ca cele doua sa nu se contrazica.
   const blockedByOtherMember = conflicts.length > 0 && !draft;
-  const editable = config?.can_edit_services !== false && !pendingReview && !blockedByOtherMember;
+  // pendingReview NU mai blocheaza editarea (2026-08-23). Se poate de cand payload-ul
+  // trimis e inghetat separat in backend: adminul citeste copia, deci ce se lucreaza acum
+  // nu mai schimba retroactiv ce se aproba. Ce ramane interzis in verificare e o A DOUA
+  // trimitere - vezi canSubmit mai jos.
+  const editable = config?.can_edit_services !== false && !blockedByOtherMember;
   const visibleUnits = useMemo(
     () => activeUnits.filter((unitKey) => sectionsByUnit[unitKey]?.length > 0),
     [activeUnits, sectionsByUnit],
@@ -310,6 +317,7 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
       draftAddedCount,
       draftRemovedCount,
       draftChangeCount: draftAddedCount + draftRemovedCount,
+      reviewCount: Object.keys(reviewState).length,
       blockers: readiness.blockers,
       selectedServices: readiness.publicServiceKeys.map((serviceKey) => serviceLabel(itemByKey[serviceKey] || { id: serviceKey, label: serviceKey })),
       careSetting: CARE_SETTINGS[careSetting]?.label || "",
@@ -324,7 +332,9 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
       actionTone,
       saving,
       canSave: Boolean(!saving && editable && dirty),
-      canSubmit: Boolean(!saving && draft && editable && !dirty && readiness.configurationComplete),
+      // !pendingReview: se poate lucra in paralel cu o verificare, dar nu se poate trimite
+      // o a doua cerere peste una nedecisa - backendul tine oricum o singura cerere activa.
+      canSubmit: Boolean(!saving && draft && editable && !pendingReview && !dirty && readiness.configurationComplete),
       canWithdraw: Boolean(!saving && pendingReview && persistenceMode === "v2"),
       // Era true neconditionat, deci "Salveaza draftul" se randa si in pending_review sau
       // pentru un membru fara drept de editare - un buton care nu putea functiona niciodata,
@@ -336,7 +346,7 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
       pendingReview,
       ...stableActions,
     };
-  }, [activeUnits, approvedSelected, capabilities.length, careSetting, conflicts, dirty, draft, draftPrerequisites, editable, error, message, operationalLayout, pendingReview, persistenceMode, profileSections, readiness, saving, sectionsByUnit, selectableCapabilities, selectedByUnit, stableActions, suggestions.length, visibleUnits]);
+  }, [activeUnits, approvedSelected, capabilities.length, careSetting, conflicts, dirty, draft, draftPrerequisites, editable, error, message, operationalLayout, pendingReview, persistenceMode, profileSections, readiness, reviewState, saving, sectionsByUnit, selectableCapabilities, selectedByUnit, stableActions, suggestions.length, visibleUnits]);
 
   useEffect(() => {
     onWorkspaceSnapshot?.(workspaceSnapshot);
@@ -421,6 +431,27 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
     const payload = safeParse(ownDraft?.payload_json);
     const desired = ownDraft ? applyDraft(approved, payload) : approved;
     const persistedUnits = (nextConfig.functional_units || []).filter((item) => item.is_active !== false).map((item) => item.unit_key);
+    // Ce se afla in verificare = diferenta dintre copia inghetata la trimitere si starea
+    // aprobata, adica exact ce citeste adminul. Se calculeaza doar in pending_review; in
+    // rest harta ramane goala si tot ecranul se comporta ca inainte. Cheile de serviciu si
+    // cele de zona nu se suprapun, deci incap in aceeasi harta.
+    const reviewPayload = ownDraft?.status === "pending_review" ? safeParse(ownDraft?.submitted_payload_json) : null;
+    const nextReviewState = {};
+    if (reviewPayload && Object.keys(reviewPayload).length > 0) {
+      const approvedKeys = new Set(selectedServiceKeys(approved));
+      const submittedKeys = new Set(selectedServiceKeys(applyDraft(approved, reviewPayload)));
+      for (const key of submittedKeys) if (!approvedKeys.has(key)) nextReviewState[key] = "added";
+      for (const key of approvedKeys) if (!submittedKeys.has(key)) nextReviewState[key] = "removed";
+      // Zonele doar daca payload-ul chiar le poarta: la un payload vechi, fara
+      // functional_units, o lista goala ar fi insemnat "toate zonele propuse spre eliminare".
+      if (Array.isArray(reviewPayload.functional_units)) {
+        const submittedUnitKeys = new Set(reviewPayload.functional_units.map((item) => item.unit_key));
+        const approvedUnitKeys = new Set(persistedUnits);
+        for (const key of submittedUnitKeys) if (!approvedUnitKeys.has(key)) nextReviewState[key] = "added";
+        for (const key of approvedUnitKeys) if (!submittedUnitKeys.has(key)) nextReviewState[key] = "removed";
+      }
+    }
+    setReviewState(nextReviewState);
     const initialUnits = [...new Set(payload.functional_units?.map((item) => item.unit_key)
       || (persistedUnits.length > 0 ? persistedUnits : nextConfig.inferred_functional_unit_keys || primaryUnits))]
       .filter((unitKey) => selectableUnits.includes(unitKey));
@@ -759,7 +790,11 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
     const payload = buildPayload();
     const response = persistenceMode === "v2"
       ? await base44.functions.invoke("providerServiceConfigurationOps", {
-        action: draft && draft.status !== "pending_review" ? "update_draft" : "create_draft",
+        // In V2, update_draft accepta acum si pending_review si scrie numai payload-ul de
+        // lucru. Conditia veche trimitea create_draft in verificare - care de la corectia
+        // din aceeasi zi raspunde 409, pe buna dreptate. (Fluxul compatibil de mai jos
+        // ramane pe conditia veche: acolo update_draft chiar refuza pending_review.)
+        action: draft ? "update_draft" : "create_draft",
         submission_id: draft?.id,
         location_id: locationId,
         section: "services",
@@ -841,6 +876,7 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
     message,
     error,
     conflicts,
+    reviewState,
     pendingRemoval,
     query,
     setQuery,

@@ -135,6 +135,10 @@ function safeSubmission(submission) {
     section: submission.section,
     status: submission.status,
     payload_json: submission.payload_json || '{}',
+    // Copia inghetata ajunge si la client (2026-08-23): din ea se calculeaza ce anume e
+    // efectiv in verificare, ca sa se poata deosebi in ecran de ce a lucrat furnizorul
+    // dupa trimitere. Goala pentru orice status in afara de pending_review.
+    submitted_payload_json: submission.submitted_payload_json || '',
     submitted_at: submission.submitted_at || null,
     admin_note: showNote ? (submission.admin_note || '') : '',
     created_date: submission.created_date,
