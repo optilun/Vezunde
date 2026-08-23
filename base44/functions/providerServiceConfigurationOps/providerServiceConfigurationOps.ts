@@ -542,7 +542,7 @@ export async function handle(req: Request) {
       await audit(svc, user, {
         entity_type: 'ProviderWorkspaceSubmission', entity_id: submission.id,
         action_type: 'submit_service_configuration_for_review',
-        changed_fields: ['status', 'submitted_at'], previous: { status: submission.status }, next: { status: 'pending_review' },
+        changed_fields: ['status', 'submitted_at', 'submitted_payload_json'], previous: { status: submission.status }, next: { status: 'pending_review' },
         note: 'Configurația completă a serviciilor a fost trimisă spre verificare.',
       });
       return Response.json({ success: true });
