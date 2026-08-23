@@ -908,3 +908,242 @@
 .provider-services-three__stats-row button.has-issues span {
   color: #8a4b12;
 }
+
+/* ==========================================================================
+   20. GRUPURILE UNEI ZONE, TOATE DEODATA (2026-08-23, varianta A aprobata de Alex)
+   --------------------------------------------------------------------------
+   Grupurile nu se mai deschid pe rand. Stau unul langa altul, in carduri, ca sa
+   vezi toata oferta zonei dintr-o privire. Aceleasi doua culori ca in tot modulul:
+   crem #f5f1e9 pentru cardul in repaus, alb pentru randul ales, cerneala #171717
+   pentru marcaj. Fara culori noi.
+   ========================================================================== */
+
+.provider-services-three__native .services-group-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 14px;
+  padding: 14px;
+  align-items: start;
+}
+
+@media (max-width: 640px) {
+  .provider-services-three__native .services-group-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px;
+  }
+}
+
+.provider-services-three__native .services-group-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgb(23 23 23 / 0.1);
+  border-radius: 16px;
+  background: #f5f1e9;
+  overflow: hidden;
+}
+
+.provider-services-three__native .services-group-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 13px;
+  border-bottom: 1px solid rgb(23 23 23 / 0.08);
+}
+
+.provider-services-three__native .services-group-card__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  color: #171717;
+}
+
+.provider-services-three__native .services-group-card__count {
+  flex-shrink: 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #706c64;
+}
+
+/* Grup complet: contorul devine cerneala plina, singurul semnal de care e nevoie. */
+.provider-services-three__native .services-group-card__count[data-full="true"] {
+  color: #171717;
+}
+
+.provider-services-three__native .services-group-card__capability {
+  padding: 10px 10px 0;
+}
+
+.provider-services-three__native .services-group-card__description {
+  margin: 0;
+  padding: 10px 13px 0;
+  font-size: 11px;
+  line-height: 1.55;
+  color: #706c64;
+}
+
+.provider-services-three__native .services-group-card__note {
+  margin: 10px 10px 0;
+}
+
+.provider-services-three__native .services-group-card__rows {
+  padding: 6px;
+}
+
+/* Randurile din card: fara linii de separare pe toata latimea. Coloana de bife tine
+   deja ritmul, iar liniile ar taia cardul in felii. */
+.provider-services-three__native .services-group-card__rows .services-row {
+  border-bottom: none;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.provider-services-three__native .services-group-card__rows button[data-service-key] {
+  border-radius: 10px;
+}
+
+.provider-services-three__native .services-group-card__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding: 9px 13px 11px;
+  border-top: 1px solid rgb(23 23 23 / 0.08);
+}
+
+.provider-services-three__native .services-group-card__bulk {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 11px;
+  border: 1px solid rgb(23 23 23 / 0.2);
+  border-radius: 999px;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #171717;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.provider-services-three__native .services-group-card__bulk:hover:not(:disabled) {
+  border-color: rgb(23 23 23 / 0.45);
+}
+
+.provider-services-three__native .services-group-card__bulk.is-quiet {
+  border-color: rgb(23 23 23 / 0.12);
+  font-weight: 600;
+  color: #706c64;
+}
+
+.provider-services-three__native .services-group-card__bulk:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.provider-services-three__native .services-group-card__parent {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #706c64;
+}
+
+.provider-services-three__native .services-group-card__parent select {
+  border: 1px solid rgb(23 23 23 / 0.16);
+  border-radius: 9px;
+  background: #ffffff;
+  padding: 4px 7px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: #171717;
+}
+
+/* Propunerea manuala se retrage vizual: e o portita, nu un pas. */
+.provider-services-three__native .services-group-card > div:last-child {
+  border-top-color: rgb(23 23 23 / 0.07);
+}
+
+/* --------------------------------------------------------------------------
+   Bara zonei: contorul si actiunile in masa, deasupra cardurilor.
+   -------------------------------------------------------------------------- */
+
+.provider-services-three__native .services-unit__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgb(23 23 23 / 0.08);
+  background: #f7f4ed;
+}
+
+.provider-services-three__native .services-unit__toolbar-count {
+  font-size: 11.5px;
+  color: #706c64;
+}
+
+.provider-services-three__native .services-unit__toolbar-count strong {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #171717;
+}
+
+.provider-services-three__native .services-unit__toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+.provider-services-three__native .services-unit__toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 11px;
+  border: 1px solid rgb(23 23 23 / 0.2);
+  border-radius: 999px;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #171717;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.provider-services-three__native .services-unit__toolbar-button svg {
+  height: 13px;
+  width: 13px;
+}
+
+.provider-services-three__native .services-unit__toolbar-button:hover:not(:disabled) {
+  border-color: rgb(23 23 23 / 0.45);
+}
+
+.provider-services-three__native .services-unit__toolbar-button.is-quiet {
+  border-color: rgb(23 23 23 / 0.12);
+  font-weight: 600;
+  color: #706c64;
+}
+
+/* "Descrieri" pornit: cerneala plina, ca sa se vada ca ecranul arata acum mai mult
+   text decat implicit. */
+.provider-services-three__native .services-unit__toolbar-button.is-quiet[aria-pressed="true"] {
+  border-color: #171717;
+  background: #171717;
+  color: #ffffff;
+}
+
+.provider-services-three__native .services-unit__toolbar-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
