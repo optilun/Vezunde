@@ -1451,3 +1451,46 @@
 .provider-services-three__native .services-group-card--wide .services-group-card__rows button[data-service-key][aria-pressed="true"]:hover {
   background: #f2ede2 !important;
 }
+
+/* --------------------------------------------------------------------------
+   20e. Antet compact: cardul urca la nivelul coloanei din stanga (2026-08-23)
+   --------------------------------------------------------------------------
+   Alex, dupa capturi: "e spatiu destul de mare pana incepe cardul". Erau patru
+   randuri de antet inaintea continutului - titlu, propozitie generica, marcaj de
+   stare, antet de acordeon cu acelasi nume si acelasi contor. Marcajele urca in
+   randul titlului, propozitia si antetul de acordeon dispar in interiorul zonei,
+   iar spatiile se string.
+   -------------------------------------------------------------------------- */
+
+.provider-services-three__center-header .provider-services-three__meta {
+  flex: 0 0 auto;
+  max-width: none;
+  margin-left: auto;
+  padding: 0;
+}
+
+.provider-services-three__center-header {
+  min-height: 0;
+  padding-block: 8px 12px;
+}
+
+.provider-services-three__center-header h2 {
+  margin-top: 0;
+}
+
+/* Zona fara antet de acordeon: bara de sus a zonei devine primul rand al cadrului,
+   deci nu mai are nevoie de linia de deasupra. */
+.provider-services-three__native .services-unit[data-services-step="true"] .services-unit__groups:first-child,
+.provider-services-three__native .services-unit[data-services-step="true"] .services-unit__toolbar:first-child {
+  border-top: 0;
+}
+
+.provider-services-three__native .services-unit[data-services-step="true"] .services-unit__toolbar {
+  border-radius: 21px 21px 0 0;
+}
+
+@media (max-width: 620px) {
+  .provider-services-three__center-header .provider-services-three__meta {
+    margin-left: 0;
+  }
+}
