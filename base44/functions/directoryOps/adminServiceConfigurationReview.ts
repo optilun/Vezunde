@@ -565,7 +565,14 @@ export async function handle(req: Request) {
 
     if (action === 'reject' || action === 'request_more_info') {
       const result = await delegate(base44, action, input);
-      if (action === 'reject' && !result?.error) await restoreRemovalVisibility(svc, submission);
+      // Si la request_more_info, nu doar la reject (2026-08-23, decizie Alex). Regula pe
+      // care o aplicam de acum: un serviciu propus spre eliminare e ascuns din cautare si
+      // din matching DOAR cat timp cererea e efectiv in verificare. Cand adminul cere
+      // informatii, mingea trece inapoi la furnizor si decizia nu mai e in curs - putea sta
+      // zile intregi asa, cu serviciile lui invizibile pentru pacienti pentru o eliminare
+      // care s-ar putea sa nu se intample niciodata. Reject facea deja lucrul corect;
+      // request_more_info era exceptia, nu regula.
+      if (!result?.error) await restoreRemovalVisibility(svc, submission);
       return Response.json(result);
     }
 
