@@ -468,8 +468,17 @@
   transition: width 240ms ease;
 }
 
-/* Latime de citire: pe ecrane late, textul si comutatorul nu mai stau la capete opuse. */
-.provider-services-three__native [data-services-panel],
+/* Latime de citire: pe ecrane late, textul si comutatorul nu mai stau la capete opuse.
+   2026-08-23 (la cererea lui Alex): selectorul [data-services-panel], fara valoare,
+   prindea din greseala si panoul "units" (zona cu cardul de grup) - desi acela nu e
+   text de citit, e un card. Rezultatul: cardul se oprea la 880px, mult inainte de
+   linia din antet unde sta "Salveaza draftul", cu gol vizibil in dreapta. Regula
+   ramane doar pe panourile cu adevarat text (configurare, optiuni, avansat,
+   rezultate cautare) - la fel ca restul fisierului, care le enumera explicit. */
+.provider-services-three__native [data-services-panel="configuration"],
+.provider-services-three__native [data-services-panel="options"],
+.provider-services-three__native [data-services-panel="advanced"],
+.provider-services-three__native [data-services-panel="search-results"],
 .provider-services-three__meta,
 .provider-services-three__admin-note,
 .provider-services-three__center-copy {
