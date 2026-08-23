@@ -61,7 +61,11 @@ export default function ProviderServicesWorkspaceOperational(props) {
       {pendingReview && <div className="services-alert rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">Modificările sunt în curs de aprobare. Editarea este blocată până la decizia administratorului.</div>}
       {draft?.admin_note && ["needs_more_info", "rejected"].includes(draft.status) && <div className="services-alert rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-950"><strong className="block">Completări solicitate</strong><span className="mt-1 block">{draft.admin_note}</span></div>}
       {conflicts.length > 0 && !draft && <div className="services-alert rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950">{conflicts[0].message}</div>}
-      {config?.can_edit_services === false && !pendingReview && <div className="services-alert rounded-2xl border border-border bg-secondary/30 px-4 py-3 text-xs text-muted-foreground">Ai acces de vizualizare. Modificarea serviciilor publice este disponibilă ownerului și managerului locației.</div>}
+      {/* Conditia "&& !pendingReview" a fost scoasa (2026-08-23): un membru fara drept de
+          editare primea, in timpul unei verificari, explicatia "in curs de aprobare" in locul
+          celei reale. Ii spunea ca trebuie sa astepte, cand de fapt nu ar fi putut edita nici
+          dupa aprobare. Cele doua motive pot coexista si atunci se afiseaza amandoua. */}
+      {config?.can_edit_services === false && <div className="services-alert rounded-2xl border border-border bg-secondary/30 px-4 py-3 text-xs text-muted-foreground">Ai acces de vizualizare. Modificarea serviciilor publice este disponibilă ownerului și managerului locației.</div>}
       {error && config && <div className="services-alert rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-800">{error}</div>}
 
       <div data-services-role="workspace" className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.75fr)] xl:items-start">
