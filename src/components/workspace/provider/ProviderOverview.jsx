@@ -1,8 +1,7 @@
 // Prezentarea generala a spatiului furnizor, reorganizata (2026-08-23).
 //
-// Inainte: patru carduri albe de aceeasi greutate, cu culori implicite Tailwind (verde,
-// chihlimbar, albastru #345bc8) care nu existau nicaieri altundeva in VIASEE, si o
-// informatie spusa de trei ori (doua bare de progres, lista "De completat" si un acordeon
+// Inainte: patru carduri albe de aceeasi greutate, cu stari colorate in verde si chihlimbar
+// implicite din Tailwind, straine de paleta, si o informatie spusa de trei ori (doua bare de progres, lista "De completat" si un acordeon
 // care repeta acelasi checklist). "Modificari si actiuni" si "Activitate recenta" erau
 // acelasi lucru - cereri trimise - despartite in prezent si trecut, doua cutii goale cand
 // nu se intampla nimic.

@@ -81,7 +81,7 @@ function deriveLocationDataStatus(
   if (latestSubmission?.status === "approved") {
     return {
       label: "Date publice aprobate",
-      className: "border border-green-200 bg-green-50 text-green-800",
+      className: "border border-[#ccd2ba] bg-[#dfe3d2] text-[#1c1c1c]",
       editable: false,
       pendingReview: false,
     };
@@ -90,7 +90,7 @@ function deriveLocationDataStatus(
   if (latestSubmission?.status === "rejected") {
     return {
       label: "Ultima modificare respinsa",
-      className: "border border-red-200 bg-red-50 text-red-800",
+      className: "border border-[#e1bda8] bg-[#efd5c5] text-[#1c1c1c]",
       editable: false,
       pendingReview: false,
     };
@@ -99,7 +99,7 @@ function deriveLocationDataStatus(
   if (locationState.published) {
     return {
       label: "Date publice publicate",
-      className: "border border-green-200 bg-green-50 text-green-800",
+      className: "border border-[#ccd2ba] bg-[#dfe3d2] text-[#1c1c1c]",
       editable: false,
       pendingReview: false,
     };
@@ -129,7 +129,7 @@ function deriveLocationDataStatus(
 
   return {
     label: "Date publice incomplete",
-    className: "border border-amber-200 bg-amber-50 text-amber-800",
+    className: "border border-[#dac69b] bg-[#eadcba] text-[#1c1c1c]",
     editable: false,
     pendingReview: false,
   };
@@ -242,15 +242,31 @@ function DetailLine({ icon: Icon, label, value, href }) {
   );
 }
 
-function ConfigureCard({ icon: Icon, title, text, onClick }) {
+// Tonurile din paleta de categorii: fiecare modul isi are culoarea lui, ca sa se distinga
+// dintr-o privire in loc sa fie patru carduri albe identice.
+export const CONFIGURE_TONES = {
+  servicii: { border: "#ccd2ba", bg: "#dfe3d2" },
+  program: { border: "#dac69b", bg: "#eadcba" },
+  specialisti: { border: "#d4c6d8", bg: "#e8e0ea" },
+  fotografie: { border: "#e1bda8", bg: "#efd5c5" },
+};
+
+const CONFIGURE_GRAIN = {
+  backgroundImage: "url('/images/home/viasee-technical-grain.svg')",
+  backgroundSize: "180px 180px",
+};
+
+function ConfigureCard({ icon: Icon, title, text, onClick, tone }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="min-h-28 rounded-[14px] border border-foreground/20 bg-background p-4 text-left transition-colors hover:border-foreground/45 hover:bg-white/45"
+      style={tone ? { borderColor: tone.border, backgroundColor: tone.bg } : undefined}
+      className="relative min-h-28 overflow-hidden rounded-[14px] border border-foreground/20 bg-background p-4 text-left transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(34,30,24,0.07)] motion-reduce:transform-none"
     >
-      <div className="flex h-full items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-foreground/10 bg-secondary/70">
+      <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={CONFIGURE_GRAIN} />
+      <div className="relative z-10 flex h-full items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/10 bg-white/70">
           <Icon className="h-4 w-4" />
         </div>
         <div className="flex h-full min-w-0 flex-1 flex-col">
@@ -702,7 +718,7 @@ export default function ProviderLocations({
             </div>
 
             {draft && (
-              <div className="mt-5 border-y border-blue-200 bg-blue-50/70 px-4 py-3 text-sm text-blue-900">
+              <div className="mt-5 border-y border-[#c6d3da] bg-[#dce5e9] px-4 py-3 text-sm text-[#1c1c1c]">
                 Datele de mai jos previzualizeaza modificarile din draft. Profilul
                 public ramane neschimbat pana la aprobare.
               </div>
@@ -819,6 +835,7 @@ export default function ProviderLocations({
               {canManageLocationContent && (
                 <ConfigureCard
                   icon={Wrench}
+                  tone={CONFIGURE_TONES.servicii}
                   title="Servicii"
                   text="Alege serviciile disponibile in aceasta locatie."
                   onClick={() =>
@@ -829,6 +846,7 @@ export default function ProviderLocations({
               {canManageOperationalStatus && (
                 <ConfigureCard
                   icon={Clock}
+                  tone={CONFIGURE_TONES.program}
                   title="Program"
                   text="Seteaza programul acestui punct de lucru."
                   onClick={() => onOpenModule?.("program", selectedLocation.id)}
@@ -837,6 +855,7 @@ export default function ProviderLocations({
               {canManageSpecialists && (
                 <ConfigureCard
                   icon={Users}
+                  tone={CONFIGURE_TONES.specialisti}
                   title="Specialisti"
                   text="Invita specialistii asociati acestei locatii."
                   onClick={() =>
@@ -895,7 +914,7 @@ export default function ProviderLocations({
             <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">
               <div className="space-y-5">
                 {pendingReview && (
-                  <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-relaxed text-blue-900">
+                  <div className="rounded-2xl border border-[#c6d3da] bg-[#dce5e9] px-4 py-3 text-sm leading-relaxed text-[#1c1c1c]">
                     Datele sunt deja in verificare. Poti consulta previzualizarea,
                     dar nu le poti modifica pana la decizia VIASEE.
                   </div>
@@ -953,7 +972,7 @@ export default function ProviderLocations({
                     <span
                       className={`rounded-full px-2.5 py-1 text-xs font-bold ${
                         hasExactPin
-                          ? "bg-green-100 text-green-800"
+                          ? "border border-[#ccd2ba] bg-[#dfe3d2] text-[#1c1c1c]"
                           : "bg-secondary text-muted-foreground"
                       }`}
                     >
@@ -997,7 +1016,7 @@ export default function ProviderLocations({
                     </div>
                   </div>
                   {hasCoordinateIssues && (
-                    <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-800">
+                    <div className="mt-3 rounded-2xl border border-[#e1bda8] bg-[#efd5c5] px-3 py-2 text-xs leading-relaxed text-[#1c1c1c]">
                       {coordinateValidation.issues[0]}
                     </div>
                   )}
@@ -1116,7 +1135,7 @@ export default function ProviderLocations({
                   </div>
                 </section>
 
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900">
+                <div className="rounded-2xl border border-[#dac69b] bg-[#eadcba] px-4 py-3 text-sm leading-relaxed text-[#1c1c1c]">
                   Schimbarile nu se publica direct. Dupa trimitere, apar in panoul
                   de administrare pentru verificare.
                 </div>

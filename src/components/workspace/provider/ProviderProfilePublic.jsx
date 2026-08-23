@@ -23,7 +23,7 @@ import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
 import SocialBrandIcon from "@/components/common/SocialBrandIcon";
 
 const inputCls =
-  "min-h-12 w-full rounded-[14px] border border-[#d9d4ca] bg-white px-4 py-3 text-[16px] leading-relaxed text-[#171717] outline-none transition-[border-color,box-shadow] focus:border-[#8d7658] focus:ring-4 focus:ring-[#8d7658]/15 disabled:cursor-not-allowed disabled:opacity-60 sm:text-[15px]";
+  "min-h-12 w-full rounded-[14px] border border-[#d9d4ca] bg-white px-4 py-3 text-[16px] leading-relaxed text-[#171717] outline-none transition-[border-color,box-shadow] focus:border-[#345bc8] focus:ring-4 focus:ring-[#345bc8]/10 disabled:cursor-not-allowed disabled:opacity-60 sm:text-[15px]";
 const DESCRIPTION_MAX_LENGTH = 500;
 const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const LOGO_MAX_BYTES = 4 * 1024 * 1024;
@@ -298,7 +298,7 @@ function InlineProfileEditor({
   return (
     <div className="mt-7 rounded-[22px] border border-[#171717]/10 bg-white p-5 shadow-[0_12px_32px_rgba(23,23,23,0.05)] sm:p-7">
       <div className="mb-6 flex items-start gap-3 border-b border-[#171717]/10 pb-5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#c6d3da] bg-[#dce5e9] text-[#1c1c1c]">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#c6d3da] bg-[#e9eef8] text-[#345bc8]">
           <Pencil className="h-4 w-4" />
         </span>
         <div>
@@ -531,7 +531,7 @@ function OrganizationProfile({
           }}
         />
         <div className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full border border-white/55 bg-white/75 px-3 py-1.5 text-xs font-semibold text-[#4e4b46] backdrop-blur-sm sm:left-7 sm:top-6">
-          <span className="h-2 w-2 bg-[#dac69b]" />
+          <span className="h-2 w-2 bg-[#345bc8]" />
           {editing ? "Editare profil" : "Profil public organizatie"}
         </div>
         {draft && (
@@ -767,7 +767,7 @@ function LocationsSection({ locations, selectedLocationId, onManage, onManageAll
     <section className="pt-3">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="inline-flex items-center gap-2 text-sm font-semibold text-[#8d7658]">
+          <div className="inline-flex items-center gap-2 text-sm font-semibold text-[#345bc8]">
             <Store className="h-4 w-4" /> Gestionare locatii
           </div>
           <h2 className="mt-2 font-heading text-2xl font-extrabold tracking-[-0.035em] text-[#171717]">
