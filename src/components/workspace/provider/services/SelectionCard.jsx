@@ -37,12 +37,16 @@ export default function SelectionCard({ active, approved = false, title, descrip
         <span className={`services-card__check absolute right-3 top-3 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border ${removalRequested ? "border-[#e1bda8] bg-[#efd5c5] text-black/70" : active ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`}>
           {removalRequested ? <X className="h-3.5 w-3.5" /> : active && <Check className="h-3.5 w-3.5" />}
         </span>
-        {/* Figurina la 20px, nu 16 (2026-08-23): desenele de zona au corp plin, nu
-            contur subtire de iconita, si au nevoie de putin mai mult loc in placuta de
-            40x40 ca sa se citeasca. Varianta pe randuri de mai jos ramane la 16px -
-            acolo iconita e tot Lucide. */}
-        <span data-tone={toneAttr} style={toneStyle} className={`services-card__icon flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${removalRequested ? "bg-[#efd5c5] text-black/70" : active ? "bg-card text-foreground" : "bg-secondary/55 text-muted-foreground"}`}>
-          <Icon className="h-5 w-5" />
+        {/* Fara placuta colorata sub figurina (2026-08-23): figurina isi poarta acum
+            singura ramul - cercul punctat - si tonul categoriei in desen, exact ca
+            figurinele din Prezentare generala. O placuta colorata pe sub ar fi al doilea
+            ram peste primul si a doua data acelasi ton. Marginile negative recupereaza
+            spatiul gol pe care cercul il lasa in interiorul casetei, ca figurina sa stea
+            aliniata cu titlul, nu impinsa spre dreapta.
+            Varianta pe randuri de mai jos pastreaza placuta si iconita Lucide: acolo
+            tonul categoriei nu are unde altundeva sa stea. */}
+        <span className="services-card__figure -ml-1.5 -mb-1 -mt-1 flex h-12 w-12 shrink-0 items-center justify-center">
+          <Icon className="h-12 w-12" tone={tone} removal={removalRequested} />
         </span>
         <span className="min-w-0">
           <span className="flex items-center gap-1.5">
