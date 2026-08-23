@@ -1183,9 +1183,9 @@
   background: transparent !important;
 }
 
-.provider-services-three__native .services-group-card__rows .services-cas-slot {
-  padding-left: 39px;
-}
+/* Indentarea sub eticheta (padding-left) a fost eliminata (2026-08-23): pastila CAS
+   nu mai sta pe un rand separat, dedesubt - vezi .services-cas-slot mai jos, care
+   acum o aseaza in dreapta randului de serviciu. */
 
 /* --------------------------------------------------------------------------
    20c. Cadrul zonei si subsolul de pas (2026-08-23, la cererea lui Alex)
@@ -1422,12 +1422,13 @@
   padding-top: 12px;
 }
 
-/* Randurile pe mai multe coloane. `columns` ar taia un rand intre coloane, deci
-   grila explicita: fiecare serviciu ramane intreg, cu bifa CAS cu tot. */
+/* O singura coloana (2026-08-23, la cererea lui Alex): cu doua coloane inguste,
+   pastila "Decontat CAS" nu avea loc langa eticheta serviciului si cadea pe randul
+   de dedesubt. Randul intreg, cat latimea cardului, ii face loc alaturi. */
 .provider-services-three__native .services-group-card--wide .services-group-card__rows {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 2px 10px;
+  grid-template-columns: 1fr;
+  gap: 2px;
   padding: 12px;
 }
 
@@ -1583,14 +1584,18 @@
    un rand cu bifa, avea exact rangul unui serviciu; iar de cand randul de serviciu
    are bifa la stanga, cele doua bife stateau in colturi opuse si se citeau ca doua
    alegeri de acelasi fel.
-   Forma noua o delimiteaza pe trei cai deodata: alta silueta (pastila, nu patrat),
-   alta pozitie (indentata sub eticheta, in coloana de text a serviciului, nu pe un
-   rand propriu) si alt rang tipografic (10.5px, fara linie despartitoare deasupra).
-   Culoarea ramane cea de stare: cerneala plina cand e pornita.
+   Forma noua o delimiteaza pe doua cai: alta silueta (pastila, nu patrat) si alt rang
+   tipografic (10.5px, fara linie despartitoare). Culoarea ramane cea de stare:
+   cerneala plina cand e pornita.
+   A doua trecere, tot 2026-08-23: pozitia s-a mutat din randul de dedesubt (indentata
+   sub eticheta) pe randul serviciului, in dreapta - posibil de cand cardul de grup a
+   devenit cu o singura coloana. .services-cas-slot e acum un frate al butonului de
+   bifare in acelasi rand flex (ServiceRow.jsx), nu un bloc separat sub el.
    -------------------------------------------------------------------------- */
 
 .provider-services-three__native .services-cas-slot {
-  display: block;
+  display: flex;
+  align-items: center;
 }
 
 .provider-services-three__native .services-cas-chip {
