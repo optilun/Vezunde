@@ -54,6 +54,10 @@ const INITIAL_SNAPSHOT = {
   capabilityCount: 0,
   issueCount: 0,
   issueServiceKeys: [],
+  catalogTotal: 0,
+  draftAddedCount: 0,
+  draftRemovedCount: 0,
+  draftChangeCount: 0,
   blockers: [],
   selectedServices: [],
   careSetting: "",
@@ -134,7 +138,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
     });
   }, []);
 
-  const filter = ["selected", "issues"].includes(view) ? view : "all";
+  const filter = ["selected", "issues", "changes"].includes(view) ? view : "all";
 
   // Faza 3 (docs/plan-refactor-servicii-2026-08-18.md): decorarea DOM prin
   // MutationObserver a fost eliminata. Sectiunea activa, filtrul si zona deschisa se
@@ -201,6 +205,8 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
         ? "La nivelul locației"
         : view === "selected"
           ? "Oferta selectată"
+          : view === "changes"
+            ? "Modificări în draft"
           : view === "issues"
             ? "Observații de catalog"
             : view === "unit"
@@ -218,6 +224,8 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
     ? CONFIG_STEP_HINTS[configStep]
     : view === "options"
       ? "Opțiuni valabile pentru întreaga locație, nu pentru o singură zonă."
+      : view === "changes"
+        ? "Sunt afișate numai elementele modificate față de oferta aprobată: adăugate în draft și propuse spre eliminare."
       : view === "issues"
         ? "Sunt afișate numai observațiile de catalog. Acestea nu cer acte, specialiști sau echipamente."
         : view === "selected"
@@ -443,14 +451,23 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
               <div className="provider-services-three__stats" aria-label="Verificare">
                 <p>Verificare</p>
                 <div className="provider-services-three__stats-row">
-                  <div className="provider-services-three__stat">
-                    <strong>{snapshot.units.reduce((sum, unit) => sum + unit.total, 0)}</strong>
-                    <span>in catalog</span>
-                  </div>
-                  <div className="provider-services-three__stat">
+                  {/* "in catalog" nu mai ocupa o placa proprie (2026-08-23): era un numitor,
+                      nu o verificare. A intrat sub numarul pe care il explica, si locul
+                      eliberat s-a dus la ce lipsea cu adevarat - ce ai schimbat si nu e inca
+                      aprobat. */}
+                  <div className="provider-services-three__stat is-selected">
                     <strong>{snapshot.selectedCount}</strong>
-                    <span>selectate</span>
+                    <span>din {snapshot.catalogTotal} in catalog</span>
                   </div>
+                  <button
+                    type="button"
+                    className={`provider-services-three__stat${view === "changes" && !query ? " is-active" : ""}${snapshot.draftChangeCount > 0 ? " has-changes" : ""}`}
+                    onClick={() => chooseView("changes")}
+                    title={snapshot.draftChangeCount > 0 ? `${snapshot.draftAddedCount} adăugate, ${snapshot.draftRemovedCount} propuse spre eliminare` : "Nimic modificat față de oferta aprobată"}
+                  >
+                    <strong>{snapshot.draftChangeCount}</strong>
+                    <span>in draft</span>
+                  </button>
                   <button type="button" className={`provider-services-three__stat${view === "issues" && !query ? " is-active" : ""}${snapshot.issueCount > 0 ? " has-issues" : ""}`} onClick={() => chooseView("issues")}>
                     <strong>{snapshot.issueCount}</strong>
                     <span>observatii</span>
