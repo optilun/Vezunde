@@ -20,7 +20,6 @@ import {
   ArrowRight,
   Building2,
   CheckCircle2,
-  ChevronDown,
   Circle,
   FileText,
   Globe2,
@@ -302,20 +301,53 @@ function Checklist({ items }) {
   );
 }
 
-function LocationCompletionRow({ item, onNavigate }) {
+// Cardul unei locatii din organizatie. Cifrele de mai sus sunt insumate pe toate locatiile
+// la care ai acces; aici se vede din ce este facuta suma.
+function LocationCard({ item, onNavigate }) {
   const completion = item.completion || { percentage: 0, missing_count: 0 };
   const verified = item.profile_control_status === "verified";
+  const inactive = item.active_status === "inactiva";
   return (
-    <button type="button" onClick={() => onNavigate("locations")} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-foreground/[0.035]">
-      <div className="min-w-0">
-        <p className="truncate font-heading text-[13px] font-bold tracking-[-0.015em] text-foreground">{item.name}</p>
-        <p className="mt-0.5 flex flex-wrap items-center gap-2 text-[11.5px] text-muted-foreground">
-          {item.locality_name && <span>{item.locality_name}</span>}
-          <span>{verified ? "Verificată" : "Neverificată"}</span>
-          {completion.missing_count > 0 && <span>{completion.missing_count} {completion.missing_count === 1 ? "element lipsă" : "elemente lipsă"}</span>}
-        </p>
+    <button
+      type="button"
+      onClick={() => onNavigate("locations")}
+      className="relative overflow-hidden rounded-[1.4rem] border border-[#e3ddd0] bg-[#fdfbf6] px-5 py-4 text-left outline-none transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_38px_rgba(34,30,24,0.06)] focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-[#F8F4EC] motion-reduce:transform-none"
+    >
+      <span aria-hidden="true" className="absolute inset-0 opacity-20 mix-blend-multiply" style={GRAIN} />
+      <div className="relative z-10">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate font-heading text-[15px] font-extrabold tracking-[-0.025em] text-foreground">{item.name}</p>
+            {item.locality_name && (
+              <p className="mt-1 truncate font-mono text-[9.5px] uppercase tracking-[0.16em] text-muted-foreground/75">{item.locality_name}</p>
+            )}
+          </div>
+          <ArrowRight aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-black/35" />
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span
+            style={verified ? { borderColor: TONES.green.border, backgroundColor: TONES.green.bg } : undefined}
+            className={`rounded-full border px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.12em] ${verified ? "text-black/65" : "border-[#e3ddd0] bg-white/70 text-muted-foreground"}`}
+          >
+            {verified ? "Verificată" : "Neverificată"}
+          </span>
+          {inactive && (
+            <span className="rounded-full border border-[#e3ddd0] bg-white/70 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">Inactivă</span>
+          )}
+          {completion.missing_count > 0 && (
+            <span style={{ borderColor: TONES.amber.border, backgroundColor: TONES.amber.bg }} className="rounded-full border px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-black/65">
+              {completion.missing_count} {completion.missing_count === 1 ? "element lipsă" : "elemente lipsă"}
+            </span>
+          )}
+        </div>
+
+        <div className="mt-4 flex items-end justify-between gap-3">
+          <p className="font-heading text-[1.8rem] font-extrabold leading-none tracking-[-0.05em] text-foreground">{completion.percentage || 0}%</p>
+          <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground/75">completare</p>
+        </div>
+        <div className="mt-2.5"><ProgressBar value={completion.percentage || 0} /></div>
       </div>
-      <span className="shrink-0 font-heading text-[15px] font-extrabold tracking-[-0.03em] text-foreground">{completion.percentage || 0}%</span>
     </button>
   );
 }
@@ -373,13 +405,18 @@ export default function ProviderOverview({
   const [activityTab, setActivityTab] = useState("active");
   const activeChanges = [...needsAction, ...inReview];
 
+  const locationItems = locationCompletionSummary.items || [];
+  // Cifrele vin insumate din backend pe toate locatiile la care ai acces. Cand sunt mai
+  // multe, spunem asta explicit: altfel par datele unei singure locatii.
+  const acrossLocations = locationCount > 1 ? `Însumat pe ${locationCount} locații` : "";
+
   const publishedTiles = [
     { key: "locations", tone: TONES.blue, value: `${activeLocationCount}/${locationCount}`, label: "Locații active", section: "locations" },
-    { key: "services", tone: TONES.green, value: contentSummary.approved_service_count || 0, label: "Servicii publicate", section: "locations" },
+    { key: "services", tone: TONES.green, value: contentSummary.approved_service_count || 0, label: "Servicii publicate", hint: acrossLocations, section: "locations" },
     { key: "hours", tone: TONES.amber, value: `${contentSummary.locations_with_opening_hours || 0}/${locationCount}`, label: "Program completat", section: "locations" },
-    { key: "team", tone: TONES.lavender, value: contentSummary.approved_public_team_count || 0, label: "Specialiști publici", section: "locations" },
+    { key: "team", tone: TONES.lavender, value: contentSummary.approved_public_team_count || 0, label: "Specialiști publici", hint: acrossLocations, section: "locations" },
     { key: "photos", tone: TONES.terracotta, value: `${contentSummary.locations_with_photo || 0}/${locationCount}`, label: "Fotografii", hint: `${contentSummary.approved_media_count || 0} imagini aprobate`, section: "locations" },
-    { key: "articles", tone: TONES.blue, value: contentSummary.approved_published_article_count || 0, label: "Articole", section: "locations" },
+    { key: "articles", tone: TONES.blue, value: contentSummary.approved_published_article_count || 0, label: "Articole", hint: acrossLocations, section: "locations" },
   ];
 
   return (
@@ -500,19 +537,6 @@ export default function ProviderOverview({
             </div>
           )}
 
-          {/* Detaliul arata acum doar locatiile: checklistul organizatiei era repetat aici. */}
-          <details className="group mt-4 overflow-hidden rounded-[1.4rem] border border-[#e3ddd0] bg-white/55">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 font-heading text-[13px] font-extrabold tracking-[-0.02em] [&::-webkit-details-marker]:hidden">
-              Vezi completarea pe locații
-              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
-            </summary>
-            <div className="divide-y divide-[#e3ddd0] border-t border-[#e3ddd0]">
-              {(locationCompletionSummary.items || []).length > 0
-                ? (locationCompletionSummary.items || []).map((item) => <LocationCompletionRow key={item.id} item={item} onNavigate={onNavigate} />)
-                : <p className="px-4 py-3 text-[13px] text-muted-foreground">Nicio locație de afișat.</p>}
-            </div>
-          </details>
-
           <div className="mt-5 flex flex-wrap gap-2">
             {canManageOrganizationProfile && (
               <button type="button" onClick={() => onNavigate("profile")} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-foreground/20 bg-white/70 px-4 font-heading text-[12px] font-bold text-foreground transition-colors hover:border-foreground/45">
@@ -618,6 +642,30 @@ export default function ProviderOverview({
           )}
         </Panel>
       </div>
+
+      {/* Locatiile organizatiei, scoase din acordeon: prezentarea generala este despre toata
+          organizatia, iar aici se vede din ce se compun cifrele insumate de mai sus. */}
+      <section>
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <Eyebrow>Locațiile organizației</Eyebrow>
+          <button type="button" onClick={() => onNavigate("locations")} className="font-heading text-[12px] font-bold text-foreground underline underline-offset-4 hover:opacity-70">
+            {canManageLocations ? "Gestionează locațiile" : "Vezi locațiile"}
+          </button>
+        </div>
+        {locationItems.length > 0 ? (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {locationItems.map((item) => <LocationCard key={item.id} item={item} onNavigate={onNavigate} />)}
+          </div>
+        ) : (
+          <div className="mt-3">
+            <EmptyState
+              figure={<FigureQuiet />}
+              title="Nicio locație de afișat"
+              text="Locațiile la care ai acces în această organizație vor apărea aici."
+            />
+          </div>
+        )}
+      </section>
     </div>
   );
 }
