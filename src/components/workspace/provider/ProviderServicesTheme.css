@@ -671,6 +671,17 @@
   color: #57534e;
 }
 
+/* "In verificare" (2026-08-23): acelasi albastru ca placa "in draft" din blocul Verificare,
+   pentru ca spun acelasi lucru - ceva ce nu e inca publicat, dar nici o problema. Se
+   deosebeste de is-draft tocmai pentru ca cele doua NU mai sunt acelasi lucru de cand se
+   poate lucra in paralel cu verificarea: unul asteapta decizia adminului si nu mai poate fi
+   schimbat, celalalt nici macar nu a plecat. */
+.services-badge.is-review {
+  border-color: #c6d3da;
+  background: #dce5e9;
+  color: #3d5a68;
+}
+
 @media (max-width: 620px) {
   .provider-services-three__center-header h2 {
     font-size: 19px;

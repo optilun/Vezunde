@@ -58,6 +58,7 @@ const INITIAL_SNAPSHOT = {
   draftAddedCount: 0,
   draftRemovedCount: 0,
   draftChangeCount: 0,
+  reviewCount: 0,
   blockers: [],
   selectedServices: [],
   careSetting: "",
@@ -351,8 +352,8 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
       tone: "pending",
       title: "Modificările sunt în verificare",
       detail: snapshot.approvedCount > 0
-        ? `Profilul rămâne vizibil cu ${snapshot.approvedCount} ${snapshot.approvedCount === 1 ? "serviciu confirmat" : "servicii confirmate"}. Până la decizie nu poți edita.`
-        : "Te anunțăm când sunt aprobate. Până atunci nu poți edita.",
+        ? `Profilul rămâne vizibil cu ${snapshot.approvedCount} ${snapshot.approvedCount === 1 ? "serviciu confirmat" : "servicii confirmate"}. Poți lucra mai departe.`
+        : "Te anunțăm când sunt aprobate. Între timp poți lucra mai departe.",
     }
     : snapshot.approvedCount > 0
     ? {
@@ -470,7 +471,9 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                     type="button"
                     className={`provider-services-three__stat${view === "changes" && !query ? " is-active" : ""}${snapshot.draftChangeCount > 0 ? " has-changes" : ""}`}
                     onClick={() => chooseView("changes")}
-                    title={snapshot.draftChangeCount > 0 ? `${snapshot.draftAddedCount} adăugate, ${snapshot.draftRemovedCount} propuse spre eliminare` : "Nimic modificat față de oferta aprobată"}
+                    title={snapshot.draftChangeCount > 0
+                      ? `${snapshot.draftAddedCount} adăugate, ${snapshot.draftRemovedCount} propuse spre eliminare${snapshot.reviewCount > 0 ? ` — ${snapshot.reviewCount} deja trimise spre aprobare` : ""}`
+                      : "Nimic modificat față de oferta aprobată"}
                   >
                     <strong>{snapshot.draftChangeCount}</strong>
                     <span>in draft</span>

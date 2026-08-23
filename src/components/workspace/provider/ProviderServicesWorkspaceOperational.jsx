@@ -20,7 +20,7 @@ import ServicesActionBar from "./services/ServicesActionBar";
 export default function ProviderServicesWorkspaceOperational(props) {
   const {
     config, draft, persistenceMode, loading, saving, message, error, conflicts, pendingRemoval,
-    query, selected, approvedSelected, activeUnits, approvedUnits, capabilities, approvedCapabilities,
+    query, selected, approvedSelected, reviewState, activeUnits, approvedUnits, capabilities, approvedCapabilities,
     serviceUnitMap, casServiceKeys, resourceLinks, approvedResourceLinks, careSetting, approvedCareSetting,
     setCareSetting, suggestions, rawRemovalKeys, openUnit, setOpenUnit, operationalLayout, profileSections,
     globalSections, sectionsByUnit, selectableUnits, primaryUnits, selectableCapabilities, primaryCapabilities,
@@ -58,7 +58,10 @@ export default function ProviderServicesWorkspaceOperational(props) {
       )}
 
       {persistenceMode === "legacy" && <div className="services-alert rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">Catalogul V2 este disponibil local. Draftul de servicii folosește fluxul compatibil până când endpointurile de configurare sunt publicate.</div>}
-      {pendingReview && <div className="services-alert rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">Modificările sunt în curs de aprobare. Editarea este blocată până la decizia administratorului.</div>}
+      {/* Textul spunea "Editarea este blocată până la decizia administratorului" (2026-08-23).
+          De cand cererea trimisa e inghetata separat in backend, editarea NU mai e blocata:
+          se poate lucra mai departe, iar ce se lucreaza acum pleaca la urmatoarea cerere. */}
+      {pendingReview && <div className="services-alert rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900"><strong className="block">Cererea ta este în verificare</strong><span className="mt-1 block">Poți lucra mai departe: elementele marcate „În verificare” așteaptă decizia și nu se mai schimbă, iar restul intră într-o cerere nouă, pe care o trimiți după ce primești răspunsul.</span></div>}
       {draft?.admin_note && ["needs_more_info", "rejected"].includes(draft.status) && <div className="services-alert rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-950"><strong className="block">Completări solicitate</strong><span className="mt-1 block">{draft.admin_note}</span></div>}
       {conflicts.length > 0 && !draft && <div className="services-alert rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950">{conflicts[0].message}</div>}
       {/* Conditia "&& !pendingReview" a fost scoasa (2026-08-23): un membru fara drept de
@@ -73,7 +76,7 @@ export default function ProviderServicesWorkspaceOperational(props) {
           {/* CapabilityPicker eliminat complet (2026-08-18, la cererea lui Alex): modulul
               separat "Dotari si activitati" a fost desfiintat. Fiecare comutator traieste
               acum inline, in UnitAccordion, langa sectiunea sau zona pe care o controleaza. */}
-          {!query && <UnitPicker dataAttrs={substep(1)} units={selectableUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={!editable} onToggle={toggleUnit} />}
+          {!query && <UnitPicker reviewState={reviewState} dataAttrs={substep(1)} units={selectableUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={!editable} onToggle={toggleUnit} />}
           {/* CareSettingPicker mutat aici (2026-08-18, la cererea lui Alex): era pasul 3,
               de sine statator, pentru o singura lista derulanta - disproportionat pentru
               un modul intreg. "Tipul activitatii" e un atribut la nivel de locatie, ca si
@@ -86,7 +89,7 @@ export default function ProviderServicesWorkspaceOperational(props) {
               dataAttrs={{ "data-services-panel": "options" }}
               sections={globalSections}
               selected={selected}
-              approvedSelected={approvedSelected}
+              approvedSelected={approvedSelected} reviewState={reviewState}
               disabled={!editable}
               onToggleService={toggleService}
               onSetSelection={setServicesSelection}
@@ -112,7 +115,7 @@ export default function ProviderServicesWorkspaceOperational(props) {
               query={query}
               results={searchResults}
               selected={selected}
-              approvedSelected={approvedSelected}
+              approvedSelected={approvedSelected} reviewState={reviewState}
               serviceUnitMap={serviceUnitMap}
               activeUnits={activeUnits}
               prerequisites={draftPrerequisites}
@@ -141,7 +144,7 @@ export default function ProviderServicesWorkspaceOperational(props) {
                   </p>
                 </div>
               )}
-              {visibleUnits.map((unitKey, unitIndex) => <UnitAccordion key={unitKey} unitKey={unitKey} filter={navFilter} dataAttrs={{ "data-services-unit-index": String(unitIndex), "data-services-unit-visible": unitVisible(unitIndex) ? "true" : "false" }} sections={sectionsByUnit[unitKey] || []} selected={selected} approvedSelected={approvedSelected} serviceUnitMap={serviceUnitMap} prerequisites={draftPrerequisites} config={{ ...config, activeUnits }} resourceLinks={resourceLinks} approvedResourceLinks={approvedResourceLinks} customSuggestions={suggestions} capabilities={capabilities} approvedCapabilities={approvedCapabilities} onToggleCapability={toggleCapability} open={openUnit === unitKey} disabled={!editable} onOpen={() => setOpenUnit((current) => current === unitKey ? "" : unitKey)} onToggleService={toggleService} onSetSelection={setServicesSelection} stepIndex={unitIndex} stepMode={navView === "unit"} active={unitVisible(unitIndex)} onGoToUnit={nav.onOpenUnit} onChooseView={nav.onChooseView} unitTitles={visibleUnits} casServiceKeys={casServiceKeys} onToggleCas={toggleCasService} onChangeSectionUnit={changeSectionUnit} onToggleResource={toggleResource} onAddSuggestion={addSuggestion} onRemoveSuggestion={removeSuggestion} />)}
+              {visibleUnits.map((unitKey, unitIndex) => <UnitAccordion key={unitKey} unitKey={unitKey} filter={navFilter} dataAttrs={{ "data-services-unit-index": String(unitIndex), "data-services-unit-visible": unitVisible(unitIndex) ? "true" : "false" }} sections={sectionsByUnit[unitKey] || []} selected={selected} approvedSelected={approvedSelected} reviewState={reviewState} serviceUnitMap={serviceUnitMap} prerequisites={draftPrerequisites} config={{ ...config, activeUnits }} resourceLinks={resourceLinks} approvedResourceLinks={approvedResourceLinks} customSuggestions={suggestions} capabilities={capabilities} approvedCapabilities={approvedCapabilities} onToggleCapability={toggleCapability} open={openUnit === unitKey} disabled={!editable} onOpen={() => setOpenUnit((current) => current === unitKey ? "" : unitKey)} onToggleService={toggleService} onSetSelection={setServicesSelection} stepIndex={unitIndex} stepMode={navView === "unit"} active={unitVisible(unitIndex)} onGoToUnit={nav.onOpenUnit} onChooseView={nav.onChooseView} unitTitles={visibleUnits} casServiceKeys={casServiceKeys} onToggleCas={toggleCasService} onChangeSectionUnit={changeSectionUnit} onToggleResource={toggleResource} onAddSuggestion={addSuggestion} onRemoveSuggestion={removeSuggestion} />)}
               {visibleUnits.length === 0 && <div className="rounded-2xl border border-dashed border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground">Selectează cel puțin o zonă care există în locație.</div>}
             </div>
           )}
