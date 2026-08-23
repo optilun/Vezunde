@@ -29,6 +29,12 @@ export default function GroupCard({
 }) {
   const tone = GROUP_TONE[section.group];
   const total = section.items.length;
+  // Grupul permite decontarea CAS? (2026-08-23, semnalat de Alex la Cabinet oftalmologic si
+  // Investigatii.) Acolo TOATE grupurile sunt eligibile, dar pastila "Decontat CAS" de pe rand
+  // apare abia dupa ce bifezi serviciul - deci pe o zona inca neatinsa parea ca optiunea nici
+  // nu exista. Marcajul de mai jos raspunde la "se poate deconta aici?" inainte de prima bifa.
+  // Unul singur, in antetul grupului: unul pe fiecare rand ar fi fost zgomot pe 31 de randuri.
+  const casGroupEligible = section.items.some((item) => CAS_ELIGIBLE_GROUPS.has(item.group));
   const selectedCount = selectedCountForSection(selected, section);
   const missing = section.items.filter((item) => !isSelected(selected, item));
   const allSelected = missing.length === 0 && total > 0;
@@ -67,6 +73,9 @@ export default function GroupCard({
           <span aria-hidden="true" className="services-group-card__bar">
             <i style={{ width: `${Math.round((selectedCount / total) * 100)}%` }} />
           </span>
+        )}
+        {casGroupEligible && (
+          <span className="services-group-card__cas" title="Serviciile bifate din acest grup pot fi marcate ca decontate CAS.">CAS</span>
         )}
         <span className="services-group-card__count" data-full={allSelected ? "true" : "false"}>{selectedCount}/{total}</span>
       </header>
