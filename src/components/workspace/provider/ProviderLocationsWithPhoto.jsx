@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowRight, Image, X } from "lucide-react";
-import ProviderLocations from "./ProviderLocations";
+import ProviderLocations, { CONFIGURE_TONES } from "./ProviderLocations";
 import ProviderLocationPhotoCompact from "./ProviderLocationPhotoCompact";
 import ProviderAddLocationFlow from "./ProviderAddLocationFlow";
 import { PROVIDER_PROFILE_TYPES, PROVIDER_TYPES } from "@/lib/vezunde";
@@ -592,10 +592,16 @@ export default function ProviderLocationsWithPhoto(props) {
           <button
             type="button"
             onClick={() => setPhotoOpen(true)}
-            className="h-full min-h-28 rounded-[14px] border border-foreground/20 bg-background p-4 text-left transition-colors hover:border-foreground/45 hover:bg-white/45"
+            style={{ borderColor: CONFIGURE_TONES.fotografie.border, backgroundColor: CONFIGURE_TONES.fotografie.bg }}
+            className="relative h-full min-h-28 overflow-hidden rounded-[14px] border p-4 text-left transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(34,30,24,0.07)] motion-reduce:transform-none"
           >
-            <div className="grid h-full grid-cols-[40px_minmax(0,1fr)] items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center self-start rounded-full border border-foreground/10 bg-secondary/70">
+            <span
+              aria-hidden="true"
+              className="absolute inset-0 opacity-30 mix-blend-multiply"
+              style={{ backgroundImage: "url('/images/home/viasee-technical-grain.svg')", backgroundSize: "180px 180px" }}
+            />
+            <div className="relative z-10 grid h-full grid-cols-[40px_minmax(0,1fr)] items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center self-start rounded-full border border-black/10 bg-white/70">
                 <Image className="h-4 w-4" />
               </div>
               <div className="flex h-full min-w-0 flex-col">
