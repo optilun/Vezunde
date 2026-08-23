@@ -26,7 +26,7 @@ export default function ProviderServicesWorkspaceOperational(props) {
     visibleUnits, searchResults, selectedCount, selectedByUnit, draftPrerequisites, readiness, dirty, editable,
     pendingReview, isB2BProfile, load, toggleUnit, toggleCapability, toggleService, toggleCasService,
     changeSectionUnit, toggleResource, addSuggestion, removeSuggestion, toggleRawRemoval,
-    confirmDependencyRemoval, cancelDependencyRemoval, save, submit, withdraw,
+    confirmDependencyRemoval, cancelDependencyRemoval, save, submit, withdraw, setQuery,
   } = useProviderServicesConfig(props);
 
   // Faza 3 din docs/plan-refactor-servicii-2026-08-18.md: sectiunea activa, filtrul si
@@ -91,6 +91,7 @@ export default function ProviderServicesWorkspaceOperational(props) {
               prerequisites={draftPrerequisites}
               disabled={!editable}
               onToggleService={toggleService}
+              onClearQuery={() => setQuery("")}
             />
           ) : (
             <div data-services-panel="units" className="space-y-3">

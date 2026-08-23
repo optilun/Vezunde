@@ -223,7 +223,9 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
   const CONFIG_STEP_HINTS = {
     1: "Tipurile de spații existente. Nu e nevoie să treci fiecare cameră.",
   };
-  const centerDescription = view === "configuration"
+  const centerDescription = query
+    ? "Căutarea recunoaște și formulări uzuale folosite de pacienții din România."
+    : view === "configuration"
     ? CONFIG_STEP_HINTS[configStep]
     : view === "options"
       ? "Opțiuni valabile pentru întreaga locație, nu pentru o singură zonă."
