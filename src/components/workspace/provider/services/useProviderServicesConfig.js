@@ -135,7 +135,12 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
 
   const selectedCount = countSelected(selected) + suggestions.length;
   const pendingReview = draft?.status === "pending_review";
-  const editable = config?.can_edit_services !== false && !pendingReview;
+  // Cererea activa a ALTUI membru pe aceeasi locatie (2026-08-23). Backendul respinge orice
+  // scriere cu 409 cat timp exista, dar pana acum ecranul ramanea complet editabil si esecul
+  // aparea abia la salvare - adica dupa ce utilizatorul isi facuse toata munca. Aceeasi
+  // conditie ca a bannerului care anunta conflictul, ca cele doua sa nu se contrazica.
+  const blockedByOtherMember = conflicts.length > 0 && !draft;
+  const editable = config?.can_edit_services !== false && !pendingReview && !blockedByOtherMember;
   const visibleUnits = useMemo(
     () => activeUnits.filter((unitKey) => sectionsByUnit[unitKey]?.length > 0),
     [activeUnits, sectionsByUnit],
@@ -321,7 +326,10 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
       canSave: Boolean(!saving && editable && dirty),
       canSubmit: Boolean(!saving && draft && editable && !dirty && readiness.configurationComplete),
       canWithdraw: Boolean(!saving && pendingReview && persistenceMode === "v2"),
-      hasSave: true,
+      // Era true neconditionat, deci "Salveaza draftul" se randa si in pending_review sau
+      // pentru un membru fara drept de editare - un buton care nu putea functiona niciodata,
+      // doar estompat. Acum dispare cand nu are ce face.
+      hasSave: editable,
       hasSubmit: Boolean(draft && draft.status !== "pending_review"),
       hasWithdraw: Boolean(pendingReview && persistenceMode === "v2"),
       approvedCount: approvedPublicKeys.length,
@@ -720,7 +728,14 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
     if (!duplicate) setSuggestions((current) => [...current, suggestion]);
   };
 
-  const removeSuggestion = (suggestion) => setSuggestions((current) => current.filter((item) => item !== suggestion));
+  // Garda lipsea (2026-08-23): pe aceste doua mutatoare oprirea venea doar din atributul
+  // disabled al butonului din DOM, nu din logica. Orice cale care nu trece prin acel buton -
+  // tastatura pe un element ramas activ, o reandare, cod viitor - le putea executa in stare
+  // blocata. Toate celelalte mutatoare aveau deja garda; astea doua erau exceptia.
+  const removeSuggestion = (suggestion) => {
+    if (!editable) return;
+    setSuggestions((current) => current.filter((item) => item !== suggestion));
+  };
 
   const toggleCasService = (serviceKey) => {
     if (!editable) return;
@@ -731,7 +746,10 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
     ));
   };
 
-  const toggleRawRemoval = (rawKey) => setRawRemovalKeys((current) => current.includes(rawKey) ? current.filter((key) => key !== rawKey) : [...current, rawKey]);
+  const toggleRawRemoval = (rawKey) => {
+    if (!editable) return;
+    setRawRemovalKeys((current) => current.includes(rawKey) ? current.filter((key) => key !== rawKey) : [...current, rawKey]);
+  };
 
   const save = async () => {
     if (!editable || !dirty) return;
