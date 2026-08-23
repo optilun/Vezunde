@@ -647,9 +647,9 @@
 }
 
 .services-badge.is-attention {
-  border-color: #e1bda8;
-  background: #efd5c5;
-  color: #6b3f22;
+  border-color: #f5c9a1;
+  background: #fdf3e9;
+  color: #8a4b12;
 }
 
 .services-badge.is-info,
@@ -841,7 +841,7 @@
 
 .provider-services-three__native .services-card[data-selection-state="removal"] .services-card__icon {
   background: rgb(255 255 255 / 0.6) !important;
-  color: #6b3f22 !important;
+  color: #8a4b12 !important;
 }
 
 /* Randul lung de serviciu: doar o tenta, altfel listele de zeci de randuri devin grele. */

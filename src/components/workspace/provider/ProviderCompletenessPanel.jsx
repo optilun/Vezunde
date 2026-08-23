@@ -11,7 +11,7 @@ const GRAIN = { backgroundImage: "url('/images/home/viasee-technical-grain.svg')
 
 function StatusIcon({ done }) {
   return done
-    ? <CheckCircle2 className="h-4 w-4 shrink-0 text-[#5f7a4e]" />
+    ? <CheckCircle2 className="h-4 w-4 shrink-0 text-[#315c3a]" />
     : <Circle className="h-4 w-4 shrink-0 text-muted-foreground/60" />;
 }
 
@@ -72,7 +72,7 @@ function LocationComparison({ locations, selectedLocationId }) {
             <Link
               key={location.id}
               to={`/contul-meu?s=locations&location=${location.id}`}
-              className={`rounded-[1.2rem] border p-4 transition-colors hover:border-foreground/35 ${selected ? "border-foreground/35 bg-[#f2ece0]" : "border-[#e3ddd0] bg-[#fdfbf6]"}`}
+              className={`rounded-[1.2rem] border p-4 transition-colors hover:border-foreground/35 ${selected ? "border-foreground/35 bg-[#f5f1e9]" : "border-[#e3ddd0] bg-[#fdfbf6]"}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">

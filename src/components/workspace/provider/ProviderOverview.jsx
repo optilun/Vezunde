@@ -291,7 +291,7 @@ function Checklist({ items }) {
         return (
           <div key={item.key} className="flex items-center gap-3 px-4 py-2.5">
             {complete
-              ? <CheckCircle2 className="h-4 w-4 shrink-0 text-[#5f7a4e]" />
+              ? <CheckCircle2 className="h-4 w-4 shrink-0 text-[#315c3a]" />
               : <Circle className="h-4 w-4 shrink-0 text-muted-foreground/60" />}
             <span className={`text-[13px] ${complete ? "text-foreground" : "text-muted-foreground"}`}>{item.label}</span>
             {!complete && <span className="ml-auto font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">Lipsește</span>}
