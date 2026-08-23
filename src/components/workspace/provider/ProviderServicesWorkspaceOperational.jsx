@@ -24,7 +24,7 @@ export default function ProviderServicesWorkspaceOperational(props) {
     setCareSetting, suggestions, rawRemovalKeys, openUnit, setOpenUnit, operationalLayout, profileSections,
     globalSections, sectionsByUnit, selectableUnits, primaryUnits, selectableCapabilities, primaryCapabilities,
     visibleUnits, searchResults, selectedCount, selectedByUnit, draftPrerequisites, readiness, dirty, editable,
-    pendingReview, isB2BProfile, load, toggleUnit, toggleCapability, toggleService, toggleCasService,
+    pendingReview, isB2BProfile, load, toggleUnit, toggleCapability, toggleService, setServicesSelection, toggleCasService,
     changeSectionUnit, toggleResource, addSuggestion, removeSuggestion, toggleRawRemoval,
     confirmDependencyRemoval, cancelDependencyRemoval, save, submit, withdraw, setQuery,
   } = useProviderServicesConfig(props);
@@ -95,7 +95,7 @@ export default function ProviderServicesWorkspaceOperational(props) {
             />
           ) : (
             <div data-services-panel="units" className="space-y-3">
-              {visibleUnits.map((unitKey, unitIndex) => <UnitAccordion key={unitKey} unitKey={unitKey} filter={navFilter} dataAttrs={{ "data-services-unit-index": String(unitIndex), "data-services-unit-visible": unitVisible(unitIndex) ? "true" : "false" }} sections={sectionsByUnit[unitKey] || []} selected={selected} approvedSelected={approvedSelected} serviceUnitMap={serviceUnitMap} prerequisites={draftPrerequisites} config={{ ...config, activeUnits }} resourceLinks={resourceLinks} approvedResourceLinks={approvedResourceLinks} customSuggestions={suggestions} capabilities={capabilities} approvedCapabilities={approvedCapabilities} onToggleCapability={toggleCapability} open={openUnit === unitKey} disabled={!editable} onOpen={() => setOpenUnit((current) => current === unitKey ? "" : unitKey)} onToggleService={toggleService} casServiceKeys={casServiceKeys} onToggleCas={toggleCasService} onChangeSectionUnit={changeSectionUnit} onToggleResource={toggleResource} onAddSuggestion={addSuggestion} onRemoveSuggestion={removeSuggestion} />)}
+              {visibleUnits.map((unitKey, unitIndex) => <UnitAccordion key={unitKey} unitKey={unitKey} filter={navFilter} dataAttrs={{ "data-services-unit-index": String(unitIndex), "data-services-unit-visible": unitVisible(unitIndex) ? "true" : "false" }} sections={sectionsByUnit[unitKey] || []} selected={selected} approvedSelected={approvedSelected} serviceUnitMap={serviceUnitMap} prerequisites={draftPrerequisites} config={{ ...config, activeUnits }} resourceLinks={resourceLinks} approvedResourceLinks={approvedResourceLinks} customSuggestions={suggestions} capabilities={capabilities} approvedCapabilities={approvedCapabilities} onToggleCapability={toggleCapability} open={openUnit === unitKey} disabled={!editable} onOpen={() => setOpenUnit((current) => current === unitKey ? "" : unitKey)} onToggleService={toggleService} onSetSelection={setServicesSelection} casServiceKeys={casServiceKeys} onToggleCas={toggleCasService} onChangeSectionUnit={changeSectionUnit} onToggleResource={toggleResource} onAddSuggestion={addSuggestion} onRemoveSuggestion={removeSuggestion} />)}
               {visibleUnits.length === 0 && <div className="rounded-2xl border border-dashed border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground">Selectează cel puțin o zonă care există în locație.</div>}
             </div>
           )}

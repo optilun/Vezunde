@@ -622,6 +622,41 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
     setSelected((value) => ({ ...value, [item.group]: [...current] }));
   };
 
+  // Selectie in masa pentru un grup intreg (2026-08-23, varianta A aprobata de Alex):
+  // "Selecteaza toate" / "Goleste". NU se poate face apeland toggleService in bucla -
+  // toggleService citeste `selected` din closure, deci N apeluri in acelasi handler ar
+  // pleca toate de la aceeasi valoare veche si ar ramane aplicat doar ultimul. Aici
+  // scriem o singura data, cu actualizare functionala, peste toate randurile primite.
+  const setServicesSelection = (items, unitKey, nextActive) => {
+    if (!editable) return;
+    const list = (Array.isArray(items) ? items : []).filter(Boolean);
+    if (list.length === 0) return;
+    setSelected((value) => {
+      const next = { ...value };
+      list.forEach((item) => {
+        const current = new Set(next[item.group] || []);
+        if (nextActive) current.add(item.id);
+        else current.delete(item.id);
+        next[item.group] = [...current];
+      });
+      return next;
+    });
+    setServiceUnitMap((map) => {
+      const next = { ...map };
+      list.forEach((item) => {
+        if (!nextActive) { delete next[item.id]; return; }
+        const context = getServiceOperationalContext(item.id);
+        if (context?.sectionKey === "business_attributes") delete next[item.id];
+        else next[item.id] = unitKey;
+      });
+      return next;
+    });
+    if (!nextActive) {
+      const removed = new Set(list.map((item) => item.id));
+      setCasServiceKeys((keys) => keys.filter((serviceKey) => !removed.has(serviceKey)));
+    }
+  };
+
   const changeSectionUnit = (section, unitKey) => {
     if (!editable) return;
     setServiceUnitMap((current) => {
@@ -810,6 +845,7 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
     toggleUnit,
     toggleCapability,
     toggleService,
+    setServicesSelection,
     toggleCasService,
     changeSectionUnit,
     toggleResource,
