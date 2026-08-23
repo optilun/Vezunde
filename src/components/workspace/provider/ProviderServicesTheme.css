@@ -1299,3 +1299,154 @@
     justify-content: center;
   }
 }
+
+/* --------------------------------------------------------------------------
+   20d. Cardul lat si sirul grupurilor (2026-08-23)
+   --------------------------------------------------------------------------
+   Un singur grup pe ecran, pe toata latimea continutului. Ca sa nu devina o
+   coloana lunga si ingusta, randurile curg pe doua-trei coloane in interiorul
+   cardului. Deasupra, sirul grupurilor zonei: unde esti, ce urmeaza si cat e
+   bifat in fiecare.
+   -------------------------------------------------------------------------- */
+
+.provider-services-three__native .services-unit__groups {
+  display: flex;
+  gap: 7px;
+  padding: 10px 14px;
+  overflow-x: auto;
+  border-bottom: 1px solid rgb(23 23 23 / 0.08);
+  scrollbar-width: none;
+}
+
+.provider-services-three__native .services-unit__groups::-webkit-scrollbar {
+  display: none;
+}
+
+.provider-services-three__native .services-unit__group-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgb(23 23 23 / 0.12);
+  border-radius: 999px;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  color: #706c64;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.provider-services-three__native .services-unit__group-chip:hover {
+  border-color: rgb(23 23 23 / 0.4);
+  color: #171717;
+}
+
+.provider-services-three__native .services-unit__group-chip em {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-style: normal;
+  color: #9a968f;
+}
+
+.provider-services-three__native .services-unit__group-chip[aria-selected="true"] {
+  border-color: #171717;
+  background: #171717;
+  color: #ffffff;
+}
+
+.provider-services-three__native .services-unit__group-chip[aria-selected="true"] em {
+  color: rgb(255 255 255 / 0.62);
+}
+
+/* Cardul lat -------------------------------------------------------------- */
+
+.provider-services-three__native .services-group-card--wide {
+  border-color: rgb(23 23 23 / 0.12);
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgb(23 23 23 / 0.04);
+}
+
+.provider-services-three__native .services-group-card--wide .services-group-card__head {
+  gap: 11px;
+  padding: 16px 18px 13px;
+  border-bottom: 0;
+}
+
+.provider-services-three__native .services-group-card--wide .services-group-card__title {
+  font-size: 16px;
+  letter-spacing: -0.025em;
+}
+
+.provider-services-three__native .services-group-card--wide .services-group-card__count {
+  font-size: 12px;
+}
+
+.provider-services-three__native .services-group-card__bar {
+  display: block;
+  height: 2px;
+  margin: 0 18px;
+  border-radius: 999px;
+  background: rgb(23 23 23 / 0.08);
+  overflow: hidden;
+}
+
+.provider-services-three__native .services-group-card__bar > i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #171717;
+  transition: width 0.2s ease;
+}
+
+.provider-services-three__native .services-group-card:not(.services-group-card--wide) .services-group-card__bar {
+  display: none;
+}
+
+.provider-services-three__native .services-group-card--wide .services-group-card__capability,
+.provider-services-three__native .services-group-card--wide .services-group-card__description,
+.provider-services-three__native .services-group-card--wide .services-group-card__note {
+  margin-inline: 18px;
+  padding-inline: 0;
+}
+
+.provider-services-three__native .services-group-card--wide .services-group-card__capability {
+  padding-top: 14px;
+}
+
+.provider-services-three__native .services-group-card--wide .services-group-card__description {
+  padding-top: 12px;
+}
+
+/* Randurile pe mai multe coloane. `columns` ar taia un rand intre coloane, deci
+   grila explicita: fiecare serviciu ramane intreg, cu bifa CAS cu tot. */
+.provider-services-three__native .services-group-card--wide .services-group-card__rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 2px 10px;
+  padding: 12px;
+}
+
+.provider-services-three__native .services-group-card--wide .services-group-card__foot {
+  padding: 12px 18px 14px;
+  border-top: 1px solid rgb(23 23 23 / 0.08);
+}
+
+/* Randul ales, in cardul lat: fundal crem in loc de alb pe alb. Inversul cardului
+   ingust, unde fundalul era crem si randul ales alb. Aceleasi doua culori. */
+.provider-services-three__native .services-group-card--wide .services-group-card__rows button[data-service-key][aria-pressed="true"] {
+  background: #f5f1e9 !important;
+  box-shadow: inset 2px 0 0 #171717 !important;
+}
+
+.provider-services-three__native .services-group-card--wide .services-group-card__rows button[data-service-key]:hover {
+  background: #faf8f3 !important;
+}
+
+.provider-services-three__native .services-group-card--wide .services-group-card__rows button[data-service-key][aria-pressed="true"]:hover {
+  background: #f2ede2 !important;
+}
