@@ -26,11 +26,22 @@ import { getServiceDescription } from "../../../../../shared/serviceDescriptions
 import { ChangeBadge, StatusBadge } from "./ServiceBadges";
 import { isSelected, serviceLabel } from "./servicesConfigModel";
 
-export default function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, disabled, helperText = "", onToggle, casActive = false, casEligible = false, onToggleCas, filter = "all", showDescription = true, compact = false }) {
+export default function ServiceRow({ item, selected, approvedSelected, prerequisite, unitKey, disabled, helperText = "", onToggle, casActive = false, casEligible = false, onToggleCas, filter = "all", showDescription = true, compact = false, reviewState = {} }) {
   const active = isSelected(selected, item);
   const approved = isSelected(approvedSelected, item);
-  const removalRequested = approved && !active;
-  const draftAddition = active && !approved;
+  // Trei straturi, de cand se poate edita in paralel cu verificarea (2026-08-23): aprobat,
+  // trimis spre aprobare, in lucru. Randul nu primeste a doua harta de selectie, ci doar
+  // DIFERENTA celui trimis fata de aprobat - din ea reconstruieste starea trimisa. Cand nu
+  // exista nicio cerere in verificare harta e goala, starea trimisa cade peste cea aprobata
+  // si tot ce urmeaza se comporta exact ca inainte.
+  const review = reviewState[item.id] || "";
+  const submitted = review === "added" ? true : review === "removed" ? false : approved;
+  // Marcajele de draft se raporteaza la ce s-a TRIMIS, nu la ce e aprobat: altfel un element
+  // aflat in verificare ar aparea vesnic drept "nou in draft", desi a plecat deja.
+  const removalRequested = submitted && !active;
+  const draftAddition = active && !submitted;
+  // Neatins de la trimitere => e chiar ce asteapta decizia adminului.
+  const inReview = review && active === submitted ? review : "";
   const blockerDetail = active && prerequisite?.eligible === false
     ? prerequisite.blockers?.[0]?.message
     : "";
@@ -47,6 +58,12 @@ export default function ServiceRow({ item, selected, approvedSelected, prerequis
   const blocked = active && prerequisite?.eligible === false;
   const filterVisible = filter === "all"
     || (filter === "selected" && active)
+    // Filtrul "changes" lipsea de aici (corectat 2026-08-23, in aceeasi zi in care a fost
+    // adaugat): UnitAccordion filtra sectiunile, dar randul isi decide singur vizibilitatea
+    // prin data-service-filter-visible, iar CSS-ul ascunde ce e "false" - deci ecranul ar fi
+    // ramas gol. Se raporteaza la starea APROBATA, ca si placa "in draft" din Verificare:
+    // acolo numarul inseamna "tot ce nu e inca publicat", trimis sau nu.
+    || (filter === "changes" && active !== approved)
     || (filter === "issues" && blocked);
   return (
     <div
@@ -74,7 +91,7 @@ export default function ServiceRow({ item, selected, approvedSelected, prerequis
         <span className={`services-row__title block font-semibold leading-snug text-foreground ${compact ? "text-[13.5px]" : "text-sm"}`}>{serviceLabel(item)}</span>
         {detail && <span className="services-row__detail mt-1 block text-[11px] leading-relaxed text-muted-foreground">{detail}</span>}
         <span className="mt-1 flex flex-wrap items-center gap-1.5 empty:hidden">
-          <ChangeBadge draftAddition={draftAddition} removalRequested={removalRequested} />
+          <ChangeBadge draftAddition={draftAddition} removalRequested={removalRequested} inReview={inReview} />
           {!removalRequested && <StatusBadge prerequisite={prerequisite} />}
         </span>
       </span>

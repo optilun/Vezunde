@@ -19,7 +19,7 @@ const HELPER_TEXT = {
   school_vision_screening: "Faci screening de vedere în școli și grădinițe.",
 };
 
-export default function GlobalServiceSections({ sections, selected, approvedSelected, disabled, onToggleService, onSetSelection, careSettingSlot = null, dataAttrs = {} }) {
+export default function GlobalServiceSections({ sections, selected, approvedSelected, reviewState = {}, disabled, onToggleService, onSetSelection, careSettingSlot = null, dataAttrs = {} }) {
   if (sections.length === 0) return null;
   const items = sections.flatMap((section) => section.items);
   const total = items.length;
@@ -61,6 +61,7 @@ export default function GlobalServiceSections({ sections, selected, approvedSele
               key={`${item.group}:${item.id}`}
               active={isSelected(selected, item)}
               approved={isSelected(approvedSelected, item)}
+              review={reviewState[item.id] || ""}
               title={serviceLabel(item)}
               description={HELPER_TEXT[item.id] || ""}
               icon={Icon}

@@ -28,7 +28,7 @@ const ZONE_LEVEL_CAPABILITY_KEYS = {
   b2b_distribution_center: ["b2b_distribution", "b2b_logistics", "b2b_technical_support"],
 };
 
-export default function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceUnitMap, prerequisites, config, resourceLinks, approvedResourceLinks, customSuggestions, capabilities = [], approvedCapabilities = [], onToggleCapability, open, disabled, casServiceKeys = [], onToggleCas, onOpen, onToggleService, onSetSelection, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion, filter = "all", dataAttrs = {}, stepIndex = 0, stepMode = false, active = true, onGoToUnit, onChooseView, unitTitles = [] }) {
+export default function UnitAccordion({ unitKey, sections, selected, approvedSelected, reviewState = {}, serviceUnitMap, prerequisites, config, resourceLinks, approvedResourceLinks, customSuggestions, capabilities = [], approvedCapabilities = [], onToggleCapability, open, disabled, casServiceKeys = [], onToggleCas, onOpen, onToggleService, onSetSelection, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion, filter = "all", dataAttrs = {}, stepIndex = 0, stepMode = false, active = true, onGoToUnit, onChooseView, unitTitles = [] }) {
   const definition = getFunctionalUnitDefinition(unitKey);
   const Icon = UNIT_ICONS[unitKey] || UNIT_FALLBACK_ICON;
   const selectedCount = sections.reduce((sum, section) => sum + selectedCountForSection(selected, section), 0);
@@ -193,6 +193,7 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
                       activeUnit={activeUnit}
                       selected={selected}
                       approvedSelected={approvedSelected}
+                      reviewState={reviewState}
                       prerequisites={prerequisites}
                       disabled={disabled}
                       availableParents={availableParents}
@@ -231,6 +232,7 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
                         item={item}
                         selected={selected}
                         approvedSelected={approvedSelected}
+                        reviewState={reviewState}
                         prerequisite={prerequisites[item.id]}
                         unitKey={activeUnit}
                         disabled={disabled}

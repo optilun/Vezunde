@@ -5,9 +5,13 @@ import React from "react";
 import { Check, Info, X } from "lucide-react";
 import { ChangeBadge } from "./ServiceBadges";
 
-export default function SelectionCard({ active, approved = false, title, description, helper, icon: Icon, disabled, onClick, variant = "row", tone = null, badge = "" }) {
-  const removalRequested = approved && !active;
-  const draftAddition = active && !approved;
+export default function SelectionCard({ active, approved = false, title, description, helper, icon: Icon, disabled, onClick, variant = "row", tone = null, badge = "", review = "" }) {
+  // Acelasi rationament ca in ServiceRow: starea TRIMISA se reconstruieste din diferenta
+  // fata de cea aprobata, iar marcajele de draft se raporteaza la ea, nu la aprobat.
+  const submitted = review === "added" ? true : review === "removed" ? false : approved;
+  const removalRequested = submitted && !active;
+  const draftAddition = active && !submitted;
+  const inReview = review && active === submitted ? review : "";
   // Id stabil pentru aria-describedby (2026-08-23): butonul cardului nu poate avea un
   // descendent cu tabindex - specificatia HTML interzice explicit asta pentru <button>,
   // la fel ca butonul-in-buton. Descrierea ramane deci accesibila prin aria-describedby
@@ -80,7 +84,7 @@ export default function SelectionCard({ active, approved = false, title, descrip
         {badge && <span className="services-card__badge">{badge}</span>}
         <span className="mt-auto flex flex-wrap items-center gap-2 pt-1">
           {helper && <span className="text-[10px] font-medium text-muted-foreground">{helper}</span>}
-          <ChangeBadge draftAddition={draftAddition} removalRequested={removalRequested} />
+          <ChangeBadge draftAddition={draftAddition} removalRequested={removalRequested} inReview={inReview} />
         </span>
       </button>
     );
@@ -116,7 +120,7 @@ export default function SelectionCard({ active, approved = false, title, descrip
         <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">{description}</span>
         <span className="mt-2 flex flex-wrap items-center gap-2">
           {helper && <span className="text-[10px] font-semibold text-muted-foreground">{helper}</span>}
-          <ChangeBadge draftAddition={draftAddition} removalRequested={removalRequested} />
+          <ChangeBadge draftAddition={draftAddition} removalRequested={removalRequested} inReview={inReview} />
         </span>
       </span>
     </button>

@@ -17,7 +17,7 @@ function NoResultsFigure() {
   );
 }
 
-export default function ServicesSearchResults({ query, results, selected, approvedSelected, serviceUnitMap, activeUnits, prerequisites, disabled, onToggleService, onClearQuery, dataAttrs = {}, filter = "all" }) {
+export default function ServicesSearchResults({ query, results, selected, approvedSelected, reviewState = {}, serviceUnitMap, activeUnits, prerequisites, disabled, onToggleService, onClearQuery, dataAttrs = {}, filter = "all" }) {
   return (
     // Antetul propriu a fost scos (2026-08-23): titlul „Rezultate pentru ..." era scris
     // si aici, si in antetul modulului, unul sub altul.
@@ -28,7 +28,7 @@ export default function ServicesSearchResults({ query, results, selected, approv
         return (
           <div key={`${section.key}:${item.id}`}>
             <div className="border-b border-border/60 bg-secondary/10 px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{isLocationWide ? "Valabil la nivelul locației" : getFunctionalUnitDefinition(unitKey)?.shortTitle || "Zonă neconfigurată"} · {section.title}</div>
-            <ServiceRow item={item} selected={selected} approvedSelected={approvedSelected} prerequisite={prerequisites[item.id]} unitKey={unitKey} disabled={disabled} onToggle={onToggleService} filter={filter} />
+            <ServiceRow item={item} selected={selected} approvedSelected={approvedSelected} reviewState={reviewState} prerequisite={prerequisites[item.id]} unitKey={unitKey} disabled={disabled} onToggle={onToggleService} filter={filter} />
           </div>
         );
       }) : (

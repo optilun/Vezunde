@@ -22,7 +22,7 @@ import { CAS_ELIGIBLE_GROUPS, GROUP_TONE } from "./servicesUiTokens";
 import { isSelected, selectedCountForSection } from "./servicesConfigModel";
 
 export default function GroupCard({
-  section, unitKey, activeUnit, selected, approvedSelected, prerequisites, disabled,
+  section, unitKey, activeUnit, selected, approvedSelected, reviewState = {}, prerequisites, disabled,
   availableParents = [], capabilityKey = "", capabilityRow, capabilityApproved, onToggleCapability,
   casServiceKeys = [], onToggleCas, onToggleService, onSetSelection, onChangeSectionUnit,
   suggestions = [], onAddSuggestion, onRemoveSuggestion, showDescription = false, filter = "all", wide = false,
@@ -101,6 +101,7 @@ export default function GroupCard({
             item={item}
             selected={selected}
             approvedSelected={approvedSelected}
+            reviewState={reviewState}
             prerequisite={prerequisites[item.id]}
             unitKey={activeUnit}
             disabled={disabled}

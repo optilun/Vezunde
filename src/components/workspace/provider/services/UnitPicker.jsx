@@ -15,7 +15,7 @@ import { UNIT_FIGURE_FALLBACK, UNIT_FIGURES } from "./UnitFigures";
 const OPTICAL_UNIT_KEYS = new Set(["optical_store", "optical_cabinet", "optical_workshop", "optical_laboratory", "b2b_distribution_center"]);
 const MEDICAL_UNIT_KEYS = new Set(["optometry_cabinet", "ophthalmology_office", "ophthalmology_diagnostics", "ophthalmology_procedure_room", "ophthalmology_surgery_unit"]);
 
-function UnitGroup({ label, unitKeys, approvedUnits, activeUnits, selectedByUnit, primaryUnits, disabled, onToggle }) {
+function UnitGroup({ label, unitKeys, approvedUnits, activeUnits, selectedByUnit, primaryUnits, disabled, onToggle, reviewState = {} }) {
   if (unitKeys.length === 0) return null;
   return (
     <div>
@@ -51,6 +51,7 @@ function UnitGroup({ label, unitKeys, approvedUnits, activeUnits, selectedByUnit
               badge={active || approved || count > 0 ? "" : primaryUnits.includes(unitKey) ? "Recomandat" : "Opțional"}
               icon={Icon}
               tone={UNIT_TONE[unitKey] || null}
+              review={reviewState[unitKey] || ""}
               disabled={disabled}
               onClick={() => onToggle(unitKey)}
             />
@@ -61,7 +62,7 @@ function UnitGroup({ label, unitKeys, approvedUnits, activeUnits, selectedByUnit
   );
 }
 
-export default function UnitPicker({ units, approvedUnits, activeUnits, selectedByUnit, primaryUnits, disabled, onToggle, dataAttrs = {} }) {
+export default function UnitPicker({ units, approvedUnits, activeUnits, selectedByUnit, primaryUnits, disabled, onToggle, dataAttrs = {}, reviewState = {} }) {
   // Toate spatiile raman vizibile permanent (2026-08-18, la cererea lui Alex) - fara
   // comutator "Arata alte spatii" care ascundea unele carduri implicit.
   const opticalUnits = units.filter((key) => OPTICAL_UNIT_KEYS.has(key));
@@ -75,9 +76,9 @@ export default function UnitPicker({ units, approvedUnits, activeUnits, selected
           Carduri patrate, in grila, grupate optica/medical (2026-08-18) - inainte, un singur
           rand lung pe latime, fara distinctie intre tipurile de spatii. */}
       <div className="space-y-5">
-        <UnitGroup label="Optică" unitKeys={opticalUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={disabled} onToggle={onToggle} />
-        <UnitGroup label="Oftalmologie și evaluare medicală" unitKeys={medicalUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={disabled} onToggle={onToggle} />
-        <UnitGroup label="Alte spații" unitKeys={otherUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={disabled} onToggle={onToggle} />
+        <UnitGroup label="Optică" unitKeys={opticalUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={disabled} onToggle={onToggle} reviewState={reviewState} />
+        <UnitGroup label="Oftalmologie și evaluare medicală" unitKeys={medicalUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={disabled} onToggle={onToggle} reviewState={reviewState} />
+        <UnitGroup label="Alte spații" unitKeys={otherUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={disabled} onToggle={onToggle} reviewState={reviewState} />
       </div>
     </section>
   );
