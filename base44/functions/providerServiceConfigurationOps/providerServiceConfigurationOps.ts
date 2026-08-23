@@ -383,7 +383,42 @@ export async function handle(req: Request) {
         const existing = await svc.entities.ProviderWorkspaceSubmission.filter(activeSubmissionQuery(access), '-created_date', 10);
         if (existing.length > 0) {
           const own = existing.find((item) => item.submitted_by_user_id === user.id && !isLockedPreparation(item));
-          if (own) return Response.json({ submission: safeSubmission(own), resumed: true });
+          if (own) {
+            // PANA LA 2026-08-23 aici se returna direct { resumed: true } cu randul existent,
+            // pentru ORICE status. Adica payload-ul tocmai trimis era ARUNCAT fara nicio
+            // eroare, iar apelantul primea 200 si credea ca a salvat. Nu se vedea doar
+            // pentru ca interfata blocheaza editarea in pending_review si deci nu ajungea
+            // niciodata sa faca apelul - blocajul din UI era singurul lucru care tinea
+            // utilizatorii departe de aceasta cale. Handler-ul vechi
+            // (submitProviderWorkspaceChange.ts) trata corect cazul; V2 nu.
+            const incoming = JSON.stringify(validation.clean);
+            const stored = JSON.stringify(parsePayload(own.payload_json));
+            if (own.status === 'pending_review') {
+              // Nu putem suprascrie: adminul citeste CHIAR acesti octeti in momentul
+              // aprobarii (adminServiceConfigurationReview.ts nu lucreaza cu o copie luata
+              // la listare). Deci raspundem cinstit cu 409. Exceptie: payload identic
+              // inseamna o reincercare inofensiva a aceleiasi cereri - dublu click, retry
+              // de retea - nu un conflict, deci nu merita eroare.
+              if (incoming === stored) return Response.json({ submission: safeSubmission(own), resumed: true, duplicate: true });
+              return Response.json(conflict(own), { status: 409 });
+            }
+            // Draft sau needs_more_info: randul ii apartine si e editabil, deci noul payload
+            // se SCRIE, nu se arunca. Cazul apare real cand clientul nu stie inca de un
+            // draft creat in alta parte (alt tab, alta sesiune) si trimite create_draft.
+            if (incoming !== stored) {
+              await svc.entities.ProviderWorkspaceSubmission.update(own.id, { payload_json: incoming, status: 'draft' });
+              if (own.submitted_at) await syncRemovalVisibility(svc, user, own, validation.clean);
+              await audit(svc, user, {
+                entity_type: 'ProviderWorkspaceSubmission', entity_id: own.id,
+                action_type: 'update_service_configuration_draft',
+                changed_fields: ['payload_json', 'status'], previous: { status: own.status }, next: { status: 'draft' },
+                note: 'Draft existent actualizat la crearea unui draft nou.',
+              });
+              const refreshed = await svc.entities.ProviderWorkspaceSubmission.get(own.id).catch(() => null);
+              return Response.json({ submission: safeSubmission(refreshed || own), resumed: true });
+            }
+            return Response.json({ submission: safeSubmission(own), resumed: true, unchanged: true });
+          }
           const blocking = existing.find((item) => (item.access_origin || 'provider_workspace') === 'provider_workspace' && !isPromotedPrivateDraft(item));
           if (blocking) return Response.json(conflict(blocking), { status: 409 });
         }
