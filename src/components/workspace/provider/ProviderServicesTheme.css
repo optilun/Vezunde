@@ -507,10 +507,13 @@
   padding-inline: 16px;
 }
 
-/* Iconita zonei din antetul acordeonului: neutra, nu albastra. */
+/* Iconita zonei din antetul acordeonului. Neutralizarea de aici (2026-08-06, ca sa nu
+   ramana albastra) a fost RIDICATA pe 2026-08-23: UnitAccordion pune deja inline tonul
+   de categorie din UNIT_TONE, iar acesta e acum acelasi in toate cele trei locuri unde
+   apare zona - cardul din "Spatiile existente", randul din coloana din stanga si antetul
+   ei. Culoarea de aici spune CATEGORIA, nu starea; starea ramane a fondului. */
 .provider-services-three__native [data-services-panel="units"] > section > button:first-child > span:first-child {
-  background: #f3f1eb !important;
-  color: #57534e !important;
+  color: #57534e;
 }
 
 @media (min-width: 1321px) {
@@ -1389,10 +1392,11 @@
 
 .provider-services-three__native .services-group-card__bar {
   display: block;
-  height: 2px;
-  margin: 0 18px;
+  flex-shrink: 0;
+  width: 44px;
+  height: 3px;
   border-radius: 999px;
-  background: rgb(23 23 23 / 0.08);
+  background: rgb(23 23 23 / 0.1);
   overflow: hidden;
 }
 
@@ -1402,10 +1406,6 @@
   border-radius: 999px;
   background: #171717;
   transition: width 0.2s ease;
-}
-
-.provider-services-three__native .services-group-card:not(.services-group-card--wide) .services-group-card__bar {
-  display: none;
 }
 
 .provider-services-three__native .services-group-card--wide .services-group-card__capability,
@@ -1493,4 +1493,34 @@
   .provider-services-three__center-header .provider-services-three__meta {
     margin-left: 0;
   }
+}
+
+/* --------------------------------------------------------------------------
+   20f. Tonul de categorie pe placa iconitei (2026-08-23)
+   --------------------------------------------------------------------------
+   Amendament la regula sectiunii 16 ("culoarea inseamna DOAR stare"). Regula ramane
+   pentru SUPRAFETE: fondul cardului spune si acum doar daca e ales, neales sau propus
+   spre eliminare. Placa de 40x40 a iconitei e alt obiect - spune din ce familie face
+   parte spatiul, si e singurul lucru care leaga cardul din "Spatiile existente" de
+   randul din coloana din stanga si de simbolul din antetul grupului. Fara ea, cinci
+   categorii aratau identic.
+   Sectiunea 14 forteaza fondul placii cu !important, deci tonul se transmite printr-o
+   variabila pusa inline si se aplica aici, mai jos in fisier.
+   -------------------------------------------------------------------------- */
+
+.provider-services-three__native .services-card[data-selection-state] .services-card__icon[data-tone="true"],
+.provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state] .services-card__icon[data-tone="true"],
+.provider-services-three__native [data-services-panel="options"] .services-card[data-selection-state] .services-card__icon[data-tone="true"] {
+  background: var(--card-tone) !important;
+  box-shadow: inset 0 0 0 1px var(--card-tone-border) !important;
+  color: #171717 !important;
+}
+
+/* Cardul neales isi tine tonul mai discret: e informatie de categorie, nu invitatie. */
+.provider-services-three__native .services-card[data-selection-state="off"] .services-card__icon[data-tone="true"] {
+  opacity: 0.72;
+}
+
+.provider-services-three__native .services-card[data-selection-state="on"] .services-card__icon[data-tone="true"] {
+  opacity: 1;
 }
