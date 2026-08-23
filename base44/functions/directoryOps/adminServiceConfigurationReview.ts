@@ -65,6 +65,25 @@ function restoredMatchingAllowed(row) {
     && definition.matching_allowed_when_provider_confirmed === true;
 }
 
+// Geamanul lui carryWorkingDraftForward din providerServiceConfigurationOps.ts. Cele doua
+// fisiere sunt functii Base44 separate, fara import comun intre ele, deci logica e scrisa de
+// doua ori intentionat - orice schimbare aici trebuie facuta si acolo.
+async function carryWorkingDraftForward(svc, submission) {
+  const submitted = submission.submitted_payload_json || '';
+  const working = submission.payload_json || '';
+  if (!submitted || !working || submitted === working) return null;
+  return await svc.entities.ProviderWorkspaceSubmission.create({
+    organization_id: submission.organization_id || null,
+    location_id: submission.location_id,
+    claim_request_id: submission.claim_request_id || '',
+    access_origin: submission.access_origin || 'provider_workspace',
+    section: 'services',
+    payload_json: working,
+    status: 'draft',
+    submitted_by_user_id: submission.submitted_by_user_id,
+  }).catch(() => null);
+}
+
 async function restoreRemovalVisibility(svc, submission) {
   const rows = await svc.entities.LocationService.filter({
     location_id: submission.location_id,
@@ -454,7 +473,13 @@ export async function handle(req: Request) {
     if (!submission) return Response.json({ error: 'Submissionul nu a fost găsit' }, { status: 404 });
     if (submission.section !== 'services') return Response.json(await delegate(base44, action, input));
 
-    const rawPayload = await withLegacyRemovalDiffs(svc, submission.location_id, parsePayload(submission.payload_json));
+    // Copia inghetata la trimitere, nu payload-ul de lucru (2026-08-23). De cand furnizorul
+    // poate edita in paralel cu verificarea, payload_json se poate schimba sub adminul care
+    // tocmai citeste ecranul - iar aceasta linie ruleaza identic si la `get`, si la `approve`,
+    // deci fara inghetare s-ar fi aprobat altceva decat s-a vazut. Fallback pe payload_json
+    // pentru randurile trimise inainte de existenta campului.
+    const reviewSource = submission.submitted_payload_json || submission.payload_json;
+    const rawPayload = await withLegacyRemovalDiffs(svc, submission.location_id, parsePayload(reviewSource));
     const validation = validateServiceConfigurationPayload(rawPayload, {
       allowSuggestions: true,
       allowRawRemovals: true,
@@ -527,8 +552,17 @@ export async function handle(req: Request) {
       const suggestionIds = await persistSuggestions(svc, user, submission, payload);
 
       const now = new Date().toISOString();
+      // Randul aprobat devine sursa de adevar pentru starea aprobata (zone, capabilitati,
+      // maparea serviciu-zona traiesc doar aici), deci payload_json trebuie sa fie exact ce
+      // s-a aprobat - adica payload-ul inghetat, nu ce a mai lucrat furnizorul intre timp.
+      // Munca aceea nu se pierde: trece inaintea suprascrierii intr-un draft nou, care devine
+      // randul lui activ si care isi va recalcula eliminarile fata de noua baza aprobata la
+      // prima salvare.
+      await carryWorkingDraftForward(svc, submission);
       await svc.entities.ProviderWorkspaceSubmission.update(submission.id, {
         status: 'approved',
+        payload_json: submission.submitted_payload_json || submission.payload_json || '',
+        submitted_payload_json: '',
         reviewed_by_user_id: user.id,
         reviewed_at: now,
         admin_note: clean(input.note),
@@ -572,7 +606,16 @@ export async function handle(req: Request) {
       // zile intregi asa, cu serviciile lui invizibile pentru pacienti pentru o eliminare
       // care s-ar putea sa nu se intample niciodata. Reject facea deja lucrul corect;
       // request_more_info era exceptia, nu regula.
-      if (!result?.error) await restoreRemovalVisibility(svc, submission);
+      if (!result?.error) {
+        await restoreRemovalVisibility(svc, submission);
+        // La respingere randul moare, deci munca de dupa trimitere trece intr-un draft nou.
+        // La "Cere informatii" randul RAMANE al furnizorului (needs_more_info e status activ)
+        // si payload_json e deja munca lui in lucru - nu are ce sa fie mutat nicaieri.
+        if (action === 'reject') await carryWorkingDraftForward(svc, submission);
+        // In ambele cazuri copia inghetata nu mai are rost: nu mai exista o cerere in
+        // verificare pe care sa o protejeze.
+        await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { submitted_payload_json: '' }).catch(() => {});
+      }
       return Response.json(result);
     }
 
