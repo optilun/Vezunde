@@ -518,16 +518,16 @@ function OrganizationProfile({
         className="relative h-36 overflow-hidden rounded-[22px] border border-[#171717]/10 sm:h-44 lg:h-48"
         style={{
           background:
-            "linear-gradient(115deg, #dce5e9 0%, #e6ded9 52%, #efd5c5 100%)",
+            "linear-gradient(180deg, #dce4f2 0%, #e9ecf4 22%, #f5f3ee 55%, #f7f2e8 100%)",
         }}
       >
         <span
           aria-hidden="true"
-          className="absolute inset-0 opacity-25 mix-blend-multiply"
+          className="absolute inset-0 opacity-[0.56]"
           style={{
             backgroundImage:
-              "url('/images/home/viasee-technical-grain.svg')",
-            backgroundSize: "180px 180px",
+              "radial-gradient(circle, rgba(52,48,43,0.16) 0px, rgba(52,48,43,0.16) 0.75px, rgba(0,0,0,0) 1px)",
+            backgroundSize: "24px 24px",
           }}
         />
         <div className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full border border-white/55 bg-white/75 px-3 py-1.5 text-xs font-semibold text-[#4e4b46] backdrop-blur-sm sm:left-7 sm:top-6">
