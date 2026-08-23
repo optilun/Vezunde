@@ -13,12 +13,13 @@
 //     lectura, sunt avertismente.
 //
 // 2026-08-23 (a doua trecere, tot la cererea lui Alex): pastila CAS s-a mutat DE PE
-// randul de dedesubt PE randul serviciului, in dreapta. A fost posibil abia dupa ce
-// cardul de grup a devenit cu o singura coloana (vezi GroupCard/UnitAccordion,
-// services-group-card__rows): la doua coloane inguste pastila nu avea loc alaturi de
-// eticheta. Randul de aici e acum <div flex> cu doua elemente FRATE - butonul de
-// bifare si (cand e vizibila) pastila CAS - nu buton in buton, ceea ce ar fi HTML
-// invalid si ar sparge click-ul.
+// randul de dedesubt PE randul serviciului, in dreapta. Cardul de grup a incercat
+// pentru asta o singura coloana, dar Alex a cerut inapoi la doua (se citea mai bine) -
+// deci coloanele au ramas late (minmax 280px in ProviderServicesTheme.css), suficient
+// cat pastila sa incapa langa eticheta fara sa mai fie nevoie de un rand intreg.
+// Randul de aici e acum <div flex> cu doua elemente FRATE - butonul de bifare si
+// (cand e vizibila) pastila CAS - nu buton in buton, ceea ce ar fi HTML invalid si
+// ar sparge click-ul.
 import React from "react";
 import { Check } from "lucide-react";
 import { getServiceDescription } from "../../../../../shared/serviceDescriptions.js";
@@ -81,8 +82,7 @@ export default function ServiceRow({ item, selected, approvedSelected, prerequis
     {/* DECONTAREA CAS: eticheta pe randul serviciului, nu pe un rand propriu.
         Ramane o pastila, nu o bifa - nu e o actiune de acelasi rang cu serviciul, e o
         insusire a lui. Dar sta acum LANGA eticheta (frate cu butonul de bifare, nu
-        continut in el), in dreapta randului - posibil de cand cardul de grup a devenit
-        cu o singura coloana si a ramas loc. */}
+        continut in el), in dreapta randului. */}
     {casVisible && (
       <div className={`services-cas-slot shrink-0 ${compact ? "pr-3" : "pr-4"}`}>
         <button
