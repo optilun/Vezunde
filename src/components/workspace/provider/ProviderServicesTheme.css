@@ -811,16 +811,31 @@
    pusa acolo este anulata. De aceea traieste aici, pe atributul
    data-selection-state, dupa toate celelalte reguli.
 
-   Verde = pornit. Teracota = se elimina la trimitere. Aceleasi tonuri ca in
-   restul spatiului furnizor. */
+   Culorile sunt exclusiv cele care exista deja: accentul modulului
+   (--services-accent / --services-accent-soft, adica albastrul VIASEE) pentru
+   ce este pornit, si culorile marcajului de atentie pentru ce se elimina.
+   Suprafata cardului ramane alba: culoarea marcheaza starea, nu umple cardul. */
 
 .provider-services-three__native .services-card[data-selection-state="on"],
 .provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="on"],
 .provider-services-three__native [data-services-panel="options"] .services-card[data-selection-state="on"],
 .provider-services-three__native .services-card[data-selection-state="on"]:hover:not(:disabled),
 .provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="on"]:hover:not(:disabled) {
-  border-color: #ccd2ba !important;
-  background: #dfe3d2 !important;
+  border-color: var(--services-accent) !important;
+  background: var(--services-surface) !important;
+  box-shadow: 0 0 0 3px rgb(52 91 200 / 0.08) !important;
+}
+
+.provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="on"] .services-card__icon,
+.provider-services-three__native .services-card[data-selection-state="on"] .services-card__icon {
+  background: var(--services-accent-soft) !important;
+  color: var(--services-accent) !important;
+}
+
+.provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="on"] .services-card__check {
+  border-color: var(--services-accent) !important;
+  background: var(--services-accent) !important;
+  color: #ffffff !important;
 }
 
 .provider-services-three__native .services-card[data-selection-state="removal"],
@@ -828,24 +843,18 @@
 .provider-services-three__native [data-services-panel="options"] .services-card[data-selection-state="removal"],
 .provider-services-three__native .services-card[data-selection-state="removal"]:hover:not(:disabled),
 .provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="removal"]:hover:not(:disabled) {
-  border-color: #e1bda8 !important;
-  background: #efd5c5 !important;
-}
-
-/* Pastila iconitei era albastru pal pe card apasat; pe verde se pierde. */
-.provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="on"] .services-card__icon,
-.provider-services-three__native .services-card[data-selection-state="on"] .services-card__icon {
-  background: rgb(255 255 255 / 0.7) !important;
-  color: var(--services-text) !important;
+  border-color: #f5c9a1 !important;
+  background: #fdf3e9 !important;
 }
 
 .provider-services-three__native .services-card[data-selection-state="removal"] .services-card__icon {
-  background: rgb(255 255 255 / 0.6) !important;
+  background: #fdf3e9 !important;
   color: #8a4b12 !important;
 }
 
-/* Randul lung de serviciu: doar o tenta, altfel listele de zeci de randuri devin grele. */
-.provider-services-three__native button[data-service-key][aria-pressed="true"],
-.provider-services-three__native div:has(> button[data-service-key][aria-pressed="true"]) {
-  background: rgb(223 227 210 / 0.5) !important;
+/* Randul lung de serviciu: o linie de accent la stanga, nu o placa colorata -
+   listele au zeci de randuri si s-ar ingreuna. */
+.provider-services-three__native button[data-service-key][aria-pressed="true"] {
+  background: var(--services-surface) !important;
+  box-shadow: inset 2px 0 0 var(--services-accent) !important;
 }
