@@ -12,7 +12,7 @@
 //     statea acolo permanent si se citea ca instructiune, desi nu te privea inca;
 //   - numele zonei nu se mai repeta in card: e scris o data, in antetul zonei.
 import React from "react";
-import { getFunctionalUnitDefinition } from "@/lib/providerLocationFunctionalUnits";
+import { getCapabilityDefinition, getFunctionalUnitDefinition } from "@/lib/providerLocationFunctionalUnits";
 import { Info } from "lucide-react";
 import ServiceRow from "./ServiceRow";
 import CapabilityToggle from "./CapabilityToggle";
@@ -32,6 +32,13 @@ export default function GroupCard({
   const selectedCount = selectedCountForSection(selected, section);
   const missing = section.items.filter((item) => !isSelected(selected, item));
   const allSelected = missing.length === 0 && total > 0;
+  // Cand capabilitatea poarta exact numele grupului, comutatorul nu il mai repeta -
+  // altfel acelasi titlu apare de doua ori, unul sub altul (gasit in captura lui Alex
+  // la "Adaptare si monitorizare lentile de contact").
+  const capabilityTitle = capabilityKey ? getCapabilityDefinition(capabilityKey)?.title || "" : "";
+  const capabilityLabel = capabilityTitle && capabilityTitle.trim() === String(section.title || "").trim()
+    ? "Activează acest grup"
+    : "";
   return (
     <article className="services-group-card" data-services-group={section.key}>
       <header className="services-group-card__head">
@@ -49,6 +56,7 @@ export default function GroupCard({
             disabled={disabled}
             onToggle={() => onToggleCapability?.(capabilityKey, [unitKey])}
             compact
+            label={capabilityLabel}
           />
         </div>
       )}

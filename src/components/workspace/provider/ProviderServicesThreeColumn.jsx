@@ -642,14 +642,17 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
               query={query}
               onQueryChange={setQuery}
               onWorkspaceSnapshot={updateWorkspaceSnapshot}
-              navigation={{ view, filter, configStep, activeUnitIndex }}
+              navigation={{ view, filter, configStep, activeUnitIndex, onOpenUnit: openUnit, onChooseView: chooseView }}
               requestedOpenUnitKey={requestedOpenUnitKey}
             />
           </div>
 
-          {/* Butonul "Continua catre..." a fost eliminat (2026-08-18): navigarea o face
-              coloana de pasi din stanga, iar pe telefon ecranul-lista. Doua mecanisme de
-              avansare pe acelasi ecran se bat cap in cap. */}
+          {/* Butonul "Continua catre..." de AICI a ramas eliminat (2026-08-18): era o
+              bara plutitoare peste continut, paralela cu coloana de pasi.
+              2026-08-23: avansarea s-a intors, dar inauntrul zonei - in subsolul
+              cadrului ei (UnitAccordion), unde termini de bifat. Acolo nu concureaza cu
+              coloana din stanga, o continua: "Zona 2 din 4" plus butonul catre
+              urmatoarea. Navigarea sare peste zone o face tot coloana. */}
         </section>
 
         {/* Coloana din dreapta a fost eliminata (2026-08-06): repeta informatie deja

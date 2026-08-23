@@ -9,7 +9,7 @@
 // "Descrieri" (descrierile de catalog sunt ascunse implicit - de acolo venea cea mai
 // mare parte a textului de citit) si actiunile in masa pe toata zona.
 import React, { useState } from "react";
-import { ChevronDown, Eraser, ListChecks, Text } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, Eraser, ListChecks, Text } from "lucide-react";
 import { getFunctionalUnitDefinition } from "@/lib/providerLocationFunctionalUnits";
 import ServiceRow from "./ServiceRow";
 import GroupCard from "./GroupCard";
@@ -28,7 +28,7 @@ const ZONE_LEVEL_CAPABILITY_KEYS = {
   b2b_distribution_center: ["b2b_distribution", "b2b_logistics", "b2b_technical_support"],
 };
 
-export default function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceUnitMap, prerequisites, config, resourceLinks, approvedResourceLinks, customSuggestions, capabilities = [], approvedCapabilities = [], onToggleCapability, open, disabled, casServiceKeys = [], onToggleCas, onOpen, onToggleService, onSetSelection, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion, filter = "all", dataAttrs = {} }) {
+export default function UnitAccordion({ unitKey, sections, selected, approvedSelected, serviceUnitMap, prerequisites, config, resourceLinks, approvedResourceLinks, customSuggestions, capabilities = [], approvedCapabilities = [], onToggleCapability, open, disabled, casServiceKeys = [], onToggleCas, onOpen, onToggleService, onSetSelection, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion, filter = "all", dataAttrs = {}, stepIndex = 0, stepCount = 0, stepMode = false, onGoToUnit, onChooseView, unitTitles = [] }) {
   const definition = getFunctionalUnitDefinition(unitKey);
   const Icon = UNIT_ICONS[unitKey] || UNIT_FALLBACK_ICON;
   const selectedCount = sections.reduce((sum, section) => sum + selectedCountForSection(selected, section), 0);
@@ -54,8 +54,15 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
     : sections.filter((section) => section.items.some(rowVisible));
   const allItems = sections.flatMap((section) => section.items);
   const missingItems = allItems.filter((item) => !isSelected(selected, item));
+  // Subsolul de pas (2026-08-23, la cererea lui Alex): cadrul zonei se inchide cu
+  // pozitia in sir si cu butonul catre zona urmatoare, ca intr-o aplicatie. Apare doar
+  // cand esti INTR-o zona (stepMode) si fara filtru - la lista completa sau la un filtru
+  // de verificare nu exista "urmatorul".
+  const nextUnitKey = unitTitles[stepIndex + 1] || "";
+  const nextUnitTitle = nextUnitKey ? (getFunctionalUnitDefinition(nextUnitKey)?.shortTitle || getFunctionalUnitDefinition(nextUnitKey)?.title || "") : "";
+  const showStepFooter = stepMode && filter === "all" && stepCount > 0;
   return (
-    <section {...dataAttrs} className={`overflow-hidden rounded-[22px] border bg-card transition ${open ? "border-foreground/20 shadow-sm" : "border-border"}`}>
+    <section {...dataAttrs} data-services-step={showStepFooter ? "true" : "false"} className={`services-unit overflow-hidden rounded-[22px] border bg-card transition ${open ? "border-foreground/20 shadow-sm" : "border-border"}`}>
       <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-secondary/20 sm:px-5">
         <span
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${UNIT_TONE[unitKey] ? "" : open ? "border-foreground/15 bg-secondary/55" : "border-border bg-background text-muted-foreground"}`}
@@ -178,6 +185,32 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
           )}
 
           {filter === "all" && <UnitResourcesPanel unitKey={unitKey} config={config} disabled={disabled} links={resourceLinks} approvedLinks={approvedResourceLinks} onToggle={onToggleResource} />}
+
+          {showStepFooter && (
+            <div className="services-unit__footer">
+              <span className="services-unit__footer-step">Zona {stepIndex + 1} din {stepCount}</span>
+              <span aria-hidden="true" className="services-unit__footer-dots">
+                {Array.from({ length: stepCount }).map((_, index) => (
+                  <i key={index} data-active={index === stepIndex ? "true" : "false"} data-done={index < stepIndex ? "true" : "false"} />
+                ))}
+              </span>
+              <span className="services-unit__toolbar-spacer" />
+              {stepIndex > 0 && (
+                <button type="button" onClick={() => onGoToUnit?.(stepIndex - 1)} className="services-unit__footer-back">
+                  <ArrowLeft aria-hidden="true" /> Înapoi
+                </button>
+              )}
+              {nextUnitTitle ? (
+                <button type="button" onClick={() => onGoToUnit?.(stepIndex + 1)} className="services-unit__footer-next">
+                  Continuă: {nextUnitTitle} <ArrowRight aria-hidden="true" />
+                </button>
+              ) : (
+                <button type="button" onClick={() => onChooseView?.("selected")} className="services-unit__footer-next">
+                  Vezi oferta selectată <ArrowRight aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </section>
