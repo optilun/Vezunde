@@ -139,6 +139,7 @@
    ========================================================================== */
 
 .provider-services-three {
+  --services-accent-soft: #f3f1eb;
   --services-canvas: #f8f4ec;
   --services-preview: #f8f4ec;
   --services-soft: #f7f4ed;
@@ -443,15 +444,10 @@
    ========================================================================== */
 
 .provider-services-three {
-  /* 2026-08-23: accentul revine la albastrul VIASEE. Neutralizarea din august
-     izola modulul de restul aplicatiei - Locatii, Profil public si spatiul
-     furnizor folosesc acelasi #345bc8 - si lasa selectia fara niciun semn de
-     culoare, imposibil de urmarit pe un ecran cu zeci de carduri. Verdele de
-     stare (--chart-2, pastila "Pregatita pentru trimitere") si portocaliul de
-     atentie raman neatinse: albastrul inseamna "ales de tine", nu "gata". */
-  --services-accent: #345bc8;
-  --services-accent-strong: #294a9f;
-  --services-accent-soft: #f4f6fb;
+  /* Accentul devine cerneala neutra: albastrul concura cu verdele de stare. */
+  --services-accent: #171717;
+  --services-accent-strong: #171717;
+  --services-accent-soft: #f3f1eb;
 }
 
 /* Bara de progres a configurarii */
@@ -807,41 +803,54 @@
 }
 
 /* ==========================================================================
-   14. Starea selectiei, vizibila prin culoare (2026-08-23)
+   14. Starea selectiei (2026-08-23)
    ==========================================================================
-   Straturile de mai sus fixeaza fundalul cardurilor cu !important
-   (--services-surface pentru cele stinse, transparent pentru cele apasate),
-   asa ca starea nu poate fi declarata din clasele componentei - orice culoare
-   pusa acolo este anulata. De aceea traieste aici, pe atributul
-   data-selection-state, dupa toate celelalte reguli.
+   Straturile de mai sus fixeaza fundalul cardurilor cu !important, asa ca
+   starea nu poate fi declarata din clasele componentei - orice culoare pusa
+   acolo este anulata. De aceea traieste aici, pe data-selection-state, dupa
+   toate celelalte reguli.
 
-   Culorile sunt exclusiv cele care exista deja: accentul modulului
-   (--services-accent / --services-accent-soft, adica albastrul VIASEE) pentru
-   ce este pornit, si culorile marcajului de atentie pentru ce se elimina.
-   Suprafata cardului ramane alba: culoarea marcheaza starea, nu umple cardul. */
+   Gramatica, ca in macheta aprobata: cerneala spune ce ai ales, cremul spune ce
+   nu ai ales. Cardul ales ramane alb, cu contur de cerneala si bifa plina; cel
+   neales trece pe crem si se retrage. Verdele ramane doar pe pastila de
+   trimitere, portocaliul doar pe ce se pierde. Nicio culoare noua. */
+
+.provider-services-three__native .services-card[data-selection-state="off"],
+.provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="off"],
+.provider-services-three__native [data-services-panel="options"] .services-card[data-selection-state="off"] {
+  border-color: rgb(23 23 23 / 0.08) !important;
+  background: #f5f1e9 !important;
+  box-shadow: none !important;
+}
+
+.provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="off"]:hover:not(:disabled),
+.provider-services-three__native .services-card[data-selection-state="off"]:hover:not(:disabled) {
+  background: #f7f4ed !important;
+}
 
 .provider-services-three__native .services-card[data-selection-state="on"],
 .provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="on"],
 .provider-services-three__native [data-services-panel="options"] .services-card[data-selection-state="on"],
 .provider-services-three__native .services-card[data-selection-state="on"]:hover:not(:disabled),
 .provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="on"]:hover:not(:disabled) {
-  border-color: var(--services-accent) !important;
-  background: var(--services-surface) !important;
-  box-shadow: 0 0 0 3px rgb(52 91 200 / 0.08) !important;
+  border-color: #171717 !important;
+  background: #ffffff !important;
+  box-shadow: 0 6px 18px rgb(23 23 23 / 0.06) !important;
 }
 
 .provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="on"] .services-card__icon,
 .provider-services-three__native .services-card[data-selection-state="on"] .services-card__icon {
-  background: var(--services-accent-soft) !important;
-  color: var(--services-accent) !important;
+  background: #f7f4ed !important;
+  color: #171717 !important;
 }
 
-.provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="on"] .services-card__check {
-  border-color: var(--services-accent) !important;
-  background: var(--services-accent) !important;
-  color: #ffffff !important;
+.provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="off"] .services-card__icon,
+.provider-services-three__native .services-card[data-selection-state="off"] .services-card__icon {
+  background: #ffffff !important;
+  color: #706c64 !important;
 }
 
+/* Ce se elimina la trimitere: portocaliul care exista deja in modul. */
 .provider-services-three__native .services-card[data-selection-state="removal"],
 .provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="removal"],
 .provider-services-three__native [data-services-panel="options"] .services-card[data-selection-state="removal"],
@@ -849,16 +858,17 @@
 .provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="removal"]:hover:not(:disabled) {
   border-color: #f5c9a1 !important;
   background: #fdf3e9 !important;
+  box-shadow: none !important;
 }
 
 .provider-services-three__native .services-card[data-selection-state="removal"] .services-card__icon {
-  background: #fdf3e9 !important;
+  background: #ffffff !important;
   color: #8a4b12 !important;
 }
 
-/* Randul lung de serviciu: o linie de accent la stanga, nu o placa colorata -
+/* Randul lung de serviciu: o linie de cerneala la stanga, nu o placa colorata -
    listele au zeci de randuri si s-ar ingreuna. */
 .provider-services-three__native button[data-service-key][aria-pressed="true"] {
-  background: var(--services-surface) !important;
-  box-shadow: inset 2px 0 0 var(--services-accent) !important;
+  background: #ffffff !important;
+  box-shadow: inset 2px 0 0 #171717 !important;
 }
