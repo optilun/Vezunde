@@ -74,6 +74,26 @@ async function restoreRemovalVisibility(svc, locationId, submissionId) {
   }
 }
 
+// Cand randul iese din mainile furnizorului - retras de el, aprobat sau respins de admin -
+// tot ce a lucrat PESTE ce trimisese nu trebuie sa dispara odata cu randul. Il mutam intr-un
+// draft nou, care devine randul lui activ. Daca nu a mai atins nimic dupa trimitere, nu se
+// creeaza nimic. (2026-08-23, opusul C din auditul blocajului de aprobare.)
+async function carryWorkingDraftForward(svc, submission) {
+  const submitted = submission.submitted_payload_json || '';
+  const working = submission.payload_json || '';
+  if (!submitted || !working || submitted === working) return null;
+  return await svc.entities.ProviderWorkspaceSubmission.create({
+    organization_id: submission.organization_id || null,
+    location_id: submission.location_id,
+    claim_request_id: submission.claim_request_id || '',
+    access_origin: submission.access_origin || 'provider_workspace',
+    section: 'services',
+    payload_json: working,
+    status: 'draft',
+    submitted_by_user_id: submission.submitted_by_user_id,
+  }).catch(() => null);
+}
+
 async function syncRemovalVisibility(svc, user, submission, payload) {
   await restoreRemovalVisibility(svc, submission.location_id, submission.id);
   const keys = removalServiceKeys(payload);
@@ -451,7 +471,25 @@ export async function handle(req: Request) {
       if (isLockedPreparation(submission)) return Response.json({ error: 'Draftul de pregătire este blocat' }, { status: 403 });
       if (submission.location_id !== access.location_id || submission.section !== 'services') return Response.json({ error: 'Draftul nu aparține acestei locații' }, { status: 403 });
       if (submission.submitted_by_user_id !== user.id) return Response.json({ error: 'Nu poți modifica acest draft' }, { status: 403 });
-      if (!['draft', 'needs_more_info'].includes(submission.status)) return Response.json({ error: 'Doar drafturile pot fi modificate' }, { status: 400 });
+      if (!['draft', 'needs_more_info', 'pending_review'].includes(submission.status)) return Response.json({ error: 'Doar drafturile pot fi modificate' }, { status: 400 });
+      // pending_review a fost adaugat aici pe 2026-08-23 si e schimbarea de fond a opusului C:
+      // furnizorul poate continua sa lucreze cat timp asteapta decizia. Se poate ACUM, si nu
+      // se putea inainte, pentru ca payload-ul trimis a fost inghetat separat la submit -
+      // adminul citeste submitted_payload_json, nu payload_json, deci editarile de acum nu
+      // mai schimba retroactiv ce se aproba. Cele doua reguli merg impreuna; daca vreodata
+      // dispare inghetarea, trebuie sa dispara si linia asta.
+      if (submission.status === 'pending_review') {
+        await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { payload_json: JSON.stringify(validation.clean) });
+        // Statusul NU se schimba (cererea ramane in verificare) si vizibilitatea NU se atinge:
+        // ea urmeaza payload-ul INGHETAT, nu pe cel in lucru.
+        await audit(svc, user, {
+          entity_type: 'ProviderWorkspaceSubmission', entity_id: submission.id,
+          action_type: 'update_service_configuration_draft',
+          changed_fields: ['payload_json'], previous: { status: submission.status }, next: { status: submission.status },
+          note: 'Configurația a fost modificată în paralel cu o cerere aflată în verificare.',
+        });
+        return Response.json({ success: true, pending_review: true });
+      }
       await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { payload_json: JSON.stringify(validation.clean), status: 'draft' });
       // Aici era syncRemovalVisibility, adica RE-ascundea serviciile la prima tasta apasata
       // pe un draft care fusese trimis o data. Cu regula noua (ascuns doar cat timp cererea
@@ -492,7 +530,14 @@ export async function handle(req: Request) {
       const readinessError = validateSubmissionReadiness(validation.clean);
       if (readinessError) return Response.json(readinessError, { status: 400 });
       const now = new Date().toISOString();
-      await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'pending_review', submitted_at: now });
+      // Copia la trimitere: din acest moment adminul citeste submitted_payload_json, care nu
+      // se mai schimba pana la decizie. payload_json ramane al furnizorului, ca sa poata
+      // lucra mai departe fara sa atinga ce se afla in verificare.
+      await svc.entities.ProviderWorkspaceSubmission.update(submission.id, {
+        status: 'pending_review',
+        submitted_at: now,
+        submitted_payload_json: submission.payload_json || '',
+      });
       await syncRemovalVisibility(svc, user, submission, parsePayload(submission.payload_json));
       await audit(svc, user, {
         entity_type: 'ProviderWorkspaceSubmission', entity_id: submission.id,
@@ -505,14 +550,18 @@ export async function handle(req: Request) {
 
     if (!ACTIVE_STATUSES.includes(submission.status)) return Response.json({ error: 'Submissionul nu poate fi retras' }, { status: 400 });
     await restoreRemovalVisibility(svc, submission.location_id, submission.id);
+    // Retragerea inchide randul trimis, dar nu si munca facuta peste el intre timp: aceea
+    // trece intr-un draft nou. Fara asta, deblocarea editarii ar fi creat exact genul de
+    // pierdere tacuta pe care tocmai am scos-o din create_draft.
+    const carried = await carryWorkingDraftForward(svc, submission);
     await svc.entities.ProviderWorkspaceSubmission.update(submission.id, { status: 'withdrawn' });
     await audit(svc, user, {
       entity_type: 'ProviderWorkspaceSubmission', entity_id: submission.id,
       action_type: 'withdraw_service_configuration', changed_fields: ['status'],
       previous: { status: submission.status }, next: { status: 'withdrawn' },
-      note: 'Configurația serviciilor a fost retrasă.',
+      note: carried ? 'Configurația serviciilor a fost retrasă; modificările ulterioare au trecut într-un draft nou.' : 'Configurația serviciilor a fost retrasă.',
     });
-    return Response.json({ success: true });
+    return Response.json({ success: true, carried_draft_id: carried?.id || '' });
   } catch (error) {
     return Response.json({ error: error?.message || 'Eroare neașteptată' }, { status: 500 });
   }
