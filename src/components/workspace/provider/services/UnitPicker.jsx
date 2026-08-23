@@ -2,7 +2,11 @@
 import React from "react";
 import { getFunctionalUnitDefinition } from "@/lib/providerLocationFunctionalUnits";
 import SelectionCard from "./SelectionCard";
-import { UNIT_FALLBACK_ICON, UNIT_ICONS, UNIT_TONE } from "./servicesUiTokens";
+import { UNIT_TONE } from "./servicesUiTokens";
+// Figurine desenate, doar pe acest ecran (2026-08-23, la cererea lui Alex) - vezi
+// comentariul din UnitFigures.jsx. UNIT_ICONS (Lucide) din servicesUiTokens.js ramane
+// neatins si e folosit in continuare in sidebar si in antetul cardului de grup.
+import { UNIT_FIGURE_FALLBACK, UNIT_FIGURES } from "./UnitFigures";
 
 // Doua grupuri vizuale, cerute explicit (2026-08-18): optica (vanzare, tehnic) separata
 // de oftalmologie/medical (evaluare, diagnostic). Cabinet optometric intra la medical -
@@ -22,7 +26,7 @@ function UnitGroup({ label, unitKeys, approvedUnits, activeUnits, selectedByUnit
       <div className="services-card-grid services-card-grid--square grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
         {unitKeys.map((unitKey) => {
           const definition = getFunctionalUnitDefinition(unitKey);
-          const Icon = UNIT_ICONS[unitKey] || UNIT_FALLBACK_ICON;
+          const Icon = UNIT_FIGURES[unitKey] || UNIT_FIGURE_FALLBACK;
           const active = activeUnits.includes(unitKey);
           const count = selectedByUnit[unitKey] || 0;
           return (
