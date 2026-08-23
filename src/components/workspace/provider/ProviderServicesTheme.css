@@ -875,8 +875,15 @@
 
 /* Bara de sub numele zonei: cat din oferta ei este selectata. Cerneala pe crem,
    aceleasi doua culori ca restul modulului. */
+/* Containerul randului este flex pe orizontala, asa ca bara trebuie sa ceara singura
+   un rand intreg - altfel devine element de latime zero si nu se vede deloc. */
+.provider-services-three__step-body {
+  flex-wrap: wrap;
+}
+
 .provider-services-three__step-bar {
   display: block;
+  flex: 1 0 100%;
   margin-top: 6px;
   height: 3px;
   border-radius: 999px;
