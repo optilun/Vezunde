@@ -1524,3 +1524,55 @@
 .provider-services-three__native .services-card[data-selection-state="on"] .services-card__icon[data-tone="true"] {
   opacity: 1;
 }
+
+/* --------------------------------------------------------------------------
+   20g. Bifa parinte a grupului (2026-08-23)
+   --------------------------------------------------------------------------
+   Trei stari, ca la orice bifa cu stare intermediara: goala (niciun serviciu),
+   linie (o parte), bifa plina (tot grupul). Inlocuieste perechea de butoane
+   "Selecteaza toate" / "Goleste" din subsol - un buton nu putea arata starea, deci
+   era nevoie de doua plus contorul de langa ele.
+   -------------------------------------------------------------------------- */
+
+.provider-services-three__native .services-group-card__all {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  height: 20px;
+  width: 20px;
+  padding: 0;
+  border: 1px solid rgb(23 23 23 / 0.25);
+  border-radius: 6px;
+  background: #ffffff;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.provider-services-three__native .services-group-card__all svg {
+  height: 13px;
+  width: 13px;
+  stroke-width: 3;
+}
+
+.provider-services-three__native .services-group-card__all:hover:not(:disabled) {
+  border-color: rgb(23 23 23 / 0.5);
+}
+
+.provider-services-three__native .services-group-card__all[aria-checked="true"],
+.provider-services-three__native .services-group-card__all[aria-checked="mixed"] {
+  border-color: #171717;
+  background: #171717;
+}
+
+.provider-services-three__native .services-group-card__all:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Subsolul cardului lat nu mai poarta butoane, doar selectorul de zona - deci se
+   subtiaza. */
+.provider-services-three__native .services-group-card--wide .services-group-card__foot {
+  padding: 10px 18px 12px;
+}
