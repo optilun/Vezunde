@@ -28,17 +28,27 @@ function UnitGroup({ label, unitKeys, approvedUnits, activeUnits, selectedByUnit
           const definition = getFunctionalUnitDefinition(unitKey);
           const Icon = UNIT_FIGURES[unitKey] || UNIT_FIGURE_FALLBACK;
           const active = activeUnits.includes(unitKey);
+          const approved = approvedUnits.includes(unitKey);
           const count = selectedByUnit[unitKey] || 0;
           return (
+            /* "Recomandat"/"Optional" e sfat pentru o alegere NEFACUTA inca, deci dispare
+               in clipa in care zona e bifata sau face deja parte din profil (2026-08-23,
+               semnalat de Alex). Pana acum ramanea afisat si peste el cadea marcajul de
+               stare ("Nou in draft", "Eliminare propusa"): pastila de recomandare e
+               pozitionata absolut in coltul din stanga-jos, exact unde curge randul de
+               subsol, asa ca cele doua se suprapuneau literal, cuvant peste cuvant.
+               Cu conditia de mai jos cele doua nu mai pot coexista: pastila apare doar
+               cand zona nu e nici activa, nici aprobata, iar marcajul de stare apare doar
+               cand e una din ele. */
             <SelectionCard
               key={unitKey}
               variant="square"
               active={active}
-              approved={approvedUnits.includes(unitKey)}
+              approved={approved}
               title={definition?.title || unitKey}
               description={definition?.description || ""}
               helper={count > 0 ? `${count} opțiuni asociate` : ""}
-              badge={count > 0 ? "" : primaryUnits.includes(unitKey) ? "Recomandat" : "Opțional"}
+              badge={active || approved || count > 0 ? "" : primaryUnits.includes(unitKey) ? "Recomandat" : "Opțional"}
               icon={Icon}
               tone={UNIT_TONE[unitKey] || null}
               disabled={disabled}
