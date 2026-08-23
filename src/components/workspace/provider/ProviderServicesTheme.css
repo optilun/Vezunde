@@ -801,3 +801,51 @@
     box-shadow: none !important;
   }
 }
+
+/* ==========================================================================
+   14. Starea selectiei, vizibila prin culoare (2026-08-23)
+   ==========================================================================
+   Straturile de mai sus fixeaza fundalul cardurilor cu !important
+   (--services-surface pentru cele stinse, transparent pentru cele apasate),
+   asa ca starea nu poate fi declarata din clasele componentei - orice culoare
+   pusa acolo este anulata. De aceea traieste aici, pe atributul
+   data-selection-state, dupa toate celelalte reguli.
+
+   Verde = pornit. Teracota = se elimina la trimitere. Aceleasi tonuri ca in
+   restul spatiului furnizor. */
+
+.provider-services-three__native .services-card[data-selection-state="on"],
+.provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="on"],
+.provider-services-three__native [data-services-panel="options"] .services-card[data-selection-state="on"],
+.provider-services-three__native .services-card[data-selection-state="on"]:hover:not(:disabled),
+.provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="on"]:hover:not(:disabled) {
+  border-color: #ccd2ba !important;
+  background: #dfe3d2 !important;
+}
+
+.provider-services-three__native .services-card[data-selection-state="removal"],
+.provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="removal"],
+.provider-services-three__native [data-services-panel="options"] .services-card[data-selection-state="removal"],
+.provider-services-three__native .services-card[data-selection-state="removal"]:hover:not(:disabled),
+.provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="removal"]:hover:not(:disabled) {
+  border-color: #e1bda8 !important;
+  background: #efd5c5 !important;
+}
+
+/* Pastila iconitei era albastru pal pe card apasat; pe verde se pierde. */
+.provider-services-three__native [data-services-panel="configuration"] .services-card[data-selection-state="on"] .services-card__icon,
+.provider-services-three__native .services-card[data-selection-state="on"] .services-card__icon {
+  background: rgb(255 255 255 / 0.7) !important;
+  color: var(--services-text) !important;
+}
+
+.provider-services-three__native .services-card[data-selection-state="removal"] .services-card__icon {
+  background: rgb(255 255 255 / 0.6) !important;
+  color: #6b3f22 !important;
+}
+
+/* Randul lung de serviciu: doar o tenta, altfel listele de zeci de randuri devin grele. */
+.provider-services-three__native button[data-service-key][aria-pressed="true"],
+.provider-services-three__native div:has(> button[data-service-key][aria-pressed="true"]) {
+  background: rgb(223 227 210 / 0.5) !important;
+}

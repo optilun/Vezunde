@@ -14,6 +14,7 @@ export default function SelectionCard({ active, approved = false, title, descrip
       <button
         type="button"
         aria-pressed={active}
+        data-selection-state={removalRequested ? "removal" : active ? "on" : "off"}
         disabled={disabled}
         onClick={onClick}
         className={`services-card services-card--square relative flex h-full w-full flex-col items-start gap-2 rounded-2xl border p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-60 ${removalRequested ? "border-[#e1bda8] bg-[#efd5c5]" : active ? "border-[#ccd2ba] bg-[#dfe3d2]" : "border-border bg-card hover:bg-secondary/25"}`}
@@ -40,6 +41,7 @@ export default function SelectionCard({ active, approved = false, title, descrip
     <button
       type="button"
       aria-pressed={active}
+      data-selection-state={removalRequested ? "removal" : active ? "on" : "off"}
       disabled={disabled}
       onClick={onClick}
       className={`services-card flex w-full items-start gap-3 rounded-2xl border p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-60 ${removalRequested ? "border-[#e1bda8] bg-[#efd5c5]" : active ? "border-[#ccd2ba] bg-[#dfe3d2]" : "border-border bg-card hover:bg-secondary/25"}`}
