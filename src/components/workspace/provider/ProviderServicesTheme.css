@@ -1312,6 +1312,27 @@
   width: 14px;
 }
 
+/* Marcajul "CAS" din antetul grupului (2026-08-23). Deliberat mut si mic: nu e o actiune si
+   nu e o stare, e un raspuns la o intrebare pe care utilizatorul si-o pune inainte sa bifeze
+   ceva - "se poate deconta aici?". Pastila care chiar comuta decontarea (.services-cas-chip)
+   ramane pe randul serviciului si arata altfel, ca sa nu se confunde una cu alta. */
+.provider-services-three__native .services-group-card__cas {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 17px;
+  padding: 0 6px;
+  border: 1px solid rgb(23 23 23 / 0.1);
+  border-radius: 999px;
+  background: #ffffff;
+  font-family: var(--font-mono, ui-monospace), ui-monospace, monospace;
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #9a968f;
+  cursor: help;
+}
+
 @media (max-width: 640px) {
   .provider-services-three__native .services-unit__footer-dots {
     display: none;
