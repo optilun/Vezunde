@@ -1147,3 +1147,160 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* --------------------------------------------------------------------------
+   20b. Corectii peste regulile vechi ale randului (2026-08-23)
+   --------------------------------------------------------------------------
+   ProviderServices.css forteaza, cu !important, forma veche a randului:
+   `grid-template-columns: minmax(0, 1fr) auto` - text la stanga, comutator la
+   dreapta. Randul nou are bifa PRIMA, deci cu acea regula bifa primea coloana
+   lata si numele serviciului era impins in marginea dreapta a cardului (vizibil
+   in capturile trimise de Alex). Aici, in cardul de grup, ordinea se inverseaza
+   inapoi. Se rescriu si paddingul si chenarul, tot fortate acolo.
+   -------------------------------------------------------------------------- */
+
+.provider-services-three__native .services-group-card__rows button[data-service-key] {
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: start !important;
+  gap: 10px !important;
+  min-height: 0 !important;
+  padding: 9px 10px !important;
+}
+
+/* Flow.css face din primul copil o grila cu doua randuri - potrivit pentru vechea
+   coloana de text, gresit pentru bifa. */
+.provider-services-three__native .services-group-card__rows button[data-service-key] > span:first-child {
+  display: flex !important;
+  gap: 0 !important;
+}
+
+.provider-services-three__native .services-group-card__rows .services-row {
+  border: 0 !important;
+  border-bottom: 0 !important;
+  border-radius: 10px !important;
+}
+
+.provider-services-three__native .services-group-card__rows .services-row:hover {
+  background: transparent !important;
+}
+
+.provider-services-three__native .services-group-card__rows .services-cas-row {
+  min-height: 0 !important;
+  padding: 4px 10px 8px 40px !important;
+}
+
+/* --------------------------------------------------------------------------
+   20c. Cadrul zonei si subsolul de pas (2026-08-23, la cererea lui Alex)
+   --------------------------------------------------------------------------
+   Zona devine un ecran de sine statator: cadru clar, continutul pe crem, iar jos
+   pozitia in sir si butonul catre zona urmatoare. Tiparul din aplicatii, unde
+   termini un pas acolo unde ai lucrat, nu urcand inapoi in meniu.
+   -------------------------------------------------------------------------- */
+
+.provider-services-three__native .services-unit[data-services-step="true"] {
+  border-color: rgb(23 23 23 / 0.16) !important;
+  box-shadow: 0 10px 30px rgb(23 23 23 / 0.05);
+}
+
+.provider-services-three__native .services-unit[data-services-step="true"] .services-group-grid {
+  background: #fdfbf6;
+}
+
+.provider-services-three__native .services-unit__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-top: 1px solid rgb(23 23 23 / 0.1);
+  background: #f7f4ed;
+}
+
+.provider-services-three__native .services-unit__footer-step {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9a968f;
+}
+
+.provider-services-three__native .services-unit__footer-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.provider-services-three__native .services-unit__footer-dots i {
+  display: block;
+  height: 5px;
+  width: 5px;
+  border-radius: 999px;
+  background: rgb(23 23 23 / 0.15);
+}
+
+.provider-services-three__native .services-unit__footer-dots i[data-done="true"] {
+  background: rgb(23 23 23 / 0.4);
+}
+
+.provider-services-three__native .services-unit__footer-dots i[data-active="true"] {
+  width: 16px;
+  background: #171717;
+}
+
+.provider-services-three__native .services-unit__footer-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid rgb(23 23 23 / 0.18);
+  border-radius: 999px;
+  background: #ffffff;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #171717;
+  cursor: pointer;
+}
+
+.provider-services-three__native .services-unit__footer-back:hover {
+  border-color: rgb(23 23 23 / 0.45);
+}
+
+.provider-services-three__native .services-unit__footer-next {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 15px;
+  border: 1px solid #171717;
+  border-radius: 999px;
+  background: #171717;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.provider-services-three__native .services-unit__footer-next:hover {
+  background: #000000;
+}
+
+.provider-services-three__native .services-unit__footer-back svg,
+.provider-services-three__native .services-unit__footer-next svg {
+  height: 14px;
+  width: 14px;
+}
+
+@media (max-width: 640px) {
+  .provider-services-three__native .services-unit__footer-dots {
+    display: none;
+  }
+
+  .provider-services-three__native .services-unit__footer-next {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
