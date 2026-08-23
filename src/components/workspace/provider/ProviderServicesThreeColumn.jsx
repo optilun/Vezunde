@@ -433,24 +433,25 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                 </nav>
               ))}
 
-              {/* Sir compact de statistici (2026-08-19), nu lista de butoane cu iconita:
-                  Alex a semnalat ca formatul vechi (identic cu "Oferta pe zone") facea
-                  aceste trei numere sa para o alta lista de navigare, desi "Oferta
-                  completa" si "Oferta selectata" sunt de fapt suma celor de mai sus.
-                  Ramane functional (click schimba vederea), dar arata diferit -
-                  statistici, nu zone de navigat. */}
+              {/* Sir compact de statistici (2026-08-19). 2026-08-23: primele doua placi
+                  ("in catalog", "selectate") au fost scoase din modul de selectie -
+                  Alex a semnalat ca butoanele cu stare activa le faceau sa para inca o
+                  lista de filtre, desi rostul lor e sa arate un numar, nu sa schimbe
+                  ecranul. Raman doar informatie. "Observatii" ramane singura placa
+                  actionabila: e verificarea reala (erori, neaprobate), merita sa te
+                  duca direct la ele. */}
               <div className="provider-services-three__stats" aria-label="Verificare">
                 <p>Verificare</p>
                 <div className="provider-services-three__stats-row">
-                  <button type="button" className={view === "all" && !query ? "is-active" : ""} onClick={() => chooseView("all")}>
+                  <div className="provider-services-three__stat">
                     <strong>{snapshot.units.reduce((sum, unit) => sum + unit.total, 0)}</strong>
                     <span>in catalog</span>
-                  </button>
-                  <button type="button" className={view === "selected" && !query ? "is-active" : ""} onClick={() => chooseView("selected")}>
+                  </div>
+                  <div className="provider-services-three__stat">
                     <strong>{snapshot.selectedCount}</strong>
                     <span>selectate</span>
-                  </button>
-                  <button type="button" className={`${view === "issues" && !query ? "is-active" : ""}${snapshot.issueCount > 0 ? " has-issues" : ""}`} onClick={() => chooseView("issues")}>
+                  </div>
+                  <button type="button" className={`provider-services-three__stat${view === "issues" && !query ? " is-active" : ""}${snapshot.issueCount > 0 ? " has-issues" : ""}`} onClick={() => chooseView("issues")}>
                     <strong>{snapshot.issueCount}</strong>
                     <span>observatii</span>
                   </button>
