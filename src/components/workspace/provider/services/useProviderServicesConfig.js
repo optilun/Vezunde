@@ -248,6 +248,27 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
       selected: selectedByUnit[unitKey] || 0,
       total: [...new Set((sectionsByUnit[unitKey] || []).flatMap((section) => section.items.map((item) => item.id)))].length,
     }));
+    // Numerele din blocul "Verificare" (2026-08-23, la cererea lui Alex: sa se vada si ce
+    // e in draft). Se calculeaza AICI, nu in readiness, tocmai ca sa nu atinga gating-ul
+    // trimiterii: readiness.blockers ramane gol si configurationComplete ramane true -
+    // decizia ca prerechizitele nu blocheaza publicarea nu se schimba, doar se numara.
+    const publicKeys = readiness.publicServiceKeys;
+    const selectedKeySet = new Set(publicKeys);
+    const approvedPublicKeys = selectedServiceKeys(approvedSelected).filter(
+      (serviceKey) => getServiceOperationalContext(serviceKey)?.sectionKey !== "business_attributes",
+    );
+    const approvedKeySet = new Set(approvedPublicKeys);
+    // Doua feluri de modificare, numarate impreuna: adaugat in draft (exista acum, nu era
+    // aprobat) si propus spre eliminare (era aprobat, nu mai e bifat). A doua categorie NU
+    // e "selectata", deci nu poate fi prinsa de un test pe selectie - de asta comparam
+    // diferenta fata de starea aprobata, nu starea curenta.
+    const draftAddedCount = publicKeys.filter((serviceKey) => !approvedKeySet.has(serviceKey)).length;
+    const draftRemovedCount = approvedPublicKeys.filter((serviceKey) => !selectedKeySet.has(serviceKey)).length;
+    // Observatiile se numara din ACEEASI sursa pe care o citeste filtrul din UnitAccordion
+    // (draftPrerequisites[key].eligible === false). Pana acum numarul venea din
+    // readiness.blockers, care e gol prin constructie, deci placa arata mereu 0 chiar si
+    // cand filtrul avea randuri de aratat: numarul si lista se contraziceau.
+    const issueKeys = publicKeys.filter((serviceKey) => draftPrerequisites[serviceKey]?.eligible === false);
     const adminNote = ["needs_more_info", "rejected"].includes(draft?.status) ? cleanText(draft?.admin_note) : "";
     const actionStatus = pendingReview
       ? "Modificări trimise spre aprobare"
@@ -278,8 +299,12 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
       // hasCareSettingSection a fost eliminat (2026-08-18): Tipul activitatii nu mai e
       // pas separat, s-a mutat sub La nivelul locatiei. CareSettingPicker isi are
       // propria regula de vizibilitate (options.length <= 1 => null).
-      issueCount: readiness.blockers.length,
-      issueServiceKeys: readiness.issueServiceKeys,
+      issueCount: issueKeys.length,
+      issueServiceKeys: issueKeys,
+      catalogTotal: units.reduce((sum, unit) => sum + unit.total, 0),
+      draftAddedCount,
+      draftRemovedCount,
+      draftChangeCount: draftAddedCount + draftRemovedCount,
       blockers: readiness.blockers,
       selectedServices: readiness.publicServiceKeys.map((serviceKey) => serviceLabel(itemByKey[serviceKey] || { id: serviceKey, label: serviceKey })),
       careSetting: CARE_SETTINGS[careSetting]?.label || "",
@@ -299,13 +324,11 @@ export function useProviderServicesConfig({ locationId, location, onWorkspaceSna
       hasSave: true,
       hasSubmit: Boolean(draft && draft.status !== "pending_review"),
       hasWithdraw: Boolean(pendingReview && persistenceMode === "v2"),
-      approvedCount: selectedServiceKeys(approvedSelected).filter(
-        (serviceKey) => getServiceOperationalContext(serviceKey)?.sectionKey !== "business_attributes",
-      ).length,
+      approvedCount: approvedPublicKeys.length,
       pendingReview,
       ...stableActions,
     };
-  }, [activeUnits, approvedSelected, capabilities.length, careSetting, conflicts, dirty, draft, editable, error, message, operationalLayout, pendingReview, persistenceMode, profileSections, readiness, saving, sectionsByUnit, selectableCapabilities, selectedByUnit, stableActions, suggestions.length, visibleUnits]);
+  }, [activeUnits, approvedSelected, capabilities.length, careSetting, conflicts, dirty, draft, draftPrerequisites, editable, error, message, operationalLayout, pendingReview, persistenceMode, profileSections, readiness, saving, sectionsByUnit, selectableCapabilities, selectedByUnit, stableActions, suggestions.length, visibleUnits]);
 
   useEffect(() => {
     onWorkspaceSnapshot?.(workspaceSnapshot);
