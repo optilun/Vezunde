@@ -38,21 +38,10 @@ const UNIT_CARD_ICONS = {
   b2b_distribution_center: PackageOpen,
 };
 
-// Aceleasi culori de categorie ca in continut (ProviderServicesWorkspaceOperational.jsx,
-// GROUP_TONE), aplicate pe placile mici din sidebar (2026-08-06). Duplicat mic si
-// intentionat: cele doua fisiere nu impart module, iar valorile sunt scurte si stabile
-// - preluate din CategoryShowcase.jsx (homepage), nu inventate.
-const UNIT_CARD_TONE = {
-  optical_store: { bg: "#efd5c5", border: "#e1bda8" },
-  optical_cabinet: { bg: "#efd5c5", border: "#e1bda8" },
-  optometry_cabinet: { bg: "#dce5e9", border: "#c6d3da" },
-  ophthalmology_office: { bg: "#e8e0ea", border: "#d4c6d8" },
-  optical_workshop: { bg: "#eadcba", border: "#dac69b" },
-  optical_laboratory: { bg: "#eadcba", border: "#dac69b" },
-  ophthalmology_diagnostics: { bg: "#dfe3d2", border: "#ccd2ba" },
-  ophthalmology_procedure_room: { bg: "#e8e0ea", border: "#d4c6d8" },
-  ophthalmology_surgery_unit: { bg: "#e8e0ea", border: "#d4c6d8" },
-};
+// UNIT_CARD_TONE (culoare de categorie pe placa mica din sidebar) a fost eliminat
+// (2026-08-23, la cererea lui Alex): "scoate culorile la emoticoane" in "Oferta pe
+// zone". Placile redau acum iconita simplu, la fel ca randurile din "Structura
+// locatiei" de deasupra - fara nicio culoare de fundal.
 
 const INITIAL_SNAPSHOT = {
   units: [],
@@ -422,11 +411,7 @@ export default function ProviderServicesThreeColumn({ location, ...props }) {
                           else chooseView(row.value);
                         }}
                       >
-                        <span
-                          className="provider-services-three__step-mark"
-                          aria-hidden="true"
-                          style={row.unitKey && UNIT_CARD_TONE[row.unitKey] ? { background: UNIT_CARD_TONE[row.unitKey].bg, borderColor: UNIT_CARD_TONE[row.unitKey].border } : undefined}
-                        >
+                        <span className="provider-services-three__step-mark" aria-hidden="true">
                           {row.icon ? <row.icon /> : <CheckCircle2 />}
                         </span>
                         <span className="provider-services-three__step-body">
