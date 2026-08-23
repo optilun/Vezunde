@@ -17,15 +17,10 @@ export default function SelectionCard({ active, approved = false, title, descrip
   // la fel ca butonul-in-buton. Descrierea ramane deci accesibila prin aria-describedby
   // (cititoarele de ecran o anunta la focus), iar "i"-ul vizibil e doar decorativ.
   const descriptionId = React.useId();
-  // Tonul categoriei pe placa iconitei (2026-08-23). Regula modulului spune ca fondul
-  // cardului inseamna DOAR stare; placa de 40x40 e altceva - spune din ce familie face
-  // parte spatiul, si leaga cardul de randul din coloana din stanga si de simbolul din
-  // antetul grupului. Cand cardul e propus spre eliminare, tonul cedeaza locul
-  // portocaliului de atentie: acolo starea are prioritate.
-  const toneStyle = tone && !removalRequested
-    ? { "--card-tone": tone.bg, "--card-tone-border": tone.border }
-    : undefined;
-  const toneAttr = tone && !removalRequested ? "true" : undefined;
+  // Placuta colorata de 40x40 a disparut din ambele variante (2026-08-23): tonul categoriei
+  // se muta in desenul figurinei, care isi poarta si ramul. Regula modulului ramane
+  // neschimbata - fondul cardului inseamna DOAR stare - doar ca tonul nu mai are nevoie de
+  // o suprafata proprie ca sa se vada. `tone` se transmite acum figurinei, nu unei placi.
 
   if (variant === "square") {
     return (
@@ -99,8 +94,13 @@ export default function SelectionCard({ active, approved = false, title, descrip
       onClick={onClick}
       className={`services-card flex w-full items-start gap-3 rounded-2xl border p-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15 disabled:cursor-not-allowed disabled:opacity-60 ${removalRequested ? "border-[#e1bda8] bg-[#efd5c5]" : active ? "border-[#ccd2ba] bg-[#dfe3d2]" : "border-border bg-card hover:bg-secondary/25"}`}
     >
-      <span data-tone={toneAttr} style={toneStyle} className={`services-card__icon flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${removalRequested ? "bg-[#efd5c5] text-black/70" : active ? "bg-card text-foreground" : "bg-secondary/55 text-muted-foreground"}`}>
-        <Icon className="h-4 w-4" />
+      {/* Si varianta pe randuri a trecut pe figurina cu ram propriu (2026-08-23, la
+          cererea lui Alex: "fa si aici emoticoane cum ai facut la spatii existente").
+          Comentariul de dinainte spunea ca aici placuta ramane pentru ca tonul nu are unde
+          altundeva sa stea - nu mai e adevarat de cand figurina isi poarta tonul in desen.
+          Marginile negative recupereaza golul lasat de cerc in interiorul casetei. */}
+      <span className="services-card__figure -my-1 -ml-1.5 flex h-12 w-12 shrink-0 items-center justify-center">
+        <Icon className="h-12 w-12" tone={tone} removal={removalRequested} />
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-start justify-between gap-3">

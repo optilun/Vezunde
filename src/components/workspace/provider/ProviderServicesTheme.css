@@ -1332,6 +1332,29 @@
    bifat in fiecare.
    -------------------------------------------------------------------------- */
 
+/* --------------------------------------------------------------------------
+   20k. Zona nu iese din coloana ei (2026-08-23)
+   --------------------------------------------------------------------------
+   Alex a semnalat ca la "Cabinet oftalmologic" cardul e mai lat decat la restul
+   zonelor. Cauza nu e cardul, ci sirul de grupuri de deasupra lui: acolo sunt ZECE
+   grupuri, iar sirul - desi are overflow-x: auto - isi impunea latimea intrinseca
+   coloanei, in loc sa se deruleze in interior. Restul zonelor au putine grupuri, deci
+   intra oricum si problema nu se vedea. Antetul cu "Salveaza draftul" ramanea la
+   latimea corecta, si de aici impresia de card mai lung.
+   max-width: 100% obliga fiecare nivel sa se opreasca la latimea parintelui, ceea ce
+   forteaza sirul sa se deruleze; min-width: 0 il lasa sa se si stranga sub latimea
+   continutului. Cine incapea deja nu e atins de nimic din toate astea.
+   -------------------------------------------------------------------------- */
+
+.provider-services-three__native [data-services-role="content"],
+.provider-services-three__native [data-services-role="content"] > *,
+.provider-services-three__native .services-unit,
+.provider-services-three__native .services-group-card,
+.provider-services-three__native .services-group-card__rows {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .provider-services-three__native .services-unit__groups {
   display: flex;
   gap: 7px;
@@ -1451,7 +1474,10 @@
    cel care are grija ca pastila CAS incapa langa eticheta. */
 .provider-services-three__native .services-group-card--wide .services-group-card__rows {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  /* minmax(0, 1fr), nu 1fr (2026-08-23): un "1fr" simplu are ca minim continutul, deci o
+     eticheta lunga poate impinge coloana - si prin ea tot cardul - peste latimea zonei.
+     minmax(0, ...) pastreaza exact doua coloane, dar le lasa sa se stranga. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 2px 10px;
   padding: 12px;
 }

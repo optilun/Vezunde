@@ -9,7 +9,10 @@ import React from "react";
 import { Eraser, ListChecks } from "lucide-react";
 import SelectionCard from "./SelectionCard";
 import { isSelected, serviceLabel } from "./servicesConfigModel";
-import { BUSINESS_ATTRIBUTE_ICONS, GROUP_TONE, UNIT_FALLBACK_ICON } from "./servicesUiTokens";
+import { GROUP_TONE } from "./servicesUiTokens";
+// Figurine desenate, ca la "Spatiile existente" (2026-08-23). BUSINESS_ATTRIBUTE_ICONS din
+// servicesUiTokens.js ramane neatins: nu mai e consumat aici, dar nu e al acestui ecran.
+import { GLOBAL_FIGURES, GLOBAL_FIGURE_FALLBACK } from "./GlobalFigures";
 
 const HELPER_TEXT = {
   home_visit_eye_care: "Te deplasezi la domiciliul pacientului, pentru persoane care nu pot ajunge la locație.",
@@ -55,7 +58,7 @@ export default function GlobalServiceSections({ sections, selected, approvedSele
       </p>
       <div className="services-card-grid space-y-2 p-4 sm:p-5">
         {items.map((item) => {
-          const Icon = BUSINESS_ATTRIBUTE_ICONS[item.id] || UNIT_FALLBACK_ICON;
+          const Icon = GLOBAL_FIGURES[item.id] || GLOBAL_FIGURE_FALLBACK;
           return (
             <SelectionCard
               key={`${item.group}:${item.id}`}

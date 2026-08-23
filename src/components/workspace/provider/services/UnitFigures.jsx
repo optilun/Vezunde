@@ -35,22 +35,25 @@
 import React from "react";
 
 const RING = { fill: "none", stroke: "#8d7658", strokeWidth: 0.48, strokeDasharray: "0.85 2.2", opacity: 0.45 };
-const LIGHT_FILL = "#fdfbf6";
-const INK = "#171717";
+export const LIGHT_FILL = "#fdfbf6";
+export const INK = "#171717";
 // Zona B2B nu are ton (decizie veche, documentata in servicesUiTokens.js): nu e una din
 // categoriile de pe homepage. Primeste cremul neutru al modulului, nu o culoare inventata.
 const NEUTRAL = { bg: "#f5f1e9", border: "#e3ddd0" };
 // Perechea de eliminare e cea deja folosita in modul pentru aceeasi stare.
 const REMOVAL = { bg: "#efd5c5", border: "#e1bda8" };
 
-function palette(tone, removal) {
+export function figurePalette(tone, removal) {
   if (removal) return REMOVAL;
   if (tone && tone.bg && tone.border) return { bg: tone.bg, border: tone.border };
   return NEUTRAL;
 }
 
-// Ramul comun: cercul punctat plus grupul scalat in care sta desenul.
-function Figure({ className, children }) {
+// Ramul comun: cercul punctat plus grupul scalat in care sta desenul. Exportat pentru
+// GlobalFigures.jsx (2026-08-23): figurinele de la "La nivelul locatiei" trebuie desenate
+// cu ACELEASI mijloace, nu cu o copie a lor - altfel cele doua seturi ar diverge la prima
+// ajustare de scara sau de liniuta.
+export function Figure({ className, children }) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="none">
       <circle cx="12" cy="12" r="9.2" {...RING} />
@@ -63,7 +66,7 @@ function Figure({ className, children }) {
 
 // Magazin optic: pravalia deschisa la culoare, cu copertina in tonul categoriei.
 function StoreFigure({ className, tone, removal }) {
-  const p = palette(tone, removal);
+  const p = figurePalette(tone, removal);
   return (
     <Figure className={className}>
       <path d="M4.6 9.4h14.8v9a1.4 1.4 0 0 1-1.4 1.4H6a1.4 1.4 0 0 1-1.4-1.4Z" fill={LIGHT_FILL} stroke={p.border} />
@@ -75,7 +78,7 @@ function StoreFigure({ className, tone, removal }) {
 
 // Cabinet de optica: ochelari rotunjiti, lentilele in tonul categoriei.
 function GlassesFigure({ className, tone, removal }) {
-  const p = palette(tone, removal);
+  const p = figurePalette(tone, removal);
   return (
     <Figure className={className}>
       <path d="M10.6 11.6h2.8M2.1 10.3l1.8.7M21.9 10.3l-1.8.7" stroke={p.border} />
@@ -88,7 +91,7 @@ function GlassesFigure({ className, tone, removal }) {
 
 // Cabinet optometric: ochiul deschis la culoare, cu irisul in tonul categoriei.
 function EyeFigure({ className, tone, removal }) {
-  const p = palette(tone, removal);
+  const p = figurePalette(tone, removal);
   return (
     <Figure className={className}>
       <path d="M2.4 12c2.5-4.2 5.9-6.4 9.6-6.4s7.1 2.2 9.6 6.4c-2.5 4.2-5.9 6.4-9.6 6.4S4.9 16.2 2.4 12Z" fill={LIGHT_FILL} stroke={p.border} />
@@ -100,7 +103,7 @@ function EyeFigure({ className, tone, removal }) {
 
 // Cabinet oftalmologic: crucea medicala pe un disc in tonul categoriei.
 function MedicalCrossFigure({ className, tone, removal }) {
-  const p = palette(tone, removal);
+  const p = figurePalette(tone, removal);
   return (
     <Figure className={className}>
       <circle cx="12" cy="12" r="8.3" fill={p.bg} stroke={p.border} />
@@ -111,7 +114,7 @@ function MedicalCrossFigure({ className, tone, removal }) {
 
 // Atelier optic si montaj: cheia fixa, o singura silueta in tonul categoriei.
 function WrenchFigure({ className, tone, removal }) {
-  const p = palette(tone, removal);
+  const p = figurePalette(tone, removal);
   return (
     <Figure className={className}>
       <path d="M18.4 6.4a3.6 3.6 0 0 1-4.7 4.7L6.9 17.9l-2-2 6.8-6.8a3.6 3.6 0 0 1 4.7-4.7l-2.3 2.3 1.6 1.6 2.3-2.3Z" fill={p.bg} stroke={p.border} />
@@ -121,7 +124,7 @@ function WrenchFigure({ className, tone, removal }) {
 
 // Laborator optic: balonul deschis la culoare, cu lichidul in tonul categoriei.
 function FlaskFigure({ className, tone, removal }) {
-  const p = palette(tone, removal);
+  const p = figurePalette(tone, removal);
   return (
     <Figure className={className}>
       <path d="M10 3.9v4.5l-4.3 7.9a1.9 1.9 0 0 0 1.7 2.8h9.2a1.9 1.9 0 0 0 1.7-2.8L14 8.4V3.9Z" fill={LIGHT_FILL} stroke={p.border} />
@@ -133,7 +136,7 @@ function FlaskFigure({ className, tone, removal }) {
 
 // Zona de investigatii: cercuri concentrice, ca o tinta de scanare.
 function ScanFigure({ className, tone, removal }) {
-  const p = palette(tone, removal);
+  const p = figurePalette(tone, removal);
   return (
     <Figure className={className}>
       <circle cx="12" cy="12" r="8.3" fill={p.bg} stroke={p.border} />
@@ -145,7 +148,7 @@ function ScanFigure({ className, tone, removal }) {
 
 // Zona de proceduri: picatura, cu reflexul deschis pe interior.
 function DropletFigure({ className, tone, removal }) {
-  const p = palette(tone, removal);
+  const p = figurePalette(tone, removal);
   return (
     <Figure className={className}>
       <path d="M12 3.4c3.2 4 5.5 7.4 5.5 10.1a5.5 5.5 0 1 1-11 0c0-2.7 2.3-6.1 5.5-10.1Z" fill={p.bg} stroke={p.border} />
@@ -156,7 +159,7 @@ function DropletFigure({ className, tone, removal }) {
 
 // Unitate de chirurgie: crucea intr-un scut - vecina cabinetului, dar clar alta forma.
 function ShieldCrossFigure({ className, tone, removal }) {
-  const p = palette(tone, removal);
+  const p = figurePalette(tone, removal);
   return (
     <Figure className={className}>
       <path d="M12 3.3 19.3 6.2v5.4c0 4-3.1 7.1-7.3 8.9-4.2-1.8-7.3-4.9-7.3-8.9V6.2Z" fill={p.bg} stroke={p.border} />
@@ -167,7 +170,7 @@ function ShieldCrossFigure({ className, tone, removal }) {
 
 // Distributie B2B: coletul vazut in perspectiva, cu capacul mai inchis.
 function CrateFigure({ className, tone, removal }) {
-  const p = palette(tone, removal);
+  const p = figurePalette(tone, removal);
   return (
     <Figure className={className}>
       <path d="M12 3.3 19.9 7.8v8.4L12 20.7 4.1 16.2V7.8Z" fill={LIGHT_FILL} stroke={p.border} />
@@ -179,7 +182,7 @@ function CrateFigure({ className, tone, removal }) {
 
 // Rezerva, pentru orice cheie fara figurina proprie: o cladire simpla.
 function BuildingFigure({ className, tone, removal }) {
-  const p = palette(tone, removal);
+  const p = figurePalette(tone, removal);
   return (
     <Figure className={className}>
       <path d="M6.1 5.1a1.5 1.5 0 0 1 1.5-1.5h8.8a1.5 1.5 0 0 1 1.5 1.5v14.6H6.1Z" fill={LIGHT_FILL} stroke={p.border} />
