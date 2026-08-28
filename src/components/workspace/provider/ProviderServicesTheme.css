@@ -1367,13 +1367,29 @@
    continutului. Cine incapea deja nu e atins de nimic din toate astea.
    -------------------------------------------------------------------------- */
 
+/* A doua incercare (2026-08-23). Prima folosea max-width: 100% pe cateva niveluri si NU a
+   rezolvat nimic: max-width se masoara fata de parinte, deci daca un nivel de deasupra e deja
+   prea lat, "100%" din el ramane prea lat. Aici lantul e pornit din
+   .provider-services-three__center - singurul nivel cu latime sigura, fiindca e coloana din
+   grila paginii - si fiecare treapta primeste latime DEFINITA (width: 100%), nu doar un plafon.
+   min-width: 0 e perechea obligatorie: fara el, un element de grila refuza sa coboare sub
+   latimea continutului sau, si tocmai asta face sirul de zece grupuri de la Cabinet
+   oftalmologic. box-sizing pastreaza paddingul in interiorul latimii.
+   Panourile de text isi pastreaza plafonul de 880px de mai sus: max-width bate width. */
+.provider-services-three__native,
+.provider-services-three__native [data-services-role="workspace"],
 .provider-services-three__native [data-services-role="content"],
 .provider-services-three__native [data-services-role="content"] > *,
+.provider-services-three__native [data-services-panel="units"],
+.provider-services-three__native [data-services-panel="units"] > *,
 .provider-services-three__native .services-unit,
 .provider-services-three__native .services-group-card,
-.provider-services-three__native .services-group-card__rows {
+.provider-services-three__native .services-group-card__rows,
+.provider-services-three__native .services-unit__groups {
+  width: 100%;
   min-width: 0;
   max-width: 100%;
+  box-sizing: border-box;
 }
 
 .provider-services-three__native .services-unit__groups {
