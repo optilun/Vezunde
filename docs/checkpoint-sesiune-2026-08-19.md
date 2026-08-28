@@ -24,6 +24,16 @@ modul. La finalul sesiunii **trec din nou** - munca respectiva s-a incheiat.
 
 **Build si ESLint: curate.**
 
+**NOU, gasit 2026-08-19 seara (dupa scrierea sectiunii de mai sus):**
+`verify-patient-conversation-marketplace-isolation` a inceput sa esueze. Verifica
+amprenta de continut a fisierelor din zona interzisa (`matchProvidersSemantic/entry.ts`,
+`shared/providerRecommendation.js`) — deci ceva din motorul de recomandare/matching s-a
+schimbat. **Confirmat ca nu vine din munca mea**: zero urme din codul meu in acele
+fisiere, si testul verifica amprente de continut, nu structura pe care am atins-o eu
+(numarul de functii). Nu am investigat CE anume s-a schimbat in zona interzisa — merita
+prioritate mare la inceputul sesiunii urmatoare, e exact zona pe care documentatia
+proiectului o marcheaza explicit ca "nu se atinge fara aprobare".
+
 ---
 
 ## 2. CE S-A FACUT AZI
