@@ -16,6 +16,10 @@ verificat vizual.
 | `verify-typecheck-baseline-delta` | rulează doar in CI | nu e o problema |
 | `verify-provider-onboarding-continuity` | `NewLocationWizard.jsx` — poarta de autentificare eliminata deliberat (ruta cere cont de la intrare); testul cauta cod care nu mai exista | testul e invechit, nu codul |
 
+Nota: cele 3 teste din modulul Lead-uri (`contact-access-ui`, `lead-response`,
+`status-center`) esuau in timpul sesiunii, din cauza unei editari paralele in acel
+modul. La finalul sesiunii **trec din nou** - munca respectiva s-a incheiat.
+
 **Rezolvate pe 2026-08-22:** `verify-provider-contact-access-ui`, `verify-provider-lead-response`, `verify-provider-status-center` esuau pentru ca verificau siruri de cod direct in `ProviderLeadInboxLegacy.jsx`, dar redesign-ul pe doua coloane din 18-19 august a mutat randarea `<ProviderLeadContactAccess>` / `<ProviderLeadChat>` in `leads/LeadDetailPanel.jsx`, eticheta "Detalii Pro · Top 3" in `leads/LeadFullDetails.jsx`, iar `id={`provider-lead-${lead.id}`}` a disparut (inlocuit cu `onOpenTarget` din stare React, mecanism mai robust). Un al doilea refactor separat (chat unificat cu partea pacientului) a mutat si `<textarea>` din `ProviderLeadChat.jsx` in `ChatComposer.jsx`. Codul functioneaza corect in toate cazurile — doar cele 3 scripturi de verificare au fost actualizate sa citeasca fisierele corecte, pastrand toate garantiile de siguranta originale (nimic slabit). Verificat si ca celelalte teste care ating acelasi modul (`verify-in-app-notification-center`, `verify-controlled-pro-chat`, `verify-provider-lead-inbox-free`, `verify-provider-lead-preparation`) trec in continuare.
 
 **Build si ESLint: curate.**
@@ -85,7 +89,7 @@ testele trec, dar aspectul si fluxul real nu au fost confirmate. De verificat, i
 ## 5. URMATORII PASI PROPUSI
 
 1. Verificarea vizuala de mai sus (prioritate maxima — sunt 2 zile de munca neconfirmata)
-2. Cele 3 teste din modulul Lead-uri
+2. (rezolvat in timpul sesiunii - cele 3 teste din Lead-uri trec din nou)
 3. Aprobarea revendicarilor cu `requires_organization_creation` — semnalul se salveaza in
    cerere, dar fluxul de aprobare nu-l trateaza inca (adminul ar trebui sa lege manual)
 4. Descrieri pentru serviciile ramase — exista doar pentru cele 21 de pe Lunera; cele ~47
