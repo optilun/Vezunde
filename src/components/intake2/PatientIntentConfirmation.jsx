@@ -1,5 +1,7 @@
 import React from "react";
-import { AlertTriangle, Check, Pencil, Sparkles } from "lucide-react";
+import { AlertTriangle, Check, Pencil, PhoneCall, Search, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+import { PATIENT_SAFETY_FLAG_PRESENTATION } from "@/lib/patientSafety";
 
 export default function PatientIntentConfirmation({
   proposal,
@@ -8,7 +10,16 @@ export default function PatientIntentConfirmation({
   onCorrect,
 }) {
   const requiresManualChoice = proposal?.status !== "confirm";
-  const hasSafetySignal = (proposal?.possible_safety_flags || []).length > 0;
+  const safetyFlags = proposal?.possible_safety_flags || [];
+  const hasSafetySignal = safetyFlags.length > 0;
+  // 2026-09-01 (audit cautare/recomandare LLM, sectiunea 3.3): inainte, mesajul de aici
+  // era generic si nu spunea ce anume s-a detectat, nici nu indruma explicit spre UPU/112.
+  // Aici e singurul semnal de siguranta bazat pe interpretarea AI care ajunge efectiv la
+  // pacient in timp real (verificarea deterministica din ConversationalCard.jsx acopera
+  // formularile cunoscute; acesta e advisory, pentru restul).
+  const safetyLabels = safetyFlags
+    .map((flag) => PATIENT_SAFETY_FLAG_PRESENTATION[flag])
+    .filter(Boolean);
 
   return (
     <div className="py-2 sm:py-4">
@@ -30,11 +41,37 @@ export default function PatientIntentConfirmation({
       </p>
 
       {hasSafetySignal && (
-        <div className="mt-5 flex gap-3 rounded-2xl border border-amber-300/60 bg-amber-50/80 p-4 text-sm leading-relaxed text-amber-950">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
-          <p>
-            Formularea poate contine un semnal care merita evaluare rapida. VIASEE nu pune diagnostic si nu stabileste daca situatia este sau nu urgenta. Pentru simptome severe, aparute brusc sau care se agraveaza, foloseste serviciile medicale de urgenta.
+        <div className="mt-5 rounded-2xl border border-amber-300/60 bg-amber-50/80 p-4 text-sm leading-relaxed text-amber-950">
+          <div className="flex gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+            <p>
+              Formularea poate contine un semnal care merita evaluare rapida. VIASEE nu pune diagnostic si nu stabileste daca situatia este sau nu urgenta.
+            </p>
+          </div>
+          {safetyLabels.length > 0 && (
+            <ul className="mt-3 space-y-1 pl-8 text-xs">
+              {safetyLabels.map((label) => (
+                <li key={label} className="list-disc">{label}</li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-3 pl-8 text-xs leading-relaxed">
+            Pentru simptome severe, aparute brusc sau care se agraveaza, nu astepta un raspuns in platforma: mergi la UPU, camera de garda sau un serviciu de urgente oftalmologice.
           </p>
+          <div className="mt-3 flex flex-wrap gap-2 pl-8">
+            <a
+              href="tel:112"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-amber-300 bg-white px-3.5 text-xs font-bold text-amber-950 hover:bg-amber-100/60"
+            >
+              <PhoneCall className="h-3.5 w-3.5" /> Suna la 112
+            </a>
+            <Link
+              to="/cauta?q=oftalmolog"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-amber-300 bg-white px-3.5 text-xs font-bold text-amber-950 hover:bg-amber-100/60"
+            >
+              <Search className="h-3.5 w-3.5" /> Cabinete oftalmologice langa tine
+            </Link>
+          </div>
         </div>
       )}
 
