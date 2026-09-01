@@ -15,6 +15,8 @@ import {
   completePatientRequestIdempotency,
   getOrCreatePatientRequestIdempotency,
 } from "@/lib/patientRequestIdempotency";
+import { buildPatientSafetyAssessment } from "@/lib/patientSafety";
+import UrgencyInterruption from "./UrgencyInterruption";
 
 function track(eventName, properties = {}) {
   try {
@@ -49,6 +51,14 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
   const [distributionError, setDistributionError] = useState("");
   const [distributionResult, setDistributionResult] = useState(null);
   const [detailedMessage, setDetailedMessage] = useState("");
+  // 2026-09-01: "Descrie mai detaliat ce ai nevoie" este cea mai lunga caseta libera din
+  // tot fluxul (obligatorie, pana la 2000 de caractere) si singura scrisa chiar inainte ca
+  // cererea sa plece spre furnizori - dar nu trecea prin nicio verificare de siguranta,
+  // nici aici, nici in createPatientRequest. Un pacient putea scrie "de azi dimineata nu
+  // mai vad deloc cu ochiul stang" si cererea pleca linistit mai departe. Verificarea de
+  // mai jos e deterministica, aceeasi folosita pe mesajul initial si pe raspunsurile
+  // ghidate, deci nu depinde de LLM si nu poate da timeout.
+  const [messageAssessment, setMessageAssessment] = useState(null);
   const [contact, setContact] = useState({ name: "", email: "", phone: "", preference: "email" });
   const submissionGuardRef = useRef(createPatientOperationGuard());
   const submissionInFlightRef = useRef(false);
@@ -82,6 +92,15 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
     }
     if (detailedMessage.trim().length < 10) {
       setError("Descrie mai detaliat ce ai nevoie, în minimum 10 caractere.");
+      return;
+    }
+    // Verificarea de siguranta se face inaintea consimtamantului si a oricarei scrieri:
+    // daca textul descrie ceva acut, cererea nu trebuie sa plece deloc, iar pacientul
+    // trebuie trimis spre urgenta, nu spre o lista de locatii.
+    const safety = buildPatientSafetyAssessment({ text: detailedMessage });
+    if (safety.blocking) {
+      setMessageAssessment(safety);
+      setError("");
       return;
     }
     if (!consent) {
@@ -279,6 +298,20 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
             </button>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Cand mesajul detaliat descrie ceva acut, cererea nu se trimite: pacientul vede ecranul
+  // de urgenta in locul formularului. Poate reveni daca a fost o alarma falsa.
+  if (messageAssessment?.blocking) {
+    return (
+      <div className="mt-7">
+        <UrgencyInterruption
+          assessment={messageAssessment}
+          onCorrect={() => setMessageAssessment(null)}
+          correctLabel="Nu e o urgenta, revin la cerere"
+        />
       </div>
     );
   }
