@@ -195,9 +195,13 @@ function evaluateEligibility(loc, matchedRows, needLevel, prerequisiteContext) {
 
   const reasons = [];
   if (loc.migration_review_required) reasons.push('migration_review_required');
-  const requiredPcs = ['claimed', 'verified'];
+  // 2026-09-01 (audit cautare/recomandare LLM, sectiunea 3.2): pentru specialized_medical,
+  // doar "verified" conteaza - identic cu providerLeadEligibility.js, care oricum ar
+  // respinge un profil doar "claimed" la trimiterea leadului. Acelasi cod de motiv in
+  // ambele locuri, ca sa fie usor de urmarit.
+  const requiredPcs = needLevel === 'specialized_medical' ? ['verified'] : ['claimed', 'verified'];
   if (!requiredPcs.includes(pcs)) {
-    reasons.push('profile_not_claimed_or_verified');
+    reasons.push(needLevel === 'specialized_medical' ? 'specialized_requires_verified_profile' : 'profile_not_claimed_or_verified');
   }
 
   if (matchedRows.length === 0) {
