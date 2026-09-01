@@ -2,15 +2,22 @@
 // Detectia locala si raspunsurile ghidate raman sursa de adevar. Interpretarea AI
 // ruleaza controlat pentru evaluare si nu poate decide singura eligibilitatea sau ordinea.
 
+// 2026-09-01 (rescrierea chestionarului): formularile si cheile de serviciu de aici sunt
+// aliniate cu shared/patientGuidanceQuestionCatalog.js. Inainte, cele doua liste nu erau
+// de acord: acelasi clic al pacientului producea servicii diferite - deci potriviri
+// diferite - dupa cum apuca sa raspunda la lista noua sau la aceasta. Cat timp exista
+// amandoua, orice modificare intr-una trebuie facuta si in cealalta.
+// "saptamana_aceasta" ramane definita dar `hidden` - vezi explicatia din
+// shared/patientGuidanceQuestionCatalog.js. Nu se afiseaza, dar ramane valida.
 export const TIMING_OPTIONS = [
-  { key: "cat_mai_repede", label: "Cat mai repede" },
-  { key: "zilele_urmatoare", label: "In zilele urmatoare" },
-  { key: "saptamana_aceasta", label: "Saptamana aceasta" },
+  { key: "cat_mai_repede", label: "Cât mai repede" },
+  { key: "zilele_urmatoare", label: "În următoarele zile" },
+  { key: "saptamana_aceasta", label: "Săptămâna aceasta", hidden: true },
   { key: "nu_e_urgent", label: "Nu e urgent" },
 ];
 
-const LOCATION_QUESTION = { key: "locatie", type: "location", title: "Unde cauti?" };
-const TIMING_QUESTION = { key: "timing", type: "choice", title: "Cand ai nevoie?", options: TIMING_OPTIONS };
+const LOCATION_QUESTION = { key: "locatie", type: "location", title: "Unde cauți?" };
+const TIMING_QUESTION = { key: "timing", type: "choice", title: "Cât de repede ai nevoie?", options: TIMING_OPTIONS };
 
 export const INTENTS = {
   control_vedere: {
@@ -18,19 +25,23 @@ export const INTENTS = {
     service_keys: ["control_vedere_adulti"],
     questions: [
       {
-        key: "pentru_cine", type: "choice", title: "Este pentru tine sau pentru un copil?",
+        key: "pentru_cine", type: "choice", title: "Pentru cine este?",
         options: [
           { key: "adult", label: "Pentru mine" },
-          { key: "copil", label: "Pentru un copil", next_intent: "control_copil" },
+          { key: "copil", label: "Pentru copilul meu", next_intent: "control_copil" },
+          // Cheia e identica cu cea din catalog, ca sa nu fie nevoie de alias de valoare.
+          { key: "other_adult", label: "Pentru altcineva (părinte, partener)" },
         ],
       },
       {
-        key: "ultimul_control", type: "choice", title: "Cand ai facut ultimul control?",
+        // Inlocuieste "Cand ai facut ultimul control?", al carei raspuns nu ajungea
+        // niciodata la motorul de rutare. Aceasta spune mai mult: consult, cumparare, sau
+        // amandoua. Aceleasi optiuni ca prescription_status din catalog.
+        key: "reteta", type: "choice", title: "Îți știi dioptriile?",
         options: [
-          { key: "sub_1_an", label: "Acum mai putin de un an" },
-          { key: "1_3_ani", label: "Acum 1-3 ani" },
-          { key: "peste_3_ani", label: "Acum peste 3 ani" },
-          { key: "niciodata", label: "Nu am facut niciodata" },
+          { key: "recent_prescription", label: "Da, am o rețetă recentă" },
+          { key: "old_prescription", label: "Am una mai veche" },
+          { key: "needs_exam", label: "Nu, am nevoie și de un control", service_keys: ["optometry_consultation"] },
         ],
       },
       LOCATION_QUESTION,
@@ -45,19 +56,19 @@ export const INTENTS = {
     service_keys: ["control_vedere_copii"],
     questions: [
       {
-        key: "varsta_copil", type: "choice", title: "Ce varsta aproximativa are copilul?",
+        key: "varsta_copil", type: "choice", title: "Ce vârstă are copilul?",
         options: [
           { key: "sub_3_ani", label: "Sub 3 ani" },
-          { key: "3_6_ani", label: "3-6 ani" },
-          { key: "7_12_ani", label: "7-12 ani" },
-          { key: "13_18_ani", label: "13-18 ani" },
+          { key: "3_6_ani", label: "3–6 ani" },
+          { key: "7_12_ani", label: "7–14 ani" },
+          { key: "13_18_ani", label: "15–18 ani" },
         ],
       },
       {
-        key: "primul_control", type: "choice", title: "Este primul control?",
+        key: "primul_control", type: "choice", title: "A mai fost la un control de vedere?",
         options: [
-          { key: "da", label: "Da, este primul control" },
-          { key: "nu", label: "A mai fost la control" },
+          { key: "nu", label: "Nu, ar fi primul" },
+          { key: "da", label: "Da, a mai fost" },
         ],
       },
       LOCATION_QUESTION,
@@ -70,20 +81,24 @@ export const INTENTS = {
     service_keys: ["montaj_lentile"],
     questions: [
       {
-        key: "ce_cauti", type: "choice", title: "Ce cauti?",
+        // Titlul era "Ce cauti?" - fara niciun context, imediat dupa ce pacientul tocmai
+        // spusese ce cauta. Cheile de serviciu sunt acum aceleasi ca in catalog: inainte,
+        // majoritatea optiunilor nu aveau niciuna si mosteneau serviciul generic al intentiei.
+        key: "ce_cauti", type: "choice", title: "Ce anume cauți?",
         options: [
-          { key: "ochelari_noi", label: "Ochelari noi" },
-          { key: "lentile_progresive", label: "Lentile progresive", service_keys: ["lentile_progresive"] },
-          { key: "schimbare_lentile", label: "Schimbare lentile" },
+          { key: "ochelari_noi", label: "Ochelari", service_keys: ["eyeglasses"] },
+          { key: "lentile_progresive", label: "Lentile progresive", service_keys: ["progressive_lenses"] },
+          { key: "schimbare_lentile", label: "Schimb lentilele în rama mea", service_keys: ["lens_replacement"] },
           { key: "lentile_contact", label: "Lentile de contact", next_intent: "lentile_contact" },
-          { key: "nu_sunt_sigur", label: "Nu sunt sigur" },
+          { key: "nu_sunt_sigur", label: "Nu m-am hotărât încă" },
         ],
       },
       {
-        key: "reteta", type: "choice", title: "Ai deja o reteta?",
+        key: "reteta", type: "choice", title: "Îți știi dioptriile?",
         options: [
-          { key: "da", label: "Da, am o reteta" },
-          { key: "nu", label: "Nu, am nevoie si de un control", service_keys: ["control_vedere_adulti"] },
+          { key: "recent_prescription", label: "Da, am o rețetă recentă" },
+          { key: "old_prescription", label: "Am una mai veche" },
+          { key: "needs_exam", label: "Nu, am nevoie și de un control", service_keys: ["optometry_consultation"] },
         ],
       },
       LOCATION_QUESTION,
@@ -96,10 +111,15 @@ export const INTENTS = {
     service_keys: ["lentile_contact"],
     questions: [
       {
-        key: "prima_data", type: "choice", title: "Este prima data cand folosesti lentile de contact?",
+        // ATENTIE la cheile de aici: intrebarea a fost inversata ("Ai mai purtat?" in loc
+        // de "Este prima data?"), dar cheile raman "da" = prima data si "nu" = are
+        // experienta, pentru ca sunt mapate ca atare in LEGACY_ANSWER_VALUE_ALIASES si
+        // exista raspunsuri deja salvate cu ele. Nu redenumi cheile fara sa schimbi si
+        // aliasurile din matchProvidersSemantic/entry.ts.
+        key: "prima_data", type: "choice", title: "Ai mai purtat lentile de contact?",
         options: [
-          { key: "da", label: "Da, este prima data" },
-          { key: "nu", label: "Am mai purtat lentile" },
+          { key: "da", label: "Nu, ar fi prima dată", service_keys: ["contact_lens_consultation", "contact_lens_fitting"] },
+          { key: "nu", label: "Da", service_keys: ["contact_lenses"] },
         ],
       },
       LOCATION_QUESTION,
@@ -113,13 +133,16 @@ export const INTENTS = {
     notice: "Un specialist poate evalua daca reparatia este posibila. VIASEE nu poate garanta reparatia doar pe baza informatiilor oferite.",
     questions: [
       {
-        key: "ce_deteriorat", type: "choice", title: "Ce s-a deteriorat?",
+        // "Ce s-a deteriorat?" avea printre optiuni "Reglaj rama" - o ajustare nu e o
+        // deteriorare, deci cine avea doar ochelarii alunecosi nu se recunostea in intrebare.
+        // Cheile de serviciu sunt acum aceleasi ca in catalog (repair_type).
+        key: "ce_deteriorat", type: "choice", title: "Ce s-a întâmplat?",
         options: [
-          { key: "rama_rupta", label: "Rama rupta", service_keys: ["frame_repair"], replace_service_keys: true },
-          { key: "balama_surub", label: "Balamaua sau surubul" },
-          { key: "lentila_zgariata", label: "Lentila zgariata sau sparta", service_keys: ["montaj_lentile"] },
-          { key: "reglaj_rama", label: "Reglaj rama" },
-          { key: "nu_stiu", label: "Nu stiu exact" },
+          { key: "rama_rupta", label: "S-a rupt rama", service_keys: ["frame_repair"], replace_service_keys: true },
+          { key: "lentila_zgariata", label: "S-a spart sau s-a zgâriat o lentilă", service_keys: ["lens_replacement"], replace_service_keys: true },
+          { key: "balama_surub", label: "Balamaua sau un șurub", service_keys: ["hinge_repair", "screw_replacement"], replace_service_keys: true },
+          { key: "reglaj_rama", label: "Nu-mi mai stau bine pe nas", service_keys: ["eyeglasses_adjustment"], replace_service_keys: true },
+          { key: "nu_stiu", label: "Altceva", service_keys: ["eyeglasses_repair"], replace_service_keys: true },
         ],
       },
       LOCATION_QUESTION,
