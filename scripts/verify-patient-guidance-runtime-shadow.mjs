@@ -332,9 +332,12 @@ await scenario("Base44 shared guidance copies are byte-identical", () => {
 await scenario("matching and ranking implementation remains byte-stable", () => {
   const entry = source("base44/functions/matchProvidersSemantic/entry.ts");
   const entryMarker = "    if (requestedKeys.length === 0) {";
-  // Amprenta actualizata 2026-08-06 (vezi verify-patient-guidance-adaptive-question-selection
-  // pentru lista completa a modificarilor). Nu s-au atins scoringul, ordonarea sau Top 3.
-  assert.equal(fnv1a(entry.slice(entry.indexOf(entryMarker)).trimEnd()), "ec0773fc");
+  // Amprenta actualizata 2026-09-01, la cerere explicita: fallback-ul structural nu mai
+  // filtreaza binar dupa capacitate (nevoie medicala -> doar medical; orice altceva ->
+  // ambele, cu opticile primele). Inainte, orice cautare non-medicala elimina complet
+  // cabinetele si clinicile oftalmologice. NU s-au atins buildRecommendationScore,
+  // assignRecommendationBuckets sau Top 3.
+  assert.equal(fnv1a(entry.slice(entry.indexOf(entryMarker)).trimEnd()), "e5a1081b");
   assert.match(entry, /error: 'Cererea nu a putut fi procesata\.'/);
   assert.match(entry, /headers: \{ 'Cache-Control': 'no-store' \}/);
 
