@@ -156,29 +156,44 @@ export const INTENTS = {
     notice: "VIASEE nu ofera diagnostic medical. Te ajutam sa gasesti unde poti merge pentru evaluare.",
     questions: [
       {
-        key: "descriere", type: "text", title: "Descrie pe scurt ce te preocupa.",
-        placeholder: "Ex: de cateva zile vad in ceata la ochiul drept",
+        key: "descriere", type: "text", title: "Spune-ne pe scurt ce se întâmplă.",
+        placeholder: "Ex: de câteva zile văd în ceață la ochiul drept",
       },
       {
-        key: "pentru_cine", type: "choice", title: "Este pentru tine sau pentru un copil?",
+        // Cheia e exact cea din catalog, ca sa fie recunoscuta server-side fara alias.
+        // Este cea mai utila intrebare despre un simptom si singura la care orice pacient
+        // poate raspunde sigur. Exista in catalog, dar niciun pacient n-o vedea, pentru ca
+        // fluxul de simptome cade mereu pe lista asta veche.
+        key: "symptom_timing_or_acuity", type: "choice", title: "De când ai problema?",
+        options: [
+          { key: "sudden", label: "De azi sau de ieri" },
+          { key: "recent", label: "De câteva zile" },
+          { key: "gradual", label: "De săptămâni sau mai mult" },
+          { key: "recurrent", label: "A mai apărut și înainte" },
+          { key: "not_sure", label: "Nu-mi dau seama" },
+        ],
+      },
+      {
+        key: "pentru_cine", type: "choice", title: "Pentru cine este?",
         options: [
           { key: "adult", label: "Pentru mine" },
-          { key: "copil", label: "Pentru un copil" },
+          { key: "copil", label: "Pentru copilul meu" },
+          { key: "other_adult", label: "Pentru altcineva (părinte, partener)" },
         ],
       },
       // Adaugat 2026-08-06, la cererea explicita a lui Alex: cine merge la medic pentru
       // o problema are adesea deja o recomandare de investigatie de la alt medic (familie,
       // urgenta). Optiunea "Nu am o recomandare" evita frictiune pentru restul pacientilor.
       {
-        key: "investigatie_recomandata", type: "choice", title: "Ai o recomandare pentru o investigatie anume?",
+        key: "investigatie_recomandata", type: "choice", title: "Ai primit o trimitere pentru o investigație?",
         options: [
-          { key: "oct", label: "Da - OCT", service_keys: ["oct"] },
-          { key: "visual_field_analyzer", label: "Da - Camp vizual", service_keys: ["visual_field_analyzer"] },
-          { key: "tonometry", label: "Da - Tonometrie", service_keys: ["tonometry"] },
-          { key: "fundus_exam", label: "Da - Fund de ochi", service_keys: ["fundus_exam"] },
-          { key: "corneal_topography", label: "Da - Topografie corneana", service_keys: ["corneal_topography"] },
-          { key: "nu_stiu", label: "Da, dar nu stiu ce investigatie este", service_keys: ["consult_oftalmologic"] },
-          { key: "nu_am", label: "Nu am o recomandare", service_keys: [] },
+          { key: "nu_am", label: "Nu", service_keys: [] },
+          { key: "oct", label: "Da — OCT", service_keys: ["oct"] },
+          { key: "visual_field_analyzer", label: "Da — Câmp vizual", service_keys: ["visual_field_analyzer"] },
+          { key: "tonometry", label: "Da — Tonometrie", service_keys: ["tonometry"] },
+          { key: "fundus_exam", label: "Da — Fund de ochi", service_keys: ["fundus_exam"] },
+          { key: "corneal_topography", label: "Da — Topografie corneană", service_keys: ["corneal_topography"] },
+          { key: "nu_stiu", label: "Da, dar nu înțeleg ce scrie pe ea", service_keys: ["consult_oftalmologic"] },
         ],
       },
       LOCATION_QUESTION,
@@ -187,18 +202,22 @@ export const INTENTS = {
   },
 
   investigatii: {
-    label: "Investigatii",
+    label: "Trimitere de la medic",
     service_keys: [],
     questions: [
       {
-        key: "investigatie", type: "choice", title: "Ce investigatie cauti?",
+        // Inainte: "Ce investigatie cauti?" - ii cerea pacientului sa aleaga singur intre
+        // OCT, camp vizual si tonometrie, imposibil fara o hartie de la medic. Acum premisa
+        // e explicita: intrebam ce scrie pe trimitere. Cheile de serviciu sunt canonice,
+        // nu aliasuri romanesti, ca sa fie identice cu cele din catalog.
+        key: "investigatie", type: "choice", title: "Ce scrie pe trimiterea ta?",
         options: [
           { key: "oct", label: "OCT", service_keys: ["oct"] },
-          { key: "camp_vizual", label: "Camp vizual", service_keys: ["camp_vizual"] },
-          { key: "tonometrie", label: "Tonometrie", service_keys: ["tonometrie"] },
-          { key: "fund_de_ochi", label: "Fund de ochi", service_keys: ["fund_de_ochi"] },
-          { key: "topografie_corneana", label: "Topografie corneana", service_keys: ["topografie_corneana"] },
-          { key: "nu_sunt_sigur", label: "Nu sunt sigur", service_keys: ["consult_oftalmologic"] },
+          { key: "camp_vizual", label: "Câmp vizual", service_keys: ["visual_field_analyzer"] },
+          { key: "tonometrie", label: "Tonometrie", service_keys: ["tonometry"] },
+          { key: "fund_de_ochi", label: "Fund de ochi", service_keys: ["fundus_exam"] },
+          { key: "topografie_corneana", label: "Topografie corneană", service_keys: ["corneal_topography"] },
+          { key: "nu_sunt_sigur", label: "Nu o am la mine sau nu înțeleg ce scrie", service_keys: ["consult_oftalmologic"] },
         ],
       },
       LOCATION_QUESTION,
@@ -211,8 +230,8 @@ export const INTENTS = {
     service_keys: ["consult_oftalmologic", "control_vedere_adulti"],
     questions: [
       {
-        key: "descriere", type: "text", title: "Descrie pe scurt ce ai nevoie.",
-        placeholder: "Scrie in cuvintele tale, ca intr-o conversatie",
+        key: "descriere", type: "text", title: "Spune-ne cu ce te putem ajuta.",
+        placeholder: "Scrie în cuvintele tale, ca într-o conversație",
       },
       LOCATION_QUESTION,
       TIMING_QUESTION,
@@ -223,14 +242,18 @@ export const INTENTS = {
 export const CATEGORY_QUESTION = {
   key: "categorie",
   type: "choice",
-  title: "Cu ce te putem ajuta?",
+  title: "Cu ce te ajutăm?",
   options: [
-    { key: "control_vedere", label: "Nu vad bine / vreau un control" },
-    { key: "ochelari_lentile", label: "Ochelari sau lentile" },
-    { key: "reparatii_ochelari", label: "Reparatii sau reglaje" },
-    { key: "simptome_oftalmologice", label: "Am o problema la ochi" },
-    { key: "investigatii", label: "Investigatii" },
-    { key: "unknown", label: "Nu sunt sigur" },
+    // "Investigatii" devine "Am o trimitere de la medic": nimeni nu cauta un OCT fara
+    // sa i-l fi cerut cineva. Iar "Nu sunt sigur" promite ajutor, nu doar inregistreaza
+    // nesiguranta - inainte era ramura cu cele mai putine intrebari, desi e pacientul care
+    // are cea mai mare nevoie de ghidare.
+    { key: "control_vedere", label: "Vreau un control — nu văd bine sau a trecut mult timp" },
+    { key: "simptome_oftalmologice", label: "Am o problemă apărută recent" },
+    { key: "ochelari_lentile", label: "Ochelari sau lentile de contact" },
+    { key: "reparatii_ochelari", label: "Îmi repar ochelarii" },
+    { key: "investigatii", label: "Am o trimitere de la medic" },
+    { key: "unknown", label: "Nu sunt sigur — ajută-mă să aleg" },
   ],
 };
 
