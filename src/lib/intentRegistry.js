@@ -242,6 +242,12 @@ const INTENT_KEYWORDS = {
     "verificare vedere copil",
     "copil are probleme cu vederea",
     "copilul vede neclar",
+    // 2026-09-01: formulari uzuale care nu erau prinse deloc.
+    "copilul mijeste ochii",
+    "copilul sta aproape de televizor",
+    "copilul se plange ochii",
+    "strabism copil",
+    "copilul are ochelari",
   ],
   control_vedere: [
     "consultatie vedere",
@@ -250,6 +256,20 @@ const INTENT_KEYWORDS = {
     "nu vad bine",
     "dioptrii",
     "verificare vedere",
+    // 2026-09-01: cele mai frecvente moduri in care un pacient descrie o problema
+    // refractiva obisnuita. Fara ele, textul cadea in categoria generica.
+    "nu vad distanta",
+    "nu vad aproape",
+    "vedere incetosata",
+    // ATENTIE: nu adauga aici "am nevoie de ochelari". normalize() sterge secventa
+    // "am nevoie de", deci cheia s-ar reduce la cuvantul "ochelari" si ar captura orice
+    // text care contine "ochelari" - inclusiv reparatiile si ochelarii de soare.
+    "cred ca am nevoie de ochelari",
+    "miopie",
+    "hipermetropie",
+    "astigmatism",
+    "prezbiopie",
+    "mi-au crescut dioptriile",
   ],
   reparatii_ochelari: [
     "ochelari rupti",
@@ -259,6 +279,17 @@ const INTENT_KEYWORDS = {
     "reparatie ochelari",
     "reglaj rama",
     "mi s-au rupt ochelarii",
+    // 2026-09-01: "ochelarii mei s-au rupt" nu se potrivea cu niciuna din cheile de mai sus.
+    "s-au rupt ochelarii",
+    "ochelarii s-au rupt",
+    "ochelari sparti",
+    "s-a rupt rama",
+    "s-a rupt bratul",
+    "lentila sparta",
+    "am spart lentila",
+    "am spart ochelarii",
+    "ochelari stricati",
+    "reparat ochelari",
   ],
   ochelari_lentile: [
     "lentile progresive",
@@ -266,6 +297,9 @@ const INTENT_KEYWORDS = {
     "schimbare lentile",
     "rame noi",
     "lentile pentru ochelari",
+    "ochelari de soare",
+    "ochelari soare",
+    "rama noua",
   ],
   lentile_contact: [
     "lentile de contact",
@@ -286,6 +320,29 @@ const INTENT_KEYWORDS = {
     "vedere dubla",
     "ma doare ochiul",
     "problema la ochi",
+    // 2026-09-01: simptome descrise curent in romana, care inainte nu erau detectate deloc
+    // si trimiteau pacientul la intrebarea generica "Cu ce te putem ajuta?".
+    "ochiul rosu",
+    "imi curge ochiul",
+    "curge ochiul",
+    "ma mananca ochii",
+    "mancarime ochi",
+    "conjunctivita",
+    "vad puncte",
+    "puncte negre",
+    "musculite",
+    "imi lacrimeaza",
+    "lacrimeaza ochiul",
+    "usturime ochi",
+    "ma ustura ochii",
+    "ochi uscat",
+    "pleoapa umflata",
+    "urcior",
+    "vad in ceata",
+    "sensibil la lumina",
+    "vreau la medic de ochi",
+    "doctor de ochi",
+    "medic oftalmolog",
   ],
 };
 
@@ -302,11 +359,42 @@ function normalize(text) {
   return words.join(" ").trim();
 }
 
+function escapeForRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// 2026-09-01: inainte se folosea `normalized.includes(...)`, o cautare bruta de subsir,
+// cu doua consecinte gresite:
+//
+// 1. Chei scurte se potriveau in interiorul altor cuvinte. Cheia "oct" (investigatia OCT)
+//    se potrivea in "d-oct-or" si in "-oct-ombrie", asa ca "vreau la un doctor de ochi"
+//    era rutat spre "Ce investigatie cauti?" - exact intrebarea la care pacientul nu are
+//    ce raspunde.
+// 2. Cheile din mai multe cuvinte cereau text lipit. "copilul meu nu vede bine la tabla"
+//    nu se potrivea cu cheia "nu vede tabla", desi e exact acelasi lucru spus natural,
+//    deci intreaga ramura pentru copii ramanea nedetectata.
+//
+// Acum fiecare cuvant din cheie trebuie gasit ca CUVANT INTREG si in ordine, dar cu
+// cuvinte permise intre ele. E o potrivire mai iertatoare, potrivita pentru o prima
+// ipoteza pe care pacientul o confirma oricum in pasul urmator.
+function keywordMatches(normalizedText, keyword) {
+  const words = normalize(keyword).split(/\s+/).filter(Boolean);
+  if (words.length === 0) return false;
+  let cursor = 0;
+  for (const word of words) {
+    const rest = normalizedText.slice(cursor);
+    const offset = rest.search(new RegExp(`\\b${escapeForRegExp(word)}\\b`));
+    if (offset === -1) return false;
+    cursor += offset + word.length;
+  }
+  return true;
+}
+
 export function detectIntentFromText(text) {
   if (!text) return null;
   const normalized = normalize(text);
   for (const [intentKey, keywords] of Object.entries(INTENT_KEYWORDS)) {
-    if (keywords.some((kw) => normalized.includes(normalize(kw)))) {
+    if (keywords.some((kw) => keywordMatches(normalized, kw))) {
       return intentKey;
     }
   }
@@ -330,7 +418,9 @@ export function detectSubIntentPrefill(intentKey, text) {
   if (!rules) return null;
   const normalized = normalize(text);
   for (const rule of rules) {
-    if (rule.keywords.some((kw) => normalized.includes(normalize(kw)))) {
+    // Aceeasi potrivire pe cuvant intreg ca in detectIntentFromText: altfel prefill-ul
+    // "oct" se declansa din "doctor" si sarea peste intrebarea despre investigatie.
+    if (rule.keywords.some((kw) => keywordMatches(normalized, kw))) {
       return { question_key: rule.question_key, option_key: rule.option_key };
     }
   }
