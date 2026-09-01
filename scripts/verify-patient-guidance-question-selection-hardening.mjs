@@ -156,9 +156,13 @@ scenario("question-only selection still performs no extra AI call", () => {
 
 scenario("matching and ranking implementation remains byte-stable", () => {
   const marker = "    if (requestedKeys.length === 0) {";
-  // Amprenta actualizata 2026-08-06 (vezi verify-patient-guidance-adaptive-question-selection
-  // pentru lista completa a modificarilor). Nu s-au atins scoringul, ordonarea sau Top 3.
-  assert.equal(fnv1a(entry.slice(entry.indexOf(marker)).trimEnd()), "ec0773fc");
+  // Amprenta actualizata 2026-09-01, la cerere explicita: fallback-ul structural nu mai
+  // filtreaza binar dupa capacitate. Pentru o nevoie medicala raman doar profilurile
+  // medicale, dar pentru orice alta nevoie raman ambele, cu opticile primele - inainte,
+  // orice cautare non-medicala elimina complet cabinetele si clinicile oftalmologice.
+  // S-au schimbat componenta si ordinea interna a fallback-ului structural.
+  // NU s-au atins: buildRecommendationScore, assignRecommendationBuckets, Top 3.
+  assert.equal(fnv1a(entry.slice(entry.indexOf(marker)).trimEnd()), "e5a1081b");
 
   const client = source("src/lib/providerSemanticSearch.js");
   const clientMarker = "export async function matchProvidersWithSemanticFallback";
