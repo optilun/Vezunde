@@ -82,7 +82,8 @@ scenario("planner receives approved options only", () => {
 scenario("investigation reference text is approved", () => {
   const question = getApprovedPatientGuidanceQuestion("investigation_reference_text");
   assert.equal(question.type, "text");
-  assert.equal(question.title, "Scrie ce apare pe recomandare sau pe biletul primit.");
+  // Titlu actualizat 2026-09-01 (rescrierea chestionarului).
+  assert.equal(question.title, "Ce scrie pe trimitere?");
   assert.equal(resolvePatientGuidanceQuestionPlan("investigation_reference_text").status, "approved");
 });
 
@@ -396,7 +397,9 @@ scenario("exact optometric adult control skips routine clarification", () => {
   const profile = buildPatientGuidanceRoutingProfile({
     primaryIntent: "control_vedere",
     confirmedServiceKeys: ["optometry_consultation"],
-    confirmedFacts: { locality: "Timisoara" },
+    // 2026-09-01: for_whom e acum obligatoriu pentru control_vedere. Serviciul numit exact
+    // scuteste clarificarea rutina/simptom, dar nu spune pentru cine este consultul.
+    confirmedFacts: { locality: "Timisoara", for_whom: "adult" },
     safetyState: "clear",
   });
   assert.equal(profile.care_path, "optometry");
@@ -410,7 +413,8 @@ scenario("exact ophthalmology consultation resolves adult care path", () => {
   const profile = buildPatientGuidanceRoutingProfile({
     primaryIntent: "control_vedere",
     confirmedServiceKeys: ["ophthalmology_consultation"],
-    confirmedFacts: { locality: "Timisoara" },
+    // 2026-09-01: for_whom e acum obligatoriu pentru control_vedere.
+    confirmedFacts: { locality: "Timisoara", for_whom: "adult" },
     safetyState: "clear",
   });
   assert.equal(profile.care_path, "ophthalmology");
@@ -422,6 +426,8 @@ scenario("generic adult routine answer resolves optometry deterministically", ()
     primaryIntent: "control_vedere",
     confirmedFacts: {
       routine_vs_symptom: "routine",
+      // 2026-09-01: for_whom e acum obligatoriu pentru control_vedere.
+      for_whom: "adult",
       locality: "Timisoara",
     },
     safetyState: "clear",
