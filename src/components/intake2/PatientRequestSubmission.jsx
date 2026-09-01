@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { BookmarkPlus, CheckCircle2, LockKeyhole, Send, ShieldCheck } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import PatientRequestEmailVerification from "./PatientRequestEmailVerification";
@@ -60,6 +60,11 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
   // ghidate, deci nu depinde de LLM si nu poate da timeout.
   const [messageAssessment, setMessageAssessment] = useState(null);
   const [contact, setContact] = useState({ name: "", email: "", phone: "", preference: "email" });
+  // 2026-09-01: pana acum, formularul nu arata nimic din ce se colectase deja - nici
+  // nevoia, nici localitatea, nici ce scrisese pacientul la inceput. Ii cerea sa descrie
+  // din nou, in gol. De aceea oamenii rescriau tot: nu aveau nicio dovada ca raspunsurile
+  // lor s-au pastrat. Citim draftul si il aratam, ca sa ceara doar ce chiar lipseste.
+  const storedDraft = useMemo(() => readPatientRequestDraft(), [isOpen]);
   const submissionGuardRef = useRef(createPatientOperationGuard());
   const submissionInFlightRef = useRef(false);
   const activeIdempotencyRef = useRef(null);
@@ -90,8 +95,15 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
       setError("Completează cel puțin emailul sau numărul de telefon.");
       return;
     }
+    // 2026-09-01: mesajul RAMANE obligatoriu, desi pacientul si-a descris nevoia deja de
+    // doua ori. Motivul e in providerLeadFullDetailsPolicy.js: un detailed_message gol
+    // face lead-ul inelegibil pentru detalii complete ('detailed_message_missing'), deci
+    // furnizorul n-ar mai primi nici numele, nici emailul. In plus, e singurul text al
+    // cererii care ajunge la el - textul din hero (original_message) nu se transmite deloc.
+    // Cerinta poate fi relaxata abia dupa ce backendul accepta un mesaj gol si primeste si
+    // textul initial. Pana atunci, rezumatul de mai sus macar il scuteste de repetare.
     if (detailedMessage.trim().length < 10) {
-      setError("Descrie mai detaliat ce ai nevoie, în minimum 10 caractere.");
+      setError("Adaugă un scurt mesaj pentru locații, în minimum 10 caractere.");
       return;
     }
     // Verificarea de siguranta se face inaintea consimtamantului si a oricarei scrieri:
@@ -328,15 +340,57 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
         </div>
       </div>
 
+      {/* Ce se trimite deja, la vedere. Fara asta, caseta de mai jos pare inceputul unei
+          cereri noi si pacientul isi rescrie toata nevoia - a treia oara. */}
+      {storedDraft && (
+        <div className="mt-5 rounded-xl border border-border bg-background p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            Locațiile vor primi
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {storedDraft.intent_label && (
+              <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-foreground">
+                {storedDraft.intent_label}
+              </span>
+            )}
+            {storedDraft.city && (
+              <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-foreground">
+                {storedDraft.city}
+              </span>
+            )}
+            {(storedDraft.answers || [])
+              .filter((answer) => !["categorie", "locatie", "locality", "descriere"].includes(answer.question_key))
+              .slice(0, 4)
+              .map((answer) => (
+                <span key={answer.question_key} className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                  {answer.answer_label}
+                </span>
+              ))}
+          </div>
+          {storedDraft.original_message && (
+            <p className="mt-3 border-t border-border/70 pt-3 text-xs leading-relaxed text-muted-foreground">
+              Și ce ai scris la început: <span className="text-foreground">„{storedDraft.original_message}”</span>
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Intrebarea cere acum un supliment, nu o repetare. Inainte era "Descrie mai
+          detaliat ce ai nevoie" - adica exact ce sistemul stia deja din hero si din
+          chestionar, cerut a treia oara. */}
       <label className="mt-5 block text-xs font-semibold text-foreground">
-        Descrie mai detaliat ce ai nevoie
+        Mai e ceva ce ar trebui să știe?
+        <span className="mt-1 block text-[11px] font-normal leading-relaxed text-muted-foreground">
+          Scrie ce nu reiese din cele de mai sus. Dacă nu-ți vine nimic în minte, o
+          propoziție despre ce aștepți de la vizită e suficientă.
+        </span>
         <textarea
           required
           value={detailedMessage}
           onChange={(event) => setDetailedMessage(event.target.value)}
           maxLength={2000}
-          rows={5}
-          placeholder="De exemplu: ce problemă ai, ce produs sau serviciu cauți și orice detaliu util pentru locație."
+          rows={4}
+          placeholder="Ex: am deja o programare în octombrie, sau copilul se sperie de aparate, sau prefer o locație aproape de metrou."
           className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-3 text-sm font-normal outline-none transition-colors focus:border-primary"
         />
         <span className="mt-1 block text-[11px] font-normal text-muted-foreground">Acest mesaj este vizibil numai locațiilor Pro din Top 3.</span>
