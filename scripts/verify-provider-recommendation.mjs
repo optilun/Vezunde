@@ -12,7 +12,14 @@ import {
 
 assert.equal(PROVIDER_RECOMMENDATION_CONTRACT_VERSION, 'provider-recommendation-v1');
 assert.equal(recommendationBucketForProfile('verified', 'specialized_medical'), 'confirmed');
-assert.equal(recommendationBucketForProfile('claimed', 'specialized_medical'), 'confirmed');
+// 2026-09-01 (audit cautare/recomandare LLM, sectiunea 3.2, cerut explicit): pentru o
+// nevoie specializata/medicala, un profil doar "claimed" nu mai intra in bucket-ul
+// "confirmed", deci nu mai poate ajunge in Top 3. Motivul: providerLeadEligibility.js
+// cere deja "verified" pentru specialized_medical si ar respinge oricum acelasi profil la
+// trimiterea cererii - cautarea arata o recomandare pe care platforma n-ar fi onorat-o.
+// Profilul ramane vizibil, in bucket-ul "directory", sub cele confirmate.
+assert.equal(recommendationBucketForProfile('claimed', 'specialized_medical'), 'directory');
+assert.equal(recommendationBucketForProfile('claimed', 'general'), 'confirmed');
 assert.equal(recommendationBucketForProfile('directory', 'general'), 'directory');
 
 const availability = getFreshAvailability({
