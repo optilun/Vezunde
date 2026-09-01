@@ -9,7 +9,9 @@ import {
   MapPin,
   MessageCircle,
   Phone,
+  PhoneCall,
   RefreshCw,
+  Search,
   ShieldAlert,
   Store,
   UserCheck,
@@ -21,6 +23,7 @@ import {
   managePatientContactShareApproval,
   updatePatientRequestLifecycle,
 } from "@/lib/patientRequestPersistenceClient";
+import { PATIENT_SAFETY_FLAG_PRESENTATION } from "@/lib/patientSafety";
 import { PROVIDER_TYPES } from "@/lib/vezunde";
 import { summarizePublicServices } from "@/lib/servicePresentation";
 import PatientNotificationCenter from "@/components/notifications/PatientNotificationCenter";
@@ -163,16 +166,49 @@ function RequestSummary({ request, requestDraft, detailedMessage, resultCount })
   );
 }
 
+// 2026-09-01 (audit cautare/recomandare LLM, sectiunea 3.3): textul de aici era generic
+// ("poate afisa instructiuni separate") si nu spunea nimic concret - nici ce s-a detectat,
+// nici ce sa faca pacientul. Acum arata efectiv semnalele si indruma spre UPU/112, la fel
+// ca celelalte doua locuri din aplicatie care trateaza acelasi caz (UrgencyInterruption,
+// PatientIntentConfirmation). Ramane doar informatia efectiv utila daca pacientul revine
+// pe pagina asta dupa ce a trimis cererea.
 function UrgencyInterruptionSlot({ requestDraft }) {
   const flags = requestDraft?.interpretation?.possible_safety_flags || [];
   if (!Array.isArray(flags) || flags.length === 0) return null;
+  const labels = flags.map((flag) => PATIENT_SAFETY_FLAG_PRESENTATION[flag]).filter(Boolean);
   return (
     <div data-component="UrgencyInterruption" className="rounded-2xl border border-amber-300/60 bg-amber-50 p-4 text-amber-950">
       <div className="flex items-start gap-3">
         <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" />
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-extrabold">Informatii de siguranta</p>
-          <p className="mt-1 text-xs leading-relaxed">Cererea contine un semnal pentru care fluxul de siguranta VIASEE poate afisa instructiuni separate. Acest spatiu nu ofera diagnostic.</p>
+          <p className="mt-1 text-xs leading-relaxed">
+            Formularea cererii tale poate contine un semnal care merita evaluare rapida. VIASEE nu pune diagnostic si nu stabileste daca situatia este sau nu urgenta.
+          </p>
+          {labels.length > 0 && (
+            <ul className="mt-2 space-y-1 pl-4 text-xs">
+              {labels.map((label) => (
+                <li key={label} className="list-disc">{label}</li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-2 text-xs leading-relaxed">
+            Pentru simptome severe, aparute brusc sau care se agraveaza, nu astepta un raspuns in platforma: mergi la UPU, camera de garda sau un serviciu de urgente oftalmologice.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <a
+              href="tel:112"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-amber-300 bg-white px-3.5 text-xs font-bold text-amber-950 hover:bg-amber-100/60"
+            >
+              <PhoneCall className="h-3.5 w-3.5" /> Suna la 112
+            </a>
+            <a
+              href="/cauta?q=oftalmolog"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-amber-300 bg-white px-3.5 text-xs font-bold text-amber-950 hover:bg-amber-100/60"
+            >
+              <Search className="h-3.5 w-3.5" /> Cabinete oftalmologice langa tine
+            </a>
+          </div>
         </div>
       </div>
     </div>
