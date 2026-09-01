@@ -1,3 +1,18 @@
+// ATENTIE la ordinea de incarcare a modulelor (verificat 2026-09-01):
+// aici se importa DOAR registrul de baza (139 chei). Registrul extins
+// (canonicalServiceRegistryExtended.js) adauga inca 7 chei din grupul
+// business_attributes - workplace_vision_screening, school_vision_screening,
+// mobile_optical_unit, home_visit_eye_care, employer_glasses_reimbursement,
+// computer_screen_glasses, myopia_control_spectacle_lenses - prin MUTAREA
+// registrului de baza la momentul importului (CANONICAL_SERVICE_KEYS.push).
+//
+// Consecinta: intr-un runtime unde registrul extins NU este incarcat, cele 7
+// servicii cad pe ramura `unknown_service` de mai jos si primesc eligible:false
+// - adica dispar din matching si din profilul public, desi furnizorul le-a
+// declarat corect. Azi toate functiile care folosesc motorul incarca si
+// registrul extins (verificat pe fiecare bundle), deci nu e o problema activa.
+// Daca adaugi o functie noua care importa doar acest motor, importa explicit si
+// canonicalServiceRegistryExtended.js, altfel pierzi tacut cele 7 servicii.
 import { normalizeServiceKey } from './canonicalServiceRegistry.js';
 import { getServiceOperationalContext } from './serviceOperationalTaxonomy.js';
 
@@ -116,6 +131,14 @@ function verifiedProfessionalTypes(assignments, profiles, unitKey, enforceUnitSc
   for (const assignment of assignments || []) {
     if (!activeRow(assignment) || !rowMatchesUnit(assignment, unitKey, enforceUnitScope)) continue;
     const profile = byId.get(assignment.professional_id) || assignment.professional_profile || null;
+    // Din cele 5 conditii de mai jos, DOAR `profile.verification_status` are acoperire
+    // reala in schema (verificat 2026-09-01). Celelalte patru citesc campuri care nu
+    // exista in nicio entitate: ProfessionalLocationAssignment nu are nici
+    // `affiliation_status`, nici `confirmation_level`; ProfessionalProfile nu are nici
+    // `confirmation_level`, nici `verified`. Sunt inofensive (e un OR) si le pastram
+    // pentru compatibilitate, dar singura cale reala prin care un specialist devine
+    // "verificat" este aprobarea de admin din adminProfessionalProfileReview.ts, care
+    // seteaza ProfessionalProfile.verification_status = 'verified'.
     const verified = assignment.affiliation_status === 'vezunde_verified'
       || assignment.confirmation_level === 'vezunde_verified'
       || profile?.verification_status === 'verified'
@@ -297,6 +320,12 @@ export function evaluateServicePrerequisites(rawKey, context = {}) {
   const equipmentResult = verifiedEquipmentTypes(equipment, medical, prerequisiteUnitKey, enforceUnitScope);
   if (definition.requires_equipment && SERVICE_PREREQUISITE_POLICY.enforce_verified_equipment) {
     const required = definition.required_equipment_types || [];
+    // Verificat 2026-09-01: sapte servicii au requires_equipment:true dar nicio intrare
+    // in REQUIRED_EQUIPMENT - laser_procedures, yag_laser, retinal_laser,
+    // intravitreal_injections, eyelid_surgery, chalazion_treatment, minor_eye_procedures.
+    // Cat timp raman asa, activarea enforce_verified_equipment le blocheaza prin
+    // constructie, pe ramura de mai jos. Trebuie ori configurate cerintele, ori scos
+    // flag-ul de pe ele - e o decizie de domeniu, nu una tehnica.
     if (required.length === 0) {
       blockers.push({
         code: 'equipment_requirement_not_configured',
@@ -322,6 +351,16 @@ export function evaluateServicePrerequisites(rawKey, context = {}) {
   }
 
   const facilityResult = activeFacilityTypes(facilities, prerequisiteUnitKey, enforceUnitScope);
+  // Verificat 2026-09-01: enforce_verified_infrastructure NU poate fi activat inca.
+  // Cele 14 servicii de chirurgie si proceduri clinice cer surgical_infrastructure sau
+  // clinical_procedure_infrastructure, iar INFRASTRUCTURE_ALIASES le mapeaza pe chei
+  // (operating_room, day_surgery_unit, clinical_procedure_room, ...) care NU exista in
+  // enum-ul entitatii LocationFacility - acesta are doar cele 5 chei optice. Nici calea
+  // alternativa din infrastructureSatisfied() nu ajuta: campurile pe care le verifica
+  // (surgical_infrastructure_verified, has_operating_room, clinical_infrastructure_verified,
+  // has_procedure_room) nu exista in schema ProviderLocation. Activarea flag-ului ar bloca
+  // permanent toata chirurgia oftalmologica. Satisfiabile sunt doar cerintele de atelier
+  // optic si laborator optic.
   if (definition.requires_infrastructure && SERVICE_PREREQUISITE_POLICY.enforce_verified_infrastructure) {
     const required = definition.required_infrastructure_types || [];
     const matched = required.length > 0
