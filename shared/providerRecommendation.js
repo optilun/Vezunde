@@ -122,9 +122,20 @@ export function getRecommendationConfidence({
   return 'limited';
 }
 
+// 2026-09-01 (audit cautare/recomandare LLM, sectiunea 3.2): pentru o nevoie
+// specializata/medicala, un profil doar "claimed" (neverificat) nu mai intra in
+// bucket-ul "confirmed" - deci nu mai poate ajunge in Top 3. Fara asta, cautarea putea
+// arata ca prima optiune un profil pe care providerLeadEligibility.js l-ar respinge
+// oricum la trimiterea efectiva a cererii (acolo se cere deja "verified" pentru
+// specialized_medical) - pacientul vedea o recomandare de incredere pe care platforma
+// insasi n-ar fi trimis-o mai departe. Ramane vizibil (bucket "directory", sub cele
+// confirmate), nu e ascuns: datele lui sunt reale, doar increderea nu e suficienta
+// pentru o decizie medicala fara verificare suplimentara.
 export function recommendationBucketForProfile(profileControlStatus, needLevel = 'general') {
-  void needLevel;
   const status = clean(profileControlStatus) || 'directory';
+  if (needLevel === 'specialized_medical') {
+    return status === 'verified' ? 'confirmed' : 'directory';
+  }
   return ['verified', 'claimed'].includes(status) ? 'confirmed' : 'directory';
 }
 
