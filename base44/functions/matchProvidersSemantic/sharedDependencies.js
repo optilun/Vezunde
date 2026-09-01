@@ -2194,8 +2194,10 @@ function getRecommendationConfidence({
   return "limited";
 }
 function recommendationBucketForProfile(profileControlStatus, needLevel = "general") {
-  void needLevel;
   const status = clean2(profileControlStatus) || "directory";
+  if (needLevel === "specialized_medical") {
+    return status === "verified" ? "confirmed" : "directory";
+  }
   return ["verified", "claimed"].includes(status) ? "confirmed" : "directory";
 }
 function compareRecommendationEntries(a, b) {
