@@ -832,14 +832,33 @@ Deno.serve(async (request) => {
     const bucketedResults = assignRecommendationBuckets(results, limit);
 
     // Fallback structural: doar cand rezultatele cu servicii reale sunt insuficiente.
-    // Capacitatea ceruta urmeaza nivelul nevoii, ca sa nu propunem optici pentru o problema
-    // medicala sau cabinete pentru o pereche de ochelari.
-    const requiredCapability = needLevel === 'specialized_medical' ? 'medical' : 'optical';
+    //
+    // 2026-09-01: inainte, capacitatea era un filtru binar - orice nevoie non-medicala
+    // elimina complet cabinetele si clinicile oftalmologice (~175 locatii la nivel national).
+    // Asta bloca rezultate perfect valide: un cabinet oftalmologic face si control de rutina,
+    // si dioptrii, si reteta de ochelari. Un pacient dintr-un oras unde singurul furnizor e
+    // un cabinet primea zero rezultate la "control de vedere". Acelasi lucru se intampla si
+    // cand nivelul nevoii iese 'unknown' (cheile de serviciu nu sunt canonice) - cadea pe
+    // ramura 'optical' si ascundea tot ce e medical.
+    //
+    // Acum relatia e asimetrica, pentru ca si realitatea e asimetrica: pentru o nevoie
+    // medicala raman doar profilurile medicale (o optica nu rezolva o problema medicala),
+    // dar pentru orice alta nevoie raman ambele, cu opticile primele. Nimic nu se ascunde
+    // doar pentru ca nevoia n-a putut fi clasificata exact.
+    const preferredCapabilities = needLevel === 'specialized_medical'
+      ? ['medical']
+      : ['optical', 'medical'];
+    const capabilityRank = (entry) => {
+      const index = preferredCapabilities.indexOf(entry.structural_capability);
+      return index === -1 ? preferredCapabilities.length : index;
+    };
     let structuralResults = [];
     if (bucketedResults.length < STRUCTURAL_FALLBACK_MIN_CONFIRMED) {
       structuralResults = structuralCandidates
-        .filter((entry) => entry.structural_capability === requiredCapability)
+        .filter((entry) => preferredCapabilities.includes(entry.structural_capability))
         .sort((a, b) => {
+          const capabilityDelta = capabilityRank(a) - capabilityRank(b);
+          if (capabilityDelta !== 0) return capabilityDelta;
           const hasContact = (entry) => (entry.phone || entry.website) ? 1 : 0;
           const contactDelta = hasContact(b) - hasContact(a);
           if (contactDelta !== 0) return contactDelta;
