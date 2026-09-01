@@ -10,6 +10,8 @@ import {
   readPatientRequestDraft,
   requestPatientRequestRecovery,
 } from "@/lib/patientRequestPersistenceClient";
+import { buildPatientSafetyAssessment } from "@/lib/patientSafety";
+import UrgencyInterruption from "./UrgencyInterruption";
 
 function track(eventName, properties = {}) {
   try {
@@ -43,6 +45,11 @@ export default function PatientRecoverySubmission({ meta }) {
   const [submittedDraft, setSubmittedDraft] = useState(null);
   const [emailVerified, setEmailVerified] = useState(false);
   const [detailedMessage, setDetailedMessage] = useState("");
+  // 2026-09-01: aceeasi lipsa ca in PatientRequestSubmission - mesajul detaliat nu trecea
+  // prin nicio verificare de siguranta. Aici conteaza chiar mai mult: fluxul de recuperare
+  // e folosit de pacienti care n-au primit raspuns, deci a trecut timp de la cererea
+  // initiala si starea lor se poate sa se fi agravat intre timp.
+  const [messageAssessment, setMessageAssessment] = useState(null);
   const [contact, setContact] = useState({ name: "", email: "", phone: "", preference: "email" });
   const idempotencyKeyRef = useRef(createPatientRequestIdempotencyKey());
   const hasEmail = Boolean(contact.email.trim());
@@ -90,6 +97,12 @@ export default function PatientRecoverySubmission({ meta }) {
     }
     if (detailedMessage.trim().length < 10) {
       setError("Descrie mai detaliat ce ai nevoie, în minimum 10 caractere.");
+      return;
+    }
+    const safety = buildPatientSafetyAssessment({ text: detailedMessage });
+    if (safety.blocking) {
+      setMessageAssessment(safety);
+      setError("");
       return;
     }
     if (!processingConsent) {
@@ -211,6 +224,18 @@ export default function PatientRecoverySubmission({ meta }) {
             </button>
           </div>
         </div>
+      </section>
+    );
+  }
+
+  if (messageAssessment?.blocking) {
+    return (
+      <section className="mt-7">
+        <UrgencyInterruption
+          assessment={messageAssessment}
+          onCorrect={() => setMessageAssessment(null)}
+          correctLabel="Nu e o urgenta, revin la cerere"
+        />
       </section>
     );
   }
