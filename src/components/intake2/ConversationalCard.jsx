@@ -317,6 +317,21 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     }));
   };
 
+  // 2026-09-01: pana acum, raspunsul "Niciuna dintre acestea" de la ecranul de siguranta
+  // nu se salva nicaieri. Starea de siguranta ramanea "neverificat" la nesfarsit, fluxul
+  // de simptome nu se putea incheia, iar furnizorul nu vedea ca pacientul a fost intrebat.
+  // Il inregistram sub cheia din catalog, ca sa fie recunoscut server-side.
+  const handleSafetyCleared = () => {
+    setState((s) => {
+      if (s.answers.some((answer) => answer.question_key === "safety_targeted_check")) return s;
+      return {
+        ...s,
+        answers: [...s.answers, { question_key: "safety_targeted_check", answer_value: "niciuna" }],
+        questionHistory: [...new Set([...(s.questionHistory || []), "safety_targeted_check"])],
+      };
+    });
+  };
+
   const handleLocation = (question, { city, locality, clientAddressText }) => {
     matchingRequestRef.current.invalidate();
     markSearchStarted(state.intent);
@@ -778,7 +793,12 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
               </h2>
               {current.type === "choice" && <QuestionChoice question={current} onSelect={handleChoice} />}
               {current.type === "text" && (
-                <QuestionText question={current} onSubmit={handleText} onPhaseChange={setQuestionPhase} />
+                <QuestionText
+                  question={current}
+                  onSubmit={handleText}
+                  onPhaseChange={setQuestionPhase}
+                  onSafetyCleared={handleSafetyCleared}
+                />
               )}
               {current.type === "location" && (
                 <QuestionLocation onAnswer={(answer) => handleLocation(current, answer)} />
