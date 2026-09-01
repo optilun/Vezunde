@@ -538,6 +538,13 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     setQuestionSelection({ status: "pending", question: null });
 
     (async () => {
+      // 2026-09-01: masuram cat dureaza efectiv acest drum la server. Alegerea intrebarii
+      // urmatoare este complet deterministica - nu implica niciun apel de model - deci in
+      // principiu ar putea fi calculata instant in browser. Inainte de a muta calculul
+      // (ceea ce ar da browserului autoritate asupra selectiei, lucru pe care testele de
+      // hardening il interzic explicit astazi), vrem sa stim daca asteptarea e reala.
+      // Daca durata mediana e mica, problema nu exista si nu justifica refactorizarea.
+      const startedAt = Date.now();
       const response = await selectPatientGuidanceNextQuestion({
         search_text: patientLanguageText(initialMessage, state.answers),
         answers: state.answers,
@@ -551,10 +558,17 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         requestId,
       });
       if (!questionSelectionRequestRef.current.isCurrent(requestId)) return;
-      setQuestionSelection(controlledQuestionSelection(response, {
+      const selection = controlledQuestionSelection(response, {
         answers: state.answers,
         questionHistory: state.questionHistory,
-      }));
+      });
+      trackPatientSearchEvent("patient_search_question_selection_timing", {
+        duration_ms: Date.now() - startedAt,
+        selection_status: selection.status,
+        answered_count: state.answers.length,
+        intent: state.intent || "unknown",
+      });
+      setQuestionSelection(selection);
     })().catch(() => {
       if (!questionSelectionRequestRef.current.isCurrent(requestId)) return;
       setQuestionSelection(fallbackQuestionSelection());
@@ -781,9 +795,13 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         />
       )}
 
+      {/* 2026-09-01: textul spunea "Alegem urmatoarea intrebare relevanta...", ceea ce
+          sugereaza o deliberare care nu are loc. Alegerea e deterministica - se ia prima
+          informatie lipsa din matricea de rutare - iar niciun model nu e consultat.
+          Formularea de acum descrie ce se intampla efectiv, fara sa promita inteligenta. */}
       {phase === "questions" && state.intent && questionSelection.status === "pending" && (
         <div className="py-8 text-center text-sm text-muted-foreground">
-          Alegem urmatoarea intrebare relevanta...
+          Un moment...
         </div>
       )}
 
