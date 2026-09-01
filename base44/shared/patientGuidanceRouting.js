@@ -73,10 +73,13 @@ const MATRIX = /** @type {Record<string, any>} */ ({
     // Ca la simptome: investigation_type nu blocheaza nici cautarea, nici cererea. Cine
     // vrea doar un control de rutina nu are recomandare de investigatie. Intrebarea ramane
     // in catalog, folosita de intentia "investigatii" si de regula conditionala de mai jos.
-    required_for_search: ["routine_vs_symptom", "locality"],
-    required_for_provider_request: ["routine_vs_symptom", "locality", "timing"],
+    // 2026-09-01: for_whom era "inferabil", deci nu se punea niciodata la controlul de
+    // rutina. Un parinte care cauta pentru un copil de 6 ani era potrivit ca adult, iar
+    // ramura pediatrica ramanea practic inaccesibila din interfata. Acum se intreaba.
+    required_for_search: ["routine_vs_symptom", "for_whom", "locality"],
+    required_for_provider_request: ["routine_vs_symptom", "for_whom", "locality", "timing"],
     optional_facts: ["last_eye_exam", "prescription_status"],
-    inferable_facts: ["for_whom"],
+    inferable_facts: [],
     exact_service_can_skip_search_facts: ["routine_vs_symptom"],
     conditional_required_for_search: [
       {
@@ -159,9 +162,12 @@ const MATRIX = /** @type {Record<string, any>} */ ({
     ],
   },
   ochelari_lentile: {
-    required_for_search: ["optical_product_type", "locality"],
-    required_for_provider_request: ["optical_product_type", "locality", "timing"],
-    optional_facts: ["prescription_status"],
+    // 2026-09-01: prescription_status era declarat ca fapt optional, deci nu se cerea
+    // niciodata - desi e informatia care decide daca pacientul are nevoie de o optica, de
+    // un cabinet, sau de amandoua. Trece in lista ceruta, imediat dupa tipul produsului.
+    required_for_search: ["optical_product_type", "prescription_status", "locality"],
+    required_for_provider_request: ["optical_product_type", "prescription_status", "locality", "timing"],
+    optional_facts: [],
     inferable_facts: [],
     skip_question_keys: [
       "routine_vs_symptom",
@@ -209,9 +215,13 @@ const MATRIX = /** @type {Record<string, any>} */ ({
     ],
   },
   unknown: {
-    required_for_search: ["routine_vs_symptom"],
-    required_for_provider_request: ["routine_vs_symptom"],
-    optional_facts: ["locality"],
+    // 2026-09-01: localitatea era declarata "optionala", deci nu se cerea niciodata. Un
+    // pacient care alegea "Nu sunt sigur" termina chestionarul dupa o singura intrebare si
+    // cererea pleca fara localitate - adica fara nicio sansa de potrivire geografica.
+    // Exact pacientul care are cea mai mare nevoie de ajutor primea cele mai putine intrebari.
+    required_for_search: ["routine_vs_symptom", "locality"],
+    required_for_provider_request: ["routine_vs_symptom", "locality", "timing"],
+    optional_facts: [],
     inferable_facts: [],
     skip_question_keys: [],
   },
