@@ -442,15 +442,28 @@ Deno.serve(async (req) => {
     // Fallback structural: se activeaza doar cand rezultatele confirmate sunt insuficiente.
     // Capacitatea ceruta se potriveste cu nivelul nevoii, ca sa nu propunem optici pentru o
     // problema medicala sau cabinete pentru o pereche de ochelari.
-    const requiredCapability = needLevel === 'specialized_medical' ? 'medical' : 'optical';
+    // 2026-09-01: aceeasi corectie ca in matchProvidersSemantic/entry.ts (a se pastra
+    // sincronizate). Capacitatea nu mai e un filtru binar: pentru o nevoie medicala raman
+    // doar profilurile medicale, dar pentru orice alta nevoie raman ambele, cu opticile
+    // primele. Un cabinet oftalmologic face si control de rutina si dioptrii - nu are sens
+    // sa dispara complet de la o cautare non-medicala.
+    const preferredCapabilities = needLevel === 'specialized_medical'
+      ? ['medical']
+      : ['optical', 'medical'];
+    const capabilityRank = (entry) => {
+      const index = preferredCapabilities.indexOf(entry.capability);
+      return index === -1 ? preferredCapabilities.length : index;
+    };
     // Pragul numara si rezultatele extended_directory: acelea au inregistrari reale de serviciu,
     // chiar daca profilul nu e revendicat. Sunt intotdeauna preferabile unui fallback structural.
     const confirmedCount = eligibleSorted.length + directorySorted.length;
     let structuralSorted = [];
     if (confirmedCount < STRUCTURAL_FALLBACK_MIN_CONFIRMED) {
       structuralSorted = structuralList
-        .filter((entry) => entry.capability === requiredCapability)
+        .filter((entry) => preferredCapabilities.includes(entry.capability))
         .sort((a, b) => {
+          const capabilityDelta = capabilityRank(a) - capabilityRank(b);
+          if (capabilityDelta !== 0) return capabilityDelta;
           // Prioritizeaza profilurile cu date de contact publice, ca pacientul sa poata verifica.
           // Variantele de camp trebuie sa le oglindeasca pe cele din getPublicLocationDisclosure.
           const hasContact = (loc) => (
