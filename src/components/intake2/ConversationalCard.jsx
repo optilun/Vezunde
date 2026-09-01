@@ -777,11 +777,14 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
           >
             <Sparkles className="h-5 w-5" />
           </motion.div>
+          {/* 2026-09-01: aceste doua texte erau fara diacritice, desi pe acelasi ecran
+              apar "Reincearca" si cautarea de localitate scrise cu. Pacientul vedea doua
+              conventii deodata. Textul citit de pacient se scrie corect romaneste. */}
           <h2 className="mt-5 font-heading text-xl font-bold text-foreground sm:text-2xl">
-            Intelegem ce cauti
+            Înțelegem ce cauți
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Interpretam cererea, apoi iti cerem confirmarea inainte de chestionar.
+            Interpretăm cererea, apoi îți cerem confirmarea înainte de chestionar.
           </p>
         </div>
       )}
