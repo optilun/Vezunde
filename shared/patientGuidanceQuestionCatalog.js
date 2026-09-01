@@ -1,9 +1,17 @@
 export const PATIENT_GUIDANCE_QUESTION_CATALOG_VERSION = "patient-guidance-questions-v1";
 
+// 2026-09-01 (rescrierea chestionarului): patru optiuni amestecau doua axe -
+// "In zilele urmatoare" si "Saptamana aceasta" se suprapuneau, iar "Nu e urgent"
+// raspundea la urgenta, nu la termen. Pacientul vede acum trei, distincte intre ele.
+//
+// "saptamana_aceasta" ramane DEFINITA, dar marcata `hidden`: nu se mai ofera in
+// interfata, insa ramane o valoare valida. Exista cereri deja salvate cu ea, schema
+// raspunsului LLM o accepta in continuare, si e punctata in buildRecommendationScore.
+// Daca ar fi fost stearsa complet, toate acestea ar fi devenit invalide tacit.
 const TIMING_OPTIONS = Object.freeze([
-  { key: "cat_mai_repede", label: "Cat mai repede" },
-  { key: "zilele_urmatoare", label: "In zilele urmatoare" },
-  { key: "saptamana_aceasta", label: "Saptamana aceasta" },
+  { key: "cat_mai_repede", label: "Cât mai repede" },
+  { key: "zilele_urmatoare", label: "În următoarele zile" },
+  { key: "saptamana_aceasta", label: "Săptămâna aceasta", hidden: true },
   { key: "nu_e_urgent", label: "Nu e urgent" },
 ]);
 
@@ -28,112 +36,152 @@ export const APPROVED_PATIENT_SAFETY_COPY = Object.freeze({
   disclaimer: "Acest mesaj este informational si nu reprezinta diagnostic sau triaj medical.",
 });
 
+// 2026-09-01: rescrierea chestionarului pacientului.
+// Formularile sunt scrise acum cu diacritice - textul citit de pacient trebuie sa arate
+// ca romana scrisa corect. Cheile de optiune raman NESCHIMBATE peste tot, pentru ca sunt
+// referite in matricea de rutare, in aliasurile de valori legacy si in cererile deja
+// salvate. Singura cheie noua este for_whom.other_adult.
+// Formularile de triaj de urgenta (SAFETY_OPTIONS, APPROVED_PATIENT_SAFETY_COPY) NU au
+// fost atinse: sunt text clinic si au nevoie de revizuire medicala, nu de redactare.
 const CATALOG = {
   routine_vs_symptom: {
     type: "choice",
-    title: "Cauti un control de rutina sau ai o problema la ochi?",
+    title: "Ce te aduce la noi?",
     options: [
-      { key: "routine", label: "Control de rutina" },
-      { key: "symptom", label: "Am o problema sau un simptom la ochi" },
-      { key: "not_sure", label: "Nu sunt sigur" },
+      { key: "routine", label: "Un control — nu văd bine sau a trecut mult timp" },
+      { key: "symptom", label: "O problemă apărută recent" },
+      { key: "not_sure", label: "Nu sunt sigur — ajută-mă să aleg" },
     ],
   },
   for_whom: {
     type: "choice",
-    title: "Este pentru tine sau pentru un copil?",
+    title: "Pentru cine este?",
     legacy_question_keys: ["pentru_cine"],
     options: [
       { key: "adult", label: "Pentru mine" },
-      { key: "child", label: "Pentru un copil" },
+      { key: "child", label: "Pentru copilul meu" },
+      // Optiune noua: cine cauta pentru un parinte in varsta - o parte importanta din
+      // cererea de cataracta si glaucom - nu avea ce bifa si se incadra ca adult-pentru-sine.
+      { key: "other_adult", label: "Pentru altcineva (părinte, partener)" },
     ],
   },
   child_age_group: {
     type: "choice",
-    title: "Ce varsta aproximativa are copilul?",
+    title: "Ce vârstă are copilul?",
     legacy_question_keys: ["varsta_copil"],
     options: [
       { key: "under_3", label: "Sub 3 ani" },
-      { key: "3_6", label: "3-6 ani" },
-      { key: "7_12", label: "7-12 ani" },
-      { key: "13_18", label: "13-18 ani" },
+      { key: "3_6", label: "3–6 ani" },
+      { key: "7_12", label: "7–14 ani" },
+      { key: "13_18", label: "15–18 ani" },
     ],
   },
   investigation_type: {
     type: "choice",
-    title: "Ce investigatie cauti?",
+    title: "Ce scrie pe trimiterea ta?",
     legacy_question_keys: ["investigatie"],
+    // Inainte intrebarea era "Ce investigatie cauti?", adica ii cerea pacientului sa aleaga
+    // singur intre OCT, camp vizual si tonometrie - imposibil fara o hartie de la medic.
+    // Acum premisa e explicita: intrebam ce scrie pe trimitere, nu ce crede ca ii trebuie.
+    helper: "Dacă ai primit o trimitere sau o recomandare, alege ce scrie pe ea.",
     options: [
       { key: "oct", label: "OCT", service_keys: ["oct"] },
-      { key: "visual_field_analyzer", label: "Camp vizual", service_keys: ["visual_field_analyzer"] },
+      { key: "visual_field_analyzer", label: "Câmp vizual", service_keys: ["visual_field_analyzer"] },
       { key: "tonometry", label: "Tonometrie", service_keys: ["tonometry"] },
       { key: "fundus_exam", label: "Fund de ochi", service_keys: ["fundus_exam"] },
-      { key: "corneal_topography", label: "Topografie corneana", service_keys: ["corneal_topography"] },
-      { key: "not_sure", label: "Nu stiu ce investigatie este" },
+      { key: "corneal_topography", label: "Topografie corneană", service_keys: ["corneal_topography"] },
+      { key: "not_sure", label: "Nu am trimiterea la mine sau nu înțeleg ce scrie" },
     ],
   },
   investigation_reference_text: {
     type: "text",
-    title: "Scrie ce apare pe recomandare sau pe biletul primit.",
+    title: "Ce scrie pe trimitere?",
+    helper: "Poți scrie exact ce vezi, chiar dacă nu îți spune nimic. Dacă nu o ai la tine, treci mai departe.",
+    placeholder: "Ex: OCT ochi drept, sau consult glaucom",
+    // Permite trecerea fara raspuns: inainte, un pacient care nu avea hartia la el ramanea
+    // blocat - campul nu accepta raspuns gol si nu exista nicio iesire.
+    allow_skip: true,
+    skip_label: "Nu o am la mine acum",
   },
   optical_product_type: {
     type: "choice",
-    title: "Ce cauti?",
+    title: "Ce anume cauți?",
     legacy_question_keys: ["ce_cauti"],
     options: [
-      { key: "new_eyeglasses", label: "Ochelari noi", service_keys: ["eyeglasses"] },
+      { key: "new_eyeglasses", label: "Ochelari", service_keys: ["eyeglasses"] },
       { key: "progressive_lenses", label: "Lentile progresive", service_keys: ["progressive_lenses"] },
-      { key: "lens_replacement", label: "Schimbare lentile", service_keys: ["lens_replacement"] },
+      { key: "lens_replacement", label: "Schimb lentilele în rama mea", service_keys: ["lens_replacement"] },
       { key: "contact_lenses", label: "Lentile de contact", service_keys: ["contact_lenses"] },
-      { key: "not_sure", label: "Nu sunt sigur" },
+      { key: "not_sure", label: "Nu m-am hotărât încă" },
+    ],
+  },
+  prescription_status: {
+    type: "choice",
+    // Intrebare noua in catalog. Exista in lista veche ca "reteta", dar raspunsul ei nu
+    // ajungea niciodata la motorul de rutare: cheia nu era recunoscuta si se arunca.
+    // Este cea mai utila intrebare din fluxul optic - decide daca pacientul are nevoie de
+    // o optica, de un cabinet, sau de amandoua.
+    title: "Îți știi dioptriile?",
+    legacy_question_keys: ["reteta"],
+    options: [
+      { key: "recent_prescription", label: "Da, am o rețetă recentă" },
+      { key: "old_prescription", label: "Am una mai veche" },
+      { key: "needs_exam", label: "Nu, am nevoie și de un control", service_keys: ["optometry_consultation"] },
     ],
   },
   contact_lens_experience: {
     type: "choice",
-    title: "Este prima data cand folosesti lentile de contact?",
+    title: "Ai mai purtat lentile de contact?",
     legacy_question_keys: ["prima_data"],
     options: [
-      { key: "first_time", label: "Da, este prima data", service_keys: ["contact_lens_consultation", "contact_lens_fitting"] },
-      { key: "experienced", label: "Am mai purtat lentile", service_keys: ["contact_lenses"] },
+      { key: "first_time", label: "Nu, ar fi prima dată", service_keys: ["contact_lens_consultation", "contact_lens_fitting"] },
+      { key: "experienced", label: "Da", service_keys: ["contact_lenses"] },
       { key: "not_sure", label: "Nu sunt sigur" },
     ],
   },
   repair_type: {
     type: "choice",
-    title: "Ce s-a deteriorat?",
+    // Inainte: "Ce s-a deteriorat?" - dar printre optiuni aparea "Reglaj rama". O ajustare
+    // nu e o deteriorare, deci pacientul caruia ii aluneca ochelarii nu se recunostea.
+    title: "Ce s-a întâmplat?",
     legacy_question_keys: ["ce_deteriorat"],
     options: [
-      { key: "broken_frame", label: "Rama rupta", service_keys: ["frame_repair"] },
-      { key: "hinge_or_screw", label: "Balamaua sau surubul", service_keys: ["hinge_repair", "screw_replacement"] },
-      { key: "damaged_lens", label: "Lentila zgariata sau sparta", service_keys: ["lens_replacement"] },
-      { key: "frame_adjustment", label: "Reglaj rama", service_keys: ["eyeglasses_adjustment"] },
-      { key: "not_sure", label: "Nu stiu exact", service_keys: ["eyeglasses_repair"] },
+      { key: "broken_frame", label: "S-a rupt rama", service_keys: ["frame_repair"] },
+      { key: "damaged_lens", label: "S-a spart sau s-a zgâriat o lentilă", service_keys: ["lens_replacement"] },
+      { key: "hinge_or_screw", label: "Balamaua sau un șurub", service_keys: ["hinge_repair", "screw_replacement"] },
+      { key: "frame_adjustment", label: "Nu-mi mai stau bine pe nas", service_keys: ["eyeglasses_adjustment"] },
+      { key: "not_sure", label: "Altceva", service_keys: ["eyeglasses_repair"] },
     ],
   },
   symptom_description: {
     type: "text",
-    title: "Descrie pe scurt ce te preocupa.",
+    title: "Spune-ne pe scurt ce se întâmplă.",
     legacy_question_keys: ["descriere"],
-    placeholder: "Ex: de cateva zile vad in ceata la ochiul drept",
+    helper: "Scrie cu cuvintele tale. Nu trebuie să știi termeni medicali.",
+    placeholder: "Ex: de câteva zile văd în ceață la ochiul drept",
   },
   symptom_timing_or_acuity: {
     type: "choice",
-    title: "Cand a aparut si cum a evoluat problema?",
+    // Cea mai utila intrebare despre un simptom si singura la care orice pacient poate
+    // raspunde cu certitudine. Exista deja in catalog, dar niciun pacient n-o vedea:
+    // e declarata intr-un flux care cade mereu pe lista veche.
+    title: "De când ai problema?",
     options: [
-      { key: "sudden", label: "A aparut brusc" },
-      { key: "recent", label: "A aparut recent si persista" },
-      { key: "gradual", label: "A aparut treptat" },
-      { key: "recurrent", label: "A mai aparut si inainte" },
-      { key: "not_sure", label: "Nu sunt sigur" },
+      { key: "sudden", label: "De azi sau de ieri" },
+      { key: "recent", label: "De câteva zile" },
+      { key: "gradual", label: "De săptămâni sau mai mult" },
+      { key: "recurrent", label: "A mai apărut și înainte" },
+      { key: "not_sure", label: "Nu-mi dau seama" },
     ],
   },
   locality: {
     type: "location",
-    title: "Unde cauti?",
+    title: "Unde cauți?",
     legacy_question_keys: ["locatie"],
   },
   timing: {
     type: "choice",
-    title: "Cand ai nevoie?",
+    title: "Cât de repede ai nevoie?",
     options: TIMING_OPTIONS,
   },
   safety_targeted_check: {
