@@ -92,7 +92,15 @@ function mergeLocations(results, responses) {
 function RequestSummary({ request, requestDraft, detailedMessage, resultCount }) {
   const answers = Array.isArray(requestDraft?.answers) ? requestDraft.answers : [];
   const preferences = Array.isArray(requestDraft?.preferences) ? requestDraft.preferences : [];
-  const message = detailedMessage || requestDraft?.detailed_message || requestDraft?.original_message || "";
+  // 2026-09-01: inainte, aceasta linie era un lant de rezerve - textul scris in hero
+  // (`original_message`) se folosea DOAR daca nu exista mesaj detaliat. Cum acela era
+  // obligatoriu, primul lucru spus de pacient, cu cuvintele lui, nu ajungea practic
+  // niciodata la furnizor. Sunt doua lucruri diferite: unul e cum si-a descris problema
+  // spontan, celalalt e ce a ales sa adauge la final. Acum se pastreaza amandoua.
+  const openingMessage = requestDraft?.original_message || "";
+  const addedMessage = detailedMessage || requestDraft?.detailed_message || "";
+  const message = openingMessage || addedMessage;
+  const hasSeparateAddition = Boolean(openingMessage && addedMessage && addedMessage !== openingMessage);
 
   return (
     <div className="space-y-4">
@@ -102,6 +110,12 @@ function RequestSummary({ request, requestDraft, detailedMessage, resultCount })
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-background/65">Tu</p>
           <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">{message || "Mesajul cererii a fost salvat."}</p>
         </div>
+        {hasSeparateAddition && (
+          <div className="mt-2 rounded-2xl bg-foreground/90 px-4 py-3 text-background">
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-background/65">Tu · ai adăugat</p>
+            <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">{addedMessage}</p>
+          </div>
+        )}
         <div className="mt-3 rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3">
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary">VIASEE</p>
           <p className="mt-1 text-sm leading-relaxed text-foreground">Am pregatit cererea pe baza informatiilor oferite.</p>
