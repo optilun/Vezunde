@@ -38,8 +38,10 @@ assert.deepEqual(draft.service_keys, ['reparatii_ochelari', 'frame_repair']);
 assert.equal(draft.city, 'Timisoara');
 assert.equal(draft.locality_siruta_code, '155243');
 assert.equal(draft.timing_key, 'cat_mai_repede');
-assert.equal(draft.answers.find((answer) => answer.question_key === 'ce_deteriorat')?.answer_label, 'Rama rupta');
-assert.equal(draft.answers.find((answer) => answer.question_key === 'timing')?.answer_label, 'Cat mai repede');
+// Etichete actualizate 2026-09-01 (rescrierea chestionarului). Cheile de optiune raman
+// neschimbate - s-au schimbat doar formularile citite de pacient.
+assert.equal(draft.answers.find((answer) => answer.question_key === 'ce_deteriorat')?.answer_label, 'S-a rupt rama');
+assert.equal(draft.answers.find((answer) => answer.question_key === 'timing')?.answer_label, 'Cât mai repede');
 assert.equal(draft.interpretation.version, 'patient-need-ai-v1');
 
 const cardSource = await readFile(new URL('../src/components/intake2/ConversationalCard.jsx', import.meta.url), 'utf8');
