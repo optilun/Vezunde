@@ -113,9 +113,22 @@ await scenario("generic control asks deterministic clarification", () => {
 });
 
 await scenario("exact ophthalmology consult resolves deterministic path", () => {
-  const profile = buildPatientGuidancePlannerProfile({
+  // 2026-09-01: serviciul exact rezolva traseul, dar nu mai e suficient singur pentru
+  // cautare - for_whom a devenit obligatoriu. Un serviciu numit exact spune ce se cere,
+  // nu pentru cine, iar diferenta adult/copil schimba efectiv furnizorii potriviti.
+  const withoutForWhom = buildPatientGuidancePlannerProfile({
     text: "Consult oftalmologic.",
     explicitFacts: { locality: locality() },
+    deterministicSafetyState: "clear",
+  });
+  assert.deepEqual(withoutForWhom.confirmed_service_keys, ["ophthalmology_consultation"]);
+  assert.equal(withoutForWhom.care_path, "ophthalmology");
+  assert.equal(withoutForWhom.sufficient_for_search, false);
+  assert.equal(withoutForWhom.next_question_key, "for_whom");
+
+  const profile = buildPatientGuidancePlannerProfile({
+    text: "Consult oftalmologic.",
+    explicitFacts: { locality: locality(), for_whom: "adult" },
     deterministicSafetyState: "clear",
   });
   assert.deepEqual(profile.confirmed_service_keys, ["ophthalmology_consultation"]);
@@ -863,6 +876,8 @@ await scenario("guided choice still determines route", () => {
     text: "Vreau un control.",
     guidedAnswers: [
       { question_key: "routine_vs_symptom", answer_value: "routine" },
+      // 2026-09-01: for_whom a devenit obligatoriu pentru control_vedere.
+      { question_key: "for_whom", answer_value: "adult" },
       { question_key: "locality", answer_value: "Cluj-Napoca" },
     ],
     deterministicSafetyState: "clear",
