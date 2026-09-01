@@ -23,7 +23,7 @@ import {
 import { abandonAllPatientRequestIdempotency } from "@/lib/patientRequestIdempotency";
 import { buildIntentConfirmationProposal } from "@/lib/patientIntentConfirmation";
 import { buildPatientRequestDraft } from "@/lib/patientRequestDraft";
-import { deterministicSafetyFlagsFromText } from "@/lib/patientSafety";
+import { buildPatientSafetyAssessment, deterministicSafetyFlagsFromText } from "@/lib/patientSafety";
 import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill } from "@/lib/intentRegistry";
 import {
   PATIENT_GUIDANCE_QUESTION_CATALOG,
@@ -217,9 +217,28 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     : (questionSelection.status === "selected"
       ? questionSelection.question
       : (["fallback", "idle"].includes(questionSelection.status) ? legacyCurrent : null));
+  // 2026-09-01: bara numara intrebarile din lista veche chiar si cand traseul e condus de
+  // catalogul adaptiv, care nu le va pune niciodata - deci raporta sub adevar si apoi sarea
+  // brusc la final. Pe traseul adaptiv nu stim cate intrebari mai urmeaza, asa ca nu ne
+  // prefacem: bara avanseaza cu fiecare raspuns, dar se opreste sub 100% pana cand
+  // chestionarul chiar s-a incheiat. Mai bine imprecisa si onesta decat precisa si falsa.
+  const onAdaptivePath = questionSelection.status === "selected";
   const remainingLegacyQuestionCount = questions.filter((question) => !answeredKeys.has(question.key)).length;
-  const total = state.answers.length + remainingLegacyQuestionCount;
-  const progress = total > 0 ? Math.round((state.answers.length / total) * 100) : 0;
+  const total = state.answers.length + (onAdaptivePath ? 1 : remainingLegacyQuestionCount);
+  const rawProgress = total > 0 ? Math.round((state.answers.length / total) * 100) : 0;
+  const progress = questionSelection.status === "complete"
+    ? 100
+    : Math.min(rawProgress, onAdaptivePath ? 85 : 100);
+
+  // Motivul blocarii de siguranta, recalculat local din ce a raspuns pacientul si din
+  // mesajul lui initial, ca ecranul de urgenta sa nu fie gol. Aceeasi functie ca pe server.
+  const blockedSafetyAssessment = useMemo(() => {
+    const assessment = buildPatientSafetyAssessment({
+      answers: state.answers,
+      text: initialMessage,
+    });
+    return assessment.blocking ? assessment : { ...assessment, blocking: true };
+  }, [state.answers, initialMessage]);
 
   analyticsSessionRef.current.phase = phase;
   analyticsSessionRef.current.intent = state.intent || null;
@@ -385,13 +404,29 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     // acelasi tipar folosit deja la acceptarea cu incredere mare (initState mai jos,
     // linia ~326). Motorul de intrebari aprobate va sti astfel sa sara direct la
     // intrebarea specifica ce lipseste, in loc sa reporneasca de la intrebarea generica.
-    const correctedState = initState(intentProposal?.intent || null, initialMessage);
+    //
+    // 2026-09-01: dar asta era corect DOAR cand AI-ul n-a fost sigur si butonul zice
+    // "Aleg categoria". Cand AI-ul a fost sigur, butonul zice "Aleg alta nevoie" - adica
+    // pacientul tocmai a spus ca interpretarea e gresita. Pastrandu-i intentia, primea
+    // exact acelasi lucru pe care il refuzase, fara nicio cale inapoi in afara de butonul
+    // browserului. Acum, in cazul asta, pornim curat de la intrebarea de categorie.
+    const rejectedConfidentInterpretation = intentProposal?.status === "confirm";
+    const correctedState = initState(
+      rejectedConfidentInterpretation ? null : (intentProposal?.intent || null),
+      initialMessage,
+    );
     // initState populeaza serviceKeys din lista generica a categoriei (ex: control_vedere
     // -> control_vedere_adulti). Dar AI-ul a fost adesea mai precis (ex: distinge intre
     // ophthalmology_consultation - un medic - si optometry_consultation - un optometrist).
     // Cand AI-ul a dat o lista explicita de servicii, o folosim pe aceea, nu pe cea generica,
     // ca sa nu pierdem exact distinctia pentru care AI-ul a fost util.
-    if (Array.isArray(intentProposal?.service_keys) && intentProposal.service_keys.length > 0) {
+    // Serviciile propuse de AI se pastreaza doar cand pastram si intentia. Daca pacientul
+    // a refuzat interpretarea, ar fi absurd sa ramanem cu serviciile ei.
+    if (
+      !rejectedConfidentInterpretation
+      && Array.isArray(intentProposal?.service_keys)
+      && intentProposal.service_keys.length > 0
+    ) {
       correctedState.serviceKeys = [...intentProposal.service_keys];
       correctedState.explicitServiceKeys = [...intentProposal.service_keys];
     }
@@ -752,9 +787,14 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         </div>
       )}
 
+      {/* 2026-09-01: aici se trimitea `blocking_flags: []`, deci pacientul primea un ecran
+          care ii spune sa opreasca cautarea si sa ceara ajutor medical imediat, fara sa
+          spuna pentru ce. Semnalul e cunoscut - serverul a blocat tocmai pentru ca l-a
+          detectat - asa ca il recalculam local, cu aceeasi functie deterministica pe care
+          o foloseste si serverul, si aratam motivul. */}
       {phase === "questions" && questionSelection.status === "blocked" && (
         <UrgencyInterruption
-          assessment={{ blocking: true, blocking_flags: [] }}
+          assessment={blockedSafetyAssessment}
           onCorrect={goBack}
         />
       )}
