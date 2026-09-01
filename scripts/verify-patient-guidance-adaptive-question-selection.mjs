@@ -183,9 +183,12 @@ await scenario("guided answers have priority over the planner candidate", () => 
     guidedAnswers: [{ question_key: "routine_vs_symptom", answer_value: "routine" }],
   });
   assert.equal(profile.confirmed_facts.routine_vs_symptom, "routine");
+  // 2026-09-01: for_whom a trecut din "inferable" in lista ceruta pentru control_vedere.
+  // Inainte nu se punea niciodata, iar un parinte care cauta pentru un copil de 6 ani era
+  // potrivit ca adult. Acum e urmatoarea intrebare, inaintea localitatii si a termenului.
   assert.equal(
     buildPatientGuidanceQuestionSelection(profile).next_question_key,
-    "timing",
+    "for_whom",
   );
 });
 
@@ -239,7 +242,14 @@ await scenario("matching implementation remains byte-stable", () => {
   //  - diagnostic pentru esecul silentios al InvokeLLM
   //  - photo_url si eticheta afisata pentru profiluri revendicate
   // Orice schimbare viitoare a acestei amprente trebuie justificata la fel de explicit.
-  assert.equal(fnv1a(matchingTail), "ec0773fc");
+  //
+  // Amprenta actualizata 2026-09-01, la cerere explicita: fallback-ul structural nu mai
+  // filtreaza binar dupa capacitate. Inainte, orice nevoie non-medicala elimina complet
+  // cabinetele si clinicile oftalmologice (~175 locatii), inclusiv cand nivelul nevoii
+  // iesea 'unknown'. Acum: nevoie medicala -> doar medical; orice altceva -> ambele, cu
+  // opticile primele. S-au schimbat componenta si ordinea interna a fallback-ului
+  // structural. NU s-au atins buildRecommendationScore, assignRecommendationBuckets, Top 3.
+  assert.equal(fnv1a(matchingTail), "e5a1081b");
 });
 
 await scenario("ranking and recommendation client remain byte-stable", () => {
