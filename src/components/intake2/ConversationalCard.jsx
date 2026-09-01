@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { ArrowLeft, Sparkles } from "lucide-react";
@@ -23,6 +23,7 @@ import {
 import { abandonAllPatientRequestIdempotency } from "@/lib/patientRequestIdempotency";
 import { buildIntentConfirmationProposal } from "@/lib/patientIntentConfirmation";
 import { buildPatientRequestDraft } from "@/lib/patientRequestDraft";
+import { deterministicSafetyFlagsFromText } from "@/lib/patientSafety";
 import { INTENTS, CATEGORY_QUESTION, detectIntentFromText, detectSubIntentPrefill } from "@/lib/intentRegistry";
 import {
   PATIENT_GUIDANCE_QUESTION_CATALOG,
@@ -183,6 +184,18 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
     state.intent ? { status: "pending", question: null } : { status: "idle", question: null }
   ));
   const [matchError, setMatchError] = useState(null);
+  // 2026-09-01 (audit cautare/recomandare LLM, sectiunea 3.3): verificare deterministica,
+  // identica cu cea din Search.jsx, pe MESAJUL LIBER initial al pacientului. Inainte de
+  // aceasta corectie, singurul control de siguranta pe acest text era interpretarea LLM
+  // (mode "interpret_only") - si cand acel apel pica sau da timeout (fallback normal,
+  // planificat in cod), semnalul disparea complet, fara nicio alta plasa. Verificarea de
+  // aici nu depinde de LLM si nu poate esua/intarzia, deci ramane activa mereu.
+  const [initialSafetyAcknowledged, setInitialSafetyAcknowledged] = useState(false);
+  const initialSafetyFlags = useMemo(
+    () => deterministicSafetyFlagsFromText(initialMessage),
+    [initialMessage],
+  );
+  const showInitialSafetyBlock = initialSafetyFlags.length > 0 && !initialSafetyAcknowledged;
   const interpretationAttemptedRef = useRef(false);
   const interpretationRequestRef = useRef(createPatientOperationGuard());
   const questionSelectionRequestRef = useRef(createPatientOperationGuard());
@@ -683,6 +696,14 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         </p>
       )}
 
+      {showInitialSafetyBlock ? (
+        <UrgencyInterruption
+          assessment={{ blocking: true, blocking_flags: initialSafetyFlags }}
+          onCorrect={() => setInitialSafetyAcknowledged(true)}
+          correctLabel="Nu e o urgenta, continua cautarea"
+        />
+      ) : (
+        <>
       {phase === "interpreting" && (
         <div className="py-8 text-center sm:py-12">
           <motion.div
@@ -800,6 +821,8 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
             Reîncearcă
           </button>
         </div>
+      )}
+        </>
       )}
     </motion.div>
   );
