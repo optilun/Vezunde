@@ -22,9 +22,15 @@ function assessmentForChoice(answerValue) {
   });
 }
 
-export default function QuestionText({ question, onSubmit, onPhaseChange }) {
+// Ecranul de siguranta precede intrebarea libera despre simptome. Cheia legacy este
+// "descriere", cea din catalogul aprobat este "symptom_description" - le acoperim pe
+// amandoua, altfel verificarea ar disparea tacit in ziua in care fluxul de simptome ar
+// incepe sa foloseasca intrebarea din catalog.
+const SYMPTOM_TEXT_QUESTION_KEYS = new Set(["descriere", "symptom_description"]);
+
+export default function QuestionText({ question, onSubmit, onPhaseChange, onSafetyCleared }) {
   const [value, setValue] = useState("");
-  const [screeningCleared, setScreeningCleared] = useState(question.key !== "descriere");
+  const [screeningCleared, setScreeningCleared] = useState(!SYMPTOM_TEXT_QUESTION_KEYS.has(question.key));
   const [urgentChoice, setUrgentChoice] = useState("");
   const [textAssessment, setTextAssessment] = useState(null);
   const urgentAssessment = useMemo(
@@ -89,7 +95,15 @@ export default function QuestionText({ question, onSubmit, onPhaseChange }) {
             ))}
             <button
               type="button"
-              onClick={() => setScreeningCleared(true)}
+              onClick={() => {
+                // 2026-09-01: inainte, acest buton doar deschidea ecranul urmator si nu
+                // salva nimic. Consecinte in lant: starea de siguranta ramanea "neverificat"
+                // pentru totdeauna, fluxul de simptome nu se putea considera niciodata
+                // complet, iar furnizorul care primea cererea nu vedea ca pacientul a fost
+                // intrebat. Acum raspunsul se inregistreaza ca orice alt raspuns ghidat.
+                onSafetyCleared?.();
+                setScreeningCleared(true);
+              }}
               className="min-h-[56px] rounded-2xl bg-primary px-4 py-3 text-left text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
             >
               Niciuna dintre acestea
@@ -102,6 +116,9 @@ export default function QuestionText({ question, onSubmit, onPhaseChange }) {
 
   return (
     <div className="mt-6">
+      {question.helper && (
+        <p className="-mt-2 mb-3 text-sm leading-relaxed text-muted-foreground">{question.helper}</p>
+      )}
       <textarea
         value={value}
         onChange={(event) => setValue(event.target.value)}
@@ -115,6 +132,19 @@ export default function QuestionText({ question, onSubmit, onPhaseChange }) {
         onClick={submit}
         disabled={!value.trim()}
       />
+      {/* 2026-09-01: unele intrebari libere nu pot fi raspunse de toata lumea. Cine nu are
+          trimiterea la el ramanea blocat: campul nu accepta raspuns gol si nu exista nicio
+          iesire. Raspunsul de ocolire e un text real, nu unul gol, ca sa fie inregistrat
+          ca fapt si sa nu reintre in bucla aceleiasi intrebari. */}
+      {question.allow_skip && (
+        <button
+          type="button"
+          onClick={() => onSubmit(question, question.skip_answer_text || "Nu o am la mine acum")}
+          className="mt-3 min-h-11 w-full rounded-full border border-border bg-background px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        >
+          {question.skip_label || "Trec mai departe"}
+        </button>
+      )}
     </div>
   );
 }
