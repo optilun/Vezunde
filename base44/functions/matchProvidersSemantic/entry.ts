@@ -222,7 +222,7 @@ function expansionTier(location, selectedSirutaCode, scope) {
 
 function resultRoutingReason(tier, countyName) {
   if (tier === 'oras') return 'Potrivire din localitatea selectata.';
-  // Nu afirma "confirmata" necondiționat: acest rezultat poate proveni si din
+  // Nu afirma "confirmata" neconditionat: acest rezultat poate proveni si din
   // fallback-ul structural (structural_directory, recommendation_confidence:
   // 'unconfirmed'), unde afirmatia ar fi falsa. Textul de mai jos nu presupune
   // nici ca ar fi singura optiune - la nivel national pot exista mai multe.
