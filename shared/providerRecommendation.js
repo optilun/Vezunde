@@ -97,7 +97,7 @@ export function buildRecommendationExplanations({
   }));
 
   if (profileControlStatus === 'verified') {
-    explanations.push({ code: 'verified_location_profile', label: 'Profil de locatie verificat de VIASEE' });
+    explanations.push({ code: 'verified_location_profile', label: 'Profil de locație verificat de VIASEE' });
   } else if (profileControlStatus === 'claimed') {
     explanations.push({ code: 'claimed_location_profile', label: 'Profil administrat de furnizor' });
   } else {
