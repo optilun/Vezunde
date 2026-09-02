@@ -27,6 +27,10 @@ const PATIENT_SURFACES = [
   'shared/patientEmergencyGuidance.js',
   'shared/providerDecisionConfidence.js',
   'shared/providerRecommendation.js',
+  // 2026-09-02: etichetele semnalelor de siguranta se afiseaza pe ecranul de urgenta,
+  // dar traiau in src/lib si scapasera primei treceri - "Substanta chimica ajunsa in ochi"
+  // aparea fara diacritice sub un titlu care le avea.
+  'src/lib/patientSafety.js',
 ];
 
 // Cuvinte care nu exista in romana fara diacritice. Nu includem forme ambigue
@@ -59,6 +63,13 @@ const REQUIRE_DIACRITICS = [
   'afisat', 'afisata', 'inchisa', 'gresite', 'gresit',
 ];
 
+// Regiuni exceptate explicit in cod, cu motiv scris acolo. O linie care contine
+// "copy-diacritics: exempt" opreste verificarea pana la "copy-diacritics: end".
+// Folosit pentru sabloanele de detectie, care se compara cu text normalizat (fara
+// diacritice) si deci TREBUIE sa ramana fara.
+const EXEMPT_START = 'copy-diacritics: exempt';
+const EXEMPT_END = 'copy-diacritics: end';
+
 // Exceptii reale, cu motiv. Fiecare intrare trebuie sa ramana justificabila.
 const ALLOWED = [
   // Cuvinte-cheie de cautare si aliasuri: se compara cu text normalizat (fara diacritice),
@@ -87,7 +98,11 @@ const findings = [];
 for (const surface of PATIENT_SURFACES) {
   for (const file of collectFiles(surface)) {
     const lines = fs.readFileSync(file, 'utf8').split('\n');
+    let exempt = false;
     lines.forEach((line, index) => {
+      if (line.includes(EXEMPT_START)) { exempt = true; return; }
+      if (line.includes(EXEMPT_END)) { exempt = false; return; }
+      if (exempt) return;
       // Comentariile raman fara diacritice, prin conventia proiectului.
       if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;
       if (ALLOWED.some((pattern) => pattern.test(line))) return;

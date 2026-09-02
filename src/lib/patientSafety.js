@@ -1,12 +1,12 @@
 export const PATIENT_SAFETY_ASSESSMENT_VERSION = "patient-eye-safety-v1";
 
 export const PATIENT_SAFETY_FLAG_PRESENTATION = Object.freeze({
-  sudden_vision_loss: "Pierderea brusca sau marcata a vederii",
-  chemical_injury: "Substanta chimica ajunsa in ochi",
-  penetrating_or_high_speed_trauma: "Obiect patruns in ochi sau traumatism puternic",
-  severe_eye_pain: "Durere oculara severa, mai ales cu modificarea vederii, greata sau cefalee",
-  postoperative_red_eye_or_vision_change: "Durere, roseata sau modificarea vederii dupa operatie ori injectie oculara recenta",
-  other_possible_urgent_eye_problem: "Fulgerari sau puncte noi cu umbra/perdea, vedere dubla aparuta brusc ori alt semnal acut",
+  sudden_vision_loss: "Pierderea bruscă sau marcată a vederii",
+  chemical_injury: "Substanță chimică ajunsă în ochi",
+  penetrating_or_high_speed_trauma: "Obiect pătruns în ochi sau traumatism puternic",
+  severe_eye_pain: "Durere oculară severă, mai ales cu modificarea vederii, greață sau cefalee",
+  postoperative_red_eye_or_vision_change: "Durere, roșeață sau modificarea vederii după operație ori injecție oculară recentă",
+  other_possible_urgent_eye_problem: "Fulgerări sau puncte noi cu umbră/perdea, vedere dublă apărută brusc ori alt semnal acut",
 });
 
 const GUIDED_ANSWER_TO_FLAG = Object.freeze({
@@ -38,6 +38,9 @@ function includesAny(text, phrases) {
   return phrases.some((phrase) => text.includes(phrase));
 }
 
+// copy-diacritics: exempt - sabloanele de mai jos se compara cu textul pacientului dupa
+// normalizare (fara diacritice), deci trebuie sa ramana scrise fara. Nu sunt text citit
+// de nimeni; sunt chei de potrivire.
 export function deterministicSafetyFlagsFromText(value) {
   const text = normalizeText(value);
   if (!text) return [];
@@ -96,6 +99,7 @@ export function deterministicSafetyFlagsFromText(value) {
 
   return uniqueFlags(flags);
 }
+// copy-diacritics: end
 
 export function guidedSafetyFlagsFromAnswers(answers) {
   const rows = Array.isArray(answers) ? answers : [];
