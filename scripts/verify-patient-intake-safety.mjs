@@ -92,6 +92,7 @@ assert.match(questionChoice, /safety_targeted_check/);
 assert.match(questionChoice, /UrgencyInterruption/);
 assert.match(interruption, /href="tel:112"/);
 assert.match(interruption, /Nu conduce/);
+
 // Textul aprobat, verificat la sursa.
 assert.match(APPROVED_PATIENT_SAFETY_COPY.blocking_title, /Oprește căutarea și solicită ajutor medical imediat/);
 assert.match(APPROVED_PATIENT_SAFETY_COPY.primary_instruction, /Mergi imediat la UPU, camera de gardă/);
