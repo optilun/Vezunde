@@ -249,7 +249,10 @@ await scenario("matching implementation remains byte-stable", () => {
   // iesea 'unknown'. Acum: nevoie medicala -> doar medical; orice altceva -> ambele, cu
   // opticile primele. S-au schimbat componenta si ordinea interna a fallback-ului
   // structural. NU s-au atins buildRecommendationScore, assignRecommendationBuckets, Top 3.
-  assert.equal(fnv1a(matchingTail), "e5a1081b");
+  // 2026-09-02: amprenta s-a schimbat pentru ca textele vizibile pacientului din ramura
+  // de potrivire au primit diacritice (routingReason, notitele fallbackului structural).
+  // Doar copie afisata: nicio schimbare de scor, ordonare sau selectie Top 3.
+  assert.equal(fnv1a(matchingTail), "28bf84ee");
 });
 
 await scenario("ranking and recommendation client remain byte-stable", () => {

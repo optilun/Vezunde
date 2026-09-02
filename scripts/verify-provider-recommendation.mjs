@@ -70,8 +70,8 @@ const semanticFunctionSource = readFileSync(
 );
 assert.ok(semanticFunctionSource.includes('recommendation_explanations: explanations'));
 assert.ok(semanticFunctionSource.includes('routing_reason: resultRoutingReason(tier, countyName)'));
-assert.ok(semanticFunctionSource.includes("if (tier === 'oras') return 'Potrivire din localitatea selectata.'"));
-assert.ok(semanticFunctionSource.includes('Potrivire din alta localitate din judetul'));
+assert.ok(semanticFunctionSource.includes("if (tier === 'oras') return 'Potrivire din localitatea selectată.'"));
+assert.ok(semanticFunctionSource.includes('Potrivire din altă localitate din județul'));
 // patientSearchScope trateaza acum trei scopuri (locality / county / national), dupa
 // adaugarea extinderii nationale la cererea explicita a owner-ului, 2026-08-06.
 // Fallback-ul sigur ramane 'locality' pentru orice valoare necunoscuta.

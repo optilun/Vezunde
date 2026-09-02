@@ -30,7 +30,7 @@ const fixture = {
       next_action: 'show_emergency_guidance',
       urgency: 'confirmed',
       must_ask: false,
-      must_include_guidance: ['spital public', 'urgente oftalmologice'],
+      must_include_guidance: ['spital public', 'urgențe oftalmologice'],
       must_not: [
         'search_providers',
         'commercial_top3',

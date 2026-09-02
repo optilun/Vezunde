@@ -337,7 +337,10 @@ await scenario("matching and ranking implementation remains byte-stable", () => 
   // ambele, cu opticile primele). Inainte, orice cautare non-medicala elimina complet
   // cabinetele si clinicile oftalmologice. NU s-au atins buildRecommendationScore,
   // assignRecommendationBuckets sau Top 3.
-  assert.equal(fnv1a(entry.slice(entry.indexOf(entryMarker)).trimEnd()), "e5a1081b");
+  // 2026-09-02: amprenta s-a schimbat pentru ca textele vizibile pacientului din ramura
+  // de potrivire au primit diacritice (routingReason, notitele fallbackului structural).
+  // Doar copie afisata: nicio schimbare de scor, ordonare sau selectie Top 3.
+  assert.equal(fnv1a(entry.slice(entry.indexOf(entryMarker)).trimEnd()), "28bf84ee");
   assert.match(entry, /error: 'Cererea nu a putut fi procesata\.'/);
   assert.match(entry, /headers: \{ 'Cache-Control': 'no-store' \}/);
 

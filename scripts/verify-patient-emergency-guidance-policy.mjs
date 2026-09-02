@@ -47,15 +47,15 @@ assert.equal(
   'public_ophthalmology_primary_with_112_transport_fallback',
 );
 assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.primary_instruction, /spital public/);
-assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.primary_instruction, /urgente oftalmologice/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.primary_instruction, /urgențe oftalmologice/);
 assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.primary_instruction, /chirurgie/);
 assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.fallback_instruction, /UPU/);
-assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.emergency_call_instruction, /apeleaza 112/);
-assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.chemical_irrigation_instruction, /clateste imediat/);
-assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.chemical_irrigation_instruction, /cel putin 20 de minute/);
-assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.chemical_irrigation_instruction, /nu incerca sa neutralizezi/);
-assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.penetrating_injury_instruction, /nu incerca sa il scoti/);
-assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.penetrating_injury_instruction, /nu apasa pe ochi/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.emergency_call_instruction, /apelează 112/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.chemical_irrigation_instruction, /clătește imediat/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.chemical_irrigation_instruction, /cel puțin 20 de minute/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.chemical_irrigation_instruction, /nu încerca să neutralizezi/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.penetrating_injury_instruction, /nu încerca să îl scoți/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_COPY.penetrating_injury_instruction, /nu apăsa pe ochi/);
 assert.equal(patientEmergencyGuidanceMentions112(PATIENT_EMERGENCY_GUIDANCE_MESSAGE), true);
 assert.equal(patientEmergencyGuidanceUses112AsPrimaryAction(PATIENT_EMERGENCY_GUIDANCE_MESSAGE), false);
 assert.equal(
@@ -64,23 +64,23 @@ assert.equal(
 );
 
 const chemicalMessage = buildPatientEmergencyGuidanceMessage(['chemical_injury']);
-assert.match(chemicalMessage, /clateste imediat/);
+assert.match(chemicalMessage, /clătește imediat/);
 assert.match(chemicalMessage, /spital public/);
 assert.equal(patientEmergencyGuidanceUses112AsPrimaryAction(chemicalMessage), false);
 
 const penetratingMessage = buildPatientEmergencyGuidanceMessage([
   'penetrating_or_high_speed_trauma',
 ]);
-assert.match(penetratingMessage, /nu incerca sa il scoti/);
+assert.match(penetratingMessage, /nu încerca să îl scoți/);
 assert.match(penetratingMessage, /spital public/);
-assert.doesNotMatch(penetratingMessage, /clateste imediat/);
+assert.doesNotMatch(penetratingMessage, /clătește imediat/);
 
 const combinedTraumaMessage = buildPatientEmergencyGuidanceMessage([
   'chemical_injury',
   'penetrating_or_high_speed_trauma',
 ]);
-assert.match(combinedTraumaMessage, /nu incerca sa il scoti/);
-assert.doesNotMatch(combinedTraumaMessage, /clateste imediat/);
+assert.match(combinedTraumaMessage, /nu încerca să îl scoți/);
+assert.doesNotMatch(combinedTraumaMessage, /clătește imediat/);
 
 const chemicalPreflight = buildPatientConversationEmergencyInterpretation({
   contractVersion: 'viasee-patient-conversation-agent-v1',
@@ -147,7 +147,7 @@ const confirmedFixture = {
   expected: {
     urgency: 'confirmed',
     next_action: 'show_emergency_guidance',
-    must_include_guidance: ['spital public', 'urgente oftalmologice'],
+    must_include_guidance: ['spital public', 'urgențe oftalmologice'],
     must_not: ['generic_112_primary_action'],
   },
 };
@@ -200,7 +200,7 @@ for (const surfacePath of advisorySurfaces) {
     `${surfacePath} afiseaza semnale advisory si nu poate contine un buton tel:112`,
   );
   assert(
-    !/mergi la UPU|UPU, camera de garda/i.test(surfaceSource),
+    !/mergi la UPU|UPU, camera de gard[aă]/i.test(surfaceSource),
     `${surfacePath} afiseaza semnale advisory si nu poate contine instructiuni de destinatie de urgenta`,
   );
 }

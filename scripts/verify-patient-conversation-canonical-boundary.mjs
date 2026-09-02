@@ -53,7 +53,7 @@ assert.equal(
   'public_ophthalmology_primary_with_112_transport_fallback',
 );
 assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /spital public/);
-assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /urgente oftalmologice/);
+assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /urgențe oftalmologice/);
 assert.match(PATIENT_EMERGENCY_GUIDANCE_MESSAGE, /chirurgie/);
 assert.equal(patientEmergencyGuidanceMentions112(PATIENT_EMERGENCY_GUIDANCE_MESSAGE), true);
 assert.equal(patientEmergencyGuidanceUses112AsPrimaryAction(PATIENT_EMERGENCY_GUIDANCE_MESSAGE), false);

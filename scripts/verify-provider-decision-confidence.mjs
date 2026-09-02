@@ -40,7 +40,7 @@ const county = buildProviderDecisionConfidence({
 });
 assert.equal(county.level, "good");
 assert.ok(county.evidence.some((item) => item.code === "county_scope"));
-assert.ok(county.evidence.some((item) => item.label.includes("acelasi judet")));
+assert.ok(county.evidence.some((item) => item.label.includes("același județ")));
 
 const policy = await readFile(new URL("../shared/providerDecisionConfidence.js", import.meta.url), "utf8");
 const card = await readFile(new URL("../src/components/results/ResultCard.jsx", import.meta.url), "utf8");

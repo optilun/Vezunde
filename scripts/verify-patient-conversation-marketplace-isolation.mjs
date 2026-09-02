@@ -20,6 +20,10 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
     // ca "confirmate" locatii care nu puteau primi cererea. Scorul si ordonarea in
     // interiorul unui bucket NU s-au atins. Aprobat explicit de owner.
     'e493500dad42b5f14ec560838f8bb0fdfdc5abdb',
+    // 2026-09-02: doar diacritice pe eticheta vizibila pacientului
+    // ('Profil de locatie verificat de VIASEE' -> 'Profil de locație...').
+    // Nicio schimbare de logica, scor sau bucket.
+    '903e7e857a87ab5db484cd08245d60d9d5216bd6',
   ]),
   'base44/functions/matchProviders/entry.ts': Object.freeze([
     '5dcbdff68ab17dc489b48baee8283db1d234da51',
@@ -47,6 +51,9 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
     // 2026-09-01: copia impachetata a lui shared/providerRecommendation.js, aliniata cu
     // blob-ul aprobat de mai sus (recommendationBucketForProfile cu needLevel).
     '673e4261b168b7c27db29b5dc4eee1f7d801b78e',
+    // 2026-09-02: aliniat cu shared/providerRecommendation.js - diacritice pe eticheta
+    // vizibila pacientului. Nicio schimbare de logica.
+    '21e373e458dfbf81503fe4ab1e9cf3dbba147d58',
   ]),
 });
 
@@ -70,6 +77,11 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
     // oftalmologie dintr-o cautare non-medicala. Verificat linie cu linie: scoringul,
     // ordonarea principala si selectia Top 3 raman neschimbate.
     '3f378c61c812033b7afdedb1efa6bd81c833664f',
+    // 2026-09-02: doar copie vizibila pacientului, cu diacritice - motivul rutarii
+    // ('Potrivire din localitatea selectata.' etc.), notitele si titlurile de grup ale
+    // fallbackului structural. Verificat linie cu linie: nicio schimbare de scor,
+    // ordonare sau selectie Top 3.
+    '131b71686c8158a4b30b0aa25ad279b9e7b91f05',
   ]),
 });
 

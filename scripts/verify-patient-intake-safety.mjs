@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
+  APPROVED_PATIENT_SAFETY_COPY,
+  PATIENT_GUIDANCE_QUESTION_CATALOG,
+} from '../shared/patientGuidanceQuestionCatalog.js';
+import {
   PATIENT_SAFETY_ASSESSMENT_VERSION,
   buildPatientSafetyAssessment,
   deterministicSafetyFlagsFromText,
@@ -45,32 +49,57 @@ const questionChoice = await readFile(new URL('../src/components/intake2/Questio
 const interruption = await readFile(new URL('../src/components/intake2/UrgencyInterruption.jsx', import.meta.url), 'utf8');
 const safetyPolicy = await readFile(new URL('../src/lib/patientSafety.js', import.meta.url), 'utf8');
 
+// 2026-09-02: textul de triaj si cel de urgenta nu mai sunt copiate in componente, deci
+// verificarea nu mai cauta literale in JSX. Erau trei exemplare ale aceluiasi text clinic
+// (catalog, QuestionText, UrgencyInterruption) si unul chiar divergease. Verificam acum
+// sursa unica plus faptul ca ecranele chiar consuma sursa, nu ceva scris de mana.
+const safetyOptions = PATIENT_GUIDANCE_QUESTION_CATALOG.safety_targeted_check.options;
 for (const label of [
   // Formularea a fost clarificata (2026-08-06): varianta veche "vederea a scazut mult"
   // prindea si miopia cronica, generand alarme false. Acum e explicit acuta.
-  'vederea a disparut brusc la un ochi',
-  'A ajuns o substanta chimica in ochi',
-  'Un obiect a patruns in ochi sau a existat o lovitura puternica',
-  'Am durere oculara foarte mare',
-  'Au aparut brusc fulgerari',
-  'dupa operatie ori injectie oculara recenta',
+  'vederea a dispărut brusc la un ochi',
+  'A ajuns o substanță chimică în ochi',
+  'Un obiect a pătruns în ochi sau a existat o lovitură puternică',
+  'Am durere oculară foarte mare',
+  'Au apărut brusc fulgerări',
+  'după operație ori injecție oculară recentă',
   'Niciuna dintre acestea',
-]) assert.match(questionText, new RegExp(label));
+]) {
+  assert.ok(
+    safetyOptions.some((option) => option.label.includes(label)),
+    `eticheta de triaj lipseste din catalogul aprobat: ${label}`,
+  );
+}
+
+// Ecranele consuma catalogul, nu literale proprii.
+assert.match(questionText, /PATIENT_GUIDANCE_QUESTION_CATALOG\.safety_targeted_check/);
+assert.doesNotMatch(
+  questionText,
+  /A ajuns o substan/,
+  'etichetele de triaj nu au voie sa fie copiate din nou in QuestionText',
+);
+assert.match(interruption, /APPROVED_PATIENT_SAFETY_COPY/);
+assert.doesNotMatch(
+  interruption,
+  /Mergi imediat la UPU/,
+  'instructiunea de destinatie nu are voie sa fie copiata din nou in UrgencyInterruption',
+);
 
 assert.match(questionText, /buildPatientSafetyAssessment/);
 assert.match(questionText, /UrgencyInterruption/);
 assert.match(questionText, /if \(assessment\.blocking\)/);
 assert.match(questionChoice, /safety_targeted_check/);
 assert.match(questionChoice, /UrgencyInterruption/);
-assert.match(interruption, /Opreste cautarea si solicita ajutor medical imediat/);
-// 2026-09-01: textul afisat s-a realiniat cu APPROVED_PATIENT_SAFETY_COPY.primary_instruction
-// din shared/patientGuidanceQuestionCatalog.js ("Mergi imediat la UPU..."). Ecranul softase
-// formularea aprobata la "cat mai curand"; verificarea urmareste acum textul aprobat.
-assert.match(interruption, /Mergi imediat la UPU, camera de garda/);
+
 assert.match(interruption, /href="tel:112"/);
-assert.match(interruption, /cel putin 20 de minute/);
+
 assert.match(interruption, /Nu conduce/);
-assert.match(interruption, /nu reprezinta diagnostic sau triaj medical/);
+
+// Textul aprobat, verificat la sursa.
+assert.match(APPROVED_PATIENT_SAFETY_COPY.blocking_title, /Oprește căutarea și solicită ajutor medical imediat/);
+assert.match(APPROVED_PATIENT_SAFETY_COPY.primary_instruction, /Mergi imediat la UPU, camera de gardă/);
+assert.match(APPROVED_PATIENT_SAFETY_COPY.chemical_instruction, /cel puțin 20 de minute/);
+assert.match(APPROVED_PATIENT_SAFETY_COPY.disclaimer, /nu reprezintă diagnostic sau triaj medical/);
 assert.doesNotMatch(interruption.toLowerCase(), /diagnosticul este|ai glaucom|ai dezlipire de retina/);
 assert.match(safetyPolicy, /advisoryFlags/);
 assert.match(safetyPolicy, /blocking: blockingFlags\.length > 0/);

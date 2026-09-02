@@ -46,12 +46,12 @@ assert.match(locationCard, /Listata/);
 assert.match(locationCard, /Revendicata/);
 assert.match(locationCard, /Verificata/);
 assert.match(locationCard, /Cerere trimisa/);
-assert.match(locationCard, /Locatia poate ajuta/);
+assert.match(locationCard, /Locația poate ajuta/);
 assert.match(locationCard, /Vezi profilul/);
 assert.match(locationCard, /unread > 0/);
 assert.match(timeline, /Cronologia cererii/);
 assert.match(timeline, /Cererea a fost trimisa/);
-assert.match(timeline, /Locatiile potrivite sunt disponibile/);
+assert.match(timeline, /Locațiile potrivite sunt disponibile/);
 
 assert.match(notificationCenter, /onDataChange/);
 assert.match(notificationCenter, /onDataChange\?\.\(data\)/);

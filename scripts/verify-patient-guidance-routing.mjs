@@ -96,9 +96,9 @@ scenario("not sure investigation has no automatic service mapping", () => {
 scenario("approved safety copy preserved", () => {
   const safetyQuestion = getApprovedPatientGuidanceQuestion("safety_targeted_check");
   assert.ok(safetyQuestion.options.some((option) => option.label === "Niciuna dintre acestea"));
-  assert.match(APPROVED_PATIENT_SAFETY_COPY.chemical_instruction, /cel putin 20 de minute/);
+  assert.match(APPROVED_PATIENT_SAFETY_COPY.chemical_instruction, /cel puțin 20 de minute/);
   assert.match(APPROVED_PATIENT_SAFETY_COPY.emergency_instruction, /Nu conduce/);
-  assert.match(APPROVED_PATIENT_SAFETY_COPY.disclaimer, /nu reprezinta diagnostic sau triaj medical/);
+  assert.match(APPROVED_PATIENT_SAFETY_COPY.disclaimer, /nu reprezintă diagnostic sau triaj medical/);
 });
 
 scenario("OCT exact detection", () => {

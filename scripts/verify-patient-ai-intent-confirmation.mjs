@@ -88,7 +88,7 @@ assert.match(semanticSource, /patient_need_interpretation_confirmation/);
 assert.match(semanticSource, /rememberCompletedConfirmation/);
 assert.match(semanticSource, /hasRecentCompletedConfirmation/);
 assert.match(semanticSource, /skipped_duplicate_confirmation/);
-assert.match(confirmationSource, /AI-ul nu alege furnizorii si nu stabileste ordinea rezultatelor/);
+assert.match(confirmationSource, /AI-ul nu alege furnizorii și nu stabilește ordinea rezultatelor/);
 assert.match(confirmationSource, /possible_safety_flags/);
 assert.doesNotMatch(confirmationSource, /clarification_question/);
 assert.doesNotMatch(cardSource, /proposal\?\.clarification_question/);
