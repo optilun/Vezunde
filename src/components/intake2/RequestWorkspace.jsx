@@ -9,7 +9,6 @@ import {
   MapPin,
   MessageCircle,
   Phone,
-  PhoneCall,
   RefreshCw,
   Search,
   ShieldAlert,
@@ -182,10 +181,11 @@ function RequestSummary({ request, requestDraft, detailedMessage, resultCount })
 
 // 2026-09-01 (audit cautare/recomandare LLM, sectiunea 3.3): textul de aici era generic
 // ("poate afisa instructiuni separate") si nu spunea nimic concret - nici ce s-a detectat,
-// nici ce sa faca pacientul. Acum arata efectiv semnalele si indruma spre UPU/112, la fel
-// ca celelalte doua locuri din aplicatie care trateaza acelasi caz (UrgencyInterruption,
-// PatientIntentConfirmation). Ramane doar informatia efectiv utila daca pacientul revine
-// pe pagina asta dupa ce a trimis cererea.
+// nici ce sa faca pacientul. Acum arata efectiv semnalele identificate.
+// docs/patient-emergency-guidance-policy.md sectiunile 4 si 5: semnalul de aici e advisory
+// (possible_safety_flags, derivat din interpretarea AI), deci NU poate afisa instructiuni
+// de destinatie de urgenta, prim ajutor sau numarul 112. Acelea apar doar in
+// UrgencyInterruption, pe stare blocking confirmata determinist.
 function UrgencyInterruptionSlot({ requestDraft }) {
   const flags = requestDraft?.interpretation?.possible_safety_flags || [];
   if (!Array.isArray(flags) || flags.length === 0) return null;
@@ -207,15 +207,9 @@ function UrgencyInterruptionSlot({ requestDraft }) {
             </ul>
           )}
           <p className="mt-2 text-xs leading-relaxed">
-            Pentru simptome severe, aparute brusc sau care se agraveaza, nu astepta un raspuns in platforma: mergi la UPU, camera de garda sau un serviciu de urgente oftalmologice.
+            Daca simptomele sunt severe, au aparut brusc sau se agraveaza, cere o evaluare medicala fara sa astepti un raspuns in platforma.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <a
-              href="tel:112"
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-amber-300 bg-white px-3.5 text-xs font-bold text-amber-950 hover:bg-amber-100/60"
-            >
-              <PhoneCall className="h-3.5 w-3.5" /> Suna la 112
-            </a>
             <a
               href="/cauta?q=oftalmolog"
               className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-amber-300 bg-white px-3.5 text-xs font-bold text-amber-950 hover:bg-amber-100/60"

@@ -3,7 +3,10 @@ import { withPatientOperationTimeout } from "./patientOperationControl.js";
 import { createPatientRequestIdempotencyKey as createDurablePatientRequestIdempotencyKey } from "./patientRequestIdempotency.js";
 
 export const PATIENT_REQUEST_PROCESSING_CONSENT_VERSION = "patient-request-processing-v1";
-export const PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION = "patient-request-distribution-top3-pro-v2";
+// Trebuie sa ramana identica cu PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION din
+// shared/providerLeadEligibility.js. v3 = textul acordului enumera si mesajul cu care
+// pacientul a pornit cautarea.
+export const PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION = "patient-request-distribution-top3-pro-v3";
 export const PATIENT_REQUEST_RECOVERY_CONSENT_VERSION = "patient-request-recovery-review-v1";
 const DRAFT_STORAGE_KEY = "viasee.patient_request_draft.v1";
 const ACCESS_STORAGE_PREFIX = "viasee.patient_request_access.";

@@ -1,6 +1,18 @@
 export const PROVIDER_LEAD_CONTRACT_VERSION = 'provider-lead-v1';
 export const PROVIDER_LEAD_ELIGIBILITY_POLICY_VERSION = 'provider-lead-eligibility-v1';
-export const PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION = 'patient-request-distribution-top3-pro-v2';
+// 2026-09-01: v3 adauga la textul acordului mesajul cu care pacientul a pornit cautarea
+// (`original_message`). Versiunea a fost bumpata tocmai ca sa NU extindem retroactiv scopul
+// unui acord deja dat: cererile pe v2 raman valide si eligibile, dar primesc exact ce
+// enumera textul lor - fara mesajul de deschidere. Vezi
+// PATIENT_REQUEST_OPENING_MESSAGE_CONSENT_VERSIONS in providerLeadFullDetailsPolicy.js.
+export const PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION = 'patient-request-distribution-top3-pro-v3';
+
+// Acordurile inca acceptate pentru distribuire. Un acord vechi nu devine invalid doar
+// pentru ca textul curent enumera mai multe campuri.
+export const SUPPORTED_PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSIONS = Object.freeze([
+  'patient-request-distribution-top3-pro-v2',
+  'patient-request-distribution-top3-pro-v3',
+]);
 
 const SPECIALIZED_CONFIRMATION_LEVELS = new Set(['vezunde_verified']);
 const GENERAL_CONFIRMATION_LEVELS = new Set(['provider_confirmed', 'vezunde_verified']);

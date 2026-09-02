@@ -63,6 +63,79 @@ assert.equal(full.detailed_message, request.detailed_message);
 assert.equal(full.phone_available_for_request, true);
 assert.equal(Object.hasOwn(full, 'contact_phone'), false);
 
+// --- Contract full-details v2: mesajul de deschidere (2026-09-01) ---------------------
+// Acordul v2 de mai sus ramane valid pentru distribuire, dar textul lui nu enumera mesajul
+// cu care pacientul a pornit cautarea, deci acel camp NU se livreaza retroactiv.
+const openingRequest = {
+  persistence_state: 'complete',
+  original_message: 'nu vad bine la distanta de vreo doua luni',
+  detailed_message: 'Am nevoie de reparatie la balama.',
+};
+assert.equal(buildProviderLeadFullDetails({ request: openingRequest, contact }).original_message, '');
+
+// Acordul v3 il autorizeaza.
+const contactV3 = {
+  ...contact,
+  provider_request_distribution_consent_version: 'patient-request-distribution-top3-pro-v3',
+};
+assert.equal(
+  providerLeadFullDetailsEligibility({ lead: rawLead, request: openingRequest, contact: contactV3, entitlement }).eligible,
+  true,
+);
+assert.equal(
+  buildProviderLeadFullDetails({ request: openingRequest, contact: contactV3 }).original_message,
+  openingRequest.original_message,
+);
+
+// Caseta din hero e un camp de cautare, fara avertizare ca textul ajunge la furnizor.
+// Datele de contact scrise acolo se redacteaza la fel ca in chatul controlat, altfel
+// promisiunea "telefonul ramane ascuns pana il aprobi tu" ar fi ocolita pe canalul asta.
+const leakyDetails = buildProviderLeadFullDetails({
+  request: { ...openingRequest, original_message: 'sunt Ion, 0745 123 456, ana@example.com' },
+  contact: contactV3,
+});
+assert.doesNotMatch(leakyDetails.original_message, /0745/);
+assert.doesNotMatch(leakyDetails.original_message, /ana@example\.com/);
+
+// Nu il repetam daca pacientul a scris acelasi lucru in ambele campuri.
+assert.equal(
+  buildProviderLeadFullDetails({
+    request: { persistence_state: 'complete', original_message: 'acelasi text', detailed_message: 'acelasi text' },
+    contact: contactV3,
+  }).original_message,
+  '',
+);
+
+// Mesajul final poate lipsi acum: e suficient ca cererea sa aiba un text liber. Inainte,
+// un detailed_message gol facea lead-ul inelegibil, deci furnizorul pierdea si numele si
+// emailul - doar pentru ca pacientul nu si-a descris nevoia a treia oara.
+const onlyOpeningRequest = { persistence_state: 'complete', original_message: 'nu vad bine la distanta' };
+assert.equal(
+  providerLeadFullDetailsEligibility({ lead: rawLead, request: onlyOpeningRequest, contact: contactV3, entitlement }).eligible,
+  true,
+);
+const onlyOpeningDetails = buildProviderLeadFullDetails({ request: onlyOpeningRequest, contact: contactV3 });
+assert.equal(onlyOpeningDetails.detailed_message, '');
+assert.equal(onlyOpeningDetails.original_message, onlyOpeningRequest.original_message);
+
+// Fara niciun text liber, lead-ul ramane inelegibil.
+const emptyRequestEligibility = providerLeadFullDetailsEligibility({
+  lead: rawLead,
+  request: { persistence_state: 'complete' },
+  contact: contactV3,
+  entitlement,
+});
+assert.equal(emptyRequestEligibility.eligible, false);
+assert.ok(emptyRequestEligibility.reasons.includes('detailed_message_missing'));
+
+// Un acord cu versiune necunoscuta ramane respins.
+assert.ok(providerLeadFullDetailsEligibility({
+  lead: rawLead,
+  request: openingRequest,
+  contact: { ...contact, provider_request_distribution_consent_version: 'patient-request-distribution-top3-pro-v1' },
+  entitlement,
+}).reasons.includes('distribution_consent_version_not_supported'));
+
 const freeEligibility = providerLeadFullDetailsEligibility({ lead: rawLead, request, contact, entitlement: { plan_code: 'free', feature_keys: [] } });
 assert.equal(freeEligibility.eligible, false);
 assert.ok(freeEligibility.reasons.includes('pro_full_details_required'));

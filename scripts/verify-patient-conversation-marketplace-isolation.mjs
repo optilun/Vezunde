@@ -12,12 +12,26 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
   ]),
   'shared/providerRecommendation.js': Object.freeze([
     'cb05c9b755d78b2432c80f336e99cd82bfab5ba0',
+    // 2026-09-01: recommendationBucketForProfile primeste needLevel. Pentru nevoi
+    // 'specialized_medical' doar profilurile 'verified' mai intra in bucket-ul
+    // 'confirmed'; pentru restul nevoilor comportamentul ramane identic (verified sau
+    // claimed -> confirmed). Motivul: eligibilitatea specialized_medical din cautare
+    // era mai permisiva decat cea din distribuirea lead-urilor, deci pacientul vedea
+    // ca "confirmate" locatii care nu puteau primi cererea. Scorul si ordonarea in
+    // interiorul unui bucket NU s-au atins. Aprobat explicit de owner.
+    'e493500dad42b5f14ec560838f8bb0fdfdc5abdb',
   ]),
   'base44/functions/matchProviders/entry.ts': Object.freeze([
     '5dcbdff68ab17dc489b48baee8283db1d234da51',
     // 2026-08-05: fallback structural (profiluri din director fara servicii declarate
     // apar ca ultim nivel, etichetate). Aprobat explicit de owner.
     '384ce3e3190b4ae223d906574d8d7b976799c5dd',
+    // 2026-09-01: in fallback-ul structural, structural_capability nu mai este filtru
+    // binar ci criteriu de ordonare (capabilityRank). Inainte, o cautare non-medicala
+    // excludea complet cabinetele si clinicile de oftalmologie, chiar cand nu exista
+    // alta locatie in zona. Acum apar, dar dupa opticile din aceeasi zona. Restul
+    // scoringului si selectia Top 3 raman neschimbate. Aprobat explicit de owner.
+    '81590aa399a56a964d60e20644feee4f53208f68',
   ]),
   'base44/functions/matchProvidersSemantic/sharedDependencies.js': Object.freeze([
     '134166b15ecce5cd52b32f3d3dca05b27ae14e81',
@@ -30,6 +44,9 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
     // celor doua chei vechi combinate. Doar catalog si sinonime de cautare;
     // shared/providerRecommendation.js ramane neschimbat (vezi blob-ul de mai sus).
     '310e66c8633d966022449c03ab6b308b4853dc88',
+    // 2026-09-01: copia impachetata a lui shared/providerRecommendation.js, aliniata cu
+    // blob-ul aprobat de mai sus (recommendationBucketForProfile cu needLevel).
+    '673e4261b168b7c27db29b5dc4eee1f7d801b78e',
   ]),
 });
 
@@ -47,6 +64,12 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
     // Verificat linie cu linie: NU s-au atins scoringul, ordonarea sau selectia Top 3.
     // shared/providerRecommendation.js ramane neschimbat (vezi blob-ul de mai sus).
     'bd2665d67ff7d0833f0285ca64c81dae7368c6f9',
+    // 2026-09-01: aceeasi schimbare ca in matchProviders/entry.ts - in fallback-ul
+    // structural, structural_capability devine criteriu de ordonare (capabilityRank)
+    // in loc de filtru binar, ca sa nu mai dispara complet cabinetele si clinicile de
+    // oftalmologie dintr-o cautare non-medicala. Verificat linie cu linie: scoringul,
+    // ordonarea principala si selectia Top 3 raman neschimbate.
+    '3f378c61c812033b7afdedb1efa6bd81c833664f',
   ]),
 });
 

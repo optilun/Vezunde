@@ -28,6 +28,14 @@ const base44Boundary = fs.readFileSync('base44/shared/patientConversationCanonic
 const sharedCatalog = fs.readFileSync('shared/patientGuidanceQuestionCatalog.js', 'utf8');
 const base44Catalog = fs.readFileSync('base44/shared/patientGuidanceQuestionCatalog.js', 'utf8');
 const interruptionSource = fs.readFileSync('src/components/intake2/UrgencyInterruption.jsx', 'utf8');
+// docs/patient-emergency-guidance-policy.md sectiunile 4 si 5: suprafetele care afiseaza
+// semnale advisory (possible_safety_flags, derivate din interpretarea AI) nu au voie sa
+// arate instructiuni de destinatie de urgenta, prim ajutor sau numarul 112. Doar
+// UrgencyInterruption, care ruleaza pe stare blocking confirmata determinist, poate.
+const advisorySurfaces = [
+  'src/components/intake2/PatientIntentConfirmation.jsx',
+  'src/components/intake2/RequestWorkspace.jsx',
+];
 
 assert.equal(sharedSource, base44Source);
 assert.equal(sharedDecisionCore, base44DecisionCore);
@@ -185,6 +193,18 @@ assert(unsafeAdvisory112.failed_check_ids.includes('must_not:mention_112'));
 assert(!sharedCatalog.includes('PATIENT_EMERGENCY_GUIDANCE_COPY'));
 assert(!base44Catalog.includes('PATIENT_EMERGENCY_GUIDANCE_COPY'));
 assert(!interruptionSource.includes('PATIENT_EMERGENCY_GUIDANCE_COPY'));
+for (const surfacePath of advisorySurfaces) {
+  const surfaceSource = fs.readFileSync(surfacePath, 'utf8');
+  assert(
+    !surfaceSource.includes('tel:112'),
+    `${surfacePath} afiseaza semnale advisory si nu poate contine un buton tel:112`,
+  );
+  assert(
+    !/mergi la UPU|UPU, camera de garda/i.test(surfaceSource),
+    `${surfacePath} afiseaza semnale advisory si nu poate contine instructiuni de destinatie de urgenta`,
+  );
+}
+
 assert(interruptionSource.includes('href="tel:112"'));
 assert(interruptionSource.includes('PhoneCall'));
 

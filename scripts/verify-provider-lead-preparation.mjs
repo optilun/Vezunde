@@ -6,6 +6,7 @@ import {
 } from '../shared/patientRequestDistributionLock.js';
 import {
   PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION,
+  SUPPORTED_PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSIONS,
   PROVIDER_LEAD_CONTRACT_VERSION,
   PROVIDER_LEAD_ELIGIBILITY_POLICY_VERSION,
   buildProviderLeadPreview,
@@ -33,7 +34,14 @@ assert.equal(verifiedSpecialized.eligible, true);
 assert.equal(buildProviderLeadPreview(request), 'Reparatii sau reglaje · Timisoara · Cat mai repede');
 assert.equal(PROVIDER_LEAD_CONTRACT_VERSION, 'provider-lead-v1');
 assert.equal(PROVIDER_LEAD_ELIGIBILITY_POLICY_VERSION, 'provider-lead-eligibility-v1');
-assert.equal(PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION, 'patient-request-distribution-top3-pro-v2');
+// 2026-09-01: acordul a trecut pe v3 - textul enumera acum si mesajul cu care pacientul a
+// pornit cautarea, care ajunge la locatiile Pro din Top 3. v2 ramane acceptat pentru
+// cererile deja trimise, dar nu autorizeaza livrarea acelui camp.
+assert.equal(PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION, 'patient-request-distribution-top3-pro-v3');
+assert.deepEqual(SUPPORTED_PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSIONS, [
+  'patient-request-distribution-top3-pro-v2',
+  'patient-request-distribution-top3-pro-v3',
+]);
 
 const lockState = { token: '', at: '' };
 const lockSvc = { entities: { PatientRequest: { async updateMany(query, update) { if (update?.$set) { if (lockState.token) return { updated: 0 }; lockState.token = update.$set.distribution_lock_token; lockState.at = update.$set.distribution_lock_at; return { updated: 1 }; } if (update?.$unset && query?.distribution_lock_token === lockState.token) { lockState.token = ''; lockState.at = ''; return { updated: 1 }; } return { updated: 0 }; } } } };
@@ -58,7 +66,9 @@ assert.match(functionSource, /provider_contact_sharing_consent: false/);
 assert.match(functionSource, /contact_access_state: 'hidden'/);
 assert.match(functionSource, /conversation_access_state: 'locked'/);
 assert.doesNotMatch(functionSource, /contact_phone:/);
-assert.match(clientSource, /patient-request-distribution-top3-pro-v2/);
+// Clientul trebuie sa trimita versiunea curenta a acordului, altfel
+// authorizePatientRequestDistribution respinge cererea.
+assert.match(clientSource, /patient-request-distribution-top3-pro-v3/);
 assert.match(submissionSource, /locațiilor Pro din Top 3/);
 assert.match(submissionSource, /Numărul de telefon rămâne ascuns/);
 

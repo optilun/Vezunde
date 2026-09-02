@@ -158,9 +158,17 @@ export function sanitizePatientRequestSubmission(input = {}) {
     throw new PatientRequestValidationError('Codul SIRUTA nu este valid.', 'request_draft.locality_siruta_code');
   }
 
-  const detailedMessage = required(input.detailed_message || draft.detailed_message, 'detailed_message', 2000);
-  if (detailedMessage.length < 10) {
+  // 2026-09-01 (contract full-details v2): cererea are nevoie de cel putin un text liber, dar
+  // nu neaparat de cel de la final. Daca pacientul si-a descris nevoia in caseta din hero
+  // (`original_message`), acela e suficient si ajunge la furnizor. Inainte, un mesaj final gol
+  // arunca eroare de validare chiar daca cererea continea deja o descriere buna.
+  const openingMessage = clean(draft.original_message, 800);
+  const detailedMessage = clean(input.detailed_message || draft.detailed_message, 2000);
+  if (detailedMessage && detailedMessage.length < 10) {
     throw new PatientRequestValidationError('Descrierea detaliata trebuie sa aiba cel putin 10 caractere.', 'detailed_message');
+  }
+  if (!detailedMessage && openingMessage.length < 10) {
+    throw new PatientRequestValidationError('Cererea are nevoie de o descriere de cel putin 10 caractere.', 'detailed_message');
   }
 
   const contact = input.contact || {};
@@ -205,7 +213,7 @@ export function sanitizePatientRequestSubmission(input = {}) {
       questionnaire_version: draft.questionnaire_version,
       questionnaire_key: questionnaireKey,
       intent,
-      original_message: clean(draft.original_message, 800),
+      original_message: openingMessage,
       detailed_message: detailedMessage,
       service_keys: canonicalServiceKeys(draft.service_keys),
       location_scope: ['locality', 'geo', 'city', 'national'].includes(draft.location_scope) ? draft.location_scope : 'locality',
@@ -213,7 +221,11 @@ export function sanitizePatientRequestSubmission(input = {}) {
       county: clean(draft.county, 120),
       locality_siruta_code: sirutaCode,
       client_address_text: clean(draft.client_address_text, 240),
-      for_whom: ['adult', 'copil'].includes(draft.for_whom) ? draft.for_whom : null,
+      // 2026-09-01: 'other_adult' (cine cauta pentru un parinte sau partener) era o optiune
+      // reala in chestionar, dar lista alba o transforma tacut in null - deci raspunsul
+      // pacientului se pierdea. Nicio alta parte a sistemului nu ramifica pe valoare, doar
+      // pe prezenta, asa ca adaugarea e sigura.
+      for_whom: ['adult', 'copil', 'other_adult'].includes(draft.for_whom) ? draft.for_whom : null,
       age_group: clean(draft.age_group, 40),
       urgency: 'normala',
       timing_key: clean(draft.timing_key, 60),

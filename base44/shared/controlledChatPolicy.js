@@ -7,6 +7,13 @@ import {
 export const CONTROLLED_CHAT_CONTRACT_VERSION = 'controlled-pro-chat-v1';
 export const CONTROLLED_CHAT_MESSAGE_CONTRACT_VERSION = 'controlled-chat-message-v1';
 export const CONTROLLED_CHAT_REQUIRED_DISTRIBUTION_CONSENT_VERSION = 'patient-request-distribution-top3-pro-v2';
+// 2026-09-01: acordul de distribuire a trecut pe v3 (adauga mesajul de deschidere la lista
+// de campuri livrate). Chatul controlat nu si-a schimbat scopul, deci accepta ambele
+// versiuni; altfel cererile noi ar fi pierdut chatul fara niciun motiv real.
+export const CONTROLLED_CHAT_SUPPORTED_DISTRIBUTION_CONSENT_VERSIONS = Object.freeze([
+  'patient-request-distribution-top3-pro-v2',
+  'patient-request-distribution-top3-pro-v3',
+]);
 export const CONTROLLED_CHAT_MAX_MESSAGE_LENGTH = 1200;
 export const CONTROLLED_CHAT_MAX_MESSAGES_PER_HOUR = 30;
 
@@ -63,7 +70,9 @@ export function controlledChatEligibility({ request, lead, response, entitlement
   if (contact?.provider_request_distribution_consent !== true) reasons.push('distribution_consent_missing');
   if (
     contact?.provider_request_distribution_consent === true
-    && contact?.provider_request_distribution_consent_version !== CONTROLLED_CHAT_REQUIRED_DISTRIBUTION_CONSENT_VERSION
+    && !CONTROLLED_CHAT_SUPPORTED_DISTRIBUTION_CONSENT_VERSIONS.includes(
+      contact?.provider_request_distribution_consent_version,
+    )
   ) {
     reasons.push('distribution_consent_version_outdated');
   }

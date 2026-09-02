@@ -57,6 +57,30 @@ assert.throws(() => sanitizePatientRequestSubmission({ ...validInput, contact: {
 assert.throws(() => sanitizePatientRequestSubmission({ ...validInput, consent: { processing: false, version: PATIENT_REQUEST_PROCESSING_CONSENT_VERSION } }), PatientRequestValidationError);
 assert.throws(() => sanitizePatientRequestSubmission({ ...validInput, request_draft: { ...validInput.request_draft, service_keys: ['invented_service'] } }), PatientRequestValidationError);
 
+// 2026-09-01 (contract full-details v2): mesajul final nu mai e obligatoriu daca pacientul
+// si-a descris nevoia in caseta din hero. Cererea are insa nevoie de cel putin un text
+// liber, iar un mesaj final scris prea scurt ramane respins.
+const draftWithOpening = { ...validInput.request_draft, original_message: 'nu vad bine la distanta de doua luni' };
+const withoutFinalMessage = sanitizePatientRequestSubmission({
+  ...validInput,
+  detailed_message: '',
+  request_draft: { ...draftWithOpening, detailed_message: '' },
+});
+assert.equal(withoutFinalMessage.request.detailed_message, '');
+assert.equal(withoutFinalMessage.request.original_message, draftWithOpening.original_message);
+
+assert.throws(() => sanitizePatientRequestSubmission({
+  ...validInput,
+  detailed_message: '',
+  request_draft: { ...validInput.request_draft, original_message: '', detailed_message: '' },
+}), PatientRequestValidationError);
+
+assert.throws(() => sanitizePatientRequestSubmission({
+  ...validInput,
+  detailed_message: 'prea scurt'.slice(0, 5),
+  request_draft: { ...draftWithOpening, detailed_message: '' },
+}), PatientRequestValidationError);
+
 const patientRequestSchema = JSON.parse(await readFile(new URL('../base44/entities/PatientRequest.jsonc', import.meta.url), 'utf8'));
 const contactSchema = JSON.parse(await readFile(new URL('../base44/entities/PatientRequestContact.jsonc', import.meta.url), 'utf8'));
 for (const forbiddenField of ['contact_name', 'contact_email', 'contact_phone', 'consent']) {
@@ -80,7 +104,10 @@ assert.match(functionSource, /phoneIdentity/);
 assert.match(functionSource, /provider_contact_sharing_consent: false/);
 assert.match(functionSource, /PatientRequestContact\.create/);
 assert.match(functionSource, /persistence_state: 'complete'/);
-assert.match(submissionSource, /Descrie mai detaliat ce ai nevoie/);
+// 2026-09-01: eticheta reala a casetei finale. Vechea aserție trecea doar pentru ca fraza
+// "Descrie mai detaliat ce ai nevoie" ramasese intr-un comentariu care explica de ce a fost
+// schimbata - deci nu mai verifica nimic din ce vede pacientul.
+assert.match(submissionSource, /Mai e ceva ce ar trebui să știe\?/);
 assert.match(submissionSource, /emailul sau numărul de telefon/);
 assert.match(submissionSource, /Telefonul nu a fost transmis/);
 assert.match(resultsSource, /PatientRequestSubmission/);

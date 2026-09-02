@@ -63,7 +63,10 @@ assert.match(questionText, /if \(assessment\.blocking\)/);
 assert.match(questionChoice, /safety_targeted_check/);
 assert.match(questionChoice, /UrgencyInterruption/);
 assert.match(interruption, /Opreste cautarea si solicita ajutor medical imediat/);
-assert.match(interruption, /Mergi la UPU, camera de garda/);
+// 2026-09-01: textul afisat s-a realiniat cu APPROVED_PATIENT_SAFETY_COPY.primary_instruction
+// din shared/patientGuidanceQuestionCatalog.js ("Mergi imediat la UPU..."). Ecranul softase
+// formularea aprobata la "cat mai curand"; verificarea urmareste acum textul aprobat.
+assert.match(interruption, /Mergi imediat la UPU, camera de garda/);
 assert.match(interruption, /href="tel:112"/);
 assert.match(interruption, /cel putin 20 de minute/);
 assert.match(interruption, /Nu conduce/);

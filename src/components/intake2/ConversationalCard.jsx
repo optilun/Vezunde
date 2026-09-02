@@ -306,8 +306,10 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       }
       if (question.key === "for_whom" && option.key === "child" && next.intent === "control_vedere") {
         next.intent = "control_copil";
-        next.serviceKeys = [...INTENTS.control_copil.service_keys];
-        next.explicitServiceKeys = [];
+        // Pastram cheile aduse de optiune (children_eye_exam): inainte, aceasta ramura le
+        // stergea, pentru ca suprascria lista in loc sa o completeze.
+        next.serviceKeys = resolveOptionServiceKeys(INTENTS.control_copil.service_keys, option);
+        next.explicitServiceKeys = resolveOptionServiceKeys([], option);
       }
       if (question.key === "optical_product_type" && option.key === "contact_lenses") {
         next.intent = "lentile_contact";

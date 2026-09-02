@@ -21,7 +21,8 @@
       "type": "string",
       "enum": [
         "adult",
-        "copil"
+        "copil",
+        "other_adult"
       ]
     },
     "urgency": {

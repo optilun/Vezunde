@@ -92,7 +92,7 @@ export default function LeadDetailPanel({ lead, response, locationId, canRespond
               {[lead.city, lead.county].filter(Boolean).join(" · ") || "Localitate indisponibilă"}
             </span>
             <span className="rounded-full border border-[#e3ddd0] bg-white/70 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-              {lead.for_whom === "copil" ? "Pentru copil" : "Pentru adult"}
+              {{ copil: "Pentru copil", other_adult: "Pentru altcineva" }[lead.for_whom] || "Pentru adult"}
             </span>
             {!terminal && lead.status === "new" && !response && (
               <button type="button" onClick={() => onMarkViewed(lead.id)} disabled={marking} className="inline-flex min-h-9 items-center gap-2 rounded-full border border-foreground/25 px-3.5 font-heading text-[12px] font-bold text-foreground transition-colors hover:bg-foreground hover:text-background disabled:opacity-60">

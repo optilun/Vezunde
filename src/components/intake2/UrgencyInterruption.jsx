@@ -48,7 +48,7 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
       )}
 
       <div className="mt-5 space-y-3 text-sm leading-relaxed text-red-950">
-        <p><strong>Mergi la UPU, camera de garda sau un serviciu de urgente oftalmologice cat mai curand.</strong></p>
+        <p><strong>Mergi imediat la UPU, camera de garda sau un serviciu de urgente oftalmologice.</strong></p>
         <p>Nu conduce singur daca vederea iti este afectata — roaga pe cineva sa te duca.</p>
         <p>VIASEE nu poate confirma care locatii au garda activa acum — suna inainte, sau mergi direct la cea mai apropiata unitate de urgenta.</p>
       </div>

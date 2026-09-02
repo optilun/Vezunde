@@ -65,6 +65,10 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
   // din nou, in gol. De aceea oamenii rescriau tot: nu aveau nicio dovada ca raspunsurile
   // lor s-au pastrat. Citim draftul si il aratam, ca sa ceara doar ce chiar lipseste.
   const storedDraft = useMemo(() => readPatientRequestDraft(), [isOpen]);
+  // Textul cu care pacientul a pornit cautarea. Daca exista, e deja o descriere reala a
+  // nevoii si ajunge la furnizor (contract full-details v2), deci caseta de la final
+  // devine optionala.
+  const hasOpeningMessage = String(storedDraft?.original_message || "").trim().length >= 10;
   const submissionGuardRef = useRef(createPatientOperationGuard());
   const submissionInFlightRef = useRef(false);
   const activeIdempotencyRef = useRef(null);
@@ -95,21 +99,30 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
       setError("Completează cel puțin emailul sau numărul de telefon.");
       return;
     }
-    // 2026-09-01: mesajul RAMANE obligatoriu, desi pacientul si-a descris nevoia deja de
-    // doua ori. Motivul e in providerLeadFullDetailsPolicy.js: un detailed_message gol
-    // face lead-ul inelegibil pentru detalii complete ('detailed_message_missing'), deci
-    // furnizorul n-ar mai primi nici numele, nici emailul. In plus, e singurul text al
-    // cererii care ajunge la el - textul din hero (original_message) nu se transmite deloc.
-    // Cerinta poate fi relaxata abia dupa ce backendul accepta un mesaj gol si primeste si
-    // textul initial. Pana atunci, rezumatul de mai sus macar il scuteste de repetare.
-    if (detailedMessage.trim().length < 10) {
+    // 2026-09-01 (contract full-details v2): mesajul e obligatoriu doar daca pacientul nu a
+    // scris nimic in caseta din hero. providerLeadFullDetailsPolicy accepta acum oricare
+    // dintre cele doua texte libere, iar original_message chiar ajunge la furnizor, deci nu
+    // mai are rost sa cerem a treia descriere de la cineva care a scris-o deja o data.
+    // Daca totusi scrie ceva aici, cerem sa fie un mesaj real, nu doua caractere.
+    const trimmedMessage = detailedMessage.trim();
+    if (!hasOpeningMessage && trimmedMessage.length < 10) {
       setError("Adaugă un scurt mesaj pentru locații, în minimum 10 caractere.");
+      return;
+    }
+    if (trimmedMessage.length > 0 && trimmedMessage.length < 10) {
+      setError("Mesajul e prea scurt. Scrie o propoziție sau lasă câmpul gol.");
       return;
     }
     // Verificarea de siguranta se face inaintea consimtamantului si a oricarei scrieri:
     // daca textul descrie ceva acut, cererea nu trebuie sa plece deloc, iar pacientul
     // trebuie trimis spre urgenta, nu spre o lista de locatii.
-    const safety = buildPatientSafetyAssessment({ text: detailedMessage });
+    // 2026-09-01: se verifica textul efectiv trimis, nu doar campul din formular. Caseta
+    // finala poate fi goala acum, iar pe fluxul de reformulare pe judet (RequestFlow ->
+    // PatientCountyReformulation) ecranul conversational nici nu ruleaza, deci mesajul de
+    // deschidere ar fi ajuns nefiltrat la distribuire.
+    const safety = buildPatientSafetyAssessment({
+      text: [detailedMessage, storedDraft?.original_message].filter(Boolean).join(". "),
+    });
     if (safety.blocking) {
       setMessageAssessment(safety);
       setError("");
@@ -227,7 +240,7 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
                 <div className="mt-5 border-t border-primary/15 pt-5">
                   <h4 className="text-sm font-bold text-foreground">Trimite cererea către locațiile relevante</h4>
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    Toate locațiile eligibile văd un rezumat anonim. Doar locațiile Pro din Top 3 pot vedea numele, mesajul detaliat și emailul verificat. Telefonul rămâne ascuns și poate fi oferit ulterior numai cu acord separat pentru locația care îl solicită.
+                    Toate locațiile eligibile văd un rezumat anonim. Doar locațiile Pro din Top 3 pot vedea numele, mesajele tale și emailul verificat. Telefonul rămâne ascuns și poate fi oferit ulterior numai cu acord separat pentru locația care îl solicită.
                   </p>
                   {hasEmail && !emailVerified && (
                     <p className="mt-3 rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900">
@@ -242,7 +255,7 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
                       className="mt-0.5 h-4 w-4 rounded border-border"
                     />
                     <span className="text-xs leading-relaxed text-muted-foreground">
-                      Sunt de acord ca VIASEE să distribuie rezumatul cererii locațiilor eligibile și să permită locațiilor Pro din Top 3 accesul la numele meu, mesajul detaliat și emailul verificat. Numărul de telefon rămâne ascuns.
+                      Sunt de acord ca VIASEE să distribuie rezumatul cererii locațiilor eligibile și să permită locațiilor Pro din Top 3 accesul la numele meu, la textul cu care am pornit căutarea, la mesajul adăugat la final și la emailul verificat. Numărul de telefon rămâne ascuns.
                     </span>
                   </label>
                   {distributionError && (
@@ -370,22 +383,26 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
           {storedDraft.original_message && (
             <p className="mt-3 border-t border-border/70 pt-3 text-xs leading-relaxed text-muted-foreground">
               Și ce ai scris la început: <span className="text-foreground">„{storedDraft.original_message}”</span>
+              <span className="mt-1 block">Acest text îl văd doar locațiile Pro din Top 3, ca și mesajul de mai jos.</span>
             </p>
           )}
         </div>
       )}
 
-      {/* Intrebarea cere acum un supliment, nu o repetare. Inainte era "Descrie mai
-          detaliat ce ai nevoie" - adica exact ce sistemul stia deja din hero si din
-          chestionar, cerut a treia oara si obligatoriu. */}
+      {/* Intrebarea cere un supliment, nu o repetare. Inainte era "Descrie mai detaliat ce
+          ai nevoie" - adica exact ce sistemul stia deja din hero si din chestionar, cerut a
+          treia oara si obligatoriu. Din contractul full-details v2, campul e obligatoriu
+          doar cand pacientul n-a scris nimic in caseta din hero. */}
       <label className="mt-5 block text-xs font-semibold text-foreground">
-        Mai e ceva ce ar trebui să știe?
+        Mai e ceva ce ar trebui să știe?{" "}
+        {hasOpeningMessage && <span className="font-normal text-muted-foreground">(opțional)</span>}
         <span className="mt-1 block text-[11px] font-normal leading-relaxed text-muted-foreground">
-          Scrie ce nu reiese din cele de mai sus. Dacă nu-ți vine nimic în minte, o
-          propoziție despre ce aștepți de la vizită e suficientă.
+          {hasOpeningMessage
+            ? "Doar dacă e ceva ce nu reiese din cele de mai sus. Poți lăsa câmpul gol."
+            : "Descrie pe scurt ce ai nevoie, ca locațiile să știe cu ce te pot ajuta."}
         </span>
         <textarea
-          required
+          required={!hasOpeningMessage}
           value={detailedMessage}
           onChange={(event) => setDetailedMessage(event.target.value)}
           maxLength={2000}

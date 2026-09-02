@@ -23,7 +23,7 @@
     "client_address_text": { "type": "string" },
     "for_whom": {
       "type": "string",
-      "enum": ["adult", "copil"]
+      "enum": ["adult", "copil", "other_adult"]
     },
     "age_group": { "type": "string" },
     "urgency": {

@@ -1,7 +1,7 @@
 // Detaliile private ale clientului, exact aceleasi reguli de afisare ca inainte: se arata
 // numai daca backendul a marcat full_details_status.available (Top 3 + Pro + acord activ).
 import React from "react";
-import { Mail, MessageSquareText, UserRound } from "lucide-react";
+import { Mail, MessageSquareText, Quote, UserRound } from "lucide-react";
 
 export default function LeadFullDetails({ lead }) {
   if (lead.is_historical) {
@@ -39,10 +39,18 @@ export default function LeadFullDetails({ lead }) {
           <Mail className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <div><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Email verificat</p><p className="break-all font-semibold text-foreground">{details.client_email || "Email neconfirmat sau necompletat"}</p></div>
         </div>
-        <div className="flex items-start gap-2">
-          <MessageSquareText className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-          <div><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Mesajul clientului</p><p className="whitespace-pre-wrap leading-relaxed text-foreground">{details.detailed_message}</p></div>
-        </div>
+        {details.original_message && (
+          <div className="flex items-start gap-2">
+            <Quote className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <div><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Cu ce a pornit clientul căutarea</p><p className="whitespace-pre-wrap leading-relaxed text-foreground">{details.original_message}</p></div>
+          </div>
+        )}
+        {details.detailed_message && (
+          <div className="flex items-start gap-2">
+            <MessageSquareText className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <div><p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{details.original_message ? "Ce a adăugat la final" : "Mesajul clientului"}</p><p className="whitespace-pre-wrap leading-relaxed text-foreground">{details.detailed_message}</p></div>
+          </div>
+        )}
       </div>
       <p className="relative z-10 mt-4 text-[12px] leading-relaxed text-black/60">
         {details.phone_available_for_request

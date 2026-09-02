@@ -45,6 +45,26 @@ assert.ok(controlledChatEligibility({ request, lead, response, entitlement: { pl
 assert.ok(controlledChatEligibility({ request, lead, response: { status: 'active', response_type: 'cannot_help' }, entitlement, contact }).reasons.includes('provider_response_not_eligible'));
 assert.ok(controlledChatEligibility({ request, lead, response, entitlement, contact: { ...contact, provider_request_distribution_consent: false } }).reasons.includes('distribution_consent_missing'));
 assert.ok(controlledChatEligibility({ request, lead, response, entitlement, contact, conversation: { status: 'closed' } }).reasons.includes('conversation_closed'));
+// 2026-09-01: acordul de distribuire a trecut pe v3 (textul enumera acum si mesajul cu care
+// pacientul a pornit cautarea). Chatul controlat nu si-a schimbat scopul, deci accepta
+// ambele versiuni - altfel cererile noi ar fi pierdut chatul fara niciun motiv real.
+assert.equal(
+  controlledChatEligibility({
+    request,
+    lead,
+    response,
+    entitlement,
+    contact: { ...contact, provider_request_distribution_consent_version: 'patient-request-distribution-top3-pro-v3' },
+  }).eligible,
+  true,
+);
+assert.ok(controlledChatEligibility({
+  request,
+  lead,
+  response,
+  entitlement,
+  contact: { ...contact, provider_request_distribution_consent_version: 'patient-request-distribution-top3-pro-v1' },
+}).reasons.includes('distribution_consent_version_outdated'));
 
 const safeMessage = sanitizeControlledChatMessage({
   id: 'message-1',

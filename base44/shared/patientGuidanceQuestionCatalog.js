@@ -59,7 +59,17 @@ const CATALOG = {
     legacy_question_keys: ["pentru_cine"],
     options: [
       { key: "adult", label: "Pentru mine" },
-      { key: "child", label: "Pentru copilul meu" },
+      // 2026-09-01: pana acum, raspunsul "pentru copil" nu ajungea deloc in service_keys pe
+      // fluxul de simptome - se schimba intentia doar cand nevoia era un control de rutina.
+      // Un copil cu ochiul rosu ajungea deci la aceleasi locatii ca un adult, iar cheia
+      // children_eye_exam nu era accesibila din chestionar. Acum optiunea poarta ea insasi
+      // cheia, deci semnalul intra si prin resolveOptionServiceKeys pe client, si prin
+      // confirmedServiceKeysFromAnswers pe server, pe orice flux.
+      // Potrivirea pe servicii e aditiva (requestedSet.has, OR peste chei), iar cheia are
+      // acelasi service_need_level 'specialized_medical' si aceeasi prerechizita
+      // (ophthalmologist) ca un consult oftalmologic - deci nu restrange rezultatele,
+      // doar avantajeaza locatiile care chiar declara consult pentru copii.
+      { key: "child", label: "Pentru copilul meu", service_keys: ["children_eye_exam"] },
       // Optiune noua: cine cauta pentru un parinte in varsta - o parte importanta din
       // cererea de cataracta si glaucom - nu avea ce bifa si se incadra ca adult-pentru-sine.
       { key: "other_adult", label: "Pentru altcineva (părinte, partener)" },

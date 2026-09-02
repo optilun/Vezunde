@@ -80,7 +80,7 @@ export default function QuestionText({ question, onSubmit, onPhaseChange, onSafe
             Ti s-a intamplat recent una dintre situatiile de mai jos?
           </p>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            Intrebam doar despre situatii aparute brusc, in ultimele ore sau zile. Daca ai o problema de vedere de mai mult timp, alege "Niciuna dintre acestea" mai jos.
+            Intrebam doar despre situatii aparute brusc, in ultimele ore sau zile. Daca ai o problema de vedere de mai mult timp (de exemplu nu vezi bine la distanta sau la aproape), alege "Niciuna dintre acestea" si continuam cautarea normal.
           </p>
           <div className="mt-4 grid gap-2.5">
             {SAFETY_CHOICES.map((choice) => (

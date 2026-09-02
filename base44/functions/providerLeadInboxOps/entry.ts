@@ -121,7 +121,14 @@ async function enrichLeadForInbox(svc, lead, user, entitlement) {
   }
 
   const fullDetails = buildProviderLeadFullDetails({ request, contact });
-  const accessedFields = ['contact_name', 'detailed_message'];
+  // 2026-09-01 (contract full-details v2): auditul inregistreaza exact campurile livrate,
+  // nu setul teoretic. detailed_message poate fi gol acum (pacientul si-a descris nevoia in
+  // caseta din hero), iar original_message se livreaza doar cu acord v3 si doar cand nu
+  // duplica mesajul final. ProviderLeadContactAccessAudit e singurul registru pe care ne
+  // sprijinim la o cerere GDPR, deci nu are voie sa declare divulgari care nu s-au produs.
+  const accessedFields = ['contact_name'];
+  if (fullDetails.detailed_message) accessedFields.push('detailed_message');
+  if (fullDetails.original_message) accessedFields.push('original_message');
   if (fullDetails.client_email) accessedFields.push('contact_email');
   await auditFullDetailsRead(svc, lead, user, entitlement, accessedFields);
   return {
