@@ -69,9 +69,12 @@ const STRUCTURAL_CAPABILITY_BY_PROVIDER_TYPE = {
 const STRUCTURAL_FALLBACK_MIN_CONFIRMED = 8;
 const STRUCTURAL_FALLBACK_MAX_RESULTS = 12;
 
+// 2026-09-02: textele de mai jos ajung direct pe ecranul pacientului, deci poarta diacritice.
+// Ideal, copia vizibila pacientului nu ar trai in functia de matching - vezi nota din
+// claude/verificari-vizuale-2026-09-02.md.
 const STRUCTURAL_FALLBACK_NOTICES = {
-  optical: 'Profil din director \u2014 servicii neconfirmate inca. Sunteti reprezentantul acestei locatii? Revendicati profilul gratuit.',
-  medical: 'Profil din director, preluat din surse oficiale. Serviciile nu sunt confirmate de furnizor. Sunati inainte pentru a verifica disponibilitatea si tipul consultatiei.',
+  optical: 'Profil din director \u2014 servicii neconfirmate încă. Sunteți reprezentantul acestei locații? Revendicați profilul gratuit.',
+  medical: 'Profil din director, preluat din surse oficiale. Serviciile nu sunt confirmate de furnizor. Sunați înainte pentru a verifica disponibilitatea și tipul consultației.',
 };
 
 const STRUCTURAL_FALLBACK_GROUP_LABELS = {
@@ -125,7 +128,7 @@ function collectStructuralCandidate(location, sirutaCode, countyName, bucket, sc
     match_reasons: [
       disclosure.profile_control_status === 'directory'
         ? STRUCTURAL_FALLBACK_NOTICES[capability]
-        : 'Profil revendicat, dar serviciile nu sunt inca declarate. Sunati inainte pentru a confirma disponibilitatea.',
+        : 'Profil revendicat, dar serviciile nu sunt încă declarate. Sunați înainte pentru a confirma disponibilitatea.',
     ],
     structural_fallback: true,
     structural_capability: capability,
@@ -221,15 +224,15 @@ function expansionTier(location, selectedSirutaCode, scope) {
 }
 
 function resultRoutingReason(tier, countyName) {
-  if (tier === 'oras') return 'Potrivire din localitatea selectata.';
+  if (tier === 'oras') return 'Potrivire din localitatea selectată.';
   // Nu afirma "confirmata" neconditionat: acest rezultat poate proveni si din
   // fallback-ul structural (structural_directory, recommendation_confidence:
   // 'unconfirmed'), unde afirmatia ar fi falsa. Textul de mai jos nu presupune
   // nici ca ar fi singura optiune - la nivel national pot exista mai multe.
-  if (tier === 'tara') return 'Potrivire la nivel national.';
+  if (tier === 'tara') return 'Potrivire la nivel național.';
   return countyName
-    ? `Potrivire din alta localitate din judetul ${countyName}.`
-    : 'Potrivire din alta localitate din acelasi judet.';
+    ? `Potrivire din altă localitate din județul ${countyName}.`
+    : 'Potrivire din altă localitate din același județ.';
 }
 
 async function resolveSelectedLocality(svc, sirutaCode) {
@@ -889,10 +892,10 @@ Deno.serve(async (request) => {
       configuredMatchingProviderCount: coverageCounts.configured_matching_provider_count,
     });
     const routingReason = queryScope === 'county'
-      ? `Cautare extinsa explicit in judetul ${countyName || 'selectat'}.`
+      ? `Căutare extinsă explicit în județul ${countyName || 'selectat'}.`
       : (queryScope === 'national'
-        ? 'Cautare extinsa explicit la nivel national.'
-        : 'Potrivire dupa localitatea selectata.');
+        ? 'Căutare extinsă explicit la nivel național.'
+        : 'Potrivire după localitatea selectată.');
 
     return Response.json({
       recommendation_contract_version: PROVIDER_RECOMMENDATION_CONTRACT_VERSION,
