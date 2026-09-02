@@ -72,9 +72,14 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
           <h2 className="mt-3.5 font-heading text-[1.45rem] font-extrabold leading-[1.08] tracking-[-0.04em] text-[#1c1c1c] sm:text-[1.75rem]">
             {blocking ? COPY.blocking_title : COPY.advisory_title}
           </h2>
+
+          {/* Textul aprobat spune "Pentru situatiile de mai jos", deci trebuie sa stea
+              deasupra sectiunilor. Cand il coborasem in subsol, trimitea la nimic. Ramane
+              mic si sters: e o limitare a platformei, nu o instructiune. */}
+          <p className="mt-3 text-[12px] leading-relaxed text-black/45">{COPY.explanation}</p>
         </div>
 
-        <div className="mt-7 max-w-[42rem] divide-y divide-[#ece7dc] border-y border-[#ece7dc]">
+        <div className="mt-6 max-w-[42rem] divide-y divide-[#ece7dc] border-y border-[#ece7dc]">
           {labels.length > 0 && (
             <div className="py-4">
               <FieldLabel>Semnal identificat</FieldLabel>
@@ -124,7 +129,7 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <a
               href="tel:112"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#ddd6c7] px-5 font-heading text-[12.5px] font-bold tracking-[-0.01em] text-[#1c1c1c] transition-colors hover:bg-[#faf7f0]"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#ddd6c7] px-5 py-2.5 text-left font-heading text-[12.5px] font-bold tracking-[-0.01em] text-[#1c1c1c] transition-colors hover:bg-[#faf7f0]"
             >
               <PhoneCall className="h-3.5 w-3.5" style={{ color: ACCENT }} /> Sună la 112 (dacă nu te poți deplasa singur sau starea se agravează)
             </a>
@@ -132,7 +137,7 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
               <button
                 type="button"
                 onClick={onCorrect}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#ece7dc] px-5 font-heading text-[12.5px] font-bold tracking-[-0.01em] text-muted-foreground transition-colors hover:bg-[#faf7f0] hover:text-foreground"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#ece7dc] px-5 py-2.5 text-left font-heading text-[12.5px] font-bold tracking-[-0.01em] text-muted-foreground transition-colors hover:bg-[#faf7f0] hover:text-foreground"
               >
                 <ArrowLeft className="h-3.5 w-3.5" /> {correctLabel}
               </button>
@@ -140,10 +145,7 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
           </div>
         </div>
 
-        <div className="mt-6 max-w-[42rem] space-y-1.5">
-          <p className="text-[11.5px] leading-relaxed text-black/40">{COPY.explanation}</p>
-          <p className="text-[11.5px] leading-relaxed text-black/40">{COPY.disclaimer}</p>
-        </div>
+        <p className="mt-6 max-w-[42rem] text-[11.5px] leading-relaxed text-black/40">{COPY.disclaimer}</p>
       </div>
     </section>
   );
