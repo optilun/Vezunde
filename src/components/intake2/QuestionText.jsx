@@ -24,7 +24,7 @@ function assessmentForChoice(answerValue) {
 
 // Ecranul de siguranta precede intrebarea libera despre simptome. Cheia legacy este
 // "descriere", cea din catalogul aprobat este "symptom_description" - le acoperim pe
-// amandoua, altfel verificarea ar disparea tacit in ziua in care fluxul de simptome ar
+// amandoua, altfel verificarea ar disparea tacut in ziua in care fluxul de simptome ar
 // incepe sa foloseasca intrebarea din catalog.
 const SYMPTOM_TEXT_QUESTION_KEYS = new Set(["descriere", "symptom_description"]);
 
