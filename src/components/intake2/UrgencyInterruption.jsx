@@ -53,21 +53,23 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
       <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1.5" style={{ backgroundColor: "#b4573a" }} />
 
       <div className="relative z-10">
-        <div className="flex items-start gap-4">
+        {/* Sigiliul si supratitlul pe un rand, titlul pe toata latimea dedesubt. Cand
+            sigiliul statea langa titlu, pe telefon il impingea intr-o coloana ingusta si
+            titlul se rupea in patru randuri. */}
+        <div className="flex items-center gap-3">
           <span
             style={ALERT_TONE}
-            className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border text-[#7d3520]"
+            className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border text-[#7d3520]"
           >
             <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={GRAIN} />
-            <ShieldAlert className="relative z-10 h-5 w-5" />
+            <ShieldAlert className="relative z-10 h-[18px] w-[18px]" />
           </span>
-          <div className="min-w-0 pt-0.5">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-[#8a412b]">{COPY.eyebrow}</p>
-            <h2 className="mt-3 max-w-2xl font-heading text-[1.6rem] font-extrabold leading-[1.02] tracking-[-0.045em] text-[#1c1c1c] sm:text-[2rem]">
-              {blocking ? COPY.blocking_title : COPY.advisory_title}
-            </h2>
-          </div>
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-[#8a412b]">{COPY.eyebrow}</p>
         </div>
+
+        <h2 className="mt-4 max-w-2xl font-heading text-[1.55rem] font-extrabold leading-[1.04] tracking-[-0.045em] text-[#1c1c1c] sm:text-[2rem]">
+          {blocking ? COPY.blocking_title : COPY.advisory_title}
+        </h2>
 
         <p className="mt-5 max-w-2xl text-[13.5px] leading-relaxed text-black/60">
           {COPY.explanation}
@@ -132,7 +134,7 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
           </div>
         </div>
 
-        <p className="mt-6 font-mono text-[9.5px] uppercase leading-relaxed tracking-[0.14em] text-black/40">{COPY.disclaimer}</p>
+        <p className="mt-6 max-w-2xl text-[11.5px] leading-relaxed text-black/45">{COPY.disclaimer}</p>
       </div>
     </section>
   );
