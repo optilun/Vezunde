@@ -26,19 +26,19 @@ export default function PatientIntentConfirmation({
     <div className="py-2 sm:py-4">
       <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary">
         <Sparkles className="h-3.5 w-3.5" />
-        Interpretare asistata
+        Interpretare asistată
       </div>
 
       <h2 className="mt-5 font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl">
         {requiresManualChoice
           ? "Mai avem nevoie de o clarificare."
-          : `Am inteles ca ai nevoie de ${String(intentLabel || "acest serviciu").toLowerCase()}.`}
+          : `Am înțeles că ai nevoie de ${String(intentLabel || "acest serviciu").toLowerCase()}.`}
       </h2>
 
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
         {requiresManualChoice
-          ? "Alege categoria potrivita pentru a continua cu intrebarile aprobate."
-          : "Confirma interpretarea inainte sa continuam. AI-ul nu alege furnizorii si nu stabileste ordinea rezultatelor."}
+          ? "Alege categoria potrivită pentru a continua cu întrebările aprobate."
+          : "Confirmă interpretarea înainte să continuăm. AI-ul nu alege furnizorii și nu stabilește ordinea rezultatelor."}
       </p>
 
       {hasSafetySignal && (
@@ -46,7 +46,7 @@ export default function PatientIntentConfirmation({
           <div className="flex gap-3">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
             <p>
-              Formularea poate contine un semnal care merita evaluare rapida. VIASEE nu pune diagnostic si nu stabileste daca situatia este sau nu urgenta.
+              Formularea poate conține un semnal care merită evaluare rapidă. VIASEE nu pune diagnostic și nu stabilește dacă situația este sau nu urgentă.
             </p>
           </div>
           {safetyLabels.length > 0 && (
@@ -64,14 +64,14 @@ export default function PatientIntentConfirmation({
               clarificare (Da, continua / Aleg alta nevoie). Verificarea de siguranta
               deterministica urmeaza oricum in chestionar, inainte de distribuirea cererii. */}
           <p className="mt-3 pl-8 text-xs leading-relaxed">
-            Daca simptomele sunt severe, au aparut brusc sau se agraveaza, cere o evaluare medicala fara sa astepti un raspuns in platforma.
+            Dacă simptomele sunt severe, au apărut brusc sau se agravează, cere o evaluare medicală fără să aștepți un răspuns în platformă.
           </p>
           <div className="mt-3 flex flex-wrap gap-2 pl-8">
             <Link
               to="/cauta?q=oftalmolog"
               className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-amber-300 bg-white px-3.5 text-xs font-bold text-amber-950 hover:bg-amber-100/60"
             >
-              <Search className="h-3.5 w-3.5" /> Cabinete oftalmologice langa tine
+              <Search className="h-3.5 w-3.5" /> Cabinete oftalmologice lângă tine
             </Link>
           </div>
         </div>
@@ -85,7 +85,7 @@ export default function PatientIntentConfirmation({
             className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
           >
             <Check className="h-4 w-4" />
-            Da, continua
+            Da, continuă
           </button>
         )}
         <button
@@ -94,7 +94,7 @@ export default function PatientIntentConfirmation({
           className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-border bg-background px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-secondary"
         >
           <Pencil className="h-4 w-4" />
-          {requiresManualChoice ? "Aleg categoria" : "Aleg alta nevoie"}
+          {requiresManualChoice ? "Aleg categoria" : "Aleg altă nevoie"}
         </button>
       </div>
     </div>

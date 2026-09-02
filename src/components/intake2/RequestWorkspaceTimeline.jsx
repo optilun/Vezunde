@@ -25,17 +25,17 @@ export default function RequestWorkspaceTimeline({ request, lifecycle, responses
     {
       key: "prepared",
       icon: Store,
-      title: "Locatiile potrivite sunt disponibile",
+      title: "Locațiile potrivite sunt disponibile",
       description: resultCount > 0
-        ? `Am gasit ${resultCount} locatii care corespund criteriilor selectate.`
-        : "Rezultatele cererii sunt disponibile in sectiunea Locatii.",
+        ? `Am găsit ${resultCount} locații care corespund criteriilor selectate.`
+        : "Rezultatele cererii sunt disponibile în secțiunea Locații.",
       date: request?.submitted_at,
     },
     ...responses.map((response) => ({
       key: `response-${response.location_id}`,
       icon: MessageCircle,
-      title: `${response.location_name} a trimis un raspuns`,
-      description: response.response_label || "Raspuns disponibil",
+      title: `${response.location_name} a trimis un răspuns`,
+      description: response.response_label || "Răspuns disponibil",
       date: response.submitted_at,
     })),
   ];
@@ -45,7 +45,7 @@ export default function RequestWorkspaceTimeline({ request, lifecycle, responses
       key: "terminal",
       icon: CheckCircle2,
       title: `Cererea este ${String(lifecycle.state_label || lifecycle.state || "finalizata").toLowerCase()}`,
-      description: "Nu mai sunt permise raspunsuri sau mesaje noi. Istoricul ramane vizibil.",
+      description: "Nu mai sunt permise răspunsuri sau mesaje noi. Istoricul rămâne vizibil.",
       date: request?.resolved_at || request?.closed_at || request?.expires_at,
     });
   }

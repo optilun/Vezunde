@@ -3,24 +3,24 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 const FAQ_ITEMS = [
   {
-    q: "Cine poate revendica o locatie?",
-    a: "Orice persoana care reprezinta locatia — proprietar, reprezentant al organizatiei, manager de locatie sau personal autorizat — poate initia o revendicare.",
+    q: "Cine poate revendica o locație?",
+    a: "Orice persoană care reprezintă locația — proprietar, reprezentant al organizației, manager de locație sau personal autorizat — poate iniția o revendicare.",
   },
   {
-    q: "Cat dureaza analiza unei revendicari?",
-    a: "Revendicarile sunt analizate manual inainte de acordarea accesului. Durata poate varia in functie de informatiile furnizate.",
+    q: "Cât durează analiza unei revendicări?",
+    a: "Revendicările sunt analizate manual înainte de acordarea accesului. Durata poate varia în funcție de informațiile furnizate.",
   },
   {
-    q: "Pot administra mai multe locatii?",
-    a: "Da. O organizatie poate avea mai multe locatii, iar un profesionist poate fi asociat cu mai multe locatii in acelasi timp.",
+    q: "Pot administra mai multe locații?",
+    a: "Da. O organizație poate avea mai multe locații, iar un profesionist poate fi asociat cu mai multe locații în același timp.",
   },
   {
-    q: "Ce se intampla daca informatiile profilului sunt gresite?",
-    a: "Poti propune actualizari dupa ce revendicarea este aprobata. Anumite modificari pot necesita o noua analiza inainte de a deveni publice.",
+    q: "Ce se întâmplă dacă informațiile profilului sunt greșite?",
+    a: "Poți propune actualizări după ce revendicarea este aprobată. Anumite modificări pot necesita o nouă analiză înainte de a deveni publice.",
   },
   {
-    q: "De ce anumite modificari necesita analiza?",
-    a: "Analiza informatiilor publice ajuta la mentinerea acuratetei si increderii pacientilor care folosesc platforma.",
+    q: "De ce anumite modificări necesită analiză?",
+    a: "Analiza informațiilor publice ajută la menținerea acurateței și încrederii pacienților care folosesc platforma.",
   },
 ];
 

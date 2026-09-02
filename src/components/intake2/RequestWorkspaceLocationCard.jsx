@@ -11,9 +11,9 @@ const TRUST_LABELS = {
 };
 
 const RESPONSE_LABELS = {
-  can_help: "Locatia poate ajuta",
+  can_help: "Locația poate ajuta",
   needs_details: "Sunt necesare detalii",
-  cannot_help: "Locatia nu poate ajuta",
+  cannot_help: "Locația nu poate ajuta",
 };
 
 function cleanExplanation(value) {

@@ -11,7 +11,7 @@ import LocationThumb, { typeVisual } from "@/components/results/LocationThumb";
 
 const TIER_LABELS = {
   apropiere: "In zona ta",
-  oras: "In localitatea aleasa",
+  oras: "În localitatea aleasă",
   judet: "In judet",
   national: "In alt oras din Romania",
 };
@@ -114,7 +114,7 @@ export default function ResultCard({ location, variant = "neutral", onProfileCli
           onClick={onProfileClick}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-90 ${isDirectoryProfile ? "border border-border bg-card text-foreground" : "bg-primary text-primary-foreground"}`}
         >
-          {isDirectoryProfile ? "Vezi informatiile publice" : "Vezi profilul"}
+          {isDirectoryProfile ? "Vezi informațiile publice" : "Vezi profilul"}
         </Link>
         {location.phone && (
           <a

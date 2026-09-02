@@ -36,7 +36,7 @@ export default function PatientNoResponseReviewPanel({
       const seed = buildPatientRequestReformulationSeed({ mode, request, workspace });
       window.location.assign(createPatientRequestReformulationUrl(seed));
     } catch (startError) {
-      setError(startError?.message || "Cautarea noua nu a putut fi pregatita.");
+      setError(startError?.message || "Căutarea nouă nu a putut fi pregătită.");
     }
   };
 

@@ -35,7 +35,7 @@ const TICKET_STATUS = {
 
 const CATEGORY_LABELS = {
   account: "Cont si autentificare",
-  organization: "Organizatie sau locatie",
+  organization: "Organizație sau locație",
   professional: "Profil profesional",
   patient_request: "Solicitari pacienti",
   technical: "Problema tehnica",
@@ -241,7 +241,7 @@ export default function HelpSupport() {
               ["Unde schimb spatiul activ?", "Din selectorul de sus al sidebarului poti trece intre contul personal, profilul profesional si fiecare organizatie la care ai acces."],
               ["Unde sunt setarile contului?", "Setarile globale sunt in meniul utilizatorului din partea de jos. Setarile organizatiei si ale locatiei raman in workspace-ul lor."],
               ["Cum apare o organizatie in cont?", "Organizatia apare automat dupa ce ai un membership activ sau dupa aprobarea solicitarii de revendicare, adaugare ori acces."],
-              ["Profilul profesional este acelasi cu organizatia?", "Nu. Profilul profesional apartine specialistului si poate fi asociat cu una sau mai multe locatii, fara sa devina proprietatea organizatiei."],
+              ["Profilul profesional este același cu organizația?", "Nu. Profilul profesional aparține specialistului și poate fi asociat cu una sau mai multe locații, fără să devină proprietatea organizației."],
             ].map(([question, answer]) => (
               <article key={question} className="rounded-2xl border border-border bg-background p-4">
                 <h3 className="text-sm font-bold">{question}</h3>

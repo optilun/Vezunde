@@ -2,19 +2,17 @@ import React, { useEffect, useMemo, useState } from "react";
 import ContinueButton from "@/components/intake/ContinueButton";
 import UrgencyInterruption from "./UrgencyInterruption";
 import { buildPatientSafetyAssessment } from "@/lib/patientSafety";
+import { PATIENT_GUIDANCE_QUESTION_CATALOG } from "../../../shared/patientGuidanceQuestionCatalog.js";
 
-// Aceste etichete trebuie sa ramana identice cu SAFETY_OPTIONS din
-// shared/patientGuidanceQuestionCatalog.js (si copia din base44/shared/).
-// Formularea a fost clarificata in 2026-08-06: varianta veche "vederea a scazut mult"
-// era bifata si de pacienti cu miopie cronica, generand blocaje false de urgenta.
-const SAFETY_CHOICES = [
-  { key: "pierdere_brusca_vedere", label: "In ultimele ore sau zile, vederea a disparut brusc la un ochi (nu vedere slaba de mai mult timp)" },
-  { key: "substanta_chimica", label: "A ajuns o substanta chimica in ochi" },
-  { key: "traumatism_obiect", label: "Un obiect a patruns in ochi sau a existat o lovitura puternica" },
-  { key: "durere_severa", label: "Am durere oculara foarte mare, mai ales cu vedere modificata, greata sau cefalee" },
-  { key: "fulgerari_perdea_diplopie", label: "Au aparut brusc fulgerari, multe puncte, o umbra/perdea sau vedere dubla" },
-  { key: "postoperator_acut", label: "Am durere, roseata sau modificarea vederii dupa operatie ori injectie oculara recenta" },
-];
+// 2026-09-02: etichetele de triaj nu mai sunt copiate aici. Erau duplicate cuvant cu cuvant
+// din SAFETY_OPTIONS, iar comentariul de deasupra doar cerea sa ramana identice - ceea ce nu
+// e o garantie, ci o speranta. Text clinic in doua exemplare inseamna ca o corectie aprobata
+// medical se poate aplica pe unul si nu pe celalalt. Acum vin din catalogul aprobat, singura
+// sursa. "Niciuna dintre acestea" se randeaza separat, ca buton de continuare.
+const SAFETY_QUESTION = PATIENT_GUIDANCE_QUESTION_CATALOG.safety_targeted_check;
+const SAFETY_CHOICES = SAFETY_QUESTION.options.filter((option) => option.key !== "niciuna");
+const SAFETY_NONE_LABEL = SAFETY_QUESTION.options.find((option) => option.key === "niciuna")?.label
+  || "Niciuna dintre acestea";
 
 function assessmentForChoice(answerValue) {
   return buildPatientSafetyAssessment({
@@ -75,12 +73,12 @@ export default function QuestionText({ question, onSubmit, onPhaseChange, onSafe
     return (
       <div className="mt-6">
         <div className="rounded-2xl border border-border bg-card p-5">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Verificare de siguranta</p>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Verificare de siguranță</p>
           <p className="mt-1.5 font-heading text-base font-bold leading-snug tracking-tight text-foreground">
-            Ti s-a intamplat recent una dintre situatiile de mai jos?
+            {SAFETY_QUESTION.title}
           </p>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            Intrebam doar despre situatii aparute brusc, in ultimele ore sau zile. Daca ai o problema de vedere de mai mult timp (de exemplu nu vezi bine la distanta sau la aproape), alege "Niciuna dintre acestea" si continuam cautarea normal.
+            {SAFETY_QUESTION.helper}
           </p>
           <div className="mt-4 grid gap-2.5">
             {SAFETY_CHOICES.map((choice) => (
@@ -106,7 +104,7 @@ export default function QuestionText({ question, onSubmit, onPhaseChange, onSafe
               }}
               className="min-h-[56px] rounded-2xl bg-primary px-4 py-3 text-left text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
             >
-              Niciuna dintre acestea
+              {SAFETY_NONE_LABEL}
             </button>
           </div>
         </div>

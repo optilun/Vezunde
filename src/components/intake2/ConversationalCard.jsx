@@ -770,7 +770,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         <UrgencyInterruption
           assessment={{ blocking: true, blocking_flags: initialSafetyFlags }}
           onCorrect={() => setInitialSafetyAcknowledged(true)}
-          correctLabel="Nu e o urgenta, continua cautarea"
+          correctLabel="Nu e o urgență, continuă căutarea"
         />
       ) : (
         <>
@@ -804,7 +804,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
         />
       )}
 
-      {/* 2026-09-01: textul spunea "Alegem urmatoarea intrebare relevanta...", ceea ce
+      {/* 2026-09-01: textul spunea "Alegem următoarea întrebare relevantă...", ceea ce
           sugereaza o deliberare care nu are loc. Alegerea e deterministica - se ia prima
           informatie lipsa din matricea de rutare - iar niciun model nu e consultat.
           Formularea de acum descrie ce se intampla efectiv, fara sa promita inteligenta. */}
@@ -835,7 +835,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
                 onClick={goBack}
                 className="inline-flex min-h-11 items-center gap-1 rounded-lg pr-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
-                <ArrowLeft className="h-3.5 w-3.5" /> Inapoi
+                <ArrowLeft className="h-3.5 w-3.5" /> Înapoi
               </button>
             ) : <span />}
             <div className="h-1 flex-1 overflow-hidden rounded-full bg-secondary">

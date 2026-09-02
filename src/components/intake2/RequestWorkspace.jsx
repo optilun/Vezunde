@@ -32,9 +32,9 @@ import RequestWorkspaceLocationCard from "./RequestWorkspaceLocationCard";
 import RequestWorkspaceTimeline from "./RequestWorkspaceTimeline";
 
 const RESPONSE_PRESENTATION = {
-  can_help: { icon: CheckCircle2, title: "Locatia poate ajuta", description: "Locatia a confirmat ca poate raspunde acestei cereri." },
-  needs_details: { icon: HelpCircle, title: "Sunt necesare detalii", description: "Locatia a solicitat informatii suplimentare inainte de confirmare." },
-  cannot_help: { icon: XCircle, title: "Locatia nu poate ajuta", description: "Poti continua cu celelalte locatii din cerere." },
+  can_help: { icon: CheckCircle2, title: "Locația poate ajuta", description: "Locația a confirmat că poate răspunde acestei cereri." },
+  needs_details: { icon: HelpCircle, title: "Sunt necesare detalii", description: "Locația a solicitat informații suplimentare înainte de confirmare." },
+  cannot_help: { icon: XCircle, title: "Locația nu poate ajuta", description: "Poți continua cu celelalte locații din cerere." },
 };
 
 const TRUST_LABELS = {
@@ -122,7 +122,7 @@ function RequestSummary({ request, requestDraft, detailedMessage, resultCount })
         <div className="mt-3 rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3">
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary">VIASEE</p>
           <p className="mt-1 text-sm leading-relaxed text-foreground">
-            {resultCount > 0 ? `Am gasit ${resultCount} locatii potrivite pentru cererea ta.` : "Rezultatele cererii sunt disponibile in sectiunea Locatii."}
+            {resultCount > 0 ? `Am găsit ${resultCount} locații potrivite pentru cererea ta.` : "Rezultatele cererii sunt disponibile în secțiunea Locații."}
           </p>
         </div>
       </div>
@@ -195,9 +195,9 @@ function UrgencyInterruptionSlot({ requestDraft }) {
       <div className="flex items-start gap-3">
         <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" />
         <div className="min-w-0">
-          <p className="text-sm font-extrabold">Informatii de siguranta</p>
+          <p className="text-sm font-extrabold">Informații de siguranță</p>
           <p className="mt-1 text-xs leading-relaxed">
-            Formularea cererii tale poate contine un semnal care merita evaluare rapida. VIASEE nu pune diagnostic si nu stabileste daca situatia este sau nu urgenta.
+            Formularea cererii tale poate conține un semnal care merită evaluare rapidă. VIASEE nu pune diagnostic și nu stabilește dacă situația este sau nu urgentă.
           </p>
           {labels.length > 0 && (
             <ul className="mt-2 space-y-1 pl-4 text-xs">
@@ -207,14 +207,14 @@ function UrgencyInterruptionSlot({ requestDraft }) {
             </ul>
           )}
           <p className="mt-2 text-xs leading-relaxed">
-            Daca simptomele sunt severe, au aparut brusc sau se agraveaza, cere o evaluare medicala fara sa astepti un raspuns in platforma.
+            Dacă simptomele sunt severe, au apărut brusc sau se agravează, cere o evaluare medicală fără să aștepți un răspuns în platformă.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <a
               href="/cauta?q=oftalmolog"
               className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-amber-300 bg-white px-3.5 text-xs font-bold text-amber-950 hover:bg-amber-100/60"
             >
-              <Search className="h-3.5 w-3.5" /> Cabinete oftalmologice langa tine
+              <Search className="h-3.5 w-3.5" /> Cabinete oftalmologice lângă tine
             </a>
           </div>
         </div>
@@ -297,7 +297,7 @@ function SelectedLocationPanel({
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Raspunsul locatiei</p>
             <h3 className="mt-1 text-base font-extrabold text-foreground">{presentation?.title || "Cerere trimisa"}</h3>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{presentation?.description || "Locatia este inclusa in cerere. Nu a trimis inca un raspuns."}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{presentation?.description || "Locația este inclusă în cerere. Nu a trimis încă un răspuns."}</p>
             {response?.submitted_at && <p className="mt-2 text-[10px] text-muted-foreground">Actualizat la {formatDate(response.submitted_at, true)}</p>}
           </div>
         </div>
@@ -308,7 +308,7 @@ function SelectedLocationPanel({
               {approved ? <UserCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> : <UserX className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />}
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-bold text-foreground">{approved ? "Telefonul este aprobat" : "Telefonul este ascuns"}</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{approved ? "Doar aceasta locatie poate vedea numarul. Acordul poate fi retras." : "Telefonul se aproba separat si nu este introdus automat in chat."}</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{approved ? "Doar această locație poate vedea numărul. Acordul poate fi retras." : "Telefonul se aproba separat si nu este introdus automat in chat."}</p>
                 <button type="button" onClick={() => void onPhoneShare(locationId(location), approved ? "revoke" : "approve")} disabled={updatingLocationId === locationId(location)} className={`mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full px-4 text-xs font-bold disabled:opacity-60 sm:w-auto ${approved ? "border border-border bg-background text-foreground hover:bg-secondary" : "bg-foreground text-background hover:opacity-90"}`}>
                   {updatingLocationId === locationId(location) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Phone className="h-3.5 w-3.5" />}
                   {approved ? "Retrage accesul la telefon" : "Permite accesul la telefon"}
@@ -456,7 +456,7 @@ export default function RequestWorkspace({
     try {
       setStatus(await updatePatientRequestLifecycle({ requestId, action, explicitAccessToken: accessToken || "" }));
     } catch (updateError) {
-      setError(updateError?.message || "Starea cererii nu a putut fi actualizata.");
+      setError(updateError?.message || "Starea cererii nu a putut fi actualizată.");
     } finally {
       setUpdatingLifecycle(false);
     }

@@ -89,7 +89,7 @@ export default function SpecialistsHero() {
                         onClick={() => navigate("/adauga-sau-revendica", { state: { selectedLocation: loc } })}
                         className="shrink-0 px-3.5 py-2 rounded-full text-xs font-medium bg-foreground text-background hover:opacity-90 transition-opacity"
                       >
-                        {requestsAccess ? "Solicita acces" : "Revendica aceasta locatie"}
+                        {requestsAccess ? "Solicita acces" : "Revendică această locație"}
                       </button>
                     </div>
                   );

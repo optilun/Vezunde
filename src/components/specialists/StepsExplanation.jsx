@@ -2,9 +2,9 @@ import React from "react";
 import { Search, UserCheck, Settings } from "lucide-react";
 
 const STEPS = [
-  { icon: Search, label: "Gasesti sau adaugi locatia", text: "Cauti un profil existent sau adaugi o locatie noua." },
-  { icon: UserCheck, label: "Trimiti cateva informatii despre tine", text: "Ne spui cine esti si cum esti legat de locatie sau de activitatea profesionala." },
-  { icon: Settings, label: "Te faci cunoscut prin profilul tau", text: "Dupa aprobare, completezi informatiile care ii ajuta pe pacienti sa inteleaga ce faci si unde te pot gasi." },
+  { icon: Search, label: "Găsești sau adaugi locația", text: "Cauți un profil existent sau adaugi o locație nouă." },
+  { icon: UserCheck, label: "Trimiți câteva informații despre tine", text: "Ne spui cine ești și cum ești legat de locație sau de activitatea profesională." },
+  { icon: Settings, label: "Te faci cunoscut prin profilul tău", text: "După aprobare, completezi informațiile care îi ajută pe pacienți să înțeleagă ce faci și unde te pot găsi." },
 ];
 
 // A connected onboarding journey rather than three isolated cards — a thin

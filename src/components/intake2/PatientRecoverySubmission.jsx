@@ -234,7 +234,7 @@ export default function PatientRecoverySubmission({ meta }) {
         <UrgencyInterruption
           assessment={messageAssessment}
           onCorrect={() => setMessageAssessment(null)}
-          correctLabel="Nu e o urgenta, revin la cerere"
+          correctLabel="Nu e o urgență, revin la cerere"
         />
       </section>
     );

@@ -9,8 +9,8 @@ import SelectedLocationCard from "@/components/provider/SelectedLocationCard";
 const PHASES = ["Gaseste profilul", "Confirma relatia", "Alege accesul", "Date private", "Revizuire"];
 const STAGE_STEP = { relation: 2, scope: 3, contact: 4, review: 5 };
 const STAGE_COPY = {
-  relation: { title: "Care este relatia ta cu furnizorul?", subtitle: "Alege optiunea care descrie cel mai bine rolul tau." },
-  scope: { title: "Ce vrei sa administrezi?", subtitle: "Confirma locatia, locatiile selectate sau intreaga organizatie." },
+  relation: { title: "Care este relatia ta cu furnizorul?", subtitle: "Alege opțiunea care descrie cel mai bine rolul tău." },
+  scope: { title: "Ce vrei sa administrezi?", subtitle: "Confirmă locația, locațiile selectate sau întreaga organizație." },
   contact: { title: "Date private de verificare", subtitle: "Aceste date sunt folosite pentru verificarea solicitarii si nu apar in profilul public." },
   review: { title: "Revizuieste solicitarea", subtitle: "Verifica aria de acces, rolul solicitat si datele private inainte de trimitere." },
 };
@@ -139,7 +139,7 @@ export default function AddOrClaim() {
   return (
     <div className="workspace-neutral">
       {stage === "confirm" && selected ? (
-        <WizardShell phases={PHASES} phaseStep={1} title="Locatie selectata" subtitle="Confirma ca aceasta este locatia de la care porneste solicitarea.">
+        <WizardShell phases={PHASES} phaseStep={1} title="Locație selectată" subtitle="Confirmă că aceasta este locația de la care pornește solicitarea.">
           <SelectedLocationCard
             location={selected}
             onContinue={() => { setClaimStep("relation"); setStage("claim"); }}
@@ -162,7 +162,7 @@ export default function AddOrClaim() {
           <ClaimForm location={selected} step={claimStep} preferredScope={preferredScope} onStepChange={setClaimStep} onDone={completeOnboardingRequest} />
         </WizardShell>
       ) : (
-        <WizardShell phases={PHASES} phaseStep={1} title="Gaseste profilul locatiei tale" subtitle="Verificam mai intai daca profilul exista deja.">
+        <WizardShell phases={PHASES} phaseStep={1} title="Gaseste profilul locatiei tale" subtitle="Verificăm mai întâi dacă profilul există deja.">
           <ProviderSearch
             onClaim={(loc, options) => {
               clearResumeState();

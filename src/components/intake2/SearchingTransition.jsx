@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Check } from "lucide-react";
 
 const STEPS = [
-  "Analizam ce cauti",
-  "Verificam optiunile disponibile",
+  "Analizăm ce cauți",
+  "Verificăm opțiunile disponibile",
   "Organizam rezultatele",
 ];
 

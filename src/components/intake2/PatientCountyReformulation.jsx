@@ -66,7 +66,7 @@ export default function PatientCountyReformulation({ seed }) {
       });
       setPhase("results");
     } catch (searchError) {
-      setError(searchError?.message || "Cautarea in judet nu a putut fi efectuata.");
+      setError(searchError?.message || "Căutarea în județ nu a putut fi efectuată.");
       setPhase("error");
     }
   };
@@ -109,7 +109,7 @@ export default function PatientCountyReformulation({ seed }) {
           <div>
             <p className="text-xs font-bold text-foreground">Arie propusa</p>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {draft.city || "Localitatea selectata"} si celelalte localitati din judetul {draft.county || "selectat"}.
+              {draft.city || "Localitatea selectată"} si celelalte localitati din judetul {draft.county || "selectat"}.
             </p>
           </div>
         </div>
