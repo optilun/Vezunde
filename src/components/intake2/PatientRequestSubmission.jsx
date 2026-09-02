@@ -377,7 +377,7 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
 
       {/* Intrebarea cere acum un supliment, nu o repetare. Inainte era "Descrie mai
           detaliat ce ai nevoie" - adica exact ce sistemul stia deja din hero si din
-          chestionar, cerut a treia oara. */}
+          chestionar, cerut a treia oara si obligatoriu. */}
       <label className="mt-5 block text-xs font-semibold text-foreground">
         Mai e ceva ce ar trebui să știe?
         <span className="mt-1 block text-[11px] font-normal leading-relaxed text-muted-foreground">
