@@ -3,17 +3,17 @@ export const PATIENT_EMERGENCY_DESTINATION_POLICY = "public_ophthalmology_primar
 
 export const PATIENT_EMERGENCY_GUIDANCE_COPY = Object.freeze({
   chemical_irrigation_instruction:
-    "Daca a ajuns o substanta chimica in ochi, clateste imediat si continuu cu multa apa curata cel putin 20 de minute. Nu astepta sa ajungi la spital pentru a incepe clatirea si nu incerca sa neutralizezi substanta cu alt produs.",
+    "Dacă a ajuns o substanță chimică în ochi, clătește imediat și continuu cu multă apă curată cel puțin 20 de minute. Nu aștepta să ajungi la spital pentru a începe clătirea și nu încerca să neutralizezi substanța cu alt produs.",
   penetrating_injury_instruction:
-    "Daca un obiect a patruns sau a ramas infipt in ochi, nu incerca sa il scoti, nu freca si nu apasa pe ochi.",
+    "Dacă un obiect a pătruns sau a rămas înfipt în ochi, nu încerca să îl scoți, nu freca și nu apăsa pe ochi.",
   primary_instruction:
-    "Mergi imediat la cel mai apropiat spital public care confirma ca preia urgente oftalmologice, are camera de garda oftalmologica sau sectie de oftalmologie cu linie de garda si chirurgie.",
+    "Mergi imediat la cel mai apropiat spital public care confirmă că preia urgențe oftalmologice, are cameră de gardă oftalmologică sau secție de oftalmologie cu linie de gardă și chirurgie.",
   fallback_instruction:
-    "Daca nu stii care este, mergi la cea mai apropiata UPU a unui spital public si spune clar ca este o urgenta oculara.",
+    "Dacă nu știi care este, mergi la cea mai apropiată UPU a unui spital public și spune clar că este o urgență oculară.",
   transport_instruction:
-    "Nu conduce daca vederea este afectata; roaga pe cineva sa te insoteasca.",
+    "Nu conduce dacă vederea este afectată; roagă pe cineva să te însoțească.",
   emergency_call_instruction:
-    "Daca nu te poti deplasa in siguranta sau starea generala se agraveaza rapid, apeleaza 112.",
+    "Dacă nu te poți deplasa în siguranță sau starea generală se agravează rapid, apelează 112.",
 });
 
 export const PATIENT_EMERGENCY_GUIDANCE_MESSAGE = [

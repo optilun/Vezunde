@@ -16,24 +16,24 @@ const TIMING_OPTIONS = Object.freeze([
 ]);
 
 const SAFETY_OPTIONS = Object.freeze([
-  { key: "pierdere_brusca_vedere", label: "In ultimele ore sau zile, vederea a disparut brusc la un ochi (nu vedere slaba de mai mult timp)" },
-  { key: "substanta_chimica", label: "A ajuns o substanta chimica in ochi" },
-  { key: "traumatism_obiect", label: "Un obiect a patruns in ochi sau a existat o lovitura puternica" },
-  { key: "durere_severa", label: "Am durere oculara foarte mare, mai ales cu vedere modificata, greata sau cefalee" },
-  { key: "fulgerari_perdea_diplopie", label: "Au aparut brusc fulgerari, multe puncte, o umbra/perdea sau vedere dubla" },
-  { key: "postoperator_acut", label: "Am durere, roseata sau modificarea vederii dupa operatie ori injectie oculara recenta" },
+  { key: "pierdere_brusca_vedere", label: "În ultimele ore sau zile, vederea a dispărut brusc la un ochi (nu vedere slabă de mai mult timp)" },
+  { key: "substanta_chimica", label: "A ajuns o substanță chimică în ochi" },
+  { key: "traumatism_obiect", label: "Un obiect a pătruns în ochi sau a existat o lovitură puternică" },
+  { key: "durere_severa", label: "Am durere oculară foarte mare, mai ales cu vedere modificată, greață sau cefalee" },
+  { key: "fulgerari_perdea_diplopie", label: "Au apărut brusc fulgerări, multe puncte, o umbră/perdea sau vedere dublă" },
+  { key: "postoperator_acut", label: "Am durere, roșeață sau modificarea vederii după operație ori injecție oculară recentă" },
   { key: "niciuna", label: "Niciuna dintre acestea" },
 ]);
 
 export const APPROVED_PATIENT_SAFETY_COPY = Object.freeze({
-  eyebrow: "Informatii de siguranta",
-  blocking_title: "Opreste cautarea si solicita ajutor medical imediat",
-  advisory_title: "Cererea contine un posibil semnal de urgenta",
-  explanation: "VIASEE nu poate stabili cauza sau gravitatea simptomelor. Pentru situatiile de mai jos, nu astepta recomandari sau raspunsuri in platforma.",
-  primary_instruction: "Mergi imediat la UPU, camera de garda sau un serviciu de urgente oftalmologice.",
-  emergency_instruction: "Suna la 112 daca nu te poti deplasa in siguranta, vederea s-a pierdut brusc, exista un traumatism sever sau starea se agraveaza. Nu conduce.",
-  chemical_instruction: "Daca a ajuns o substanta chimica in ochi: clateste imediat cu apa curata cel putin 20 de minute, indeparteaza lentilele de contact daca se desprind usor si nu freca ochiul. Continua apoi spre urgenta.",
-  disclaimer: "Acest mesaj este informational si nu reprezinta diagnostic sau triaj medical.",
+  eyebrow: "Informații de siguranță",
+  blocking_title: "Oprește căutarea și solicită ajutor medical imediat",
+  advisory_title: "Cererea conține un posibil semnal de urgență",
+  explanation: "VIASEE nu poate stabili cauza sau gravitatea simptomelor. Pentru situațiile de mai jos, nu aștepta recomandări sau răspunsuri în platformă.",
+  primary_instruction: "Mergi imediat la UPU, camera de gardă sau un serviciu de urgențe oftalmologice.",
+  emergency_instruction: "Sună la 112 dacă nu te poți deplasa în siguranță, vederea s-a pierdut brusc, există un traumatism sever sau starea se agravează. Nu conduce.",
+  chemical_instruction: "Dacă a ajuns o substanță chimică în ochi: clătește imediat cu apă curată cel puțin 20 de minute, îndepărtează lentilele de contact dacă se desprind ușor și nu freca ochiul. Continuă apoi spre urgență.",
+  disclaimer: "Acest mesaj este informațional și nu reprezintă diagnostic sau triaj medical.",
 });
 
 // 2026-09-01: rescrierea chestionarului pacientului.
@@ -196,9 +196,9 @@ const CATALOG = {
   },
   safety_targeted_check: {
     type: "choice",
-    title: "Ti s-a intamplat recent una dintre situatiile de mai jos?",
+    title: "Ți s-a întâmplat recent una dintre situațiile de mai jos?",
     legacy_question_keys: ["safety_screening"],
-    helper: "Intrebam doar despre situatii aparute brusc, in ultimele ore sau zile. Daca ai o problema de vedere de mai mult timp (de exemplu nu vezi bine la distanta sau la aproape), alege \"Niciuna dintre acestea\" si continuam cautarea normal.",
+    helper: "Întrebăm doar despre situații apărute brusc, în ultimele ore sau zile. Dacă ai o problemă de vedere de mai mult timp (de exemplu nu vezi bine la distanță sau la aproape), alege \"Niciuna dintre acestea\" și continuăm căutarea normal.",
     options: SAFETY_OPTIONS,
     safety_copy: APPROVED_PATIENT_SAFETY_COPY,
   },
