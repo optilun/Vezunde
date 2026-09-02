@@ -75,8 +75,8 @@ const STRUCTURAL_FALLBACK_NOTICES = {
 };
 
 const STRUCTURAL_FALLBACK_GROUP_LABELS = {
-  optical: 'Alte optici din zona',
-  medical: 'Alte cabinete si clinici oftalmologice din zona',
+  optical: 'Alte optici din zonă',
+  medical: 'Alte cabinete și clinici oftalmologice din zonă',
 };
 
 // Include si profilurile revendicate/verificate care nu si-au declarat inca serviciile:
