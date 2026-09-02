@@ -68,6 +68,30 @@ assert.doesNotMatch(
 );
 assert.match(branchBody, /resolveOptionServiceKeys\(INTENTS\.control_copil\.service_keys, option\)/);
 
+// --- 3b. Traseul de rezerva poarta acelasi semnal ----------------------------------------
+// ConversationalCard are doua surse de intrebari: catalogul aprobat si registrul vechi din
+// src/lib/intentRegistry.js, folosit cand selectia de intrebari esueaza. Fara cheie acolo,
+// cautarea ar fi derivat semnalul server-side din raspunsuri, dar lead-ul livrat
+// furnizorului ar fi ramas fara el.
+const intentRegistry = await readFile(new URL('../src/lib/intentRegistry.js', import.meta.url), 'utf8');
+const legacyChildOptions = intentRegistry.match(/\{ key: "copil",[^}]*\}/g) || [];
+assert.ok(legacyChildOptions.length >= 2, 'registrul vechi trebuie sa aiba optiunile pentru copil');
+for (const option of legacyChildOptions) {
+  assert.match(
+    option,
+    /service_keys: \["children_eye_exam"\]/,
+    `optiunea legacy pentru copil nu poarta semnalul pediatric: ${option}`,
+  );
+}
+
+// Ramura generica next_intent refacea lista de servicii si stergea cheile aduse de optiune,
+// deci un raspuns care schimba intentia SI poarta un semnal propriu isi pierdea semnalul.
+const nextIntentBranch = card.slice(card.indexOf('if (option.next_intent'));
+assert.match(
+  nextIntentBranch.slice(0, nextIntentBranch.indexOf('\n      }')),
+  /resolveOptionServiceKeys\(INTENTS\[option\.next_intent\]\.service_keys, option\)/,
+);
+
 // --- 4. Serverul deriva cheile din aceleasi optiuni --------------------------------------
 const semanticEntry = await readFile(new URL('../base44/functions/matchProvidersSemantic/entry.ts', import.meta.url), 'utf8');
 assert.match(semanticEntry, /function confirmedServiceKeysFromAnswers/);

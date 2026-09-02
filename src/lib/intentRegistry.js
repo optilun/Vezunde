@@ -28,7 +28,11 @@ export const INTENTS = {
         key: "pentru_cine", type: "choice", title: "Pentru cine este?",
         options: [
           { key: "adult", label: "Pentru mine" },
-          { key: "copil", label: "Pentru copilul meu", next_intent: "control_copil" },
+          // 2026-09-01: aceleasi service_keys ca optiunea `child` din catalogul aprobat.
+          // Chestionarul acesta e traseul de rezerva, folosit cand selectia de intrebari
+          // esueaza; fara cheie, lead-ul livrat furnizorului ramanea fara semnalul
+          // pediatric, desi cautarea il deriva server-side din raspunsuri.
+          { key: "copil", label: "Pentru copilul meu", next_intent: "control_copil", service_keys: ["children_eye_exam"] },
           // Cheia e identica cu cea din catalog, ca sa nu fie nevoie de alias de valoare.
           { key: "other_adult", label: "Pentru altcineva (părinte, partener)" },
         ],
@@ -177,7 +181,9 @@ export const INTENTS = {
         key: "pentru_cine", type: "choice", title: "Pentru cine este?",
         options: [
           { key: "adult", label: "Pentru mine" },
-          { key: "copil", label: "Pentru copilul meu" },
+          // Vezi comentariul de la control_vedere: acelasi semnal pediatric, pe traseul
+          // de rezerva. Aici nu exista next_intent, deci cheia se aduna direct.
+          { key: "copil", label: "Pentru copilul meu", service_keys: ["children_eye_exam"] },
           { key: "other_adult", label: "Pentru altcineva (părinte, partener)" },
         ],
       },

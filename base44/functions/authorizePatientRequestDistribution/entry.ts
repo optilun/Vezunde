@@ -4,7 +4,7 @@ import {
   releasePatientRequestDistributionLock,
 } from '../../shared/patientRequestDistributionLock.js';
 import {
-  PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION,
+  SUPPORTED_PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSIONS,
   PROVIDER_LEAD_CONTRACT_VERSION,
   PROVIDER_LEAD_ELIGIBILITY_POLICY_VERSION,
   buildProviderLeadPreview,
@@ -82,7 +82,14 @@ Deno.serve(async (httpRequest) => {
     if (!requestId || !accessToken) {
       return Response.json({ error: 'request_id si tokenul de acces sunt obligatorii.' }, { status: 400 });
     }
-    if (input.distribution_consent !== true || consentVersion !== PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION) {
+    // 2026-09-01: acceptam orice versiune de acord inca suportata, nu doar cea curenta.
+    // Cu egalitate stricta, in fereastra de deploy un pacient care avea deja pagina
+    // deschisa (bundle vechi, deci consent_version v2) primea 400 la trimitere si cererea
+    // lui nu ajungea niciodata la furnizori, fara ca mesajul sa ii spuna sa reincarce.
+    // Versiunea efectiv trimisa se salveaza mai jos pe contact, deci un acord v2 ramane
+    // inregistrat ca v2 si nu autorizeaza campurile adaugate in v3.
+    if (input.distribution_consent !== true
+      || !SUPPORTED_PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSIONS.includes(consentVersion)) {
       return Response.json({ error: 'Acordul pentru trimiterea cererii nu este valid.' }, { status: 400 });
     }
 

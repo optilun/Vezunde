@@ -97,10 +97,20 @@ const leakyDetails = buildProviderLeadFullDetails({
 assert.doesNotMatch(leakyDetails.original_message, /0745/);
 assert.doesNotMatch(leakyDetails.original_message, /ana@example\.com/);
 
-// Nu il repetam daca pacientul a scris acelasi lucru in ambele campuri.
+// Nu il repetam daca pacientul a scris acelasi lucru in ambele campuri. Comparatia se face
+// pe textele brute: altfel doua mesaje identice care contin un telefon ar scapa de
+// deduplicare (unul redactat, unul nu) si furnizorul le-ar vedea pe amandoua.
 assert.equal(
   buildProviderLeadFullDetails({
     request: { persistence_state: 'complete', original_message: 'acelasi text', detailed_message: 'acelasi text' },
+    contact: contactV3,
+  }).original_message,
+  '',
+);
+const duplicatedWithPhone = 'sunt Ion, 0745 123 456, imi trebuie ochelari';
+assert.equal(
+  buildProviderLeadFullDetails({
+    request: { persistence_state: 'complete', original_message: duplicatedWithPhone, detailed_message: duplicatedWithPhone },
     contact: contactV3,
   }).original_message,
   '',

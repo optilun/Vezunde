@@ -57,16 +57,19 @@ export function buildProviderLeadFullDetails({ request, contact }) {
   // email fara sa realizeze ca ajunge la furnizor. Il redactam cu exact aceleasi reguli ca
   // mesajele din chatul controlat, ca promisiunea "telefonul ramane ascuns pana il aprobi
   // tu" sa nu fie ocolita pe canalul asta.
-  const originalMessage = openingMessageAuthorized
+  const detailedMessage = clean(request?.detailed_message, 2000);
+  // Deduplicarea se face pe textele brute, inainte de redactare si de taierea la lungimi
+  // diferite (800 vs 2000). Altfel, doua mesaje identice care contin un telefon ar scapa de
+  // comparatie si furnizorul ar vedea acelasi text de doua ori, o data redactat si o data nu.
+  const sameText = clean(request?.original_message, 2000) === detailedMessage;
+  const originalMessage = openingMessageAuthorized && !sameText
     ? redactPatientConversationText(request?.original_message, 800)
     : '';
-  const detailedMessage = clean(request?.detailed_message, 2000);
   return {
     client_name: clean(contact?.contact_name, 120),
     client_email: emailVerified ? clean(contact?.contact_email, 254) : '',
     client_email_verified: emailVerified,
-    // Nu il repetam daca pacientul a scris acelasi lucru in ambele campuri.
-    original_message: originalMessage === detailedMessage ? '' : originalMessage,
+    original_message: originalMessage,
     detailed_message: detailedMessage,
     phone_available_for_request: Boolean(clean(contact?.contact_phone, 32)),
   };

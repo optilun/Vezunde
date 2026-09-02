@@ -291,8 +291,12 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
       }
       if (option.next_intent && INTENTS[option.next_intent]) {
         next.intent = option.next_intent;
-        next.serviceKeys = [...INTENTS[option.next_intent].service_keys];
-        next.explicitServiceKeys = [];
+        // 2026-09-01: schimbarea de intentie reface lista de servicii, dar pastreaza cheile
+        // aduse de optiunea aleasa. Inainte le stergea, deci un raspuns care schimba
+        // intentia SI poarta un semnal propriu (de exemplu "pentru copilul meu" ->
+        // control_copil + children_eye_exam) isi pierdea semnalul.
+        next.serviceKeys = resolveOptionServiceKeys(INTENTS[option.next_intent].service_keys, option);
+        next.explicitServiceKeys = resolveOptionServiceKeys([], option);
       }
       if (question.key === "routine_vs_symptom" && option.key === "symptom") {
         next.intent = "simptome_oftalmologice";

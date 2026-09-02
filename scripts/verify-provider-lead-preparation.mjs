@@ -72,4 +72,11 @@ assert.match(clientSource, /patient-request-distribution-top3-pro-v3/);
 assert.match(submissionSource, /locațiilor Pro din Top 3/);
 assert.match(submissionSource, /Numărul de telefon rămâne ascuns/);
 
+// 2026-09-01: punctul de intrare al distribuirii trebuie sa accepte orice versiune de acord
+// inca suportata, nu doar cea curenta. Cu egalitate stricta, in fereastra de deploy un
+// pacient cu pagina deja deschisa (bundle vechi, acord v2) primea 400 la trimitere si
+// cererea lui nu ajungea niciodata la furnizori.
+assert.match(functionSource, /SUPPORTED_PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSIONS\.includes\(consentVersion\)/);
+assert.doesNotMatch(functionSource, /consentVersion !== PATIENT_REQUEST_DISTRIBUTION_CONSENT_VERSION/);
+
 console.log('Provider lead preparation checks passed.');
