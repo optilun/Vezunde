@@ -1,34 +1,43 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, ArrowRight, Droplets, PhoneCall, ShieldAlert } from "lucide-react";
+import { ArrowLeft, ArrowRight, Droplets, PhoneCall, ShieldAlert } from "lucide-react";
 import { PATIENT_SAFETY_FLAG_PRESENTATION } from "@/lib/patientSafety";
 import { APPROVED_PATIENT_SAFETY_COPY } from "../../../shared/patientGuidanceQuestionCatalog.js";
 
-// 2026-09-02: textul de urgenta vine acum din APPROVED_PATIENT_SAFETY_COPY, nu mai e copiat
-// aici. Era duplicat, iar duplicatul chiar divergease: ecranul spunea "cat mai curand" acolo
-// unde textul aprobat spune "imediat". Pe cel mai critic ecran al aplicatiei, o copie care
-// se poate abate tacut de la formularea aprobata medical nu e acceptabila.
+// 2026-09-02: textul de urgenta vine din APPROVED_PATIENT_SAFETY_COPY, nu mai e copiat aici.
+// Era duplicat, iar duplicatul chiar divergease: ecranul spunea "cat mai curand" acolo unde
+// textul aprobat spune "imediat". Pe cel mai critic ecran al aplicatiei, o copie care se
+// poate abate tacut de la formularea aprobata medical nu e acceptabila.
 const COPY = APPROVED_PATIENT_SAFETY_COPY;
 
-// 2026-09-02: ecranul era in registru strain de VIASEE - rosu Tailwind implicit, buton
-// stacojiu, tipografie de alerta generica. Arata ca o eroare de sistem, nu ca platforma pe
-// care pacientul tocmai o folosea. Acum foloseste acelasi vocabular ca restul aplicatiei
-// (prezentarea generala a organizatiei, modulul de leaduri): hartie crem, textura, supratitlu
-// mono, titlu Manrope stramt, placi tonale din paleta de categorii, pastile.
+// 2026-09-02, a doua trecere. Prima versiune adusese ecranul in paleta VIASEE, dar ramasese
+// incarcat: douasprezece blocuri stivuite, doua placi tonale una sub alta si trei paragrafe
+// gri de aceeasi greutate, in care ochiul nu stia unde sa se opreasca.
 //
-// Urgenta NU se pierde: se citeste din ierarhie, nu din stridenta. Banda caramizie din
-// marginea de sus si sigiliul spun imediat ca panoul asta nu e ca celelalte, iar instructiunea
-// aprobata e cel mai mare bloc de text de pe ecran.
+// Acum sunt patru grupuri, in ordinea in care conteaza:
+//   1. ce s-a detectat  - supratitlu, titlu, semnalul pe o linie cu accent lateral
+//   2. ce faci acum     - primul ajutor (daca exista), apoi destinatia
+//   3. cu ce sa mergi   - precautiile, compacte
+//   4. actiuni + subsol - butoane, apoi textul marunt
 //
-// Ordinea impusa de docs/patient-emergency-guidance-policy.md ramane neschimbata: destinatia
-// spitaliceasca prima, 112 dupa ea, conditionat si niciodata ca actiune principala. Butonul
-// negru (primarul VIASEE) duce la cabinete; 112 ramane pastila secundara, ca inainte.
+// Doua schimbari de fond fata de prima versiune:
+//   - Semnalul nu mai e o placa plina, ci o linie cu bara laterala caramizie. Ramane o
+//     singura suprafata colorata pe ecran - primul ajutor - si aceea chiar merita atentia.
+//   - COPY.explanation ("VIASEE nu poate stabili cauza...") a coborat langa disclaimer.
+//     Sunt amandoua limitari ale platformei, nu instructiuni; sus ocupau doua randuri intre
+//     titlu si semnal si intarziau exact informatia pentru care pacientul e acolo.
+//
+// ORDINEA, corectata: docs/patient-emergency-guidance-policy.md sectiunea 3 cere ca primul
+// ajutor sa apara INAINTEA indrumarii spre destinatie, asa cum face si constructorul canonic
+// buildPatientEmergencyGuidanceMessage. Ecranul il punea dupa, de dinaintea restilizarii.
+// Sectiunea 5 ramane respectata: spitalul primul, 112 dupa el, conditionat, ca pastila
+// secundara, niciodata actiune principala.
 const GRAIN = { backgroundImage: "url('/images/home/viasee-technical-grain.svg')", backgroundSize: "180px 180px" };
 
-// Caramiziul din paleta de categorii, folosit si pe placile din workspace. Suficient de cald
-// ca sa ramana VIASEE, suficient de saturat ca sa nu fie citit ca o nota neutra.
-const ALERT_TONE = { borderColor: "#e1bda8", backgroundColor: "#efd5c5" };
-const CHEMICAL_TONE = { borderColor: "#c6d3da", backgroundColor: "#dce5e9" };
+// Caramiziul din paleta de categorii, folosit si pe placile din workspace.
+const ACCENT = "#b4573a";
+const SEAL_TONE = { borderColor: "#e1bda8", backgroundColor: "#efd5c5" };
+const FIRST_AID_TONE = { borderColor: "#c6d3da", backgroundColor: "#dce5e9" };
 
 function flagLabels(assessment) {
   const flags = assessment?.blocking_flags?.length
@@ -47,18 +56,16 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
   return (
     <section
       data-component="UrgencyInterruption"
-      className="relative overflow-hidden rounded-[1.75rem] border border-[#d9c3b4] bg-[#fdfbf6] px-5 py-6 shadow-[0_18px_48px_rgba(34,30,24,0.05)] sm:px-7 sm:py-7"
+      className="relative overflow-hidden rounded-[1.75rem] border border-[#d9c3b4] bg-[#fdfbf6] px-5 py-6 shadow-[0_18px_48px_rgba(34,30,24,0.05)] sm:px-8 sm:py-8"
     >
       <span aria-hidden="true" className="absolute inset-0 opacity-25 mix-blend-multiply" style={GRAIN} />
-      <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1.5" style={{ backgroundColor: "#b4573a" }} />
+      <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1.5" style={{ backgroundColor: ACCENT }} />
 
-      <div className="relative z-10">
-        {/* Sigiliul si supratitlul pe un rand, titlul pe toata latimea dedesubt. Cand
-            sigiliul statea langa titlu, pe telefon il impingea intr-o coloana ingusta si
-            titlul se rupea in patru randuri. */}
+      <div className="relative z-10 max-w-[46rem]">
+        {/* 1. Ce s-a detectat */}
         <div className="flex items-center gap-3">
           <span
-            style={ALERT_TONE}
+            style={SEAL_TONE}
             className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border text-[#7d3520]"
           >
             <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={GRAIN} />
@@ -67,48 +74,51 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
           <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-[#8a412b]">{COPY.eyebrow}</p>
         </div>
 
-        <h2 className="mt-4 max-w-2xl font-heading text-[1.55rem] font-extrabold leading-[1.04] tracking-[-0.045em] text-[#1c1c1c] sm:text-[2rem]">
+        <h2 className="mt-4 font-heading text-[1.55rem] font-extrabold leading-[1.04] tracking-[-0.045em] text-[#1c1c1c] sm:text-[2rem]">
           {blocking ? COPY.blocking_title : COPY.advisory_title}
         </h2>
 
-        <p className="mt-5 max-w-2xl text-[13.5px] leading-relaxed text-black/60">
-          {COPY.explanation}
-        </p>
-
         {labels.length > 0 && (
-          <div style={ALERT_TONE} className="relative mt-5 overflow-hidden rounded-[1.4rem] border px-5 py-4">
-            <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={GRAIN} />
-            <p className="relative z-10 font-mono text-[9.5px] uppercase tracking-[0.16em] text-black/55">Semnal identificat</p>
-            <ul className="relative z-10 mt-2.5 space-y-2">
+          <div className="mt-5 border-l-2 pl-4" style={{ borderColor: ACCENT }}>
+            <p className="font-mono text-[9.5px] uppercase tracking-[0.16em] text-black/45">Semnal identificat</p>
+            <ul className="mt-1 space-y-0.5">
               {labels.map((label) => (
-                <li key={label} className="flex items-start gap-2 font-heading text-[13.5px] font-bold leading-snug tracking-[-0.015em] text-[#1c1c1c]">
-                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#7d3520]" /> {label}
+                <li key={label} className="font-heading text-[14px] font-bold leading-snug tracking-[-0.015em] text-[#1c1c1c]">
+                  {label}
                 </li>
               ))}
             </ul>
           </div>
         )}
 
-        {/* Instructiunea aprobata: cel mai mare bloc de text de pe ecran. */}
-        <p className="mt-6 max-w-2xl font-heading text-[17px] font-extrabold leading-snug tracking-[-0.025em] text-[#1c1c1c] sm:text-[18.5px]">
-          {COPY.primary_instruction}
-        </p>
-        <div className="mt-3 max-w-2xl space-y-2 text-[13.5px] leading-relaxed text-black/60">
-          <p>Nu conduce singur dacă vederea îți este afectată — roagă pe cineva să te ducă.</p>
-          <p>VIASEE nu poate confirma care locații au gardă activă acum — sună înainte, sau mergi direct la cea mai apropiată unitate de urgență.</p>
-        </div>
-
+        {/* 2. Ce faci acum. Primul ajutor inaintea destinatiei, conform politicii. */}
         {chemical && (
-          <div style={CHEMICAL_TONE} className="relative mt-5 flex items-start gap-3 overflow-hidden rounded-[1.4rem] border px-5 py-4">
+          <div style={FIRST_AID_TONE} className="relative mt-6 flex items-start gap-3 overflow-hidden rounded-[1.4rem] border px-5 py-4">
             <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-multiply" style={GRAIN} />
             <Droplets className="relative z-10 mt-0.5 h-4 w-4 shrink-0 text-[#3d5a68]" />
-            <p className="relative z-10 text-[13px] leading-relaxed text-black/70">{COPY.chemical_instruction}</p>
+            <p className="relative z-10 text-[13.5px] leading-relaxed text-black/75">{COPY.chemical_instruction}</p>
           </div>
         )}
 
-        <div className="mt-6 h-px bg-[#9a8668]/35" />
+        <p className="mt-6 font-heading text-[17px] font-extrabold leading-snug tracking-[-0.025em] text-[#1c1c1c] sm:text-[19px]">
+          {COPY.primary_instruction}
+        </p>
 
-        <div className="mt-6 flex flex-col gap-2.5">
+        {/* 3. Cu ce sa mergi. Precautii, nu instructiuni principale: mai mici, marcate discret. */}
+        <ul className="mt-4 space-y-2">
+          {[
+            "Nu conduce singur dacă vederea îți este afectată — roagă pe cineva să te ducă.",
+            "VIASEE nu poate confirma care locații au gardă activă acum — sună înainte, sau mergi direct la cea mai apropiată unitate de urgență.",
+          ].map((line) => (
+            <li key={line} className="flex gap-2.5 text-[13.5px] leading-relaxed text-black/60">
+              <span aria-hidden="true" className="mt-[9px] h-1 w-1 shrink-0 rounded-full" style={{ backgroundColor: ACCENT }} />
+              {line}
+            </li>
+          ))}
+        </ul>
+
+        {/* 4. Actiuni, apoi subsolul cu limitarile platformei. */}
+        <div className="mt-7 flex flex-col gap-2.5">
           <Link
             to="/cauta?q=oftalmolog"
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#171717] px-6 font-heading text-[13.5px] font-bold tracking-[-0.01em] text-white transition-opacity hover:opacity-90"
@@ -134,7 +144,10 @@ export default function UrgencyInterruption({ assessment, mode = "blocking", onC
           </div>
         </div>
 
-        <p className="mt-6 max-w-2xl text-[11.5px] leading-relaxed text-black/45">{COPY.disclaimer}</p>
+        <div className="mt-7 border-t border-[#e3ddd0] pt-4">
+          <p className="text-[11.5px] leading-relaxed text-black/45">{COPY.explanation}</p>
+          <p className="mt-1.5 text-[11.5px] leading-relaxed text-black/45">{COPY.disclaimer}</p>
+        </div>
       </div>
     </section>
   );
