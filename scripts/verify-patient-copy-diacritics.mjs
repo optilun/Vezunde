@@ -99,12 +99,22 @@ for (const surface of PATIENT_SURFACES) {
   for (const file of collectFiles(surface)) {
     const lines = fs.readFileSync(file, 'utf8').split('\n');
     let exempt = false;
+    let inBlockComment = false;
     lines.forEach((line, index) => {
       if (line.includes(EXEMPT_START)) { exempt = true; return; }
       if (line.includes(EXEMPT_END)) { exempt = false; return; }
       if (exempt) return;
-      // Comentariile raman fara diacritice, prin conventia proiectului.
-      if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;
+
+      // Comentariile raman fara diacritice, prin conventia proiectului. Urmarim si blocurile
+      // pe mai multe randuri, inclusiv comentariile JSX ("{/* ... */}"): altfel un comentariu
+      // care CITEAZA un text fara diacritice era raportat ca text vizibil - exact ce s-a si
+      // intamplat cu nota care explica de ce COPY.explanation trebuie sa stea sus.
+      const wasInBlockComment = inBlockComment;
+      const opensBlock = line.lastIndexOf('/*') > line.lastIndexOf('*/');
+      if (!inBlockComment && opensBlock) inBlockComment = true;
+      else if (inBlockComment && line.includes('*/') && !opensBlock) inBlockComment = false;
+      if (wasInBlockComment || inBlockComment) return;
+      if (/^\s*(\/\/|\*)/.test(line)) return;
       if (ALLOWED.some((pattern) => pattern.test(line))) return;
       const literals = line.match(/'[^']{10,}'|"[^"]{10,}"|`[^`]{10,}`/g) || [];
       for (const literal of literals) {
