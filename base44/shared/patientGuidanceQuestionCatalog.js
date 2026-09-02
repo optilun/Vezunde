@@ -33,6 +33,16 @@ export const APPROVED_PATIENT_SAFETY_COPY = Object.freeze({
   primary_instruction: "Mergi imediat la UPU, camera de gardă sau un serviciu de urgențe oftalmologice.",
   emergency_instruction: "Sună la 112 dacă nu te poți deplasa în siguranță, vederea s-a pierdut brusc, există un traumatism sever sau starea se agravează. Nu conduce.",
   chemical_instruction: "Dacă a ajuns o substanță chimică în ochi: clătește imediat cu apă curată cel puțin 20 de minute, îndepărtează lentilele de contact dacă se desprind ușor și nu freca ochiul. Continuă apoi spre urgență.",
+  // 2026-09-02: pana acum, un pacient cu un obiect patruns in ochi nu primea niciun prim
+  // ajutor pe ecranul blocant, desi politica il defineste (sectiunea 3) si constructorul
+  // canonic de mesaj din shared/patientEmergencyGuidance.js il include. Formularea nu e
+  // scrisa acum: e copiata cuvant cu cuvant din instructiunea aprobata pentru traumatism
+  // penetrant din acel fisier, ca ecranul si mesajul canonic sa spuna exact acelasi lucru.
+  // Cele doua constante raman separate deliberat (fiecare cu suprafata ei de aprobare);
+  // aici se dubleaza doar textul, nu si referinta.
+  // Precedenta ceruta de politica: cand exista si traumatism penetrant, si substanta chimica,
+  // precautia pentru obiect are prioritate si instructiunea de clatire se suprima.
+  penetrating_instruction: "Dacă un obiect a pătruns sau a rămas înfipt în ochi, nu încerca să îl scoți, nu freca și nu apăsa pe ochi.",
   disclaimer: "Acest mesaj este informațional și nu reprezintă diagnostic sau triaj medical.",
 });
 

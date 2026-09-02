@@ -98,6 +98,25 @@ assert.match(APPROVED_PATIENT_SAFETY_COPY.blocking_title, /Oprește căutarea ș
 assert.match(APPROVED_PATIENT_SAFETY_COPY.primary_instruction, /Mergi imediat la UPU, camera de gardă/);
 assert.match(APPROVED_PATIENT_SAFETY_COPY.chemical_instruction, /cel puțin 20 de minute/);
 assert.match(APPROVED_PATIENT_SAFETY_COPY.disclaimer, /nu reprezintă diagnostic sau triaj medical/);
+
+// 2026-09-02: primul ajutor exista pentru ambele traumatisme cu precautie aprobata, si
+// ecranul il afiseaza INAINTEA destinatiei. Politica, sectiunea 3. Inainte, un pacient cu un
+// obiect patruns in ochi nu primea nicio precautie pe ecranul blocant, iar cea pentru
+// substanta chimica aparea dupa indrumarea spre spital.
+assert.match(APPROVED_PATIENT_SAFETY_COPY.penetrating_instruction, /nu încerca să îl scoți/);
+assert.match(APPROVED_PATIENT_SAFETY_COPY.penetrating_instruction, /nu apăsa pe ochi/);
+assert.match(interruption, /COPY\.penetrating_instruction/);
+assert.match(interruption, /COPY\.chemical_instruction/);
+assert(
+  interruption.indexOf('Primul ajutor, acum') < interruption.indexOf('Unde mergi'),
+  'primul ajutor trebuie randat inaintea indrumarii spre destinatie',
+);
+// Precedenta: traumatismul penetrant suprima instructiunea de clatire.
+const firstAidBranch = interruption.slice(interruption.indexOf('const firstAid'));
+assert.match(
+  firstAidBranch.slice(0, firstAidBranch.indexOf(';')),
+  /penetrating_or_high_speed_trauma[\s\S]*penetrating_instruction[\s\S]*chemical_injury[\s\S]*chemical_instruction/,
+);
 assert.doesNotMatch(interruption.toLowerCase(), /diagnosticul este|ai glaucom|ai dezlipire de retina/);
 assert.match(safetyPolicy, /advisoryFlags/);
 assert.match(safetyPolicy, /blocking: blockingFlags\.length > 0/);
