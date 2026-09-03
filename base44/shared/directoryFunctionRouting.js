@@ -21,6 +21,7 @@ export const DIRECTORY_FUNCTION_ROUTES = Object.freeze({
   geoImportOps: DIRECTORY_FUNCTION_ENDPOINT,
   getAdminServiceManagementData: DIRECTORY_FUNCTION_ENDPOINT,
   researchOps: DIRECTORY_FUNCTION_ENDPOINT,
+  researchServiceBatchOps: DIRECTORY_FUNCTION_ENDPOINT,
   reviewProfileChanges: DIRECTORY_FUNCTION_ENDPOINT,
 });
 

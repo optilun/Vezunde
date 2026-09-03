@@ -36,7 +36,7 @@ const physicalEndpoints = readdirSync(functionsRoot, { withFileTypes: true })
   .sort();
 
 assert.equal(physicalEndpoints.length, 48, 'Suprafata Base44 trebuie sa contina exact 48 de functii fizice dupa folosirea bridge-ului existent');
-assert.equal(logicalNames.length, 20, 'Contractul directory trebuie sa pastreze exact cele 20 de nume logice consolidate (19 + adminFragmentedOrganizations, adaugat 2026-08-19 pentru detectia si fuziunea organizatiilor duplicate)');
+assert.equal(logicalNames.length, 21, 'Contractul directory trebuie sa pastreze exact cele 21 de nume logice consolidate (19 + adminFragmentedOrganizations 2026-08-19 + researchServiceBatchOps 2026-09-03, loturi de aplicare a serviciilor din cercetare, cu aprobare pe token si rollback)');
 assert.ok(physicalEndpoints.includes(DIRECTORY_FUNCTION_ENDPOINT), 'Endpointul fizic directoryOps trebuie sa existe');
 assert.ok(physicalEndpoints.includes(DIRECTORY_IMPORT_FUNCTION_ENDPOINT), 'Endpointul fizic dedicat importului trebuie sa existe');
 

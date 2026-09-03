@@ -19,6 +19,7 @@ import { handle as directoryOpsHandle } from './directoryOps.ts';
 import { handle as geoImportOpsHandle } from './geoImportOps.ts';
 import { handle as getAdminServiceManagementDataHandle } from './getAdminServiceManagementData.ts';
 import { handle as researchOpsHandle } from './researchOps.ts';
+import { handle as researchServiceBatchOpsHandle } from './researchServiceBatchOps.ts';
 import { handle as reviewProfileChangesHandle } from './reviewProfileChanges.ts';
 
 type DirectoryFunctionHandler = (req: Request) => Response | Promise<Response>;
@@ -43,6 +44,7 @@ export const DIRECTORY_FUNCTION_HANDLERS: Record<string, DirectoryFunctionHandle
   geoImportOps: geoImportOpsHandle,
   getAdminServiceManagementData: getAdminServiceManagementDataHandle,
   researchOps: researchOpsHandle,
+  researchServiceBatchOps: researchServiceBatchOpsHandle,
   reviewProfileChanges: reviewProfileChangesHandle,
 });
 
