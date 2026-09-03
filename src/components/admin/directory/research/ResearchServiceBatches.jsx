@@ -85,7 +85,6 @@ export default function ResearchServiceBatches() {
     let token = confirmation;
     while (!finished && guard < 200) {
       guard += 1;
-      // eslint-disable-next-line no-await-in-loop
       const res = await callResearchServiceBatch({ action: "run", batch_id: openId, confirmation: token })
         .catch((callError) => { setError(errorText(callError)); return null; });
       if (!res) return;
