@@ -4,11 +4,13 @@ import ResearchProfile from "./research/ResearchProfile";
 import ResearchCoverage from "./research/ResearchCoverage";
 import ResearchCsvTemplate from "./research/ResearchCsvTemplate";
 import AICopilot from "./research/AICopilot";
+import ResearchServiceBatches from "./research/ResearchServiceBatches";
 import AdminCard from "../ui/AdminCard";
 
 const VIEWS = [
   { key: "queue", label: "Coada de research" },
   { key: "ai", label: "AI Copilot" },
+  { key: "batches", label: "Loturi de servicii" },
   { key: "coverage", label: "Acoperire" },
   { key: "csv", label: "Sablon CSV" },
 ];
@@ -42,6 +44,7 @@ export default function DirResearch({ onNavigate }) {
 
       {view === "queue" && <ResearchQueue onOpen={setSelectedId} />}
       {view === "ai" && <AICopilot onNavigate={onNavigate} />}
+      {view === "batches" && <ResearchServiceBatches />}
       {view === "coverage" && <ResearchCoverage />}
       {view === "csv" && <ResearchCsvTemplate />}
     </div>

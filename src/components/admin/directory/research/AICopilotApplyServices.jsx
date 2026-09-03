@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { AlertTriangle, Check, MapPin } from "lucide-react";
+import { AlertTriangle, Check, Layers, MapPin } from "lucide-react";
+import { callResearchServiceBatch } from "./ResearchServiceBatches";
 
 // 2026-09-03, audit flow intrebari/recomandari. Pana acum, serviciile aprobate cu dovada
 // in draftul de cercetare ajungeau intr-un sir de text pus in `source_notes`, iar adminul
@@ -24,6 +25,7 @@ export default function AICopilotApplyServices({ draftId, duplicateCandidates })
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [batchNote, setBatchNote] = useState("");
 
   const call = async (payload) => base44.functions.invoke("directoryOps", {
     action: "apply_research_services",
@@ -47,6 +49,34 @@ export default function AICopilotApplyServices({ draftId, duplicateCandidates })
       setPlan(res.data);
     } catch (callError) {
       setPlan(null);
+      setError(errorText(callError));
+    }
+    setBusy(false);
+  };
+
+  // 2026-09-03, etapa 2: aceeasi pereche (draft, locatie) poate fi pusa intr-un lot in loc
+  // sa fie aplicata pe loc. Lotul cere o singura aprobare pentru tot si poate fi retras.
+  const addToBatch = async () => {
+    const id = String(locationId || "").trim();
+    if (!id) {
+      setError("Alege o locatie inainte de a o adauga in lot.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setBatchNote("");
+    try {
+      const list = await callResearchServiceBatch({ action: "list" });
+      const open = (list.data.batches || []).find((batch) => batch.status === "draft" || batch.status === "planned");
+      const target = open || (await callResearchServiceBatch({ action: "create" })).data.batch;
+      const res = await callResearchServiceBatch({
+        action: "add_pair",
+        batch_id: target.id,
+        draft_id: draftId,
+        location_id: id,
+      });
+      setBatchNote(`Adaugat in lotul ${res.data.batch.batch_key} (${res.data.batch.pair_count} perechi). Planifica si aproba lotul din tabul "Loturi de servicii".`);
+    } catch (callError) {
       setError(errorText(callError));
     }
     setBusy(false);
@@ -113,7 +143,17 @@ export default function AICopilotApplyServices({ draftId, duplicateCandidates })
         >
           Vezi ce s-ar scrie
         </button>
+        <button
+          type="button"
+          onClick={addToBatch}
+          disabled={busy || !locationId.trim()}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-xs font-semibold disabled:opacity-50"
+        >
+          <Layers className="h-3.5 w-3.5" /> Adauga in lot
+        </button>
       </div>
+
+      {batchNote && <p className="mt-2 text-xs text-green-700">{batchNote}</p>}
 
       {plan && (
         <div className="mt-4 rounded-md border border-border p-3">
