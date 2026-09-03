@@ -14,16 +14,27 @@ const runSchema = JSON.parse(read('base44/entities/DirectoryAutoImportRun.jsonc'
 const itemSchema = JSON.parse(read('base44/entities/DirectoryAutoImportItem.jsonc'));
 const payloadChunkSchema = JSON.parse(read('base44/entities/DirectoryAutoImportPayloadChunk.jsonc'));
 const functionConfig = JSON.parse(read('base44/functions/listProviderMemberInvitations/function.jsonc'));
-// 2026-09-03: garda era rosie de saptamani. base44/entities/_noop_invalid.jsonc chiar
-// exista in repo (creat pe 2026-08-22, prin "External agent changes"), impreuna cu geamanul
-// lui _temp_never_use.jsonc: doua scheme goale, cu un singur camp `x`, fara nicio
-// referinta in cod si fara nicio inregistrare in aplicatie. Verificate live inainte de
-// stergere: 0 randuri fiecare. Ambele sunt acum acoperite, ca sa nu se intoarca doar unul.
+// 2026-09-03. Garda asta e rosie de saptamani si a fost raportata de fiecare data ca
+// "preexistenta". Nu era zgomot: `_noop_invalid` si geamanul lui `_temp_never_use` chiar
+// exista - doua scheme goale, cu un singur camp `x`, create pe 2026-08-22 prin "External
+// agent changes", fara nicio referinta in cod si cu 0 inregistrari in aplicatie (verificat
+// live).
+//
+// Stergerea fisierelor nu rezolva nimic: base44/entities/*.jsonc se regenereaza din schema
+// aplicatiei, deci fisierele se intorc atat timp cat entitatile exista acolo. Am incercat,
+// s-au intors in cateva minute. Singura reparatie reala e stergerea entitatilor din Base44,
+// si nu se poate face din cod.
+//
+// Deci garda ramane rosie pana cand cineva le sterge din aplicatie. Mesajul spune exact ce
+// e de facut, ca sa nu mai fie citita ca zgomot inca o luna.
 for (const placeholder of ['_noop_invalid', '_temp_never_use']) {
   assert.equal(
     fs.existsSync(`base44/entities/${placeholder}.jsonc`),
     false,
-    `Schema temporara ${placeholder} nu trebuie publicata.`,
+    `Schema temporara ${placeholder} este inca publicata. `
+      + 'Sterge entitatea din aplicatia Base44 (Data > entitate > delete); fisierul .jsonc '
+      + 'se regenereaza din schema live, deci stergerea lui din repo nu are efect. '
+      + 'Entitatea este goala si nereferentiata - verificat: 0 inregistrari.',
   );
 }
 
