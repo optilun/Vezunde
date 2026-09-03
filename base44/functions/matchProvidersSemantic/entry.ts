@@ -616,14 +616,29 @@ Deno.serve(async (request) => {
       ));
     }
 
-    if (requestedKeys.length === 0) {
+    // 2026-09-03, audit flow intrebari/recomandari. Cand descrierea nu se leaga de nicio
+    // cheie din catalog, raspunsul de pana acum era lista goala - inclusiv intr-o localitate
+    // plina de furnizori publicati. Masurat pe un corpus de 61 de formulari reale, 26 nu
+    // produc nicio cheie, printre ele lucruri absolut obisnuite: "ma usuca ochii", "vad
+    // puncte negre care plutesc", "am nevoie de OCT", "vreau sa imi verific vederea".
+    //
+    // Acum cererea merge mai departe. Potrivirea pe servicii nu are ce sa returneze - cu
+    // requestedKeys gol nicio locatie nu intra in `results`, deci toate raman candidati
+    // structurali - dar fallback-ul structural cunoaste localitatea si poate arata cine
+    // exista acolo. Statusul ramane 'query_not_mapped', deci pacientul vede clar ca lista
+    // nu e o potrivire pe nevoia lui, iar coada de recuperare isi pastreaza semnalul.
+    //
+    // NU s-a atins nimic din buildRecommendationScore, assignRecommendationBuckets sau
+    // selectia Top 3.
+    const unmappedQuery = requestedKeys.length === 0;
+    if (unmappedQuery && !searchText) {
       return Response.json({
         recommendation_contract_version: PROVIDER_RECOMMENDATION_CONTRACT_VERSION,
         results: [],
         resolved_service_keys: [],
         semantic_resolution: semantic,
         need_level: 'unknown',
-        coverage_status: searchText ? 'query_not_mapped' : 'query_required',
+        coverage_status: 'query_required',
       });
     }
 
@@ -886,11 +901,13 @@ Deno.serve(async (request) => {
       result_count: visibleResults.length,
       structural_fallback_count: structuralResults.length,
     };
-    const coverageStatus = getRecommendationCoverageStatus({
-      resultCount: bucketedResults.length,
-      localProviderCount: coverageCounts.scope_provider_count,
-      configuredMatchingProviderCount: coverageCounts.configured_matching_provider_count,
-    });
+    const coverageStatus = unmappedQuery
+      ? 'query_not_mapped'
+      : getRecommendationCoverageStatus({
+        resultCount: bucketedResults.length,
+        localProviderCount: coverageCounts.scope_provider_count,
+        configuredMatchingProviderCount: coverageCounts.configured_matching_provider_count,
+      });
     const routingReason = queryScope === 'county'
       ? `Căutare extinsă explicit în județul ${countyName || 'selectat'}.`
       : (queryScope === 'national'
