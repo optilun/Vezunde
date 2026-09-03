@@ -150,6 +150,144 @@ export const SEMANTIC_INTENT_RULES = [
     phrases: ['microscopie endoteliala', 'celule endoteliale', 'endoteliu cornean'],
     targets: [['specular_microscopy', 1]],
   },
+
+  // 2026-09-03, audit flow intrebari/recomandari. Regulile de mai jos acopera formulari
+  // uzuale care nu se legau de nicio cheie din catalog. Fiecare tinta este un serviciu
+  // canonic existent - nu s-a inventat niciun serviciu si nu s-a schimbat niciun scor.
+  {
+    key: 'red_or_irritated_eye',
+    phrases: [
+      'ochi rosu', 'ochiul rosu', 'ochi rosii', 'ochii rosii', 'ochi iritat', 'iritatie la ochi',
+      'ma mananca ochii', 'ma mananca ochiul', 'secretii la ochi', 'ochi lipit dimineata',
+      'alergie la ochi', 'conjunctivita',
+    ],
+    targets: [
+      ['ophthalmology_consultation', 1],
+      ['anterior_segment_exam', 0.86],
+      ['dry_eye_screening', 0.62],
+    ],
+  },
+  {
+    key: 'eyelid_lump',
+    phrases: [
+      'umflatura la pleoapa', 'pleoapa umflata', 'nodul la pleoapa', 'bubita pe pleoapa',
+      'ulcior la ochi', 'salazion', 'orjelet',
+    ],
+    targets: [
+      ['oculoplastics_consultation', 1],
+      ['chalazion_treatment', 0.9],
+      ['ophthalmology_consultation', 0.84],
+    ],
+  },
+  {
+    key: 'floaters_in_vision',
+    phrases: [
+      'puncte negre care plutesc', 'puncte negre in fata ochilor', 'pete care plutesc',
+      'muste zburatoare', 'corpi flotanti', 'firicele in fata ochilor',
+    ],
+    targets: [
+      ['retina_consultation', 1],
+      ['vitreoretinal_consultation', 0.9],
+      ['fundus_exam', 0.86],
+      ['ophthalmology_consultation', 0.8],
+    ],
+  },
+  {
+    key: 'keratoconus_care',
+    phrases: ['keratoconus', 'keratocon', 'cornee subtiata'],
+    targets: [
+      ['cornea_consultation', 1],
+      ['corneal_topography', 0.92],
+      ['corneal_crosslinking', 0.86],
+      ['specialty_contact_lens_fitting', 0.72],
+    ],
+  },
+  {
+    key: 'oct_referral',
+    phrases: [
+      'nevoie de oct', 'trimitere pentru oct', 'sa fac oct', 'fac un oct', 'oct la ochi',
+      'oct retina', 'oct macula', 'tomografie in coerenta optica',
+    ],
+    targets: [
+      ['oct', 1],
+      ['retina_consultation', 0.62],
+    ],
+  },
+  {
+    key: 'retinal_angiography_referral',
+    phrases: ['angiofluorografie', 'angiografie cu fluoresceina', 'angiografie retiniana', 'fluoresceina'],
+    targets: [['angiography', 1]],
+  },
+  {
+    key: 'squinting_or_school_vision',
+    phrases: [
+      'mijeste ochii', 'mijeste ochiul', 'strange din ochi ca sa vada',
+      'nu vede la tabla', 'nu vede bine la tabla', 'sta prea aproape de televizor',
+      'sta aproape de ecran', 'se apropie prea mult de carte',
+    ],
+    targets: [
+      ['optometry_consultation', 1],
+      ['refraction', 0.92],
+      ['children_eye_exam', 0.88],
+      ['pediatric_refraction', 0.8],
+      ['visual_acuity_test', 0.78],
+    ],
+  },
+  {
+    key: 'eye_deviation',
+    phrases: [
+      'un ochi care fuge', 'ochiul fuge in lateral', 'ii fuge un ochi', 'ochii fug',
+      'se uita cruce', 'ochi cruce', 'ochiul deviaza',
+    ],
+    targets: [
+      ['strabismus', 1],
+      ['strabismus_screening', 0.92],
+      ['pediatric_ophthalmology', 0.86],
+      ['children_eye_exam', 0.8],
+      ['binocular_vision', 0.72],
+    ],
+  },
+  {
+    key: 'eyestrain_reading_or_screen',
+    phrases: [
+      'dureri de cap cand citesc', 'dureri de cap cand citeste', 'ma doare capul cand citesc',
+      'ma doare capul cand stau la calculator', 'ma doare capul de la calculator',
+      'obosesc ochii la calculator', 'oboseala oculara', 'ochii obosesc repede',
+      'stau mult la calculator', 'stau la calculator', 'stau mult in fata ecranului',
+    ],
+    targets: [
+      ['optometry_consultation', 1],
+      ['binocular_vision', 0.9],
+      ['refraction', 0.86],
+      ['computer_screen_glasses', 0.76],
+      ['office_lenses', 0.7],
+    ],
+  },
+  {
+    key: 'driving_or_work_vision_certificate',
+    phrases: [
+      'permis auto', 'permisul auto', 'adeverinta pentru permis', 'fisa pentru permis',
+      'adeverinta pentru angajare', 'adeverinta medicala pentru vedere', 'fisa de aptitudini',
+    ],
+    targets: [
+      ['occupational_vision', 1],
+      ['visual_acuity_test', 0.9],
+      ['color_vision_test', 0.82],
+      ['optometry_consultation', 0.76],
+    ],
+  },
+  {
+    key: 'undefined_eye_problem',
+    phrases: [
+      'o problema cu ochii', 'probleme cu ochii', 'probleme la ochi', 'am ceva la ochi',
+      'ceva in neregula cu ochii', 'ceva legat de vedere', 'legat de vedere',
+    ],
+    targets: [
+      ['ophthalmology_consultation', 1],
+      ['optometry_consultation', 0.9],
+      ['complete_eye_exam', 0.8],
+    ],
+  },
 ];
 
 export function normalizeSemanticText(value) {
