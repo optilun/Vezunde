@@ -9,6 +9,12 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
   'src/lib/providerSemanticSearch.js': Object.freeze([
     'c925bfd80a556aa1ed30dd4eed22a80fe80bc1ee',
     '240474eb3bba41f56f058ba83359ff33c77e757d',
+    // 2026-09-03, audit flow intrebari/recomandari (aprobat explicit de owner): clientul
+    // nu mai opreste cererea cand textul nu produce nicio cheie de serviciu. Inainte
+    // returna 'query_not_mapped' din browser, deci nu rula nici interpretarea de pe
+    // server, nici fallback-ul structural - desi acesta are nevoie doar de localitate.
+    // Decizia se ia acum pe server. Nicio schimbare de scor, ordonare sau Top 3.
+    'd88d149043964e3d2c5c05b3b19b2f8cf143d7a9',
   ]),
   'shared/providerRecommendation.js': Object.freeze([
     'cb05c9b755d78b2432c80f336e99cd82bfab5ba0',
@@ -82,6 +88,15 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
     // fallbackului structural. Verificat linie cu linie: nicio schimbare de scor,
     // ordonare sau selectie Top 3.
     '131b71686c8158a4b30b0aa25ad279b9e7b91f05',
+    // 2026-09-03, audit flow intrebari/recomandari (aprobat explicit de owner): cand
+    // descrierea nu se leaga de nicio cheie din catalog, ruta nu mai returneaza lista
+    // goala. Cererea merge pana la fallback-ul structural, care cunoaste localitatea.
+    // Cu requestedKeys gol nicio locatie nu intra in `results`, deci toate raman
+    // candidati structurali; coverage_status ramane 'query_not_mapped', ca sa nu se
+    // piarda semnalul pentru coada de recuperare si pentru analitice.
+    // Verificat linie cu linie: buildRecommendationScore, assignRecommendationBuckets si
+    // selectia Top 3 raman neschimbate.
+    'd8076be2e324f75944b6c90c31386abdf6c010fc',
   ]),
 });
 
@@ -192,8 +207,12 @@ assert(
   `Normal matchProvidersSemantic route changed outside the approved admin shadow or PR #265 question-only seams. Actual reconstructed blob: ${reconstructedSemanticEntryBlob}`,
 );
 
+const PR265_PROVIDER_SEMANTIC_BLOBS = Object.freeze([
+  '240474eb3bba41f56f058ba83359ff33c77e757d',
+  'd88d149043964e3d2c5c05b3b19b2f8cf143d7a9',
+]);
 const providerSemanticBlob = observedStableBlobs['src/lib/providerSemanticSearch.js'];
-const providerSemanticComposition = providerSemanticBlob === '240474eb3bba41f56f058ba83359ff33c77e757d'
+const providerSemanticComposition = PR265_PROVIDER_SEMANTIC_BLOBS.includes(providerSemanticBlob)
   ? 'pr265_question_selection'
   : 'main';
 assert.equal(
