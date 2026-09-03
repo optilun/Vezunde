@@ -1,0 +1,19 @@
+{
+  "name": "VIASEE",
+  "short_name": "VIASEE",
+  "description": "Găsește medici oftalmologi, optometriști, opticieni, clinici și servicii pentru vedere în România.",
+  "lang": "ro",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8f4ec",
+  "theme_color": "#f8f4ec",
+  "icons": [
+    {
+      "src": "/brand/viasee-symbol.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
