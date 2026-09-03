@@ -15,9 +15,12 @@ const EMPTY_STATES = {
     title: "Nu avem momentan un rezultat eligibil pentru această nevoie",
     description: "Există furnizori și date locale, dar niciun profil nu îndeplinește toate condițiile de serviciu, control al profilului sau specializare.",
   },
+  // 2026-09-03: cand descrierea nu se leaga de catalog, cautarea nu mai returneaza lista
+  // goala - arata furnizorii publicati in zona. Textul trebuie sa spuna exact ce e lista
+  // aceea, ca sa nu para o potrivire pe nevoia pacientului.
   query_not_mapped: {
     title: "Nu am putut lega descrierea de un serviciu din catalog",
-    description: "Reformulează cererea folosind câteva cuvinte simple despre serviciul sau problema practică pe care o cauți.",
+    description: "Ce vezi mai jos sunt furnizorii publicați în zona aleasă, nu o potrivire pe nevoia ta. Reformulează cererea în câteva cuvinte simple despre serviciul sau problema practică pe care o cauți.",
   },
   query_required: {
     title: "Avem nevoie de o descriere mai clară",

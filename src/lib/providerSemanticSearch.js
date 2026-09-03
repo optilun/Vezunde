@@ -329,18 +329,13 @@ export async function matchProvidersWithSemanticFallback(payload = {}, options =
   });
   const explicitKeys = Array.isArray(payload.service_keys) ? payload.service_keys.filter(Boolean) : [];
   const serviceKeys = [...new Set([...explicitKeys, ...localResolution.service_keys])];
-  if (searchText && serviceKeys.length === 0) {
-    return {
-      data: normalizeRecommendationResponse({
-        results: [],
-        resolved_service_keys: [],
-        semantic_resolution: localResolution,
-        coverage_status: "query_not_mapped",
-      }),
-      usedSemanticFallback: true,
-      localResolution,
-    };
-  }
+  // 2026-09-03, audit flow intrebari/recomandari: pana acum, un text care nu se lega de
+  // catalog era oprit aici, in browser. Cererea nu ajungea niciodata pe server, deci nu
+  // rula nici interpretarea de acolo, nici fallback-ul structural - desi acesta are nevoie
+  // doar de localitate. Pacientul primea "nu am putut lega descrierea de un serviciu"
+  // intr-un oras cu furnizori publicati. Acum decizia se ia pe server, care are datele.
+  // Statusul 'query_not_mapped' vine tot de acolo, deci suprafetele de recuperare si
+  // analiticele raman neschimbate.
   const semanticPayload = {
     ...payload,
     search_text: searchText,

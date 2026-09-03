@@ -80,11 +80,24 @@ const initState = (initialIntent, initialMessage) => {
   };
 };
 
+// Textul liber pe care il scrie pacientul, pe langa mesajul initial. Merge mai departe la
+// selectia intrebarilor, la potrivire si la interpretare, deci lista trebuie sa contina
+// TOATE campurile libere din catalog.
+//
+// 2026-09-03, audit flow intrebari/recomandari: lipsea `investigation_reference_text` -
+// exact ce scrie pe trimiterea medicului ("OCT ochi drept", "consult glaucom"). Era cel
+// mai informativ text din tot chestionarul si nu ajungea nicaieri.
+const PATIENT_FREE_TEXT_QUESTION_KEYS = [
+  "descriere",
+  "symptom_description",
+  "investigation_reference_text",
+];
+
 function patientLanguageText(initialMessage, answers) {
   const values = [
     initialMessage,
     ...(answers || [])
-      .filter((answer) => ["descriere", "symptom_description"].includes(answer.question_key))
+      .filter((answer) => PATIENT_FREE_TEXT_QUESTION_KEYS.includes(answer.question_key))
       .map((answer) => answer.answer_value),
   ];
   return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))].join(". ");
