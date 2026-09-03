@@ -232,7 +232,7 @@ await scenario("full planner profile is never exposed to the browser", () => {
 
 await scenario("matching implementation remains byte-stable", () => {
   const entry = source("base44/functions/matchProvidersSemantic/entry.ts");
-  const marker = "    if (requestedKeys.length === 0) {";
+  const marker = "    const unmappedQuery = requestedKeys.length === 0;";
   const matchingTail = entry.slice(entry.indexOf(marker)).trimEnd();
   // Amprenta actualizata 2026-08-06. Modificarile din acea sesiune au fost verificate
   // linie cu linie si NU ating scoringul, ordonarea sau selectia Top 3:
@@ -252,13 +252,23 @@ await scenario("matching implementation remains byte-stable", () => {
   // 2026-09-02: amprenta s-a schimbat pentru ca textele vizibile pacientului din ramura
   // de potrivire au primit diacritice (routingReason, notitele fallbackului structural).
   // Doar copie afisata: nicio schimbare de scor, ordonare sau selectie Top 3.
-  assert.equal(fnv1a(matchingTail), "28bf84ee");
+  // 2026-09-03, audit flow intrebari/recomandari (aprobat explicit de owner). Ancora s-a
+  // mutat de la "if (requestedKeys.length === 0) {" la "const unmappedQuery = ...":
+  // ramura care returna lista goala cand descrierea nu se lega de catalog a fost
+  // inlocuita cu o variabila, iar cererea merge acum pana la fallback-ul structural.
+  // Cu requestedKeys gol nicio locatie nu intra in `results`, deci toate raman candidati
+  // structurali. Statusul ramane 'query_not_mapped'. NU s-au atins buildRecommendationScore,
+  // assignRecommendationBuckets sau selectia Top 3.
+  assert.equal(fnv1a(matchingTail), "9895eaca");
 });
 
 await scenario("ranking and recommendation client remain byte-stable", () => {
   const client = source("src/lib/providerSemanticSearch.js");
   const marker = "export async function matchProvidersWithSemanticFallback";
-  assert.equal(fnv1a(client.slice(client.indexOf(marker))), "37340f15");
+  // 2026-09-03: clientul nu mai opreste cererea cand textul nu produce chei de serviciu.
+  // Decizia se ia pe server, care are localitatea si poate raspunde cu fallback-ul
+  // structural. Nicio schimbare de scor sau ordonare.
+  assert.equal(fnv1a(client.slice(client.indexOf(marker))), "8242e30f");
 });
 
 await scenario("live result is identical when question selection does not intervene", () => {
