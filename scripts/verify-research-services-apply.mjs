@@ -308,8 +308,171 @@ scenario('copia din base44/shared ramane identica', () => {
   );
 });
 
-assert.ok(scenarioCount >= 18);
+// ---- etapa 2: loturi ---------------------------------------------------------
+
+scenario('perechile sunt unice si au ordine stabila', () => {
+  const pairs = normalizeResearchServicePairs([
+    { draft_id: 'd2', location_id: 'l2' },
+    { draft_id: 'd1', location_id: 'l1' },
+    { draft_id: 'd2', location_id: 'l2' },
+    { draft_id: '', location_id: 'l3' },
+    { draft_id: 'd3', location_id: '' },
+    null,
+  ]);
+  assert.deepEqual(pairs, [
+    { draft_id: 'd1', location_id: 'l1' },
+    { draft_id: 'd2', location_id: 'l2' },
+  ]);
+  assert.deepEqual(
+    normalizeResearchServicePairs([{ draft_id: 'b', location_id: 'z' }, { draft_id: 'a', location_id: 'a' }]),
+    normalizeResearchServicePairs([{ draft_id: 'a', location_id: 'a' }, { draft_id: 'b', location_id: 'z' }]),
+  );
+});
+
+scenario('acelasi draft poate fi aplicat pe doua locatii diferite', () => {
+  const pairs = normalizeResearchServicePairs([
+    { draft_id: 'd1', location_id: 'l1' },
+    { draft_id: 'd1', location_id: 'l2' },
+  ]);
+  assert.equal(pairs.length, 2);
+});
+
+scenario('rezumatul de lot aduna corect si numara perechile in eroare', () => {
+  const summary = summarizeResearchServiceBatchPlan([
+    { planned: [1, 2, 3], skipped: [1], blocked: [] },
+    { planned: [], skipped: [], blocked: [1, 2] },
+    { planned: [], skipped: [], blocked: [], error: 'Locatia nu exista' },
+  ]);
+  assert.deepEqual(summary, {
+    pair_count: 3,
+    planned_count: 3,
+    skipped_count: 1,
+    blocked_count: 2,
+    failed_pair_count: 1,
+  });
+  assert.deepEqual(summarizeResearchServiceBatchPlan(null), {
+    pair_count: 0, planned_count: 0, skipped_count: 0, blocked_count: 0, failed_pair_count: 0,
+  });
+});
+
+scenario('token-urile de lot separa aplicarea de retragere', () => {
+  assert.equal(researchServiceBatchConfirmation('RSB-abc', 12), 'SERVICII-LOT RSB-abc 12');
+  assert.equal(researchServiceBatchRollbackConfirmation('RSB-abc', 12), 'ROLLBACK-SERVICII RSB-abc 12');
+  assert.notEqual(
+    researchServiceBatchConfirmation('RSB-abc', 12),
+    researchServiceBatchRollbackConfirmation('RSB-abc', 12),
+  );
+  assert.notEqual(
+    researchServiceBatchConfirmation('RSB-abc', 12),
+    researchServiceBatchConfirmation('RSB-abc', 13),
+  );
+});
+
+scenario('rollback-ul retrage doar randurile neatinse dupa scriere', () => {
+  const note = researchServiceRowNote('D1', 'Efectuam OCT.');
+  assert.equal(isResearchServiceRowRollbackSafe({ confirmation_level: 'publicly_listed', notes: note }, 'D1'), true);
+  // confirmat de furnizor intre timp - nu se sterge
+  assert.equal(isResearchServiceRowRollbackSafe({ confirmation_level: 'provider_confirmed', notes: note }, 'D1'), false);
+  // verificat de VIASEE intre timp - nu se sterge
+  assert.equal(isResearchServiceRowRollbackSafe({ confirmation_level: 'vezunde_verified', notes: note }, 'D1'), false);
+  // nota rescrisa, deci randul a fost editat - nu se sterge
+  assert.equal(isResearchServiceRowRollbackSafe({ confirmation_level: 'publicly_listed', notes: 'altceva' }, 'D1'), false);
+  // alt draft decat cel care l-a scris - nu se sterge
+  assert.equal(isResearchServiceRowRollbackSafe({ confirmation_level: 'publicly_listed', notes: note }, 'D2'), false);
+  assert.equal(isResearchServiceRowRollbackSafe(null, 'D1'), false);
+});
+
+scenario('nota randului identifica draftul care l-a scris', () => {
+  const note = researchServiceRowNote('D1', 'Efectuam OCT.');
+  assert.match(note, /^Cercetare AI Copilot, draft D1\./);
+  assert.match(note, /Efectuam OCT\./);
+});
+
+scenario('matching_allowed refuza locatiile inactive sau suspendate', () => {
+  const active = { active_status: 'activa', profile_control_status: 'directory' };
+  assert.equal(computeServiceMatchingAllowed('publicly_listed', 'optometry_consultation', active), true);
+  assert.equal(computeServiceMatchingAllowed('not_confirmed', 'optometry_consultation', active), false);
+  assert.equal(computeServiceMatchingAllowed('publicly_listed', 'optometry_consultation', { ...active, active_status: 'inactiva' }), false);
+  assert.equal(computeServiceMatchingAllowed('publicly_listed', 'optometry_consultation', { ...active, profile_control_status: 'suspended' }), false);
+  assert.equal(computeServiceMatchingAllowed('publicly_listed', 'serviciu_inexistent', active), false);
+  assert.equal(computeServiceMatchingAllowed('publicly_listed', 'optometry_consultation', null), false);
+});
+
+scenario('randul construit are exact campurile asteptate', () => {
+  const normalized = { canonicalKey: 'oct', definition: { service_need_level: 'specialized_medical', requires_review: true } };
+  const row = locationServiceRow({
+    locationId: 'L1',
+    normalized,
+    level: 'publicly_listed',
+    matchingAllowed: true,
+    sourceUrl: SOURCE_URL,
+    confirmedAt: '2026-09-01T10:00:00.000Z',
+    notes: 'nota',
+  });
+  assert.equal(row.location_id, 'L1');
+  assert.equal(row.service_key, 'oct');
+  assert.equal(row.confirmation_level, 'publicly_listed');
+  assert.equal(row.matching_allowed, true);
+  assert.equal(row.is_advanced_service, true);
+  assert.equal(row.migration_review_required, false);
+  assert.equal(row.is_active, true);
+});
+
+scenario('modulul de loturi cere token si nu poate rula un plan schimbat', () => {
+  assert.match(batchOps, /if \(action === 'run'\)/);
+  assert.match(batchOps, /Confirmare invalida - replanifica lotul/);
+  assert.match(batchOps, /Planul nu mai corespunde perechilor - replanifica lotul/);
+  assert.match(batchOps, /Lotul este deja in executie/);
+  // orice modificare a perechilor invalideaza planul si aprobarea
+  assert.match(batchOps, /approval_token_hash: '',/);
+});
+
+scenario('executia avanseaza pe cursor, cu lock si heartbeat', () => {
+  assert.match(batchOps, /RESEARCH_SERVICE_BATCH_CHUNK_SIZE/);
+  assert.match(batchOps, /execution_cursor: cursor/);
+  assert.match(batchOps, /execution_lock_token: lockToken/);
+  assert.match(batchOps, /last_heartbeat_at: nowIso\(\)/);
+  assert.ok(RESEARCH_SERVICE_BATCH_CHUNK_SIZE >= 1);
+});
+
+scenario('rollback-ul cere token propriu si pastreaza randurile modificate', () => {
+  assert.match(batchOps, /if \(action === 'rollback'\)/);
+  assert.match(batchOps, /researchServiceBatchRollbackConfirmation\(batch\.batch_key, appliedServiceIds\.length\)/);
+  assert.match(batchOps, /isResearchServiceRowRollbackSafe\(row, draftByServiceId\[serviceId\]\)/);
+  assert.match(batchOps, /a fost modificat dupa scriere/);
+  assert.match(batchOps, /action_type: 'rollback_research_service'/);
+});
+
+scenario('lotul nu atinge locatiile care nu mai sunt in regim directory', () => {
+  assert.match(batchOps, /profile_control_status \|\| 'directory'\) !== 'directory'/);
+});
+
+scenario('lotul planifica prin acelasi planificator ca aplicarea pe o locatie', () => {
+  assert.match(batchOps, /planResearchServiceApplication\(\{/);
+  assert.doesNotMatch(batchOps, /service:/);
+});
+
+scenario('functia logica este rutata in ambele locuri', () => {
+  const routing = source('base44/shared/directoryFunctionRouting.js');
+  const router = source('base44/functions/directoryOps/router.ts');
+  assert.match(routing, /researchServiceBatchOps: DIRECTORY_FUNCTION_ENDPOINT/);
+  assert.match(router, /researchServiceBatchOps: researchServiceBatchOpsHandle/);
+  assert.match(router, /from '\.\/researchServiceBatchOps\.ts'/);
+});
+
+scenario('entitatea de lot exista si este admin-only', () => {
+  const entity = source('base44/entities/ResearchServiceApplyBatch.jsonc');
+  assert.match(entity, /"name": "ResearchServiceApplyBatch"/);
+  assert.match(entity, /"applied_service_ids"/);
+  assert.match(entity, /"approval_token_hash"/);
+  assert.match(entity, /"execution_cursor"/);
+  assert.match(entity, /"rolled_back"/);
+  assert.match(entity, /"role": "admin"/);
+});
+
+assert.ok(scenarioCount >= 30);
 console.log(JSON.stringify({
   contract: RESEARCH_SERVICE_APPLY_CONTRACT_VERSION,
+  batch_contract: RESEARCH_SERVICE_BATCH_CONTRACT_VERSION,
   scenarios: scenarioCount,
 }));
