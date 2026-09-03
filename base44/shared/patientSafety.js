@@ -41,6 +41,20 @@ function includesAny(text, phrases) {
 // copy-diacritics: exempt - sabloanele de mai jos se compara cu textul pacientului dupa
 // normalizare (fara diacritice), deci trebuie sa ramana scrise fara. Nu sunt text citit
 // de nimeni; sunt chei de potrivire.
+//
+// 2026-09-03, audit flow intrebari/recomandari. Potrivirea e prin subsir exact, deci
+// fiecare sinonim trebuie scris. Masurat pe un corpus de 61 de formulari reale, stratul
+// asta rata 4 din 7 urgente: "mi-a intrat var in ochi", "mi-a sarit o aschie de metal in
+// ochi", "m-am lovit la ochi si nu mai vad bine", "vad ca o perdea".
+//
+// Miza crescuse dupa corectia de politica din 2026-09-02: suprafetele advisory nu mai
+// afiseaza spital, prim ajutor sau 112, deci un ratat aici inseamna ca pacientul nu mai
+// primeste nimic actionabil.
+//
+// Extinderea de mai jos NU adauga niciun concept clinic nou. Sunt aceleasi sase semnale
+// din PATIENT_SAFETY_FLAG_PRESENTATION, cu formularile pe care le folosesc oamenii.
+// Verificat pe corpus: zero fals-pozitive pe formularile cronice ("am miopie mare",
+// "vederea a scazut treptat", "nu vad bine la distanta de cand eram copil").
 export function deterministicSafetyFlagsFromText(value) {
   const text = normalizeText(value);
   if (!text) return [];
@@ -49,19 +63,38 @@ export function deterministicSafetyFlagsFromText(value) {
   if (includesAny(text, [
     "nu mai vad deloc",
     "nu mai vad cu un ochi",
+    "nu mai vad cu ochiul",
+    "nu mai vad nimic",
     "mi am pierdut vederea",
+    "am pierdut brusc vederea",
+    "am pierdut vederea la un ochi",
     "pierderea brusca a vederii",
     "vederea a disparut brusc",
+    "mi s a intunecat vederea",
+    "s a intunecat vederea",
+    "am orbit",
     "orbire brusca",
   ])) flags.push("sudden_vision_loss");
 
   if (includesAny(text, [
     "substanta chimica in ochi",
+    "substanta in ochi",
+    "chimicale in ochi",
     "acid in ochi",
+    "acid la ochi",
     "clor in ochi",
     "inalbitor in ochi",
     "detergent puternic in ochi",
+    "detergent in ochi",
     "soda caustica in ochi",
+    "var in ochi",
+    "ciment in ochi",
+    "amoniac in ochi",
+    "spray in ochi",
+    "mi a intrat var",
+    "mi a sarit var",
+    "mi a intrat clor",
+    "mi a intrat detergent",
   ])) flags.push("chemical_injury");
 
   if (includesAny(text, [
@@ -69,24 +102,53 @@ export function deterministicSafetyFlagsFromText(value) {
     "obiect patruns in ochi",
     "sticla in ochi",
     "aschie metalica in ochi",
+    "aschie de metal in ochi",
+    "aschie in ochi",
+    "aschie la ochi",
     "metal in ochi dupa polizor",
+    "cu polizorul in ochi",
+    "de la polizor in ochi",
+    "de la flex in ochi",
+    "cui in ochi",
+    "sarma in ochi",
     "lovitura puternica in ochi",
+    "lovitura in ochi",
+    "m am lovit la ochi",
+    "m a lovit ceva in ochi",
+    "minge in ochi",
+    "pumn in ochi",
   ])) flags.push("penetrating_or_high_speed_trauma");
 
   if (includesAny(text, [
     "durere severa la ochi",
+    "durere severa in ochi",
     "durere foarte mare la ochi",
     "durere insuportabila la ochi",
     "ochi rosu durere mare si greata",
     "durere oculara severa",
+    "ma doare ochiul foarte tare",
+    "ma doare ingrozitor ochiul",
+    "durere mare la ochi si greata",
+    "durere la ochi si voma",
+    "durere la ochi si varsaturi",
   ])) flags.push("severe_eye_pain");
 
   if (includesAny(text, [
     "fulgerari si perdea",
     "fulgere si perdea",
     "umbra ca o perdea",
+    "ca o perdea",
+    "ca o cortina",
+    "perdea peste vedere",
+    "perdea in fata ochiului",
+    "umbra peste vedere",
+    "umbra in campul vizual",
     "muste zburatoare si perdea",
+    "vad fulgere",
+    "fulgerari in ochi",
     "vedere dubla aparuta brusc",
+    "vedere dubla brusc",
+    "am inceput sa vad dublu",
     "vad dublu deodata",
   ])) flags.push("other_possible_urgent_eye_problem");
 
@@ -94,7 +156,11 @@ export function deterministicSafetyFlagsFromText(value) {
     "dupa operatie la ochi nu mai vad",
     "dupa injectie in ochi nu mai vad",
     "ochi rosu si dureros dupa operatie",
+    "ochi rosu dupa operatie",
     "durere dupa operatie la ochi",
+    "ma doare ochiul dupa operatie",
+    "vad mai rau dupa operatie",
+    "dupa injectia in ochi ma doare",
   ])) flags.push("postoperative_red_eye_or_vision_change");
 
   return uniqueFlags(flags);
