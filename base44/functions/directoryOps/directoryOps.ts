@@ -318,6 +318,171 @@ export async function handle(req: Request) {
       return Response.json({ service: row, definition });
     }
 
+    // ---------- APPLY RESEARCH SERVICES (draft aprobat -> LocationService) ----------
+    //
+    // 2026-09-03, audit flow intrebari/recomandari. Directorul are 500+ locatii publicate
+    // si 26 de randuri LocationService, toate pe o singura locatie. Potrivirea se face
+    // exclusiv pe chei de serviciu, deci practic nicio cautare nu are ce potrivi.
+    //
+    // Cauza nu era o lipsa de date, ci o veriga rupta: modulul de cercetare extrage
+    // serviciile din sursa, adminul le aproba unul cate unul contra unui fragment de text
+    // (review_field cere source_ref + snippet, altfel refuza aprobarea), iar la final
+    // aiResearchOps.transfer_to_directory_form le serializa intr-un sir pus in
+    // `source_notes`. Adminul trebuia sa le reintroduca manual, unul cate unul.
+    //
+    // Actiunea de mai jos scrie exact acele servicii deja aprobate de un om. NU
+    // presupune nimic: fiecare serviciu fara decizie de aprobare cu dovada este blocat,
+    // nu scris. Scrierea ramane aici, in functia de scrieri admin, ca aiResearchOps sa
+    // isi pastreze invariantul declarat si testat prin diagnostics (nu scrie niciodata
+    // entitati de furnizor).
+    //
+    // Nivelul este 'publicly_listed': serviciul provine dintr-o sursa publica, nu de la
+    // furnizor. Furnizorul il poate confirma sau corecta cand isi revendica profilul,
+    // moment in care trece prin fluxul normal de review.
+    if (action === 'apply_research_services') {
+      const draftId = String(p.draft_id || '').trim();
+      const locationId = String(p.location_id || '').trim();
+      if (!draftId) return bad('draft_id lipseste');
+      if (!locationId) return bad('location_id lipseste');
+
+      const draft = await svc.entities.AIResearchDraft.get(draftId).catch(() => null);
+      if (!draft) return bad('Draftul de cercetare nu exista');
+
+      const loc = await svc.entities.ProviderLocation.get(locationId).catch(() => null);
+      if (!loc) return bad('Locatia nu exista');
+      if (loc.active_status === 'inactiva') return bad('Locatia este inactiva');
+      // Profilurile revendicate sau verificate apartin furnizorului: serviciile lor se
+      // declara din workspace si trec prin review. Cercetarea nu scrie peste ele.
+      if ((loc.profile_control_status || 'directory') !== 'directory') {
+        return bad('Locatia nu mai este in regim directory - serviciile se declara de catre furnizor, prin review');
+      }
+
+      const approved = parseJSON(draft.approved_fields_json);
+      const decisions = parseJSON(draft.review_decisions_json);
+      const source = draft.source_id
+        ? await svc.entities.ResearchSource.get(draft.source_id).catch(() => null)
+        : null;
+      const fallbackSourceUrl = String(source?.source_url || '').trim();
+
+      const existingRows = await svc.entities.LocationService.filter({ location_id: locationId });
+
+      // Decizia traieste in shared/researchServiceApplyPlan.js, ca sa poata fi testata
+      // direct pe fixturi. Aici raman doar efectele.
+      const { planned, skipped, blocked } = planResearchServiceApplication({
+        approvedFields: approved,
+        reviewDecisions: decisions,
+        existingServiceKeys: existingRows.map((row) => row.service_key),
+        fallbackSourceUrl,
+        sourceCheckedAt: source?.fetched_at || source?.submitted_at || '',
+        now: new Date().toISOString(),
+        matchingAllowedFor: (level, serviceKey) => computeMatchingAllowed(level, serviceKey, loc),
+      });
+
+      const confirmationToken = researchServiceApplyConfirmation(draftId, planned.length);
+      const locationSummary = {
+        id: loc.id,
+        name: loc.name || '',
+        city: loc.city || '',
+        address: loc.address || '',
+        profile_control_status: loc.profile_control_status || 'directory',
+        existing_service_count: existingRows.length,
+      };
+
+      // Implicit este dry run. Aplicarea trebuie ceruta explicit, ca la loturile de import.
+      if (p.dry_run !== false) {
+        return Response.json({
+          dry_run: true,
+          location: locationSummary,
+          planned,
+          skipped,
+          blocked,
+          confirmation_required: confirmationToken,
+        });
+      }
+
+      if (planned.length === 0) return bad('Nu exista servicii aprobate cu dovada de aplicat');
+      if (String(p.confirmation || '').trim() !== confirmationToken) {
+        return bad(`Confirmare invalida. Scrie exact: ${confirmationToken}`);
+      }
+
+      const created = [];
+      const failed = [];
+      for (const item of planned) {
+        const normalized = normalizeServiceKey(item.service_key);
+        try {
+          const row = await svc.entities.LocationService.create(locationServiceRow({
+            locationId,
+            normalized,
+            level: item.confirmation_level,
+            matchingAllowed: item.matching_allowed,
+            sourceUrl: item.service_source_url,
+            confirmedAt: item.service_confirmed_at,
+            notes: `Cercetare AI Copilot, draft ${draftId}. Dovada din sursa: "${item.snippet}"`,
+          }));
+
+          // Trasabilitate structurata, nu doar URL-ul de pe rand: fragmentul de text pe
+          // baza caruia adminul a aprobat serviciul ramane atasat inregistrarii.
+          await svc.entities.ProviderEvidence.create({
+            entity_type: 'LocationService',
+            entity_id: row.id,
+            field_name: 'service_key',
+            value_snapshot: item.service_key,
+            source_url: item.service_source_url,
+            source_type: fallbackSourceUrl ? 'site_oficial' : 'alta_sursa_publica',
+            source_title: source?.source_title || source?.source_domain || '',
+            collected_at: item.service_confirmed_at,
+            collected_by: user.email,
+            checked_at: new Date().toISOString(),
+            confidence: 'medium',
+            evidence_status: 'active',
+            notes: item.snippet,
+          }).catch(() => null);
+
+          await audit(svc, user, {
+            entity_type: 'LocationService',
+            entity_id: row.id,
+            action_type: 'apply_research_service',
+            changed_fields: ['service_key', 'confirmation_level', 'matching_allowed'],
+            next: {
+              service_key: item.service_key,
+              confirmation_level: item.confirmation_level,
+              matching_allowed: item.matching_allowed,
+              research_draft_id: draftId,
+              service_source_url: item.service_source_url,
+            },
+            note: item.snippet,
+          });
+          created.push({ id: row.id, service_key: item.service_key, matching_allowed: item.matching_allowed });
+        } catch (rowError) {
+          failed.push({ service_key: item.service_key, reason: rowError.message });
+        }
+      }
+
+      await audit(svc, user, {
+        entity_type: 'ProviderLocation',
+        entity_id: locationId,
+        action_type: 'apply_research_services_batch',
+        changed_fields: ['services'],
+        next: {
+          research_draft_id: draftId,
+          created: created.map((row) => row.service_key),
+          skipped: skipped.map((row) => row.service_key),
+          blocked: blocked.map((row) => row.service_key),
+          failed: failed.map((row) => row.service_key),
+        },
+        note: `Servicii aplicate din draftul de cercetare ${draftId}`,
+      });
+
+      return Response.json({
+        dry_run: false,
+        location: locationSummary,
+        created,
+        skipped,
+        blocked,
+        failed,
+      });
+    }
+
     // ---------- SET SERVICE CONFIRMATION LEVEL ----------
     if (action === 'set_service_confirmation') {
       const service = await svc.entities.LocationService.get(p.service_id).catch(() => null);
