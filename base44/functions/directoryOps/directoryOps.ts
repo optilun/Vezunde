@@ -5,6 +5,10 @@ import {
   getCanonicalServiceDefinition,
   normalizeServiceKey,
 } from '../../shared/canonicalServiceRegistryExtended.js';
+import {
+  planResearchServiceApplication,
+  researchServiceApplyConfirmation,
+} from '../../shared/researchServiceApplyPlan.js';
 
 // Directory Data Operations (admin-only writes).
 // Every write happens only through an explicit admin action and an audit record.
@@ -54,6 +58,30 @@ function computeMatchingAllowed(level, rawKey, loc) {
     && definition.b2b_only !== true
     && definition.matching_allowed_when_provider_confirmed
     && ['publicly_listed', 'provider_confirmed', 'vezunde_verified'].includes(level);
+}
+
+// Un singur loc in care se compune un rand LocationService.
+//
+// 2026-09-03: raportul de audit a aratat ca logica de scriere a serviciilor exista deja
+// in doua exemplare aproape identice (adminServiceConfigurationReview.ts si
+// adminWorkspaceReview.ts), cu divergente reale intre ele. Actiunea noua
+// apply_research_services nu mai adauga un al treilea exemplar: foloseste acelasi
+// constructor ca add_service.
+function locationServiceRow({ locationId, normalized, level, matchingAllowed, sourceUrl, confirmedAt, notes }) {
+  const definition = normalized.definition;
+  return {
+    location_id: locationId,
+    service_key: normalized.canonicalKey,
+    service_need_level: definition.service_need_level,
+    confirmation_level: level,
+    matching_allowed: matchingAllowed,
+    is_advanced_service: definition.requires_review || definition.service_need_level === 'specialized_medical',
+    service_source_url: sourceUrl,
+    service_confirmed_at: confirmedAt,
+    notes: notes || '',
+    migration_review_required: false,
+    is_active: true,
+  };
 }
 
 async function audit(svc, user, rec) {
@@ -265,19 +293,15 @@ export async function handle(req: Request) {
         : false;
       const definition = normalized.definition;
 
-      const row = await svc.entities.LocationService.create({
-        location_id: p.location_id,
-        service_key: normalized.canonicalKey,
-        service_need_level: definition.service_need_level,
-        confirmation_level: level,
-        matching_allowed: matchingAllowed,
-        is_advanced_service: definition.requires_review || definition.service_need_level === 'specialized_medical',
-        service_source_url: p.service_source_url,
-        service_confirmed_at: p.service_confirmed_at,
+      const row = await svc.entities.LocationService.create(locationServiceRow({
+        locationId: p.location_id,
+        normalized,
+        level,
+        matchingAllowed,
+        sourceUrl: p.service_source_url,
+        confirmedAt: p.service_confirmed_at,
         notes: p.notes || '',
-        migration_review_required: false,
-        is_active: true,
-      });
+      }));
 
       await audit(svc, user, {
         entity_type: 'LocationService',
