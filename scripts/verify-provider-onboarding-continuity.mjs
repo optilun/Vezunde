@@ -21,7 +21,11 @@ expect('src/pages/Login.jsx', 'getAuthRoute("/register")', 'Login pastreaza dest
 expect('src/pages/Register.jsx', 'getAuthRoute("/login")', 'Register pastreaza destinatia spre Login');
 expect('src/lib/postLoginRedirect.js', 'viasee.auth.return_to', 'Destinatia este memorata pe durata autentificarii');
 reject('src/components/provider/ProviderSearch.jsx', 'redirectToLogin', 'Cautarea nu cere autentificare prematur');
-expect('src/components/provider/ClaimForm.jsx', 'continueAfterRelation', 'Revendicarea cere autentificare dupa relatie');
+// 2026-09-03: mesajul spunea "cere autentificare dupa relatie", dar din 2026-08-18
+// continueAfterRelation doar salveaza starea si avanseaza - poarta de autentificare s-a
+// mutat la intrarea in ruta. Verificarea ramane utila (continuitatea pasilor), doar
+// numele ei era ramas in urma.
+expect('src/components/provider/ClaimForm.jsx', 'continueAfterRelation', 'Revendicarea avanseaza de la relatie fara sa piarda starea');
 expect('src/components/provider/ClaimForm.jsx', 'persistClaimResumeState(location, contact, scope, step || "relation")', 'Locatia, scope-ul si pasul curent sunt salvate pentru reluare');
 expect('src/components/provider/ClaimForm.jsx', 'pending_claim_scope', 'Scope-ul revendicarii supravietuieste autentificarii');
 expect('src/components/provider/ClaimForm.jsx', 'getSessionStorage', 'Revendicarea ramane functionala cand sessionStorage este indisponibil');
@@ -29,7 +33,22 @@ expect('src/pages/AddOrClaim.jsx', 'getResumeClaimStep', 'Reluarea valideaza rel
 expect('src/pages/AddOrClaim.jsx', 'PENDING_CLAIM_SCOPE_KEY', 'Pagina principala curata si restaureaza scope-ul');
 expect('src/pages/AddOrClaim.jsx', 'returnFromClaim', 'Intoarcerea la cautare curata revendicarea abandonata');
 expect('src/pages/AddOrClaim.jsx', 'onClaimExisting={(loc) => {\n            clearResumeState();', 'Trecerea din locatie noua la profil existent elimina draftul vechi');
-expect('src/components/provider/NewLocationWizard.jsx', 'currentKey === "relation"', 'Locatia noua cere autentificare dupa relatie');
+// 2026-09-03. Verificarea de aici era rosie din 2026-08-18 si asa a ramas: cerea
+// `currentKey === "relation"` in NewLocationWizard, adica poarta de autentificare de la
+// mijlocul formularului. Poarta a fost eliminata deliberat in aceeasi zi, iar motivul e
+// scris in ambele fisiere: ruta /adauga-sau-revendica cere cont de la intrare, deci pasii
+// curg fara redirect si fara pierdere de date.
+//
+// Deci nu era un bug in aplicatie, ci o garda ramasa pe invariantul vechi. Inlocuita cu
+// invariantul care conteaza acum: poarta sta la intrare, iar wizardul nu are voie sa o
+// reintroduca la mijloc - un redirect dupa ce omul a completat trei pasi inseamna date
+// pierdute, exact ce s-a reparat atunci.
+expect(
+  'src/App.jsx',
+  /<Route element=\{<RequireAuth \/>\}>[\s\S]{0,200}adauga-sau-revendica/,
+  'Inscrierea si revendicarea cer cont de la intrarea in ruta',
+);
+reject('src/components/provider/NewLocationWizard.jsx', 'redirectToLogin', 'Locatia noua nu redirectioneaza spre login la mijlocul formularului');
 reject('src/components/provider/NewLocationWizard.jsx', 'pendingSubmit', 'Locatia noua nu se trimite automat dupa login');
 expect('src/pages/AddOrClaim.jsx', '/contul-meu?mode=applicant&onboarding=submitted', 'Trimiterea intra direct in Pregatire profil');
 expect('src/pages/AddOrClaim.jsx', 'result.duplicate_review', 'Clarificarea unui duplicat nu intra intr-un workspace fara locatie');
