@@ -15,10 +15,20 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   RESEARCH_SERVICE_APPLY_CONTRACT_VERSION,
+  RESEARCH_SERVICE_BATCH_CHUNK_SIZE,
+  RESEARCH_SERVICE_BATCH_CONTRACT_VERSION,
   RESEARCH_SERVICE_CONFIRMATION_LEVEL,
+  computeServiceMatchingAllowed,
   isPublicHttpUrl,
+  isResearchServiceRowRollbackSafe,
+  locationServiceRow,
+  normalizeResearchServicePairs,
   planResearchServiceApplication,
   researchServiceApplyConfirmation,
+  researchServiceBatchConfirmation,
+  researchServiceBatchRollbackConfirmation,
+  researchServiceRowNote,
+  summarizeResearchServiceBatchPlan,
 } from '../shared/researchServiceApplyPlan.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -235,6 +245,7 @@ scenario('validarea de URL respinge ce nu este http(s)', () => {
 
 const dirOps = source('base44/functions/directoryOps/directoryOps.ts');
 const aiResearchOps = source('base44/functions/directoryOps/aiResearchOps.ts');
+const batchOps = source('base44/functions/directoryOps/researchServiceBatchOps.ts');
 
 scenario('actiunea exista si este implicit dry run', () => {
   assert.match(dirOps, /if \(action === 'apply_research_services'\)/);
@@ -258,10 +269,19 @@ scenario('fiecare serviciu scris primeste dovada si audit', () => {
   assert.match(block, /action_type: 'apply_research_services_batch'/);
 });
 
-scenario('add_service si actiunea noua impart acelasi constructor de rand', () => {
+scenario('constructorul de rand are o singura definitie, in shared', () => {
+  // 2026-09-03, etapa 2: locationServiceRow si computeServiceMatchingAllowed au fost mutate
+  // in shared cand a aparut si modulul de loturi. Trei consumatori, o singura definitie.
+  const plan = source('shared/researchServiceApplyPlan.js');
+  assert.equal((plan.match(/export function locationServiceRow\(/g) || []).length, 1);
+  assert.equal((plan.match(/export function computeServiceMatchingAllowed\(/g) || []).length, 1);
+  for (const consumer of [dirOps, batchOps]) {
+    assert.doesNotMatch(consumer, /^function locationServiceRow\(/m);
+    assert.doesNotMatch(consumer, /^function computeServiceMatchingAllowed\(/m);
+    assert.match(consumer, /from '\.\.\/\.\.\/shared\/researchServiceApplyPlan\.js'/);
+  }
   assert.equal((dirOps.match(/LocationService\.create\(locationServiceRow\(\{/g) || []).length, 2);
-  assert.equal((dirOps.match(/svc\.entities\.LocationService\.create\(/g) || []).length, 2);
-  assert.equal((dirOps.match(/function locationServiceRow\(/g) || []).length, 1);
+  assert.equal((batchOps.match(/LocationService\.create\(locationServiceRow\(\{/g) || []).length, 1);
 });
 
 scenario('aiResearchOps ramane fara scrieri de entitati de furnizor', () => {
