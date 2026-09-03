@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { ArrowLeft } from "lucide-react";
+import AICopilotApplyServices from "./AICopilotApplyServices";
 import AICopilotFieldRow from "./AICopilotFieldRow";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
 
@@ -109,7 +110,7 @@ export default function AICopilotDraftReview({ draftId, onBack, onNavigate }) {
       <h3 className="font-heading font-bold text-sm mt-6">Locatie</h3>
       <div className="mt-2 space-y-2">{Object.keys(LOC_LABELS).map((f) => row("location", f, LOC_LABELS, loc))}</div>
 
-      <h3 className="font-heading font-bold text-sm mt-6">Servicii sugerate (raman neconfirmate)</h3>
+      <h3 className="font-heading font-bold text-sm mt-6">Servicii sugerate</h3>
       {services.length === 0 && <p className="text-xs text-muted-foreground mt-1">Niciun serviciu explicit gasit in sursa.</p>}
       <div className="mt-2 space-y-2">
         {services.map((s) => (
@@ -165,6 +166,9 @@ export default function AICopilotDraftReview({ draftId, onBack, onNavigate }) {
         <p key={c.id} className="text-xs text-destructive mt-2">{c.name} — {c.city}, {c.address} · {c.match_reasons.join(", ")}</p>
       ))}
 
+      <h3 className="font-heading font-bold text-sm mt-6">Aplica serviciile aprobate pe o locatie existenta</h3>
+      <AICopilotApplyServices draftId={draftId} duplicateCandidates={dupes} />
+
       {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 
       {!transferred && (
@@ -174,6 +178,7 @@ export default function AICopilotDraftReview({ draftId, onBack, onNavigate }) {
           </button>
           <p className="text-xs text-muted-foreground mt-2">
             Transferul doar pre-completeaza formularul canonic cu valorile aprobate — nu creeaza nicio inregistrare. Necesita aprobarea campurilor obligatorii (organizatie, nume, tip, adresa) si o localitate SIRUTA selectata.
+            Pentru o locatie care exista deja in director, foloseste sectiunea de mai sus: scrie direct serviciile aprobate, fara sa le reintroduci manual.
           </p>
         </div>
       )}
