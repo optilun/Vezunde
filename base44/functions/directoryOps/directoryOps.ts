@@ -6,6 +6,8 @@ import {
   normalizeServiceKey,
 } from '../../shared/canonicalServiceRegistryExtended.js';
 import {
+  computeServiceMatchingAllowed,
+  locationServiceRow,
   planResearchServiceApplication,
   researchServiceApplyConfirmation,
 } from '../../shared/researchServiceApplyPlan.js';
@@ -49,40 +51,9 @@ function classifyKey(rawKey) {
   return normalized.definition?.service_need_level || 'unknown';
 }
 
-function computeMatchingAllowed(level, rawKey, loc) {
-  if (!loc || loc.active_status === 'inactiva' || loc.profile_control_status === 'suspended') return false;
-  const normalized = normalizeServiceKey(rawKey);
-  const definition = normalized.definition;
-  if (!definition) return false;
-  return definition.patient_facing !== false
-    && definition.b2b_only !== true
-    && definition.matching_allowed_when_provider_confirmed
-    && ['publicly_listed', 'provider_confirmed', 'vezunde_verified'].includes(level);
-}
-
-// Un singur loc in care se compune un rand LocationService.
-//
-// 2026-09-03: raportul de audit a aratat ca logica de scriere a serviciilor exista deja
-// in doua exemplare aproape identice (adminServiceConfigurationReview.ts si
-// adminWorkspaceReview.ts), cu divergente reale intre ele. Actiunea noua
-// apply_research_services nu mai adauga un al treilea exemplar: foloseste acelasi
-// constructor ca add_service.
-function locationServiceRow({ locationId, normalized, level, matchingAllowed, sourceUrl, confirmedAt, notes }) {
-  const definition = normalized.definition;
-  return {
-    location_id: locationId,
-    service_key: normalized.canonicalKey,
-    service_need_level: definition.service_need_level,
-    confirmation_level: level,
-    matching_allowed: matchingAllowed,
-    is_advanced_service: definition.requires_review || definition.service_need_level === 'specialized_medical',
-    service_source_url: sourceUrl,
-    service_confirmed_at: confirmedAt,
-    notes: notes || '',
-    migration_review_required: false,
-    is_active: true,
-  };
-}
+// computeServiceMatchingAllowed si locationServiceRow traiau aici. Din 2026-09-03 stau in
+// shared/researchServiceApplyPlan.js, ca sa le foloseasca si modulul de loturi fara sa
+// apara un al treilea exemplar al aceleiasi logici. Comportamentul e neschimbat.
 
 async function audit(svc, user, rec) {
   await svc.entities.DirectoryAuditRecord.create({
@@ -289,7 +260,7 @@ export async function handle(req: Request) {
 
       const level = p.set_publicly_listed === true ? 'publicly_listed' : 'not_confirmed';
       const matchingAllowed = level === 'publicly_listed'
-        ? computeMatchingAllowed(level, normalized.canonicalKey, loc)
+        ? computeServiceMatchingAllowed(level, normalized.canonicalKey, loc)
         : false;
       const definition = normalized.definition;
 
@@ -375,7 +346,7 @@ export async function handle(req: Request) {
         fallbackSourceUrl,
         sourceCheckedAt: source?.fetched_at || source?.submitted_at || '',
         now: new Date().toISOString(),
-        matchingAllowedFor: (level, serviceKey) => computeMatchingAllowed(level, serviceKey, loc),
+        matchingAllowedFor: (level, serviceKey) => computeServiceMatchingAllowed(level, serviceKey, loc),
       });
 
       const confirmationToken = researchServiceApplyConfirmation(draftId, planned.length);
@@ -536,7 +507,7 @@ export async function handle(req: Request) {
       }
 
       updates.matching_allowed = definition
-        ? computeMatchingAllowed(level, normalized.canonicalKey || service.service_key, loc)
+        ? computeServiceMatchingAllowed(level, normalized.canonicalKey || service.service_key, loc)
         : false;
       if (level === 'not_confirmed') updates.matching_allowed = false;
 
