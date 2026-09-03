@@ -14,7 +14,18 @@ const runSchema = JSON.parse(read('base44/entities/DirectoryAutoImportRun.jsonc'
 const itemSchema = JSON.parse(read('base44/entities/DirectoryAutoImportItem.jsonc'));
 const payloadChunkSchema = JSON.parse(read('base44/entities/DirectoryAutoImportPayloadChunk.jsonc'));
 const functionConfig = JSON.parse(read('base44/functions/listProviderMemberInvitations/function.jsonc'));
-assert.equal(fs.existsSync('base44/entities/_noop_invalid.jsonc'), false, 'Schema temporara invalida nu trebuie publicata.');
+// 2026-09-03: garda era rosie de saptamani. base44/entities/_noop_invalid.jsonc chiar
+// exista in repo (creat pe 2026-08-22, prin "External agent changes"), impreuna cu geamanul
+// lui _temp_never_use.jsonc: doua scheme goale, cu un singur camp `x`, fara nicio
+// referinta in cod si fara nicio inregistrare in aplicatie. Verificate live inainte de
+// stergere: 0 randuri fiecare. Ambele sunt acum acoperite, ca sa nu se intoarca doar unul.
+for (const placeholder of ['_noop_invalid', '_temp_never_use']) {
+  assert.equal(
+    fs.existsSync(`base44/entities/${placeholder}.jsonc`),
+    false,
+    `Schema temporara ${placeholder} nu trebuie publicata.`,
+  );
+}
 
 assert.equal(runSchema.name, 'DirectoryAutoImportRun');
 assert.equal(itemSchema.name, 'DirectoryAutoImportItem');
