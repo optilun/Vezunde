@@ -7,7 +7,13 @@ import {
 export const SEMANTIC_INTENT_RULES = [
   {
     key: 'dry_eye_symptoms',
-    phrases: ['ma ustura ochii', 'ochi uscati', 'ochi uscat', 'roseata', 'nisip in ochi', 'ma ard ochii', 'lacrimeaza ochii', 'imi lacrimeaza ochiul', 'lacrimeaza de cateva zile'],
+    phrases: [
+      'ma ustura ochii', 'ochi uscati', 'ochi uscat', 'roseata', 'nisip in ochi', 'ma ard ochii',
+      'lacrimeaza ochii', 'imi lacrimeaza ochiul', 'lacrimeaza de cateva zile',
+      // 2026-09-03: formularea cea mai frecventa lipsea complet.
+      'ma usuca ochii', 'usuca ochii', 'uscaciune la ochi', 'senzatie de uscaciune',
+      'ochii obositi seara', 'ma inteapa ochii',
+    ],
     targets: [
       ['dry_eye_management', 1],
       ['dry_eye_screening', 0.9],
@@ -25,6 +31,20 @@ export const SEMANTIC_INTENT_RULES = [
       'nu vad bine la distanta', 'nu vad bine la aproape', 'nu mai vad bine la distanta',
       'nu mai vad bine la aproape', 'nu vad bine de departe', 'nu vad de aproape',
       'vad greu la distanta', 'vad greu de aproape', 'nu disting literele', 'nu vad la tabla',
+      // 2026-09-03, audit flow intrebari/recomandari. Masurat pe un corpus de 61 de
+      // formulari reale, "vad cam incetosat de cateva saptamani", "vreau sa imi verific
+      // vederea" sau "nu am mai fost la un control de ochi de 5 ani" nu produceau nicio
+      // cheie de serviciu. Potrivirea se compara prin subsir, deci fiecare varianta
+      // trebuie scrisa, nu dedusa.
+      'incetosat', 'incetosata', 'vedere incetosata',
+      'verific vederea', 'verifica vederea', 'verificare a vederii', 'verific ochii',
+      'control de ochi', 'control de rutina la ochi',
+      'nu am mai fost la control', 'nu am mai fost la un control', 'nu am mai fost la oftalmolog',
+      'mi a scazut vederea', 'a scazut vederea', 'a scazut treptat', 'scade vederea',
+      'nu mai vede bine', 'nu vede bine', 'nevoie de un control', 'are nevoie de control',
+      'masor dioptriile', 'sa imi masor dioptriile',
+      'am miopie', 'miopie mare', 'sunt miop', 'sunt miopa',
+      'am astigmatism', 'am hipermetropie', 'am prezbiopie', 'am presbiopie',
     ],
     targets: [
       ['optometry_consultation', 1],
@@ -53,6 +73,14 @@ export const SEMANTIC_INTENT_RULES = [
       'soda caustica in ochi', 'a sarit ceva in ochi',
       'obiect infipt in ochi', 'obiect patruns in ochi', 'sticla in ochi', 'aschie in ochi',
       'dupa operatie la ochi nu mai vad', 'durere dupa operatie la ochi',
+      // 2026-09-03: perdeaua peste camp vizual lipsea, desi e una dintre cele mai
+      // frecvente descrieri de dezlipire de retina.
+      'ca o perdea', 'ca o cortina', 'perdea peste vedere', 'perdea in fata ochiului',
+      'umbra peste vedere',
+      // Traumatismul si durerea severa trebuie sa ramana aici, nu pe ruta de refractie:
+      // "m-am lovit la ochi si nu mai vad bine" cadea pe control de dioptrii.
+      'm am lovit la ochi', 'lovit la ochi', 'lovitura in ochi', 'am luat o lovitura in ochi',
+      'durere severa la ochi', 'durere oculara severa', 'durere severa',
     ],
     targets: [
       ['emergency_ophthalmology', 1],
@@ -77,7 +105,13 @@ export const SEMANTIC_INTENT_RULES = [
   },
   {
     key: 'home_visit_eye_care',
-    phrases: ['testare la domiciliu', 'consultatie acasa', 'control vedere la domiciliu', 'oftalmolog la domiciliu', 'nu ma pot deplasa'],
+    phrases: [
+      'testare la domiciliu', 'consultatie acasa', 'control vedere la domiciliu',
+      'oftalmolog la domiciliu', 'nu ma pot deplasa',
+      // 2026-09-03: cererea vine des la persoana a treia, pentru un parinte sau bunic.
+      'nu se poate deplasa', 'nu poate sa se deplaseze', 'nu poate iesi din casa',
+      'este imobilizat', 'este imobilizata la pat',
+    ],
     targets: [['home_visit_eye_care', 1]],
   },
   {
