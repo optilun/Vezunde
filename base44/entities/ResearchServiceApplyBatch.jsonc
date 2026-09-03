@@ -1,0 +1,149 @@
+{
+  "name": "ResearchServiceApplyBatch",
+  "type": "object",
+  "properties": {
+    "batch_key": {
+      "type": "string"
+    },
+    "contract_version": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "planned",
+        "approved",
+        "running",
+        "completed",
+        "completed_with_errors",
+        "failed",
+        "rolling_back",
+        "rolled_back",
+        "rollback_failed"
+      ],
+      "default": "draft"
+    },
+    "pairs_json": {
+      "type": "string"
+    },
+    "plan_json": {
+      "type": "string"
+    },
+    "result_json": {
+      "type": "string"
+    },
+    "applied_service_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "applied_evidence_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "planned_count": {
+      "type": "number",
+      "default": 0
+    },
+    "created_count": {
+      "type": "number",
+      "default": 0
+    },
+    "skipped_count": {
+      "type": "number",
+      "default": 0
+    },
+    "blocked_count": {
+      "type": "number",
+      "default": 0
+    },
+    "failed_count": {
+      "type": "number",
+      "default": 0
+    },
+    "pair_count": {
+      "type": "number",
+      "default": 0
+    },
+    "execution_cursor": {
+      "type": "number",
+      "default": 0
+    },
+    "execution_lock_token": {
+      "type": "string"
+    },
+    "execution_lock_expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_heartbeat_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "approval_token_hash": {
+      "type": "string"
+    },
+    "approved_by_user_id": {
+      "type": "string"
+    },
+    "approved_by_email": {
+      "type": "string"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "created_by_user_id": {
+      "type": "string"
+    },
+    "created_by_email": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rollback_started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rollback_finished_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rollback_result_json": {
+      "type": "string"
+    },
+    "rollback_error": {
+      "type": "string"
+    },
+    "failure_message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "batch_key",
+    "contract_version",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "write": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
