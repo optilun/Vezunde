@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowRight, Building2, Globe2, MapPin, Phone } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import RouteSeo from "@/components/seo/RouteSeo";
+import { useEntitySeo } from "@/lib/useEntitySeo";
+import { SITE_URL, buildOrganizationProfileTitle } from "../../shared/seoProfileMetadata.js";
+import ProfessionalThumb from "@/components/results/ProfessionalThumb";
 
 const ORGANIZATION_TYPE_LABELS = {
   optical_chain: "Lanț de optici",
@@ -71,6 +73,7 @@ export default function OrganizationProfile() {
   const organization = data?.organization || null;
   const summary = data?.summary || null;
   const locations = useMemo(() => data?.locations || [], [data]);
+  const professionals = useMemo(() => data?.professionals || [], [data]);
 
   const grouped = useMemo(() => {
     const filtered = selectedCounty
@@ -84,6 +87,48 @@ export default function OrganizationProfile() {
     }
     return [...byCounty.entries()].sort((a, b) => b[1].length - a[1].length);
   }, [locations, selectedCounty]);
+
+  // 2026-09-03, audit SEO. Aici exista deja intentia corecta - pagina incerca sa isi puna
+  // title si description proprii - dar o facea montand a doua oara componenta RouteSeo, cu
+  // props. RouteSeo e declarat fara parametri, deci props-urile erau ignorate tacut si pe ruta
+  // asta ajunsesera doua instante care scriau in acelasi head. De aceea metadatele merg
+  // acum prin store, iar instanta globala ramane singurul scriitor.
+  const seoMeta = useMemo(() => {
+    if (loading) return null;
+    if (!organization) {
+      return { title: "Organizație indisponibilă | VIASEE", description: "Profilul căutat nu este public pe VIASEE.", noindex: true };
+    }
+    const canonical = `${SITE_URL}/organizatie/${organization.id || id}`;
+    const locationCount = summary?.location_count || locations.length || 0;
+    const countyCount = summary?.county_count || 0;
+    return {
+      title: buildOrganizationProfileTitle(organization),
+      description: `${organization.name}: ${locationCount} locații publice în ${countyCount} județe. Vezi adresele, programul și detaliile fiecărei locații.`,
+      image: /^https?:\/\//i.test(String(organization.logo_url || "")) ? organization.logo_url : undefined,
+      structuredData: {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": `${canonical}#organization`,
+            name: organization.name,
+            url: canonical,
+            ...(organization.website ? { sameAs: [organization.website] } : {}),
+          },
+          {
+            "@type": "BreadcrumbList",
+            "@id": `${canonical}#breadcrumb`,
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "VIASEE", item: `${SITE_URL}/` },
+              { "@type": "ListItem", position: 2, name: "Caută furnizori", item: `${SITE_URL}/cauta` },
+              { "@type": "ListItem", position: 3, name: organization.name, item: canonical },
+            ],
+          },
+        ],
+      },
+    };
+  }, [loading, organization, summary, locations.length, id]);
+  useEntitySeo(seoMeta);
 
   if (loading) {
     return (
@@ -115,11 +160,6 @@ export default function OrganizationProfile() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:py-14">
-      <RouteSeo
-        title={`${organization.name} — locații în România | VIASEE`}
-        description={`${organization.name}: ${summary?.location_count || 0} locații publice în ${summary?.county_count || 0} județe. Vezi adresele, programul și detaliile fiecărei locații.`}
-      />
-
       <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
           {organization.logo_configured ? (
@@ -220,6 +260,46 @@ export default function OrganizationProfile() {
           </section>
         ))}
       </div>
+
+      {/* 2026-09-03: drumul organizatie -> specialist. Asocierile publice existau deja in date,
+          dar pagina de organizatie nu ducea nicaieri catre oameni: pacientul vedea locatiile si
+          se oprea acolo. Sunt afisati exact specialistii pe care i-ar fi vazut oricum deschizand
+          fiecare locatie in parte - nicio conditie de vizibilitate nu este relaxata aici. */}
+      {professionals.length > 0 && (
+        <section className="mt-10">
+          <h2 className="font-heading text-sm font-bold text-foreground">
+            Specialiști
+            <span className="ml-2 font-normal text-muted-foreground">
+              {professionals.length} {professionals.length === 1 ? "specialist" : "specialiști"}
+            </span>
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Profiluri verificate, afișate cu acordul explicit al fiecărui specialist.
+          </p>
+          <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+            {professionals.map((professional) => (
+              <Link
+                key={professional.id}
+                to={`/specialist/${professional.id}`}
+                className="group flex items-start gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-foreground/40"
+              >
+                <ProfessionalThumb professional={professional} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                    {professional.professional_type_label}
+                  </div>
+                  <h3 className="mt-0.5 text-sm font-bold group-hover:underline">{professional.display_name}</h3>
+                  {professional.locations?.length > 0 && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {professional.locations.map((location) => location.name).filter(Boolean).slice(0, 2).join(" · ")}
+                    </p>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <p className="mt-10 rounded-2xl border border-border bg-secondary/30 p-4 text-xs leading-relaxed text-muted-foreground">
         Informațiile provin din surse oficiale și din datele declarate de furnizor. Dacă reprezentați această
