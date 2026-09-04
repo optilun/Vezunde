@@ -149,7 +149,8 @@ export function professionalLegacyRole(value) {
 
 export function professionalTypeLabel(value) {
   const entry = professionalTypeEntry(value);
-  return entry ? entry.label : 'Specialist';}
+  return entry ? entry.label : 'Specialist';
+}
 
 export function professionalTypeShortLabel(value) {
   const entry = professionalTypeEntry(value);
