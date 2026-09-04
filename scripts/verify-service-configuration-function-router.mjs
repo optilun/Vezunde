@@ -49,7 +49,7 @@ const physicalEndpoints = readdirSync(functionsRoot, { withFileTypes: true })
   .map((entry) => entry.name)
   .sort();
 
-assert.equal(physicalEndpoints.length, 48, 'Suprafata Base44 trebuie sa contina exact 48 de functii fizice dupa folosirea bridge-ului existent');
+assert.equal(physicalEndpoints.length, 49, 'Suprafata Base44 trebuie sa contina exact 49 de functii fizice dupa folosirea bridge-ului existent (48 + matchProfessionals, 2026-09-03: recomandarea de specialisti este a doua unitate de matching, in aceeasi familie cu matchProviders si matchProvidersSemantic, deci endpoint propriu; nu este logica de directory si nu are ce cauta in routerul directoryOps)');
 assert.deepEqual(logicalNames, expectedLogicalNames, 'Contractul trebuie sa pastreze exact cele 13 nume logice aprobate');
 assert.ok(physicalEndpoints.includes(SERVICE_CONFIGURATION_FUNCTION_ENDPOINT), 'Endpointul providerServiceConfigurationOps trebuie sa existe');
 
