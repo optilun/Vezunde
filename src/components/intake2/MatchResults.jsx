@@ -15,6 +15,8 @@ import { clearPatientIntakeSession } from "@/lib/patientIntakeSession";
 import { abandonAllPatientRequestIdempotency } from "@/lib/patientRequestIdempotency";
 import MatchResultCard from "./MatchResultCard";
 import NoResultsFlow from "./NoResultsFlow";
+import ProfessionalResults from "./ProfessionalResults";
+import ResultModeTabs, { RESULT_MODES } from "./ResultModeTabs";
 import PatientRecoverySubmission from "./PatientRecoverySubmission";
 import PatientRequestSubmission from "./PatientRequestSubmission";
 
@@ -57,6 +59,11 @@ function metaFromExpandedResponse(data, previousMeta) {
     coverage_counts: data.coverage_counts || null,
     need_level: data.need_level || previousMeta?.need_level || null,
     resolved_intent: data.resolved_intent || previousMeta?.resolved_intent || null,
+    // 2026-09-03: dupa o extindere de arie, cheile rezolvate sunt cele ale raspunsului nou. Fara
+    // linia asta, tabul de specialisti ar fi cerut in aria noua serviciile rezolvate in cea veche.
+    resolved_service_keys: Array.isArray(data.resolved_service_keys)
+      ? data.resolved_service_keys
+      : (previousMeta?.resolved_service_keys || []),
     selected_locality_siruta_code: data.selected_locality_siruta_code || null,
     selected_locality_name: data.selected_locality_name || null,
     selected_county_code: data.selected_county_code || null,
@@ -151,6 +158,11 @@ export default function MatchResults({
 }) {
   const [showMore, setShowMore] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  // 2026-09-03: acelasi ecran raspunde acum la doua intrebari - "unde ma duc" si "la cine ma duc".
+  // Modul este stare locala, nu ruta noua: contextul cererii (draft, meta, extinderi) ramane
+  // acelasi si nu se pierde la comutare.
+  const [resultMode, setResultMode] = useState(RESULT_MODES.locations.key);
+  const [professionalCount, setProfessionalCount] = useState(null);
   const [expandedSnapshot, setExpandedSnapshot] = useState(null);
   const [isExpandingCounty, setIsExpandingCounty] = useState(false);
   const [expansionError, setExpansionError] = useState("");
@@ -227,6 +239,25 @@ export default function MatchResults({
       });
     } catch (_error) {
       // Feedback UI remains usable if analytics is unavailable.
+    }
+  };
+
+  const changeResultMode = (nextMode) => {
+    if (nextMode === resultMode) return;
+    setResultMode(nextMode);
+    try {
+      base44.analytics.track({
+        eventName: "recommendation_mode_changed",
+        properties: {
+          analytics_version: "patient-search-v1",
+          mode: nextMode,
+          query_scope: queryScope,
+          need_level: activeMeta?.need_level || "unknown",
+          location_result_count: list.length,
+        },
+      });
+    } catch (_error) {
+      // Comutarea nu depinde de analitica.
     }
   };
 
@@ -389,8 +420,36 @@ export default function MatchResults({
   };
 
   if (top3.length === 0 && moreCount === 0) {
+    // Zero locatii nu inseamna zero specialisti: pot exista profiluri verificate asociate unor
+    // locatii care nu au declarat inca serviciul cautat. Selectorul ramane disponibil si aici.
+    if (resultMode === RESULT_MODES.professionals.key) {
+      return (
+        <div>
+          <div className="mb-6">
+            <ResultModeTabs
+              mode={resultMode}
+              onChange={changeResultMode}
+              counts={{ locations: 0, professionals: professionalCount }}
+            />
+          </div>
+          <ProfessionalResults
+            meta={activeMeta}
+            draft={storedDraft}
+            onBackToLocations={() => changeResultMode(RESULT_MODES.locations.key)}
+            onCountChange={setProfessionalCount}
+          />
+        </div>
+      );
+    }
     return (
       <div>
+        <div className="mb-6">
+          <ResultModeTabs
+            mode={resultMode}
+            onChange={changeResultMode}
+            counts={{ locations: 0, professionals: professionalCount }}
+          />
+        </div>
         <NoResultsFlow
           mode="empty"
           meta={activeMeta}
@@ -407,8 +466,33 @@ export default function MatchResults({
 
   const expanded = showMore || top3.length === 0;
 
+  const modeTabs = (
+    <div className="mb-6">
+      <ResultModeTabs
+        mode={resultMode}
+        onChange={changeResultMode}
+        counts={{ locations: list.length, professionals: professionalCount }}
+      />
+    </div>
+  );
+
+  if (resultMode === RESULT_MODES.professionals.key) {
+    return (
+      <div>
+        {modeTabs}
+        <ProfessionalResults
+          meta={activeMeta}
+          draft={storedDraft}
+          onBackToLocations={() => changeResultMode(RESULT_MODES.locations.key)}
+          onCountChange={setProfessionalCount}
+        />
+      </div>
+    );
+  }
+
   return (
     <div>
+      {modeTabs}
       {top3.length > 0 && (
         <>
           <h2 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">Cele mai potrivite opțiuni</h2>
