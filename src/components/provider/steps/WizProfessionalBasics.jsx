@@ -1,14 +1,13 @@
 import React from "react";
 import ContinueButton from "@/components/intake/ContinueButton";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
+import { PROFESSIONAL_TYPE_LABELS } from "@/lib/professionalProfileCatalog";
 
 const inputCls = "w-full rounded-xl border border-border bg-card px-4 py-3 text-sm outline-none focus:border-foreground/50";
 
-const PROFESSION_OPTIONS = {
-  ophthalmologist: "Medic oftalmolog",
-  optometrist: "Optometrist",
-  optician: "Optician",
-};
+// 2026-09-03: etichetele vin din shared/professionalIdentity.js. Maparea de mai jos, catre
+// enum-urile de locatie, ramane locala - este o decizie despre locatii, nu despre profesii.
+const PROFESSION_OPTIONS = PROFESSIONAL_TYPE_LABELS;
 
 // Deterministic enum-to-enum mapping onto the existing ProviderLocation
 // enums — UI-only convenience, no schema change.
