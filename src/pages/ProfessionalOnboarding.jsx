@@ -5,25 +5,22 @@ import SpecialistsHeader from "@/components/specialists/SpecialistsHeader";
 import SpecialistsFooter from "@/components/specialists/SpecialistsFooter";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
-import { PROFESSIONAL_TYPE_LABELS } from "@/lib/professionalProfileCatalog";
+import { PROFESSIONAL_TYPE_ENTRIES, PROFESSIONAL_TYPE_LABELS } from "@/lib/professionalProfileCatalog";
 
-const PROFESSIONAL_TYPES = [
-  {
-    id: "ophthalmologist",
-    icon: Eye,
-    description: "Medic specialist care diagnosticheaza si trateaza afectiunile oculare.",
-  },
-  {
-    id: "optometrist",
-    icon: ScanEye,
-    description: "Specialist in evaluarea vederii, refractie si solutii optice.",
-  },
-  {
-    id: "optician",
-    icon: Glasses,
-    description: "Specialist in consilierea, adaptarea si realizarea solutiilor optice.",
-  },
-];
+// 2026-09-03: lista de profesii si descrierile vin din shared/professionalIdentity.js. Aici raman
+// doar pictogramele, care sunt o decizie de interfata, nu una de taxonomie. O profesie noua apare
+// automat in acest ecran, cu o pictograma implicita, fara sa fie nevoie de o editare aici.
+const TYPE_ICONS = {
+  ophthalmologist: Eye,
+  optometrist: ScanEye,
+  optician: Glasses,
+};
+
+const PROFESSIONAL_TYPES = PROFESSIONAL_TYPE_ENTRIES.map((entry) => ({
+  id: entry.code,
+  icon: TYPE_ICONS[entry.code] || Eye,
+  description: entry.patient_hint,
+}));
 
 export default function ProfessionalOnboarding() {
   const navigate = useNavigate();
