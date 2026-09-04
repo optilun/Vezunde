@@ -2,7 +2,17 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowRight, BadgeCheck, ChevronDown, Clock, ExternalLink, Globe2, Mail, Phone } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useEntitySeo } from "@/lib/useEntitySeo";
+import {
+  SITE_URL,
+  buildProviderProfileDescription,
+  buildProviderProfileStructuredData,
+  buildProviderProfileTitle,
+  profileImageUrl,
+} from "../../shared/seoProfileMetadata.js";
 import { PROFESSIONAL_TYPES } from "@/lib/vezunde";
+// 2026-09-03: etichetele specializarilor vin din shared, nu dintr-o a saptea copie locala.
+import { professionalSpecializationLabel } from "../../shared/professionalIdentity.js";
 import { buildGoogleMapsEmbedUrl, buildGoogleMapsUrl, hasMapLocation } from "@/lib/maps";
 import { CLIENT_NEED_BY_KEY, summarizePublicServices } from "@/lib/servicePresentation";
 import SocialBrandIcon from "@/components/common/SocialBrandIcon";
@@ -14,31 +24,6 @@ const SOCIAL_LINKS = [
   { key: "instagram", label: "Instagram", platform: "instagram" },
   { key: "linkedin", label: "LinkedIn", platform: "linkedin" },
 ];
-
-const SPECIALIZATION_LABELS = {
-  general_ophthalmology: "Oftalmologie generală",
-  pediatric_ophthalmology: "Oftalmologie pediatrică",
-  glaucoma: "Glaucom",
-  retina: "Retină",
-  cornea: "Cornee",
-  cataract: "Cataractă",
-  refractive_surgery: "Chirurgie refractivă",
-  dry_eye: "Ochi uscat",
-  myopia_management: "Managementul miopiei",
-  refraction: "Refracție și dioptrii",
-  contact_lenses: "Lentile de contact",
-  pediatric_optometry: "Optometrie pediatrică",
-  binocular_vision: "Vedere binoculară",
-  low_vision: "Vedere slabă",
-  occupational_vision: "Vedere ocupațională",
-  frame_consulting: "Consiliere rame",
-  ophthalmic_lenses: "Lentile oftalmice",
-  progressive_lenses: "Lentile progresive",
-  lens_fitting: "Montaj lentile",
-  adjustments_repairs: "Reglaje și reparații",
-  children_eyewear: "Ochelari pentru copii",
-  protective_eyewear: "Ochelari de protecție",
-};
 
 const WEEK_DAYS = [
   { key: "monday", label: "Luni" },
@@ -309,7 +294,7 @@ function TeamCard({ team }) {
 
             {(professional.specializations || []).length > 0 && (
               <div className="mt-3 flex flex-wrap gap-1.5">
-                {professional.specializations.slice(0, 4).map((key) => <span key={key} className="rounded-full border border-border bg-card px-2 py-1 text-[10px] font-medium text-muted-foreground">{SPECIALIZATION_LABELS[key] || key}</span>)}
+                {professional.specializations.slice(0, 4).map((key) => <span key={key} className="rounded-full border border-border bg-card px-2 py-1 text-[10px] font-medium text-muted-foreground">{professionalSpecializationLabel(key)}</span>)}
               </div>
             )}
 
@@ -335,6 +320,28 @@ export default function ProviderProfile() {
   }, [id]);
 
   const services = useMemo(() => profile?.services || [], [profile?.services]);
+
+  // 2026-09-03, audit SEO. Inainte, fiecare dintre cele 500+ locatii publice primea acelasi
+  // title ("Profil locație | VIASEE") si aceeasi description, si niciun JSON-LD - desi
+  // backendul intoarce deja adresa, coordonate, telefon, program si servicii.
+  //
+  // Cand profilul nu exista sau nu mai e public, backendul raspunde 404, dar hostingul
+  // static serveste tot HTTP 200. Fara noindex explicit, pagina de eroare ramanea
+  // indexabila si isi declara canonical spre ea insasi - un soft 404 pentru Google.
+  const seoMeta = useMemo(() => {
+    if (loading) return null;
+    if (!profile) {
+      return { title: "Profil indisponibil | VIASEE", description: "Profilul căutat nu este public pe VIASEE.", noindex: true };
+    }
+    const canonical = `${SITE_URL}/furnizor/${profile.id}`;
+    return {
+      title: buildProviderProfileTitle(profile),
+      description: buildProviderProfileDescription(profile),
+      image: profileImageUrl(profile) || undefined,
+      structuredData: buildProviderProfileStructuredData({ profile, canonical }),
+    };
+  }, [loading, profile]);
+  useEntitySeo(seoMeta);
 
   if (loading) return <div className="mx-auto max-w-5xl px-5 pt-20 text-sm text-muted-foreground">Se încarcă...</div>;
   if (!profile) return <div className="mx-auto max-w-5xl px-5 pt-20 text-sm text-muted-foreground">Furnizorul nu a fost găsit.</div>;
