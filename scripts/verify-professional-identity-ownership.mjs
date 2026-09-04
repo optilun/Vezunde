@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { reconciledAssignmentPublicStatus } from '../shared/professionalProfileStatus.js';
 
 const adminReview = await readFile(new URL('../base44/functions/directoryOps/adminWorkspaceReview.ts', import.meta.url), 'utf8');
 const professionalReview = await readFile(new URL('../base44/functions/directoryOps/adminProfessionalProfileReview.ts', import.meta.url), 'utf8');
+const professionalProfileStatusPolicy = await readFile(new URL('../shared/professionalProfileStatus.js', import.meta.url), 'utf8');
 const providerTeam = await readFile(new URL('../src/components/workspace/provider/ProviderTeam.jsx', import.meta.url), 'utf8');
 const professionalWorkspace = await readFile(new URL('../src/components/workspace/professional/ProfessionalWorkspaceRoot.jsx', import.meta.url), 'utf8');
 const assignmentOps = await readFile(new URL('../base44/functions/manageProfessionalAssignment/entry.ts', import.meta.url), 'utf8');
@@ -43,7 +45,22 @@ assert.match(assignmentSchema, /"declined"/);
 assert.match(assignmentSchema, /"revoked"/);
 
 assert.match(professionalReview, /reconcileAssignmentsAfterApproval/);
-assert.match(professionalReview, /consentStatus === 'accepted'/);
+// 2026-09-03: conditia de consimtamant s-a mutat in shared/professionalProfileStatus.js, ca sa fie
+// una singura pentru review-ul de admin, pentru citirea publica si pentru motorul de recomandare.
+// Verificam ca review-ul o foloseste SI ca politica comuna chiar cere acordul explicit - altfel
+// mutarea ar fi putut sa piarda tacit invariantul pe care il apara acest fisier.
+assert.match(professionalReview, /nextAssignmentStatus\(/);
+assert.match(professionalReview, /assignmentPublicEligibility/);
+assert.match(professionalProfileStatusPolicy, /visibility_consent_status !== 'accepted'\) reasons\.push\('consent_missing'\)/);
+assert.equal(
+  reconciledAssignmentPublicStatus({
+    profile: { is_public: true, verification_status: 'verified', public_visibility_status: 'approved' },
+    assignment: { active_status: 'activ', visibility_consent_status: 'not_requested' },
+    location: { status: 'publicata', active_status: 'activa', profile_control_status: 'verified' },
+  }),
+  'privat',
+  'aprobarea profilului nu are voie sa publice o asociere fara acordul specialistului',
+);
 assert.match(professionalReview, /Aprobarea profilului nu publica automat asocierea/);
 assert.doesNotMatch(professionalReview, /const nextStatus = eligibleLocation\(location\) \? 'public' : 'privat'/);
 
