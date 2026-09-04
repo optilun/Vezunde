@@ -1,45 +1,51 @@
 import React, { useEffect, useState } from "react";
 import {
+  Archive,
   CheckCircle2,
   Loader2,
   MapPin,
   MessageSquareMore,
   RefreshCw,
+  RotateCcw,
   UserRound,
   XCircle,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { PROFESSIONAL_TYPE_LABELS } from "@/lib/professionalProfileCatalog";
+import { professionalSpecializationLabel } from "../../../../shared/professionalIdentity.js";
 
-const TYPE_LABELS = {
-  ophthalmologist: "Medic oftalmolog",
-  optometrist: "Optometrist",
-  optician: "Optician",
+// 2026-09-03: etichetele veneau din a sasea copie a taxonomiei. Acum din shared/professionalIdentity.js.
+const TYPE_LABELS = PROFESSIONAL_TYPE_LABELS;
+
+function specializationText(key) {
+  return professionalSpecializationLabel(key);
+}
+
+// Arhivarea este singura actiune care scoate offline deliberat un profil public, deci cere
+// motiv scris. Aprobarea nu cere, pentru ca nu ia nimic nimanui.
+const NOTE_REQUIRED_ACTIONS = new Set(["request_more_info", "reject", "archive", "restore"]);
+
+const NOTE_PROMPTS = {
+  request_more_info: "Completează nota cu informațiile care trebuie adăugate.",
+  reject: "Completează motivul respingerii.",
+  archive: "Scrie motivul pentru care profilul este scos din public.",
+  restore: "Scrie motivul reactivării.",
 };
 
-const SPECIALIZATION_LABELS = {
-  general_ophthalmology: "Oftalmologie generală",
-  pediatric_ophthalmology: "Oftalmologie pediatrică",
-  glaucoma: "Glaucom",
-  retina: "Retină",
-  cornea: "Cornee",
-  cataract: "Cataractă",
-  refractive_surgery: "Chirurgie refractivă",
-  dry_eye: "Ochi uscat",
-  myopia_management: "Managementul miopiei",
-  refraction: "Refracție și determinarea dioptriilor",
-  contact_lenses: "Lentile de contact",
-  pediatric_optometry: "Optometrie pediatrică",
-  binocular_vision: "Vedere binoculară",
-  low_vision: "Vedere slabă",
-  occupational_vision: "Vedere ocupațională",
-  frame_consulting: "Consiliere rame",
-  ophthalmic_lenses: "Lentile oftalmice",
-  progressive_lenses: "Lentile progresive",
-  lens_fitting: "Montaj lentile",
-  adjustments_repairs: "Reglaje și reparații",
-  children_eyewear: "Ochelari pentru copii",
-  protective_eyewear: "Ochelari de protecție",
+const DECISION_MESSAGES = {
+  approve: "Profilul specialistului a fost aprobat și publicat.",
+  request_more_info: "Au fost solicitate completări.",
+  reject: "Profilul a fost respins.",
+  archive: "Profilul a fost arhivat și scos din public. Asocierile au trecut pe privat.",
+  restore: "Profilul a fost reactivat ca draft. Republicarea cere o nouă aprobare.",
 };
+
+const STATUS_FILTERS = [
+  { key: "pending_review", label: "În verificare" },
+  { key: "approved", label: "Aprobate" },
+  { key: "needs_more_info", label: "Completări cerute" },
+  { key: "rejected", label: "Respinse" },
+];
 
 function formatDate(value) {
   if (!value) return "—";
@@ -89,6 +95,10 @@ function ContactItem({ label, value }) {
 
 export default function AdminProfessionalProfileReview() {
   const [items, setItems] = useState([]);
+  // 2026-09-03: coada nu mai arata doar `pending_review`. Fara filtru, un profil deja aprobat sau
+  // arhivat era invizibil pentru admin, deci arhivarea si reactivarea nu aveau de unde sa fie
+  // pornite - exact motivul pentru care statusul `archived` a stat nefolosit in enum.
+  const [statusFilter, setStatusFilter] = useState("pending_review");
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState("");
   const [decisionNotes, setDecisionNotes] = useState({});
@@ -101,7 +111,7 @@ export default function AdminProfessionalProfileReview() {
     try {
       const response = await base44.functions.invoke("adminProfessionalProfileReview", {
         action: "list",
-        status: "pending_review",
+        status: statusFilter,
       });
       setItems(response.data?.profiles || []);
     } catch (requestError) {
@@ -117,7 +127,8 @@ export default function AdminProfessionalProfileReview() {
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter]);
 
   const setDecisionNote = (profileId, value) => {
     setDecisionNotes((current) => ({ ...current, [profileId]: value }));
@@ -125,13 +136,9 @@ export default function AdminProfessionalProfileReview() {
 
   const decide = async (profile, action) => {
     const note = String(decisionNotes[profile.id] || "").trim();
-    if ((action === "request_more_info" || action === "reject") && !note) {
+    if (NOTE_REQUIRED_ACTIONS.has(action) && !note) {
       setMessage("");
-      setError(
-        action === "request_more_info"
-          ? "Completează nota cu informațiile care trebuie adăugate."
-          : "Completează motivul respingerii.",
-      );
+      setError(NOTE_PROMPTS[action] || "Completează nota deciziei.");
       document.getElementById(`professional-review-note-${profile.id}`)?.focus();
       return;
     }
@@ -147,13 +154,7 @@ export default function AdminProfessionalProfileReview() {
       });
       if (response.data?.error) throw new Error(response.data.error);
 
-      setMessage(
-        action === "approve"
-          ? "Profilul specialistului a fost aprobat și publicat."
-          : action === "request_more_info"
-            ? "Au fost solicitate completări."
-            : "Profilul a fost respins.",
-      );
+      setMessage(DECISION_MESSAGES[action] || "Decizia a fost aplicată.");
       setDecisionNotes((current) => {
         const next = { ...current };
         delete next[profile.id];
@@ -192,6 +193,24 @@ export default function AdminProfessionalProfileReview() {
         </button>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {STATUS_FILTERS.map((filter) => (
+          <button
+            key={filter.key}
+            type="button"
+            onClick={() => setStatusFilter(filter.key)}
+            disabled={anyBusy}
+            className={`min-h-9 rounded-full border px-3.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
+              statusFilter === filter.key
+                ? "border-foreground bg-foreground text-background"
+                : "border-border text-muted-foreground hover:border-foreground/40"
+            }`}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
+
       {error && (
         <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           {error}
@@ -212,7 +231,7 @@ export default function AdminProfessionalProfileReview() {
       {!loading && items.length === 0 && (
         <div className="rounded-3xl border border-dashed border-border bg-card p-10 text-center">
           <UserRound className="mx-auto h-7 w-7 text-muted-foreground" />
-          <p className="mt-3 text-sm font-semibold">Nu există profiluri de specialiști în verificare.</p>
+          <p className="mt-3 text-sm font-semibold">Nu există profiluri de specialiști în această stare.</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Profilurile apar aici după ce specialistul își completează datele și le trimite spre review.
           </p>
@@ -261,7 +280,7 @@ export default function AdminProfessionalProfileReview() {
                       <div className="mt-2 flex flex-wrap gap-2">
                         {(draft.specializations || []).map((key) => (
                           <span key={key} className="rounded-full border border-border bg-secondary/45 px-2.5 py-1 text-xs font-medium">
-                            {SPECIALIZATION_LABELS[key] || key}
+                            {specializationText(key) || key}
                           </span>
                         ))}
                       </div>
@@ -326,7 +345,9 @@ export default function AdminProfessionalProfileReview() {
                     Nota este obligatorie pentru solicitarea de completări și pentru respingere.
                   </p>
 
-                  <div className="mt-3 grid gap-2">
+                  {/* Deciziile de review au sens doar cat draftul e in verificare. Afisate mereu,
+                      ar fi promis administratorului o actiune pe care serverul o respinge cu 409. */}
+                  <div className={`mt-3 grid gap-2 ${profile.profile_review_status === "pending_review" ? "" : "hidden"}`}>
                     <button
                       type="button"
                       onClick={() => decide(profile, "approve")}
@@ -352,6 +373,34 @@ export default function AdminProfessionalProfileReview() {
                     >
                       <XCircle className="h-4 w-4" /> Respinge
                     </button>
+                  </div>
+
+                  {/* Ciclul de viata al persoanei, nu doar al draftului. Arhivarea inchide pagina
+                      publica si trece asocierile pe privat; reactivarea readuce profilul in lucru,
+                      nu il republica - pentru asta e nevoie de o noua aprobare. */}
+                  <div className="mt-3 border-t border-border pt-3">
+                    {profile.public_visibility_status === "archived" ? (
+                      <button
+                        type="button"
+                        onClick={() => decide(profile, "restore")}
+                        disabled={anyBusy}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"
+                      >
+                        <RotateCcw className="h-4 w-4" /> Reactivează ca draft
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => decide(profile, "archive")}
+                        disabled={anyBusy}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-secondary disabled:opacity-50"
+                      >
+                        <Archive className="h-4 w-4" /> Arhivează profilul
+                      </button>
+                    )}
+                    <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                      Arhivarea scoate profilul din căutare și din paginile publice. Nu șterge date.
+                    </p>
                   </div>
                 </aside>
               </div>
