@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { assignmentPublicEligibility } from '../../shared/professionalProfileStatus.js';
+import { professionalTypeLabel } from '../../shared/professionalIdentity.js';
 
 const PROVIDER_ROLES = ['organization_owner', 'location_manager'];
 const PROFESSIONAL_VISIBILITY_ACTIONS = ['accept_visibility', 'decline_visibility', 'hide_visibility'];
@@ -42,11 +44,21 @@ async function assertProviderAccess(svc, user, locationId) {
   return { location };
 }
 
+// 2026-09-03: conditiile de publicare sunt evaluate de shared/professionalProfileStatus.js.
+// Aceleasi patru conditii erau scrise separat aici, in adminProfessionalProfileReview si in
+// getPublicProfessionalProfile; oricare dintre ele modificata singura rupea tacit celelalte doua.
+// Aici verificam doar partea de profil si locatie: consimtamantul este exact ce se negociaza in
+// actiunile de mai jos, deci nu poate fi o preconditie a lor.
 function publicEligibility(profile, location) {
-  if (!profile || profile.verification_status !== 'verified' || profile.public_visibility_status !== 'approved' || profile.is_public !== true) {
+  const { reasons } = assignmentPublicEligibility({
+    profile,
+    assignment: { active_status: 'activ', visibility_consent_status: 'accepted' },
+    location,
+  });
+  if (reasons.includes('profile_not_public')) {
     return { can_publish: false, publish_block_reason: 'Profilul profesional trebuie sa fie verificat si public in VIASEE.' };
   }
-  if (!location || location.status !== 'publicata' || location.active_status === 'inactiva' || location.profile_control_status === 'suspended') {
+  if (reasons.length > 0) {
     return { can_publish: false, publish_block_reason: 'Locatia trebuie sa fie publicata si activa in VIASEE.' };
   }
   return { can_publish: true, publish_block_reason: '' };
@@ -64,6 +76,7 @@ async function listAssignments(svc, locationId, location) {
       professional_id: profile.id,
       full_name: profile.public_display_name || profile.full_name || 'Specialist',
       professional_type: profile.professional_type || assignment.professional_type || '',
+      professional_type_label: professionalTypeLabel(profile.professional_type || assignment.professional_type),
       active_status: assignment.active_status || 'activ',
       public_status: assignment.public_status || 'privat',
       visibility_consent_status: assignment.visibility_consent_status || 'not_requested',
