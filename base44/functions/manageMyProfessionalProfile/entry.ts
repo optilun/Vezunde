@@ -3,6 +3,17 @@ import {
   acquireProfessionalLifecycleLock,
   releaseProfessionalLifecycleLock,
 } from '../../shared/professionalLifecycleLock.js';
+import {
+  PROFESSIONAL_TYPE_CODES,
+  professionalLegacyRole,
+  professionalSpecializationsFor,
+} from '../../shared/professionalIdentity.js';
+import {
+  PROFESSIONAL_SUBMISSION_BLOCKER_LABELS,
+  nextProfessionalProfileState,
+  professionalProfileCompleteness,
+  professionalSubmissionBlockers,
+} from '../../shared/professionalProfileStatus.js';
 
 const ALLOWED_FIELDS = [
   'public_display_name',
@@ -18,27 +29,11 @@ const ALLOWED_FIELDS = [
   'accepts_independent_requests',
 ];
 
-const SPECIALIZATIONS_BY_TYPE: Record<string, string[]> = {
-  ophthalmologist: [
-    'general_ophthalmology', 'pediatric_ophthalmology', 'glaucoma', 'retina', 'cornea',
-    'cataract', 'refractive_surgery', 'dry_eye', 'myopia_management',
-  ],
-  optometrist: [
-    'refraction', 'contact_lenses', 'pediatric_optometry', 'binocular_vision',
-    'myopia_management', 'low_vision', 'occupational_vision',
-  ],
-  optician: [
-    'frame_consulting', 'ophthalmic_lenses', 'progressive_lenses', 'lens_fitting',
-    'adjustments_repairs', 'children_eyewear', 'protective_eyewear',
-  ],
-};
-
-const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
-const ROLE_BY_TYPE: Record<string, string> = {
-  ophthalmologist: 'medic_oftalmolog',
-  optometrist: 'optometrist',
-  optician: 'optician',
-};
+// 2026-09-03: taxonomia si tranzitiile de stare vin din shared, nu mai sunt rescrise aici.
+// Inainte, aceleasi trei harti (specializari permise, lista de tipuri, traducerea tip -> rol)
+// existau si in professionalInvitationOps si in getPublicProfessionalProfile, iar o profesie
+// noua ar fi trebuit adaugata in toate.
+const PROFESSIONAL_TYPES = PROFESSIONAL_TYPE_CODES;
 
 function res(body: Record<string, unknown>, status = 200) {
   return Response.json(body, { status });
@@ -147,7 +142,7 @@ function validatePayload(payload: Record<string, unknown>, professionalType: str
   if (payload.specializations !== undefined && !Array.isArray(payload.specializations)) {
     return { error: 'Specializarile trebuie sa fie o lista' };
   }
-  const allowed = new Set(SPECIALIZATIONS_BY_TYPE[professionalType] || []);
+  const allowed = new Set(professionalSpecializationsFor(professionalType));
   const specializations = [...new Set((Array.isArray(payload.specializations) ? payload.specializations : [])
     .map((item) => text(item))
     .filter(Boolean))];
@@ -177,15 +172,7 @@ function validatePayload(payload: Record<string, unknown>, professionalType: str
 }
 
 function completeness(draft: Record<string, unknown>, professionalType: string) {
-  let score = 0;
-  if (text(draft.public_display_name).length >= 3) score += 15;
-  if (text(draft.professional_bio).length >= 80) score += 25;
-  if (Array.isArray(draft.specializations) && draft.specializations.length > 0) score += 20;
-  if (text(draft.profile_photo_url)) score += 15;
-  if (text(draft.public_email) || text(draft.public_phone)) score += 10;
-  if (text(draft.public_website_url) || text(draft.linkedin_url) || text(draft.facebook_url) || text(draft.instagram_url)) score += 5;
-  if (PROFESSIONAL_TYPES.includes(professionalType)) score += 10;
-  return score;
+  return professionalProfileCompleteness(draft, professionalType, PROFESSIONAL_TYPES.includes(professionalType));
 }
 
 async function audit(svc: any, user: any, profileId: string, actionType: string, previous: Record<string, unknown>, next: Record<string, unknown>, note: string) {
@@ -267,7 +254,7 @@ Deno.serve(async (req) => {
           user_id: user.id,
           full_name: checkedName.value,
           public_display_name: checkedName.value,
-          role: ROLE_BY_TYPE[professionalType],
+          role: professionalLegacyRole(professionalType),
           professional_type: professionalType,
           specializations: [],
           professional_bio: '',
@@ -351,17 +338,23 @@ Deno.serve(async (req) => {
       const checked = validatePayload(currentDraft, profile.professional_type || '');
       if (checked.error) return res({ error: checked.error }, 400);
       const score = completeness(checked.value, profile.professional_type || '');
-      const missing: string[] = [];
-      if (text(checked.value.public_display_name).length < 3) missing.push('nume public');
-      if (text(checked.value.professional_bio).length < 80) missing.push('descriere profesionala de minimum 80 de caractere');
-      if (!Array.isArray(checked.value.specializations) || checked.value.specializations.length === 0) missing.push('cel putin o specializare');
-      if (missing.length) return res({ error: `Completeaza inainte de trimitere: ${missing.join(', ')}`, missing }, 400);
+      // Aceeasi lista de blocaje pe care o arata si checklist-ul din workspace. Cand erau doua
+      // liste, ecranul spunea ca profilul e gata iar serverul raspundea ca nu e.
+      const blockers = professionalSubmissionBlockers(checked.value);
+      if (blockers.length) {
+        const missing = blockers.map((code: string) => PROFESSIONAL_SUBMISSION_BLOCKER_LABELS[code] || code);
+        return res({ error: `Completeaza inainte de trimitere: ${missing.join(' ')}`, missing, blockers }, 400);
+      }
 
       const now = new Date().toISOString();
+      // 2026-09-03: trimiterea unui draft nou nu mai scoate offline un profil deja aprobat.
+      // Inainte, `verification_status` era pus neconditionat pe `pending_review`, ceea ce facea
+      // ca `isPublicProfessionalProfile` sa fie fals: un specialist verificat care isi corecta o
+      // virgula in descriere disparea din cautare pana la urmatoarea decizie de admin.
+      const transition = nextProfessionalProfileState('submit', profile);
       const updates = {
         pending_profile_json: JSON.stringify(checked.value),
-        profile_review_status: 'pending_review',
-        verification_status: 'pending_review',
+        ...transition,
         submitted_at: now,
         profile_completeness: score,
         profile_updated_at: now,
