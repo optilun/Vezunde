@@ -1,14 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Check, Copy, Trash2, UserPlus, Send, Eye, EyeOff, Clock3 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { PROFESSIONAL_TYPE_LABELS } from "@/lib/professionalProfileCatalog";
 
 const inputCls = "w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-foreground/40";
 
-const PROFESSIONAL_TYPES = {
-  ophthalmologist: "Medic oftalmolog",
-  optometrist: "Optometrist",
-  optician: "Optician",
-};
+// 2026-09-03: lista de profesii vine din shared/professionalIdentity.js. Era rescrisa aici, in
+// ProviderProfile, in AdminProfessionalProfileReview si in inca trei locuri.
+const PROFESSIONAL_TYPES = PROFESSIONAL_TYPE_LABELS;
 
 const INVITE_STATUS_LABELS = {
   pending: "În așteptare",
