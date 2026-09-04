@@ -10,3 +10,4 @@ User-agent: OAI-SearchBot
 Allow: /
 
 Sitemap: https://viasee.ro/sitemap.xml
+Sitemap: https://viasee.ro/sitemap-locatii.xml
