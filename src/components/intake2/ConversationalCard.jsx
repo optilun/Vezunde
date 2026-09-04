@@ -726,6 +726,20 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
           coverage_counts: res.data.coverage_counts || null,
           need_level: res.data.need_level || null,
           resolved_intent: res.data.resolved_intent || requestDraft.intent || null,
+          // 2026-09-03: contextul rezolvat al cererii merge mai departe in `meta`, ca sa poata fi
+          // reutilizat de recomandarea de specialisti fara sa reinterpreteze nimic. Fara aceste
+          // campuri, al doilea tab ar fi cerut specialisti fara sa stie ce servicii s-au rezolvat
+          // si in ce arie s-a cautat - adica ar fi raspuns la alta intrebare decat primul tab.
+          resolved_service_keys: Array.isArray(res.data.resolved_service_keys)
+            ? res.data.resolved_service_keys
+            : requestDraft.service_keys,
+          query_scope: res.data.query_scope || "locality",
+          selected_locality_siruta_code: res.data.selected_locality_siruta_code
+            || requestDraft.locality_siruta_code
+            || null,
+          selected_locality_name: res.data.selected_locality_name || requestDraft.city || null,
+          selected_county_code: res.data.selected_county_code || requestDraft.county_code || null,
+          selected_county_name: res.data.selected_county_name || requestDraft.county || null,
           used_semantic_fallback: res.usedSemanticFallback === true,
           client_location_source: res.data.client_location_source || null,
           client_address_text: res.data.client_address_text || requestDraft.client_address_text || "",
