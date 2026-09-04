@@ -9,6 +9,9 @@ import { deterministicSafetyFlagsFromText } from "@/lib/patientSafety";
 import UrgencyInterruption from "@/components/intake2/UrgencyInterruption";
 import ProviderCard from "@/components/ProviderCard";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
+import ProfessionalDirectoryCard from "@/components/results/ProfessionalDirectoryCard";
+import ResultModeTabs, { RESULT_MODES } from "@/components/intake2/ResultModeTabs";
+import { browsePublicProfessionals } from "@/lib/professionalSearch";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
 
 const SELECT =
@@ -30,6 +33,11 @@ export default function Search() {
     () => new URLSearchParams(window.location.search),
   );
   const [results, setResults] = useState(null);
+  // 2026-09-03: /cauta rasfoia doar locatii. Pacientul care stie ca vrea "un oftalmolog din Sibiu"
+  // nu avea de unde sa inceapa - trebuia sa deschida clinici una cate una si sa se uite la echipa.
+  // Acelasi selector ca in rezultatele cererii, ca sa fie evident ca e aceeasi idee.
+  const [searchMode, setSearchMode] = useState(RESULT_MODES.locations.key);
+  const [professionals, setProfessionals] = useState(null);
   const [service, setService] = useState(urlParams.get("serviciu") || "");
   const [query, setQuery] = useState(urlParams.get("q") || "");
   const [type, setType] = useState("");
@@ -69,6 +77,7 @@ export default function Search() {
 
   useEffect(() => {
     setResults(null);
+    setProfessionals(null);
   }, [service, query, type, locality?.siruta_code]);
 
   useEffect(() => {
@@ -117,6 +126,23 @@ export default function Search() {
     isDirectoryBrowse,
     hasCanonicalLocality,
   ]);
+
+  useEffect(() => {
+    if (searchMode !== RESULT_MODES.professionals.key) return undefined;
+    if (!hasCanonicalLocality) {
+      setProfessionals([]);
+      return undefined;
+    }
+    let active = true;
+    setProfessionals(null);
+    browsePublicProfessionals({
+      localitySirutaCode: locality.siruta_code,
+      serviceKeys: service ? [service] : [],
+    })
+      .then((data) => { if (active) setProfessionals(data.results); })
+      .catch(() => { if (active) setProfessionals([]); });
+    return () => { active = false; };
+  }, [searchMode, hasCanonicalLocality, locality, service]);
 
   const chooseSuggestion = (suggestion) => {
     setService(suggestion.service_key);
@@ -221,6 +247,19 @@ export default function Search() {
         </div>
       </section>
 
+      {hasCanonicalLocality && !showSafetyBanner && (
+        <div className="mt-6">
+          <ResultModeTabs
+            mode={searchMode}
+            onChange={setSearchMode}
+            counts={{
+              locations: Array.isArray(results) ? results.length : undefined,
+              professionals: Array.isArray(professionals) ? professionals.length : undefined,
+            }}
+          />
+        </div>
+      )}
+
       {showSafetyBanner ? (
         <div className="mt-6">
           <UrgencyInterruption
@@ -231,6 +270,23 @@ export default function Search() {
         </div>
       ) : !hasCanonicalLocality ? (
         <SelectLocalityNotice />
+      ) : searchMode === RESULT_MODES.professionals.key ? (
+        <div className="mt-8">
+          <h2 className="font-heading text-lg font-bold sm:text-xl">
+            Specialiști în {locality?.name}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Apar doar specialiștii cu profil verificat care au acceptat să fie afișați public la o
+            locație din această localitate.
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {professionals === null && <LoadingState />}
+            {professionals?.length === 0 && <EmptyProfessionals locality={locality} />}
+            {professionals?.map((professional) => (
+              <ProfessionalDirectoryCard key={professional.id} professional={professional} />
+            ))}
+          </div>
+        </div>
       ) : isDirectoryBrowseView ? (
         <div className="mt-8">
           <h2 className="font-heading text-lg font-bold sm:text-xl">
@@ -256,6 +312,26 @@ export default function Search() {
       <p className="pt-8 text-xs text-muted-foreground">
         VIASEE nu oferă diagnostic medical.
       </p>
+    </div>
+  );
+}
+
+function EmptyProfessionals({ locality }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-border bg-card p-6 text-center sm:col-span-2">
+      <p className="text-sm font-semibold">
+        Nu există încă specialiști publici în {locality?.name || "această localitate"}.
+      </p>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+        Un specialist apare aici după ce își verifică profilul și acceptă explicit să fie afișat la o
+        locație. Până atunci, clinicile și opticile rămân calea cea mai directă.
+      </p>
+      <Link
+        to="/pentru-specialisti"
+        className="mt-4 inline-flex min-h-11 items-center rounded-full border border-border bg-card px-5 text-sm font-semibold hover:bg-secondary"
+      >
+        Ești specialist? Creează-ți profilul
+      </Link>
     </div>
   );
 }
