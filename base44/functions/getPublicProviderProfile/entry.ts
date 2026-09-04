@@ -5,6 +5,12 @@ import {
   normalizeServiceKey,
 } from './sharedDependencies.js';
 import { getPublicLocationDisclosure } from './providerPublicTrust.js';
+import {
+  normalizeProfessionalType,
+  professionalTypeLabel,
+  sanitizeProfessionalSpecializations,
+} from '../../shared/professionalIdentity.js';
+import { isPublicProfessionalProfile } from '../../shared/professionalProfileStatus.js';
 
 const PATIENT_FACING_PROFILE_TYPES = [
   'independent_optical_store',
@@ -118,6 +124,57 @@ function exactMapPosition(location) {
   return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
 }
 
+// 2026-09-03: specialistii publici ai unei organizatii, adunati din locatiile ei publice.
+//
+// Inainte, pagina de organizatie era un capat de drum in directia asta: pacientul vedea
+// locatiile, dar nu si oamenii, desi asocierile publice existau deja in date. Nu se citeste
+// nimic nou si nu se relaxeaza nicio conditie - se refolosesc exact asocierile pe care le-ar fi
+// vazut oricum deschizand fiecare locatie in parte.
+async function publicProfessionalsForLocations(svc, publicLocations) {
+  const locationIds = publicLocations.map((location) => location.id).filter(Boolean).slice(0, 200);
+  if (locationIds.length === 0) return [];
+
+  const assignments = await svc.entities.ProfessionalLocationAssignment.filter({
+    location_id: { $in: locationIds },
+    active_status: 'activ',
+    public_status: 'public',
+  }, '-created_date', 500).catch(() => []);
+
+  const locationNameById = new Map(publicLocations.map((location) => [location.id, location.name]));
+  const locationIdsByProfessional = new Map();
+  for (const assignment of assignments) {
+    if (assignment?.visibility_consent_status !== 'accepted') continue;
+    const professionalId = String(assignment.professional_id || '').trim();
+    if (!professionalId) continue;
+    const list = locationIdsByProfessional.get(professionalId) || [];
+    if (!list.includes(assignment.location_id)) list.push(assignment.location_id);
+    locationIdsByProfessional.set(professionalId, list);
+  }
+
+  const rows = await Promise.all([...locationIdsByProfessional.keys()].slice(0, 120).map(async (professionalId) => {
+    const profile = await svc.entities.ProfessionalProfile.get(professionalId).catch(() => null);
+    if (!isPublicProfessionalProfile(profile)) return null;
+    const displayName = profile.public_display_name || profile.full_name || '';
+    if (!displayName) return null;
+    const locationIdsForProfile = locationIdsByProfessional.get(professionalId) || [];
+    return {
+      id: profile.id,
+      display_name: displayName,
+      professional_type: normalizeProfessionalType(profile.professional_type || profile.role),
+      professional_type_label: professionalTypeLabel(profile.professional_type || profile.role),
+      profile_photo_url: publicImage(profile.profile_photo_url),
+      specializations: sanitizeProfessionalSpecializations(profile.professional_type, profile.specializations, 6),
+      verified: true,
+      locations: locationIdsForProfile.map((locationId) => ({
+        id: locationId,
+        name: locationNameById.get(locationId) || '',
+      })),
+    };
+  }));
+
+  return rows.filter(Boolean).sort((a, b) => a.display_name.localeCompare(b.display_name, 'ro'));
+}
+
 async function handleOrganizationProfile(svc, organizationId) {
   const organization = await svc.entities.ProviderOrganization.get(organizationId).catch(() => null);
   if (!organization || organization.status === 'inactiva') {
@@ -181,6 +238,7 @@ async function handleOrganizationProfile(svc, organizationId) {
     .sort((a, b) => b.location_count - a.location_count || String(a.county).localeCompare(String(b.county)));
 
   const logoUrl = publicUrl(organization.logo_url);
+  const professionals = await publicProfessionalsForLocations(svc, publicLocations);
 
   return Response.json({
     organization: {
@@ -195,6 +253,7 @@ async function handleOrganizationProfile(svc, organizationId) {
       profile_control_status: organization.control_status || 'directory',
     },
     locations: publicLocations,
+    professionals,
     summary: {
       location_count: publicLocations.length,
       county_count: counties.length,
@@ -258,7 +317,11 @@ Deno.serve(async (req) => {
 
     const team = publicDisclosure.expose_full_details ? assignments.map((assignment, index) => {
       const profile = profiles[index];
-      if (!profile || assignment.public_status !== 'public' || assignment.visibility_consent_status !== 'accepted' || profile.is_public !== true || profile.verification_status !== 'verified' || profile.public_visibility_status !== 'approved') return null;
+      // 2026-09-03: poarta de profil vine din shared/professionalProfileStatus.js. Conditia era
+      // rescrisa aici, in getPublicProfessionalProfile si in manageProfessionalAssignment; oricare
+      // dintre ele schimbata singura ar fi expus public un profil pe care celelalte doua il
+      // considerau inca privat.
+      if (!isPublicProfessionalProfile(profile) || assignment.public_status !== 'public' || assignment.visibility_consent_status !== 'accepted') return null;
       const displayName = profile.public_display_name || profile.full_name;
       if (!displayName) return null;
       return {
