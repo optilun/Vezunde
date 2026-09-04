@@ -2,6 +2,7 @@ import {
   CANONICAL_SERVICE_REGISTRY,
   LEGACY_SERVICE_ALIASES,
 } from "./canonicalServiceCatalog";
+import { PROFESSIONAL_TYPES as PROFESSIONAL_TYPE_ENTRIES } from "../../shared/professionalIdentity.js";
 
 const CANONICAL_SERVICE_LABELS = Object.fromEntries(
   Object.entries(CANONICAL_SERVICE_REGISTRY).map(([key, definition]) => [key, definition.label]),
@@ -54,12 +55,15 @@ export const PROVIDER_PROFILE_TYPES = {
   future_b2b_distributor: "Furnizor / partener B2B",
 };
 
-export const PROFESSIONAL_TYPES = {
-  medic_oftalmolog: "Medic oftalmolog",
-  ophthalmologist: "Medic oftalmolog",
-  optometrist: "Optometrist",
-  optician: "Optician",
-};
+// 2026-09-03: etichetele profesiilor vin din shared/professionalIdentity.js. Harta e derivata,
+// nu rescrisa, si acopera in continuare si codurile canonice (engleza), si rolurile legacy
+// (romana), pentru ca ambele exista in date.
+export const PROFESSIONAL_TYPES = Object.freeze(Object.fromEntries(
+  PROFESSIONAL_TYPE_ENTRIES.flatMap((entry) => [
+    [entry.code, entry.label],
+    [entry.legacy_role, entry.label],
+  ]),
+));
 
 export const PROFESSIONAL_AFFILIATION_STATUS = {
   location_added: "Adăugat de locație",
