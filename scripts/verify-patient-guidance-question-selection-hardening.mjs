@@ -186,7 +186,10 @@ scenario("physical Base44 function count remains 48", () => {
   const functionsRoot = path.join(root, "base44/functions");
   const physicalFunctions = readdirSync(functionsRoot, { withFileTypes: true })
     .filter((item) => item.isDirectory() && existsSync(path.join(functionsRoot, item.name, "entry.ts")));
-  assert.equal(physicalFunctions.length, 48);
+  // 2026-09-03: 49 in loc de 48 - s-a adaugat matchProfessionals, a doua unitate de recomandare
+  // (persoana, nu locatia). Este endpoint fizic propriu pentru ca sta in aceeasi familie cu
+  // matchProviders si matchProvidersSemantic; motorul de locatii nu a fost atins.
+  assert.equal(physicalFunctions.length, 49);
 });
 
 assert.ok(scenarioCount >= 15);
