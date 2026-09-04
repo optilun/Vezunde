@@ -1,6 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { useLocation } from "react-router-dom";
 import { getGuide } from "@/data/specialistGuides";
+import {
+  getRouteSeoOverride,
+  subscribeRouteSeoOverride,
+} from "@/lib/routeSeoOverride";
 
 const SITE_URL = "https://viasee.ro";
 const ORGANIZATION_ID = `${SITE_URL}/#organization`;
@@ -344,13 +348,23 @@ function buildStructuredData(pathname, metadata, canonical) {
 
 export default function RouteSeo() {
   const { pathname } = useLocation();
+  // 2026-09-03: paginile de profil isi anunta metadatele prin store, nu prin props.
+  // Motivul e in src/lib/routeSeoOverride.js: RouteSeo e montat o singura data, global,
+  // si trebuie sa ramana singurul care scrie in head.
+  const override = useSyncExternalStore(
+    subscribeRouteSeoOverride,
+    getRouteSeoOverride,
+    () => null,
+  );
 
   useEffect(() => {
     let cancelled = false;
 
     const updateMetadata = async () => {
-      const metadata = await getMetadata(pathname);
+      const base = await getMetadata(pathname);
       if (cancelled) return;
+      const entityMeta = override && override.pathname === pathname ? override.meta : null;
+      const metadata = entityMeta ? { ...base, ...entityMeta } : base;
 
       const canonical = `${SITE_URL}${pathname === "/" ? "/" : pathname}`;
       const noindex =
@@ -391,6 +405,22 @@ export default function RouteSeo() {
         content: "summary_large_image",
       });
 
+      // og:image doar cand entitatea chiar are o imagine publica (fotografia locatiei sau
+      // logoul organizatiei). Nu inventam o imagine implicita: singurele fisiere de brand
+      // din public/ sunt SVG-uri, iar retelele sociale nu accepta SVG pentru og:image.
+      //
+      // 2026-09-03, verificare pe site-ul live: cand nu avem imagine, NU o stergem pe cea
+      // existenta. Base44 serveste HTML pre-randat cu og:image propriu (logoul aplicatiei,
+      // in format 1200x630). Prima versiune a acestui bloc o stergea, deci fiecare pagina
+      // fara imagine proprie ar fi ramas fara imagine la partajare - o regresie fata de ce
+      // era inainte. Se vede doar pe live: in repo nu exista niciun og:image.
+      if (metadata.image) {
+        ensureMeta('meta[property="og:image"]', {
+          property: "og:image",
+          content: metadata.image,
+        });
+      }
+
       let canonicalLink = document.head.querySelector('link[rel="canonical"]');
       if (!canonicalLink) {
         canonicalLink = document.createElement("link");
@@ -399,7 +429,8 @@ export default function RouteSeo() {
       }
       canonicalLink.href = canonical;
 
-      const structuredData = buildStructuredData(pathname, metadata, canonical);
+      const structuredData = metadata.structuredData
+        || buildStructuredData(pathname, metadata, canonical);
       let script = document.getElementById("viasee-route-structured-data");
       if (structuredData) {
         if (!script) {
@@ -418,7 +449,7 @@ export default function RouteSeo() {
     return () => {
       cancelled = true;
     };
-  }, [pathname]);
+  }, [pathname, override]);
 
   return null;
 }
