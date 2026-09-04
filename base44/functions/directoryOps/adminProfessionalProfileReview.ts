@@ -1,4 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { professionalSpecializationsFor } from '../../shared/professionalIdentity.js';
+import {
+  assignmentPublicEligibility,
+  nextProfessionalProfileState,
+} from '../../shared/professionalProfileStatus.js';
 
 const REVIEW_STATUSES = ['pending_review', 'needs_more_info', 'approved', 'rejected'];
 const ALLOWED_FIELDS = [
@@ -15,20 +20,6 @@ const ALLOWED_FIELDS = [
   'accepts_independent_requests',
 ];
 
-const SPECIALIZATIONS_BY_TYPE = {
-  ophthalmologist: [
-    'general_ophthalmology', 'pediatric_ophthalmology', 'glaucoma', 'retina', 'cornea',
-    'cataract', 'refractive_surgery', 'dry_eye', 'myopia_management',
-  ],
-  optometrist: [
-    'refraction', 'contact_lenses', 'pediatric_optometry', 'binocular_vision',
-    'myopia_management', 'low_vision', 'occupational_vision',
-  ],
-  optician: [
-    'frame_consulting', 'ophthalmic_lenses', 'progressive_lenses', 'lens_fitting',
-    'adjustments_repairs', 'children_eyewear', 'protective_eyewear',
-  ],
-};
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -74,7 +65,7 @@ function validateDraft(rawDraft, professionalType) {
   const bio = text(draft.professional_bio);
   if (bio.length < 80 || bio.length > 1200 || /[<>]/.test(bio)) return { error: 'Descrierea profesionala trebuie sa aiba intre 80 si 1200 de caractere' };
 
-  const allowedSpecializations = new Set(SPECIALIZATIONS_BY_TYPE[professionalType] || []);
+  const allowedSpecializations = new Set(professionalSpecializationsFor(professionalType));
   const specializations = [...new Set((Array.isArray(draft.specializations) ? draft.specializations : []).map(text).filter(Boolean))];
   if (specializations.length === 0 || specializations.length > 12) return { error: 'Profilul trebuie sa aiba intre 1 si 12 specializari' };
   if (specializations.some((item) => !allowedSpecializations.has(item))) return { error: 'Draftul contine specializari incompatibile cu tipul profesional' };
@@ -192,12 +183,10 @@ async function listProfiles(svc, payload) {
   return res({ profiles: items, status });
 }
 
-function eligibleLocation(location) {
-  if (!location) return false;
-  if (location.status !== 'publicata') return false;
-  if (location.active_status === 'inactiva') return false;
-  if (location.profile_control_status === 'suspended') return false;
-  return true;
+// Eligibilitatea asocierii traieste in shared/professionalProfileStatus.js, ca sa fie acelasi
+// adevar aici, in manageProfessionalAssignment si in motorul de recomandare.
+function nextAssignmentStatus(profile, assignment, location) {
+  return assignmentPublicEligibility({ profile, assignment, location }).eligible ? 'public' : 'privat';
 }
 
 async function reconcileAssignmentsAfterApproval(svc, user, profile) {
@@ -210,11 +199,10 @@ async function reconcileAssignmentsAfterApproval(svc, user, profile) {
     const location = assignment.active_status === 'activ'
       ? await svc.entities.ProviderLocation.get(assignment.location_id).catch(() => null)
       : null;
-    const nextStatus = assignment.active_status === 'activ'
-      && consentStatus === 'accepted'
-      && eligibleLocation(location)
-      ? 'public'
-      : 'privat';
+    // Profilul se trece prin politica asa cum este, nu fortat pe "verificat si aprobat".
+    // Apelantul decide starea inainte de reconciliere: aprobarea trimite un profil aprobat,
+    // arhivarea trimite unul arhivat, si atunci toate asocierile pica pe privat, corect.
+    const nextStatus = nextAssignmentStatus(profile, assignment, location);
 
     if (assignment.public_status !== nextStatus) {
       await svc.entities.ProfessionalLocationAssignment.update(assignment.id, { public_status: nextStatus });
@@ -240,6 +228,67 @@ async function reconcileAssignmentsAfterApproval(svc, user, profile) {
   return { published, private: privateIds, awaiting_consent: awaitingConsent };
 }
 
+// 2026-09-03: arhivarea si reactivarea inchid ciclul de viata al profilului profesional.
+//
+// `archived` exista de la inceput in enum-ul `public_visibility_status`, dar nicio actiune nu il
+// putea seta: un profil aprobat gresit, un specialist care si-a incetat activitatea sau o
+// identitate contestata nu aveau cale de iesire in afara de editarea manuala a bazei. Locatiile
+// aveau de mult echivalentul (`suspendata`); persoanele nu.
+//
+// Arhivarea este singura actiune care scoate offline deliberat un profil public, deci cere nota
+// obligatorie si trece asocierile pe privat - altfel ar fi ramas marcate publice sub un profil
+// care nu mai e vizibil, iar orice reactivare le-ar fi republicat tacit.
+async function lifecycle(svc, user, payload) {
+  const profileId = text(payload.professional_id || payload.profile_id);
+  const action = text(payload.action);
+  const note = text(payload.note);
+  if (!profileId) return res({ error: 'professional_id este obligatoriu' }, 400);
+  if (!note) return res({ error: 'Nota este obligatorie' }, 400);
+
+  const profile = await svc.entities.ProfessionalProfile.get(profileId).catch(() => null);
+  if (!profile) return res({ error: 'Profilul profesional nu a fost gasit' }, 404);
+
+  const currentlyArchived = profile.public_visibility_status === 'archived';
+  if (action === 'archive' && currentlyArchived) return res({ error: 'Profilul este deja arhivat' }, 409);
+  if (action === 'restore' && !currentlyArchived) return res({ error: 'Profilul nu este arhivat' }, 409);
+
+  const now = new Date().toISOString();
+  const updates = {
+    ...nextProfessionalProfileState(action, profile),
+    reviewed_at: now,
+    reviewed_by_user_id: user.id,
+    review_note: note,
+    profile_updated_at: now,
+  };
+  await svc.entities.ProfessionalProfile.update(profile.id, updates);
+
+  // Reconcilierea foloseste profilul DUPA schimbare, nu inainte: la arhivare toate asocierile
+  // devin private, iar la reactivare raman private pana la o noua aprobare - reactivarea readuce
+  // profilul in lucru, nu il republica.
+  const reconciled = await reconcileAssignmentsAfterApproval(svc, user, { ...profile, ...updates });
+
+  await audit(svc, user, {
+    entity_type: 'ProfessionalProfile',
+    entity_id: profile.id,
+    action_type: action === 'archive' ? 'archive_professional_profile' : 'restore_professional_profile',
+    changed_fields: Object.keys(updates),
+    previous: {
+      profile_review_status: profile.profile_review_status,
+      verification_status: profile.verification_status,
+      public_visibility_status: profile.public_visibility_status,
+      is_public: profile.is_public,
+    },
+    next: { ...updates, private_assignment_ids: reconciled.private },
+    note,
+  });
+
+  return res({
+    success: true,
+    status: action === 'archive' ? 'archived' : 'draft',
+    assignments: reconciled,
+  });
+}
+
 async function decide(svc, user, payload) {
   const profileId = text(payload.professional_id || payload.profile_id);
   const action = text(payload.action);
@@ -253,7 +302,6 @@ async function decide(svc, user, payload) {
   if (profile.profile_review_status !== 'pending_review') return res({ error: 'Profilul nu mai este in verificare' }, 409);
 
   const now = new Date().toISOString();
-  const wasPublic = profile.is_public === true && profile.public_visibility_status === 'approved';
 
   if (action === 'approve') {
     const checked = validateDraft(parseDraft(profile), profile.professional_type || '');
@@ -263,10 +311,7 @@ async function decide(svc, user, payload) {
     const updates = {
       ...checked.value,
       bio: checked.value.professional_bio,
-      profile_review_status: 'approved',
-      verification_status: 'verified',
-      public_visibility_status: 'approved',
-      is_public: true,
+      ...nextProfessionalProfileState('approve', profile),
       pending_profile_json: '',
       reviewed_at: now,
       reviewed_by_user_id: user.id,
@@ -276,7 +321,10 @@ async function decide(svc, user, payload) {
       profile_updated_at: now,
     };
     await svc.entities.ProfessionalProfile.update(profile.id, updates);
-    const assignments = await reconcileAssignmentsAfterApproval(svc, user, profile);
+    // Reconcilierea vede profilul DUPA aprobare. Inainte de 2026-09-03 primea profilul vechi si
+    // compensa fortand "verificat si aprobat" in interior, ceea ce facea functia inutilizabila
+    // pentru orice alta tranzitie (de exemplu arhivarea, unde raspunsul corect e opusul).
+    const assignments = await reconcileAssignmentsAfterApproval(svc, user, { ...profile, ...updates });
     await audit(svc, user, {
       entity_type: 'ProfessionalProfile',
       entity_id: profile.id,
@@ -291,10 +339,7 @@ async function decide(svc, user, payload) {
 
   if (action === 'request_more_info') {
     const updates = {
-      profile_review_status: 'needs_more_info',
-      verification_status: wasPublic ? 'verified' : 'unverified',
-      public_visibility_status: wasPublic ? 'approved' : 'draft',
-      is_public: wasPublic,
+      ...nextProfessionalProfileState('request_more_info', profile),
       reviewed_at: now,
       reviewed_by_user_id: user.id,
       review_note: note,
@@ -314,10 +359,7 @@ async function decide(svc, user, payload) {
   }
 
   const updates = {
-    profile_review_status: 'rejected',
-    verification_status: wasPublic ? 'verified' : 'rejected',
-    public_visibility_status: wasPublic ? 'approved' : 'rejected',
-    is_public: wasPublic,
+    ...nextProfessionalProfileState('reject', profile),
     reviewed_at: now,
     reviewed_by_user_id: user.id,
     review_note: note,
@@ -347,6 +389,7 @@ export async function handle(req: Request) {
     const payload = await req.json().catch(() => ({}));
     const action = text(payload.action || 'list');
     if (action === 'list') return listProfiles(svc, payload);
+    if (action === 'archive' || action === 'restore') return lifecycle(svc, user, payload);
     return decide(svc, user, payload);
   } catch (error) {
     return res({ error: error?.message || 'Eroare neasteptata' }, 500);
