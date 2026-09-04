@@ -1,4 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import {
+  normalizeProfessionalType,
+  professionalTypeLabel,
+  professionalSpecializationLabel,
+  sanitizeProfessionalSpecializations,
+} from '../../shared/professionalIdentity.js';
+import { isPublicProfessionalProfile } from '../../shared/professionalProfileStatus.js';
 
 const PATIENT_FACING_PROFILE_TYPES = [
   'independent_optical_store',
@@ -6,21 +13,6 @@ const PATIENT_FACING_PROFILE_TYPES = [
   'ophthalmology_clinic',
   'ophthalmology_office',
 ];
-
-const SPECIALIZATIONS_BY_TYPE = {
-  ophthalmologist: [
-    'general_ophthalmology', 'pediatric_ophthalmology', 'glaucoma', 'retina', 'cornea',
-    'cataract', 'refractive_surgery', 'dry_eye', 'myopia_management',
-  ],
-  optometrist: [
-    'refraction', 'contact_lenses', 'pediatric_optometry', 'binocular_vision',
-    'myopia_management', 'low_vision', 'occupational_vision',
-  ],
-  optician: [
-    'frame_consulting', 'ophthalmic_lenses', 'progressive_lenses', 'lens_fitting',
-    'adjustments_repairs', 'children_eyewear', 'protective_eyewear',
-  ],
-};
 
 function text(value) {
   return String(value || '').trim();
@@ -50,13 +42,10 @@ function publicImage(value) {
   return publicUrl(raw);
 }
 
+// Poarta publica a profilului este acum in shared/professionalProfileStatus.js, ca sa fie
+// aceeasi conditie si aici, si in motorul de recomandare, si in reconcilierea asocierilor.
 function isPublicProfile(profile) {
-  return Boolean(
-    profile
-    && profile.is_public === true
-    && profile.verification_status === 'verified'
-    && profile.public_visibility_status === 'approved'
-  );
+  return isPublicProfessionalProfile(profile);
 }
 
 function isPublicLocation(location) {
@@ -70,19 +59,18 @@ function isPublicLocation(location) {
 }
 
 function safeSpecializations(profile) {
-  const allowed = new Set(SPECIALIZATIONS_BY_TYPE[profile.professional_type] || []);
-  return [...new Set((Array.isArray(profile.specializations) ? profile.specializations : [])
-    .map(text)
-    .filter((item) => allowed.has(item)))]
-    .slice(0, 12);
+  return sanitizeProfessionalSpecializations(profile.professional_type, profile.specializations, 12);
 }
 
 async function publicLocationRows(svc, professionalId) {
-  const assignments = await svc.entities.ProfessionalLocationAssignment.filter({
+  const assignments = (await svc.entities.ProfessionalLocationAssignment.filter({
     professional_id: professionalId,
     active_status: 'activ',
     public_status: 'public',
-  }, '-created_date', 100);
+  }, '-created_date', 100))
+    // Consimtamantul explicit se recontroleaza aici, nu se presupune din `public_status`. Cele
+    // doua ar trebui sa fie mereu de acord; daca vreodata nu sunt, decide consimtamantul.
+    .filter((assignment) => assignment?.visibility_consent_status === 'accepted');
 
   const rows = await Promise.all(assignments.map(async (assignment) => {
     const location = await svc.entities.ProviderLocation.get(assignment.location_id).catch(() => null);
@@ -93,10 +81,15 @@ async function publicLocationRows(svc, professionalId) {
     return {
       id: location.id,
       name: location.public_display_name || location.name || 'Locatie',
+      // 2026-09-03: `organization_id` si `profile_control_status` sunt trimise ca sa existe drum
+      // real de la specialist la organizatie, nu doar un nume care nu duce nicaieri.
+      organization_id: location.organization_id || null,
       organization_name: organization?.public_display_name || organization?.name || null,
+      profile_control_status: location.profile_control_status || 'directory',
       city: location.locality_name || location.city || '',
       county: location.county_name || location.county || '',
       address: location.address || '',
+      phone: text(location.phone_public) || null,
       image_url: publicImage(location.profile_photo_url || location.photo_url || organization?.logo_url),
     };
   }));
@@ -128,10 +121,12 @@ Deno.serve(async (req) => {
       profile: {
         id: profile.id,
         display_name: displayName,
-        professional_type: profile.professional_type || '',
+        professional_type: normalizeProfessionalType(profile.professional_type || profile.role),
+        professional_type_label: professionalTypeLabel(profile.professional_type || profile.role),
         bio: text(profile.professional_bio || profile.bio),
         profile_photo_url: publicImage(profile.profile_photo_url),
         specializations: safeSpecializations(profile),
+        specialization_labels: safeSpecializations(profile).map(professionalSpecializationLabel),
         verified: true,
         accepts_independent_requests: profile.accepts_independent_requests === true,
         public_phone: text(profile.public_phone) || null,
