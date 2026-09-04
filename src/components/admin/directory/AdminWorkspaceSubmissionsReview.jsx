@@ -13,6 +13,7 @@ import { base44 } from "@/api/base44Client";
 import AdminCard from "@/components/admin/ui/AdminCard";
 import EmptyState from "@/components/admin/ui/EmptyState";
 import { SERVICE_GROUPS } from "@/lib/canonicalServiceCatalog";
+import { PROFESSIONAL_TYPE_LABELS } from "@/lib/professionalProfileCatalog";
 import {
   CARE_SETTINGS,
   getCapabilityDefinition,
@@ -70,14 +71,18 @@ function serviceLabel(id) {
   return SERVICE_LABELS[id] || id;
 }
 
+// 2026-09-03: cele trei profesii canonice vin din shared/professionalIdentity.js. Ultimele doua
+// chei nu sunt profesii, ci roluri de echipa folosite doar in trimiterile din workspace-ul de
+// furnizor; raman locale pentru ca nu au profil profesional propriu in VIASEE.
+const EXTRA_TEAM_ROLE_LABELS = {
+  contact_lens_specialist: "Specialist lentile de contact",
+  optical_workshop_specialist: "Specialist atelier optic",
+};
+
 function roleLabel(role) {
-  return {
-    ophthalmologist: "Medic oftalmolog",
-    optometrist: "Optometrist",
-    optician: "Optician",
-    contact_lens_specialist: "Specialist lentile de contact",
-    optical_workshop_specialist: "Specialist atelier optic",
-  }[role] || role || "Specialist";
+  if (EXTRA_TEAM_ROLE_LABELS[role]) return EXTRA_TEAM_ROLE_LABELS[role];
+  if (PROFESSIONAL_TYPE_LABELS[role]) return PROFESSIONAL_TYPE_LABELS[role];
+  return role || "Specialist";
 }
 
 function FieldComparison({ fields, payload, current }) {
