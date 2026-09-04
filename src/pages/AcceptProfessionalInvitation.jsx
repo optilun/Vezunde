@@ -2,12 +2,9 @@ import React, { useEffect, useState } from "react";
 import { CheckCircle2, Loader2, ShieldCheck, UserRoundCheck } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-
-const PROFESSIONAL_TYPE_LABELS = {
-  ophthalmologist: "Medic oftalmolog",
-  optometrist: "Optometrist",
-  optician: "Optician",
-};
+// 2026-09-03: etichetele profesiilor vin din shared/professionalIdentity.js, prin catalogul de
+// interfata. Erau rescrise si aici, si in inca noua locuri.
+import { PROFESSIONAL_TYPE_LABELS } from "@/lib/professionalProfileCatalog";
 
 export default function AcceptProfessionalInvitation() {
   const [searchParams] = useSearchParams();
