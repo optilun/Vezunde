@@ -312,7 +312,10 @@ await scenario("physical Base44 function count remains 48", () => {
       entry.isDirectory()
       && existsSync(path.join(functionsRoot, entry.name, "entry.ts"))
     ));
-  assert.equal(physicalFunctions.length, 48);
+  // 2026-09-03: 49 in loc de 48 - s-a adaugat matchProfessionals, a doua unitate de recomandare
+  // (persoana, nu locatia). Este endpoint fizic propriu pentru ca sta in aceeasi familie cu
+  // matchProviders si matchProvidersSemantic; motorul de locatii nu a fost atins.
+  assert.equal(physicalFunctions.length, 49);
 });
 
 await scenario("Base44 shared guidance copies are byte-identical", () => {
