@@ -25,6 +25,12 @@ import {
   PROFESSIONAL_REVIEW_STATUS_LABELS,
   PROFESSIONAL_TYPE_LABELS,
 } from "@/lib/professionalProfileCatalog";
+import {
+  PROFESSIONAL_BIO_MIN_LENGTH,
+  PROFESSIONAL_NAME_MIN_LENGTH,
+  professionalProfileCompleteness,
+  professionalSubmissionBlockers,
+} from "../../../../shared/professionalProfileStatus.js";
 
 function WorkspaceSectionLoading() {
   return <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground" role="status">Se încarcă secțiunea...</div>;
@@ -47,32 +53,44 @@ function InfoCard({ label, value, hint }) {
   );
 }
 
-function professionalChecklist(professional, assignments) {
-  const draft = {
+function professionalDraft(professional) {
+  return {
     ...professional,
     ...(professional.pending_profile || {}),
   };
+}
+
+// 2026-09-03: ce este obligatoriu se decide in shared/professionalProfileStatus.js, acelasi loc
+// din care valideaza si serverul. Inainte, checklist-ul isi avea propriile praguri scrise de mana;
+// orice schimbare pe server (de exemplu lungimea minima a descrierii) ar fi lasat ecranul sa spuna
+// "gata de trimitere" iar serverul sa raspunda ca nu e.
+function professionalChecklist(professional, assignments) {
+  const draft = professionalDraft(professional);
   const contactRequired = draft.accepts_independent_requests === true;
+  const blockers = new Set(professionalSubmissionBlockers({
+    ...draft,
+    public_display_name: draft.public_display_name || draft.full_name,
+  }));
   return [
     {
       key: "identity",
       label: "Identitate profesională",
-      detail: "Nume public și tip profesional",
-      done: String(draft.public_display_name || draft.full_name || "").trim().length >= 3 && Boolean(professional.professional_type),
+      detail: `Nume public de minimum ${PROFESSIONAL_NAME_MIN_LENGTH} caractere și tip profesional`,
+      done: !blockers.has("display_name") && Boolean(professional.professional_type),
       required: true,
     },
     {
       key: "bio",
       label: "Descriere profesională",
-      detail: "Minimum 80 de caractere",
-      done: String(draft.professional_bio || "").trim().length >= 80,
+      detail: `Minimum ${PROFESSIONAL_BIO_MIN_LENGTH} de caractere`,
+      done: !blockers.has("bio"),
       required: true,
     },
     {
       key: "specializations",
       label: "Domenii profesionale",
       detail: "Cel puțin un domeniu selectat",
-      done: Array.isArray(draft.specializations) && draft.specializations.length > 0,
+      done: !blockers.has("specializations"),
       required: true,
     },
     {
@@ -102,6 +120,19 @@ function professionalChecklist(professional, assignments) {
 }
 
 function reviewPresentation(reviewStatus, professional, missingRequiredCount) {
+  // Arhivarea are prioritate fata de statusul draftului: un profil arhivat ramane `approved` ca
+  // review, dar nu mai este vizibil nicaieri. Fara linia asta, specialistul ar fi citit "Profil
+  // profesional public" despre o pagina care nu mai exista pentru pacienti.
+  if (professional.public_visibility_status === "archived") {
+    return {
+      icon: AlertCircle,
+      title: "Profilul este arhivat",
+      description: professional.review_note
+        || "Profilul a fost scos din paginile publice de echipa VIASEE. Datele tale sunt păstrate.",
+      tone: "border-amber-200 bg-amber-50 text-amber-950",
+      actionLabel: "",
+    };
+  }
   if (reviewStatus === "pending_review") {
     return {
       icon: Clock3,
@@ -161,6 +192,13 @@ function Overview({ workspace, onNavigate }) {
   const missingRequiredCount = requiredItems.length - completedRequiredCount;
   const presentation = reviewPresentation(reviewStatus, professional, missingRequiredCount);
   const StatusIcon = presentation.icon;
+  // Acelasi calcul ca pe server, nu o a doua formula scrisa in interfata.
+  const draft = professionalDraft(professional);
+  const completeness = professionalProfileCompleteness(
+    { ...draft, public_display_name: draft.public_display_name || draft.full_name },
+    professional.professional_type,
+    Boolean(professional.professional_type),
+  );
   return (
     <div className="space-y-6">
       <div>
@@ -168,9 +206,20 @@ function Overview({ workspace, onNavigate }) {
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Gestionează identitatea profesională și locațiile cu care ai confirmat asocierea.</p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <InfoCard label="Tip profesional" value={PROFESSIONAL_TYPE_LABELS[professional.professional_type] || "Specialist"} hint="Tipul profesional nu poate fi schimbat de o clinică sau optică." />
-        <InfoCard label="Status profil" value={PROFESSIONAL_REVIEW_STATUS_LABELS[reviewStatus] || reviewStatus} hint="Profilul devine public numai după completare și verificare." />
+        <InfoCard
+          label="Status profil"
+          value={professional.public_visibility_status === "archived"
+            ? "Arhivat"
+            : (PROFESSIONAL_REVIEW_STATUS_LABELS[reviewStatus] || reviewStatus)}
+          hint="Profilul devine public numai după completare și verificare."
+        />
+        <InfoCard
+          label="Completitudine"
+          value={`${completeness}%`}
+          hint="Calculată din aceleași criterii pe care le verifică echipa VIASEE."
+        />
         <InfoCard label="Locații asociate" value={assignments.length} hint={`${workspace.public_assignment_count || 0} publice · ${workspace.pending_visibility_count || 0} solicitări de afișare`} />
       </div>
 
@@ -280,6 +329,7 @@ function consentPresentation(assignment) {
 
 function Locations({ workspace, onRefresh }) {
   const assignments = workspace.assignments || [];
+  const pendingCount = assignments.filter((item) => item.visibility_consent_status === "pending").length;
   const [savingId, setSavingId] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -345,6 +395,17 @@ function Locations({ workspace, onRefresh }) {
       </div>
       {message && <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-xs leading-relaxed text-green-900">{message}</div>}
       {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs leading-relaxed text-red-800">{error}</div>}
+      {/* 2026-09-03: cu multe locatii, cererile de afisare se pierdeau in lista - nimic nu spunea
+          cate asteapta o decizie. Deliberat NU exista "accepta tot": fiecare locatie este o
+          decizie separata despre unde apare numele tau, si tocmai asta apara modelul de consimtamant. */}
+      {pendingCount > 0 && (
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs leading-relaxed text-blue-900">
+          {pendingCount === 1
+            ? "O locație așteaptă decizia ta de afișare."
+            : `${pendingCount} locații așteaptă decizia ta de afișare.`}{" "}
+          Fiecare locație se decide separat.
+        </div>
+      )}
       <div className="space-y-3">
         {assignments.length === 0 && <div className="rounded-3xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">Nu există locații asociate.</div>}
         {assignments.map((assignment) => {
