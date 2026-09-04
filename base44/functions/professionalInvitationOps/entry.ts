@@ -3,19 +3,16 @@ import {
   acquireProfessionalLifecycleLock,
   releaseProfessionalLifecycleLock,
 } from '../../shared/professionalLifecycleLock.js';
+import {
+  PROFESSIONAL_TYPE_CODES,
+  professionalLegacyRole,
+  professionalTypeLabel,
+} from '../../shared/professionalIdentity.js';
 
-const PROFESSIONAL_TYPES = ['ophthalmologist', 'optometrist', 'optician'];
+// 2026-09-03: lista de tipuri, traducerea tip -> rol si etichetele romanesti vin acum din
+// shared/professionalIdentity.js. Erau scrise identic si in manageMyProfessionalProfile.
+const PROFESSIONAL_TYPES = PROFESSIONAL_TYPE_CODES;
 const PROVIDER_ROLES = ['organization_owner', 'location_manager'];
-const ROLE_BY_TYPE = {
-  ophthalmologist: 'medic_oftalmolog',
-  optometrist: 'optometrist',
-  optician: 'optician',
-};
-const PROFESSIONAL_TYPE_LABELS = {
-  ophthalmologist: 'Medic oftalmolog',
-  optometrist: 'Optometrist',
-  optician: 'Optician',
-};
 
 function response(body, status = 200) {
   return Response.json(body, { status });
@@ -112,7 +109,7 @@ async function writeAudit(svc, user, record) {
 }
 
 function invitationEmail({ locationName, professionalType, invitationLink, expiresAt }) {
-  const professionalLabel = PROFESSIONAL_TYPE_LABELS[professionalType] || 'Specialist';
+  const professionalLabel = professionalTypeLabel(professionalType);
   const expiryText = new Date(expiresAt).toLocaleDateString('ro-RO');
   return {
     subject: `Invitatie profesionala VIASEE - ${locationName}`,
@@ -386,7 +383,7 @@ async function acceptInvitation(svc, user, payload, req) {
         full_name: displayName,
         public_display_name: displayName,
         professional_type: currentInvitation.professional_type,
-        role: ROLE_BY_TYPE[currentInvitation.professional_type],
+        role: professionalLegacyRole(currentInvitation.professional_type),
         specializations: [],
         professional_bio: '',
         public_email: '',
