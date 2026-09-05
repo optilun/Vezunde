@@ -73,7 +73,7 @@ function metaFromExpandedResponse(data, previousMeta) {
   };
 }
 
-function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSelectLocation, selectedId }) {
+function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSelectLocation, selectedId, compact = false }) {
   if (queryScope !== "county") {
     return (
       <div className="space-y-3">
@@ -83,6 +83,7 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSele
             location={location}
             onSelect={onSelectLocation}
             selected={selectedId === location.id}
+            compact={compact}
           />
         ))}
       </div>
@@ -107,6 +108,7 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSele
                 location={location}
                 onSelect={onSelectLocation}
                 selected={selectedId === location.id}
+                compact={compact}
               />
             ))}
           </div>
@@ -124,6 +126,7 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSele
                 location={location}
                 onSelect={onSelectLocation}
                 selected={selectedId === location.id}
+                compact={compact}
               />
             ))}
           </div>
@@ -137,6 +140,7 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSele
               location={location}
               onSelect={onSelectLocation}
               selected={selectedId === location.id}
+              compact={compact}
             />
           ))}
         </div>
@@ -155,6 +159,9 @@ export default function MatchResults({
   onRequestCreated = null,
   onSelectLocation = null,
   selectedLocationId = null,
+  compact = false,
+  onVisibleResultsChange = null,
+  onResultModeChange = null,
 }) {
   const [showMore, setShowMore] = useState(false);
   const [feedback, setFeedback] = useState(null);
@@ -185,6 +192,19 @@ export default function MatchResults({
   const storedDraft = readPatientRequestDraft();
   const countyName = activeMeta.selected_county_name || storedDraft?.county || "";
   const selectedCity = activeMeta.selected_locality_name || storedDraft?.city || "";
+
+  // Harta traieste in pagina parinte, dar setul de rezultate se poate schimba aici: o extindere
+  // in judet sau in tara inlocuieste lista fara sa treaca prin props. Fara linia asta, harta ar
+  // ramane pe rezultatele initiale si ar arata alta realitate decat lista de langa ea.
+  useEffect(() => {
+    if (onVisibleResultsChange) onVisibleResultsChange(list);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list]);
+
+  useEffect(() => {
+    if (onResultModeChange) onResultModeChange(resultMode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resultMode]);
 
   useEffect(() => {
     if (list.length === 0 && !activeMeta?.coverage_status) return;
@@ -501,7 +521,7 @@ export default function MatchResults({
           </p>
           <RoutingNotice meta={activeMeta} />
           <div className="mt-5">
-            <ResultScopeGroups items={top3} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} />
+            <ResultScopeGroups items={top3} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} compact={compact} />
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
             <a href="/cauta" className="font-medium text-foreground underline underline-offset-2">
@@ -565,7 +585,7 @@ export default function MatchResults({
         <div className="mt-8">
           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Mai multe opțiuni relevante</div>
           <div className="mt-3">
-            <ResultScopeGroups items={confirmed} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} />
+            <ResultScopeGroups items={confirmed} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} compact={compact} />
           </div>
         </div>
       )}
@@ -574,7 +594,7 @@ export default function MatchResults({
         <div className="mt-8">
           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Opțiuni din director</div>
           <div className="mt-3">
-            <ResultScopeGroups items={directory} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} />
+            <ResultScopeGroups items={directory} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} compact={compact} />
           </div>
         </div>
       )}
@@ -598,7 +618,7 @@ export default function MatchResults({
               : "Servicii neconfirmate de furnizor — confirmați telefonic înainte de deplasare."}
           </p>
           <div className="mt-3">
-            <ResultScopeGroups items={structural} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} />
+            <ResultScopeGroups items={structural} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} compact={compact} />
           </div>
         </div>
       )}
