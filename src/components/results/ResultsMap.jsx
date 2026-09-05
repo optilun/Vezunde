@@ -85,7 +85,6 @@ function FitToPoints({ points }) {
     }
     const bounds = boundsForPoints(points);
     if (bounds) map.fitBounds(bounds, { padding: [36, 36], maxZoom: 15 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature, map]);
 
   return null;

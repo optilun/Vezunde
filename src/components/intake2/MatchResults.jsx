@@ -198,12 +198,10 @@ export default function MatchResults({
   // ramane pe rezultatele initiale si ar arata alta realitate decat lista de langa ea.
   useEffect(() => {
     if (onVisibleResultsChange) onVisibleResultsChange(list);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [list]);
 
   useEffect(() => {
     if (onResultModeChange) onResultModeChange(resultMode);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resultMode]);
 
   useEffect(() => {
