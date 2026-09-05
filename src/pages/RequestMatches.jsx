@@ -1,37 +1,46 @@
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowUpRight, Clock, MapPin, Phone } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Clock, Map as MapIcon, MapPin, Phone, X } from "lucide-react";
 import MatchResults from "@/components/intake2/MatchResults";
+import { RESULT_MODES } from "@/components/intake2/ResultModeTabs";
 import LocationThumb, { typeVisual } from "@/components/results/LocationThumb";
+import ResultsMap from "@/components/results/ResultsMap";
 import TrustBadge from "@/components/results/TrustBadge";
 import { clearPatientIntakeSession } from "@/lib/patientIntakeSession";
-import { buildGoogleMapsEmbedUrl, hasMapLocation } from "@/lib/maps";
 
-// Panou de detalii, populat cand pacientul apasa pe un card din lista.
-// Ramane doar o previzualizare compacta - profilul complet e o pagina separata,
-// la care se ajunge explicit prin "Vezi profilul complet".
-function DetailPanel({ location }) {
-  if (!location) {
-    return (
-      <div className="rounded-3xl border border-dashed border-border bg-secondary/20 p-6 text-center">
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Apasă pe o locație din listă ca să vezi detaliile aici.
-        </p>
-      </div>
-    );
-  }
+// Ecranul de recomandari.
+//
+// 2026-09-04. Pana acum coloana din dreapta era goala pana cand pacientul apasa un card, iar
+// cardurile erau atat de inalte incat se vedea cate una pe ecran. Doua probleme diferite cu
+// aceeasi cauza: ecranul nu ajuta la COMPARAT. Acum lista e compacta, iar coloana din dreapta
+// tine o harta cu optiunile care au pozitie publica, cu selectie sincronizata in ambele sensuri.
+//
+// Ce trebuie stiut despre harta: nu toate rezultatele ajung pe ea. Coordonatele sunt expuse
+// public doar pentru profilurile revendicate sau verificate; pentru cele din director politica de
+// vizibilitate le taie deliberat. Nu geocodam adresa ca sa "reparam" lipsa - ar insemna sa
+// afirmam o pozitie pe care VIASEE nu o detine. Cate lipsesc se scrie sub harta, nu se ascunde.
 
+function DetailPanel({ location, onClose }) {
   const visual = typeVisual(location.provider_type);
-  const mapEmbedUrl = hasMapLocation(location) ? buildGoogleMapsEmbedUrl(location) : "";
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-6">
-      <div className="flex items-start gap-3.5">
-        <LocationThumb name={location.name} photoUrl={location.photo_url} providerType={location.provider_type} size="md" />
-        <div className="min-w-0">
-          <div className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{visual.label}</div>
-          <h2 className="mt-1 font-display text-lg font-bold leading-tight text-foreground">{location.name}</h2>
+    <div className="rounded-3xl border border-border bg-card p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3.5">
+          <LocationThumb name={location.name} photoUrl={location.photo_url} providerType={location.provider_type} size="sm" />
+          <div className="min-w-0">
+            <div className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{visual.label}</div>
+            <h2 className="mt-1 font-display text-base font-bold leading-tight text-foreground">{location.name}</h2>
+          </div>
         </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Închide detaliile"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
 
       {location.profile_control_status && (
@@ -40,8 +49,8 @@ function DetailPanel({ location }) {
         </div>
       )}
 
-      <div className="mt-4 space-y-2.5 text-sm text-foreground/85">
-        {location.address && (
+      <div className="mt-3.5 space-y-2 text-sm text-foreground/85">
+        {(location.address || location.city) && (
           <p className="flex items-start gap-2">
             <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
             <span>{location.address || location.city}</span>
@@ -63,20 +72,8 @@ function DetailPanel({ location }) {
         )}
       </div>
 
-      {mapEmbedUrl && (
-        <div className="mt-4 h-40 overflow-hidden rounded-2xl border border-border">
-          <iframe
-            title={`Harta ${location.name}`}
-            src={mapEmbedUrl}
-            className="h-full w-full border-0"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
-        </div>
-      )}
-
       {Array.isArray(location.public_services) && location.public_services.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-1.5">
+        <div className="mt-3.5 flex flex-wrap gap-1.5">
           {location.public_services.slice(0, 6).map((service) => (
             <span key={service.key || service.label} className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium text-foreground/75">
               {service.label || service.key}
@@ -85,15 +82,9 @@ function DetailPanel({ location }) {
         </div>
       )}
 
-      {location.routing_reason && (
-        <p className="mt-4 rounded-2xl bg-secondary/60 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
-          {location.routing_reason}
-        </p>
-      )}
-
       <Link
         to={`/furnizor/${location.id}`}
-        className="mt-5 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+        className="mt-4 inline-flex min-h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
       >
         Vezi profilul complet <ArrowUpRight className="h-3.5 w-3.5" />
       </Link>
@@ -106,6 +97,19 @@ export default function RequestMatches() {
   const navigate = useNavigate();
   const { results, meta } = location.state || {};
   const [selectedLocation, setSelectedLocation] = useState(null);
+  const [visibleResults, setVisibleResults] = useState(Array.isArray(results) ? results : []);
+  const [resultMode, setResultMode] = useState(RESULT_MODES.locations.key);
+  const [mapOpenOnMobile, setMapOpenOnMobile] = useState(false);
+
+  // Selectia dinspre harta primeste un id, cea dinspre lista primeste locatia intreaga.
+  // Le aducem la acelasi numitor aici, ca ambele sensuri sa duca in aceeasi stare.
+  const selectById = useCallback((id) => {
+    const found = visibleResults.find((item) => item.id === id) || null;
+    if (found) setSelectedLocation(found);
+  }, [visibleResults]);
+
+  const mapResults = useMemo(() => visibleResults, [visibleResults]);
+  const isProfessionalMode = resultMode === RESULT_MODES.professionals.key;
 
   if (!Array.isArray(results)) {
     return (
@@ -124,8 +128,31 @@ export default function RequestMatches() {
     );
   }
 
+  const mapPanel = (
+    <>
+      {/* In modul "Specialiști" lista din stanga arata persoane, iar harta ramane pe locatii.
+          Nu o golim: locatiile sunt exact locurile unde ajunge pacientul. Dar spunem ce arata,
+          ca sa nu para ca pinii sunt specialistii. */}
+      {isProfessionalMode && (
+        <p className="mb-2 px-1 text-xs leading-relaxed text-muted-foreground">
+          Harta arată clinicile și opticile găsite pentru cererea ta, nu specialiștii.
+        </p>
+      )}
+      <ResultsMap
+        results={mapResults}
+        selectedId={selectedLocation?.id || null}
+        onSelect={selectById}
+      />
+      {selectedLocation && (
+        <div className="mt-3">
+          <DetailPanel location={selectedLocation} onClose={() => setSelectedLocation(null)} />
+        </div>
+      )}
+    </>
+  );
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:py-12">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
       <button
         type="button"
         onClick={() => navigate(-1)}
@@ -134,19 +161,37 @@ export default function RequestMatches() {
         <ArrowLeft className="h-4 w-4" /> Inapoi
       </button>
 
-      <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(300px,1fr)] lg:items-start">
+      {/* Pe telefon harta nu poate sta langa lista, iar deasupra ei ar impinge rezultatele sub
+          linia de plutire. Ramane la un buton distanta, inchisa implicit. */}
+      <div className="mt-4 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setMapOpenOnMobile((value) => !value)}
+          aria-expanded={mapOpenOnMobile}
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold transition-colors hover:border-foreground/40"
+        >
+          <MapIcon className="h-4 w-4" />
+          {mapOpenOnMobile ? "Ascunde harta" : "Vezi pe hartă"}
+        </button>
+        {mapOpenOnMobile && <div className="mt-3">{mapPanel}</div>}
+      </div>
+
+      <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(360px,1fr)] lg:items-start">
         <div className="min-w-0">
           <MatchResults
             results={results}
             meta={meta}
+            compact
             onRequestCreated={() => clearPatientIntakeSession()}
             onSelectLocation={setSelectedLocation}
             selectedLocationId={selectedLocation?.id || null}
+            onVisibleResultsChange={setVisibleResults}
+            onResultModeChange={setResultMode}
           />
         </div>
 
-        <aside className="hidden lg:sticky lg:top-6 lg:block">
-          <DetailPanel location={selectedLocation} />
+        <aside className="hidden lg:sticky lg:top-6 lg:block lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
+          {mapPanel}
         </aside>
       </div>
     </div>
