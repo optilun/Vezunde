@@ -13,7 +13,7 @@ const BUCKET_VARIANT = {
   structural_directory: "directory",
 };
 
-export default function MatchResultCard({ location, onSelect, selected = false }) {
+export default function MatchResultCard({ location, onSelect, selected = false, compact = false }) {
   const trackAction = (action) => {
     try {
       base44.analytics.track({
@@ -40,6 +40,7 @@ export default function MatchResultCard({ location, onSelect, selected = false }
       onPhoneClick={() => trackAction("phone_clicked")}
       onSelect={onSelect}
       selected={selected}
+      compact={compact}
     />
   );
 }
