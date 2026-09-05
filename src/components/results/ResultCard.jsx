@@ -52,7 +52,9 @@ export default function ResultCard({
   onProfileClick,
   onPhoneClick,
   onSelect,
+  onHover = null,
   selected = false,
+  hovered = false,
   compact = false,
 }) {
   const [noticeOpen, setNoticeOpen] = useState(false);
@@ -72,9 +74,13 @@ export default function ResultCard({
       role={onSelect ? "button" : undefined}
       tabIndex={onSelect ? 0 : undefined}
       onKeyDown={onSelect ? (event) => { if (event.key === "Enter") onSelect(location); } : undefined}
+      onMouseEnter={onHover ? () => onHover(location.id) : undefined}
+      onMouseLeave={onHover ? () => onHover(null) : undefined}
       className={`rounded-2xl transition-all ${compact ? "p-4" : "p-5"} ${VARIANT_STYLES[variant] || VARIANT_STYLES.neutral} ${
         onSelect ? "cursor-pointer" : ""
-      } ${selected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
+      } ${selected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""} ${
+        hovered && !selected ? "border-foreground/40 shadow-[0_4px_16px_rgba(23,23,23,0.10)]" : ""
+      }`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3.5">

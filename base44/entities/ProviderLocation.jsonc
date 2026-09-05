@@ -71,6 +71,24 @@
     "place_id": {
       "type": "string"
     },
+    "map_precision": {
+      "type": "string",
+      "enum": ["exact", "approximate"],
+      "description": "Cat de precisa este pozitia de pe harta. 'exact' inseamna confirmata de furnizorul care administreaza profilul; 'approximate' inseamna derivata din adresa publica prin geocodare. Interfata trebuie sa arate diferenta, nu sa o ascunda."
+    },
+    "geocode_source": {
+      "type": "string",
+      "description": "Serviciul din care a venit pozitia derivata (ex. 'openstreetmap_nominatim'). Necesar pentru atributie si pentru a putea recalcula selectiv."
+    },
+    "geocoded_address": {
+      "type": "string",
+      "description": "Adresa exacta din care a fost derivata pozitia. Cand adresa locatiei se schimba fata de aceasta, pozitia devine invalida si se recalculeaza."
+    },
+    "geocoded_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Cand a fost derivata pozitia."
+    },
     "service_radius_km": {
       "type": "number",
       "default": 15,
