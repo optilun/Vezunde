@@ -50,7 +50,7 @@ function clean(value) {
 export function normalizeGeoName(value) {
   return clean(value)
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[șț]/g, (character) => (character === 'ș' ? 's' : 't'))
     .toLowerCase()
     .replace(/\b(judetul|judet|county|municipiul|municipiu|orasul|oras|comuna|satul|sat)\b/g, ' ')
