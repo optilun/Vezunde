@@ -16,6 +16,7 @@ export const DIRECTORY_FUNCTION_ROUTES = Object.freeze({
   aiResearchOps: DIRECTORY_FUNCTION_ENDPOINT,
   backfillLocationServiceMatching: DIRECTORY_FUNCTION_ENDPOINT,
   backfillProviderOrganizationProfile: DIRECTORY_FUNCTION_ENDPOINT,
+  directoryGeocodeOps: DIRECTORY_FUNCTION_ENDPOINT,
   directoryImportOps: DIRECTORY_IMPORT_FUNCTION_ENDPOINT,
   directoryMappingOps: DIRECTORY_FUNCTION_ENDPOINT,
   geoImportOps: DIRECTORY_FUNCTION_ENDPOINT,

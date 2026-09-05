@@ -13,6 +13,7 @@ import { handle as adminWorkspaceReviewHandle } from './adminWorkspaceReview.ts'
 import { handle as aiResearchOpsHandle } from './aiResearchOps.ts';
 import { handle as backfillLocationServiceMatchingHandle } from './backfillLocationServiceMatching.ts';
 import { handle as backfillProviderOrganizationProfileHandle } from './backfillProviderOrganizationProfile.ts';
+import { handle as directoryGeocodeOpsHandle } from './directoryGeocodeOps.ts';
 import { handle as directoryImportOpsHandle } from './directoryImportOpsLatest.ts';
 import { handle as directoryMappingOpsHandle } from './directoryMappingOps.ts';
 import { handle as directoryOpsHandle } from './directoryOps.ts';
@@ -39,6 +40,7 @@ export const DIRECTORY_FUNCTION_HANDLERS: Record<string, DirectoryFunctionHandle
   aiResearchOps: aiResearchOpsHandle,
   backfillLocationServiceMatching: backfillLocationServiceMatchingHandle,
   backfillProviderOrganizationProfile: backfillProviderOrganizationProfileHandle,
+  directoryGeocodeOps: directoryGeocodeOpsHandle,
   directoryImportOps: directoryImportOpsHandle,
   directoryMappingOps: directoryMappingOpsHandle,
   geoImportOps: geoImportOpsHandle,

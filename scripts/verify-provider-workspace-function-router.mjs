@@ -46,7 +46,7 @@ const physicalEndpoints = readdirSync(functionsRoot, { withFileTypes: true })
 
 assert.equal(physicalEndpoints.length, 49, 'Suprafata Base44 trebuie sa contina exact 49 de functii fizice dupa folosirea bridge-ului existent (48 + matchProfessionals, 2026-09-03: recomandarea de specialisti este a doua unitate de matching, in aceeasi familie cu matchProviders si matchProvidersSemantic, deci endpoint propriu; nu este logica de directory si nu are ce cauta in routerul directoryOps)');
 assert.deepEqual(logicalNames, expectedLogicalNames, 'Contractul trebuie sa pastreze exact cele 8 nume logice aprobate');
-assert.equal(Object.keys(DIRECTORY_FUNCTION_ROUTES).length, 21, 'Cele 21 de rute directory trebuie pastrate (19 + adminFragmentedOrganizations 2026-08-19 + researchServiceBatchOps 2026-09-03)');
+assert.equal(Object.keys(DIRECTORY_FUNCTION_ROUTES).length, 22, 'Cele 22 de rute directory trebuie pastrate (19 + adminFragmentedOrganizations 2026-08-19 + researchServiceBatchOps 2026-09-03 + directoryGeocodeOps 2026-09-05)');
 assert.equal(Object.keys(SERVICE_CONFIGURATION_FUNCTION_ROUTES).length, 13, 'Cele 13 rute service configuration trebuie pastrate');
 assert.ok(physicalEndpoints.includes(PROVIDER_WORKSPACE_FUNCTION_ENDPOINT), 'Endpointul getMyProviderWorkspace trebuie sa existe');
 

@@ -53,6 +53,9 @@ const AdminDataIntegrity = lazy(
 const AdminDataRepairs = lazy(
   () => import("@/components/admin/system/AdminDataRepairs"),
 );
+const AdminLocationGeocoding = lazy(
+  () => import("@/components/admin/system/AdminLocationGeocoding"),
+);
 // Organizatii fragmentate (2026-08-19): scanare proactiva dupa duplicate in director.
 const AdminFragmentedOrganizations = lazy(
   () => import("@/components/admin/system/AdminFragmentedOrganizations"),
@@ -110,6 +113,7 @@ const DATA_INTEGRITY_SUBTABS = [
   { key: "probleme", label: "Probleme de date" },
   { key: "organizatii_fragmentate", label: "Organizatii fragmentate" },
   { key: "reparatii", label: "Reparatii controlate" },
+  { key: "pozitii", label: "Pozitii pe harta" },
 ];
 
 function DataIntegrityWorkspace() {
@@ -132,6 +136,7 @@ function DataIntegrityWorkspace() {
         {subTab === "probleme" && <AdminDataIntegrity />}
         {subTab === "organizatii_fragmentate" && <AdminFragmentedOrganizations />}
         {subTab === "reparatii" && <AdminDataRepairs />}
+        {subTab === "pozitii" && <AdminLocationGeocoding />}
       </div>
     </div>
   );
