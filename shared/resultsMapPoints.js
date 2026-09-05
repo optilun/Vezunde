@@ -153,8 +153,92 @@ export function unmappedNotice(unmappedCount) {
   return `${count} opțiuni din listă nu au poziție exactă publicată și nu apar pe hartă.`;
 }
 
+/**
+ * Grupeaza punctele care s-ar suprapune pe ecran la nivelul de zoom dat.
+ *
+ * De ce e nevoie: coordonatele sunt derivate din adresa, deci mai multe locatii de pe aceeasi
+ * strada - sau din acelasi oras mic - cad practic in acelasi punct. Fara grupare, harta ar arata
+ * un singur pin acolo unde sunt cinci, iar patru locatii ar deveni invizibile fara ca cineva sa
+ * observe. Gruparea le face vizibile ca numar si le desface la zoom, ca in orice harta de cautare.
+ *
+ * Metoda este o grila simpla, nu o clusterizare geografica: la fiecare nivel de zoom celula se
+ * injumatateste, deci grupurile se desfac progresiv. Fara dependinte noi si usor de verificat.
+ *
+ * @param {Array<object>} points punctele deja validate
+ * @param {number} zoom nivelul curent de zoom Leaflet
+ * @returns {Array<{key: string, lat: number, lng: number, points: Array<object>, lead: object, count: number}>}
+ */
+export function clusterPoints(points, zoom) {
+  const list = (Array.isArray(points) ? points : []).filter(Boolean);
+  if (list.length === 0) return [];
+
+  // La zoom mare nu mai grupam: pacientul vrea sa vada fiecare locatie separat.
+  if (Number(zoom) >= 15) {
+    return list.map((point) => ({
+      key: point.id,
+      lat: point.lat,
+      lng: point.lng,
+      points: [point],
+      lead: point,
+      count: 1,
+    }));
+  }
+
+  // Celula pleaca de la ~1.2 grade la zoom 6 (nivelul intregii tari) si se injumatateste
+  // la fiecare treapta de zoom.
+  const level = Math.max(3, Math.min(Number(zoom) || FALLBACK_ZOOM, 14));
+  const cell = 1.2 / (2 ** (level - 6));
+
+  const buckets = new Map();
+  for (const point of list) {
+    const key = `${Math.floor(point.lat / cell)}:${Math.floor(point.lng / cell)}`;
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(point);
+  }
+
+  const clusters = [];
+  for (const [key, members] of buckets) {
+    // Punctul afisat este cel mai bine clasat din grup - deci un grup care contine o optiune
+    // din Top 3 arata ca atare, nu ca o bula anonima.
+    const lead = members[0];
+    const latitude = members.reduce((total, point) => total + point.lat, 0) / members.length;
+    const longitude = members.reduce((total, point) => total + point.lng, 0) / members.length;
+    clusters.push({
+      key,
+      lat: members.length === 1 ? lead.lat : latitude,
+      lng: members.length === 1 ? lead.lng : longitude,
+      points: members,
+      lead,
+      count: members.length,
+    });
+  }
+
+  // Grupurile care contin Top 3 se deseneaza ultimele, ca sa ramana deasupra celorlalte.
+  clusters.sort((a, b) => {
+    const order = { top3: 2, confirmed: 1, directory: 0 };
+    return (order[a.lead.tier] ?? 0) - (order[b.lead.tier] ?? 0);
+  });
+  return clusters;
+}
+
+/**
+ * Punctele din interiorul unui dreptunghi Leaflet ([[latSud, lngVest], [latNord, lngEst]]).
+ * Se foloseste pentru a filtra lista la ce se vede pe harta - o filtrare pur vizuala, care NU
+ * atinge potrivirea, ordonarea sau bucketele venite de la server.
+ */
+export function pointIdsWithinBounds(points, bounds) {
+  const list = (Array.isArray(points) ? points : []).filter(Boolean);
+  if (!Array.isArray(bounds) || bounds.length !== 2) return list.map((point) => point.id);
+  const [[south, west], [north, east]] = bounds;
+  return list
+    .filter((point) => point.lat >= south && point.lat <= north && point.lng >= west && point.lng <= east)
+    .map((point) => point.id);
+}
+
 export default {
   RESULTS_MAP_CONTRACT_VERSION,
+  clusterPoints,
+  pointIdsWithinBounds,
   FALLBACK_CENTER,
   FALLBACK_ZOOM,
   mapPointFromResult,
