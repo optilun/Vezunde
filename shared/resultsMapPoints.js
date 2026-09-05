@@ -4,19 +4,21 @@
 // din listă ca să vezi detaliile aici"), iar pacientul nu putea vedea dintr-o privire unde sunt
 // optiunile fata de el. Harta umple acel spatiu cu informatie reala.
 //
-// Ce trebuie stiut inainte de a citi codul: NU toate rezultatele pot ajunge pe harta.
-// `getPublicLocationDisclosure` expune `lat`/`lng` doar pentru profilurile cu detaliu FULL
-// (revendicate sau verificate). Pentru profilurile din director, coordonatele sunt taiate
-// deliberat de politica de vizibilitate. Asta nu e o scapare de reparat aici:
+// 2026-09-05, revizuit. Prima versiune refuza orice pozitie marcata `approximate`, pentru ca
+// politica de vizibilitate taia atunci `lat`/`lng` pentru profilurile din director si singurele
+// coordonate publice erau cele confirmate. Intre timp doua lucruri s-au schimbat:
 //
-//   - nu geocodam adresa ca sa "reparam" lipsa, pentru ca ar insemna sa afirmam o pozitie pe
-//     care VIASEE nu o detine, exact ce interzice regula "nu exista adrese inventate";
-//   - nu ascundem rezultatele fara coordonate, pentru ca ar face harta sa para completa cand nu
-//     este, iar pacientul ar crede ca a vazut tot.
+//   - locatiile publicate au primit coordonate derivate din adresa lor publica, prin geocodare
+//     OpenStreetMap (vezi scripts/geocode-published-locations.mjs). Adresa era deja publica,
+//     deci coordonata nu adauga informatie noua - doar o deseneaza;
+//   - politica de vizibilitate expune acum aceste coordonate, marcate `map_precision:
+//     'approximate'`.
 //
-// Solutia este sa le numaram si sa le declaram: harta arata ce se poate arata, iar sub ea scrie
-// cate optiuni exista in lista fara pozitie exacta. Efectul secundar util este ca diferenta
-// dintre un profil confirmat si unul din director devine vizibila, nu doar scrisa.
+// Deci o pozitie aproximativa NU se mai refuza: se afiseaza si se declara ca atare. Regula care
+// ramane neschimbata este ca nu inventam nimic aici - modelul asta nu geocodeaza, nu ghiceste si
+// nu deduce o pozitie din numele orasului. Primeste ce a expus serverul si atat. Ce vine fara
+// coordonate ramane numarat sub harta, nu ascuns: o harta care pare completa cand nu este face
+// mai mult rau decat una care isi declara limitele.
 
 export const RESULTS_MAP_CONTRACT_VERSION = 'results-map-points-v1';
 
@@ -50,9 +52,11 @@ export function mapPointFromResult(result) {
   const lng = coordinate(result.lng, 180);
   if (lat === null || lng === null) return null;
   if (lat === 0 && lng === 0) return null;
-  // Cand pozitia e doar aproximata din adresa, nu o punem pe harta ca si cum ar fi exacta.
-  // Aceeasi regula ca in datele structurate de pe profilul public.
-  if (clean(result.map_precision) === 'approximate') return null;
+
+  // Precizia calatoreste cu punctul, ca interfata sa poata desena diferenta. Necunoscuta se
+  // trateaza ca aproximativa: mai bine promitem mai putin decat sa afirmam o exactitate
+  // pe care nu o avem.
+  const precision = clean(result.map_precision) === 'exact' ? 'exact' : 'approximate';
 
   return {
     id: clean(result.id),
@@ -62,6 +66,8 @@ export function mapPointFromResult(result) {
     lng,
     provider_type: clean(result.provider_type),
     profile_control_status: clean(result.profile_control_status) || 'directory',
+    address: clean(result.address),
+    map_precision: precision,
     result_bucket: clean(result.result_bucket),
     tier: BUCKET_TIER[clean(result.result_bucket)] || 'directory',
     bucket_rank: Number(result.bucket_rank) || null,
