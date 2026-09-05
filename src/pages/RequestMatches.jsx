@@ -1,115 +1,50 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowUpRight, Clock, Map as MapIcon, MapPin, Phone, X } from "lucide-react";
+import { ArrowLeft, List, Map as MapIcon, SlidersHorizontal } from "lucide-react";
 import MatchResults from "@/components/intake2/MatchResults";
 import { RESULT_MODES } from "@/components/intake2/ResultModeTabs";
-import LocationThumb, { typeVisual } from "@/components/results/LocationThumb";
 import ResultsMap from "@/components/results/ResultsMap";
-import TrustBadge from "@/components/results/TrustBadge";
 import { clearPatientIntakeSession } from "@/lib/patientIntakeSession";
 
-// Ecranul de recomandari.
+// Ecranul de recomandari, in forma folosita de hartile de cautare (Airbnb, Booking).
 //
-// 2026-09-04. Pana acum coloana din dreapta era goala pana cand pacientul apasa un card, iar
-// cardurile erau atat de inalte incat se vedea cate una pe ecran. Doua probleme diferite cu
-// aceeasi cauza: ecranul nu ajuta la COMPARAT. Acum lista e compacta, iar coloana din dreapta
-// tine o harta cu optiunile care au pozitie publica, cu selectie sincronizata in ambele sensuri.
+// 2026-09-05. Inainte era o coloana ingusta de carduri inalte, cu o zona goala in dreapta care
+// se umplea abia dupa un click. Ecranul nu ajuta la ce vine un pacient sa faca aici: sa COMPARE
+// cateva optiuni si sa vada unde sunt.
 //
-// Ce trebuie stiut despre harta: nu toate rezultatele ajung pe ea. Coordonatele sunt expuse
-// public doar pentru profilurile revendicate sau verificate; pentru cele din director politica de
-// vizibilitate le taie deliberat. Nu geocodam adresa ca sa "reparam" lipsa - ar insemna sa
-// afirmam o pozitie pe care VIASEE nu o detine. Cate lipsesc se scrie sub harta, nu se ascunde.
-
-function DetailPanel({ location, onClose }) {
-  const visual = typeVisual(location.provider_type);
-
-  return (
-    <div className="rounded-3xl border border-border bg-card p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3.5">
-          <LocationThumb name={location.name} photoUrl={location.photo_url} providerType={location.provider_type} size="sm" />
-          <div className="min-w-0">
-            <div className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{visual.label}</div>
-            <h2 className="mt-1 font-display text-base font-bold leading-tight text-foreground">{location.name}</h2>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Închide detaliile"
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-
-      {location.profile_control_status && (
-        <div className="mt-3">
-          <TrustBadge status={location.profile_control_status} />
-        </div>
-      )}
-
-      <div className="mt-3.5 space-y-2 text-sm text-foreground/85">
-        {(location.address || location.city) && (
-          <p className="flex items-start gap-2">
-            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-            <span>{location.address || location.city}</span>
-          </p>
-        )}
-        {location.opening_hours && (
-          <p className="flex items-start gap-2">
-            <Clock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-            <span>{location.opening_hours}</span>
-          </p>
-        )}
-        {location.phone && (
-          <p className="flex items-start gap-2">
-            <Phone className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-            <a href={`tel:${location.phone.replace(/\s/g, "")}`} className="underline underline-offset-2">
-              {location.phone}
-            </a>
-          </p>
-        )}
-      </div>
-
-      {Array.isArray(location.public_services) && location.public_services.length > 0 && (
-        <div className="mt-3.5 flex flex-wrap gap-1.5">
-          {location.public_services.slice(0, 6).map((service) => (
-            <span key={service.key || service.label} className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium text-foreground/75">
-              {service.label || service.key}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <Link
-        to={`/furnizor/${location.id}`}
-        className="mt-4 inline-flex min-h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-      >
-        Vezi profilul complet <ArrowUpRight className="h-3.5 w-3.5" />
-      </Link>
-    </div>
-  );
-}
+// Ce s-a schimbat structural:
+//   - pagina ocupa exact inaltimea ferestrei si nu se deruleaza in intregime. Lista are propriul
+//     derulaj, harta ramane pe loc. Asa contextul spatial nu se pierde cand cauti in lista;
+//   - harta este permanenta pe desktop, nu o recompensa pentru un click;
+//   - pe telefon, unde nu incap alaturi, se comuta intre lista si harta - la fel ca la ei.
+//
+// Ce am refuzat sa preiau: "cauta in zona asta" ca re-interogare dupa dreptunghiul hartii. La
+// Airbnb viewportul ESTE cautarea. La VIASEE cautarea este definita de localitatea si aria alese
+// de pacient, iar rezultatele vin clasate de server dupa servicii confirmate si verificare. O
+// re-interogare dupa harta ar insemna alt criteriu de potrivire decat cel ales. Butonul de aici
+// doar filtreaza vizual lista deja primita - si spune cate optiuni a ascuns.
 
 export default function RequestMatches() {
   const location = useLocation();
   const navigate = useNavigate();
   const { results, meta } = location.state || {};
-  const [selectedLocation, setSelectedLocation] = useState(null);
+
+  const [selectedId, setSelectedId] = useState(null);
+  const [hoveredId, setHoveredId] = useState(null);
   const [visibleResults, setVisibleResults] = useState(Array.isArray(results) ? results : []);
   const [resultMode, setResultMode] = useState(RESULT_MODES.locations.key);
-  const [mapOpenOnMobile, setMapOpenOnMobile] = useState(false);
+  const [mobileView, setMobileView] = useState("list");
+  const [filterToViewport, setFilterToViewport] = useState(false);
+  const [viewport, setViewport] = useState({ visibleIds: null, mappedCount: 0 });
 
-  // Selectia dinspre harta primeste un id, cea dinspre lista primeste locatia intreaga.
-  // Le aducem la acelasi numitor aici, ca ambele sensuri sa duca in aceeasi stare.
-  const selectById = useCallback((id) => {
-    const found = visibleResults.find((item) => item.id === id) || null;
-    if (found) setSelectedLocation(found);
-  }, [visibleResults]);
+  const handleViewport = useCallback((next) => {
+    setViewport({ visibleIds: next.visibleIds, mappedCount: next.mappedCount });
+  }, []);
 
-  const mapResults = useMemo(() => visibleResults, [visibleResults]);
-  const isProfessionalMode = resultMode === RESULT_MODES.professionals.key;
+  const selectFromList = useCallback((entry) => {
+    setSelectedId(entry?.id || null);
+    setMobileView("map");
+  }, []);
 
   if (!Array.isArray(results)) {
     return (
@@ -128,71 +63,107 @@ export default function RequestMatches() {
     );
   }
 
+  const isProfessionalMode = resultMode === RESULT_MODES.professionals.key;
+  const areaLabel = meta?.selected_locality_name || meta?.client_address_text || "";
+
   const mapPanel = (
-    <>
-      {/* In modul "Specialiști" lista din stanga arata persoane, iar harta ramane pe locatii.
-          Nu o golim: locatiile sunt exact locurile unde ajunge pacientul. Dar spunem ce arata,
-          ca sa nu para ca pinii sunt specialistii. */}
-      {isProfessionalMode && (
-        <p className="mb-2 px-1 text-xs leading-relaxed text-muted-foreground">
-          Harta arată clinicile și opticile găsite pentru cererea ta, nu specialiștii.
-        </p>
-      )}
-      <ResultsMap
-        results={mapResults}
-        selectedId={selectedLocation?.id || null}
-        onSelect={selectById}
-      />
-      {selectedLocation && (
-        <div className="mt-3">
-          <DetailPanel location={selectedLocation} onClose={() => setSelectedLocation(null)} />
-        </div>
-      )}
-    </>
+    <ResultsMap
+      results={visibleResults}
+      selectedId={selectedId}
+      hoveredId={hoveredId}
+      onSelect={setSelectedId}
+      onHover={setHoveredId}
+      onViewportChange={handleViewport}
+      className="h-full w-full"
+    />
   );
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
-      <button
-        type="button"
-        onClick={() => navigate(-1)}
-        className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> Inapoi
-      </button>
-
-      {/* Pe telefon harta nu poate sta langa lista, iar deasupra ei ar impinge rezultatele sub
-          linia de plutire. Ramane la un buton distanta, inchisa implicit. */}
-      <div className="mt-4 lg:hidden">
+    <div className="flex h-[calc(100svh-4rem)] flex-col lg:h-[calc(100svh-5rem)]">
+      {/* Bara de context. Ramane vizibila si cand lista se deruleaza, ca pacientul sa stie
+          mereu ce cautare vede. */}
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-4 py-2.5 lg:px-6">
         <button
           type="button"
-          onClick={() => setMapOpenOnMobile((value) => !value)}
-          aria-expanded={mapOpenOnMobile}
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold transition-colors hover:border-foreground/40"
+          onClick={() => navigate(-1)}
+          className="inline-flex min-h-10 shrink-0 items-center gap-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
         >
-          <MapIcon className="h-4 w-4" />
-          {mapOpenOnMobile ? "Ascunde harta" : "Vezi pe hartă"}
+          <ArrowLeft className="h-4 w-4" /> Inapoi
         </button>
-        {mapOpenOnMobile && <div className="mt-3">{mapPanel}</div>}
+
+        <p className="min-w-0 flex-1 truncate text-center text-xs text-muted-foreground sm:text-sm">
+          {results.length} {results.length === 1 ? "opțiune găsită" : "opțiuni găsite"}
+          {areaLabel ? ` în ${areaLabel}` : ""}
+        </p>
+
+        {/* Filtrarea dupa harta se ofera doar cand harta chiar poate ascunde ceva. */}
+        <button
+          type="button"
+          onClick={() => setFilterToViewport((value) => !value)}
+          aria-pressed={filterToViewport}
+          disabled={isProfessionalMode || viewport.mappedCount === 0}
+          className={`hidden min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors disabled:opacity-40 lg:inline-flex ${
+            filterToViewport
+              ? "border-foreground bg-foreground text-background"
+              : "border-border bg-card hover:border-foreground/40"
+          }`}
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          Doar ce se vede pe hartă
+        </button>
       </div>
 
-      <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(360px,1fr)] lg:items-start">
-        <div className="min-w-0">
+      <div className="flex min-h-0 flex-1">
+        {/* Lista. Propriul derulaj, ca harta sa nu plece de sub ochi. */}
+        <div
+          className={`min-w-0 flex-1 overflow-y-auto px-4 py-5 lg:max-w-[46rem] lg:px-6 ${
+            mobileView === "map" ? "hidden lg:block" : ""
+          }`}
+        >
           <MatchResults
             results={results}
             meta={meta}
             compact
             onRequestCreated={() => clearPatientIntakeSession()}
-            onSelectLocation={setSelectedLocation}
-            selectedLocationId={selectedLocation?.id || null}
+            onSelectLocation={selectFromList}
+            selectedLocationId={selectedId}
+            onHoverLocation={setHoveredId}
+            hoveredLocationId={hoveredId}
+            visibleIds={filterToViewport && !isProfessionalMode ? viewport.visibleIds : null}
             onVisibleResultsChange={setVisibleResults}
             onResultModeChange={setResultMode}
           />
         </div>
 
-        <aside className="hidden lg:sticky lg:top-6 lg:block lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
-          {mapPanel}
+        {/* Harta. Permanenta pe desktop, comutabila pe telefon. */}
+        <aside
+          className={`min-w-0 flex-1 border-border lg:block lg:border-l ${
+            mobileView === "map" ? "block" : "hidden"
+          }`}
+        >
+          {isProfessionalMode && (
+            <div className="border-b border-border bg-secondary/40 px-4 py-2">
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Harta arată clinicile și opticile găsite pentru cererea ta, nu specialiștii.
+              </p>
+            </div>
+          )}
+          <div className={isProfessionalMode ? "h-[calc(100%-2.5rem)]" : "h-full"}>
+            {mapPanel}
+          </div>
         </aside>
+      </div>
+
+      {/* Comutatorul de pe telefon, flotant, ca la hartile de cautare. */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-5 z-30 flex justify-center lg:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileView((view) => (view === "map" ? "list" : "map"))}
+          className="pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background shadow-lg"
+        >
+          {mobileView === "map" ? <List className="h-4 w-4" /> : <MapIcon className="h-4 w-4" />}
+          {mobileView === "map" ? "Listă" : "Hartă"}
+        </button>
       </div>
     </div>
   );
