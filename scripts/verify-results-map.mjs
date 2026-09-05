@@ -139,8 +139,35 @@ assert.ok(
   "harta trebuie sa urmareasca lista curenta, inclusiv dupa o extindere de arie",
 );
 assert.ok(
-  pageSource.includes("selectedLocationId") && pageSource.includes("onSelect={selectById}"),
+  pageSource.includes("selectedLocationId") && pageSource.includes("onSelect={setSelectedId}"),
   "selectia trebuie sa fie sincronizata in ambele sensuri intre lista si harta",
+);
+assert.ok(
+  pageSource.includes("hoveredLocationId") && pageSource.includes("onHover={setHoveredId}"),
+  "evidentierea la trecerea cu mouse-ul trebuie sa functioneze in ambele sensuri",
+);
+
+// Filtrarea dupa harta este vizuala. Nu are voie sa cheme serverul din nou, pentru ca ar
+// insemna alt criteriu de potrivire decat cel ales de pacient.
+for (const forbidden of ["matchProviders", "browseDirectory", "bbox", "fetch("]) {
+  assert.ok(
+    !pageSource.includes(forbidden),
+    `ecranul de rezultate nu are voie sa reinterogheze serverul dupa dreptunghiul hartii (${forbidden})`,
+  );
+}
+
+const listSource = await readFile(new URL("../src/components/intake2/MatchResults.jsx", import.meta.url), "utf8");
+assert.ok(
+  listSource.includes("const shownList = visibleSet"),
+  "filtrarea dupa harta trebuie sa fie o simpla ascundere de carduri",
+);
+assert.ok(
+  listSource.includes("<PatientRequestSubmission results={list}"),
+  "cererea se trimite pe baza listei complete, nu a celei filtrate de harta",
+);
+assert.ok(
+  listSource.includes("const serverTop3Count = list.filter"),
+  "starea recomandarii descrie ce a gasit serverul, nu cat se vede pe ecran",
 );
 
 // Leaflet este importat direct in cod, deci trebuie declarat ca dependinta, nu mostenit
