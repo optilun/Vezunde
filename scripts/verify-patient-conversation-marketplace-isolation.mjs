@@ -42,6 +42,13 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
     // alta locatie in zona. Acum apar, dar dupa opticile din aceeasi zona. Restul
     // scoringului si selectia Top 3 raman neschimbate. Aprobat explicit de owner.
     '81590aa399a56a964d60e20644feee4f53208f68',
+    // 2026-09-05, harta rezultatelor (aprobat explicit de owner): payload-ul returnat catre
+    // client include acum `lat`, `lng` si `map_precision`, luate din politica de vizibilitate
+    // publica. Locatiile publicate au primit coordonate derivate din adresa lor publica, iar
+    // fara aceste trei campuri harta ecranului de rezultate nu are ce desena. Verificat linie
+    // cu linie: buildRecommendationScore, assignRecommendationBuckets si selectia Top 3 raman
+    // neschimbate. Se adauga doar campuri de afisare in obiectul de rezultat.
+    'ad9846afc72e469b2a184683e17e0465b5ad6f81',
   ]),
   'base44/functions/matchProvidersSemantic/sharedDependencies.js': Object.freeze([
     '134166b15ecce5cd52b32f3d3dca05b27ae14e81',
@@ -97,6 +104,12 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
     // Verificat linie cu linie: buildRecommendationScore, assignRecommendationBuckets si
     // selectia Top 3 raman neschimbate.
     'd8076be2e324f75944b6c90c31386abdf6c010fc',
+    // 2026-09-05, harta rezultatelor (aprobat explicit de owner): aceeasi schimbare ca in
+    // matchProviders/entry.ts - obiectul de rezultat include acum `lat`, `lng` si
+    // `map_precision`, luate din politica de vizibilitate publica, ca harta ecranului de
+    // rezultate sa aiba ce desena. Verificat linie cu linie: buildRecommendationScore,
+    // assignRecommendationBuckets si selectia Top 3 raman neschimbate.
+    '37620f786f6c913cbeeb15c8846de0d72de48edc',
   ]),
 });
 
