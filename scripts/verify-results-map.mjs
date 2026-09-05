@@ -3,10 +3,11 @@
 // 2026-09-04. Ecranul de recomandari a primit o harta in coloana din dreapta si carduri
 // compacte. Doua lucruri trebuie sa ramana adevarate dupa orice refactorizare viitoare:
 //
-//   1. Harta nu inventeaza pozitii. Un rezultat fara `lat`/`lng` expuse public NU ajunge pe
-//      harta si NU este geocodat din adresa. Profilurile din director au coordonatele taiate
-//      deliberat de `getPublicLocationDisclosure`; a le reconstrui ar insemna sa afirmam o
-//      pozitie pe care VIASEE nu o detine.
+//   1. Harta nu inventeaza pozitii. Deseneaza doar ce a expus serverul: nu geocodeaza, nu
+//      ghiceste dintr-un nume de oras si nu cade pe centrul judetului. Din 2026-09-05
+//      locatiile publicate au coordonate derivate din adresa lor publica, marcate
+//      `approximate` - deci pinii exista, dar diferenta fata de o pozitie confirmata de
+//      furnizor trebuie sa ramana vizibila, nu stearsa.
 //   2. Ce lipseste de pe harta se declara. Daca notita ar disparea, harta ar parea completa
 //      cand nu este, iar pacientul ar crede ca a vazut toate optiunile.
 //
@@ -53,10 +54,21 @@ assert.equal(
 assert.equal(mapPointFromResult({ ...claimed, id: "x1", lat: 0, lng: 0 }), null, "Null Island nu este o locatie");
 assert.equal(mapPointFromResult({ ...claimed, id: "x2", lat: 200, lng: 21 }), null, "latitudine invalida");
 assert.equal(mapPointFromResult({ ...claimed, id: "x3", lat: "necunoscut", lng: 21 }), null, "text in loc de numar");
+// 2026-09-05. Pozitia aproximata NU se mai refuza - locatiile publicate au primit coordonate
+// derivate din adresa lor publica, iar politica de vizibilitate le expune marcate ca atare.
+// Ce trebuie sa ramana adevarat este ca precizia calatoreste cu punctul si ca necunoscutul se
+// trateaza ca aproximativ, niciodata ca exact.
+const approximate = mapPointFromResult({ ...claimed, id: "x4", map_precision: "approximate" });
+assert.ok(approximate, "o pozitie aproximativa se afiseaza, marcata ca atare");
+assert.equal(approximate.map_precision, "approximate");
 assert.equal(
-  mapPointFromResult({ ...claimed, id: "x4", map_precision: "approximate" }),
-  null,
-  "o pozitie doar aproximata nu se afiseaza ca exacta",
+  mapPointFromResult({ ...claimed, id: "x5" }).map_precision,
+  "approximate",
+  "fara o declaratie explicita de precizie, punctul nu are voie sa pretinda ca este exact",
+);
+assert.equal(
+  mapPointFromResult({ ...claimed, id: "x6", map_precision: "exact" }).map_precision,
+  "exact",
 );
 
 const model = buildResultsMapModel([
@@ -87,6 +99,10 @@ assert.ok(
   "harta trebuie sa foloseasca modelul comun, nu propria filtrare de coordonate",
 );
 assert.ok(mapSource.includes("unmappedNotice"), "harta trebuie sa afiseze cate optiuni nu au pozitie");
+assert.ok(
+  mapSource.includes("map_precision"),
+  "harta trebuie sa distinga vizual o pozitie aproximativa de una confirmata",
+);
 assert.ok(
   /openstreetmap\.org\/copyright/i.test(mapSource),
   "atributia OpenStreetMap este obligatorie pentru tile-urile folosite",
