@@ -73,7 +73,7 @@ function metaFromExpandedResponse(data, previousMeta) {
   };
 }
 
-function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSelectLocation, selectedId, compact = false }) {
+function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSelectLocation, selectedId, onHoverLocation = null, hoveredId = null, compact = false }) {
   if (queryScope !== "county") {
     return (
       <div className="space-y-3">
@@ -83,6 +83,8 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSele
             location={location}
             onSelect={onSelectLocation}
             selected={selectedId === location.id}
+            onHover={onHoverLocation}
+            hovered={hoveredId === location.id}
             compact={compact}
           />
         ))}
@@ -108,7 +110,9 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSele
                 location={location}
                 onSelect={onSelectLocation}
                 selected={selectedId === location.id}
-                compact={compact}
+                onHover={onHoverLocation}
+            hovered={hoveredId === location.id}
+            compact={compact}
               />
             ))}
           </div>
@@ -126,7 +130,9 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSele
                 location={location}
                 onSelect={onSelectLocation}
                 selected={selectedId === location.id}
-                compact={compact}
+                onHover={onHoverLocation}
+            hovered={hoveredId === location.id}
+            compact={compact}
               />
             ))}
           </div>
@@ -140,7 +146,9 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSele
               location={location}
               onSelect={onSelectLocation}
               selected={selectedId === location.id}
-              compact={compact}
+              onHover={onHoverLocation}
+            hovered={hoveredId === location.id}
+            compact={compact}
             />
           ))}
         </div>
@@ -162,6 +170,9 @@ export default function MatchResults({
   compact = false,
   onVisibleResultsChange = null,
   onResultModeChange = null,
+  onHoverLocation = null,
+  hoveredLocationId = null,
+  visibleIds = null,
 }) {
   const [showMore, setShowMore] = useState(false);
   const [feedback, setFeedback] = useState(null);
@@ -180,14 +191,26 @@ export default function MatchResults({
   const list = Array.isArray(expandedSnapshot?.results)
     ? expandedSnapshot.results
     : (Array.isArray(results) ? results : []);
-  const top3 = list.filter((result) => result.result_bucket === "top3");
-  const confirmed = list.filter((result) => result.result_bucket === "extended_confirmed");
-  const directory = list.filter((result) => result.result_bucket === "extended_directory");
+  // 2026-09-05. Filtrarea la ce se vede pe harta este PUR VIZUALA. Ascunde carduri; nu
+  // recalculeaza nimic. Bucketul, rangul si ordinea fiecarui rezultat raman exact cele primite
+  // de la server, iar cererea se trimite in continuare pe baza listei complete (`list`), nu a
+  // celei filtrate - altfel o simpla deplasare a hartii ar schimba cine primeste cererea.
+  const visibleSet = Array.isArray(visibleIds) ? new Set(visibleIds) : null;
+  const shownList = visibleSet ? list.filter((result) => visibleSet.has(result.id)) : list;
+
+  const top3 = shownList.filter((result) => result.result_bucket === "top3");
+  const confirmed = shownList.filter((result) => result.result_bucket === "extended_confirmed");
+  const directory = shownList.filter((result) => result.result_bucket === "extended_directory");
   // Profiluri din director fara servicii declarate, afisate doar cand nu exista optiuni mai bune.
-  const structural = list.filter((result) => result.result_bucket === "structural_directory");
+  const structural = shownList.filter((result) => result.result_bucket === "structural_directory");
   const structuralCapability = structural[0]?.structural_capability || null;
   const moreCount = confirmed.length + directory.length + structural.length;
-  const recommendationState = top3.length === 0 && moreCount === 0 ? "empty" : (top3.length < 3 ? "insufficient" : "sufficient");
+  // Starea recomandarii descrie ce a gasit serverul, nu cat se vede acum pe ecran: o deplasare
+  // a hartii nu are voie sa declanseze fluxul de recuperare "nu am gasit nimic".
+  const serverTop3Count = list.filter((result) => result.result_bucket === "top3").length;
+  const recommendationState = list.length === 0
+    ? "empty"
+    : (serverTop3Count < 3 ? "insufficient" : "sufficient");
   const queryScope = activeMeta.query_scope || activeMeta.routing_mode || "locality";
   const storedDraft = readPatientRequestDraft();
   const countyName = activeMeta.selected_county_name || storedDraft?.county || "";
@@ -437,7 +460,7 @@ export default function MatchResults({
     nationalActionError: nationalExpansionError,
   };
 
-  if (top3.length === 0 && moreCount === 0) {
+  if (list.length === 0) {
     // Zero locatii nu inseamna zero specialisti: pot exista profiluri verificate asociate unor
     // locatii care nu au declarat inca serviciul cautat. Selectorul ramane disponibil si aici.
     if (resultMode === RESULT_MODES.professionals.key) {
@@ -519,7 +542,7 @@ export default function MatchResults({
           </p>
           <RoutingNotice meta={activeMeta} />
           <div className="mt-5">
-            <ResultScopeGroups items={top3} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} compact={compact} />
+            <ResultScopeGroups items={top3} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} />
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
             <a href="/cauta" className="font-medium text-foreground underline underline-offset-2">
@@ -555,12 +578,12 @@ export default function MatchResults({
         </>
       )}
 
-      {top3.length < 3 && (
+      {serverTop3Count < 3 && (
         <div className={top3.length > 0 ? "mt-6" : ""}>
           <NoResultsFlow
             mode="insufficient"
             meta={activeMeta}
-            top3Count={top3.length}
+            top3Count={serverTop3Count}
             directoryCount={directory.length}
             onChangeLocation={() => runRecoveryAction("change_location", onChangeLocation)}
             onReviewCriteria={() => runRecoveryAction("review_criteria", onReviewCriteria)}
@@ -583,7 +606,7 @@ export default function MatchResults({
         <div className="mt-8">
           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Mai multe opțiuni relevante</div>
           <div className="mt-3">
-            <ResultScopeGroups items={confirmed} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} compact={compact} />
+            <ResultScopeGroups items={confirmed} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} />
           </div>
         </div>
       )}
@@ -592,7 +615,7 @@ export default function MatchResults({
         <div className="mt-8">
           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Opțiuni din director</div>
           <div className="mt-3">
-            <ResultScopeGroups items={directory} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} compact={compact} />
+            <ResultScopeGroups items={directory} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} />
           </div>
         </div>
       )}
@@ -616,7 +639,7 @@ export default function MatchResults({
               : "Servicii neconfirmate de furnizor — confirmați telefonic înainte de deplasare."}
           </p>
           <div className="mt-3">
-            <ResultScopeGroups items={structural} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} compact={compact} />
+            <ResultScopeGroups items={structural} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} />
           </div>
         </div>
       )}
