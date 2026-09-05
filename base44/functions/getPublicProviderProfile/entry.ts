@@ -116,14 +116,6 @@ function normalizedCopy(value) {
   return String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ro-RO');
 }
 
-function exactMapPosition(location) {
-  if (String(location?.place_id || '').trim()) return true;
-  const lat = location?.lat;
-  const lng = location?.lng;
-  if (lat === null || lat === undefined || lat === '' || lng === null || lng === undefined || lng === '') return false;
-  return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
-}
-
 // 2026-09-03: specialistii publici ai unei organizatii, adunati din locatiile ei publice.
 //
 // Inainte, pagina de organizatie era un capat de drum in directia asta: pacientul vedea
@@ -349,9 +341,11 @@ Deno.serve(async (req) => {
     const locationDescription = rawLocationDescription && normalizedCopy(rawLocationDescription) !== normalizedCopy(organizationDescription)
       ? rawLocationDescription
       : null;
-    const mapPrecision = publicDisclosure.exact_location_visible
-      ? (exactMapPosition(location) ? 'exact' : location.address ? 'approximate' : null)
-      : null;
+    // 2026-09-05. Precizia vine acum din politica de vizibilitate, ca profilul public si harta
+    // de pe ecranul de rezultate sa spuna acelasi lucru despre aceeasi locatie. Cand nu exista
+    // coordonate dar exista adresa, pastram 'approximate': pagina afiseaza harta prin adresa.
+    const mapPrecision = publicDisclosure.map_precision
+      || (publicDisclosure.address ? 'approximate' : null);
     const organizationLogoUrl = publicDisclosure.expose_full_details
       ? await resilientPublicLogo(organization?.logo_url)
       : null;
