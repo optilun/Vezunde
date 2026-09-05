@@ -112,7 +112,9 @@ assert.match(statusCard, /nu promite identificarea unei locații/);
 assert.doesNotMatch(statusCard, /garantam|garantăm|sigur gasim|sigur găsim/i);
 
 assert.match(matchResults, /PatientRecoverySubmission/);
-assert.match(matchResults, /top3\.length === 0 && moreCount === 0/);
+// 2026-09-05: acelasi motiv ca in verify-no-results-flow - recuperarea se declanseaza cand
+// serverul nu a gasit nimic, nu cand harta a fost mutata in alta parte.
+assert.match(matchResults, /if \(list\.length === 0\) \{/);
 assert.match(resume, /requestPatientRequestRecovery/);
 assert.match(resume, /snapshot\.recovery/);
 assert.match(resume, /noResults/);

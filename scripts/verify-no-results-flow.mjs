@@ -30,7 +30,11 @@ assert.doesNotMatch(noResults.toLowerCase(), /asistență umană|concierge|extin
 
 assert.match(matchResults, /import NoResultsFlow/);
 assert.match(matchResults, /recommendationState/);
-assert.match(matchResults, /top3\.length < 3/);
+// 2026-09-05: conditia se uita la cate optiuni a gasit SERVERUL, nu la cate se vad pe ecran.
+// Ecranul de rezultate poate filtra vizual lista la ce se vede pe harta, iar o simpla deplasare
+// a hartii nu are voie sa declanseze fluxul de recuperare.
+assert.match(matchResults, /serverTop3Count < 3/);
+assert.match(matchResults, /const serverTop3Count = list\.filter/);
 assert.match(matchResults, /mode="empty"/);
 assert.match(matchResults, /mode="insufficient"/);
 assert.match(matchResults, /patient_search_recovery_action_clicked/);

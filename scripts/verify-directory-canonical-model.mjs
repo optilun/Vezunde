@@ -68,8 +68,14 @@ assert.equal(basicDisclosure.address, approvedBasicDirectory.address);
 assert.equal(basicDisclosure.phone, approvedBasicDirectory.phone_public);
 assert.equal(basicDisclosure.website, approvedBasicDirectory.website);
 assert.equal(basicDisclosure.public_email, null);
-assert.equal(basicDisclosure.lat, null);
-assert.equal(basicDisclosure.lng, null);
+// 2026-09-05, aprobat explicit de owner: pozitia se expune si la nivel basic, marcata ca
+// aproximativa. Adresa acestor profiluri este deja publica, deci coordonata derivata din ea nu
+// adauga informatie noua - iar fara ea harta rezultatelor ramanea aproape goala. Ce ramane
+// rezervat detaliului complet: place_id, programul si emailul.
+assert.equal(basicDisclosure.lat, approvedBasicDirectory.lat);
+assert.equal(basicDisclosure.lng, approvedBasicDirectory.lng);
+assert.equal(basicDisclosure.map_precision, 'approximate');
+assert.equal(basicDisclosure.place_id, null);
 assert.equal(basicDisclosure.opening_hours, null);
 assert.equal(basicDisclosure.expose_basic_details, true);
 assert.equal(basicDisclosure.expose_full_details, false);
@@ -82,6 +88,10 @@ const conflictedDisclosure = getPublicLocationDisclosure(conflictedBasicDirector
 assert.equal(conflictedDisclosure.public_detail_level, DIRECTORY_DETAIL_LEVEL.SUMMARY);
 assert.equal(conflictedDisclosure.address, null);
 assert.equal(conflictedDisclosure.contact_details_visible, false);
+// Un profil cu date in conflict coboara la 'summary' si nu mai expune nici pozitia: nu punem
+// un pin pentru o locatie despre care nu suntem siguri.
+assert.equal(conflictedDisclosure.lat, null);
+assert.equal(conflictedDisclosure.map_precision, null);
 
 const closedCanonicalLocation = {
   ...legacyDirectoryLocation,
