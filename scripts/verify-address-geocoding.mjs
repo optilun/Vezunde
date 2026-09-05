@@ -193,4 +193,37 @@ assert.ok(
   "place_id ramane rezervat profilurilor cu detaliu complet",
 );
 
+// Drumul principal de rulare este o functie backend, apelabila din panoul de admin: nu are nevoie
+// de nicio cheie adaugata manual undeva, pentru ca ruleaza in aplicatie, cu rolul ei de serviciu.
+const backend = await readFile(new URL("../base44/functions/directoryOps/directoryGeocodeOps.ts", import.meta.url), "utf8");
+assert.ok(backend.includes("REQUEST_INTERVAL_MS = 1100"), "si backendul respecta o cerere pe secunda");
+assert.ok(backend.includes("user.role !== 'admin'"), "geocodarea este o operatie de admin");
+assert.ok(
+  backend.includes("geocodePlanForLocation") && backend.includes("pickGeocodeResult"),
+  "backendul foloseste aceleasi reguli de acceptare ca restul, nu propriile lui",
+);
+assert.ok(
+  backend.includes("DirectoryAuditRecord"),
+  "fiecare pozitie scrisa trebuie sa lase o urma in audit",
+);
+assert.ok(
+  !/45\.9432|county_center|fallbackCenter/i.test(backend),
+  "backendul nu are voie sa cada pe centrul tarii sau al judetului",
+);
+
+// Copia din base44/shared trebuie sa fie identica: backendul importa de acolo.
+const sharedCopy = await readFile(new URL("../base44/shared/addressGeocoding.js", import.meta.url), "utf8");
+const sharedOriginal = await readFile(new URL("../shared/addressGeocoding.js", import.meta.url), "utf8");
+assert.equal(sharedCopy, sharedOriginal, "shared/addressGeocoding.js si copia din base44 trebuie sa fie identice");
+
+// Rularea din CI ramane ca alternativa, pentru cine prefera sa o programeze. Acolo cheia de API
+// vine din secretele repo-ului si nu trece prin nicio alta mana.
+const workflow = await readFile(new URL("../.github/workflows/geocode-locations.yml", import.meta.url), "utf8");
+assert.ok(workflow.includes("secrets.BASE44_API_KEY"), "cheia vine din secretele repo-ului");
+assert.ok(workflow.includes("workflow_dispatch"), "rularea trebuie sa poata fi pornita la cerere");
+assert.ok(
+  workflow.includes("default: false"),
+  "rularea implicita este o simulare: scrierea in productie se cere explicit",
+);
+
 console.log("verify-address-geocoding: ok");
