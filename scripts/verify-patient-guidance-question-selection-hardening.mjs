@@ -172,7 +172,13 @@ scenario("matching and ranking implementation remains byte-stable", () => {
   // Cu requestedKeys gol nicio locatie nu intra in `results`, deci toate raman candidati
   // structurali. Statusul ramane 'query_not_mapped'. NU s-au atins buildRecommendationScore,
   // assignRecommendationBuckets sau selectia Top 3.
-  assert.equal(fnv1a(entry.slice(entry.indexOf(marker)).trimEnd()), "9895eaca");
+  // 2026-09-05, harta rezultatelor (aprobat explicit de owner): payload-ul returnat
+  // catre client include acum `lat`, `lng` si `map_precision`, luate din politica de
+  // vizibilitate publica. Locatiile publicate au primit coordonate derivate din adresa lor
+  // publica, iar fara aceste trei campuri harta ecranului de rezultate nu are ce desena.
+  // Verificat linie cu linie: buildRecommendationScore, assignRecommendationBuckets si
+  // selectia Top 3 raman neschimbate. Se adauga doar campuri de afisare.
+  assert.equal(fnv1a(entry.slice(entry.indexOf(marker)).trimEnd()), "6c81e694");
 
   const client = source("src/lib/providerSemanticSearch.js");
   const clientMarker = "export async function matchProvidersWithSemanticFallback";
