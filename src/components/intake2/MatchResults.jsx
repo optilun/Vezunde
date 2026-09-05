@@ -531,9 +531,22 @@ export default function MatchResults({
     );
   }
 
+  const hiddenByViewport = visibleSet ? list.length - shownList.length : 0;
+
   return (
     <div>
       {modeTabs}
+
+      {/* Cand filtrarea dupa harta ascunde optiuni, se spune cate si de ce. O lista scurtata in
+          tacere ar parea un rezultat al cautarii, nu al deplasarii hartii. */}
+      {hiddenByViewport > 0 && (
+        <div className="mb-4 rounded-2xl border border-border bg-secondary/40 px-4 py-2.5 text-xs leading-relaxed text-muted-foreground">
+          {shownList.length === 0
+            ? `Nicio opțiune în zona vizibilă pe hartă. ${list.length} ${list.length === 1 ? "opțiune este" : "opțiuni sunt"} în afara ei.`
+            : `${hiddenByViewport} ${hiddenByViewport === 1 ? "opțiune este ascunsă" : "opțiuni sunt ascunse"} pentru că nu se văd pe hartă.`}
+        </div>
+      )}
+
       {top3.length > 0 && (
         <>
           <h2 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">Cele mai potrivite opțiuni</h2>
