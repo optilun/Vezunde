@@ -7,8 +7,10 @@ import {
 } from './sharedDependencies.js';
 import { getPublicLocationDisclosure } from './providerPublicTrust.js';
 import {
+  loadDirectoryDetailOverlay,
   loadPublicLocationsForLocality,
   loadRowsForLocationIds,
+  withDirectoryDetail,
 } from '../../shared/locationScopedEntityQuery.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
@@ -78,7 +80,7 @@ const STRUCTURAL_FALLBACK_MAX_RESULTS = 3;
 // Texte distincte: optica este o nevoie generala, oftalmologia este o nevoie medicala si
 // primeste un indemn explicit de verificare telefonica prealabila.
 const STRUCTURAL_FALLBACK_NOTICES = {
-  optical: 'Profil din director \u2014 servicii neconfirmate inca. Sunteti reprezentantul acestei locatii? Revendicati profilul gratuit.',
+  optical: 'Profil din director — servicii neconfirmate inca. Sunteti reprezentantul acestei locatii? Revendicati profilul gratuit.',
   medical: 'Profil din director, preluat din surse oficiale. Serviciile nu sunt confirmate de furnizor. Sunati inainte pentru a verifica disponibilitatea si tipul consultatiei.',
 };
 
@@ -481,8 +483,18 @@ Deno.serve(async (req) => {
     }
 
     const finalVisible = [...eligibleSorted, ...directorySorted, ...structuralSorted].slice(0, limit);
+
+    // Nivelul de detaliu public sta pe starea de director, nu pe locatie (vezi
+    // loadDirectoryDetailOverlay). Se incarca DUPA ce lista finala e deja aleasa si ordonata,
+    // si se imbina doar cele trei campuri de detaliu - deci nu poate atinge nici eligibilitatea,
+    // nici scorul, nici selectia Top 3. Statusul de control ramane cel primit ca override.
+    const detailOverlay = await loadDirectoryDetailOverlay(svc, finalVisible.map((entry) => entry.loc.id));
+
     const results = finalVisible.map((entry) => {
-      const publicDisclosure = getPublicLocationDisclosure(entry.loc, entry.eligibility.pcs);
+      const publicDisclosure = getPublicLocationDisclosure(
+        withDirectoryDetail(entry.loc, detailOverlay),
+        entry.eligibility.pcs,
+      );
       return {
         id: entry.loc.id,
         name: entry.loc.public_display_name || entry.loc.name,
