@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     // Campurile sunt putine intentionat: 900+ locatii inseamna ca fiecare camp in plus se
     // inmulteste cu 900. Detaliile se citesc pe profil, nu aici.
     if (String(payload.map_scope || '').trim() === 'national') {
-      const allLocations = await loadAllPublicLocationsByCounty(svc);
+      const allLocations = await loadAllPublicLocationsByCounty(svc, { failOnError: true });
       const visible = allLocations.filter((loc) => {
         if (loc.public_visibility_status !== 'approved') return false;
         if (loc.active_status === 'inactiva') return false;
@@ -59,9 +59,11 @@ Deno.serve(async (req) => {
       const overlay = await loadDirectoryDetailOverlay(svc, visible.map((loc) => loc.id));
 
       const points = [];
+      let totalPublished = 0;
       for (const loc of visible) {
         const disclosure = getPublicLocationDisclosure(withDirectoryDetail(loc, overlay));
         if (disclosure.profile_control_status === 'suspended') continue;
+        totalPublished += 1;
         if (disclosure.lat === null || disclosure.lng === null) continue;
         points.push({
           id: loc.id,
@@ -80,8 +82,8 @@ Deno.serve(async (req) => {
       return Response.json({
         map_scope: 'national',
         results: points,
-        total_published: visible.length,
-        without_position: visible.length - points.length,
+        total_published: totalPublished,
+        without_position: totalPublished - points.length,
       });
     }
 
