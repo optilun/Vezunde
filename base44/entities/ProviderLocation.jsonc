@@ -73,7 +73,10 @@
     },
     "map_precision": {
       "type": "string",
-      "enum": ["exact", "approximate"],
+      "enum": [
+        "exact",
+        "approximate"
+      ],
       "description": "Cat de precisa este pozitia de pe harta. 'exact' inseamna confirmata de furnizorul care administreaza profilul; 'approximate' inseamna derivata din adresa publica prin geocodare. Interfata trebuie sa arate diferenta, nu sa o ascunda."
     },
     "geocode_source": {
@@ -88,6 +91,25 @@
       "type": "string",
       "format": "date-time",
       "description": "Cand a fost derivata pozitia."
+    },
+    "geocode_attempt_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Cate incercari de geocodare s-au facut. La 3 locatia iese din coada, ca sa nu se reincerce la infinit o adresa care nu se rezolva."
+    },
+    "geocode_attempt_signature": {
+      "type": "string",
+      "description": "Semnatura ultimei interogari trimise geocoderului. Impiedica retrimiterea identica a unei interogari deja esuate."
+    },
+    "geocode_review_status": {
+      "type": "string",
+      "enum": [
+        "none",
+        "needs_geocoding_fallback",
+        "needs_manual_review"
+      ],
+      "default": "none",
+      "description": "Ce mai trebuie facut dupa epuizarea incercarilor. 'needs_geocoding_fallback' = adresa are strada si numar, dar geocoderul actual nu o gaseste (caz pentru un al doilea geocoder). 'needs_manual_review' = adresa in sine e incompleta, niciun geocoder nu ar avea ce sa caute."
     },
     "service_radius_km": {
       "type": "number",

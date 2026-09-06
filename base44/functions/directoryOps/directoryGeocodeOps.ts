@@ -1,8 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
+  addressCompletenessForLocation,
   fallbackQueryForLocation,
+  geocodeAttemptPayload,
   geocodePlanForLocation,
   geocodeUpdatePayload,
+  GEOCODE_REVIEW_STATUS,
+  MAX_GEOCODE_ATTEMPTS,
   pickGeocodeResult,
 } from '../../shared/addressGeocoding.js';
 
@@ -37,6 +41,14 @@ const DEFAULT_BATCH = 15;
 const MAX_BATCH = 30;
 const SCAN_PAGE_SIZE = 200;
 const MAX_SCAN_PAGES = 20;
+
+// Fallback Google: PREGATIT, NU ACTIV (2026-09-07).
+//
+// Billing-ul Google nu este activat, deci comutatorul sta pe false si nicio cerere nu pleaca spre
+// Google, chiar daca GOOGLE_PLACES_API_KEY exista deja in secretele aplicatiei. Cand billing-ul
+// va fi activ, singura schimbare necesara aici este comutatorul: locatiile care ies din coada cu
+// `needs_geocoding_fallback` sunt exact lotul pe care il va prelua.
+const GOOGLE_FALLBACK_ENABLED = false;
 
 function sleep(ms: number) {
   return new Promise((resolve) => { setTimeout(resolve, ms); });
@@ -150,6 +162,55 @@ export async function handle(req: Request) {
       return Response.json({ success: true, action, ...summary, marked: pendingMarks.length });
     }
 
+    // Raport pe starea reala a datelor, fara nicio cerere in reţea. Separa cele patru cazuri care
+    // conteaza cand decizi daca merita un al doilea geocoder sau munca de om.
+    if (action === 'audit') {
+      const buckets = {
+        street_and_number: 0,
+        street_without_number: 0,
+        locality_only: 0,
+        missing: 0,
+      };
+      const failedWithCompleteAddress = [];
+      let needsFallback = 0;
+      let needsManual = 0;
+      let attemptsExhausted = 0;
+
+      for (const location of locations) {
+        const completeness = addressCompletenessForLocation(location);
+        const localityOnly = String(location.geocode_source || '').endsWith('_locality');
+        const attempts = Number(location.geocode_attempt_count) || 0;
+        const review = String(location.geocode_review_status || GEOCODE_REVIEW_STATUS.NONE);
+
+        // Numaram doar locatiile care ne intereseaza: cele fara pozitie la nivel de strada.
+        if (!localityOnly && Number.isFinite(Number(location.lat)) && review === GEOCODE_REVIEW_STATUS.NONE) continue;
+
+        buckets[completeness] = (buckets[completeness] || 0) + 1;
+        if (attempts >= MAX_GEOCODE_ATTEMPTS) attemptsExhausted += 1;
+        if (review === GEOCODE_REVIEW_STATUS.NEEDS_FALLBACK) needsFallback += 1;
+        if (review === GEOCODE_REVIEW_STATUS.NEEDS_MANUAL) needsManual += 1;
+        if (localityOnly && completeness === 'street_and_number') failedWithCompleteAddress.push(location.id);
+      }
+
+      return Response.json({
+        success: true,
+        action: 'audit',
+        ...summary,
+        address_complete_street_and_number: buckets.street_and_number,
+        address_incomplete: buckets.street_without_number + buckets.locality_only + buckets.missing,
+        address_incomplete_breakdown: {
+          street_without_number: buckets.street_without_number,
+          locality_only: buckets.locality_only,
+          missing: buckets.missing,
+        },
+        nominatim_failed_with_complete_address: failedWithCompleteAddress.length,
+        needs_geocoding_fallback: needsFallback,
+        needs_manual_review: needsManual,
+        attempts_exhausted: attemptsExhausted,
+        google_fallback_enabled: GOOGLE_FALLBACK_ENABLED,
+      });
+    }
+
     if (action !== 'run') {
       return Response.json({ success: true, action: 'preview', ...summary });
     }
@@ -161,7 +222,14 @@ export async function handle(req: Request) {
     const batchSize = Math.max(1, Math.min(requested, MAX_BATCH));
     const batch = pending.slice(0, batchSize);
 
-    const result = { geocoded: 0, fallback_used: 0, rejected: {}, failed: 0 };
+    const result = {
+      geocoded: 0,
+      fallback_used: 0,
+      rejected: {},
+      failed: 0,
+      marked_needs_fallback: 0,
+      marked_needs_manual: 0,
+    };
 
     for (const entry of batch) {
       const { location, plan } = entry;
@@ -171,14 +239,31 @@ export async function handle(req: Request) {
 
         let verdict = pickGeocodeResult(results, location);
         let usedFallback = false;
-        if (!verdict.accepted) {
-          // Adresa exacta nu s-a rezolvat. O singura treapta mai sus - localitatea - si atat.
+        const hasPosition = Number.isFinite(Number(location.lat)) && Number.isFinite(Number(location.lng));
+        if (!verdict.accepted && !hasPosition) {
+          // Caderea la nivel de localitate se face O SINGURA data, cand locatia nu are inca nicio
+          // pozitie. Cand are deja centrul localitatii, o a doua cerere ar reintoarce exact acelasi
+          // punct - cerere irosita, la un serviciu limitat la o cerere pe secunda.
           const fallback = fallbackQueryForLocation(location);
           if (fallback) {
             usedFallback = true;
             results = await geocode(fallback);
             await sleep(REQUEST_INTERVAL_MS);
             verdict = pickGeocodeResult(results, location);
+          }
+        }
+
+        // Orice rezultat care nu este o adresa la nivel de strada consuma o incercare. Adresa si
+        // coordonatele existente rămân neatinse; se scriu doar contorul, semnatura interogarii si,
+        // la epuizare, marcajul de verificare.
+        if (!verdict.accepted || usedFallback) {
+          const attemptFields = geocodeAttemptPayload(location, plan.query);
+          await svc.entities.ProviderLocation.update(location.id, attemptFields);
+          if (attemptFields.geocode_review_status === GEOCODE_REVIEW_STATUS.NEEDS_FALLBACK) {
+            result.marked_needs_fallback += 1;
+          }
+          if (attemptFields.geocode_review_status === GEOCODE_REVIEW_STATUS.NEEDS_MANUAL) {
+            result.marked_needs_manual += 1;
           }
         }
 
@@ -193,6 +278,13 @@ export async function handle(req: Request) {
           address: location.address,
           granularity: usedFallback ? 'locality' : 'street',
         });
+        // Adresa s-a rezolvat la nivel de strada: locatia iese curat din coada, cu contorul si
+        // marcajul de verificare resetate.
+        if (!usedFallback) {
+          updates.geocode_attempt_count = 0;
+          updates.geocode_attempt_signature = '';
+          updates.geocode_review_status = GEOCODE_REVIEW_STATUS.NONE;
+        }
         await svc.entities.ProviderLocation.update(location.id, updates);
         result.geocoded += 1;
         if (usedFallback) result.fallback_used += 1;
