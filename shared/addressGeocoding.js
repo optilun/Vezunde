@@ -104,7 +104,10 @@ export function geocodeQueryForLocation(location = {}) {
   if (!raw) return { street: '', city, county, country: 'Romania' };
 
   // Numarul postal poate sta oriunde in text; il luam inainte sa taiem segmentele.
-  const numberMatch = raw.match(/\bnr\.?\s*(\d+[A-Za-z]?)/i);
+  // Intervalele ("nr. 64-68", "182-184") sunt frecvente la cladirile mari: pastram primul numar
+  // si aruncam restul intervalului. Lasat intreg, geocoderul nu gaseste nimic si cade pe oras.
+  const NUMBER_RANGE = /(\d+[A-Za-z]?)(?:\s*[-–—/]\s*\d+[A-Za-z]?)?/;
+  const numberMatch = raw.match(new RegExp(`\\bnr\\.?\\s*${NUMBER_RANGE.source}`, 'i'));
 
   // Pastram doar segmentele de dinaintea zgomotului de dupa numar.
   const segments = raw.split(',').map((part) => part.trim()).filter(Boolean);
@@ -118,13 +121,17 @@ export function geocodeQueryForLocation(location = {}) {
 
   let name = kept.join(' ');
   for (const [pattern, expansion] of STREET_ABBREVIATIONS) name = name.replace(pattern, expansion);
-  name = name.replace(/\bnr\.?\s*\d+[A-Za-z]?/i, '').replace(/\s{2,}/g, ' ').replace(/[,\s.]+$/, '').trim();
+  name = name
+    .replace(new RegExp(`\\bnr\\.?\\s*${NUMBER_RANGE.source}`, 'i'), '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/[,\s.\-–—]+$/, '')
+    .trim();
 
   let number = numberMatch ? numberMatch[1] : '';
   if (!number) {
     // Fara "nr.", numarul sta de obicei la finalul numelui ("Calea Aradului 12"). Il mutam in
     // fata, dar il si scoatem din nume - altfel ar aparea de doua ori.
-    const trailing = name.match(/\s(\d+[A-Za-z]?)\s*$/);
+    const trailing = name.match(new RegExp(`\\s${NUMBER_RANGE.source}\\s*$`));
     if (trailing) {
       number = trailing[1];
       name = name.slice(0, trailing.index).trim();
