@@ -109,10 +109,12 @@ function clusterIcon(cluster, state) {
 // pacientul selecteaza sau trece cu mouse-ul peste un card - altfel harta ar sari mereu inapoi.
 function FitToPoints({ points }) {
   const map = useMap();
-  const signature = points.map((point) => point.id).join("|");
+  const signature = points.map((point) => `${point.id}:${point.lat}:${point.lng}`).sort().join("|");
+  const fittedSignature = useRef(null);
 
   useEffect(() => {
-    if (points.length === 0) return;
+    if (points.length === 0 || fittedSignature.current === signature) return;
+    fittedSignature.current = signature;
     if (points.length === 1) {
       map.setView([points[0].lat, points[0].lng], 14);
       return;
@@ -210,6 +212,7 @@ export default function ResultsMap({
 }) {
   const model = useMemo(() => buildResultsMapModel(results), [results]);
   const [viewport, setViewport] = useState({ zoom: FALLBACK_ZOOM, bounds: null });
+  const [openClusterKey, setOpenClusterKey] = useState(null);
   const selectedPoint = model.points.find((point) => point.id === selectedId) || null;
   const notice = unmappedNotice(model.unmappedCount);
 
@@ -217,6 +220,8 @@ export default function ResultsMap({
     () => clusterPoints(model.points, viewport.zoom),
     [model.points, viewport.zoom],
   );
+
+  const openCluster = clusters.find((cluster) => cluster.key === openClusterKey && cluster.count > 1);
 
   // Dreptunghiul vizibil se raporteaza in sus ca lista sa poata fi filtrata la ce se vede.
   // Se trimit ID-URI, nu un criteriu de cautare: serverul nu este intrebat nimic din nou.
@@ -249,12 +254,12 @@ export default function ResultsMap({
   }
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative isolate ${className}`}>
       <MapContainer
         center={[FALLBACK_CENTER.lat, FALLBACK_CENTER.lng]}
         zoom={FALLBACK_ZOOM}
         scrollWheelZoom
-        zoomControl={false}
+        zoomControl
         className="h-full w-full"
         aria-label="Harta opțiunilor găsite"
         ref={mapRef}
@@ -271,6 +276,8 @@ export default function ResultsMap({
             <Marker
               key={cluster.key}
               position={[cluster.lat, cluster.lng]}
+              title={cluster.count > 1 ? `${cluster.count} locații` : cluster.lead.name}
+              alt={cluster.count > 1 ? `${cluster.count} locații` : cluster.lead.name}
               icon={clusterIcon(cluster, { active: containsSelected, hovered: containsHovered })}
               zIndexOffset={containsSelected ? 1000 : (cluster.lead.tier === "top3" ? 500 : 0)}
               eventHandlers={{
@@ -279,9 +286,16 @@ export default function ResultsMap({
                     // Un grup nu se "alege": se desface. Altfel pacientul ar crede ca a vazut
                     // o locatie cand de fapt sunt mai multe sub aceeasi pastila.
                     const map = mapRef.current;
-                    if (map) map.setView([cluster.lat, cluster.lng], Math.min(map.getZoom() + 3, 17));
+                    if (map && map.getZoom() >= 15) {
+                      if (onSelect) onSelect(null);
+                      setOpenClusterKey(cluster.key);
+                    } else if (map) {
+                      setOpenClusterKey(null);
+                      map.setView([cluster.lat, cluster.lng], Math.min(map.getZoom() + 3, 17));
+                    }
                     return;
                   }
+                  setOpenClusterKey(null);
                   if (onSelect) onSelect(cluster.lead.id);
                 },
                 mouseover: () => { if (onHover && cluster.count === 1) onHover(cluster.lead.id); },
@@ -291,6 +305,28 @@ export default function ResultsMap({
           );
         })}
       </MapContainer>
+
+      {openCluster && !selectedPoint && (
+        <section aria-label="Locații la aceeași poziție"
+          className="absolute inset-x-3 bottom-3 z-[500] max-h-[60%] overflow-y-auto rounded-2xl border border-border bg-card p-3.5 shadow-lg sm:inset-x-auto sm:left-3 sm:w-80">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-bold">{openCluster.count} locații la această poziție</h2>
+            <button type="button" aria-label="Închide lista locațiilor" onClick={() => setOpenClusterKey(null)}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-secondary">×</button>
+          </div>
+          <ul className="divide-y divide-border">
+            {openCluster.points.map((point) => (
+              <li key={point.id}>
+                <button type="button" onClick={() => { setOpenClusterKey(null); if (onSelect) onSelect(point.id); }}
+                  className="min-h-11 w-full rounded-lg px-2 py-3 text-left hover:bg-secondary focus-visible:outline focus-visible:outline-2">
+                  <span className="block text-sm font-semibold">{point.name}</span>
+                  <span className="block text-xs text-muted-foreground">{shortTypeLabel(point.provider_type)}{point.address ? ` · ${point.address}` : ""}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {selectedPoint && (
         <PointCard point={selectedPoint} onClose={() => { if (onSelect) onSelect(null); }} />

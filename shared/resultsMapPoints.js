@@ -174,15 +174,22 @@ export function clusterPoints(points, zoom) {
   const list = (Array.isArray(points) ? points : []).filter(Boolean);
   if (list.length === 0) return [];
 
-  // La zoom mare nu mai grupam: pacientul vrea sa vada fiecare locatie separat.
+  // La zoom mare, pozitiile identice raman grupate si pot fi alese din lista.
+  // Nu deplasam coordonatele pentru a separa vizual locatiile.
   if (Number(zoom) >= 15) {
-    return list.map((point) => ({
-      key: point.id,
-      lat: point.lat,
-      lng: point.lng,
-      points: [point],
-      lead: point,
-      count: 1,
+    const positions = new Map();
+    for (const point of list) {
+      const key = `position:${point.lat}:${point.lng}`;
+      if (!positions.has(key)) positions.set(key, []);
+      positions.get(key).push(point);
+    }
+    return [...positions].map(([key, members]) => ({
+      key,
+      lat: members[0].lat,
+      lng: members[0].lng,
+      points: members,
+      lead: members[0],
+      count: members.length,
     }));
   }
 
