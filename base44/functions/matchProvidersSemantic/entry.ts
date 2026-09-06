@@ -28,8 +28,10 @@ import {
 import { buildPatientSafetyAssessment } from '../../shared/patientSafety.js';
 import { classifyPatientConversationModelFailure } from './patientConversationModelFailureDiagnostics.js';
 import {
+  loadDirectoryDetailOverlay,
   loadPublicLocationsForLocality,
   loadRowsForLocationIds,
+  withDirectoryDetail,
 } from '../../shared/locationScopedEntityQuery.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
@@ -73,7 +75,7 @@ const STRUCTURAL_FALLBACK_MAX_RESULTS = 12;
 // Ideal, copia vizibila pacientului nu ar trai in functia de matching - vezi nota din
 // claude/verificari-vizuale-2026-09-02.md.
 const STRUCTURAL_FALLBACK_NOTICES = {
-  optical: 'Profil din director \u2014 servicii neconfirmate încă. Sunteți reprezentantul acestei locații? Revendicați profilul gratuit.',
+  optical: 'Profil din director — servicii neconfirmate încă. Sunteți reprezentantul acestei locații? Revendicați profilul gratuit.',
   medical: 'Profil din director, preluat din surse oficiale. Serviciile nu sunt confirmate de furnizor. Sunați înainte pentru a verifica disponibilitatea și tipul consultației.',
 };
 
@@ -744,6 +746,11 @@ Deno.serve(async (request) => {
     const results = [];
     const structuralCandidates = [];
 
+    // Nivelul de detaliu public sta pe starea de director, nu pe locatie (vezi
+    // loadDirectoryDetailOverlay). Se imbina DOAR cele trei campuri de detaliu, deci statusul
+    // de control ramane derivat exact ca pana acum si nici bucketul nu se schimba.
+    const detailOverlay = await loadDirectoryDetailOverlay(svc, scopedLocations.map((row) => row.id));
+
     for (const location of scopedLocations) {
       const locationRows = servicesByLocation[location.id] || [];
       const candidateRows = locationRows.filter((row) => {
@@ -787,6 +794,13 @@ Deno.serve(async (request) => {
       );
       const publicDisclosure = getPublicLocationDisclosure(location);
       const profileControlStatus = publicDisclosure.profile_control_status;
+      // Acelasi calcul, dar cu nivelul de detaliu adus din starea de director. Este folosit
+      // NUMAI pentru campurile afisate; bucketul de mai jos ramane pe `profileControlStatus`,
+      // care nu depinde de campurile imbinate.
+      const displayDisclosure = getPublicLocationDisclosure(
+        withDirectoryDetail(location, detailOverlay),
+        profileControlStatus,
+      );
       const recommendationGroup = recommendationBucketForProfile(profileControlStatus, needLevel);
       if (recommendationGroup === 'excluded') continue;
       const availability = getFreshAvailability(location);
@@ -814,18 +828,18 @@ Deno.serve(async (request) => {
         photo_url: publicDisclosure.expose_full_details ? (location.photo_url || null) : null,
         city: location.locality_name || location.city || null,
         county: location.county_name || location.county || null,
-        address: publicDisclosure.address,
-        lat: publicDisclosure.lat,
-        lng: publicDisclosure.lng,
-        map_precision: publicDisclosure.map_precision,
-        phone: publicDisclosure.phone,
-        website: publicDisclosure.website,
-        opening_hours: publicDisclosure.opening_hours,
-        saturday_hours: publicDisclosure.saturday_hours,
+        address: displayDisclosure.address,
+        lat: displayDisclosure.lat,
+        lng: displayDisclosure.lng,
+        map_precision: displayDisclosure.map_precision,
+        phone: displayDisclosure.phone,
+        website: displayDisclosure.website,
+        opening_hours: displayDisclosure.opening_hours,
+        saturday_hours: displayDisclosure.saturday_hours,
         profile_control_status: profileControlStatus,
-        public_detail_level: publicDisclosure.public_detail_level,
+        public_detail_level: displayDisclosure.public_detail_level,
         exact_location_visible: publicDisclosure.exact_location_visible,
-        contact_details_visible: publicDisclosure.contact_details_visible,
+        contact_details_visible: displayDisclosure.contact_details_visible,
         public_services: publicDisclosure.expose_full_details
           ? safeLocationRows.map(toPublicService).filter(Boolean)
           : [],
