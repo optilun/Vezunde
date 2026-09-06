@@ -250,4 +250,61 @@ assert.ok(
   "rularea implicita este o simulare: scrierea in productie se cere explicit",
 );
 
+// --- nivelul de detaliu din starea de director ---------------------------------------------
+//
+// 2026-09-06. Coordonatele nu ajungeau la pacient nu pentru ca lipseau, ci pentru ca nivelul de
+// detaliu public sta pe ProviderLocationDirectoryState, iar cautarea calcula vizibilitatea doar
+// pe locatie. Un profil aprobat editorial aparea ca 'summary' si isi ascundea si adresa, si
+// pozitia - desi pagina lui de profil le arata de mult.
+//
+// Corectura imbina starea. Invariantul care trebuie sa ramana adevarat este ca imbinarea atinge
+// NUMAI afisarea, niciodata potrivirea.
+const overlay = await readFile(new URL("../base44/shared/locationScopedEntityQuery.js", import.meta.url), "utf8");
+assert.ok(overlay.includes("export async function loadDirectoryDetailOverlay"), "overlay-ul trebuie sa existe in shared");
+assert.ok(
+  overlay.includes("'directory_detail_level',")
+  && overlay.includes("'directory_basic_details_approved',")
+  && overlay.includes("'data_quality_status',"),
+  "se imbina exact cele trei campuri care decid nivelul de detaliu",
+);
+for (const forbidden of ["'control_status'", "'publication_status'", "'operational_status'", "'profile_control_status'"]) {
+  assert.ok(
+    !overlay.includes(`  ${forbidden},`),
+    `overlay-ul nu are voie sa imbine ${forbidden}: acele campuri hranesc eligibilitatea si ordonarea`,
+  );
+}
+
+const matchProviders = await readFile(new URL("../base44/functions/matchProviders/entry.ts", import.meta.url), "utf8");
+assert.ok(
+  matchProviders.includes("const detailOverlay = await loadDirectoryDetailOverlay(svc, finalVisible.map"),
+  "in matchProviders overlay-ul se incarca DUPA ce lista finala e aleasa si ordonata",
+);
+assert.equal(
+  (matchProviders.match(/getPublicLocationDisclosure\(loc\)\.profile_control_status/g) || []).length,
+  2,
+  "eligibilitatea ramane calculata pe locatia neimbinata, in ambele locuri",
+);
+
+const semantic = await readFile(new URL("../base44/functions/matchProvidersSemantic/entry.ts", import.meta.url), "utf8");
+assert.ok(
+  semantic.includes("const publicDisclosure = getPublicLocationDisclosure(location);")
+  && semantic.includes("const profileControlStatus = publicDisclosure.profile_control_status;"),
+  "bucketul ramane calculat pe locatia neimbinata",
+);
+assert.ok(
+  semantic.includes("address: displayDisclosure.address,")
+  && semantic.includes("lat: displayDisclosure.lat,"),
+  "campurile afisate folosesc disclosure-ul cu detaliul imbinat",
+);
+assert.ok(
+  semantic.includes("recommendationBucketForProfile(profileControlStatus, needLevel)"),
+  "bucketul se calculeaza in continuare din statusul de control neimbinat",
+);
+
+const browse = await readFile(new URL("../base44/functions/browseDirectoryProviders/entry.ts", import.meta.url), "utf8");
+assert.ok(
+  browse.includes("withDirectoryDetail(loc, detailOverlay)"),
+  "si browse-ul de director trebuie sa spuna acelasi lucru ca pagina de profil",
+);
+
 console.log("verify-address-geocoding: ok");
