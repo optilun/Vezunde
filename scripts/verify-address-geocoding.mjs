@@ -48,9 +48,33 @@ assert.equal(query.county, "Vrancea");
 assert.equal(query.country, "Romania");
 assert.equal(
   query.street,
-  "Str. Unirea Principatelor nr. 2",
-  "orasul repetat la finalul adresei trebuie scos, altfel geocoderul il ia drept a doua localitate",
+  "2 Strada Unirea Principatelor",
+  "campul `street` se trimite ca '<numar> <nume strada>', cu abrevierile desfacute",
 );
+
+// Fiecare caz de mai jos a fost masurat pe adrese reale din director: forma din stanga cadea pe
+// centrul localitatii, cea din dreapta nimereste strada.
+const streetCases = [
+  [{ address: "Bd. Revoluției nr. 78, Arad", city: "Arad", county: "Arad" }, "78 Bulevardul Revoluției"],
+  [{ address: "B-dul Eroilor nr. 3", city: "Brașov", county: "Brasov" }, "3 Bulevardul Eroilor"],
+  [{ address: "Șos. Nicolae Titulescu 4A", city: "București", county: "Bucuresti" }, "4A Soseaua Nicolae Titulescu"],
+  [{ address: "P-ța Victoriei 1", city: "Timișoara", county: "Timis" }, "1 Piata Victoriei"],
+  // Blocul, scara si "parter comercial" nu ajuta la gasirea strazii si de obicei o strica.
+  [{ address: "Str. Tăbăcari nr. 6, bl. 4, parter comercial, Făgăraș", city: "Făgăraș", county: "Brasov" }, "6 Strada Tăbăcari"],
+  // Fara "nr.", numarul sta la final si se muta in fata - o singura data, nu de doua ori.
+  [{ address: "Calea Aradului 12, Timișoara", city: "Timișoara", county: "Timis" }, "12 Calea Aradului"],
+  // Judetul repetat la final se taie, ca si localitatea.
+  [{ address: "Aleea Spitalului nr. 36, Pitești, Argeș", city: "Pitești", county: "Argeș" }, "36 Aleea Spitalului"],
+  // Intervalele de numere sunt frecvente la cladirile mari. Lasate intregi, geocoderul nu
+  // gaseste nimic si cade pe centrul orasului.
+  [{ address: "Str. Gheorghe Doja nr. 64-68, Târgu Mureș", city: "Târgu Mureș", county: "Mures" }, "64 Strada Gheorghe Doja"],
+  [{ address: "Bd. 1 Decembrie 1918 nr. 182-184, Târgu Mureș", city: "Târgu Mureș", county: "Mures" }, "182 Bulevardul 1 Decembrie 1918"],
+  // Fara numar deloc, ramane doar numele - o piata se gaseste si asa.
+  [{ address: "Piata Victoriei, bl. 11, parter, Deva", city: "Deva", county: "Hunedoara" }, "Piata Victoriei"],
+];
+for (const [location, expected] of streetCases) {
+  assert.equal(geocodeQueryForLocation(location).street, expected, location.address);
+}
 
 assert.equal(geocodeQueryForLocation({ address: "Str. X nr. 1" }), null, "fara localitate nu exista interogare");
 
