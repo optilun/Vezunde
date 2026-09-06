@@ -5,9 +5,11 @@ import {
 } from './sharedDependencies.js';
 import { getPublicLocationDisclosure } from './providerPublicTrust.js';
 import {
+  loadDirectoryDetailOverlay,
   loadPublicLocationsForLocality,
   loadRowsForLocationIds,
   paginateRows,
+  withDirectoryDetail,
 } from '../../shared/locationScopedEntityQuery.js';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
@@ -111,9 +113,14 @@ Deno.serve(async (req) => {
       facilitiesByLocation[facility.location_id].push(facility);
     }
 
+    // Nivelul de detaliu public sta pe starea de director, nu pe locatie. Fara el, un profil
+    // aprobat editorial aparea aici ca 'summary' si isi ascundea adresa - desi pagina lui de
+    // profil o arata. Vezi loadDirectoryDetailOverlay.
+    const detailOverlay = await loadDirectoryDetailOverlay(svc, locations.map((loc) => loc.id));
+
     const results = [];
     for (const loc of locations) {
-      const publicDisclosure = getPublicLocationDisclosure(loc);
+      const publicDisclosure = getPublicLocationDisclosure(withDirectoryDetail(loc, detailOverlay));
       const locAssignments = assignmentsByLocation[loc.id] || [];
       const locProfessionals = [...new Set(locAssignments.map((assignment) => assignment.professional_id).filter(Boolean))]
         .map((id) => professionalsById[id])
