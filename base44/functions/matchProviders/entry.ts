@@ -80,7 +80,7 @@ const STRUCTURAL_FALLBACK_MAX_RESULTS = 3;
 // Texte distincte: optica este o nevoie generala, oftalmologia este o nevoie medicala si
 // primeste un indemn explicit de verificare telefonica prealabila.
 const STRUCTURAL_FALLBACK_NOTICES = {
-  optical: 'Profil din director — servicii neconfirmate inca. Sunteti reprezentantul acestei locatii? Revendicati profilul gratuit.',
+  optical: 'Profil din director \u2014 servicii neconfirmate inca. Sunteti reprezentantul acestei locatii? Revendicati profilul gratuit.',
   medical: 'Profil din director, preluat din surse oficiale. Serviciile nu sunt confirmate de furnizor. Sunati inainte pentru a verifica disponibilitatea si tipul consultatiei.',
 };
 
