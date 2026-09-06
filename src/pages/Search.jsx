@@ -29,6 +29,75 @@ function useDebouncedValue(value, delay) {
   return debouncedValue;
 }
 
+// Lista de locatii alaturi de harta lor. Aceeasi idee ca pe ecranul de recomandari: cardurile
+// spun CARE sunt optiunile, harta spune UNDE sunt, iar selectia merge in ambele sensuri.
+// Pe telefon nu incap alaturi, deci se comuta intre ele.
+//
+// Cand niciun rezultat nu are inca pozitie publicata, harta nu se afiseaza deloc si lista ramane
+// pe doua coloane, ca inainte - o coloana goala langa carduri nu ajuta pe nimeni.
+function LocationsWithMap({
+  results,
+  renderCard,
+  selectedId,
+  hoveredId,
+  onSelect,
+  onHover,
+  mobileView,
+  onToggleMobileView,
+}) {
+  const hasPositions = (results || []).some((location) => Number.isFinite(Number(location?.lat)));
+
+  return (
+    <>
+      {hasPositions && (
+        <div className="mt-4 lg:hidden">
+          <button
+            type="button"
+            onClick={onToggleMobileView}
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold transition-colors hover:border-foreground/40"
+          >
+            {mobileView === "map" ? <List className="h-4 w-4" /> : <MapIcon className="h-4 w-4" />}
+            {mobileView === "map" ? "Vezi lista" : "Vezi pe hart\u0103"}
+          </button>
+        </div>
+      )}
+
+      <div className={hasPositions ? "mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(340px,0.85fr)] lg:items-start" : "mt-4"}>
+        <div className={mobileView === "map" && hasPositions ? "hidden lg:block" : ""}>
+          <div className={hasPositions ? "grid gap-4" : "grid gap-4 sm:grid-cols-2"}>
+            {(results || []).map((location) => (
+              <div
+                key={location.id}
+                onMouseEnter={() => onHover(location.id)}
+                onMouseLeave={() => onHover(null)}
+                onClick={() => onSelect(location.id)}
+                className={`rounded-2xl transition-shadow ${
+                  selectedId === location.id ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
+                } ${hoveredId === location.id && selectedId !== location.id ? "shadow-[0_4px_16px_rgba(23,23,23,0.10)]" : ""}`}
+              >
+                {renderCard(location)}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {hasPositions && (
+          <aside className={`lg:sticky lg:top-6 ${mobileView === "map" ? "block" : "hidden lg:block"}`}>
+            <ResultsMap
+              results={results || []}
+              selectedId={selectedId}
+              hoveredId={hoveredId}
+              onSelect={onSelect}
+              onHover={onHover}
+              className="h-[70vh] overflow-hidden rounded-3xl border border-border lg:h-[calc(100vh-9rem)]"
+            />
+          </aside>
+        )}
+      </div>
+    </>
+  );
+}
+
 export default function Search() {
   const [urlParams] = useState(
     () => new URLSearchParams(window.location.search),
