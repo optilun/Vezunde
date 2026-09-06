@@ -356,7 +356,15 @@ await scenario("matching and ranking implementation remains byte-stable", () => 
   // publica, iar fara aceste trei campuri harta ecranului de rezultate nu are ce desena.
   // Verificat linie cu linie: buildRecommendationScore, assignRecommendationBuckets si
   // selectia Top 3 raman neschimbate. Se adauga doar campuri de afisare.
-  assert.equal(fnv1a(entry.slice(entry.indexOf(entryMarker)).trimEnd()), "6c81e694");
+  // 2026-09-06, nivelul de detaliu din starea de director (aprobat explicit de owner):
+  // campurile afisate folosesc acum `displayDisclosure`, calculat pe locatia imbinata cu
+  // `directory_detail_level` / `directory_basic_details_approved` / `data_quality_status` din
+  // ProviderLocationDirectoryState. Motivul: un profil aprobat editorial aparea in rezultate ca
+  // 'summary' si isi ascundea adresa, desi pagina lui de profil o arata de mult.
+  // Verificat linie cu linie: `profileControlStatus` ramane calculat pe locatia neimbinata, deci
+  // recommendationBucketForProfile, buildRecommendationScore, assignRecommendationBuckets si
+  // selectia Top 3 primesc exact aceleasi valori ca inainte.
+  assert.equal(fnv1a(entry.slice(entry.indexOf(entryMarker)).trimEnd()), "2667520a");
   assert.match(entry, /error: 'Cererea nu a putut fi procesata\.'/);
   assert.match(entry, /headers: \{ 'Cache-Control': 'no-store' \}/);
 
