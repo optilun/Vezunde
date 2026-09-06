@@ -14,6 +14,7 @@ import {
 } from "../../../shared/resultsMapPoints.js";
 import LocationThumb, { typeVisual } from "@/components/results/LocationThumb";
 import TrustBadge from "@/components/results/TrustBadge";
+import { withCartoApiKey } from "@/lib/cartoBasemap";
 
 // Harta rezultatelor, in stilul hartilor de cautare (Airbnb, Booking).
 //
@@ -37,7 +38,9 @@ import TrustBadge from "@/components/results/TrustBadge";
 // Tile-urile sunt CARTO "light" peste date OpenStreetMap. Atributia pentru ambele este
 // obligatorie si e afisata de Leaflet in coltul hartii.
 
-const TILE_URL = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+// Stilul raster ramane cel folosit pana acum (light_all). Se adauga doar cheia CARTO,
+// conform cerintei oficiale pentru rastertiles - vezi src/lib/cartoBasemap.js.
+const TILE_URL = withCartoApiKey("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png");
 const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
 const SHORT_TYPE_LABELS = {
