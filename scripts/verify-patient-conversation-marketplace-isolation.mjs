@@ -49,6 +49,16 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
     // cu linie: buildRecommendationScore, assignRecommendationBuckets si selectia Top 3 raman
     // neschimbate. Se adauga doar campuri de afisare in obiectul de rezultat.
     'ad9846afc72e469b2a184683e17e0465b5ad6f81',
+    // 2026-09-06, nivelul de detaliu din starea de director (aprobat explicit de owner):
+    // dupa ce lista finala este deja aleasa si ordonata, se incarca `loadDirectoryDetailOverlay`
+    // si se imbina in locatie DOAR `directory_detail_level`, `directory_basic_details_approved`
+    // si `data_quality_status`, pentru calculul campurilor afisate. Motivul: un profil aprobat
+    // editorial aparea in rezultate ca 'summary' si isi ascundea adresa, desi pagina lui de
+    // profil o arata de mult - iar harta ramanea fara coordonate.
+    // Verificat linie cu linie: overlay-ul se aplica DUPA `finalVisible`, statusul de control
+    // ramane cel primit ca override (`entry.eligibility.pcs`), iar eligibilitatea, scorul si
+    // selectia Top 3 se calculeaza inainte, pe locatia neimbinata. Nimic din ele nu se schimba.
+    '85e8034f2c9648c781e0b4fa8855e71e7711dfb4',
   ]),
   'base44/functions/matchProvidersSemantic/sharedDependencies.js': Object.freeze([
     '134166b15ecce5cd52b32f3d3dca05b27ae14e81',
@@ -110,6 +120,13 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
     // rezultate sa aiba ce desena. Verificat linie cu linie: buildRecommendationScore,
     // assignRecommendationBuckets si selectia Top 3 raman neschimbate.
     '37620f786f6c913cbeeb15c8846de0d72de48edc',
+    // 2026-09-06, nivelul de detaliu din starea de director (aprobat explicit de owner):
+    // acelasi motiv ca in matchProviders/entry.ts. Aici distinctia este scrisa explicit in cod:
+    // `publicDisclosure` ramane calculat pe locatia NEIMBINATA si da `profileControlStatus`,
+    // singurul care intra in recommendationBucketForProfile; `displayDisclosure` este calculat
+    // pe locatia imbinata si alimenteaza NUMAI campurile afisate (adresa, pozitia, telefonul,
+    // programul). Verificat linie cu linie: scorul, ordonarea si selectia Top 3 raman identice.
+    'f4908797d642458a723b92e451d14e7dc4f654b6',
   ]),
 });
 
