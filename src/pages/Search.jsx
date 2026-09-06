@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Search as SearchIcon, SlidersHorizontal } from "lucide-react";
+import { List, Map as MapIcon, Search as SearchIcon, SlidersHorizontal } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { SERVICES, PROVIDER_TYPES } from "@/lib/vezunde";
 import { getServiceSearchSuggestions } from "@/lib/serviceSemanticSearch";
@@ -11,6 +11,7 @@ import ProviderCard from "@/components/ProviderCard";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
 import ProfessionalDirectoryCard from "@/components/results/ProfessionalDirectoryCard";
 import ResultModeTabs, { RESULT_MODES } from "@/components/intake2/ResultModeTabs";
+import ResultsMap from "@/components/results/ResultsMap";
 import { browsePublicProfessionals } from "@/lib/professionalSearch";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
 
@@ -37,6 +38,11 @@ export default function Search() {
   // nu avea de unde sa inceapa - trebuia sa deschida clinici una cate una si sa se uite la echipa.
   // Acelasi selector ca in rezultatele cererii, ca sa fie evident ca e aceeasi idee.
   const [searchMode, setSearchMode] = useState(RESULT_MODES.locations.key);
+  // 2026-09-06: aceeasi harta ca pe ecranul de recomandari, ca rasfoirea unei localitati sa arate
+  // si UNDE sunt locatiile, nu doar care sunt. Selectia si evidentierea merg in ambele sensuri.
+  const [selectedId, setSelectedId] = useState(null);
+  const [hoveredId, setHoveredId] = useState(null);
+  const [mobileView, setMobileView] = useState("list");
   const [professionals, setProfessionals] = useState(null);
   const [service, setService] = useState(urlParams.get("serviciu") || "");
   const [query, setQuery] = useState(urlParams.get("q") || "");
