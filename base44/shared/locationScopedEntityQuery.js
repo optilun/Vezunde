@@ -45,7 +45,10 @@ export async function loadAllPublicLocationsByCounty(svc, options = {}) {
     const results = await Promise.all(batch.map((countyCode) => svc.entities.ProviderLocation.filter({
       status: 'publicata',
       county_code: countyCode,
-    }, options.sort || 'name', perCountyLimit).catch(() => [])));
+    }, options.sort || 'name', perCountyLimit).catch((error) => {
+      if (options.failOnError) throw error;
+      return [];
+    })));
     for (const result of results) rows.push(...(Array.isArray(result) ? result : []));
   }
 
