@@ -57,7 +57,7 @@ function LocationsWithMap({
             className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold transition-colors hover:border-foreground/40"
           >
             {mobileView === "map" ? <List className="h-4 w-4" /> : <MapIcon className="h-4 w-4" />}
-            {mobileView === "map" ? "Vezi lista" : "Vezi pe hart\u0103"}
+            {mobileView === "map" ? "Vezi lista" : "Vezi pe hartă"}
           </button>
         </div>
       )}
