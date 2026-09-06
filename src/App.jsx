@@ -27,6 +27,7 @@ const Toaster = lazy(() =>
 const PageNotFound = lazy(() => import("./lib/PageNotFound"));
 const Home = lazy(() => import("./pages/Home"));
 const Search = lazy(() => import("./pages/Search"));
+const DirectoryMap = lazy(() => import("./pages/DirectoryMap"));
 const ProviderProfile = lazy(() => import("./pages/ProviderProfile"));
 const OrganizationProfile = lazy(() => import("./pages/OrganizationProfile"));
 const RequestMatches = lazy(() => import("./pages/RequestMatches"));
@@ -173,6 +174,7 @@ const AppRoutes = () => {
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
           <Route path="/cauta" element={<Search />} />
+          <Route path="/harta" element={<DirectoryMap />} />
           <Route path="/parteneri" element={<Partners />} />
           <Route path="/despre-viasee" element={<AboutViasee />} />
           <Route path="/furnizor/:id" element={<ProviderProfile />} />

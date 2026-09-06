@@ -5,6 +5,7 @@ import {
 } from './sharedDependencies.js';
 import { getPublicLocationDisclosure } from './providerPublicTrust.js';
 import {
+  loadAllPublicLocationsByCounty,
   loadDirectoryDetailOverlay,
   loadPublicLocationsForLocality,
   loadRowsForLocationIds,
@@ -39,6 +40,50 @@ Deno.serve(async (req) => {
     const providerTypes = Array.isArray(payload.provider_types) ? payload.provider_types : [];
     const pageSize = Math.max(1, Math.min(Number(payload.page_size || payload.limit) || 20, 50));
     const offset = Math.max(0, Math.floor(Number(payload.offset) || 0));
+
+    // 2026-09-06, directorul pe harta. O singura ramura care intoarce TOATE locatiile publicate,
+    // in forma minima necesara desenarii unui punct. Nu este o cautare si nu inlocuieste una:
+    // nu scoreaza, nu ordoneaza dupa relevanta si nu are Top 3. Este harta directorului, din care
+    // pacientul intra pe un profil.
+    //
+    // Campurile sunt putine intentionat: 900+ locatii inseamna ca fiecare camp in plus se
+    // inmulteste cu 900. Detaliile se citesc pe profil, nu aici.
+    if (String(payload.map_scope || '').trim() === 'national') {
+      const allLocations = await loadAllPublicLocationsByCounty(svc);
+      const visible = allLocations.filter((loc) => {
+        if (loc.public_visibility_status !== 'approved') return false;
+        if (loc.active_status === 'inactiva') return false;
+        if (!loc.provider_profile_type || !PATIENT_FACING_PROFILE_TYPES.includes(loc.provider_profile_type)) return false;
+        return true;
+      });
+      const overlay = await loadDirectoryDetailOverlay(svc, visible.map((loc) => loc.id));
+
+      const points = [];
+      for (const loc of visible) {
+        const disclosure = getPublicLocationDisclosure(withDirectoryDetail(loc, overlay));
+        if (disclosure.profile_control_status === 'suspended') continue;
+        if (disclosure.lat === null || disclosure.lng === null) continue;
+        points.push({
+          id: loc.id,
+          name: loc.public_display_name || loc.name,
+          provider_type: loc.provider_type,
+          city: loc.locality_name || loc.city || null,
+          county: loc.county_name || loc.county || null,
+          address: disclosure.address,
+          lat: disclosure.lat,
+          lng: disclosure.lng,
+          map_precision: disclosure.map_precision,
+          profile_control_status: disclosure.profile_control_status,
+        });
+      }
+
+      return Response.json({
+        map_scope: 'national',
+        results: points,
+        total_published: visible.length,
+        without_position: visible.length - points.length,
+      });
+    }
 
     if (!sirutaCode) {
       return Response.json({
