@@ -75,7 +75,7 @@ const STRUCTURAL_FALLBACK_MAX_RESULTS = 12;
 // Ideal, copia vizibila pacientului nu ar trai in functia de matching - vezi nota din
 // claude/verificari-vizuale-2026-09-02.md.
 const STRUCTURAL_FALLBACK_NOTICES = {
-  optical: 'Profil din director — servicii neconfirmate încă. Sunteți reprezentantul acestei locații? Revendicați profilul gratuit.',
+  optical: 'Profil din director \u2014 servicii neconfirmate încă. Sunteți reprezentantul acestei locații? Revendicați profilul gratuit.',
   medical: 'Profil din director, preluat din surse oficiale. Serviciile nu sunt confirmate de furnizor. Sunați înainte pentru a verifica disponibilitatea și tipul consultației.',
 };
 
