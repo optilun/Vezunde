@@ -102,13 +102,49 @@ export async function handle(req: Request) {
       skipped[entry.plan.reason] = (skipped[entry.plan.reason] || 0) + 1;
     }
 
+    // Grupurile de locatii care impart exact aceeasi coordonata. Doua locatii distincte nu pot
+    // sta fizic in acelasi punct: cand se intampla, pozitia vine din caderea la nivel de
+    // localitate (centrul orasului), nu din adresa lor. Le identificam aici pentru ca randurile
+    // scrise inainte de 2026-09-06 nu poarta marcajul de granularitate in `geocode_source`.
+    const positionGroups = new Map<string, Array<Record<string, unknown>>>();
+    for (const location of locations) {
+      const latitude = Number(location.lat);
+      const longitude = Number(location.lng);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
+      if (String(location.map_precision || '') === 'exact') continue;
+      const key = `${latitude.toFixed(5)},${longitude.toFixed(5)}`;
+      if (!positionGroups.has(key)) positionGroups.set(key, []);
+      positionGroups.get(key)!.push(location);
+    }
+    const sharedPosition = [...positionGroups.values()].filter((group) => group.length > 1);
+    const sharedPositionLocations = sharedPosition.flat();
+
     const summary = {
       published_total: locations.length,
       pending_total: pending.length,
       already_positioned: skipped.already_geocoded || 0,
       owner_confirmed: skipped.owner_confirmed_position || 0,
       without_address: skipped.missing_address || 0,
+      shared_position_groups: sharedPosition.length,
+      shared_position_locations: sharedPositionLocations.length,
     };
+
+    // Marcheaza pozitiile suprapuse ca fiind la nivel de localitate. Nu sterge nicio coordonata:
+    // profilurile rămân pe harta exact unde sunt, dar rularea urmatoare le va incerca adresa
+    // exacta si le va muta pe cele care se rezolva. Pasul e separat de geocodare pentru ca este
+    // instant si nu atinge nicio reţea.
+    if (action === 'mark_shared_positions') {
+      let marked = 0;
+      for (const location of sharedPositionLocations) {
+        const source = String(location.geocode_source || 'openstreetmap_nominatim');
+        if (source.endsWith('_locality')) continue;
+        await svc.entities.ProviderLocation.update(location.id as string, {
+          geocode_source: `${source}_locality`,
+        });
+        marked += 1;
+      }
+      return Response.json({ success: true, action, ...summary, marked });
+    }
 
     if (action !== 'run') {
       return Response.json({ success: true, action: 'preview', ...summary });
@@ -151,6 +187,7 @@ export async function handle(req: Request) {
           lat: verdict.lat,
           lng: verdict.lng,
           address: location.address,
+          granularity: usedFallback ? 'locality' : 'street',
         });
         await svc.entities.ProviderLocation.update(location.id, updates);
         result.geocoded += 1;

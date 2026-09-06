@@ -1,6 +1,14 @@
 const DEFAULT_LOCALITY_LOCATION_LIMIT = 1000;
 const DEFAULT_PER_LOCATION_LIMIT = 300;
+// 2026-09-06. `county_code` din ProviderLocation este codul SIRUTA de judet, numeric ca text
+// ("1".."42", plus "51" Calarasi si "52" Giurgiu) - asa il scrie importul national, conform
+// GEOGRAPHY_CONTRACT. Lista de aici era una de abrevieri auto ("AB", "SB", "TM"), deci fiecare
+// interogare pe judet returna zero randuri si harta nationala era complet goala, desi cele 948
+// de locatii publicate erau in baza. Nu era o problema de geocodare: pozitiile existau.
+//
+// Pastram si abrevierile, ca randurile scrise manual inainte de contract sa nu fie pierdute.
 const ROMANIA_COUNTY_CODES = [
+  ...Array.from({ length: 52 }, (_, index) => String(index + 1)),
   'AB', 'AR', 'AG', 'BC', 'BH', 'BN', 'BT', 'BV', 'BR', 'BZ',
   'CS', 'CL', 'CJ', 'CT', 'CV', 'DB', 'DJ', 'GL', 'GR', 'GJ',
   'HR', 'HD', 'IL', 'IS', 'IF', 'MM', 'MH', 'MS', 'NT', 'OT',

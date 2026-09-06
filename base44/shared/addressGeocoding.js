@@ -229,6 +229,18 @@ export function geocodePlanForLocation(location = {}) {
     return { action: 'skip', reason: 'owner_confirmed_position' };
   }
   if (hasCoordinates && precision === 'approximate') {
+    // 2026-09-06. O pozitie obtinuta prin caderea la nivel de localitate NU este o adresa
+    // geocodata: este centrul localitatii, identic pentru toate locatiile din acel oras care au
+    // ajuns pe aceeasi cale. Masurat in producţie: 274 din 948 locatii publicate stateau in 79
+    // de grupuri cu coordonate identice (43 intr-un singur punct in Bucuresti), iar harta le
+    // unea corect intr-un singur pin - datele erau cele suprapuse, nu harta.
+    //
+    // De aceea o astfel de pozitie nu se considera niciodata "gata": la fiecare rulare se mai
+    // incearca o data adresa exacta. Daca strada se rezolva, pozitia devine reala; daca nu,
+    // ramane ce era si se reincearca alta data. Nu pierdem nimic, si nu inventam nimic.
+    if (clean(location.geocode_source).endsWith(LOCALITY_SOURCE_SUFFIX) && query.street) {
+      return { action: 'geocode', reason: 'locality_only_position', query };
+    }
     const previous = clean(location.geocoded_address);
     if (previous && previous === clean(location.address)) {
       return { action: 'skip', reason: 'already_geocoded' };
@@ -243,12 +255,18 @@ export function geocodePlanForLocation(location = {}) {
  * pozitia, faptul ca este aproximativa, sursa (OpenStreetMap cere atributie) si adresa din care
  * a fost derivata, ca sa stim cand devine invalida.
  */
-export function geocodeUpdatePayload({ lat, lng, address, source = 'openstreetmap_nominatim', at = null }) {
+export const LOCALITY_SOURCE_SUFFIX = '_locality';
+
+export function geocodeUpdatePayload({ lat, lng, address, source = 'openstreetmap_nominatim', granularity = 'street', at = null }) {
   return {
     lat,
     lng,
     map_precision: 'approximate',
-    geocode_source: source,
+    // Granularitatea se scrie in sursa, nu se pierde. 'street' este o adresa rezolvata;
+    // '_locality' spune raspicat ca este centrul localitatii, deci o pozitie care mai trebuie
+    // incercata. Fara aceasta distinctie, o cadere la nivel de oras arata in date exact ca o
+    // adresa gasita - si asa au ajuns zeci de locatii sa imparta acelasi punct fara sa se vada.
+    geocode_source: granularity === 'locality' ? `${source}${LOCALITY_SOURCE_SUFFIX}` : source,
     geocoded_address: clean(address),
     geocoded_at: at || new Date().toISOString(),
   };
@@ -257,6 +275,7 @@ export function geocodeUpdatePayload({ lat, lng, address, source = 'openstreetma
 export default {
   ADDRESS_GEOCODING_CONTRACT_VERSION,
   ROMANIA_BOUNDS,
+  LOCALITY_SOURCE_SUFFIX,
   normalizeGeoName,
   geocodeQueryForLocation,
   fallbackQueryForLocation,

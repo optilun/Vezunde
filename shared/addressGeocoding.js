@@ -229,6 +229,11 @@ export function geocodePlanForLocation(location = {}) {
     return { action: 'skip', reason: 'owner_confirmed_position' };
   }
   if (hasCoordinates && precision === 'approximate') {
+    // Vezi base44/shared/addressGeocoding.js: o pozitie la nivel de localitate este centrul
+    // orasului, nu o adresa geocodata, deci se mai incearca de fiecare data adresa exacta.
+    if (clean(location.geocode_source).endsWith(LOCALITY_SOURCE_SUFFIX) && query.street) {
+      return { action: 'geocode', reason: 'locality_only_position', query };
+    }
     const previous = clean(location.geocoded_address);
     if (previous && previous === clean(location.address)) {
       return { action: 'skip', reason: 'already_geocoded' };
@@ -243,12 +248,14 @@ export function geocodePlanForLocation(location = {}) {
  * pozitia, faptul ca este aproximativa, sursa (OpenStreetMap cere atributie) si adresa din care
  * a fost derivata, ca sa stim cand devine invalida.
  */
-export function geocodeUpdatePayload({ lat, lng, address, source = 'openstreetmap_nominatim', at = null }) {
+export const LOCALITY_SOURCE_SUFFIX = '_locality';
+
+export function geocodeUpdatePayload({ lat, lng, address, source = 'openstreetmap_nominatim', granularity = 'street', at = null }) {
   return {
     lat,
     lng,
     map_precision: 'approximate',
-    geocode_source: source,
+    geocode_source: granularity === 'locality' ? `${source}${LOCALITY_SOURCE_SUFFIX}` : source,
     geocoded_address: clean(address),
     geocoded_at: at || new Date().toISOString(),
   };
@@ -257,6 +264,7 @@ export function geocodeUpdatePayload({ lat, lng, address, source = 'openstreetma
 export default {
   ADDRESS_GEOCODING_CONTRACT_VERSION,
   ROMANIA_BOUNDS,
+  LOCALITY_SOURCE_SUFFIX,
   normalizeGeoName,
   geocodeQueryForLocation,
   fallbackQueryForLocation,

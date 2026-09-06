@@ -1,7 +1,9 @@
 const DEFAULT_LOCALITY_LOCATION_LIMIT = 1000;
 const DEFAULT_PER_LOCATION_LIMIT = 300;
 const DEFAULT_CONCURRENCY = 12;
+// Vezi base44/shared/locationScopedEntityQuery.js: `county_code` este codul SIRUTA numeric.
 const ROMANIA_COUNTY_CODES = [
+  ...Array.from({ length: 52 }, (_, index) => String(index + 1)),
   'AB', 'AR', 'AG', 'BC', 'BH', 'BN', 'BT', 'BV', 'BR', 'BZ',
   'CS', 'CL', 'CJ', 'CT', 'CV', 'DB', 'DJ', 'GL', 'GR', 'GJ',
   'HR', 'HD', 'IL', 'IS', 'IF', 'MM', 'MH', 'MS', 'NT', 'OT',
