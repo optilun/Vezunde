@@ -101,3 +101,59 @@ export function paginateRows(rows, options = {}) {
     },
   };
 }
+
+// Nivelul de detaliu public al unui profil din director nu sta pe locatie, ci pe starea ei de
+// director (`ProviderLocationDirectoryState`): acolo scriu importul si aprobarea editoriala
+// `directory_detail_level`, `directory_basic_details_approved` si `data_quality_status`.
+//
+// 2026-09-06. Pagina publica de profil imbina de mult starea inainte sa calculeze vizibilitatea.
+// Cautarea si recomandarile nu o faceau, deci aceeasi locatie primea doua raspunsuri diferite
+// despre ce e public: pe profil adresa se vedea, in rezultate nu. Efectul secundar era ca
+// aprobarea editoriala nu producea niciun efect in cautare, iar harta rezultatelor nu avea
+// coordonate de desenat.
+//
+// Se imbina DOAR cele trei campuri care decid nivelul de detaliu. Statusul de control, cel de
+// publicare si cel operational raman citite de pe locatie, exact ca pana acum - ele hranesc
+// eligibilitatea si ordonarea, iar acelea nu au voie sa se schimbe aici.
+const DIRECTORY_DETAIL_OVERLAY_FIELDS = Object.freeze([
+  'directory_detail_level',
+  'directory_basic_details_approved',
+  'data_quality_status',
+]);
+
+/**
+ * Harta locationId -> campurile de detaliu din starea activa de director.
+ *
+ * @returns {Promise<Map<string, object>>}
+ */
+export async function loadDirectoryDetailOverlay(svc, locationIds, options = {}) {
+  const ids = [...new Set((Array.isArray(locationIds) ? locationIds : []).filter(Boolean))];
+  const overlay = new Map();
+  if (ids.length === 0) return overlay;
+
+  const states = await loadRowsForLocationIds(
+    svc.entities.ProviderLocationDirectoryState,
+    ids,
+    // Aceeasi selectie ca pe pagina publica de profil: doar starea activa, cea mai recenta intai.
+    { query: { state_status: 'active' }, sort: '-normalized_at', ...options },
+  ).catch(() => []);
+
+  for (const state of states) {
+    const locationId = state?.location_id;
+    if (!locationId || overlay.has(locationId)) continue;
+    const fields = {};
+    for (const field of DIRECTORY_DETAIL_OVERLAY_FIELDS) {
+      if (state[field] !== undefined && state[field] !== null) fields[field] = state[field];
+    }
+    overlay.set(locationId, fields);
+  }
+  return overlay;
+}
+
+/**
+ * Locatia, cu nivelul de detaliu adus din starea de director. Fara stare, ramane neschimbata.
+ */
+export function withDirectoryDetail(location, overlay) {
+  const fields = overlay?.get?.(location?.id);
+  return fields ? { ...location, ...fields } : location;
+}
