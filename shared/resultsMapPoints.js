@@ -38,6 +38,8 @@ function clean(value) {
 }
 
 function coordinate(value, limit) {
+  if (typeof value !== 'number' && typeof value !== 'string') return null;
+  if (typeof value === 'string' && value.trim() === '') return null;
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return null;
   if (numeric < -limit || numeric > limit) return null;
