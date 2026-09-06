@@ -367,21 +367,37 @@ export default function Search() {
           <h2 className="font-heading text-lg font-bold sm:text-xl">
             Locații în {locality?.name}
           </h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            {results === null && <LoadingState />}
-            {results?.length === 0 && <EmptyDirectory />}
-            {results?.map((location) => (
-              <DirectoryResultCard key={location.id} location={location} />
-            ))}
-          </div>
+          {results === null && <div className="mt-4"><LoadingState /></div>}
+          {results?.length === 0 && <div className="mt-4"><EmptyDirectory /></div>}
+          {results?.length > 0 && (
+            <LocationsWithMap
+              results={results}
+              renderCard={(location) => <DirectoryResultCard location={location} />}
+              selectedId={selectedId}
+              hoveredId={hoveredId}
+              onSelect={setSelectedId}
+              onHover={setHoveredId}
+              mobileView={mobileView}
+              onToggleMobileView={() => setMobileView((view) => (view === "map" ? "list" : "map"))}
+            />
+          )}
         </div>
       ) : (
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+        <div className="mt-8">
           {results === null && <LoadingState />}
           {results?.length === 0 && <EmptyMatch locality={locality} />}
-          {results?.map((location) => (
-            <ProviderCard key={location.id} location={location} />
-          ))}
+          {results?.length > 0 && (
+            <LocationsWithMap
+              results={results}
+              renderCard={(location) => <ProviderCard location={location} />}
+              selectedId={selectedId}
+              hoveredId={hoveredId}
+              onSelect={setSelectedId}
+              onHover={setHoveredId}
+              mobileView={mobileView}
+              onToggleMobileView={() => setMobileView((view) => (view === "map" ? "list" : "map"))}
+            />
+          )}
         </div>
       )}
       <p className="pt-8 text-xs text-muted-foreground">
