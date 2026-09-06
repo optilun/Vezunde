@@ -54,6 +54,12 @@ assert.equal(
 assert.equal(mapPointFromResult({ ...claimed, id: "x1", lat: 0, lng: 0 }), null, "Null Island nu este o locatie");
 assert.equal(mapPointFromResult({ ...claimed, id: "x2", lat: 200, lng: 21 }), null, "latitudine invalida");
 assert.equal(mapPointFromResult({ ...claimed, id: "x3", lat: "necunoscut", lng: 21 }), null, "text in loc de numar");
+for (const missing of [null, undefined, "", "   ", false, true, [], {}]) {
+  assert.equal(mapPointFromResult({ ...claimed, lat: missing }), null, "latitudine lipsa sau non-numerica");
+  assert.equal(mapPointFromResult({ ...claimed, lng: missing }), null, "longitudine lipsa sau non-numerica");
+}
+assert.ok(mapPointFromResult({ ...claimed, lat: "45.7489", lng: "21.2087" }));
+
 // 2026-09-05. Pozitia aproximata NU se mai refuza - locatiile publicate au primit coordonate
 // derivate din adresa lor publica, iar politica de vizibilitate le expune marcate ca atare.
 // Ce trebuie sa ramana adevarat este ca precizia calatoreste cu punctul si ca necunoscutul se
