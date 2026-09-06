@@ -41,6 +41,12 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- CARTO Basemaps: pune aici cheia oficiala pentru viasee.ro, intre ghilimele.
+         Este singurul loc de completat manual. Cat timp valoarea rămâne goală, harta
+         funcționează dar CARTO afișează watermark-ul "API KEY REQUIRED". -->
+    <script>
+      window.__VIASEE_CARTO_BASEMAP_API_KEY__ = "";
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
