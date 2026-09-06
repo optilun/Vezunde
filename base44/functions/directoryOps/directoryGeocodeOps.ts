@@ -134,16 +134,20 @@ export async function handle(req: Request) {
     // exacta si le va muta pe cele care se rezolva. Pasul e separat de geocodare pentru ca este
     // instant si nu atinge nicio reţea.
     if (action === 'mark_shared_positions') {
-      let marked = 0;
-      for (const location of sharedPositionLocations) {
-        const source = String(location.geocode_source || 'openstreetmap_nominatim');
-        if (source.endsWith('_locality')) continue;
-        await svc.entities.ProviderLocation.update(location.id as string, {
-          geocode_source: `${source}_locality`,
-        });
-        marked += 1;
+      // Scriere in loturi, nu rand cu rand: 274 de actualizari individuale depasesc limita de
+      // apeluri a rulajului si cad la jumatate, lasand datele pe jumatate marcate.
+      const pendingMarks = sharedPositionLocations
+        .filter((location) => !String(location.geocode_source || '').endsWith('_locality'))
+        .map((location) => ({
+          id: location.id as string,
+          geocode_source: `${String(location.geocode_source || 'openstreetmap_nominatim')}_locality`,
+        }));
+
+      for (let offset = 0; offset < pendingMarks.length; offset += 100) {
+        await svc.entities.ProviderLocation.bulkUpdate(pendingMarks.slice(offset, offset + 100));
       }
-      return Response.json({ success: true, action, ...summary, marked });
+
+      return Response.json({ success: true, action, ...summary, marked: pendingMarks.length });
     }
 
     if (action !== 'run') {
