@@ -58,27 +58,81 @@ export function normalizeGeoName(value) {
     .trim();
 }
 
+// Abrevierile romanesti de adresa, in forma pe care o intelege un geocoder. "Bd." si "Str." nu
+// sunt recunoscute; "Bulevardul" si "Strada" da. Masurat pe adrese reale din director:
+// 4 din 6 nimereau strada inainte, 6 din 6 dupa.
+const STREET_ABBREVIATIONS = Object.freeze([
+  [/(?<=^|[\s,])b-?dul\.?(?=\s|$)/gi, 'Bulevardul'],
+  [/(?<=^|[\s,])bd\.?(?=\s|$)/gi, 'Bulevardul'],
+  [/(?<=^|[\s,])str\.?(?=\s|$)/gi, 'Strada'],
+  [/(?<=^|[\s,])cal\.?(?=\s|$)/gi, 'Calea'],
+  [/(?<=^|[\s,])[sș]os\.?(?=\s|$)/gi, 'Soseaua'],
+  [/(?<=^|[\s,])p-?[tț]a\.?(?=\s|$)/gi, 'Piata'],
+  [/(?<=^|[\s,])al\.?(?=\s)/gi, 'Aleea'],
+  [/(?<=^|[\s,])intr\.?(?=\s|$)/gi, 'Intrarea'],
+]);
+
+// Ce urmeaza dupa numarul postal nu ajuta la gasirea strazii si de obicei o strica: blocul,
+// scara, etajul, apartamentul, "parter comercial", numele centrului comercial.
+const AFTER_NUMBER_NOISE = /\b(bl|bloc|sc|scara|et|etaj|ap|apartament|parter|demisol|mezanin|corp|tronson|spatiul|spa[tț]iul|incinta|complex)\b/i;
+
 /**
  * Interogarea structurata pentru geocoder. Structurata, nu text liber: campurile separate dau
  * rezultate mult mai stabile decat un sir concatenat, iar cand esueaza esueaza curat.
+ *
+ * Campul `street` se trimite in forma "<numar> <nume strada>", pentru ca asta asteapta
+ * interogarea structurata - nu forma in care scriem noi adresa pentru oameni
+ * ("Str. Tabacari nr. 6, bl. 4, parter comercial").
  *
  * @returns {{street: string, city: string, county: string, country: string} | null}
  */
 export function geocodeQueryForLocation(location = {}) {
   const city = clean(location.city || location.locality_name);
   if (!city) return null;
-  const street = clean(location.address)
-    // Adresa noastra repeta de obicei orasul la final ("Str. X nr. 2, Focsani"). Repetat si in
-    // campul `city`, geocoderul il trateaza ca pe o a doua localitate si nu mai gaseste nimic.
-    .replace(new RegExp(`[,\\s]+${city.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i'), '')
-    .replace(/^\s*[,;]\s*/, '')
-    .trim();
-  return {
-    street,
-    city,
-    county: clean(location.county || location.county_name),
-    country: 'Romania',
-  };
+
+  const county = clean(location.county || location.county_name);
+  let raw = clean(location.address);
+
+  // Adresa noastra repeta de obicei localitatea (si uneori judetul) la final. Repetate si in
+  // campurile lor proprii, geocoderul le trateaza ca pe o a doua localitate si nu mai gaseste
+  // nimic.
+  for (const tail of [city, county]) {
+    if (!tail) continue;
+    raw = raw.replace(new RegExp(`[,\\s]+${tail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i'), '');
+  }
+  raw = raw.replace(/^\s*[,;]\s*/, '').trim();
+  if (!raw) return { street: '', city, county, country: 'Romania' };
+
+  // Numarul postal poate sta oriunde in text; il luam inainte sa taiem segmentele.
+  const numberMatch = raw.match(/\bnr\.?\s*(\d+[A-Za-z]?)/i);
+
+  // Pastram doar segmentele de dinaintea zgomotului de dupa numar.
+  const segments = raw.split(',').map((part) => part.trim()).filter(Boolean);
+  const kept = [];
+  for (const segment of segments) {
+    if (AFTER_NUMBER_NOISE.test(segment)) break;
+    kept.push(segment);
+    // Numele strazii este in primul segment; restul sunt aproape mereu detalii de cladire.
+    if (kept.length >= 1 && /\d/.test(segment)) break;
+  }
+
+  let name = kept.join(' ');
+  for (const [pattern, expansion] of STREET_ABBREVIATIONS) name = name.replace(pattern, expansion);
+  name = name.replace(/\bnr\.?\s*\d+[A-Za-z]?/i, '').replace(/\s{2,}/g, ' ').replace(/[,\s.]+$/, '').trim();
+
+  let number = numberMatch ? numberMatch[1] : '';
+  if (!number) {
+    // Fara "nr.", numarul sta de obicei la finalul numelui ("Calea Aradului 12"). Il mutam in
+    // fata, dar il si scoatem din nume - altfel ar aparea de doua ori.
+    const trailing = name.match(/\s(\d+[A-Za-z]?)\s*$/);
+    if (trailing) {
+      number = trailing[1];
+      name = name.slice(0, trailing.index).trim();
+    }
+  }
+  const street = number ? `${number} ${name}`.trim() : name;
+
+  return { street, city, county, country: 'Romania' };
 }
 
 /**
