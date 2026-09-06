@@ -22,11 +22,13 @@ import { PROVIDER_TYPES } from "@/lib/vezunde";
 export default function DirectoryMap() {
   const [state, setState] = useState({ status: "loading", points: [], meta: null, error: "" });
   const [type, setType] = useState("");
+  const [retry, setRetry] = useState(0);
   const [selectedId, setSelectedId] = useState(null);
   const [hoveredId, setHoveredId] = useState(null);
 
   useEffect(() => {
     let active = true;
+    setState({ status: "loading", points: [], meta: null, error: "" });
     base44.functions
       .invoke("browseDirectoryProviders", { map_scope: "national" })
       .then((response) => {
@@ -52,7 +54,7 @@ export default function DirectoryMap() {
         });
       });
     return () => { active = false; };
-  }, []);
+  }, [retry]);
 
   const visiblePoints = useMemo(
     () => (type ? state.points.filter((point) => point.provider_type === type) : state.points),
@@ -74,7 +76,7 @@ export default function DirectoryMap() {
                       ? `, ${state.meta.withoutPosition} fără poziție publicată`
                       : ""
                   }`
-                : "Se încarcă locațiile publicate..."}
+                : state.status === "error" ? "Directorul nu a putut fi încărcat." : "Se încarcă locațiile publicate..."}
             </p>
           </div>
 
@@ -109,9 +111,13 @@ export default function DirectoryMap() {
 
         {state.status === "error" && (
           <div className="flex h-full items-center justify-center px-6">
-            <p role="alert" className="max-w-sm text-center text-sm text-muted-foreground">
-              {state.error}
-            </p>
+            <div className="max-w-sm text-center">
+              <p role="alert" className="text-sm text-muted-foreground">{state.error}</p>
+              <button type="button" onClick={() => setRetry((value) => value + 1)}
+                className="mt-4 min-h-11 rounded-full border border-border bg-card px-5 text-sm font-semibold">
+                Reîncearcă
+              </button>
+            </div>
           </div>
         )}
 
