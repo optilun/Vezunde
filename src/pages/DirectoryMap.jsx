@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, MapPin } from "lucide-react";
+import { Loader2, MapPin, LocateFixed } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import LocationsWithMap from "@/components/results/LocationsWithMap";
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
+
+import { nearestDirectory } from "../../shared/nearbyDirectory.js";
 
 // Directorul pe harta Romaniei.
 //
@@ -24,6 +26,32 @@ export default function DirectoryMap({ providerType = "" }) {
   const scrollRestored = useRef(false);
   const [state, setState] = useState({ status: "loading", points: [], meta: null, error: "" });
   const type = providerType;
+  const [origin, setOrigin] = useState(null);
+  const [geoStatus, setGeoStatus] = useState("idle");
+  const geoRequest = useRef(0);
+  const alive = useRef(true);
+  const requestLocation = useCallback(() => {
+    if (!navigator.geolocation) { setGeoStatus("unavailable"); return; }
+    const requestId = ++geoRequest.current;
+    setGeoStatus("loading");
+    navigator.geolocation.getCurrentPosition((position) => {
+      if (!alive.current || requestId !== geoRequest.current) return;
+      setOrigin({ lat: position.coords.latitude, lng: position.coords.longitude, requestId });
+      setSelectedId(null);
+      setPageSize(24);
+      setGeoStatus("ready");
+    }, (error) => {
+      if (alive.current && requestId === geoRequest.current) setGeoStatus(error.code === 1 ? "denied" : "unavailable");
+    }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+  }, []);
+  useEffect(() => {
+    alive.current = true;
+    navigator.permissions?.query({ name: "geolocation" }).then((permission) => {
+      // Do not interrupt a returning user's map exploration.
+      if (alive.current && permission.state === "granted" && !readSearchSession().maps?.national) requestLocation();
+    }).catch(() => {});
+    return () => { alive.current = false; geoRequest.current += 1; };
+  }, [requestLocation]);
   const [retry, setRetry] = useState(0);
   const [visibleIds, setVisibleIds] = useState(null);
   const [pageSize, setPageSize] = useState(saved.pageSize || 24);
@@ -87,11 +115,23 @@ export default function DirectoryMap({ providerType = "" }) {
     return () => window.removeEventListener("scroll", save);
   }, []);
 
+  const orderedPoints = useMemo(() => nearestDirectory(visiblePoints, origin), [visiblePoints, origin]);
+  const focusArea = useMemo(() => {
+    if (!origin || !orderedPoints.length) return null;
+    const nearby = orderedPoints.slice(0, 8);
+    return {
+      key: origin.requestId,
+      bounds: [
+        [Math.min(origin.lat, ...nearby.map((p) => p.lat)), Math.min(origin.lng, ...nearby.map((p) => p.lng))],
+        [Math.max(origin.lat, ...nearby.map((p) => p.lat)), Math.max(origin.lng, ...nearby.map((p) => p.lng))],
+      ],
+    };
+  }, [origin, orderedPoints]);
   const inView = useMemo(() => {
-    if (visibleIds === null) return visiblePoints;
+    if (visibleIds === null) return orderedPoints;
     const ids = new Set(visibleIds);
-    return visiblePoints.filter((point) => ids.has(point.id));
-  }, [visiblePoints, visibleIds]);
+    return orderedPoints.filter((point) => ids.has(point.id));
+  }, [orderedPoints, visibleIds]);
   const listedPoints = inView.slice(0, pageSize);
   // Keep a selected marker represented even beyond the first page of cards.
   const selectedPoint = inView.find((point) => point.id === selectedId);
@@ -105,21 +145,20 @@ export default function DirectoryMap({ providerType = "" }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="font-heading text-lg font-bold tracking-tight sm:text-xl">
-              Explorează România
+              {origin ? "Descoperă locațiile din apropiere" : "Explorează România"}
             </h2>
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground sm:text-sm">
               {state.status === "ready"
-                ? `${visiblePoints.length} ${visiblePoints.length === 1 ? "locație" : "locații"} pe hartă${
-                    state.meta?.withoutPosition
-                      ? `, ${state.meta.withoutPosition} fără poziție publicată`
-                      : ""
-                  }`
+                ? origin ? "Locațiile din zona hărții, în ordinea apropierii. Pozițiile pot fi aproximative." : "Alege localitatea sau folosește poziția dispozitivului."
                 : state.status === "error" ? "Directorul nu a putut fi încărcat." : "Se încarcă locațiile publicate..."}
             </p>
           </div>
-
-
+          <button type="button" onClick={requestLocation} disabled={geoStatus === "loading"} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#c9d3e3] bg-[#eff1f5] px-5 text-sm font-semibold text-[#4f6080] hover:bg-[#dce4f2] disabled:opacity-60">
+            {geoStatus === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
+            {geoStatus === "loading" ? "Se caută poziția..." : "În apropierea mea"}
+          </button>
         </div>
+        {(geoStatus === "denied" || geoStatus === "unavailable") && <p role="status" className="mt-3 text-sm text-muted-foreground">{geoStatus === "denied" ? "Accesul la locație nu este permis. Poți alege localitatea din bara de căutare." : "Poziția nu este disponibilă momentan. Încearcă din nou sau alege localitatea."}</p>
       </div>
 
       <div className="min-h-[24rem]">
@@ -161,7 +200,9 @@ export default function DirectoryMap({ providerType = "" }) {
             <LocationsWithMap
               results={visiblePoints}
               listResults={listedPoints}
-              renderCard={(point) => <DirectoryResultCard location={point} />}
+              renderCard={(point, onShowMap) => <DirectoryResultCard location={point} onShowMap={onShowMap} />}
+              integratedMapAction
+              focusArea={focusArea}
               selectedId={selectedId}
               hoveredId={hoveredId}
               onSelect={setSelectedId}

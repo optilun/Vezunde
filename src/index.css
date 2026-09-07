@@ -469,3 +469,8 @@
     height: 11rem !important;
   }
 }
+
+/* Public directory: same blue-grey / cream treatment as organization cards. */
+.directory-premium-cover { background: radial-gradient(circle at 1px 1px, rgb(23 23 23 / .08) 1px, transparent 1.2px), linear-gradient(180deg, #dce4f2 0%, #eff1f5 54%, #f7f2e8 100%); background-size: 20px 20px, auto; }
+.directory-premium-card { box-shadow: 0 10px 26px rgb(23 23 23 / .04); transition: box-shadow 160ms ease, border-color 160ms ease; }
+.directory-premium-card:hover, .directory-premium-card:focus-within { border-color: rgb(23 23 23 / .2); box-shadow: 0 16px 34px rgb(23 23 23 / .075); }

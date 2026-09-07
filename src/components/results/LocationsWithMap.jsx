@@ -8,6 +8,8 @@ export default function LocationsWithMap({
   listResults = results,
   onViewportChange,
   storageKey,
+  focusArea,
+  integratedMapAction = false,
   children,
   renderCard,
   selectedId,
@@ -44,12 +46,12 @@ export default function LocationsWithMap({
                 onMouseLeave={() => onHover(null)}
                 onFocus={() => onHover(location.id)}
                 onBlur={() => onHover(null)}
-                className={`rounded-2xl transition-shadow ${
+                className={`h-full rounded-[22px] transition-shadow ${
                   selectedId === location.id ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
                 } ${hoveredId === location.id && selectedId !== location.id ? "shadow-[0_4px_16px_rgba(23,23,23,0.10)]" : ""}`}
               >
-                {renderCard(location)}
-                {mapPointFromResult(location) && <button type="button" onClick={() => { onSelect(location.id); if (mobileView !== "map") onToggleMobileView(); }} className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium hover:bg-secondary"><MapIcon className="h-4 w-4" /> Vezi pe hartă</button>}
+                {renderCard(location, mapPointFromResult(location) ? () => { onSelect(location.id); if (mobileView !== "map") onToggleMobileView(); } : undefined)}
+                {!integratedMapAction && mapPointFromResult(location) && <button type="button" onClick={() => { onSelect(location.id); if (mobileView !== "map") onToggleMobileView(); }} className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium hover:bg-secondary"><MapIcon className="h-4 w-4" /> Vezi pe hartă</button>}
               </div>
             ))}
           </div>
@@ -66,6 +68,7 @@ export default function LocationsWithMap({
               onHover={onHover}
               onViewportChange={onViewportChange}
               storageKey={storageKey}
+              focusArea={focusArea}
               className="h-[70vh] overflow-hidden rounded-3xl border border-border lg:h-[calc(100vh-9rem)]"
             />
           </aside>

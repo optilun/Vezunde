@@ -137,6 +137,14 @@ function FitToPoints({ points, storageKey }) {
 }
 
 // Cand pacientul apasa un card din lista, harta se muta pe pozitia lui, fara sa schimbe zoom-ul.
+function FocusArea({ area }) {
+  const map = useMap();
+  useEffect(() => {
+    if (area?.bounds) map.fitBounds(area.bounds, { padding: [40, 40], maxZoom: 13, animate: false });
+  }, [area, map]);
+  return null;
+}
+
 function PanToSelected({ point }) {
   const map = useMap();
   useEffect(() => {
@@ -220,6 +228,7 @@ export default function ResultsMap({
   onViewportChange = null,
   className = "",
   storageKey = null,
+  focusArea = null,
 }) {
   const model = useMemo(() => buildResultsMapModel(results), [results]);
   const [viewport, setViewport] = useState({ zoom: FALLBACK_ZOOM, bounds: null });
@@ -282,6 +291,7 @@ export default function ResultsMap({
       >
         <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
         <FitToPoints points={model.points} storageKey={storageKey} />
+        <FocusArea area={focusArea} />
         <PanToSelected point={selectedPoint} />
         <ViewportWatcher onChange={reportViewport} />
 

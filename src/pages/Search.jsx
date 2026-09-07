@@ -366,7 +366,8 @@ export default function Search() {
             <LocationsWithMap
               results={results}
               storageKey={`local:${locality.siruta_code}:${service}:${debouncedQuery}`}
-              renderCard={(location) => <DirectoryResultCard location={location} />}
+              renderCard={(location, onShowMap) => <DirectoryResultCard location={location} onShowMap={onShowMap} />}
+              integratedMapAction
               selectedId={selectedId}
               hoveredId={hoveredId}
               onSelect={setSelectedId}
