@@ -74,3 +74,9 @@ Observatie de continuitate: in codul gasit la reluare, loader-ul national a fost
 - DirectoryResultCard: icon de profesie, tip, nume, adresa fara repetarea orasului, trust badge din statusul public, CTA si actiune de harta integrate. Fara poze/ratinguri inventate.
 - DirectoryMap: geolocation browser cu buton explicit; automat numai la permisiune granted si fara viewport salvat. Timeout 10s, refuz/failure cu alternativa manuala. Distanta Haversine calculata local, ordonare determinista; incadrare pe primele 8 locatii. Nicio modificare de matching/Top3/date/backend.
 - Limitari: coordonatele unor locatii sunt aproximative; afisat in explicatie. Geolocatia reala pe device si aspectul randat raman de verificat in preview/live. Nu s-a publicat.
+
+
+## 2026-09-07 — Bara opaca si audit filtre
+- Cauza transparenței: DesktopHeader scrolled utiliza bg-background/88 + backdrop-blur-sm. Pe rutele de cautare, DesktopHeader si MobileHeader au acum fundal hsl(var(--background)) opac si backdropFilter none. Restul paginilor isi pastreaza stilul.
+- Audit filtre: pastrate serviciu/text, localitate si mod locatii/specialisti; fara liste suplimentare. Adaugat Reseteaza cautarea numai cand exista criterii, cu revenire la director si stergere viewport/scroll salvat.
+- Verificat: eslint 0 erori/avertismente pe fisierele modificate, verify-search-session OK, build exit0. Verificarea vizuala la scroll nu a fost rulata pe noua versiune. Nepublicat.
