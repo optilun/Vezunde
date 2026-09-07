@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import * as maplibregl from "maplibre-gl";
+import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { readSearchSession } from "@/lib/searchSession";
 
@@ -37,7 +37,7 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
       timer = setTimeout(() => { if (!map.isStyleLoaded()) latest.current.onFailure(); },20000);
       observer = new ResizeObserver(() => map.resize());
       observer.observe(container.current);
-    } catch { latest.current.onFailure(); }
+    } catch (error) { console.error("VIASEE vector map initialization failed:", error); latest.current.onFailure(); }
     const currentMarkers = markers.current;
     return () => { clearTimeout(timer); observer?.disconnect(); currentMarkers.forEach(marker=>marker.remove()); currentMarkers.clear(); map?.remove(); mapRef.current=null; };
   },[]);
