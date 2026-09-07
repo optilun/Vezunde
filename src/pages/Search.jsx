@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { List, Map as MapIcon, Search as SearchIcon, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -14,8 +14,10 @@ import ResultModeTabs, { RESULT_MODES } from "@/components/intake2/ResultModeTab
 import ResultsMap from "@/components/results/ResultsMap";
 import DirectoryMap from "@/pages/DirectoryMap";
 import { mapPointFromResult } from "../../shared/resultsMapPoints.js";
-import { browsePublicProfessionals } from "@/lib/professionalSearch";
+import { browsePublicProfessionals, matchProfessionalsForRequest } from "@/lib/professionalSearch";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
+
+import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 
 const SEARCH_INPUT =
   "min-h-12 w-full rounded-full border border-transparent bg-card px-4 py-2.5 text-base outline-none transition-colors focus:border-primary/50 sm:text-sm";
@@ -104,19 +106,28 @@ export default function Search() {
   const [urlParams] = useState(
     () => new URLSearchParams(window.location.search),
   );
+  const [saved] = useState(() => {
+    const previous = readSearchSession();
+    return !window.location.search || previous.sourceSearch === window.location.search ? previous : {};
+  });
   const [results, setResults] = useState(null);
+  const [matchContext, setMatchContext] = useState(null);
+  const [loadError, setLoadError] = useState(false);
+  const [professionalError, setProfessionalError] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const restoredScroll = useRef(false);
   // 2026-09-03: /cauta rasfoia doar locatii. Pacientul care stie ca vrea "un oftalmolog din Sibiu"
   // nu avea de unde sa inceapa - trebuia sa deschida clinici una cate una si sa se uite la echipa.
   // Acelasi selector ca in rezultatele cererii, ca sa fie evident ca e aceeasi idee.
-  const [searchMode, setSearchMode] = useState(RESULT_MODES.locations.key);
+  const [searchMode, setSearchMode] = useState(saved.searchMode || RESULT_MODES.locations.key);
   // 2026-09-06: aceeasi harta ca pe ecranul de recomandari, ca rasfoirea unei localitati sa arate
   // si UNDE sunt locatiile, nu doar care sunt. Selectia si evidentierea merg in ambele sensuri.
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(saved.selectedId || null);
   const [hoveredId, setHoveredId] = useState(null);
-  const [mobileView, setMobileView] = useState("list");
+  const [mobileView, setMobileView] = useState(saved.mobileView || "list");
   const [professionals, setProfessionals] = useState(null);
-  const [service, setService] = useState(urlParams.get("serviciu") || "");
-  const [query, setQuery] = useState(urlParams.get("q") || SERVICES[urlParams.get("serviciu")] || "");
+  const [service, setService] = useState(saved.service ?? urlParams.get("serviciu") ?? "");
+  const [query, setQuery] = useState(saved.query ?? (urlParams.get("q") || SERVICES[urlParams.get("serviciu")] || ""));
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const initialLocalityName = urlParams.get("oras");
   const initialSirutaCode = urlParams.get("siruta");
@@ -128,9 +139,29 @@ export default function Search() {
           county_name: "",
           siruta_code: initialSirutaCode,
         }
-      : null,
+      : saved.locality || null,
   );
   const debouncedQuery = useDebouncedValue(query.trim(), 350);
+
+  useEffect(() => {
+    writeSearchSession({ sourceSearch: window.location.search, query, service, locality, searchMode, selectedId, mobileView });
+  }, [query, service, locality, searchMode, selectedId, mobileView]);
+
+  useEffect(() => {
+    const rememberScroll = () => {
+      if (restoredScroll.current) writeSearchSession({ scrollY: window.scrollY });
+    };
+    window.addEventListener("scroll", rememberScroll, { passive: true });
+    return () => window.removeEventListener("scroll", rememberScroll);
+  }, []);
+  useEffect(() => {
+    if (restoredScroll.current || results === null || (searchMode === RESULT_MODES.professionals.key && professionals === null)) return;
+    const frame = requestAnimationFrame(() => {
+      window.scrollTo({ top: saved.scrollY || 0, behavior: "instant" });
+      restoredScroll.current = true;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [results, professionals, searchMode, saved.scrollY]);
 
   // Verificare deterministica de siguranta, identica cu cea din fluxul ghidat /cerere.
   // Cautarea libera de aici nu trece prin QuestionText.jsx, deci fara acest control
@@ -155,11 +186,17 @@ export default function Search() {
   useEffect(() => {
     setResults(null);
     setProfessionals(null);
+    setMatchContext(null);
+    setLoadError(false);
+    setProfessionalError(false);
   }, [service, query, locality?.siruta_code]);
 
   useEffect(() => {
     let active = true;
     const run = async () => {
+      setLoadError(false);
+      setResults(null);
+      setMatchContext(null);
       if (!hasCanonicalLocality) {
         if (active) setResults([]);
         return;
@@ -175,6 +212,7 @@ export default function Search() {
               limit: 50,
             },
           );
+          if (response.data?.error) throw new Error(response.data.error);
           if (active) setResults(response.data?.results || []);
           return;
         }
@@ -186,9 +224,10 @@ export default function Search() {
           locality_siruta_code: locality.siruta_code,
           limit: 50,
         });
-        if (active) setResults(response.data?.results || []);
-      } catch (_error) {
-        if (active) setResults([]);
+        if (response.data?.error) throw new Error(response.data.error);
+        if (active) { setResults(response.data?.results || []); setMatchContext({ ...response.data, selected_locality_siruta_code: locality.siruta_code, query_scope: "locality" }); }
+      } catch {
+        if (active) { setLoadError(true); setResults([]); }
       }
     };
     run();
@@ -201,6 +240,7 @@ export default function Search() {
     locality,
     isDirectoryBrowse,
     hasCanonicalLocality,
+    retry,
   ]);
 
   useEffect(() => {
@@ -211,14 +251,16 @@ export default function Search() {
     }
     let active = true;
     setProfessionals(null);
-    browsePublicProfessionals({
-      localitySirutaCode: locality.siruta_code,
-      serviceKeys: service ? [service] : [],
-    })
+    setProfessionalError(false);
+    if (!isDirectoryBrowse && !matchContext) return () => { active = false; };
+    const request = isDirectoryBrowse
+      ? browsePublicProfessionals({ localitySirutaCode: locality.siruta_code })
+      : matchProfessionalsForRequest(matchContext);
+    request
       .then((data) => { if (active) setProfessionals(data.results); })
-      .catch(() => { if (active) setProfessionals([]); });
+      .catch(() => { if (active) { setProfessionalError(true); setProfessionals([]); } });
     return () => { active = false; };
-  }, [searchMode, hasCanonicalLocality, locality, service]);
+  }, [searchMode, hasCanonicalLocality, locality, isDirectoryBrowse, matchContext, retry]);
 
   const chooseSuggestion = (suggestion) => {
     setService(suggestion.service_key);
@@ -316,6 +358,11 @@ export default function Search() {
         </div>
       </section>
 
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+        <p>{locality ? `Rezultate în ${locality.name}` : "Explorează România sau alege localitatea."}</p>
+        <Link to="/cerere" className="inline-flex min-h-11 items-center underline underline-offset-4">Ajută-mă să aleg</Link>
+      </div>
+
       {hasCanonicalLocality && !showSafetyBanner && (
         <div className="mt-6">
           <ResultModeTabs
@@ -341,6 +388,12 @@ export default function Search() {
         !service && !query.trim()
           ? <DirectoryMap />
           : <SelectLocalityNotice />
+      ) : (loadError || (searchMode === RESULT_MODES.professionals.key && professionalError)) ? (
+        <div role="alert" className="mt-6 rounded-2xl border border-border bg-card p-6">
+          <p className="font-semibold">Nu am putut încărca rezultatele.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Criteriile tale sunt păstrate. Încearcă din nou.</p>
+          <button type="button" onClick={() => setRetry((value) => value + 1)} className="mt-4 min-h-11 rounded-full border border-border px-5 text-sm font-semibold">Reîncearcă</button>
+        </div>
       ) : searchMode === RESULT_MODES.professionals.key ? (
         <div className="mt-8">
           <h2 className="font-heading text-lg font-bold sm:text-xl">
