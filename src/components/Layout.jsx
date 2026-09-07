@@ -17,9 +17,10 @@ const desktopNavLinkClassName = ({ isActive }) =>
       : "text-muted-foreground hover:bg-secondary/55 hover:text-foreground"
   }`;
 
-function DesktopHeader({ scrolled }) {
+function DesktopHeader({ scrolled, opaque }) {
   return (
     <header
+      style={opaque ? { backgroundColor: "hsl(var(--background))", backdropFilter: "none" } : undefined}
       className={`fixed inset-x-0 top-0 z-50 hidden border-b transition-[background-color,border-color,backdrop-filter] duration-300 lg:block ${
         scrolled
           ? "border-border/70 bg-background/88 backdrop-blur-sm"
@@ -69,9 +70,10 @@ function DesktopHeader({ scrolled }) {
   );
 }
 
-function MobileHeader({ scrolled, onMenuOpen, onMenuPreload }) {
+function MobileHeader({ scrolled, onMenuOpen, onMenuPreload, opaque }) {
   return (
     <header
+      style={opaque ? { backgroundColor: "hsl(var(--background))", backdropFilter: "none" } : undefined}
       className={`sticky top-0 z-40 border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 safe-area-top lg:hidden ${
         scrolled
           ? "border-[#E8E8E8] bg-white shadow-[0_4px_20px_rgba(20,20,20,0.05)]"
@@ -126,6 +128,7 @@ const footerLinkClassName =
 export default function Layout() {
   const location = useLocation();
   const isHome = location.pathname === "/";
+  const isSearch = ["/cauta", "/cautare", "/harta"].includes(location.pathname);
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileSheetMounted, setMobileSheetMounted] = useState(false);
@@ -174,9 +177,10 @@ export default function Layout() {
       >
         Sari la conținut
       </a>
-      <DesktopHeader scrolled={scrolled} />
+      <DesktopHeader scrolled={scrolled} opaque={isSearch} />
       <div aria-hidden="true" className="hidden h-20 lg:block" />
       <MobileHeader
+        opaque={isSearch}
         scrolled={scrolled}
         onMenuOpen={openMobileMenu}
         onMenuPreload={preloadMobileMenu}

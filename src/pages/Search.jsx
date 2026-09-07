@@ -221,6 +221,15 @@ export default function Search() {
     return () => { active = false; };
   }, [searchMode, hasCanonicalLocality, locality, isDirectoryBrowse, matchContext, retry, debouncedQuery, query]);
 
+  const resetSearch = () => {
+    setQuery(""); setService(""); setLocality(null);
+    setSelectedId(null); setHoveredId(null);
+    setSearchMode(RESULT_MODES.locations.key);
+    setSuggestionsOpen(false);
+    writeSearchSession({ maps: {}, national: {}, scrollY: 0, nationalScroll: 0 });
+    window.scrollTo({ top: 0, behavior: "instant" });
+  };
+
   const chooseSuggestion = (suggestion) => {
     setService(suggestion.service_key);
     setQuery(suggestion.label);
@@ -320,7 +329,10 @@ export default function Search() {
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
         <p>{locality ? `Rezultate în ${locality.name}` : "Explorează România sau alege localitatea."}</p>
-        <Link to="/cerere" className="inline-flex min-h-11 items-center underline underline-offset-4">Ajută-mă să aleg</Link>
+        <div className="flex flex-wrap items-center gap-4">
+          {(query.trim() || service || locality) && <button type="button" onClick={resetSearch} className="inline-flex min-h-11 items-center gap-1.5 text-sm hover:text-foreground focus-visible:outline focus-visible:outline-2"><X className="h-3.5 w-3.5" /> Resetează căutarea</button>}
+          <Link to="/cerere" className="inline-flex min-h-11 items-center underline underline-offset-4">Ajută-mă să aleg</Link>
+        </div>
       </div>
 
       {hasCanonicalLocality && !showSafetyBanner && (
