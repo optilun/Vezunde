@@ -69,7 +69,7 @@ export default function Search() {
   const initialLocalityName = urlParams.get("oras");
   const initialSirutaCode = urlParams.get("siruta");
   const [locality, setLocality] = useState(
-    initialLocalityName && initialSirutaCode
+    Object.prototype.hasOwnProperty.call(saved, "locality") ? saved.locality : initialLocalityName && initialSirutaCode
       ? {
           name: initialLocalityName,
           display_label: initialLocalityName,
@@ -81,8 +81,8 @@ export default function Search() {
   const debouncedQuery = useDebouncedValue(query.trim(), 350);
 
   useEffect(() => {
-    writeSearchSession({ sourceSearch: window.location.search, query, service, locality, searchMode, selectedId, mobileView });
-  }, [query, service, locality, searchMode, selectedId, mobileView]);
+    writeSearchSession({ sourceSearch: window.location.search || saved.sourceSearch || "", query, service, locality, searchMode, selectedId, mobileView });
+  }, [query, service, locality, searchMode, selectedId, mobileView, saved.sourceSearch]);
 
   useEffect(() => {
     const rememberScroll = () => {
@@ -139,6 +139,7 @@ export default function Search() {
         return;
       }
 
+      if (debouncedQuery !== query.trim()) return;
       try {
         if (isDirectoryBrowse) {
           const response = await base44.functions.invoke(
@@ -174,6 +175,7 @@ export default function Search() {
   }, [
     service,
     debouncedQuery,
+    query,
     locality,
     isDirectoryBrowse,
     hasCanonicalLocality,
@@ -189,7 +191,10 @@ export default function Search() {
     let active = true;
     setProfessionals(null);
     setProfessionalError(false);
+    if (debouncedQuery !== query.trim()) return () => { active = false; };
     if (!isDirectoryBrowse && !matchContext) return () => { active = false; };
+    const keys = matchContext?.resolved_service_keys || matchContext?.service_keys || [];
+    if (!isDirectoryBrowse && keys.length === 0) { setProfessionals([]); return () => { active = false; }; }
     const request = isDirectoryBrowse
       ? browsePublicProfessionals({ localitySirutaCode: locality.siruta_code })
       : matchProfessionalsForRequest(matchContext);
@@ -197,7 +202,7 @@ export default function Search() {
       .then((data) => { if (active) setProfessionals(data.results); })
       .catch(() => { if (active) { setProfessionalError(true); setProfessionals([]); } });
     return () => { active = false; };
-  }, [searchMode, hasCanonicalLocality, locality, isDirectoryBrowse, matchContext, retry]);
+  }, [searchMode, hasCanonicalLocality, locality, isDirectoryBrowse, matchContext, retry, debouncedQuery, query]);
 
   const chooseSuggestion = (suggestion) => {
     setService(suggestion.service_key);
@@ -342,7 +347,9 @@ export default function Search() {
           </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {professionals === null && <LoadingState />}
-            {professionals?.length === 0 && <EmptyProfessionals locality={locality} />}
+            {professionals?.length === 0 && (!isDirectoryBrowse && !(matchContext?.resolved_service_keys || matchContext?.service_keys || []).length
+              ? <p className="rounded-2xl border border-border bg-card p-6 text-sm sm:col-span-2">Alege un serviciu din sugestii pentru a vedea specialiști potriviți sau folosește „Ajută-mă să aleg”.</p>
+              : <EmptyProfessionals locality={locality} />)}
             {professionals?.map((professional) => (
               <ProfessionalDirectoryCard key={professional.id} professional={professional} />
             ))}

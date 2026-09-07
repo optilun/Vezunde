@@ -361,6 +361,7 @@ export default function ProviderProfile() {
 
   return (
     <div className="mx-auto max-w-5xl px-5 pb-10 pt-12">
+      <Link to="/cauta" className="mb-5 inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground">Înapoi la căutare</Link>
       <ProviderLocationHero profile={profile} status={status} serviceCount={services.length} mapUrl={mapUrl} />
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
