@@ -1,0 +1,18 @@
+import assert from "node:assert/strict";
+import { readSearchSession, writeSearchSession } from "../src/lib/searchSession.js";
+const data = new Map();
+globalThis.sessionStorage = { getItem: (key) => data.get(key) ?? null, setItem: (key, value) => data.set(key, value) };
+assert.deepEqual(readSearchSession(), {});
+writeSearchSession({ query: "control", locality: { siruta_code: "123" }, mobileView: "map" });
+writeSearchSession({ national: { selectedId: "location-1" } });
+assert.equal(readSearchSession().query, "control");
+assert.equal(readSearchSession().locality.siruta_code, "123");
+assert.equal(readSearchSession().national.selectedId, "location-1");
+const key = [...data.keys()][0];
+data.set(key, JSON.stringify({ query: "old", savedAt: Date.now() - 31 * 60 * 1000 }));
+assert.deepEqual(readSearchSession(), {});
+data.set(key, "{invalid");
+assert.deepEqual(readSearchSession(), {});
+sessionStorage.setItem = () => { throw Error("Storage disabled"); };
+assert.doesNotThrow(() => writeSearchSession({ query: "test" }));
+console.log("verify-search-session: restore, merge, expiry, corrupt and blocked storage OK");

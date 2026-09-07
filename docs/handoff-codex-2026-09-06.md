@@ -58,3 +58,12 @@ Observatie de continuitate: in codul gasit la reluare, loader-ul national a fost
 - Fara modificari de date/backend/matching. Filtrarea ascunsa dupa tip eliminata din Search; toate tipurile sunt incluse.
 - Verificari: eslint Search.jsx 0 erori (un warning preexistent _error), verify-results-map OK, npm run build exit 0.
 - Inspectie vizuala a versiunii publicate viasee.ro/cauta: inca bara veche cu 4 campuri si navigare separata Harta. Codul nou nu a fost publicat; verificarea vizuala a noii versiuni si interactiunea pe mobil raman de facut dupa preview/publicare.
+
+
+## 2026-09-07 — Continuitate cautare si componenta comuna
+- Search session: criterii, mod, selectie si scroll pastrate in sessionStorage cu TTL 30 minute, fara text liber in URL; harta pastreaza bounds pentru acelasi set de rezultate. Rezultatele se recitesc de la server.
+- Specialistii primesc meta/contextul motorului existent al locatiilor (servicii rezolvate si need_level). Textul nemapat solicita selectie de serviciu; nu afiseaza tot directorul ca potrivire.
+- Stari de eroare distincte cu Reincearca pentru cautare si specialisti. Anulare logica a raspunsurilor vechi la schimbarea textului.
+- LocationsWithMap reutilizat in Search si DirectoryMap; comutare flotanta pe mobil, actiune explicita Vezi pe harta, focus/hover comun. Directorul filtreaza numai lista dupa viewport, fara a restrange setul de puncte al hartii.
+- ProviderProfile are link inapoi la cautare; ProfessionalProfile il avea deja.
+- Limita: cautarea locala ramane definita de localitatea selectata. Cautarea serviciilor dupa un dreptunghi arbitrar pe harta nu este implementata; ar necesita suport explicit al motorului. Nu extinde automat criteriile. Preview vizual si verificare browser/mobile raman de facut; nu s-a publicat.
