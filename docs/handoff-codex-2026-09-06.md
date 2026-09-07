@@ -97,3 +97,9 @@ Observatie de continuitate: in codul gasit la reluare, loader-ul national a fost
 - Advanced criteria are saved in searchSession. Selecting service/CAS filters explicitly replaces free-text search and uses directory browse. Free-text entry clears detailed filters. Existing matching remains unchanged.
 - browseDirectoryProviders now applies advanced service/CAS criteria before pagination; excludes undisclosed services, migration-review rows and unmet prerequisites. CAS applies to the same selected service. Backend code auto-syncs, frontend not published.
 - verify-search-filters.mjs fixture tests cover matching beyond first page, CAS relation, OR services, hidden/ineligible records, pagination and invalid keys. Lint/build checked. New layout has not been visually verified in preview; user screenshots were reviewed.
+
+## 2026-09-07 — vector map and optional 3D
+- ResultsMap now renders VectorResultsCanvas (MapLibre GL, OpenFreeMap Liberty style) preserving common coordinate model, clusters, selection, popup, visibility reporting and session bounds.
+- 2D default; toggle tilts camera 50 degrees and enables building-3d extrusion layer (available from zoom 14). Base building footprints remain at high zoom in 2D. Native zoom and compass, resize observation, attribution.
+- LegacyResultsMap retained as lazy fallback on initialization failure, lost WebGL context or style timeout. No data/geocoding/ranking changes. OpenFreeMap official quick-start used; style source checked for building layers.
+- npm dependency and lockfile updated. Build/lint and model checks run. New renderer still needs browser visual/device verification; not published.

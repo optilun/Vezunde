@@ -18,7 +18,7 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
     let observer;
     let timer;
     try {
-      map = new maplibregl.Map({container:container.current, style:"https://tiles.openfreemap.org/styles/liberty", center:[24.9,45.9],zoom:6, maxZoom:19, attributionControl:{compact:true}});
+      map = new maplibregl.Map({container:container.current, style:"https://tiles.openfreemap.org/styles/liberty", center:[24.9,45.9],zoom:6, maxZoom:19, attributionControl:{compact:true, customAttribution:'<a href="https://openfreemap.org/">OpenFreeMap</a> · <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap</a>'}});
       mapRef.current = map;
       map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"top-left");
       const report = () => {
@@ -84,6 +84,7 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
         marker=new maplibregl.Marker({element:button,anchor:"center",pitchAlignment:"viewport",rotationAlignment:"viewport"}).setLngLat([cluster.lng,cluster.lat]).addTo(map);
         markers.current.set(cluster.key,marker);
       }
+      marker.setLngLat([cluster.lng,cluster.lat]);
       const el=marker.getElement();
       const active=cluster.points.some(p=>p.id===selectedId);
       const hovered=cluster.points.some(p=>p.id===hoveredId);
