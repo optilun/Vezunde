@@ -51,6 +51,7 @@ export async function matchProfessionalsForRequest(meta, draft = {}) {
   const response = await withTimeout(
     base44.functions.invoke("matchProfessionals", {
       service_keys: serviceKeysFromMeta(safeMeta),
+      professional_type: clean(safeMeta.professional_type, 60),
       need_level: clean(safeMeta.need_level, 40) || "general",
       locality_siruta_code: sirutaCode,
       query_scope: queryScope,
@@ -74,15 +75,16 @@ export async function matchProfessionalsForRequest(meta, draft = {}) {
  * cad in grupul `directory` si ies in ordine determinista - exact ce inseamna o listare, nu un
  * clasament. Un al doilea endpoint ar fi insemnat o a doua definitie a lui "specialist public".
  *
- * @param {{ localitySirutaCode: string, serviceKeys?: string[], limit?: number }} input
+ * @param {{ localitySirutaCode: string, serviceKeys?: string[], professionalType?: string, limit?: number }} input
  */
-export async function browsePublicProfessionals({ localitySirutaCode, serviceKeys = [], limit = 30 } = {}) {
+export async function browsePublicProfessionals({ localitySirutaCode, serviceKeys = [], professionalType = "", limit = 30 } = {}) {
   const sirutaCode = clean(localitySirutaCode, 40);
   if (!sirutaCode) return { results: [] };
 
   const response = await withTimeout(
     base44.functions.invoke("matchProfessionals", {
       service_keys: Array.isArray(serviceKeys) ? serviceKeys : [],
+      professional_type: clean(professionalType, 60),
       need_level: "general",
       locality_siruta_code: sirutaCode,
       query_scope: "locality",

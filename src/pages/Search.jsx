@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search as SearchIcon, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { SERVICES } from "@/lib/vezunde";
+import { SERVICES, PROVIDER_TYPES, PROFESSIONAL_TYPES } from "@/lib/vezunde";
 import { getServiceSearchSuggestions } from "@/lib/serviceSemanticSearch";
 import { matchProvidersWithSemanticFallback } from "@/lib/providerSemanticSearch";
 import { deterministicSafetyFlagsFromText } from "@/lib/patientSafety";
@@ -48,6 +48,12 @@ export default function Search() {
     return !window.location.search || previous.sourceSearch === window.location.search ? previous : {};
   });
   const [results, setResults] = useState(null);
+  const [providerType, setProviderType] = useState(saved.providerType || "");
+  const [professionalType, setProfessionalType] = useState(saved.professionalType || "");
+  const [pagination, setPagination] = useState(null);
+  const [moreLoading, setMoreLoading] = useState(false);
+  const [moreError, setMoreError] = useState(false);
+  const pageRequest = useRef(0);
   const [matchContext, setMatchContext] = useState(null);
   const [loadError, setLoadError] = useState(false);
   const [professionalError, setProfessionalError] = useState(false);
@@ -98,8 +104,8 @@ export default function Search() {
   const debouncedQuery = useDebouncedValue(query.trim(), 350);
 
   useEffect(() => {
-    writeSearchSession({ sourceSearch: window.location.search || saved.sourceSearch || "", query, service, locality, searchMode, selectedId, mobileView });
-  }, [query, service, locality, searchMode, selectedId, mobileView, saved.sourceSearch]);
+    writeSearchSession({ sourceSearch: window.location.search || saved.sourceSearch || "", query, service, locality, searchMode, selectedId, mobileView, providerType, professionalType });
+  }, [query, service, locality, searchMode, selectedId, mobileView, saved.sourceSearch, providerType, professionalType]);
 
   useEffect(() => {
     const rememberScroll = () => {
@@ -138,12 +144,14 @@ export default function Search() {
     !service && !query.trim() && hasCanonicalLocality;
 
   useEffect(() => {
+    pageRequest.current += 1;
+    setPagination(null); setMoreLoading(false); setMoreError(false);
     setResults(null);
     setProfessionals(null);
     setMatchContext(null);
     setLoadError(false);
     setProfessionalError(false);
-  }, [service, query, locality?.siruta_code]);
+  }, [service, query, locality?.siruta_code, providerType]);
 
   useEffect(() => {
     let active = true;
@@ -163,19 +171,19 @@ export default function Search() {
             "browseDirectoryProviders",
             {
               locality_siruta_code: locality.siruta_code,
-              provider_types: [],
+              provider_types: providerType ? [providerType] : [],
               limit: 50,
             },
           );
           if (response.data?.error) throw new Error(response.data.error);
-          if (active) setResults(response.data?.results || []);
+          if (active) { setResults(response.data?.results || []); setPagination(response.data?.pagination || null); }
           return;
         }
 
         const response = await matchProvidersWithSemanticFallback({
           search_text: service ? "" : debouncedQuery,
           service_keys: service ? [service] : [],
-          provider_types: [],
+          provider_types: providerType ? [providerType] : [],
           locality_siruta_code: locality.siruta_code,
           limit: 50,
         });
@@ -197,6 +205,7 @@ export default function Search() {
     isDirectoryBrowse,
     hasCanonicalLocality,
     retry,
+    providerType,
   ]);
 
   useEffect(() => {
@@ -213,15 +222,38 @@ export default function Search() {
     const keys = matchContext?.resolved_service_keys || matchContext?.service_keys || [];
     if (!isDirectoryBrowse && keys.length === 0) { setProfessionals([]); return () => { active = false; }; }
     const request = isDirectoryBrowse
-      ? browsePublicProfessionals({ localitySirutaCode: locality.siruta_code })
-      : matchProfessionalsForRequest(matchContext);
+      ? browsePublicProfessionals({ localitySirutaCode: locality.siruta_code, professionalType })
+      : matchProfessionalsForRequest({ ...matchContext, professional_type: professionalType });
     request
       .then((data) => { if (active) setProfessionals(data.results); })
       .catch(() => { if (active) { setProfessionalError(true); setProfessionals([]); } });
     return () => { active = false; };
-  }, [searchMode, hasCanonicalLocality, locality, isDirectoryBrowse, matchContext, retry, debouncedQuery, query]);
+  }, [searchMode, hasCanonicalLocality, locality, isDirectoryBrowse, matchContext, retry, debouncedQuery, query, professionalType]);
+
+  const loadMore = async () => {
+    if (!pagination?.has_more || moreLoading) return;
+    const token = ++pageRequest.current;
+    setMoreLoading(true); setMoreError(false);
+    try {
+      const response = await base44.functions.invoke("browseDirectoryProviders", {
+        locality_siruta_code: locality.siruta_code, provider_types: providerType ? [providerType] : [],
+        limit: 50, offset: pagination.next_offset,
+      });
+      if (response.data?.error) throw new Error(response.data.error);
+      if (token !== pageRequest.current) return;
+      setResults((previous) => {
+        const rows = new Map((previous || []).map((row) => [row.id, row]));
+        (response.data?.results || []).forEach((row) => rows.set(row.id, row));
+        return [...rows.values()];
+      });
+      setPagination(response.data?.pagination || null);
+    } catch { if (token === pageRequest.current) setMoreError(true); }
+    finally { if (token === pageRequest.current) setMoreLoading(false); }
+  };
+  useEffect(() => () => { pageRequest.current += 1; }, []);
 
   const resetSearch = () => {
+    setProviderType(""); setProfessionalType("");
     setQuery(""); setService(""); setLocality(null);
     setSelectedId(null); setHoveredId(null);
     setSearchMode(RESULT_MODES.locations.key);
@@ -330,11 +362,22 @@ export default function Search() {
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
         <p>{locality ? `Rezultate în ${locality.name}` : "Explorează România sau alege localitatea."}</p>
         <div className="flex flex-wrap items-center gap-4">
-          {(query.trim() || service || locality) && <button type="button" onClick={resetSearch} className="inline-flex min-h-11 items-center gap-1.5 text-sm hover:text-foreground focus-visible:outline focus-visible:outline-2"><X className="h-3.5 w-3.5" /> Resetează căutarea</button>}
+          {(query.trim() || service || locality || providerType || professionalType) && <button type="button" onClick={resetSearch} className="inline-flex min-h-11 items-center gap-1.5 text-sm hover:text-foreground focus-visible:outline focus-visible:outline-2"><X className="h-3.5 w-3.5" /> Resetează căutarea</button>}
           <Link to="/cerere" className="inline-flex min-h-11 items-center underline underline-offset-4">Ajută-mă să aleg</Link>
         </div>
       </div>
 
+      {!showSafetyBanner && (
+        <div className="mt-2 flex items-center gap-3">
+          <label htmlFor="search-type" className="text-xs font-semibold text-muted-foreground">Tip</label>
+          <select id="search-type" value={searchMode === RESULT_MODES.professionals.key && hasCanonicalLocality ? professionalType : providerType}
+            onChange={(event) => searchMode === RESULT_MODES.professionals.key && hasCanonicalLocality ? setProfessionalType(event.target.value) : setProviderType(event.target.value)}
+            className="min-h-11 max-w-full rounded-full border border-border bg-card px-4 text-sm">
+            <option value="">Toate tipurile</option>
+            {Object.entries(searchMode === RESULT_MODES.professionals.key && hasCanonicalLocality ? PROFESSIONAL_TYPES : Object.fromEntries(Object.entries(PROVIDER_TYPES).filter(([key]) => ["optica_medicala", "cabinet_optometric", "cabinet_oftalmologic", "clinica_oftalmologica", "laborator_optic"].includes(key)))).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
+        </div>
+      )}
       {hasCanonicalLocality && !showSafetyBanner && (
         <div className="mt-6">
           <ResultModeTabs
@@ -360,7 +403,7 @@ export default function Search() {
         </div>
       ) : !hasCanonicalLocality ? (
         !service && !query.trim()
-          ? <DirectoryMap />
+          ? <DirectoryMap providerType={providerType} />
           : <SelectLocalityNotice />
       ) : (loadError || (searchMode === RESULT_MODES.professionals.key && professionalError)) ? (
         <div role="alert" className="mt-6 rounded-2xl border border-border bg-card p-6">
@@ -392,12 +435,13 @@ export default function Search() {
           <h2 className="font-heading text-lg font-bold sm:text-xl">
             Locații în {locality?.name}
           </h2>
+          {pagination && <p className="mt-1 text-sm text-muted-foreground" aria-live="polite">{results?.length || 0} din {pagination.total} locații</p>}
           {results === null && <div className="mt-4"><LoadingState /></div>}
           {results?.length === 0 && <div className="mt-4"><EmptyDirectory /></div>}
           {results?.length > 0 && (
             <LocationsWithMap
               results={results}
-              storageKey={`local:${locality.siruta_code}:${service}:${debouncedQuery}`}
+              storageKey={`local:${locality.siruta_code}:${service}:${debouncedQuery}:${providerType}`}
               renderCard={(location, onShowMap) => <DirectoryResultCard location={location} onShowMap={onShowMap} />}
               integratedMapAction
               selectedId={selectedId}
@@ -408,6 +452,7 @@ export default function Search() {
               onToggleMobileView={() => setMobileView((view) => (view === "map" ? "list" : "map"))}
             />
           )}
+          {pagination?.has_more && <div className="mt-5">{moreError && <p role="alert" className="mb-2 text-sm">Nu am putut încărca următoarele locații.</p>}<button type="button" onClick={loadMore} disabled={moreLoading} className="min-h-11 rounded-full border border-border bg-card px-6 text-sm font-semibold disabled:opacity-50">{moreLoading ? "Se încarcă..." : moreError ? "Reîncearcă" : "Arată mai multe"}</button></div>}
         </div>
       ) : (
         <div className="mt-8">

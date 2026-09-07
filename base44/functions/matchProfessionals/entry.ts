@@ -249,7 +249,9 @@ Deno.serve(async (req) => {
       });
     }).filter(Boolean);
 
-    const results = assignProfessionalBuckets(entries, limit);
+    const requestedType = clean(payload.professional_type);
+    const filteredEntries = requestedType ? entries.filter((entry) => entry.professional_type === requestedType) : entries;
+    const results = assignProfessionalBuckets(filteredEntries, limit);
     const confirmedCount = results.filter((entry: any) => entry.recommendation_group === 'confirmed').length;
 
     return Response.json({
