@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search as SearchIcon, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { SERVICES, PROVIDER_TYPES, PROFESSIONAL_TYPES } from "@/lib/vezunde";
+import { SERVICES } from "@/lib/vezunde";
 import { getServiceSearchSuggestions } from "@/lib/serviceSemanticSearch";
 import { matchProvidersWithSemanticFallback } from "@/lib/providerSemanticSearch";
 import { deterministicSafetyFlagsFromText } from "@/lib/patientSafety";
@@ -12,6 +12,7 @@ import DirectoryResultCard from "@/components/results/DirectoryResultCard";
 import ProfessionalDirectoryCard from "@/components/results/ProfessionalDirectoryCard";
 import ResultModeTabs, { RESULT_MODES } from "@/components/intake2/ResultModeTabs";
 import LocationsWithMap from "@/components/results/LocationsWithMap";
+import SearchFilters from "@/components/results/SearchFilters";
 import DirectoryMap from "@/pages/DirectoryMap";
 import { browsePublicProfessionals, matchProfessionalsForRequest } from "@/lib/professionalSearch";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
@@ -50,6 +51,8 @@ export default function Search() {
   const [results, setResults] = useState(null);
   const [providerType, setProviderType] = useState(saved.providerType || "");
   const [professionalType, setProfessionalType] = useState(saved.professionalType || "");
+  const [filterServiceKeys, setFilterServiceKeys] = useState(saved.filterServiceKeys || []);
+  const [casOnly, setCasOnly] = useState(saved.casOnly || false);
   const [pagination, setPagination] = useState(null);
   const [moreLoading, setMoreLoading] = useState(false);
   const [moreError, setMoreError] = useState(false);
@@ -104,8 +107,8 @@ export default function Search() {
   const debouncedQuery = useDebouncedValue(query.trim(), 350);
 
   useEffect(() => {
-    writeSearchSession({ sourceSearch: window.location.search || saved.sourceSearch || "", query, service, locality, searchMode, selectedId, mobileView, providerType, professionalType, loadedLocalCount: results?.length || 0 });
-  }, [query, service, locality, searchMode, selectedId, mobileView, saved.sourceSearch, providerType, professionalType, results]);
+    writeSearchSession({ sourceSearch: window.location.search || saved.sourceSearch || "", query, service, locality, searchMode, selectedId, mobileView, providerType, professionalType, filterServiceKeys, casOnly, loadedLocalCount: results?.length || 0 });
+  }, [query, service, locality, searchMode, selectedId, mobileView, saved.sourceSearch, providerType, professionalType, filterServiceKeys, casOnly, results]);
 
   useEffect(() => {
     const rememberScroll = () => {
@@ -151,7 +154,7 @@ export default function Search() {
     setMatchContext(null);
     setLoadError(false);
     setProfessionalError(false);
-  }, [service, query, locality?.siruta_code, providerType]);
+  }, [service, query, locality?.siruta_code, providerType, filterServiceKeys, casOnly]);
 
   useEffect(() => {
     let active = true;
@@ -171,7 +174,7 @@ export default function Search() {
             "browseDirectoryProviders",
             {
               locality_siruta_code: locality.siruta_code,
-              provider_types: providerType ? [providerType] : [],
+              provider_types: providerType.split(",").filter(Boolean), filter_service_keys: filterServiceKeys, cas_only: casOnly,
               limit: 50,
             },
           );
@@ -180,7 +183,7 @@ export default function Search() {
           let page = response.data?.pagination || null;
           const restoreCount = saved.locality?.siruta_code === locality.siruta_code && (saved.providerType || "") === providerType && !saved.query && !saved.service ? saved.loadedLocalCount || 0 : 0;
           while (active && page?.has_more && rows.size < restoreCount) {
-            const next = await base44.functions.invoke("browseDirectoryProviders", { locality_siruta_code: locality.siruta_code, provider_types: providerType ? [providerType] : [], limit: 50, offset: page.next_offset });
+            const next = await base44.functions.invoke("browseDirectoryProviders", { locality_siruta_code: locality.siruta_code, provider_types: providerType.split(",").filter(Boolean), filter_service_keys: filterServiceKeys, cas_only: casOnly, limit: 50, offset: page.next_offset });
             if (next.data?.error) throw new Error(next.data.error);
             const previousSize = rows.size;
             (next.data?.results || []).forEach((row) => rows.set(row.id, row));
@@ -194,7 +197,7 @@ export default function Search() {
         const response = await matchProvidersWithSemanticFallback({
           search_text: service ? "" : debouncedQuery,
           service_keys: service ? [service] : [],
-          provider_types: providerType ? [providerType] : [],
+          provider_types: providerType.split(",").filter(Boolean), filter_service_keys: filterServiceKeys, cas_only: casOnly,
           locality_siruta_code: locality.siruta_code,
           limit: 50,
         });
@@ -216,7 +219,7 @@ export default function Search() {
     isDirectoryBrowse,
     hasCanonicalLocality,
     retry,
-    providerType,
+    providerType, filterServiceKeys, casOnly,
   ]);
 
   useEffect(() => {
@@ -247,7 +250,7 @@ export default function Search() {
     setMoreLoading(true); setMoreError(false);
     try {
       const response = await base44.functions.invoke("browseDirectoryProviders", {
-        locality_siruta_code: locality.siruta_code, provider_types: providerType ? [providerType] : [],
+        locality_siruta_code: locality.siruta_code, provider_types: providerType.split(",").filter(Boolean), filter_service_keys: filterServiceKeys, cas_only: casOnly,
         limit: 50, offset: pagination.next_offset,
       });
       if (response.data?.error) throw new Error(response.data.error);
@@ -264,7 +267,7 @@ export default function Search() {
   useEffect(() => () => { pageRequest.current += 1; }, []);
 
   const resetSearch = () => {
-    setProviderType(""); setProfessionalType("");
+    setProviderType(""); setProfessionalType(""); setFilterServiceKeys([]); setCasOnly(false);
     setQuery(""); setService(""); setLocality(null);
     setSelectedId(null); setHoveredId(null);
     setSearchMode(RESULT_MODES.locations.key);
@@ -274,6 +277,7 @@ export default function Search() {
   };
 
   const chooseSuggestion = (suggestion) => {
+    setFilterServiceKeys([]); setCasOnly(false);
     setService(suggestion.service_key);
     setQuery(suggestion.label);
     setSuggestionsOpen(false);
@@ -290,14 +294,15 @@ export default function Search() {
         </p>
       </div>
 
-      <div ref={controlsRef} data-search-controls className="sticky z-30 -mx-4 border-b border-border bg-background px-4 pb-3 pt-5 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" style={{ top: "var(--search-nav-height)" }}>
+      <div ref={controlsRef} data-search-controls className="sticky z-30 -mx-4 border-b border-border bg-background px-4 py-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" style={{ top: "var(--search-nav-height)" }}>
+      <div className="flex flex-wrap items-center gap-3">
       <section
-        className="relative z-40 mx-auto max-w-3xl rounded-3xl border border-border bg-card p-2 shadow-sm md:rounded-full md:px-5 md:py-2"
+        className="relative z-40 min-w-0 flex-1 rounded-2xl border border-border bg-card px-2 py-1 shadow-sm md:rounded-full"
         aria-label="Căutare"
       >
-        <div className="grid gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] md:gap-4">
+        <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-1 md:gap-2">
           <div className="min-w-0">
-            <label htmlFor="directory-search" className="block px-4 pt-1 text-xs font-semibold">
+            <label htmlFor="directory-search" className="sr-only">
               Ce cauți?
             </label>
             <div
@@ -320,6 +325,7 @@ export default function Search() {
                 onChange={(event) => {
                   setQuery(event.target.value);
                   setService("");
+                  setFilterServiceKeys([]); setCasOnly(false);
                   setSuggestionsOpen(true);
                 }}
                 placeholder="Ex.: control de vedere, ochelari"
@@ -355,8 +361,8 @@ export default function Search() {
               )}
             </div>
           </div>
-          <div className="min-w-0 border-t border-border pt-1 md:border-l md:border-t-0 md:pl-3 md:pt-0" role="group" aria-labelledby="directory-locality-label">
-            <span id="directory-locality-label" className="block px-4 pt-1 text-xs font-semibold">
+          <div className="min-w-0 border-l border-border md:pl-2" role="group" aria-labelledby="directory-locality-label">
+            <span id="directory-locality-label" className="sr-only">
               Unde?
             </span>
             <LocalityAutocomplete
@@ -370,37 +376,20 @@ export default function Search() {
         </div>
       </section>
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-        <p>{locality ? `Rezultate în ${locality.name}` : "Explorează România sau alege localitatea."}</p>
-        <div className="flex flex-wrap items-center gap-4">
-          {(query.trim() || service || locality || providerType || professionalType) && <button type="button" onClick={resetSearch} className="inline-flex min-h-11 items-center gap-1.5 text-sm hover:text-foreground focus-visible:outline focus-visible:outline-2"><X className="h-3.5 w-3.5" /> Resetează căutarea</button>}
-          <Link to="/cerere" className="inline-flex min-h-11 items-center underline underline-offset-4">Ajută-mă să aleg</Link>
-        </div>
-      </div>
 
-      {!showSafetyBanner && (
-        <div className="mt-2 flex items-center gap-3">
-          <label htmlFor="search-type" className="text-xs font-semibold text-muted-foreground">Tip</label>
-          <select id="search-type" value={searchMode === RESULT_MODES.professionals.key && hasCanonicalLocality ? professionalType : providerType}
-            onChange={(event) => searchMode === RESULT_MODES.professionals.key && hasCanonicalLocality ? setProfessionalType(event.target.value) : setProviderType(event.target.value)}
-            className="min-h-11 max-w-full rounded-full border border-border bg-card px-4 text-sm">
-            <option value="">Toate tipurile</option>
-            {Object.entries(searchMode === RESULT_MODES.professionals.key && hasCanonicalLocality ? PROFESSIONAL_TYPES : Object.fromEntries(Object.entries(PROVIDER_TYPES).filter(([key]) => ["optica_medicala", "cabinet_optometric", "cabinet_oftalmologic", "clinica_oftalmologica", "laborator_optic"].includes(key)))).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </div>
-      )}
-      {hasCanonicalLocality && !showSafetyBanner && (
-        <div className="mt-6">
-          <ResultModeTabs
-            mode={searchMode}
-            onChange={setSearchMode}
-            counts={{
-              locations: Array.isArray(results) ? results.length : undefined,
-              professionals: Array.isArray(professionals) ? professionals.length : undefined,
-            }}
-          />
-        </div>
-      )}
+      <SearchFilters providerType={providerType} professionalType={professionalType} serviceKeys={filterServiceKeys} casOnly={casOnly}
+        hasLocality={hasCanonicalLocality} professionalMode={searchMode === RESULT_MODES.professionals.key && hasCanonicalLocality}
+        onApply={(filters) => {
+          setProviderType(filters.providerType); setProfessionalType(filters.professionalType);
+          setFilterServiceKeys(filters.serviceKeys); setCasOnly(filters.casOnly); setSelectedId(null);
+          if (filters.serviceKeys.length || filters.casOnly) { setQuery(""); setService(""); }
+        }} />
+      <Link to="/cerere" className="hidden min-h-11 items-center text-xs underline underline-offset-4 xl:inline-flex">Ajută-mă să aleg</Link>
+      </div>
+      {hasCanonicalLocality && !showSafetyBanner && <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <ResultModeTabs mode={searchMode} onChange={setSearchMode} />
+        <button type="button" onClick={resetSearch} className="min-h-11 text-xs underline">Resetează căutarea</button>
+      </div>}
 
       </div>
 
@@ -423,7 +412,7 @@ export default function Search() {
           <button type="button" onClick={() => setRetry((value) => value + 1)} className="mt-4 min-h-11 rounded-full border border-border px-5 text-sm font-semibold">Reîncearcă</button>
         </div>
       ) : searchMode === RESULT_MODES.professionals.key ? (
-        <div className="mt-8">
+        <div className="mt-4">
           <h2 className="font-heading text-lg font-bold sm:text-xl">
             Specialiști în {locality?.name}
           </h2>
@@ -442,7 +431,7 @@ export default function Search() {
           </div>
         </div>
       ) : isDirectoryBrowseView ? (
-        <div className="mt-8">
+        <div className="mt-4">
           <h2 className="font-heading text-lg font-bold sm:text-xl">
             Locații în {locality?.name}
           </h2>
@@ -466,7 +455,7 @@ export default function Search() {
           {pagination?.has_more && <div className="mt-5">{moreError && <p role="alert" className="mb-2 text-sm">Nu am putut încărca următoarele locații.</p>}<button type="button" onClick={loadMore} disabled={moreLoading} className="min-h-11 rounded-full border border-border bg-card px-6 text-sm font-semibold disabled:opacity-50">{moreLoading ? "Se încarcă..." : moreError ? "Reîncearcă" : "Arată mai multe"}</button></div>}
         </div>
       ) : (
-        <div className="mt-8">
+        <div className="mt-4">
           {results === null && <LoadingState />}
           {results?.length === 0 && <EmptyMatch locality={locality} />}
           {results?.length > 0 && (
@@ -540,10 +529,10 @@ function EmptyDirectory() {
   return (
     <div className="rounded-2xl border border-border bg-card p-6 text-center sm:col-span-2 sm:p-10">
       <p className="font-heading font-bold">
-        Nu avem încă profiluri în această localitate.
+        Nu există rezultate pentru localitatea și filtrele selectate.
       </p>
       <p className="mt-2 text-sm text-muted-foreground">
-        Poți verifica din nou mai târziu.
+        Poți elimina filtre sau alege altă localitate.
       </p>
       <Link
         to="/cerere"

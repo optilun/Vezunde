@@ -97,7 +97,7 @@ export default function DirectoryMap({ providerType = "" }) {
   }, [retry]);
 
   const visiblePoints = useMemo(
-    () => (type ? state.points.filter((point) => point.provider_type === type) : state.points),
+    () => (type ? state.points.filter((point) => type.split(",").includes(point.provider_type)) : state.points),
     [state.points, type],
   );
 
@@ -145,8 +145,8 @@ export default function DirectoryMap({ providerType = "" }) {
   const listedPoints = inView.slice(0, Math.max(pageSize, selectedIndex + 1));
 
   return (
-    <section aria-label="Explorează locațiile pe hartă" className="mt-6">
-      <div className="mb-4 border-t border-border pt-5">
+    <section aria-label="Explorează locațiile pe hartă" className="mt-3">
+      <div className="mb-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="font-heading text-lg font-bold tracking-tight sm:text-xl">
