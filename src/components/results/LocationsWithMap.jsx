@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import { List, Map as MapIcon } from "lucide-react";
 import ResultsMap from "./ResultsMap";
 import { mapPointFromResult } from "../../../shared/resultsMapPoints.js";
@@ -86,6 +87,7 @@ export default function LocationsWithMap({
             ))}
           </div>
           {children}
+          {fixedDesktop && <nav aria-label="Informații VIASEE" className="mt-8 hidden flex-wrap gap-x-4 gap-y-2 border-t border-border pt-4 text-xs text-muted-foreground lg:flex"><Link to="/confidentialitate" className="min-h-8 underline">Confidențialitate</Link><Link to="/termeni" className="min-h-8 underline">Termeni</Link><Link to="/ajutor-si-suport" className="min-h-8 underline">Ajutor</Link></nav>}
         </div>
 
         {hasPositions && (
