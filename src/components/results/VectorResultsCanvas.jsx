@@ -1,3 +1,4 @@
+import { clusterSharesPosition } from "../../../shared/resultsMapLabels.js";
 import React, { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -94,8 +95,8 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
       el.setAttribute("aria-pressed",String(active));
       el.onclick=()=>{
         if(cluster.count>1) {
-          if(map.getZoom()>=15){onSelect?.(null);onCluster(cluster.key);}
-          else {onCluster(null);map.easeTo({center:[cluster.lng,cluster.lat],zoom:Math.min(map.getZoom()+3,17)});}
+          if(map.getZoom()>=15 || clusterSharesPosition(cluster)){onSelect?.(null);onCluster(cluster.key);}
+          else {onCluster(null);const bounds=new maplibregl.LngLatBounds();cluster.points.forEach(p=>bounds.extend([p.lng,p.lat]));map.fitBounds(bounds,{padding:60,maxZoom:17});}
         } else {onCluster(null);onSelect?.(cluster.lead.id);}
       };
       el.onmouseenter=()=>{if(cluster.count===1)onHover?.(cluster.lead.id);};

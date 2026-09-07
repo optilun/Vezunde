@@ -1,3 +1,4 @@
+import { mapMarkerLabel } from "../../../shared/resultsMapLabels.js";
 import React, { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -38,7 +39,7 @@ function escapeHtml(value) {
 function pillHtml(cluster, { active, hovered }) {
   const { lead, count } = cluster;
   const raised = active || hovered;
-  const isTop3 = lead.tier === "top3";
+  const isTop3 = count === 1 && lead.tier === "top3";
   const isDirectory = lead.tier === "directory";
 
   const background = active ? "#4f6080" : isTop3 ? "hsl(var(--primary))" : "hsl(var(--card))";
@@ -47,9 +48,7 @@ function pillHtml(cluster, { active, hovered }) {
     ? "hsl(var(--primary))"
     : (isDirectory ? "hsl(var(--border))" : "hsl(var(--foreground))");
 
-  const label = count > 1
-    ? `${count} locații`
-    : (isTop3 && lead.bucket_rank ? `${lead.bucket_rank}. ${shortTypeLabel(lead.provider_type)}` : shortTypeLabel(lead.provider_type));
+  const label = mapMarkerLabel(cluster);
 
   // Pozitia aproximativa primeste un contur intrerupt. Diferenta fata de una confirmata trebuie
   // sa se vada pe harta, nu doar sa fie scrisa undeva sub ea.
@@ -57,7 +56,7 @@ function pillHtml(cluster, { active, hovered }) {
   const borderStyle = approximate ? "dashed" : "solid";
 
   return `<span style="
-    display:inline-flex;align-items:center;justify-content:center;min-height:32px;box-sizing:border-box;white-space:nowrap;
+    display:inline-flex;align-items:center;justify-content:center;min-height:36px;max-width:180px;box-sizing:border-box;white-space:nowrap;
     padding:6px 12px;border-radius:9999px;
     background:${background};color:${color};
     border:1.5px ${borderStyle} ${raised ? "hsl(var(--foreground))" : border};
@@ -65,7 +64,7 @@ function pillHtml(cluster, { active, hovered }) {
     font-family:inherit;font-size:12px;font-weight:700;line-height:1.2;
     transform:translateY(${raised ? "-2px" : "0"});
     transition:transform .12s ease,padding .12s ease,box-shadow .12s ease;
-  ">${escapeHtml(label)}</span>`;
+  "><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(label)}</span></span>`;
 }
 
 function PointCard({ point, onClose }) {
@@ -171,13 +170,14 @@ export default function ResultsMap({
       <VectorResultsCanvas points={model.points} clusters={clusters} selectedId={selectedId} hoveredId={hoveredId} storageKey={storageKey} focusArea={focusArea} reportViewport={reportViewport} pillHtml={pillHtml} onSelect={onSelect} onHover={onHover} onCluster={setOpenClusterKey} onFailure={() => setVectorFailed(true)} />
 
       {openCluster && !selectedPoint && (
-        <section aria-label="Locații la aceeași poziție"
+        <section aria-label="Locații din grup"
           className="absolute inset-x-3 bottom-3 z-[500] max-h-[60%] overflow-y-auto rounded-2xl border border-border bg-card p-3.5 shadow-lg sm:inset-x-auto sm:left-3 sm:w-80">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-bold">{openCluster.count} locații la această poziție</h2>
+            <h2 className="text-sm font-bold">{openCluster.count} locații în acest grup</h2>
             <button type="button" aria-label="Închide lista locațiilor" onClick={() => setOpenClusterKey(null)}
               className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-secondary">×</button>
           </div>
+          <p className="mb-2 text-xs text-muted-foreground">Mai multe profiluri sunt grupate pe hartă. Coordonatele pot fi aproximative; verifică adresa fiecăruia.</p>
           <ul className="divide-y divide-border">
             {openCluster.points.map((point) => (
               <li key={point.id}>
