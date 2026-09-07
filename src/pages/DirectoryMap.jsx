@@ -158,7 +158,7 @@ export default function DirectoryMap({ providerType = "" }) {
             {geoStatus === "loading" ? "Se caută poziția..." : "În apropierea mea"}
           </button>
         </div>
-        {(geoStatus === "denied" || geoStatus === "unavailable") && <p role="status" className="mt-3 text-sm text-muted-foreground">{geoStatus === "denied" ? "Accesul la locație nu este permis. Poți alege localitatea din bara de căutare." : "Poziția nu este disponibilă momentan. Încearcă din nou sau alege localitatea."}</p>
+        {(geoStatus === "denied" || geoStatus === "unavailable") && <p role="status" className="mt-3 text-sm text-muted-foreground">{geoStatus === "denied" ? "Accesul la locație nu este permis. Poți alege localitatea din bara de căutare." : "Poziția nu este disponibilă momentan. Încearcă din nou sau alege localitatea."}</p>}
       </div>
 
       <div className="min-h-[24rem]">
