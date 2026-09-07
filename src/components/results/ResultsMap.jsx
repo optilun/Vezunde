@@ -72,8 +72,8 @@ function pillHtml(cluster, { active, hovered }) {
   const isTop3 = lead.tier === "top3";
   const isDirectory = lead.tier === "directory";
 
-  const background = isTop3 ? "hsl(var(--primary))" : "hsl(var(--card))";
-  const color = isTop3 ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground))";
+  const background = active ? "#4f6080" : isTop3 ? "hsl(var(--primary))" : "hsl(var(--card))";
+  const color = active ? "#ffffff" : isTop3 ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground))";
   const border = isTop3
     ? "hsl(var(--primary))"
     : (isDirectory ? "hsl(var(--border))" : "hsl(var(--foreground))");
@@ -88,24 +88,24 @@ function pillHtml(cluster, { active, hovered }) {
   const borderStyle = approximate ? "dashed" : "solid";
 
   return `<span style="
-    display:inline-flex;align-items:center;white-space:nowrap;
-    padding:${raised ? "5px 11px" : "4px 10px"};border-radius:9999px;
+    display:inline-flex;align-items:center;justify-content:center;min-height:32px;box-sizing:border-box;white-space:nowrap;
+    padding:6px 12px;border-radius:9999px;
     background:${background};color:${color};
     border:1.5px ${borderStyle} ${raised ? "hsl(var(--foreground))" : border};
     box-shadow:0 ${raised ? "4px 12px" : "1px 4px"} rgba(23,23,23,${raised ? "0.24" : "0.12"});
-    font-family:inherit;font-size:${raised ? "12px" : "11px"};font-weight:700;line-height:1.2;
+    font-family:inherit;font-size:12px;font-weight:700;line-height:1.2;
     transform:translateY(${raised ? "-2px" : "0"});
     transition:transform .12s ease,padding .12s ease,box-shadow .12s ease;
   ">${escapeHtml(label)}</span>`;
 }
 
 function clusterIcon(cluster, state) {
-  const width = cluster.count > 1 ? 84 : 74;
+  const width = cluster.count > 1 ? 100 : 94;
   return L.divIcon({
     className: "viasee-map-pill",
     html: pillHtml(cluster, state),
-    iconSize: [width, 24],
-    iconAnchor: [width / 2, 12],
+    iconSize: [width, 36],
+    iconAnchor: [width / 2, 18],
   });
 }
 
@@ -156,6 +156,20 @@ function PanToSelected({ point }) {
 
 // Urmareste zoom-ul si dreptunghiul vizibil. Zoom-ul decide gruparea, dreptunghiul alimenteaza
 // filtrarea vizuala a listei.
+function MapResizeWatcher() {
+  const map = useMap();
+  useEffect(() => {
+    let frame;
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => map.invalidateSize({ pan: false }));
+    });
+    observer.observe(map.getContainer());
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
+  }, [map]);
+  return null;
+}
+
 function ViewportWatcher({ onChange }) {
   const map = useMapEvents({
     zoomend: () => report(),
@@ -189,7 +203,7 @@ function PointCard({ point, onClose }) {
         <LocationThumb name={point.name} providerType={point.provider_type} size="sm" />
         <div className="min-w-0 flex-1">
           <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{visual.label}</div>
-          <p className="mt-0.5 font-display text-sm font-bold leading-tight text-foreground">{point.name}</p>
+          <p className="mt-0.5 font-heading text-sm font-bold leading-tight text-foreground">{point.name}</p>
           {point.address && (
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{point.address}</p>
           )}
@@ -294,6 +308,7 @@ export default function ResultsMap({
         <FocusArea area={focusArea} />
         <PanToSelected point={selectedPoint} />
         <ViewportWatcher onChange={reportViewport} />
+        <MapResizeWatcher />
 
         {clusters.map((cluster) => {
           const containsSelected = cluster.points.some((point) => point.id === selectedId);
@@ -302,6 +317,13 @@ export default function ResultsMap({
             <Marker
               key={cluster.key}
               position={[cluster.lat, cluster.lng]}
+              ref={(marker) => {
+                const element = marker?.getElement();
+                if (element) {
+                  element.setAttribute("aria-label", cluster.count > 1 ? `Explorează grupul de ${cluster.count} locații` : `${cluster.lead.name}, ${shortTypeLabel(cluster.lead.provider_type)}`);
+                  element.setAttribute("aria-pressed", containsSelected ? "true" : "false");
+                }
+              }}
               title={cluster.count > 1 ? `${cluster.count} locații` : cluster.lead.name}
               alt={cluster.count > 1 ? `${cluster.count} locații` : cluster.lead.name}
               icon={clusterIcon(cluster, { active: containsSelected, hovered: containsHovered })}
