@@ -1,0 +1,13 @@
+import assert from "node:assert/strict";
+import { distanceKm, nearestDirectory } from "../shared/nearbyDirectory.js";
+const origin = {lat:45.75,lng:21.23};
+const points = [{id:"far",lat:46.77,lng:23.59},{id:"close",lat:45.751,lng:21.231},{id:"invalid",lat:null,lng:21}];
+assert.equal(distanceKm(origin,origin),0);
+assert.ok(distanceKm(origin,points[1])<1);
+assert.equal(distanceKm(origin,points[2]),Infinity);
+assert.equal(distanceKm(origin,{lat:100,lng:0}),Infinity);
+assert.deepEqual(nearestDirectory(points,origin).map(p=>p.id),["close","far","invalid"]);
+assert.equal(points[0].id,"far");
+assert.equal(nearestDirectory(points,null),points);
+assert.deepEqual(nearestDirectory([{id:"b",...origin},{id:"a",...origin}],origin).map(p=>p.id),["a","b"]);
+console.log("nearby-directory: distance, invalid coordinates, deterministic order, no mutation OK");

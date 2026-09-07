@@ -67,3 +67,10 @@ Observatie de continuitate: in codul gasit la reluare, loader-ul national a fost
 - LocationsWithMap reutilizat in Search si DirectoryMap; comutare flotanta pe mobil, actiune explicita Vezi pe harta, focus/hover comun. Directorul filtreaza numai lista dupa viewport, fara a restrange setul de puncte al hartii.
 - ProviderProfile are link inapoi la cautare; ProfessionalProfile il avea deja.
 - Limita: cautarea locala ramane definita de localitatea selectata. Cautarea serviciilor dupa un dreptunghi arbitrar pe harta nu este implementata; ar necesita suport explicit al motorului. Nu extinde automat criteriile. Preview vizual si verificare browser/mobile raman de facut; nu s-a publicat.
+
+
+## 2026-09-07 — Carduri si proximitate
+- Comparat index.css workspace-neutral: preluat gradient #dce4f2 / #eff1f5 / #f7f2e8, puncte 20px, icon #4f6080 si umbrele cardurilor organizatiei. Stil separat directory-premium, fara a modifica contul organizatiei.
+- DirectoryResultCard: icon de profesie, tip, nume, adresa fara repetarea orasului, trust badge din statusul public, CTA si actiune de harta integrate. Fara poze/ratinguri inventate.
+- DirectoryMap: geolocation browser cu buton explicit; automat numai la permisiune granted si fara viewport salvat. Timeout 10s, refuz/failure cu alternativa manuala. Distanta Haversine calculata local, ordonare determinista; incadrare pe primele 8 locatii. Nicio modificare de matching/Top3/date/backend.
+- Limitari: coordonatele unor locatii sunt aproximative; afisat in explicatie. Geolocatia reala pe device si aspectul randat raman de verificat in preview/live. Nu s-a publicat.
