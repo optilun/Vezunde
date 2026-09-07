@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { List, Map as MapIcon, Search as SearchIcon, SlidersHorizontal } from "lucide-react";
+import { List, Map as MapIcon, Search as SearchIcon, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { SERVICES, PROVIDER_TYPES } from "@/lib/vezunde";
+import { SERVICES } from "@/lib/vezunde";
 import { getServiceSearchSuggestions } from "@/lib/serviceSemanticSearch";
 import { matchProvidersWithSemanticFallback } from "@/lib/providerSemanticSearch";
 import { deterministicSafetyFlagsFromText } from "@/lib/patientSafety";
@@ -17,7 +17,7 @@ import { mapPointFromResult } from "../../shared/resultsMapPoints.js";
 import { browsePublicProfessionals } from "@/lib/professionalSearch";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
 
-const SELECT =
+const SEARCH_INPUT =
   "min-h-12 w-full rounded-xl border border-border bg-card px-4 py-2.5 text-base outline-none transition-colors focus:border-primary/50 sm:text-sm";
 
 function useDebouncedValue(value, delay) {
@@ -116,8 +116,8 @@ export default function Search() {
   const [mobileView, setMobileView] = useState("list");
   const [professionals, setProfessionals] = useState(null);
   const [service, setService] = useState(urlParams.get("serviciu") || "");
-  const [query, setQuery] = useState(urlParams.get("q") || "");
-  const [type, setType] = useState("");
+  const [query, setQuery] = useState(urlParams.get("q") || SERVICES[urlParams.get("serviciu")] || "");
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const initialLocalityName = urlParams.get("oras");
   const initialSirutaCode = urlParams.get("siruta");
   const [locality, setLocality] = useState(
@@ -155,7 +155,7 @@ export default function Search() {
   useEffect(() => {
     setResults(null);
     setProfessionals(null);
-  }, [service, query, type, locality?.siruta_code]);
+  }, [service, query, locality?.siruta_code]);
 
   useEffect(() => {
     let active = true;
@@ -171,7 +171,7 @@ export default function Search() {
             "browseDirectoryProviders",
             {
               locality_siruta_code: locality.siruta_code,
-              provider_types: type ? [type] : [],
+              provider_types: [],
               limit: 50,
             },
           );
@@ -182,7 +182,7 @@ export default function Search() {
         const response = await matchProvidersWithSemanticFallback({
           search_text: service ? "" : debouncedQuery,
           service_keys: service ? [service] : [],
-          provider_types: type ? [type] : [],
+          provider_types: [],
           locality_siruta_code: locality.siruta_code,
           limit: 50,
         });
@@ -198,7 +198,6 @@ export default function Search() {
   }, [
     service,
     debouncedQuery,
-    type,
     locality,
     isDirectoryBrowse,
     hasCanonicalLocality,
@@ -224,6 +223,7 @@ export default function Search() {
   const chooseSuggestion = (suggestion) => {
     setService(suggestion.service_key);
     setQuery(suggestion.label);
+    setSuggestionsOpen(false);
   };
 
   return (
@@ -239,87 +239,79 @@ export default function Search() {
 
       <section
         className="mt-6 rounded-[22px] border border-border bg-card p-3 shadow-sm sm:p-5"
-        aria-label="Filtre de căutare"
+        aria-label="Căutare"
       >
-        <div className="flex items-center gap-2 pb-3 text-xs font-semibold text-muted-foreground sm:hidden">
-          <SlidersHorizontal className="h-4 w-4" aria-hidden="true" /> Filtre de
-          căutare
-        </div>
-        <div className="grid gap-3 lg:grid-cols-[minmax(280px,1.4fr)_1fr_1fr_1fr]">
-          <div className="relative min-w-0">
-            <SearchIcon
-              className="pointer-events-none absolute left-4 top-4 h-4 w-4 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <input
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                if (service) setService("");
+        <div className="grid gap-4 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+          <div className="min-w-0">
+            <label htmlFor="directory-search" className="mb-2 block px-1 text-sm font-semibold">
+              Ce cauți?
+            </label>
+            <div
+              className="relative"
+              onFocus={() => setSuggestionsOpen(true)}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) setSuggestionsOpen(false);
               }}
-              placeholder="Ex.: mă ustură ochii, ochelari pentru calculator"
-              aria-label="Descrie ce cauți"
-              autoComplete="off"
-              className={`${SELECT} pl-11`}
-            />
-            {!service && query.trim() && suggestions.length > 0 && (
-              <div
-                className="absolute z-30 mt-2 max-h-[min(22rem,55vh)] w-full overflow-y-auto rounded-xl border border-border bg-card shadow-xl"
-                aria-label="Sugestii de servicii"
-              >
-                {suggestions.map((suggestion) => (
-                  <button
-                    key={suggestion.service_key}
-                    type="button"
-                    onClick={() => chooseSuggestion(suggestion)}
-                    className="block min-h-12 w-full border-b border-border/60 px-4 py-3 text-left last:border-b-0 hover:bg-secondary active:bg-secondary"
-                  >
-                    <span className="block text-sm font-semibold">
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setSuggestionsOpen(false);
+              }}
+            >
+              <SearchIcon
+                className="pointer-events-none absolute left-4 top-4 h-4 w-4 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <input
+                id="directory-search"
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setService("");
+                  setSuggestionsOpen(true);
+                }}
+                placeholder="Ex.: control de vedere, ochelari"
+                autoComplete="off"
+                className={`${SEARCH_INPUT} pl-11 pr-12`}
+              />
+              {(query || service) && (
+                <button
+                  type="button"
+                  aria-label="Șterge căutarea"
+                  onClick={() => { setQuery(""); setService(""); setSuggestionsOpen(false); }}
+                  className="absolute right-1 top-0.5 flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              )}
+              {suggestionsOpen && !service && query.trim() && suggestions.length > 0 && (
+                <div
+                  className="absolute z-30 mt-2 max-h-[min(22rem,55vh)] w-full overflow-y-auto rounded-xl border border-border bg-card shadow-xl"
+                  aria-label="Sugestii de servicii"
+                >
+                  {suggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.service_key}
+                      type="button"
+                      onClick={() => chooseSuggestion(suggestion)}
+                      className="block min-h-12 w-full border-b border-border/60 px-4 py-3 text-left text-sm font-medium last:border-b-0 hover:bg-secondary focus-visible:bg-secondary focus-visible:outline-none active:bg-secondary"
+                    >
                       {suggestion.label}
-                    </span>
-                    <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                      {suggestion.matched_keyword || suggestion.category}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-          <select
-            value={service}
-            onChange={(event) => {
-              setService(event.target.value);
-              if (event.target.value) setQuery("");
-            }}
-            className={SELECT}
-            aria-label="Serviciu"
-          >
-            <option value="">Alege un serviciu</option>
-            {Object.entries(SERVICES).map(([key, label]) => (
-              <option key={key} value={key}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={type}
-            onChange={(event) => setType(event.target.value)}
-            className={SELECT}
-            aria-label="Tip de furnizor"
-          >
-            <option value="">Toate tipurile</option>
-            {Object.entries(PROVIDER_TYPES).map(([key, label]) => (
-              <option key={key} value={key}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <LocalityAutocomplete
-            value={locality}
-            onSelect={setLocality}
-            placeholder="Alege localitatea"
-            className="w-full"
-          />
+          <div className="min-w-0" role="group" aria-labelledby="directory-locality-label">
+            <span id="directory-locality-label" className="mb-2 block px-1 text-sm font-semibold">
+              Unde?
+            </span>
+            <LocalityAutocomplete
+              value={locality}
+              onSelect={setLocality}
+              placeholder="Alege localitatea"
+              className="w-full"
+            />
+          </div>
         </div>
       </section>
 
@@ -346,7 +338,7 @@ export default function Search() {
         </div>
       ) : !hasCanonicalLocality ? (
         !service && !query.trim()
-          ? <DirectoryMap providerType={type} />
+          ? <DirectoryMap />
           : <SelectLocalityNotice />
       ) : searchMode === RESULT_MODES.professionals.key ? (
         <div className="mt-8">
