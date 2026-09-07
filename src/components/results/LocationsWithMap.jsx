@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { List, Map as MapIcon } from "lucide-react";
 import ResultsMap from "./ResultsMap";
 import { mapPointFromResult } from "../../../shared/resultsMapPoints.js";
@@ -19,6 +19,15 @@ export default function LocationsWithMap({
   mobileView,
   onToggleMobileView,
 }) {
+  const cardRefs = useRef(new Map());
+  const previousSelection = useRef(selectedId);
+  useEffect(() => {
+    if (previousSelection.current === selectedId) return;
+    previousSelection.current = selectedId;
+    if (selectedId && (window.matchMedia("(min-width: 1024px)").matches || mobileView === "list")) {
+      cardRefs.current.get(selectedId)?.scrollIntoView({ block: "nearest", behavior: "auto" });
+    }
+  }, [selectedId, mobileView]);
   const hasPositions = (results || []).some((location) => mapPointFromResult(location) !== null);
 
   return (
@@ -42,6 +51,7 @@ export default function LocationsWithMap({
             {(listResults || []).map((location) => (
               <div
                 key={location.id}
+                ref={(element) => { if (element) cardRefs.current.set(location.id, element); else cardRefs.current.delete(location.id); }}
                 onMouseEnter={() => onHover(location.id)}
                 onMouseLeave={() => onHover(null)}
                 onFocus={() => onHover(location.id)}

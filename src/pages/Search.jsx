@@ -104,8 +104,8 @@ export default function Search() {
   const debouncedQuery = useDebouncedValue(query.trim(), 350);
 
   useEffect(() => {
-    writeSearchSession({ sourceSearch: window.location.search || saved.sourceSearch || "", query, service, locality, searchMode, selectedId, mobileView, providerType, professionalType });
-  }, [query, service, locality, searchMode, selectedId, mobileView, saved.sourceSearch, providerType, professionalType]);
+    writeSearchSession({ sourceSearch: window.location.search || saved.sourceSearch || "", query, service, locality, searchMode, selectedId, mobileView, providerType, professionalType, loadedLocalCount: results?.length || 0 });
+  }, [query, service, locality, searchMode, selectedId, mobileView, saved.sourceSearch, providerType, professionalType, results]);
 
   useEffect(() => {
     const rememberScroll = () => {
@@ -176,7 +176,18 @@ export default function Search() {
             },
           );
           if (response.data?.error) throw new Error(response.data.error);
-          if (active) { setResults(response.data?.results || []); setPagination(response.data?.pagination || null); }
+          const rows = new Map((response.data?.results || []).map((row) => [row.id, row]));
+          let page = response.data?.pagination || null;
+          const restoreCount = saved.locality?.siruta_code === locality.siruta_code && (saved.providerType || "") === providerType && !saved.query && !saved.service ? saved.loadedLocalCount || 0 : 0;
+          while (active && page?.has_more && rows.size < restoreCount) {
+            const next = await base44.functions.invoke("browseDirectoryProviders", { locality_siruta_code: locality.siruta_code, provider_types: providerType ? [providerType] : [], limit: 50, offset: page.next_offset });
+            if (next.data?.error) throw new Error(next.data.error);
+            const previousSize = rows.size;
+            (next.data?.results || []).forEach((row) => rows.set(row.id, row));
+            page = next.data?.pagination || null;
+            if (rows.size === previousSize) break;
+          }
+          if (active) { setResults([...rows.values()]); setPagination(page); }
           return;
         }
 
