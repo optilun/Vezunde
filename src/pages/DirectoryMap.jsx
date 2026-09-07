@@ -144,8 +144,7 @@ export default function DirectoryMap({ providerType = "" }) {
   const selectedIndex = inView.findIndex((point) => point.id === selectedId);
   const listedPoints = inView.slice(0, Math.max(pageSize, selectedIndex + 1));
 
-  return (
-    <section aria-label="Explorează locațiile pe hartă" className="mt-3">
+  const listHeader = <>
       <div className="mb-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
@@ -158,10 +157,7 @@ export default function DirectoryMap({ providerType = "" }) {
                 : state.status === "error" ? "Directorul nu a putut fi încărcat." : "Se încarcă locațiile publicate..."}
             </p>
           </div>
-          <button type="button" onClick={requestLocation} disabled={geoStatus === "loading"} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#c9d3e3] bg-[#eff1f5] px-5 text-sm font-semibold text-[#4f6080] hover:bg-[#dce4f2] disabled:opacity-60">
-            {geoStatus === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
-            {geoStatus === "loading" ? "Se caută poziția..." : "În apropierea mea"}
-          </button>
+
         </div>
         {(geoStatus === "denied" || geoStatus === "unavailable") && <p role="status" className="mt-3 text-sm text-muted-foreground">{geoStatus === "denied" ? "Accesul la locație nu este permis. Poți alege localitatea din bara de căutare." : "Poziția nu este disponibilă momentan. Încearcă din nou sau alege localitatea."}</p>}
       </div>
@@ -172,6 +168,10 @@ export default function DirectoryMap({ providerType = "" }) {
         {radiusKm < 60 && <button type="button" onClick={() => setRadiusKm((radius) => radius * 2)} className="min-h-11 rounded-full border border-border bg-card px-4 text-foreground">Extinde zona la {radiusKm * 2} km</button>}
       </div>}
       {state.meta?.withoutPosition > 0 && <p className="mb-3 text-xs text-muted-foreground">{state.meta.withoutPosition} locații nu au poziție publicată. Le poți găsi alegând localitatea.</p>}
+<p className="mb-4 text-sm text-muted-foreground" aria-live="polite">{inView.length} locații în zona vizibilă</p></>;
+
+  return (
+    <section aria-label="Explorează locațiile pe hartă" className="mt-3">
       <div className="min-h-[24rem]">
         {state.status === "loading" && (
           <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -207,8 +207,13 @@ export default function DirectoryMap({ providerType = "" }) {
 
         {state.status === "ready" && visiblePoints.length > 0 && (
           <>
-            <p className="text-sm text-muted-foreground" aria-live="polite">{inView.length} locații în zona vizibilă</p>
             <LocationsWithMap
+              fixedDesktop
+              listHeader={listHeader}
+              mapActions={<button type="button" onClick={requestLocation} disabled={geoStatus === "loading"} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#c9d3e3] bg-white shadow-md px-5 text-sm font-semibold text-[#4f6080] hover:bg-[#dce4f2] disabled:opacity-60">
+            {geoStatus === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
+            {geoStatus === "loading" ? "Se caută poziția..." : "În apropierea mea"}
+          </button>}
               results={visiblePoints}
               listResults={listedPoints}
               renderCard={(point, onShowMap) => <DirectoryResultCard location={point} onShowMap={onShowMap} />}
