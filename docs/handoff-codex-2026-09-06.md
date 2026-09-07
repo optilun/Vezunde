@@ -89,3 +89,11 @@ Observatie de continuitate: in codul gasit la reluare, loader-ul national a fost
 - Selectia hartii extinde prefixul listei fara reordonare si aduce cardul in vedere pe desktop. LocalityAutocomplete distinge loading/error/empty si ofera retry; Escape/iesirea focusului inchid sugestiile.
 - Afisat numarul locatiilor fara pozitie; antet card redus la h-20; buton inchidere harta 44px; scroll-margin pentru controalele de sub antetul sticky.
 - Verificari: lint curat pe fisierele controlate, build OK, profesional 31/31, map/session/nearby OK. Nu s-a verificat runtime pe device/browser; frontend nepublicat. Filtrarea backend optionala este auto-sync.
+
+
+## 2026-09-07 — compact search controls and advanced filter dialog
+- Search controls condensed into one desktop row (query/locality/Filters), with result mode tabs only for selected locality. Removed duplicate instructional row and national divider/spacing.
+- SearchFilters uses existing Radix dialog and VIASEE palette; draft/apply/reset, multi-select location types, canonical services/investigations with search, CAS per eligible published service. Professional mode has canonical deduplicated profession options. Detailed service/CAS filters require locality; national map remains lightweight and filters multiple location types.
+- Advanced criteria are saved in searchSession. Selecting service/CAS filters explicitly replaces free-text search and uses directory browse. Free-text entry clears detailed filters. Existing matching remains unchanged.
+- browseDirectoryProviders now applies advanced service/CAS criteria before pagination; excludes undisclosed services, migration-review rows and unmet prerequisites. CAS applies to the same selected service. Backend code auto-syncs, frontend not published.
+- verify-search-filters.mjs fixture tests cover matching beyond first page, CAS relation, OR services, hidden/ineligible records, pagination and invalid keys. Lint/build checked. New layout has not been visually verified in preview; user screenshots were reviewed.
