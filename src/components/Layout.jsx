@@ -228,7 +228,7 @@ export default function Layout() {
       </main>
 
       <footer
-        className="relative mt-12 overflow-hidden border-t-2 border-[#171717] bg-[#f8f4ec] sm:mt-16"
+        className={`relative mt-12 overflow-hidden border-t-2 border-[#171717] bg-[#f8f4ec] sm:mt-16 ${isSearch ? "lg:hidden" : ""}`}
         style={{
           backgroundImage:
             "radial-gradient(circle at 1px 1px, rgba(23,23,23,0.13) 1px, transparent 1.2px)",
