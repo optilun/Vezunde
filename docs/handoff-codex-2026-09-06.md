@@ -38,3 +38,14 @@ Numarul de 948 locatii geocodate si rezultatul 124/126 provin din predarea lui C
 ## Coordonare
 
 Un singur agent scrie in sandbox-ul Base44 la un moment dat. Pentru munca simultana: taskuri separate in checkout-uri/branch-uri separate, integrare coordonata. Inregistrati fisierele atinse, verificarile efective si restul de lucru la fiecare predare. Nu folositi un raport vechi drept dovada ca fluxurile actuale functioneaza.
+
+
+## Continuare 7 septembrie - cautare si harta unificate
+
+Cerinta explicita Alex: o singura intrare in navbar, nu module separate Cauta si Harta.
+
+Aplicat: Layout pastreaza doar Cauta in header/footer; meniul mobil avea deja doar Cauta. /harta si /cautare redirectioneaza la /cauta pastrand query/hash. Search integreaza DirectoryMap ca sectiune nationala cand nu sunt selectate localitate sau serviciu/text; tipul de furnizor este controlat de filtrul comun. Dupa alegerea localitatii se pastreaza cautarea existenta cu lista/harta. Pentru serviciu/text fara localitate se cere localitatea explicit, fara extindere automata. DirectoryMap nu mai are al doilea selector sau actiune duplicata. Detectia coordonatelor pe Search foloseste validatorul comun. Harta sticky respecta header-ul fix.
+
+Verificat: verify-results-map OK, ESLint pe fisierele modificate exit 0, build exit 0. Regresie directa pentru doua pozitii identice la zoom 15/17/19 OK. verify-professional-architecture: 31/31. verify-professional-recommendation: 31/31. Nu s-a facut publicare de catre Codex; modificarea curenta necesita verificare vizuala in versiunea publicata/preview.
+
+Observatie de continuitate: in codul gasit la reluare, loader-ul national a fost deja corectat pentru codurile numerice SIRUTA in alta sesiune. Nu am suprascris acea corectie sau modificarile la geocodare. Domeniul actual confirmat de Alex este https://viasee.ro/; adresa veche base44.app nu se mai foloseste.
