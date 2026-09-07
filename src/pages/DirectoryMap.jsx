@@ -28,6 +28,7 @@ export default function DirectoryMap({ providerType = "" }) {
   const type = providerType;
   const [origin, setOrigin] = useState(null);
   const [geoStatus, setGeoStatus] = useState("idle");
+  const [radiusKm, setRadiusKm] = useState(15);
   const geoRequest = useRef(0);
   const alive = useRef(true);
   const requestLocation = useCallback(() => {
@@ -36,6 +37,8 @@ export default function DirectoryMap({ providerType = "" }) {
     setGeoStatus("loading");
     navigator.geolocation.getCurrentPosition((position) => {
       if (!alive.current || requestId !== geoRequest.current) return;
+      if (position.coords.accuracy > 5000) { setGeoStatus("imprecise"); return; }
+      setRadiusKm(15);
       setOrigin({ lat: position.coords.latitude, lng: position.coords.longitude, requestId });
       setSelectedId(null);
       setPageSize(24);
@@ -99,7 +102,7 @@ export default function DirectoryMap({ providerType = "" }) {
   );
 
   useEffect(() => {
-    writeSearchSession({ national: { selectedId, mobileView, pageSize } });
+    writeSearchSession({ national: { ...readSearchSession().national, selectedId, mobileView, pageSize } });
   }, [selectedId, mobileView, pageSize]);
   useEffect(() => {
     if (state.status !== "ready" || scrollRestored.current) return;
@@ -115,29 +118,31 @@ export default function DirectoryMap({ providerType = "" }) {
     return () => window.removeEventListener("scroll", save);
   }, []);
 
-  const orderedPoints = useMemo(() => nearestDirectory(visiblePoints, origin), [visiblePoints, origin]);
+  const orderedPoints = useMemo(() => {
+    if (origin) return nearestDirectory(visiblePoints, origin);
+    if (!saved.nearbyOrder) return visiblePoints;
+    const rank = new Map(saved.nearbyOrder.map((id, index) => [id, index]));
+    return [...visiblePoints].sort((a,b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity));
+  }, [visiblePoints, origin, saved.nearbyOrder]);
+  useEffect(() => {
+    if (origin && orderedPoints.length) writeSearchSession({ national: { ...readSearchSession().national, nearbyOrder: orderedPoints.map((point) => point.id) } });
+  }, [orderedPoints, origin]);
   const focusArea = useMemo(() => {
-    if (!origin || !orderedPoints.length) return null;
-    const nearby = orderedPoints.slice(0, 8);
+    if (!origin) return null;
+    const latDelta = radiusKm / 111.32;
+    const lngDelta = latDelta / Math.max(0.01, Math.cos(origin.lat * Math.PI / 180));
     return {
-      key: origin.requestId,
-      bounds: [
-        [Math.min(origin.lat, ...nearby.map((p) => p.lat)), Math.min(origin.lng, ...nearby.map((p) => p.lng))],
-        [Math.max(origin.lat, ...nearby.map((p) => p.lat)), Math.max(origin.lng, ...nearby.map((p) => p.lng))],
-      ],
+      key: `${origin.requestId}:${radiusKm}`,
+      bounds: [[Math.max(-90, origin.lat-latDelta), Math.max(-180, origin.lng-lngDelta)], [Math.min(90, origin.lat+latDelta), Math.min(180, origin.lng+lngDelta)]],
     };
-  }, [origin, orderedPoints]);
+  }, [origin, radiusKm]);
   const inView = useMemo(() => {
     if (visibleIds === null) return orderedPoints;
     const ids = new Set(visibleIds);
     return orderedPoints.filter((point) => ids.has(point.id));
   }, [orderedPoints, visibleIds]);
-  const listedPoints = inView.slice(0, pageSize);
-  // Keep a selected marker represented even beyond the first page of cards.
-  const selectedPoint = inView.find((point) => point.id === selectedId);
-  if (selectedPoint && !listedPoints.some((point) => point.id === selectedId)) {
-    listedPoints.unshift(selectedPoint);
-  }
+  const selectedIndex = inView.findIndex((point) => point.id === selectedId);
+  const listedPoints = inView.slice(0, Math.max(pageSize, selectedIndex + 1));
 
   return (
     <section aria-label="Explorează locațiile pe hartă" className="mt-6">
@@ -145,11 +150,11 @@ export default function DirectoryMap({ providerType = "" }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="font-heading text-lg font-bold tracking-tight sm:text-xl">
-              {origin ? "Descoperă locațiile din apropiere" : "Explorează România"}
+              {origin || saved.nearbyOrder ? "Locații în zona explorată" : "Explorează România"}
             </h2>
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground sm:text-sm">
               {state.status === "ready"
-                ? origin ? "Locațiile din zona hărții, în ordinea apropierii. Pozițiile pot fi aproximative." : "Alege localitatea sau folosește poziția dispozitivului."
+                ? origin || saved.nearbyOrder ? "Locațiile din zona hărții, în ordinea apropierii. Pozițiile pot fi aproximative." : "Alege localitatea sau folosește poziția dispozitivului."
                 : state.status === "error" ? "Directorul nu a putut fi încărcat." : "Se încarcă locațiile publicate..."}
             </p>
           </div>
@@ -161,6 +166,12 @@ export default function DirectoryMap({ providerType = "" }) {
         {(geoStatus === "denied" || geoStatus === "unavailable") && <p role="status" className="mt-3 text-sm text-muted-foreground">{geoStatus === "denied" ? "Accesul la locație nu este permis. Poți alege localitatea din bara de căutare." : "Poziția nu este disponibilă momentan. Încearcă din nou sau alege localitatea."}</p>}
       </div>
 
+      {geoStatus === "imprecise" && <p role="status" className="mb-3 text-sm text-muted-foreground">Poziția dispozitivului este prea aproximativă. Alege localitatea pentru rezultate utile.</p>}
+      {origin && <div className="mb-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+        <span>Zona inițială: aproximativ {radiusKm} km de la poziția ta.</span>
+        {radiusKm < 60 && <button type="button" onClick={() => setRadiusKm((radius) => radius * 2)} className="min-h-11 rounded-full border border-border bg-card px-4 text-foreground">Extinde zona la {radiusKm * 2} km</button>}
+      </div>}
+      {state.meta?.withoutPosition > 0 && <p className="mb-3 text-xs text-muted-foreground">{state.meta.withoutPosition} locații nu au poziție publicată. Le poți găsi alegând localitatea.</p>}
       <div className="min-h-[24rem]">
         {state.status === "loading" && (
           <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">

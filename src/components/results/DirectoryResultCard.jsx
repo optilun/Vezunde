@@ -14,7 +14,7 @@ export default function DirectoryResultCard({ location, onShowMap }) {
     ? address : [city, address].filter(Boolean).join(", ");
   return (
     <article className="directory-premium-card flex h-full min-w-0 flex-col overflow-hidden rounded-[22px] border border-border bg-card">
-      <div className="directory-premium-cover relative flex h-28 items-center justify-between px-5" aria-hidden="true">
+      <div className="directory-premium-cover relative flex h-20 items-center justify-between px-5" aria-hidden="true">
         <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/70 bg-white/65 text-[#4f6080] shadow-sm">
           <Icon className="h-7 w-7" strokeWidth={1.5} />
         </span>

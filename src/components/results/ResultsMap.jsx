@@ -210,7 +210,7 @@ function PointCard({ point, onClose }) {
           type="button"
           onClick={onClose}
           aria-label="Închide"
-          className="-mr-1 -mt-1 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+          className="-mr-1 -mt-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
         >
           ×
         </button>
