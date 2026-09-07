@@ -181,7 +181,7 @@ export default function Search() {
           if (response.data?.error) throw new Error(response.data.error);
           const rows = new Map((response.data?.results || []).map((row) => [row.id, row]));
           let page = response.data?.pagination || null;
-          const restoreCount = saved.locality?.siruta_code === locality.siruta_code && (saved.providerType || "") === providerType && !saved.query && !saved.service ? saved.loadedLocalCount || 0 : 0;
+          const restoreCount = saved.locality?.siruta_code === locality.siruta_code && (saved.providerType || "") === providerType && JSON.stringify(saved.filterServiceKeys || []) === JSON.stringify(filterServiceKeys) && Boolean(saved.casOnly) === casOnly && !saved.query && !saved.service ? saved.loadedLocalCount || 0 : 0;
           while (active && page?.has_more && rows.size < restoreCount) {
             const next = await base44.functions.invoke("browseDirectoryProviders", { locality_siruta_code: locality.siruta_code, provider_types: providerType.split(",").filter(Boolean), filter_service_keys: filterServiceKeys, cas_only: casOnly, limit: 50, offset: page.next_offset });
             if (next.data?.error) throw new Error(next.data.error);
@@ -367,7 +367,7 @@ export default function Search() {
             </span>
             <LocalityAutocomplete
               value={locality}
-              onSelect={setLocality}
+              onSelect={(value) => { setLocality(value); setSelectedId(null); }}
               placeholder="Alege localitatea"
               variant="compact"
               className="w-full"

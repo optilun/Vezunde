@@ -38,7 +38,9 @@ Deno.serve(async (req) => {
 
     const sirutaCode = String(payload.locality_siruta_code || '').trim();
     const providerTypes = Array.isArray(payload.provider_types) ? payload.provider_types : [];
-    const selectedServices = Array.isArray(payload.filter_service_keys) ? payload.filter_service_keys.map(String).filter(key => normalizeServiceKey(key).definition) : [];
+    const rawServices = Array.isArray(payload.filter_service_keys) ? payload.filter_service_keys.map(String) : [];
+    if (rawServices.some(key => !normalizeServiceKey(key).definition)) return Response.json({ error: 'Un serviciu selectat nu este disponibil pentru filtrare.' }, { status: 400 });
+    const selectedServices = [...new Set(rawServices.map(key => normalizeServiceKey(key).canonicalKey))];
     const casOnly = payload.cas_only === true;
     const advanced = selectedServices.length > 0 || casOnly;
     const pageSize = Math.max(1, Math.min(Number(payload.page_size || payload.limit) || 20, 50));
@@ -191,7 +193,7 @@ Deno.serve(async (req) => {
         && evaluateServicePrerequisites(service.service_key, prerequisiteContext).eligible
       )) : [];
       const hasPublicService = publicServices.length > 0;
-      if (advanced && !publicServices.some(service => (!selectedServices.length || selectedServices.includes(normalizeServiceKey(service.service_key).key || service.service_key)) && (!casOnly || service.cas_reimbursed === true))) continue;
+      if (advanced && !publicServices.some(service => (!selectedServices.length || selectedServices.includes(normalizeServiceKey(service.service_key).canonicalKey)) && (!casOnly || service.cas_reimbursed === true))) continue;
 
       results.push({
         id: loc.id,
