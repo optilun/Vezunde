@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { List, Map as MapIcon, Loader2, MapPin } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, MapPin } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import ResultsMap from "@/components/results/ResultsMap";
+import LocationsWithMap from "@/components/results/LocationsWithMap";
+import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
 
 // Directorul pe harta Romaniei.
@@ -19,17 +20,19 @@ import DirectoryResultCard from "@/components/results/DirectoryResultCard";
 // re-interogare la fiecare bifa ar fi mai lenta decat filtrarea locala.
 
 export default function DirectoryMap({ providerType = "" }) {
+  const [saved] = useState(() => readSearchSession().national || {});
+  const scrollRestored = useRef(false);
   const [state, setState] = useState({ status: "loading", points: [], meta: null, error: "" });
   const type = providerType;
   const [retry, setRetry] = useState(0);
   const [visibleIds, setVisibleIds] = useState(null);
-  const [pageSize, setPageSize] = useState(24);
-  const [mobileView, setMobileView] = useState("map");
+  const [pageSize, setPageSize] = useState(saved.pageSize || 24);
+  const [mobileView, setMobileView] = useState(saved.mobileView || "map");
   const handleViewport = useCallback(({ visibleIds: ids }) => {
     setVisibleIds(ids);
-    setPageSize(24);
+
   }, []);
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(saved.selectedId || null);
   const [hoveredId, setHoveredId] = useState(null);
 
   useEffect(() => {
@@ -67,7 +70,22 @@ export default function DirectoryMap({ providerType = "" }) {
     [state.points, type],
   );
 
-  useEffect(() => { setSelectedId(null); setHoveredId(null); }, [type]);
+  useEffect(() => {
+    writeSearchSession({ national: { selectedId, mobileView, pageSize } });
+  }, [selectedId, mobileView, pageSize]);
+  useEffect(() => {
+    if (state.status !== "ready" || scrollRestored.current) return;
+    const frame = requestAnimationFrame(() => {
+      window.scrollTo({ top: readSearchSession().nationalScroll || 0, behavior: "instant" });
+      scrollRestored.current = true;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [state.status]);
+  useEffect(() => {
+    const save = () => { if (scrollRestored.current) writeSearchSession({ nationalScroll: window.scrollY }); };
+    window.addEventListener("scroll", save, { passive: true });
+    return () => window.removeEventListener("scroll", save);
+  }, []);
 
   const inView = useMemo(() => {
     if (visibleIds === null) return visiblePoints;
@@ -139,50 +157,23 @@ export default function DirectoryMap({ providerType = "" }) {
 
         {state.status === "ready" && visiblePoints.length > 0 && (
           <>
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <p className="text-sm text-muted-foreground" aria-live="polite">{inView.length} locații în zona vizibilă</p>
-              <button type="button" onClick={() => setMobileView((view) => view === "map" ? "list" : "map")}
-                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold lg:hidden">
-                {mobileView === "map" ? <List className="h-4 w-4" /> : <MapIcon className="h-4 w-4" />}
-                {mobileView === "map" ? "Vezi lista" : "Vezi harta"}
-              </button>
-            </div>
-            <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-              <div className={mobileView === "map" ? "hidden lg:block" : ""}>
-                {inView.length === 0 && <p className="rounded-2xl border border-border bg-card p-6 text-sm">Nu sunt locații în această zonă. Deplasează harta sau micșorează zoom-ul.</p>}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                  {listedPoints.map((point) => (
-                    <div key={point.id}
-                      onMouseEnter={() => setHoveredId(point.id)} onMouseLeave={() => setHoveredId(null)}
-                      onFocus={() => setHoveredId(point.id)} onBlur={() => setHoveredId(null)}
-                      className={`rounded-2xl transition-shadow ${selectedId === point.id ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : hoveredId === point.id ? "shadow-md" : ""}`}>
-                      <DirectoryResultCard location={point} />
-                      <button type="button" onClick={() => { setSelectedId(point.id); setMobileView("map"); }}
-                        className="mt-1 inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium hover:bg-secondary focus-visible:ring-2 focus-visible:ring-primary">
-                        <MapPin className="h-4 w-4" /> Vezi pe hartă
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                {inView.length > pageSize && (
-                  <button type="button" onClick={() => setPageSize((size) => size + 24)}
-                    className="mt-5 min-h-11 rounded-full border border-border bg-card px-6 text-sm font-semibold hover:bg-secondary">
-                    Arată mai multe
-                  </button>
-                )}
-              </div>
-              <aside className={`lg:sticky lg:top-24 ${mobileView === "map" ? "" : "hidden lg:block"}`}>
-                <ResultsMap
-                  results={visiblePoints}
-                  selectedId={selectedId}
-                  hoveredId={hoveredId}
-                  onSelect={setSelectedId}
-                  onHover={setHoveredId}
-                  onViewportChange={handleViewport}
-                  className="h-[65svh] min-h-[24rem] w-full overflow-hidden rounded-3xl border border-border lg:h-[calc(100vh-8rem)]"
-                />
-              </aside>
-            </div>
+            <p className="text-sm text-muted-foreground" aria-live="polite">{inView.length} locații în zona vizibilă</p>
+            <LocationsWithMap
+              results={visiblePoints}
+              listResults={listedPoints}
+              renderCard={(point) => <DirectoryResultCard location={point} />}
+              selectedId={selectedId}
+              hoveredId={hoveredId}
+              onSelect={setSelectedId}
+              onHover={setHoveredId}
+              mobileView={mobileView}
+              onToggleMobileView={() => setMobileView((view) => view === "map" ? "list" : "map")}
+              onViewportChange={handleViewport}
+              storageKey="national"
+            >
+              {inView.length === 0 && <p className="rounded-2xl border border-border bg-card p-6 text-sm">Nu sunt locații în această zonă. Deplasează harta sau micșorează zoom-ul.</p>}
+              {inView.length > pageSize && <button type="button" onClick={() => setPageSize((size) => size + 24)} className="mt-5 min-h-11 rounded-full border border-border bg-card px-6 text-sm font-semibold hover:bg-secondary">Arată mai multe</button>}
+            </LocationsWithMap>
           </>
         )}
       </div>

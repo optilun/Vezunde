@@ -14,6 +14,7 @@ import {
 } from "../../../shared/resultsMapPoints.js";
 import LocationThumb, { typeVisual } from "@/components/results/LocationThumb";
 import TrustBadge from "@/components/results/TrustBadge";
+import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import { withCartoApiKey } from "@/lib/cartoBasemap";
 
 // Harta rezultatelor, in stilul hartilor de cautare (Airbnb, Booking).
@@ -110,21 +111,27 @@ function clusterIcon(cluster, state) {
 
 // Incadreaza harta pe rezultate. Ruleaza doar cand se schimba SETUL de puncte, nu si cand
 // pacientul selecteaza sau trece cu mouse-ul peste un card - altfel harta ar sari mereu inapoi.
-function FitToPoints({ points }) {
+function FitToPoints({ points, storageKey }) {
   const map = useMap();
   const signature = points.map((point) => `${point.id}:${point.lat}:${point.lng}`).sort().join("|");
   const fittedSignature = useRef(null);
 
   useEffect(() => {
     if (points.length === 0 || fittedSignature.current === signature) return;
+    const initial = fittedSignature.current === null;
     fittedSignature.current = signature;
+    const saved = storageKey ? readSearchSession().maps?.[storageKey] : null;
+    if (initial && saved?.signature === signature && saved.bounds) {
+      map.fitBounds(saved.bounds, { animate: false });
+      return;
+    }
     if (points.length === 1) {
       map.setView([points[0].lat, points[0].lng], 14);
       return;
     }
     const bounds = boundsForPoints(points);
     if (bounds) map.fitBounds(bounds, { padding: [48, 48], maxZoom: 14 });
-  }, [signature, map, points]);
+  }, [signature, map, points, storageKey]);
 
   return null;
 }
@@ -212,6 +219,7 @@ export default function ResultsMap({
   onHover = null,
   onViewportChange = null,
   className = "",
+  storageKey = null,
 }) {
   const model = useMemo(() => buildResultsMapModel(results), [results]);
   const [viewport, setViewport] = useState({ zoom: FALLBACK_ZOOM, bounds: null });
@@ -230,6 +238,11 @@ export default function ResultsMap({
   // Se trimit ID-URI, nu un criteriu de cautare: serverul nu este intrebat nimic din nou.
   const reportViewport = useCallback((next) => {
     setViewport(next);
+    if (storageKey) {
+      const maps = readSearchSession().maps || {};
+      const signature = model.points.map((point) => `${point.id}:${point.lat}:${point.lng}`).sort().join("|");
+      writeSearchSession({ maps: { ...maps, [storageKey]: { signature, bounds: next.bounds } } });
+    }
     if (onViewportChange) {
       onViewportChange({
         ...next,
@@ -237,7 +250,7 @@ export default function ResultsMap({
         mappedCount: model.mappedCount,
       });
     }
-  }, [model.points, model.mappedCount, onViewportChange]);
+  }, [model.points, model.mappedCount, onViewportChange, storageKey]);
 
   const mapRef = useRef(null);
 
@@ -268,7 +281,7 @@ export default function ResultsMap({
         ref={mapRef}
       >
         <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
-        <FitToPoints points={model.points} />
+        <FitToPoints points={model.points} storageKey={storageKey} />
         <PanToSelected point={selectedPoint} />
         <ViewportWatcher onChange={reportViewport} />
 

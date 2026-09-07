@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { List, Map as MapIcon, Search as SearchIcon, X } from "lucide-react";
+import { Search as SearchIcon, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { SERVICES } from "@/lib/vezunde";
 import { getServiceSearchSuggestions } from "@/lib/serviceSemanticSearch";
@@ -11,9 +11,8 @@ import ProviderCard from "@/components/ProviderCard";
 import DirectoryResultCard from "@/components/results/DirectoryResultCard";
 import ProfessionalDirectoryCard from "@/components/results/ProfessionalDirectoryCard";
 import ResultModeTabs, { RESULT_MODES } from "@/components/intake2/ResultModeTabs";
-import ResultsMap from "@/components/results/ResultsMap";
+import LocationsWithMap from "@/components/results/LocationsWithMap";
 import DirectoryMap from "@/pages/DirectoryMap";
-import { mapPointFromResult } from "../../shared/resultsMapPoints.js";
 import { browsePublicProfessionals, matchProfessionalsForRequest } from "@/lib/professionalSearch";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
 
@@ -39,68 +38,6 @@ function useDebouncedValue(value, delay) {
 //
 // Cand niciun rezultat nu are inca pozitie publicata, harta nu se afiseaza deloc si lista ramane
 // pe doua coloane, ca inainte - o coloana goala langa carduri nu ajuta pe nimeni.
-function LocationsWithMap({
-  results,
-  renderCard,
-  selectedId,
-  hoveredId,
-  onSelect,
-  onHover,
-  mobileView,
-  onToggleMobileView,
-}) {
-  const hasPositions = (results || []).some((location) => mapPointFromResult(location) !== null);
-
-  return (
-    <>
-      {hasPositions && (
-        <div className="mt-4 lg:hidden">
-          <button
-            type="button"
-            onClick={onToggleMobileView}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold transition-colors hover:border-foreground/40"
-          >
-            {mobileView === "map" ? <List className="h-4 w-4" /> : <MapIcon className="h-4 w-4" />}
-            {mobileView === "map" ? "Vezi lista" : "Vezi pe hartă"}
-          </button>
-        </div>
-      )}
-
-      <div className={hasPositions ? "mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start" : "mt-4"}>
-        <div className={mobileView === "map" && hasPositions ? "hidden lg:block" : ""}>
-          <div className={hasPositions ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2" : "grid gap-4 sm:grid-cols-2"}>
-            {(results || []).map((location) => (
-              <div
-                key={location.id}
-                onMouseEnter={() => onHover(location.id)}
-                onMouseLeave={() => onHover(null)}
-                onClick={() => onSelect(location.id)}
-                className={`rounded-2xl transition-shadow ${
-                  selectedId === location.id ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
-                } ${hoveredId === location.id && selectedId !== location.id ? "shadow-[0_4px_16px_rgba(23,23,23,0.10)]" : ""}`}
-              >
-                {renderCard(location)}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {hasPositions && (
-          <aside className={`lg:sticky lg:top-24 ${mobileView === "map" ? "block" : "hidden lg:block"}`}>
-            <ResultsMap
-              results={results || []}
-              selectedId={selectedId}
-              hoveredId={hoveredId}
-              onSelect={onSelect}
-              onHover={onHover}
-              className="h-[70vh] overflow-hidden rounded-3xl border border-border lg:h-[calc(100vh-9rem)]"
-            />
-          </aside>
-        )}
-      </div>
-    </>
-  );
-}
 
 export default function Search() {
   const [urlParams] = useState(
@@ -155,13 +92,13 @@ export default function Search() {
     return () => window.removeEventListener("scroll", rememberScroll);
   }, []);
   useEffect(() => {
-    if (restoredScroll.current || results === null || (searchMode === RESULT_MODES.professionals.key && professionals === null)) return;
+    if (!locality || restoredScroll.current || results === null || (searchMode === RESULT_MODES.professionals.key && professionals === null)) return;
     const frame = requestAnimationFrame(() => {
       window.scrollTo({ top: saved.scrollY || 0, behavior: "instant" });
       restoredScroll.current = true;
     });
     return () => cancelAnimationFrame(frame);
-  }, [results, professionals, searchMode, saved.scrollY]);
+  }, [results, professionals, searchMode, saved.scrollY, locality]);
 
   // Verificare deterministica de siguranta, identica cu cea din fluxul ghidat /cerere.
   // Cautarea libera de aici nu trece prin QuestionText.jsx, deci fara acest control
@@ -421,6 +358,7 @@ export default function Search() {
           {results?.length > 0 && (
             <LocationsWithMap
               results={results}
+              storageKey={`local:${locality.siruta_code}:${service}:${debouncedQuery}`}
               renderCard={(location) => <DirectoryResultCard location={location} />}
               selectedId={selectedId}
               hoveredId={hoveredId}
@@ -438,6 +376,7 @@ export default function Search() {
           {results?.length > 0 && (
             <LocationsWithMap
               results={results}
+              storageKey={`local:${locality.siruta_code}:${service}:${debouncedQuery}`}
               renderCard={(location) => <ProviderCard location={location} />}
               selectedId={selectedId}
               hoveredId={hoveredId}
