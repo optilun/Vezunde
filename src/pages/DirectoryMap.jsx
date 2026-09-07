@@ -107,13 +107,13 @@ export default function DirectoryMap({ providerType = "" }) {
   useEffect(() => {
     if (state.status !== "ready" || scrollRestored.current) return;
     const frame = requestAnimationFrame(() => {
-      window.scrollTo({ top: readSearchSession().nationalScroll || 0, behavior: "instant" });
+      window.scrollTo({ top: window.matchMedia("(min-width: 1024px)").matches ? 0 : readSearchSession().nationalScroll || 0, behavior: "instant" });
       scrollRestored.current = true;
     });
     return () => cancelAnimationFrame(frame);
   }, [state.status]);
   useEffect(() => {
-    const save = () => { if (scrollRestored.current) writeSearchSession({ nationalScroll: window.scrollY }); };
+    const save = () => { if (scrollRestored.current && !window.matchMedia("(min-width: 1024px)").matches) writeSearchSession({ nationalScroll: window.scrollY }); };
     window.addEventListener("scroll", save, { passive: true });
     return () => window.removeEventListener("scroll", save);
   }, []);
