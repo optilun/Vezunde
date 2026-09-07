@@ -38,6 +38,9 @@ Deno.serve(async (req) => {
 
     const sirutaCode = String(payload.locality_siruta_code || '').trim();
     const providerTypes = Array.isArray(payload.provider_types) ? payload.provider_types : [];
+    const selectedServices = Array.isArray(payload.filter_service_keys) ? payload.filter_service_keys.map(String).filter(key => normalizeServiceKey(key).definition) : [];
+    const casOnly = payload.cas_only === true;
+    const advanced = selectedServices.length > 0 || casOnly;
     const pageSize = Math.max(1, Math.min(Number(payload.page_size || payload.limit) || 20, 50));
     const offset = Math.max(0, Math.floor(Number(payload.offset) || 0));
 
@@ -116,7 +119,9 @@ Deno.serve(async (req) => {
       })
       .sort((a, b) => normalizedName(a).localeCompare(normalizedName(b), 'ro') || String(a.id || '').localeCompare(String(b.id || '')));
 
-    const { page: locations, pagination } = paginateRows(eligibleLocations, { pageSize, offset });
+    const initialPage = paginateRows(eligibleLocations, { pageSize, offset });
+    const locations = advanced ? eligibleLocations : initialPage.page;
+    let pagination = initialPage.pagination;
     const locationIds = locations.map((location) => location.id).filter(Boolean);
 
     const [services, assignments, equipment, facilities] = await Promise.all([
@@ -180,11 +185,13 @@ Deno.serve(async (req) => {
         facilities: facilitiesByLocation[loc.id] || [],
       };
 
-      const hasPublicService = (servicesByLocation[loc.id] || []).some((service) => (
+      const publicServices = publicDisclosure.expose_full_details ? (servicesByLocation[loc.id] || []).filter((service) => (
         !service.migration_review_required
         && isServicePubliclyEligible(service, loc)
         && evaluateServicePrerequisites(service.service_key, prerequisiteContext).eligible
-      ));
+      )) : [];
+      const hasPublicService = publicServices.length > 0;
+      if (advanced && !publicServices.some(service => (!selectedServices.length || selectedServices.includes(normalizeServiceKey(service.service_key).key || service.service_key)) && (!casOnly || service.cas_reimbursed === true))) continue;
 
       results.push({
         id: loc.id,
@@ -213,8 +220,10 @@ Deno.serve(async (req) => {
       });
     }
 
+    const finalPage = advanced ? paginateRows(results, { pageSize, offset }) : { page: results, pagination };
+    pagination = finalPage.pagination;
     return Response.json({
-      results,
+      results: finalPage.page,
       coverage_status: results.length > 0 ? 'results_found' : 'no_local_results',
       routing_mode: 'locality',
       query_scope: 'locality',
