@@ -59,7 +59,7 @@ export default function LocationsWithMap({
         </div>
 
         {hasPositions && (
-          <aside className={`lg:sticky lg:top-24 ${mobileView === "map" ? "block" : "hidden lg:block"}`}>
+          <aside className={`lg:sticky ${mobileView === "map" ? "block" : "hidden lg:block"}`} style={{ top: "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 16px)" }}>
             <ResultsMap
               results={results || []}
               selectedId={selectedId}
@@ -69,7 +69,7 @@ export default function LocationsWithMap({
               onViewportChange={onViewportChange}
               storageKey={storageKey}
               focusArea={focusArea}
-              className="h-[70vh] overflow-hidden rounded-3xl border border-border lg:h-[calc(100vh-9rem)]"
+              className="h-[70vh] overflow-hidden rounded-3xl border border-border lg:h-[max(16rem,calc(100dvh-var(--search-nav-height,80px)-var(--search-controls-height,0px)-32px))]"
             />
           </aside>
         )}

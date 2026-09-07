@@ -53,6 +53,23 @@ export default function Search() {
   const [professionalError, setProfessionalError] = useState(false);
   const [retry, setRetry] = useState(0);
   const restoredScroll = useRef(false);
+  const controlsRef = useRef(null);
+  const [stickySize, setStickySize] = useState({ nav: 80, controls: 160 });
+  useEffect(() => {
+    const headers = [...document.querySelectorAll("header")];
+    const measure = () => {
+      const header = headers.find((element) => element.getBoundingClientRect().height > 0);
+      const nav = Math.ceil(header?.getBoundingClientRect().height || 0);
+      const controls = Math.ceil(controlsRef.current?.getBoundingClientRect().height || 0);
+      setStickySize((previous) => previous.nav === nav && previous.controls === controls ? previous : { nav, controls });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    headers.forEach((header) => observer.observe(header));
+    if (controlsRef.current) observer.observe(controlsRef.current);
+    window.addEventListener("resize", measure);
+    return () => { observer.disconnect(); window.removeEventListener("resize", measure); };
+  }, []);
   // 2026-09-03: /cauta rasfoia doar locatii. Pacientul care stie ca vrea "un oftalmolog din Sibiu"
   // nu avea de unde sa inceapa - trebuia sa deschida clinici una cate una si sa se uite la echipa.
   // Acelasi selector ca in rezultatele cererii, ca sa fie evident ca e aceeasi idee.
@@ -211,7 +228,7 @@ export default function Search() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[1800px] px-4 pb-10 pt-5 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1800px] px-4 pb-10 sm:px-6 lg:px-8" style={{ "--search-nav-height": `${stickySize.nav}px`, "--search-controls-height": `${stickySize.controls}px` }}>
       <div className="sr-only">
         <h1 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">
           Caută furnizori
@@ -221,6 +238,7 @@ export default function Search() {
         </p>
       </div>
 
+      <div ref={controlsRef} data-search-controls className="sticky z-30 -mx-4 border-b border-border bg-background px-4 pb-3 pt-5 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" style={{ top: "var(--search-nav-height)" }}>
       <section
         className="relative z-40 mx-auto max-w-3xl rounded-3xl border border-border bg-card p-2 shadow-sm md:rounded-full md:px-5 md:py-2"
         aria-label="Căutare"
@@ -317,6 +335,8 @@ export default function Search() {
           />
         </div>
       )}
+
+      </div>
 
       {showSafetyBanner ? (
         <div className="mt-6">
