@@ -18,7 +18,7 @@ import { browsePublicProfessionals } from "@/lib/professionalSearch";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
 
 const SEARCH_INPUT =
-  "min-h-12 w-full rounded-xl border border-border bg-card px-4 py-2.5 text-base outline-none transition-colors focus:border-primary/50 sm:text-sm";
+  "min-h-12 w-full rounded-full border border-transparent bg-card px-4 py-2.5 text-base outline-none transition-colors focus:border-primary/50 sm:text-sm";
 
 function useDebouncedValue(value, delay) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -64,9 +64,9 @@ function LocationsWithMap({
         </div>
       )}
 
-      <div className={hasPositions ? "mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(340px,0.85fr)] lg:items-start" : "mt-4"}>
+      <div className={hasPositions ? "mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start" : "mt-4"}>
         <div className={mobileView === "map" && hasPositions ? "hidden lg:block" : ""}>
-          <div className={hasPositions ? "grid gap-4" : "grid gap-4 sm:grid-cols-2"}>
+          <div className={hasPositions ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2" : "grid gap-4 sm:grid-cols-2"}>
             {(results || []).map((location) => (
               <div
                 key={location.id}
@@ -227,8 +227,8 @@ export default function Search() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 pb-10 pt-8 sm:px-5 sm:pt-12">
-      <div className="max-w-3xl">
+    <div className="mx-auto w-full max-w-[1800px] px-4 pb-10 pt-5 sm:px-6 lg:px-8">
+      <div className="sr-only">
         <h1 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">
           Caută furnizori
         </h1>
@@ -238,12 +238,12 @@ export default function Search() {
       </div>
 
       <section
-        className="mt-6 rounded-[22px] border border-border bg-card p-3 shadow-sm sm:p-5"
+        className="relative z-40 mx-auto max-w-3xl rounded-3xl border border-border bg-card p-2 shadow-sm md:rounded-full md:px-5 md:py-2"
         aria-label="Căutare"
       >
-        <div className="grid gap-4 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <div className="grid gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] md:gap-4">
           <div className="min-w-0">
-            <label htmlFor="directory-search" className="mb-2 block px-1 text-sm font-semibold">
+            <label htmlFor="directory-search" className="block px-4 pt-1 text-xs font-semibold">
               Ce cauți?
             </label>
             <div
@@ -301,14 +301,15 @@ export default function Search() {
               )}
             </div>
           </div>
-          <div className="min-w-0" role="group" aria-labelledby="directory-locality-label">
-            <span id="directory-locality-label" className="mb-2 block px-1 text-sm font-semibold">
+          <div className="min-w-0 border-t border-border pt-1 md:border-l md:border-t-0 md:pl-3 md:pt-0" role="group" aria-labelledby="directory-locality-label">
+            <span id="directory-locality-label" className="block px-4 pt-1 text-xs font-semibold">
               Unde?
             </span>
             <LocalityAutocomplete
               value={locality}
               onSelect={setLocality}
               placeholder="Alege localitatea"
+              variant="compact"
               className="w-full"
             />
           </div>
