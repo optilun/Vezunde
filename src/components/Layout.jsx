@@ -42,9 +42,6 @@ function DesktopHeader({ scrolled }) {
           <NavLink to="/cauta" className={desktopNavLinkClassName}>
             Caută
           </NavLink>
-          <NavLink to="/harta" className={desktopNavLinkClassName}>
-            Hartă
-          </NavLink>
           <NavLink
             to="/ghid"
             className={({ isActive }) =>
@@ -259,9 +256,6 @@ export default function Layout() {
             <FooterLinkGroup title="Platforma">
               <Link to="/cauta" className={footerLinkClassName}>
                 Caută
-              </Link>
-              <Link to="/harta" className={footerLinkClassName}>
-                Directorul pe hartă
               </Link>
               <Link to="/ghid" className={footerLinkClassName}>
                 Ghid pentru vedere

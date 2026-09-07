@@ -12,6 +12,8 @@ import DirectoryResultCard from "@/components/results/DirectoryResultCard";
 import ProfessionalDirectoryCard from "@/components/results/ProfessionalDirectoryCard";
 import ResultModeTabs, { RESULT_MODES } from "@/components/intake2/ResultModeTabs";
 import ResultsMap from "@/components/results/ResultsMap";
+import DirectoryMap from "@/pages/DirectoryMap";
+import { mapPointFromResult } from "../../shared/resultsMapPoints.js";
 import { browsePublicProfessionals } from "@/lib/professionalSearch";
 import LocalityAutocomplete from "@/components/geo/LocalityAutocomplete";
 
@@ -45,7 +47,7 @@ function LocationsWithMap({
   mobileView,
   onToggleMobileView,
 }) {
-  const hasPositions = (results || []).some((location) => Number.isFinite(Number(location?.lat)));
+  const hasPositions = (results || []).some((location) => mapPointFromResult(location) !== null);
 
   return (
     <>
@@ -82,7 +84,7 @@ function LocationsWithMap({
         </div>
 
         {hasPositions && (
-          <aside className={`lg:sticky lg:top-6 ${mobileView === "map" ? "block" : "hidden lg:block"}`}>
+          <aside className={`lg:sticky lg:top-24 ${mobileView === "map" ? "block" : "hidden lg:block"}`}>
             <ResultsMap
               results={results || []}
               selectedId={selectedId}
@@ -231,8 +233,7 @@ export default function Search() {
           Caută furnizori
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Descrie nevoia în cuvintele tale sau alege un serviciu. Rezultatele
-          țin cont de serviciul și localitatea selectate.
+          Explorează locațiile pe hartă sau alege localitatea și serviciul de care ai nevoie.
         </p>
       </div>
 
@@ -344,7 +345,9 @@ export default function Search() {
           />
         </div>
       ) : !hasCanonicalLocality ? (
-        <SelectLocalityNotice />
+        !service && !query.trim()
+          ? <DirectoryMap providerType={type} />
+          : <SelectLocalityNotice />
       ) : searchMode === RESULT_MODES.professionals.key ? (
         <div className="mt-8">
           <h2 className="font-heading text-lg font-bold sm:text-xl">

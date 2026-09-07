@@ -6,6 +6,7 @@ import {
   Navigate,
   Route,
   Routes,
+  useLocation,
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import ScrollToTop from "./components/ScrollToTop";
@@ -27,7 +28,6 @@ const Toaster = lazy(() =>
 const PageNotFound = lazy(() => import("./lib/PageNotFound"));
 const Home = lazy(() => import("./pages/Home"));
 const Search = lazy(() => import("./pages/Search"));
-const DirectoryMap = lazy(() => import("./pages/DirectoryMap"));
 const ProviderProfile = lazy(() => import("./pages/ProviderProfile"));
 const OrganizationProfile = lazy(() => import("./pages/OrganizationProfile"));
 const RequestMatches = lazy(() => import("./pages/RequestMatches"));
@@ -73,6 +73,11 @@ const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+
+function SearchRedirect() {
+  const location = useLocation();
+  return <Navigate to={{ pathname: "/cauta", search: location.search, hash: location.hash }} replace />;
+}
 
 function PageLoading() {
   return (
@@ -174,7 +179,8 @@ const AppRoutes = () => {
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
           <Route path="/cauta" element={<Search />} />
-          <Route path="/harta" element={<DirectoryMap />} />
+          <Route path="/harta" element={<SearchRedirect />} />
+          <Route path="/cautare" element={<SearchRedirect />} />
           <Route path="/parteneri" element={<Partners />} />
           <Route path="/despre-viasee" element={<AboutViasee />} />
           <Route path="/furnizor/:id" element={<ProviderProfile />} />

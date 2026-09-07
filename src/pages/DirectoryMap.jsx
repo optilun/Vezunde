@@ -1,9 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { Loader2, MapPin, Search as SearchIcon } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import ResultsMap from "@/components/results/ResultsMap";
-import { PROVIDER_TYPES } from "@/lib/vezunde";
 
 // Directorul pe harta Romaniei.
 //
@@ -19,9 +17,9 @@ import { PROVIDER_TYPES } from "@/lib/vezunde";
 // Filtrarea dupa tip se face in browser, pe punctele deja primite: sunt sub o mie, iar o
 // re-interogare la fiecare bifa ar fi mai lenta decat filtrarea locala.
 
-export default function DirectoryMap() {
+export default function DirectoryMap({ providerType = "" }) {
   const [state, setState] = useState({ status: "loading", points: [], meta: null, error: "" });
-  const [type, setType] = useState("");
+  const type = providerType;
   const [retry, setRetry] = useState(0);
   const [selectedId, setSelectedId] = useState(null);
   const [hoveredId, setHoveredId] = useState(null);
@@ -61,14 +59,16 @@ export default function DirectoryMap() {
     [state.points, type],
   );
 
+  useEffect(() => { setSelectedId(null); setHoveredId(null); }, [type]);
+
   return (
-    <div className="flex h-[calc(100svh-4rem)] flex-col lg:h-[calc(100svh-5rem)]">
+    <section aria-label="Explorează locațiile pe hartă" className="mt-6 flex h-[65svh] min-h-[24rem] flex-col overflow-hidden rounded-3xl border border-border bg-card">
       <div className="shrink-0 border-b border-border bg-background px-4 py-3 lg:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="font-heading text-lg font-bold tracking-tight sm:text-xl">
-              Directorul pe hartă
-            </h1>
+            <h2 className="font-heading text-lg font-bold tracking-tight sm:text-xl">
+              Explorează România
+            </h2>
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground sm:text-sm">
               {state.status === "ready"
                 ? `${visiblePoints.length} ${visiblePoints.length === 1 ? "locație" : "locații"} pe hartă${
@@ -80,25 +80,7 @@ export default function DirectoryMap() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={type}
-              onChange={(event) => { setType(event.target.value); setSelectedId(null); }}
-              aria-label="Filtrează după tipul locației"
-              className="min-h-10 rounded-full border border-border bg-card px-4 text-xs font-semibold outline-none"
-            >
-              <option value="">Toate tipurile</option>
-              {Object.entries(PROVIDER_TYPES).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-            <Link
-              to="/cerere"
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground"
-            >
-              <SearchIcon className="h-3.5 w-3.5" /> Găsește opțiuni potrivite
-            </Link>
-          </div>
+
         </div>
       </div>
 
@@ -146,6 +128,6 @@ export default function DirectoryMap() {
           />
         )}
       </div>
-    </div>
+    </section>
   );
 }
