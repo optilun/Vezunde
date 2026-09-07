@@ -80,3 +80,12 @@ Observatie de continuitate: in codul gasit la reluare, loader-ul national a fost
 - Cauza transparenței: DesktopHeader scrolled utiliza bg-background/88 + backdrop-blur-sm. Pe rutele de cautare, DesktopHeader si MobileHeader au acum fundal hsl(var(--background)) opac si backdropFilter none. Restul paginilor isi pastreaza stilul.
 - Audit filtre: pastrate serviciu/text, localitate si mod locatii/specialisti; fara liste suplimentare. Adaugat Reseteaza cautarea numai cand exista criterii, cu revenire la director si stergere viewport/scroll salvat.
 - Verificat: eslint 0 erori/avertismente pe fisierele modificate, verify-search-session OK, build exit0. Verificarea vizuala la scroll nu a fost rulata pe noua versiune. Nepublicat.
+
+
+## 2026-09-07 — Implementare audit cautare
+- Search: paginare reala browseDirectoryProviders (offset/has_more/next_offset/total), incarcare suplimentara fara duplicate, retry separat si invalidarea raspunsurilor la schimbarea criteriilor. Revenirea reia numarul de rezultate locale incarcate anterior.
+- Filtru optional Tip bazat pe cataloagele existente. Locatiile sunt filtrate server-side; specialistii folosesc professional_type optional in matchProfessionals, aplicat inaintea bucket-urilor si limitei. Endpointul backend se sincronizeaza automat; nu s-au modificat entitati/date/RLS.
+- Proximitate: incadrare initiala aproximativa 15km, extindere explicita 30/60km. Precizie device >5km cere localitate manuala. Ordinea ID-urilor (nu coordonatele brute ale dispozitivului) se pastreaza in sesiune. Limita: zona este dreptunghiul hartii, nu un filtru radial strict.
+- Selectia hartii extinde prefixul listei fara reordonare si aduce cardul in vedere pe desktop. LocalityAutocomplete distinge loading/error/empty si ofera retry; Escape/iesirea focusului inchid sugestiile.
+- Afisat numarul locatiilor fara pozitie; antet card redus la h-20; buton inchidere harta 44px; scroll-margin pentru controalele de sub antetul sticky.
+- Verificari: lint curat pe fisierele controlate, build OK, profesional 31/31, map/session/nearby OK. Nu s-a verificat runtime pe device/browser; frontend nepublicat. Filtrarea backend optionala este auto-sync.
