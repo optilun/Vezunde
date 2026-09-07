@@ -75,6 +75,11 @@ export default function DirectoryMap({ providerType = "" }) {
     return visiblePoints.filter((point) => ids.has(point.id));
   }, [visiblePoints, visibleIds]);
   const listedPoints = inView.slice(0, pageSize);
+  // Keep a selected marker represented even beyond the first page of cards.
+  const selectedPoint = inView.find((point) => point.id === selectedId);
+  if (selectedPoint && !listedPoints.some((point) => point.id === selectedId)) {
+    listedPoints.unshift(selectedPoint);
+  }
 
   return (
     <section aria-label="Explorează locațiile pe hartă" className="mt-6">
