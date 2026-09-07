@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Search as SearchIcon, X } from "lucide-react";
+import { Search as SearchIcon, MapPin, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { SERVICES } from "@/lib/vezunde";
 import { getServiceSearchSuggestions } from "@/lib/serviceSemanticSearch";
@@ -295,9 +295,9 @@ export default function Search() {
       </div>
 
       <div ref={controlsRef} data-search-controls className="sticky z-30 -mx-4 border-b border-border bg-background px-4 py-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" style={{ top: "var(--search-nav-height)" }}>
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-3">
       <section
-        className="relative z-40 min-w-0 flex-1 rounded-2xl border border-border bg-card px-2 py-1 shadow-sm md:rounded-full"
+        className="relative z-40 w-full min-w-0 rounded-3xl border border-[#e1e3e8] bg-card px-2 py-1.5 shadow-[0_2px_10px_rgba(30,40,60,0.07)] transition-shadow focus-within:shadow-md sm:w-auto sm:flex-1 sm:rounded-full"
         aria-label="Căutare"
       >
         <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-1 md:gap-2">
@@ -316,7 +316,7 @@ export default function Search() {
               }}
             >
               <SearchIcon
-                className="pointer-events-none absolute left-4 top-4 h-4 w-4 text-muted-foreground"
+                className="pointer-events-none absolute left-4 top-4 h-4 w-4 text-[#4f6080]"
                 aria-hidden="true"
               />
               <input
@@ -328,7 +328,7 @@ export default function Search() {
                   setFilterServiceKeys([]); setCasOnly(false);
                   setSuggestionsOpen(true);
                 }}
-                placeholder="Ex.: control de vedere, ochelari"
+                placeholder="Ce serviciu cauți?"
                 autoComplete="off"
                 className={`${SEARCH_INPUT} pl-11 pr-12`}
               />
@@ -361,8 +361,8 @@ export default function Search() {
               )}
             </div>
           </div>
-          <div className="min-w-0 border-l border-border md:pl-2" role="group" aria-labelledby="directory-locality-label">
-            <span id="directory-locality-label" className="sr-only">
+          <div className="relative min-w-0 border-l border-border pl-6 md:pl-7" role="group" aria-labelledby="directory-locality-label">
+            <MapPin className="pointer-events-none absolute left-3 top-4 h-4 w-4 text-[#4f6080]" aria-hidden="true" /><span id="directory-locality-label" className="sr-only">
               Unde?
             </span>
             <LocalityAutocomplete
@@ -384,7 +384,7 @@ export default function Search() {
           setFilterServiceKeys(filters.serviceKeys); setCasOnly(filters.casOnly); setSelectedId(null);
           if (filters.serviceKeys.length || filters.casOnly) { setQuery(""); setService(""); }
         }} />
-      <Link to="/cerere" className="hidden min-h-11 items-center text-xs underline underline-offset-4 xl:inline-flex">Ajută-mă să aleg</Link>
+      <Link to="/cerere" className="inline-flex min-h-11 items-center rounded-full px-3 text-xs text-muted-foreground transition hover:bg-secondary hover:text-foreground">Ajută-mă să aleg</Link>
       </div>
       {hasCanonicalLocality && !showSafetyBanner && <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
         <ResultModeTabs mode={searchMode} onChange={setSearchMode} />
