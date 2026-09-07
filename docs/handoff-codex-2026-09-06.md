@@ -49,3 +49,12 @@ Aplicat: Layout pastreaza doar Cauta in header/footer; meniul mobil avea deja do
 Verificat: verify-results-map OK, ESLint pe fisierele modificate exit 0, build exit 0. Regresie directa pentru doua pozitii identice la zoom 15/17/19 OK. verify-professional-architecture: 31/31. verify-professional-recommendation: 31/31. Nu s-a facut publicare de catre Codex; modificarea curenta necesita verificare vizuala in versiunea publicata/preview.
 
 Observatie de continuitate: in codul gasit la reluare, loader-ul national a fost deja corectat pentru codurile numerice SIRUTA in alta sesiune. Nu am suprascris acea corectie sau modificarile la geocodare. Domeniul actual confirmat de Alex este https://viasee.ro/; adresa veche base44.app nu se mai foloseste.
+
+
+## 2026-09-07 — Bara de cautare simplificata
+- Search.jsx: doua campuri vizibile, «Ce cauți?» si «Unde?». Eliminate dropdown-urile separate Serviciu si Tip de furnizor; serviciile se aleg din sugestii (maximum 6).
+- Pastrate ResultModeTabs, LocalityAutocomplete, ResultsMap si design tokens existente. Campuri suprapuse pe mobil, doua coloane de la md.
+- Buton de stergere doar cand exista cautare; sugestii inchise la Escape, iesirea focusului si selectie. Serviciul din URL ramane vizibil in camp.
+- Fara modificari de date/backend/matching. Filtrarea ascunsa dupa tip eliminata din Search; toate tipurile sunt incluse.
+- Verificari: eslint Search.jsx 0 erori (un warning preexistent _error), verify-results-map OK, npm run build exit 0.
+- Inspectie vizuala a versiunii publicate viasee.ro/cauta: inca bara veche cu 4 campuri si navigare separata Harta. Codul nou nu a fost publicat; verificarea vizuala a noii versiuni si interactiunea pe mobil raman de facut dupa preview/publicare.
