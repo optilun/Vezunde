@@ -1,0 +1,23 @@
+import assert from "node:assert/strict";
+import { compactMarkerKeys, pillHtml } from "../shared/mapMarkerPresentation.js";
+
+const marker = (key, left, extra = {}) => ({ key, left, right: left + 150, top: 20, bottom: 56, priority: 1, ...extra });
+const dense = [marker("a", 0), marker("b", 100), marker("c", 200)];
+assert.deepEqual([...compactMarkerKeys(dense)], ["b"], "Only colliding labels become compact; separated labels remain");
+assert.deepEqual([...compactMarkerKeys([...dense].reverse())], ["b"], "Input order cannot reshuffle label visibility");
+assert.deepEqual([...compactMarkerKeys([marker("a",0), marker("b",100,{pinned:true,priority:5})])], ["a"], "Selected location keeps its label");
+assert.deepEqual([...compactMarkerKeys([marker("a",0), marker("b",100,{pinned:true,priority:4})])], ["a"], "Hovered location keeps its label");
+assert.deepEqual([...compactMarkerKeys([marker("a",0,{group:true,priority:3}), marker("b",100)])], ["b"], "Cluster count stays visible");
+assert.equal(compactMarkerKeys([marker("a",0,{pinned:true}), marker("b",100,{pinned:true})]).size,0);
+assert.equal(compactMarkerKeys([marker("a",0), marker("b",0,{top:100,bottom:136})]).size,0, "Vertical separation matters");
+assert.equal(compactMarkerKeys([]).size,0);
+const single = {key:"one", count:1, lead:{name:'Optica <script>alert("x")</script>',provider_type:"optica_medicala",map_precision:"approximate"}};
+const html = pillHtml(single);
+assert.ok(!html.includes("<script>"), "Public names must be escaped before innerHTML");
+assert.ok(html.includes("&lt;script&gt;"));
+assert.ok(html.includes('data-approximate="true"'));
+assert.ok(html.includes('data-group="false"'));
+assert.ok(pillHtml({...single,count:43}).includes("43 locații"), "Count must remain the original cluster count");
+assert.ok(pillHtml(single,{active:true}).includes('data-active="true"'));
+assert.equal(JSON.stringify(dense), JSON.stringify([marker("a",0),marker("b",100),marker("c",200)]), "Layout cannot mutate source entries");
+console.log("verify-map-marker-layout: ok");
