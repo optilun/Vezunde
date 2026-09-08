@@ -173,6 +173,7 @@ export default function MatchResults({
   onVisibleResultsChange = null,
   onResultModeChange = null,
   onContextChange = null,
+  onExpandedSnapshot = null,
   onHoverLocation = null,
   hoveredLocationId = null,
   visibleIds = null,
@@ -190,6 +191,9 @@ export default function MatchResults({
   const [isExpandingNational, setIsExpandingNational] = useState(false);
   const [nationalExpansionError, setNationalExpansionError] = useState("");
   const lastImpressionKey = useRef("");
+  const expansionBusy = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const activeMeta = expandedSnapshot?.meta || meta || EMPTY_META;
   const list = Array.isArray(expandedSnapshot?.results)
     ? expandedSnapshot.results
@@ -332,13 +336,14 @@ export default function MatchResults({
   };
 
   const expandCounty = async () => {
-    if (isExpandingCounty || queryScope === "county") return;
+    if (expansionBusy.current || queryScope === "county") return;
     const draft = readPatientRequestDraft();
     if (!draft) {
       setExpansionError("Rezumatul cererii nu mai este disponibil. Reia căutarea.");
       return;
     }
 
+    expansionBusy.current = true;
     setIsExpandingCounty(true);
     setExpansionError("");
     try {
@@ -358,10 +363,13 @@ export default function MatchResults({
 
     try {
       const data = await matchProvidersInSelectedCounty(draft);
+      if (!mounted.current) return;
       const nextDraft = countyExpansionDraft(draft, data);
       storePatientRequestDraft(nextDraft);
       const nextMeta = metaFromExpandedResponse(data, activeMeta);
-      setExpandedSnapshot({ results: Array.isArray(data.results) ? data.results : [], meta: nextMeta });
+      const snapshot = { results: Array.isArray(data.results) ? data.results : [], meta: nextMeta };
+      setExpandedSnapshot(snapshot);
+      onExpandedSnapshot?.(snapshot);
       setShowMore(false);
       try {
         base44.analytics.track({
@@ -392,18 +400,20 @@ export default function MatchResults({
         // Expansion must not depend on analytics.
       }
     } finally {
+      expansionBusy.current = false;
       setIsExpandingCounty(false);
     }
   };
 
   const expandNational = async () => {
-    if (isExpandingNational || queryScope === "national") return;
+    if (expansionBusy.current || queryScope === "national") return;
     const draft = readPatientRequestDraft();
     if (!draft) {
       setNationalExpansionError("Rezumatul cererii nu mai este disponibil. Reia căutarea.");
       return;
     }
 
+    expansionBusy.current = true;
     setIsExpandingNational(true);
     setNationalExpansionError("");
     try {
@@ -422,10 +432,13 @@ export default function MatchResults({
 
     try {
       const data = await matchProvidersNationally(draft);
+      if (!mounted.current) return;
       const nextDraft = nationalExpansionDraft(draft);
       storePatientRequestDraft(nextDraft);
       const nextMeta = metaFromExpandedResponse(data, activeMeta);
-      setExpandedSnapshot({ results: Array.isArray(data.results) ? data.results : [], meta: nextMeta });
+      const snapshot = { results: Array.isArray(data.results) ? data.results : [], meta: nextMeta };
+      setExpandedSnapshot(snapshot);
+      onExpandedSnapshot?.(snapshot);
       setShowMore(false);
       try {
         base44.analytics.track({
@@ -454,6 +467,7 @@ export default function MatchResults({
         // Expansion must not depend on analytics.
       }
     } finally {
+      expansionBusy.current = false;
       setIsExpandingNational(false);
     }
   };
@@ -461,10 +475,10 @@ export default function MatchResults({
   const expansionProps = {
     countyName,
     onExpandCounty: queryScope === "county" || !countyName ? undefined : expandCounty,
-    isExpandingCounty,
+    isExpandingCounty: isExpandingCounty || isExpandingNational,
     actionError: expansionError,
     onExpandNational: queryScope === "national" ? undefined : expandNational,
-    isExpandingNational,
+    isExpandingNational: isExpandingCounty || isExpandingNational,
     nationalActionError: nationalExpansionError,
   };
 
@@ -529,26 +543,13 @@ export default function MatchResults({
     </div>
   );
 
-  if (resultMode === RESULT_MODES.professionals.key) {
-    return (
-      <div>
-        {modeTabs}
-        <ProfessionalResults
-            compact={compact}
-          meta={activeMeta}
-          draft={storedDraft}
-          onBackToLocations={() => changeResultMode(RESULT_MODES.locations.key)}
-          onCountChange={setProfessionalCount}
-        />
-      </div>
-    );
-  }
-
   const hiddenByViewport = visibleSet ? list.length - shownList.length : 0;
 
   return (
     <div>
       {modeTabs}
+      {resultMode === RESULT_MODES.professionals.key && <ProfessionalResults compact={compact} meta={activeMeta} draft={storedDraft} onBackToLocations={() => changeResultMode(RESULT_MODES.locations.key)} onCountChange={setProfessionalCount} />}
+      <div hidden={resultMode !== RESULT_MODES.locations.key}>
 
       {/* Cand filtrarea dupa harta ascunde optiuni, se spune cate si de ce. O lista scurtata in
           tacere ar parea un rezultat al cautarii, nu al deplasarii hartii. */}
@@ -579,7 +580,7 @@ export default function MatchResults({
               <button
                 type="button"
                 onClick={expandCounty}
-                disabled={isExpandingCounty}
+                disabled={isExpandingCounty || isExpandingNational}
                 className="font-medium text-foreground underline underline-offset-2 disabled:opacity-60"
               >
                 {isExpandingCounty ? "Extindem..." : `Extinde în județul ${countyName || "selectat"}`}
@@ -589,7 +590,7 @@ export default function MatchResults({
               <button
                 type="button"
                 onClick={expandNational}
-                disabled={isExpandingNational}
+                disabled={isExpandingCounty || isExpandingNational}
                 className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-2 disabled:opacity-60"
               >
                 <Globe className="h-3 w-3" />
@@ -705,6 +706,7 @@ export default function MatchResults({
         ) : (
           <span className="text-xs leading-relaxed text-muted-foreground">Mulțumim. Feedbackul tău ne ajută să îmbunătățim recomandările.</span>
         )}
+      </div>
       </div>
     </div>
   );
