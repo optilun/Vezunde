@@ -4,7 +4,7 @@ import { Search as SearchIcon, MapPin, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { SERVICES, PROVIDER_TYPES, PROFESSIONAL_TYPES } from "@/lib/vezunde";
 import { CANONICAL_SERVICE_REGISTRY } from "@/lib/canonicalServiceCatalog";
-import { getServiceSearchSuggestions } from "@/lib/serviceSemanticSearch";
+import { getServiceSearchSuggestions, resolveServiceSearchQuery } from "@/lib/serviceSemanticSearch";
 import { matchProvidersWithSemanticFallback } from "@/lib/providerSemanticSearch";
 import { deterministicSafetyFlagsFromText } from "@/lib/patientSafety";
 import UrgencyInterruption from "@/components/intake2/UrgencyInterruption";
@@ -148,10 +148,14 @@ export default function Search() {
   const isDirectoryBrowseView =
     !service && !query.trim() && hasCanonicalLocality;
 
+  const previousCriteria = useRef(null);
   useEffect(() => {
+    const criteria = JSON.stringify([service, query, locality?.siruta_code, providerType, filterServiceKeys, casOnly]);
+    if (previousCriteria.current !== null && previousCriteria.current !== criteria) { setSelectedId(null); setHoveredId(null); }
+    previousCriteria.current = criteria;
     pageRequest.current += 1;
     setPagination(null); setMoreLoading(false); setMoreError(false);
-    setMapResults(null); setSelectedId(null); setHoveredId(null);
+    setMapResults(null);
     setResults(null);
     setProfessionals(null);
     setMatchContext(null);
@@ -205,7 +209,7 @@ export default function Search() {
           const filtered = await base44.functions.invoke("browseDirectoryProviders", {
             locality_siruta_code: locality.siruta_code,
             provider_types: providerType.split(",").filter(Boolean),
-            filter_service_keys: filterServiceKeys, cas_only: casOnly,
+            filter_service_keys: filterServiceKeys.length ? filterServiceKeys : casOnly ? (service ? [service] : resolveServiceSearchQuery(debouncedQuery).service_keys) : [], cas_only: casOnly,
             include_map_results: true, limit: 1,
           });
           if (filtered.data?.error || !Array.isArray(filtered.data?.map_results)) throw new Error("Filtrele nu au putut fi verificate.");
@@ -444,7 +448,7 @@ export default function Search() {
         </div>
       ) : !hasCanonicalLocality ? (
         !service && !query.trim()
-          ? <DirectoryMap providerType={providerType} />
+          ? <DirectoryMap providerType={providerType} filterSummary={filterSummary} />
           : <SelectLocalityNotice />
       ) : (loadError || (searchMode === RESULT_MODES.professionals.key && professionalError)) ? (
         <div role="alert" className="mt-6 rounded-2xl border border-border bg-card p-6">
