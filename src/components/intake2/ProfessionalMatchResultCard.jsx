@@ -17,6 +17,7 @@ export default function ProfessionalMatchResultCard({
   needLevel = "general",
   onSelect,
   selected = false,
+  compact = false,
 }) {
   const trackAction = (action, extra = {}) => {
     try {
@@ -47,6 +48,7 @@ export default function ProfessionalMatchResultCard({
       onLocationClick={(location) => trackAction("location_opened", { provider_location_id: location?.id || null })}
       onSelect={onSelect}
       selected={selected}
+      compact={compact}
     />
   );
 }
