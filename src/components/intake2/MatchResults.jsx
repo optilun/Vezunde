@@ -530,7 +530,7 @@ export default function MatchResults({
     );
   }
 
-  const expanded = showMore || top3.length === 0;
+  const expanded = showMore || top3.length === 0 || shownList.some(row => row.id === selectedLocationId && row.result_bucket !== "top3");
 
   const modeTabs = (
     <div className="mb-4">

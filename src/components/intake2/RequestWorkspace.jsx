@@ -335,7 +335,8 @@ function SelectedLocationPanel({
 function LocationRail({ locations, responses, selectedLocationId, unreadByLocation, requestTerminal, onSelect }) {
   const responseByLocation = new Map((responses || []).map((response) => [response.location_id, response]));
   const top3 = locations.filter((location) => location.result_bucket === "top3");
-  const additional = locations.filter((location) => location.result_bucket !== "top3" && location.result_bucket !== "excluded");
+  const additional = locations.filter((location) => location.result_bucket !== "top3" && location.result_bucket !== "excluded" && location.result_bucket !== "response_only");
+  const responders = locations.filter((location) => location.result_bucket === "response_only");
 
   return (
     <div>
@@ -364,6 +365,18 @@ function LocationRail({ locations, responses, selectedLocationId, unreadByLocati
         </div>
       )}
 
+      {responders.length > 0 && (
+        <div className="mt-5 space-y-3">
+          <h3 className="text-xs font-bold text-muted-foreground">Locatii care au raspuns</h3>
+          {responders.map((location) => (
+            <RequestWorkspaceLocationCard key={locationId(location)} location={location}
+              response={responseByLocation.get(locationId(location))}
+              selected={selectedLocationId === locationId(location)}
+              unread={unreadByLocation[locationId(location)] || 0}
+              requestTerminal={requestTerminal} onSelect={() => onSelect(locationId(location))} />
+          ))}
+        </div>
+      )}
       {additional.length > 0 && (
         <div className="mt-7 space-y-3 border-t border-border pt-5">
           <div>
