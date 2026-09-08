@@ -26,7 +26,7 @@ const TIER_LABELS = {
 };
 
 const VARIANT_STYLES = {
-  top3: "bg-card border border-primary/30 shadow-[0_4px_24px_rgba(154,74,33,0.08)]",
+  top3: "bg-card border border-[#b9c5d8]",
   confirmed: "bg-card border border-border",
   directory: "bg-secondary/30 border border-dashed border-border/80",
   neutral: "bg-card border border-border",
@@ -40,6 +40,7 @@ export default function ProfessionalResultCard({
   onSelect,
   selected = false,
   needLevel = "general",
+  compact = false,
 }) {
   const locations = Array.isArray(professional.locations) ? professional.locations : [];
   const primaryLocation = locations[0] || null;
@@ -61,23 +62,17 @@ export default function ProfessionalResultCard({
   });
 
   return (
-    <div
-      onClick={onSelect ? () => onSelect(professional) : undefined}
-      role={onSelect ? "button" : undefined}
-      tabIndex={onSelect ? 0 : undefined}
-      onKeyDown={onSelect ? (event) => { if (event.key === "Enter") onSelect(professional); } : undefined}
-      className={`rounded-2xl p-5 transition-all ${VARIANT_STYLES[variant] || VARIANT_STYLES.neutral} ${
-        onSelect ? "cursor-pointer" : ""
-      } ${selected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
+    <article
+      className={`directory-premium-card rounded-[22px] p-4 sm:p-5 ${VARIANT_STYLES[variant] || VARIANT_STYLES.neutral} ${selected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3.5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 basis-60 items-start gap-3">
           <ProfessionalThumb professional={professional} />
           <div className="min-w-0">
-            <div className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            <div className="text-xs font-semibold text-[#4f6080]">
               {professional.professional_type_label || professionalTypeLabel(professional.professional_type)}
             </div>
-            <h3 className="mt-1 font-display text-xl font-bold leading-tight tracking-tight text-foreground">
+            <h3 className="mt-1 break-words font-heading text-lg font-bold leading-snug tracking-tight text-foreground">
               {professional.display_name}
             </h3>
           </div>
@@ -113,7 +108,7 @@ export default function ProfessionalResultCard({
         </div>
       )}
 
-      <DecisionConfidencePanel confidence={confidence} />
+      <DecisionConfidencePanel confidence={confidence} compact={compact} />
 
       {/* Drumul specialist -> locatie -> organizatie. Fara el, cardul ar fi un capat de drum:
           pacientul afla numele persoanei si nu ar avea unde sa mearga. */}
@@ -147,11 +142,12 @@ export default function ProfessionalResultCard({
         </div>
       )}
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2 border-t border-border/70 pt-3">
+        {onSelect && <button type="button" onClick={() => onSelect(professional)} className="min-h-11 rounded-xl border border-border px-4 text-sm font-medium">Selectează specialistul</button>}
         <Link
           to={`/specialist/${professional.id}`}
           onClick={onProfileClick}
-          className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          className="inline-flex min-h-11 items-center rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-[#4f6080]"
         >
           Vezi profilul specialistului
         </Link>
@@ -162,12 +158,12 @@ export default function ProfessionalResultCard({
               event.stopPropagation();
               if (onLocationClick) onLocationClick(primaryLocation);
             }}
-            className="rounded-full border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:border-foreground/40"
+            className="inline-flex min-h-11 items-center rounded-xl border border-border bg-secondary/50 px-4 py-2 text-sm font-medium text-[#4f6080] transition-colors hover:bg-secondary"
           >
             Vezi locația
           </Link>
         )}
       </div>
-    </div>
+    </article>
   );
 }
