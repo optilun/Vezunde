@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { BadgeCheck, Building2, MapPin } from "lucide-react";
 import ServiceChip from "@/components/results/ServiceChip";
 import DecisionConfidencePanel from "@/components/results/DecisionConfidencePanel";
@@ -42,6 +42,10 @@ export default function ProfessionalResultCard({
   needLevel = "general",
   compact = false,
 }) {
+  const route = useLocation();
+  const returnState = route.pathname === "/rezultate"
+    ? { resultsReturn: route.state }
+    : undefined;
   const locations = Array.isArray(professional.locations) ? professional.locations : [];
   const primaryLocation = locations[0] || null;
   const extraLocations = Math.max(0, locations.length - 1);
@@ -120,7 +124,7 @@ export default function ProfessionalResultCard({
           <ul className="mt-2 space-y-1.5">
             {locations.slice(0, 2).map((location) => (
               <li key={location.id} className="text-sm leading-snug">
-                <Link
+                <Link state={returnState}
                   to={`/furnizor/${location.id}`}
                   onClick={(event) => {
                     event.stopPropagation();
@@ -144,7 +148,7 @@ export default function ProfessionalResultCard({
 
       <div className="mt-4 flex flex-wrap gap-2 border-t border-border/70 pt-3">
         {onSelect && <button type="button" onClick={() => onSelect(professional)} className="min-h-11 rounded-xl border border-border px-4 text-sm font-medium">Selectează specialistul</button>}
-        <Link
+        <Link state={returnState}
           to={`/specialist/${professional.id}`}
           onClick={onProfileClick}
           className="inline-flex min-h-11 items-center rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-[#4f6080]"
@@ -152,7 +156,7 @@ export default function ProfessionalResultCard({
           Vezi profilul specialistului
         </Link>
         {primaryLocation && (
-          <Link
+          <Link state={returnState}
             to={`/furnizor/${primaryLocation.id}`}
             onClick={(event) => {
               event.stopPropagation();

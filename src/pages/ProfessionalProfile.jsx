@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
@@ -60,6 +60,10 @@ function ContactRow({ icon: Icon, label, children }) {
 }
 
 export default function ProfessionalProfile() {
+  const route = useLocation();
+  const resultsReturn = route.state?.resultsReturn;
+  const hasResultsReturn = Array.isArray(resultsReturn?.results);
+
   const { id } = useParams();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -114,8 +118,8 @@ export default function ProfessionalProfile() {
       <div className="mx-auto min-h-[55vh] max-w-5xl px-5 pt-20">
         <h1 className="font-heading text-2xl font-extrabold">Profilul nu a fost gasit</h1>
         <p className="mt-2 text-sm text-muted-foreground">Profilul nu este public sau nu mai este disponibil.</p>
-        <Link to="/cauta" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold hover:bg-secondary">
-          <ArrowLeft className="h-4 w-4" /> Înapoi la căutare
+        <Link to={hasResultsReturn ? "/rezultate" : "/cauta"} state={hasResultsReturn ? resultsReturn : undefined} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold hover:bg-secondary">
+          <ArrowLeft className="h-4 w-4" /> {hasResultsReturn ? "Înapoi la recomandări" : "Înapoi la căutare"}
         </Link>
       </div>
     );
@@ -136,8 +140,8 @@ export default function ProfessionalProfile() {
 
   return (
     <div className="mx-auto max-w-5xl px-5 pb-12 pt-8 sm:pt-12">
-      <Link to="/cauta" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" /> Înapoi la căutare
+      <Link to={hasResultsReturn ? "/rezultate" : "/cauta"} state={hasResultsReturn ? resultsReturn : undefined} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="h-4 w-4" /> {hasResultsReturn ? "Înapoi la recomandări" : "Înapoi la căutare"}
       </Link>
 
       <section className="mt-5 overflow-hidden rounded-[30px] border border-border bg-card shadow-sm">
@@ -216,7 +220,7 @@ export default function ProfessionalProfile() {
             ) : (
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 {locations.map((location) => (
-                  <Link key={location.id} to={`/furnizor/${location.id}`} className="group rounded-2xl border border-border bg-secondary/20 p-4 hover:bg-secondary/45">
+                  <Link key={location.id} state={hasResultsReturn ? { resultsReturn } : undefined} to={`/furnizor/${location.id}`} className="group rounded-2xl border border-border bg-secondary/20 p-4 hover:bg-secondary/45">
                     <div className="flex items-start gap-3">
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-card">
                         {location.image_url

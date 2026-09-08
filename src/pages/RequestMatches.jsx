@@ -173,6 +173,7 @@ export default function RequestMatches() {
             onVisibleResultsChange={setVisibleResults}
             onResultModeChange={setResultMode}
             onContextChange={setActiveMeta}
+            onExpandedSnapshot={(snapshot) => navigate(location.pathname, { replace: true, state: { ...location.state, ...snapshot } })}
           />
           <nav aria-label="Informații VIASEE" className="mt-6 flex flex-wrap gap-4 border-t border-border pt-4 text-xs text-muted-foreground"><Link to="/confidentialitate" className="min-h-9 underline">Confidențialitate</Link><Link to="/termeni" className="min-h-9 underline">Termeni</Link><Link to="/ajutor-si-suport" className="min-h-9 underline">Ajutor</Link></nav>
         </div>

@@ -26,7 +26,7 @@ export const RESULT_MODES = Object.freeze({
 export default function ResultModeTabs({ mode, onChange, counts = {}, compact = false }) {
   return (
     <div
-      role="tablist"
+      role="group"
       aria-label="Tipul rezultatelor"
       className={`flex gap-1 rounded-full border border-border bg-secondary/60 p-1 ${compact ? "w-auto max-w-full" : "w-full"}`}
     >
@@ -38,10 +38,9 @@ export default function ResultModeTabs({ mode, onChange, counts = {}, compact = 
           <button
             key={entry.key}
             type="button"
-            role="tab"
-            aria-selected={active}
+            aria-pressed={active}
             onClick={() => onChange(entry.key)}
-            className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors ${
+            className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
               active
                 ? "bg-card text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.06)]"
                 : "text-muted-foreground hover:text-foreground"

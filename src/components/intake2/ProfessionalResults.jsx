@@ -49,7 +49,13 @@ export default function ProfessionalResults({
   const [showMore, setShowMore] = useState(false);
   const lastImpressionKey = useRef("");
 
-  const scopeKey = `${meta?.selected_locality_siruta_code || ""}:${meta?.query_scope || "locality"}:${(meta?.resolved_service_keys || []).join(",")}`;
+  const scopeKey = JSON.stringify({
+    locality: meta?.selected_locality_siruta_code || draft?.locality_siruta_code || "",
+    scope: meta?.query_scope || "locality",
+    services: meta?.resolved_service_keys?.length ? meta.resolved_service_keys : (meta?.service_keys || []),
+    type: meta?.professional_type || "",
+    need: meta?.need_level || "general",
+  });
 
   useEffect(() => {
     let cancelled = false;

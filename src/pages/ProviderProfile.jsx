@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { ArrowRight, BadgeCheck, ChevronDown, Clock, ExternalLink, Globe2, Mail, Phone } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useEntitySeo } from "@/lib/useEntitySeo";
@@ -299,7 +299,7 @@ function TeamCard({ team }) {
             )}
 
             {professional.bio && <p className="mt-3 line-clamp-4 text-xs leading-relaxed text-muted-foreground">{professional.bio}</p>}
-            <Link to={`/specialist/${professional.id}`} className="mt-4 inline-flex items-center gap-1 text-xs font-semibold hover:underline">
+            <Link state={hasResultsReturn ? { resultsReturn } : undefined} to={`/specialist/${professional.id}`} className="mt-4 inline-flex items-center gap-1 text-xs font-semibold hover:underline">
               Vezi profilul specialistului <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </article>
@@ -310,6 +310,10 @@ function TeamCard({ team }) {
 }
 
 export default function ProviderProfile() {
+  const route = useLocation();
+  const resultsReturn = route.state?.resultsReturn;
+  const hasResultsReturn = Array.isArray(resultsReturn?.results);
+
   const { id } = useParams();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -361,7 +365,7 @@ export default function ProviderProfile() {
 
   return (
     <div className="mx-auto max-w-5xl px-5 pb-10 pt-12">
-      <Link to="/cauta" className="mb-5 inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground">Înapoi la căutare</Link>
+      <Link to={hasResultsReturn ? "/rezultate" : "/cauta"} state={hasResultsReturn ? resultsReturn : undefined} className="mb-5 inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground">{hasResultsReturn ? "Înapoi la recomandări" : "Înapoi la căutare"}</Link>
       <ProviderLocationHero profile={profile} status={status} serviceCount={services.length} mapUrl={mapUrl} />
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { ArrowUpRight, Clock, Map, MapPin, Phone, Route } from "lucide-react";
 import { summarizePublicServices } from "@/lib/servicePresentation";
 import { buildProviderDecisionConfidence } from "../../../shared/providerDecisionConfidence.js";
@@ -58,6 +58,10 @@ export default function ResultCard({
   hovered = false,
   compact = false,
 }) {
+  const route = useLocation();
+  const returnState = route.pathname === "/rezultate"
+    ? { resultsReturn: route.state }
+    : undefined;
   const [noticeOpen, setNoticeOpen] = useState(false);
   const isDirectoryProfile = location.profile_control_status === "directory";
   const allServices = location.public_services || [];
@@ -105,7 +109,7 @@ export default function ResultCard({
                 compact ? "text-base sm:text-lg" : "text-xl"
               }`}
             >
-              <Link to={`/furnizor/${location.id}`} onClick={onProfileClick} className="break-words hover:text-[#4f6080] focus-visible:outline focus-visible:outline-2">{location.name}</Link>
+              <Link state={returnState} to={`/furnizor/${location.id}`} onClick={onProfileClick} className="break-words hover:text-[#4f6080] focus-visible:outline focus-visible:outline-2">{location.name}</Link>
             </h3>
           </div>
         </div>
@@ -171,7 +175,7 @@ export default function ResultCard({
       )}
 
       <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/70 pt-3">
-        <Link
+        <Link state={returnState}
           to={`/furnizor/${location.id}`}
           onClick={onProfileClick}
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-[#4f6080]"
