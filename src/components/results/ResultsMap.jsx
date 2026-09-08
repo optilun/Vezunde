@@ -1,7 +1,7 @@
 import { pillHtml } from "../../../shared/mapMarkerPresentation.js";
 import "./mapMarkers.css";
 import React, { lazy, Suspense, useCallback, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   FALLBACK_ZOOM,
   buildResultsMapModel,
@@ -28,6 +28,8 @@ function shortTypeLabel(providerType) {
 }
 
 function PointCard({ point, onClose }) {
+  const route = useLocation();
+  const returnState = route.pathname === "/rezultate" ? { resultsReturn: route.state } : undefined;
   const visual = typeVisual(point.provider_type);
   return (
     <div className="absolute inset-x-3 bottom-3 z-[500] max-h-[55%] overflow-y-auto rounded-2xl border border-border bg-card p-3.5 shadow-lg sm:inset-x-auto sm:left-3 sm:w-80">
@@ -46,7 +48,7 @@ function PointCard({ point, onClose }) {
             )}
           </div>
           <Link
-            to={`/furnizor/${point.id}`}
+            to={`/furnizor/${point.id}`} state={returnState}
             className="mt-2.5 inline-flex min-h-11 items-center text-xs font-semibold text-foreground underline underline-offset-4"
           >
             Vezi profilul

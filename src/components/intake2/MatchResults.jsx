@@ -164,6 +164,8 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSele
 export default function MatchResults({
   results,
   meta,
+  initialResultMode = "locations",
+  initialShowMore = false,
   onChangeLocation = null,
   onReviewCriteria = null,
   onRequestCreated = null,
@@ -178,12 +180,12 @@ export default function MatchResults({
   hoveredLocationId = null,
   visibleIds = null,
 }) {
-  const [showMore, setShowMore] = useState(false);
+  const [showMore, setShowMore] = useState(initialShowMore);
   const [feedback, setFeedback] = useState(null);
   // 2026-09-03: acelasi ecran raspunde acum la doua intrebari - "unde ma duc" si "la cine ma duc".
   // Modul este stare locala, nu ruta noua: contextul cererii (draft, meta, extinderi) ramane
   // acelasi si nu se pierde la comutare.
-  const [resultMode, setResultMode] = useState(RESULT_MODES.locations.key);
+  const [resultMode, setResultMode] = useState(initialResultMode === "professionals" ? "professionals" : "locations");
   const [professionalCount, setProfessionalCount] = useState(null);
   const [expandedSnapshot, setExpandedSnapshot] = useState(null);
   const [isExpandingCounty, setIsExpandingCounty] = useState(false);

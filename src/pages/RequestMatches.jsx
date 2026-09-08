@@ -4,6 +4,8 @@ import { ArrowLeft, List, Map as MapIcon, MessageSquare, SlidersHorizontal } fro
 import MatchResults from "@/components/intake2/MatchResults";
 import { RESULT_MODES } from "@/components/intake2/ResultModeTabs";
 import ResultsMap from "@/components/results/ResultsMap";
+import { INTENTS } from "@/lib/intentRegistry";
+import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import { clearPatientIntakeSession } from "@/lib/patientIntakeSession";
 
 // Ecranul de recomandari, in forma folosita de hartile de cautare (Airbnb, Booking).
@@ -28,6 +30,12 @@ export default function RequestMatches() {
   const location = useLocation();
   const navigate = useNavigate();
   const { results, meta } = location.state || {};
+  const viewKey = useRef(location.state?.resultsViewKey || location.key).current;
+  const restored = useRef(readSearchSession().recommendations).current;
+  const savedView = restored?.key === viewKey ? restored : {};
+  const restoreScroll = useRef(savedView.scrollTop || 0);
+  const initialSelection = useRef(true);
+
 
   const [activeMeta, setActiveMeta] = useState(meta || {});
   const listRef = useRef(null);
@@ -45,13 +53,47 @@ export default function RequestMatches() {
     window.scrollTo({ top: 0, behavior: "instant" });
     return () => { observer.disconnect(); root.style.overflow = previousOverflow; };
   }, [results]);
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(savedView.selectedId || null);
   const [hoveredId, setHoveredId] = useState(null);
   const [visibleResults, setVisibleResults] = useState(Array.isArray(results) ? results : []);
-  const [resultMode, setResultMode] = useState(RESULT_MODES.locations.key);
-  const [mobileView, setMobileView] = useState("list");
-  const [filterToViewport, setFilterToViewport] = useState(false);
+  const [resultMode, setResultMode] = useState(savedView.mode === "professionals" ? "professionals" : "locations");
+  const [mobileView, setMobileView] = useState(savedView.mobileView === "map" ? "map" : "list");
+  const [filterToViewport, setFilterToViewport] = useState(savedView.filterToViewport === true);
   const [viewport, setViewport] = useState({ visibleIds: null, mappedCount: 0 });
+
+  const saveView = useCallback(() => {
+    writeSearchSession({ recommendations: {
+      key: viewKey, selectedId, mode: resultMode, mobileView, filterToViewport,
+      scrollTop: restoreScroll.current || listRef.current?.scrollTop || 0,
+    } });
+  }, [viewKey, selectedId, resultMode, mobileView, filterToViewport]);
+  useEffect(() => { saveView(); }, [saveView]);
+  useEffect(() => {
+    if (!Array.isArray(results)) return;
+    if (location.state?.resultsViewKey !== viewKey) {
+      navigate(location.pathname, { replace: true, state: { ...location.state, resultsViewKey: viewKey } });
+    }
+  }, [results, viewKey, location.pathname, location.state, navigate]);
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list || !restoreScroll.current) return;
+    const apply = () => {
+      const target = restoreScroll.current;
+      if (!target) return;
+      list.scrollTop = target;
+      if (Math.abs(list.scrollTop - target) < 2) restoreScroll.current = 0;
+    };
+    const observer = new ResizeObserver(apply);
+    if (list.firstElementChild) observer.observe(list.firstElementChild);
+    const stop = () => { restoreScroll.current = 0; observer.disconnect(); };
+    list.addEventListener("wheel", stop, { passive: true });
+    list.addEventListener("touchstart", stop, { passive: true });
+    const frame = requestAnimationFrame(apply);
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); list.removeEventListener("wheel", stop); list.removeEventListener("touchstart", stop); };
+  }, []);
+  useEffect(() => {
+    if (selectedId && !visibleResults.some(row => row.id === selectedId)) setSelectedId(null);
+  }, [selectedId, visibleResults]);
 
   const handleViewport = useCallback((next) => {
     setViewport({ visibleIds: next.visibleIds, mappedCount: next.mappedCount });
@@ -63,6 +105,7 @@ export default function RequestMatches() {
   }, []);
 
   useEffect(() => {
+    if (initialSelection.current) { initialSelection.current = false; return; }
     if (!selectedId) return;
     const frame = requestAnimationFrame(() => {
       const list = listRef.current;
@@ -95,8 +138,11 @@ export default function RequestMatches() {
   const isProfessionalMode = resultMode === RESULT_MODES.professionals.key;
   const areaLabel = activeMeta.query_scope === "national" ? "România" : activeMeta.query_scope === "county" ? activeMeta.selected_county_name || "" : activeMeta.selected_locality_name || activeMeta.client_address_text || "";
 
+  const needLabel = INTENTS[activeMeta.resolved_intent]?.label || "";
+
   const mapPanel = (
     <ResultsMap
+      storageKey={"recommendations:" + viewKey}
       results={visibleResults}
       selectedId={selectedId}
       hoveredId={hoveredId}
@@ -114,15 +160,15 @@ export default function RequestMatches() {
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-4 py-2 lg:px-8">
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate("/cerere")}
           className="inline-flex min-h-10 shrink-0 items-center gap-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4" /> Inapoi
+          <ArrowLeft className="h-4 w-4" /> Modifica cererea
         </button>
 
         <div className="min-w-0 flex-1">
           <h1 className="font-heading text-base font-bold sm:text-lg">Recomandările tale</h1>
-          <p className="truncate text-xs text-muted-foreground">{isProfessionalMode ? "Specialiști" : `${visibleResults.length} ${visibleResults.length === 1 ? "locație găsită" : "locații găsite"}`}{areaLabel ? ` · ${areaLabel}` : ""}</p>
+          <p className="truncate text-xs text-muted-foreground">{isProfessionalMode ? "Specialiști" : `${visibleResults.length} ${visibleResults.length === 1 ? "locație găsită" : "locații găsite"}`}{areaLabel ? ` · ${areaLabel}` : ""}{needLabel ? ` · ${needLabel}` : ""}</p>
         </div>
         {!isProfessionalMode && visibleResults.length > 0 && <button type="button" onClick={() => {
           setMobileView("list");
@@ -156,11 +202,14 @@ export default function RequestMatches() {
         {/* Lista. Propriul derulaj, ca harta sa nu plece de sub ochi. */}
         <div
           ref={listRef}
+          onScroll={saveView}
           className={`min-w-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-24 pt-1 lg:pb-8 ${
             mobileView === "map" ? "hidden lg:block" : ""
           }`}
         >
           <MatchResults
+            initialResultMode={savedView.mode}
+            initialShowMore={Boolean(savedView.scrollTop)}
             results={results}
             meta={meta}
             compact
@@ -173,7 +222,7 @@ export default function RequestMatches() {
             onVisibleResultsChange={setVisibleResults}
             onResultModeChange={setResultMode}
             onContextChange={setActiveMeta}
-            onExpandedSnapshot={(snapshot) => navigate(location.pathname, { replace: true, state: { ...location.state, ...snapshot } })}
+            onExpandedSnapshot={(snapshot) => navigate(location.pathname, { replace: true, state: { ...location.state, ...snapshot, resultsViewKey: viewKey } })}
           />
           <nav aria-label="Informații VIASEE" className="mt-6 flex flex-wrap gap-4 border-t border-border pt-4 text-xs text-muted-foreground"><Link to="/confidentialitate" className="min-h-9 underline">Confidențialitate</Link><Link to="/termeni" className="min-h-9 underline">Termeni</Link><Link to="/ajutor-si-suport" className="min-h-9 underline">Ajutor</Link></nav>
         </div>
