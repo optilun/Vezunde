@@ -1,4 +1,5 @@
-import { mapMarkerLabel } from "../../../shared/resultsMapLabels.js";
+import { pillHtml } from "../../../shared/mapMarkerPresentation.js";
+import "./mapMarkers.css";
 import React, { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -24,47 +25,6 @@ const SHORT_TYPE_LABELS = {
 
 function shortTypeLabel(providerType) {
   return SHORT_TYPE_LABELS[providerType] || "Locație";
-}
-
-function escapeHtml(value) {
-  return String(value === undefined || value === null ? "" : value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-// Pastila. Trei stari vizuale, cu aceleasi tokenuri ca restul aplicatiei:
-// Top 3 plina, confirmata alba cu contur inchis, din director gri discreta.
-function pillHtml(cluster, { active, hovered }) {
-  const { lead, count } = cluster;
-  const raised = active || hovered;
-  const isTop3 = count === 1 && lead.tier === "top3";
-  const isDirectory = lead.tier === "directory";
-
-  const background = active ? "#4f6080" : isTop3 ? "hsl(var(--primary))" : "hsl(var(--card))";
-  const color = active ? "#ffffff" : isTop3 ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground))";
-  const border = isTop3
-    ? "hsl(var(--primary))"
-    : (isDirectory ? "hsl(var(--border))" : "hsl(var(--foreground))");
-
-  const label = mapMarkerLabel(cluster);
-
-  // Pozitia aproximativa primeste un contur intrerupt. Diferenta fata de una confirmata trebuie
-  // sa se vada pe harta, nu doar sa fie scrisa undeva sub ea.
-  const approximate = count === 1 && lead.map_precision !== "exact";
-  const borderStyle = approximate ? "dashed" : "solid";
-
-  return `<span style="
-    display:inline-flex;align-items:center;justify-content:center;min-height:36px;max-width:180px;box-sizing:border-box;white-space:nowrap;
-    padding:6px 12px;border-radius:9999px;
-    background:${background};color:${color};
-    border:1.5px ${borderStyle} ${raised ? "hsl(var(--foreground))" : border};
-    box-shadow:0 ${raised ? "4px 12px" : "1px 4px"} rgba(23,23,23,${raised ? "0.24" : "0.12"});
-    font-family:inherit;font-size:12px;font-weight:700;line-height:1.2;
-    transform:translateY(${raised ? "-2px" : "0"});
-    transition:transform .12s ease,padding .12s ease,box-shadow .12s ease;
-  "><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(label)}</span></span>`;
 }
 
 function PointCard({ point, onClose }) {
