@@ -170,6 +170,7 @@ export default function MatchResults({
   compact = false,
   onVisibleResultsChange = null,
   onResultModeChange = null,
+  onContextChange = null,
   onHoverLocation = null,
   hoveredLocationId = null,
   visibleIds = null,
@@ -226,6 +227,11 @@ export default function MatchResults({
   useEffect(() => {
     if (onResultModeChange) onResultModeChange(resultMode);
   }, [resultMode]);
+
+  useEffect(() => { onContextChange?.(activeMeta); }, [activeMeta, onContextChange]);
+  useEffect(() => {
+    if (selectedLocationId && list.some(row => row.id === selectedLocationId && row.result_bucket !== "top3")) setShowMore(true);
+  }, [selectedLocationId, list]);
 
   useEffect(() => {
     if (list.length === 0 && !activeMeta?.coverage_status) return;
@@ -466,8 +472,9 @@ export default function MatchResults({
     if (resultMode === RESULT_MODES.professionals.key) {
       return (
         <div>
-          <div className="mb-6">
+          <div className="mb-4">
             <ResultModeTabs
+              compact={compact}
               mode={resultMode}
               onChange={changeResultMode}
               counts={{ locations: 0, professionals: professionalCount }}
@@ -484,8 +491,9 @@ export default function MatchResults({
     }
     return (
       <div>
-        <div className="mb-6">
+        <div className="mb-4">
           <ResultModeTabs
+              compact={compact}
             mode={resultMode}
             onChange={changeResultMode}
             counts={{ locations: 0, professionals: professionalCount }}
@@ -508,8 +516,9 @@ export default function MatchResults({
   const expanded = showMore || top3.length === 0;
 
   const modeTabs = (
-    <div className="mb-6">
+    <div className="mb-4">
       <ResultModeTabs
+              compact={compact}
         mode={resultMode}
         onChange={changeResultMode}
         counts={{ locations: list.length, professionals: professionalCount }}
@@ -550,9 +559,10 @@ export default function MatchResults({
       {top3.length > 0 && (
         <>
           <h2 className="font-heading text-xl font-bold tracking-tight sm:text-2xl">Cele mai potrivite opțiuni</h2>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Selectate pe baza serviciilor confirmate, relevanței căutării și verificării profilului în aria aleasă.
-          </p>
+          <details className="mt-1 text-xs text-muted-foreground">
+            <summary className="inline-flex min-h-9 cursor-pointer items-center font-medium text-[#4f6080]">Cum sunt alese recomandările?</summary>
+            <p className="rounded-xl border border-border bg-secondary/40 p-3 leading-relaxed">Selectate pe baza serviciilor confirmate, relevanței cererii și verificării profilului în aria aleasă. Plata nu influențează ordinea. Afișăm până la trei recomandări, doar când există opțiuni eligibile.</p>
+          </details>
           <RoutingNotice meta={activeMeta} />
           <div className="mt-5">
             <ResultScopeGroups items={top3} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} />
@@ -657,7 +667,11 @@ export default function MatchResults({
         </div>
       )}
 
-      <PatientRequestSubmission results={list} meta={activeMeta} onRequestCreated={onRequestCreated} />
+      <section data-request-followup tabIndex={-1} aria-label="Cererea și conversațiile tale" className="mt-6 rounded-[22px] border border-border bg-card p-4 sm:p-5">
+        <h2 className="font-heading text-lg font-bold">Cererea și conversațiile tale</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Continuă cu o cerere pentru a primi răspunsuri de la locații. Conversațiile apar aici, în fluxul cererii.</p>
+        <PatientRequestSubmission results={list} meta={activeMeta} onRequestCreated={onRequestCreated} />
+      </section>
 
       <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground/70">
         VIASEE nu oferă diagnostic medical. Ordinea rezultatelor reflectă serviciile confirmate și verificarea profilului.
