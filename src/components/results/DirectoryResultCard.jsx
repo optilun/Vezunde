@@ -38,7 +38,7 @@ export default function DirectoryResultCard({ location, onShowMap }) {
           <Link to={`/furnizor/${location.id}`} className="inline-flex min-h-11 min-w-0 flex-1 items-center justify-between gap-2 rounded-xl bg-primary px-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-[#4f6080] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
             Vezi profilul <ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0" />
           </Link>
-          {onShowMap && <button type="button" onClick={onShowMap} aria-label={`Vezi pe hartă: ${location.name}`} title="Vezi pe hartă" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#d8deE8] bg-[#eff1f5]/70 text-[#4f6080] transition-colors hover:bg-[#dce4f2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+          {onShowMap && <button type="button" onClick={onShowMap} aria-label={`Vezi pe hartă: ${location.name}`} title="Vezi pe hartă" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#d8dee8] bg-[#eff1f5]/70 text-[#4f6080] transition-colors hover:bg-[#dce4f2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
             <Map aria-hidden="true" className="h-[18px] w-[18px]" />
           </button>}
           {location.phone && <a href={`tel:${location.phone.replace(/\s/g, "")}`} aria-label={`Sună la ${location.name}`} title="Sună" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border text-[#4f6080] transition-colors hover:bg-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"><Phone aria-hidden="true" className="h-4 w-4" /></a>}
@@ -47,4 +47,3 @@ export default function DirectoryResultCard({ location, onShowMap }) {
     </article>
   );
 }
-
