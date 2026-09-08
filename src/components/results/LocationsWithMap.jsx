@@ -53,21 +53,32 @@ export default function LocationsWithMap({
     return () => cancelAnimationFrame(frame);
   }, [fixedDesktop, storageKey, listSignature]);
   const rememberList = () => {
-    if (!fixedDesktop || !storageKey || restoredListKey.current !== storageKey || !window.matchMedia("(min-width: 1024px)").matches) return;
+    if (!fixedDesktop || !storageKey || !window.matchMedia("(min-width: 1024px)").matches) return;
+    restoredListKey.current = storageKey;
     const previous = readSearchSession().listScroll || {};
     // A bounded, tab-local cache; no device coordinates or analytics.
     const entries = Object.entries(previous).filter(([key]) => key !== storageKey).slice(-7);
     writeSearchSession({ listScroll: { ...Object.fromEntries(entries), [storageKey]: { top: listRef.current?.scrollTop || 0, signature: listSignature } } });
   };
   const cardRefs = useRef(new Map());
-  const previousSelection = useRef(selectedId);
+  const previousSelection = useRef({ id: selectedId, view: mobileView });
   useEffect(() => {
-    if (previousSelection.current === selectedId) return;
-    previousSelection.current = selectedId;
-    if (selectedId && (window.matchMedia("(min-width: 1024px)").matches || mobileView === "list")) {
-      cardRefs.current.get(selectedId)?.scrollIntoView({ block: "nearest", behavior: "auto" });
+    if (previousSelection.current.id === selectedId && previousSelection.current.view === mobileView) return;
+    previousSelection.current = { id: selectedId, view: mobileView };
+    const card = cardRefs.current.get(selectedId);
+    if (!card) return;
+    const desktop = window.matchMedia("(min-width: 1024px)").matches;
+    if (desktop && fixedDesktop && listRef.current) {
+      // scrollIntoView can also move the document behind the fixed search header.
+      const list = listRef.current;
+      const parent = list.getBoundingClientRect();
+      const item = card.getBoundingClientRect();
+      if (item.top < parent.top) list.scrollTop += item.top - parent.top;
+      else if (item.bottom > parent.bottom) list.scrollTop += Math.min(item.top - parent.top, item.bottom - parent.bottom);
+    } else if (desktop || mobileView === "list") {
+      card.scrollIntoView({ block: "nearest", behavior: "auto" });
     }
-  }, [selectedId, mobileView]);
+  }, [selectedId, mobileView, fixedDesktop]);
   const hasPositions = (results || []).some((location) => mapPointFromResult(location) !== null);
 
   return (
