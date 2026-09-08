@@ -93,6 +93,7 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
       el.style.zIndex=active?"30":hovered?"20":"1";
       el.setAttribute("aria-label",cluster.count>1?`Explorează grupul de ${cluster.count} locații`:cluster.lead.name);
       el.setAttribute("aria-pressed",String(active));
+      el.title = cluster.count > 1 ? `${cluster.count} locații — apasă pentru a le explora` : cluster.lead.name;
       el.onclick=()=>{
         if(cluster.count>1) {
           if(map.getZoom()>=15 || clusterSharesPosition(cluster)){onSelect?.(null);onCluster(cluster.key);}
