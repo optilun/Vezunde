@@ -82,7 +82,7 @@ function mergeLocations(results, responses) {
       city: response.city,
       provider_type: "",
       profile_control_status: "directory",
-      result_bucket: "top3",
+      result_bucket: "response_only",
     });
   }
   return merged;
@@ -341,7 +341,7 @@ function LocationRail({ locations, responses, selectedLocationId, unreadByLocati
     <div>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="font-heading text-lg font-extrabold text-foreground">Locatii potrivite</h2>
+          <h2 className="font-heading text-lg font-extrabold text-foreground">Locatii pentru cererea ta</h2>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Selectate pe baza criteriilor cererii, nu a planului comercial.</p>
         </div>
         <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-secondary px-2.5 py-1 text-xs font-extrabold text-foreground">{locations.length}</span>
