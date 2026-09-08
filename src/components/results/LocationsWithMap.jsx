@@ -14,6 +14,7 @@ export default function LocationsWithMap({
   fixedDesktop = false,
   listHeader,
   mapActions,
+  mapStatus,
   integratedMapAction = false,
   children,
   renderCard,
@@ -123,6 +124,7 @@ export default function LocationsWithMap({
               focusArea={focusArea}
               className={fixedDesktop ? "h-[70vh] overflow-hidden rounded-3xl border border-border lg:h-full" : "h-[70vh] overflow-hidden rounded-3xl border border-border lg:h-[max(16rem,calc(100dvh-var(--search-nav-height,80px)-var(--search-controls-height,0px)-32px))]"}
             />
+            {mapStatus && <p role="status" className="absolute left-16 right-3 top-16 z-[501] rounded-2xl border border-border bg-card p-3 text-xs leading-relaxed shadow-sm lg:hidden">{mapStatus}</p>}
             {mapActions && <div className="absolute right-3 top-3 z-[500] max-w-[calc(100%-4.5rem)]">{mapActions}</div>}
           </aside>
         )}
