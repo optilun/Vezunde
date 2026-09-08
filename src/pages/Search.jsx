@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search as SearchIcon, MapPin, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { SERVICES } from "@/lib/vezunde";
+import { SERVICES, PROVIDER_TYPES, PROFESSIONAL_TYPES } from "@/lib/vezunde";
+import { CANONICAL_SERVICE_REGISTRY } from "@/lib/canonicalServiceCatalog";
 import { getServiceSearchSuggestions } from "@/lib/serviceSemanticSearch";
 import { matchProvidersWithSemanticFallback } from "@/lib/providerSemanticSearch";
 import { deterministicSafetyFlagsFromText } from "@/lib/patientSafety";
@@ -49,6 +50,7 @@ export default function Search() {
     return !window.location.search || previous.sourceSearch === window.location.search ? previous : {};
   });
   const [results, setResults] = useState(null);
+  const [mapResults, setMapResults] = useState(null);
   const [providerType, setProviderType] = useState(saved.providerType || "");
   const [professionalType, setProfessionalType] = useState(saved.professionalType || "");
   const [filterServiceKeys, setFilterServiceKeys] = useState(saved.filterServiceKeys || []);
@@ -120,7 +122,7 @@ export default function Search() {
   useEffect(() => {
     if (!locality || restoredScroll.current || results === null || (searchMode === RESULT_MODES.professionals.key && professionals === null)) return;
     const frame = requestAnimationFrame(() => {
-      window.scrollTo({ top: saved.scrollY || 0, behavior: "instant" });
+      window.scrollTo({ top: window.matchMedia("(min-width: 1024px)").matches && searchMode === RESULT_MODES.locations.key ? 0 : saved.scrollY || 0, behavior: "instant" });
       restoredScroll.current = true;
     });
     return () => cancelAnimationFrame(frame);
@@ -149,6 +151,7 @@ export default function Search() {
   useEffect(() => {
     pageRequest.current += 1;
     setPagination(null); setMoreLoading(false); setMoreError(false);
+    setMapResults(null); setSelectedId(null); setHoveredId(null);
     setResults(null);
     setProfessionals(null);
     setMatchContext(null);
@@ -176,6 +179,7 @@ export default function Search() {
               locality_siruta_code: locality.siruta_code,
               provider_types: providerType.split(",").filter(Boolean), filter_service_keys: filterServiceKeys, cas_only: casOnly,
               limit: 50,
+              include_map_results: true,
             },
           );
           if (response.data?.error) throw new Error(response.data.error);
@@ -190,19 +194,34 @@ export default function Search() {
             page = next.data?.pagination || null;
             if (rows.size === previousSize) break;
           }
-          if (active) { setResults([...rows.values()]); setPagination(page); }
+          if (active) { setResults([...rows.values()]); setMapResults(response.data?.map_results || [...rows.values()]); setPagination(page); }
           return;
         }
 
+        // Reuse the public directory's eligibility rules; narrow candidates BEFORE matching,
+        // never post-filter a truncated Top 50 or turn a CAS label into an inferred promise.
+        let directoryFilterIds;
+        if (searchMode === RESULT_MODES.locations.key && (filterServiceKeys.length || casOnly)) {
+          const filtered = await base44.functions.invoke("browseDirectoryProviders", {
+            locality_siruta_code: locality.siruta_code,
+            provider_types: providerType.split(",").filter(Boolean),
+            filter_service_keys: filterServiceKeys, cas_only: casOnly,
+            include_map_results: true, limit: 1,
+          });
+          if (filtered.data?.error || !Array.isArray(filtered.data?.map_results)) throw new Error("Filtrele nu au putut fi verificate.");
+          directoryFilterIds = filtered.data.map_results.map(row => row.id);
+        }
+        if (!active) return;
         const response = await matchProvidersWithSemanticFallback({
           search_text: service ? "" : debouncedQuery,
+          directory_filter_location_ids: directoryFilterIds,
           service_keys: service ? [service] : [],
           provider_types: providerType.split(",").filter(Boolean), filter_service_keys: filterServiceKeys, cas_only: casOnly,
           locality_siruta_code: locality.siruta_code,
           limit: 50,
         });
         if (response.data?.error) throw new Error(response.data.error);
-        if (active) { setResults(response.data?.results || []); setMatchContext({ ...response.data, selected_locality_siruta_code: locality.siruta_code, query_scope: "locality" }); }
+        if (active) { setResults(response.data?.results || []); setMapResults(response.data?.results || []); setMatchContext({ ...response.data, selected_locality_siruta_code: locality.siruta_code, query_scope: "locality" }); }
       } catch {
         if (active) { setLoadError(true); setResults([]); }
       }
@@ -218,7 +237,7 @@ export default function Search() {
     locality,
     isDirectoryBrowse,
     hasCanonicalLocality,
-    retry,
+    retry, searchMode,
     providerType, filterServiceKeys, casOnly,
   ]);
 
@@ -272,16 +291,39 @@ export default function Search() {
     setSelectedId(null); setHoveredId(null);
     setSearchMode(RESULT_MODES.locations.key);
     setSuggestionsOpen(false);
-    writeSearchSession({ maps: {}, national: {}, scrollY: 0, nationalScroll: 0 });
+    writeSearchSession({ maps: {}, listScroll: {}, national: {}, scrollY: 0, nationalScroll: 0 });
     window.scrollTo({ top: 0, behavior: "instant" });
   };
 
   const chooseSuggestion = (suggestion) => {
-    setFilterServiceKeys([]); setCasOnly(false);
     setService(suggestion.service_key);
     setQuery(suggestion.label);
     setSuggestionsOpen(false);
   };
+
+  const searchMapKey = JSON.stringify(["local", locality?.siruta_code, service, debouncedQuery, providerType, [...filterServiceKeys].sort(), casOnly]);
+  const extraSelection = isDirectoryBrowseView && selectedId && !results?.some(row => row.id === selectedId)
+    ? mapResults?.find(row => row.id === selectedId) : null;
+  const locationList = extraSelection ? [extraSelection, ...(results || [])] : results;
+  const activeFilters = searchMode === RESULT_MODES.professionals.key
+    ? (professionalType ? [{ key: "profession", label: PROFESSIONAL_TYPES[professionalType] || professionalType, remove: () => setProfessionalType("") }] : [])
+    : [
+      ...providerType.split(",").filter(Boolean).map(key => ({ key, label: PROVIDER_TYPES[key] || key, remove: () => setProviderType(providerType.split(",").filter(value => value !== key).join(",")) })),
+      ...filterServiceKeys.map(key => ({ key, label: CANONICAL_SERVICE_REGISTRY[key]?.label || key, remove: () => setFilterServiceKeys(filterServiceKeys.filter(value => value !== key)) })),
+      ...(casOnly ? [{ key: "cas", label: "Decontare CAS", remove: () => setCasOnly(false) }] : []),
+    ];
+  const filterSummary = activeFilters.length > 0 && <div aria-label="Filtre active" className="my-3 flex flex-wrap gap-2">
+    {activeFilters.map(filter => <button key={filter.key} type="button" onClick={filter.remove} aria-label={`Elimină filtrul ${filter.label}`} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[#d7dce4] bg-[#eff1f5] px-3 text-xs font-medium text-[#4f6080] hover:bg-[#e2e7f0]">{filter.label}<X className="h-3.5 w-3.5" aria-hidden="true" /></button>)}
+  </div>;
+  const localListHeader = <div className="mb-4">
+    <h2 className="font-heading text-lg font-bold sm:text-xl">{isDirectoryBrowseView ? "Locații" : "Opțiuni"} în {locality?.name}</h2>
+    <p className="mt-1 text-sm text-muted-foreground" aria-live="polite">
+      {isDirectoryBrowseView ? `${results?.length || 0} din ${pagination?.total ?? results?.length ?? 0} locații · Ordine alfabetică` : `${results?.length || 0} opțiuni · Ordinea potrivirii`}
+    </p>
+    <p className="mt-1 text-xs text-muted-foreground">{isDirectoryBrowseView ? "Harta include toate locațiile filtrate cu poziție publicată, inclusiv cele neîncărcate încă în listă." : "Sunt afișate până la 50 de opțiuni. Harta păstrează aceleași rezultate; poziția pe hartă nu schimbă potrivirea."}</p>
+    {extraSelection && <p className="mt-2 text-xs text-[#4f6080]">Locația selectată pe hartă este afișată prima.</p>}
+    {filterSummary}
+  </div>;
 
   return (
     <div className="mx-auto w-full max-w-[1800px] px-4 pb-10 sm:px-6 lg:px-8" style={{ "--search-nav-height": `${stickySize.nav}px`, "--search-controls-height": `${stickySize.controls}px` }}>
@@ -325,7 +367,6 @@ export default function Search() {
                 onChange={(event) => {
                   setQuery(event.target.value);
                   setService("");
-                  setFilterServiceKeys([]); setCasOnly(false);
                   setSuggestionsOpen(true);
                 }}
                 placeholder="Ce serviciu cauți?"
@@ -380,9 +421,9 @@ export default function Search() {
       <SearchFilters providerType={providerType} professionalType={professionalType} serviceKeys={filterServiceKeys} casOnly={casOnly}
         hasLocality={hasCanonicalLocality} professionalMode={searchMode === RESULT_MODES.professionals.key && hasCanonicalLocality}
         onApply={(filters) => {
-          setProviderType(filters.providerType); setProfessionalType(filters.professionalType);
+          if (searchMode === RESULT_MODES.professionals.key && hasCanonicalLocality) { setProfessionalType(filters.professionalType); return; }
+          setProviderType(filters.providerType);
           setFilterServiceKeys(filters.serviceKeys); setCasOnly(filters.casOnly); setSelectedId(null);
-          if (filters.serviceKeys.length || filters.casOnly) { setQuery(""); setService(""); }
         }} />
       <Link to="/cerere" className="inline-flex min-h-11 items-center rounded-full px-3 text-xs text-muted-foreground transition hover:bg-secondary hover:text-foreground">Ajută-mă să aleg</Link>
       </div>
@@ -420,6 +461,7 @@ export default function Search() {
             Apar doar specialiștii cu profil verificat care au acceptat să fie afișați public la o
             locație din această localitate.
           </p>
+          {filterSummary}
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {professionals === null && <LoadingState />}
             {professionals?.length === 0 && (!isDirectoryBrowse && !(matchContext?.resolved_service_keys || matchContext?.service_keys || []).length
@@ -430,50 +472,35 @@ export default function Search() {
             ))}
           </div>
         </div>
-      ) : isDirectoryBrowseView ? (
-        <div className="mt-4">
-          <h2 className="font-heading text-lg font-bold sm:text-xl">
-            Locații în {locality?.name}
-          </h2>
-          {pagination && <p className="mt-1 text-sm text-muted-foreground" aria-live="polite">{results?.length || 0} din {pagination.total} locații</p>}
-          {results === null && <div className="mt-4"><LoadingState /></div>}
-          {results?.length === 0 && <div className="mt-4"><EmptyDirectory /></div>}
-          {results?.length > 0 && (
-            <LocationsWithMap
-              results={results}
-              storageKey={`local:${locality.siruta_code}:${service}:${debouncedQuery}:${providerType}`}
-              renderCard={(location, onShowMap) => <DirectoryResultCard location={location} onShowMap={onShowMap} />}
-              integratedMapAction
-              selectedId={selectedId}
-              hoveredId={hoveredId}
-              onSelect={setSelectedId}
-              onHover={setHoveredId}
-              mobileView={mobileView}
-              onToggleMobileView={() => setMobileView((view) => (view === "map" ? "list" : "map"))}
-            />
-          )}
-          {pagination?.has_more && <div className="mt-5">{moreError && <p role="alert" className="mb-2 text-sm">Nu am putut încărca următoarele locații.</p>}<button type="button" onClick={loadMore} disabled={moreLoading} className="min-h-11 rounded-full border border-border bg-card px-6 text-sm font-semibold disabled:opacity-50">{moreLoading ? "Se încarcă..." : moreError ? "Reîncearcă" : "Arată mai multe"}</button></div>}
-        </div>
       ) : (
         <div className="mt-4">
           {results === null && <LoadingState />}
-          {results?.length === 0 && <EmptyMatch locality={locality} />}
-          {results?.length > 0 && (
+          {results !== null && (
             <LocationsWithMap
-              results={results}
-              storageKey={`local:${locality.siruta_code}:${service}:${debouncedQuery}`}
-              renderCard={(location) => <ProviderCard location={location} />}
+              key={searchMapKey}
+              fixedDesktop
+              listHeader={localListHeader}
+              results={mapResults || results}
+              listResults={locationList}
+              storageKey={searchMapKey}
+              integratedMapAction={isDirectoryBrowseView}
+              renderCard={(location, onShowMap) => isDirectoryBrowseView
+                ? <DirectoryResultCard location={location} onShowMap={onShowMap} />
+                : <ProviderCard location={location} />}
               selectedId={selectedId}
               hoveredId={hoveredId}
               onSelect={setSelectedId}
               onHover={setHoveredId}
               mobileView={mobileView}
-              onToggleMobileView={() => setMobileView((view) => (view === "map" ? "list" : "map"))}
-            />
+              onToggleMobileView={() => setMobileView(view => view === "map" ? "list" : "map")}
+            >
+              {results.length === 0 && (isDirectoryBrowseView ? <EmptyDirectory /> : <EmptyMatch locality={locality} />)}
+              {isDirectoryBrowseView && pagination?.has_more && <div className="mt-5">{moreError && <p role="alert" className="mb-2 text-sm">Nu am putut încărca următoarele locații.</p>}<button type="button" onClick={loadMore} disabled={moreLoading} className="min-h-11 rounded-full border border-border bg-card px-6 text-sm font-semibold disabled:opacity-50">{moreLoading ? "Se încarcă..." : moreError ? "Reîncearcă" : "Arată mai multe"}</button></div>}
+            </LocationsWithMap>
           )}
         </div>
       )}
-      <p className="pt-8 text-xs text-muted-foreground">
+      <p className="pt-8 text-xs text-muted-foreground lg:hidden">
         VIASEE nu oferă diagnostic medical.
       </p>
     </div>
