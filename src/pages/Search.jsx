@@ -432,8 +432,8 @@ export default function Search() {
         }} />
       <Link to="/cerere" className="inline-flex min-h-11 items-center rounded-full px-3 text-xs text-muted-foreground transition hover:bg-secondary hover:text-foreground">Ajută-mă să aleg</Link>
       </div>
-      {hasCanonicalLocality && !showSafetyBanner && <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <ResultModeTabs mode={searchMode} onChange={setSearchMode} />
+      {hasCanonicalLocality && !showSafetyBanner && <div className="mx-auto mt-2 flex max-w-4xl flex-wrap items-center justify-between gap-2 sm:flex-nowrap">
+        <ResultModeTabs compact mode={searchMode} onChange={setSearchMode} />
         <button type="button" onClick={resetSearch} className="min-h-11 text-xs underline">Resetează căutarea</button>
       </div>}
 
