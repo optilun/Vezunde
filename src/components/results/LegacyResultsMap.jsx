@@ -60,12 +60,12 @@ function shortTypeLabel(providerType) {
 }
 
 function clusterIcon(cluster, state) {
-  const width = cluster.count > 1 ? 110 : 180;
+  const width = 44;
   return L.divIcon({
     className: "viasee-map-pill",
-    html: `<div style="display:flex;justify-content:center;width:100%">${pillHtml(cluster, state)}</div>`,
-    iconSize: [width, 36],
-    iconAnchor: [width / 2, 18],
+    html: pillHtml(cluster, state),
+    iconSize: [width, 44],
+    iconAnchor: [width / 2, 22],
   });
 }
 
@@ -127,6 +127,21 @@ function MapResizeWatcher() {
     observer.observe(map.getContainer());
     return () => { observer.disconnect(); cancelAnimationFrame(frame); };
   }, [map]);
+  return null;
+}
+
+function MarkerLabelLayout({ clusters, selectedId, hoveredId }) {
+  const map = useMap();
+  useEffect(() => {
+    let frame;
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => layoutMapMarkers(map.getContainer()));
+    };
+    map.on("moveend zoomend resize", schedule);
+    schedule();
+    return () => { cancelAnimationFrame(frame); map.off("moveend zoomend resize", schedule); };
+  }, [map, clusters, selectedId, hoveredId]);
   return null;
 }
 
@@ -268,6 +283,7 @@ export default function ResultsMap({
         <PanToSelected point={selectedPoint} />
         <ViewportWatcher onChange={reportViewport} />
         <MapResizeWatcher />
+        <MarkerLabelLayout clusters={clusters} selectedId={selectedId} hoveredId={hoveredId} />
 
         {clusters.map((cluster) => {
           const containsSelected = cluster.points.some((point) => point.id === selectedId);
