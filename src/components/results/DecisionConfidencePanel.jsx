@@ -59,15 +59,15 @@ export default function DecisionConfidencePanel({ confidence, compact = false })
 
   if (compact) {
     return (
-      <section className="mt-3 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2" aria-label="Increderea in potrivire">
+      <section className="mt-3 rounded-xl border border-[#d8dee8] bg-[#eff1f5]/60 px-3 py-1" aria-label="Increderea in potrivire">
         <button
           type="button"
           onClick={(event) => { event.stopPropagation(); setExpanded((value) => !value); }}
           aria-expanded={expanded}
-          className="flex w-full items-center gap-2 text-left"
+          className="flex min-h-11 w-full flex-wrap items-center gap-2 text-left"
         >
           {segments}
-          <span className="min-w-0 flex-1 truncate text-[11px] font-extrabold text-foreground">{confidence.label}</span>
+          <span className="min-w-0 flex-1 text-xs font-extrabold text-foreground">{confidence.label}</span>
           <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-muted-foreground">
             {expanded ? "Ascunde" : "Vezi de ce"}
             {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
