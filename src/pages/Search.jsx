@@ -166,6 +166,7 @@ export default function Search() {
   useEffect(() => {
     let active = true;
     const run = async () => {
+      const locationMode = searchMode === RESULT_MODES.locations.key;
       setLoadError(false);
       setResults(null);
       setMatchContext(null);
@@ -181,7 +182,7 @@ export default function Search() {
             "browseDirectoryProviders",
             {
               locality_siruta_code: locality.siruta_code,
-              provider_types: providerType.split(",").filter(Boolean), filter_service_keys: filterServiceKeys, cas_only: casOnly,
+              provider_types: locationMode ? providerType.split(",").filter(Boolean) : [], filter_service_keys: locationMode ? filterServiceKeys : [], cas_only: locationMode && casOnly,
               limit: 50,
               include_map_results: true,
             },
@@ -190,7 +191,7 @@ export default function Search() {
           const rows = new Map((response.data?.results || []).map((row) => [row.id, row]));
           let page = response.data?.pagination || null;
           const restoreCount = saved.locality?.siruta_code === locality.siruta_code && (saved.providerType || "") === providerType && JSON.stringify(saved.filterServiceKeys || []) === JSON.stringify(filterServiceKeys) && Boolean(saved.casOnly) === casOnly && !saved.query && !saved.service ? saved.loadedLocalCount || 0 : 0;
-          while (active && page?.has_more && rows.size < restoreCount) {
+          while (active && locationMode && page?.has_more && rows.size < restoreCount) {
             const next = await base44.functions.invoke("browseDirectoryProviders", { locality_siruta_code: locality.siruta_code, provider_types: providerType.split(",").filter(Boolean), filter_service_keys: filterServiceKeys, cas_only: casOnly, limit: 50, offset: page.next_offset });
             if (next.data?.error) throw new Error(next.data.error);
             const previousSize = rows.size;
@@ -220,7 +221,7 @@ export default function Search() {
           search_text: service ? "" : debouncedQuery,
           directory_filter_location_ids: directoryFilterIds,
           service_keys: service ? [service] : [],
-          provider_types: providerType.split(",").filter(Boolean), filter_service_keys: filterServiceKeys, cas_only: casOnly,
+          provider_types: locationMode ? providerType.split(",").filter(Boolean) : [],
           locality_siruta_code: locality.siruta_code,
           limit: 50,
         });
@@ -309,7 +310,7 @@ export default function Search() {
   const extraSelection = isDirectoryBrowseView && selectedId && !results?.some(row => row.id === selectedId)
     ? mapResults?.find(row => row.id === selectedId) : null;
   const locationList = extraSelection ? [extraSelection, ...(results || [])] : results;
-  const activeFilters = searchMode === RESULT_MODES.professionals.key
+  const activeFilters = searchMode === RESULT_MODES.professionals.key && hasCanonicalLocality
     ? (professionalType ? [{ key: "profession", label: PROFESSIONAL_TYPES[professionalType] || professionalType, remove: () => setProfessionalType("") }] : [])
     : [
       ...providerType.split(",").filter(Boolean).map(key => ({ key, label: PROVIDER_TYPES[key] || key, remove: () => setProviderType(providerType.split(",").filter(value => value !== key).join(",")) })),
@@ -322,7 +323,7 @@ export default function Search() {
   const localListHeader = <div className="mb-4">
     <h2 className="font-heading text-lg font-bold sm:text-xl">{isDirectoryBrowseView ? "Locații" : "Opțiuni"} în {locality?.name}</h2>
     <p className="mt-1 text-sm text-muted-foreground" aria-live="polite">
-      {isDirectoryBrowseView ? `${results?.length || 0} din ${pagination?.total ?? results?.length ?? 0} locații · Ordine alfabetică` : `${results?.length || 0} opțiuni · Ordinea potrivirii`}
+      {isDirectoryBrowseView ? `${results?.length || 0} din ${pagination?.total ?? results?.length ?? 0} locații · Ordine alfabetică` : `${results?.length || 0} opțiuni · ${matchContext?.coverage_status === "query_not_mapped" ? "Explorare, fără potrivire confirmată" : "Ordinea potrivirii"}`}
     </p>
     <p className="mt-1 text-xs text-muted-foreground">{isDirectoryBrowseView ? "Harta include toate locațiile filtrate cu poziție publicată, inclusiv cele neîncărcate încă în listă." : "Sunt afișate până la 50 de opțiuni. Harta păstrează aceleași rezultate; poziția pe hartă nu schimbă potrivirea."}</p>
     {extraSelection && <p className="mt-2 text-xs text-[#4f6080]">Locația selectată pe hartă este afișată prima.</p>}
