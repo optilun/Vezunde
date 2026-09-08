@@ -1,3 +1,4 @@
+import { directoryLocationScope } from "../../shared/searchLocationScope.js";
 import {
   evaluateServicePrerequisites,
   getCanonicalServiceDefinition,
@@ -261,6 +262,7 @@ Deno.serve(async (req) => {
     const intent = payload.intent || null;
     const serviceKeys = Array.isArray(payload.service_keys) ? payload.service_keys.map(String) : [];
     const requestKeys = normalizeRequestKeys(serviceKeys);
+    const directoryScope = directoryLocationScope(payload);
     const providerTypes = Array.isArray(payload.provider_types) ? payload.provider_types : [];
     const sirutaCode = String(payload.locality_siruta_code || '').trim();
     const limit = Math.min(payload.limit || 20, 50);
@@ -283,6 +285,7 @@ Deno.serve(async (req) => {
       loc.active_status !== 'inactiva'
       && loc.provider_profile_type
       && PATIENT_FACING_PROFILE_TYPES.includes(loc.provider_profile_type)
+      && (directoryScope === null || directoryScope.has(loc.id))
       && (providerTypes.length === 0 || providerTypes.includes(loc.provider_type))
     ));
     const locationIds = locations.map((location) => location.id).filter(Boolean);
