@@ -45,6 +45,7 @@ Deno.serve(async (req) => {
     const advanced = selectedServices.length > 0 || casOnly;
     const pageSize = Math.max(1, Math.min(Number(payload.page_size || payload.limit) || 20, 50));
     const offset = Math.max(0, Math.floor(Number(payload.offset) || 0));
+    const includeMapResults = payload.include_map_results === true;
 
     // 2026-09-06, directorul pe harta. O singura ramura care intoarce TOATE locatiile publicate,
     // in forma minima necesara desenarii unui punct. Nu este o cautare si nu inlocuieste una:
@@ -170,7 +171,7 @@ Deno.serve(async (req) => {
     // Nivelul de detaliu public sta pe starea de director, nu pe locatie. Fara el, un profil
     // aprobat editorial aparea aici ca 'summary' si isi ascundea adresa - desi pagina lui de
     // profil o arata. Vezi loadDirectoryDetailOverlay.
-    const detailOverlay = await loadDirectoryDetailOverlay(svc, locations.map((loc) => loc.id));
+    const detailOverlay = await loadDirectoryDetailOverlay(svc, (includeMapResults ? eligibleLocations : locations).map((loc) => loc.id));
 
     const results = [];
     for (const loc of locations) {
@@ -224,8 +225,24 @@ Deno.serve(async (req) => {
 
     const finalPage = advanced ? paginateRows(results, { pageSize, offset }) : { page: results, pagination };
     pagination = finalPage.pagination;
+    // Map scope is independent of card pagination, but never of public visibility or filters.
+    // Keep unpositioned rows here: they remain eligible for the list and advanced matching.
+    const mapResults = includeMapResults ? (advanced ? results : eligibleLocations.map(loc => {
+      const disclosure = getPublicLocationDisclosure(withDirectoryDetail(loc, detailOverlay));
+      return {
+        id: loc.id, name: loc.public_display_name || loc.name,
+        provider_type: loc.provider_type, city: loc.locality_name || loc.city,
+        county: loc.county_name || loc.county || null, address: disclosure.address,
+        lat: disclosure.lat, lng: disclosure.lng, map_precision: disclosure.map_precision,
+        profile_control_status: disclosure.profile_control_status,
+        result_type: 'directory', is_match_eligible: false,
+      };
+    })).map(({ id, name, provider_type, city, county, address, lat, lng, map_precision, profile_control_status }) => (
+      { id, name, provider_type, city, county, address, lat, lng, map_precision, profile_control_status, result_type: 'directory', is_match_eligible: false }
+    )) : undefined;
     return Response.json({
       results: finalPage.page,
+      ...(includeMapResults ? { map_results: mapResults } : {}),
       coverage_status: results.length > 0 ? 'results_found' : 'no_local_results',
       routing_mode: 'locality',
       query_scope: 'locality',
