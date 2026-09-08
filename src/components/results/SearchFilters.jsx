@@ -13,7 +13,7 @@ export default function SearchFilters({ providerType, professionalType, serviceK
   const count = professionalMode ? Number(Boolean(professionalType)) : providerType.split(",").filter(Boolean).length + serviceKeys.length + Number(casOnly);
   const begin = () => { setDraft({ types: providerType.split(",").filter(Boolean), profession: professionalType, services: [...serviceKeys], cas: casOnly }); setNeedle(""); setOpen(true); };
   const toggle = (field, key) => setDraft(previous => ({ ...previous, [field]: previous[field].includes(key) ? previous[field].filter(value => value !== key) : [...previous[field], key] }));
-  const services = Object.entries(CANONICAL_SERVICE_REGISTRY).filter(([,definition]) => definition.label?.toLocaleLowerCase("ro").includes(needle.toLocaleLowerCase("ro")));
+  const services = Object.entries(CANONICAL_SERVICE_REGISTRY).filter(([,definition]) => definition.patient_facing !== false && definition.b2b_only !== true && definition.label?.toLocaleLowerCase("ro").includes(needle.toLocaleLowerCase("ro")));
   const professions = Object.entries(PROFESSIONAL_TYPES).filter(([,label], index, entries) => entries.findIndex(([,other]) => other === label) === index);
   return <>
     <button type="button" onClick={begin} className="inline-flex min-h-12 shrink-0 items-center gap-2.5 rounded-full border border-[#d7dce4] bg-card px-5 text-sm font-semibold shadow-sm transition hover:border-[#4f6080] hover:bg-[#eff1f5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4f6080]">
@@ -22,7 +22,7 @@ export default function SearchFilters({ providerType, professionalType, serviceK
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="viasee-filter-panel flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl flex-col gap-0 overflow-hidden rounded-3xl p-0">
         <div className="border-b border-border px-6 py-5">
-          <DialogTitle className="flex items-center gap-3 text-xl"><span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#eff1f5] text-[#4f6080]"><SlidersHorizontal className="h-5 w-5" aria-hidden="true" /></span> Găsește locul potrivit</DialogTitle>
+          <DialogTitle className="flex items-center gap-3 text-xl"><span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#eff1f5] text-[#4f6080]"><SlidersHorizontal className="h-5 w-5" aria-hidden="true" /></span> {professionalMode ? "Găsește specialistul potrivit" : "Găsește locul potrivit"}</DialogTitle>
           <DialogDescription className="mt-2">Alege ce contează pentru tine. Modificările se aplică la confirmare.</DialogDescription>
         </div>
         <div className="min-h-0 overflow-y-auto px-6 py-5">
