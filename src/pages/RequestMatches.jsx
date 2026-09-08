@@ -108,7 +108,7 @@ export default function RequestMatches() {
   );
 
   return (
-    <div style={{ top: navHeight }} className="fixed inset-x-0 bottom-0 flex flex-col bg-background">
+    <div style={{ top: navHeight }} className="fixed inset-x-0 bottom-0 z-10 flex flex-col bg-background">
       {/* Bara de context. Ramane vizibila si cand lista se deruleaza, ca pacientul sa stie
           mereu ce cautare vede. */}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-4 py-2 lg:px-8">
