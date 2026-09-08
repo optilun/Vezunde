@@ -102,7 +102,7 @@ function clusterIcon(cluster, state) {
   const width = cluster.count > 1 ? 110 : 180;
   return L.divIcon({
     className: "viasee-map-pill",
-    html: pillHtml(cluster, state),
+    html: `<div style="display:flex;justify-content:center;width:100%">${pillHtml(cluster, state)}</div>`,
     iconSize: [width, 36],
     iconAnchor: [width / 2, 18],
   });
