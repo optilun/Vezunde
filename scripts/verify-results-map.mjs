@@ -182,4 +182,14 @@ const packageJson = JSON.parse(await readFile(new URL("../package.json", import.
 assert.ok(packageJson.dependencies.leaflet, "leaflet trebuie declarat in dependencies");
 assert.ok(packageJson.dependencies["react-leaflet"], "react-leaflet trebuie declarat in dependencies");
 
+const { mapMarkerLabel, clusterSharesPosition } = await import("../shared/resultsMapLabels.js");
+const singlePoint = { id: "one", name: "Lensa Alba Iulia", lat: 46, lng: 23 };
+assert.equal(mapMarkerLabel({ count: 1, lead: singlePoint, points: [singlePoint] }), "Lensa Alba Iulia");
+assert.equal(mapMarkerLabel({ count: 3, lead: singlePoint }), "3 locații");
+assert.ok(mapMarkerLabel({ count: 1, lead: { name: "Un nume de locatie foarte lung care trebuie scurtat" } }).endsWith("…"));
+assert.equal(clusterSharesPosition({ count: 2, points: [singlePoint, { ...singlePoint, id: "two" }] }), true);
+assert.equal(clusterSharesPosition({ count: 2, points: [singlePoint, { ...singlePoint, id: "two", lat: 46.1 }] }), false);
+assert.equal(clusterSharesPosition({ count: 1, points: [singlePoint] }), false);
+const deduped = buildResultsMapModel([singlePoint, { ...singlePoint }]);
+assert.equal(deduped.points.length, 1, "acelasi profil nu trebuie numarat de doua ori");
 console.log("verify-results-map: ok");
