@@ -34,11 +34,12 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
         if (map.getLayer("building-3d")) map.setLayoutProperty("building-3d","visibility","none");
         setReady(true);
       });
-      map.on("webglcontextlost",() => latest.current.onFailure());
-      timer = setTimeout(() => { if (!map.isStyleLoaded()) latest.current.onFailure(); },20000);
+      map.on("webglcontextlost",() => latest.current.onFailure("webgl"));
+      map.on("error", event => { if (event.error) console.warn("VIASEE vector map resource failed:", event.error.message); });
+      timer = setTimeout(() => { if (!map.isStyleLoaded()) latest.current.onFailure("timeout"); },20000);
       observer = new ResizeObserver(() => map.resize());
       observer.observe(container.current);
-    } catch (error) { console.error("VIASEE vector map initialization failed:", error); latest.current.onFailure(); }
+    } catch (error) { console.error("VIASEE vector map initialization failed:", error); latest.current.onFailure(/webgl/i.test(String(error?.message)) ? "webgl" : "initialization"); }
     const currentMarkers = markers.current;
     return () => { clearTimeout(timer); observer?.disconnect(); currentMarkers.forEach(marker=>marker.remove()); currentMarkers.clear(); map?.remove(); mapRef.current=null; };
   },[]);
@@ -110,7 +111,7 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
     <div ref={container} className="h-full w-full" aria-label="Harta detaliată a locațiilor" />
     {!ready && <div role="status" className="absolute inset-0 flex items-center justify-center bg-secondary text-sm">Se încarcă harta detaliată...</div>}
     <div className="absolute left-3 top-32 z-40 flex flex-col items-start gap-2">
-      <button type="button" disabled={!ready} aria-pressed={threeD} onClick={()=>setThreeD(value=>!value)} className="min-h-11 rounded-full border border-border bg-card px-4 text-sm font-semibold shadow-md hover:bg-secondary disabled:opacity-50">{threeD?"2D":"3D"}</button>
+      <button type="button" disabled={!ready} aria-label={threeD ? "Comută harta în 2D" : "Comută harta în 3D"} aria-pressed={threeD} onClick={()=>setThreeD(value=>!value)} className="min-h-11 rounded-full border border-border bg-card px-4 text-sm font-semibold shadow-md hover:bg-secondary disabled:opacity-50">{threeD?"2D":"3D"}</button>
       {threeD && zoom<14 && <span className="max-w-40 rounded-xl bg-card p-2 text-xs shadow">Apropie harta pentru a vedea clădirile 3D.</span>}
     </div>
   </>;
