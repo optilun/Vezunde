@@ -43,6 +43,7 @@ export default function ProfessionalResults({
   draft = null,
   onBackToLocations,
   onCountChange = null,
+  compact = false,
 }) {
   const [state, setState] = useState({ status: "loading", data: null, error: "" });
   const [showMore, setShowMore] = useState(false);
@@ -149,7 +150,7 @@ export default function ProfessionalResults({
           </p>
           <div className="mt-5 space-y-3">
             {top3.map((entry) => (
-              <ProfessionalMatchResultCard key={entry.id} professional={entry} needLevel={needLevel} />
+              <ProfessionalMatchResultCard compact={compact} key={entry.id} professional={entry} needLevel={needLevel} />
             ))}
           </div>
         </>
@@ -170,7 +171,7 @@ export default function ProfessionalResults({
           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Alți specialiști relevanți</div>
           <div className="mt-3 space-y-3">
             {confirmed.map((entry) => (
-              <ProfessionalMatchResultCard key={entry.id} professional={entry} needLevel={needLevel} />
+              <ProfessionalMatchResultCard compact={compact} key={entry.id} professional={entry} needLevel={needLevel} />
             ))}
           </div>
         </div>
@@ -186,7 +187,7 @@ export default function ProfessionalResults({
           </p>
           <div className="mt-3 space-y-3">
             {directory.map((entry) => (
-              <ProfessionalMatchResultCard key={entry.id} professional={entry} needLevel={needLevel} />
+              <ProfessionalMatchResultCard compact={compact} key={entry.id} professional={entry} needLevel={needLevel} />
             ))}
           </div>
         </div>
