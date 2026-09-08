@@ -128,7 +128,7 @@ const footerLinkClassName =
 export default function Layout() {
   const location = useLocation();
   const isHome = location.pathname === "/";
-  const isSearch = ["/cauta", "/cautare", "/harta"].includes(location.pathname);
+  const isSearch = ["/cauta", "/cautare", "/harta", "/rezultate"].includes(location.pathname);
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileSheetMounted, setMobileSheetMounted] = useState(false);
