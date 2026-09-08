@@ -168,8 +168,8 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
         <span>Zona inițială: aproximativ {radiusKm} km de la poziția ta.</span>
         {radiusKm < 60 && <button type="button" onClick={() => setRadiusKm((radius) => radius * 2)} className="min-h-11 rounded-full border border-border bg-card px-4 text-foreground">Extinde zona la {radiusKm * 2} km</button>}
       </div>}
-      {state.meta?.withoutPosition > 0 && <p className="mb-3 text-xs text-muted-foreground">{state.meta.withoutPosition} locații nu au poziție publicată. Le poți găsi alegând localitatea.</p>}
-<p className="mb-1 text-sm text-muted-foreground" aria-live="polite">{inView.length} locații în zona vizibilă</p><p className="mb-4 text-xs text-muted-foreground">{origin ? "Ordine: apropiere de poziția dispozitivului." : saved.nearbyOrder ? "Ordine: apropiere de ultima poziție folosită în această sesiune." : "Ordine: localitate, apoi numele locației."}</p>{filterSummary}</>;
+      {state.meta?.withoutPosition > 0 && <p className="mb-3 text-xs text-muted-foreground">{state.meta.withoutPosition === 1 ? "O locație nu are poziție publicată. O poți găsi alegând localitatea." : `${state.meta.withoutPosition} locații nu au poziție publicată. Le poți găsi alegând localitatea.`}</p>}
+<p className="mb-1 text-sm text-muted-foreground" aria-live="polite">{inView.length} {inView.length === 1 ? "locație" : "locații"} în zona vizibilă</p><p className="mb-4 text-xs text-muted-foreground">{origin ? "Ordine: apropiere de poziția dispozitivului." : saved.nearbyOrder ? "Ordine: apropiere de ultima poziție folosită în această sesiune." : "Ordine: localitate, apoi numele locației."}</p>{filterSummary}</>;
 
   return (
     <section aria-label="Explorează locațiile pe hartă" className="mt-3">
