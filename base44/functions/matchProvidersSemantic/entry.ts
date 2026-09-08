@@ -1,3 +1,4 @@
+import { directoryLocationScope } from "../../shared/searchLocationScope.js";
 import {
   PROVIDER_RECOMMENDATION_CONTRACT_VERSION,
   assignRecommendationBuckets,
@@ -696,12 +697,14 @@ Deno.serve(async (request) => {
       });
     }
 
+    const directoryScope = directoryLocationScope(payload);
     const providerTypes = new Set(Array.isArray(payload.provider_types) ? payload.provider_types.filter(Boolean) : []);
     const scopeLocationRows = await loadPublicLocationsForScope(svc, queryScope, selectedLocality, sirutaCode);
     const scopedLocations = scopeLocationRows.filter((location) => (
       active(location)
       && location.profile_control_status !== 'suspended'
       && PATIENT_FACING_PROFILE_TYPES.has(location.provider_profile_type)
+      && (directoryScope === null || directoryScope.has(location.id))
       && (providerTypes.size === 0 || providerTypes.has(location.provider_type))
     ));
     const localLocations = scopedLocations.filter((location) => locationSirutaCode(location) === sirutaCode);
