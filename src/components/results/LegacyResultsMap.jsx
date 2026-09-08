@@ -197,7 +197,7 @@ function ViewportWatcher({ onChange }) {
 function PointCard({ point, onClose }) {
   const visual = typeVisual(point.provider_type);
   return (
-    <div className="absolute inset-x-3 bottom-3 z-[500] rounded-2xl border border-border bg-card p-3.5 shadow-lg sm:inset-x-auto sm:left-3 sm:w-80">
+    <div className="absolute inset-x-3 bottom-3 z-[500] max-h-[55%] overflow-y-auto rounded-2xl border border-border bg-card p-3.5 shadow-lg sm:inset-x-auto sm:left-3 sm:w-80">
       <div className="flex items-start gap-3">
         <LocationThumb name={point.name} providerType={point.provider_type} size="sm" />
         <div className="min-w-0 flex-1">
@@ -214,7 +214,7 @@ function PointCard({ point, onClose }) {
           </div>
           <Link
             to={`/furnizor/${point.id}`}
-            className="mt-2.5 inline-flex text-xs font-semibold text-foreground underline underline-offset-4"
+            className="mt-2.5 inline-flex min-h-11 items-center text-xs font-semibold text-foreground underline underline-offset-4"
           >
             Vezi profilul
           </Link>
@@ -384,7 +384,7 @@ export default function ResultsMap({
       {/* Ce nu se vede pe harta se scrie pe ea. O harta care pare completa cand nu este face mai
           mult rau decat una care isi declara limitele. */}
       {notice && (
-        <div className="pointer-events-none absolute inset-x-3 top-3 z-[500]">
+        <div className="pointer-events-none absolute left-16 right-3 top-16 z-[500]">
           <p className="inline-block rounded-full border border-border bg-card/95 px-3 py-1.5 text-[11px] font-medium text-muted-foreground shadow-sm">
             {notice}
           </p>
