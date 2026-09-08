@@ -23,12 +23,12 @@ export const RESULT_MODES = Object.freeze({
   },
 });
 
-export default function ResultModeTabs({ mode, onChange, counts = {} }) {
+export default function ResultModeTabs({ mode, onChange, counts = {}, compact = false }) {
   return (
     <div
       role="tablist"
       aria-label="Tipul rezultatelor"
-      className="flex w-full gap-1 rounded-full border border-border bg-secondary/60 p-1"
+      className={`flex gap-1 rounded-full border border-border bg-secondary/60 p-1 ${compact ? "w-auto max-w-full" : "w-full"}`}
     >
       {Object.values(RESULT_MODES).map((entry) => {
         const active = mode === entry.key;
