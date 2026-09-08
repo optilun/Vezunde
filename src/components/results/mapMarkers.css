@@ -1,0 +1,45 @@
+/* Shared by the vector and raster map. Coordinates stay at the centre of the 44px target. */
+.viasee-vector-marker, .viasee-map-pill {
+  width: 44px; height: 44px; border: 0; background: transparent;
+  padding: 0; cursor: pointer; font-family: inherit; overflow: visible;
+}
+.viasee-marker {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  box-sizing: border-box; height: 36px; max-width: 200px; width: max-content;
+  padding: 0 11px; border-radius: 999px; border: 1.5px solid hsl(var(--border));
+  background: hsl(var(--card)); color: hsl(var(--foreground));
+  box-shadow: 0 2px 6px #17233720, 0 0 0 1px #ffffff70;
+  font: 600 12px/1.2 inherit; font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1.2;
+  white-space: nowrap; transition: background-color .12s ease, box-shadow .12s ease;
+}
+.viasee-marker-icon { display: inline-flex; flex: 0 0 auto; color: #4f6080; }
+.viasee-marker-name { overflow: hidden; text-overflow: ellipsis; }
+.viasee-marker-chevron { font-size: 19px; line-height: 1; opacity: .65; }
+.viasee-marker[data-group="true"] { background: hsl(var(--secondary)); font-weight: 700; }
+.viasee-marker[data-approximate="true"] { border-style: dashed; }
+.viasee-marker[data-top="true"] { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+.viasee-marker[data-top="true"] .viasee-marker-icon,
+.viasee-marker[data-active="true"] .viasee-marker-icon { color: inherit; }
+.viasee-marker[data-compact="true"] { width: 36px; padding: 0; gap: 0; }
+.viasee-marker[data-compact="true"] .viasee-marker-name { display: none; }
+.viasee-marker[data-active="true"] {
+  background: #4f6080; color: #fff; border-color: #4f6080;
+  box-shadow: 0 0 0 3px #ffffffee, 0 4px 14px #17233740;
+}
+.viasee-map-pill:hover, .viasee-vector-marker:hover,
+.viasee-map-pill:focus-visible, .viasee-vector-marker:focus-visible { z-index: 50 !important; }
+.viasee-map-pill:hover .viasee-marker, .viasee-vector-marker:hover .viasee-marker,
+.viasee-map-pill:focus-visible .viasee-marker, .viasee-vector-marker:focus-visible .viasee-marker,
+.viasee-marker[data-hovered="true"], .viasee-marker[data-active="true"] {
+  width: max-content; padding: 0 11px; gap: 7px;
+  box-shadow: 0 0 0 2px #ffffffee, 0 4px 14px #17233740;
+}
+.viasee-map-pill:hover .viasee-marker-name, .viasee-vector-marker:hover .viasee-marker-name,
+.viasee-map-pill:focus-visible .viasee-marker-name, .viasee-vector-marker:focus-visible .viasee-marker-name,
+.viasee-marker[data-hovered="true"] .viasee-marker-name,
+.viasee-marker[data-active="true"] .viasee-marker-name { display: inline; }
+.viasee-map-pill:focus-visible, .viasee-vector-marker:focus-visible {
+  outline: 2px solid #4f6080; outline-offset: 3px; border-radius: 999px;
+}
+@media (prefers-reduced-motion: reduce) { .viasee-marker { transition: none; } }
