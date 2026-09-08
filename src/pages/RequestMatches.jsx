@@ -1,6 +1,6 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, List, Map as MapIcon, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, List, Map as MapIcon, MessageSquare, SlidersHorizontal } from "lucide-react";
 import MatchResults from "@/components/intake2/MatchResults";
 import { RESULT_MODES } from "@/components/intake2/ResultModeTabs";
 import ResultsMap from "@/components/results/ResultsMap";
@@ -29,6 +29,22 @@ export default function RequestMatches() {
   const navigate = useNavigate();
   const { results, meta } = location.state || {};
 
+  const [activeMeta, setActiveMeta] = useState(meta || {});
+  const listRef = useRef(null);
+  const [navHeight, setNavHeight] = useState(80);
+  useEffect(() => {
+    if (!Array.isArray(results)) return;
+    const headers = [...document.querySelectorAll("header")];
+    const measure = () => setNavHeight(Math.max(0, ...headers.map(header => header.getBoundingClientRect().height)));
+    const observer = new ResizeObserver(measure);
+    headers.forEach(header => observer.observe(header));
+    measure();
+    const root = document.documentElement;
+    const previousOverflow = root.style.overflow;
+    root.style.overflow = "hidden";
+    window.scrollTo({ top: 0, behavior: "instant" });
+    return () => { observer.disconnect(); root.style.overflow = previousOverflow; };
+  }, [results]);
   const [selectedId, setSelectedId] = useState(null);
   const [hoveredId, setHoveredId] = useState(null);
   const [visibleResults, setVisibleResults] = useState(Array.isArray(results) ? results : []);
@@ -43,8 +59,21 @@ export default function RequestMatches() {
 
   const selectFromList = useCallback((entry) => {
     setSelectedId(entry?.id || null);
-    setMobileView("map");
+    if (!window.matchMedia("(min-width: 1024px)").matches) setMobileView("map");
   }, []);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const frame = requestAnimationFrame(() => {
+      const list = listRef.current;
+      const card = [...(list?.querySelectorAll("[data-result-location-id]") || [])].find(node => node.dataset.resultLocationId === selectedId);
+      if (!card || !list) return;
+      const parent = list.getBoundingClientRect();
+      const item = card.getBoundingClientRect();
+      if (item.top < parent.top || item.bottom > parent.bottom) list.scrollTop += item.top - parent.top - 8;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [selectedId, mobileView, visibleResults]);
 
   if (!Array.isArray(results)) {
     return (
@@ -54,7 +83,7 @@ export default function RequestMatches() {
           Este posibil sa fi ajuns direct pe aceasta pagina, fara sa treci prin cautare.
         </p>
         <Link
-          to="/"
+          to="/cerere"
           className="mt-6 inline-flex min-h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground"
         >
           Inapoi la cautare
@@ -64,7 +93,7 @@ export default function RequestMatches() {
   }
 
   const isProfessionalMode = resultMode === RESULT_MODES.professionals.key;
-  const areaLabel = meta?.selected_locality_name || meta?.client_address_text || "";
+  const areaLabel = activeMeta.query_scope === "national" ? "România" : activeMeta.query_scope === "county" ? activeMeta.selected_county_name || "" : activeMeta.selected_locality_name || activeMeta.client_address_text || "";
 
   const mapPanel = (
     <ResultsMap
@@ -79,10 +108,10 @@ export default function RequestMatches() {
   );
 
   return (
-    <div className="flex h-[calc(100svh-4rem)] flex-col lg:h-[calc(100svh-5rem)]">
+    <div style={{ top: navHeight }} className="fixed inset-x-0 bottom-0 flex flex-col bg-background">
       {/* Bara de context. Ramane vizibila si cand lista se deruleaza, ca pacientul sa stie
           mereu ce cautare vede. */}
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-4 py-2.5 lg:px-6">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-4 py-2 lg:px-8">
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -91,10 +120,20 @@ export default function RequestMatches() {
           <ArrowLeft className="h-4 w-4" /> Inapoi
         </button>
 
-        <p className="min-w-0 flex-1 truncate text-center text-xs text-muted-foreground sm:text-sm">
-          {results.length} {results.length === 1 ? "opțiune găsită" : "opțiuni găsite"}
-          {areaLabel ? ` în ${areaLabel}` : ""}
-        </p>
+        <div className="min-w-0 flex-1">
+          <h1 className="font-heading text-base font-bold sm:text-lg">Recomandările tale</h1>
+          <p className="truncate text-xs text-muted-foreground">{isProfessionalMode ? "Specialiști" : `${visibleResults.length} ${visibleResults.length === 1 ? "locație găsită" : "locații găsite"}`}{areaLabel ? ` · ${areaLabel}` : ""}</p>
+        </div>
+        {!isProfessionalMode && visibleResults.length > 0 && <button type="button" onClick={() => {
+          setMobileView("list");
+          requestAnimationFrame(() => {
+            const section = listRef.current?.querySelector("[data-request-followup]");
+            if (section && listRef.current) {
+              listRef.current.scrollTop += section.getBoundingClientRect().top - listRef.current.getBoundingClientRect().top;
+              section.focus({ preventScroll: true });
+            }
+          });
+        }} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-3 text-xs font-semibold text-[#4f6080] hover:bg-secondary"><MessageSquare aria-hidden="true" className="h-4 w-4" />Cererea mea</button>}
 
         {/* Filtrarea dupa harta se ofera doar cand harta chiar poate ascunde ceva. */}
         <button
@@ -113,10 +152,11 @@ export default function RequestMatches() {
         </button>
       </div>
 
-      <div className="flex min-h-0 flex-1">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1800px] flex-1 gap-5 px-4 py-3 lg:px-8">
         {/* Lista. Propriul derulaj, ca harta sa nu plece de sub ochi. */}
         <div
-          className={`min-w-0 flex-1 overflow-y-auto px-4 py-5 lg:max-w-[46rem] lg:px-6 ${
+          ref={listRef}
+          className={`min-w-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-24 pt-1 lg:pb-8 ${
             mobileView === "map" ? "hidden lg:block" : ""
           }`}
         >
@@ -132,13 +172,15 @@ export default function RequestMatches() {
             visibleIds={filterToViewport && !isProfessionalMode ? viewport.visibleIds : null}
             onVisibleResultsChange={setVisibleResults}
             onResultModeChange={setResultMode}
+            onContextChange={setActiveMeta}
           />
+          <nav aria-label="Informații VIASEE" className="mt-6 flex flex-wrap gap-4 border-t border-border pt-4 text-xs text-muted-foreground"><Link to="/confidentialitate" className="min-h-9 underline">Confidențialitate</Link><Link to="/termeni" className="min-h-9 underline">Termeni</Link><Link to="/ajutor-si-suport" className="min-h-9 underline">Ajutor</Link></nav>
         </div>
 
         {/* Harta. Permanenta pe desktop, comutabila pe telefon. */}
         <aside
-          className={`min-w-0 flex-1 border-border lg:block lg:border-l ${
-            mobileView === "map" ? "block" : "hidden"
+          className={`min-w-0 flex-1 flex-col overflow-hidden rounded-3xl border border-border bg-card lg:flex ${
+            mobileView === "map" ? "flex" : "hidden"
           }`}
         >
           {isProfessionalMode && (
@@ -148,7 +190,7 @@ export default function RequestMatches() {
               </p>
             </div>
           )}
-          <div className={isProfessionalMode ? "h-[calc(100%-2.5rem)]" : "h-full"}>
+          <div className="min-h-0 flex-1">
             {mapPanel}
           </div>
         </aside>
