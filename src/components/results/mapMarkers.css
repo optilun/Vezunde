@@ -10,7 +10,7 @@
   padding: 0 11px; border-radius: 999px; border: 1.5px solid hsl(var(--border));
   background: hsl(var(--card)); color: hsl(var(--foreground));
   box-shadow: 0 2px 6px #17233720, 0 0 0 1px #ffffff70;
-  font: 600 12px/1.2 inherit; font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1.2;
+  font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1.2;
   white-space: nowrap; transition: background-color .12s ease, box-shadow .12s ease;
 }
 .viasee-marker-icon { display: inline-flex; flex: 0 0 auto; color: #4f6080; }
