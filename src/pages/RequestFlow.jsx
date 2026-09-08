@@ -1,4 +1,5 @@
 import React from "react";
+import { useLocation } from "react-router-dom";
 import ConversationalCard from "@/components/intake2/ConversationalCard";
 import PatientCountyReformulation from "@/components/intake2/PatientCountyReformulation";
 import PatientRequestResume from "@/pages/PatientRequestResume";
@@ -6,6 +7,7 @@ import { INTENTS, LEGACY_CATEGORY_TO_INTENT } from "@/lib/intentRegistry";
 import { readPatientRequestReformulation } from "@/lib/patientNoResponseReviewClient";
 
 export default function RequestFlow() {
+  const route = useLocation();
   const urlParams = new URLSearchParams(window.location.search);
   const publicReference = urlParams.get("ref") || "";
   const q = urlParams.get("q") || "";
@@ -15,7 +17,7 @@ export default function RequestFlow() {
   const intent = reformulation?.request_draft?.intent || (INTENTS[cat] ? cat : LEGACY_CATEGORY_TO_INTENT[cat] || null);
   const initialMessage = reformulation?.detailed_message || q;
 
-  let content = <ConversationalCard initialMessage={initialMessage} initialIntent={intent} />;
+  let content = <ConversationalCard initialMessage={initialMessage} initialIntent={intent} resumeIntake={route.state?.resumeIntake === true && !q && !cat && !reformulationId} />;
   if (publicReference) content = <PatientRequestResume publicReference={publicReference} />;
   else if (reformulation?.mode === "county") content = <PatientCountyReformulation seed={reformulation} />;
 

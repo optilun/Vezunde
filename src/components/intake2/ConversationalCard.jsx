@@ -163,7 +163,7 @@ function trackPatientSearchEvent(eventName, properties = {}) {
   }
 }
 
-export default function ConversationalCard({ initialMessage = "", initialIntent = null }) {
+export default function ConversationalCard({ initialMessage = "", initialIntent = null, resumeIntake = false }) {
   const reduceMotion = useReducedMotion();
   const navigate = useNavigate();
   const entrySignatureRef = useRef("");
@@ -177,7 +177,7 @@ export default function ConversationalCard({ initialMessage = "", initialIntent 
   const restoredSessionRef = useRef(undefined);
   if (restoredSessionRef.current === undefined) {
     restoredSessionRef.current = readPatientIntakeSession({
-      entrySignature: entrySignatureRef.current,
+      entrySignature: resumeIntake ? undefined : entrySignatureRef.current,
     });
   }
   const restoredSession = restoredSessionRef.current;

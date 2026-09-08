@@ -498,7 +498,7 @@ export default function MatchResults({
               counts={{ locations: 0, professionals: professionalCount }}
             />
           </div>
-          <ProfessionalResults
+          <ProfessionalResults initialShowMore={initialShowMore}
             compact={compact}
             meta={activeMeta}
             draft={storedDraft}
@@ -550,7 +550,7 @@ export default function MatchResults({
   return (
     <div>
       {modeTabs}
-      {resultMode === RESULT_MODES.professionals.key && <ProfessionalResults compact={compact} meta={activeMeta} draft={storedDraft} onBackToLocations={() => changeResultMode(RESULT_MODES.locations.key)} onCountChange={setProfessionalCount} />}
+      {resultMode === RESULT_MODES.professionals.key && <ProfessionalResults initialShowMore={initialShowMore} compact={compact} meta={activeMeta} draft={storedDraft} onBackToLocations={() => changeResultMode(RESULT_MODES.locations.key)} onCountChange={setProfessionalCount} />}
       <div hidden={resultMode !== RESULT_MODES.locations.key}>
 
       {/* Cand filtrarea dupa harta ascunde optiuni, se spune cate si de ce. O lista scurtata in

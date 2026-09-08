@@ -44,9 +44,10 @@ export default function ProfessionalResults({
   onBackToLocations,
   onCountChange = null,
   compact = false,
+  initialShowMore = false,
 }) {
   const [state, setState] = useState({ status: "loading", data: null, error: "" });
-  const [showMore, setShowMore] = useState(false);
+  const [showMore, setShowMore] = useState(initialShowMore);
   const lastImpressionKey = useRef("");
 
   const scopeKey = JSON.stringify({
@@ -60,7 +61,7 @@ export default function ProfessionalResults({
   useEffect(() => {
     let cancelled = false;
     setState({ status: "loading", data: null, error: "" });
-    setShowMore(false);
+    setShowMore(initialShowMore);
 
     matchProfessionalsForRequest(meta, draft)
       .then((data) => {

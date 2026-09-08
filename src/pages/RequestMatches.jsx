@@ -160,7 +160,7 @@ export default function RequestMatches() {
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-4 py-2 lg:px-8">
         <button
           type="button"
-          onClick={() => navigate("/cerere")}
+          onClick={() => navigate("/cerere", { state: { resumeIntake: true } })}
           className="inline-flex min-h-10 shrink-0 items-center gap-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" /> Modifica cererea
