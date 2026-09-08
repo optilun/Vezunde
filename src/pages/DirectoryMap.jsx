@@ -21,7 +21,7 @@ import { nearestDirectory } from "../../shared/nearbyDirectory.js";
 // Filtrarea dupa tip se face in browser, pe punctele deja primite: sunt sub o mie, iar o
 // re-interogare la fiecare bifa ar fi mai lenta decat filtrarea locala.
 
-export default function DirectoryMap({ providerType = "" }) {
+export default function DirectoryMap({ providerType = "", filterSummary }) {
   const [saved] = useState(() => readSearchSession().national || {});
   const scrollRestored = useRef(false);
   const [state, setState] = useState({ status: "loading", points: [], meta: null, error: "" });
@@ -120,7 +120,7 @@ export default function DirectoryMap({ providerType = "" }) {
 
   const orderedPoints = useMemo(() => {
     if (origin) return nearestDirectory(visiblePoints, origin);
-    if (!saved.nearbyOrder) return visiblePoints;
+    if (!saved.nearbyOrder) return [...visiblePoints].sort((a,b) => String(a.city || "").localeCompare(String(b.city || ""), "ro") || String(a.name || "").localeCompare(String(b.name || ""), "ro") || String(a.id).localeCompare(String(b.id)));
     const rank = new Map(saved.nearbyOrder.map((id, index) => [id, index]));
     return [...visiblePoints].sort((a,b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity));
   }, [visiblePoints, origin, saved.nearbyOrder]);
@@ -144,6 +144,7 @@ export default function DirectoryMap({ providerType = "" }) {
   const selectedIndex = inView.findIndex((point) => point.id === selectedId);
   const listedPoints = inView.slice(0, Math.max(pageSize, selectedIndex + 1));
 
+  const geoMessage = geoStatus === "denied" ? "Accesul la locație nu este permis. Alege localitatea din bara de căutare." : geoStatus === "unavailable" ? "Poziția nu este disponibilă momentan. Încearcă din nou sau alege localitatea." : geoStatus === "imprecise" ? "Poziția este prea aproximativă. Alege localitatea pentru rezultate utile." : "";
   const listHeader = <>
       <div className="mb-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -168,7 +169,7 @@ export default function DirectoryMap({ providerType = "" }) {
         {radiusKm < 60 && <button type="button" onClick={() => setRadiusKm((radius) => radius * 2)} className="min-h-11 rounded-full border border-border bg-card px-4 text-foreground">Extinde zona la {radiusKm * 2} km</button>}
       </div>}
       {state.meta?.withoutPosition > 0 && <p className="mb-3 text-xs text-muted-foreground">{state.meta.withoutPosition} locații nu au poziție publicată. Le poți găsi alegând localitatea.</p>}
-<p className="mb-4 text-sm text-muted-foreground" aria-live="polite">{inView.length} locații în zona vizibilă</p></>;
+<p className="mb-1 text-sm text-muted-foreground" aria-live="polite">{inView.length} locații în zona vizibilă</p><p className="mb-4 text-xs text-muted-foreground">{origin ? "Ordine: apropiere de poziția dispozitivului." : saved.nearbyOrder ? "Ordine: apropiere de ultima poziție folosită în această sesiune." : "Ordine: localitate, apoi numele locației."}</p>{filterSummary}</>;
 
   return (
     <section aria-label="Explorează locațiile pe hartă" className="mt-3">
@@ -214,6 +215,7 @@ export default function DirectoryMap({ providerType = "" }) {
             {geoStatus === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
             {geoStatus === "loading" ? "Se caută poziția..." : "În apropierea mea"}
           </button>}
+              mapStatus={geoMessage}
               results={visiblePoints}
               listResults={listedPoints}
               renderCard={(point, onShowMap) => <DirectoryResultCard location={point} onShowMap={onShowMap} />}
