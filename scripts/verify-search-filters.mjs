@@ -5,6 +5,8 @@ import vm from 'node:vm';
 const source = fs.readFileSync('base44/functions/browseDirectoryProviders/entry.ts','utf8').replace(/^import[\s\S]*?;\n/gm,'');
 const locations = Array.from({length:55}, (_,i) => ({id:String(i),name:String(i).padStart(2,'0'),public_visibility_status:'approved',provider_profile_type:'ophthalmology_clinic',provider_type:'clinica_oftalmologica',expose_full_details:true}));
 locations.push({ ...locations[0], id:'hidden', name:'Hidden', expose_full_details:false });
+locations.push({ ...locations[0], id:'suspended', profile_control_status:'suspended' }, { ...locations[0], id:'inactive', active_status:'inactiva' });
+locations[54].lat = null; locations[54].lng = null;
 const rows = [
   { location_id:'54', service_key:'oct', cas_reimbursed:true },
   { location_id:'53', service_key:'oct', cas_reimbursed:false },
@@ -21,7 +23,7 @@ vm.runInNewContext(source,{
   normalizeServiceKey:key=>({definition:['oct','consult'].includes(key)?{}:null,canonicalKey:key}),
   isServicePubliclyEligible:()=>true,
   evaluateServicePrerequisites:(_key,context)=>({eligible:context.location.id!=='50'}),
-  getPublicLocationDisclosure:loc=>({...loc,profile_control_status:'directory',lat:1,lng:1}),
+  getPublicLocationDisclosure:loc=>({...loc,profile_control_status:loc.profile_control_status || 'directory',lat:'lat' in loc ? loc.lat : 1,lng:'lng' in loc ? loc.lng : 1}),
   loadAllPublicLocationsByCounty:async()=>locations,
   loadPublicLocationsForLocality:async()=>locations,
   loadDirectoryDetailOverlay:async()=>({}),
@@ -41,7 +43,8 @@ assert.ok((await run({filter_service_keys:['unknown']})).error);
 const allMap = await run({include_map_results:true, limit:50});
 assert.equal(allMap.results.length,50);
 assert.equal(allMap.map_results.length,56, 'Map is independent of the first 50 cards');
-assert.ok(allMap.map_results.some(row=>row.id==='54'));
+assert.ok(allMap.map_results.some(row=>row.id==='54' && row.lat === null && row.lng === null), 'Unpositioned locations remain in the list, without invented coordinates');
+assert.ok(!allMap.map_results.some(row=>['suspended','inactive'].includes(row.id)), 'Hidden statuses are excluded from map and list');
 assert.equal(allMap.map_results.some(row=>'phone' in row),false, 'Lightweight map projection excludes contact fields');
 const filteredMap = await run({include_map_results:true,filter_service_keys:['oct','consult'],cas_only:true,limit:1});
 assert.equal(filteredMap.results.length,1);
