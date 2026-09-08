@@ -149,3 +149,14 @@ Observatie de continuitate: in codul gasit la reluare, loader-ul national a fost
 - Cererea mea scrolls/focuses the existing submission/workspace section. Existing request saving, verification, consent, distribution and provider conversations remain inside PatientRequestSubmission -> RequestWorkspace; no new AI/chat architecture or automated submissions.
 - Checks: focused lint 0 errors / 13 existing warnings (unused catch bindings and disable directive); verify-results-map passed; verify-professional-recommendation 31/31; build and diff whitespace check passed. Not published or browser-validated on this frontend. Need live acceptance for expanded-scope header updates, selecting an initially collapsed card, mobile keyboard/scroll, specialist switch and existing conversation workspace.
 - No backend, entities, provider data, ranking, access policy or protected PR changes.
+
+
+## 2026-09-08 — Results audit corrections
+- Location branch remains mounted while viewing professionals; unsent form and submitted workspace survive mode toggles.
+- Workspace responders absent from original recommendations use response_only and a separate group, never synthetic Top 3.
+- Shared synchronous expansion lock prevents simultaneous county/national calls; successful expanded snapshot also updates results route state.
+- Result cards propagate results return context to provider/professional profiles; profile return links restore that snapshot.
+- Result mode selector uses native pressed buttons within a named group, avoiding incomplete ARIA tabs.
+- Professional reload key covers request criteria and fallback locality; selected non-Top-3 cards expand synchronously.
+- Added verify-request-workspace-ranking.mjs regression using actual merge helper.
+- Remaining: live mobile/keyboard/zoom QA; full profile round-trip form continuity, scroll/map viewport persistence; direct/new-tab recovery; compact request summary and final visual review. No backend/schema/provider data changes. Manual publish required.
