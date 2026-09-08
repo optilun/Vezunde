@@ -499,7 +499,7 @@ export default function Search() {
               mobileView={mobileView}
               onToggleMobileView={() => setMobileView(view => view === "map" ? "list" : "map")}
             >
-              {results.length === 0 && (isDirectoryBrowseView ? <EmptyDirectory /> : <EmptyMatch locality={locality} />)}
+              {results.length === 0 && (isDirectoryBrowseView ? <EmptyDirectory /> : <EmptyMatch locality={locality} filtered={activeFilters.length > 0} />)}
               {isDirectoryBrowseView && pagination?.has_more && <div className="mt-5">{moreError && <p role="alert" className="mb-2 text-sm">Nu am putut încărca următoarele locații.</p>}<button type="button" onClick={loadMore} disabled={moreLoading} className="min-h-11 rounded-full border border-border bg-card px-6 text-sm font-semibold disabled:opacity-50">{moreLoading ? "Se încarcă..." : moreError ? "Reîncearcă" : "Arată mai multe"}</button></div>}
             </LocationsWithMap>
           )}
@@ -576,10 +576,15 @@ function EmptyDirectory() {
   );
 }
 
-function EmptyMatch({ locality }) {
+function EmptyMatch({ locality, filtered }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-6 text-center sm:col-span-2 sm:p-10">
-      {locality ? (
+      {filtered ? (
+        <>
+          <p className="font-heading font-bold">Nu am găsit rezultate pentru această căutare cu filtrele selectate.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Elimină un filtru de mai sus pentru a vedea mai multe opțiuni. Căutarea ta rămâne păstrată.</p>
+        </>
+      ) : locality ? (
         <>
           <p className="font-heading font-bold">
             Nu există momentan rezultate pentru această nevoie în localitate.
