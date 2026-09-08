@@ -20,6 +20,8 @@ import ResultModeTabs, { RESULT_MODES } from "./ResultModeTabs";
 import PatientRecoverySubmission from "./PatientRecoverySubmission";
 import PatientRequestSubmission from "./PatientRequestSubmission";
 
+const EMPTY_META = Object.freeze({});
+
 function RoutingNotice({ meta }) {
   if (!meta?.routing_mode) return null;
   if (meta.routing_mode === "county" || meta.query_scope === "county") {
@@ -188,7 +190,7 @@ export default function MatchResults({
   const [isExpandingNational, setIsExpandingNational] = useState(false);
   const [nationalExpansionError, setNationalExpansionError] = useState("");
   const lastImpressionKey = useRef("");
-  const activeMeta = expandedSnapshot?.meta || meta || {};
+  const activeMeta = expandedSnapshot?.meta || meta || EMPTY_META;
   const list = Array.isArray(expandedSnapshot?.results)
     ? expandedSnapshot.results
     : (Array.isArray(results) ? results : []);
@@ -481,6 +483,7 @@ export default function MatchResults({
             />
           </div>
           <ProfessionalResults
+            compact={compact}
             meta={activeMeta}
             draft={storedDraft}
             onBackToLocations={() => changeResultMode(RESULT_MODES.locations.key)}
@@ -531,6 +534,7 @@ export default function MatchResults({
       <div>
         {modeTabs}
         <ProfessionalResults
+            compact={compact}
           meta={activeMeta}
           draft={storedDraft}
           onBackToLocations={() => changeResultMode(RESULT_MODES.locations.key)}
