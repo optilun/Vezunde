@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { List, Map as MapIcon } from "lucide-react";
 import ResultsMap from "./ResultsMap";
+import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import { mapPointFromResult } from "../../../shared/resultsMapPoints.js";
 
 export default function LocationsWithMap({
@@ -27,18 +28,36 @@ export default function LocationsWithMap({
     if (!fixedDesktop) return;
     const media = window.matchMedia("(min-width: 1024px)");
     const root = document.documentElement;
-    const body = document.body;
     const rootOverflow = root.style.overflow;
-    const bodyOverflow = body.style.overflow;
     const apply = () => {
       root.style.overflow = media.matches ? "hidden" : rootOverflow;
-      body.style.overflow = media.matches ? "hidden" : bodyOverflow;
       if (media.matches) window.scrollTo({ top: 0, behavior: "instant" });
     };
     apply();
     media.addEventListener("change", apply);
-    return () => { media.removeEventListener("change", apply); root.style.overflow = rootOverflow; body.style.overflow = bodyOverflow; };
+    return () => { media.removeEventListener("change", apply); root.style.overflow = rootOverflow; };
   }, [fixedDesktop]);
+  const listRef = useRef(null);
+  const restoredListKey = useRef(null);
+  const listSignature = (listResults || []).slice(0, 2).map(row => row.id).join("|");
+  useEffect(() => {
+    if (!fixedDesktop || !storageKey || !window.matchMedia("(min-width: 1024px)").matches) return;
+    if (restoredListKey.current === storageKey) return;
+    const saved = readSearchSession().listScroll?.[storageKey];
+    if (saved && saved.signature !== listSignature) return;
+    const frame = requestAnimationFrame(() => {
+      if (listRef.current) listRef.current.scrollTop = saved?.top || 0;
+      restoredListKey.current = storageKey;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [fixedDesktop, storageKey, listSignature]);
+  const rememberList = () => {
+    if (!fixedDesktop || !storageKey || restoredListKey.current !== storageKey || !window.matchMedia("(min-width: 1024px)").matches) return;
+    const previous = readSearchSession().listScroll || {};
+    // A bounded, tab-local cache; no device coordinates or analytics.
+    const entries = Object.entries(previous).filter(([key]) => key !== storageKey).slice(-7);
+    writeSearchSession({ listScroll: { ...Object.fromEntries(entries), [storageKey]: { top: listRef.current?.scrollTop || 0, signature: listSignature } } });
+  };
   const cardRefs = useRef(new Map());
   const previousSelection = useRef(selectedId);
   useEffect(() => {
@@ -65,8 +84,8 @@ export default function LocationsWithMap({
         </div>
       )}
 
-      <div style={fixedDesktop ? { top: "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 12px)" } : undefined} className={hasPositions ? (fixedDesktop ? "mt-3 grid gap-5 lg:fixed lg:inset-x-0 lg:bottom-3 lg:mx-auto lg:mt-0 lg:max-w-[1800px] lg:grid-cols-2 lg:overflow-hidden lg:px-8" : "mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start") : "mt-4"}>
-        <div className={`min-w-0 ${mobileView === "map" && hasPositions ? "hidden lg:block" : ""} ${fixedDesktop ? "lg:h-full lg:overflow-y-auto lg:overscroll-contain lg:px-1 lg:pb-8" : ""}`}>
+      <div data-search-workspace={fixedDesktop ? "" : undefined} style={fixedDesktop ? { top: "calc(var(--search-nav-height, 80px) + var(--search-controls-height, 0px) + 12px)" } : undefined} className={hasPositions ? (fixedDesktop ? "mt-3 grid gap-5 lg:fixed lg:inset-x-0 lg:bottom-3 lg:mx-auto lg:mt-0 lg:max-w-[1800px] lg:grid-cols-2 lg:overflow-hidden lg:px-8" : "mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start") : (fixedDesktop ? "mt-3 lg:fixed lg:inset-x-0 lg:bottom-3 lg:mx-auto lg:mt-0 lg:max-w-[1800px] lg:overflow-hidden lg:px-8" : "mt-4")}> 
+        <div ref={listRef} onScroll={rememberList} data-search-list className={`min-w-0 ${mobileView === "map" && hasPositions ? "hidden lg:block" : ""} ${fixedDesktop ? "lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:px-1 lg:pb-8" : ""}`}>
           {listHeader}
           <div className={hasPositions ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2" : "grid gap-4 sm:grid-cols-2"}>
             {(listResults || []).map((location) => (
@@ -81,12 +100,13 @@ export default function LocationsWithMap({
                   selectedId === location.id ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
                 } ${hoveredId === location.id && selectedId !== location.id ? "shadow-[0_4px_16px_rgba(23,23,23,0.10)]" : ""}`}
               >
-                {renderCard(location, mapPointFromResult(location) ? () => { onSelect(location.id); if (mobileView !== "map") onToggleMobileView(); } : undefined)}
-                {!integratedMapAction && mapPointFromResult(location) && <button type="button" onClick={() => { onSelect(location.id); if (mobileView !== "map") onToggleMobileView(); }} className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium hover:bg-secondary"><MapIcon className="h-4 w-4" /> Vezi pe hartă</button>}
+                {renderCard(location, mapPointFromResult(location) ? () => { onSelect(location.id); if (!window.matchMedia("(min-width: 1024px)").matches && mobileView !== "map") onToggleMobileView(); } : undefined)}
+                {!integratedMapAction && mapPointFromResult(location) && <button type="button" onClick={() => { onSelect(location.id); if (!window.matchMedia("(min-width: 1024px)").matches && mobileView !== "map") onToggleMobileView(); }} className="inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium hover:bg-secondary"><MapIcon className="h-4 w-4" /> Vezi pe hartă</button>}
               </div>
             ))}
           </div>
           {children}
+          {fixedDesktop && <p className="mt-8 hidden text-xs text-muted-foreground lg:block">VIASEE nu oferă diagnostic medical.</p>}
           {fixedDesktop && <nav aria-label="Informații VIASEE" className="mt-8 hidden flex-wrap gap-x-4 gap-y-2 border-t border-border pt-4 text-xs text-muted-foreground lg:flex"><Link to="/confidentialitate" className="min-h-8 underline">Confidențialitate</Link><Link to="/termeni" className="min-h-8 underline">Termeni</Link><Link to="/ajutor-si-suport" className="min-h-8 underline">Ajutor</Link></nav>}
         </div>
 
