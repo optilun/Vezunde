@@ -116,7 +116,7 @@ export default function RequestMatches() {
       if (item.top < parent.top || item.bottom > parent.bottom) list.scrollTop += item.top - parent.top - 8;
     });
     return () => cancelAnimationFrame(frame);
-  }, [selectedId, mobileView, visibleResults]);
+  }, [selectedId, mobileView]);
 
   if (!Array.isArray(results)) {
     return (

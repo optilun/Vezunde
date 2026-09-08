@@ -98,7 +98,7 @@ export default function ResultsMap({
     if (storageKey) {
       const maps = readSearchSession().maps || {};
       const signature = model.points.map((point) => `${point.id}:${point.lat}:${point.lng}`).sort().join("|");
-      writeSearchSession({ maps: { ...maps, [storageKey]: { signature, bounds: next.bounds } } });
+      writeSearchSession({ maps: { ...maps, [storageKey]: { signature, bounds: next.bounds, camera: next.camera } } });
     }
     if (onViewportChange) {
       onViewportChange({

@@ -12,6 +12,8 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
   const latest = useRef({});
   latest.current = {points, reportViewport, onFailure};
   const fitted = useRef(null);
+  const skipInitialSelection = useRef(false);
+  const restoredCamera = useRef(null);
   const [ready, setReady] = useState(false);
   const [threeD, setThreeD] = useState(false);
   const [zoom, setZoom] = useState(6);
@@ -31,7 +33,7 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
       const report = () => {
         const b = map.getBounds();
         setZoom(map.getZoom());
-        latest.current.reportViewport({zoom:map.getZoom(),bounds:[[b.getSouth(),b.getWest()],[b.getNorth(),b.getEast()]]});
+        latest.current.reportViewport({zoom:map.getZoom(),bounds:[[b.getSouth(),b.getWest()],[b.getNorth(),b.getEast()]],camera:{center:[map.getCenter().lng,map.getCenter().lat],zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing()}});
       };
       map.on("moveend",report);
       for (const event of ["moveend", "zoomend", "rotateend", "pitchend", "resize"]) map.on(event, scheduleLabels);
@@ -58,7 +60,15 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
     const saved = !fitted.current && storageKey ? readSearchSession().maps?.[storageKey] : null;
     fitted.current=signature;
     if (saved?.signature===signature && saved.bounds) {
-      map.fitBounds(saved.bounds.map(([lat,lng])=>[lng,lat]),{padding:48,duration:0});
+      skipInitialSelection.current = true;
+      const camera = saved.camera;
+      if (camera && Array.isArray(camera.center) && camera.center.length === 2 && camera.center.every(Number.isFinite) && [camera.zoom, camera.pitch, camera.bearing].every(Number.isFinite)) {
+        restoredCamera.current = camera;
+        setThreeD(camera.pitch > 0);
+        map.jumpTo(camera);
+      } else {
+        map.fitBounds(saved.bounds.map(([lat,lng])=>[lng,lat]),{padding:0,duration:0});
+      }
     } else {
       const bounds=new maplibregl.LngLatBounds();
       points.forEach(p=>bounds.extend([p.lng,p.lat]));
@@ -69,13 +79,22 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
     if (ready && focusArea?.bounds) mapRef.current.fitBounds(focusArea.bounds.map(([lat,lng])=>[lng,lat]),{padding:40,maxZoom:13,duration:0});
   },[focusArea,ready]);
   useEffect(() => {
-    if (!ready || !selectedId) return;
+    if (!ready) return;
+    if (skipInitialSelection.current) { skipInitialSelection.current = false; return; }
+    if (!selectedId) return;
     const point=latest.current.points.find(p=>p.id===selectedId);
     if (point) mapRef.current.easeTo({center:[point.lng,point.lat],duration:350});
   },[selectedId,ready]);
   useEffect(() => {
     if (!ready) return;
     const map=mapRef.current;
+    if (restoredCamera.current) {
+      const camera = restoredCamera.current;
+      if (map.getLayer("building-3d")) map.setLayoutProperty("building-3d","visibility",camera.pitch > 0 ? "visible" : "none");
+      // Wait for state to agree before allowing the normal 2D/3D toggle effect.
+      if (threeD === (camera.pitch > 0)) restoredCamera.current = null;
+      return;
+    }
     if (map.getLayer("building-3d")) map.setLayoutProperty("building-3d","visibility",threeD?"visible":"none");
     map.easeTo({pitch:threeD?50:0,bearing:threeD?map.getBearing():0,duration:450});
   },[threeD,ready]);
