@@ -1,3 +1,4 @@
+import { layoutMapMarkers } from "../../../shared/mapMarkerPresentation.js";
 import { clusterSharesPosition } from "../../../shared/resultsMapLabels.js";
 import React, { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
@@ -18,6 +19,11 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
     let map;
     let observer;
     let timer;
+    let layoutFrame;
+    const scheduleLabels = () => {
+      cancelAnimationFrame(layoutFrame);
+      layoutFrame = requestAnimationFrame(() => { if (container.current) layoutMapMarkers(container.current); });
+    };
     try {
       map = new maplibregl.Map({container:container.current, style:"https://tiles.openfreemap.org/styles/liberty", center:[24.9,45.9],zoom:6, maxZoom:19, attributionControl:{compact:true, customAttribution:'<a href="https://openfreemap.org/">OpenFreeMap</a> · <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap</a>'}});
       mapRef.current = map;
@@ -28,6 +34,7 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
         latest.current.reportViewport({zoom:map.getZoom(),bounds:[[b.getSouth(),b.getWest()],[b.getNorth(),b.getEast()]]});
       };
       map.on("moveend",report);
+      for (const event of ["moveend", "zoomend", "rotateend", "pitchend", "resize"]) map.on(event, scheduleLabels);
       map.on("load",() => {
         clearTimeout(timer);
         if (map.getLayer("building")) map.setLayerZoomRange("building",13,24);
@@ -41,7 +48,7 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
       observer.observe(container.current);
     } catch (error) { console.error("VIASEE vector map initialization failed:", error); latest.current.onFailure(/webgl/i.test(String(error?.message)) ? "webgl" : "initialization"); }
     const currentMarkers = markers.current;
-    return () => { clearTimeout(timer); observer?.disconnect(); currentMarkers.forEach(marker=>marker.remove()); currentMarkers.clear(); map?.remove(); mapRef.current=null; };
+    return () => { cancelAnimationFrame(layoutFrame); clearTimeout(timer); observer?.disconnect(); currentMarkers.forEach(marker=>marker.remove()); currentMarkers.clear(); map?.remove(); mapRef.current=null; };
   },[]);
   useEffect(() => {
     if (!ready) return;
@@ -82,7 +89,7 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
       if (!marker) {
         const button=document.createElement("button");
         button.type="button";
-        button.style.cssText="border:0;background:transparent;padding:0;cursor:pointer;font-family:inherit";
+        button.className = "viasee-vector-marker";
         marker=new maplibregl.Marker({element:button,anchor:"center",pitchAlignment:"viewport",rotationAlignment:"viewport"}).setLngLat([cluster.lng,cluster.lat]).addTo(map);
         markers.current.set(cluster.key,marker);
       }
@@ -106,6 +113,8 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
       el.onfocus=el.onmouseenter;
       el.onblur=el.onmouseleave;
     });
+    const frame = requestAnimationFrame(() => layoutMapMarkers(container.current));
+    return () => cancelAnimationFrame(frame);
   },[clusters,selectedId,hoveredId,ready,pillHtml,onSelect,onHover,onCluster]);
   return <>
     <div ref={container} className="h-full w-full" aria-label="Harta detaliată a locațiilor" />
