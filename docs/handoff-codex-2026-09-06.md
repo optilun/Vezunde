@@ -160,3 +160,15 @@ Observatie de continuitate: in codul gasit la reluare, loader-ul national a fost
 - Professional reload key covers request criteria and fallback locality; selected non-Top-3 cards expand synchronously.
 - Added verify-request-workspace-ranking.mjs regression using actual merge helper.
 - Remaining: live mobile/keyboard/zoom QA; full profile round-trip form continuity, scroll/map viewport persistence; direct/new-tab recovery; compact request summary and final visual review. No backend/schema/provider data changes. Manual publish required.
+
+
+## 2026-09-08 — Results return position and summary
+- Reuses tab-local searchSession (30-minute expiry) for one latest recommendation view: route-scoped key, mode, selected ID, scroll position, mobile panel, viewport filter. No contact/free-text fields added.
+- Results route carries its stable view key through profile return snapshots and scope expansion.
+- Restores list scroll after content measurement; user wheel/touch cancels pending restoration. Previously expanded location/professional groups are available on return.
+- Results map stores camera (center, zoom, pitch, bearing), restores only for matching point signature, and avoids selected-marker recenter overriding initial restoration. Existing 2D fallback retained.
+- Map popup profile links now carry recommendation return state for both vector and Leaflet maps.
+- Compact header includes intent label where known. Modify request resumes valid existing intake at review through explicit internal route state; fresh query/reformulation entries retain their existing isolation.
+- Checks passed: results-map, workspace-ranking regression, patient-search-flow, patient-intake-session-hardening, scoped eslint, build, diff check.
+- Browser read-only check of public /rezultate confirms direct-entry empty state. New changes are not published and no preview URL tool was available: no claim of live mobile, zoom, 3D or complete round-trip interaction verification.
+- Remaining: live interaction QA after publication; unsent request form is retained across mode toggles but not across full profile navigation; no automatic server result restoration for direct/new-tab entry.
