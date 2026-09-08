@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, MapPin, LocateFixed } from "lucide-react";
+import { Loader2, MapPin, LocateFixed, ChevronDown } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import LocationsWithMap from "@/components/results/LocationsWithMap";
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
@@ -145,31 +145,28 @@ export default function DirectoryMap({ providerType = "", filterSummary }) {
   const listedPoints = inView.slice(0, Math.max(pageSize, selectedIndex + 1));
 
   const geoMessage = geoStatus === "denied" ? "Accesul la locație nu este permis. Alege localitatea din bara de căutare." : geoStatus === "unavailable" ? "Poziția nu este disponibilă momentan. Încearcă din nou sau alege localitatea." : geoStatus === "imprecise" ? "Poziția este prea aproximativă. Alege localitatea pentru rezultate utile." : "";
-  const listHeader = <>
-      <div className="mb-2">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="font-heading text-lg font-bold tracking-tight sm:text-xl">
-              {origin || saved.nearbyOrder ? "Locații în zona explorată" : "Explorează România"}
-            </h2>
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground sm:text-sm">
-              {state.status === "ready"
-                ? origin || saved.nearbyOrder ? "Locațiile din zona hărții, în ordinea apropierii. Pozițiile pot fi aproximative." : "Alege localitatea sau folosește poziția dispozitivului."
-                : state.status === "error" ? "Directorul nu a putut fi încărcat." : "Se încarcă locațiile publicate..."}
-            </p>
-          </div>
-
+  const listHeader = <div className="mb-4">
+      <h2 className="font-heading text-lg font-bold tracking-tight sm:text-xl">
+        {origin || saved.nearbyOrder ? "Locații în zona explorată" : "Explorează România"}
+      </h2>
+      <details className="group mt-1 text-muted-foreground">
+        <summary className="flex min-h-9 cursor-pointer list-none flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden">
+          <span aria-live="polite">{inView.length} {inView.length === 1 ? "locație" : "locații"} în zona vizibilă</span>
+          <span className="inline-flex items-center gap-1 text-xs text-[#4f6080]">Despre rezultate <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 transition-transform group-open:rotate-180" /></span>
+        </summary>
+        <div className="mt-2 space-y-2 rounded-xl border border-border bg-secondary/50 p-3 text-xs leading-relaxed">
+          <p>{origin ? "Ordine: apropiere de poziția dispozitivului." : saved.nearbyOrder ? "Ordine: apropiere de ultima poziție folosită în această sesiune." : "Ordine: localitate, apoi numele locației."}</p>
+          <p>Lista urmărește zona vizibilă pe hartă. Pozițiile pot fi aproximative; verifică adresa din profil.</p>
+          {state.meta?.withoutPosition > 0 && <p>{state.meta.withoutPosition === 1 ? "O locație din director nu are poziție publicată. O poți găsi alegând localitatea." : `${state.meta.withoutPosition} locații din director nu au poziție publicată. Le poți găsi alegând localitatea.`}</p>}
         </div>
-        {(geoStatus === "denied" || geoStatus === "unavailable") && <p role="status" className="mt-3 text-sm text-muted-foreground">{geoStatus === "denied" ? "Accesul la locație nu este permis. Poți alege localitatea din bara de căutare." : "Poziția nu este disponibilă momentan. Încearcă din nou sau alege localitatea."}</p>}
-      </div>
-
-      {geoStatus === "imprecise" && <p role="status" className="mb-3 text-sm text-muted-foreground">Poziția dispozitivului este prea aproximativă. Alege localitatea pentru rezultate utile.</p>}
-      {origin && <div className="mb-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-        <span>Zona inițială: aproximativ {radiusKm} km de la poziția ta.</span>
-        {radiusKm < 60 && <button type="button" onClick={() => setRadiusKm((radius) => radius * 2)} className="min-h-11 rounded-full border border-border bg-card px-4 text-foreground">Extinde zona la {radiusKm * 2} km</button>}
+      </details>
+      {geoMessage && <p role="status" className="mt-2 text-sm text-muted-foreground">{geoMessage}</p>}
+      {origin && <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span>Zonă inițială: aprox. {radiusKm} km.</span>
+        {radiusKm < 60 && <button type="button" onClick={() => setRadiusKm((radius) => radius * 2)} className="min-h-11 rounded-full border border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-secondary">Extinde la {radiusKm * 2} km</button>}
       </div>}
-      {state.meta?.withoutPosition > 0 && <p className="mb-3 text-xs text-muted-foreground">{state.meta.withoutPosition === 1 ? "O locație nu are poziție publicată. O poți găsi alegând localitatea." : `${state.meta.withoutPosition} locații nu au poziție publicată. Le poți găsi alegând localitatea.`}</p>}
-<p className="mb-1 text-sm text-muted-foreground" aria-live="polite">{inView.length} {inView.length === 1 ? "locație" : "locații"} în zona vizibilă</p><p className="mb-4 text-xs text-muted-foreground">{origin ? "Ordine: apropiere de poziția dispozitivului." : saved.nearbyOrder ? "Ordine: apropiere de ultima poziție folosită în această sesiune." : "Ordine: localitate, apoi numele locației."}</p>{filterSummary}</>;
+      {filterSummary}
+    </div>;
 
   return (
     <section aria-label="Explorează locațiile pe hartă" className="mt-3">
