@@ -70,7 +70,7 @@ function pillHtml(cluster, { active, hovered }) {
 function PointCard({ point, onClose }) {
   const visual = typeVisual(point.provider_type);
   return (
-    <div className="absolute inset-x-3 bottom-3 z-[500] rounded-2xl border border-border bg-card p-3.5 shadow-lg sm:inset-x-auto sm:left-3 sm:w-80">
+    <div className="absolute inset-x-3 bottom-3 z-[500] max-h-[55%] overflow-y-auto rounded-2xl border border-border bg-card p-3.5 shadow-lg sm:inset-x-auto sm:left-3 sm:w-80">
       <div className="flex items-start gap-3">
         <LocationThumb name={point.name} providerType={point.provider_type} size="sm" />
         <div className="min-w-0 flex-1">
@@ -87,7 +87,7 @@ function PointCard({ point, onClose }) {
           </div>
           <Link
             to={`/furnizor/${point.id}`}
-            className="mt-2.5 inline-flex text-xs font-semibold text-foreground underline underline-offset-4"
+            className="mt-2.5 inline-flex min-h-11 items-center text-xs font-semibold text-foreground underline underline-offset-4"
           >
             Vezi profilul
           </Link>
@@ -148,7 +148,15 @@ export default function ResultsMap({
   }, [model.points, model.mappedCount, onViewportChange, storageKey]);
 
   const [vectorFailed, setVectorFailed] = useState(false);
-  if (vectorFailed) return <Suspense fallback={<div className={className}>Se încarcă harta 2D...</div>}><LegacyResultsMap {...{results, selectedId, hoveredId, onSelect, onHover, onViewportChange, className, storageKey, focusArea}} /></Suspense>;
+  if (vectorFailed) return <div className={`relative isolate ${className}`}>
+    <Suspense fallback={<div role="status" className="flex h-full items-center justify-center text-sm">Se încarcă harta 2D...</div>}>
+      <LegacyResultsMap {...{results, selectedId, hoveredId, onSelect, onHover, onViewportChange, storageKey, focusArea}} className="h-full w-full" />
+    </Suspense>
+    <details className="absolute left-3 top-24 z-[500] max-w-60 rounded-2xl border border-border bg-card text-xs shadow-sm">
+      <summary className="flex min-h-11 cursor-pointer items-center px-3 font-semibold">Hartă 2D · De ce?</summary>
+      <p className="px-3 pb-3 leading-relaxed">{vectorFailed === "webgl" ? "Acest browser nu poate porni grafica 3D (WebGL). Locațiile, selecția și zoom-ul rămân disponibile în 2D." : "Harta vectorială nu a putut fi încărcată. Poți explora aceleași locații pe harta 2D."}</p>
+    </details>
+  </div>;
 
   if (model.points.length === 0) {
     return (
@@ -167,7 +175,7 @@ export default function ResultsMap({
 
   return (
     <div className={`relative isolate ${className}`}>
-      <VectorResultsCanvas points={model.points} clusters={clusters} selectedId={selectedId} hoveredId={hoveredId} storageKey={storageKey} focusArea={focusArea} reportViewport={reportViewport} pillHtml={pillHtml} onSelect={onSelect} onHover={onHover} onCluster={setOpenClusterKey} onFailure={() => setVectorFailed(true)} />
+      <VectorResultsCanvas points={model.points} clusters={clusters} selectedId={selectedId} hoveredId={hoveredId} storageKey={storageKey} focusArea={focusArea} reportViewport={reportViewport} pillHtml={pillHtml} onSelect={onSelect} onHover={onHover} onCluster={setOpenClusterKey} onFailure={(reason) => setVectorFailed(reason || "unavailable")} />
 
       {openCluster && !selectedPoint && (
         <section aria-label="Locații din grup"
@@ -199,7 +207,7 @@ export default function ResultsMap({
       {/* Ce nu se vede pe harta se scrie pe ea. O harta care pare completa cand nu este face mai
           mult rau decat una care isi declara limitele. */}
       {notice && (
-        <div className="pointer-events-none absolute inset-x-3 top-3 z-[500]">
+        <div className="pointer-events-none absolute left-16 right-3 top-16 z-[500]">
           <p className="inline-block rounded-full border border-border bg-card/95 px-3 py-1.5 text-[11px] font-medium text-muted-foreground shadow-sm">
             {notice}
           </p>
