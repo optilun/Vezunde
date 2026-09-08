@@ -74,9 +74,9 @@ export default function ResultCard({
       data-result-location-id={location.id}
       onMouseEnter={onHover ? () => onHover(location.id) : undefined}
       onMouseLeave={onHover ? () => onHover(null) : undefined}
-      className={`directory-premium-card rounded-[22px] ${compact ? "p-4 sm:p-5" : "p-5"} ${VARIANT_STYLES[variant] || VARIANT_STYLES.neutral} ${
-        ""
-      } ${selected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""} ${
+      onFocus={onHover ? () => onHover(location.id) : undefined}
+      onBlur={onHover ? () => onHover(null) : undefined}
+      className={`directory-premium-card rounded-[22px] ${compact ? "p-4 sm:p-5" : "p-5"} ${VARIANT_STYLES[variant] || VARIANT_STYLES.neutral} ${selected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""} ${
         hovered && !selected ? "border-foreground/40 shadow-[0_4px_16px_rgba(23,23,23,0.10)]" : ""
       }`}
     >
