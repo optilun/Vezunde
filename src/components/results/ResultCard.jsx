@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Clock, MapPin, Phone, Route } from "lucide-react";
+import { ArrowUpRight, Clock, Map, MapPin, Phone, Route } from "lucide-react";
 import { summarizePublicServices } from "@/lib/servicePresentation";
 import { buildProviderDecisionConfidence } from "../../../shared/providerDecisionConfidence.js";
 import TrustBadge from "@/components/results/TrustBadge";
 import ServiceChip from "@/components/results/ServiceChip";
 import DecisionConfidencePanel from "@/components/results/DecisionConfidencePanel";
 import DirectoryProfileNotice from "@/components/provider/DirectoryProfileNotice";
+import { mapPointFromResult } from "../../../shared/resultsMapPoints.js";
 import LocationThumb, { typeVisual } from "@/components/results/LocationThumb";
 
 // Cardul de rezultat.
@@ -29,7 +30,7 @@ const TIER_LABELS = {
 };
 
 const VARIANT_STYLES = {
-  top3: "bg-card border border-primary/30 shadow-[0_4px_24px_rgba(154,74,33,0.08)]",
+  top3: "bg-card border border-[#b9c5d8]",
   confirmed: "bg-card border border-border",
   directory: "bg-secondary/30 border border-dashed border-border/80",
   neutral: "bg-card border border-border",
@@ -64,26 +65,23 @@ export default function ResultCard({
   const serviceSummaries = summarizePublicServices(matchedServices);
   const shown = serviceSummaries.slice(0, 3);
   const extra = Math.max(0, serviceSummaries.length - shown.length);
-  const hasDistance = !isDirectoryProfile && Number.isFinite(Number(location.distance_km));
+  const hasDistance = !isDirectoryProfile && location.distance_km != null && location.distance_km !== "" && Number.isFinite(Number(location.distance_km));
   const confidence = confidenceForLocation(location);
   const rank = variant === "top3" ? Number(location.bucket_rank) || null : null;
 
   return (
-    <div
-      onClick={onSelect ? () => onSelect(location) : undefined}
-      role={onSelect ? "button" : undefined}
-      tabIndex={onSelect ? 0 : undefined}
-      onKeyDown={onSelect ? (event) => { if (event.key === "Enter") onSelect(location); } : undefined}
+    <article
+      data-result-location-id={location.id}
       onMouseEnter={onHover ? () => onHover(location.id) : undefined}
       onMouseLeave={onHover ? () => onHover(null) : undefined}
-      className={`rounded-2xl transition-all ${compact ? "p-4" : "p-5"} ${VARIANT_STYLES[variant] || VARIANT_STYLES.neutral} ${
-        onSelect ? "cursor-pointer" : ""
+      className={`directory-premium-card rounded-[22px] ${compact ? "p-4 sm:p-5" : "p-5"} ${VARIANT_STYLES[variant] || VARIANT_STYLES.neutral} ${
+        ""
       } ${selected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""} ${
         hovered && !selected ? "border-foreground/40 shadow-[0_4px_16px_rgba(23,23,23,0.10)]" : ""
       }`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3.5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 basis-60 items-start gap-3">
           <LocationThumb
             name={location.name}
             photoUrl={location.photo_url}
@@ -91,7 +89,7 @@ export default function ResultCard({
             size={compact ? "sm" : "md"}
           />
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#4f6080]">
               {rank && (
                 <span
                   className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold leading-none text-primary-foreground"
@@ -107,7 +105,7 @@ export default function ResultCard({
                 compact ? "text-base sm:text-lg" : "text-xl"
               }`}
             >
-              {location.name}
+              <Link to={`/furnizor/${location.id}`} onClick={onProfileClick} className="break-words hover:text-[#4f6080] focus-visible:outline focus-visible:outline-2">{location.name}</Link>
             </h3>
           </div>
         </div>
@@ -172,28 +170,26 @@ export default function ResultCard({
         </div>
       )}
 
-      <div className={`flex flex-wrap gap-2 ${compact ? "mt-3" : "mt-4"}`}>
+      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/70 pt-3">
         <Link
           to={`/furnizor/${location.id}`}
           onClick={onProfileClick}
-          className={`rounded-full font-medium transition-opacity hover:opacity-90 ${
-            compact ? "px-3.5 py-1.5 text-xs" : "px-4 py-2 text-sm"
-          } ${isDirectoryProfile ? "border border-border bg-card text-foreground" : "bg-primary text-primary-foreground"}`}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-[#4f6080]"
         >
-          {isDirectoryProfile ? "Vezi informațiile publice" : "Vezi profilul"}
+          {isDirectoryProfile ? "Vezi informațiile publice" : "Vezi profilul"} <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
         </Link>
+        {onSelect && mapPointFromResult(location) && <button type="button" onClick={() => onSelect(location)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-secondary/60 px-3 text-sm font-medium text-[#4f6080] hover:bg-secondary"><Map aria-hidden="true" className="h-4 w-4" />Hartă</button>}
         {location.phone && (
           <a
             href={`tel:${location.phone.replace(/\s/g, "")}`}
             onClick={onPhoneClick}
-            className={`rounded-full border border-border bg-card font-medium hover:border-foreground/40 transition-colors ${
-              compact ? "px-3.5 py-1.5 text-xs" : "px-4 py-2 text-sm"
-            }`}
+            aria-label={`Sună la ${location.name}`}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-3 text-sm font-medium text-[#4f6080] hover:bg-secondary"
           >
-            {compact ? location.phone : "Suna direct"}
+            <Phone aria-hidden="true" className="h-4 w-4" /> Sună
           </a>
         )}
       </div>
-    </div>
+    </article>
   );
 }
