@@ -172,3 +172,12 @@ Observatie de continuitate: in codul gasit la reluare, loader-ul national a fost
 - Checks passed: results-map, workspace-ranking regression, patient-search-flow, patient-intake-session-hardening, scoped eslint, build, diff check.
 - Browser read-only check of public /rezultate confirms direct-entry empty state. New changes are not published and no preview URL tool was available: no claim of live mobile, zoom, 3D or complete round-trip interaction verification.
 - Remaining: live interaction QA after publication; unsent request form is retained across mode toggles but not across full profile navigation; no automatic server result restoration for direct/new-tab entry.
+
+
+## 2026-09-09 — National directory on recommendation map
+
+User clarified: /rezultate displays all public national locations, initially zoomed to the searched area. Added independent national directory loading and recommendationMapContext union by ID. Request ranking/list/distribution unchanged. Exact-ID public coordinates can fill missing request map coordinates without mutating results.
+
+Shared vector and Leaflet maps accept separate fit points; all national points remain rendered/selectable. Request markers have a blue outline and popups distinguish directory-only locations. Added national loading/error/retry states.
+
+Passed: verify-recommendation-national-map, verify-results-map, verify-provider-recommendation, targeted ESLint, production build, git diff --check. Published frontend interaction still requires verification after user publication. No schema, RLS or provider data changes.
