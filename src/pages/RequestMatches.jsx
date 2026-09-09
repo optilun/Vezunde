@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, List, Map as MapIcon, MessageSquare, SlidersHorizontal } from "lucide-react";
+import PatientRequestSubmission from "@/components/intake2/PatientRequestSubmission";
 import MatchResults from "@/components/intake2/MatchResults";
 import { RESULT_MODES } from "@/components/intake2/ResultModeTabs";
 import ResultsMap from "@/components/results/ResultsMap";
@@ -39,6 +40,9 @@ export default function RequestMatches() {
 
   const [activeMeta, setActiveMeta] = useState(meta || {});
   const listRef = useRef(null);
+  const requestRef = useRef(null);
+  const [workspaceView, setWorkspaceView] = useState("results");
+  const [hasRequest, setHasRequest] = useState(false);
   const [navHeight, setNavHeight] = useState(80);
   useEffect(() => {
     if (!Array.isArray(results)) return;
@@ -170,16 +174,10 @@ export default function RequestMatches() {
           <h1 className="font-heading text-base font-bold sm:text-lg">Recomandările tale</h1>
           <p className="truncate text-xs text-muted-foreground">{isProfessionalMode ? "Specialiști" : `${visibleResults.length} ${visibleResults.length === 1 ? "locație găsită" : "locații găsite"}`}{areaLabel ? ` · ${areaLabel}` : ""}{needLabel ? ` · ${needLabel}` : ""}</p>
         </div>
-        {!isProfessionalMode && visibleResults.length > 0 && <button type="button" onClick={() => {
-          setMobileView("list");
-          requestAnimationFrame(() => {
-            const section = listRef.current?.querySelector("[data-request-followup]");
-            if (section && listRef.current) {
-              listRef.current.scrollTop += section.getBoundingClientRect().top - listRef.current.getBoundingClientRect().top;
-              section.focus({ preventScroll: true });
-            }
-          });
-        }} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-3 text-xs font-semibold text-[#4f6080] hover:bg-secondary"><MessageSquare aria-hidden="true" className="h-4 w-4" />Cererea mea</button>}
+        <div role="group" aria-label="Zona paginii" className="flex rounded-full border border-border bg-secondary/60 p-1">
+          <button type="button" aria-pressed={workspaceView === "results"} onClick={() => setWorkspaceView("results")} className={`min-h-11 rounded-full px-3 text-xs font-semibold ${workspaceView === "results" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>Recomandari</button>
+          <button type="button" aria-pressed={workspaceView === "request"} disabled={!visibleResults.length && !hasRequest} onClick={() => { setWorkspaceView("request"); requestAnimationFrame(() => requestRef.current?.focus({ preventScroll: true })); }} className={`inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-xs font-semibold disabled:opacity-40 ${workspaceView === "request" ? "bg-card text-[#4f6080] shadow-sm" : "text-muted-foreground"}`}><MessageSquare aria-hidden="true" className="h-4 w-4" />{hasRequest ? "Cererea si mesaje" : "Trimite o cerere"}</button>
+        </div>
 
         {/* Filtrarea dupa harta se ofera doar cand harta chiar poate ascunde ceva. */}
         <button
@@ -187,7 +185,7 @@ export default function RequestMatches() {
           onClick={() => setFilterToViewport((value) => !value)}
           aria-pressed={filterToViewport}
           disabled={isProfessionalMode || viewport.mappedCount === 0}
-          className={`hidden min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors disabled:opacity-40 lg:inline-flex ${
+          className={`${workspaceView === "request" ? "!hidden" : ""} hidden min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors disabled:opacity-40 lg:inline-flex ${
             filterToViewport
               ? "border-foreground bg-foreground text-background"
               : "border-border bg-card hover:border-foreground/40"
@@ -198,7 +196,7 @@ export default function RequestMatches() {
         </button>
       </div>
 
-      <div className="mx-auto flex min-h-0 w-full max-w-[1800px] flex-1 gap-5 px-4 py-3 lg:px-8">
+      <div className={`${workspaceView === "request" ? "hidden" : "flex"} mx-auto min-h-0 w-full max-w-[1800px] flex-1 gap-5 px-4 py-3 lg:px-8`}>
         {/* Lista. Propriul derulaj, ca harta sa nu plece de sub ochi. */}
         <div
           ref={listRef}
@@ -213,6 +211,7 @@ export default function RequestMatches() {
             results={results}
             meta={meta}
             compact
+            hideRequestSubmission
             onRequestCreated={() => clearPatientIntakeSession()}
             onSelectLocation={selectFromList}
             selectedLocationId={selectedId}
@@ -246,8 +245,15 @@ export default function RequestMatches() {
         </aside>
       </div>
 
+      <section ref={requestRef} tabIndex={-1} aria-label="Cererea si mesajele tale" className={`${workspaceView === "request" ? "block" : "hidden"} min-h-0 flex-1 overflow-y-auto overscroll-contain bg-secondary/20 px-4 py-5 sm:px-8`}>
+        <div className="mx-auto w-full max-w-6xl pb-8">
+          <h2 className="font-heading text-xl font-bold">{hasRequest ? "Cererea si mesajele tale" : "Primeste raspunsuri de la locatii"}</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">{hasRequest ? "Urmareste raspunsurile si continua discutia cu locatia aleasa." : "Verifica cererea si alege sa o trimiti. Conversatiile devin disponibile dupa un raspuns eligibil al locatiei."}</p>
+          <PatientRequestSubmission results={visibleResults} meta={activeMeta} onRequestCreated={() => { setHasRequest(true); clearPatientIntakeSession(); }} />
+        </div>
+      </section>
       {/* Comutatorul de pe telefon, flotant, ca la hartile de cautare. */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-5 z-30 flex justify-center lg:hidden">
+      <div className={`${workspaceView === "request" ? "!hidden" : ""} pointer-events-none fixed inset-x-0 bottom-5 z-30 flex justify-center lg:hidden`}>
         <button
           type="button"
           onClick={() => setMobileView((view) => (view === "map" ? "list" : "map"))}
