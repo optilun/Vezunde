@@ -11,7 +11,7 @@ import GoogleIcon from "@/components/GoogleIcon";
 import { toast } from "@/components/ui/use-toast";
 import { clearPostLoginRedirect, getAuthRoute, getPostLoginRedirect } from "@/lib/postLoginRedirect";
 
-const REGISTER_HELP = "Nu am putut crea contul cu acest email. Daca ai deja cont sau ai folosit Google prima data, mergi la conectare si foloseste aceeasi metoda.";
+const REGISTER_HELP = "Nu am putut crea contul cu acest e-mail. Dacă ai deja cont sau ai folosit Google prima dată, mergi la conectare și folosește aceeași metodă.";
 
 export default function Register() {
   const [email, setEmail] = useState("");
@@ -61,7 +61,7 @@ export default function Register() {
     setError("");
     try {
       await base44.auth.resendOtp(email);
-      toast({ title: "Cod trimis", description: "Verifica emailul pentru noul cod." });
+      toast({ title: "Cod trimis", description: "Verifică e-mailul pentru noul cod." });
     } catch (err) {
       setError(err.message || "Nu am putut retrimite codul");
     }
@@ -75,8 +75,8 @@ export default function Register() {
 
   if (showOtp) {
     return (
-      <AuthLayout split icon={Mail} title="Verifica emailul" subtitle={`Am trimis un cod la ${email}`}>
-        {error && <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>}
+      <AuthLayout split icon={Mail} title="Verifică e-mailul" subtitle={`Am trimis un cod la ${email}`}>
+        {error && <div role="alert" className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>}
         <div className="flex justify-center mb-6">
           <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode} autoFocus autoComplete="one-time-code">
             <InputOTPGroup>
@@ -90,7 +90,7 @@ export default function Register() {
           </InputOTP>
         </div>
         <Button className="w-full h-12 font-medium" onClick={handleVerify} disabled={loading || otpCode.length < 6}>
-          {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Se verifica...</> : "Verifica"}
+          {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Se verifică...</> : "Verifică"}
         </Button>
         <p className="text-center text-sm text-muted-foreground mt-4">
           Nu ai primit codul?{" "}
@@ -103,29 +103,25 @@ export default function Register() {
   return (
     <AuthLayout split
       icon={UserPlus}
-      title="Creeaza cont"
-      subtitle="Un singur cont pentru tine si activitatea ta in VIASEE"
+      title="Creează un cont Viasee"
+      subtitle="Un singur cont pentru tine și activitatea ta în Viasee."
       footer={
         <>
           Ai deja cont?{" "}
-          <Link to={loginPath} className="text-primary font-medium hover:underline">Conecteaza-te</Link>
+          <Link to={loginPath} className="text-primary font-medium hover:underline">Conectează-te</Link>
         </>
       }
     >
       <Button variant="outline" className="w-full h-12 text-sm font-medium mb-3" onClick={handleGoogle}>
-        <GoogleIcon className="w-5 h-5 mr-2" />Continua cu Google
+        <GoogleIcon className="w-5 h-5 mr-2" />Continuă cu Google
       </Button>
-
-      <p className="mb-6 text-xs text-muted-foreground text-center leading-relaxed">
-        Daca ai folosit Google cu acest email, continua cu Google pentru acelasi cont.
-      </p>
 
       <div className="relative mb-6">
         <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
         <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-3 text-muted-foreground">sau</span></div>
       </div>
 
-      {error && <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm leading-relaxed">{error}</div>}
+      {error && <div role="alert" className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm leading-relaxed">{error}</div>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
@@ -136,21 +132,21 @@ export default function Register() {
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password">Parola</Label>
+          <Label htmlFor="password">Parolă</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input id="password" type="password" autoComplete="new-password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 h-12" required />
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirm">Confirma parola</Label>
+          <Label htmlFor="confirm">Confirmă parola</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input id="confirm" type="password" autoComplete="new-password" placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="pl-10 h-12" required />
           </div>
         </div>
         <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
-          {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Se creeaza contul...</> : "Creeaza cont"}
+          {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Se creează contul...</> : "Creează cont"}
         </Button>
       </form>
     </AuthLayout>
