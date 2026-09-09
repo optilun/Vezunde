@@ -246,10 +246,10 @@ export default function RequestMatches() {
       </div>
 
       <section ref={requestRef} tabIndex={-1} aria-label="Cererea si mesajele tale" className={`${workspaceView === "request" ? "block" : "hidden"} min-h-0 flex-1 overflow-y-auto overscroll-contain bg-secondary/20 px-4 py-5 sm:px-8`}>
-        <div className="mx-auto w-full max-w-6xl pb-8">
+        <div className={`mx-auto w-full pb-8 ${hasRequest ? "max-w-6xl" : "max-w-3xl"}`}>
           <h2 className="font-heading text-xl font-bold">{hasRequest ? "Cererea si mesajele tale" : "Primeste raspunsuri de la locatii"}</h2>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">{hasRequest ? "Urmareste raspunsurile si continua discutia cu locatia aleasa." : "Verifica cererea si alege sa o trimiti. Conversatiile devin disponibile dupa un raspuns eligibil al locatiei."}</p>
-          <PatientRequestSubmission results={visibleResults} meta={activeMeta} onRequestCreated={() => { setHasRequest(true); clearPatientIntakeSession(); }} />
+          <PatientRequestSubmission defaultOpen results={visibleResults} meta={activeMeta} onRequestCreated={() => { setHasRequest(true); clearPatientIntakeSession(); }} />
         </div>
       </section>
       {/* Comutatorul de pe telefon, flotant, ca la hartile de cautare. */}
