@@ -172,6 +172,7 @@ export default function MatchResults({
   onSelectLocation = null,
   selectedLocationId = null,
   compact = false,
+  hideRequestSubmission = false,
   onVisibleResultsChange = null,
   onResultModeChange = null,
   onContextChange = null,
@@ -674,11 +675,11 @@ export default function MatchResults({
         </div>
       )}
 
-      <section data-request-followup tabIndex={-1} aria-label="Cererea și conversațiile tale" className="mt-6 rounded-[22px] border border-border bg-card p-4 sm:p-5">
+      {!hideRequestSubmission && <section data-request-followup tabIndex={-1} aria-label="Cererea și conversațiile tale" className="mt-6 rounded-[22px] border border-border bg-card p-4 sm:p-5">
         <h2 className="font-heading text-lg font-bold">Cererea și conversațiile tale</h2>
         <p className="mt-1 text-sm text-muted-foreground">Continuă cu o cerere pentru a primi răspunsuri de la locații. Conversațiile apar aici, în fluxul cererii.</p>
         <PatientRequestSubmission results={list} meta={activeMeta} onRequestCreated={onRequestCreated} />
-      </section>
+      </section>}
 
       <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground/70">
         VIASEE nu oferă diagnostic medical. Ordinea rezultatelor reflectă serviciile confirmate și verificarea profilului.
