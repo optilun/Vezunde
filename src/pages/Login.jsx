@@ -9,7 +9,7 @@ import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { clearPostLoginRedirect, getAuthRoute, getPostLoginRedirect } from "@/lib/postLoginRedirect";
 
-const LOGIN_METHOD_HELP = "Nu am putut conecta acest email cu parola introdusa. Daca ai creat contul cu Google, foloseste Continua cu Google. Daca ai creat cont cu parola, verifica parola sau foloseste Am uitat parola.";
+const LOGIN_METHOD_HELP = "Nu am putut conecta acest e-mail cu parola introdusă. Dacă ai creat contul cu Google, folosește Continuă cu Google. Dacă ai creat cont cu parolă, verifică parola sau folosește Ai uitat parola?.";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -45,25 +45,21 @@ export default function Login() {
   return (
     <AuthLayout split
       icon={LogIn}
-      title="Bine ai revenit"
-      subtitle="Conecteaza-te la contul tau"
+      title="Bine ai venit la Viasee"
+      subtitle="Intră în cont și continuă de unde ai rămas."
       footer={
         <>
-          Nu ai cont?{" "}
+          Nu ai un cont?{" "}
           <Link to={registerPath} className="text-primary font-medium hover:underline">
-            Creeaza unul
+            Creează un cont
           </Link>
         </>
       }
     >
       <Button variant="outline" className="w-full h-12 text-sm font-medium mb-3" onClick={handleGoogle}>
         <GoogleIcon className="w-5 h-5 mr-2" />
-        Continua cu Google
+        Continuă cu Google
       </Button>
-
-      <p className="mb-6 text-xs text-muted-foreground text-center leading-relaxed">
-        Foloseste aceeasi adresa de email pentru acelasi profil VIASEE. Daca ai intrat prima data cu Google, continua cu Google.
-      </p>
 
       <div className="relative mb-6">
         <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
@@ -82,19 +78,19 @@ export default function Login() {
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password">Parola</Label>
+            <Label htmlFor="password">Parolă</Label>
             <Link to={forgotPasswordPath} className="text-xs text-primary hover:underline">Ai uitat parola?</Link>
           </div>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input id="password" type={showPassword ? "text" : "password"} autoComplete="current-password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10 pr-12 h-12" required />
-            <button type="button" aria-label={showPassword ? "Ascunde parola" : "Arata parola"} aria-pressed={showPassword} onClick={() => setShowPassword(value => !value)} className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground">
+            <button type="button" aria-label={showPassword ? "Ascunde parola" : "Arată parola"} aria-pressed={showPassword} onClick={() => setShowPassword(value => !value)} className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground">
               {showPassword ? <EyeOff aria-hidden="true" className="h-4 w-4" /> : <Eye aria-hidden="true" className="h-4 w-4" />}
             </button>
           </div>
         </div>
         <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
-          {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Se conecteaza...</> : "Conecteaza-te"}
+          {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Se conectează...</> : "Conectează-te"}
         </Button>
       </form>
     </AuthLayout>
