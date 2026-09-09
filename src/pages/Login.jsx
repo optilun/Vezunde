@@ -9,7 +9,7 @@ import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { clearPostLoginRedirect, getAuthRoute, getPostLoginRedirect } from "@/lib/postLoginRedirect";
 
-const LOGIN_METHOD_HELP = "Nu am putut conecta acest e-mail cu parola introdusă. Dacă ai creat contul cu Google, folosește Continuă cu Google. Dacă ai creat cont cu parolă, verifică parola sau folosește Ai uitat parola?.";
+const LOGIN_METHOD_HELP = "Nu am putut conecta acest e-mail cu parola introdusă. Dacă ai creat contul cu Google, folosește Continuă cu Google. Dacă ai creat cont cu parolă, verifică parola sau folosește opțiunea de resetare a parolei.";
 
 export default function Login() {
   const [email, setEmail] = useState("");
