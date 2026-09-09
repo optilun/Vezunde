@@ -62,6 +62,8 @@ assert.ok(matchingIndex > reviewIndex, 'matching must run only after the request
 
 assert.match(reviewSource, /Caută rezultate/);
 assert.match(reviewSource, /Modifică ultimul răspuns/);
-assert.match(reviewSource, /draft\?\.questionnaire_version/);
+// Contract versions remain in the draft and matching payload (asserted above), not patient-facing copy.
+assert.doesNotMatch(reviewSource, /Contract chestionar:/);
+assert.match(reviewSource, /storePatientRequestDraft\(draft\)/);
 
 console.log('Patient request review contract checks passed.');
