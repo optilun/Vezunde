@@ -193,3 +193,13 @@ assert.equal(clusterSharesPosition({ count: 1, points: [singlePoint] }), false);
 const deduped = buildResultsMapModel([singlePoint, { ...singlePoint }]);
 assert.equal(deduped.points.length, 1, "acelasi profil nu trebuie numarat de doua ori");
 console.log("verify-results-map: ok");
+
+
+// Structural fallback must use the same public detail overlay as regular matches.
+const semanticSource = await readFile(new URL('../base44/functions/matchProvidersSemantic/entry.ts', import.meta.url), 'utf8');
+assert.ok(semanticSource.includes('collectStructuralCandidate(withDirectoryDetail(location, detailOverlay),'), 'Structural results must retain approved public map coordinates');
+for (const file of ['ResultsMap.jsx', 'LegacyResultsMap.jsx']) {
+  const source = await readFile(new URL('../src/components/results/' + file, import.meta.url), 'utf8');
+  assert.ok(!source.includes('Harta nu are ce afișa încă'), 'A map without markers must remain navigable');
+}
+console.log('Empty basemap and structural disclosure guards: PASS');

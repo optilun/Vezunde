@@ -56,7 +56,12 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
     if (!ready) return;
     const map=mapRef.current;
     const signature=points.map(p=>`${p.id}:${p.lat}:${p.lng}`).sort().join("|");
-    if (signature===fitted.current || !points.length) return;
+    if (signature===fitted.current) return;
+    if (!points.length) {
+      fitted.current = signature;
+      map.fitBounds([[20.2,43.6],[29.8,48.3]], { padding: 24, duration: 0 });
+      return;
+    }
     const saved = !fitted.current && storageKey ? readSearchSession().maps?.[storageKey] : null;
     fitted.current=signature;
     if (saved?.signature===signature && saved.bounds) {

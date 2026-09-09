@@ -77,7 +77,12 @@ function FitToPoints({ points, storageKey }) {
   const fittedSignature = useRef(null);
 
   useEffect(() => {
-    if (points.length === 0 || fittedSignature.current === signature) return;
+    if (fittedSignature.current === signature) return;
+    if (points.length === 0) {
+      fittedSignature.current = signature;
+      map.fitBounds([[43.6,20.2],[48.3,29.8]], { padding: [24,24], animate: false });
+      return;
+    }
     const initial = fittedSignature.current === null;
     fittedSignature.current = signature;
     const saved = storageKey ? readSearchSession().maps?.[storageKey] : null;
