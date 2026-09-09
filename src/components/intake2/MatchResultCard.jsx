@@ -13,7 +13,7 @@ const BUCKET_VARIANT = {
   structural_directory: "directory",
 };
 
-export default function MatchResultCard({ location, onSelect, onHover = null, selected = false, hovered = false, compact = false }) {
+export default function MatchResultCard({ location, onSelect, onHover = null, selected = false, hovered = false, compact = false, hasMapPoint }) {
   const trackAction = (action) => {
     try {
       base44.analytics.track({
@@ -43,6 +43,7 @@ export default function MatchResultCard({ location, onSelect, onHover = null, se
       selected={selected}
       hovered={hovered}
       compact={compact}
+      hasMapPoint={hasMapPoint}
     />
   );
 }

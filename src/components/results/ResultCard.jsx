@@ -57,6 +57,7 @@ export default function ResultCard({
   selected = false,
   hovered = false,
   compact = false,
+  hasMapPoint,
 }) {
   const route = useLocation();
   const returnState = route.pathname === "/rezultate"
@@ -117,7 +118,7 @@ export default function ResultCard({
       </div>
 
       <div className={`mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground ${compact ? "text-xs" : "text-sm"}`}>
-        <span className="inline-flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{location.city}</span>
+        {(location.address || location.city) && <span className="inline-flex min-w-0 items-start gap-1.5"><MapPin aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>{location.address || location.city}</span></span>}
         {hasDistance && (
           <span className="inline-flex items-center gap-1.5 font-medium text-foreground"><Route className="w-3.5 h-3.5" />{Number(location.distance_km).toFixed(1)} km</span>
         )}
@@ -184,7 +185,7 @@ export default function ResultCard({
         >
           Vezi profilul <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
         </Link>
-        {onSelect && mapPointFromResult(location) && <button type="button" onClick={() => onSelect(location)} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-secondary/60 px-3 text-sm font-medium text-[#4f6080] hover:bg-secondary"><Map aria-hidden="true" className="h-4 w-4" />Hartă</button>}
+        {onSelect && (hasMapPoint ?? Boolean(mapPointFromResult(location))) && <button type="button" onClick={() => onSelect(location)} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-secondary/60 px-3 text-sm font-medium text-[#4f6080] hover:bg-secondary"><Map aria-hidden="true" className="h-4 w-4" />Hartă</button>}
         {location.phone && (
           <a
             href={`tel:${location.phone.replace(/\s/g, "")}`}

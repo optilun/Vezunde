@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, List, Map as MapIcon, MessageSquare, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, List, Map as MapIcon, MessageSquare, SlidersHorizontal, LocateFixed, Globe } from "lucide-react";
 import PatientRequestSubmission from "@/components/intake2/PatientRequestSubmission";
 import MatchResults from "@/components/intake2/MatchResults";
 import { RESULT_MODES } from "@/components/intake2/ResultModeTabs";
 import ResultsMap from "@/components/results/ResultsMap";
 import { base44 } from "@/api/base44Client";
+import { boundsForPoints, mapPointFromResult } from "../../shared/resultsMapPoints.js";
 import { recommendationMapContext } from "../../shared/recommendationMapContext.js";
 import { INTENTS } from "@/lib/intentRegistry";
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
@@ -67,10 +68,13 @@ export default function RequestMatches() {
   const [filterToViewport, setFilterToViewport] = useState(savedView.filterToViewport === true);
   const [viewport, setViewport] = useState({ visibleIds: null, mappedCount: 0 });
 
+  const [focusArea, setFocusArea] = useState(null);
   const [nationalDirectory, setNationalDirectory] = useState([]);
   const [directoryStatus, setDirectoryStatus] = useState("loading");
   const [directoryRetry, setDirectoryRetry] = useState(0);
+  const hasResults = Array.isArray(results);
   useEffect(() => {
+    if (!hasResults) return;
     let active = true;
     let timer;
     setDirectoryStatus("loading");
@@ -85,11 +89,18 @@ export default function RequestMatches() {
     }).catch(() => { if (active) setDirectoryStatus("error"); })
       .finally(() => clearTimeout(timer));
     return () => { active = false; clearTimeout(timer); };
-  }, [directoryRetry]);
+  }, [directoryRetry, hasResults]);
   const { mapResults, focusResults } = useMemo(
     () => recommendationMapContext(visibleResults, nationalDirectory, activeMeta),
     [visibleResults, nationalDirectory, activeMeta],
   );
+
+  const mappedLocationIds = useMemo(() => new Set(mapResults.filter(mapPointFromResult).map(row => row.id)), [mapResults]);
+  const focusBounds = useMemo(() => boundsForPoints(focusResults.map(mapPointFromResult).filter(Boolean)), [focusResults]);
+  const showMapArea = (bounds) => {
+    setSelectedId(null);
+    setFocusArea({ bounds });
+  };
 
   const saveView = useCallback(() => {
     writeSearchSession({ recommendations: {
@@ -175,6 +186,7 @@ export default function RequestMatches() {
       storageKey={"recommendations:" + viewKey}
       results={mapResults}
       fitResults={focusResults}
+      focusArea={focusArea}
       selectedId={selectedId}
       hoveredId={hoveredId}
       onSelect={setSelectedId}
@@ -197,30 +209,23 @@ export default function RequestMatches() {
           <ArrowLeft className="h-4 w-4" /> Modifica cererea
         </button>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-40">
           <h1 className="font-heading text-base font-bold sm:text-lg">Recomandările tale</h1>
           <p className="truncate text-xs text-muted-foreground">{isProfessionalMode ? "Specialiști" : `${visibleResults.length} ${visibleResults.length === 1 ? "locație găsită" : "locații găsite"}`}{areaLabel ? ` · ${areaLabel}` : ""}{needLabel ? ` · ${needLabel}` : ""}</p>
         </div>
-        <div role="group" aria-label="Zona paginii" className="flex rounded-full border border-border bg-secondary/60 p-1">
+        <div role="group" aria-label="Zona paginii" className="flex max-w-full rounded-full border border-border bg-secondary/60 p-1">
           <button type="button" aria-pressed={workspaceView === "results"} onClick={() => setWorkspaceView("results")} className={`min-h-11 rounded-full px-3 text-xs font-semibold ${workspaceView === "results" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>Recomandari</button>
           <button type="button" aria-pressed={workspaceView === "request"} disabled={!visibleResults.length && !hasRequest} onClick={() => { setWorkspaceView("request"); requestAnimationFrame(() => requestRef.current?.focus({ preventScroll: true })); }} className={`inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-xs font-semibold disabled:opacity-40 ${workspaceView === "request" ? "bg-card text-[#4f6080] shadow-sm" : "text-muted-foreground"}`}><MessageSquare aria-hidden="true" className="h-4 w-4" />{hasRequest ? "Cererea si mesaje" : "Trimite o cerere"}</button>
         </div>
 
-        {/* Filtrarea dupa harta se ofera doar cand harta chiar poate ascunde ceva. */}
-        <button
-          type="button"
-          onClick={() => setFilterToViewport((value) => !value)}
-          aria-pressed={filterToViewport}
-          disabled={isProfessionalMode || viewport.mappedCount === 0}
-          className={`${workspaceView === "request" ? "!hidden" : ""} hidden min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors disabled:opacity-40 lg:inline-flex ${
-            filterToViewport
-              ? "border-foreground bg-foreground text-background"
-              : "border-border bg-card hover:border-foreground/40"
-          }`}
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-          Doar ce se vede pe hartă
-        </button>
+        {workspaceView === "results" && (
+          <button type="button" onClick={() => setMobileView(view => view === "map" ? "list" : "map")}
+            aria-label={mobileView === "map" ? "Afiseaza lista rezultatelor" : "Afiseaza harta locatiilor"}
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-3 text-xs font-semibold lg:hidden">
+            {mobileView === "map" ? <List aria-hidden="true" className="h-4 w-4" /> : <MapIcon aria-hidden="true" className="h-4 w-4" />}
+            {mobileView === "map" ? "Lista" : "Harta"}
+          </button>
+        )}
       </div>
 
       <div className={`${workspaceView === "request" ? "hidden" : "flex"} mx-auto min-h-0 w-full max-w-[1800px] flex-1 gap-5 px-4 py-3 lg:px-8`}>
@@ -228,7 +233,7 @@ export default function RequestMatches() {
         <div
           ref={listRef}
           onScroll={saveView}
-          className={`min-w-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-24 pt-1 lg:pb-8 ${
+          className={`min-w-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-8 pt-1 ${
             mobileView === "map" ? "hidden lg:block" : ""
           }`}
         >
@@ -239,6 +244,10 @@ export default function RequestMatches() {
             meta={meta}
             compact
             hideRequestSubmission
+            mappedLocationIds={mappedLocationIds}
+            onClearViewport={() => setFilterToViewport(false)}
+            onChangeLocation={() => navigate("/cerere", { state: { resumeIntake: true } })}
+            onReviewCriteria={() => navigate("/cerere", { state: { resumeIntake: true } })}
             onRequestCreated={() => clearPatientIntakeSession()}
             onSelectLocation={selectFromList}
             selectedLocationId={selectedId}
@@ -259,17 +268,26 @@ export default function RequestMatches() {
             mobileView === "map" ? "flex" : "hidden"
           }`}
         >
-          {isProfessionalMode && (
-            <div className="border-b border-border bg-secondary/40 px-4 py-2">
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                Harta arata locatiile publice din tara. Lista alaturata arata specialistii pentru cererea ta.
-              </p>
-            </div>
-          )}
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-card px-3 py-2 text-xs text-muted-foreground" role="status">
-            <span>{directoryStatus === "loading" ? "Se incarca locatiile din tara..." : directoryStatus === "error" ? "Locatiile din tara nu au putut fi incarcate." : "Locatii din tara · contur albastru: rezultatele cererii"}</span>
-            {directoryStatus === "error" && <button type="button" className="min-h-11 rounded-full border border-border px-3 font-semibold" onClick={() => setDirectoryRetry(value => value + 1)}>Reincearca</button>}
+          <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-border bg-card p-1.5">
+            <button type="button" disabled={!focusBounds} onClick={() => showMapArea(focusBounds)}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-semibold text-[#4f6080] hover:bg-secondary disabled:opacity-40">
+              <LocateFixed aria-hidden="true" className="h-4 w-4" />Zona cautata
+            </button>
+            <button type="button" onClick={() => showMapArea([[43.6,20.2],[48.3,29.8]])}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-semibold hover:bg-secondary">
+              <Globe aria-hidden="true" className="h-4 w-4" />Romania
+            </button>
+            {!isProfessionalMode && <button type="button" onClick={() => setFilterToViewport(value => !value)}
+              aria-pressed={filterToViewport} disabled={!filterToViewport && viewport.mappedCount === 0}
+              className={`ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold disabled:opacity-40 ${filterToViewport ? "border-[#4f6080] bg-[#4f6080] text-white" : "border-border bg-card hover:bg-secondary"}`}>
+              <SlidersHorizontal aria-hidden="true" className="h-3.5 w-3.5" />Lista din zona
+            </button>}
           </div>
+          {directoryStatus !== "ready" && <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2 text-xs text-muted-foreground" role="status">
+            <span>{directoryStatus === "loading" ? "Se incarca locatiile din tara..." : "Directorul national nu s-a incarcat."}</span>
+            {directoryStatus === "error" && <button type="button" className="min-h-11 rounded-full border border-border px-3 font-semibold" onClick={() => setDirectoryRetry(value => value + 1)}>Reincearca</button>}
+          </div>}
+          {isProfessionalMode && <p className="shrink-0 border-b border-border px-3 py-2 text-xs text-muted-foreground">Harta arata locatii. Specialistii pentru cererea ta sunt in lista.</p>}
           <div className="min-h-0 flex-1">
             {mapPanel}
           </div>
@@ -283,17 +301,7 @@ export default function RequestMatches() {
           <PatientRequestSubmission defaultOpen results={visibleResults} meta={activeMeta} onRequestCreated={() => { setHasRequest(true); clearPatientIntakeSession(); }} />
         </div>
       </section>
-      {/* Comutatorul de pe telefon, flotant, ca la hartile de cautare. */}
-      <div className={`${workspaceView === "request" ? "!hidden" : ""} pointer-events-none fixed inset-x-0 bottom-5 z-30 flex justify-center lg:hidden`}>
-        <button
-          type="button"
-          onClick={() => setMobileView((view) => (view === "map" ? "list" : "map"))}
-          className="pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background shadow-lg"
-        >
-          {mobileView === "map" ? <List className="h-4 w-4" /> : <MapIcon className="h-4 w-4" />}
-          {mobileView === "map" ? "Listă" : "Hartă"}
-        </button>
-      </div>
+
     </div>
   );
 }

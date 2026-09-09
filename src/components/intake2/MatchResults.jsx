@@ -75,7 +75,7 @@ function metaFromExpandedResponse(data, previousMeta) {
   };
 }
 
-function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSelectLocation, selectedId, onHoverLocation = null, hoveredId = null, compact = false }) {
+function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSelectLocation, selectedId, onHoverLocation = null, hoveredId = null, compact = false, mappedLocationIds = null }) {
   if (queryScope !== "county") {
     return (
       <div className="space-y-3">
@@ -83,6 +83,7 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSele
           <MatchResultCard
             key={location.id}
             location={location}
+            hasMapPoint={mappedLocationIds ? mappedLocationIds.has(location.id) : undefined}
             onSelect={onSelectLocation}
             selected={selectedId === location.id}
             onHover={onHoverLocation}
@@ -110,6 +111,7 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSele
               <MatchResultCard
                 key={location.id}
                 location={location}
+            hasMapPoint={mappedLocationIds ? mappedLocationIds.has(location.id) : undefined}
                 onSelect={onSelectLocation}
                 selected={selectedId === location.id}
                 onHover={onHoverLocation}
@@ -130,6 +132,7 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSele
               <MatchResultCard
                 key={location.id}
                 location={location}
+            hasMapPoint={mappedLocationIds ? mappedLocationIds.has(location.id) : undefined}
                 onSelect={onSelectLocation}
                 selected={selectedId === location.id}
                 onHover={onHoverLocation}
@@ -146,6 +149,7 @@ function ResultScopeGroups({ items, queryScope, selectedCity, countyName, onSele
             <MatchResultCard
               key={location.id}
               location={location}
+            hasMapPoint={mappedLocationIds ? mappedLocationIds.has(location.id) : undefined}
               onSelect={onSelectLocation}
               selected={selectedId === location.id}
               onHover={onHoverLocation}
@@ -180,6 +184,8 @@ export default function MatchResults({
   onHoverLocation = null,
   hoveredLocationId = null,
   visibleIds = null,
+  mappedLocationIds = null,
+  onClearViewport = null,
 }) {
   const [showMore, setShowMore] = useState(initialShowMore);
   const [feedback, setFeedback] = useState(null);
@@ -263,9 +269,9 @@ export default function MatchResults({
           resolved_intent: activeMeta?.resolved_intent || "unknown",
           used_semantic_fallback: activeMeta?.used_semantic_fallback === true,
           result_count: list.length,
-          top3_count: top3.length,
-          confirmed_count: confirmed.length,
-          directory_count: directory.length,
+          top3_count: serverTop3Count,
+          confirmed_count: list.filter(row => row.result_bucket === "extended_confirmed").length,
+          directory_count: list.filter(row => row.result_bucket === "extended_directory").length,
           local_provider_count: Number(activeMeta?.coverage_counts?.local_provider_count) || 0,
           scope_provider_count: Number(activeMeta?.coverage_counts?.scope_provider_count) || 0,
           configured_matching_provider_count: Number(activeMeta?.coverage_counts?.configured_matching_provider_count) || 0,
@@ -328,7 +334,7 @@ export default function MatchResults({
           query_scope: queryScope,
           coverage_status: activeMeta?.coverage_status || "unknown",
           result_count: list.length,
-          top3_count: top3.length,
+          top3_count: serverTop3Count,
         },
       });
     } catch (_error) {
@@ -559,8 +565,9 @@ export default function MatchResults({
       {hiddenByViewport > 0 && (
         <div className="mb-4 rounded-2xl border border-border bg-secondary/40 px-4 py-2.5 text-xs leading-relaxed text-muted-foreground">
           {shownList.length === 0
-            ? `Nicio opțiune în zona vizibilă pe hartă. ${list.length} ${list.length === 1 ? "opțiune este" : "opțiuni sunt"} în afara ei.`
-            : `${hiddenByViewport} ${hiddenByViewport === 1 ? "opțiune este ascunsă" : "opțiuni sunt ascunse"} pentru că nu se văd pe hartă.`}
+            ? `Niciun rezultat al cererii in zona vizibila. ${list.length} ${list.length === 1 ? "optiune ramane" : "optiuni raman"} in lista completa.`
+            : `${hiddenByViewport} ${hiddenByViewport === 1 ? "optiune nu apare" : "optiuni nu apar"} in zona vizibila.`}
+          {onClearViewport && <button type="button" onClick={onClearViewport} className="mt-1 flex min-h-11 items-center font-semibold text-[#4f6080] underline underline-offset-4">Afiseaza toate rezultatele cererii</button>}
         </div>
       )}
 
@@ -573,7 +580,7 @@ export default function MatchResults({
           </details>
           <RoutingNotice meta={activeMeta} />
           <div className="mt-5">
-            <ResultScopeGroups items={top3} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} />
+            <ResultScopeGroups items={top3} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} mappedLocationIds={mappedLocationIds} />
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
             <a href="/cauta" className="font-medium text-foreground underline underline-offset-2">
@@ -615,7 +622,7 @@ export default function MatchResults({
             mode="insufficient"
             meta={activeMeta}
             top3Count={serverTop3Count}
-            directoryCount={directory.length}
+            directoryCount={list.filter(row => row.result_bucket === "extended_directory").length}
             onChangeLocation={() => runRecoveryAction("change_location", onChangeLocation)}
             onReviewCriteria={() => runRecoveryAction("review_criteria", onReviewCriteria)}
             {...expansionProps}
@@ -637,7 +644,7 @@ export default function MatchResults({
         <div className="mt-8">
           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Mai multe opțiuni relevante</div>
           <div className="mt-3">
-            <ResultScopeGroups items={confirmed} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} />
+            <ResultScopeGroups items={confirmed} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} mappedLocationIds={mappedLocationIds} />
           </div>
         </div>
       )}
@@ -646,7 +653,7 @@ export default function MatchResults({
         <div className="mt-8">
           <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Opțiuni din director</div>
           <div className="mt-3">
-            <ResultScopeGroups items={directory} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} />
+            <ResultScopeGroups items={directory} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} mappedLocationIds={mappedLocationIds} />
           </div>
         </div>
       )}
@@ -670,7 +677,7 @@ export default function MatchResults({
               : "Servicii neconfirmate de furnizor — confirmați telefonic înainte de deplasare."}
           </p>
           <div className="mt-3">
-            <ResultScopeGroups items={structural} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} />
+            <ResultScopeGroups items={structural} queryScope={queryScope} selectedCity={selectedCity} countyName={countyName} onSelectLocation={onSelectLocation} selectedId={selectedLocationId} onHoverLocation={onHoverLocation} hoveredId={hoveredLocationId} compact={compact} mappedLocationIds={mappedLocationIds} />
           </div>
         </div>
       )}
