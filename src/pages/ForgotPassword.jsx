@@ -30,22 +30,22 @@ export default function ForgotPassword() {
   return (
     <AuthLayout split
       icon={Mail}
-      title="Reseteaza parola"
-      subtitle="Iti trimitem un link pentru alegerea unei parole noi"
+      title="Resetează parola"
+      subtitle="Îți trimitem un link pentru alegerea unei parole noi."
       footer={
         <Link to={loginPath} className="text-primary font-medium hover:underline">
-          <ArrowLeft className="w-3 h-3 inline mr-1" />Inapoi la autentificare
+          <ArrowLeft className="w-3 h-3 inline mr-1" />Înapoi la autentificare
         </Link>
       }
     >
       {sent ? (
         <p className="text-sm text-foreground text-center leading-relaxed">
-          Daca exista un cont pentru aceasta adresa, vei primi in scurt timp linkul de resetare. Dupa schimbarea parolei vei putea continua fluxul inceput.
+          Dacă există un cont pentru această adresă, vei primi în scurt timp linkul de resetare. După schimbarea parolei vei putea continua de unde ai rămas.
         </p>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Adresa de email</Label>
+            <Label htmlFor="email">Adresă de e-mail</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
               <Input id="email" type="email" autoComplete="email" autoFocus placeholder="email@exemplu.ro" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 h-12" required />
