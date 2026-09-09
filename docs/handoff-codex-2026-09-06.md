@@ -181,3 +181,14 @@ User clarified: /rezultate displays all public national locations, initially zoo
 Shared vector and Leaflet maps accept separate fit points; all national points remain rendered/selectable. Request markers have a blue outline and popups distinguish directory-only locations. Added national loading/error/retry states.
 
 Passed: verify-recommendation-national-map, verify-results-map, verify-provider-recommendation, targeted ESLint, production build, git diff --check. Published frontend interaction still requires verification after user publication. No schema, RLS or provider data changes.
+
+
+## 2026-09-09 — Results page audit and usability fixes
+
+Implemented: mobile list/map switch in context header instead of overlay; compact map toolbar with searched-area and Romania camera actions; viewport list filter available on mobile plus explicit reset inside filtered list. National request map/card coordinate availability now agrees through mappedLocationIds without changing ranked request rows or distribution. Map viewport projection refreshes when marker data arrives even without camera movement; 2D fallback owns viewport updates after vector failure. National empty-focus camera restores saved bounds/camera. Shared MapLocationCard replaces duplicate vector/raster popups and supports Escape from card controls.
+
+Cards show public address (city fallback). Recovery panel is compact for nonempty insufficient results; expansion/revision actions retained in disclosure. Revision actions resume current intake. Analytics and recovery counts use server list instead of viewport subset. Empty direct /rezultate avoids unnecessary national fetch. Removed patient-facing questionnaire contract/version text while retaining full draft contract. Found combined public phone fields in published cards; shared publicPhoneLink selects a valid number rather than dialing concatenated values (also reused on /cauta cards).
+
+Validation: targeted ESLint, production build, verify-results-map, verify-recommendation-national-map, verify-map-marker-layout, verify-provider-recommendation, verify-request-workspace-ranking, verify-no-results-flow, verify-patient-request-review-contract and new verify-public-phone-link passed. Review contract test updated to assert version stays in data, not visible UI. Browser: existing published frontend, synthetic glasses-repair search in Timisoara -> 12 directory results, national map loaded with local framing (2D fallback in cloud browser), request form opens. No patient data submitted or messages sent. Latest new UI is not yet published; interactive mobile/new-version checks and authenticated post-submission messaging remain unverified.
+
+No backend schema/RLS, provider data or matching/ranking changes. User publishes frontend manually.
