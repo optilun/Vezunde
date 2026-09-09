@@ -1,10 +1,12 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, List, Map as MapIcon, MessageSquare, SlidersHorizontal } from "lucide-react";
 import PatientRequestSubmission from "@/components/intake2/PatientRequestSubmission";
 import MatchResults from "@/components/intake2/MatchResults";
 import { RESULT_MODES } from "@/components/intake2/ResultModeTabs";
 import ResultsMap from "@/components/results/ResultsMap";
+import { base44 } from "@/api/base44Client";
+import { recommendationMapContext } from "../../shared/recommendationMapContext.js";
 import { INTENTS } from "@/lib/intentRegistry";
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import { clearPatientIntakeSession } from "@/lib/patientIntakeSession";
@@ -65,6 +67,30 @@ export default function RequestMatches() {
   const [filterToViewport, setFilterToViewport] = useState(savedView.filterToViewport === true);
   const [viewport, setViewport] = useState({ visibleIds: null, mappedCount: 0 });
 
+  const [nationalDirectory, setNationalDirectory] = useState([]);
+  const [directoryStatus, setDirectoryStatus] = useState("loading");
+  const [directoryRetry, setDirectoryRetry] = useState(0);
+  useEffect(() => {
+    let active = true;
+    let timer;
+    setDirectoryStatus("loading");
+    Promise.race([
+      base44.functions.invoke("browseDirectoryProviders", { map_scope: "national" }),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("timeout")), 25000); }),
+    ]).then(response => {
+      if (!active) return;
+      if (response.data?.error || !Array.isArray(response.data?.results)) throw new Error("directory unavailable");
+      setNationalDirectory(response.data.results);
+      setDirectoryStatus("ready");
+    }).catch(() => { if (active) setDirectoryStatus("error"); })
+      .finally(() => clearTimeout(timer));
+    return () => { active = false; clearTimeout(timer); };
+  }, [directoryRetry]);
+  const { mapResults, focusResults } = useMemo(
+    () => recommendationMapContext(visibleResults, nationalDirectory, activeMeta),
+    [visibleResults, nationalDirectory, activeMeta],
+  );
+
   const saveView = useCallback(() => {
     writeSearchSession({ recommendations: {
       key: viewKey, selectedId, mode: resultMode, mobileView, filterToViewport,
@@ -96,8 +122,8 @@ export default function RequestMatches() {
     return () => { cancelAnimationFrame(frame); observer.disconnect(); list.removeEventListener("wheel", stop); list.removeEventListener("touchstart", stop); };
   }, []);
   useEffect(() => {
-    if (selectedId && !visibleResults.some(row => row.id === selectedId)) setSelectedId(null);
-  }, [selectedId, visibleResults]);
+    if (selectedId && !mapResults.some(row => row.id === selectedId)) setSelectedId(null);
+  }, [selectedId, mapResults]);
 
   const handleViewport = useCallback((next) => {
     setViewport({ visibleIds: next.visibleIds, mappedCount: next.mappedCount });
@@ -147,7 +173,8 @@ export default function RequestMatches() {
   const mapPanel = (
     <ResultsMap
       storageKey={"recommendations:" + viewKey}
-      results={visibleResults}
+      results={mapResults}
+      fitResults={focusResults}
       selectedId={selectedId}
       hoveredId={hoveredId}
       onSelect={setSelectedId}
@@ -235,10 +262,14 @@ export default function RequestMatches() {
           {isProfessionalMode && (
             <div className="border-b border-border bg-secondary/40 px-4 py-2">
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Harta arată clinicile și opticile găsite pentru cererea ta, nu specialiștii.
+                Harta arata locatiile publice din tara. Lista alaturata arata specialistii pentru cererea ta.
               </p>
             </div>
           )}
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-card px-3 py-2 text-xs text-muted-foreground" role="status">
+            <span>{directoryStatus === "loading" ? "Se incarca locatiile din tara..." : directoryStatus === "error" ? "Locatiile din tara nu au putut fi incarcate." : "Toate locatiile publice · exploreaza liber harta"}</span>
+            {directoryStatus === "error" && <button type="button" className="min-h-11 rounded-full border border-border px-3 font-semibold" onClick={() => setDirectoryRetry(value => value + 1)}>Reincearca</button>}
+          </div>
           <div className="min-h-0 flex-1">
             {mapPanel}
           </div>

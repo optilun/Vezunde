@@ -194,6 +194,8 @@ function PointCard({ point, onClose }) {
               <span className="text-[10px] font-medium text-muted-foreground">Poziție aproximativă</span>
             )}
           </div>
+          {point.is_request_result === false && <p className="mt-2 text-xs text-muted-foreground">Locatie din director · in afara rezultatelor cererii</p>}
+          {point.is_request_result === true && <p className="mt-2 text-xs font-semibold text-[#4f6080]">In rezultatele cererii tale</p>}
           <Link
             to={`/furnizor/${point.id}`} state={returnState}
             className="mt-2.5 inline-flex min-h-11 items-center text-xs font-semibold text-foreground underline underline-offset-4"
@@ -216,6 +218,7 @@ function PointCard({ point, onClose }) {
 
 export default function ResultsMap({
   results,
+  fitResults = null,
   selectedId = null,
   hoveredId = null,
   onSelect = null,
@@ -226,6 +229,7 @@ export default function ResultsMap({
   focusArea = null,
 }) {
   const model = useMemo(() => buildResultsMapModel(results), [results]);
+  const fitModel = useMemo(() => fitResults === null ? model : buildResultsMapModel(fitResults), [fitResults, model]);
   const [viewport, setViewport] = useState({ zoom: FALLBACK_ZOOM, bounds: null });
   const [openClusterKey, setOpenClusterKey] = useState(null);
   const selectedPoint = model.points.find((point) => point.id === selectedId) || null;
@@ -244,7 +248,7 @@ export default function ResultsMap({
     setViewport(next);
     if (storageKey) {
       const maps = readSearchSession().maps || {};
-      const signature = model.points.map((point) => `${point.id}:${point.lat}:${point.lng}`).sort().join("|");
+      const signature = fitModel.points.map((point) => `${point.id}:${point.lat}:${point.lng}`).sort().join("|");
       writeSearchSession({ maps: { ...maps, [storageKey]: { signature, bounds: next.bounds } } });
     }
     if (onViewportChange) {
@@ -254,7 +258,7 @@ export default function ResultsMap({
         mappedCount: model.mappedCount,
       });
     }
-  }, [model.points, model.mappedCount, onViewportChange, storageKey]);
+  }, [model.points, model.mappedCount, fitModel.points, onViewportChange, storageKey]);
 
   const mapRef = useRef(null);
 
@@ -272,7 +276,7 @@ export default function ResultsMap({
         ref={mapRef}
       >
         <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
-        <FitToPoints points={model.points} storageKey={storageKey} />
+        <FitToPoints points={fitModel.points} storageKey={storageKey} />
         <FocusArea area={focusArea} />
         <PanToSelected point={selectedPoint} />
         <ViewportWatcher onChange={reportViewport} />

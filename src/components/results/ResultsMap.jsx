@@ -47,6 +47,8 @@ function PointCard({ point, onClose }) {
               <span className="text-[10px] font-medium text-muted-foreground">Poziție aproximativă</span>
             )}
           </div>
+          {point.is_request_result === false && <p className="mt-2 text-xs text-muted-foreground">Locatie din director · in afara rezultatelor cererii</p>}
+          {point.is_request_result === true && <p className="mt-2 text-xs font-semibold text-[#4f6080]">In rezultatele cererii tale</p>}
           <Link
             to={`/furnizor/${point.id}`} state={returnState}
             className="mt-2.5 inline-flex min-h-11 items-center text-xs font-semibold text-foreground underline underline-offset-4"
@@ -69,6 +71,7 @@ function PointCard({ point, onClose }) {
 
 export default function ResultsMap({
   results,
+  fitResults = null,
   selectedId = null,
   hoveredId = null,
   onSelect = null,
@@ -79,6 +82,7 @@ export default function ResultsMap({
   focusArea = null,
 }) {
   const model = useMemo(() => buildResultsMapModel(results), [results]);
+  const fitModel = useMemo(() => fitResults === null ? model : buildResultsMapModel(fitResults), [fitResults, model]);
   const [viewport, setViewport] = useState({ zoom: FALLBACK_ZOOM, bounds: null });
   const [openClusterKey, setOpenClusterKey] = useState(null);
   const selectedPoint = model.points.find((point) => point.id === selectedId) || null;
@@ -97,7 +101,7 @@ export default function ResultsMap({
     setViewport(next);
     if (storageKey) {
       const maps = readSearchSession().maps || {};
-      const signature = model.points.map((point) => `${point.id}:${point.lat}:${point.lng}`).sort().join("|");
+      const signature = fitModel.points.map((point) => `${point.id}:${point.lat}:${point.lng}`).sort().join("|");
       writeSearchSession({ maps: { ...maps, [storageKey]: { signature, bounds: next.bounds, camera: next.camera } } });
     }
     if (onViewportChange) {
@@ -107,12 +111,12 @@ export default function ResultsMap({
         mappedCount: model.mappedCount,
       });
     }
-  }, [model.points, model.mappedCount, onViewportChange, storageKey]);
+  }, [model.points, model.mappedCount, fitModel.points, onViewportChange, storageKey]);
 
   const [vectorFailed, setVectorFailed] = useState(false);
   if (vectorFailed) return <div className={`relative isolate ${className}`}>
     <Suspense fallback={<div role="status" className="flex h-full items-center justify-center text-sm">Se încarcă harta 2D...</div>}>
-      <LegacyResultsMap {...{results, selectedId, hoveredId, onSelect, onHover, onViewportChange, storageKey, focusArea}} className="h-full w-full" />
+      <LegacyResultsMap {...{results, fitResults, selectedId, hoveredId, onSelect, onHover, onViewportChange, storageKey, focusArea}} className="h-full w-full" />
     </Suspense>
     <details className="absolute left-3 top-24 z-[500] max-w-60 rounded-2xl border border-border bg-card text-xs shadow-sm">
       <summary className="flex min-h-11 cursor-pointer items-center px-3 font-semibold">Hartă 2D · De ce?</summary>
@@ -124,7 +128,7 @@ export default function ResultsMap({
 
   return (
     <div className={`relative isolate ${className}`}>
-      <VectorResultsCanvas points={model.points} clusters={clusters} selectedId={selectedId} hoveredId={hoveredId} storageKey={storageKey} focusArea={focusArea} reportViewport={reportViewport} pillHtml={pillHtml} onSelect={onSelect} onHover={onHover} onCluster={setOpenClusterKey} onFailure={(reason) => setVectorFailed(reason || "unavailable")} />
+      <VectorResultsCanvas fitPoints={fitModel.points} points={model.points} clusters={clusters} selectedId={selectedId} hoveredId={hoveredId} storageKey={storageKey} focusArea={focusArea} reportViewport={reportViewport} pillHtml={pillHtml} onSelect={onSelect} onHover={onHover} onCluster={setOpenClusterKey} onFailure={(reason) => setVectorFailed(reason || "unavailable")} />
 
       {openCluster && !selectedPoint && (
         <section aria-label="Locații din grup"

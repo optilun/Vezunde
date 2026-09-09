@@ -5,7 +5,7 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { readSearchSession } from "@/lib/searchSession";
 
-export default function VectorResultsCanvas({ points, clusters, selectedId, hoveredId, storageKey, focusArea, reportViewport, pillHtml, onSelect, onHover, onCluster, onFailure }) {
+export default function VectorResultsCanvas({ points, fitPoints = points, clusters, selectedId, hoveredId, storageKey, focusArea, reportViewport, pillHtml, onSelect, onHover, onCluster, onFailure }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const markers = useRef(new Map());
@@ -55,9 +55,9 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
   useEffect(() => {
     if (!ready) return;
     const map=mapRef.current;
-    const signature=points.map(p=>`${p.id}:${p.lat}:${p.lng}`).sort().join("|");
+    const signature=fitPoints.map(p=>`${p.id}:${p.lat}:${p.lng}`).sort().join("|");
     if (signature===fitted.current) return;
-    if (!points.length) {
+    if (!fitPoints.length) {
       fitted.current = signature;
       map.fitBounds([[20.2,43.6],[29.8,48.3]], { padding: 24, duration: 0 });
       return;
@@ -76,10 +76,10 @@ export default function VectorResultsCanvas({ points, clusters, selectedId, hove
       }
     } else {
       const bounds=new maplibregl.LngLatBounds();
-      points.forEach(p=>bounds.extend([p.lng,p.lat]));
+      fitPoints.forEach(p=>bounds.extend([p.lng,p.lat]));
       map.fitBounds(bounds,{padding:60,maxZoom:14,duration:0});
     }
-  },[points,ready,storageKey]);
+  },[fitPoints,ready,storageKey]);
   useEffect(() => {
     if (ready && focusArea?.bounds) mapRef.current.fitBounds(focusArea.bounds.map(([lat,lng])=>[lng,lat]),{padding:40,maxZoom:13,duration:0});
   },[focusArea,ready]);

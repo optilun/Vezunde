@@ -62,6 +62,7 @@ export function mapPointFromResult(result) {
 
   return {
     id: clean(result.id),
+    is_request_result: result.is_request_result,
     name: clean(result.name) || 'Locație',
     city: clean(result.city),
     lat,
