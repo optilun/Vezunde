@@ -42,6 +42,7 @@ export default function ResultsMap({
   const fitModel = useMemo(() => fitResults === null ? model : buildResultsMapModel(fitResults), [fitResults, model]);
   const [viewport, setViewport] = useState({ zoom: FALLBACK_ZOOM, bounds: null });
   const [openClusterKey, setOpenClusterKey] = useState(null);
+  const [vectorFailed, setVectorFailed] = useState(false);
   const selectedPoint = model.points.find((point) => point.id === selectedId) || null;
   const notice = unmappedNotice(model.unmappedCount);
 
@@ -66,15 +67,14 @@ export default function ResultsMap({
 
   // Marker data can arrive without camera movement (national directory, coordinate overlay).
   useEffect(() => {
-    if (!viewport.bounds) return;
+    if (vectorFailed || !viewport.bounds) return;
     onViewportChange?.({
       ...viewport,
       visibleIds: pointIdsWithinBounds(model.points, viewport.bounds),
       mappedCount: model.mappedCount,
     });
-  }, [viewport, model.points, model.mappedCount, onViewportChange]);
+  }, [viewport, model.points, model.mappedCount, onViewportChange, vectorFailed]);
 
-  const [vectorFailed, setVectorFailed] = useState(false);
   if (vectorFailed) return <div className={`relative isolate ${className}`}>
     <Suspense fallback={<div role="status" className="flex h-full items-center justify-center text-sm">Se încarcă harta 2D...</div>}>
       <LegacyResultsMap {...{results, fitResults, selectedId, hoveredId, onSelect, onHover, onViewportChange, storageKey, focusArea}} className="h-full w-full" />
