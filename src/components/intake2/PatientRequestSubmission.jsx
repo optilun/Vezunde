@@ -38,8 +38,10 @@ function errorMessage(error) {
   );
 }
 
-export default function PatientRequestSubmission({ results, meta, onRequestCreated }) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function PatientRequestSubmission({ results, meta, onRequestCreated, defaultOpen = false }) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [submittedResults, setSubmittedResults] = useState([]);
+  const [submittedMeta, setSubmittedMeta] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
@@ -64,7 +66,7 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
   // nevoia, nici localitatea, nici ce scrisese pacientul la inceput. Ii cerea sa descrie
   // din nou, in gol. De aceea oamenii rescriau tot: nu aveau nicio dovada ca raspunsurile
   // lor s-au pastrat. Citim draftul si il aratam, ca sa ceara doar ce chiar lipseste.
-  const storedDraft = useMemo(() => readPatientRequestDraft(), [isOpen]);
+  const storedDraft = useMemo(() => readPatientRequestDraft(), [isOpen, meta]);
   // Textul cu care pacientul a pornit cautarea. Daca exista, e deja o descriere reala a
   // nevoii si ajunge la furnizor (contract full-details v2), deci caseta de la final
   // devine optionala.
@@ -159,6 +161,8 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
       activeIdempotencyRef.current = null;
       onRequestCreated?.(data);
       setSubmittedDraft(draft);
+      setSubmittedResults(Array.isArray(results) ? results : []);
+      setSubmittedMeta(meta);
       setSuccess(data);
       setEmailVerified(false);
       track("patient_request_saved", {
@@ -294,8 +298,8 @@ export default function PatientRequestSubmission({ results, meta, onRequestCreat
             requestId={success.request_id}
             accessToken={success.request_access_token || ""}
             publicReference={success.public_reference || ""}
-            results={Array.isArray(results) ? results : []}
-            meta={meta}
+            results={submittedResults}
+            meta={submittedMeta}
             requestDraft={submittedDraft}
             detailedMessage={detailedMessage}
           />
