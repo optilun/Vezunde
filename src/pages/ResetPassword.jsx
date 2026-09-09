@@ -37,7 +37,7 @@ export default function ResetPassword() {
 
   if (!resetToken) {
     return (
-      <AuthLayout
+      <AuthLayout split
         icon={AlertTriangle}
         title="Link de resetare invalid"
         subtitle="Linkul este incomplet sau nu mai este valabil"
@@ -49,7 +49,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <AuthLayout icon={Lock} title="Parola noua" subtitle="Alege parola pe care o vei folosi la autentificare">
+    <AuthLayout split icon={Lock} title="Parola noua" subtitle="Alege parola pe care o vei folosi la autentificare">
       {error && <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">

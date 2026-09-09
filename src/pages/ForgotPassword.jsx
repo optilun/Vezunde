@@ -28,7 +28,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <AuthLayout
+    <AuthLayout split
       icon={Mail}
       title="Reseteaza parola"
       subtitle="Iti trimitem un link pentru alegerea unei parole noi"

@@ -75,7 +75,7 @@ export default function Register() {
 
   if (showOtp) {
     return (
-      <AuthLayout icon={Mail} title="Verifica emailul" subtitle={`Am trimis un cod la ${email}`}>
+      <AuthLayout split icon={Mail} title="Verifica emailul" subtitle={`Am trimis un cod la ${email}`}>
         {error && <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>}
         <div className="flex justify-center mb-6">
           <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode} autoFocus autoComplete="one-time-code">
@@ -101,10 +101,10 @@ export default function Register() {
   }
 
   return (
-    <AuthLayout
+    <AuthLayout split
       icon={UserPlus}
       title="Creeaza cont"
-      subtitle="Contul ramane acelasi pentru zona personala si workspace-urile VIASEE"
+      subtitle="Un singur cont pentru tine si activitatea ta in VIASEE"
       footer={
         <>
           Ai deja cont?{" "}
