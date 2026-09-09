@@ -1,7 +1,7 @@
 import { pillHtml } from "../../../shared/mapMarkerPresentation.js";
 import "./mapMarkers.css";
-import React, { lazy, Suspense, useCallback, useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import MapLocationCard from "./MapLocationCard";
 import {
   FALLBACK_ZOOM,
   buildResultsMapModel,
@@ -9,8 +9,6 @@ import {
   pointIdsWithinBounds,
   unmappedNotice,
 } from "../../../shared/resultsMapPoints.js";
-import LocationThumb, { typeVisual } from "@/components/results/LocationThumb";
-import TrustBadge from "@/components/results/TrustBadge";
 import { readSearchSession, writeSearchSession } from "@/lib/searchSession";
 import VectorResultsCanvas from "./VectorResultsCanvas";
 const LegacyResultsMap = lazy(() => import("./LegacyResultsMap"));
@@ -27,47 +25,6 @@ function shortTypeLabel(providerType) {
   return SHORT_TYPE_LABELS[providerType] || "Locație";
 }
 
-function PointCard({ point, onClose }) {
-  const route = useLocation();
-  const returnState = route.pathname === "/rezultate" ? { resultsReturn: route.state } : undefined;
-  const visual = typeVisual(point.provider_type);
-  return (
-    <div className="absolute inset-x-3 bottom-3 z-[500] max-h-[55%] overflow-y-auto rounded-2xl border border-border bg-card p-3.5 shadow-lg sm:inset-x-auto sm:left-3 sm:w-80">
-      <div className="flex items-start gap-3">
-        <LocationThumb name={point.name} providerType={point.provider_type} size="sm" />
-        <div className="min-w-0 flex-1">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{visual.label}</div>
-          <p className="mt-0.5 font-heading text-sm font-bold leading-tight text-foreground">{point.name}</p>
-          {point.address && (
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{point.address}</p>
-          )}
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <TrustBadge status={point.profile_control_status} />
-            {point.map_precision !== "exact" && (
-              <span className="text-[10px] font-medium text-muted-foreground">Poziție aproximativă</span>
-            )}
-          </div>
-          {point.is_request_result === false && <p className="mt-2 text-xs text-muted-foreground">Locatie din director · in afara rezultatelor cererii</p>}
-          {point.is_request_result === true && <p className="mt-2 text-xs font-semibold text-[#4f6080]">In rezultatele cererii tale</p>}
-          <Link
-            to={`/furnizor/${point.id}`} state={returnState}
-            className="mt-2.5 inline-flex min-h-11 items-center text-xs font-semibold text-foreground underline underline-offset-4"
-          >
-            Vezi profilul
-          </Link>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Închide"
-          className="-mr-1 -mt-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
-        >
-          ×
-        </button>
-      </div>
-    </div>
-  );
-}
 
 export default function ResultsMap({
   results,
@@ -104,14 +61,18 @@ export default function ResultsMap({
       const signature = fitModel.points.map((point) => `${point.id}:${point.lat}:${point.lng}`).sort().join("|");
       writeSearchSession({ maps: { ...maps, [storageKey]: { signature, bounds: next.bounds, camera: next.camera } } });
     }
-    if (onViewportChange) {
-      onViewportChange({
-        ...next,
-        visibleIds: pointIdsWithinBounds(model.points, next.bounds),
-        mappedCount: model.mappedCount,
-      });
-    }
-  }, [model.points, model.mappedCount, fitModel.points, onViewportChange, storageKey]);
+
+  }, [fitModel.points, storageKey]);
+
+  // Marker data can arrive without camera movement (national directory, coordinate overlay).
+  useEffect(() => {
+    if (!viewport.bounds) return;
+    onViewportChange?.({
+      ...viewport,
+      visibleIds: pointIdsWithinBounds(model.points, viewport.bounds),
+      mappedCount: model.mappedCount,
+    });
+  }, [viewport, model.points, model.mappedCount, onViewportChange]);
 
   const [vectorFailed, setVectorFailed] = useState(false);
   if (vectorFailed) return <div className={`relative isolate ${className}`}>
@@ -154,7 +115,7 @@ export default function ResultsMap({
       )}
 
       {selectedPoint && (
-        <PointCard point={selectedPoint} onClose={() => { if (onSelect) onSelect(null); }} />
+        <MapLocationCard point={selectedPoint} onClose={() => { if (onSelect) onSelect(null); }} />
       )}
 
       {/* Ce nu se vede pe harta se scrie pe ea. O harta care pare completa cand nu este face mai

@@ -99,7 +99,7 @@ assert.ok(unmappedNotice(4).startsWith("4 opțiuni"));
 
 // --- cablajul din interfata -------------------------------------------------------------
 
-const mapSource = (await readFile(new URL("../src/components/results/ResultsMap.jsx", import.meta.url), "utf8")) + (await readFile(new URL("../src/components/results/VectorResultsCanvas.jsx", import.meta.url), "utf8"));
+const mapSource = (await readFile(new URL("../src/components/results/MapLocationCard.jsx", import.meta.url), "utf8")) + (await readFile(new URL("../src/components/results/ResultsMap.jsx", import.meta.url), "utf8")) + (await readFile(new URL("../src/components/results/VectorResultsCanvas.jsx", import.meta.url), "utf8"));
 assert.ok(
   mapSource.includes("buildResultsMapModel"),
   "harta trebuie sa foloseasca modelul comun, nu propria filtrare de coordonate",

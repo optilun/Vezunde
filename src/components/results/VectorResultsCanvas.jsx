@@ -57,12 +57,7 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
     const map=mapRef.current;
     const signature=fitPoints.map(p=>`${p.id}:${p.lat}:${p.lng}`).sort().join("|");
     if (signature===fitted.current) return;
-    if (!fitPoints.length) {
-      fitted.current = signature;
-      map.fitBounds([[20.2,43.6],[29.8,48.3]], { padding: 24, duration: 0 });
-      return;
-    }
-    const saved = !fitted.current && storageKey ? readSearchSession().maps?.[storageKey] : null;
+    const saved = fitted.current === null && storageKey ? readSearchSession().maps?.[storageKey] : null;
     fitted.current=signature;
     if (saved?.signature===signature && saved.bounds) {
       skipInitialSelection.current = true;
@@ -74,6 +69,8 @@ export default function VectorResultsCanvas({ points, fitPoints = points, cluste
       } else {
         map.fitBounds(saved.bounds.map(([lat,lng])=>[lng,lat]),{padding:0,duration:0});
       }
+    } else if (!fitPoints.length) {
+      map.fitBounds([[20.2,43.6],[29.8,48.3]], { padding: 24, duration: 0 });
     } else {
       const bounds=new maplibregl.LngLatBounds();
       fitPoints.forEach(p=>bounds.extend([p.lng,p.lat]));
