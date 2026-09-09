@@ -153,9 +153,10 @@ assert.ok(
   "evidentierea la trecerea cu mouse-ul trebuie sa functioneze in ambele sensuri",
 );
 
+// National directory loading is explicitly allowed; viewport-driven rematching remains forbidden.
 // Filtrarea dupa harta este vizuala. Nu are voie sa cheme serverul din nou, pentru ca ar
 // insemna alt criteriu de potrivire decat cel ales de pacient.
-for (const forbidden of ["matchProviders", "browseDirectory", "bbox", "fetch("]) {
+for (const forbidden of ["matchProviders", "bbox", "fetch("]) {
   assert.ok(
     !pageSource.includes(forbidden),
     `ecranul de rezultate nu are voie sa reinterogheze serverul dupa dreptunghiul hartii (${forbidden})`,
@@ -203,3 +204,8 @@ for (const file of ['ResultsMap.jsx', 'LegacyResultsMap.jsx']) {
   assert.ok(!source.includes('Harta nu are ce afișa încă'), 'A map without markers must remain navigable');
 }
 console.log('Empty basemap and structural disclosure guards: PASS');
+
+
+assert.ok(pageSource.includes('invoke("browseDirectoryProviders", { map_scope: "national" })'), 'National map must load the complete public projection');
+const viewportHandler = pageSource.slice(pageSource.indexOf('const handleViewport'), pageSource.indexOf('const selectFromList'));
+assert.ok(!viewportHandler.includes('invoke('), 'Moving the map must not rerun recommendation matching');

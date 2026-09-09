@@ -122,8 +122,8 @@ export default function RequestMatches() {
     return () => { cancelAnimationFrame(frame); observer.disconnect(); list.removeEventListener("wheel", stop); list.removeEventListener("touchstart", stop); };
   }, []);
   useEffect(() => {
-    if (selectedId && !mapResults.some(row => row.id === selectedId)) setSelectedId(null);
-  }, [selectedId, mapResults]);
+    if (directoryStatus === "ready" && selectedId && !mapResults.some(row => row.id === selectedId)) setSelectedId(null);
+  }, [selectedId, mapResults, directoryStatus]);
 
   const handleViewport = useCallback((next) => {
     setViewport({ visibleIds: next.visibleIds, mappedCount: next.mappedCount });
@@ -267,7 +267,7 @@ export default function RequestMatches() {
             </div>
           )}
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-card px-3 py-2 text-xs text-muted-foreground" role="status">
-            <span>{directoryStatus === "loading" ? "Se incarca locatiile din tara..." : directoryStatus === "error" ? "Locatiile din tara nu au putut fi incarcate." : "Toate locatiile publice · exploreaza liber harta"}</span>
+            <span>{directoryStatus === "loading" ? "Se incarca locatiile din tara..." : directoryStatus === "error" ? "Locatiile din tara nu au putut fi incarcate." : "Locatii din tara · contur albastru: rezultatele cererii"}</span>
             {directoryStatus === "error" && <button type="button" className="min-h-11 rounded-full border border-border px-3 font-semibold" onClick={() => setDirectoryRetry(value => value + 1)}>Reincearca</button>}
           </div>
           <div className="min-h-0 flex-1">

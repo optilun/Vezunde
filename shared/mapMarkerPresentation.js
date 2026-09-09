@@ -26,7 +26,7 @@ export function pillHtml(cluster, { active = false, hovered = false } = {}) {
   const type = typeLabels[lead.provider_type] || "Locație";
   const accessible = group ? `Explorează grupul de ${cluster.count} locații` : `${lead.name}, ${type}`;
   return `<span class="viasee-marker" data-map-marker="${escapeHtml(cluster.key)}"
-    data-group="${group}" data-active="${active}" data-hovered="${hovered}"
+    data-request="${!group && lead.is_request_result === true}" data-group="${group}" data-active="${active}" data-hovered="${hovered}"
     data-top="${!group && lead.tier === "top3"}" data-approximate="${!group && lead.map_precision !== "exact"}"
     data-label="${escapeHtml(accessible)}" data-compact="false">
     <span class="viasee-marker-icon">${markerIcon(lead.provider_type, group)}</span>

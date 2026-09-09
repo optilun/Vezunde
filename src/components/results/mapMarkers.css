@@ -18,6 +18,7 @@
 .viasee-marker-chevron { font-size: 19px; line-height: 1; opacity: .65; }
 .viasee-marker[data-group="true"] { background: hsl(var(--secondary)); font-weight: 700; }
 .viasee-marker[data-approximate="true"] { border-style: dashed; }
+.viasee-marker[data-request="true"] { border-color: #4f6080; box-shadow: 0 0 0 2px #dce3ee, 0 2px 6px #17233720; }
 .viasee-marker[data-top="true"] { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
 .viasee-marker[data-top="true"] .viasee-marker-icon,
 .viasee-marker[data-active="true"] .viasee-marker-icon { color: inherit; }
