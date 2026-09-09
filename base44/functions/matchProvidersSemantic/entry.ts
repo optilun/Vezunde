@@ -761,7 +761,7 @@ Deno.serve(async (request) => {
         return Boolean(canonicalKey && requestedSet.has(canonicalKey));
       });
       if (candidateRows.length === 0) {
-        collectStructuralCandidate(location, sirutaCode, countyName, structuralCandidates, queryScope);
+        collectStructuralCandidate(withDirectoryDetail(location, detailOverlay), sirutaCode, countyName, structuralCandidates, queryScope);
         continue;
       }
       configuredMatchingProviderCount += 1;
