@@ -1,3 +1,4 @@
+import { publicPhoneLink } from "../../../shared/publicPhoneLink.js";
 import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight, MapPin, Phone, Map } from "lucide-react";
@@ -7,6 +8,7 @@ import TrustBadge from "./TrustBadge";
 
 // Public directory information only. No paid rank or recommendation claims.
 export default function DirectoryResultCard({ location, onShowMap }) {
+  const phoneHref = publicPhoneLink(location.phone);
   const { Icon } = typeVisual(location.provider_type);
   const city = String(location.city || "").trim();
   const address = String(location.address || "").trim();
@@ -41,7 +43,7 @@ export default function DirectoryResultCard({ location, onShowMap }) {
           {onShowMap && <button type="button" onClick={onShowMap} aria-label={`Vezi pe hartă: ${location.name}`} title="Vezi pe hartă" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#d8dee8] bg-[#eff1f5]/70 text-[#4f6080] transition-colors hover:bg-[#dce4f2] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
             <Map aria-hidden="true" className="h-[18px] w-[18px]" />
           </button>}
-          {location.phone && <a href={`tel:${location.phone.replace(/\s/g, "")}`} aria-label={`Sună la ${location.name}`} title="Sună" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border text-[#4f6080] transition-colors hover:bg-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"><Phone aria-hidden="true" className="h-4 w-4" /></a>}
+          {phoneHref && <a href={phoneHref} aria-label={`Sună la ${location.name}`} title="Sună" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border text-[#4f6080] transition-colors hover:bg-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"><Phone aria-hidden="true" className="h-4 w-4" /></a>}
         </div>
       </div>
     </article>

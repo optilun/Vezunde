@@ -58,6 +58,7 @@ function coverageFacts(meta, countyExpanded) {
 
 export default function NoResultsFlow({
   mode = "empty",
+  compact = false,
   meta,
   top3Count = 0,
   directoryCount = 0,
@@ -73,6 +74,7 @@ export default function NoResultsFlow({
 }) {
   const emptyState = EMPTY_STATES[meta?.coverage_status] || DEFAULT_EMPTY_STATE;
   const insufficient = mode === "insufficient";
+  const compactRecovery = compact && insufficient;
   const countyExpanded = meta?.query_scope === "county" || meta?.routing_mode === "county";
   const resolvedCountyName = meta?.selected_county_name || countyName;
   const title = countyExpanded
@@ -103,40 +105,13 @@ export default function NoResultsFlow({
   const buttonCount = 2 + (canExpandCounty ? 1 : 0) + (canExpandNational ? 1 : 0);
   const gridColsClass = buttonCount >= 4 ? "sm:grid-cols-2" : buttonCount === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2";
 
-  return (
-    <section className={`rounded-2xl border p-5 sm:p-6 ${insufficient ? "border-border bg-secondary/25" : "border-amber-200/80 bg-amber-50/60"}`}>
-      <div className="flex items-start gap-3">
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${insufficient ? "bg-primary/10 text-primary" : "bg-amber-100 text-amber-800"}`}>
-          <SearchX className="h-5 w-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="font-heading text-lg font-bold tracking-tight text-foreground sm:text-xl">{title}</h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
-
-          {!insufficient && (meta?.client_address_text || resolvedCountyName) && (
-            <p className="mt-3 inline-flex items-start gap-2 text-xs text-muted-foreground">
-              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              {countyExpanded
-                ? `Arie verificată: județul ${resolvedCountyName || "selectat"}, pornind de la ${meta?.client_address_text || "localitatea aleasă"}`
-                : `Căutare în: ${meta?.client_address_text || "localitatea aleasă"}`}
-            </p>
-          )}
-
-          {facts.length > 0 && !insufficient && (
-            <div className="mt-4 rounded-xl border border-border bg-background/80 p-3">
-              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Ce am verificat</p>
-              <div className="mt-2 grid gap-1.5 text-xs text-muted-foreground">
-                {facts.map((fact) => <span key={fact}>{fact}</span>)}
-              </div>
-            </div>
-          )}
-
+  const recoveryActions = (<>
           <div className={`mt-5 grid gap-2 ${gridColsClass}`}>
             {canExpandCounty && (
               <button
                 type="button"
                 onClick={onExpandCounty}
-                disabled={isExpandingCounty}
+                disabled={isExpandingCounty || isExpandingNational}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Expand className="h-4 w-4" />
@@ -147,7 +122,7 @@ export default function NoResultsFlow({
               <button
                 type="button"
                 onClick={onExpandNational}
-                disabled={isExpandingNational}
+                disabled={isExpandingCounty || isExpandingNational}
                 className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${canExpandCounty ? "border border-border bg-background text-foreground hover:bg-secondary" : "bg-primary text-primary-foreground hover:opacity-90"}`}
               >
                 <Globe className="h-4 w-4" />
@@ -182,6 +157,42 @@ export default function NoResultsFlow({
           >
             <BookOpen className="h-3.5 w-3.5" /> Explorează directorul complet
           </Link>
+
+  </>);
+
+  return (
+    <section className={`rounded-2xl border ${compactRecovery ? "p-4" : "p-5 sm:p-6"} ${insufficient ? "border-border bg-secondary/25" : "border-amber-200/80 bg-amber-50/60"}`}>
+      <div className="flex items-start gap-3">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${insufficient ? "bg-primary/10 text-primary" : "bg-amber-100 text-amber-800"}`}>
+          <SearchX className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className={`font-heading font-bold tracking-tight text-foreground ${compactRecovery ? "text-base" : "text-lg sm:text-xl"}`}>{title}</h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{compactRecovery && top3Count === 0 ? "Poti explora locatiile de mai jos. Confirma direct daca ofera serviciul cautat." : description}</p>
+
+          {!insufficient && (meta?.client_address_text || resolvedCountyName) && (
+            <p className="mt-3 inline-flex items-start gap-2 text-xs text-muted-foreground">
+              <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              {countyExpanded
+                ? `Arie verificată: județul ${resolvedCountyName || "selectat"}, pornind de la ${meta?.client_address_text || "localitatea aleasă"}`
+                : `Căutare în: ${meta?.client_address_text || "localitatea aleasă"}`}
+            </p>
+          )}
+
+          {facts.length > 0 && !insufficient && (
+            <div className="mt-4 rounded-xl border border-border bg-background/80 p-3">
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Ce am verificat</p>
+              <div className="mt-2 grid gap-1.5 text-xs text-muted-foreground">
+                {facts.map((fact) => <span key={fact}>{fact}</span>)}
+              </div>
+            </div>
+          )}
+
+          {compactRecovery && (actionError || nationalActionError) && <p role="alert" className="mt-2 text-xs text-destructive">{actionError || nationalActionError}</p>}
+          {compactRecovery ? <details className="mt-2">
+            <summary className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-xs font-semibold text-[#4f6080]"><SlidersHorizontal aria-hidden="true" className="h-4 w-4" />Extinde sau modifica zona cautarii</summary>
+            {recoveryActions}
+          </details> : recoveryActions}
 
           {!insufficient && (
             <p className="mt-4 flex items-start gap-2 border-t border-border/70 pt-4 text-[11px] leading-relaxed text-muted-foreground">

@@ -620,6 +620,7 @@ export default function MatchResults({
         <div className={top3.length > 0 ? "mt-6" : ""}>
           <NoResultsFlow
             mode="insufficient"
+            compact={compact}
             meta={activeMeta}
             top3Count={serverTop3Count}
             directoryCount={list.filter(row => row.result_bucket === "extended_directory").length}

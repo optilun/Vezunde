@@ -1,3 +1,4 @@
+import { publicPhoneLink } from "../../../shared/publicPhoneLink.js";
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ArrowUpRight, Clock, Map, MapPin, Phone, Route } from "lucide-react";
@@ -59,6 +60,7 @@ export default function ResultCard({
   compact = false,
   hasMapPoint,
 }) {
+  const phoneHref = publicPhoneLink(location.phone);
   const route = useLocation();
   const returnState = route.pathname === "/rezultate"
     ? { resultsReturn: route.state }
@@ -186,9 +188,9 @@ export default function ResultCard({
           Vezi profilul <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
         </Link>
         {onSelect && (hasMapPoint ?? Boolean(mapPointFromResult(location))) && <button type="button" onClick={() => onSelect(location)} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-secondary/60 px-3 text-sm font-medium text-[#4f6080] hover:bg-secondary"><Map aria-hidden="true" className="h-4 w-4" />Hartă</button>}
-        {location.phone && (
+        {phoneHref && (
           <a
-            href={`tel:${location.phone.replace(/\s/g, "")}`}
+            href={phoneHref}
             onClick={onPhoneClick}
             aria-label={`Sună la ${location.name}`}
             className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card px-3 text-sm font-medium text-[#4f6080] hover:bg-secondary"
