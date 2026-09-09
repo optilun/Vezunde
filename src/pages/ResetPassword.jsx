@@ -41,33 +41,33 @@ export default function ResetPassword() {
         icon={AlertTriangle}
         title="Link de resetare invalid"
         subtitle="Linkul este incomplet sau nu mai este valabil"
-        footer={<Link to={forgotPasswordPath} className="text-primary font-medium hover:underline">Solicita un link nou</Link>}
+        footer={<Link to={forgotPasswordPath} className="text-primary font-medium hover:underline">Solicită un link nou</Link>}
       >
-        <p className="text-sm text-foreground text-center">Solicita un nou email de resetare si continua apoi autentificarea.</p>
+        <p className="text-sm text-foreground text-center">Solicită un nou e-mail de resetare și continuă apoi autentificarea.</p>
       </AuthLayout>
     );
   }
 
   return (
-    <AuthLayout split icon={Lock} title="Parola noua" subtitle="Alege parola pe care o vei folosi la autentificare">
-      {error && <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>}
+    <AuthLayout split icon={Lock} title="Parolă nouă" subtitle="Alege parola pe care o vei folosi la autentificare">
+      {error && <div role="alert" className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="password">Parola noua</Label>
+          <Label htmlFor="password">Parolă nouă</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input id="password" type="password" autoComplete="new-password" autoFocus placeholder="••••••••" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="pl-10 h-12" required />
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirm">Confirma parola</Label>
+          <Label htmlFor="confirm">Confirmă parola</Label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input id="confirm" type="password" autoComplete="new-password" placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="pl-10 h-12" required />
           </div>
         </div>
         <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
-          {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Se reseteaza...</> : "Salveaza parola"}
+          {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Se resetează...</> : "Salvează parola"}
         </Button>
       </form>
     </AuthLayout>
