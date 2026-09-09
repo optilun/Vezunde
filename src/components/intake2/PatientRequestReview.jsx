@@ -25,7 +25,7 @@ export default function PatientRequestReview({ draft, onConfirm, onEdit }) {
         Am pregătit cererea ta
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        Confirmă informațiile. VIASEE va folosi acest rezumat pentru a căuta locații eligibile, fără ca AI-ul să decidă ordinea rezultatelor.
+        Verifica nevoia si localitatea, apoi cauta optiunile disponibile.
       </p>
 
       <div className="mt-6 rounded-2xl border border-border bg-secondary/35 p-4 sm:p-5">
@@ -82,9 +82,7 @@ export default function PatientRequestReview({ draft, onConfirm, onEdit }) {
         </button>
       </div>
 
-      <p className="mt-5 text-center text-[11px] leading-relaxed text-muted-foreground">
-        Contract chestionar: {draft?.questionnaire_version || "necunoscut"}
-      </p>
+
     </div>
   );
 }
