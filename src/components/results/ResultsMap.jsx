@@ -120,20 +120,7 @@ export default function ResultsMap({
     </details>
   </div>;
 
-  if (model.points.length === 0) {
-    return (
-      <div className={`flex items-center justify-center rounded-2xl border border-dashed border-border bg-secondary/20 p-8 text-center ${className}`}>
-        <div className="max-w-xs">
-          <p className="text-sm font-semibold text-foreground">Harta nu are ce afișa încă</p>
-          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            {model.unmappedCount > 0
-              ? "Opțiunile găsite nu au încă o poziție publicată. Adresa completă apare pe fiecare profil."
-              : "Nu există opțiuni de afișat pentru această căutare."}
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Keep the basemap navigable even when no result has public coordinates.
 
   return (
     <div className={`relative isolate ${className}`}>
