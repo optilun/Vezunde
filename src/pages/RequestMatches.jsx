@@ -268,19 +268,19 @@ export default function RequestMatches() {
             mobileView === "map" ? "flex" : "hidden"
           }`}
         >
-          <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-border bg-card p-1.5">
+          <div className="flex shrink-0 items-center gap-1 border-b border-border bg-card p-1.5">
             <button type="button" disabled={!focusBounds} onClick={() => showMapArea(focusBounds)}
               className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-semibold text-[#4f6080] hover:bg-secondary disabled:opacity-40">
               <LocateFixed aria-hidden="true" className="h-4 w-4" />Zona cautata
             </button>
             <button type="button" onClick={() => showMapArea([[43.6,20.2],[48.3,29.8]])}
               className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-semibold hover:bg-secondary">
-              <Globe aria-hidden="true" className="h-4 w-4" />Romania
+              <Globe aria-hidden="true" className="h-4 w-4" /><span className="sr-only sm:not-sr-only">Romania</span>
             </button>
             {!isProfessionalMode && <button type="button" onClick={() => setFilterToViewport(value => !value)}
-              aria-pressed={filterToViewport} disabled={!filterToViewport && viewport.mappedCount === 0}
+              aria-pressed={filterToViewport} aria-label="Arata doar rezultatele cererii vizibile pe harta" title="Filtreaza lista cererii dupa zona vizibila" disabled={!filterToViewport && viewport.mappedCount === 0}
               className={`ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold disabled:opacity-40 ${filterToViewport ? "border-[#4f6080] bg-[#4f6080] text-white" : "border-border bg-card hover:bg-secondary"}`}>
-              <SlidersHorizontal aria-hidden="true" className="h-3.5 w-3.5" />Lista din zona
+              <SlidersHorizontal aria-hidden="true" className="h-3.5 w-3.5" />Filtreaza lista
             </button>}
           </div>
           {directoryStatus !== "ready" && <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2 text-xs text-muted-foreground" role="status">
