@@ -50,6 +50,29 @@ function hasOwnBrand(tokens) {
   return tokens.some((token) => !GENERIC_TOKENS.has(token));
 }
 
+function websiteHost(value) {
+  const raw = clean(value);
+  if (!raw) return '';
+  try {
+    const normalized = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    return new URL(normalized).hostname.toLowerCase().replace(/^www\./, '');
+  } catch (_error) {
+    return '';
+  }
+}
+
+function organizationQuality(organization, locationCount = 0) {
+  let score = 0;
+  if (clean(organization.status) === 'activa') score += 1000;
+  if (clean(organization.publication_status) === 'published') score += 300;
+  if (clean(organization.public_visibility_status) === 'approved') score += 200;
+  if (clean(organization.data_quality_status) === 'high') score += 120;
+  if (clean(organization.data_quality_status) === 'medium') score += 60;
+  score += Math.min(100, Number(organization.profile_completeness) || 0);
+  score += Math.min(50, locationCount * 5);
+  return score;
+}
+
 // Audit pentru fiecare modificare din fuziune. Acelasi tipar ca in
 // directoryOps/adminDataIntegrityOps.ts, ca inregistrarile sa fie citibile in
 // acelasi ecran de audit ca restul operatiunilor de directory.
@@ -308,8 +331,28 @@ export async function handle(req: Request) {
           score: match.score,
           reason: match.reason,
           organizations: [
-            { id: organizations[i].id, name: organizations[i].name || '' },
-            { id: organizations[j].id, name: organizations[j].name || '' },
+            {
+              id: organizations[i].id,
+              name: organizations[i].name || '',
+              legal_name: organizations[i].legal_name || '',
+              website: organizations[i].website_url || organizations[i].website || '',
+              status: organizations[i].status || '',
+              publication_status: organizations[i].publication_status || '',
+              public_visibility_status: organizations[i].public_visibility_status || '',
+              data_quality_status: organizations[i].data_quality_status || '',
+              profile_completeness: Number(organizations[i].profile_completeness) || 0,
+            },
+            {
+              id: organizations[j].id,
+              name: organizations[j].name || '',
+              legal_name: organizations[j].legal_name || '',
+              website: organizations[j].website_url || organizations[j].website || '',
+              status: organizations[j].status || '',
+              publication_status: organizations[j].publication_status || '',
+              public_visibility_status: organizations[j].public_visibility_status || '',
+              data_quality_status: organizations[j].data_quality_status || '',
+              profile_completeness: Number(organizations[j].profile_completeness) || 0,
+            },
           ],
         });
       }
@@ -332,11 +375,45 @@ export async function handle(req: Request) {
         .filter((location) => rightAddresses.has(normalizeName(location.address)))
         .map((location) => location.address);
 
+      const leftLegal = normalizeName(left.legal_name);
+      const rightLegal = normalizeName(right.legal_name);
+      const legalMatch = Boolean(leftLegal && rightLegal && leftLegal === rightLegal);
+      const legalConflict = Boolean(leftLegal && rightLegal && leftLegal !== rightLegal);
+      const leftHost = websiteHost(left.website);
+      const rightHost = websiteHost(right.website);
+      const websiteMatch = Boolean(leftHost && rightHost && leftHost === rightHost);
+      const exactBrandMatch = normalizeName(left.name) === normalizeName(right.name);
+
+      // Loturile automate sunt mult mai stricte decat simpla lista de candidati.
+      // Adresa identica singura NU este suficienta: clinica si optica pot functiona legitim
+      // la aceeasi adresa sub operatori diferiti. Selectam automat doar cand exista dovada
+      // de operator juridic comun sau, in lipsa unui conflict juridic, acelasi brand exact
+      // pe acelasi site oficial.
+      const batchSafe = legalMatch || (!legalConflict && websiteMatch && exactBrandMatch);
+      const batchReason = legalMatch
+        ? 'acelasi operator juridic'
+        : batchSafe
+          ? 'acelasi brand exact si acelasi site oficial, fara conflict juridic'
+          : legalConflict
+            ? 'operatori juridici diferiti - nu fuziona automat'
+            : 'necesita decizie manuala';
+
+      const leftQuality = organizationQuality(left, leftLocations.length);
+      const rightQuality = organizationQuality(right, rightLocations.length);
+      const recommendedTargetId = leftQuality === rightQuality
+        ? (left.id < right.id ? left.id : right.id)
+        : (leftQuality > rightQuality ? left.id : right.id);
+
       enriched.push({
         ...pair,
-        // Adresa comuna ridica scorul la certitudine: aceeasi cladire, doua organizatii.
+        // Adresa comuna ramane o dovada vizuala importanta, dar nu transforma singura
+        // perechea intr-o fuziune automata sigura.
         score: sharedAddresses.length > 0 ? 100 : pair.score,
         shared_addresses: sharedAddresses.slice(0, 5),
+        batch_safe: batchSafe,
+        batch_reason: batchReason,
+        legal_conflict: legalConflict,
+        recommended_target_id: recommendedTargetId,
         organizations: [
           { ...left, location_count: leftLocations.length, locations: leftLocations.slice(0, 5).map((l) => ({ id: l.id, name: l.name, city: l.city, status: l.status })) },
           { ...right, location_count: rightLocations.length, locations: rightLocations.slice(0, 5).map((l) => ({ id: l.id, name: l.name, city: l.city, status: l.status })) },
