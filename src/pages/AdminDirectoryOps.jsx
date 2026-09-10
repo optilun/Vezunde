@@ -82,7 +82,7 @@ const SIMPLE_HEADERS = {
   geografie: "Sursa canonica de geografie VIASEE si importul SIRUTA.",
   audit: "Istoricul actiunilor administrative si al modificarilor aplicate.",
   data_integrity:
-    "Detecteaza neconcordantele si permite numai reparatii deterministe, previzualizate si confirmate individual.",
+    "Detecteaza neconcordantele si permite reparatii deterministe individuale sau in lot, fuziuni controlate si operatii de geocodare administrate.",
   contract_geo:
     "Verificari de regresie pentru contractul geografic. Instrument intern.",
 };
@@ -105,10 +105,8 @@ function SectionLoading() {
   );
 }
 
-// Integritate date (2026-08-22): cele trei ecrane (probleme de date, organizatii
-// fragmentate, reparatii controlate) erau stivuite pe aceeasi pagina - impreuna,
-// insumau mii de randuri randate si deveneau greu de navigat. Le separam pe
-// sub-taburi, dupa functie, fara sa schimbam nimic din logica lor interna.
+// Integritate date: fiecare sub-tab are acum si actiuni administrative in lot,
+// pastrand confirmarea explicita si regulile de siguranta specifice tipului de operatie.
 const DATA_INTEGRITY_SUBTABS = [
   { key: "probleme", label: "Probleme de date" },
   { key: "organizatii_fragmentate", label: "Organizatii fragmentate" },
