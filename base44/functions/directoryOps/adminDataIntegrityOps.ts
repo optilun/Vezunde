@@ -384,6 +384,15 @@ export async function handle(req: Request) {
       return response({ repairs: repairs.map(publicRepair), count: repairs.length });
     }
 
+    if (action === 'runtime_info') {
+      return response({
+        success: true,
+        runtime_revision: 'admin-data-integrity-bulk-2026-09-10-1',
+        supported_actions: ['scan', 'runtime_info', 'apply', 'apply_batch'],
+        max_batch: 250,
+      });
+    }
+
     if (action === 'apply_batch') {
       if (input.confirm !== true) return response({ error: 'Confirmarea explicita este obligatorie' }, 400);
       const requested = Array.isArray(input.repairs) ? input.repairs : [];
