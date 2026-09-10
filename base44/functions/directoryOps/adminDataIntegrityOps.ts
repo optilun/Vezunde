@@ -384,6 +384,59 @@ export async function handle(req: Request) {
       return response({ repairs: repairs.map(publicRepair), count: repairs.length });
     }
 
+    if (action === 'apply_batch') {
+      if (input.confirm !== true) return response({ error: 'Confirmarea explicita este obligatorie' }, 400);
+      const requested = Array.isArray(input.repairs) ? input.repairs : [];
+      if (requested.length === 0) return response({ error: 'Lista de reparatii este goala' }, 400);
+
+      // Limita per apel evita o functie foarte lunga si permite UI-ului sa afiseze progres real.
+      // Clientul poate continua automat cu urmatorul lot fara sa ceara confirmare pentru fiecare rand.
+      const MAX_BATCH = 250;
+      const batch = requested.slice(0, MAX_BATCH)
+        .map((item) => ({ id: clean(item?.id), expected_signature: clean(item?.expected_signature) }))
+        .filter((item) => item.id && item.expected_signature);
+
+      const repairs = await scanRepairs(svc);
+      const candidatesById = new Map(repairs.map((item) => [item.id, item]));
+      const applied = [];
+      const skipped = [];
+      const failed = [];
+      const seen = new Set();
+
+      for (const requestItem of batch) {
+        if (seen.has(requestItem.id)) continue;
+        seen.add(requestItem.id);
+        const candidate = candidatesById.get(requestItem.id);
+        if (!candidate) {
+          skipped.push({ id: requestItem.id, reason: 'Reparatia nu mai este necesara sau datele s-au schimbat' });
+          continue;
+        }
+        if (candidate.expected_signature !== requestItem.expected_signature) {
+          skipped.push({ id: requestItem.id, reason: 'Datele s-au schimbat dupa previzualizare' });
+          continue;
+        }
+        try {
+          await applyCandidate(svc, user, candidate);
+          applied.push(requestItem.id);
+        } catch (applyError) {
+          failed.push({ id: requestItem.id, error: applyError?.message || 'Aplicare esuata' });
+        }
+      }
+
+      return response({
+        success: failed.length === 0,
+        requested_count: requested.length,
+        processed_count: batch.length,
+        applied_count: applied.length,
+        applied,
+        skipped_count: skipped.length,
+        skipped,
+        failed_count: failed.length,
+        failed,
+        has_more: requested.length > MAX_BATCH,
+      });
+    }
+
     if (action === 'apply') {
       if (input.confirm !== true) return response({ error: 'Confirmarea explicita este obligatorie' }, 400);
       const repairId = clean(input.repair_id);
