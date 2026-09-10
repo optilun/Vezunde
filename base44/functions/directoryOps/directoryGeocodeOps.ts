@@ -227,12 +227,16 @@ export async function handle(req: Request) {
       fallback_used: 0,
       rejected: {},
       failed: 0,
+      attempted_count: 0,
+      completed_count: 0,
       marked_needs_fallback: 0,
       marked_needs_manual: 0,
+      rate_limited: false,
     };
 
     for (const entry of batch) {
       const { location, plan } = entry;
+      result.attempted_count += 1;
       try {
         let results = await geocode(plan.query);
         await sleep(REQUEST_INTERVAL_MS);
@@ -261,9 +265,11 @@ export async function handle(req: Request) {
           await svc.entities.ProviderLocation.update(location.id, attemptFields);
           if (attemptFields.geocode_review_status === GEOCODE_REVIEW_STATUS.NEEDS_FALLBACK) {
             result.marked_needs_fallback += 1;
+            result.completed_count += 1;
           }
           if (attemptFields.geocode_review_status === GEOCODE_REVIEW_STATUS.NEEDS_MANUAL) {
             result.marked_needs_manual += 1;
+            result.completed_count += 1;
           }
         }
 
@@ -288,6 +294,7 @@ export async function handle(req: Request) {
         await svc.entities.ProviderLocation.update(location.id, updates);
         result.geocoded += 1;
         if (usedFallback) result.fallback_used += 1;
+        else result.completed_count += 1;
 
         await svc.entities.DirectoryAuditRecord.create({
           entity_type: 'ProviderLocation',
@@ -307,6 +314,7 @@ export async function handle(req: Request) {
         result.failed += 1;
         if (String(error?.message || '') === 'rate_limited') {
           // Serviciul cere sa incetinim. Oprim lotul aici; urmatorul apel reia de unde a ramas.
+          result.rate_limited = true;
           break;
         }
       }
@@ -317,7 +325,10 @@ export async function handle(req: Request) {
       action: 'run',
       ...summary,
       ...result,
-      remaining: Math.max(0, pending.length - result.geocoded),
+      // O pozitie obtinuta doar la nivel de localitate ramane in coada pentru o varianta
+      // mai precisa. Ies din coada doar adresele rezolvate la nivel de strada si cazurile
+      // care au epuizat variantele si au fost marcate pentru fallback/manual.
+      remaining: Math.max(0, pending.length - result.completed_count),
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
