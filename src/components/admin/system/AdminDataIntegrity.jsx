@@ -13,6 +13,13 @@ import EmptyState from "@/components/admin/ui/EmptyState";
 
 const ACTIVE_SUBMISSION_STATUSES = new Set(["draft", "pending_review", "needs_more_info"]);
 const VALID_ORGANIZATION_STATUSES = new Set(["activa", "inactiva"]);
+const REPAIR_TYPES_BY_CATEGORY = {
+  Completitudine: new Set(["organization_completeness", "location_completeness"]),
+  Organizatii: new Set(["organization_status"]),
+  Statusuri: new Set(["location_publication_alignment"]),
+  Cereri: new Set(["identical_active_submissions"]),
+};
+const INTEGRITY_BATCH_OPTIONS = [25, 50, 100, 250];
 
 function clean(value) {
   return String(value ?? "").trim();
@@ -268,6 +275,11 @@ export default function AdminDataIntegrity() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState("");
+  const [bulkScope, setBulkScope] = useState("current");
+  const [batchSize, setBatchSize] = useState(100);
+  const [bulkProgress, setBulkProgress] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -334,6 +346,62 @@ export default function AdminDataIntegrity() {
   const pageCount = Math.max(1, Math.ceil(activeIssues.length / PAGE_SIZE));
   const pagedIssues = activeIssues.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
+  const runDeterministicRepairs = async () => {
+    if (bulkRunning) return;
+    setBulkRunning(true);
+    setError("");
+    setBulkMessage("");
+    setBulkProgress(null);
+    try {
+      const scan = await base44.functions.invoke("adminDataIntegrityOps", { action: "scan" });
+      if (scan.data?.error) throw new Error(scan.data.error);
+      const allRepairs = scan.data?.repairs || [];
+      const allowedTypes = bulkScope === "current" ? REPAIR_TYPES_BY_CATEGORY[activeCategory] : null;
+      const selected = allowedTypes
+        ? allRepairs.filter((repair) => allowedTypes.has(repair.repair_type))
+        : allRepairs;
+
+      if (selected.length === 0) {
+        setBulkMessage(bulkScope === "current"
+          ? "Categoria curenta nu are reparatii deterministe disponibile. Problemele ramase necesita verificare umana."
+          : "Nu exista reparatii deterministe disponibile acum.");
+        return;
+      }
+
+      const confirmed = window.confirm(`Aplica ${selected.length} reparatii deterministe ${bulkScope === "current" ? `pentru categoria ${activeCategory}` : "din toate categoriile"}?`);
+      if (!confirmed) return;
+
+      let applied = 0;
+      let skipped = 0;
+      let failed = 0;
+      for (let offset = 0; offset < selected.length; offset += batchSize) {
+        const chunk = selected.slice(offset, offset + batchSize);
+        const response = await base44.functions.invoke("adminDataIntegrityOps", {
+          action: "apply_batch",
+          confirm: true,
+          repairs: chunk.map((repair) => ({ id: repair.id, expected_signature: repair.expected_signature })),
+        });
+        if (response.data?.error) throw new Error(response.data.error);
+        applied += response.data?.applied_count || 0;
+        skipped += response.data?.skipped_count || 0;
+        failed += response.data?.failed_count || 0;
+        setBulkProgress({
+          done: Math.min(selected.length, offset + chunk.length),
+          total: selected.length,
+          applied,
+          skipped,
+          failed,
+        });
+      }
+      setBulkMessage(`Lot finalizat: ${applied} reparatii aplicate, ${skipped} sarite, ${failed} esuate.`);
+      await load();
+    } catch (reason) {
+      setError(reason.response?.data?.error || reason.message || "Rularea in lot s-a oprit cu o eroare.");
+    } finally {
+      setBulkRunning(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <AdminCard className="p-5">
@@ -354,6 +422,38 @@ export default function AdminDataIntegrity() {
           </div>
         )}
       </AdminCard>
+
+      {data && issues.length > 0 && (
+        <AdminCard className="p-5">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[240px] flex-1">
+              <div className="text-sm font-bold">Reparare in lot</div>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Aplica numai reparatiile deterministe pe care backendul le poate recalcula si verifica. Relatiile orfane, conflictele de provenienta si migrarile raman pentru verificare manuala.
+              </p>
+            </div>
+            <label className="w-[190px] text-[11px] font-semibold text-muted-foreground">
+              DOMENIU
+              <select value={bulkScope} onChange={(event) => setBulkScope(event.target.value)} className="mt-1.5 h-10 w-full rounded-xl border border-border bg-background px-3 text-xs text-foreground">
+                <option value="current">Categoria curenta: {activeCategory || "-"}</option>
+                <option value="all">Toate reparatiile sigure</option>
+              </select>
+            </label>
+            <label className="w-[145px] text-[11px] font-semibold text-muted-foreground">
+              MARIME LOT
+              <select value={batchSize} onChange={(event) => setBatchSize(Number(event.target.value))} className="mt-1.5 h-10 w-full rounded-xl border border-border bg-background px-3 text-xs text-foreground">
+                {INTEGRITY_BATCH_OPTIONS.map((size) => <option key={size} value={size}>{size}</option>)}
+              </select>
+            </label>
+            <button type="button" onClick={runDeterministicRepairs} disabled={bulkRunning || loading} className="inline-flex h-10 items-center gap-2 rounded-full bg-foreground px-4 text-xs font-semibold text-background disabled:opacity-50">
+              {bulkRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <DatabaseZap className="h-4 w-4" />}
+              {bulkRunning ? "Se repara loturile..." : "Repara in lot"}
+            </button>
+          </div>
+          {bulkProgress && <div className="mt-3 text-xs text-muted-foreground">Procesate {bulkProgress.done}/{bulkProgress.total} · aplicate {bulkProgress.applied} · sarite {bulkProgress.skipped} · esuate {bulkProgress.failed}</div>}
+          {bulkMessage && <div className="mt-3 rounded-xl border border-border bg-secondary/30 px-3 py-2.5 text-xs">{bulkMessage}</div>}
+        </AdminCard>
+      )}
 
       {error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
       {!data && !error && <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Se verifica datele...</div>}
