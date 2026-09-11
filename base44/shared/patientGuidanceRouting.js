@@ -79,7 +79,6 @@ const MATRIX = /** @type {Record<string, any>} */ ({
     required_for_search: ["routine_vs_symptom", "for_whom", "locality"],
     required_for_provider_request: ["routine_vs_symptom", "for_whom", "locality", "timing"],
     optional_facts: ["last_eye_exam", "prescription_status"],
-    inferable_facts: [],
     exact_service_can_skip_search_facts: ["routine_vs_symptom"],
     conditional_required_for_search: [
       {
@@ -100,7 +99,8 @@ const MATRIX = /** @type {Record<string, any>} */ ({
     required_for_search: ["child_age_group", "routine_vs_symptom", "locality"],
     required_for_provider_request: ["child_age_group", "routine_vs_symptom", "locality", "timing"],
     optional_facts: ["first_eye_exam"],
-    inferable_facts: ["for_whom"],
+    // for_whom nu apare in required_for_search/provider_request: la intentia pediatrica
+    // e implicit "copil", nu se mai intreaba separat.
     exact_service_can_skip_search_facts: ["routine_vs_symptom"],
     skip_question_keys: [
       "investigation_type",
@@ -127,7 +127,6 @@ const MATRIX = /** @type {Record<string, any>} */ ({
       "timing",
     ],
     optional_facts: [],
-    inferable_facts: [],
     conditional_required_for_search: [
       {
         when: { investigation_type: "not_sure", confirmed_service_required: false },
@@ -144,7 +143,6 @@ const MATRIX = /** @type {Record<string, any>} */ ({
     required_for_search: ["investigation_type", "locality"],
     required_for_provider_request: ["investigation_type", "locality", "timing"],
     optional_facts: ["investigation_reference_text", "prescription_status"],
-    inferable_facts: [],
     conditional_required_for_search: [
       {
         when: { investigation_type: "not_sure", confirmed_service_required: false },
@@ -168,7 +166,6 @@ const MATRIX = /** @type {Record<string, any>} */ ({
     required_for_search: ["optical_product_type", "prescription_status", "locality"],
     required_for_provider_request: ["optical_product_type", "prescription_status", "locality", "timing"],
     optional_facts: [],
-    inferable_facts: [],
     skip_question_keys: [
       "routine_vs_symptom",
       "child_age_group",
@@ -184,7 +181,6 @@ const MATRIX = /** @type {Record<string, any>} */ ({
     required_for_search: ["contact_lens_experience", "locality"],
     required_for_provider_request: ["contact_lens_experience", "locality", "timing"],
     optional_facts: ["prescription_status"],
-    inferable_facts: [],
     exact_product_service_can_skip_search_facts: ["contact_lens_experience"],
     skip_question_keys: [
       "routine_vs_symptom",
@@ -201,7 +197,6 @@ const MATRIX = /** @type {Record<string, any>} */ ({
     required_for_search: ["repair_type", "locality"],
     required_for_provider_request: ["repair_type", "locality", "timing"],
     optional_facts: ["repair_details"],
-    inferable_facts: [],
     skip_question_keys: [
       "routine_vs_symptom",
       "for_whom",
@@ -222,7 +217,6 @@ const MATRIX = /** @type {Record<string, any>} */ ({
     required_for_search: ["routine_vs_symptom", "locality"],
     required_for_provider_request: ["routine_vs_symptom", "locality", "timing"],
     optional_facts: [],
-    inferable_facts: [],
     skip_question_keys: [],
   },
 });
@@ -521,7 +515,6 @@ export function getPatientGuidanceCompletenessPolicy(intent) {
     required_for_search: [...policy.required_for_search],
     required_for_provider_request: [...policy.required_for_provider_request],
     optional_facts: [...policy.optional_facts],
-    inferable_facts: [...policy.inferable_facts],
     skip_question_keys: [...policy.skip_question_keys],
     exact_service_can_skip_search_facts: [...(policy.exact_service_can_skip_search_facts || [])],
     exact_product_service_can_skip_search_facts: [...(policy.exact_product_service_can_skip_search_facts || [])],
