@@ -88,9 +88,9 @@ assert.match(client, /updatePatientRequestLifecycle/);
 assert.match(client, /\["resolve", "close"\]/);
 assert.match(patientStatus, /PatientRequestLifecyclePanel/);
 assert.match(patientStatus, /status\?\.lifecycle\?\.state === "active"/);
-assert.match(lifecyclePanel, /Cererea a fost rezolvata/);
-assert.match(lifecyclePanel, /Inchide cererea/);
-assert.match(lifecyclePanel, /inchide toate conversatiile si retrage accesul acordat la telefon/);
+assert.match(lifecyclePanel, /Cererea a fost rezolvată/);
+assert.match(lifecyclePanel, /Închide cererea/);
+assert.match(lifecyclePanel, /închide toate conversațiile și retrage accesul acordat la telefon/);
 
 assert.match(notificationPolicy, /PROVIDER_REQUEST_RESOLVED/);
 assert.match(notificationPolicy, /PROVIDER_REQUEST_EXPIRED/);
