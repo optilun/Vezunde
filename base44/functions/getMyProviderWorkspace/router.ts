@@ -7,6 +7,11 @@ import { handle as getProviderLocationComparisonHandle } from './getProviderLoca
 import { handle as getProviderLogoReviewStatusHandle } from './getProviderLogoReviewStatus.ts';
 import { handle as getProviderProfileCompletenessHandle } from './getProviderProfileCompleteness.ts';
 import { handle as getProviderWorkspaceOverviewHandle } from './getProviderWorkspaceOverview.ts';
+import { handle as createProviderCheckoutSessionHandle } from './createProviderCheckoutSession.ts';
+import { handle as createProviderBillingPortalSessionHandle } from './createProviderBillingPortalSession.ts';
+import { handle as syncProviderStripeSubscriptionHandle } from './syncProviderStripeSubscription.ts';
+import { handle as reconcileProviderStripeSubscriptionsHandle } from './reconcileProviderStripeSubscriptions.ts';
+import { handle as stripeBillingWebhookHandle } from './stripeBillingWebhook.ts';
 import { handle as getMyProviderWorkspaceHandle } from './getMyProviderWorkspace.ts';
 
 type ProviderWorkspaceHandler = (req: Request) => Response | Promise<Response>;
@@ -20,6 +25,10 @@ export const PROVIDER_WORKSPACE_FUNCTION_HANDLERS: Record<string, ProviderWorksp
   getProviderLogoReviewStatus: getProviderLogoReviewStatusHandle,
   getProviderProfileCompleteness: getProviderProfileCompletenessHandle,
   getProviderWorkspaceOverview: getProviderWorkspaceOverviewHandle,
+  createProviderCheckoutSession: createProviderCheckoutSessionHandle,
+  createProviderBillingPortalSession: createProviderBillingPortalSessionHandle,
+  syncProviderStripeSubscription: syncProviderStripeSubscriptionHandle,
+  reconcileProviderStripeSubscriptions: reconcileProviderStripeSubscriptionsHandle,
 });
 
 function routedRequest(req: Request, payload: unknown) {
@@ -34,6 +43,11 @@ function routedRequest(req: Request, payload: unknown) {
 }
 
 export async function handleProviderWorkspaceRequest(req: Request) {
+  // Vezi stripeBillingWebhook.ts: pastrat ca sincronizare best-effort/secundara - platforma
+  // Base44 poate intercepta la nivel de gateway un request cu acest header inainte sa ajunga
+  // aici. Sincronizarea garantata e syncProviderStripeSubscription (__function normal, mai jos)
+  // si reconcileProviderStripeSubscriptions (rulat periodic de un workflow).
+  if (req.headers.get('stripe-signature')) return stripeBillingWebhookHandle(req);
   const body = await req.clone().json().catch(() => null);
   const logicalName = typeof body?.__function === 'string' ? body.__function : '';
   if (!logicalName) return getMyProviderWorkspaceHandle(req);
