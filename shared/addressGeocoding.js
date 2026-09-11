@@ -211,7 +211,12 @@ export function pickGeocodeResult(results, location = {}) {
 }
 
 // 2026-09-07. Cel mult trei incercari per locatie, si niciodata aceeasi interogare de doua ori.
-// Vezi base44/shared/addressGeocoding.js pentru motivare.
+//
+// De ce: reincercarea la infinit a adreselor care nu se rezolva a fost masurata si nu aduce
+// nimic - 30 de incercari pe Nominatim au rezolvat 6 adrese, restul cadeau iar pe centrul
+// localitatii si reintrau in coada. O coada care nu se goleste niciodata nu este o coada de
+// lucru, este o bucla. Dupa trei incercari locatia iese din coada si primeste un marcaj de
+// verificare, ca sa se vada cate cazuri chiar au nevoie de alt geocoder sau de om.
 export const MAX_GEOCODE_ATTEMPTS = 3;
 
 export const GEOCODE_REVIEW_STATUS = Object.freeze({
@@ -220,16 +225,16 @@ export const GEOCODE_REVIEW_STATUS = Object.freeze({
   NEEDS_MANUAL: 'needs_manual_review',
 });
 
+// Cuvantul care spune tipul arterei. Il eliminam intr-o varianta pentru ca uneori tocmai el
+// impiedica potrivirea: in OpenStreetMap aceeasi artera poate fi "Calea Aradului" sau doar
+// "Aradului", iar interogarea structurata nu tolereaza diferenta.
 const STREET_TYPE_WORD = /^(Strada|Bulevardul|Calea|Soseaua|Piata|Aleea|Intrarea|Splaiul|Drumul)\s+/i;
 
-export function normalizeDiacritics(value) {
-  return clean(value)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/ș/g, 's').replace(/Ș/g, 'S')
-    .replace(/ț/g, 't').replace(/Ț/g, 'T');
-}
-
+/**
+ * Variantele controlate ale aceleiasi adrese, in ordinea in care se incearca. Sunt normalizari,
+ * nu ghiceli: nu adaugam si nu schimbam nicio informatie despre locatie, doar scriem altfel ce
+ * avem deja. Cand nu mai exista o varianta noua, lista se termina - si asta opreste coada.
+ */
 export function geocodeQueryVariantsForLocation(location = {}) {
   const base = geocodeQueryForLocation(location);
   if (!base) return [];
@@ -237,6 +242,8 @@ export function geocodeQueryVariantsForLocation(location = {}) {
 
   const variants = [base];
 
+  // Varianta 2: fara cuvantul de tip al arterei ("12 Calea Aradului" -> "12 Aradului").
+  // Numarul, cand exista, sta primul in interogarea structurata; il pastram pe loc.
   const numberPrefix = base.street.match(/^(\d+[A-Za-z]?)\s+/);
   const namePart = numberPrefix ? base.street.slice(numberPrefix[0].length) : base.street;
   const nameWithoutType = namePart.replace(STREET_TYPE_WORD, '').trim();
@@ -247,6 +254,7 @@ export function geocodeQueryVariantsForLocation(location = {}) {
     });
   }
 
+  // Varianta 3: fara diacritice, in strada si in localitate. Datele importate le au inconsecvent.
   const stripped = {
     ...base,
     street: normalizeDiacritics(base.street),
@@ -257,33 +265,29 @@ export function geocodeQueryVariantsForLocation(location = {}) {
   return variants.slice(0, MAX_GEOCODE_ATTEMPTS);
 }
 
+export function normalizeDiacritics(value) {
+  return clean(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ș/g, 's').replace(/Ș/g, 'S')
+    .replace(/ț/g, 't').replace(/Ț/g, 'T');
+}
+
+/** Semnatura unei interogari, ca sa nu retrimitem identic ceva ce a esuat deja. */
 export function geocodeQuerySignature(query) {
   if (!query) return '';
   return [query.street, query.city, query.county].map((part) => normalizeDiacritics(part).toLowerCase()).join('|');
 }
 
+/**
+ * Cat de completa este adresa publica a locatiei. Separa cazurile "geocoderul nu a gasit o adresa
+ * buna" de "nu avem ce sa caute" - primele merita alt geocoder, celelalte merita un om.
+ */
 export function addressCompletenessForLocation(location = {}) {
   const query = geocodeQueryForLocation(location);
   if (!query) return 'missing';
   if (!query.street) return 'locality_only';
   return /\d/.test(query.street) ? 'street_and_number' : 'street_without_number';
-}
-
-export function geocodeAttemptPayload(location = {}, query = null) {
-  const attempts = Math.max(0, Math.floor(Number(location.geocode_attempt_count) || 0)) + 1;
-  const completeness = addressCompletenessForLocation(location);
-  const exhausted = attempts >= MAX_GEOCODE_ATTEMPTS
-    || attempts >= geocodeQueryVariantsForLocation(location).length;
-
-  return {
-    geocode_attempt_count: attempts,
-    geocode_attempt_signature: geocodeQuerySignature(query),
-    geocode_review_status: !exhausted
-      ? GEOCODE_REVIEW_STATUS.NONE
-      : completeness === 'street_and_number'
-        ? GEOCODE_REVIEW_STATUS.NEEDS_FALLBACK
-        : GEOCODE_REVIEW_STATUS.NEEDS_MANUAL,
-  };
 }
 
 /**
@@ -315,8 +319,15 @@ export function geocodePlanForLocation(location = {}) {
     return { action: 'skip', reason: 'owner_confirmed_position' };
   }
   if (hasCoordinates && precision === 'approximate') {
-    // Vezi base44/shared/addressGeocoding.js: o pozitie la nivel de localitate este centrul
-    // orasului, nu o adresa geocodata, deci se mai incearca de fiecare data adresa exacta.
+    // 2026-09-06. O pozitie obtinuta prin caderea la nivel de localitate NU este o adresa
+    // geocodata: este centrul localitatii, identic pentru toate locatiile din acel oras care au
+    // ajuns pe aceeasi cale. Masurat in producţie: 274 din 948 locatii publicate stateau in 79
+    // de grupuri cu coordonate identice (43 intr-un singur punct in Bucuresti), iar harta le
+    // unea corect intr-un singur pin - datele erau cele suprapuse, nu harta.
+    //
+    // De aceea o astfel de pozitie nu se considera niciodata "gata": la fiecare rulare se mai
+    // incearca o data adresa exacta. Daca strada se rezolva, pozitia devine reala; daca nu,
+    // ramane ce era si se reincearca alta data. Nu pierdem nimic, si nu inventam nimic.
     if (clean(location.geocode_source).endsWith(LOCALITY_SOURCE_SUFFIX) && query.street) {
       return { action: 'geocode', reason: 'locality_only_position', query };
     }
@@ -341,9 +352,37 @@ export function geocodeUpdatePayload({ lat, lng, address, source = 'openstreetma
     lat,
     lng,
     map_precision: 'approximate',
+    // Granularitatea se scrie in sursa, nu se pierde. 'street' este o adresa rezolvata;
+    // '_locality' spune raspicat ca este centrul localitatii, deci o pozitie care mai trebuie
+    // incercata. Fara aceasta distinctie, o cadere la nivel de oras arata in date exact ca o
+    // adresa gasita - si asa au ajuns zeci de locatii sa imparta acelasi punct fara sa se vada.
     geocode_source: granularity === 'locality' ? `${source}${LOCALITY_SOURCE_SUFFIX}` : source,
     geocoded_address: clean(address),
     geocoded_at: at || new Date().toISOString(),
+  };
+}
+
+/**
+ * Campurile scrise dupa o incercare care NU a dat o adresa exacta. Nu ating adresa si nu ating
+ * coordonatele: numara incercarea, retin ce s-a interogat si, la ultima incercare, pun marcajul
+ * de verificare. `needs_geocoding_fallback` inseamna "adresa e buna, geocoderul nu o gaseste" -
+ * exact cazurile pentru un al doilea geocoder. `needs_manual_review` inseamna ca adresa in sine
+ * nu are strada sau numar, deci niciun geocoder nu ar avea ce sa caute.
+ */
+export function geocodeAttemptPayload(location = {}, query = null) {
+  const attempts = Math.max(0, Math.floor(Number(location.geocode_attempt_count) || 0)) + 1;
+  const completeness = addressCompletenessForLocation(location);
+  const exhausted = attempts >= MAX_GEOCODE_ATTEMPTS
+    || attempts >= geocodeQueryVariantsForLocation(location).length;
+
+  return {
+    geocode_attempt_count: attempts,
+    geocode_attempt_signature: geocodeQuerySignature(query),
+    geocode_review_status: !exhausted
+      ? GEOCODE_REVIEW_STATUS.NONE
+      : completeness === 'street_and_number'
+        ? GEOCODE_REVIEW_STATUS.NEEDS_FALLBACK
+        : GEOCODE_REVIEW_STATUS.NEEDS_MANUAL,
   };
 }
 
