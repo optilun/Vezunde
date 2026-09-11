@@ -33,12 +33,12 @@ export default function PatientRequestLifecyclePanel({ lifecycle, request, updat
           </span>
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Starea cererii</p>
-            <h4 className="mt-1 text-base font-extrabold text-foreground">{lifecycle?.state_label || "Activa"}</h4>
+            <h4 className="mt-1 text-base font-extrabold text-foreground">{lifecycle?.state_label || "Activă"}</h4>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              Etapa curenta: <strong className="text-foreground">{lifecycle?.stage_label || "Trimisa"}</strong>
+              Etapa curentă: <strong className="text-foreground">{lifecycle?.stage_label || "Trimisă"}</strong>
             </p>
             {request?.expires_at && state === "active" && (
-              <p className="mt-1 text-[11px] text-muted-foreground">Cererea expira automat la {new Intl.DateTimeFormat("ro-RO", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(request.expires_at))}.</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">Cererea expiră automat la {new Intl.DateTimeFormat("ro-RO", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(request.expires_at))}.</p>
             )}
           </div>
         </div>
@@ -49,12 +49,12 @@ export default function PatientRequestLifecyclePanel({ lifecycle, request, updat
 
       {terminal ? (
         <p className="mt-4 rounded-xl border border-border bg-secondary/35 p-3 text-xs leading-relaxed text-muted-foreground">
-          Cererea nu mai primeste raspunsuri noi. Conversatiile sunt inchise, iar accesul la telefon a fost retras. Istoricul ramane vizibil.
+          Cererea nu mai primește răspunsuri noi. Conversațiile sunt închise, iar accesul la telefon a fost retras. Istoricul rămâne vizibil.
         </p>
       ) : (
         <div className="mt-4 border-t border-border pt-4">
           <p className="text-xs leading-relaxed text-muted-foreground">
-            Marcheaza cererea ca rezolvata cand ai primit ajutorul necesar. Foloseste inchiderea cand nu mai doresti continuarea cererii.
+            Marchează cererea ca rezolvată când ai primit ajutorul necesar. Folosește închiderea când nu mai dorești continuarea cererii.
           </p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <button
@@ -64,7 +64,7 @@ export default function PatientRequestLifecyclePanel({ lifecycle, request, updat
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-foreground px-4 text-xs font-bold text-background hover:opacity-90 disabled:opacity-60"
             >
               {updating && confirmAction === "resolve" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-              {confirmAction === "resolve" ? "Confirma rezolvarea" : "Cererea a fost rezolvata"}
+              {confirmAction === "resolve" ? "Confirmă rezolvarea" : "Cererea a fost rezolvată"}
             </button>
             <button
               type="button"
@@ -73,14 +73,14 @@ export default function PatientRequestLifecyclePanel({ lifecycle, request, updat
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-xs font-bold text-foreground hover:bg-secondary disabled:opacity-60"
             >
               {updating && confirmAction === "close" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CircleOff className="h-3.5 w-3.5" />}
-              {confirmAction === "close" ? "Confirma inchiderea" : "Inchide cererea"}
+              {confirmAction === "close" ? "Confirmă închiderea" : "Închide cererea"}
             </button>
             {confirmAction && !updating && (
-              <button type="button" onClick={() => setConfirmAction("")} className="min-h-10 px-3 text-xs font-bold text-muted-foreground hover:text-foreground">Anuleaza</button>
+              <button type="button" onClick={() => setConfirmAction("")} className="min-h-10 px-3 text-xs font-bold text-muted-foreground hover:text-foreground">Anulează</button>
             )}
           </div>
           {confirmAction && (
-            <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Confirmarea inchide toate conversatiile si retrage accesul acordat la telefon.</p>
+            <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Confirmarea închide toate conversațiile și retrage accesul acordat la telefon.</p>
           )}
         </div>
       )}
