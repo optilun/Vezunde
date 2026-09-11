@@ -4,10 +4,10 @@ import { PROVIDER_TYPES } from "@/lib/vezunde";
 import { summarizePublicServices } from "@/lib/servicePresentation";
 
 const TRUST_LABELS = {
-  directory: "Listata",
-  claimed: "Revendicata",
-  verified: "Verificata",
-  suspended: "Suspendata",
+  directory: "Listată",
+  claimed: "Revendicată",
+  verified: "Verificată",
+  suspended: "Suspendată",
 };
 
 const RESPONSE_LABELS = {
@@ -25,7 +25,7 @@ function cleanExplanation(value) {
 }
 
 function locationName(location) {
-  return location?.public_display_name || location?.name || "Locatie";
+  return location?.public_display_name || location?.name || "Locație";
 }
 
 function locationCity(location) {
@@ -49,9 +49,9 @@ export default function RequestWorkspaceLocationCard({
     .filter(Boolean)
     .slice(0, 2);
   const responseLabel = requestTerminal
-    ? "Cerere finalizata"
-    : (RESPONSE_LABELS[response?.response_type] || "Cerere trimisa");
-  const trust = TRUST_LABELS[location?.profile_control_status] || "Listata";
+    ? "Cerere finalizată"
+    : (RESPONSE_LABELS[response?.response_type] || "Cerere trimisă");
+  const trust = TRUST_LABELS[location?.profile_control_status] || "Listată";
   const profileAvailable = response ? response.profile_available !== false : true;
 
   return (
