@@ -18,8 +18,8 @@ export default function RequestWorkspaceTimeline({ request, lifecycle, responses
     {
       key: "submitted",
       icon: Send,
-      title: "Cererea a fost trimisa",
-      description: request?.city ? `Cererea este asociata localitatii ${request.city}.` : "Cererea a fost salvata in VIASEE.",
+      title: "Cererea a fost trimisă",
+      description: request?.city ? `Cererea este asociată localității ${request.city}.` : "Cererea a fost salvată în VIASEE.",
       date: request?.submitted_at,
     },
     {
@@ -44,7 +44,7 @@ export default function RequestWorkspaceTimeline({ request, lifecycle, responses
     events.push({
       key: "terminal",
       icon: CheckCircle2,
-      title: `Cererea este ${String(lifecycle.state_label || lifecycle.state || "finalizata").toLowerCase()}`,
+      title: `Cererea este ${String(lifecycle.state_label || lifecycle.state || "finalizată").toLowerCase()}`,
       description: "Nu mai sunt permise răspunsuri sau mesaje noi. Istoricul rămâne vizibil.",
       date: request?.resolved_at || request?.closed_at || request?.expires_at,
     });
