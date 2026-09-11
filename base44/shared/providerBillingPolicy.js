@@ -76,6 +76,16 @@ function resolveStripePriceId(subscription) {
   return clean(price?.id, 200) || null;
 }
 
+// Pe conturile cu billing_mode Stripe 'flexible' (confirmat live, 2026-09-11: subscription
+// billing_mode.type === 'flexible'), o anulare din Billing Portal seteaza cancel_at (un
+// timestamp viitor, de obicei sfarsitul perioadei curente) in loc de boolean-ul clasic
+// cancel_at_period_end - care ramane 'false'. Fara acest fallback, un abonament programat sa se
+// anuleze arata incorect ca "se reinnoieste automat".
+function resolveCancelAtPeriodEnd(subscription) {
+  if (subscription?.cancel_at_period_end === true) return true;
+  return typeof subscription?.cancel_at === 'number' && subscription.cancel_at > 0;
+}
+
 // Construieste campurile de scris pe ProviderSubscription pornind de la un obiect Stripe
 // Subscription (venit fie direct dintr-un eveniment customer.subscription.*, fie recuperat
 // explicit dupa checkout.session.completed). Nu seteaza niciodata organization_id sau
@@ -92,7 +102,7 @@ export function providerSubscriptionFieldsFromStripeSubscription(subscription, {
     feature_keys: [...PROVIDER_PRO_FEATURE_KEYS],
     current_period_start: period.start,
     current_period_end: period.end,
-    cancel_at_period_end: subscription?.cancel_at_period_end === true,
+    cancel_at_period_end: resolveCancelAtPeriodEnd(subscription),
     canceled_at: isoFromUnixSeconds(subscription?.canceled_at),
     stripe_customer_id: resolveStripeCustomerId(subscription),
     stripe_subscription_id: clean(subscription?.id, 200) || null,
