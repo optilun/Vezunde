@@ -1,0 +1,50 @@
+{
+  "description": "La fiecare 30 de minute resincronizeaza direct de la Stripe toate abonamentele Pro platite prin Stripe (billing_mode: 'stripe'), ca plasa de siguranta secundara fata de confirmarea sincrona de la intoarcerea din Checkout/Billing Portal si de webhook-ul best-effort.",
+  "name": "Provider Stripe Subscription Reconciler",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "*/30 * * * *",
+      "one_time_date": null,
+      "timezone": "Europe/Bucharest",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "provider_stripe_subscription_reconciler",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "reconcile_provider_stripe_subscriptions": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "getMyProviderWorkspace",
+            "args": {
+              "__function": "reconcileProviderStripeSubscriptions",
+              "payload": {
+                "__automation_trigger": true
+              }
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Resincronizeaza abonamentele Stripe",
+            "description": "Re-citeste de la Stripe fiecare abonament Pro platit prin Stripe si actualizeaza ProviderSubscription"
+          }
+        }
+      }
+    ]
+  }
+}
