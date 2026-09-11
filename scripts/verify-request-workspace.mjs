@@ -26,12 +26,12 @@ assert.match(matchResults, /<PatientRequestSubmission results=\{list\} meta=\{ac
 
 assert.match(workspace, /lg:grid-cols-\[minmax\(0,2fr\)_minmax\(320px,1fr\)\]/);
 assert.match(workspace, /sticky top-24/);
-assert.match(workspace, /Spatiul cererii/);
-assert.match(workspace, /Locatii potrivite/);
+assert.match(workspace, /Spațiul cererii/);
+assert.match(workspace, /Locații pentru cererea ta/);
 assert.match(workspace, /Top 3/);
 assert.match(workspace, /Rezultate suplimentare/);
 assert.match(workspace, /\["request", "Cererea", Store\]/);
-assert.match(workspace, /\["locations", "Locatii", MapPin\]/);
+assert.match(workspace, /\["locations", "Locații", MapPin\]/);
 assert.match(workspace, /\["messages", "Mesaje", MessageCircle\]/);
 assert.match(workspace, /<PatientRequestLifecyclePanel/);
 assert.match(workspace, /<PatientRequestChat/);
@@ -48,15 +48,15 @@ assert.doesNotMatch(workspace, /base44\.entities\./);
 assert.doesNotMatch(workspace, /contact_phone\s*:|access_token_hash|contact_email_hash|requester_user_id/);
 assert.doesNotMatch(workspace.toLowerCase(), /cel mai bun|analizeaza cererea|typing/);
 
-assert.match(locationCard, /Listata/);
-assert.match(locationCard, /Revendicata/);
-assert.match(locationCard, /Verificata/);
-assert.match(locationCard, /Cerere trimisa/);
+assert.match(locationCard, /Listată/);
+assert.match(locationCard, /Revendicată/);
+assert.match(locationCard, /Verificată/);
+assert.match(locationCard, /Cerere trimisă/);
 assert.match(locationCard, /Locația poate ajuta/);
 assert.match(locationCard, /Vezi profilul/);
 assert.match(locationCard, /unread > 0/);
 assert.match(timeline, /Cronologia cererii/);
-assert.match(timeline, /Cererea a fost trimisa/);
+assert.match(timeline, /Cererea a fost trimisă/);
 assert.match(timeline, /Locațiile potrivite sunt disponibile/);
 
 assert.match(notificationCenter, /onDataChange/);
@@ -68,7 +68,7 @@ assert.doesNotMatch(patientNotificationCenter, /base44\.entities\.InAppNotificat
 
 assert.match(chat, /Nu introduce telefon, email sau linkuri/);
 assert.match(chat, /Deschide conversația/);
-assert.match(lifecycle, /Cererea a fost rezolvata/);
-assert.match(lifecycle, /Inchide cererea/);
+assert.match(lifecycle, /Cererea a fost rezolvată/);
+assert.match(lifecycle, /Închide cererea/);
 
 console.log('Request Workspace v1 checks passed.');
