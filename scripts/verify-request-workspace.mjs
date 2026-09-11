@@ -13,7 +13,13 @@ const matchResults = await readFile(new URL('../src/components/intake2/MatchResu
 
 assert.match(submission, /import RequestWorkspace from "\.\/RequestWorkspace"/);
 assert.match(submission, /<RequestWorkspace/);
-assert.match(submission, /results=\{Array\.isArray\(results\) \? results : \[\]\}/);
+// 2026-09-1x: garda de tip a migrat din prop-ul inline in starea de submisie -
+// `submittedResults` e setat o singura data la trimitere cu
+// `Array.isArray(results) ? results : []` si initializat implicit ca `[]`, deci
+// RequestWorkspace primeste mereu un array, exact ca inainte.
+assert.match(submission, /setSubmittedResults\(Array\.isArray\(results\) \? results : \[\]\)/);
+assert.match(submission, /const \[submittedResults, setSubmittedResults\] = useState\(\[\]\)/);
+assert.match(submission, /results=\{submittedResults\}/);
 assert.match(submission, /requestDraft=\{submittedDraft\}/);
 assert.doesNotMatch(submission, /<PatientRequestResponseStatus/);
 assert.match(matchResults, /<PatientRequestSubmission results=\{list\} meta=\{activeMeta\} onRequestCreated=\{onRequestCreated\}/);
