@@ -193,6 +193,11 @@ export default function ProviderWorkspaceRoot({
   const [accessMetaLoading, setAccessMetaLoading] = useState(false);
   const [accessMetaResolved, setAccessMetaResolved] = useState(false);
   const [accessMetaError, setAccessMetaError] = useState("");
+  // Planul (Free/Pro) locatiei curente, doar pentru cardul de upgrade din sidebar - nu
+  // decide nicio regula de acces, acelea raman calculate separat, unde erau. Se reincarca si
+  // dupa o sincronizare Stripe reusita din ProviderBillingPanel (vezi onEntitlementChanged).
+  const [entitlement, setEntitlement] = useState(null);
+  const [entitlementRefreshTick, setEntitlementRefreshTick] = useState(0);
 
   const selectedContext = useMemo(() => organizationContexts.find((context) => (
     context.locations?.some((location) => location.id === selectedLocationId)
@@ -430,6 +435,16 @@ export default function ProviderWorkspaceRoot({
     if (selectedLocationId) rememberProviderLocation(user?.id, selectedLocationId);
   }, [selectedLocationId]);
 
+  useEffect(() => {
+    if (!selectedLocationId || !canManageRequests) { setEntitlement(null); return undefined; }
+    let active = true;
+    base44.functions.invoke("getProviderEntitlement", { location_id: selectedLocationId })
+      .then((response) => response?.data || {})
+      .then((data) => { if (active) setEntitlement(data.entitlement || null); })
+      .catch(() => { if (active) setEntitlement(null); });
+    return () => { active = false; };
+  }, [selectedLocationId, canManageRequests, entitlementRefreshTick]);
+
   const routeAccessDenied = deniedLocationModule
     || (requestedSection === "profile" && !canManageOrganizationProfile)
     || (requestedSection === "locations" && !canViewLocations)
@@ -556,6 +571,7 @@ export default function ProviderWorkspaceRoot({
       publicProfileUrl={selectedLocationId ? `/furnizor/${selectedLocationId}` : null}
       modeSwitches={modeSwitches}
       wideContent={activeLocationModule === "servicii"}
+      entitlement={entitlement}
       statusBadge={(statusLabel || multiLocation) ? (
         <span className="hidden items-center gap-1.5 sm:inline-flex">
           {statusLabel && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusGreen ? "bg-green-100 text-green-800" : "bg-secondary text-foreground"}`}>{statusLabel}</span>}
@@ -641,7 +657,13 @@ export default function ProviderWorkspaceRoot({
                 <ProviderLocationsWithPhoto workspace={scopedWorkspace} selectedLocationId={selectedLocationId} onSelect={selectLocation} overview={overview} onRefresh={refreshOverviewInPlace} onOpenModule={openLocationModule} />
               </div>
             )}
-            {safeSection === "leads" && canManageRequests && <ProviderLeadInbox locationId={selectedLocationId} location={selectedLocation} />}
+            {safeSection === "leads" && canManageRequests && (
+              <ProviderLeadInbox
+                locationId={selectedLocationId}
+                location={selectedLocation}
+                onEntitlementChanged={() => setEntitlementRefreshTick((tick) => tick + 1)}
+              />
+            )}
             {safeSection === "access" && canManageMembers && (
               <ProviderAccess
                 organizationId={selectedOrganizationId}
