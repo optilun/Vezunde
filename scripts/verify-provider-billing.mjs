@@ -75,6 +75,32 @@ assert.ok(Array.isArray(fields.feature_keys) && fields.feature_keys.length > 0);
 const fieldsWithoutOrg = providerSubscriptionFieldsFromStripeSubscription({ id: 'sub_456', status: 'active' }, { locationId: 'loc-2' });
 assert.equal('organization_id' in fieldsWithoutOrg, false);
 
+// Confirmat live 2026-09-11: pe conturile cu billing_mode Stripe 'flexible', o anulare din
+// Billing Portal seteaza cancel_at (timestamp) in loc de boolean-ul clasic cancel_at_period_end,
+// care ramane 'false'. Fara acest fallback, un abonament programat sa se anuleze arata incorect
+// ca activ/reinnoibil automat.
+const flexibleCancelFields = providerSubscriptionFieldsFromStripeSubscription({
+  id: 'sub_flexible_cancel',
+  status: 'active',
+  cancel_at_period_end: false,
+  cancel_at: 1791750507,
+  canceled_at: 1789158684,
+}, { locationId: 'loc-3' });
+assert.equal(flexibleCancelFields.cancel_at_period_end, true, 'cancel_at (billing_mode flexible) trebuie tratat ca echivalent lui cancel_at_period_end: true');
+
+const classicCancelFields = providerSubscriptionFieldsFromStripeSubscription({
+  id: 'sub_classic_cancel',
+  status: 'active',
+  cancel_at_period_end: true,
+}, { locationId: 'loc-4' });
+assert.equal(classicCancelFields.cancel_at_period_end, true, 'Boolean-ul clasic cancel_at_period_end trebuie sa functioneze in continuare');
+
+const noCancelFields = providerSubscriptionFieldsFromStripeSubscription({
+  id: 'sub_no_cancel',
+  status: 'active',
+}, { locationId: 'loc-5' });
+assert.equal(noCancelFields.cancel_at_period_end, false);
+
 // --- safeBillingReturnBaseUrl (anti open-redirect) ---------------------------------------------
 assert.equal(safeBillingReturnBaseUrl('https://viasee.ro/contul-meu?s=leads'), 'https://viasee.ro');
 assert.equal(safeBillingReturnBaseUrl('http://localhost:5173/contul-meu'), 'http://localhost:5173');
