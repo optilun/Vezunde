@@ -16,14 +16,14 @@ const AUDIENCE_OPTIONS = [
   {
     id: "organization",
     icon: Building2,
-    title: "Reprezint o organizatie",
-    description: "Optica medicala, clinica, cabinet sau alta locatie de servicii pentru vedere.",
+    title: "Reprezint o organizație",
+    description: "Optică medicală, clinică, cabinet sau altă locație de servicii pentru vedere.",
   },
   {
     id: "professional",
     icon: Stethoscope,
     title: "Sunt specialist",
-    description: "Medic oftalmolog, optometrist sau optician, independent sau asociat unei locatii.",
+    description: "Medic oftalmolog, optometrist sau optician, independent sau asociat unei locații.",
   },
 ];
 
@@ -81,10 +81,10 @@ export default function SpecialistsHero() {
 
       <div className="relative z-10 text-center lg:text-left">
         <h1 className="font-heading font-extrabold tracking-[-0.03em] leading-[1.08] text-3xl sm:text-5xl">
-          Administreaza prezenta ta pe VIASEE.
+          Administrează prezența ta pe VIASEE.
         </h1>
         <p className="mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-          Revendica un profil existent sau creeaza unul nou pentru organizatia, locatia sau activitatea ta profesionala.
+          Revendică un profil existent sau creează unul nou pentru organizația, locația sau activitatea ta profesională.
         </p>
 
         <div className="mt-7 grid gap-3 sm:grid-cols-2">
@@ -121,9 +121,9 @@ export default function SpecialistsHero() {
         {audience === "organization" ? (
           <div className="mt-6 max-w-2xl mx-auto lg:mx-0">
             <div className="mb-3 text-left">
-              <h2 className="font-heading text-base font-bold">Gaseste organizatia sau locatia</h2>
+              <h2 className="font-heading text-base font-bold">Găsește organizația sau locația</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Cauta mai intai profilul existent. Asa evitam duplicatele si pastram istoricul locatiei.
+                Caută mai întâi profilul existent. Așa evităm duplicatele și păstrăm istoricul locației.
               </p>
             </div>
 
@@ -133,7 +133,7 @@ export default function SpecialistsHero() {
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Nume, localitate sau adresa"
+                  placeholder="Nume, localitate sau adresă"
                   className="w-full h-12 pl-11 pr-10 rounded-xl bg-card border border-border text-sm outline-none focus:ring-2 focus:ring-[#EEF2F3] transition-shadow"
                 />
                 {loading && (
@@ -149,7 +149,7 @@ export default function SpecialistsHero() {
                 }
                 className="h-12 px-6 rounded-xl bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity shrink-0"
               >
-                Cauta
+                Caută
               </button>
             </div>
 
@@ -175,8 +175,8 @@ export default function SpecialistsHero() {
                         </div>
                         <div className="mt-1 text-xs text-muted-foreground">
                           {requestsAccess
-                            ? "Profil administrat. Poti solicita acces."
-                            : "Disponibila pentru revendicare"}
+                            ? "Profil administrat. Poți solicita acces."
+                            : "Disponibilă pentru revendicare"}
                         </div>
                       </div>
 
@@ -189,14 +189,14 @@ export default function SpecialistsHero() {
                         }
                         className="shrink-0 px-3.5 py-2 rounded-full text-xs font-medium bg-foreground text-background hover:opacity-90 transition-opacity"
                       >
-                        {requestsAccess ? "Solicita acces" : "Revendica aceasta locatie"}
+                        {requestsAccess ? "Solicită acces" : "Revendică această locație"}
                       </button>
                     </div>
                   );
                 })}
 
                 {!loading && results.length === 0 && (
-                  <p className="text-sm text-muted-foreground">Nicio locatie gasita.</p>
+                  <p className="text-sm text-muted-foreground">Nicio locație găsită.</p>
                 )}
               </div>
             )}
@@ -204,7 +204,7 @@ export default function SpecialistsHero() {
             <div className="mt-5 pt-5 border-t border-border flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-4">
               <span className="text-sm text-muted-foreground flex items-center gap-1.5 justify-center sm:justify-start">
                 <MapPinPlus className="w-4 h-4 shrink-0" />
-                Nu gasesti locatia?
+                Nu găsești locația?
               </span>
               <button
                 type="button"
@@ -215,11 +215,11 @@ export default function SpecialistsHero() {
                 }
                 className="px-5 py-2.5 rounded-full border border-border bg-card text-sm font-medium hover:border-foreground/40 transition-colors"
               >
-                Adauga o locatie noua
+                Adaugă o locație nouă
               </button>
             </div>
             <p className="mt-2 text-xs text-muted-foreground text-center sm:text-left">
-              O locatie noua este analizata inainte de publicare.
+              O locație nouă este analizată înainte de publicare.
             </p>
           </div>
         ) : (
@@ -227,20 +227,20 @@ export default function SpecialistsHero() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Profil profesional VIASEE
             </p>
-            <h2 className="mt-2 font-heading text-xl font-bold">Profilul tau ramane separat de orice organizatie</h2>
+            <h2 className="mt-2 font-heading text-xl font-bold">Profilul tău rămâne separat de orice organizație</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Creezi un singur profil profesional. Dupa verificare, il poti asocia cu una sau mai multe locatii unde lucrezi, fara sa creezi cate un profil pentru fiecare locatie.
+              Creezi un singur profil profesional. După verificare, îl poți asocia cu una sau mai multe locații unde lucrezi, fără să creezi câte un profil pentru fiecare locație.
             </p>
             <button
               type="button"
               onClick={() => navigate("/profil-profesional/nou")}
               className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-foreground px-5 text-sm font-semibold text-background hover:opacity-90 transition-opacity"
             >
-              Creeaza sau administreaza profilul
+              Creează sau administrează profilul
               <ArrowRight className="h-4 w-4" />
             </button>
             <p className="mt-3 text-xs text-muted-foreground">
-              Daca ai deja un profil asociat contului tau, vei fi directionat automat catre el dupa autentificare.
+              Dacă ai deja un profil asociat contului tău, vei fi direcționat automat către el după autentificare.
             </p>
           </div>
         )}
