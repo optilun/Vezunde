@@ -32,15 +32,18 @@ function responseData(response) {
 }
 
 export default function ProviderLeadInbox(props) {
-  const { locationId, location } = props;
+  const { locationId, location, onEntitlementChanged } = props;
   const [searchParams] = useSearchParams();
   // O intoarcere din Stripe (Checkout sau Billing Portal) trebuie sa aterizeze direct in
   // tab-ul "Cont", unde traieste ProviderBillingPanel - altfel providerul revine din plata
   // exact in lista de cereri, fara sa vada confirmarea.
   const billingReturn = searchParams.get("billing");
+  // Cardul "Treci la Pro" din sidebar (ProviderSidebarContent) trimite direct aici cu
+  // ?tab=account, ca sa nu mai fie nevoie de un al doilea click pe tab-ul "Cont".
+  const wantsAccountTab = searchParams.get("tab") === "account";
   const [snapshot, setSnapshot] = useState({ entitlement: FREE_ENTITLEMENT, counters: {} });
   const [completeness, setCompleteness] = useState(null);
-  const [tab, setTab] = useState(billingReturn ? "account" : "leads");
+  const [tab, setTab] = useState(billingReturn || wantsAccountTab ? "account" : "leads");
   // Incrementat de ProviderBillingPanel dupa o sincronizare Stripe reusita, ca sa reincarcam
   // entitlement-ul si contoarele fara sa reincarcam toata pagina.
   const [refreshTick, setRefreshTick] = useState(0);
@@ -108,7 +111,12 @@ export default function ProviderLeadInbox(props) {
           <ProviderBillingPanel
             locationId={locationId}
             entitlement={snapshot.entitlement}
-            onSynced={() => setRefreshTick((tick) => tick + 1)}
+            onSynced={() => {
+              setRefreshTick((tick) => tick + 1);
+              // Anunta ProviderWorkspaceRoot sa reincarce si el planul, ca sa se actualizeze
+              // cardul de upgrade din sidebar dupa un checkout/anulare reusit.
+              onEntitlementChanged?.();
+            }}
           />
           <ProviderCompletenessPanel data={completeness} />
         </div>
