@@ -565,9 +565,9 @@ export default function MatchResults({
       {hiddenByViewport > 0 && (
         <div className="mb-4 rounded-2xl border border-border bg-secondary/40 px-4 py-2.5 text-xs leading-relaxed text-muted-foreground">
           {shownList.length === 0
-            ? `Niciun rezultat al cererii in zona vizibila. ${list.length} ${list.length === 1 ? "optiune ramane" : "optiuni raman"} in lista completa.`
-            : `${hiddenByViewport} ${hiddenByViewport === 1 ? "optiune nu apare" : "optiuni nu apar"} in zona vizibila.`}
-          {onClearViewport && <button type="button" onClick={onClearViewport} className="mt-1 flex min-h-11 items-center font-semibold text-[#4f6080] underline underline-offset-4">Afiseaza toate rezultatele cererii</button>}
+            ? `Niciun rezultat al cererii în zona vizibilă. ${list.length} ${list.length === 1 ? "opțiune rămâne" : "opțiuni rămân"} în lista completă.`
+            : `${hiddenByViewport} ${hiddenByViewport === 1 ? "opțiune nu apare" : "opțiuni nu apar"} în zona vizibilă.`}
+          {onClearViewport && <button type="button" onClick={onClearViewport} className="mt-1 flex min-h-11 items-center font-semibold text-[#4f6080] underline underline-offset-4">Afișează toate rezultatele cererii</button>}
         </div>
       )}
 
