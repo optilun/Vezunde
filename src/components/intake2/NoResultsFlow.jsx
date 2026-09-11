@@ -168,7 +168,7 @@ export default function NoResultsFlow({
         </div>
         <div className="min-w-0 flex-1">
           <h2 className={`font-heading font-bold tracking-tight text-foreground ${compactRecovery ? "text-base" : "text-lg sm:text-xl"}`}>{title}</h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{compactRecovery && top3Count === 0 ? "Poti explora locatiile de mai jos. Confirma direct daca ofera serviciul cautat." : description}</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{compactRecovery && top3Count === 0 ? "Poți explora locațiile de mai jos. Confirmă direct dacă oferă serviciul căutat." : description}</p>
 
           {!insufficient && (meta?.client_address_text || resolvedCountyName) && (
             <p className="mt-3 inline-flex items-start gap-2 text-xs text-muted-foreground">
