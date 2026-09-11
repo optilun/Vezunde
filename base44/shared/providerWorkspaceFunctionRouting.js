@@ -9,6 +9,10 @@ export const PROVIDER_WORKSPACE_FUNCTION_ROUTES = Object.freeze({
   getProviderLogoReviewStatus: PROVIDER_WORKSPACE_FUNCTION_ENDPOINT,
   getProviderProfileCompleteness: PROVIDER_WORKSPACE_FUNCTION_ENDPOINT,
   getProviderWorkspaceOverview: PROVIDER_WORKSPACE_FUNCTION_ENDPOINT,
+  createProviderCheckoutSession: PROVIDER_WORKSPACE_FUNCTION_ENDPOINT,
+  createProviderBillingPortalSession: PROVIDER_WORKSPACE_FUNCTION_ENDPOINT,
+  syncProviderStripeSubscription: PROVIDER_WORKSPACE_FUNCTION_ENDPOINT,
+  reconcileProviderStripeSubscriptions: PROVIDER_WORKSPACE_FUNCTION_ENDPOINT,
 });
 
 export function providerWorkspaceFunctionEnvelope(logicalName, payload = {}) {
