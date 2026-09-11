@@ -10,6 +10,7 @@ import {
   LogOut,
   MessageSquareText,
   Settings,
+  Sparkles,
   Stethoscope,
   UserRound,
 } from "lucide-react";
@@ -89,8 +90,14 @@ export default function ProviderSidebarContent({
   subtitle,
   modeSwitch,
   modeSwitches,
+  entitlement,
 }) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  // Cardul de upgrade e doar un indemn - nu decide niciun acces - deci foloseste aceeasi
+  // conditie simpla ca spotlight-ul din modulul de leaduri (ProviderLeadInboxLegacy): orice
+  // plan care nu e "pro" primeste indemnul. Fara entitlement incarcat inca, nu aratam nimic
+  // (nu vrem un fals "Treci la Pro" care dispare la fractiuni de secunda).
+  const showUpgradeCard = Boolean(entitlement) && entitlement.plan_code !== "pro";
   const accountModes = modeSwitches?.length
     ? modeSwitches
     : modeSwitch
