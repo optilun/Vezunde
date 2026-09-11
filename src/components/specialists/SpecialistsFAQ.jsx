@@ -8,32 +8,32 @@ import {
 
 const FAQ_ITEMS = [
   {
-    q: "Profilul sau locatia exista deja. Ce fac?",
-    a: "Cauta mai intai profilul existent si revendica-l sau solicita acces. Crearea unei inregistrari noi este destinata cazurilor in care locatia nu exista deja in VIASEE.",
+    q: "Profilul sau locația există deja. Ce fac?",
+    a: "Caută mai întâi profilul existent și revendică-l sau solicită acces. Crearea unei înregistrări noi este destinată cazurilor în care locația nu există deja în VIASEE.",
   },
   {
-    q: "Cine poate revendica o locatie?",
-    a: "Proprietarul, reprezentantul organizatiei, managerul locatiei sau o alta persoana autorizata poate initia revendicarea. Accesul este acordat numai dupa verificarea relatiei declarate.",
+    q: "Cine poate revendica o locație?",
+    a: "Proprietarul, reprezentantul organizației, managerul locației sau o altă persoană autorizată poate iniția revendicarea. Accesul este acordat numai după verificarea relației declarate.",
   },
   {
-    q: "Sunt specialist si lucrez intr-o clinica. Am nevoie de organizatie proprie?",
-    a: "Nu. Profilul profesional este separat de organizatie. Dupa creare si verificare, el poate fi asociat cu una sau mai multe locatii unde lucrezi.",
+    q: "Sunt specialist și lucrez într-o clinică. Am nevoie de organizație proprie?",
+    a: "Nu. Profilul profesional este separat de organizație. După creare și verificare, el poate fi asociat cu una sau mai multe locații unde lucrezi.",
   },
   {
-    q: "Pot administra mai multe locatii?",
-    a: "Da. O organizatie poate avea mai multe locatii, iar accesul poate fi gestionat pe organizatie si pe locatie, in functie de rol.",
+    q: "Pot administra mai multe locații?",
+    a: "Da. O organizație poate avea mai multe locații, iar accesul poate fi gestionat pe organizație și pe locație, în funcție de rol.",
   },
   {
-    q: "Ce inseamna ca VIASEE verifica informatiile?",
-    a: "Verificarea nu inseamna automat acelasi lucru pentru toate datele. VIASEE poate analiza existenta locatiei, legatura persoanei cu profilul, informatii profesionale sau anumite modificari, in functie de tipul profilului si de informatia publicata.",
+    q: "Ce înseamnă că VIASEE verifică informațiile?",
+    a: "Verificarea nu înseamnă automat același lucru pentru toate datele. VIASEE poate analiza existența locației, legătura persoanei cu profilul, informații profesionale sau anumite modificări, în funcție de tipul profilului și de informația publicată.",
   },
   {
-    q: "Cat dureaza analiza unei revendicari?",
-    a: "Revendicarile sunt analizate inainte de acordarea accesului. Durata poate varia in functie de informatiile si dovezile disponibile; VIASEE nu afiseaza un termen fix daca acesta nu poate fi respectat in mod real.",
+    q: "Cât durează analiza unei revendicări?",
+    a: "Revendicările sunt analizate înainte de acordarea accesului. Durata poate varia în funcție de informațiile și dovezile disponibile; VIASEE nu afișează un termen fix dacă acesta nu poate fi respectat în mod real.",
   },
   {
-    q: "Ce se intampla daca informatiile publice sunt gresite?",
-    a: "Dupa ce ai acces, poti propune actualizari. Unele modificari pot necesita analiza inainte sa devina publice, pentru a pastra acuratetea directorului.",
+    q: "Ce se întâmplă dacă informațiile publice sunt greșite?",
+    a: "După ce ai acces, poți propune actualizări. Unele modificări pot necesita analiză înainte să devină publice, pentru a păstra acuratețea directorului.",
   },
 ];
 
@@ -41,7 +41,7 @@ export default function SpecialistsFAQ() {
   return (
     <section className="max-w-3xl mx-auto px-5 py-8 sm:py-10">
       <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight text-center">
-        Intrebari frecvente
+        Întrebări frecvente
       </h2>
       <div className="mt-5 bg-card border border-border rounded-2xl px-5 sm:px-7">
         <Accordion type="single" collapsible>
