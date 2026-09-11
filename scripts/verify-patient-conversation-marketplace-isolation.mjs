@@ -59,6 +59,16 @@ const APPROVED_BYTE_STABLE_BLOBS = Object.freeze({
     // ramane cel primit ca override (`entry.eligibility.pcs`), iar eligibilitatea, scorul si
     // selectia Top 3 se calculeaza inainte, pe locatia neimbinata. Nimic din ele nu se schimba.
     '85e8034f2c9648c781e0b4fa8855e71e7711dfb4',
+    // 2026-09-11, filtrarea serviciilor/CAS ajunge inaintea potrivirii (aprobat explicit de
+    // owner): se adauga `directoryLocationScope(payload)`
+    // (base44/shared/searchLocationScope.js), un filtru opt-in de apartenenta la multimea
+    // `directory_filter_location_ids` primita in payload. Cand campul lipseste (cazul de
+    // pana acum) filtrul e null si nu schimba nimic. Cand e prezent (cautarea din /cauta cu
+    // filtre de servicii/CAS active), taie candidatii INAINTE de orice scor, alaturi de
+    // celelalte conditii de eligibilitate (activ, patient-facing, tip). Nu atinge
+    // buildRecommendationScore, assignRecommendationBuckets, selectia Top 3 sau ordinea
+    // fallbackului structural.
+    'ab029d06d9da4332c155207c2dba8c6a0b0b5549',
   ]),
   'base44/functions/matchProvidersSemantic/sharedDependencies.js': Object.freeze([
     '134166b15ecce5cd52b32f3d3dca05b27ae14e81',
