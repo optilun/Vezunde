@@ -4,33 +4,33 @@ import { Building2, Clock3, MapPinned, ShieldCheck, Stethoscope, Users } from "l
 const ITEMS = [
   {
     icon: Building2,
-    title: "Organizatie si locatii",
-    text: "Pastrezi separat identitatea organizatiei si informatiile fiecarei locatii.",
+    title: "Organizație și locații",
+    text: "Păstrezi separat identitatea organizației și informațiile fiecărei locații.",
   },
   {
     icon: Clock3,
-    title: "Program si informatii publice",
-    text: "Actualizezi datele practice pe care pacientii le folosesc cand aleg o locatie.",
+    title: "Program și informații publice",
+    text: "Actualizezi datele practice pe care pacienții le folosesc când aleg o locație.",
   },
   {
     icon: MapPinned,
-    title: "Servicii pe locatie",
-    text: "Configurezi serviciile acolo unde sunt oferite, fara sa le presupunem pentru intreaga organizatie.",
+    title: "Servicii pe locație",
+    text: "Configurezi serviciile acolo unde sunt oferite, fără să le presupunem pentru întreaga organizație.",
   },
   {
     icon: Users,
-    title: "Echipa si acces",
-    text: "Organizatiile pot administra accesul membrilor si legatura specialistilor cu locatiile.",
+    title: "Echipă și acces",
+    text: "Organizațiile pot administra accesul membrilor și legătura specialiștilor cu locațiile.",
   },
   {
     icon: Stethoscope,
     title: "Profil profesional",
-    text: "Specialistul are un profil propriu, separat de organizatii si reutilizabil in mai multe locatii.",
+    text: "Specialistul are un profil propriu, separat de organizații și reutilizabil în mai multe locații.",
   },
   {
     icon: ShieldCheck,
-    title: "Informatii analizate",
-    text: "Anumite informatii si modificari sunt analizate inainte sa devina publice.",
+    title: "Informații analizate",
+    text: "Anumite informații și modificări sunt analizate înainte să devină publice.",
   },
 ];
 
@@ -39,13 +39,13 @@ export default function SpecialistsCapabilities() {
     <section className="max-w-5xl mx-auto px-5 py-8 sm:py-12">
       <div className="text-center">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-          Ce poti administra
+          Ce poți administra
         </p>
         <h2 className="mt-2 font-heading text-2xl sm:text-3xl font-bold tracking-tight">
-          Un singur cont, roluri si informatii separate corect
+          Un singur cont, roluri și informații separate corect
         </h2>
         <p className="mt-3 mx-auto max-w-2xl text-sm sm:text-base leading-relaxed text-muted-foreground">
-          VIASEE separa organizatia, locatia si profilul profesional, astfel incat fiecare informatie sa ramana legata de entitatea corecta.
+          VIASEE separă organizația, locația și profilul profesional, astfel încât fiecare informație să rămână legată de entitatea corectă.
         </p>
       </div>
 
