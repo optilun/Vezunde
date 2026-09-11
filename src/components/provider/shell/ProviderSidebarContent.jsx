@@ -183,6 +183,31 @@ export default function ProviderSidebarContent({
         </Link>
       </div>
 
+      {showUpgradeCard && (
+        // Acelasi tipar ca placa "Upgrade to Pro" din sidebar-ul Base44: card mic, rotunjit,
+        // pinuit langa fundul barei laterale, cu o insigna colorata in dreapta si titlu +
+        // subtitlu deschis la stanga. Aici in tonurile VIASEE (chihlimbar, acelasi accent ca
+        // ProviderUpgradeCard/ProviderBillingPanel), nu culorile Base44.
+        <div className="shrink-0 px-3 pt-3">
+          <Link
+            to="/contul-meu?s=leads&tab=account"
+            className="flex min-h-[4.25rem] w-full items-center gap-3 rounded-2xl border border-[#e3ddd0] bg-[#fdfbf6] px-3.5 py-3 text-left transition-colors hover:border-[#dac69b] hover:bg-[#faf3e2]"
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-heading text-[13px] font-extrabold tracking-[-0.02em] text-foreground">Treci la Pro</span>
+              <span className="mt-0.5 block truncate text-[11.5px] leading-relaxed text-muted-foreground">49 RON/lună · cereri complete</span>
+            </span>
+            <span
+              aria-hidden="true"
+              style={{ borderColor: "#dac69b", backgroundColor: "#eadcba" }}
+              className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border"
+            >
+              <Sparkles className="h-4 w-4 text-black/55" />
+            </span>
+          </Link>
+        </div>
+      )}
+
       <div className="shrink-0 border-t border-border px-3 py-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
