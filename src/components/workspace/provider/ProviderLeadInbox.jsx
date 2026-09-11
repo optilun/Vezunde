@@ -10,11 +10,13 @@
 // se schimba doar locul in care traiesc. Regulile de acces (Pro, Top 3, acordul clientului)
 // nu sunt atinse.
 import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import ProviderCompletenessPanel from "./ProviderCompletenessPanel";
 import ProviderStatusCenter from "./ProviderStatusCenter";
 import ProviderLeadInboxLegacy from "./ProviderLeadInboxLegacy";
 import ProviderAccessBand from "./leads/ProviderAccessBand";
+import ProviderBillingPanel from "./leads/ProviderBillingPanel";
 
 const FREE_ENTITLEMENT = { plan_code: "free", status: "free", feature_keys: [] };
 
@@ -31,9 +33,17 @@ function responseData(response) {
 
 export default function ProviderLeadInbox(props) {
   const { locationId, location } = props;
+  const [searchParams] = useSearchParams();
+  // O intoarcere din Stripe (Checkout sau Billing Portal) trebuie sa aterizeze direct in
+  // tab-ul "Cont", unde traieste ProviderBillingPanel - altfel providerul revine din plata
+  // exact in lista de cereri, fara sa vada confirmarea.
+  const billingReturn = searchParams.get("billing");
   const [snapshot, setSnapshot] = useState({ entitlement: FREE_ENTITLEMENT, counters: {} });
   const [completeness, setCompleteness] = useState(null);
-  const [tab, setTab] = useState("leads");
+  const [tab, setTab] = useState(billingReturn ? "account" : "leads");
+  // Incrementat de ProviderBillingPanel dupa o sincronizare Stripe reusita, ca sa reincarcam
+  // entitlement-ul si contoarele fara sa reincarcam toata pagina.
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
     if (!locationId) return;
@@ -55,7 +65,7 @@ export default function ProviderLeadInbox(props) {
       setCompleteness(completenessData);
     }).catch(() => null);
     return () => { active = false; };
-  }, [locationId]);
+  }, [locationId, refreshTick]);
 
   return (
     <div className="space-y-5">
@@ -94,6 +104,11 @@ export default function ProviderLeadInbox(props) {
             entitlement={snapshot.entitlement}
             counters={snapshot.counters}
             defaultOpen
+          />
+          <ProviderBillingPanel
+            locationId={locationId}
+            entitlement={snapshot.entitlement}
+            onSynced={() => setRefreshTick((tick) => tick + 1)}
           />
           <ProviderCompletenessPanel data={completeness} />
         </div>
