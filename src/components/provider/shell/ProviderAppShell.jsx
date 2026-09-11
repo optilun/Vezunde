@@ -20,6 +20,7 @@ export default function ProviderAppShell({
   modeSwitch = null,
   modeSwitches = [],
   wideContent = false,
+  entitlement = null,
   children,
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -65,6 +66,7 @@ export default function ProviderAppShell({
           subtitle={subtitle}
           modeSwitch={modeSwitch}
           modeSwitches={modeSwitches}
+          entitlement={entitlement}
         />
       </aside>
 
@@ -96,6 +98,7 @@ export default function ProviderAppShell({
                 : null
             }
             modeSwitches={mobileModeSwitches}
+            entitlement={entitlement}
           />
         </SheetContent>
       </Sheet>
