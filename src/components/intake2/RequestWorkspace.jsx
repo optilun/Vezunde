@@ -38,7 +38,7 @@ const RESPONSE_PRESENTATION = {
 };
 
 const TRUST_LABELS = {
-  directory: "Listata",
+  directory: "Listată",
   claimed: "Revendicata",
   verified: "Verificata",
   suspended: "Suspendata",
@@ -61,7 +61,7 @@ function locationId(location) {
 }
 
 function locationName(location) {
-  return location?.public_display_name || location?.name || location?.location_name || "Locatie";
+  return location?.public_display_name || location?.name || location?.location_name || "Locație";
 }
 
 function mergeLocations(results, responses) {
@@ -117,7 +117,7 @@ function RequestSummary({ request, requestDraft, detailedMessage, resultCount })
         )}
         <div className="mt-3 rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3">
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary">VIASEE</p>
-          <p className="mt-1 text-sm leading-relaxed text-foreground">Am pregatit cererea pe baza informatiilor oferite.</p>
+          <p className="mt-1 text-sm leading-relaxed text-foreground">Am pregătit cererea pe baza informațiilor oferite.</p>
         </div>
         <div className="mt-3 rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3">
           <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-primary">VIASEE</p>
@@ -163,7 +163,7 @@ function RequestSummary({ request, requestDraft, detailedMessage, resultCount })
 
         {answers.length > 0 && (
           <div className="mt-5 border-t border-border pt-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Raspunsuri relevante</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">Răspunsuri relevante</p>
             <div className="mt-3 space-y-3">
               {answers.slice(0, 8).map((answer, index) => (
                 <div key={`${answer.question_key || "answer"}-${index}`}>
@@ -252,17 +252,17 @@ function SelectedLocationPanel({
   return (
     <div className="space-y-4">
       <button type="button" onClick={onBack} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border bg-card px-4 text-xs font-bold text-foreground hover:bg-secondary">
-        <ArrowLeft className="h-3.5 w-3.5" /> Inapoi la cerere
+        <ArrowLeft className="h-3.5 w-3.5" /> Înapoi la cerere
       </button>
 
       <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{PROVIDER_TYPES[location?.provider_type] || location?.provider_type || "Locatie"}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{PROVIDER_TYPES[location?.provider_type] || location?.provider_type || "Locație"}</p>
             <h2 className="mt-1 font-heading text-xl font-extrabold text-foreground sm:text-2xl">{locationName(location)}</h2>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               {(location?.locality_name || location?.city || response?.city) && <span className="inline-flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> {location?.locality_name || location?.city || response?.city}</span>}
-              <span className="rounded-full border border-border bg-background px-2.5 py-1 font-semibold text-foreground">{TRUST_LABELS[location?.profile_control_status] || "Listata"}</span>
+              <span className="rounded-full border border-border bg-background px-2.5 py-1 font-semibold text-foreground">{TRUST_LABELS[location?.profile_control_status] || "Listată"}</span>
             </div>
           </div>
           {(response?.profile_available !== false) && (
@@ -295,8 +295,8 @@ function SelectedLocationPanel({
         <div className="flex items-start gap-3">
           <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/5 text-primary"><PresentationIcon className="h-4.5 w-4.5" /></span>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Raspunsul locatiei</p>
-            <h3 className="mt-1 text-base font-extrabold text-foreground">{presentation?.title || "Cerere trimisa"}</h3>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Răspunsul locației</p>
+            <h3 className="mt-1 text-base font-extrabold text-foreground">{presentation?.title || "Cerere trimisă"}</h3>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{presentation?.description || "Locația este inclusă în cerere. Nu a trimis încă un răspuns."}</p>
             {response?.submitted_at && <p className="mt-2 text-[10px] text-muted-foreground">Actualizat la {formatDate(response.submitted_at, true)}</p>}
           </div>
@@ -342,7 +342,7 @@ function LocationRail({ locations, responses, selectedLocationId, unreadByLocati
     <div>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="font-heading text-lg font-extrabold text-foreground">Locatii pentru cererea ta</h2>
+          <h2 className="font-heading text-lg font-extrabold text-foreground">Locații pentru cererea ta</h2>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Selectate pe baza criteriilor cererii, nu a planului comercial.</p>
         </div>
         <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-secondary px-2.5 py-1 text-xs font-extrabold text-foreground">{locations.length}</span>
@@ -367,7 +367,7 @@ function LocationRail({ locations, responses, selectedLocationId, unreadByLocati
 
       {responders.length > 0 && (
         <div className="mt-5 space-y-3">
-          <h3 className="text-xs font-bold text-muted-foreground">Locatii care au raspuns</h3>
+          <h3 className="text-xs font-bold text-muted-foreground">Locații care au răspuns</h3>
           {responders.map((location) => (
             <RequestWorkspaceLocationCard key={locationId(location)} location={location}
               response={responseByLocation.get(locationId(location))}
@@ -381,7 +381,7 @@ function LocationRail({ locations, responses, selectedLocationId, unreadByLocati
         <div className="mt-7 space-y-3 border-t border-border pt-5">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Rezultate suplimentare</p>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Profilurile listate pot avea informatii neconfirmate. Sunt afisate separat de Top 3.</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Profilurile listate pot avea informații neconfirmate. Sunt afișate separat de Top 3.</p>
           </div>
           {additional.map((location) => (
             <RequestWorkspaceLocationCard
@@ -405,8 +405,8 @@ function MessagesList({ responses, locations, unreadByLocation, selectedLocation
     return (
       <div className="rounded-2xl border border-dashed border-border bg-card p-6 text-center">
         <MessageCircle className="mx-auto h-6 w-6 text-muted-foreground" />
-        <p className="mt-2 text-sm font-bold text-foreground">Nu exista mesaje sau raspunsuri</p>
-        <p className="mt-1 text-xs text-muted-foreground">Locatiile apar in sectiunea Locatii imediat dupa trimiterea cererii.</p>
+        <p className="mt-2 text-sm font-bold text-foreground">Nu există mesaje sau răspunsuri</p>
+        <p className="mt-1 text-xs text-muted-foreground">Locațiile apar în secțiunea Locații imediat după trimiterea cererii.</p>
       </div>
     );
   }
@@ -522,11 +522,11 @@ export default function RequestWorkspace({
   }
 
   return (
-    <section className="mt-7 rounded-[28px] border border-border bg-secondary/20 p-3 sm:p-5 lg:p-6" aria-label="Spatiul cererii">
+    <section className="mt-7 rounded-[28px] border border-border bg-secondary/20 p-3 sm:p-5 lg:p-6" aria-label="Spațiul cererii">
       <header className="rounded-2xl border border-border bg-card p-4 sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Spatiul cererii</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Spațiul cererii</p>
             <div className="mt-1 flex flex-wrap items-center gap-2">
               <h1 className="font-heading text-xl font-extrabold text-foreground sm:text-2xl">Cererea {reference}</h1>
               <span className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[11px] font-bold text-primary">{lifecycle?.state_label || "Activa"}</span>
@@ -565,7 +565,7 @@ export default function RequestWorkspace({
         <nav className="grid grid-cols-3 rounded-2xl border border-border bg-card p-1" aria-label="Navigatia cererii">
           {[
             ["request", "Cererea", Store],
-            ["locations", "Locatii", MapPin],
+            ["locations", "Locații", MapPin],
             ["messages", "Mesaje", MessageCircle],
           ].map(([key, label, Icon]) => (
             <button key={key} type="button" onClick={() => { setMobileTab(key); if (key === "request") setSelectedLocationId(""); }} className={`relative inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-2 text-xs font-bold ${mobileTab === key ? "bg-foreground text-background" : "text-muted-foreground"}`}>
