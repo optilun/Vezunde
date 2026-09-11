@@ -4,18 +4,18 @@ import { Search, UserCheck, Settings } from "lucide-react";
 const STEPS = [
   {
     icon: Search,
-    label: "Gasesti profilul potrivit",
-    text: "Cauti organizatia sau locatia existenta ori alegi fluxul pentru profilul profesional.",
+    label: "Găsești profilul potrivit",
+    text: "Cauți organizația sau locația existentă ori alegi fluxul pentru profilul profesional.",
   },
   {
     icon: UserCheck,
     label: "Confirmi legatura",
-    text: "Ne spui cine esti si ce relatie ai cu organizatia, locatia sau activitatea profesionala.",
+    text: "Ne spui cine ești și ce relație ai cu organizația, locația sau activitatea profesională.",
   },
   {
     icon: Settings,
-    label: "Administrezi prezenta",
-    text: "Dupa aprobarea necesara, completezi informatiile pe care pacientii le vad pe VIASEE.",
+    label: "Administrezi prezența",
+    text: "După aprobarea necesară, completezi informațiile pe care pacienții le văd pe VIASEE.",
   },
 ];
 
