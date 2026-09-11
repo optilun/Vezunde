@@ -177,12 +177,17 @@ function makeFakeSvc(initialRows = []) {
 
 // --- authorizeProviderBillingOwner --------------------------------------------------------------
 {
+  const allMemberships = [
+    { user_id: 'user-owner', location_id: 'loc-x', status: 'active', role: 'organization_owner' },
+    { user_id: 'user-staff', location_id: 'loc-x', status: 'active', role: 'location_staff' },
+  ];
   const svc = {
     entities: {
       ProviderLocation: { async get(id) { return id === 'loc-x' ? { id: 'loc-x', organization_id: 'org-x' } : null; } },
       ProviderMembership: {
-        async filter() {
-          return [{ user_id: 'user-owner', location_id: 'loc-x', status: 'active', role: 'organization_owner' }];
+        async filter(query = {}) {
+          return allMemberships.filter((membership) =>
+            Object.entries(query).every(([key, value]) => membership[key] === value));
         },
       },
     },
