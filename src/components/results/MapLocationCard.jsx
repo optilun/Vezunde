@@ -8,7 +8,7 @@ export default function MapLocationCard({ point, onClose }) {
   const returnState = route.pathname === "/rezultate" ? { resultsReturn: route.state } : undefined;
   const visual = typeVisual(point.provider_type);
   return (
-    <section aria-label={"Detalii locatie: " + point.name} onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); onClose(); } }} className="absolute inset-x-3 bottom-3 z-[500] max-h-[55%] overflow-y-auto rounded-2xl border border-border bg-card p-3.5 shadow-lg sm:inset-x-auto sm:left-3 sm:w-80">
+    <section aria-label={"Detalii locație: " + point.name} onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); onClose(); } }} className="absolute inset-x-3 bottom-3 z-[500] max-h-[55%] overflow-y-auto rounded-2xl border border-border bg-card p-3.5 shadow-lg sm:inset-x-auto sm:left-3 sm:w-80">
       <div className="flex items-start gap-3">
         <LocationThumb name={point.name} providerType={point.provider_type} size="sm" />
         <div className="min-w-0 flex-1">
