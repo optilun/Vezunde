@@ -364,7 +364,24 @@ await scenario("matching and ranking implementation remains byte-stable", () => 
   // Verificat linie cu linie: `profileControlStatus` ramane calculat pe locatia neimbinata, deci
   // recommendationBucketForProfile, buildRecommendationScore, assignRecommendationBuckets si
   // selectia Top 3 primesc exact aceleasi valori ca inainte.
-  assert.equal(fnv1a(entry.slice(entry.indexOf(entryMarker)).trimEnd()), "2667520a");
+  // 2026-09-11, filtrarea serviciilor/CAS ajunge inaintea potrivirii (aprobat explicit de
+  // owner): se adauga `directoryLocationScope(payload)` (base44/shared/searchLocationScope.js),
+  // un filtru opt-in de apartenenta la multimea `directory_filter_location_ids` primita in
+  // payload. Cand campul lipseste (cazul de pana acum) filtrul e null si nu schimba nimic.
+  // Cand e prezent (cautarea din /cauta cu filtre de servicii/CAS active), taie candidatii
+  // INAINTE de orice scor, alaturi de celelalte conditii de eligibilitate (activ, nesuspendat,
+  // tip patient-facing) - nu atinge buildRecommendationScore, assignRecommendationBuckets,
+  // selectia Top 3 sau ordinea fallbackului structural.
+  // Acelasi commit extinde `withDirectoryDetail` si pe ramura structurala
+  // (collectStructuralCandidate), ca profilurile din fallback sa arate acelasi nivel de
+  // detaliu editorial ca cele scorate. Verificat linie cu linie: cele trei campuri imbinate
+  // (directory_detail_level, directory_basic_details_approved, data_quality_status) nu intra
+  // in derivarea lui profile_control_status (deriveCanonicalControlStatus foloseste doar
+  // control_status / profile_control_status / verification_state / status / is_verified /
+  // dovezi de verificare), deci excluderea din collectStructuralCandidate si sortarea
+  // fallbackului structural (capabilityRank, hasContact, nume) raman neschimbate. Se schimba
+  // doar campurile de afisare (adresa, telefon, nivel de detaliu) pentru candidatii structurali.
+  assert.equal(fnv1a(entry.slice(entry.indexOf(entryMarker)).trimEnd()), "f33a9859");
   assert.match(entry, /error: 'Cererea nu a putut fi procesata\.'/);
   assert.match(entry, /headers: \{ 'Cache-Control': 'no-store' \}/);
 
