@@ -33,5 +33,8 @@ const vector = fs.readFileSync("src/components/results/VectorResultsCanvas.jsx",
 assert.match(vector, /onFailure\("webgl"\)/);
 const map = fs.readFileSync("src/components/results/ResultsMap.jsx", "utf8");
 assert.match(map, /Hartă 2D · De ce\?/);
-assert.match(map, /max-h-\[55%\] overflow-y-auto/);
+// Cardul locatiei selectate a fost extras in propriul component (MapLocationCard.jsx);
+// ResultsMap.jsx doar il randeaza. Aceeasi clasa, alt fisier.
+const locationCardComponent = fs.readFileSync("src/components/results/MapLocationCard.jsx", "utf8");
+assert.match(locationCardComponent, /max-h-\[55%\] overflow-y-auto/);
 console.log("Search stabilization: candidate scope, empty filters, pre-ranking narrowing, preserved query, CAS context, unpaginated selection, fixed list, scroll isolation and 2D explanation — OK");
