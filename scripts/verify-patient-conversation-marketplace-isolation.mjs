@@ -137,6 +137,18 @@ const MATCH_PROVIDERS_SEMANTIC_APPROVED_BASE_BLOBS = Object.freeze({
     // pe locatia imbinata si alimenteaza NUMAI campurile afisate (adresa, pozitia, telefonul,
     // programul). Verificat linie cu linie: scorul, ordonarea si selectia Top 3 raman identice.
     'f4908797d642458a723b92e451d14e7dc4f654b6',
+    // 2026-09-11, filtrarea serviciilor/CAS ajunge inaintea potrivirii (aprobat explicit de
+    // owner): acelasi motiv ca in matchProviders/entry.ts (vezi blob-ul de mai sus). Se adauga
+    // `directoryLocationScope(payload)`, un filtru opt-in dupa `directory_filter_location_ids`,
+    // aplicat INAINTE de orice scor, alaturi de celelalte conditii de eligibilitate. Null cand
+    // campul lipseste - comportament identic cu inainte. Se extinde si `withDirectoryDetail`
+    // pe ramura structurala (collectStructuralCandidate), ca fallbackul sa arate acelasi nivel
+    // de detaliu editorial ca rezultatele scorate. Verificat linie cu linie: cele trei campuri
+    // imbinate (directory_detail_level, directory_basic_details_approved, data_quality_status)
+    // nu intra in derivarea lui profile_control_status, deci excluderea si sortarea din
+    // fallbackul structural raman neschimbate; buildRecommendationScore,
+    // assignRecommendationBuckets si selectia Top 3 raman identice.
+    '568fba7abcb3d23ef4cca82a6b6dd8fae05db181',
   ]),
 });
 
