@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
         county: l.county || null,
         photo_url: l.photo_url || null,
         profile_control_status: 'verified',
-        status_label: 'Profil verificat de Vezunde',
+        status_label: 'Profil verificat de VIASEE',
       }));
     return Response.json({ locations: publicList });
   } catch (error) {
