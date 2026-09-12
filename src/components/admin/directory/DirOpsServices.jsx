@@ -136,7 +136,7 @@ export default function DirOpsServices() {
               <div>
                 <h3 className="font-heading text-sm font-bold">Eligibilitate pentru recomandări</h3>
                 <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-                  Verifică dacă serviciile active au valoarea corectă pentru matching. Serviciile generale și tehnice confirmate pot intra în recomandări. Serviciile medicale rămân blocate până la verificarea Vezunde.
+                  Verifică dacă serviciile active au valoarea corectă pentru matching. Serviciile generale și tehnice confirmate pot intra în recomandări. Serviciile medicale rămân blocate până la verificarea VIASEE.
                 </p>
               </div>
               <button
