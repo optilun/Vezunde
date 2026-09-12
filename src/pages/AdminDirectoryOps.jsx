@@ -107,19 +107,67 @@ function SectionLoading() {
 
 // Integritate date: fiecare sub-tab are acum si actiuni administrative in lot,
 // pastrand confirmarea explicita si regulile de siguranta specifice tipului de operatie.
+// 2026-09-12: Contract geografic (fost tab propriu, aproape niciodata folosit) a
+// devenit al 5-lea sub-tab de aici - e tot un instrument de sanatate a datelor.
 const DATA_INTEGRITY_SUBTABS = [
   { key: "probleme", label: "Probleme de date" },
   { key: "organizatii_fragmentate", label: "Organizatii fragmentate" },
   { key: "reparatii", label: "Reparatii controlate" },
   { key: "pozitii", label: "Pozitii pe harta" },
+  { key: "contract_geo", label: "Contract geografic" },
 ];
 
-function DataIntegrityWorkspace() {
+function DataIntegrityWorkspace({ onNavigate }) {
   const [subTab, setSubTab] = useState("probleme");
   return (
     <div>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-4">
+        <div className="flex flex-wrap gap-2">
+          {DATA_INTEGRITY_SUBTABS.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setSubTab(item.key)}
+              className={`rounded-full px-4 py-2 text-xs font-semibold transition-colors ${subTab === item.key ? "bg-foreground text-background" : "border border-border hover:bg-secondary"}`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        {onNavigate && (
+          <button
+            type="button"
+            onClick={() => onNavigate("audit")}
+            className="text-xs font-semibold text-muted-foreground underline underline-offset-4 hover:text-foreground"
+          >
+            Vezi istoricul complet
+          </button>
+        )}
+      </div>
+      <div className="mt-5 space-y-5">
+        {subTab === "probleme" && <AdminDataIntegrity />}
+        {subTab === "organizatii_fragmentate" && <AdminFragmentedOrganizations />}
+        {subTab === "reparatii" && <AdminDataRepairs />}
+        {subTab === "pozitii" && <AdminLocationGeocoding />}
+        {subTab === "contract_geo" && <GeoContractChecks />}
+      </div>
+    </div>
+  );
+}
+
+// 2026-09-12: Mapare si identitate (fost tab propriu) a devenit sub-tab aici -
+// ambiguitatile de mapare apar direct din procesul de import, e acelasi flux.
+const IMPORT_DIRECTORY_SUBTABS = [
+  { key: "import", label: "Import" },
+  { key: "mapping", label: "Mapare si identitate" },
+];
+
+function ImportDirectorWorkspace() {
+  const [subTab, setSubTab] = useState("import");
+  return (
+    <div>
       <div className="flex flex-wrap gap-2 border-b border-border pb-4">
-        {DATA_INTEGRITY_SUBTABS.map((item) => (
+        {IMPORT_DIRECTORY_SUBTABS.map((item) => (
           <button
             key={item.key}
             type="button"
@@ -131,10 +179,8 @@ function DataIntegrityWorkspace() {
         ))}
       </div>
       <div className="mt-5 space-y-5">
-        {subTab === "probleme" && <AdminDataIntegrity />}
-        {subTab === "organizatii_fragmentate" && <AdminFragmentedOrganizations />}
-        {subTab === "reparatii" && <AdminDataRepairs />}
-        {subTab === "pozitii" && <AdminLocationGeocoding />}
+        {subTab === "import" && <DirOpsImportPipeline />}
+        {subTab === "mapping" && <DirOpsMapping />}
       </div>
     </div>
   );
