@@ -60,6 +60,9 @@ const AdminLocationGeocoding = lazy(
 const AdminFragmentedOrganizations = lazy(
   () => import("@/components/admin/system/AdminFragmentedOrganizations"),
 );
+const OutreachWorkspace = lazy(
+  () => import("@/components/admin/outreach/OutreachWorkspace"),
+);
 
 const SIMPLE_HEADERS = {
   adauga:
@@ -79,6 +82,8 @@ const SIMPLE_HEADERS = {
   servicii:
     "Gestioneaza serviciile existente, nivelul de confirmare si eligibilitatea pentru rezultate.",
   revendicari: "Analizeaza cererile de revendicare a profilurilor.",
+  outreach:
+    "Trimite email-uri informative catre opticieni, clinici si cabinete deja din director, cu sabloane, segmentare si tracking de livrare.",
   geografie: "Sursa canonica de geografie VIASEE si importul SIRUTA.",
   audit: "Istoricul actiunilor administrative si al modificarilor aplicate.",
   data_integrity:
@@ -208,6 +213,7 @@ export default function AdminDirectoryOps() {
     "geografie",
     "audit",
     "data_integrity",
+    "outreach",
   ];
 
   return (
@@ -258,6 +264,7 @@ export default function AdminDirectoryOps() {
               {tab === "import_directory" && <ImportDirectorWorkspace />}
               {tab === "servicii" && <DirOpsServices />}
               {tab === "revendicari" && <DirOpsClaims />}
+              {tab === "outreach" && <OutreachWorkspace />}
               {tab === "geografie" && <GeoImport />}
               {tab === "audit" && <DirOpsAudit />}
               {tab === "data_integrity" && <DataIntegrityWorkspace onNavigate={navigate} />}
