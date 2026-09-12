@@ -1,0 +1,183 @@
+{
+  "name": "OutreachCampaign",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Numele campaniei"
+    },
+    "campaign_type": {
+      "type": "string",
+      "enum": [
+        "claim_notice",
+        "marketing"
+      ],
+      "default": "marketing"
+    },
+    "template_id": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Subiectul emailului"
+    },
+    "body_html": {
+      "type": "string",
+      "description": "Continutul emailului"
+    },
+    "from_name": {
+      "type": "string",
+      "default": "VIASEE"
+    },
+    "from_email": {
+      "type": "string"
+    },
+    "reply_to_email": {
+      "type": "string"
+    },
+    "target_counties": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Judete tinta (county_name), gol = toate"
+    },
+    "target_provider_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "provider_type tinta, gol = toate"
+    },
+    "target_profile_control_status": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "directory/claimed/verified/suspended, gol = toate"
+    },
+    "target_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tag-uri OutreachContact tinta, gol = toate"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "ready",
+        "sending",
+        "sent",
+        "paused",
+        "failed",
+        "cancelled"
+      ],
+      "default": "draft"
+    },
+    "sent_count": {
+      "type": "number",
+      "default": 0
+    },
+    "opened_count": {
+      "type": "number",
+      "default": 0
+    },
+    "clicked_count": {
+      "type": "number",
+      "default": 0
+    },
+    "failed_count": {
+      "type": "number",
+      "default": 0
+    },
+    "skipped_count": {
+      "type": "number",
+      "default": 0
+    },
+    "bounced_count": {
+      "type": "number",
+      "default": 0
+    },
+    "delivered_count": {
+      "type": "number",
+      "default": 0
+    },
+    "complained_count": {
+      "type": "number",
+      "default": 0
+    },
+    "recipient_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Numarul destinatarilor eligibili calculat la crearea/aprobarea campaniei"
+    },
+    "current_cursor": {
+      "type": "number",
+      "default": 0,
+      "description": "Pozitia in lista de destinatari pana unde s-a trimis (pentru trimitere pe loturi via cron)"
+    },
+    "execution_lock_token": {
+      "type": "string"
+    },
+    "execution_lock_expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_heartbeat_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "approval_token_hash": {
+      "type": "string",
+      "description": "Hash-ul confirmarii tastate de admin inainte de trimitere reala"
+    },
+    "approved_by_user_id": {
+      "type": "string"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "resend_batch_id": {
+      "type": "string"
+    },
+    "created_by_user_id": {
+      "type": "string"
+    },
+    "failure_message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "subject"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

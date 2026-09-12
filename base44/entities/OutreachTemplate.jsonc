@@ -1,0 +1,54 @@
+{
+  "name": "OutreachTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Numele sablonului (intern, pentru admin)"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Subiectul emailului. Poate contine [NUME] pentru numele contactului."
+    },
+    "body": {
+      "type": "string",
+      "description": "Continutul emailului (text simplu sau HTML). Poate contine [NUME] si [UNSUBSCRIBE_LINK]."
+    },
+    "campaign_type": {
+      "type": "string",
+      "enum": [
+        "claim_notice",
+        "marketing"
+      ],
+      "default": "marketing",
+      "description": "claim_notice = notificare informativa (revendica profilul), marketing = reclama propriu-zisa"
+    }
+  },
+  "required": [
+    "name",
+    "subject",
+    "body"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

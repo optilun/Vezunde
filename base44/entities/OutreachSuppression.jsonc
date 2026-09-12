@@ -1,0 +1,88 @@
+{
+  "name": "OutreachSuppression",
+  "type": "object",
+  "properties": {
+    "email": {
+      "type": "string",
+      "description": "Adresa originala suprimata"
+    },
+    "normalized_email": {
+      "type": "string",
+      "description": "Cheia globala de suprimare (email normalizat)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "unsubscribed",
+        "bounced",
+        "complained",
+        "invalid"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "description": "unsubscribe_page, one_click, resend_webhook, send_failure, manual"
+    },
+    "campaign_id": {
+      "type": "string"
+    },
+    "contact_id": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "provider_message_id": {
+      "type": "string"
+    },
+    "provider_event_id": {
+      "type": "string"
+    },
+    "details": {
+      "type": "object",
+      "description": "Payload sanitizat de depanare"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Cand e true, blocheaza orice trimitere promotionala viitoare"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "normalized_email",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

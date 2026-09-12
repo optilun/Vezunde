@@ -1,0 +1,134 @@
+{
+  "name": "OutreachCampaignLog",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "ID campanie, sau 'direct'/'resend_webhook_unknown' pentru cazuri speciale"
+    },
+    "contact_id": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "normalized_email": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "sent",
+        "failed",
+        "skipped",
+        "unsubscribed",
+        "bounced",
+        "invalid",
+        "duplicate",
+        "delivered",
+        "delivery_delayed",
+        "complained",
+        "replied",
+        "unknown"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "description": "Motiv skip/fail/tip eveniment"
+    },
+    "error": {
+      "type": "string"
+    },
+    "resend_message_id": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string",
+      "default": "resend"
+    },
+    "provider_event_id": {
+      "type": "string"
+    },
+    "provider_event_type": {
+      "type": "string"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "delivered_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "delivery_delayed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "bounced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "failed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "complained_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "unsubscribed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "replied_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "processed_event_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "ID-uri webhook deja procesate, pentru idempotenta"
+    },
+    "raw_event": {
+      "type": "object",
+      "description": "Payload webhook Resend sanitizat, pentru depanare"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "campaign_id",
+    "email",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

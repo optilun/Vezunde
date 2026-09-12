@@ -1,0 +1,146 @@
+{
+  "name": "OutreachContact",
+  "type": "object",
+  "properties": {
+    "location_id": {
+      "type": "string",
+      "description": "ProviderLocation asociata, daca a fost materializat din director"
+    },
+    "organization_id": {
+      "type": "string",
+      "description": "ProviderOrganization asociata, daca exista"
+    },
+    "company_name": {
+      "type": "string",
+      "description": "Numele firmei/locatiei"
+    },
+    "email": {
+      "type": "string",
+      "description": "Adresa de email originala"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "Numele persoanei de contact, daca e cunoscut"
+    },
+    "city": {
+      "type": "string"
+    },
+    "county": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "contacted",
+        "replied",
+        "interested",
+        "not_interested",
+        "unsubscribed",
+        "converted",
+        "bounced",
+        "invalid",
+        "complained"
+      ],
+      "default": "new"
+    },
+    "normalized_email": {
+      "type": "string",
+      "description": "Email normalizat (lowercase, trim) folosit pentru deduplicare si trimitere"
+    },
+    "email_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "unsubscribed",
+        "bounced",
+        "invalid",
+        "complained"
+      ],
+      "default": "active"
+    },
+    "source": {
+      "type": "string",
+      "description": "public_directory, manual, import, referral, partner, event, other"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Etichete pentru segmentare"
+    },
+    "last_contacted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_status_change_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_error": {
+      "type": "string"
+    },
+    "unsubscribe_reason": {
+      "type": "string"
+    },
+    "consent_audit": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Istoric minimal de audit: {at, source, action, reason}"
+    },
+    "lawful_basis": {
+      "type": "string",
+      "enum": [
+        "legitimate_interest",
+        "consent"
+      ],
+      "default": "legitimate_interest",
+      "description": "Temeiul legal pentru trimitere B2B (interes legitim pentru contacte publice de afaceri, sau consimtamant explicit)"
+    },
+    "source_url": {
+      "type": "string",
+      "description": "Sursa publica de unde provine adresa (preluata din ProviderLocation.source_url la materializare)"
+    },
+    "collection_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data colectarii adresei (preluata din ProviderLocation.collected_at la materializare)"
+    },
+    "source_type": {
+      "type": "string",
+      "description": "public_directory, manual, import, referral, partner, event, other"
+    },
+    "lia_notes": {
+      "type": "string",
+      "description": "Note privind evaluarea de interes legitim (Legitimate Interest Assessment) pentru aceasta trimitere"
+    }
+  },
+  "required": [
+    "email"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
