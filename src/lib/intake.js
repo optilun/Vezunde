@@ -31,7 +31,7 @@ export const DETAILS_CONFIG = {
   reparatii: {
     title: "Ce s-a intamplat?",
     photos: true,
-    note: "Un specialist poate evalua daca reparatia este posibila. Vezunde nu poate garanta reparatia doar pe baza fotografiilor.",
+    note: "Un specialist poate evalua daca reparatia este posibila. VIASEE nu poate garanta reparatia doar pe baza fotografiilor.",
     options: [
       { label: "Rama rupta", services: ["reparatii_ochelari"] },
       { label: "Balamaua sau surubul", services: ["reparatii_ochelari"] },
@@ -43,7 +43,7 @@ export const DETAILS_CONFIG = {
   problema_ochi: {
     title: "Descrie ce te deranjeaza",
     textarea: true,
-    note: "Vezunde nu ofera diagnostic medical. Te ajutam sa gasesti unde poti merge pentru evaluare.",
+    note: "VIASEE nu ofera diagnostic medical. Te ajutam sa gasesti unde poti merge pentru evaluare.",
     services: ["consult_oftalmologic"],
   },
 };
