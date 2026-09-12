@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
     const existing = byPlace.find((l) => l.status === 'publicata');
     if (existing) return Response.json({ existing_location: publicLocation(existing) });
     if (byPlace.length > 0) {
-      return Response.json({ error: 'O cerere pentru aceasta locatie este deja in verificare in Vezunde.' }, { status: 409 });
+      return Response.json({ error: 'O cerere pentru aceasta locatie este deja in verificare in VIASEE.' }, { status: 409 });
     }
 
     const draft = {
