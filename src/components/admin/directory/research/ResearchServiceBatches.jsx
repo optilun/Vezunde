@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { AlertTriangle, RotateCcw } from "lucide-react";
+import ResearchCsvTemplate from "./ResearchCsvTemplate";
 
 // 2026-09-03, etapa 2. Aplicarea serviciilor pe o singura locatie exista din etapa 1, dar
 // nu se putea retrage. Importul de locatii are snapshot, lot si rollback; serviciile nu
@@ -38,6 +39,10 @@ export function callResearchServiceBatch(payload) {
 export default function ResearchServiceBatches() {
   const [batches, setBatches] = useState(null);
   const [openId, setOpenId] = useState(null);
+  // 2026-09-12: sablonul CSV avea propriul sub-view in Research director, folosit
+  // rar. Acum e un buton de activare/dezactivare aici, langa lotul de servicii
+  // caruia ii apartine acelasi flux (research -> aplicare servicii).
+  const [showCsvTemplate, setShowCsvTemplate] = useState(false);
   const [detail, setDetail] = useState(null);
   const [confirmation, setConfirmation] = useState("");
   const [requiredToken, setRequiredToken] = useState("");
@@ -214,10 +219,25 @@ export default function ResearchServiceBatches() {
 
   return (
     <div className="max-w-3xl">
-      <p className="text-xs text-muted-foreground">
-        Un lot aplica serviciile aprobate din mai multe drafturi de cercetare, cu o singura aprobare si cu posibilitatea
-        de a retrage tot. Perechile se adauga din ecranul de review al fiecarui draft.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <p className="text-xs text-muted-foreground">
+          Un lot aplica serviciile aprobate din mai multe drafturi de cercetare, cu o singura aprobare si cu posibilitatea
+          de a retrage tot. Perechile se adauga din ecranul de review al fiecarui draft.
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowCsvTemplate((current) => !current)}
+          className="shrink-0 rounded-md border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary"
+        >
+          {showCsvTemplate ? "Ascunde sablonul CSV" : "Arata sablonul CSV"}
+        </button>
+      </div>
+
+      {showCsvTemplate && (
+        <div className="mt-4">
+          <ResearchCsvTemplate />
+        </div>
+      )}
 
       {batches.length === 0 && <p className="mt-4 text-sm text-muted-foreground">Niciun lot inca.</p>}
 
