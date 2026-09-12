@@ -58,7 +58,7 @@ export async function handle(req: Request) {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Autentificare necesara' }, { status: 401 });
-    if (user.role !== 'admin') return Response.json({ error: 'Doar administratorii Vezunde pot rula acest instrument' }, { status: 403 });
+    if (user.role !== 'admin') return Response.json({ error: 'Doar administratorii VIASEE pot rula acest instrument' }, { status: 403 });
 
     const payload = await req.json().catch(() => ({}));
     const action = cleanString(payload.action || 'dry_run');
