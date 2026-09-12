@@ -9,7 +9,7 @@ export default function ResearchCsvTemplate() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "vezunde_directory_research_template.csv";
+    a.download = "viasee_directory_research_template.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
