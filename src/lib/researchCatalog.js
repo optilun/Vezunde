@@ -39,7 +39,7 @@ export const CSV_TEMPLATE_FIELDS = [
   { key: "source_type", required: true, doc: "site_oficial / registru_public / director_public / alta_sursa_publica." },
   { key: "org_name", required: true, doc: "Numele organizatiei." },
   { key: "location_name", required: true, doc: "Numele locatiei." },
-  { key: "provider_type", required: true, doc: "Tip furnizor din taxonomia Vezunde (ex: optica_medicala)." },
+  { key: "provider_type", required: true, doc: "Tip furnizor din taxonomia VIASEE (ex: optica_medicala)." },
   { key: "city", required: true, doc: "Orasul locatiei." },
   { key: "county", required: true, doc: "Judetul locatiei." },
   { key: "address", required: true, doc: "Adresa publica completa." },
