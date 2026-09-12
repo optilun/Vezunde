@@ -461,7 +461,7 @@ async function applyServices(svc, user, submission, payload) {
       raw_removal_keys: payload.raw_removal_keys,
       suggestions: payload.suggestions,
     },
-    note: 'Servicii aplicate dupa aprobarea admin. Serviciile medicale raman blocate pana la verificare Vezunde.',
+    note: 'Servicii aplicate dupa aprobarea admin. Serviciile medicale raman blocate pana la verificare VIASEE.',
   });
 }
 
