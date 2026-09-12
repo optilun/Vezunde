@@ -971,7 +971,11 @@ assert.match(ui, /sm:w-auto/);
 assert.match(ui, /xl:grid-cols-\[320px_minmax\(0,1fr\)\]/);
 assert.match(parser, /parseMarkdownTables/);
 assert.match(parser, /crypto\.subtle\.digest\("SHA-256"/);
-assert.match(nav, /key: "import_directory"/);
+// 2026-09-12: Import director nu mai are intrare permanenta in sidebar (folosit
+// rar - vezi propunerea de simplificare a navigatiei admin), dar ramane o ruta
+// valida cu eticheta proprie, deschisa din dashboard si din alte ecrane conexe.
+assert.match(nav, /import_directory:\s*"Import director"/);
+assert.match(page, /tab === "import_directory"/);
 assert.match(page, /DirOpsImportPipeline/);
 
 console.log('Directory import pipeline contract verified.');
