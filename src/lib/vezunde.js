@@ -68,7 +68,7 @@ export const PROFESSIONAL_TYPES = Object.freeze(Object.fromEntries(
 export const PROFESSIONAL_AFFILIATION_STATUS = {
   location_added: "Adăugat de locație",
   professional_confirmed: "Confirmat de specialist",
-  vezunde_verified: "Verificat de Vezunde",
+  vezunde_verified: "Verificat VIASEE",
 };
 
 export const PATIENT_FACING_PROFILE_TYPES = [
