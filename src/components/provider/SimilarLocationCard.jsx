@@ -13,7 +13,7 @@ export default function SimilarLocationCard({ location, onClaim, onContinue, onB
         <ArrowLeft className="w-4 h-4" /> Inapoi la cautare
       </button>
       <p className="mt-4 font-semibold text-sm">
-        Am gasit o locatie similara in Vezunde. Verifica daca este locatia ta.
+        Am gasit o locatie similara in VIASEE. Verifica daca este locatia ta.
       </p>
       <div className="mt-3 rounded-xl border border-border bg-card p-4">
         <div className="text-xs text-muted-foreground">{PROVIDER_TYPES[location.provider_type] || location.provider_type}</div>
