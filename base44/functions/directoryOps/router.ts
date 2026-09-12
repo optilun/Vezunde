@@ -19,6 +19,10 @@ import { handle as directoryMappingOpsHandle } from './directoryMappingOps.ts';
 import { handle as directoryOpsHandle } from './directoryOps.ts';
 import { handle as geoImportOpsHandle } from './geoImportOps.ts';
 import { handle as getAdminServiceManagementDataHandle } from './getAdminServiceManagementData.ts';
+import { handle as outreachCampaignOpsHandle } from './outreachCampaignOps.ts';
+import { handle as outreachSendOpsHandle } from './outreachSendOps.ts';
+import { handle as outreachUnsubscribeOpsHandle } from './outreachUnsubscribeOps.ts';
+import { handle as outreachWebhookOpsHandle } from './outreachWebhookOps.ts';
 import { handle as researchOpsHandle } from './researchOps.ts';
 import { handle as researchServiceBatchOpsHandle } from './researchServiceBatchOps.ts';
 import { handle as reviewProfileChangesHandle } from './reviewProfileChanges.ts';
@@ -45,6 +49,8 @@ export const DIRECTORY_FUNCTION_HANDLERS: Record<string, DirectoryFunctionHandle
   directoryMappingOps: directoryMappingOpsHandle,
   geoImportOps: geoImportOpsHandle,
   getAdminServiceManagementData: getAdminServiceManagementDataHandle,
+  outreachCampaignOps: outreachCampaignOpsHandle,
+  outreachSendOps: outreachSendOpsHandle,
   researchOps: researchOpsHandle,
   researchServiceBatchOps: researchServiceBatchOpsHandle,
   reviewProfileChanges: reviewProfileChangesHandle,
@@ -62,6 +68,15 @@ function routedRequest(req: Request, payload: unknown) {
 }
 
 export async function handleDirectoryRequest(req: Request) {
+  // Doua rute publice, fara autentificare Base44, verificate ATAT de devreme incat corpul
+  // cererii nu e nici macar parsat ca JSON __function/payload: Resend (webhook, semnat Svix) si
+  // linkul de dezabonare cu un click (query string, poate fi si un simplu GET din browser).
+  // Niciuna nu apare in DIRECTORY_FUNCTION_ROUTES / DIRECTORY_FUNCTION_HANDLERS — nu pot fi
+  // atinse prin __function, doar prin aceste doua verificari explicite.
+  if (req.headers.get('svix-signature')) return outreachWebhookOpsHandle(req);
+  const requestUrl = new URL(req.url);
+  if (requestUrl.searchParams.get('outreach_action') === 'unsubscribe') return outreachUnsubscribeOpsHandle(req);
+
   const body = await req.clone().json().catch(() => null);
   const logicalName = typeof body?.__function === 'string' ? body.__function : '';
   if (!logicalName) return directoryOpsHandle(req);
