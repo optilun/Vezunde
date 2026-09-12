@@ -197,14 +197,12 @@ export default function AdminDirectoryOps() {
     "workspace_reviews",
     "corectii",
     "support_tickets",
-    "mapping",
     "import_directory",
     "servicii",
     "revendicari",
     "geografie",
     "audit",
     "data_integrity",
-    "contract_geo",
   ];
 
   return (
@@ -236,7 +234,7 @@ export default function AdminDirectoryOps() {
               subtitle={SIMPLE_HEADERS.profiluri}
             />
             <div className="mt-6">
-              <AdminProfilesSection />
+              <AdminProfilesSection onNavigate={navigate} />
             </div>
           </div>
         )}
@@ -252,14 +250,12 @@ export default function AdminDirectoryOps() {
               {tab === "workspace_reviews" && <AdminReviewQueue />}
               {tab === "corectii" && <DirOpsCorrections />}
               {tab === "support_tickets" && <AdminSupportCenter adminUser={user} />}
-              {tab === "mapping" && <DirOpsMapping />}
-              {tab === "import_directory" && <DirOpsImportPipeline />}
+              {tab === "import_directory" && <ImportDirectorWorkspace />}
               {tab === "servicii" && <DirOpsServices />}
               {tab === "revendicari" && <DirOpsClaims />}
               {tab === "geografie" && <GeoImport />}
               {tab === "audit" && <DirOpsAudit />}
-              {tab === "data_integrity" && <DataIntegrityWorkspace />}
-              {tab === "contract_geo" && <GeoContractChecks />}
+              {tab === "data_integrity" && <DataIntegrityWorkspace onNavigate={navigate} />}
             </div>
           </div>
         )}
