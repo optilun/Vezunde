@@ -2,17 +2,17 @@ import React, { useState } from "react";
 import ResearchQueue from "./research/ResearchQueue";
 import ResearchProfile from "./research/ResearchProfile";
 import ResearchCoverage from "./research/ResearchCoverage";
-import ResearchCsvTemplate from "./research/ResearchCsvTemplate";
 import AICopilot from "./research/AICopilot";
 import ResearchServiceBatches from "./research/ResearchServiceBatches";
 import AdminCard from "../ui/AdminCard";
 
+// 2026-09-12: Sablon CSV a devenit buton (arata/ascunde) in Loturi de servicii,
+// nu mai e sub-view propriu - se foloseste rar si apartine aceluiasi flux.
 const VIEWS = [
   { key: "queue", label: "Coada de research" },
   { key: "ai", label: "AI Copilot" },
   { key: "batches", label: "Loturi de servicii" },
   { key: "coverage", label: "Acoperire" },
-  { key: "csv", label: "Sablon CSV" },
 ];
 
 export default function DirResearch({ onNavigate }) {
@@ -46,7 +46,6 @@ export default function DirResearch({ onNavigate }) {
       {view === "ai" && <AICopilot onNavigate={onNavigate} />}
       {view === "batches" && <ResearchServiceBatches />}
       {view === "coverage" && <ResearchCoverage />}
-      {view === "csv" && <ResearchCsvTemplate />}
     </div>
   );
 }
