@@ -169,7 +169,7 @@ async function fetchBounded(url) {
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   let resp;
   try {
-    resp = await fetch(url, { redirect: 'manual', signal: controller.signal, headers: { 'accept': 'text/html,application/xhtml+xml,text/plain', 'user-agent': 'VezundeResearchBot/1.0' } });
+    resp = await fetch(url, { redirect: 'manual', signal: controller.signal, headers: { 'accept': 'text/html,application/xhtml+xml,text/plain', 'user-agent': 'ViaseeResearchBot/1.0' } });
   } catch {
     clearTimeout(timer);
     return { failed: 'Preluarea a esuat sau a depasit limita de timp' };
@@ -237,7 +237,7 @@ export async function handle(req: Request) {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Neautentificat' }, { status: 401 });
-    if (user.role !== 'admin') return Response.json({ error: 'Acces interzis: doar administratori Vezunde' }, { status: 403 });
+    if (user.role !== 'admin') return Response.json({ error: 'Acces interzis: doar administratori VIASEE' }, { status: 403 });
     const svc = base44.asServiceRole;
     const p = await req.json().catch(() => ({}));
     const action = p.action;
