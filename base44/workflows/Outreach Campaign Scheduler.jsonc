@@ -1,0 +1,51 @@
+{
+  "description": "La fiecare 5 minute avanseaza automat trimiterea campaniilor de outreach email aprobate (status ready/sending), in loturi mici, cu lock si heartbeat, fara sa depinda de un browser deschis.",
+  "name": "Outreach Campaign Scheduler",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "*/5 * * * *",
+      "one_time_date": null,
+      "timezone": "Europe/Bucharest",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "outreach_campaign_scheduler",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "advance_outreach_campaign_sends": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "directoryOps",
+            "args": {
+              "__function": "outreachSendOps",
+              "payload": {
+                "action": "advance_campaign_sends",
+                "__automation_trigger": true
+              }
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Avanseaza trimiterea campaniei de outreach",
+            "description": "Un lot mic per campanie ready/sending, cu verificare de suprimare inainte de fiecare trimitere"
+          }
+        }
+      }
+    ]
+  }
+}
