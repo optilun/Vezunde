@@ -77,9 +77,12 @@ assert.match(panel, /same_address_distinct_unit/);
 assert.match(panel, /duplicate_same_entity/);
 assert.match(panel, /rebrand_successor/);
 assert.match(panel, /2xl:grid-cols/);
+// 2026-09-12: Mapare si identitate a devenit sub-tab in Import director (acelasi
+// flux: ambiguitatile de mapare apar direct din import) - nu mai e tab propriu in
+// sidebar, dar ramane accesibil, cu eticheta proprie pastrata pentru compatibilitate.
 assert.match(page, /DirOpsMapping/);
-assert.match(page, /tab === "mapping"/);
-assert.match(nav, /key: "mapping"/);
+assert.match(page, /subTab === "mapping"/);
+assert.match(nav, /mapping:\s*"Mapare si identitate"/);
 
 assert.equal(identitySchema.name, 'DirectoryLocationIdentityLink');
 assert.ok(identitySchema.properties.relationship_type.enum.includes('same_address_distinct_unit'));
