@@ -8,6 +8,7 @@ import {
   DatabaseZap,
   LifeBuoy,
   Flag,
+  Mail,
 } from "lucide-react";
 
 // Meniul admin e grupat pe intentie, nu ca lista plata: primele elemente sunt cele
@@ -30,6 +31,10 @@ export const ADMIN_NAV_PRIMARY = [
 
   { key: "profiluri", label: "Profiluri si locatii", icon: Building2, groupLabel: "Director" },
   { key: "servicii", label: "Catalog si eligibilitate", icon: Wrench },
+
+  // 2026-09-12: outreach email - flux recurent (nu un ecran rar), asa ca primeste o
+  // intrare permanenta, spre deosebire de ecranele mutate la buton in aceeasi simplificare.
+  { key: "outreach", label: "Comunicare furnizori", icon: Mail, groupLabel: "Comunicare" },
 
   { key: "research", label: "Research director", icon: Search, groupLabel: "Calitate date" },
 
