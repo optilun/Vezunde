@@ -42,7 +42,7 @@ export const CONFIRMATION_LABELS = {
   not_confirmed: "Neconfirmat",
   publicly_listed: "Listat public",
   provider_confirmed: "Confirmat de furnizor",
-  vezunde_verified: "Verificat Vezunde",
+  vezunde_verified: "Verificat VIASEE",
 };
 
 export const PCS_LABELS = {
