@@ -16,6 +16,7 @@
     "test:directory-router": "node scripts/verify-directory-function-router.mjs",
     "test:service-configuration-router": "node scripts/verify-service-configuration-function-router.mjs",
     "test:provider-workspace-router": "node scripts/verify-provider-workspace-function-router.mjs",
+    "test:outreach-router": "node scripts/verify-outreach-email-router.mjs",
     "test:patient-conversation-agent": "node scripts/verify-patient-conversation-agent.mjs",
     "test:patient-conversation-shadow-route": "node scripts/verify-patient-conversation-shadow-route.mjs",
     "test:patient-conversation-evaluation-authorization": "node scripts/verify-patient-conversation-evaluation-authorization.mjs",
