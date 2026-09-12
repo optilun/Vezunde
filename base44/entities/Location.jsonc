@@ -1,0 +1,94 @@
+{
+  "name": "Location",
+  "type": "object",
+  "properties": {
+    "organization_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "provider_type": {
+      "type": "string",
+      "enum": [
+        "optica_medicala",
+        "clinica_oftalmologica",
+        "cabinet_oftalmologic",
+        "cabinet_optometric",
+        "laborator_optic"
+      ]
+    },
+    "city": {
+      "type": "string"
+    },
+    "county": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "website": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "strengths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "team_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "opening_hours": {
+      "type": "string"
+    },
+    "saturday_hours": {
+      "type": "string"
+    },
+    "availability_note": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "in_verificare",
+        "publicata"
+      ]
+    },
+    "is_verified": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_claimed": {
+      "type": "boolean",
+      "default": false
+    },
+    "response_quality_score": {
+      "type": "number",
+      "default": 0
+    },
+    "photo_url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "provider_type",
+    "city"
+  ]
+}
