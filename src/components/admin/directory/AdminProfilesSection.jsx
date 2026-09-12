@@ -3,7 +3,7 @@ import DirOpsProfiles from "./DirOpsProfiles";
 import DirOpsMigrationQueue from "./DirOpsMigrationQueue";
 import AdminCard from "@/components/admin/ui/AdminCard";
 
-export default function AdminProfilesSection() {
+export default function AdminProfilesSection({ onNavigate }) {
   const [tab, setTab] = useState("profiluri");
 
   const tabs = [
@@ -14,10 +14,23 @@ export default function AdminProfilesSection() {
   return (
     <div className="space-y-5">
       <AdminCard className="p-4">
-        <div className="text-sm font-bold">Profiluri si locatii publicate</div>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Modificarile trimise de furnizori nu mai sunt procesate din campul legacy pending_changes. Ele apar in Coada de verificare, pe infrastructura ProviderWorkspaceSubmission.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-sm font-bold">Profiluri si locatii publicate</div>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Modificarile trimise de furnizori nu mai sunt procesate din campul legacy pending_changes. Ele apar in Coada de verificare, pe infrastructura ProviderWorkspaceSubmission.
+            </p>
+          </div>
+          {onNavigate && (
+            <button
+              type="button"
+              onClick={() => onNavigate("adauga")}
+              className="shrink-0 rounded-lg bg-foreground px-4 py-2 text-xs font-semibold text-background"
+            >
+              + Adauga locatie
+            </button>
+          )}
+        </div>
       </AdminCard>
 
       <AdminCard className="inline-flex flex-wrap gap-1 p-2">
