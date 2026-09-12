@@ -92,6 +92,11 @@ const LEGACY_TAB_REDIRECTS = {
   specialist_reviews: "workspace_reviews",
   fotografii: "workspace_reviews",
   setari: "dashboard",
+  // 2026-09-12: Mapare si identitate si Contract geografic au devenit sub-tab-uri
+  // in Import director, respectiv Integritate date - vezi ImportDirectorWorkspace
+  // si DataIntegrityWorkspace mai jos.
+  mapping: "import_directory",
+  contract_geo: "data_integrity",
 };
 
 function SectionLoading() {
