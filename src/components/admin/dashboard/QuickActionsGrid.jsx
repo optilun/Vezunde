@@ -1,5 +1,5 @@
 import React from "react";
-import { Building2, ClipboardCheck, Search, UploadCloud, UserCheck } from "lucide-react";
+import { Building2, ClipboardCheck, MapPin, Search, UploadCloud, UserCheck } from "lucide-react";
 import AdminCard from "@/components/admin/ui/AdminCard";
 
 export default function QuickActionsGrid({ onNavigate }) {
@@ -11,6 +11,7 @@ export default function QuickActionsGrid({ onNavigate }) {
     { icon: ClipboardCheck, label: "Deschide coada de verificare", tab: "workspace_reviews" },
     { icon: Building2, label: "Adauga organizatie / locatie", tab: "adauga" },
     { icon: UploadCloud, label: "Porneste import nou", tab: "import_directory" },
+    { icon: MapPin, label: "Actualizeaza date SIRUTA", tab: "geografie" },
     { icon: Search, label: "Continua research-ul", tab: "research" },
     { icon: UserCheck, label: "Verifica revendicarile", tab: "revendicari" },
   ];
