@@ -104,7 +104,7 @@ export async function handle(req: Request) {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Neautentificat' }, { status: 401 });
-    if (user.role !== 'admin') return Response.json({ error: 'Acces interzis: doar administratori Vezunde' }, { status: 403 });
+    if (user.role !== 'admin') return Response.json({ error: 'Acces interzis: doar administratori VIASEE' }, { status: 403 });
     const svc = base44.asServiceRole;
     const p = await req.json().catch(() => ({}));
     const action = p.action;
