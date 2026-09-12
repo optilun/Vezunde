@@ -374,7 +374,7 @@ export async function handle(req: Request) {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return response({ error: 'Autentificare necesara' }, 401);
-    if (user.role !== 'admin') return response({ error: 'Acces permis doar administratorilor Vezunde' }, 403);
+    if (user.role !== 'admin') return response({ error: 'Acces permis doar administratorilor VIASEE' }, 403);
     const svc = base44.asServiceRole;
     const input = await req.json().catch(() => ({}));
     const action = clean(input.action || 'scan');
