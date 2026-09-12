@@ -69,6 +69,7 @@ const PaymentsAndSubscriptions = lazy(
   () => import("./pages/PaymentsAndSubscriptions"),
 );
 const DataRights = lazy(() => import("./pages/DataRights"));
+const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
@@ -222,6 +223,7 @@ const AppRoutes = () => {
             element={<PaymentsAndSubscriptions />}
           />
           <Route path="/drepturile-tale" element={<DataRights />} />
+          <Route path="/dezabonare" element={<Unsubscribe />} />
         </Route>
 
         <Route element={<RequireAuth />}>
