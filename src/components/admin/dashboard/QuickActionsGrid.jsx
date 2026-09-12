@@ -1,11 +1,16 @@
 import React from "react";
-import { Building2, ClipboardCheck, Search, UserCheck } from "lucide-react";
+import { Building2, ClipboardCheck, Search, UploadCloud, UserCheck } from "lucide-react";
 import AdminCard from "@/components/admin/ui/AdminCard";
 
 export default function QuickActionsGrid({ onNavigate }) {
+  // "Porneste import nou" (2026-09-12): dupa simplificarea navigatiei, "Import
+  // director" nu mai are intrare fixa in sidebar - acesta a ramas singurul loc din
+  // UI care duce la acel tab (gasit in audit: fara acest buton, ecranul era complet
+  // inaccesibil, desi ruta din cod ramasese functionala).
   const actions = [
     { icon: ClipboardCheck, label: "Deschide coada de verificare", tab: "workspace_reviews" },
     { icon: Building2, label: "Adauga organizatie / locatie", tab: "adauga" },
+    { icon: UploadCloud, label: "Porneste import nou", tab: "import_directory" },
     { icon: Search, label: "Continua research-ul", tab: "research" },
     { icon: UserCheck, label: "Verifica revendicarile", tab: "revendicari" },
   ];
