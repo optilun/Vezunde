@@ -27,8 +27,10 @@ export default function ProviderServicesEditor(props) {
   const [view, setView] = useState("configuration");
   const [unitIndex, setUnitIndex] = useState(0);
   const [navOpen, setNavOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [reviewed, setReviewed] = useState({});
   const headingRef = useRef(null);
+  const searchRef = useRef(null);
   const initialised = useRef(false);
   const continueLock = useRef(false);
   const storageKey = "viasee:services-reviewed:v1:" + (props.locationId || props.location?.id || "");
@@ -97,6 +99,7 @@ export default function ProviderServicesEditor(props) {
   const go = key => {
     if (m.saving) return;
     m.setQuery("");
+    setSearchOpen(false);
     if (key.startsWith("unit:")) { setUnitIndex(Number(key.split(":")[1])); setView("unit"); }
     else setView(key === "selected" ? "review" : key);
     setNavOpen(false);
@@ -146,7 +149,7 @@ export default function ProviderServicesEditor(props) {
   if (m.loading) return <div className="services-editor__loading" role="status">Se încarcă oferta locației…</div>;
   if (!m.config) return <div className="services-editor__notice" role="alert"><p>{m.error || "Nu am putut încărca oferta."}</p><button type="button" onClick={m.load}>Încearcă din nou</button></div>;
 
-  return <div className="services-editor">
+  return <div className="services-editor" data-view={m.query ? "search" : view}>
     <aside className="services-editor__nav">
       <button type="button" className="services-editor__mobile-toggle" aria-expanded={navOpen} onClick={() => setNavOpen(value => !value)}>Secțiunile ofertei <ChevronDown /></button>
       <nav aria-label="Configurarea serviciilor" data-open={navOpen}>
@@ -161,18 +164,23 @@ export default function ProviderServicesEditor(props) {
 
     <section className="services-editor__main" aria-labelledby="services-editor-title">
       <header className="services-editor__heading">
-        <span className="services-editor__eyebrow">{isReview ? "Rezumat" : "Configurarea ofertei"}</span>
-        <h2 ref={headingRef} tabIndex={-1} id="services-editor-title">{title}</h2>
+        <div className="services-editor__heading-row">
+          <h2 ref={headingRef} tabIndex={-1} id="services-editor-title">{title}</h2>
+          <button type="button" className="services-editor__search-toggle" aria-label="Caută în toate serviciile" aria-expanded={searchOpen || Boolean(m.query)} aria-controls="services-editor-search" onClick={() => {
+            if (searchOpen || m.query) { setSearchOpen(false); m.setQuery(""); }
+            else { setSearchOpen(true); requestAnimationFrame(() => searchRef.current?.focus()); }
+          }}><Search /><span>Caută servicii</span></button>
+        </div>
         <p>{description}</p>
       </header>
-      <div className="services-editor__status" data-tone={status.tone} role={m.error ? "alert" : "status"}>
-        <span className="services-editor__status-dot" /><div><strong>{status.title}</strong><p>{status.detail}</p>
+      <div className="services-editor__status" data-compact={!m.error && !m.dirty && !m.pendingReview && !m.saving && status.tone !== "ready"} data-tone={status.tone} role={m.error ? "alert" : "status"}>
+        <span className="services-editor__status-dot" /><div><strong>{status.title}</strong>{(m.error || m.dirty || m.pendingReview || m.saving || status.tone === "ready") && <p>{status.detail}</p>}
         {m.message && !m.dirty && !m.error && <small>{m.message}</small>}</div>
       </div>
       {!m.editable && <div className="services-editor__notice">{m.conflicts[0]?.message || "Ai acces de vizualizare. Ownerul sau managerul locației poate modifica oferta."}</div>}
       {m.draft?.admin_note && ["needs_more_info", "rejected"].includes(m.draft.status) && <div className="services-editor__notice"><strong>Completări solicitate</strong><p>{m.draft.admin_note}</p></div>}
       {m.persistenceMode === "legacy" && <div className="services-editor__notice">Salvarea spațiilor și a resurselor este momentan indisponibilă. Serviciile pot fi salvate.</div>}
-      <div className="services-editor__search"><Search /><input type="search" aria-label="Caută în toate serviciile" placeholder="Caută în toate serviciile" value={m.query} onChange={event => m.setQuery(event.target.value)} />{m.query && <button type="button" aria-label="Șterge căutarea" onClick={() => m.setQuery("")}><X /></button>}</div>
+      <div id="services-editor-search" className="services-editor__search" hidden={!searchOpen && !m.query}><Search /><input ref={searchRef} type="search" aria-label="Caută în toate serviciile" placeholder="Caută în toate serviciile" value={m.query} onChange={event => m.setQuery(event.target.value)} />{m.query && <button type="button" aria-label="Șterge căutarea" onClick={() => { m.setQuery(""); searchRef.current?.focus(); }}><X /></button>}</div>
 
       <div className="services-editor__content">
       {m.query ? <ServicesSearchResults query={m.query} results={m.searchResults} selected={m.selected} approvedSelected={m.approvedSelected} reviewState={m.reviewState} serviceUnitMap={m.serviceUnitMap} activeUnits={m.activeUnits} prerequisites={m.draftPrerequisites} disabled={disabled} onToggleService={m.toggleService} onClearQuery={() => m.setQuery("")} /> : <>

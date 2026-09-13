@@ -132,33 +132,8 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
             </div>
           )}
 
-          {filter === "all" && total > 0 && (
-            <div className="services-unit__toolbar">
-              <span className="services-unit__toolbar-count"><strong>{selectedCount}</strong> servicii selectate</span>
-              <span className="services-unit__toolbar-spacer" />
-              <details className="services-editor__bulk"><summary><MoreHorizontal aria-hidden="true" /> Acțiuni de selecție</summary><div>
-              {missingItems.length > 0 ? (
-                <button type="button" disabled={disabled} onClick={() => onSetSelection?.(missingItems, unitKey, true)} className="services-unit__toolbar-button">
-                  <ListChecks aria-hidden="true" /> Selectează toate ({missingItems.length})
-                </button>
-              ) : null}
-              {selectedCount > 0 && (
-                <button type="button" disabled={disabled} onClick={() => onSetSelection?.(allItems, unitKey, false)} className="services-unit__toolbar-button">
-                  <Eraser aria-hidden="true" /> Golește zona
-                </button>
-              )}
-              <button type="button" aria-pressed={showDescriptions} onClick={() => setShowDescriptions((value) => !value)} className="services-unit__toolbar-button is-quiet">
-                <Text aria-hidden="true" /> Arată explicațiile
-              </button>
-              </div></details>
-            </div>
-          )}
-
-          {filter === "all" ? (
-            <>
-              {/* Sirul grupurilor zonei: vezi tot ce urmeaza si sari direct unde vrei,
-                  fara sa pierzi din ochi cate ai bifat in fiecare. */}
-              {groupCount > 1 && (
+          <div className="services-unit__controls">
+              {filter === "all" && groupCount > 1 && (
                 <nav className="services-unit__groups" aria-label="Grupurile zonei">
                   {visibleSections.map((section, index) => (
                     <button
@@ -176,6 +151,39 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
                   ))}
                 </nav>
               )}
+          {filter === "all" && groupCount > 1 && <label className="services-unit__group-select">
+            <span>Grup {safeGroupIndex + 1} din {groupCount}</span>
+            <select aria-label="Grupul de servicii" value={safeGroupIndex} disabled={saving} onChange={event => setGroupIndex(Number(event.target.value))}>
+              {visibleSections.map((section, index) => <option key={section.key} value={index}>{section.title} · {selectedCountForSection(selected, section)} alese</option>)}
+            </select>
+          </label>}
+          {filter === "all" && total > 0 && (
+            <div className="services-unit__toolbar">
+              {!solo && <span className="services-unit__toolbar-count"><strong>{selectedCount}</strong> servicii selectate</span>}
+              <span className="services-unit__toolbar-spacer" />
+              <button type="button" aria-pressed={showDescriptions} onClick={() => setShowDescriptions(value => !value)} className="services-unit__explanations"><Text aria-hidden="true" /> Explicații</button>
+              <details className="services-editor__bulk"><summary><MoreHorizontal aria-hidden="true" /> Acțiuni de selecție</summary><div>
+              {missingItems.length > 0 ? (
+                <button type="button" disabled={disabled} onClick={() => onSetSelection?.(missingItems, unitKey, true)} className="services-unit__toolbar-button">
+                  <ListChecks aria-hidden="true" /> Selectează toate ({missingItems.length})
+                </button>
+              ) : null}
+              {selectedCount > 0 && (
+                <button type="button" disabled={disabled} onClick={() => onSetSelection?.(allItems, unitKey, false)} className="services-unit__toolbar-button">
+                  <Eraser aria-hidden="true" /> Golește zona
+                </button>
+              )}
+
+              </div></details>
+            </div>
+          )}
+          </div>
+
+          {filter === "all" ? (
+            <>
+              {/* Sirul grupurilor zonei: vezi tot ce urmeaza si sari direct unde vrei,
+                  fara sa pierzi din ochi cate ai bifat in fiecare. */}
+
 
               {activeSection && (() => {
                 const section = activeSection;

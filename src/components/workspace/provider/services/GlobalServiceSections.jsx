@@ -29,7 +29,7 @@ export default function GlobalServiceSections({ sections, selected, approvedSele
   const selectedCount = items.filter((item) => isSelected(selected, item)).length;
   const missing = items.filter((item) => !isSelected(selected, item));
   return (
-    <section {...dataAttrs} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+    <section {...dataAttrs} className="services-global-options overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
       {careSettingSlot}
 
       {total > 0 && (

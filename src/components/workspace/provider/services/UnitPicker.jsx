@@ -70,7 +70,7 @@ export default function UnitPicker({ units, approvedUnits, activeUnits, selected
   const otherUnits = units.filter((key) => !OPTICAL_UNIT_KEYS.has(key) && !MEDICAL_UNIT_KEYS.has(key) && key !== "optometry_cabinet");
 
   return (
-    <section {...dataAttrs} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <section {...dataAttrs} className="services-space-picker rounded-2xl border border-border bg-card p-4 shadow-sm">
       {/* Titlul si contextul stau in antetul ecranului. Aici era acelasi titlu, numerotat,
           plus o descriere care repeta antetul - trei straturi de text pentru o singura lista.
           Carduri patrate, in grila, grupate optica/medical (2026-08-18) - inainte, un singur
