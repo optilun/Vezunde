@@ -27,7 +27,9 @@ const EMPTY_DRAFT = {
   subject: "",
   body_html: "",
   from_name: "VIASEE",
-  from_email: "contact@viasee.ro",
+  // from = subdomeniul verificat in Resend; reply_to = casuta reala de pe radacina, livrata prin
+  // Cloudflare Email Routing. Vezi DEFAULT_FROM_EMAIL din base44/shared/outreachEmailPolicy.js.
+  from_email: "contact@mail.viasee.ro",
   reply_to_email: "contact@viasee.ro",
   target_counties: [],
   target_provider_types: [],
