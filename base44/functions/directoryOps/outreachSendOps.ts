@@ -53,6 +53,14 @@ function clean(value) {
   return String(value ?? '').trim();
 }
 
+// Eticheta din fisa afisata in email. Un profil deja revendicat nu trebuie sa primeasca un email
+// care ii spune ca e nerevendicat.
+function listingChipFor(controlStatus) {
+  if (controlStatus === 'claimed') return 'Profil revendicat';
+  if (controlStatus === 'verified') return 'Profil verificat';
+  return 'Profil nerevendicat';
+}
+
 async function requireAdmin(base44) {
   const user = await base44.auth.me().catch(() => null);
   if (!user) return { error: Response.json({ error: 'Autentificare necesara' }, { status: 401 }) };
@@ -237,7 +245,19 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
       const unsubHtml = `<a href="${unsub.publicUrl}" style="color:#6b6b6b;text-decoration:underline;">Dezaboneaza-te</a>`;
       let bodyHtml = textToHtml(campaign.body_html || '');
       bodyHtml = renderTemplateMergeFields(bodyHtml, contact).replace(/\[UNSUBSCRIBE_LINK\]/g, unsubHtml);
-      const ctaOptions = { ctaLabel: campaign.cta_label, ctaUrl: campaign.cta_url };
+      // Blocul vizual poarta datele REALE ale destinatarului: fiecare primeste fisa lui, cu numele
+      // si orasul lui, nu o ilustratie generica. De aceea se construieste aici, per contact.
+      const ctaOptions = {
+        ctaLabel: campaign.cta_label,
+        ctaUrl: campaign.cta_url,
+        showcase: campaign.show_listing_preview === false ? null : {
+          name: contact.company_name,
+          providerType: contact.provider_type,
+          city: contact.city,
+          county: contact.county,
+          chip: listingChipFor(contact.profile_control_status),
+        },
+      };
       const finalHtml = buildEmailHtml(bodyHtml, unsubHtml, campaign.subject || 'VIASEE', ctaOptions);
 
       payloads.push({
@@ -374,7 +394,14 @@ async function actionSendTestEmail(svc, payload) {
   const unsubHtml = `<a href="${unsub.publicUrl}" style="color:#6b6b6b;text-decoration:underline;">Dezaboneaza-te</a>`;
   let bodyHtml = textToHtml(campaign.body_html || '');
   bodyHtml = renderTemplateMergeFields(bodyHtml, { company_name: 'Firma Test', city: 'Bucuresti', county: 'Bucuresti' }).replace(/\[UNSUBSCRIBE_LINK\]/g, unsubHtml);
-  const testCtaOptions = { ctaLabel: campaign.cta_label, ctaUrl: campaign.cta_url };
+  const testCtaOptions = {
+    ctaLabel: campaign.cta_label,
+    ctaUrl: campaign.cta_url,
+    showcase: campaign.show_listing_preview === false ? null : {
+      name: 'Optica Exemplu', providerType: 'optica_medicala', city: 'Bucuresti', county: 'Bucuresti',
+      chip: listingChipFor('directory'),
+    },
+  };
   const finalHtml = buildEmailHtml(bodyHtml, unsubHtml, `[TEST] ${campaign.subject || 'VIASEE'}`, testCtaOptions);
 
   const result = await sendViaResend(resendApiKey, {
