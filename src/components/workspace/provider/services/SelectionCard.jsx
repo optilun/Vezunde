@@ -70,7 +70,7 @@ export default function SelectionCard({ active, approved = false, title, descrip
                 </span>
               </span>
             )}
-            {description && <span id={descriptionId} className="sr-only">{description}</span>}
+            {description && <span id={descriptionId} className="services-card__description">{description}</span>}
           </span>
         </span>
         {/* Recomandarea e o pastila, contorul ramane text (2026-08-23): pana acum
