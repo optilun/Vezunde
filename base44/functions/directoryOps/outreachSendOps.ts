@@ -105,6 +105,10 @@ async function claimCampaignForSending(svc) {
   for (const campaign of pool) {
     const lockExpired = !campaign.execution_lock_expires_at || new Date(campaign.execution_lock_expires_at).getTime() < nowMs;
     if (campaign.execution_lock_token && !lockExpired) continue; // blocata de alta invocare inca activa
+    // Starea se re-citeste imediat inainte de preluare: lista de candidati poate fi veche de cateva
+    // sute de milisecunde, iar o campanie pusa intre timp pe pauza nu trebuie repornita de noi.
+    const fresh = await svc.entities.OutreachCampaign.get(campaign.id).catch(() => null);
+    if (!fresh || !['ready', 'sending'].includes(fresh.status)) continue;
     const token = crypto.randomUUID();
     const expiresAt = new Date(nowMs + LOCK_MINUTES * 60 * 1000).toISOString();
     await svc.entities.OutreachCampaign.update(campaign.id, {
@@ -378,6 +382,9 @@ async function actionSendTestEmail(svc, payload) {
     subject: `[TEST] ${campaign.subject || 'VIASEE'}`,
     html: finalHtml,
     text: buildPlainText(bodyHtml, unsub.publicUrl),
+    // Aceleasi antete ca la trimiterea reala: un test trebuie sa arate exact ca emailul livrat,
+    // inclusiv butonul de dezabonare afisat de Gmail/Outlook langa numele expeditorului.
+    headers: buildListUnsubscribeHeaders(unsub.oneClickUrl),
   });
 
   if (!result.ok) return Response.json({ error: result.json?.message || result.text || 'Eroare Resend' }, { status: 500 });
