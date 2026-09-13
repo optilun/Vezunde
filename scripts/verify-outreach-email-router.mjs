@@ -102,8 +102,8 @@ assert.ok(suppressionCheckIndex < batchSendIndex, 'Suprimarea trebuie verificata
 // 'failed' per contact si fara avansarea cursorului, ca urmatorul ciclu de cron sa ii reia.
 assert.doesNotMatch(
   advanceBody,
-  /status: 'failed'/,
-  'Un esec de lot nu trebuie sa marcheze destinatarii ca failed: ei ar fi sariti definitiv, desi nu au primit nimic',
+  /safeCampaignLog\([^;]*status: 'failed'/s,
+  'Un esec de lot nu trebuie sa scrie log-uri terminale failed per destinatar: ei ar fi sariti definitiv, desi nu au primit nimic',
 );
 assert.match(advanceBody, /batchFailure = \{/, 'Esecul de lot trebuie retinut si tratat dupa bucla, nu ignorat');
 assert.match(advanceBody, /isTransientBatchFailure\(result\)/, 'Esecurile tranzitorii trebuie deosebite de cele permanente');
