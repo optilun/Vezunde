@@ -6,7 +6,7 @@
 // bara de contor si actiuni in masa pe care o au si zonele: pana acum nu stiai cate din
 // cele cinci ai bifat.
 import React from "react";
-import { Eraser, ListChecks } from "lucide-react";
+import { Eraser, ListChecks, MoreHorizontal } from "lucide-react";
 import SelectionCard from "./SelectionCard";
 import { isSelected, serviceLabel } from "./servicesConfigModel";
 import { GROUP_TONE } from "./servicesUiTokens";
@@ -34,8 +34,9 @@ export default function GlobalServiceSections({ sections, selected, approvedSele
 
       {total > 0 && (
         <div className="services-unit__toolbar">
-          <span className="services-unit__toolbar-count"><strong>{selectedCount}</strong> din {total} alese</span>
+          <span className="services-unit__toolbar-count"><strong>{selectedCount}</strong> opțiuni selectate</span>
           <span className="services-unit__toolbar-spacer" />
+          <details className="services-editor__bulk"><summary><MoreHorizontal aria-hidden="true" /> Acțiuni de selecție</summary><div>
           {missing.length > 0 && (
             <button type="button" disabled={disabled} onClick={() => onSetSelection?.(missing, "", true)} className="services-unit__toolbar-button">
               <ListChecks aria-hidden="true" /> Selectează toate ({missing.length})
@@ -46,6 +47,7 @@ export default function GlobalServiceSections({ sections, selected, approvedSele
               <Eraser aria-hidden="true" /> Golește
             </button>
           )}
+          </div></details>
         </div>
       )}
 
