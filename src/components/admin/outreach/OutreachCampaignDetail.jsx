@@ -77,6 +77,7 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
       body_html: data.campaign.body_html || "",
       cta_label: data.campaign.cta_label || "",
       cta_url: data.campaign.cta_url || "",
+      show_listing_preview: data.campaign.show_listing_preview !== false,
       from_name: data.campaign.from_name || "VIASEE",
       from_email: data.campaign.from_email || "",
       reply_to_email: data.campaign.reply_to_email || "",
@@ -246,6 +247,20 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
               <span className="mt-1 block text-[11px] text-muted-foreground">Butonul apare in email doar daca linkul e completat (http/https).</span>
             </label>
           </div>
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              checked={editDraft.show_listing_preview}
+              onChange={(e) => setEditDraft((d) => ({ ...d, show_listing_preview: e.target.checked }))}
+              className="mt-0.5"
+            />
+            <span className="text-xs text-foreground">
+              Arata in email fisa destinatarului din director
+              <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                Fiecare primeste numele, tipul si orasul lui reale, asa cum apar public pe VIASEE. Debifeaza pentru campanii care nu vorbesc despre profilul din director.
+              </span>
+            </span>
+          </label>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <label className="block">
               <span className="text-xs font-semibold text-foreground">Nume expeditor</span>
