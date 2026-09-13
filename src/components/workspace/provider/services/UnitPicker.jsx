@@ -13,7 +13,7 @@ import { UNIT_FIGURE_FALLBACK, UNIT_FIGURES } from "./UnitFigures";
 // masoara si evalueaza vederea, nu vinde sau repara; e o alegere de judecata, nu regula
 // tehnica - usor de mutat daca Alex vede altfel.
 const OPTICAL_UNIT_KEYS = new Set(["optical_store", "optical_cabinet", "optical_workshop", "optical_laboratory", "b2b_distribution_center"]);
-const MEDICAL_UNIT_KEYS = new Set(["optometry_cabinet", "ophthalmology_office", "ophthalmology_diagnostics", "ophthalmology_procedure_room", "ophthalmology_surgery_unit"]);
+const MEDICAL_UNIT_KEYS = new Set(["ophthalmology_office", "ophthalmology_diagnostics", "ophthalmology_procedure_room", "ophthalmology_surgery_unit"]);
 
 function UnitGroup({ label, unitKeys, approvedUnits, activeUnits, selectedByUnit, primaryUnits, disabled, onToggle, reviewState = {} }) {
   if (unitKeys.length === 0) return null;
@@ -47,7 +47,7 @@ function UnitGroup({ label, unitKeys, approvedUnits, activeUnits, selectedByUnit
               approved={approved}
               title={definition?.title || unitKey}
               description={definition?.description || ""}
-              helper={count > 0 ? `${count} opțiuni asociate` : ""}
+              helper={count > 0 ? `${count} servicii selectate` : ""}
               badge={active || approved || count > 0 ? "" : primaryUnits.includes(unitKey) ? "Recomandat" : "Opțional"}
               icon={Icon}
               tone={UNIT_TONE[unitKey] || null}
@@ -67,7 +67,7 @@ export default function UnitPicker({ units, approvedUnits, activeUnits, selected
   // comutator "Arata alte spatii" care ascundea unele carduri implicit.
   const opticalUnits = units.filter((key) => OPTICAL_UNIT_KEYS.has(key));
   const medicalUnits = units.filter((key) => MEDICAL_UNIT_KEYS.has(key));
-  const otherUnits = units.filter((key) => !OPTICAL_UNIT_KEYS.has(key) && !MEDICAL_UNIT_KEYS.has(key));
+  const otherUnits = units.filter((key) => !OPTICAL_UNIT_KEYS.has(key) && !MEDICAL_UNIT_KEYS.has(key) && key !== "optometry_cabinet");
 
   return (
     <section {...dataAttrs} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -77,7 +77,8 @@ export default function UnitPicker({ units, approvedUnits, activeUnits, selected
           rand lung pe latime, fara distinctie intre tipurile de spatii. */}
       <div className="space-y-5">
         <UnitGroup label="Optică" unitKeys={opticalUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={disabled} onToggle={onToggle} reviewState={reviewState} />
-        <UnitGroup label="Oftalmologie și evaluare medicală" unitKeys={medicalUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={disabled} onToggle={onToggle} reviewState={reviewState} />
+        <UnitGroup label="Optometrie" unitKeys={units.filter(key => key === "optometry_cabinet")} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={disabled} onToggle={onToggle} reviewState={reviewState} />
+        <UnitGroup label="Oftalmologie" unitKeys={medicalUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={disabled} onToggle={onToggle} reviewState={reviewState} />
         <UnitGroup label="Alte spații" unitKeys={otherUnits} approvedUnits={approvedUnits} activeUnits={activeUnits} selectedByUnit={selectedByUnit} primaryUnits={primaryUnits} disabled={disabled} onToggle={onToggle} reviewState={reviewState} />
       </div>
     </section>
