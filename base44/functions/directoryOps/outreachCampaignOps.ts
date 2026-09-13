@@ -153,15 +153,20 @@ async function actionPreviewSegment(svc, payload) {
   const contacts = await listAllContacts(svc);
   const matchingContacts = contacts.filter((contact) => contactMatchesTags(contact, filters));
   const eligibleContacts = matchingContacts.filter((contact) => !isContactSuppressed(contact));
-  const missingCompliance = eligibleContacts.filter((contact) => complianceMissing(contact).length > 0).length;
+  // Numarul real de emailuri trimise e numarul de ADRESE distincte, nu de contacte: acelasi numar
+  // pe care il cere si fraza de confirmare la aprobare.
+  const uniqueEligible = dedupeContactsByEmail(eligibleContacts);
+  const missingCompliance = uniqueEligible.filter((contact) => complianceMissing(contact).length > 0).length;
 
   return Response.json({
     directory_locations_matching: matchingLocations.length,
     directory_locations_total_with_email: locations.length,
     contacts_materialized_matching: matchingContacts.length,
-    contacts_eligible_for_send: eligibleContacts.length,
+    contacts_eligible_for_send: uniqueEligible.length,
+    contacts_duplicate_emails: eligibleContacts.length - uniqueEligible.length,
     contacts_suppressed: matchingContacts.length - eligibleContacts.length,
     contacts_missing_compliance_metadata: missingCompliance,
+    contacts_blocked_until_compliance_completed: missingCompliance,
     not_yet_materialized: Math.max(0, matchingLocations.length - matchingContacts.length),
   });
 }
