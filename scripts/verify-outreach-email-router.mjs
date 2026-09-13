@@ -309,6 +309,18 @@ for (const componentFile of [
   assert.match(componentSource, /outreachCampaignOps/, `${componentFile} trebuie sa apeleze outreachCampaignOps`);
 }
 
+// Sablonul salvat trebuie sa poata porni o campanie: altfel ramane un text pe care cineva il
+// copiaza manual. Precompletarea copiaza continutul in ciorna, deci editarea ulterioara a
+// sablonului nu schimba campaniile deja pornite.
+const campaignDetailSource = source('src/components/admin/outreach/OutreachCampaignDetail.jsx');
+assert.match(campaignDetailSource, /'list_templates'|"list_templates"/, 'Ciorna trebuie sa poata incarca sabloanele salvate');
+assert.match(campaignDetailSource, /body_html: template\.body/, 'Sablonul precompleteaza continutul campaniei');
+assert.match(campaignDetailSource, /subject: template\.subject/, 'Sablonul precompleteaza subiectul campaniei');
+assert.ok(
+  campaignOpsSource.includes("'template_id'"),
+  'template_id trebuie sa fie salvabil pe campanie, ca sa se stie din ce sablon a pornit',
+);
+
 const unsubscribePageSource = source('src/pages/Unsubscribe.jsx');
 assert.match(unsubscribePageSource, /outreach_action=unsubscribe/);
 
