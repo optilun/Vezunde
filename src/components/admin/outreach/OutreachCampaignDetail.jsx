@@ -191,7 +191,19 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
 
       {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+      {campaign.failure_message && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <span className="font-semibold">Motivul opririi trimiterii: </span>
+          {campaign.failure_message}
+          {campaign.status === "failed" && (
+            <span className="block pt-1 text-amber-800">
+              Destinatarii din lotul esuat NU au fost sariti: dupa remedierea cauzei, reia campania si trimiterea continua de unde a ramas.
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-9">
         <StatCard label="Destinatari" value={campaign.recipient_count} />
         <StatCard label="Trimise" value={campaign.sent_count} />
         <StatCard label="Livrate" value={campaign.delivered_count} />
@@ -199,6 +211,7 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
         <StatCard label="Click" value={campaign.clicked_count} />
         <StatCard label="Respinse" value={campaign.bounced_count} />
         <StatCard label="Plangeri" value={campaign.complained_count} />
+        <StatCard label="Sarite" value={campaign.skipped_count} />
         <StatCard label="Esuate" value={campaign.failed_count} />
       </div>
 
@@ -245,7 +258,13 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
           </div>
           {previewResult && (
             <div className="rounded-lg bg-secondary/60 p-3 text-xs text-muted-foreground">
-              <p>{previewResult.contacts_eligible_for_send} contacte eligibile pentru trimitere din {previewResult.contacts_materialized_matching} materializate.</p>
+              <p>{previewResult.contacts_eligible_for_send} adrese distincte eligibile pentru trimitere, din {previewResult.contacts_materialized_matching} contacte materializate.</p>
+              {previewResult.contacts_duplicate_emails > 0 && (
+                <p>{previewResult.contacts_duplicate_emails} contacte au o adresa care apare deja in lista (mai multe locatii, acelasi email) — se trimite o singura data per adresa.</p>
+              )}
+              {previewResult.contacts_missing_compliance_metadata > 0 && (
+                <p className="text-amber-700">{previewResult.contacts_missing_compliance_metadata} contacte nu au temei legal si provenienta complete — acestea sunt sarite la trimitere pana cand sunt completate.</p>
+              )}
               <p>{previewResult.not_yet_materialized} locatii din director inca nu au fost materializate ca si contacte (vezi tab-ul Contacte).</p>
               <p>{previewResult.contacts_suppressed} contacte suprimate (dezabonate/bounce/plangere), {previewResult.contacts_missing_compliance_metadata} fara metadate complete de conformitate.</p>
             </div>
