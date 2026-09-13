@@ -3,8 +3,11 @@ import {
   normalizeEmail,
   isValidEmail,
   isContactSuppressed,
+  isPermanentEmailError,
+  complianceMissing,
   validateSenderEmail,
   buildUnsubscribeUrls,
+  buildListUnsubscribeHeaders,
   buildEmailHtml,
   buildPlainText,
   renderTemplateMergeFields,
@@ -25,8 +28,26 @@ import {
 const LOCK_MINUTES = 4;
 const BATCH_SIZE = 25; // Resend Batch API accepta pana la 100; pornim conservator
 const MAX_BATCHES_PER_RUN = 4; // cel mult 100 destinatari per invocare cron
+// Dupa atatea loturi consecutive esuate tranzitoriu campania trece in 'failed' in loc sa
+// reincerce la infinit la fiecare 5 minute (la cron de 5 min inseamna ~25 de minute de retry).
+const MAX_CONSECUTIVE_SEND_FAILURES = 5;
 
 const TERMINAL_LOG_STATUSES = new Set(['sent', 'delivered', 'bounced', 'complained', 'failed', 'invalid', 'skipped', 'duplicate']);
+// Stari in care admin-ul a oprit explicit campania: o rulare in curs nu are voie sa le suprascrie
+// inapoi in 'sending' la eliberarea lock-ului, altfel butonul Pauza/Anuleaza nu ar opri nimic.
+const ADMIN_STOP_STATUSES = new Set(['paused', 'cancelled', 'failed']);
+
+// Esec de lot tranzitoriu (rate limit, indisponibilitate, retea) vs. permanent (cheie gresita,
+// domeniu neverificat, payload invalid). Tranzitoriu => nu avansam cursorul, reincercam la
+// urmatorul ciclu de cron. Permanent => oprim campania cu mesaj, tot fara sa avansam cursorul,
+// ca dupa remediere aceiasi destinatari sa fie reluati, nu sariti definitiv.
+function isTransientBatchFailure(result) {
+  if (!result) return true; // exceptie de retea/timeout: tratata ca tranzitorie
+  const status = Number(result.status) || 0;
+  if (status === 429 || status >= 500 || status === 0) return true;
+  const text = `${result.json?.message || ''} ${result.text || ''}`;
+  return !isPermanentEmailError(status, text);
+}
 
 function clean(value) {
   return String(value ?? '').trim();
