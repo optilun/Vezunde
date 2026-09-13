@@ -33,6 +33,11 @@
       "type": "string",
       "description": "Linkul butonului principal. Doar http/https; orice altceva e ignorat la randare."
     },
+    "show_listing_preview": {
+      "type": "boolean",
+      "default": true,
+      "description": "Afiseaza in email fisa destinatarului din director (numele, tipul si orasul lui reale). Se dezactiveaza pentru campaniile care nu vorbesc despre profilul din director."
+    },
     "from_name": {
       "type": "string",
       "default": "VIASEE"
