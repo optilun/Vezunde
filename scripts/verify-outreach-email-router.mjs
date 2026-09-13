@@ -98,6 +98,48 @@ const batchSendIndex = advanceBody.indexOf('sendBatchViaResend(');
 assert.ok(suppressionCheckIndex !== -1, 'Verificarea de suprimare per-destinatar lipseste din advanceOneCampaign');
 assert.ok(suppressionCheckIndex < batchSendIndex, 'Suprimarea trebuie verificata inainte de trimiterea efectiva a lotului');
 
+// Un esec de lot (rate limit, 5xx, retea) nu are voie sa arda destinatarii: fara log terminal
+// 'failed' per contact si fara avansarea cursorului, ca urmatorul ciclu de cron sa ii reia.
+assert.doesNotMatch(
+  advanceBody,
+  /status: 'failed'/,
+  'Un esec de lot nu trebuie sa marcheze destinatarii ca failed: ei ar fi sariti definitiv, desi nu au primit nimic',
+);
+assert.match(advanceBody, /batchFailure = \{/, 'Esecul de lot trebuie retinut si tratat dupa bucla, nu ignorat');
+assert.match(advanceBody, /isTransientBatchFailure\(result\)/, 'Esecurile tranzitorii trebuie deosebite de cele permanente');
+const batchFailureIndex = advanceBody.indexOf('batchFailure = {');
+const cursorAdvanceIndex = advanceBody.indexOf('cursor += batchIds.length');
+assert.ok(batchFailureIndex !== -1 && cursorAdvanceIndex !== -1);
+assert.ok(
+  advanceBody.slice(batchFailureIndex, cursorAdvanceIndex).includes('break;'),
+  'Dupa un esec de lot trebuie iesit din bucla INAINTE de avansarea cursorului',
+);
+
+// Aceeasi adresa nu primeste aceeasi campanie de doua ori, chiar daca apare pe mai multe locatii.
+assert.match(advanceBody, /seenEmails\.has\(email\)/, 'Lipseste deduplicarea per adresa in interiorul campaniei');
+assert.match(advanceBody, /duplicate_email_in_campaign/);
+
+// Temeiul legal + provenienta sunt conditie de trimitere, nu doar o statistica in preview.
+assert.match(advanceBody, /complianceMissing\(contact\)/, 'Contactele fara metadate de conformitate trebuie sarite la trimitere');
+assert.match(advanceBody, /missing_compliance_metadata/);
+
+// Fara lista inghetata de destinatari campania s-ar marca 'sent' fara sa trimita nimic.
+assert.match(advanceBody, /recipient_contact_ids/);
+assert.match(advanceBody, /if \(!ids\.length\)/, 'Lipseste garda pentru campanie fara destinatari');
+
+// Pauza/anularea data de admin in timpul unei rulari nu trebuie suprascrisa inapoi in 'sending'.
+assert.match(sendOpsSource, /ADMIN_STOP_STATUSES/);
+assert.match(sendOpsSource, /async function releaseLockPreservingAdminStop\(/);
+assert.doesNotMatch(
+  advanceBody,
+  /status: finished \? 'sent' : 'sending'/,
+  'Statusul final trebuie scris prin releaseLockPreservingAdminStop, ca sa nu suprascrie o pauza data intre timp',
+);
+assert.match(advanceBody, /releaseLockPreservingAdminStop\(/);
+
+// Preluarea unei campanii se confirma prin re-citire (Base44 nu are update conditionat).
+assert.match(sendOpsSource, /claimed\.execution_lock_token !== token/, 'Lipseste confirmarea lock-ului prin re-citire');
+
 // --- outreachCampaignOps.ts: aprobare cu confirmare tastata + materializare cu conformitate ------
 const campaignOpsSource = source('base44/functions/directoryOps/outreachCampaignOps.ts');
 assert.match(campaignOpsSource, /expectedConfirmation = `TRIMITE \$\{campaign\.name\} \$\{eligible\.length\}`/, 'Fraza de confirmare trebuie sa includa numarul de destinatari recalculat la momentul aprobarii');
@@ -112,10 +154,27 @@ const policySource = source('base44/shared/outreachEmailPolicy.js');
 for (const fnName of [
   'verifySvixSignature', 'sendBatchViaResend', 'sendViaResend', 'buildUnsubscribeUrls',
   'createUnsubscribeToken', 'verifyUnsubscribeToken', 'legalConfig', 'complianceMissing',
-  'isContactSuppressed', 'validateSenderEmail',
+  'isContactSuppressed', 'validateSenderEmail', 'buildListUnsubscribeHeaders', 'isPermanentEmailError',
 ]) {
   assert.match(policySource, new RegExp(`export (?:async )?function ${fnName}\\(`), `Lipseste exportul ${fnName} din outreachEmailPolicy.js`);
 }
+
+// Antetul de dezabonare (RFC 8058) se construeste dintr-un singur loc, si la campanii si la test.
+assert.match(policySource, /'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'/);
+assert.equal(
+  (sendOpsSource.match(/buildListUnsubscribeHeaders\(unsub\.oneClickUrl\)/g) || []).length,
+  2,
+  'Si trimiterea reala si emailul de test trebuie sa foloseasca aceleasi antete de dezabonare',
+);
+
+// --- Entitati: campurile de care depinde trimiterea exista in schema ------------------------------
+// recipient_contact_ids a lipsit din schema desi codul scria si citea campul: aprobarea parea sa
+// reuseasca, iar prima rulare marca instant campania 'sent' fara sa fi trimis vreun email.
+const campaignSchema = JSON.parse(source('base44/entities/OutreachCampaign.jsonc'));
+for (const field of ['recipient_contact_ids', 'current_cursor', 'consecutive_send_failures', 'execution_lock_token', 'failure_message']) {
+  assert.ok(campaignSchema.properties?.[field], `OutreachCampaign.${field} trebuie declarat in schema: codul de trimitere depinde de el`);
+}
+assert.equal(campaignSchema.properties.recipient_contact_ids.type, 'array');
 
 // --- Entitati: toate cele 5 raman admin-only (RLS) ------------------------------------------------
 for (const entityName of ['OutreachContact', 'OutreachCampaign', 'OutreachCampaignLog', 'OutreachSuppression', 'OutreachTemplate']) {
