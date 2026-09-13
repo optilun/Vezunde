@@ -226,8 +226,19 @@ for (const field of ['showcase.name', 'showcase.city', 'showcase.chip']) {
   assert.ok(previewBody.includes(field), `Fisa din email trebuie sa foloseasca ${field} — datele reale ale destinatarului`);
 }
 assert.match(previewBody, /escapeHtml\(showcase\.name/, 'Numele firmei intra in HTML si trebuie escapat');
-// Fundalul colorat trebuie sa aiba si bgcolor solid: Outlook (motorul Word) nu randeaza gradiente.
-assert.match(previewBody, /bgcolor="\$\{TEAL\}"[^`]*background-image:linear-gradient/, 'Gradientul are nevoie de un bgcolor solid ca fallback pentru Outlook');
+// Fundalul trebuie sa aiba si bgcolor solid: Outlook (motorul Word) nu randeaza gradiente.
+assert.match(previewBody, /bgcolor="\$\{LILAC\}"[^`]*background-image:repeating-linear-gradient/, 'Grila are nevoie de un bgcolor solid ca fallback pentru Outlook');
+
+// Culorile si tipografia vin din designul real al site-ului, nu inventate. Aceste valori sunt
+// citite direct din src/index.css si src/components/home/CategoryShowcase.jsx.
+for (const [token, value] of [['INK', '#171717'], ['CREAM', '#f8f4ec'], ['LILAC', '#e8e0ea'], ['LILAC_EDGE', '#d4c6d8'], ['BLUE', '#345bc8']]) {
+  assert.match(policySource, new RegExp(`const ${token} = '${value}'`), `${token} trebuie sa ramana culoarea reala din designul VIASEE (${value})`);
+}
+assert.doesNotMatch(policySource, /Fraunces/, 'Titlurile din email urmeaza hero-ul site-ului: Manrope greu, nu serif');
+const homeShowcase = source('src/components/home/CategoryShowcase.jsx');
+for (const value of ['#e8e0ea', '#d4c6d8', '#345bc8']) {
+  assert.ok(homeShowcase.includes(value), `Culoarea ${value} trebuie sa existe in CategoryShowcase: emailul o reia de acolo`);
+}
 
 // Fisa se construieste per destinatar, nu o data pe campanie.
 const sendPreviewIndex = sendOpsSource.indexOf('showcase:');
