@@ -243,6 +243,21 @@ assert.match(previewBody, /escapeHtml\(showcase\.name/, 'Numele firmei intra in 
 assert.match(previewBody, /width="556"/, 'Outlook are nevoie de atributul width pe imagine, nu doar de CSS');
 assert.match(previewBody, /max-width:556px;height:auto/, 'Imaginea trebuie sa se scaleze pe telefon fara sa se deformeze');
 
+// Banda de sus poarta logo-ul real al site-ului, randat din public/brand/viasee-wordmark.svg:
+// clientii de email nu afiseaza SVG. Alt-ul ramane numele brandului, stilizat ca wordmarkul,
+// fiindca multi clienti blocheaza implicit imaginile.
+assert.match(
+  policySource,
+  /export const LOGO_URL = 'https:\/\/viasee\.ro\/email\/[\w.-]+\.png'/,
+  'Logo-ul din email trebuie servit ca PNG de pe viasee.ro, peste https',
+);
+assert.ok(
+  existsSync(path.join(root, 'public/email/viasee-logo.png')),
+  'Fisierul logo-ului trebuie sa existe in public/email, altfel banda de sus ramane goala',
+);
+assert.match(buildHtmlBody, /<img src="\$\{LOGO_URL\}" alt="\$\{escapeHtml\(legal\.brand\)\}"/, 'Logo-ul are nevoie de alt cu numele brandului');
+assert.match(buildHtmlBody, /LOGO_URL[^`]*width="132"/, 'Outlook are nevoie de atributul width pe logo');
+
 // Banda de sus reia gradientul din hero-ul site-ului. Outlook (motorul Word) nu randeaza
 // gradiente, deci are nevoie de un bgcolor solid dedesubt.
 assert.match(

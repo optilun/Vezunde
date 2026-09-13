@@ -333,7 +333,7 @@ export function buildEmailHtml(bodyContent, unsubscribeHtml, campaignSubject = '
     + `<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background:${CREAM};padding:30px 14px;"><tr><td align="center">`
     + `<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="max-width:620px;background:#ffffff;border:1px solid ${HAIRLINE};border-radius:22px;overflow:hidden;">`
 
-    // Bara neagra de sus, ca headerul site-ului.
+    // Banda de sus: gradientul din hero-ul site-ului + logo-ul real.
     + `<tr><td bgcolor="${BAND}" style="background-color:${BAND};background-image:linear-gradient(115deg,#dce4f2 0%,#e9ecf4 42%,#f3efe7 100%);padding:22px 32px;border-bottom:1px solid ${HAIRLINE};" class="vs-pad">`
     + `<img src="${LOGO_URL}" alt="${escapeHtml(legal.brand)}" width="132" style="display:block;width:132px;max-width:132px;height:auto;border:0;font-family:${FONT_SANS};font-size:16px;font-weight:800;letter-spacing:0.26em;color:${INK};text-transform:uppercase;text-decoration:none;" />`
     + '</td></tr>'
