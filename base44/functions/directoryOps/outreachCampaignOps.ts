@@ -367,6 +367,7 @@ async function actionCreateCampaign(svc, user, payload) {
     body_html: clean(payload.body_html),
     cta_label: clean(payload.cta_label),
     cta_url: clean(payload.cta_url),
+    show_listing_preview: payload.show_listing_preview !== false,
     from_name: clean(payload.from_name) || 'VIASEE',
     from_email: clean(payload.from_email),
     reply_to_email: clean(payload.reply_to_email),
@@ -390,7 +391,7 @@ async function actionUpdateCampaign(svc, payload) {
   if (!campaign) return Response.json({ error: 'Campania nu a fost gasita' }, { status: 404 });
   if (campaign.status !== 'draft') return Response.json({ error: 'Doar campaniile in stare draft pot fi editate' }, { status: 409 });
 
-  const editable = ['name', 'campaign_type', 'template_id', 'subject', 'body_html', 'cta_label', 'cta_url', 'from_name', 'from_email', 'reply_to_email', 'target_counties', 'target_provider_types', 'target_profile_control_status', 'target_tags'];
+  const editable = ['name', 'campaign_type', 'template_id', 'subject', 'body_html', 'cta_label', 'cta_url', 'show_listing_preview', 'from_name', 'from_email', 'reply_to_email', 'target_counties', 'target_provider_types', 'target_profile_control_status', 'target_tags'];
   const patch = {};
   for (const key of editable) if (payload[key] !== undefined) patch[key] = payload[key];
   const updated = await svc.entities.OutreachCampaign.update(id, patch);
