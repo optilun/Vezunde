@@ -40,6 +40,11 @@ export default function ProviderLocationModulePage({
   onRefresh,
 }) {
   const [servicesRevision, setServicesRevision] = useState(0);
+  const [servicesDirty, setServicesDirty] = useState(false);
+  const closeServices = () => {
+    if (servicesDirty && !window.confirm("Ai modificări nesalvate. Închizi pagina fără să le salvezi?")) return;
+    onBack?.();
+  };
   const location = (workspace.locations || []).find((item) => item.id === locationId) || null;
   const config = MODULES[moduleKey];
   const locationAccess = resolveProviderLocationAccess(workspace, locationId);
@@ -88,7 +93,7 @@ export default function ProviderLocationModulePage({
             </div>
             <button
               type="button"
-              onClick={onBack}
+              onClick={closeServices}
               className="provider-location-services-header__close"
               aria-label="Închide și revino la locații"
             >
@@ -147,6 +152,7 @@ export default function ProviderLocationModulePage({
               locationId={location.id}
               location={location}
               overview={overview || { content_summary: { approved_service_count: 0 } }}
+              onDirtyChange={setServicesDirty}
               onRefresh={onRefresh || (() => {})}
             />
           </>
