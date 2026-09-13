@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -21,6 +21,10 @@ assert.equal(await saveBeforeContinuing({dirty:true,save:async()=>{throw Error("
 assert.equal(progressed,0);
 await saveBeforeContinuing({dirty:false,save:()=>{throw Error("must not save unchanged data")},onSuccess:()=>progressed++});
 assert.equal(progressed,1);
+
+for (const name of ["directoryFunctionRouting.js", "serviceConfigurationFunctionRouting.js", "providerWorkspaceFunctionRouting.js"]) {
+  assert.equal(await readFile("shared/" + name, "utf8"), await readFile("base44/shared/" + name, "utf8"), "Frontend and backend routing must remain identical: " + name);
+}
 
 const temp = await mkdtemp(path.join(tmpdir(),"viasee-services-test-"));
 try {
