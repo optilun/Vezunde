@@ -190,11 +190,26 @@ export async function buildUnsubscribeUrls(email, campaignId) {
   return { token, publicUrl, oneClickUrl };
 }
 
+// Antetele de dezabonare, identice pentru campanii si pentru emailurile de test (un test trebuie sa
+// arate exact ca trimiterea reala). Pe langa linkul one-click (RFC 8058, cerut de Gmail/Yahoo
+// pentru expeditori in volum) includem si varianta mailto:, pentru clientii care nu implementeaza
+// POST-ul one-click si pentru cazul in care endpointul HTTP e indisponibil.
+export function buildListUnsubscribeHeaders(oneClickUrl) {
+  const mailto = legalConfig().unsubscribeMailto;
+  const parts = [`<${oneClickUrl}>`];
+  if (mailto) parts.push(`<mailto:${mailto}?subject=unsubscribe>`);
+  return {
+    'List-Unsubscribe': parts.join(', '),
+    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+  };
+}
+
 export function legalConfig() {
   return {
     brand: Deno.env.get('OUTREACH_BRAND_NAME') || 'VIASEE',
     legalCompany: Deno.env.get('OUTREACH_LEGAL_COMPANY_NAME') || 'VIASEE',
     contactEmail: Deno.env.get('OUTREACH_CONTACT_EMAIL') || DEFAULT_FROM_EMAIL,
+    unsubscribeMailto: Deno.env.get('OUTREACH_UNSUBSCRIBE_MAILTO') || Deno.env.get('OUTREACH_CONTACT_EMAIL') || '',
     website: Deno.env.get('OUTREACH_WEBSITE') || DEFAULT_WEBSITE,
     reason: Deno.env.get('OUTREACH_REASON_TEXT')
       || 'Primesti acest email pentru ca adresa ta publica de contact apare in directorul national VIASEE, ca reprezentant al unei optici, clinici sau cabinet din domeniul sanatatii vizuale.',
