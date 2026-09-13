@@ -249,30 +249,45 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
     }
 
     if (payloads.length) {
-      const result = await sendBatchViaResend(resendApiKey, payloads);
-      if (result.ok) {
-        for (let i = 0; i < meta.length; i += 1) {
-          const { contact, email } = meta[i];
-          const messageId = result.results?.[i]?.id || '';
-          await safeCampaignLog(svc, {
-            campaign_id: campaign.id, contact_id: contact.id, email, normalized_email: email,
-            status: 'sent', resend_message_id: messageId, sent_at: new Date().toISOString(),
-          });
-          if (contact.status !== 'converted') {
-            await svc.entities.OutreachContact.update(contact.id, {
-              status: contact.status === 'new' ? 'contacted' : contact.status,
-              last_contacted_at: new Date().toISOString(),
-              last_status_change_at: new Date().toISOString(),
-            }).catch(() => null);
-          }
-          sentThisRun += 1;
+      let result = null;
+      try {
+        result = await sendBatchViaResend(resendApiKey, payloads);
+      } catch (error) {
+        console.error('outreachSendOps batch threw', campaign.id, error?.message || error);
+        result = null; // exceptie de retea: tratata mai jos ca esec tranzitoriu
+      }
+
+      if (!result || !result.ok) {
+        // Esecul e al lotului intreg, nu al unui destinatar anume: NU marcam contactele ca 'failed'
+        // si NU avansam cursorul. Altfel o eroare trecatoare (rate limit, 5xx) ar arde definitiv
+        // 25 de destinatari, care n-ar mai primi niciodata emailul si n-ar mai fi reincercati.
+        batchFailure = {
+          transient: isTransientBatchFailure(result),
+          message: result?.json?.message || result?.text || 'Eroare de retea la trimiterea lotului catre Resend',
+          status: result?.status || 0,
+        };
+        break;
+      }
+
+      // La succes Resend intoarce rezultatele in ordinea payload-urilor. Daca lungimile nu se
+      // potrivesc, nu ne mai putem baza pe indexare: logam fara message id, ca sa nu legam un
+      // eveniment de webhook de destinatarul gresit.
+      const idsAligned = Array.isArray(result.results) && result.results.length === meta.length;
+      for (let i = 0; i < meta.length; i += 1) {
+        const { contact, email } = meta[i];
+        const messageId = idsAligned ? (result.results[i]?.id || '') : '';
+        await safeCampaignLog(svc, {
+          campaign_id: campaign.id, contact_id: contact.id, email, normalized_email: email,
+          status: 'sent', resend_message_id: messageId, sent_at: new Date().toISOString(),
+        });
+        if (contact.status !== 'converted') {
+          await svc.entities.OutreachContact.update(contact.id, {
+            status: contact.status === 'new' ? 'contacted' : contact.status,
+            last_contacted_at: new Date().toISOString(),
+            last_status_change_at: new Date().toISOString(),
+          }).catch(() => null);
         }
-      } else {
-        const errorText = result.json?.message || result.text || 'Eroare Resend la trimiterea lotului';
-        for (const { contact, email } of meta) {
-          await safeCampaignLog(svc, { campaign_id: campaign.id, contact_id: contact.id, email, normalized_email: email, status: 'failed', error: errorText });
-          failedThisRun += 1;
-        }
+        sentThisRun += 1;
       }
     }
 
@@ -280,20 +295,53 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
     await svc.entities.OutreachCampaign.update(campaign.id, {
       current_cursor: cursor,
       sent_count: (campaign.sent_count || 0) + sentThisRun,
-      failed_count: (campaign.failed_count || 0) + failedThisRun,
       skipped_count: (campaign.skipped_count || 0) + skippedThisRun,
+      consecutive_send_failures: 0, // un lot reusit reseteaza sirul de esecuri tranzitorii
       last_heartbeat_at: new Date().toISOString(),
       execution_lock_expires_at: new Date(Date.now() + LOCK_MINUTES * 60 * 1000).toISOString(),
     }).catch((error) => console.error('outreachSendOps progress update failed', campaign.id, error?.message || error));
   }
 
+  const progressPatch = {
+    current_cursor: cursor,
+    sent_count: (campaign.sent_count || 0) + sentThisRun,
+    skipped_count: (campaign.skipped_count || 0) + skippedThisRun,
+  };
+
+  if (batchFailure) {
+    const failures = (Number(campaign.consecutive_send_failures) || 0) + 1;
+    const giveUp = !batchFailure.transient || failures >= MAX_CONSECUTIVE_SEND_FAILURES;
+    const failureMessage = batchFailure.transient
+      ? `Lot esuat tranzitoriu (${failures}/${MAX_CONSECUTIVE_SEND_FAILURES}), status ${batchFailure.status}: ${batchFailure.message}`
+      : `Trimitere oprita, eroare permanenta (status ${batchFailure.status}): ${batchFailure.message}`;
+
+    // In ambele cazuri cursorul ramane pe loc: destinatarii lotului esuat vor fi reluati, fie de
+    // urmatorul ciclu de cron (tranzitoriu), fie dupa ce admin-ul remediaza cauza si reia campania.
+    await releaseLock(svc, campaign.id, {
+      ...progressPatch,
+      status: giveUp ? 'failed' : 'sending',
+      consecutive_send_failures: failures,
+      failure_message: failureMessage,
+    });
+    return {
+      campaign_id: campaign.id, sent: sentThisRun, skipped: skippedThisRun,
+      finished: false, retry_scheduled: !giveUp, error: failureMessage,
+    };
+  }
+
+  if (stoppedByAdmin) {
+    await releaseLock(svc, campaign.id, progressPatch);
+    return { campaign_id: campaign.id, sent: sentThisRun, skipped: skippedThisRun, finished: false, stopped_by_admin: stoppedByAdmin };
+  }
+
   const finished = cursor >= ids.length;
-  await releaseLock(svc, campaign.id, {
-    status: finished ? 'sent' : 'sending',
-    sent_at: finished ? new Date().toISOString() : (campaign.sent_at || null),
+  const finalStatus = await releaseLockPreservingAdminStop(svc, campaign.id, {
+    finished,
+    previousSentAt: campaign.sent_at || null,
+    patch: { ...progressPatch, failure_message: '' },
   });
 
-  return { campaign_id: campaign.id, sent: sentThisRun, failed: failedThisRun, skipped: skippedThisRun, finished };
+  return { campaign_id: campaign.id, sent: sentThisRun, skipped: skippedThisRun, finished, status: finalStatus };
 }
 
 async function actionAdvanceCampaignSends(svc) {
