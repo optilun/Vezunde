@@ -271,10 +271,11 @@ const HAIRLINE = '#e5ded2';
 const BAND = '#e9ecf4'; // fallback solid pentru Outlook, care nu randeaza gradiente
 
 export const ARTWORK_URL = 'https://viasee.ro/email/viasee-cautare.jpg';
-// Logo-ul real al site-ului (public/brand/viasee-wordmark.svg), randat ca PNG: clientii de
-// email nu afiseaza SVG. Alt-ul ramane "VIASEE", stilizat ca wordmarkul, pentru cei care
-// au imaginile blocate implicit.
-export const LOGO_URL = 'https://viasee.ro/email/viasee-logo.png';
+// Logo-ul real al site-ului: simbol + wordmark, aceeasi asezare ca in ViaseeBrand.jsx,
+// randat ca o singura imagine PNG (clientii de email nu afiseaza SVG, iar doua imagini
+// alaturate se desincronizeaza in Outlook). Alt-ul ramane "VIASEE", stilizat ca wordmarkul,
+// pentru cei care au imaginile blocate implicit.
+export const LOGO_URL = 'https://viasee.ro/email/viasee-brand.png';
 
 // Blocul vizual: o singura imagine, ca in emailurile de anunt bine facute — nu un colaj incarcat.
 // Arata cautarea VIASEE cu destinatarul in rezultate. E gazduita pe viasee.ro pentru ca in email
@@ -335,7 +336,7 @@ export function buildEmailHtml(bodyContent, unsubscribeHtml, campaignSubject = '
 
     // Banda de sus: gradientul din hero-ul site-ului + logo-ul real.
     + `<tr><td bgcolor="${BAND}" style="background-color:${BAND};background-image:linear-gradient(115deg,#dce4f2 0%,#e9ecf4 42%,#f3efe7 100%);padding:22px 32px;border-bottom:1px solid ${HAIRLINE};" class="vs-pad">`
-    + `<img src="${LOGO_URL}" alt="${escapeHtml(legal.brand)}" width="132" style="display:block;width:132px;max-width:132px;height:auto;border:0;font-family:${FONT_SANS};font-size:16px;font-weight:800;letter-spacing:0.26em;color:${INK};text-transform:uppercase;text-decoration:none;" />`
+    + `<img src="${LOGO_URL}" alt="${escapeHtml(legal.brand)}" width="126" style="display:block;width:126px;max-width:126px;height:auto;border:0;font-family:${FONT_SANS};font-size:16px;font-weight:800;letter-spacing:0.26em;color:${INK};text-transform:uppercase;text-decoration:none;" />`
     + '</td></tr>'
 
     // Eticheta mica + titlu greu, ca in hero.
