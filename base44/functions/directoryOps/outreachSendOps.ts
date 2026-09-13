@@ -132,6 +132,24 @@ async function releaseLock(svc, campaignId, patch = {}) {
   }).catch((error) => console.error('outreachSendOps releaseLock failed', campaignId, error?.message || error));
 }
 
+// Eliberarea lock-ului la finalul unei rulari re-citeste starea din baza inainte sa scrie statusul:
+// daca admin-ul a apasat Pauza / Anuleaza in timp ce lotul era in aer, starea lui trebuie sa ramana,
+// altfel rularea ar readuce campania in 'sending' si urmatorul ciclu de cron ar continua trimiterea.
+async function releaseLockPreservingAdminStop(svc, campaignId, { finished, previousSentAt, patch = {} }) {
+  const current = await svc.entities.OutreachCampaign.get(campaignId).catch(() => null);
+  if (current && ADMIN_STOP_STATUSES.has(current.status)) {
+    await releaseLock(svc, campaignId, patch);
+    return current.status;
+  }
+  const status = finished ? 'sent' : 'sending';
+  await releaseLock(svc, campaignId, {
+    ...patch,
+    status,
+    sent_at: finished ? new Date().toISOString() : (previousSentAt || null),
+  });
+  return status;
+}
+
 async function advanceOneCampaign(svc, campaign, resendApiKey) {
   const sender = validateSenderEmail(campaign.from_email);
   if (!sender.ok) {
@@ -144,15 +162,33 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
   }
 
   const ids = Array.isArray(campaign.recipient_contact_ids) ? campaign.recipient_contact_ids : [];
-  const alreadyProcessed = await getAlreadyProcessedContactIds(svc, campaign.id);
+  if (!ids.length) {
+    // Fara lista inghetata de destinatari cursorul n-are in ce sa indexeze, iar conditia de final
+    // (cursor >= ids.length) ar fi adevarata din start: campania s-ar marca 'sent' fara sa fi
+    // trimis niciun email. Oprim explicit, cu mesaj, in loc sa raportam un succes fals.
+    const message = 'Campania nu are lista de destinatari (recipient_contact_ids). Reaproba campania pentru a regenera lista.';
+    await releaseLock(svc, campaign.id, { status: 'failed', failure_message: message });
+    return { campaign_id: campaign.id, error: message };
+  }
+
+  const processed = await getAlreadyProcessedContactIds(svc, campaign.id);
+  const alreadyProcessed = processed.contactIds;
+  const seenEmails = new Set(processed.emails);
   const suppressionSet = await getSuppressionSet(svc);
 
   let cursor = Number(campaign.current_cursor) || 0;
   let sentThisRun = 0;
-  let failedThisRun = 0;
   let skippedThisRun = 0;
+  let stoppedByAdmin = '';
+  let batchFailure = null;
 
   for (let batchNum = 0; batchNum < MAX_BATCHES_PER_RUN && cursor < ids.length; batchNum += 1) {
+    if (batchNum > 0) {
+      // Pauza/anularea data de admin trebuie sa opreasca campania in maximum un lot, nu abia la
+      // finalul rularii: re-citim starea inainte de fiecare lot urmator.
+      const live = await svc.entities.OutreachCampaign.get(campaign.id).catch(() => null);
+      if (live && ADMIN_STOP_STATUSES.has(live.status)) { stoppedByAdmin = live.status; break; }
+    }
     const batchIds = ids.slice(cursor, cursor + BATCH_SIZE);
     const payloads = [];
     const meta = [];
