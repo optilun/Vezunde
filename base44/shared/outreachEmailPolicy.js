@@ -242,15 +242,69 @@ export function buildPreheader(bodyContent, explicit = '') {
   return text.slice(0, 140);
 }
 
+export const PROVIDER_TYPE_LABELS = {
+  optica_medicala: 'Optica medicala',
+  clinica_oftalmologica: 'Clinica oftalmologica',
+  cabinet_oftalmologic: 'Cabinet oftalmologic',
+  cabinet_optometric: 'Cabinet optometric',
+  laborator_optic: 'Laborator optic',
+  optometrist_independent: 'Optometrist',
+  medic_oftalmolog_independent: 'Medic oftalmolog',
+};
+
 const FONT_SANS = "'Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif";
 const FONT_DISPLAY = "'Fraunces',Georgia,'Times New Roman',serif";
 
-// Sablonul vizual al emailurilor de campanie. Respecta tokenii VIASEE din src/index.css: crem cald
-// (#f4f1ea), negru aproape pur (#121212), Fraunces pentru titluri, Manrope pentru text.
+// Paleta: crem/negru sunt tokenii VIASEE; accentul este un teal adanc (incredere clinica, nu
+// albastrul generic de spital), cu chihlimbar folosit O SINGURA data, pe eticheta care spune de ce
+// a fost trimis emailul. Doua accente, nu mai multe.
+const TEAL = '#0e5a57';
+const TEAL_LIGHT = '#16837a';
+const AMBER = '#e9a13b';
+const AMBER_INK = '#3a2606';
+
+// Blocul vizual al emailului: NU o ilustratie decorativa, ci fisa destinatarului asa cum apare in
+// directorul VIASEE, construita cu numele si orasul lui reale. E echivalentul capturii de produs
+// din emailurile bune de anunt — arata lucrul despre care vorbeste textul, nu o imagine oarecare.
+// Totul e HTML pe tabele: nicio imagine de gazduit, nimic de blocat de clientul de email.
+export function buildListingPreviewBlock(showcase = {}) {
+  if (!showcase || showcase.enabled === false) return '';
+  const name = escapeHtml(showcase.name || 'Optica dumneavoastra');
+  const typeLabel = escapeHtml(showcase.typeLabel || PROVIDER_TYPE_LABELS[showcase.providerType] || 'Furnizor listat');
+  const place = escapeHtml([showcase.city, showcase.county].filter(Boolean).join(', ') || 'Romania');
+  const chip = escapeHtml(showcase.chip || 'Profil nerevendicat');
+  const initial = escapeHtml((String(showcase.name || 'V').trim().charAt(0) || 'V').toUpperCase());
+
+  return '<tr><td style="padding:22px 32px 4px;" class="vs-pad">'
+    // Panoul colorat. bgcolor solid pentru Outlook, gradient peste el pentru restul clientilor.
+    + `<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="${TEAL}" style="background-color:${TEAL};background-image:linear-gradient(135deg,${TEAL} 0%,${TEAL_LIGHT} 100%);border-radius:14px;">`
+    + '<tr><td style="padding:26px 22px;">'
+    + `<p style="margin:0 0 14px;font-family:${FONT_SANS};font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#9fd6d0;">Asa arata fisa dumneavoastra</p>`
+
+    // Fisa alba, ca in rezultatele cautarii.
+    + '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#ffffff" style="background:#ffffff;border-radius:12px;">'
+    + '<tr><td style="padding:18px 18px 14px;">'
+    + '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
+    + `<td width="46" valign="top" style="width:46px;"><table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td align="center" valign="middle" bgcolor="${TEAL}" width="42" height="42" style="width:42px;height:42px;background:${TEAL};border-radius:50%;font-family:${FONT_DISPLAY};font-size:18px;font-weight:700;color:#ffffff;">${initial}</td></tr></table></td>`
+    + '<td valign="top" style="padding-left:12px;">'
+    + `<p style="margin:0 0 4px;font-family:${FONT_DISPLAY};font-size:17px;font-weight:700;line-height:1.3;color:#121212;">${name}</p>`
+    + `<p style="margin:0;font-family:${FONT_SANS};font-size:12px;line-height:1.5;color:#6b6b6b;">${typeLabel} &nbsp;&middot;&nbsp; ${place}</p>`
+    + '</td></tr></table>'
+    + '<div style="height:1px;background:#eee3d3;line-height:1px;font-size:0;margin:14px 0 12px;">&nbsp;</div>'
+    + '<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
+    + `<td bgcolor="${AMBER}" style="background:${AMBER};border-radius:999px;padding:5px 11px;font-family:${FONT_SANS};font-size:11px;font-weight:700;color:${AMBER_INK};">${chip}</td>`
+    + `<td style="padding-left:10px;font-family:${FONT_SANS};font-size:11px;color:#8a8a8a;">vizibil public pe viasee.ro</td>`
+    + '</tr></table>'
+    + '</td></tr></table>'
+
+    + '</td></tr></table>'
+    + '</td></tr>';
+}
+
+// Sablonul vizual al emailurilor de campanie. Respecta tokenii VIASEE din src/index.css.
 // Constrangeri de email (nu de web): layout pe tabele, CSS inline, fara flex/grid, buton
-// "bulletproof" pe tabel ca sa arate corect si in Outlook, fonturile Google au fallback real
-// pentru clientii care nu le incarca, si `color-scheme: light` ca sa nu fie inversat agresiv de
-// modul intunecat din Apple Mail/Outlook.
+// "bulletproof" pe tabel ca sa arate corect si in Outlook, fonturile Google au fallback real,
+// si `color-scheme: light` ca sa nu fie inversat agresiv de modul intunecat.
 export function buildEmailHtml(bodyContent, unsubscribeHtml, campaignSubject = 'VIASEE', options = {}) {
   const year = new Date().getFullYear();
   const legal = legalConfig();
@@ -258,11 +312,12 @@ export function buildEmailHtml(bodyContent, unsubscribeHtml, campaignSubject = '
   const ctaUrl = safeHttpUrl(options.ctaUrl);
   const ctaLabel = escapeHtml(options.ctaLabel || 'Vezi detalii');
   const preheader = escapeHtml(buildPreheader(bodyContent, options.preheader));
+  const previewBlock = options.showcase ? buildListingPreviewBlock(options.showcase) : '';
 
   const ctaBlock = ctaUrl
-    ? '<tr><td align="center" style="padding:10px 32px 4px;">'
+    ? '<tr><td align="center" style="padding:22px 32px 6px;">'
       + '<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"><tr>'
-      + '<td align="center" bgcolor="#121212" style="border-radius:999px;">'
+      + `<td align="center" bgcolor="${TEAL}" style="border-radius:999px;">`
       + `<a href="${ctaUrl}" style="display:inline-block;padding:15px 34px;font-family:${FONT_SANS};font-size:14px;font-weight:700;line-height:1;color:#ffffff;text-decoration:none;border-radius:999px;">${ctaLabel}</a>`
       + '</td></tr></table></td></tr>'
     : '';
@@ -276,7 +331,7 @@ export function buildEmailHtml(bodyContent, unsubscribeHtml, campaignSubject = '
     + '<style>'
     + 'a{color:#121212;}'
     + '@media only screen and (max-width:600px){'
-    + '.vs-pad{padding-left:22px!important;padding-right:22px!important;}'
+    + '.vs-pad{padding-left:20px!important;padding-right:20px!important;}'
     + '.vs-h1{font-size:22px!important;}'
     + '}'
     + '</style>'
@@ -286,24 +341,22 @@ export function buildEmailHtml(bodyContent, unsubscribeHtml, campaignSubject = '
     + '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background:#f4f1ea;padding:32px 14px;"><tr><td align="center">'
     + '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="max-width:620px;background:#ffffff;border:1px solid #e5ddd0;border-radius:16px;overflow:hidden;">'
 
-    // Masthead: banda neagra cu wordmark-ul, echivalentul benzii colorate din designul de referinta.
-    + '<tr><td bgcolor="#121212" style="background:#121212;padding:22px 32px;" class="vs-pad">'
-    + `<span style="font-family:${FONT_DISPLAY};font-size:17px;font-weight:700;letter-spacing:0.16em;color:#f4f1ea;text-transform:uppercase;">${escapeHtml(legal.brand)}</span>`
+    + `<tr><td bgcolor="${TEAL}" style="background:${TEAL};padding:22px 32px;" class="vs-pad">`
+    + `<span style="font-family:${FONT_DISPLAY};font-size:17px;font-weight:700;letter-spacing:0.16em;color:#ffffff;text-transform:uppercase;">${escapeHtml(legal.brand)}</span>`
     + '</td></tr>'
 
-    // Titlu: subiectul campaniei, in serif, ca deschidere editoriala.
     + '<tr><td style="padding:34px 32px 0;" class="vs-pad">'
     + `<h1 class="vs-h1" style="margin:0;font-family:${FONT_DISPLAY};font-size:27px;line-height:1.24;font-weight:700;color:#121212;">${subject}</h1>`
     + '</td></tr>'
 
     + `<tr><td style="padding:20px 32px 6px;" class="vs-pad"><div style="font-family:${FONT_SANS};font-size:15px;line-height:1.72;color:#2a2a2a;">${bodyContent}</div></td></tr>`
+    + previewBlock
     + ctaBlock
     + '<tr><td style="padding:26px 32px 0;" class="vs-pad"><div style="height:1px;background:#eee3d3;line-height:1px;font-size:0;">&nbsp;</div></td></tr>'
 
-    // Subsol legal: motivul trimiterii si dezabonarea raman obligatorii in fiecare email.
     + '<tr><td bgcolor="#faf8f3" style="background:#faf8f3;padding:22px 32px 26px;" class="vs-pad">'
     + `<p style="margin:0 0 8px;font-family:${FONT_SANS};color:#6b6b6b;font-size:12px;line-height:1.6;"><strong style="color:#121212;">${escapeHtml(legal.brand)}</strong> &mdash; director national pentru servicii de sanatate vizuala.</p>`
-    + `<p style="margin:0 0 10px;font-family:${FONT_SANS};color:#6b6b6b;font-size:12px;line-height:1.6;">Contact: <a href="mailto:${escapeHtml(legal.contactEmail)}" style="color:#121212;text-decoration:underline;">${escapeHtml(legal.contactEmail)}</a> &nbsp;&middot;&nbsp; <a href="${safeHttpUrl(legal.website) || '#'}" style="color:#121212;text-decoration:underline;">${escapeHtml(String(legal.website).replace(/^https?:\/\//, ''))}</a></p>`
+    + `<p style="margin:0 0 10px;font-family:${FONT_SANS};color:#6b6b6b;font-size:12px;line-height:1.6;">Contact: <a href="mailto:${escapeHtml(legal.contactEmail)}" style="color:${TEAL};text-decoration:underline;">${escapeHtml(legal.contactEmail)}</a> &nbsp;&middot;&nbsp; <a href="${safeHttpUrl(legal.website) || '#'}" style="color:${TEAL};text-decoration:underline;">${escapeHtml(String(legal.website).replace(/^https?:\/\//, ''))}</a></p>`
     + `<p style="margin:0 0 10px;font-family:${FONT_SANS};color:#8a8a8a;font-size:11px;line-height:1.55;">${escapeHtml(legal.reason)}</p>`
     + `<p style="margin:0;font-family:${FONT_SANS};color:#8a8a8a;font-size:11px;line-height:1.55;">${unsubscribeHtml}</p>`
     + `<p style="margin:12px 0 0;font-family:${FONT_SANS};color:#c2b8a3;font-size:10px;">&copy; ${year} ${escapeHtml(legal.legalCompany)}</p>`
