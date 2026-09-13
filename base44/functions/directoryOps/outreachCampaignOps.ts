@@ -249,7 +249,11 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
   };
   const cursor = Math.max(0, Number(payload.cursor) || 0);
 
-  const allLocations = await listAllLocationsWithEmail(svc);
+  // Numaram locatiile pe organizatie peste TOATE locatiile, nu doar cele cu email: un lant are
+  // 12 locatii chiar daca doar 3 publica o adresa de contact.
+  const everyLocation = await listAllLocations(svc);
+  const locationCounts = countLocationsByOrganization(everyLocation);
+  const allLocations = everyLocation.filter((row) => isValidEmail(row.public_email));
   const candidates = allLocations.filter((location) => locationMatchesSegment(location, filters));
   const chunk = candidates.slice(cursor, cursor + SYNC_CHUNK_SIZE);
 
@@ -269,18 +273,23 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
     const email = normalizeEmail(location.public_email);
     if (!email) { skipped++; continue; }
     const existing = byLocationId.get(location.id) || byNormalizedEmail.get(email);
+    const locationCount = location.organization_id ? (locationCounts.get(location.organization_id) || 1) : 1;
+    const autoTags = buildAutoTags(location, locationCount);
     const descriptive = {
       location_id: location.id,
       organization_id: location.organization_id || '',
       company_name: location.public_display_name || location.name || '',
       city: location.locality_name || location.city || '',
       county: location.county_name || location.county || '',
+      provider_type: location.provider_type || '',
+      profile_control_status: location.profile_control_status || 'directory',
+      organization_location_count: locationCount,
       email,
       normalized_email: email,
     };
 
     if (existing) {
-      const patch = { ...descriptive };
+      const patch = { ...descriptive, tags: mergeTags(existing.tags, autoTags) };
       // Nu suprascriem status/email_status/tags/consent_audit puse manual de admin.
       if (!existing.source_url && location.source_url) patch.source_url = location.source_url;
       if (!existing.collection_date && (location.collected_at || location.source_checked_at)) {
@@ -295,6 +304,7 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
     } else {
       const created_contact = await svc.entities.OutreachContact.create({
         ...descriptive,
+        tags: autoTags,
         status: 'new',
         email_status: 'active',
         source: 'public_directory',
@@ -316,6 +326,13 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
 
   const nextCursor = cursor + chunk.length;
   const hasMore = nextCursor < candidates.length;
+  // Distributia se calculeaza peste toti candidatii, nu doar peste lotul curent, ca numerele sa
+  // fie citibile ca imagine de ansamblu inca de la primul lot.
+  const breakdown = tallyTags(candidates.map((location) => buildAutoTags(
+    location,
+    location.organization_id ? (locationCounts.get(location.organization_id) || 1) : 1,
+  )));
+
   return Response.json({
     created,
     updated,
@@ -324,6 +341,7 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
     total_candidates: candidates.length,
     next_cursor: nextCursor,
     has_more: hasMore,
+    breakdown,
   });
 }
 
