@@ -266,7 +266,7 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
                 <p className="text-amber-700">{previewResult.contacts_missing_compliance_metadata} contacte nu au temei legal si provenienta complete — acestea sunt sarite la trimitere pana cand sunt completate.</p>
               )}
               <p>{previewResult.not_yet_materialized} locatii din director inca nu au fost materializate ca si contacte (vezi tab-ul Contacte).</p>
-              <p>{previewResult.contacts_suppressed} contacte suprimate (dezabonate/bounce/plangere), {previewResult.contacts_missing_compliance_metadata} fara metadate complete de conformitate.</p>
+              <p>{previewResult.contacts_suppressed} contacte suprimate (dezabonate/bounce/plangere).</p>
             </div>
           )}
 
