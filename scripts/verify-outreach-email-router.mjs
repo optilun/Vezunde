@@ -217,6 +217,24 @@ const buildHtmlBody = extractFunctionBody(policySource, /export function buildEm
 assert.match(buildHtmlBody, /escapeHtml\(campaignSubject/, 'Subiectul intra in HTML si trebuie escapat');
 assert.match(buildHtmlBody, /safeHttpUrl\(options\.ctaUrl\)/);
 
+// Blocul vizual din email e construit din date, nu dintr-o imagine gazduita: nimic de incarcat de
+// pe un server extern (ar fi blocat de clientii de email) si nimic de escapat nesigur.
+assert.match(policySource, /export function buildListingPreviewBlock\(/);
+const previewBody = extractFunctionBody(policySource, /export function buildListingPreviewBlock\(/);
+assert.doesNotMatch(previewBody, /<img/i, 'Blocul vizual nu trebuie sa depinda de imagini externe');
+for (const field of ['showcase.name', 'showcase.city', 'showcase.chip']) {
+  assert.ok(previewBody.includes(field), `Fisa din email trebuie sa foloseasca ${field} — datele reale ale destinatarului`);
+}
+assert.match(previewBody, /escapeHtml\(showcase\.name/, 'Numele firmei intra in HTML si trebuie escapat');
+// Fundalul colorat trebuie sa aiba si bgcolor solid: Outlook (motorul Word) nu randeaza gradiente.
+assert.match(previewBody, /bgcolor="\$\{TEAL\}"[^`]*background-image:linear-gradient/, 'Gradientul are nevoie de un bgcolor solid ca fallback pentru Outlook');
+
+// Fisa se construieste per destinatar, nu o data pe campanie.
+const sendPreviewIndex = sendOpsSource.indexOf('showcase:');
+assert.ok(sendPreviewIndex !== -1, 'Trimiterea trebuie sa alimenteze fisa din email');
+assert.match(sendOpsSource, /name: contact\.company_name/, 'Fisa trebuie construita din datele contactului curent');
+assert.match(sendOpsSource, /campaign\.show_listing_preview === false/, 'Fisa trebuie sa poata fi dezactivata per campanie');
+
 // --- Entitati: toate cele 5 raman admin-only (RLS) ------------------------------------------------
 for (const entityName of ['OutreachContact', 'OutreachCampaign', 'OutreachCampaignLog', 'OutreachSuppression', 'OutreachTemplate']) {
   const schema = JSON.parse(source(`base44/entities/${entityName}.jsonc`));
