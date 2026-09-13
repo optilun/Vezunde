@@ -1,15 +1,15 @@
 import {
   DIRECTORY_FUNCTION_ROUTES,
   invokeDirectoryFunction,
-} from '../../base44/shared/directoryFunctionRouting.js';
+} from '../../shared/directoryFunctionRouting.js';
 import {
   SERVICE_CONFIGURATION_FUNCTION_ROUTES,
   invokeServiceConfigurationFunction,
-} from '../../base44/shared/serviceConfigurationFunctionRouting.js';
+} from '../../shared/serviceConfigurationFunctionRouting.js';
 import {
   PROVIDER_WORKSPACE_FUNCTION_ROUTES,
   invokeProviderWorkspaceFunction,
-} from '../../base44/shared/providerWorkspaceFunctionRouting.js';
+} from '../../shared/providerWorkspaceFunctionRouting.js';
 import { getBase44LatestFunctionClient } from './base44LatestFunctionClient.js';
 
 // Trebuie sa fie identica cu DIRECTORY_IMPORT_RUNTIME_REVISION din
