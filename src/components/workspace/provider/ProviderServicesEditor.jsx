@@ -74,7 +74,7 @@ export default function ProviderServicesEditor(props) {
   const doneCount = steps.filter(step => step.done).length;
 
   useEffect(() => {
-    try { setReviewed(JSON.parse(localStorage.getItem(storageKey) || "{}")); } catch { setReviewed({}); }
+    try { const saved = JSON.parse(localStorage.getItem(storageKey) || "{}"); setReviewed(saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {}); } catch { setReviewed({}); }
     initialised.current = false;
   }, [storageKey]);
   useEffect(() => {
@@ -86,6 +86,7 @@ export default function ProviderServicesEditor(props) {
   useEffect(() => {
     if (unitIndex >= m.visibleUnits.length) setUnitIndex(0);
   }, [unitIndex, m.visibleUnits.length]);
+  useEffect(() => { props.onDirtyChange?.(m.dirty); }, [m.dirty, props.onDirtyChange]);
   useEffect(() => {
     if (!m.dirty) return;
     const warn = event => { event.preventDefault(); event.returnValue = ""; };
@@ -154,7 +155,7 @@ export default function ProviderServicesEditor(props) {
           <span className="services-editor__step-number">{step.done ? <Check /> : String(index + 1).padStart(2, "0")}</span>
           <span><strong>{step.title}</strong><small>{step.done ? "Revizuită · " : ""}{step.meta}</small></span>
         </button></li>)}</ol>
-        <p className="services-editor__progress-note">{doneCount} din {steps.length - 1} secțiuni revizuite pe acest dispozitiv. Numărul de servicii bifate nu reprezintă progresul.</p>
+        <p className="services-editor__progress-note">{doneCount} din {steps.length - 1} secțiuni revizuite pe acest dispozitiv. Poți reveni oricând la o secțiune.</p>
       </nav>
     </aside>
 
