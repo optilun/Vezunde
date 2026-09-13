@@ -45,11 +45,11 @@ export default function UnitResourcesPanel({ unitKey, config, disabled, links, a
   const resourceCount = professionalCount + equipmentCount + facilityCount;
   return (
     <div className="services-resources border-t border-border/60 bg-secondary/10">
-      <button type="button" onClick={() => setOpen((value) => !value)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left sm:px-5">
+      <button type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left sm:px-5">
         <span className="flex min-w-0 items-center gap-2">
           <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span className="min-w-0">
-            <span className="block text-xs font-semibold">Resurse asociate zonei</span>
+            <span className="block text-xs font-semibold">Specialiști, echipamente și facilități · opțional</span>
             <span className="mt-0.5 block text-[10px] text-muted-foreground">{resourceCount > 0 ? `${professionalCount} specialiști · ${equipmentCount} echipamente · ${facilityCount} facilități` : "Nicio resursă asociată încă"}</span>
           </span>
         </span>
