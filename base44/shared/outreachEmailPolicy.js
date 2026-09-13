@@ -253,20 +253,26 @@ export const PROVIDER_TYPE_LABELS = {
 };
 
 const FONT_SANS = "'Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif";
-const FONT_DISPLAY = "'Fraunces',Georgia,'Times New Roman',serif";
 
-// Paleta: crem/negru sunt tokenii VIASEE; accentul este un teal adanc (incredere clinica, nu
-// albastrul generic de spital), cu chihlimbar folosit O SINGURA data, pe eticheta care spune de ce
-// a fost trimis emailul. Doua accente, nu mai multe.
-const TEAL = '#0e5a57';
-const TEAL_LIGHT = '#16837a';
-const AMBER = '#e9a13b';
-const AMBER_INK = '#3a2606';
+// Paleta si tipografia sunt luate din designul real al site-ului (src/index.css + componentele din
+// src/components/home), nu inventate: negru #171717, crem #F8F4EC, cardurile pastel din
+// CategoryShowcase (lila #e8e0ea cu bordura #d4c6d8 — exact cardul "Medici si clinici", categoria
+// din care face parte destinatarul) si accentul albastru #345bc8 al iconitelor patrate.
+// Manrope, greutate 800, pentru titluri — ca in hero-ul "Spune ce cauti.". Fara serif, fara
+// culori din afara sistemului.
+const INK = '#171717';
+const CREAM = '#f8f4ec';
+const LILAC = '#e8e0ea';
+const LILAC_EDGE = '#d4c6d8';
+const BLUE = '#345bc8';
+const BLUE_EDGE = '#274bac';
+const WARM_GREY = '#6f6a63';
+const HAIRLINE = '#e5ded2';
 
-// Blocul vizual al emailului: NU o ilustratie decorativa, ci fisa destinatarului asa cum apare in
-// directorul VIASEE, construita cu numele si orasul lui reale. E echivalentul capturii de produs
-// din emailurile bune de anunt — arata lucrul despre care vorbeste textul, nu o imagine oarecare.
-// Totul e HTML pe tabele: nicio imagine de gazduit, nimic de blocat de clientul de email.
+// Panoul vizual: cardul de categorie al site-ului, adus in email. Are pastelul si bordura din
+// CategoryShowcase, iconita patrata albastra, si liniile subtiri/reperele "+" care dau aerul de
+// desen tehnic optic al ilustratiilor VIASEE. Construit din tabele si culori — nicio imagine de
+// gazduit, deci nimic de blocat de clientul de email si nimic care sa dispara cu imaginile oprite.
 export function buildListingPreviewBlock(showcase = {}) {
   if (!showcase || showcase.enabled === false) return '';
   const name = escapeHtml(showcase.name || 'Optica dumneavoastra');
@@ -274,26 +280,30 @@ export function buildListingPreviewBlock(showcase = {}) {
   const place = escapeHtml([showcase.city, showcase.county].filter(Boolean).join(', ') || 'Romania');
   const chip = escapeHtml(showcase.chip || 'Profil nerevendicat');
   const initial = escapeHtml((String(showcase.name || 'V').trim().charAt(0) || 'V').toUpperCase());
+  const tick = `<span style="color:${LILAC_EDGE};font-size:11px;line-height:1;">+</span>`;
 
-  return '<tr><td style="padding:22px 32px 4px;" class="vs-pad">'
-    // Panoul colorat. bgcolor solid pentru Outlook, gradient peste el pentru restul clientilor.
-    + `<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="${TEAL}" style="background-color:${TEAL};background-image:linear-gradient(135deg,${TEAL} 0%,${TEAL_LIGHT} 100%);border-radius:14px;">`
-    + '<tr><td style="padding:26px 22px;">'
-    + `<p style="margin:0 0 14px;font-family:${FONT_SANS};font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#9fd6d0;">Asa arata fisa dumneavoastra</p>`
+  return '<tr><td style="padding:26px 32px 2px;" class="vs-pad">'
+    + `<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="${LILAC}" style="background-color:${LILAC};background-image:repeating-linear-gradient(0deg,transparent,transparent 17px,rgba(23,23,23,0.045) 17px,rgba(23,23,23,0.045) 18px),repeating-linear-gradient(90deg,transparent,transparent 17px,rgba(23,23,23,0.045) 17px,rgba(23,23,23,0.045) 18px);border:1px solid ${LILAC_EDGE};border-radius:20px;">`
+    + '<tr><td style="padding:16px 18px 20px;">'
 
-    // Fisa alba, ca in rezultatele cautarii.
-    + '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#ffffff" style="background:#ffffff;border-radius:12px;">'
-    + '<tr><td style="padding:18px 18px 14px;">'
+    // Randul de reper, ca adnotarile din ilustratiile site-ului.
     + '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
-    + `<td width="46" valign="top" style="width:46px;"><table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td align="center" valign="middle" bgcolor="${TEAL}" width="42" height="42" style="width:42px;height:42px;background:${TEAL};border-radius:50%;font-family:${FONT_DISPLAY};font-size:18px;font-weight:700;color:#ffffff;">${initial}</td></tr></table></td>`
-    + '<td valign="top" style="padding-left:12px;">'
-    + `<p style="margin:0 0 4px;font-family:${FONT_DISPLAY};font-size:17px;font-weight:700;line-height:1.3;color:#121212;">${name}</p>`
-    + `<p style="margin:0;font-family:${FONT_SANS};font-size:12px;line-height:1.5;color:#6b6b6b;">${typeLabel} &nbsp;&middot;&nbsp; ${place}</p>`
+    + `<td align="left" style="font-family:${FONT_SANS};">${tick}</td>`
+    + `<td align="center" style="font-family:${FONT_SANS};font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:${WARM_GREY};">Fisa dumneavoastra in director</td>`
+    + `<td align="right" style="font-family:${FONT_SANS};">${tick}</td>`
+    + '</tr></table>'
+
+    + '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#ffffff" style="background:#ffffff;border:1px solid #ffffff;border-radius:16px;margin-top:12px;"><tr><td style="padding:18px;">'
+    + '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
+    + `<td width="52" valign="top" style="width:52px;"><table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td align="center" valign="middle" bgcolor="${BLUE}" width="44" height="44" style="width:44px;height:44px;background:${BLUE};border:1px solid ${BLUE_EDGE};border-radius:12px;font-family:${FONT_SANS};font-size:19px;font-weight:800;color:${CREAM};">${initial}</td></tr></table></td>`
+    + '<td valign="top" style="padding-left:13px;">'
+    + `<p style="margin:0 0 5px;font-family:${FONT_SANS};font-size:18px;font-weight:800;line-height:1.25;letter-spacing:-0.01em;color:${INK};">${name}</p>`
+    + `<p style="margin:0;font-family:${FONT_SANS};font-size:12px;line-height:1.5;color:${WARM_GREY};">${typeLabel} &nbsp;&middot;&nbsp; ${place}</p>`
     + '</td></tr></table>'
-    + '<div style="height:1px;background:#eee3d3;line-height:1px;font-size:0;margin:14px 0 12px;">&nbsp;</div>'
+    + `<div style="height:0;border-top:1px dashed ${LILAC_EDGE};font-size:0;line-height:0;margin:15px 0 13px;">&nbsp;</div>`
     + '<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
-    + `<td bgcolor="${AMBER}" style="background:${AMBER};border-radius:999px;padding:5px 11px;font-family:${FONT_SANS};font-size:11px;font-weight:700;color:${AMBER_INK};">${chip}</td>`
-    + `<td style="padding-left:10px;font-family:${FONT_SANS};font-size:11px;color:#8a8a8a;">vizibil public pe viasee.ro</td>`
+    + `<td bgcolor="${CREAM}" style="background:${CREAM};border:1px solid ${HAIRLINE};border-radius:999px;padding:5px 12px;font-family:${FONT_SANS};font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:${INK};">${chip}</td>`
+    + `<td style="padding-left:10px;font-family:${FONT_SANS};font-size:11px;color:${WARM_GREY};">vizibil public pe viasee.ro</td>`
     + '</tr></table>'
     + '</td></tr></table>'
 
@@ -301,10 +311,10 @@ export function buildListingPreviewBlock(showcase = {}) {
     + '</td></tr>';
 }
 
-// Sablonul vizual al emailurilor de campanie. Respecta tokenii VIASEE din src/index.css.
-// Constrangeri de email (nu de web): layout pe tabele, CSS inline, fara flex/grid, buton
-// "bulletproof" pe tabel ca sa arate corect si in Outlook, fonturile Google au fallback real,
-// si `color-scheme: light` ca sa nu fie inversat agresiv de modul intunecat.
+// Sablonul de email. Reia structura paginii VIASEE: bara neagra cu wordmark-ul, o eticheta mica
+// cu majuscule distantate (ca badge-ul din site), titlu greu si strans, apoi continutul.
+// Constrangeri de email: tabele, CSS inline, fara flex/grid, buton pe tabel pentru Outlook,
+// fonturi Google cu fallback real, `color-scheme: light` impotriva inversarii in modul intunecat.
 export function buildEmailHtml(bodyContent, unsubscribeHtml, campaignSubject = 'VIASEE', options = {}) {
   const year = new Date().getFullYear();
   const legal = legalConfig();
@@ -312,13 +322,14 @@ export function buildEmailHtml(bodyContent, unsubscribeHtml, campaignSubject = '
   const ctaUrl = safeHttpUrl(options.ctaUrl);
   const ctaLabel = escapeHtml(options.ctaLabel || 'Vezi detalii');
   const preheader = escapeHtml(buildPreheader(bodyContent, options.preheader));
+  const eyebrow = escapeHtml(options.eyebrow || 'Director national de sanatate vizuala');
   const previewBlock = options.showcase ? buildListingPreviewBlock(options.showcase) : '';
 
   const ctaBlock = ctaUrl
-    ? '<tr><td align="center" style="padding:22px 32px 6px;">'
+    ? '<tr><td align="center" style="padding:24px 32px 4px;">'
       + '<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"><tr>'
-      + `<td align="center" bgcolor="${TEAL}" style="border-radius:999px;">`
-      + `<a href="${ctaUrl}" style="display:inline-block;padding:15px 34px;font-family:${FONT_SANS};font-size:14px;font-weight:700;line-height:1;color:#ffffff;text-decoration:none;border-radius:999px;">${ctaLabel}</a>`
+      + `<td align="center" bgcolor="${INK}" style="border-radius:999px;">`
+      + `<a href="${ctaUrl}" style="display:inline-block;padding:16px 32px;font-family:${FONT_SANS};font-size:14px;font-weight:800;line-height:1;color:${CREAM};text-decoration:none;border-radius:999px;">${ctaLabel} &nbsp;&rarr;</a>`
       + '</td></tr></table></td></tr>'
     : '';
 
@@ -327,39 +338,42 @@ export function buildEmailHtml(bodyContent, unsubscribeHtml, campaignSubject = '
     + '<meta name="viewport" content="width=device-width,initial-scale=1"/>'
     + '<meta name="color-scheme" content="light"/><meta name="supported-color-schemes" content="light"/>'
     + `<title>${subject}</title>`
-    + '<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet"/>'
+    + '<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet"/>'
     + '<style>'
-    + 'a{color:#121212;}'
+    + `a{color:${INK};}`
     + '@media only screen and (max-width:600px){'
     + '.vs-pad{padding-left:20px!important;padding-right:20px!important;}'
-    + '.vs-h1{font-size:22px!important;}'
+    + '.vs-h1{font-size:24px!important;}'
     + '}'
     + '</style>'
     + '</head>'
-    + `<body style="margin:0;padding:0;background:#f4f1ea;font-family:${FONT_SANS};color:#121212;-webkit-font-smoothing:antialiased;">`
+    + `<body style="margin:0;padding:0;background:${CREAM};font-family:${FONT_SANS};color:${INK};-webkit-font-smoothing:antialiased;">`
     + `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;height:0;width:0;">${preheader}</div>`
-    + '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background:#f4f1ea;padding:32px 14px;"><tr><td align="center">'
-    + '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="max-width:620px;background:#ffffff;border:1px solid #e5ddd0;border-radius:16px;overflow:hidden;">'
+    + `<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background:${CREAM};padding:30px 14px;"><tr><td align="center">`
+    + `<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="max-width:620px;background:#ffffff;border:1px solid ${HAIRLINE};border-radius:22px;overflow:hidden;">`
 
-    + `<tr><td bgcolor="${TEAL}" style="background:${TEAL};padding:22px 32px;" class="vs-pad">`
-    + `<span style="font-family:${FONT_DISPLAY};font-size:17px;font-weight:700;letter-spacing:0.16em;color:#ffffff;text-transform:uppercase;">${escapeHtml(legal.brand)}</span>`
+    // Bara neagra de sus, ca headerul site-ului.
+    + `<tr><td bgcolor="${INK}" style="background:${INK};padding:20px 32px;" class="vs-pad">`
+    + `<span style="font-family:${FONT_SANS};font-size:16px;font-weight:800;letter-spacing:0.26em;color:#ffffff;text-transform:uppercase;">${escapeHtml(legal.brand)}</span>`
     + '</td></tr>'
 
-    + '<tr><td style="padding:34px 32px 0;" class="vs-pad">'
-    + `<h1 class="vs-h1" style="margin:0;font-family:${FONT_DISPLAY};font-size:27px;line-height:1.24;font-weight:700;color:#121212;">${subject}</h1>`
+    // Eticheta mica + titlu greu, ca in hero.
+    + '<tr><td style="padding:32px 32px 0;" class="vs-pad">'
+    + `<span style="display:inline-block;background:${CREAM};border:1px solid ${HAIRLINE};border-radius:999px;padding:5px 12px;font-family:${FONT_SANS};font-size:10px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:${WARM_GREY};">${eyebrow}</span>`
+    + `<h1 class="vs-h1" style="margin:16px 0 0;font-family:${FONT_SANS};font-size:30px;line-height:1.14;font-weight:800;letter-spacing:-0.025em;color:${INK};">${subject}</h1>`
     + '</td></tr>'
 
-    + `<tr><td style="padding:20px 32px 6px;" class="vs-pad"><div style="font-family:${FONT_SANS};font-size:15px;line-height:1.72;color:#2a2a2a;">${bodyContent}</div></td></tr>`
+    + `<tr><td style="padding:18px 32px 4px;" class="vs-pad"><div style="font-family:${FONT_SANS};font-size:15px;line-height:1.7;color:#3d3a35;">${bodyContent}</div></td></tr>`
     + previewBlock
     + ctaBlock
-    + '<tr><td style="padding:26px 32px 0;" class="vs-pad"><div style="height:1px;background:#eee3d3;line-height:1px;font-size:0;">&nbsp;</div></td></tr>'
+    + `<tr><td style="padding:28px 32px 0;" class="vs-pad"><div style="height:1px;background:${HAIRLINE};line-height:1px;font-size:0;">&nbsp;</div></td></tr>`
 
-    + '<tr><td bgcolor="#faf8f3" style="background:#faf8f3;padding:22px 32px 26px;" class="vs-pad">'
-    + `<p style="margin:0 0 8px;font-family:${FONT_SANS};color:#6b6b6b;font-size:12px;line-height:1.6;"><strong style="color:#121212;">${escapeHtml(legal.brand)}</strong> &mdash; director national pentru servicii de sanatate vizuala.</p>`
-    + `<p style="margin:0 0 10px;font-family:${FONT_SANS};color:#6b6b6b;font-size:12px;line-height:1.6;">Contact: <a href="mailto:${escapeHtml(legal.contactEmail)}" style="color:${TEAL};text-decoration:underline;">${escapeHtml(legal.contactEmail)}</a> &nbsp;&middot;&nbsp; <a href="${safeHttpUrl(legal.website) || '#'}" style="color:${TEAL};text-decoration:underline;">${escapeHtml(String(legal.website).replace(/^https?:\/\//, ''))}</a></p>`
-    + `<p style="margin:0 0 10px;font-family:${FONT_SANS};color:#8a8a8a;font-size:11px;line-height:1.55;">${escapeHtml(legal.reason)}</p>`
-    + `<p style="margin:0;font-family:${FONT_SANS};color:#8a8a8a;font-size:11px;line-height:1.55;">${unsubscribeHtml}</p>`
-    + `<p style="margin:12px 0 0;font-family:${FONT_SANS};color:#c2b8a3;font-size:10px;">&copy; ${year} ${escapeHtml(legal.legalCompany)}</p>`
+    + `<tr><td bgcolor="${CREAM}" style="background:${CREAM};padding:22px 32px 26px;" class="vs-pad">`
+    + `<p style="margin:0 0 8px;font-family:${FONT_SANS};color:${WARM_GREY};font-size:12px;line-height:1.6;"><strong style="color:${INK};">${escapeHtml(legal.brand)}</strong> &mdash; director national pentru servicii de sanatate vizuala.</p>`
+    + `<p style="margin:0 0 10px;font-family:${FONT_SANS};color:${WARM_GREY};font-size:12px;line-height:1.6;">Contact: <a href="mailto:${escapeHtml(legal.contactEmail)}" style="color:${INK};text-decoration:underline;">${escapeHtml(legal.contactEmail)}</a> &nbsp;&middot;&nbsp; <a href="${safeHttpUrl(legal.website) || '#'}" style="color:${INK};text-decoration:underline;">${escapeHtml(String(legal.website).replace(/^https?:\/\//, ''))}</a></p>`
+    + `<p style="margin:0 0 10px;font-family:${FONT_SANS};color:#8a857d;font-size:11px;line-height:1.55;">${escapeHtml(legal.reason)}</p>`
+    + `<p style="margin:0;font-family:${FONT_SANS};color:#8a857d;font-size:11px;line-height:1.55;">${unsubscribeHtml}</p>`
+    + `<p style="margin:12px 0 0;font-family:${FONT_SANS};color:#b8b0a3;font-size:10px;">&copy; ${year} ${escapeHtml(legal.legalCompany)}</p>`
     + '</td></tr>'
 
     + '</table></td></tr></table></body></html>';
