@@ -60,6 +60,58 @@ export default function OutreachContactsList() {
     });
   }, [contacts, search, statusFilter]);
 
+  // Distributia contactelor pe cele trei dimensiuni puse automat la materializare. Grupata pe
+  // prefix, ca sa se citeasca "ce tipuri am" / "cat de mari sunt retelele" dintr-o privire.
+  const TAG_GROUPS = [
+    { prefix: "tip:", title: "Dupa tip" },
+    { prefix: "retea:", title: "Dupa marimea retelei" },
+    { prefix: "profil:", title: "Dupa starea profilului" },
+  ];
+
+  const TAG_LABELS = {
+    "tip:optica": "Optica medicala",
+    "tip:clinica": "Clinica oftalmologica",
+    "tip:cabinet-oftalmologic": "Cabinet oftalmologic",
+    "tip:cabinet-optometric": "Cabinet optometric",
+    "tip:laborator": "Laborator optic",
+    "tip:optometrist": "Optometrist independent",
+    "tip:medic-oftalmolog": "Medic oftalmolog independent",
+    "tip:necunoscut": "Tip necompletat",
+    "retea:locatie-unica": "O singura locatie",
+    "retea:grup-mic": "Grup mic (2-4 locatii)",
+    "retea:lant": "Lant (5+ locatii)",
+    "profil:directory": "Nerevendicat",
+    "profil:claimed": "Revendicat",
+    "profil:verified": "Verificat",
+    "profil:suspended": "Suspendat",
+  };
+
+  function TagBreakdown({ breakdown }) {
+    return (
+      <div className="grid grid-cols-1 gap-3 rounded-lg bg-secondary/60 p-3 sm:grid-cols-3">
+        {TAG_GROUPS.map(({ prefix, title }) => {
+          const rows = Object.entries(breakdown)
+            .filter(([tag]) => tag.startsWith(prefix))
+            .sort((a, b) => b[1] - a[1]);
+          if (!rows.length) return null;
+          return (
+            <div key={prefix}>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
+              <ul className="mt-1 space-y-0.5">
+                {rows.map(([tag, count]) => (
+                  <li key={tag} className="flex items-baseline justify-between gap-3 text-xs text-foreground">
+                    <span>{TAG_LABELS[tag] || tag}</span>
+                    <span className="font-semibold tabular-nums">{count}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   const runSync = async () => {
     setSyncing(true);
     setSyncSummary(null);
@@ -83,7 +135,7 @@ export default function OutreachContactsList() {
         totals.skipped += data.skipped || 0;
         cursor = data.next_cursor || cursor;
         hasMore = !!data.has_more;
-        setSyncSummary({ ...totals, done: !hasMore });
+        setSyncSummary({ ...totals, done: !hasMore, breakdown: data.breakdown || null, total: data.total_candidates || 0 });
       }
     } catch (err) {
       setError(err.response?.data?.error || err.message);
@@ -114,10 +166,13 @@ export default function OutreachContactsList() {
           {syncing ? "Se sincronizeaza..." : "Sincronizeaza acum"}
         </button>
         {syncSummary && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            {syncSummary.created} create, {syncSummary.updated} actualizate, {syncSummary.skipped} sarite
-            {syncSummary.done ? " — finalizat." : " — in curs..."}
-          </p>
+          <div className="mt-2 space-y-2">
+            <p className="text-xs text-muted-foreground">
+              {syncSummary.created} create, {syncSummary.updated} actualizate, {syncSummary.skipped} sarite
+              {syncSummary.done ? ` — finalizat, ${syncSummary.total} locatii cu email in segment.` : " — in curs..."}
+            </p>
+            {syncSummary.breakdown && <TagBreakdown breakdown={syncSummary.breakdown} />}
+          </div>
         )}
       </div>
 
