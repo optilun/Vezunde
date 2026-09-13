@@ -271,6 +271,10 @@ const HAIRLINE = '#e5ded2';
 const BAND = '#e9ecf4'; // fallback solid pentru Outlook, care nu randeaza gradiente
 
 export const ARTWORK_URL = 'https://viasee.ro/email/viasee-cautare.jpg';
+// Logo-ul real al site-ului (public/brand/viasee-wordmark.svg), randat ca PNG: clientii de
+// email nu afiseaza SVG. Alt-ul ramane "VIASEE", stilizat ca wordmarkul, pentru cei care
+// au imaginile blocate implicit.
+export const LOGO_URL = 'https://viasee.ro/email/viasee-logo.png';
 
 // Blocul vizual: o singura imagine, ca in emailurile de anunt bine facute — nu un colaj incarcat.
 // Arata cautarea VIASEE cu destinatarul in rezultate. E gazduita pe viasee.ro pentru ca in email
@@ -331,7 +335,7 @@ export function buildEmailHtml(bodyContent, unsubscribeHtml, campaignSubject = '
 
     // Bara neagra de sus, ca headerul site-ului.
     + `<tr><td bgcolor="${BAND}" style="background-color:${BAND};background-image:linear-gradient(115deg,#dce4f2 0%,#e9ecf4 42%,#f3efe7 100%);padding:22px 32px;border-bottom:1px solid ${HAIRLINE};" class="vs-pad">`
-    + `<span style="font-family:${FONT_SANS};font-size:16px;font-weight:800;letter-spacing:0.26em;color:${INK};text-transform:uppercase;">${escapeHtml(legal.brand)}</span>`
+    + `<img src="${LOGO_URL}" alt="${escapeHtml(legal.brand)}" width="132" style="display:block;width:132px;max-width:132px;height:auto;border:0;font-family:${FONT_SANS};font-size:16px;font-weight:800;letter-spacing:0.26em;color:${INK};text-transform:uppercase;text-decoration:none;" />`
     + '</td></tr>'
 
     // Eticheta mica + titlu greu, ca in hero.
