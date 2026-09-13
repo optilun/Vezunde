@@ -14,6 +14,11 @@ export const SUPPRESSED_STATUSES = new Set(['unsubscribed', 'bounced', 'invalid'
 // Routing. Subdomeniul are SPF/DKIM proprii, deci reputatia campaniilor nu atinge nici mailul
 // tranzactional, nici casuta de contact. Raspunsurile merg spre contact@viasee.ro (reply_to).
 export const DEFAULT_FROM_EMAIL = 'contact@mail.viasee.ro';
+// Adresa afisata in email si folosita ca reply_to. NU e aceeasi cu expeditorul: de pe subdomeniul
+// de trimitere nu se citeste nimic, in timp ce contact@viasee.ro e casuta reala, livrata prin
+// Cloudflare Email Routing. Un footer care afiseaza adresa de trimitere ar invita raspunsuri intr-o
+// casuta pe care nu o citeste nimeni.
+export const DEFAULT_CONTACT_EMAIL = 'contact@viasee.ro';
 export const DEFAULT_FROM_NAME = 'VIASEE';
 export const DEFAULT_WEBSITE = 'https://viasee.ro';
 
@@ -208,8 +213,8 @@ export function legalConfig() {
   return {
     brand: Deno.env.get('OUTREACH_BRAND_NAME') || 'VIASEE',
     legalCompany: Deno.env.get('OUTREACH_LEGAL_COMPANY_NAME') || 'VIASEE',
-    contactEmail: Deno.env.get('OUTREACH_CONTACT_EMAIL') || DEFAULT_FROM_EMAIL,
-    unsubscribeMailto: Deno.env.get('OUTREACH_UNSUBSCRIBE_MAILTO') || Deno.env.get('OUTREACH_CONTACT_EMAIL') || '',
+    contactEmail: Deno.env.get('OUTREACH_CONTACT_EMAIL') || DEFAULT_CONTACT_EMAIL,
+    unsubscribeMailto: Deno.env.get('OUTREACH_UNSUBSCRIBE_MAILTO') || '',
     website: Deno.env.get('OUTREACH_WEBSITE') || DEFAULT_WEBSITE,
     reason: Deno.env.get('OUTREACH_REASON_TEXT')
       || 'Primesti acest email pentru ca adresa ta publica de contact apare in directorul national VIASEE, ca reprezentant al unei optici, clinici sau cabinet din domeniul sanatatii vizuale.',
