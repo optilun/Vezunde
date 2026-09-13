@@ -113,10 +113,22 @@
       "default": 0,
       "description": "Numarul destinatarilor eligibili calculat la crearea/aprobarea campaniei"
     },
+    "recipient_contact_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Lista inghetata de OutreachContact.id la momentul aprobarii; cursorul de trimitere (current_cursor) indexeaza exact in aceasta lista. Fara acest camp, trimiterea nu are destinatari si campania s-ar marca 'sent' fara sa fi trimis nimic."
+    },
     "current_cursor": {
       "type": "number",
       "default": 0,
       "description": "Pozitia in lista de destinatari pana unde s-a trimis (pentru trimitere pe loturi via cron)"
+    },
+    "consecutive_send_failures": {
+      "type": "number",
+      "default": 0,
+      "description": "Numarul de loturi consecutive esuate din cauze tranzitorii (rate limit, 5xx). Se reseteaza la primul lot reusit; peste plafon campania trece in 'failed' in loc sa reincerce la infinit."
     },
     "execution_lock_token": {
       "type": "string"
