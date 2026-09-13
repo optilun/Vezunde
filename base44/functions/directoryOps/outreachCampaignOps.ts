@@ -59,13 +59,30 @@ async function listAllContacts(svc) {
   return svc.entities.OutreachContact.list('-created_date', DEFAULT_LOCATION_LIST_LIMIT);
 }
 
+// O singura intrare per adresa de email. Doua locatii ale aceleiasi firme pot publica aceeasi
+// adresa de contact, deci lista bruta de contacte contine duplicate reale; daca le-am lasa, acelasi
+// om ar primi aceeasi campanie de mai multe ori si numarul din fraza de confirmare ar fi umflat.
+// La egalitate pastram intrarea cu metadatele de conformitate complete (temei legal + provenienta).
+function dedupeContactsByEmail(contacts) {
+  const byEmail = new Map();
+  for (const contact of contacts) {
+    const email = normalizeEmail(contact.normalized_email || contact.email);
+    if (!email) continue;
+    const existing = byEmail.get(email);
+    if (!existing) { byEmail.set(email, contact); continue; }
+    if (complianceMissing(existing).length > complianceMissing(contact).length) byEmail.set(email, contact);
+  }
+  return [...byEmail.values()];
+}
+
 async function eligibleContactsForSegment(svc, filters) {
   const contacts = await listAllContacts(svc);
-  return (contacts || []).filter((contact) => (
+  const matching = (contacts || []).filter((contact) => (
     isValidEmail(contact.normalized_email || contact.email)
     && !isContactSuppressed(contact)
     && contactMatchesTags(contact, filters)
   ));
+  return dedupeContactsByEmail(matching);
 }
 
 async function writeAudit(svc, user, { entityId, actionType, note, previous, next }) {
@@ -164,6 +181,9 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
   const existingContacts = await listAllContacts(svc);
   const byLocationId = new Map(existingContacts.filter((c) => c.location_id).map((c) => [c.location_id, c]));
   const byNormalizedEmail = new Map(existingContacts.map((c) => [normalizeEmail(c.normalized_email || c.email), c]));
+  // Ambele harti se actualizeaza si in timpul buclei de mai jos: doua locatii din ACELASI lot care
+  // publica aceeasi adresa nu se regasesc in harta initiala si, fara actualizare, ar crea doua
+  // contacte duplicate pentru aceeasi adresa.
 
   const now = new Date().toISOString();
   let created = 0;
@@ -193,10 +213,12 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
       }
       if (!existing.source_type) patch.source_type = location.source_type || 'public_directory';
       if (!existing.lawful_basis) patch.lawful_basis = 'legitimate_interest';
-      await svc.entities.OutreachContact.update(existing.id, patch);
+      const saved = await svc.entities.OutreachContact.update(existing.id, patch);
+      byNormalizedEmail.set(email, saved || existing);
+      byLocationId.set(location.id, saved || existing);
       updated++;
     } else {
-      await svc.entities.OutreachContact.create({
+      const created_contact = await svc.entities.OutreachContact.create({
         ...descriptive,
         status: 'new',
         email_status: 'active',
@@ -209,6 +231,10 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
         consent_audit: [{ at: now, source: 'sync_contacts_from_directory', action: 'created' }],
         last_status_change_at: now,
       });
+      if (created_contact) {
+        byNormalizedEmail.set(email, created_contact);
+        byLocationId.set(location.id, created_contact);
+      }
       created++;
     }
   }
