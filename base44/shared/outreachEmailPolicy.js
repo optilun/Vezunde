@@ -216,33 +216,103 @@ export function legalConfig() {
   };
 }
 
-export function buildEmailHtml(bodyContent, unsubscribeHtml, campaignSubject = 'VIASEE') {
-  const year = new Date().getFullYear();
-  const legal = legalConfig();
-  return '<!DOCTYPE html>'
-    + '<html lang="ro"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>'
-    + `<title>${campaignSubject}</title></head>`
-    + '<body style="margin:0;padding:0;background:#f4f1ea;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif;color:#121212;">'
-    + '<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f4f1ea;padding:28px 14px;"><tr><td align="center">'
-    + '<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width:620px;background:#ffffff;border:1px solid #e5ddd0;border-radius:14px;overflow:hidden;">'
-    + '<tr><td style="padding:28px 30px 18px;border-bottom:1px solid #eee3d3;">'
-    + `<span style="font-size:16px;font-weight:800;color:#121212;">${legal.brand}</span>`
-    + `<h1 style="margin:22px 0 0;font-size:24px;line-height:1.28;color:#121212;font-weight:800;">${campaignSubject}</h1>`
-    + '</td></tr>'
-    + `<tr><td style="padding:26px 30px 8px;"><div style="font-size:15px;line-height:1.72;color:#2a2a2a;">${bodyContent}</div></td></tr>`
-    + '<tr><td style="padding:20px 30px;background:#faf8f3;border-top:1px solid #eee3d3;text-align:left;">'
-    + `<p style="margin:0 0 8px;color:#6b6b6b;font-size:12px;"><strong>${legal.brand}</strong> — director national pentru servicii de sanatate vizuala.</p>`
-    + `<p style="margin:0 0 8px;color:#6b6b6b;font-size:12px;">Contact: <a href="mailto:${legal.contactEmail}" style="color:#121212;text-decoration:none;">${legal.contactEmail}</a> | <a href="${legal.website}" style="color:#121212;text-decoration:none;">${legal.website}</a></p>`
-    + `<p style="margin:0 0 8px;color:#8a8a8a;font-size:11px;line-height:1.5;">${legal.reason}</p>`
-    + `<p style="margin:0;color:#8a8a8a;font-size:11px;">${unsubscribeHtml}</p>`
-    + `<p style="margin:10px 0 0;color:#c2b8a3;font-size:10px;">&copy; ${year} ${legal.legalCompany}</p>`
-    + '</td></tr></table></td></tr></table></body></html>';
+export function escapeHtml(value = '') {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
-export function buildPlainText(bodyHtml, unsubscribeUrl) {
+// Linkurile din email accepta doar http/https: orice altceva (javascript:, data:) e aruncat.
+export function safeHttpUrl(value = '') {
+  const raw = String(value || '').trim();
+  if (!/^https?:\/\//i.test(raw)) return '';
+  return escapeHtml(raw);
+}
+
+// Textul de preview afisat de client langa subiect, in lista de mesaje. Ascuns in corpul emailului.
+export function buildPreheader(bodyContent, explicit = '') {
+  const text = String(explicit || stripHtml(bodyContent)).replace(/\s+/g, ' ').trim();
+  return text.slice(0, 140);
+}
+
+const FONT_SANS = "'Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif";
+const FONT_DISPLAY = "'Fraunces',Georgia,'Times New Roman',serif";
+
+// Sablonul vizual al emailurilor de campanie. Respecta tokenii VIASEE din src/index.css: crem cald
+// (#f4f1ea), negru aproape pur (#121212), Fraunces pentru titluri, Manrope pentru text.
+// Constrangeri de email (nu de web): layout pe tabele, CSS inline, fara flex/grid, buton
+// "bulletproof" pe tabel ca sa arate corect si in Outlook, fonturile Google au fallback real
+// pentru clientii care nu le incarca, si `color-scheme: light` ca sa nu fie inversat agresiv de
+// modul intunecat din Apple Mail/Outlook.
+export function buildEmailHtml(bodyContent, unsubscribeHtml, campaignSubject = 'VIASEE', options = {}) {
+  const year = new Date().getFullYear();
   const legal = legalConfig();
-  return [
-    stripHtml(bodyHtml),
+  const subject = escapeHtml(campaignSubject || legal.brand);
+  const ctaUrl = safeHttpUrl(options.ctaUrl);
+  const ctaLabel = escapeHtml(options.ctaLabel || 'Vezi detalii');
+  const preheader = escapeHtml(buildPreheader(bodyContent, options.preheader));
+
+  const ctaBlock = ctaUrl
+    ? '<tr><td align="center" style="padding:10px 32px 4px;">'
+      + '<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"><tr>'
+      + '<td align="center" bgcolor="#121212" style="border-radius:999px;">'
+      + `<a href="${ctaUrl}" style="display:inline-block;padding:15px 34px;font-family:${FONT_SANS};font-size:14px;font-weight:700;line-height:1;color:#ffffff;text-decoration:none;border-radius:999px;">${ctaLabel}</a>`
+      + '</td></tr></table></td></tr>'
+    : '';
+
+  return '<!DOCTYPE html>'
+    + '<html lang="ro"><head><meta charset="utf-8"/>'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1"/>'
+    + '<meta name="color-scheme" content="light"/><meta name="supported-color-schemes" content="light"/>'
+    + `<title>${subject}</title>`
+    + '<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet"/>'
+    + '<style>'
+    + 'a{color:#121212;}'
+    + '@media only screen and (max-width:600px){'
+    + '.vs-pad{padding-left:22px!important;padding-right:22px!important;}'
+    + '.vs-h1{font-size:22px!important;}'
+    + '}'
+    + '</style>'
+    + '</head>'
+    + `<body style="margin:0;padding:0;background:#f4f1ea;font-family:${FONT_SANS};color:#121212;-webkit-font-smoothing:antialiased;">`
+    + `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;height:0;width:0;">${preheader}</div>`
+    + '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background:#f4f1ea;padding:32px 14px;"><tr><td align="center">'
+    + '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="max-width:620px;background:#ffffff;border:1px solid #e5ddd0;border-radius:16px;overflow:hidden;">'
+
+    // Masthead: banda neagra cu wordmark-ul, echivalentul benzii colorate din designul de referinta.
+    + '<tr><td bgcolor="#121212" style="background:#121212;padding:22px 32px;" class="vs-pad">'
+    + `<span style="font-family:${FONT_DISPLAY};font-size:17px;font-weight:700;letter-spacing:0.16em;color:#f4f1ea;text-transform:uppercase;">${escapeHtml(legal.brand)}</span>`
+    + '</td></tr>'
+
+    // Titlu: subiectul campaniei, in serif, ca deschidere editoriala.
+    + '<tr><td style="padding:34px 32px 0;" class="vs-pad">'
+    + `<h1 class="vs-h1" style="margin:0;font-family:${FONT_DISPLAY};font-size:27px;line-height:1.24;font-weight:700;color:#121212;">${subject}</h1>`
+    + '</td></tr>'
+
+    + `<tr><td style="padding:20px 32px 6px;" class="vs-pad"><div style="font-family:${FONT_SANS};font-size:15px;line-height:1.72;color:#2a2a2a;">${bodyContent}</div></td></tr>`
+    + ctaBlock
+    + '<tr><td style="padding:26px 32px 0;" class="vs-pad"><div style="height:1px;background:#eee3d3;line-height:1px;font-size:0;">&nbsp;</div></td></tr>'
+
+    // Subsol legal: motivul trimiterii si dezabonarea raman obligatorii in fiecare email.
+    + '<tr><td bgcolor="#faf8f3" style="background:#faf8f3;padding:22px 32px 26px;" class="vs-pad">'
+    + `<p style="margin:0 0 8px;font-family:${FONT_SANS};color:#6b6b6b;font-size:12px;line-height:1.6;"><strong style="color:#121212;">${escapeHtml(legal.brand)}</strong> &mdash; director national pentru servicii de sanatate vizuala.</p>`
+    + `<p style="margin:0 0 10px;font-family:${FONT_SANS};color:#6b6b6b;font-size:12px;line-height:1.6;">Contact: <a href="mailto:${escapeHtml(legal.contactEmail)}" style="color:#121212;text-decoration:underline;">${escapeHtml(legal.contactEmail)}</a> &nbsp;&middot;&nbsp; <a href="${safeHttpUrl(legal.website) || '#'}" style="color:#121212;text-decoration:underline;">${escapeHtml(String(legal.website).replace(/^https?:\/\//, ''))}</a></p>`
+    + `<p style="margin:0 0 10px;font-family:${FONT_SANS};color:#8a8a8a;font-size:11px;line-height:1.55;">${escapeHtml(legal.reason)}</p>`
+    + `<p style="margin:0;font-family:${FONT_SANS};color:#8a8a8a;font-size:11px;line-height:1.55;">${unsubscribeHtml}</p>`
+    + `<p style="margin:12px 0 0;font-family:${FONT_SANS};color:#c2b8a3;font-size:10px;">&copy; ${year} ${escapeHtml(legal.legalCompany)}</p>`
+    + '</td></tr>'
+
+    + '</table></td></tr></table></body></html>';
+}
+
+export function buildPlainText(bodyHtml, unsubscribeUrl, options = {}) {
+  const legal = legalConfig();
+  const ctaUrl = String(options.ctaUrl || '').trim();
+  const lines = [stripHtml(bodyHtml)];
+  if (/^https?:\/\//i.test(ctaUrl)) lines.push('', `${options.ctaLabel || 'Vezi detalii'}: ${ctaUrl}`);
+  return lines.concat([
     '',
     '---',
     `${legal.brand}`,
@@ -250,7 +320,7 @@ export function buildPlainText(bodyHtml, unsubscribeUrl) {
     `Website: ${legal.website}`,
     `De ce primesti acest email: ${legal.reason}`,
     `Dezabonare: ${unsubscribeUrl}`,
-  ].join('\n');
+  ]).join('\n');
 }
 
 export function compactDetails(value) {
