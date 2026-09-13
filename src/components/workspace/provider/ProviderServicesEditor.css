@@ -190,6 +190,11 @@
 .services-editor .services-unit__explanations { display:flex; align-items:center; justify-content:center; gap:5px; padding:8px; border:1px solid transparent; border-radius:8px; min-height:40px; background:transparent; font-size:12px; }
 .services-editor .services-unit__explanations[aria-pressed="true"] { background:#eaece3; border-color:#ccd0c1; }
 .services-editor .services-unit__group-select { display:none; }
+.services-editor .services-unit__controls[data-many-groups="true"] .services-unit__groups { display:none; }
+.services-editor .services-unit__controls[data-many-groups="true"] .services-unit__group-select { display:grid; flex:1 1 320px; gap:5px; max-width:560px; min-width:0; }
+.services-editor .services-unit__group-select > span { color:var(--services-muted); font-size:11px; }
+.services-editor .services-unit__group-select select { width:100%; min-height:44px; padding:8px 10px; border:1px solid var(--services-border); border-radius:9px; background:#fff; font-size:12px; color:var(--services-text); }
+
 .services-editor .services-card--square { display:grid; grid-template-columns:32px minmax(0,1fr); align-content:start; column-gap:10px; row-gap:6px; }
 .services-editor .services-card--square .services-card__figure { grid-column:1; grid-row:1 / 4; width:32px; height:32px; }
 .services-editor .services-card--square .services-card__figure svg { width:32px; height:32px; }
@@ -233,3 +238,6 @@
   .services-editor__summary > strong { padding:0 8px; font-size:24px; }
   .services-editor .services-care-setting select { max-width:100%; }
 }
+
+/* Prevent the horizontal clipping wrapper from trapping sticky actions. */
+.workspace-neutral:has(.services-editor) { overflow-x:clip; overflow-y:visible; }

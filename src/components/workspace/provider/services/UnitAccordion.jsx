@@ -132,7 +132,7 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
             </div>
           )}
 
-          <div className="services-unit__controls">
+          <div className="services-unit__controls" data-many-groups={groupCount > 4}>
               {filter === "all" && groupCount > 1 && (
                 <nav className="services-unit__groups" aria-label="Grupurile zonei">
                   {visibleSections.map((section, index) => (
