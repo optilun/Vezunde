@@ -217,17 +217,39 @@ const buildHtmlBody = extractFunctionBody(policySource, /export function buildEm
 assert.match(buildHtmlBody, /escapeHtml\(campaignSubject/, 'Subiectul intra in HTML si trebuie escapat');
 assert.match(buildHtmlBody, /safeHttpUrl\(options\.ctaUrl\)/);
 
-// Blocul vizual din email e construit din date, nu dintr-o imagine gazduita: nimic de incarcat de
-// pe un server extern (ar fi blocat de clientii de email) si nimic de escapat nesigur.
+// Blocul vizual din email e o imagine gazduita de noi (public/email/viasee-cautare.jpg): clientii
+// de email nu randeaza SVG si nici data-URI, deci un <img> catre un URL https e singura varianta
+// care se vede la fel in Gmail, Outlook si Apple Mail.
 assert.match(policySource, /export function buildListingPreviewBlock\(/);
+assert.match(
+  policySource,
+  /export const ARTWORK_URL = 'https:\/\/viasee\.ro\/email\/[\w.-]+'/,
+  'Imaginea din email trebuie servita de pe viasee.ro, peste https',
+);
+assert.ok(
+  existsSync(path.join(root, 'public/email/viasee-cautare.jpg')),
+  'Fisierul imaginii trebuie sa existe in public/email, altfel emailurile trimit un <img> rupt',
+);
 const previewBody = extractFunctionBody(policySource, /export function buildListingPreviewBlock\(/);
-assert.doesNotMatch(previewBody, /<img/i, 'Blocul vizual nu trebuie sa depinda de imagini externe');
-for (const field of ['showcase.name', 'showcase.city', 'showcase.chip']) {
-  assert.ok(previewBody.includes(field), `Fisa din email trebuie sa foloseasca ${field} — datele reale ale destinatarului`);
-}
+assert.match(
+  previewBody,
+  /safeHttpUrl\(showcase\.artworkUrl \|\| ARTWORK_URL\)/,
+  'URL-ul imaginii trece prin safeHttpUrl: doar http/https, niciodata javascript: sau data:',
+);
+assert.match(previewBody, /if \(!url\) return '';/, 'Fara URL valid nu se emite un <img> rupt');
+assert.match(previewBody, /const alt = escapeHtml\(/, 'Textul alternativ contine numele firmei si trebuie escapat');
+assert.match(previewBody, /alt="\$\{alt\}"/, 'Imaginea are nevoie de alt: multi clienti blocheaza implicit imaginile');
 assert.match(previewBody, /escapeHtml\(showcase\.name/, 'Numele firmei intra in HTML si trebuie escapat');
-// Fundalul trebuie sa aiba si bgcolor solid: Outlook (motorul Word) nu randeaza gradiente.
-assert.match(previewBody, /bgcolor="\$\{LILAC\}"[^`]*background-image:repeating-linear-gradient/, 'Grila are nevoie de un bgcolor solid ca fallback pentru Outlook');
+assert.match(previewBody, /width="556"/, 'Outlook are nevoie de atributul width pe imagine, nu doar de CSS');
+assert.match(previewBody, /max-width:556px;height:auto/, 'Imaginea trebuie sa se scaleze pe telefon fara sa se deformeze');
+
+// Banda de sus reia gradientul din hero-ul site-ului. Outlook (motorul Word) nu randeaza
+// gradiente, deci are nevoie de un bgcolor solid dedesubt.
+assert.match(
+  buildHtmlBody,
+  /bgcolor="\$\{BAND\}"[^`]*background-image:linear-gradient/,
+  'Banda de sus are nevoie de un bgcolor solid ca fallback pentru Outlook',
+);
 
 // Culorile si tipografia vin din designul real al site-ului, nu inventate. Aceste valori sunt
 // citite direct din src/index.css si src/components/home/CategoryShowcase.jsx.
