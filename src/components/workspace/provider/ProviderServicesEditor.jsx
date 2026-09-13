@@ -133,7 +133,7 @@ export default function ProviderServicesEditor(props) {
   );
   const careChanged = m.careSetting !== m.approvedCareSetting;
   const resourcesChanged = stableSignature(m.resourceLinks) !== stableSignature(m.approvedResourceLinks);
-  const assignmentChanges = publicKeys.filter(key => (m.serviceUnitMap[key] || "") !== (m.config?.service_unit_map?.[key] || "") && (m.serviceUnitMap[key] || m.config?.service_unit_map?.[key]));
+  const assignmentChanges = publicKeys.filter(key => approvedPublicKeys.includes(key) && (m.serviceUnitMap[key] || "") !== (m.config?.service_unit_map?.[key] || "") && (m.serviceUnitMap[key] || m.config?.service_unit_map?.[key]));
   const totalChanges = serviceChanges.length + globalChanges.length + spaceChanges.length + casChanges.length + capabilityChanges.length + m.suggestions.length + m.rawRemovalKeys.length + Number(careChanged) + Number(resourcesChanged) + assignmentChanges.length;
   const hasChanges = hasWorkingCopy && totalChanges > 0;
   const status = getEditorStatus({ saving: m.saving, error: m.error, dirty: m.dirty, pendingReview: m.pendingReview, hasDraft: Boolean(m.draft), hasChanges, approvedCount: approvedPublicKeys.length });
