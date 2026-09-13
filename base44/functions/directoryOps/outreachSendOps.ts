@@ -209,6 +209,25 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
         skippedThisRun += 1;
         continue;
       }
+      if (seenEmails.has(email)) {
+        // Aceeasi adresa publica poate aparea pe mai multe locatii ale aceleiasi firme. Un singur
+        // email per adresa si per campanie: altfel acelasi destinatar ar primi acelasi mesaj de
+        // cateva ori, ceea ce se traduce direct in reclamatii de spam si reputatie pierduta.
+        await safeCampaignLog(svc, { campaign_id: campaign.id, contact_id: contact.id, email, normalized_email: email, status: 'duplicate', reason: 'duplicate_email_in_campaign' });
+        skippedThisRun += 1;
+        continue;
+      }
+      const missingCompliance = complianceMissing(contact);
+      if (missingCompliance.length) {
+        // Temeiul legal si provenienta sunt conditia in care trimitem acest tip de email. Un contact
+        // fara ele (adaugat manual, fara sursa) nu se trimite: se raporteaza, ca sa fie completat.
+        await safeCampaignLog(svc, {
+          campaign_id: campaign.id, contact_id: contact.id, email, normalized_email: email,
+          status: 'skipped', reason: `missing_compliance_metadata:${missingCompliance.join(',')}`,
+        });
+        skippedThisRun += 1;
+        continue;
+      }
 
       const unsub = await buildUnsubscribeUrls(email, campaign.id);
       const unsubHtml = `<a href="${unsub.publicUrl}" style="color:#6b6b6b;text-decoration:underline;">Dezaboneaza-te</a>`;
@@ -223,12 +242,10 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
         subject: campaign.subject,
         html: finalHtml,
         text: buildPlainText(bodyHtml, unsub.publicUrl),
-        headers: {
-          'List-Unsubscribe': `<${unsub.oneClickUrl}>`,
-          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-        },
+        headers: buildListUnsubscribeHeaders(unsub.oneClickUrl),
       });
       meta.push({ contact, email });
+      seenEmails.add(email);
     }
 
     if (payloads.length) {
