@@ -108,8 +108,11 @@
 .services-editor .services-group-card { width:100%; border:1px solid #deded4; border-radius:16px; overflow:hidden; box-shadow:0 6px 20px #24261704; background:#fff; margin:0; padding:0; }
 .services-editor .services-group-card__head { display:flex; align-items:center; gap:10px; padding:12px 16px; margin:0; background:#fff; border-bottom:1px solid #eeeee6; }
 .services-editor .services-group-card__title { flex:1; font-size:17px; line-height:1.35; font-weight:600; letter-spacing:-.02em; margin:0; }
-.services-editor .services-group-card__all { width:20px; height:20px; min-width:20px; min-height:20px; border:1px solid #b3b7aa; border-radius:5px; background:#fff; color:#252a20; flex-shrink:0; }
-.services-editor .services-group-card__all[aria-checked="true"],.services-editor .services-group-card__all[aria-checked="mixed"] { background:#272c22; color:#fff; }
+.services-editor .services-group-card__all { position:relative; display:grid; place-items:center; width:32px; height:32px; min-width:32px; min-height:32px; padding:0; border:0; background:transparent; color:#252a20; flex-shrink:0; }
+.services-editor .services-group-card__all::before { content:""; position:absolute; width:20px; height:20px; border:1px solid #b3b7aa; border-radius:5px; background:#fff; }
+.services-editor .services-group-card__all[aria-checked="true"],.services-editor .services-group-card__all[aria-checked="mixed"] { background:transparent; color:#fff; }
+.services-editor .services-group-card__all[aria-checked="true"]::before,.services-editor .services-group-card__all[aria-checked="mixed"]::before { background:#272c22; border-color:#272c22; }
+.services-editor .services-group-card__all svg { position:relative; z-index:1; width:14px; height:14px; }
 .services-editor .services-group-card__count { font-size:11px; color:#6b735f; white-space:nowrap; }
 .services-editor .services-group-card__rows { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px 10px; padding:12px; }
 .services-editor .services-group-card__rows .services-row { min-width:0; border:0; border-radius:8px; background:transparent; box-shadow:none; align-items:flex-start; }
@@ -241,3 +244,5 @@
 
 /* Prevent the horizontal clipping wrapper from trapping sticky actions. */
 .workspace-neutral:has(.services-editor) { overflow-x:clip; overflow-y:visible; }
+
+@media (max-width:580px) { .services-editor .services-unit__footer > .services-unit__toolbar-spacer { display:none; } .services-editor .services-group-card__all { width:44px; height:44px; min-width:44px; min-height:44px; } }
