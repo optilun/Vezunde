@@ -9,7 +9,7 @@
 // "Descrieri" (descrierile de catalog sunt ascunse implicit - de acolo venea cea mai
 // mare parte a textului de citit) si actiunile in masa pe toata zona.
 import React, { useEffect, useState } from "react";
-import { ArrowLeft, ArrowRight, ChevronDown, Eraser, ListChecks, Text } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, Eraser, ListChecks, Text, MoreHorizontal, Check } from "lucide-react";
 import { getFunctionalUnitDefinition } from "@/lib/providerLocationFunctionalUnits";
 import ServiceRow from "./ServiceRow";
 import GroupCard from "./GroupCard";
@@ -28,7 +28,7 @@ const ZONE_LEVEL_CAPABILITY_KEYS = {
   b2b_distribution_center: ["b2b_distribution", "b2b_logistics", "b2b_technical_support"],
 };
 
-export default function UnitAccordion({ unitKey, sections, selected, approvedSelected, reviewState = {}, serviceUnitMap, prerequisites, config, resourceLinks, approvedResourceLinks, customSuggestions, capabilities = [], approvedCapabilities = [], onToggleCapability, open, disabled, casServiceKeys = [], onToggleCas, onOpen, onToggleService, onSetSelection, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion, filter = "all", dataAttrs = {}, stepIndex = 0, stepMode = false, active = true, onGoToUnit, onChooseView, unitTitles = [] }) {
+export default function UnitAccordion({ unitKey, sections, selected, approvedSelected, reviewState = {}, serviceUnitMap, prerequisites, config, resourceLinks, approvedResourceLinks, customSuggestions, capabilities = [], approvedCapabilities = [], onToggleCapability, open, disabled, casServiceKeys = [], onToggleCas, onOpen, onToggleService, onSetSelection, onChangeSectionUnit, onToggleResource, onAddSuggestion, onRemoveSuggestion, filter = "all", dataAttrs = {}, stepIndex = 0, stepMode = false, active = true, onGoToUnit, onChooseView, unitTitles = [], onBeforeNext, dirty = false, saving = false, reviewedGroups = {}, groupFingerprints = {} }) {
   const definition = getFunctionalUnitDefinition(unitKey);
   const Icon = UNIT_ICONS[unitKey] || UNIT_FALLBACK_ICON;
   const selectedCount = sections.reduce((sum, section) => sum + selectedCountForSection(selected, section), 0);
@@ -88,7 +88,9 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
     if (safeGroupIndex > 0) { setGroupIndex(safeGroupIndex - 1); return; }
     if (stepMode && stepIndex > 0) onGoToUnit?.(stepIndex - 1);
   };
-  const goNext = () => {
+  const goNext = async () => {
+    if (saving) return;
+    if (onBeforeNext && await onBeforeNext(activeSection) !== true) return;
     if (nextSection) { setGroupIndex(safeGroupIndex + 1); return; }
     if (stepMode && nextUnitTitle) { onGoToUnit?.(stepIndex + 1); return; }
     onChooseView?.("selected");
@@ -97,7 +99,7 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
     ? `Continuă: ${nextSection.title}`
     : stepMode && nextUnitTitle
       ? `Continuă: ${nextUnitTitle}`
-      : "Vezi oferta selectată";
+      : onBeforeNext ? "Continuă la opțiunile locației" : "Vezi oferta selectată";
   const canGoBack = safeGroupIndex > 0 || (stepMode && stepIndex > 0);
   return (
     <section {...dataAttrs} data-services-step={showStepFooter ? "true" : "false"} className={`services-unit overflow-hidden rounded-[22px] border bg-card transition ${expanded ? "border-foreground/20 shadow-sm" : "border-border"}`}>
@@ -107,7 +109,7 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${UNIT_TONE[unitKey] ? "" : open ? "border-foreground/15 bg-secondary/55" : "border-border bg-background text-muted-foreground"}`}
           style={UNIT_TONE[unitKey] ? { background: UNIT_TONE[unitKey].bg, borderColor: UNIT_TONE[unitKey].border, color: UNIT_TONE[unitKey].text } : undefined}
         ><Icon className="h-4 w-4" /></span>
-        <span className="min-w-0 flex-1"><span className="services-unit__title block text-sm font-semibold sm:text-base">{definition?.title || unitKey}</span><span className="mt-0.5 block text-[11px] text-muted-foreground">{selectedCount} selectate din {total}</span></span>
+        <span className="min-w-0 flex-1"><span className="services-unit__title block text-sm font-semibold sm:text-base">{definition?.title || unitKey}</span><span className="mt-0.5 block text-[11px] text-muted-foreground">{selectedCount} servicii selectate</span></span>
         <ChevronDown className={`h-4 w-4 text-muted-foreground transition ${open ? "rotate-180" : ""}`} />
       </button>
       )}
@@ -132,8 +134,9 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
 
           {filter === "all" && total > 0 && (
             <div className="services-unit__toolbar">
-              <span className="services-unit__toolbar-count"><strong>{selectedCount}</strong> din {total} alese</span>
+              <span className="services-unit__toolbar-count"><strong>{selectedCount}</strong> servicii selectate</span>
               <span className="services-unit__toolbar-spacer" />
+              <details className="services-editor__bulk"><summary><MoreHorizontal aria-hidden="true" /> Acțiuni de selecție</summary><div>
               {missingItems.length > 0 ? (
                 <button type="button" disabled={disabled} onClick={() => onSetSelection?.(missingItems, unitKey, true)} className="services-unit__toolbar-button">
                   <ListChecks aria-hidden="true" /> Selectează toate ({missingItems.length})
@@ -145,8 +148,9 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
                 </button>
               )}
               <button type="button" aria-pressed={showDescriptions} onClick={() => setShowDescriptions((value) => !value)} className="services-unit__toolbar-button is-quiet">
-                <Text aria-hidden="true" /> Descrieri
+                <Text aria-hidden="true" /> Arată explicațiile
               </button>
+              </div></details>
             </div>
           )}
 
@@ -155,21 +159,22 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
               {/* Sirul grupurilor zonei: vezi tot ce urmeaza si sari direct unde vrei,
                   fara sa pierzi din ochi cate ai bifat in fiecare. */}
               {groupCount > 1 && (
-                <div className="services-unit__groups" role="tablist" aria-label="Grupurile zonei">
+                <nav className="services-unit__groups" aria-label="Grupurile zonei">
                   {visibleSections.map((section, index) => (
                     <button
                       key={section.key}
                       type="button"
-                      role="tab"
-                      aria-selected={index === safeGroupIndex}
+                      aria-current={index === safeGroupIndex ? "step" : undefined}
+                      disabled={saving}
                       onClick={() => setGroupIndex(index)}
                       className="services-unit__group-chip"
                     >
                       <span>{section.title}</span>
-                      <em>{selectedCountForSection(selected, section)}/{section.items.length}</em>
+                      <em>{selectedCountForSection(selected, section)} alese</em>
+                      {reviewedGroups[unitKey + ":" + section.key] === groupFingerprints[unitKey + ":" + section.key] && groupFingerprints[unitKey + ":" + section.key] && <Check aria-label="Grup revizuit" />}
                     </button>
                   ))}
-                </div>
+                </nav>
               )}
 
               {activeSection && (() => {
@@ -260,12 +265,12 @@ export default function UnitAccordion({ unitKey, sections, selected, approvedSel
               </span>
               <span className="services-unit__toolbar-spacer" />
               {canGoBack && (
-                <button type="button" onClick={goBack} className="services-unit__footer-back">
+                <button type="button" disabled={saving} onClick={goBack} className="services-unit__footer-back">
                   <ArrowLeft aria-hidden="true" /> Înapoi
                 </button>
               )}
-              <button type="button" onClick={goNext} className="services-unit__footer-next">
-                <span>{nextLabel}</span> <ArrowRight aria-hidden="true" />
+              <button type="button" disabled={saving} onClick={goNext} className="services-unit__footer-next">
+                <span>{saving ? "Se salvează…" : dirty && onBeforeNext ? "Salvează și continuă" : nextLabel}</span> <ArrowRight aria-hidden="true" />
               </button>
             </div>
           )}
