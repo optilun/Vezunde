@@ -149,6 +149,30 @@ assert.match(campaignOpsSource, /campaign\.status !== 'draft'/, 'Editarea unei c
 assert.match(campaignOpsSource, /lawful_basis: 'legitimate_interest'/);
 assert.match(campaignOpsSource, /source_url: location\.source_url/);
 
+// Filtrele campaniei (judet / tip / stare profil) trebuie aplicate pe CONTACTE cand se calculeaza
+// lista de destinatari. Cand se filtra doar dupa tag-uri, o campanie tintita pe un judet pleca
+// catre toata tara, fara niciun semn in interfata.
+assert.match(campaignOpsSource, /function contactMatchesSegment\(/);
+const eligibleBody = extractFunctionBody(campaignOpsSource, /async function eligibleContactsForSegment\(/);
+assert.match(eligibleBody, /contactMatchesSegment\(contact, filters\)/, 'Lista de destinatari trebuie filtrata pe segmentul complet, nu doar pe tag-uri');
+for (const field of ['counties.includes(contact.county)', 'providerTypes.includes(contact.provider_type)', 'controlStatuses.includes(contact.profile_control_status']) {
+  assert.ok(campaignOpsSource.includes(field), `contactMatchesSegment trebuie sa filtreze si dupa ${field}`);
+}
+
+// Clasificarea automata a contactelor materializate (tip / marime retea / stare profil).
+assert.match(campaignOpsSource, /const PROVIDER_TYPE_TAGS = \{/);
+for (const providerType of ['optica_medicala', 'clinica_oftalmologica', 'cabinet_oftalmologic', 'cabinet_optometric', 'laborator_optic', 'optometrist_independent', 'medic_oftalmolog_independent']) {
+  assert.match(campaignOpsSource, new RegExp(`${providerType}:`), `Lipseste tag-ul automat pentru provider_type ${providerType}`);
+}
+assert.match(campaignOpsSource, /function networkTag\(/);
+assert.match(campaignOpsSource, /function mergeTags\(/);
+assert.match(campaignOpsSource, /AUTO_TAG_PREFIXES/, 'Tag-urile automate trebuie sa aiba prefixe rezervate, ca sa nu stearga tag-urile puse manual');
+const syncBody = extractFunctionBody(campaignOpsSource, /async function actionSyncContactsFromDirectory\(/);
+assert.match(syncBody, /provider_type: location\.provider_type/, 'Contactul trebuie sa poarte tipul locatiei, ca segmentarea sa functioneze');
+assert.match(syncBody, /profile_control_status: location\.profile_control_status/);
+assert.match(syncBody, /tags: mergeTags\(existing\.tags, autoTags\)/, 'La resincronizare tag-urile manuale nu trebuie pierdute');
+assert.match(syncBody, /countLocationsByOrganization|locationCounts/, 'Marimea retelei se calculeaza peste toate locatiile organizatiei');
+
 // --- outreachEmailPolicy.js: functiile pure necesare exista si nu ating Base44 direct -------------
 const policySource = source('base44/shared/outreachEmailPolicy.js');
 for (const fnName of [
@@ -175,6 +199,23 @@ for (const field of ['recipient_contact_ids', 'current_cursor', 'consecutive_sen
   assert.ok(campaignSchema.properties?.[field], `OutreachCampaign.${field} trebuie declarat in schema: codul de trimitere depinde de el`);
 }
 assert.equal(campaignSchema.properties.recipient_contact_ids.type, 'array');
+for (const field of ['cta_label', 'cta_url']) {
+  assert.ok(campaignSchema.properties?.[field], `OutreachCampaign.${field} trebuie declarat: sablonul de email randeaza butonul din el`);
+}
+
+// Campurile pe care se face segmentarea trebuie sa existe pe contact, altfel filtrele tac.
+const contactSchema = JSON.parse(source('base44/entities/OutreachContact.jsonc'));
+for (const field of ['provider_type', 'profile_control_status', 'organization_location_count', 'tags', 'county']) {
+  assert.ok(contactSchema.properties?.[field], `OutreachContact.${field} trebuie declarat: segmentarea campaniilor filtreaza pe el`);
+}
+
+// Sablonul de email: continutul dinamic e escapat, iar linkul butonului accepta doar http/https.
+assert.match(policySource, /export function escapeHtml\(/);
+assert.match(policySource, /export function safeHttpUrl\(/);
+assert.match(policySource, /\^https\?:/, 'safeHttpUrl trebuie sa respinga alte scheme decat http/https');
+const buildHtmlBody = extractFunctionBody(policySource, /export function buildEmailHtml\(/);
+assert.match(buildHtmlBody, /escapeHtml\(campaignSubject/, 'Subiectul intra in HTML si trebuie escapat');
+assert.match(buildHtmlBody, /safeHttpUrl\(options\.ctaUrl\)/);
 
 // --- Entitati: toate cele 5 raman admin-only (RLS) ------------------------------------------------
 for (const entityName of ['OutreachContact', 'OutreachCampaign', 'OutreachCampaignLog', 'OutreachSuppression', 'OutreachTemplate']) {
