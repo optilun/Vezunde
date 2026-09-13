@@ -61,6 +61,8 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
   const [approvalPreview, setApprovalPreview] = useState(null);
   const [confirmationText, setConfirmationText] = useState("");
 
+  const [templates, setTemplates] = useState([]);
+
   const [testEmail, setTestEmail] = useState("");
   const [testStatus, setTestStatus] = useState("");
 
@@ -73,6 +75,7 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
     setCampaign(data.campaign);
     setLogs(data.logs || []);
     setEditDraft({
+      template_id: data.campaign.template_id || "",
       subject: data.campaign.subject || "",
       body_html: data.campaign.body_html || "",
       cta_label: data.campaign.cta_label || "",
@@ -89,6 +92,27 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
   };
 
   useEffect(() => { load(); }, [campaignId]);
+
+  useEffect(() => {
+    let active = true;
+    callOutreach("outreachCampaignOps", "list_templates").then((data) => {
+      if (active && Array.isArray(data.templates)) setTemplates(data.templates);
+    });
+    return () => { active = false; };
+  }, []);
+
+  // Sablonul doar PRECOMPLETEAZA ciorna: textul ramane editabil aici, iar campania
+  // pastreaza propria copie. Modificarea ulterioara a sablonului nu schimba campaniile.
+  const applyTemplate = (templateId) => {
+    const template = templates.find((item) => item.id === templateId);
+    if (!template) return;
+    setEditDraft((d) => ({
+      ...d,
+      template_id: template.id,
+      subject: template.subject || d.subject,
+      body_html: template.body || d.body_html,
+    }));
+  };
 
   const saveEdits = async () => {
     setBusy(true);
@@ -228,6 +252,22 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
       {isDraft && editDraft && (
         <div className="space-y-4 rounded-2xl border border-border p-5">
           <h3 className="text-sm font-bold text-foreground">Editeaza campania (ciorna)</h3>
+          {templates.length > 0 && (
+            <label className="block">
+              <span className="text-xs font-semibold text-foreground">Porneste de la un sablon</span>
+              <select
+                value={editDraft.template_id || ""}
+                onChange={(e) => applyTemplate(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm"
+              >
+                <option value="">Alege un sablon…</option>
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>{template.name}</option>
+                ))}
+              </select>
+              <span className="mt-1 block text-[11px] text-muted-foreground">Completeaza subiectul si continutul. Dupa aceea le poti edita aici fara sa modifici sablonul.</span>
+            </label>
+          )}
           <label className="block">
             <span className="text-xs font-semibold text-foreground">Subiect</span>
             <input type="text" value={editDraft.subject} onChange={(e) => setEditDraft((d) => ({ ...d, subject: e.target.value }))} className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm" />
