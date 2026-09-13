@@ -11,7 +11,6 @@ import DependencyRemovalDialog from "./services/DependencyRemovalDialog";
 import LegacyServices from "./services/LegacyServices";
 import { isSelected, selectedServiceKeys, serviceLabel } from "./services/servicesConfigModel";
 import { getEditorStatus, reviewFingerprint, saveBeforeContinuing, selectionChanges, stableSignature } from "./services/servicesEditorModel";
-import "./ProviderServicesEditor.css";
 
 const unitLabel = key => getFunctionalUnitDefinition(key)?.shortTitle || getFunctionalUnitDefinition(key)?.title || key;
 
