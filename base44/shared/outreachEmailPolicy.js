@@ -268,46 +268,23 @@ const BLUE = '#345bc8';
 const BLUE_EDGE = '#274bac';
 const WARM_GREY = '#6f6a63';
 const HAIRLINE = '#e5ded2';
+const BAND = '#e9ecf4'; // fallback solid pentru Outlook, care nu randeaza gradiente
 
-// Panoul vizual: cardul de categorie al site-ului, adus in email. Are pastelul si bordura din
-// CategoryShowcase, iconita patrata albastra, si liniile subtiri/reperele "+" care dau aerul de
-// desen tehnic optic al ilustratiilor VIASEE. Construit din tabele si culori — nicio imagine de
-// gazduit, deci nimic de blocat de clientul de email si nimic care sa dispara cu imaginile oprite.
+export const ARTWORK_URL = 'https://viasee.ro/email/viasee-cautare.jpg';
+
+// Blocul vizual: o singura imagine, ca in emailurile de anunt bine facute — nu un colaj incarcat.
+// Arata cautarea VIASEE cu destinatarul in rezultate. E gazduita pe viasee.ro pentru ca in email
+// nu merg nici SVG-urile, nici imaginile incorporate. Textul alternativ poarta numele
+// destinatarului, ca emailul sa spuna acelasi lucru si cu imaginile blocate.
 export function buildListingPreviewBlock(showcase = {}) {
   if (!showcase || showcase.enabled === false) return '';
   const name = escapeHtml(showcase.name || 'Optica dumneavoastra');
-  const typeLabel = escapeHtml(showcase.typeLabel || PROVIDER_TYPE_LABELS[showcase.providerType] || 'Furnizor listat');
-  const place = escapeHtml([showcase.city, showcase.county].filter(Boolean).join(', ') || 'Romania');
-  const chip = escapeHtml(showcase.chip || 'Profil nerevendicat');
-  const initial = escapeHtml((String(showcase.name || 'V').trim().charAt(0) || 'V').toUpperCase());
-  const tick = `<span style="color:${LILAC_EDGE};font-size:11px;line-height:1;">+</span>`;
-
+  const url = safeHttpUrl(showcase.artworkUrl || ARTWORK_URL);
+  if (!url) return '';
+  const alt = escapeHtml(`${showcase.name || 'Profilul dumneavoastra'} apare in rezultatele cautarii pe VIASEE`);
   return '<tr><td style="padding:26px 32px 2px;" class="vs-pad">'
-    + `<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="${LILAC}" style="background-color:${LILAC};background-image:repeating-linear-gradient(0deg,transparent,transparent 17px,rgba(23,23,23,0.045) 17px,rgba(23,23,23,0.045) 18px),repeating-linear-gradient(90deg,transparent,transparent 17px,rgba(23,23,23,0.045) 17px,rgba(23,23,23,0.045) 18px);border:1px solid ${LILAC_EDGE};border-radius:20px;">`
-    + '<tr><td style="padding:16px 18px 20px;">'
-
-    // Randul de reper, ca adnotarile din ilustratiile site-ului.
-    + '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
-    + `<td align="left" style="font-family:${FONT_SANS};">${tick}</td>`
-    + `<td align="center" style="font-family:${FONT_SANS};font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:${WARM_GREY};">Fisa dumneavoastra in director</td>`
-    + `<td align="right" style="font-family:${FONT_SANS};">${tick}</td>`
-    + '</tr></table>'
-
-    + '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#ffffff" style="background:#ffffff;border:1px solid #ffffff;border-radius:16px;margin-top:12px;"><tr><td style="padding:18px;">'
-    + '<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
-    + `<td width="52" valign="top" style="width:52px;"><table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr><td align="center" valign="middle" bgcolor="${BLUE}" width="44" height="44" style="width:44px;height:44px;background:${BLUE};border:1px solid ${BLUE_EDGE};border-radius:12px;font-family:${FONT_SANS};font-size:19px;font-weight:800;color:${CREAM};">${initial}</td></tr></table></td>`
-    + '<td valign="top" style="padding-left:13px;">'
-    + `<p style="margin:0 0 5px;font-family:${FONT_SANS};font-size:18px;font-weight:800;line-height:1.25;letter-spacing:-0.01em;color:${INK};">${name}</p>`
-    + `<p style="margin:0;font-family:${FONT_SANS};font-size:12px;line-height:1.5;color:${WARM_GREY};">${typeLabel} &nbsp;&middot;&nbsp; ${place}</p>`
-    + '</td></tr></table>'
-    + `<div style="height:0;border-top:1px dashed ${LILAC_EDGE};font-size:0;line-height:0;margin:15px 0 13px;">&nbsp;</div>`
-    + '<table cellpadding="0" cellspacing="0" border="0" role="presentation"><tr>'
-    + `<td bgcolor="${CREAM}" style="background:${CREAM};border:1px solid ${HAIRLINE};border-radius:999px;padding:5px 12px;font-family:${FONT_SANS};font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:${INK};">${chip}</td>`
-    + `<td style="padding-left:10px;font-family:${FONT_SANS};font-size:11px;color:${WARM_GREY};">vizibil public pe viasee.ro</td>`
-    + '</tr></table>'
-    + '</td></tr></table>'
-
-    + '</td></tr></table>'
+    + `<img src="${url}" alt="${alt}" width="556" style="display:block;width:100%;max-width:556px;height:auto;border:0;border-radius:18px;" />`
+    + `<p style="margin:10px 2px 0;font-family:${FONT_SANS};font-size:11.5px;line-height:1.5;color:${WARM_GREY};">${name} \u2014 asa apare profilul dumneavoastra cand cineva cauta in zona.</p>`
     + '</td></tr>';
 }
 
@@ -353,8 +330,8 @@ export function buildEmailHtml(bodyContent, unsubscribeHtml, campaignSubject = '
     + `<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="max-width:620px;background:#ffffff;border:1px solid ${HAIRLINE};border-radius:22px;overflow:hidden;">`
 
     // Bara neagra de sus, ca headerul site-ului.
-    + `<tr><td bgcolor="${INK}" style="background:${INK};padding:20px 32px;" class="vs-pad">`
-    + `<span style="font-family:${FONT_SANS};font-size:16px;font-weight:800;letter-spacing:0.26em;color:#ffffff;text-transform:uppercase;">${escapeHtml(legal.brand)}</span>`
+    + `<tr><td bgcolor="${BAND}" style="background-color:${BAND};background-image:linear-gradient(115deg,#dce4f2 0%,#e9ecf4 42%,#f3efe7 100%);padding:22px 32px;border-bottom:1px solid ${HAIRLINE};" class="vs-pad">`
+    + `<span style="font-family:${FONT_SANS};font-size:16px;font-weight:800;letter-spacing:0.26em;color:${INK};text-transform:uppercase;">${escapeHtml(legal.brand)}</span>`
     + '</td></tr>'
 
     // Eticheta mica + titlu greu, ca in hero.
