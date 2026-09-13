@@ -237,7 +237,8 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
       const unsubHtml = `<a href="${unsub.publicUrl}" style="color:#6b6b6b;text-decoration:underline;">Dezaboneaza-te</a>`;
       let bodyHtml = textToHtml(campaign.body_html || '');
       bodyHtml = renderTemplateMergeFields(bodyHtml, contact).replace(/\[UNSUBSCRIBE_LINK\]/g, unsubHtml);
-      const finalHtml = buildEmailHtml(bodyHtml, unsubHtml, campaign.subject || 'VIASEE');
+      const ctaOptions = { ctaLabel: campaign.cta_label, ctaUrl: campaign.cta_url };
+      const finalHtml = buildEmailHtml(bodyHtml, unsubHtml, campaign.subject || 'VIASEE', ctaOptions);
 
       payloads.push({
         from: `${campaign.from_name || 'VIASEE'} <${sender.email}>`,
@@ -245,7 +246,7 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
         reply_to: [campaign.reply_to_email || legalConfig().contactEmail],
         subject: campaign.subject,
         html: finalHtml,
-        text: buildPlainText(bodyHtml, unsub.publicUrl),
+        text: buildPlainText(bodyHtml, unsub.publicUrl, ctaOptions),
         headers: buildListUnsubscribeHeaders(unsub.oneClickUrl),
       });
       meta.push({ contact, email });
@@ -373,7 +374,8 @@ async function actionSendTestEmail(svc, payload) {
   const unsubHtml = `<a href="${unsub.publicUrl}" style="color:#6b6b6b;text-decoration:underline;">Dezaboneaza-te</a>`;
   let bodyHtml = textToHtml(campaign.body_html || '');
   bodyHtml = renderTemplateMergeFields(bodyHtml, { company_name: 'Firma Test', city: 'Bucuresti', county: 'Bucuresti' }).replace(/\[UNSUBSCRIBE_LINK\]/g, unsubHtml);
-  const finalHtml = buildEmailHtml(bodyHtml, unsubHtml, `[TEST] ${campaign.subject || 'VIASEE'}`);
+  const testCtaOptions = { ctaLabel: campaign.cta_label, ctaUrl: campaign.cta_url };
+  const finalHtml = buildEmailHtml(bodyHtml, unsubHtml, `[TEST] ${campaign.subject || 'VIASEE'}`, testCtaOptions);
 
   const result = await sendViaResend(resendApiKey, {
     from: `${campaign.from_name || 'VIASEE'} <${sender.email}>`,
@@ -381,7 +383,7 @@ async function actionSendTestEmail(svc, payload) {
     reply_to: [campaign.reply_to_email || legalConfig().contactEmail],
     subject: `[TEST] ${campaign.subject || 'VIASEE'}`,
     html: finalHtml,
-    text: buildPlainText(bodyHtml, unsub.publicUrl),
+    text: buildPlainText(bodyHtml, unsub.publicUrl, testCtaOptions),
     // Aceleasi antete ca la trimiterea reala: un test trebuie sa arate exact ca emailul livrat,
     // inclusiv butonul de dezabonare afisat de Gmail/Outlook langa numele expeditorului.
     headers: buildListUnsubscribeHeaders(unsub.oneClickUrl),
