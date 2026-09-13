@@ -290,7 +290,8 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
 
     if (existing) {
       const patch = { ...descriptive, tags: mergeTags(existing.tags, autoTags) };
-      // Nu suprascriem status/email_status/tags/consent_audit puse manual de admin.
+      // Nu suprascriem status/email_status/consent_audit puse manual de admin. Tag-urile se
+      // reimprospateaza doar pe prefixele automate (vezi mergeTags) — cele adaugate de mana raman.
       if (!existing.source_url && location.source_url) patch.source_url = location.source_url;
       if (!existing.collection_date && (location.collected_at || location.source_checked_at)) {
         patch.collection_date = location.collected_at || location.source_checked_at;
