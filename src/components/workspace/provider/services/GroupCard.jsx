@@ -69,15 +69,11 @@ export default function GroupCard({
         {/* Cat din grup e acoperit. Bara sta LANGA contor, nu pe toata latimea cardului
             (2026-08-23): acolo se citea ca linie despartitoare prost desenata, nu ca
             progres. Aici, lipita de cifra pe care o ilustreaza, nu poate fi confundata. */}
-        {wide && total > 0 && (
-          <span aria-hidden="true" className="services-group-card__bar">
-            <i style={{ width: `${Math.round((selectedCount / total) * 100)}%` }} />
-          </span>
-        )}
+
         {casGroupEligible && (
           <span className="services-group-card__cas" title="Serviciile bifate din acest grup pot fi marcate ca decontate CAS.">CAS</span>
         )}
-        <span className="services-group-card__count" data-full={allSelected ? "true" : "false"}>{selectedCount}/{total}</span>
+        <span className="services-group-card__count" data-full={allSelected ? "true" : "false"}>{selectedCount} alese</span>
       </header>
 
       {capabilityKey && (
