@@ -8,7 +8,12 @@
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const SUPPRESSED_STATUSES = new Set(['unsubscribed', 'bounced', 'invalid', 'complained']);
-export const DEFAULT_FROM_EMAIL = 'contact@viasee.ro';
+// Trimiterea se face de pe subdomeniul dedicat mail.viasee.ro, nu de pe radacina: verificarea
+// radacinii in Resend ar cere modificarea SPF-ului existent (`include:_spf.mx.cloudflare.net`),
+// care e chiar cel care face sa functioneze primirea de email pe viasee.ro prin Cloudflare Email
+// Routing. Subdomeniul are SPF/DKIM proprii, deci reputatia campaniilor nu atinge nici mailul
+// tranzactional, nici casuta de contact. Raspunsurile merg spre contact@viasee.ro (reply_to).
+export const DEFAULT_FROM_EMAIL = 'contact@mail.viasee.ro';
 export const DEFAULT_FROM_NAME = 'VIASEE';
 export const DEFAULT_WEBSITE = 'https://viasee.ro';
 
@@ -32,7 +37,9 @@ export function getAllowedSenderDomains() {
   return [
     ...splitEnvList(Deno.env.get('OUTREACH_ALLOWED_SENDER_DOMAINS')),
     ...splitEnvList(Deno.env.get('RESEND_VERIFIED_DOMAINS')),
-    'viasee.ro',
+    // Fallback-ul ramane strict subdomeniul verificat efectiv in Resend. Nu punem aici 'viasee.ro':
+    // ar trece validarea noastra si ar esua abia la Resend, cu un mesaj mult mai greu de diagnosticat.
+    'mail.viasee.ro',
   ].filter((value, index, arr) => value && arr.indexOf(value) === index);
 }
 
