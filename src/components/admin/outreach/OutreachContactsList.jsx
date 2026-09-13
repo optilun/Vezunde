@@ -25,6 +25,58 @@ function statusClass(status) {
 
 const EMPTY_FILTERS = { target_counties: [], target_provider_types: [], target_profile_control_status: [], target_tags: [] };
 
+// Distributia contactelor pe cele trei dimensiuni puse automat la materializare. Grupata pe
+// prefix, ca sa se citeasca "ce tipuri am" / "cat de mari sunt retelele" dintr-o privire.
+const TAG_GROUPS = [
+  { prefix: "tip:", title: "Dupa tip" },
+  { prefix: "retea:", title: "Dupa marimea retelei" },
+  { prefix: "profil:", title: "Dupa starea profilului" },
+];
+
+const TAG_LABELS = {
+  "tip:optica": "Optica medicala",
+  "tip:clinica": "Clinica oftalmologica",
+  "tip:cabinet-oftalmologic": "Cabinet oftalmologic",
+  "tip:cabinet-optometric": "Cabinet optometric",
+  "tip:laborator": "Laborator optic",
+  "tip:optometrist": "Optometrist independent",
+  "tip:medic-oftalmolog": "Medic oftalmolog independent",
+  "tip:necunoscut": "Tip necompletat",
+  "retea:locatie-unica": "O singura locatie",
+  "retea:grup-mic": "Grup mic (2-4 locatii)",
+  "retea:lant": "Lant (5+ locatii)",
+  "profil:directory": "Nerevendicat",
+  "profil:claimed": "Revendicat",
+  "profil:verified": "Verificat",
+  "profil:suspended": "Suspendat",
+};
+
+function TagBreakdown({ breakdown }) {
+  return (
+    <div className="grid grid-cols-1 gap-3 rounded-lg bg-secondary/60 p-3 sm:grid-cols-3">
+      {TAG_GROUPS.map(({ prefix, title }) => {
+        const rows = Object.entries(breakdown)
+          .filter(([tag]) => tag.startsWith(prefix))
+          .sort((a, b) => b[1] - a[1]);
+        if (!rows.length) return null;
+        return (
+          <div key={prefix}>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
+            <ul className="mt-1 space-y-0.5">
+              {rows.map(([tag, count]) => (
+                <li key={tag} className="flex items-baseline justify-between gap-3 text-xs text-foreground">
+                  <span>{TAG_LABELS[tag] || tag}</span>
+                  <span className="font-semibold tabular-nums">{count}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function OutreachContactsList() {
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -59,58 +111,6 @@ export default function OutreachContactsList() {
         .some((value) => String(value || "").toLowerCase().includes(term));
     });
   }, [contacts, search, statusFilter]);
-
-  // Distributia contactelor pe cele trei dimensiuni puse automat la materializare. Grupata pe
-  // prefix, ca sa se citeasca "ce tipuri am" / "cat de mari sunt retelele" dintr-o privire.
-  const TAG_GROUPS = [
-    { prefix: "tip:", title: "Dupa tip" },
-    { prefix: "retea:", title: "Dupa marimea retelei" },
-    { prefix: "profil:", title: "Dupa starea profilului" },
-  ];
-
-  const TAG_LABELS = {
-    "tip:optica": "Optica medicala",
-    "tip:clinica": "Clinica oftalmologica",
-    "tip:cabinet-oftalmologic": "Cabinet oftalmologic",
-    "tip:cabinet-optometric": "Cabinet optometric",
-    "tip:laborator": "Laborator optic",
-    "tip:optometrist": "Optometrist independent",
-    "tip:medic-oftalmolog": "Medic oftalmolog independent",
-    "tip:necunoscut": "Tip necompletat",
-    "retea:locatie-unica": "O singura locatie",
-    "retea:grup-mic": "Grup mic (2-4 locatii)",
-    "retea:lant": "Lant (5+ locatii)",
-    "profil:directory": "Nerevendicat",
-    "profil:claimed": "Revendicat",
-    "profil:verified": "Verificat",
-    "profil:suspended": "Suspendat",
-  };
-
-  function TagBreakdown({ breakdown }) {
-    return (
-      <div className="grid grid-cols-1 gap-3 rounded-lg bg-secondary/60 p-3 sm:grid-cols-3">
-        {TAG_GROUPS.map(({ prefix, title }) => {
-          const rows = Object.entries(breakdown)
-            .filter(([tag]) => tag.startsWith(prefix))
-            .sort((a, b) => b[1] - a[1]);
-          if (!rows.length) return null;
-          return (
-            <div key={prefix}>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
-              <ul className="mt-1 space-y-0.5">
-                {rows.map(([tag, count]) => (
-                  <li key={tag} className="flex items-baseline justify-between gap-3 text-xs text-foreground">
-                    <span>{TAG_LABELS[tag] || tag}</span>
-                    <span className="font-semibold tabular-nums">{count}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
 
   const runSync = async () => {
     setSyncing(true);
