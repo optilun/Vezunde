@@ -50,9 +50,79 @@ function contactMatchesTags(contact, filters = {}) {
   return Array.isArray(contact.tags) && tags.some((tag) => contact.tags.includes(tag));
 }
 
+// Segmentarea reala a destinatarilor. Se aplica pe campurile contactului, nu ale locatiei: contactul
+// e entitatea catre care se trimite, si el poarta judetul, tipul si starea profilului, copiate la
+// materializare. Fara asta, filtrele de judet/tip de pe campanie erau acceptate in interfata dar
+// ignorate la calculul listei — o campanie "doar Cluj, doar optici" ar fi plecat catre toata tara.
+function contactMatchesSegment(contact, filters = {}) {
+  const counties = Array.isArray(filters.target_counties) ? filters.target_counties : [];
+  const providerTypes = Array.isArray(filters.target_provider_types) ? filters.target_provider_types : [];
+  const controlStatuses = Array.isArray(filters.target_profile_control_status) ? filters.target_profile_control_status : [];
+  if (counties.length && !counties.includes(contact.county)) return false;
+  if (providerTypes.length && !providerTypes.includes(contact.provider_type)) return false;
+  if (controlStatuses.length && !controlStatuses.includes(contact.profile_control_status || 'directory')) return false;
+  return contactMatchesTags(contact, filters);
+}
+
+// ── Clasificarea contactelor materializate din director ──
+// Prefixele sunt stabile, ca segmentarea sa poata tinti direct ("tip:optica", "retea:lant").
+// Tag-urile puse manual de admin (fara prefix cunoscut) nu sunt atinse la resincronizare.
+const AUTO_TAG_PREFIXES = ['tip:', 'retea:', 'profil:'];
+
+const PROVIDER_TYPE_TAGS = {
+  optica_medicala: 'tip:optica',
+  clinica_oftalmologica: 'tip:clinica',
+  cabinet_oftalmologic: 'tip:cabinet-oftalmologic',
+  cabinet_optometric: 'tip:cabinet-optometric',
+  laborator_optic: 'tip:laborator',
+  optometrist_independent: 'tip:optometrist',
+  medic_oftalmolog_independent: 'tip:medic-oftalmolog',
+};
+
+// Marimea retelei conteaza pentru ton: unui lant de 12 optici i se scrie altfel decat unui cabinet
+// cu o singura locatie.
+function networkTag(locationCount) {
+  if (!locationCount || locationCount <= 1) return 'retea:locatie-unica';
+  if (locationCount <= 4) return 'retea:grup-mic';
+  return 'retea:lant';
+}
+
+function buildAutoTags(location, locationCount) {
+  return [
+    PROVIDER_TYPE_TAGS[location.provider_type] || 'tip:necunoscut',
+    networkTag(locationCount),
+    `profil:${location.profile_control_status || 'directory'}`,
+  ];
+}
+
+function mergeTags(existingTags, autoTags) {
+  const manual = (Array.isArray(existingTags) ? existingTags : [])
+    .filter((tag) => !AUTO_TAG_PREFIXES.some((prefix) => String(tag).startsWith(prefix)));
+  return [...new Set([...manual, ...autoTags])];
+}
+
+function countLocationsByOrganization(locations) {
+  const counts = new Map();
+  for (const location of locations || []) {
+    if (!location.organization_id) continue;
+    counts.set(location.organization_id, (counts.get(location.organization_id) || 0) + 1);
+  }
+  return counts;
+}
+
+function tallyTags(entries) {
+  const tally = {};
+  for (const tags of entries) for (const tag of tags) tally[tag] = (tally[tag] || 0) + 1;
+  return tally;
+}
+
+async function listAllLocations(svc) {
+  return (await svc.entities.ProviderLocation.list('name', DEFAULT_LOCATION_LIST_LIMIT)) || [];
+}
+
 async function listAllLocationsWithEmail(svc) {
-  const rows = await svc.entities.ProviderLocation.list('name', DEFAULT_LOCATION_LIST_LIMIT);
-  return (rows || []).filter((row) => isValidEmail(row.public_email));
+  const rows = await listAllLocations(svc);
+  return rows.filter((row) => isValidEmail(row.public_email));
 }
 
 async function listAllContacts(svc) {
@@ -80,7 +150,7 @@ async function eligibleContactsForSegment(svc, filters) {
   const matching = (contacts || []).filter((contact) => (
     isValidEmail(contact.normalized_email || contact.email)
     && !isContactSuppressed(contact)
-    && contactMatchesTags(contact, filters)
+    && contactMatchesSegment(contact, filters)
   ));
   return dedupeContactsByEmail(matching);
 }
@@ -151,7 +221,7 @@ async function actionPreviewSegment(svc, payload) {
   const matchingLocations = locations.filter((location) => locationMatchesSegment(location, filters));
 
   const contacts = await listAllContacts(svc);
-  const matchingContacts = contacts.filter((contact) => contactMatchesTags(contact, filters));
+  const matchingContacts = contacts.filter((contact) => contactMatchesSegment(contact, filters));
   const eligibleContacts = matchingContacts.filter((contact) => !isContactSuppressed(contact));
   // Numarul real de emailuri trimise e numarul de ADRESE distincte, nu de contacte: acelasi numar
   // pe care il cere si fraza de confirmare la aprobare.
