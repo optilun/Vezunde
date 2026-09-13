@@ -28,6 +28,18 @@
     "county": {
       "type": "string"
     },
+    "provider_type": {
+      "type": "string",
+      "description": "provider_type copiat din ProviderLocation la materializare. Segmentarea campaniilor filtreaza pe acest camp."
+    },
+    "profile_control_status": {
+      "type": "string",
+      "description": "directory/claimed/verified/suspended, copiat din locatie. Permite campanii doar catre profilele nerevendicate."
+    },
+    "organization_location_count": {
+      "type": "number",
+      "description": "Cate locatii are organizatia din care face parte contactul. Sta la baza tag-urilor retea:locatie-unica / retea:grup-mic / retea:lant."
+    },
     "status": {
       "type": "string",
       "enum": [
@@ -68,7 +80,7 @@
       "items": {
         "type": "string"
       },
-      "description": "Etichete pentru segmentare"
+      "description": "Etichete pentru segmentare. Cele cu prefix tip:/retea:/profil: sunt puse automat la sincronizarea din director si reimprospatate la fiecare sincronizare; restul sunt ale adminului si nu se ating."
     },
     "last_contacted_at": {
       "type": "string",
