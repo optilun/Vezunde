@@ -25,6 +25,14 @@
       "type": "string",
       "description": "Continutul emailului"
     },
+    "cta_label": {
+      "type": "string",
+      "description": "Textul butonului principal din email (ex. 'Revendica-ti profilul'). Gol = emailul nu are buton."
+    },
+    "cta_url": {
+      "type": "string",
+      "description": "Linkul butonului principal. Doar http/https; orice altceva e ignorat la randare."
+    },
     "from_name": {
       "type": "string",
       "default": "VIASEE"
