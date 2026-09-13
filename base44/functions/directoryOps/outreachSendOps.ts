@@ -70,13 +70,21 @@ async function getSuppressionSet(svc) {
   return set;
 }
 
+// Idempotenta rularilor: ce a fost deja procesat intr-un ciclu anterior nu se mai trimite o data.
+// Intoarce si adresele deja atinse in aceasta campanie, nu doar id-urile de contact: doua
+// OutreachContact diferite (doua locatii ale aceleiasi firme) pot avea aceeasi adresa publica, iar
+// aceeasi persoana nu trebuie sa primeasca aceeasi campanie de doua ori.
 async function getAlreadyProcessedContactIds(svc, campaignId) {
   const logs = await svc.entities.OutreachCampaignLog.filter({ campaign_id: campaignId }, '-created_date', 20000).catch(() => []);
-  const set = new Set();
+  const contactIds = new Set();
+  const emails = new Set();
   for (const log of logs || []) {
-    if (log.contact_id && TERMINAL_LOG_STATUSES.has(log.status)) set.add(log.contact_id);
+    if (!TERMINAL_LOG_STATUSES.has(log.status)) continue;
+    if (log.contact_id) contactIds.add(log.contact_id);
+    const email = normalizeEmail(log.normalized_email || log.email);
+    if (email) emails.add(email);
   }
-  return set;
+  return { contactIds, emails };
 }
 
 async function safeCampaignLog(svc, data) {
@@ -99,12 +107,17 @@ async function claimCampaignForSending(svc) {
     if (campaign.execution_lock_token && !lockExpired) continue; // blocata de alta invocare inca activa
     const token = crypto.randomUUID();
     const expiresAt = new Date(nowMs + LOCK_MINUTES * 60 * 1000).toISOString();
-    const claimed = await svc.entities.OutreachCampaign.update(campaign.id, {
+    await svc.entities.OutreachCampaign.update(campaign.id, {
       execution_lock_token: token,
       execution_lock_expires_at: expiresAt,
       last_heartbeat_at: new Date().toISOString(),
       status: 'sending',
     });
+    // Re-citire de confirmare: Base44 nu are update conditionat, deci doua invocari de cron
+    // suprapuse pot scrie amandoua un lock. Castiga cea al carei token se regaseste la re-citire;
+    // cealalta renunta, ca sa nu trimita doua rulari in paralel din aceeasi campanie.
+    const claimed = await svc.entities.OutreachCampaign.get(campaign.id).catch(() => null);
+    if (!claimed || claimed.execution_lock_token !== token) continue;
     return claimed;
   }
   return null;
