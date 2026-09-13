@@ -75,6 +75,8 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
     setEditDraft({
       subject: data.campaign.subject || "",
       body_html: data.campaign.body_html || "",
+      cta_label: data.campaign.cta_label || "",
+      cta_url: data.campaign.cta_url || "",
       from_name: data.campaign.from_name || "VIASEE",
       from_email: data.campaign.from_email || "",
       reply_to_email: data.campaign.reply_to_email || "",
@@ -233,6 +235,17 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
             <span className="text-xs font-semibold text-foreground">Continut</span>
             <textarea value={editDraft.body_html} onChange={(e) => setEditDraft((d) => ({ ...d, body_html: e.target.value }))} rows={8} className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm font-mono" />
           </label>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-xs font-semibold text-foreground">Text buton (optional)</span>
+              <input type="text" value={editDraft.cta_label} placeholder="Revendica-ti profilul" onChange={(e) => setEditDraft((d) => ({ ...d, cta_label: e.target.value }))} className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm" />
+            </label>
+            <label className="block">
+              <span className="text-xs font-semibold text-foreground">Link buton</span>
+              <input type="text" value={editDraft.cta_url} placeholder="https://viasee.ro/adauga-sau-revendica" onChange={(e) => setEditDraft((d) => ({ ...d, cta_url: e.target.value }))} className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm" />
+              <span className="mt-1 block text-[11px] text-muted-foreground">Butonul apare in email doar daca linkul e completat (http/https).</span>
+            </label>
+          </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <label className="block">
               <span className="text-xs font-semibold text-foreground">Nume expeditor</span>
