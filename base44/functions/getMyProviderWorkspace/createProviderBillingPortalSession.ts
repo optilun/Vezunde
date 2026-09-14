@@ -8,6 +8,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import Stripe from 'npm:stripe@22.6.2';
 import { authorizeProviderBillingOwner, safeBillingReturnBaseUrl } from '../../shared/providerBillingPolicy.js';
 
+import { findBillingAccount } from './billingAccountHelpers.ts';
+
 function res(body, status = 200) {
   return Response.json(body, { status });
 }
@@ -32,18 +34,17 @@ export async function handle(req: Request) {
     const secretKey = Deno.env.get('STRIPE_SECRET_KEY');
     if (!secretKey) return res({ error: 'Facturarea Stripe nu este configurata complet.' }, 500);
 
-    const subscriptions = await svc.entities.ProviderSubscription.filter({
-      location_id: locationId,
-      billing_mode: 'stripe',
-    }, '-created_date', 5);
-    const stripeCustomerId = clean(subscriptions.find((row) => row.stripe_customer_id)?.stripe_customer_id, 200);
+    const account = await findBillingAccount(svc, locationId);
+    const stripeCustomerId = account?.stripe_customer_id;
     if (!stripeCustomerId) return res({ error: 'Aceasta locatie nu are inca un abonament Stripe activ.' }, 404);
 
     const stripe = new Stripe(secretKey);
     const baseUrl = safeBillingReturnBaseUrl(input.return_base_url);
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: stripeCustomerId,
-      return_url: `${baseUrl}/contul-meu?s=leads&location=${encodeURIComponent(locationId)}&billing=portal_return`,
+      return_url: `${baseUrl}/contul-meu?s=settings&tab=billing&location=${encodeURIComponent(locationId)}&billing=portal_return`,
+      ...(Deno.env.get('STRIPE_BILLING_PORTAL_CONFIG_ID') ? { configuration: Deno.env.get('STRIPE_BILLING_PORTAL_CONFIG_ID') } : {}),
+      ...(input.flow === 'payment_method_update' ? { flow_data: { type: 'payment_method_update' } } : {}),
     });
 
     if (!portalSession.url) return res({ error: 'Sesiunea de gestionare a abonamentului nu a putut fi creata.' }, 502);
