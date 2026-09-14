@@ -40,10 +40,30 @@ export async function handle(req: Request) {
 
     const stripe = new Stripe(secretKey);
     const baseUrl = safeBillingReturnBaseUrl(input.return_base_url);
+    let configuration = Deno.env.get('STRIPE_BILLING_PORTAL_CONFIG_ID');
+    if (!configuration) {
+      for await (const config of stripe.billingPortal.configurations.list({ active: true, limit: 100 })) {
+        if (config.metadata?.viasee_billing_version === '2') { configuration = config.id; break; }
+      }
+      if (!configuration) {
+        const config = await stripe.billingPortal.configurations.create({
+          metadata: { viasee_billing_version: '2' },
+          business_profile: { headline: 'VIASEE — abonament și facturare' },
+          features: {
+            customer_update: { enabled: true, allowed_updates: ['name', 'email', 'address', 'phone', 'tax_id'] },
+            invoice_history: { enabled: true },
+            payment_method_update: { enabled: true },
+            subscription_cancel: { enabled: true, mode: 'at_period_end' },
+            subscription_update: { enabled: false },
+          },
+        }, { idempotencyKey: 'viasee-portal-configuration-v2' });
+        configuration = config.id;
+      }
+    }
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: stripeCustomerId,
       return_url: `${baseUrl}/contul-meu?s=settings&tab=billing&location=${encodeURIComponent(locationId)}&billing=portal_return`,
-      ...(Deno.env.get('STRIPE_BILLING_PORTAL_CONFIG_ID') ? { configuration: Deno.env.get('STRIPE_BILLING_PORTAL_CONFIG_ID') } : {}),
+      configuration,
       ...(input.flow === 'payment_method_update' ? { flow_data: { type: 'payment_method_update' } } : {}),
     });
 

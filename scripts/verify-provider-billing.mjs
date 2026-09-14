@@ -22,7 +22,7 @@ assert.equal(mapStripeSubscriptionStatus('canceled'), 'canceled');
 assert.equal(mapStripeSubscriptionStatus('unpaid'), 'suspended');
 assert.equal(mapStripeSubscriptionStatus('incomplete'), 'incomplete');
 assert.equal(mapStripeSubscriptionStatus('incomplete_expired'), 'canceled');
-assert.equal(mapStripeSubscriptionStatus('paused'), 'grace_period');
+assert.equal(mapStripeSubscriptionStatus('paused'), 'suspended');
 // Un status necunoscut (schimbare viitoare de API Stripe) nu are voie sa cada pe 'active'.
 assert.equal(mapStripeSubscriptionStatus('some_future_status'), 'incomplete');
 assert.equal(mapStripeSubscriptionStatus(undefined), 'incomplete');
@@ -104,7 +104,7 @@ assert.equal(noCancelFields.cancel_at_period_end, false);
 // --- safeBillingReturnBaseUrl (anti open-redirect) ---------------------------------------------
 assert.equal(safeBillingReturnBaseUrl('https://viasee.ro/contul-meu?s=leads'), 'https://viasee.ro');
 assert.equal(safeBillingReturnBaseUrl('http://localhost:5173/contul-meu'), 'http://localhost:5173');
-assert.equal(safeBillingReturnBaseUrl('https://evil.example.com'), 'https://evil.example.com');
+assert.equal(safeBillingReturnBaseUrl('https://evil.example.com'), 'https://viasee.ro');
 // http (non-local) si scheme-uri straine cad pe domeniul de productie.
 assert.equal(safeBillingReturnBaseUrl('http://viasee.ro'), 'https://viasee.ro');
 assert.equal(safeBillingReturnBaseUrl('javascript:alert(1)'), 'https://viasee.ro');
@@ -261,7 +261,7 @@ assert.match(checkoutSource, /base44\.auth\.me\(\)/);
 assert.match(checkoutSource, /authorizeProviderBillingOwner/);
 assert.match(checkoutSource, /CHECKOUT_SESSION_ID/);
 assert.match(checkoutSource, /allow_promotion_codes:\s*true/);
-assert.match(checkoutSource, /payment_method_collection:\s*'if_required'/);
+assert.match(checkoutSource, /payment_method_collection:\s*'always'/);
 assert.match(checkoutSource, /mode:\s*'subscription'/);
 assert.match(checkoutSource, /STRIPE_PRICE_ID_PRO_MONTHLY/);
 assert.doesNotMatch(checkoutSource, /input\.plan_code|input\.price/, 'Checkout-ul nu trebuie sa accepte planul/pretul din input-ul clientului');
