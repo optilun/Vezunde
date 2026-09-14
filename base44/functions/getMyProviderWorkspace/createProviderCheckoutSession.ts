@@ -35,8 +35,8 @@ export async function handle(req: Request) {
         billing_email: customer.email, billing_cui: customer.metadata?.cui, billing_address: customer.address });
     } catch (_error) { return Response.json({ error: 'Salvează datele de facturare înainte de a continua.', code: 'billing_details_required' }, { status: 400 }); }
     const baseUrl = safeBillingReturnBaseUrl(input.return_base_url);
-    const existing = await stripe.checkout.sessions.list({ customer: account.stripe_customer_id, status: 'open', limit: 100 });
-    const open = existing.data.find(s => s.client_reference_id === locationId && s.mode === 'subscription' && s.metadata?.app === 'viasee');
+    const existing = await stripe.checkout.sessions.list({ customer: account.stripe_customer_id, limit: 100 });
+    const open = existing.data.find(s => s.status === 'open' && s.client_reference_id === locationId && s.mode === 'subscription' && s.metadata?.app === 'viasee');
     if (open?.url) return Response.json({ url: open.url });
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription', customer: account.stripe_customer_id, client_reference_id: locationId,
@@ -48,7 +48,7 @@ export async function handle(req: Request) {
       locale: 'ro',
       success_url: baseUrl + '/contul-meu?s=settings&tab=billing&location=' + encodeURIComponent(locationId) + '&billing=success&session_id={CHECKOUT_SESSION_ID}',
       cancel_url: baseUrl + '/contul-meu?s=settings&tab=billing&location=' + encodeURIComponent(locationId) + '&billing=cancelled',
-    }, { idempotencyKey: 'viasee-checkout-v2-' + account.stripe_customer_id + '-' + Math.floor(Date.now() / 3600000) });
+    }, { idempotencyKey: 'viasee-checkout-v2-' + account.stripe_customer_id + '-' + (existing.data[0]?.id || 'first') });
     if (!session.url) throw new Error('Missing checkout URL');
     return Response.json({ url: session.url });
   } catch (_error) { return Response.json({ error: 'Sesiunea de plată nu a putut fi creată. Reîncearcă.' }, { status: 502 }); }

@@ -33,7 +33,7 @@ const STRIPE_STATUS_TO_PROVIDER_STATUS = Object.freeze({
   unpaid: 'suspended',
   incomplete: 'incomplete',
   incomplete_expired: 'canceled',
-  paused: 'grace_period',
+  paused: 'suspended',
 });
 
 export function mapStripeSubscriptionStatus(stripeStatus) {
@@ -124,7 +124,7 @@ export async function findExistingStripeSubscriptionRow(svc, { locationId, strip
     const bySubscriptionId = await svc.entities.ProviderSubscription.filter({
       stripe_subscription_id: stripeSubscriptionId,
     }, '-created_date', 1);
-    if (bySubscriptionId[0]) return bySubscriptionId[0];
+    return bySubscriptionId[0] || null;
   }
   if (!locationId) return null;
   const byLocation = await svc.entities.ProviderSubscription.filter({
@@ -197,7 +197,7 @@ export function safeBillingReturnBaseUrl(candidate) {
   if (!value) return DEFAULT_BILLING_RETURN_BASE_URL;
   try {
     const url = new URL(value);
-    const isHttps = url.protocol === 'https:';
+    const isHttps = url.protocol === 'https:' && ['viasee.ro', 'www.viasee.ro', 'viasee-core.base44.app'].includes(url.hostname) && !url.port && !url.username && !url.password;
     const isLocalHttp = url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
     if (!isHttps && !isLocalHttp) return DEFAULT_BILLING_RETURN_BASE_URL;
     return `${url.protocol}//${url.host}`;

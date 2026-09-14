@@ -14,6 +14,8 @@ import { handle as reconcileProviderStripeSubscriptionsHandle } from './reconcil
 import { handle as stripeBillingWebhookHandle } from './stripeBillingWebhook.ts';
 import { handle as getMyProviderWorkspaceHandle } from './getMyProviderWorkspace.ts';
 
+import { handle as providerBillingOpsHandle } from './providerBillingOps.ts';
+
 type ProviderWorkspaceHandler = (req: Request) => Response | Promise<Response>;
 
 export const PROVIDER_WORKSPACE_FUNCTION_HANDLERS: Record<string, ProviderWorkspaceHandler> = Object.freeze({
@@ -25,6 +27,7 @@ export const PROVIDER_WORKSPACE_FUNCTION_HANDLERS: Record<string, ProviderWorksp
   getProviderLogoReviewStatus: getProviderLogoReviewStatusHandle,
   getProviderProfileCompleteness: getProviderProfileCompletenessHandle,
   getProviderWorkspaceOverview: getProviderWorkspaceOverviewHandle,
+  providerBillingOps: providerBillingOpsHandle,
   createProviderCheckoutSession: createProviderCheckoutSessionHandle,
   createProviderBillingPortalSession: createProviderBillingPortalSessionHandle,
   syncProviderStripeSubscription: syncProviderStripeSubscriptionHandle,
