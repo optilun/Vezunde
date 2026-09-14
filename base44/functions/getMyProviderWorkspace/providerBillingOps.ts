@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import Stripe from 'npm:stripe@22.6.2';
 import { authorizeProviderBillingOwner, resolveSubscriptionPeriod } from '../../shared/providerBillingPolicy.js';
-import { clean, idOf, findBillingAccount, ensureBillingAccount, syncCustomerSubscriptions, invoiceSummary, paymentSummary, validateBillingProfile } from './billingAccountHelpers.ts';
+import { clean, idOf, findBillingAccount, ensureBillingAccount, syncCustomerSubscriptions, isViaseeSubscription, invoiceSummary, paymentSummary, validateBillingProfile } from './billingAccountHelpers.ts';
 
 export async function handle(req: Request) {
   try {
@@ -25,8 +25,9 @@ export async function handle(req: Request) {
     const stripe = new Stripe(secret);
     if (action === 'admin_list') {
       const payments = input.view === 'payments';
+      const subscriptions = input.view === 'subscriptions';
       const params = { limit: 30, ...(input.cursor ? { starting_after: clean(input.cursor) } : {}) };
-      const page = payments ? await stripe.charges.list(params) : await stripe.invoices.list(params);
+      const page = subscriptions ? await stripe.subscriptions.list({ ...params, price: priceId, status: 'all' }) : payments ? await stripe.charges.list(params) : await stripe.invoices.list(params);
       const customers = new Map();
       const rows = [];
       for (const item of page.data) {
@@ -36,12 +37,13 @@ export async function handle(req: Request) {
         const customer = customers.get(customerId);
         if (customer.deleted || customer.metadata?.app !== 'viasee' || !customer.metadata.location_id) continue;
         const location = await svc.entities.ProviderLocation.get(customer.metadata.location_id).catch(() => null);
+        if (subscriptions && !isViaseeSubscription(item, priceId, customer.metadata.location_id)) continue;
         rows.push({
-          ...(payments ? paymentSummary(item) : invoiceSummary(item)),
+          ...(subscriptions ? { id: item.id, created: item.created, status: item.status, amount: item.items.data[0]?.price?.unit_amount, currency: item.currency, cancel_at_period_end: item.cancel_at_period_end || Boolean(item.cancel_at) } : payments ? paymentSummary(item) : invoiceSummary(item)),
           customer_id: customerId, location_id: customer.metadata.location_id,
           location_name: location?.public_display_name || location?.name || customer.metadata.location_id,
           billing_name: customer.name, billing_cui: customer.metadata?.cui || '',
-          dashboard_url: 'https://dashboard.stripe.com/' + (item.livemode ? '' : 'test/') + (payments ? 'payments/' + (idOf(item.payment_intent) || item.id) : 'invoices/' + item.id),
+          dashboard_url: 'https://dashboard.stripe.com/' + (item.livemode ? '' : 'test/') + (subscriptions ? 'subscriptions/' + item.id : payments ? 'payments/' + (idOf(item.payment_intent) || item.id) : 'invoices/' + item.id),
         });
       }
       return Response.json({ rows, has_more: page.has_more, next_cursor: page.data.at(-1)?.id || null });

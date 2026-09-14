@@ -9,6 +9,7 @@ import {
   LifeBuoy,
   Flag,
   Mail,
+  CreditCard,
 } from "lucide-react";
 
 // Meniul admin e grupat pe intentie, nu ca lista plata: primele elemente sunt cele
@@ -25,6 +26,7 @@ import {
 // de date). Toate rutele vechi raman functionale - vezi ADMIN_NAV_LABELS si
 // LEGACY_TAB_REDIRECTS in AdminDirectoryOps.jsx.
 export const ADMIN_NAV_PRIMARY = [
+  { key: "billing", label: "Plăți și abonamente", icon: CreditCard, groupLabel: "Facturare" },
   { key: "dashboard", label: "Panou general", icon: LayoutDashboard, groupLabel: "De lucru" },
   { key: "workspace_reviews", label: "Coada de verificare", icon: ClipboardCheck },
   { key: "revendicari", label: "Revendicari", icon: UserCheck },

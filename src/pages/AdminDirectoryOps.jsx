@@ -64,7 +64,10 @@ const OutreachWorkspace = lazy(
   () => import("@/components/admin/outreach/OutreachWorkspace"),
 );
 
+const AdminBillingCenter = lazy(() => import("@/components/admin/billing/AdminBillingCenter"));
+
 const SIMPLE_HEADERS = {
+  billing: "Urmărește facturile, încasările și abonamentele Pro ale locațiilor VIASEE.",
   adauga:
     "Creeaza o organizatie si prima locatie sau adauga manual un profil nou in director, cu provenienta obligatorie.",
   profiluri:
@@ -214,6 +217,7 @@ export default function AdminDirectoryOps() {
     "audit",
     "data_integrity",
     "outreach",
+    "billing",
   ];
 
   return (
@@ -265,6 +269,7 @@ export default function AdminDirectoryOps() {
               {tab === "servicii" && <DirOpsServices />}
               {tab === "revendicari" && <DirOpsClaims />}
               {tab === "outreach" && <OutreachWorkspace />}
+              {tab === "billing" && <AdminBillingCenter />}
               {tab === "geografie" && <GeoImport />}
               {tab === "audit" && <DirOpsAudit />}
               {tab === "data_integrity" && <DataIntegrityWorkspace onNavigate={navigate} />}
