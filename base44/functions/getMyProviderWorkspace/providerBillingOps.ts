@@ -42,7 +42,8 @@ export async function handle(req: Request) {
           ...(subscriptions ? { id: item.id, created: item.created, status: item.status, amount: item.items.data[0]?.price?.unit_amount, currency: item.currency, cancel_at_period_end: item.cancel_at_period_end || Boolean(item.cancel_at) } : payments ? paymentSummary(item) : invoiceSummary(item)),
           customer_id: customerId, location_id: customer.metadata.location_id,
           location_name: location?.public_display_name || location?.name || customer.metadata.location_id,
-          billing_name: customer.name, billing_cui: customer.metadata?.cui || '',
+          billing_name: (!payments && !subscriptions ? item.customer_name : customer.name) || customer.name,
+          billing_cui: (!payments && !subscriptions ? item.custom_fields?.find(field => field.name === 'CUI')?.value : customer.metadata?.cui) || '',
           dashboard_url: 'https://dashboard.stripe.com/' + (item.livemode ? '' : 'test/') + (subscriptions ? 'subscriptions/' + item.id : payments ? 'payments/' + (idOf(item.payment_intent) || item.id) : 'invoices/' + item.id),
         });
       }

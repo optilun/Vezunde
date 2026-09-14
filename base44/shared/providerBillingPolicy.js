@@ -115,7 +115,7 @@ export function providerSubscriptionFieldsFromStripeSubscription(subscription, {
 }
 
 // Gaseste randul ProviderSubscription care corespunde unui abonament Stripe: mai intai dupa
-// stripe_subscription_id (cazul obisnuit - abonamentul exista deja), altfel dupa location_id +
+// stripe_subscription_id (cazul obisnuit - abonamentul exista deja), doar la citirea fara ID dupa location_id +
 // billing_mode: 'stripe' (primul eveniment/prima sincronizare pentru acea locatie). Nu se uita
 // niciodata la randuri billing_mode: 'manual' - un plan Pro acordat manual de admin nu este
 // niciodata gasit sau atins de aceasta functie.
@@ -188,7 +188,7 @@ export async function authorizeProviderBillingOwner(svc, user, locationId) {
 // URL-ul de intoarcere (success/cancel din Checkout, return din Billing Portal) vine din
 // window.location.origin trimis de frontend (acelasi tipar ca invitation_base_url in
 // ProviderAccess.jsx/ProviderTeam.jsx). Nu are voie sa devina un vector de redirect arbitrar,
-// deci acceptam doar https, plus http://localhost pentru dezvoltare; orice altceva cade pe
+// deci acceptam doar originile VIASEE cunoscute, plus localhost pentru dezvoltare; orice altceva cade pe
 // domeniul de productie.
 const DEFAULT_BILLING_RETURN_BASE_URL = 'https://viasee.ro';
 

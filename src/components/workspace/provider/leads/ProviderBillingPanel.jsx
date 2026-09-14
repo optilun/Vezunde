@@ -71,9 +71,9 @@ function BillingCenter({ locationId, onSynced }) {
       const result = await invoke("providerBillingOps", { location_id: locationId, cursor });
       if (request !== sequence.current) return;
       setData(result); setProfile(profileFrom(result.customer));
+      synced.current?.();
       if (billing === "success" || billing === "portal_return") {
         setNotice(billing === "success" ? "Starea abonamentului a fost verificată cu Stripe." : "Datele de plată au fost actualizate.");
-        synced.current?.();
         // Keep return parameters until both confirmation and reload have succeeded.
         setParams(current => { const next = new URLSearchParams(current); next.delete("billing"); next.delete("session_id"); return next; }, { replace: true });
       } else if (billing === "cancelled") {

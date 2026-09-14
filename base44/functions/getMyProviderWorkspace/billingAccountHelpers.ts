@@ -37,7 +37,9 @@ export async function syncCustomerSubscriptions(svc, stripe, account, priceId) {
   for await (const subscription of stripe.subscriptions.list({ customer: account.stripe_customer_id, status: 'all', limit: 100 })) {
     if (!isViaseeSubscription(subscription, priceId, account.location_id)) continue;
     await upsertProviderSubscriptionFromStripeSubscription(svc, subscription, { locationId: account.location_id, organizationId: account.organization_id });
-    if (!latest || subscription.created > latest.created) latest = subscription;
+    const terminal = value => ['canceled', 'incomplete_expired'].includes(value?.status);
+    if (!latest || (terminal(latest) && !terminal(subscription)) ||
+      (terminal(latest) === terminal(subscription) && subscription.created > latest.created)) latest = subscription;
   }
   return latest;
 }
