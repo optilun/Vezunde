@@ -672,7 +672,7 @@ export default function ProviderWorkspaceRoot({
               />
             )}
             {safeSection === "settings" && canManageSettings && (
-              <ProviderSettings user={user} workspace={scopedWorkspace} overview={overview} selectedLocationId={selectedLocationId} onSelectLocation={selectLocation} onSwitchMode={onSwitchMode} onNavigate={goToSection} onRefresh={refreshOverviewInPlace} />
+              <ProviderSettings user={user} workspace={scopedWorkspace} overview={overview} selectedLocationId={selectedLocationId} onSelectLocation={selectLocation} onSwitchMode={onSwitchMode} onNavigate={goToSection} onRefresh={refreshOverviewInPlace} onBillingSynced={() => setEntitlementRefreshTick(tick => tick + 1)} />
             )}
           </>
         </Suspense>

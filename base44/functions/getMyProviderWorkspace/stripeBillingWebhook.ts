@@ -30,6 +30,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import Stripe from 'npm:stripe@22.6.2';
 import { upsertProviderSubscriptionFromStripeSubscription } from '../../shared/providerBillingPolicy.js';
 
+import { isViaseeSubscription } from './billingAccountHelpers.ts';
+
 function res(body, status = 200) {
   return Response.json(body, { status });
 }
@@ -59,18 +61,22 @@ export async function handle(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
     const svc = base44.asServiceRole;
+    const priceId = Deno.env.get('STRIPE_PRICE_ID_PRO_MONTHLY');
+    if (!priceId) return res({ error: 'Prețul Pro nu este configurat.' }, 503);
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       if (session.mode === 'subscription' && session.subscription) {
         const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        if (!isViaseeSubscription(subscription, priceId, session.client_reference_id)) return res({ received: true });
         await upsertProviderSubscriptionFromStripeSubscription(svc, subscription, {
           locationId: session.client_reference_id,
         });
       }
     } else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
-      const subscription = event.data.object;
+      const subscription = await stripe.subscriptions.retrieve(event.data.object.id);
+      if (!isViaseeSubscription(subscription, priceId, subscription.metadata?.location_id)) return res({ received: true });
       await upsertProviderSubscriptionFromStripeSubscription(svc, subscription, {});
     }
     // Orice alt tip de eveniment este ignorat explicit - endpoint-ul este inregistrat in Stripe

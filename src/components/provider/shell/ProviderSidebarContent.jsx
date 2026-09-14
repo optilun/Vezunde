@@ -190,7 +190,7 @@ export default function ProviderSidebarContent({
         // ProviderUpgradeCard/ProviderBillingPanel), nu culorile Base44.
         <div className="shrink-0 px-3 pt-3">
           <Link
-            to="/contul-meu?s=leads&tab=account"
+            to={`/contul-meu?s=settings&tab=billing${entitlement?.location_id ? "&location=" + encodeURIComponent(entitlement.location_id) : ""}`}
             className="flex min-h-[4.25rem] w-full items-center gap-3 rounded-2xl border border-[#e3ddd0] bg-[#fdfbf6] px-3.5 py-3 text-left transition-colors hover:border-[#dac69b] hover:bg-[#faf3e2]"
           >
             <span className="min-w-0 flex-1">

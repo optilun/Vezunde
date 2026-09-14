@@ -12,6 +12,8 @@ import {
   X,
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useSearchParams } from "react-router-dom";
+import ProviderBillingPanel from "./leads/ProviderBillingPanel";
 import { readAccountPreferences, saveAccountPreferences } from "@/lib/accountPreferences";
 import { PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 
@@ -191,7 +193,9 @@ function ConfirmationModal({ action, location, isLastActiveLocation, submitting,
   );
 }
 
-export default function ProviderSettings({ user, workspace, overview, selectedLocationId, onSelectLocation, onSwitchMode, onNavigate }) {
+export default function ProviderSettings({ user, workspace, overview, selectedLocationId, onSelectLocation, onSwitchMode, onNavigate, onBillingSynced }) {
+  const [settingsParams, setSettingsParams] = useSearchParams();
+  const billingTab = settingsParams.get("tab") === "billing";
   const [preferences, setPreferences] = useState(() => readAccountPreferences(user?.id));
   const [pendingAction, setPendingAction] = useState(null);
   const [lifecycleSubmission, setLifecycleSubmission] = useState(null);
@@ -349,6 +353,10 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
         )}
       </div>
 
+      <nav aria-label="Secțiuni setări" className="flex gap-2 border-b border-border pb-3">
+        {[["general", "General"], ["billing", "Abonament și facturare"]].map(([key, label]) => <button key={key} type="button" aria-current={(billingTab ? "billing" : "general") === key ? "page" : undefined} onClick={() => setSettingsParams(current => { const next = new URLSearchParams(current); next.set("tab", key); return next; })} className={`rounded-lg px-4 py-2 text-sm font-semibold ${(billingTab ? "billing" : "general") === key ? "bg-foreground text-background" : "hover:bg-secondary"}`}>{label}</button>)}
+      </nav>
+      {billingTab ? <ProviderBillingPanel locationId={selectedLocation.id} onSynced={onBillingSynced} /> : <>
       <SettingsSection title="Organizație">
         <SettingsRow
           title="Organizație"
@@ -502,6 +510,7 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
         Solicitările sunt salvate în VIASEE, apar în panoul administratorului și păstrează istoricul complet al deciziei.
       </p>
 
+      </>}
       {pendingAction && (
         <ConfirmationModal
           action={pendingAction}
