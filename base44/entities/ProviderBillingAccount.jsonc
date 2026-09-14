@@ -1,0 +1,77 @@
+{
+  "name": "ProviderBillingAccount",
+  "type": "object",
+  "properties": {
+    "location_id": {
+      "type": "string"
+    },
+    "organization_id": {
+      "type": "string"
+    },
+    "stripe_customer_id": {
+      "type": "string"
+    },
+    "billing_name": {
+      "type": "string"
+    },
+    "billing_email": {
+      "type": "string"
+    },
+    "billing_cui": {
+      "type": "string"
+    },
+    "billing_type": {
+      "type": "string",
+      "enum": [
+        "company",
+        "individual"
+      ]
+    },
+    "billing_address": {
+      "type": "object",
+      "properties": {
+        "line1": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "postal_code": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": [
+    "location_id",
+    "stripe_customer_id"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
