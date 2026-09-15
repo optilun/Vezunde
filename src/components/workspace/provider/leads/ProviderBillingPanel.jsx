@@ -56,6 +56,7 @@ function BillingCenter({ locationId, onSynced }) {
   const [params, setParams] = useSearchParams();
   const billing = params.get("billing"), sessionId = params.get("session_id");
   const [data, setData] = useState(null), [profile, setProfile] = useState(profileFrom(null));
+  const [editingDetails, setEditingDetails] = useState(false);
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [busy, setBusy] = useState("");
   const [loading, setLoading] = useState(true), [tick, setTick] = useState(0);
   const [cursors, setCursors] = useState([null]), [page, setPage] = useState(0);
@@ -74,7 +75,7 @@ function BillingCenter({ locationId, onSynced }) {
       if (request !== sequence.current) return;
       setData(result);
       // Invoice pagination and retries must not overwrite an unsaved billing form.
-      if (!profileInitialized.current) { setProfile(profileFrom(result.customer)); profileInitialized.current = true; }
+      if (!profileInitialized.current) { setProfile(profileFrom(result.customer)); setEditingDetails(!result.customer?.name); profileInitialized.current = true; }
       synced.current?.();
       if (billing === "success" || billing === "portal_return") {
         setNotice(billing === "success" ? "Starea abonamentului a fost verificată cu Stripe." : "Datele de plată au fost actualizate.");
@@ -93,7 +94,7 @@ function BillingCenter({ locationId, onSynced }) {
     try {
       if (action === "save" || action === "checkout") {
         await invoke("providerBillingOps", { action: "save_details", location_id: locationId, ...profile });
-        if (action === "save") { setNotice("Datele au fost salvate pentru facturile viitoare."); setTick(t => t + 1); return; }
+        if (action === "save") { setEditingDetails(false); setNotice("Datele au fost salvate pentru facturile viitoare."); setTick(t => t + 1); return; }
       }
       const name = action === "checkout" ? "createProviderCheckoutSession" : "createProviderBillingPortalSession";
       const result = await invoke(name, { location_id: locationId, return_base_url: window.location.origin, flow });
@@ -121,7 +122,7 @@ function BillingCenter({ locationId, onSynced }) {
           <p className="mt-2 text-sm text-muted-foreground">{manual ? "Acest acces nu este un abonament plătit prin Stripe." : `Pro: ${money(data.pricing?.amount, data.pricing?.currency)} / ${data.pricing?.interval === "year" ? "an" : "lună"}, pentru această locație. Emitent neplătitor de TVA. Totalul final apare înainte de plată.`}</p>
           {existing && <p className="mt-3 text-sm">{subscription.cancel_at_period_end ? "Acces până la " : "Sfârșitul perioadei curente: "}{date(subscription.end)}{subscription.cancel_at_period_end && ". Reînnoirea este oprită."}</p>}
           {problem && <p className="mt-3 text-sm text-red-800">Abonamentul necesită atenție. Verifică factura restantă și metoda de plată.</p>}
-          <div className="mt-4">{existing ? <button className={button} disabled={Boolean(busy)} onClick={() => void run("portal")}>Gestionează abonamentul <ExternalLink className="h-4 w-4" /></button> : !manual && <a className={button} href="#billing-details">Activează Pro — completează datele</a>}</div>
+          <div className="mt-4">{existing ? <button className={button} disabled={Boolean(busy)} onClick={() => void run("portal")}>Gestionează abonamentul <ExternalLink className="h-4 w-4" /></button> : !manual && <a className={button} href="#billing-details" onClick={() => setEditingDetails(true)}>Activează Pro — verifică datele</a>}</div>
         </Panel>
         <Panel title="Metode de plată" icon={CreditCard}>
           {data.methods.length ? <ul className="space-y-3">{data.methods.map(card => <li key={card.id} className="flex items-center justify-between gap-3"><div><p className="font-medium"><span className="uppercase">{card.brand}</span> •••• {card.last4}</p><p className="text-xs text-muted-foreground">Expiră {card.exp_month}/{card.exp_year}</p></div>{card.is_default && <span className="text-xs text-muted-foreground">Implicit pentru abonament</span>}</li>)}</ul> : <p className="text-sm text-muted-foreground">Nu există un card salvat. Cardul este adăugat în pagina securizată Stripe.</p>}
@@ -130,7 +131,10 @@ function BillingCenter({ locationId, onSynced }) {
         </Panel>
       </div>
       <div id="billing-details" className="scroll-mt-24"><Panel title="Date de facturare" icon={FileText}>
-        <form onSubmit={event => { event.preventDefault(); void run("save"); }} className="space-y-4">
+        {!editingDetails && data.customer ? <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="text-sm"><p className="font-medium">{data.customer.name}</p><p className="mt-1 text-muted-foreground">{data.customer.cui ? "CUI " + data.customer.cui + " · " : ""}{data.customer.email}</p><p className="mt-1 text-muted-foreground">{[data.customer.address?.line1, data.customer.address?.city, data.customer.address?.country].filter(Boolean).join(", ")}</p></div>
+          <button type="button" className={button} onClick={() => setEditingDetails(true)}>Modifică datele</button>
+        </div> : <form onSubmit={event => { event.preventDefault(); void run("save"); }} className="space-y-4">
           <fieldset disabled={Boolean(busy)}><legend className="mb-2 text-sm font-medium">Facturez pe</legend><div className="flex gap-5">{[["company","Firmă"],["individual","Persoană fizică"]].map(([value,label]) => <label key={value} className="flex items-center gap-2 text-sm"><input type="radio" name="billing-type" value={value} checked={profile.billing_type === value} onChange={() => update("billing_type",value)} />{label}</label>)}</div></fieldset>
           <fieldset disabled={Boolean(busy)} className="grid gap-4 sm:grid-cols-2">
             <label className="text-sm">{profile.billing_type === "company" ? "Denumire firmă" : "Nume complet"}<input required autoComplete={profile.billing_type === "company" ? "organization" : "name"} className={field} value={profile.billing_name} onChange={e => update("billing_name",e.target.value)} /></label>
@@ -145,7 +149,7 @@ function BillingCenter({ locationId, onSynced }) {
             {!existing && !manual && <button type="button" className={button + " !bg-foreground !text-background"} disabled={Boolean(busy) || !data.pricing?.active} onClick={event => { if (event.currentTarget.form.reportValidity()) void run("checkout"); }}>{busy === "checkout" && <Loader2 className="h-4 w-4 animate-spin" />}Salvează și continuă la plata Pro</button>}
             {data.customer && <button type="button" className={button} disabled={Boolean(busy)} onClick={() => void run("portal")}>Gestionează codul TVA</button>}
           </div>
-        </form>
+        </form>}
       </Panel></div>
       <Panel title="Istoric plăți și documente Stripe" icon={FileText}>
         <p className="mb-3 text-sm leading-relaxed text-muted-foreground">Factura fiscală pentru abonament se emite separat prin KEEZ. Mai jos găsești documentele Stripe asociate plăților; acestea nu confirmă emiterea facturii KEEZ.</p>

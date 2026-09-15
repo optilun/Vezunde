@@ -31,7 +31,7 @@
 - ProviderBillingAccount schema and admin-only RLS verified through Base44.
 
 ## Still requiring completion / external access
-1. Fiscal issuer/provider and VAT status: awaiting owner response (SmartBill/Oblio/FGO/accountant or other). Price tax_behavior is currently unspecified. No automatic_tax or VAT registration was invented or enabled. Stripe PDFs do not establish completion of RO e-Factura delivery.
+1. Owner confirmed: issuer is not VAT-registered and uses KEEZ. No KEEZ API or VIASEE series exists yet; owner wants to begin manual invoicing when the first payment occurs. Checkout explicitly disables automatic_tax. Stripe documents are labeled separately from KEEZ fiscal invoices. Automatic KEEZ/e-Factura issuance is not implemented or activated.
 2. End-to-end authenticated browser verification and frontend Publish: browser automation unavailable due local Windows sandbox ACL error. Backend changes and entity schema are synced; frontend publication is not confirmed.
 3. Real scheduled-workflow execution: verify that the Base44 scheduler supplies a valid authenticated admin or service caller. Never restore trust in __automation_trigger alone if its authentication differs.
 4. Valid signed webhook delivery must be verified separately; rejection of an invalid signature does not prove successful delivery.
@@ -41,3 +41,13 @@
 - https://docs.stripe.com/customer-management/integrate-customer-portal
 - https://docs.stripe.com/customer-management
 - https://docs.base44.com/developers/references/sdk/docs/functions/createClientFromRequest
+
+## Follow-up audit — owner clarification and UX
+- Non-VAT-registered issuer confirmed by the owner; KEEZ manual invoicing selected for the initial stage.
+- Official KEEZ documentation reviewed: OAuth client credentials and clientEid must be supplied by KEEZ; staging invoices have no accounting impact; production invoices do. No credentials or real fiscal documents were requested or created.
+- Stripe collection documents and fiscal KEEZ invoices are distinguished in customer/admin screens.
+- Saved billing identity is compact by default; editing opens the full form.
+- Invoice pagination/retries no longer replace unsaved billing input; fields are disabled during save.
+- Customer tax IDs remain distinct from the issuer's VAT registration status.
+- Browser Use and Computer Use both fail before initialization with Windows sandbox 'apply deny-read ACLs'. Opening the browser does not resolve this runtime failure. No visual/browser publication verification is claimed.
+- References: https://app.keez.ro/help/api/auth.html and https://app.keez.ro/help/client/web_app/facturare/facturare_api.html
