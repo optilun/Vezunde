@@ -1,31 +1,6 @@
-// Webhook Stripe pentru sincronizarea abonamentului Pro (2026-09-11).
-//
-// Singurul loc din tot codebase-ul unde NU folosim base44.auth.me() - Stripe nu trimite
-// niciodata o sesiune Base44, iar securitatea vine exclusiv din verificarea semnaturii
-// (stripe-signature + STRIPE_WEBHOOK_SECRET). router.ts directioneaza aici orice request care
-// are header-ul stripe-signature, inainte de orice parsare __function.
-//
-// IMPORTANT (descoperit 2026-09-11, testat live): platforma Base44 intercepteaza la nivel de
-// gateway orice request catre un function endpoint care are header-ul stripe-signature, INAINTE
-// sa ajunga la acest cod - raspunde ea insasi cu o eroare despre "niciun secret de webhook
-// Stripe configurat pentru aceasta aplicatie" (mecanism legat de integrarea nativa Base44
-// Payments, indisponibila in Romania). In consecinta, acest handler ramane ca sincronizare de
-// tip best-effort/secundara - NU este garantat ca va primi vreodata un eveniment real de la
-// Stripe pe acest cont. Sincronizarea primara, care functioneaza garantat, este
-// syncProviderStripeSubscription.ts (confirmare sincrona la intoarcerea din Checkout/Billing
-// Portal, cat timp utilizatorul e autentificat - exact tiparul recomandat de Base44 in
-// documentatia proprie: "instead of relying on webhooks alone") si
-// reconcileProviderStripeSubscriptions.ts (resincronizare periodica, rulata de un workflow).
-//
-// Foloseste constructEventAsync + createSubtleCryptoProvider (Web Crypto), nu constructEvent
-// sincron: pe Deno nu presupunem disponibilitatea completa a modulului node:crypto, iar varianta
-// async cu Web Crypto e cea recomandata de Stripe pentru runtime-uri de tip edge.
-//
-// Scrierea efectiva (gasire/creare/actualizare rand) e in
-// upsertProviderSubscriptionFromStripeSubscription din providerBillingPolicy.js - aceeasi
-// functie folosita si de syncProviderStripeSubscription.ts si de
-// reconcileProviderStripeSubscriptions.ts, ca sa nu existe trei copii ale logicii care pot
-// diverge. Nu atinge niciodata un rand cu billing_mode: 'manual' (planuri Pro acordate de admin).
+// Signed Stripe webhook; never accept an unsigned event.
+// Base44 also validates signatures at its gateway. Valid event delivery must be verified
+// separately; return synchronization and scheduled reconciliation are recovery paths.
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import Stripe from 'npm:stripe@22.6.2';
 import { upsertProviderSubscriptionFromStripeSubscription } from '../../shared/providerBillingPolicy.js';

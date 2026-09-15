@@ -176,6 +176,36 @@ for (const invalid of [
   assert.equal(h.paymentIntentSummary({ id: 'pi_1', status: 'canceled', latest_charge: { status: 'failed' } }).status, 'canceled');
   assert.equal(h.paymentIntentSummary({ id: 'pi_2', status: 'requires_action', latest_charge: { status: 'pending' } }).status, 'requires_action');
 }
+{
+  const s = state(); s.user.role = 'admin';
+  s.stripe.paymentIntents.list = () => page([
+    { id: 'pi_viasee', customer: 'cus_location', status: 'canceled', created: 1, amount: 4900, currency: 'ron', livemode: false },
+    { id: 'pi_other', customer: 'cus_other', status: 'succeeded', created: 1, amount: 9999, currency: 'ron', livemode: false },
+  ]);
+  s.stripe.customers.retrieve = async id => id === 'cus_location' ? s.customer : { id, metadata: { app: 'another_app' } };
+  const result = await call('providerBillingOps', { action: 'admin_list', view: 'payments' });
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.rows.map(row => row.id), ['pi_viasee'], 'Exclude unrelated businesses from admin billing');
+  assert.equal(result.body.rows[0].status, 'canceled');
+}
+{
+  const s = state();
+  const profile = { action: 'save_details', billing_type: 'company', billing_name: 'New company', billing_email: 'billing@example.test', billing_cui: '12345678', billing_address: { line1: 'Street', city: 'Town', country: 'RO' } };
+  assert.equal((await call('providerBillingOps', profile)).status, 200);
+  assert.deepEqual(s.savedCustomers[0].fields.invoice_settings.custom_fields, [{ name: 'CUI', value: '12345678' }]);
+  s.stripe.customers.listTaxIds = async () => page([{ type: 'eu_vat', value: 'RO99999999' }]);
+  assert.equal((await call('providerBillingOps', profile)).status, 409, 'Do not combine new billing details with another VAT identity');
+  assert.equal(s.savedCustomers.length, 1);
+}
+{
+  const s = state();
+  s.stripe.billingPortal.configurations.list = () => page([]);
+  s.stripe.billingPortal.configurations.create = async (params, options) => { s.portalConfig = params; assert.ok(options.idempotencyKey); return { id: 'bpc_new' }; };
+  assert.equal((await call('createProviderBillingPortalSession')).status, 200);
+  assert.equal(s.portalConfig.features.subscription_update.enabled, false);
+  assert.equal(s.portalConfig.features.payment_method_update.enabled, true);
+  assert.equal(s.portalParams.configuration, 'bpc_new');
+}
 const panel = await readFile('src/components/workspace/provider/leads/ProviderBillingPanel.jsx', 'utf8');
 assert.ok(panel.indexOf('await invoke("syncProviderStripeSubscription"') < panel.indexOf('next.delete("session_id")'));
 assert.match(panel, /request !== sequence.current/);

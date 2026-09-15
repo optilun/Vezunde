@@ -46,10 +46,7 @@ function routedRequest(req: Request, payload: unknown) {
 }
 
 export async function handleProviderWorkspaceRequest(req: Request) {
-  // Vezi stripeBillingWebhook.ts: pastrat ca sincronizare best-effort/secundara - platforma
-  // Base44 poate intercepta la nivel de gateway un request cu acest header inainte sa ajunga
-  // aici. Sincronizarea garantata e syncProviderStripeSubscription (__function normal, mai jos)
-  // si reconcileProviderStripeSubscriptions (rulat periodic de un workflow).
+  // Signed events have a separate verified handler; all other routes retain caller authentication.
   if (req.headers.get('stripe-signature')) return stripeBillingWebhookHandle(req);
   const body = await req.clone().json().catch(() => null);
   const logicalName = typeof body?.__function === 'string' ? body.__function : '';
