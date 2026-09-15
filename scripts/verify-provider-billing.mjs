@@ -277,18 +277,18 @@ assert.match(syncSource, /base44\.auth\.me\(\)/);
 assert.match(syncSource, /authorizeProviderBillingOwner/);
 assert.match(syncSource, /checkout\.sessions\.retrieve/);
 assert.match(syncSource, /client_reference_id/);
-assert.match(syncSource, /upsertProviderSubscriptionFromStripeSubscription/);
+assert.match(syncSource, /syncVerifiedBillingSubscription/);
 
 const reconcileSource = await source('../base44/functions/getMyProviderWorkspace/reconcileProviderStripeSubscriptions.ts');
 assert.match(reconcileSource, /__automation_trigger/);
 assert.match(reconcileSource, /billing_mode: 'stripe'/);
-assert.match(reconcileSource, /upsertProviderSubscriptionFromStripeSubscription/);
+assert.match(reconcileSource, /syncVerifiedBillingSubscription/);
 assert.match(reconcileSource, /role !== 'admin'/, 'O rulare manuala (fara __automation_trigger) trebuie sa ramana rezervata adminilor');
 
 const webhookSource = await source('../base44/functions/getMyProviderWorkspace/stripeBillingWebhook.ts');
 assert.match(webhookSource, /stripe-signature/);
 assert.match(webhookSource, /constructEventAsync/);
-assert.match(webhookSource, /upsertProviderSubscriptionFromStripeSubscription/);
+assert.match(webhookSource, /syncVerifiedBillingSubscription/);
 assert.doesNotMatch(stripLineComments(webhookSource), /auth\.me\(\)/, 'Webhook-ul Stripe nu are niciodata o sesiune Base44 - nu trebuie sa apeleze auth.me() in cod executabil');
 
 const routerSource = await source('../base44/functions/getMyProviderWorkspace/router.ts');

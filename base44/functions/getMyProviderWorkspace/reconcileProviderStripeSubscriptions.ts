@@ -1,7 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import Stripe from 'npm:stripe@22.6.2';
-import { upsertProviderSubscriptionFromStripeSubscription } from '../../shared/providerBillingPolicy.js';
-import { isViaseeSubscription } from './billingAccountHelpers.ts';
+import { syncVerifiedBillingSubscription } from './billingAccountHelpers.ts';
 
 export async function handle(req: Request) {
   try {
@@ -21,14 +20,14 @@ export async function handle(req: Request) {
     const stripe = new Stripe(secret);
     let checked = 0, synced = 0, failed = 0;
     // Stripe pagination discovers paid checkouts even when the customer never returned.
-    for await (const subscription of stripe.subscriptions.list({ price: priceId, status: 'all', limit: 100 })) {
+    for await (const subscription of stripe.subscriptions.list({ status: 'all', limit: 100 })) {
       const locationId = subscription.metadata?.location_id;
-      if (!isViaseeSubscription(subscription, priceId, locationId)) continue;
+      if (!locationId || subscription.metadata?.app !== 'viasee') continue;
       checked++;
       try {
         const location = await svc.entities.ProviderLocation.get(locationId);
         if (!location) { failed++; continue; }
-        await upsertProviderSubscriptionFromStripeSubscription(svc, subscription, { locationId, organizationId: location.organization_id });
+        await syncVerifiedBillingSubscription(svc, subscription, priceId, locationId, location.organization_id);
         synced++;
       } catch (_error) { failed++; }
     }

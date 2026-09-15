@@ -3,11 +3,31 @@ import { upsertProviderSubscriptionFromStripeSubscription } from '../../shared/p
 export const clean = (value, max = 200) => String(value ?? '').trim().slice(0, max);
 export const idOf = (value) => typeof value === 'string' ? value : value?.id || '';
 export function isViaseeSubscription(subscription, priceId, locationId) {
-  return Boolean(priceId && subscription?.metadata?.app === 'viasee' &&
+  return Boolean(priceId && locationId && subscription?.metadata?.app === 'viasee' &&
     subscription?.metadata?.location_id === locationId &&
     subscription?.items?.data?.length === 1 &&
     idOf(subscription.items.data[0].price) === priceId &&
     subscription.items.data[0].quantity === 1);
+}
+export function assertBillingCustomer(customer, locationId) {
+  if (!customer || customer.deleted || customer.metadata?.app !== 'viasee' || customer.metadata?.location_id !== locationId) {
+    throw new Error('Contul Stripe nu corespunde locației. Contactează VIASEE.');
+  }
+}
+export async function syncVerifiedBillingSubscription(svc, subscription, priceId, locationId, organizationId) {
+  if (!locationId || subscription?.metadata?.app !== 'viasee' || subscription.metadata.location_id !== locationId) return null;
+  if (isViaseeSubscription(subscription, priceId, locationId)) {
+    await upsertProviderSubscriptionFromStripeSubscription(svc, subscription, { locationId, organizationId });
+    return subscription;
+  }
+  // A changed price/quantity must revoke stale local access, not disappear silently.
+  const rows = await svc.entities.ProviderSubscription.filter({
+    stripe_subscription_id: subscription.id, location_id: locationId, billing_mode: 'stripe',
+  }, '-created_date', 100);
+  for (const row of rows) await svc.entities.ProviderSubscription.update(row.id, {
+    status: 'suspended', status_reason: 'stripe:configuration_mismatch',
+  });
+  return { ...subscription, billing_requires_review: true };
 }
 export async function findBillingAccount(svc, locationId) {
   const rows = await svc.entities.ProviderBillingAccount.filter({ location_id: locationId }, 'created_date', 1);
@@ -35,11 +55,11 @@ export async function ensureBillingAccount(svc, stripe, location, user) {
 export async function syncCustomerSubscriptions(svc, stripe, account, priceId) {
   let latest = null;
   for await (const subscription of stripe.subscriptions.list({ customer: account.stripe_customer_id, status: 'all', limit: 100 })) {
-    if (!isViaseeSubscription(subscription, priceId, account.location_id)) continue;
-    await upsertProviderSubscriptionFromStripeSubscription(svc, subscription, { locationId: account.location_id, organizationId: account.organization_id });
+    const synchronized = await syncVerifiedBillingSubscription(svc, subscription, priceId, account.location_id, account.organization_id);
+    if (!synchronized) continue;
     const terminal = value => ['canceled', 'incomplete_expired'].includes(value?.status);
     if (!latest || (terminal(latest) && !terminal(subscription)) ||
-      (terminal(latest) === terminal(subscription) && subscription.created > latest.created)) latest = subscription;
+      (terminal(latest) === terminal(subscription) && subscription.created > latest.created)) latest = synchronized;
   }
   return latest;
 }

@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import Stripe from 'npm:stripe@22.6.2';
 import { authorizeProviderBillingOwner, resolveSubscriptionPeriod } from '../../shared/providerBillingPolicy.js';
-import { clean, idOf, findBillingAccount, ensureBillingAccount, syncCustomerSubscriptions, isViaseeSubscription, invoiceSummary, paymentIntentSummary, validateBillingProfile } from './billingAccountHelpers.ts';
+import { assertBillingCustomer, clean, idOf, findBillingAccount, ensureBillingAccount, syncCustomerSubscriptions, isViaseeSubscription, invoiceSummary, paymentIntentSummary, validateBillingProfile } from './billingAccountHelpers.ts';
 
 export async function handle(req: Request) {
   try {
@@ -27,7 +27,7 @@ export async function handle(req: Request) {
       const payments = input.view === 'payments';
       const subscriptions = input.view === 'subscriptions';
       const params = { limit: 30, ...(input.cursor ? { starting_after: clean(input.cursor) } : {}) };
-      const page = subscriptions ? await stripe.subscriptions.list({ ...params, price: priceId, status: 'all' }) : payments ? await stripe.paymentIntents.list({ ...params, expand: ['data.latest_charge'] }) : await stripe.invoices.list(params);
+      const page = subscriptions ? await stripe.subscriptions.list({ ...params, status: 'all' }) : payments ? await stripe.paymentIntents.list({ ...params, expand: ['data.latest_charge'] }) : await stripe.invoices.list(params);
       const customers = new Map();
       const rows = [];
       for (const item of page.data) {
@@ -37,9 +37,9 @@ export async function handle(req: Request) {
         const customer = customers.get(customerId);
         if (customer.deleted || customer.metadata?.app !== 'viasee' || !customer.metadata.location_id) continue;
         const location = await svc.entities.ProviderLocation.get(customer.metadata.location_id).catch(() => null);
-        if (subscriptions && !isViaseeSubscription(item, priceId, customer.metadata.location_id)) continue;
+        if (subscriptions && (item.metadata?.app !== 'viasee' || item.metadata?.location_id !== customer.metadata.location_id)) continue;
         rows.push({
-          ...(subscriptions ? { id: item.id, created: item.created, status: item.status, amount: item.items.data[0]?.price?.unit_amount, currency: item.currency, cancel_at_period_end: item.cancel_at_period_end || Boolean(item.cancel_at) } : payments ? paymentIntentSummary(item) : invoiceSummary(item)),
+          ...(subscriptions ? { id: item.id, created: item.created, status: isViaseeSubscription(item, priceId, customer.metadata.location_id) ? item.status : 'configuration_review', amount: item.items.data[0]?.price?.unit_amount, currency: item.currency, cancel_at_period_end: item.cancel_at_period_end || Boolean(item.cancel_at) } : payments ? paymentIntentSummary(item) : invoiceSummary(item)),
           customer_id: customerId, location_id: customer.metadata.location_id,
           location_name: location?.public_display_name || location?.name || customer.metadata.location_id,
           billing_name: (!payments && !subscriptions ? item.customer_name : customer.name) || customer.name,
@@ -56,6 +56,7 @@ export async function handle(req: Request) {
       const account = await ensureBillingAccount(svc, stripe, authorized.location, user);
       const customer = await stripe.customers.retrieve(account.stripe_customer_id);
       if (customer.deleted) return Response.json({ error: 'Contul de facturare nu mai este disponibil. Contactează VIASEE.' }, { status: 409 });
+      assertBillingCustomer(customer, locationId);
       const taxIds = await stripe.customers.listTaxIds(customer.id, { limit: 100 });
       const conflictingVat = taxIds.data.some(tax => tax.type === 'eu_vat' &&
         (profile.billing_type === 'individual' || (profile.billing_address.country === 'RO' && tax.value.replace(/[^0-9]/g, '') !== profile.billing_cui)));
@@ -78,6 +79,7 @@ export async function handle(req: Request) {
       (!row.current_period_end || Date.parse(row.current_period_end) > Date.now()) && row.plan_code === 'pro');
     const pricing = { amount: price.unit_amount, currency: price.currency, interval: price.recurring?.interval, active: price.active, issuer_vat_registered: false, fiscal_provider: 'keez', fiscal_mode: 'manual' };
     if (!account) return Response.json({ pricing, manual: manual || null, subscription: null, customer: null, methods: [], invoices: [], has_more: false });
+    assertBillingCustomer(await stripe.customers.retrieve(account.stripe_customer_id), locationId);
     const latest = await syncCustomerSubscriptions(svc, stripe, account, priceId);
     const [customer, methods, invoices] = await Promise.all([
       stripe.customers.retrieve(account.stripe_customer_id),
@@ -88,7 +90,7 @@ export async function handle(req: Request) {
     const defaultId = idOf(latest?.default_payment_method) || idOf(customer.invoice_settings?.default_payment_method);
     return Response.json({
       pricing, manual: manual || null,
-      subscription: latest ? { id: latest.id, status: latest.status, cancel_at_period_end: latest.cancel_at_period_end || Boolean(latest.cancel_at),
+      subscription: latest ? { id: latest.id, status: latest.billing_requires_review ? 'configuration_review' : latest.status, cancel_at_period_end: latest.cancel_at_period_end || Boolean(latest.cancel_at),
         ...resolveSubscriptionPeriod(latest), trial_end: latest.trial_end } : null,
       customer: { name: customer.name || '', email: customer.email || '', address: customer.address || {},
         cui: customer.metadata?.cui || account.billing_cui || '', billing_type: customer.metadata?.billing_type || account.billing_type || 'company',

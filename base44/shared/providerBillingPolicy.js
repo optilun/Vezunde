@@ -123,6 +123,7 @@ export async function findExistingStripeSubscriptionRow(svc, { locationId, strip
   if (stripeSubscriptionId) {
     const bySubscriptionId = await svc.entities.ProviderSubscription.filter({
       stripe_subscription_id: stripeSubscriptionId,
+      billing_mode: 'stripe',
     }, '-created_date', 1);
     return bySubscriptionId[0] || null;
   }
@@ -158,6 +159,7 @@ export async function upsertProviderSubscriptionFromStripeSubscription(svc, subs
     stripeSubscriptionId: subscription?.id,
   });
   if (existing) {
+    if (existing.location_id !== resolvedLocationId) throw new Error('Stripe subscription location mismatch');
     await svc.entities.ProviderSubscription.update(existing.id, fields);
     return { id: existing.id, ...fields };
   }

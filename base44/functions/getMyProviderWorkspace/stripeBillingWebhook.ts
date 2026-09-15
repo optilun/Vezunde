@@ -3,9 +3,7 @@
 // separately; return synchronization and scheduled reconciliation are recovery paths.
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import Stripe from 'npm:stripe@22.6.2';
-import { upsertProviderSubscriptionFromStripeSubscription } from '../../shared/providerBillingPolicy.js';
-
-import { isViaseeSubscription } from './billingAccountHelpers.ts';
+import { syncVerifiedBillingSubscription } from './billingAccountHelpers.ts';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -44,15 +42,11 @@ export async function handle(req: Request) {
       if (session.mode === 'subscription' && session.subscription) {
         const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-        if (!isViaseeSubscription(subscription, priceId, session.client_reference_id)) return res({ received: true });
-        await upsertProviderSubscriptionFromStripeSubscription(svc, subscription, {
-          locationId: session.client_reference_id,
-        });
+        await syncVerifiedBillingSubscription(svc, subscription, priceId, session.client_reference_id, subscription.metadata?.organization_id);
       }
     } else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
       const subscription = await stripe.subscriptions.retrieve(event.data.object.id);
-      if (!isViaseeSubscription(subscription, priceId, subscription.metadata?.location_id)) return res({ received: true });
-      await upsertProviderSubscriptionFromStripeSubscription(svc, subscription, {});
+      await syncVerifiedBillingSubscription(svc, subscription, priceId, subscription.metadata?.location_id, subscription.metadata?.organization_id);
     }
     // Orice alt tip de eveniment este ignorat explicit - endpoint-ul este inregistrat in Stripe
     // Dashboard doar pentru cele trei de mai sus, dar un handler robust nu trebuie sa esueze

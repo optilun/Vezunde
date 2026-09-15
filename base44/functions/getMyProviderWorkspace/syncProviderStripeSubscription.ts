@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import Stripe from 'npm:stripe@22.6.2';
-import { authorizeProviderBillingOwner, upsertProviderSubscriptionFromStripeSubscription } from '../../shared/providerBillingPolicy.js';
-import { clean, idOf, findBillingAccount, syncCustomerSubscriptions, isViaseeSubscription } from './billingAccountHelpers.ts';
+import { authorizeProviderBillingOwner } from '../../shared/providerBillingPolicy.js';
+import { assertBillingCustomer, syncVerifiedBillingSubscription, clean, idOf, findBillingAccount, syncCustomerSubscriptions, isViaseeSubscription } from './billingAccountHelpers.ts';
 
 export async function handle(req: Request) {
   try {
@@ -18,6 +18,7 @@ export async function handle(req: Request) {
     if (!secret || !priceId) return Response.json({ error: 'Facturarea nu este configurată complet.' }, { status: 503 });
     const stripe = new Stripe(secret);
     const account = await findBillingAccount(svc, locationId);
+    if (account) assertBillingCustomer(await stripe.customers.retrieve(account.stripe_customer_id), locationId);
     let subscription;
     if (input.session_id) {
       const session = await stripe.checkout.sessions.retrieve(clean(input.session_id));
@@ -28,8 +29,8 @@ export async function handle(req: Request) {
         return Response.json({ error: 'Plata nu este încă finalizată. Reîncearcă verificarea.' }, { status: 409 });
       }
       subscription = await stripe.subscriptions.retrieve(idOf(session.subscription));
+      await syncVerifiedBillingSubscription(svc, subscription, priceId, locationId, authorized.location.organization_id);
       if (!isViaseeSubscription(subscription, priceId, locationId)) return Response.json({ error: 'Abonamentul nu corespunde planului VIASEE Pro.' }, { status: 409 });
-      await upsertProviderSubscriptionFromStripeSubscription(svc, subscription, { locationId, organizationId: authorized.location.organization_id });
     } else if (account) subscription = await syncCustomerSubscriptions(svc, stripe, account, priceId);
     return Response.json({ ok: true, status: subscription?.status || null });
   } catch (_error) { return Response.json({ error: 'Nu am putut confirma abonamentul. Reîncearcă verificarea.' }, { status: 502 }); }

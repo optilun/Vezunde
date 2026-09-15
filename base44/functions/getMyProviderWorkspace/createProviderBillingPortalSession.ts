@@ -8,7 +8,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import Stripe from 'npm:stripe@22.6.2';
 import { authorizeProviderBillingOwner, safeBillingReturnBaseUrl } from '../../shared/providerBillingPolicy.js';
 
-import { findBillingAccount } from './billingAccountHelpers.ts';
+import { assertBillingCustomer, findBillingAccount } from './billingAccountHelpers.ts';
 
 function res(body, status = 200) {
   return Response.json(body, { status });
@@ -21,7 +21,7 @@ function clean(value, maxLength = 200) {
 export async function handle(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().catch(() => null);
     if (!user) return res({ error: 'Autentificare necesara.' }, 401);
     const svc = base44.asServiceRole;
     const input = await req.json().catch(() => ({}));
@@ -39,6 +39,7 @@ export async function handle(req: Request) {
     if (!stripeCustomerId) return res({ error: 'Aceasta locatie nu are inca un abonament Stripe activ.' }, 404);
 
     const stripe = new Stripe(secretKey);
+    assertBillingCustomer(await stripe.customers.retrieve(stripeCustomerId), locationId);
     const baseUrl = safeBillingReturnBaseUrl(input.return_base_url);
     let configuration = Deno.env.get('STRIPE_BILLING_PORTAL_CONFIG_ID');
     if (!configuration) {

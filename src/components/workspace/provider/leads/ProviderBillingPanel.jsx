@@ -6,6 +6,7 @@ import { base44 } from "@/api/base44Client";
 export const money = (amount, currency = "ron") => amount == null ? "—" : new Intl.NumberFormat("ro-RO", { style: "currency", currency }).format(amount / 100);
 const date = value => value ? new Date(typeof value === "number" ? value * 1000 : value).toLocaleDateString("ro-RO") : "—";
 export const BILLING_STATUSES = {
+  configuration_review: "Necesită verificare VIASEE",
   requires_action: "Necesită confirmare", requires_payment_method: "Așteaptă metodă de plată", processing: "În procesare", requires_capture: "Autorizată", requires_confirmation: "Așteaptă confirmare",
   active: "Activ", trialing: "Perioadă de probă", past_due: "Plată restantă", unpaid: "Neplătit",
   incomplete: "Plată nefinalizată", incomplete_expired: "Plată expirată", canceled: "Anulat", paused: "Suspendat",
@@ -106,7 +107,7 @@ function BillingCenter({ locationId, onSynced }) {
   const subscription = data?.subscription;
   const existing = subscription && !["canceled","incomplete_expired"].includes(subscription.status);
   const manual = !existing && data?.manual;
-  const problem = ["past_due","unpaid","incomplete","paused"].includes(subscription?.status);
+  const problem = ["past_due","unpaid","incomplete","paused","configuration_review"].includes(subscription?.status);
   const address = profile.billing_address;
   const update = (key, value) => setProfile(p => ({ ...p, [key]: value }));
   const updateAddress = (key, value) => setProfile(p => ({ ...p, billing_address: { ...p.billing_address, [key]: value } }));
@@ -118,7 +119,7 @@ function BillingCenter({ locationId, onSynced }) {
     {data && !loading && <>
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="Planul locației" icon={ShieldCheck}>
-          <div className="flex items-center justify-between gap-2"><strong className="text-2xl">{existing || manual ? "VIASEE Pro" : "VIASEE Free"}</strong>{subscription && <BillingStatus status={subscription.status} />}{manual && <span className="text-xs text-muted-foreground">Acordat de VIASEE</span>}</div>
+          <div className="flex items-center justify-between gap-2"><strong className="text-2xl">{subscription?.status === "configuration_review" ? "Abonament de verificat" : existing || manual ? "VIASEE Pro" : "VIASEE Free"}</strong>{subscription && <BillingStatus status={subscription.status} />}{manual && <span className="text-xs text-muted-foreground">Acordat de VIASEE</span>}</div>
           <p className="mt-2 text-sm text-muted-foreground">{manual ? "Acest acces nu este un abonament plătit prin Stripe." : `Pro: ${money(data.pricing?.amount, data.pricing?.currency)} / ${data.pricing?.interval === "year" ? "an" : "lună"}, pentru această locație. Emitent neplătitor de TVA. Totalul final apare înainte de plată.`}</p>
           {existing && <p className="mt-3 text-sm">{subscription.cancel_at_period_end ? "Acces până la " : "Sfârșitul perioadei curente: "}{date(subscription.end)}{subscription.cancel_at_period_end && ". Reînnoirea este oprită."}</p>}
           {problem && <p className="mt-3 text-sm text-red-800">Abonamentul necesită atenție. Verifică factura restantă și metoda de plată.</p>}

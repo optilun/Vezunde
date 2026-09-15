@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import Stripe from 'npm:stripe@22.6.2';
 import { authorizeProviderBillingOwner, safeBillingReturnBaseUrl } from '../../shared/providerBillingPolicy.js';
-import { clean, ensureBillingAccount, validateBillingProfile } from './billingAccountHelpers.ts';
+import { assertBillingCustomer, clean, ensureBillingAccount, validateBillingProfile } from './billingAccountHelpers.ts';
 
 export async function handle(req: Request) {
   try {
@@ -30,6 +30,7 @@ export async function handle(req: Request) {
     }
     const customer = await stripe.customers.retrieve(account.stripe_customer_id);
     if (customer.deleted) return Response.json({ error: 'Contul de facturare nu mai este disponibil.' }, { status: 409 });
+    assertBillingCustomer(customer, locationId);
     try {
       validateBillingProfile({ billing_type: customer.metadata?.billing_type, billing_name: customer.name,
         billing_email: customer.email, billing_cui: customer.metadata?.cui, billing_address: customer.address });
