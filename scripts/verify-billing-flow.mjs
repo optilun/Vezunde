@@ -207,6 +207,56 @@ for (const invalid of [
   assert.equal(s.portalConfig.features.payment_method_update.enabled, true);
   assert.equal(s.portalParams.configuration, 'bpc_new');
 }
+
+for (const items of [
+  { data: [{ price: { id: 'price_other' }, quantity: 1 }] },
+  { data: [{ price: { id: 'price_pro' }, quantity: 2 }] },
+]) {
+  const s = state(); s.remoteSubscriptions = [subscription()];
+  await call('syncProviderStripeSubscription');
+  s.rows.push({ id: 'manual_a', location_id: 'loc_a', billing_mode: 'manual', status: 'active', stripe_subscription_id: 'sub_current' });
+  s.remoteSubscriptions = [subscription({ items })];
+  const result = await call('providerBillingOps');
+  assert.equal(result.status, 200);
+  assert.equal(s.rows.find(r => r.billing_mode === 'stripe').status, 'suspended', 'Changed price/quantity must revoke stale Stripe entitlement');
+  assert.equal(s.rows.find(r => r.billing_mode === 'manual').status, 'active', 'Manual entitlement must remain independent');
+  s.remoteSubscriptions = [subscription()];
+  await call('syncProviderStripeSubscription');
+  assert.equal(s.rows.find(r => r.billing_mode === 'stripe').status, 'active', 'Corrected configuration restores Stripe entitlement');
+}
+for (const metadata of [{ app: 'other', location_id: 'loc_a' }, { app: 'viasee', location_id: 'other_location' }]) {
+  for (const handler of ['providerBillingOps', 'createProviderCheckoutSession', 'createProviderBillingPortalSession', 'syncProviderStripeSubscription']) {
+    const s = state(); s.customer.metadata = metadata;
+    let reads = 0;
+    s.stripe.invoices.list = async () => { reads++; return page([]); };
+    const result = await call(handler);
+    assert.ok(result.status >= 400, handler + ' must reject mismatched Stripe customer');
+    assert.equal(reads, 0, 'Do not expose invoices from a mismatched customer');
+    assert.equal(s.checkoutCreates.length, 0);
+    assert.equal(s.portalParams, undefined);
+    assert.equal(s.rows.length, 0);
+  }
+  const s = state(); s.customer.metadata = metadata;
+  const result = await call('providerBillingOps', { action: 'save_details', billing_type: 'company', billing_name: 'ACME', billing_email: 'billing@example.test', billing_cui: '12345678', billing_address: { line1: 'Street', city: 'Town', country: 'RO' } });
+  assert.ok(result.status >= 400);
+  assert.equal(s.savedCustomers.length, 0, 'Do not update a mismatched customer');
+}
+{
+  const s = state(); s.remoteSubscriptions = [subscription()];
+  await call('syncProviderStripeSubscription');
+  s.user.role = 'admin';
+  s.remoteSubscriptions = [subscription({ items: { data: [{ price: { id: 'price_other' }, quantity: 1 }] } })];
+  s.stripe.subscriptions.list = params => {
+    assert.equal(params.price, undefined, 'Reconciliation must discover changed-price subscriptions');
+    return page(s.remoteSubscriptions);
+  };
+  const result = await call('reconcileProviderStripeSubscriptions');
+  assert.equal(result.status, 200);
+  assert.equal(result.body.synced, 1);
+  assert.equal(s.rows[0].status, 'suspended');
+}
+assert.equal(modules.billingAccountHelpers.isViaseeSubscription(subscription(), 'price_pro', undefined), false);
+
 const panel = await readFile('src/components/workspace/provider/leads/ProviderBillingPanel.jsx', 'utf8');
 assert.ok(panel.indexOf('await invoke("syncProviderStripeSubscription"') < panel.indexOf('next.delete("session_id")'));
 assert.match(panel, /request !== sequence.current/);
