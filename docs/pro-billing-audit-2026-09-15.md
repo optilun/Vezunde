@@ -37,6 +37,16 @@
 4. Valid signed webhook delivery must be verified separately; rejection of an invalid signature does not prove successful delivery.
 5. No real payments, cancellations, refunds, card removal or invoice voiding were executed. Complete lifecycle testing in a Stripe test environment before treating the entire billing system as production-validated.
 
+## Follow-up code audit — customer ownership and configuration drift
+- Validate Stripe customer app/location metadata before reading billing history, updating billing identity, opening the portal or starting Checkout.
+- Synchronization now suspends the existing Stripe entitlement when a VIASEE subscription has an unexpected price, quantity or item configuration. Manual entitlements are untouched.
+- The customer/admin interface marks mismatched subscriptions as requiring VIASEE review; Checkout continues to block duplicate subscriptions.
+- Correcting the subscription configuration permits normal synchronization to restore the appropriate entitlement.
+- Reconciliation lists all subscriptions before applying VIASEE scope, so a changed price no longer hides a previously active subscription.
+- Stripe upsert is restricted to Stripe-mode records and rejects reassigning an existing subscription to another location.
+- Added mocked regression coverage for wrong-customer reads/writes/portal/Checkout, changed-price and quantity suspension, manual entitlement isolation, recovery after correction and reconciliation discovery.
+- Financial tests use mocked Stripe; no real financial actions were performed.
+
 ## References
 - https://docs.stripe.com/customer-management/integrate-customer-portal
 - https://docs.stripe.com/customer-management
