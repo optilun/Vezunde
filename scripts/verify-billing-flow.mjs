@@ -110,6 +110,7 @@ for (const status of ['active','trialing','past_due','unpaid','incomplete','paus
   assert.equal(s.checkoutCreates[0].params.line_items[0].price, 'price_pro');
   assert.ok(s.checkoutCreates[0].params.success_url.startsWith('https://viasee.ro/contul-meu?s=settings&tab=billing'));
   assert.equal(s.checkoutCreates[0].params.billing_address_collection, 'required');
+  assert.equal(s.checkoutCreates[0].params.automatic_tax.enabled, false, 'Do not charge automatic VAT for the non-registered issuer');
   assert.equal(s.checkoutCreates[0].params.payment_method_collection, 'always');
   assert.ok(s.checkoutCreates[0].options.idempotencyKey);
 }
@@ -209,5 +210,6 @@ for (const invalid of [
 const panel = await readFile('src/components/workspace/provider/leads/ProviderBillingPanel.jsx', 'utf8');
 assert.ok(panel.indexOf('await invoke("syncProviderStripeSubscription"') < panel.indexOf('next.delete("session_id")'));
 assert.match(panel, /request !== sequence.current/);
+assert.match(panel, /if \(!profileInitialized.current\)/, "Pagination must preserve unsaved billing details");
 assert.match(panel, /if \(lock.current\) return/);
 console.log('Billing flow: authorization, duplicate protection, retry, return validation, recovery, history and fiscal input checks passed (mock Stripe only).');

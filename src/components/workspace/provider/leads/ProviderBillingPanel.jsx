@@ -45,7 +45,7 @@ export function InvoiceTable({ invoices }) {
       <td className="px-2 py-4">{date(invoice.created)}<p className="text-xs text-muted-foreground">{invoice.number || "Număr nealocat"}</p></td>
       <td className="px-2 py-4"><BillingStatus status={invoice.status} />{invoice.status === "open" && invoice.attempted && <p className="mt-1 text-xs text-muted-foreground">{invoice.attempt_count} încercări de încasare</p>}</td>
       <td className="px-2 py-4">{money(invoice.total, invoice.currency)}</td><td className="px-2 py-4">{money(invoice.amount_remaining, invoice.currency)}</td>
-      <td className="px-2 py-4"><div className="flex gap-3">{invoice.hosted_invoice_url && <a href={invoice.hosted_invoice_url} target="_blank" rel="noreferrer" className="underline underline-offset-4">{invoice.status === "open" ? "Vezi / plătește" : "Vezi"}</a>}{invoice.invoice_pdf && <a href={invoice.invoice_pdf} target="_blank" rel="noreferrer" className="underline underline-offset-4" aria-label={`Descarcă factura ${invoice.number || ""} PDF`}>PDF</a>}</div></td>
+      <td className="px-2 py-4"><div className="flex gap-3">{invoice.hosted_invoice_url && <a href={invoice.hosted_invoice_url} target="_blank" rel="noreferrer" className="underline underline-offset-4">{invoice.status === "open" ? "Vezi / plătește" : "Vezi"}</a>}{invoice.invoice_pdf && <a href={invoice.invoice_pdf} target="_blank" rel="noreferrer" className="underline underline-offset-4" aria-label={`Descarcă factura ${invoice.number || ""} PDF`}>PDF Stripe</a>}</div></td>
     </tr>)}</tbody>
   </table></div>;
 }
@@ -60,6 +60,7 @@ function BillingCenter({ locationId, onSynced }) {
   const [loading, setLoading] = useState(true), [tick, setTick] = useState(0);
   const [cursors, setCursors] = useState([null]), [page, setPage] = useState(0);
   const lock = useRef(false), sequence = useRef(0), synced = useRef(onSynced);
+  const profileInitialized = useRef(false);
   synced.current = onSynced;
   const cursor = cursors[page];
   const load = useCallback(async () => {
@@ -71,7 +72,9 @@ function BillingCenter({ locationId, onSynced }) {
       }
       const result = await invoke("providerBillingOps", { location_id: locationId, cursor });
       if (request !== sequence.current) return;
-      setData(result); setProfile(profileFrom(result.customer));
+      setData(result);
+      // Invoice pagination and retries must not overwrite an unsaved billing form.
+      if (!profileInitialized.current) { setProfile(profileFrom(result.customer)); profileInitialized.current = true; }
       synced.current?.();
       if (billing === "success" || billing === "portal_return") {
         setNotice(billing === "success" ? "Starea abonamentului a fost verificată cu Stripe." : "Datele de plată au fost actualizate.");
@@ -115,7 +118,7 @@ function BillingCenter({ locationId, onSynced }) {
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="Planul locației" icon={ShieldCheck}>
           <div className="flex items-center justify-between gap-2"><strong className="text-2xl">{existing || manual ? "VIASEE Pro" : "VIASEE Free"}</strong>{subscription && <BillingStatus status={subscription.status} />}{manual && <span className="text-xs text-muted-foreground">Acordat de VIASEE</span>}</div>
-          <p className="mt-2 text-sm text-muted-foreground">{manual ? "Acest acces nu este un abonament plătit prin Stripe." : `Pro: ${money(data.pricing?.amount, data.pricing?.currency)} / ${data.pricing?.interval === "year" ? "an" : "lună"}, pentru această locație. Totalul final apare înainte de plată.`}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{manual ? "Acest acces nu este un abonament plătit prin Stripe." : `Pro: ${money(data.pricing?.amount, data.pricing?.currency)} / ${data.pricing?.interval === "year" ? "an" : "lună"}, pentru această locație. Emitent neplătitor de TVA. Totalul final apare înainte de plată.`}</p>
           {existing && <p className="mt-3 text-sm">{subscription.cancel_at_period_end ? "Acces până la " : "Sfârșitul perioadei curente: "}{date(subscription.end)}{subscription.cancel_at_period_end && ". Reînnoirea este oprită."}</p>}
           {problem && <p className="mt-3 text-sm text-red-800">Abonamentul necesită atenție. Verifică factura restantă și metoda de plată.</p>}
           <div className="mt-4">{existing ? <button className={button} disabled={Boolean(busy)} onClick={() => void run("portal")}>Gestionează abonamentul <ExternalLink className="h-4 w-4" /></button> : !manual && <a className={button} href="#billing-details">Activează Pro — completează datele</a>}</div>
@@ -129,13 +132,14 @@ function BillingCenter({ locationId, onSynced }) {
       <div id="billing-details" className="scroll-mt-24"><Panel title="Date de facturare" icon={FileText}>
         <form onSubmit={event => { event.preventDefault(); void run("save"); }} className="space-y-4">
           <fieldset disabled={Boolean(busy)}><legend className="mb-2 text-sm font-medium">Facturez pe</legend><div className="flex gap-5">{[["company","Firmă"],["individual","Persoană fizică"]].map(([value,label]) => <label key={value} className="flex items-center gap-2 text-sm"><input type="radio" name="billing-type" value={value} checked={profile.billing_type === value} onChange={() => update("billing_type",value)} />{label}</label>)}</div></fieldset>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="text-sm">{profile.billing_type === "company" ? "Denumire firmă" : "Nume complet"}<input required autoComplete="organization" className={field} value={profile.billing_name} onChange={e => update("billing_name",e.target.value)} /></label>
+          <fieldset disabled={Boolean(busy)} className="grid gap-4 sm:grid-cols-2">
+            <label className="text-sm">{profile.billing_type === "company" ? "Denumire firmă" : "Nume complet"}<input required autoComplete={profile.billing_type === "company" ? "organization" : "name"} className={field} value={profile.billing_name} onChange={e => update("billing_name",e.target.value)} /></label>
             <label className="text-sm">Email pentru facturare<input required type="email" autoComplete="email" className={field} value={profile.billing_email} onChange={e => update("billing_email",e.target.value)} /></label>
-            {profile.billing_type === "company" && <label className="text-sm">CUI<input required className={field} placeholder="Ex. 12345678" value={profile.billing_cui} onChange={e => update("billing_cui",e.target.value)} /><span className="mt-1 block text-xs text-muted-foreground">Codul de TVA, dacă există, se adaugă separat în Stripe.</span></label>}
+            {profile.billing_type === "company" && <label className="text-sm">CUI<input required inputMode="numeric" className={field} placeholder="Ex. 12345678" value={profile.billing_cui} onChange={e => update("billing_cui",e.target.value)} /><span className="mt-1 block text-xs text-muted-foreground">Codul de TVA, dacă există, se adaugă separat în Stripe.</span></label>}
             <label className="text-sm">Adresă<input required autoComplete="street-address" className={field} value={address.line1} onChange={e => updateAddress("line1",e.target.value)} /></label>
             {[["city","Localitate",true],["state","Județ / Regiune",false],["postal_code","Cod poștal",false],["country","Țară (cod de două litere)",true]].map(([key,label,required]) => <label key={key} className="text-sm">{label}<input required={required} maxLength={key === "country" ? 2 : 150} className={field} value={address[key]} onChange={e => updateAddress(key,e.target.value)} /></label>)}
-          </div>
+          </fieldset>
+          {data.customer?.tax_ids?.length > 0 && <p className="text-xs text-muted-foreground">Coduri fiscale salvate pentru client: {data.customer.tax_ids.map(tax => tax.value).join(", ")}</p>}
           <p className="text-xs leading-relaxed text-muted-foreground">Modificările se aplică facturilor viitoare. Pentru corectarea unei facturi deja emise, contactează VIASEE.</p>
           <div className="flex flex-wrap gap-2"><button type="submit" className={button} disabled={Boolean(busy)}>{busy === "save" && <Loader2 className="h-4 w-4 animate-spin" />}Salvează datele</button>
             {!existing && !manual && <button type="button" className={button + " !bg-foreground !text-background"} disabled={Boolean(busy) || !data.pricing?.active} onClick={event => { if (event.currentTarget.form.reportValidity()) void run("checkout"); }}>{busy === "checkout" && <Loader2 className="h-4 w-4 animate-spin" />}Salvează și continuă la plata Pro</button>}
@@ -143,7 +147,8 @@ function BillingCenter({ locationId, onSynced }) {
           </div>
         </form>
       </Panel></div>
-      <Panel title="Istoric facturi" icon={FileText}>
+      <Panel title="Istoric plăți și documente Stripe" icon={FileText}>
+        <p className="mb-3 text-sm leading-relaxed text-muted-foreground">Factura fiscală pentru abonament se emite separat prin KEEZ. Mai jos găsești documentele Stripe asociate plăților; acestea nu confirmă emiterea facturii KEEZ.</p>
         <InvoiceTable invoices={data.invoices} />
         {(page > 0 || data.has_more) && <div className="mt-4 flex items-center justify-between gap-2"><button className={button} disabled={page === 0 || loading} onClick={() => setPage(p => p - 1)}>Mai recente</button><span className="text-xs text-muted-foreground">Pagina {page + 1}</span><button className={button} disabled={!data.has_more || loading} onClick={() => { setCursors(c => [...c.slice(0,page + 1), data.next_cursor]); setPage(p => p + 1); }}>Mai vechi</button></div>}
       </Panel>

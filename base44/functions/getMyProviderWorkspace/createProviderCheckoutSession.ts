@@ -42,6 +42,8 @@ export async function handle(req: Request) {
       mode: 'subscription', customer: account.stripe_customer_id, client_reference_id: locationId,
       line_items: [{ price: priceId, quantity: 1 }], allow_promotion_codes: true,
       payment_method_collection: 'always', billing_address_collection: 'required',
+      // Seller confirmed non-VAT-registered; do not enable Stripe Tax for this checkout.
+      automatic_tax: { enabled: false },
       customer_update: { address: 'auto', name: 'auto' }, tax_id_collection: { enabled: true },
       metadata: { app: 'viasee', location_id: locationId },
       subscription_data: { metadata: { location_id: locationId, organization_id: clean(authorized.location.organization_id), app: 'viasee', initiated_by_user_id: clean(user.id) } },

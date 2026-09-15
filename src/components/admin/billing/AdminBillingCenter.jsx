@@ -33,10 +33,10 @@ export default function AdminBillingCenter() {
   const filtered = rows.filter(row => (!status || row.status === status) && [row.location_name, row.billing_name, row.billing_cui, row.number, row.id].join(" ").toLocaleLowerCase("ro").includes(query.toLocaleLowerCase("ro")));
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="flex flex-wrap gap-2">{[["invoices","Facturi"],["payments","Tranzacții"],["subscriptions","Abonamente"]].map(([key,label]) => <button key={key} type="button" aria-pressed={view === key} className={button + (view === key ? " !bg-foreground !text-background" : "")} onClick={() => { setView(key); setCursor(null); setHistory([]); setStatus(""); }}>{label}</button>)}</div>
+      <div className="flex flex-wrap gap-2">{[["invoices","Documente Stripe"],["payments","Tranzacții"],["subscriptions","Abonamente"]].map(([key,label]) => <button key={key} type="button" aria-pressed={view === key} className={button + (view === key ? " !bg-foreground !text-background" : "")} onClick={() => { setView(key); setCursor(null); setHistory([]); setStatus(""); }}>{label}</button>)}</div>
       <button className={button} disabled={syncing || loading} onClick={() => void synchronize()}>{syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}Sincronizează abonamentele</button>
     </div>
-    <p className="text-sm text-muted-foreground">Înregistrări VIASEE din Stripe. Facturile, tranzacțiile și abonamentele au stări distincte. Deschide o înregistrare în Stripe pentru administrare, rambursare sau corecție.</p>
+    <p className="text-sm text-muted-foreground">Emitent neplătitor de TVA. Facturile fiscale se emit manual în KEEZ. Documentele Stripe, tranzacțiile și abonamentele au stări distincte. Deschide o înregistrare în Stripe pentru administrare, rambursare sau corecție.</p>
     {notice && <p role="status" className="rounded-lg bg-secondary p-3 text-sm">{notice}</p>}
     {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}<button className="ml-3 underline" onClick={() => setTick(t => t + 1)}>Reîncearcă</button></p>}
     <div className="flex flex-col gap-2 sm:flex-row"><label className="flex-1"><span className="sr-only">Caută în pagina curentă</span><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Caută în această pagină: locație, firmă, CUI, factură" className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm" /></label>
@@ -51,7 +51,7 @@ export default function AdminBillingCenter() {
             {row.amount_remaining > 0 && <p className="mt-1 text-xs text-muted-foreground">Rest: {money(row.amount_remaining,row.currency)}</p>}
             {row.amount_refunded > 0 && <p className="mt-1 text-xs text-muted-foreground">Rambursat: {money(row.amount_refunded,row.currency)}</p>}
           </td>
-          <td className="px-4 py-4"><div className="flex flex-wrap gap-3"><a className="inline-flex items-center gap-1 underline" href={row.dashboard_url} target="_blank" rel="noreferrer">Stripe <ExternalLink className="h-3 w-3" /></a>{row.invoice_pdf && <a className="underline" href={row.invoice_pdf} target="_blank" rel="noreferrer">PDF</a>}{row.hosted_invoice_url && <a className="underline" href={row.hosted_invoice_url} target="_blank" rel="noreferrer">Factură</a>}</div></td>
+          <td className="px-4 py-4"><div className="flex flex-wrap gap-3"><a className="inline-flex items-center gap-1 underline" href={row.dashboard_url} target="_blank" rel="noreferrer">Stripe <ExternalLink className="h-3 w-3" /></a>{row.invoice_pdf && <a className="underline" href={row.invoice_pdf} target="_blank" rel="noreferrer">PDF Stripe</a>}{row.hosted_invoice_url && <a className="underline" href={row.hosted_invoice_url} target="_blank" rel="noreferrer">Factură</a>}</div></td>
         </tr>)}</tbody>
       </table>{!filtered.length && <p className="p-6 text-sm text-muted-foreground">Nu există înregistrări VIASEE care corespund filtrelor în această pagină. Poți continua cu pagina următoare.</p>}
     </div>}
