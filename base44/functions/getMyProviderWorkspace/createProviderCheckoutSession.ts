@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import Stripe from 'npm:stripe@22.6.2';
 import { authorizeProviderBillingOwner, safeBillingReturnBaseUrl } from '../../shared/providerBillingPolicy.js';
-import { clean, ensureBillingAccount, isViaseeSubscription, validateBillingProfile } from './billingAccountHelpers.ts';
+import { clean, ensureBillingAccount, validateBillingProfile } from './billingAccountHelpers.ts';
 
 export async function handle(req: Request) {
   try {
@@ -24,7 +24,7 @@ export async function handle(req: Request) {
     }
     const account = await ensureBillingAccount(svc, stripe, authorized.location, user);
     for await (const subscription of stripe.subscriptions.list({ customer: account.stripe_customer_id, status: 'all', limit: 100 })) {
-      if (isViaseeSubscription(subscription, priceId, locationId) && !['canceled','incomplete_expired'].includes(subscription.status)) {
+      if (subscription.metadata?.app === 'viasee' && subscription.metadata?.location_id === locationId && !['canceled','incomplete_expired'].includes(subscription.status)) {
         return Response.json({ error: 'Există deja un abonament pentru această locație. Gestionează abonamentul sau plata restantă.', code: 'subscription_exists' }, { status: 409 });
       }
     }

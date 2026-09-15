@@ -63,6 +63,17 @@ export function paymentSummary(charge) {
     failure_message: charge.failure_message, receipt_url: charge.receipt_url,
     card: charge.payment_method_details?.card ? { brand: charge.payment_method_details.card.brand, last4: charge.payment_method_details.card.last4 } : null };
 }
+export function paymentIntentSummary(intent) {
+  const charge = typeof intent.latest_charge === 'object' ? intent.latest_charge : null;
+  const details = charge ? paymentSummary(charge) : {};
+  const immediate = ['canceled', 'requires_action', 'processing', 'requires_capture'].includes(intent.status);
+  return {
+    ...details, id: intent.id, created: intent.created, amount: intent.amount, currency: intent.currency,
+    status: immediate ? intent.status : details.status || intent.status,
+    failure_code: intent.last_payment_error?.code || details.failure_code || null,
+    failure_message: intent.last_payment_error?.message || details.failure_message || null,
+  };
+}
 export function validateBillingProfile(input) {
   const type = input.billing_type === 'individual' ? 'individual' : 'company';
   const name = clean(input.billing_name), email = clean(input.billing_email);

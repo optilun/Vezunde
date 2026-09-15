@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const files = [
   'createProviderCheckoutSession', 'syncProviderStripeSubscription', 'providerBillingOps',
-  'reconcileProviderStripeSubscriptions', 'billingAccountHelpers',
+  'reconcileProviderStripeSubscriptions', 'billingAccountHelpers', 'createProviderBillingPortalSession',
 ];
 const modules = {};
 for (const file of files) {
@@ -69,7 +69,8 @@ function state() {
     prices: { retrieve: async () => ({ id: 'price_pro', unit_amount: 4900, currency: 'ron', active: true, recurring: { interval: 'month' } }) },
     paymentMethods: { list: async () => page([]) },
     invoices: { list: async () => page([]) },
-    charges: { list: async () => page([]) },
+    paymentIntents: { list: async () => page([]) },
+    billingPortal: { configurations: { list: () => page([{ id: 'bpc_viasee', metadata: { viasee_billing_version: '2' } }]) }, sessions: { create: async params => { s.portalParams = params; return { url: 'https://billing.stripe.test/portal' }; } } },
   };
   globalThis.__billingTest = s;
   return s;
@@ -157,6 +158,23 @@ for (const invalid of [
   assert.equal(h.paymentSummary({ status: 'failed', outcome: { type: 'blocked' } }).status, 'blocked');
   assert.equal(h.paymentSummary({ status: 'succeeded', amount_refunded: 20 }).status, 'partially_refunded');
   assert.equal(h.paymentSummary({ status: 'succeeded', refunded: true }).status, 'refunded');
+}
+{
+  const s = state();
+  s.remoteSubscriptions = [subscription({ items: { data: [{ price: { id: 'price_pro' }, quantity: 2 }] } })];
+  assert.equal((await call('createProviderCheckoutSession')).status, 409, 'Do not charge again when an existing subscription needs quantity review');
+}
+{
+  const s = state();
+  const result = await call('createProviderBillingPortalSession', { flow: 'payment_method_update', return_base_url: 'https://evil.example' });
+  assert.equal(result.status, 200);
+  assert.equal(s.portalParams.customer, 'cus_location');
+  assert.equal(s.portalParams.configuration, 'bpc_viasee');
+  assert.equal(s.portalParams.flow_data.type, 'payment_method_update');
+  assert.ok(s.portalParams.return_url.startsWith('https://viasee.ro/'));
+  const h = modules.billingAccountHelpers;
+  assert.equal(h.paymentIntentSummary({ id: 'pi_1', status: 'canceled', latest_charge: { status: 'failed' } }).status, 'canceled');
+  assert.equal(h.paymentIntentSummary({ id: 'pi_2', status: 'requires_action', latest_charge: { status: 'pending' } }).status, 'requires_action');
 }
 const panel = await readFile('src/components/workspace/provider/leads/ProviderBillingPanel.jsx', 'utf8');
 assert.ok(panel.indexOf('await invoke("syncProviderStripeSubscription"') < panel.indexOf('next.delete("session_id")'));

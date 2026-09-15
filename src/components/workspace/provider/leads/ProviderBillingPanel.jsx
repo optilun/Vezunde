@@ -6,6 +6,7 @@ import { base44 } from "@/api/base44Client";
 export const money = (amount, currency = "ron") => amount == null ? "—" : new Intl.NumberFormat("ro-RO", { style: "currency", currency }).format(amount / 100);
 const date = value => value ? new Date(typeof value === "number" ? value * 1000 : value).toLocaleDateString("ro-RO") : "—";
 export const BILLING_STATUSES = {
+  requires_action: "Necesită confirmare", requires_payment_method: "Așteaptă metodă de plată", processing: "În procesare", requires_capture: "Autorizată", requires_confirmation: "Așteaptă confirmare",
   active: "Activ", trialing: "Perioadă de probă", past_due: "Plată restantă", unpaid: "Neplătit",
   incomplete: "Plată nefinalizată", incomplete_expired: "Plată expirată", canceled: "Anulat", paused: "Suspendat",
   draft: "Ciornă", open: "De plată", paid: "Plătită", void: "Anulată", uncollectible: "Nerecuperabilă",

@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import Stripe from 'npm:stripe@22.6.2';
 import { authorizeProviderBillingOwner, resolveSubscriptionPeriod } from '../../shared/providerBillingPolicy.js';
-import { clean, idOf, findBillingAccount, ensureBillingAccount, syncCustomerSubscriptions, isViaseeSubscription, invoiceSummary, paymentSummary, validateBillingProfile } from './billingAccountHelpers.ts';
+import { clean, idOf, findBillingAccount, ensureBillingAccount, syncCustomerSubscriptions, isViaseeSubscription, invoiceSummary, paymentIntentSummary, validateBillingProfile } from './billingAccountHelpers.ts';
 
 export async function handle(req: Request) {
   try {
@@ -27,7 +27,7 @@ export async function handle(req: Request) {
       const payments = input.view === 'payments';
       const subscriptions = input.view === 'subscriptions';
       const params = { limit: 30, ...(input.cursor ? { starting_after: clean(input.cursor) } : {}) };
-      const page = subscriptions ? await stripe.subscriptions.list({ ...params, price: priceId, status: 'all' }) : payments ? await stripe.charges.list(params) : await stripe.invoices.list(params);
+      const page = subscriptions ? await stripe.subscriptions.list({ ...params, price: priceId, status: 'all' }) : payments ? await stripe.paymentIntents.list({ ...params, expand: ['data.latest_charge'] }) : await stripe.invoices.list(params);
       const customers = new Map();
       const rows = [];
       for (const item of page.data) {
@@ -39,12 +39,12 @@ export async function handle(req: Request) {
         const location = await svc.entities.ProviderLocation.get(customer.metadata.location_id).catch(() => null);
         if (subscriptions && !isViaseeSubscription(item, priceId, customer.metadata.location_id)) continue;
         rows.push({
-          ...(subscriptions ? { id: item.id, created: item.created, status: item.status, amount: item.items.data[0]?.price?.unit_amount, currency: item.currency, cancel_at_period_end: item.cancel_at_period_end || Boolean(item.cancel_at) } : payments ? paymentSummary(item) : invoiceSummary(item)),
+          ...(subscriptions ? { id: item.id, created: item.created, status: item.status, amount: item.items.data[0]?.price?.unit_amount, currency: item.currency, cancel_at_period_end: item.cancel_at_period_end || Boolean(item.cancel_at) } : payments ? paymentIntentSummary(item) : invoiceSummary(item)),
           customer_id: customerId, location_id: customer.metadata.location_id,
           location_name: location?.public_display_name || location?.name || customer.metadata.location_id,
           billing_name: (!payments && !subscriptions ? item.customer_name : customer.name) || customer.name,
           billing_cui: (!payments && !subscriptions ? item.custom_fields?.find(field => field.name === 'CUI')?.value : customer.metadata?.cui) || '',
-          dashboard_url: 'https://dashboard.stripe.com/' + (item.livemode ? '' : 'test/') + (subscriptions ? 'subscriptions/' + item.id : payments ? 'payments/' + (idOf(item.payment_intent) || item.id) : 'invoices/' + item.id),
+          dashboard_url: 'https://dashboard.stripe.com/' + (item.livemode ? '' : 'test/') + (subscriptions ? 'subscriptions/' + item.id : payments ? 'payments/' + item.id : 'invoices/' + item.id),
         });
       }
       return Response.json({ rows, has_more: page.has_more, next_cursor: page.data.at(-1)?.id || null });
@@ -56,6 +56,10 @@ export async function handle(req: Request) {
       const account = await ensureBillingAccount(svc, stripe, authorized.location, user);
       const customer = await stripe.customers.retrieve(account.stripe_customer_id);
       if (customer.deleted) return Response.json({ error: 'Contul de facturare nu mai este disponibil. Contactează VIASEE.' }, { status: 409 });
+      const taxIds = await stripe.customers.listTaxIds(customer.id, { limit: 100 });
+      const conflictingVat = taxIds.data.some(tax => tax.type === 'eu_vat' &&
+        (profile.billing_type === 'individual' || (profile.billing_address.country === 'RO' && tax.value.replace(/[^0-9]/g, '') !== profile.billing_cui)));
+      if (conflictingVat) return Response.json({ error: 'Codul TVA salvat în Stripe nu corespunde noilor date. Actualizează-l din „Gestionează codul TVA”, apoi salvează datele firmei.' }, { status: 409 });
       const preserved = (customer.invoice_settings?.custom_fields || []).filter(field => field.name !== 'CUI');
       if (profile.billing_cui && preserved.length >= 4) return Response.json({ error: 'Datele facturii necesită verificare de către VIASEE.' }, { status: 409 });
       await stripe.customers.update(account.stripe_customer_id, {
