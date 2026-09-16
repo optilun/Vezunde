@@ -116,6 +116,12 @@ function BillingCenter({ locationId, onSynced }) {
   const manual = !existing && data?.manual;
   const problem = ["past_due","unpaid","incomplete","paused","configuration_review"].includes(subscription?.status);
   const address = profile.billing_address;
+  // Start a new edit from the latest server snapshot, including portal changes.
+  // Repeated activation while already editing must preserve unsaved input.
+  const beginEditing = () => {
+    if (!editingDetails) setProfile(profileFrom(data?.customer));
+    setEditingDetails(true);
+  };
   const update = (key, value) => setProfile(p => ({ ...p, [key]: value }));
   const updateAddress = (key, value) => setProfile(p => ({ ...p, billing_address: { ...p.billing_address, [key]: value } }));
   return <div className="space-y-4">
@@ -130,7 +136,7 @@ function BillingCenter({ locationId, onSynced }) {
           <p className="mt-2 text-sm text-muted-foreground">{manual ? "Acest acces nu este un abonament plătit prin Stripe." : `Pro: ${money(data.pricing?.amount, data.pricing?.currency)} / ${data.pricing?.interval === "year" ? "an" : "lună"}, pentru această locație. Emitent neplătitor de TVA. Totalul final apare înainte de plată.`}</p>
           {existing && <p className="mt-3 text-sm">{subscription.cancel_at_period_end ? "Acces până la " : "Sfârșitul perioadei curente: "}{date(subscription.end)}{subscription.cancel_at_period_end && ". Reînnoirea este oprită."}</p>}
           {problem && <p className="mt-3 text-sm text-red-800">{subscription?.status === "configuration_review" ? "Configurația abonamentului necesită verificarea VIASEE. Contactează echipa înainte de a încerca o altă plată." : "Abonamentul necesită atenție. Verifică factura restantă și metoda de plată."}</p>}
-          <div className="mt-4">{existing ? <button className={button} disabled={Boolean(busy)} onClick={() => void run("portal")}>Gestionează abonamentul <ExternalLink className="h-4 w-4" /></button> : !manual && <a className={SETTINGS_PRIMARY} href="#billing-details" onClick={() => setEditingDetails(true)}>Activează Pro — verifică datele</a>}</div>
+          <div className="mt-4">{existing ? <button className={button} disabled={Boolean(busy)} onClick={() => void run("portal")}>Gestionează abonamentul <ExternalLink className="h-4 w-4" /></button> : !manual && <a className={SETTINGS_PRIMARY} href="#billing-details" onClick={beginEditing}>Activează Pro — verifică datele</a>}</div>
         </Panel>
         <Panel title="Metode de plată" icon={CreditCard}>
           {data.methods.length ? <ul className="space-y-3">{data.methods.map(card => <li key={card.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#c6d3da] bg-[#dce5e9]/35 p-3"><div><p className="font-medium"><span className="uppercase">{card.brand}</span> •••• {card.last4}</p><p className="text-xs text-muted-foreground">Expiră {card.exp_month}/{card.exp_year}</p></div>{card.is_default && <span className="text-xs text-muted-foreground">Implicit pentru abonament</span>}</li>)}</ul> : <p className="text-sm text-muted-foreground">Nu există un card salvat. Cardul este adăugat în pagina securizată Stripe.</p>}
@@ -141,7 +147,7 @@ function BillingCenter({ locationId, onSynced }) {
       <div id="billing-details" className="scroll-mt-24"><Panel title="Date de facturare" icon={FileText} tone="lavender">
         {!editingDetails && data.customer ? <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 break-words text-sm"><p className="font-medium">{data.customer.name}</p><p className="mt-1 text-muted-foreground">{data.customer.cui ? "CUI " + data.customer.cui + " · " : ""}{data.customer.email}</p><p className="mt-1 text-muted-foreground">{[data.customer.address?.line1, data.customer.address?.city, data.customer.address?.country].filter(Boolean).join(", ")}</p></div>
-          <button type="button" className={button} onClick={() => setEditingDetails(true)}>Modifică datele</button>
+          <button type="button" className={button} onClick={beginEditing}>Modifică datele</button>
         </div> : <form onSubmit={event => { event.preventDefault(); void run("save"); }} className="space-y-4">
           <fieldset disabled={Boolean(busy)}><legend className="mb-2 text-sm font-medium">Facturez pe</legend><div className="flex gap-5">{[["company","Firmă"],["individual","Persoană fizică"]].map(([value,label]) => <label key={value} className="flex items-center gap-2 text-sm"><input type="radio" name="billing-type" value={value} checked={profile.billing_type === value} onChange={() => update("billing_type",value)} />{label}</label>)}</div></fieldset>
           <fieldset disabled={Boolean(busy)} className="grid gap-4 sm:grid-cols-2">
