@@ -211,7 +211,7 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
     const filtered = locations.filter((location) => roleByLocation[location.id] === "organization_owner");
     if (filtered.length > 0) return filtered;
     const selected = locations.find((location) => location.id === selectedLocationId);
-    return overview?.current_user_role === "organization_owner" && selected ? [selected] : [];
+    return overview?.location?.id === selected?.id && overview?.current_user_role === "organization_owner" && selected ? [selected] : [];
   }, [locations, overview?.current_user_role, roleByLocation, selectedLocationId]);
 
   const selectedLocation = ownerLocations.find((location) => location.id === selectedLocationId) || ownerLocations[0] || overview?.location || null;
