@@ -14,6 +14,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import { useSearchParams } from "react-router-dom";
 import ProviderBillingPanel from "./leads/ProviderBillingPanel";
+import { SETTINGS_GRAIN, SETTINGS_TONES } from "./settingsVisuals";
 import { readAccountPreferences, saveAccountPreferences } from "@/lib/accountPreferences";
 import { PROFILE_CONTROL_LABELS } from "@/lib/workspaceStatusLabels";
 
@@ -25,10 +26,10 @@ function locationOptionLabel(location) {
   return [locationLabel(location), location?.locality_name || location?.city].filter(Boolean).join(" · ");
 }
 
-function SettingsSection({ title, description = "", danger = false, children = null }) {
+function SettingsSection({ title, description = "", danger = false, tone = "blue", children = null }) {
   return (
-    <section className={`overflow-hidden rounded-[20px] border bg-card shadow-[0_14px_40px_rgba(23,23,23,0.035)] ${danger ? "border-red-200" : "border-foreground/10"}`}>
-      <div className={`border-b px-5 py-5 ${danger ? "border-red-100 bg-red-50/40" : "border-border bg-[#f8f4ec]/45"}`}>
+    <section className={`overflow-hidden rounded-[1.5rem] border bg-[#fdfbf6] ${danger ? "border-red-200" : "border-foreground/10"}`}>
+      <div className={`border-b px-4 py-3 sm:px-5 ${danger ? "border-red-100 bg-red-50/40" : "border-foreground/10"}`} style={danger ? undefined : { backgroundColor: SETTINGS_TONES[tone].background }}>
         <h2 className={`text-lg font-bold ${danger ? "text-red-900" : "text-foreground"}`}>{title}</h2>
         {description && <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground">{description}</p>}
       </div>
@@ -39,7 +40,7 @@ function SettingsSection({ title, description = "", danger = false, children = n
 
 function SettingsRow({ title, description = "", action = null, children = null }) {
   return (
-    <div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 px-4 py-4 sm:px-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <div className="text-base font-semibold text-foreground">{title}</div>
         {description && <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">{description}</p>}
@@ -214,7 +215,9 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
   }, [locations, overview?.current_user_role, roleByLocation, selectedLocationId]);
 
   const selectedLocation = ownerLocations.find((location) => location.id === selectedLocationId) || ownerLocations[0] || overview?.location || null;
-  const organization = overview?.organization || workspace?.organizations?.find((item) => item.id === selectedLocation?.organization_id) || workspace?.organizations?.[0] || null;
+  const selectedRole = roleByLocation[selectedLocation?.id] || (overview?.location?.id === selectedLocation?.id ? overview?.current_user_role : null);
+  const organization = workspace?.organizations?.find((item) => item.id === selectedLocation?.organization_id) ||
+    (overview?.organization?.id === selectedLocation?.organization_id ? overview.organization : null);
   const organizationName = organization?.public_display_name || organization?.name || selectedLocation?.organization_name || "Organizație";
   const organizationLocations = locations.filter((location) => selectedLocation?.organization_id ? location.organization_id === selectedLocation.organization_id : location.id === selectedLocation?.id);
   const activeOrganizationLocations = organizationLocations.filter((location) => location.active_status !== "inactiva" && location.status !== "suspendata" && location.profile_control_status !== "suspended");
@@ -251,9 +254,9 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
   }, [selectedLocation?.id]);
 
   useEffect(() => {
-    void loadLifecycle();
+    if (!billingTab && selectedRole === "organization_owner") void loadLifecycle();
     return () => { lifecycleRequestRef.current += 1; };
-  }, [loadLifecycle]);
+  }, [loadLifecycle, billingTab, selectedRole]);
 
   const fixedLocationId = locations.some((location) => location.id === preferences.fixedProviderLocationId)
     ? preferences.fixedProviderLocationId
@@ -314,20 +317,23 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
     setLifecycleMessage("Solicitarea a fost retrasă.");
   };
 
-  if (!selectedLocation || overview?.current_user_role !== "organization_owner") return null;
+  if (!selectedLocation || selectedRole !== "organization_owner") return <p role="status" className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">Aceste setări sunt disponibile proprietarului locației selectate.</p>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 border-b border-foreground/15 pb-6 sm:flex-row sm:items-start sm:justify-between">
+    <div className="space-y-4">
+      <div className="relative overflow-hidden rounded-[1.5rem] border border-[#e3ddd0] bg-[#f8f4ec] px-4 py-4 sm:px-5">
+        <span aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-25" style={SETTINGS_GRAIN} />
+        <img src="/images/home/viasee-artwork-investigatii.svg" alt="" aria-hidden="true" className="pointer-events-none absolute -right-6 -top-6 hidden h-40 w-40 opacity-15 lg:block" />
+        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-heading text-[2rem] font-extrabold leading-tight tracking-[-0.035em]">Setări organizație</h1>
+            <h1 className="font-heading text-[1.75rem] font-extrabold leading-tight tracking-[-0.035em]">Setări</h1>
             <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-foreground">
               <ShieldCheck className="h-3.5 w-3.5" /> Acces owner
             </span>
           </div>
           <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            Administrează configurarea privată a organizației și acțiunile care necesită acces de owner.
+            Organizația, preferințele și plățile locației, într-un singur loc.
           </p>
         </div>
 
@@ -353,11 +359,13 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
         )}
       </div>
 
-      <nav aria-label="Secțiuni setări" className="flex gap-2 border-b border-border pb-3">
-        {[["general", "General"], ["billing", "Abonament și facturare"]].map(([key, label]) => <button key={key} type="button" aria-current={(billingTab ? "billing" : "general") === key ? "page" : undefined} onClick={() => setSettingsParams(current => { const next = new URLSearchParams(current); next.set("tab", key); return next; })} className={`rounded-lg px-4 py-2 text-sm font-semibold ${(billingTab ? "billing" : "general") === key ? "bg-foreground text-background" : "hover:bg-secondary"}`}>{label}</button>)}
+      </div>
+
+      <nav aria-label="Secțiuni setări" className="flex flex-wrap gap-2">
+        {[["general", "General"], ["billing", "Abonament și facturare"]].map(([key, label]) => <button key={key} type="button" aria-current={(billingTab ? "billing" : "general") === key ? "page" : undefined} onClick={() => setSettingsParams(current => { const next = new URLSearchParams(current); next.set("tab", key); return next; })} className={`min-h-11 rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3559c7] focus-visible:ring-offset-2 ${(billingTab ? "billing" : "general") === key ? "border-[#20221c] bg-[#20221c] text-[#fdfbf6]" : "border-[#d8d2c5] bg-[#fdfbf6] hover:bg-[#eee9de]"}`}>{label}</button>)}
       </nav>
       {billingTab ? <ProviderBillingPanel locationId={selectedLocation.id} onSynced={onBillingSynced} /> : <>
-      <SettingsSection title="Organizație">
+      <SettingsSection title="Organizație" tone="green">
         <SettingsRow
           title="Organizație"
           description="Identitatea și datele publice sunt administrate separat de aceste setări private."
@@ -403,7 +411,7 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
         />
       </SettingsSection>
 
-      <SettingsSection title="Preferințe workspace" description="Preferințele sunt personale și sunt salvate numai pe acest dispozitiv.">
+      <SettingsSection title="Preferințe workspace" tone="amber" description="Preferințele sunt personale și sunt salvate numai pe acest dispozitiv.">
         <SettingsRow
           title="La deschiderea workspace-ului"
           description="Alege dacă VIASEE deschide ultima locație folosită sau o locație fixă."
@@ -441,7 +449,7 @@ export default function ProviderSettings({ user, workspace, overview, selectedLo
         )}
       </SettingsSection>
 
-      <SettingsSection title="Cont și securitate" description="Datele personale, parola și confidențialitatea sunt administrate separat de organizație.">
+      <SettingsSection title="Cont și securitate" tone="lavender" description="Datele personale, parola și confidențialitatea sunt administrate separat de organizație.">
         <SettingsRow
           title="Cont personal VIASEE"
           description={user?.email || "Cont autentificat"}
