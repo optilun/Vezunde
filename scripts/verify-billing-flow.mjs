@@ -257,6 +257,27 @@ for (const metadata of [{ app: 'other', location_id: 'loc_a' }, { app: 'viasee',
 }
 assert.equal(modules.billingAccountHelpers.isViaseeSubscription(subscription(), 'price_pro', undefined), false);
 
+for (const handler of ['providerBillingOps', 'createProviderCheckoutSession', 'createProviderBillingPortalSession', 'syncProviderStripeSubscription']) {
+  for (const member of [
+    { role: 'location_manager', status: 'active', user_id: 'owner_a', location_id: 'loc_a' },
+    { role: 'staff', status: 'active', user_id: 'owner_a', location_id: 'loc_a' },
+    { role: 'organization_owner', status: 'inactive', user_id: 'owner_a', location_id: 'loc_a' },
+    { role: 'organization_owner', status: 'active', user_id: 'other_user', location_id: 'loc_a' },
+    { role: 'organization_owner', status: 'active', user_id: 'owner_a', location_id: 'other_location' },
+  ]) {
+    const s = state();
+    s.client.asServiceRole.entities.ProviderMembership.filter = async query => {
+      assert.deepEqual(query, { user_id: s.user.id, location_id: 'loc_a', status: 'active' });
+      return Object.entries(query).every(([key, value]) => member[key] === value) ? [member] : [];
+    };
+    assert.equal((await call(handler)).status, 403, handler + ' rejects unauthorized membership even with the account email unchanged');
+    assert.equal(s.stripeCalls, 0);
+  }
+}
+{
+  const s = state(); s.user.email = 'changed-email@example.test';
+  assert.equal((await call('createProviderBillingPortalSession')).status, 200, 'An authenticated active owner keeps access after changing email');
+}
 const panel = await readFile('src/components/workspace/provider/leads/ProviderBillingPanel.jsx', 'utf8');
 assert.ok(panel.indexOf('await invoke("syncProviderStripeSubscription"') < panel.indexOf('next.delete("session_id")'));
 assert.match(panel, /request !== sequence.current/);
