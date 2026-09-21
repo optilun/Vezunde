@@ -510,6 +510,8 @@ async function actionCreateCampaign(svc, user, payload) {
     target_profile_control_status: Array.isArray(payload.target_profile_control_status) ? payload.target_profile_control_status : [],
     target_tags: Array.isArray(payload.target_tags) ? payload.target_tags : [],
     target_email_scope: Array.isArray(payload.target_email_scope) ? payload.target_email_scope : [],
+    daily_send_limit: normalizeDailySendLimit(payload.daily_send_limit),
+    daily_send_ramp: payload.daily_send_ramp !== false,
     status: 'draft',
     recipient_count: eligible.length,
     created_by_user_id: user.id,
@@ -526,9 +528,11 @@ async function actionUpdateCampaign(svc, payload) {
   if (!campaign) return Response.json({ error: 'Campania nu a fost gasita' }, { status: 404 });
   if (campaign.status !== 'draft') return Response.json({ error: 'Doar campaniile in stare draft pot fi editate' }, { status: 409 });
 
-  const editable = ['name', 'campaign_type', 'template_id', 'subject', 'body_html', 'cta_label', 'cta_url', 'show_listing_preview', 'from_name', 'from_email', 'reply_to_email', 'target_counties', 'target_provider_types', 'target_profile_control_status', 'target_tags', 'target_email_scope'];
+  const editable = ['name', 'campaign_type', 'template_id', 'subject', 'body_html', 'cta_label', 'cta_url', 'show_listing_preview', 'from_name', 'from_email', 'reply_to_email', 'target_counties', 'target_provider_types', 'target_profile_control_status', 'target_tags', 'target_email_scope', 'daily_send_limit', 'daily_send_ramp'];
   const patch = {};
   for (const key of editable) if (payload[key] !== undefined) patch[key] = payload[key];
+  if (patch.daily_send_limit !== undefined) patch.daily_send_limit = normalizeDailySendLimit(patch.daily_send_limit);
+  if (patch.daily_send_ramp !== undefined) patch.daily_send_ramp = patch.daily_send_ramp !== false;
   const updated = await svc.entities.OutreachCampaign.update(id, patch);
   return Response.json({ campaign: updated });
 }
@@ -591,7 +595,7 @@ async function actionApproveCampaign(svc, user, payload) {
   return Response.json({ campaign: updated });
 }
 
-async function actionSetCampaignStatus(svc, user, payload, { allowedFrom, to, actionType }) {
+async function actionSetCampaignStatus(svc, user, payload, { allowedFrom, to, actionType, extraPatch = () => ({}) }) {
   const id = clean(payload.id);
   if (!id) return Response.json({ error: 'id este obligatoriu' }, { status: 400 });
   const campaign = await svc.entities.OutreachCampaign.get(id).catch(() => null);
@@ -599,8 +603,44 @@ async function actionSetCampaignStatus(svc, user, payload, { allowedFrom, to, ac
   if (!allowedFrom.includes(campaign.status)) {
     return Response.json({ error: `Campania trebuie sa fie in una din starile: ${allowedFrom.join(', ')}` }, { status: 409 });
   }
-  const updated = await svc.entities.OutreachCampaign.update(id, { status: to });
-  await writeAudit(svc, user, { entityId: id, actionType, previous: { status: campaign.status }, next: { status: to } });
+  const patch = { status: to, ...extraPatch(campaign) };
+  const updated = await svc.entities.OutreachCampaign.update(id, patch);
+  await writeAudit(svc, user, { entityId: id, actionType, previous: { status: campaign.status, pause_reason: campaign.pause_reason || '' }, next: patch });
+  return Response.json({ campaign: updated });
+}
+
+// Reluarea unei campanii oprite automat: adminul a vazut motivul si a decis sa continue. Oprirea
+// automata porneste de la zero de aici (health_baseline), altfel s-ar declansa imediat din nou pe
+// aceleasi respingeri. O pauza pusa de admin nu reseteaza nimic.
+function resumePatch(campaign) {
+  const patch = { pause_reason: '', failure_message: '' };
+  if (HEALTH_PAUSE_REASONS.has(campaign.pause_reason)) patch.health_baseline = healthBaselineFrom(campaign);
+  return patch;
+}
+
+// Limita zilnica se poate schimba si in timpul trimiterii (ex. o crestere manuala dupa ce primele
+// zile au mers bine). Asteptarea pana maine se anuleaza: trimitatorul recalculeaza la urmatorul
+// ciclu si o repune doar daca noua limita e tot atinsa.
+async function actionSetDailySendLimit(svc, user, payload) {
+  const id = clean(payload.id);
+  if (!id) return Response.json({ error: 'id este obligatoriu' }, { status: 400 });
+  const campaign = await svc.entities.OutreachCampaign.get(id).catch(() => null);
+  if (!campaign) return Response.json({ error: 'Campania nu a fost gasita' }, { status: 404 });
+  if (!['draft', 'ready', 'sending', 'paused'].includes(campaign.status)) {
+    return Response.json({ error: 'Limita se poate schimba doar la o campanie care nu s-a incheiat' }, { status: 409 });
+  }
+  const patch = {
+    daily_send_limit: normalizeDailySendLimit(payload.daily_send_limit),
+    daily_send_ramp: payload.daily_send_ramp !== false,
+    next_send_after: null,
+  };
+  const updated = await svc.entities.OutreachCampaign.update(id, patch);
+  await writeAudit(svc, user, {
+    entityId: id,
+    actionType: 'outreach_campaign_daily_limit_changed',
+    previous: { daily_send_limit: campaign.daily_send_limit ?? null, daily_send_ramp: campaign.daily_send_ramp ?? null },
+    next: { daily_send_limit: patch.daily_send_limit, daily_send_ramp: patch.daily_send_ramp },
+  });
   return Response.json({ campaign: updated });
 }
 
@@ -645,8 +685,9 @@ export async function handle(req: Request) {
       case 'list_campaigns': return await actionListCampaigns(svc);
       case 'get_campaign': return await actionGetCampaign(svc, payload);
       case 'approve_campaign': return await actionApproveCampaign(svc, user, payload);
-      case 'pause_campaign': return await actionSetCampaignStatus(svc, user, payload, { allowedFrom: ['ready', 'sending'], to: 'paused', actionType: 'outreach_campaign_paused' });
-      case 'resume_campaign': return await actionSetCampaignStatus(svc, user, payload, { allowedFrom: ['paused'], to: 'ready', actionType: 'outreach_campaign_resumed' });
+      case 'pause_campaign': return await actionSetCampaignStatus(svc, user, payload, { allowedFrom: ['ready', 'sending'], to: 'paused', actionType: 'outreach_campaign_paused', extraPatch: () => ({ pause_reason: 'admin' }) });
+      case 'resume_campaign': return await actionSetCampaignStatus(svc, user, payload, { allowedFrom: ['paused'], to: 'ready', actionType: 'outreach_campaign_resumed', extraPatch: resumePatch });
+      case 'set_daily_send_limit': return await actionSetDailySendLimit(svc, user, payload);
       case 'cancel_campaign': return await actionSetCampaignStatus(svc, user, payload, { allowedFrom: ['draft', 'ready', 'sending', 'paused'], to: 'cancelled', actionType: 'outreach_campaign_cancelled' });
       case 'mark_replied': return await actionMarkReplied(svc, payload);
       default:
