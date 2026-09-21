@@ -6,6 +6,15 @@ import {
   isContactSuppressed,
   complianceMissing,
 } from '../../shared/outreachEmailPolicy.js';
+import {
+  normalizeDailySendLimit,
+  healthBaselineFrom,
+  HEALTH_PAUSE_REASONS,
+  emailDomain,
+  lookupEmailDomains,
+  isDomainUndeliverable,
+  DOMAIN_STATUSES,
+} from '../../shared/outreachSendSafety.js';
 
 // outreachCampaignOps — actiuni admin pentru modulul de outreach email (sabloane, segmentare,
 // materializare contacte din director, campanii, aprobare cu confirmare tastata).
@@ -149,7 +158,7 @@ const SYNC_COMPARED_FIELDS = [
   'location_id', 'organization_id', 'company_name', 'city', 'county', 'provider_type',
   'profile_control_status', 'organization_location_count', 'email', 'normalized_email',
   'source_url', 'collection_date', 'source_type', 'lawful_basis',
-  'email_scope', 'shared_location_count', 'shared_city_count',
+  'email_scope', 'shared_location_count', 'shared_city_count', 'email_domain_status',
 ];
 
 // La o resincronizare, marea majoritate a contactelor nu s-au schimbat (iar lanturile au zeci de
@@ -186,9 +195,12 @@ function dedupeContactsByEmail(contacts) {
 
 async function eligibleContactsForSegment(svc, filters) {
   const contacts = await listAllContacts(svc);
+  // Adresele de pe domenii care nu pot primi email (verificate la sincronizare) nu intra in
+  // lista: ar fi respinse sigur, iar respingerile sunt ce opreste contul de trimitere.
   const matching = (contacts || []).filter((contact) => (
     isValidEmail(contact.normalized_email || contact.email)
     && !isContactSuppressed(contact)
+    && !isDomainUndeliverable(contact.email_domain_status)
     && contactMatchesSegment(contact, filters)
   ));
   return dedupeContactsByEmail(matching);
@@ -263,9 +275,10 @@ async function actionPreviewSegment(svc, payload) {
   const contacts = await listAllContacts(svc);
   const matchingContacts = contacts.filter((contact) => contactMatchesSegment(contact, filters));
   const eligibleContacts = matchingContacts.filter((contact) => !isContactSuppressed(contact));
+  const deliverableContacts = eligibleContacts.filter((contact) => !isDomainUndeliverable(contact.email_domain_status));
   // Numarul real de emailuri trimise e numarul de ADRESE distincte, nu de contacte: acelasi numar
   // pe care il cere si fraza de confirmare la aprobare.
-  const uniqueEligible = dedupeContactsByEmail(eligibleContacts);
+  const uniqueEligible = dedupeContactsByEmail(deliverableContacts);
   const missingCompliance = uniqueEligible.filter((contact) => complianceMissing(contact).length > 0).length;
 
   return Response.json({
@@ -273,8 +286,9 @@ async function actionPreviewSegment(svc, payload) {
     directory_locations_total_with_email: locations.length,
     contacts_materialized_matching: matchingContacts.length,
     contacts_eligible_for_send: uniqueEligible.length,
-    contacts_duplicate_emails: eligibleContacts.length - uniqueEligible.length,
+    contacts_duplicate_emails: deliverableContacts.length - uniqueEligible.length,
     contacts_suppressed: matchingContacts.length - eligibleContacts.length,
+    contacts_undeliverable_domain: eligibleContacts.length - deliverableContacts.length,
     contacts_missing_compliance_metadata: missingCompliance,
     contacts_blocked_until_compliance_completed: missingCompliance,
     not_yet_materialized: Math.max(0, matchingLocations.length - matchingContacts.length),
@@ -359,10 +373,22 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
   let updated = 0;
   let unchanged = 0;
   let skipped = 0;
+  let undeliverableDomains = 0;
+  let dnsErrorDomains = 0;
+
+  // Domeniul fiecarei adrese din lot se verifica acum (MX), ca previzualizarea si aprobarea sa
+  // numere doar adresele care pot primi email. Se reverifica la fiecare sincronizare: o adresa
+  // reparata intre timp redevine eligibila.
+  const domainCache = await lookupEmailDomains(chunk.map((group) => emailDomain(group.email)));
 
   for (const group of chunk) {
     const { email } = group;
     const location = group.locations[0];
+    const domainStatus = domainCache.get(emailDomain(email)) || 'lookup_failed';
+    if (isDomainUndeliverable(domainStatus)) undeliverableDomains++;
+    if (domainStatus === 'dns_error') dnsErrorDomains++;
+    // 'lookup_failed' (n-am putut intreba DNS-ul) nu suprascrie un rezultat anterior.
+    const domainFields = DOMAIN_STATUSES.includes(domainStatus) ? { email_domain_status: domainStatus } : {};
     const existing = byNormalizedEmail.get(email)
       || group.locations.map((row) => byLocationId.get(row.id)).find(Boolean);
     const locationCount = location.organization_id ? (locationCounts.get(location.organization_id) || 1) : 1;
@@ -382,10 +408,14 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
       shared_city_count: scope.sharedCityCount,
       email,
       normalized_email: email,
+      ...domainFields,
     };
 
     if (existing) {
       const patch = { ...descriptive, tags: mergeTags(existing.tags, autoTags) };
+      if (domainFields.email_domain_status && domainFields.email_domain_status !== existing.email_domain_status) {
+        patch.email_domain_checked_at = now;
+      }
       // Nu suprascriem status/email_status/consent_audit puse manual de admin. Tag-urile se
       // reimprospateaza doar pe prefixele automate (vezi mergeTags) — cele adaugate de mana raman.
       if (!existing.source_url && location.source_url) patch.source_url = location.source_url;
@@ -404,6 +434,7 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
       const createdContact = await svc.entities.OutreachContact.create({
         ...descriptive,
         tags: autoTags,
+        ...(domainFields.email_domain_status ? { email_domain_checked_at: now } : {}),
         status: 'new',
         email_status: 'active',
         source: 'public_directory',
@@ -439,6 +470,8 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
     skipped,
     unique_emails: groups.length,
     processed: chunk.length,
+    undeliverable_domains: undeliverableDomains,
+    dns_error_domains: dnsErrorDomains,
     total_candidates: candidates.length,
     next_cursor: nextCursor,
     has_more: hasMore,
