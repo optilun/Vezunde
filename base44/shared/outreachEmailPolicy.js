@@ -30,6 +30,14 @@ export function isValidEmail(email = '') {
   return EMAIL_RE.test(normalizeEmail(email));
 }
 
+// Unele locatii au doua adrese in acelasi camp, asa cum apar pe site-ul lor
+// ("programari@x.ro / secretariat@x.ro"). isValidEmail respinge tot sirul, iar locatia disparea
+// din outreach fara nicio urma. Luam prima adresa valida din camp.
+export function firstValidEmail(raw = '') {
+  const parts = String(raw || '').split(/[\s\/,;|]+/).map(normalizeEmail).filter(Boolean);
+  return parts.find((part) => isValidEmail(part)) || '';
+}
+
 export function getDomain(email = '') {
   return normalizeEmail(email).split('@')[1] || '';
 }

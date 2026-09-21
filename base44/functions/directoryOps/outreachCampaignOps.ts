@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import {
   normalizeEmail,
   isValidEmail,
+  firstValidEmail,
   isContactSuppressed,
   complianceMissing,
 } from '../../shared/outreachEmailPolicy.js';
@@ -17,7 +18,11 @@ import {
 // (base44 app 6984db05b4843f9d480897e9) pentru exact acelasi scenariu: marketing B2B catre
 // adrese de contact publice ale unor firme.
 
-const SYNC_CHUNK_SIZE = 300;
+// Fiecare locatie inseamna o scriere separata in baza de date (~0,1 s). La 300 per apel, functia
+// depasea timpul maxim si sincronizarea se oprea pe la jumatatea primului lot (2026-09-21:
+// 160 de contacte din ~1000 de locatii, toate alfabetic intre "9" si "E"). Interfata reia
+// automat cu urmatorul lot, deci loturi mici nu costa nimic.
+const SYNC_CHUNK_SIZE = 40;
 const DEFAULT_LOCATION_LIST_LIMIT = 20000;
 
 function clean(value) {
@@ -120,9 +125,40 @@ async function listAllLocations(svc) {
   return (await svc.entities.ProviderLocation.list('name', DEFAULT_LOCATION_LIST_LIMIT)) || [];
 }
 
+// Emailul spune "[FIRMA] apare deja in rezultate" — deci doar locatiile care chiar apar: aceeasi
+// regula ca in patientRequestStatusPolicy (publicata, activa, nesuspendata). O locatie in ciorna
+// sau suspendata nu primeste un email care afirma ceva fals despre ea.
+function isLocationPublic(location) {
+  return location?.status === 'publicata'
+    && location?.active_status !== 'inactiva'
+    && location?.profile_control_status !== 'suspended';
+}
+
+function isOutreachCandidate(location) {
+  return isLocationPublic(location) && !!firstValidEmail(location?.public_email);
+}
+
 async function listAllLocationsWithEmail(svc) {
   const rows = await listAllLocations(svc);
-  return rows.filter((row) => isValidEmail(row.public_email));
+  return rows.filter(isOutreachCandidate);
+}
+
+const SYNC_COMPARED_FIELDS = [
+  'location_id', 'organization_id', 'company_name', 'city', 'county', 'provider_type',
+  'profile_control_status', 'organization_location_count', 'email', 'normalized_email',
+  'source_url', 'collection_date', 'source_type', 'lawful_basis',
+];
+
+// La o resincronizare, marea majoritate a contactelor nu s-au schimbat (iar lanturile au zeci de
+// locatii cu aceeasi adresa). Scrierea lor din nou costa timp fara niciun efect.
+function syncPatchChangesContact(existing, patch) {
+  for (const field of SYNC_COMPARED_FIELDS) {
+    if (!(field in patch)) continue;
+    if (String(existing?.[field] ?? '') !== String(patch[field] ?? '')) return true;
+  }
+  const before = [...(existing?.tags || [])].sort().join('|');
+  const after = [...(patch.tags || [])].sort().join('|');
+  return before !== after;
 }
 
 async function listAllContacts(svc) {
@@ -253,7 +289,7 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
   // 12 locatii chiar daca doar 3 publica o adresa de contact.
   const everyLocation = await listAllLocations(svc);
   const locationCounts = countLocationsByOrganization(everyLocation);
-  const allLocations = everyLocation.filter((row) => isValidEmail(row.public_email));
+  const allLocations = everyLocation.filter(isOutreachCandidate);
   const candidates = allLocations.filter((location) => locationMatchesSegment(location, filters));
   const chunk = candidates.slice(cursor, cursor + SYNC_CHUNK_SIZE);
 
@@ -267,10 +303,11 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
   const now = new Date().toISOString();
   let created = 0;
   let updated = 0;
+  let unchanged = 0;
   let skipped = 0;
 
   for (const location of chunk) {
-    const email = normalizeEmail(location.public_email);
+    const email = firstValidEmail(location.public_email);
     if (!email) { skipped++; continue; }
     const existing = byLocationId.get(location.id) || byNormalizedEmail.get(email);
     const locationCount = location.organization_id ? (locationCounts.get(location.organization_id) || 1) : 1;
@@ -298,9 +335,16 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
       }
       if (!existing.source_type) patch.source_type = location.source_type || 'public_directory';
       if (!existing.lawful_basis) patch.lawful_basis = 'legitimate_interest';
+      if (!syncPatchChangesContact(existing, patch)) {
+        byNormalizedEmail.set(email, existing);
+        byLocationId.set(location.id, existing);
+        unchanged++;
+        continue;
+      }
       const saved = await svc.entities.OutreachContact.update(existing.id, patch);
-      byNormalizedEmail.set(email, saved || existing);
-      byLocationId.set(location.id, saved || existing);
+      const merged = saved || { ...existing, ...patch };
+      byNormalizedEmail.set(email, merged);
+      byLocationId.set(location.id, merged);
       updated++;
     } else {
       const created_contact = await svc.entities.OutreachContact.create({
@@ -334,10 +378,14 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
     location.organization_id ? (locationCounts.get(location.organization_id) || 1) : 1,
   )));
 
+  const uniqueEmails = new Set(candidates.map((location) => firstValidEmail(location.public_email))).size;
+
   return Response.json({
     created,
     updated,
+    unchanged,
     skipped,
+    unique_emails: uniqueEmails,
     processed: chunk.length,
     total_candidates: candidates.length,
     next_cursor: nextCursor,
