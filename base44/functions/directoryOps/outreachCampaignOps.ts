@@ -8,6 +8,8 @@ import {
 } from '../../shared/outreachEmailPolicy.js';
 import {
   normalizeDailySendLimit,
+  effectiveDailyLimit,
+  summarizeSendsByDay,
   healthBaselineFrom,
   HEALTH_PAUSE_REASONS,
   emailDomain,
@@ -548,7 +550,19 @@ async function actionGetCampaign(svc, payload) {
   const campaign = await svc.entities.OutreachCampaign.get(id).catch(() => null);
   if (!campaign) return Response.json({ error: 'Campania nu a fost gasita' }, { status: 404 });
   const logs = await svc.entities.OutreachCampaignLog.filter({ campaign_id: id }, '-created_date', Number(payload.log_limit) || 200).catch(() => []);
-  return Response.json({ campaign, logs });
+  // Ritmul de azi se calculeaza peste tot jurnalul, nu doar peste ultimele intrari afisate:
+  // cresterea automata depinde de cate zile de trimitere au fost de la inceput.
+  let sendStats = null;
+  if (campaign.status !== 'draft') {
+    const allLogs = await svc.entities.OutreachCampaignLog.filter({ campaign_id: id }, '-created_date', 20000).catch(() => []);
+    const sends = summarizeSendsByDay(allLogs || []);
+    sendStats = {
+      sent_today: sends.sentToday,
+      prior_sending_days: sends.priorSendingDays,
+      daily_limit_today: effectiveDailyLimit(campaign, sends.priorSendingDays),
+    };
+  }
+  return Response.json({ campaign, logs, send_stats: sendStats });
 }
 
 async function actionApproveCampaign(svc, user, payload) {
