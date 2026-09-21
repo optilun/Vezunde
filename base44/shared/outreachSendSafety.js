@@ -22,8 +22,6 @@ export const DAILY_SEND_LIMIT_DEFAULT = 50;
 export const DAILY_SEND_LIMIT_MIN = 10;
 export const DAILY_SEND_LIMIT_MAX = 2000;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 function pad2(value) {
   return String(value).padStart(2, '0');
 }
@@ -157,7 +155,7 @@ export function evaluateCampaignHealth(campaign = {}, limits = CAMPAIGN_HEALTH_L
       healthy: false,
       reason: 'bounce_rate',
       sent, bounced, complained, bounceRate,
-      message: `Oprita automat: ${formatRoCount(bounced, 'email respins', 'emailuri respinse', 'un')} din ${sent} trimise (${formatPercent(bounceRate)}). Resend poate opri tot contul de email peste 4%. Adresele respinse au fost deja scoase din lista; reia campania daca restul listei pare in regula.`,
+      message: `Oprita automat: ${formatRoCount(bounced, 'email respins', 'emailuri respinse', 'un')} din ${sent} trimise (${formatPercent(bounceRate)}). Resend poate opri tot contul de email peste 4%. Adresele respinse nu mai primesc emailuri; reia campania daca restul listei pare in regula.`,
     };
   }
   return { healthy: true, reason: '', sent, bounced, complained, bounceRate, message: '' };
@@ -266,4 +264,3 @@ export function domainStatusMessage(status) {
   return '';
 }
 
-export { DAY_MS };
