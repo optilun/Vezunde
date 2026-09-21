@@ -22,12 +22,50 @@ const LOG_STATUS_LABELS = {
   complained: "Plangere spam",
   failed: "Esuat",
   invalid: "Email invalid",
-  skipped: "Sarit (suprimat)",
+  skipped: "Sarit",
   duplicate: "Duplicat",
   unsubscribed: "Dezabonat",
   replied: "A raspuns",
   unknown: "Necunoscut",
 };
+
+// Aceleasi reguli ca in base44/shared/outreachSendSafety.js (effectiveDailyLimit): limita se
+// dubleaza in fiecare zi de trimitere, pana la 2000. Doar pentru estimarea afisata adminului.
+const DAILY_LIMIT_MIN = 10;
+const DAILY_LIMIT_MAX = 2000;
+const DAILY_LIMIT_DEFAULT = 50;
+
+function clampDailyLimit(value) {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n) || n <= 0) return DAILY_LIMIT_DEFAULT;
+  return Math.min(DAILY_LIMIT_MAX, Math.max(DAILY_LIMIT_MIN, n));
+}
+
+function sendSchedule(total, limit, ramp) {
+  const days = [];
+  let left = Math.max(0, Number(total) || 0);
+  const base = clampDailyLimit(limit);
+  while (left > 0 && days.length < 60) {
+    const cap = ramp ? Math.min(DAILY_LIMIT_MAX, base * 2 ** Math.min(days.length, 10)) : base;
+    const today = Math.min(cap, left);
+    days.push(today);
+    left -= today;
+  }
+  return days;
+}
+
+function SendSchedulePreview({ total, limit, ramp }) {
+  if (!total) return null;
+  const days = sendSchedule(total, limit, ramp);
+  const shown = days.slice(0, 8).join(" · ");
+  return (
+    <p className="text-[11px] text-muted-foreground">
+      Estimare pentru {total} destinatari: {shown}{days.length > 8 ? " · ..." : ""} — {days.length === 1 ? "o zi" : `${days.length} zile`} de trimitere.
+    </p>
+  );
+}
+
+const HEALTH_PAUSE_REASONS = ["bounce_rate", "complaints"];
 
 async function callOutreach(logicalName, action, payload = {}) {
   try {
@@ -66,6 +104,8 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
   const [testEmail, setTestEmail] = useState("");
   const [testStatus, setTestStatus] = useState("");
 
+  const [limitDraft, setLimitDraft] = useState({ daily_send_limit: DAILY_LIMIT_DEFAULT, daily_send_ramp: true });
+
   const load = async () => {
     setLoading(true);
     setError("");
@@ -89,6 +129,12 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
       target_profile_control_status: data.campaign.target_profile_control_status || [],
       target_tags: data.campaign.target_tags || [],
       target_email_scope: data.campaign.target_email_scope || [],
+      daily_send_limit: clampDailyLimit(data.campaign.daily_send_limit),
+      daily_send_ramp: data.campaign.daily_send_ramp !== false,
+    });
+    setLimitDraft({
+      daily_send_limit: clampDailyLimit(data.campaign.daily_send_limit),
+      daily_send_ramp: data.campaign.daily_send_ramp !== false,
     });
   };
 
@@ -162,6 +208,23 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
     await load();
   };
 
+  const saveDailyLimit = async () => {
+    setBusy(true);
+    setError("");
+    const data = await callOutreach("outreachCampaignOps", "set_daily_send_limit", { id: campaignId, ...limitDraft });
+    setBusy(false);
+    if (data.error) { setError(data.error); return; }
+    await load();
+  };
+
+  const resumeCampaign = () => {
+    if (HEALTH_PAUSE_REASONS.includes(campaign.pause_reason)) {
+      const ok = window.confirm("Campania a fost oprita automat. Daca o reiei, protectia se calculeaza din nou doar pentru emailurile trimise de acum inainte. Continui?");
+      if (!ok) return;
+    }
+    setStatus("resume_campaign");
+  };
+
   const sendTest = async () => {
     if (!testEmail.trim()) return;
     setTestStatus("sending");
@@ -186,6 +249,11 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
   const canPause = ["ready", "sending"].includes(campaign.status);
   const canResume = campaign.status === "paused";
   const canCancel = ["draft", "ready", "sending", "paused"].includes(campaign.status);
+  const isAutoPaused = campaign.status === "paused" && HEALTH_PAUSE_REASONS.includes(campaign.pause_reason);
+  const waitingUntil = campaign.next_send_after && new Date(campaign.next_send_after).getTime() > Date.now()
+    ? new Date(campaign.next_send_after)
+    : null;
+  const remainingRecipients = Math.max(0, (campaign.recipient_count || 0) - (campaign.current_cursor || 0));
 
   return (
     <div className="space-y-6">
@@ -205,8 +273,8 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
             </button>
           )}
           {canResume && (
-            <button type="button" disabled={busy} onClick={() => setStatus("resume_campaign")} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary disabled:opacity-60">
-              Reia
+            <button type="button" disabled={busy} onClick={resumeCampaign} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary disabled:opacity-60">
+              {isAutoPaused ? "Reia oricum" : "Reia"}
             </button>
           )}
           {canCancel && (
@@ -219,7 +287,18 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
 
       {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
 
-      {campaign.failure_message && (
+      {isAutoPaused && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
+          <span className="block font-semibold">Campania a fost oprita automat</span>
+          <span className="block pt-1">{campaign.failure_message}</span>
+          <span className="block pt-1 text-red-800">
+            Protectia exista ca sa nu fie oprit tot contul de email (Resend opreste contul peste 4% emailuri respinse sau 0,08% reclamatii de spam).
+            Uita-te in jurnal la adresele respinse inainte sa reiei.
+          </span>
+        </div>
+      )}
+
+      {campaign.failure_message && !isAutoPaused && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
           <span className="font-semibold">Motivul opririi trimiterii: </span>
           {campaign.failure_message}
@@ -246,8 +325,45 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
       {!isDraft && ["ready", "sending", "paused"].includes(campaign.status) && (
         <p className="text-xs text-muted-foreground">
           Progres trimitere: {campaign.current_cursor || 0} / {campaign.recipient_count || 0} destinatari procesati.
-          Trimiterea avanseaza automat, in loturi mici, la fiecare 5 minute.
+          Trimiterea avanseaza automat, in loturi mici, la fiecare 5 minute, in limita zilnica de mai jos.
         </p>
+      )}
+
+      {!isDraft && ["ready", "sending", "paused"].includes(campaign.status) && (
+        <div className="space-y-2 rounded-2xl border border-border p-4">
+          <p className="text-xs font-semibold text-foreground">Ritm de trimitere</p>
+          {waitingUntil && (
+            <p className="rounded-lg bg-secondary/60 px-3 py-2 text-xs text-foreground">
+              Limita de azi a fost atinsa. Trimiterea continua {waitingUntil.toLocaleString("ro-RO", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}.
+            </p>
+          )}
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="block">
+              <span className="text-[11px] font-semibold text-foreground">Emailuri pe zi</span>
+              <input
+                id="outreach-daily-limit-live"
+                type="number"
+                min={DAILY_LIMIT_MIN}
+                max={DAILY_LIMIT_MAX}
+                value={limitDraft.daily_send_limit}
+                onChange={(e) => setLimitDraft((d) => ({ ...d, daily_send_limit: e.target.value }))}
+                className="mt-1 block w-28 rounded-lg border border-border px-3 py-1.5 text-sm"
+              />
+            </label>
+            <label className="flex items-center gap-2 pb-1.5 text-xs text-foreground">
+              <input
+                type="checkbox"
+                checked={limitDraft.daily_send_ramp}
+                onChange={(e) => setLimitDraft((d) => ({ ...d, daily_send_ramp: e.target.checked }))}
+              />
+              Dubleaza in fiecare zi de trimitere
+            </label>
+            <button type="button" disabled={busy} onClick={saveDailyLimit} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary disabled:opacity-60">
+              Salveaza ritmul
+            </button>
+          </div>
+          <SendSchedulePreview total={remainingRecipients} limit={limitDraft.daily_send_limit} ramp={limitDraft.daily_send_ramp} />
+        </div>
       )}
 
       {isDraft && editDraft && (
@@ -317,6 +433,40 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
             </label>
           </div>
           <OutreachAudienceBuilder filters={editDraft} onChange={(next) => setEditDraft((d) => ({ ...d, ...next }))} />
+          <div className="space-y-2 rounded-lg border border-border p-3">
+            <p className="text-xs font-semibold text-foreground">Ritm de trimitere</p>
+            <p className="text-[11px] text-muted-foreground">
+              Adresa de trimitere e noua: daca pleaca sute de emailuri in aceeasi ora, ajung in Spam.
+              Campania trimite cel mult atatea emailuri pe zi (ora Romaniei) si continua a doua zi la 09:00.
+            </p>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="block">
+                <span className="text-[11px] font-semibold text-foreground">Emailuri in prima zi</span>
+                <input
+                  id="outreach-daily-limit-draft"
+                  type="number"
+                  min={DAILY_LIMIT_MIN}
+                  max={DAILY_LIMIT_MAX}
+                  value={editDraft.daily_send_limit}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, daily_send_limit: e.target.value }))}
+                  className="mt-1 block w-28 rounded-lg border border-border px-3 py-1.5 text-sm"
+                />
+              </label>
+              <label className="flex items-center gap-2 pb-1.5 text-xs text-foreground">
+                <input
+                  type="checkbox"
+                  checked={editDraft.daily_send_ramp}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, daily_send_ramp: e.target.checked }))}
+                />
+                Dubleaza in fiecare zi de trimitere (recomandat)
+              </label>
+            </div>
+            <SendSchedulePreview
+              total={previewResult?.contacts_eligible_for_send ?? campaign.recipient_count}
+              limit={editDraft.daily_send_limit}
+              ramp={editDraft.daily_send_ramp}
+            />
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" disabled={busy} onClick={saveEdits} className="rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background disabled:opacity-60">
               Salveaza modificarile
@@ -336,6 +486,9 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
               )}
               <p>{previewResult.not_yet_materialized} locatii din director inca nu au fost materializate ca si contacte (vezi tab-ul Contacte).</p>
               <p>{previewResult.contacts_suppressed} contacte suprimate (dezabonate/bounce/plangere).</p>
+              {previewResult.contacts_undeliverable_domain > 0 && (
+                <p className="text-amber-700">{previewResult.contacts_undeliverable_domain} adrese sunt pe domenii care nu pot primi email (domeniu disparut sau fara server de email) — nu se trimite la ele.</p>
+              )}
             </div>
           )}
 
@@ -365,6 +518,10 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
               <div className="space-y-2">
                 <p className="text-xs text-foreground">
                   Destinatari eligibili acum: <strong>{approvalPreview.recipientCount}</strong>
+                </p>
+                <SendSchedulePreview total={approvalPreview.recipientCount} limit={editDraft.daily_send_limit} ramp={editDraft.daily_send_ramp} />
+                <p className="text-[11px] text-muted-foreground">
+                  Ritmul se aplica asa cum e salvat pe campanie: daca l-ai schimbat mai sus, apasa intai „Salveaza modificarile”.
                 </p>
                 <p className="text-[11px] text-muted-foreground">
                   Tasteaza exact: <code className="rounded bg-background px-1 py-0.5">{approvalPreview.expected}</code>
