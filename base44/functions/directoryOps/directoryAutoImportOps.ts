@@ -15,6 +15,7 @@ import {
   requireDirectoryRows,
 } from '../../shared/directoryImportReadPolicy.js';
 import { legacyTypeToOrganizationTypeCode } from '../../shared/directoryOrganizationTypeMapping.js';
+import { directoryExclusionReason } from '../../shared/directoryExclusionPolicy.js';
 import {
   appendRows,
   approveBatch,
@@ -557,6 +558,9 @@ function normalizeNationalDirectoryRow(row = {}) {
 
 function nationalSelectionReasons(row = {}) {
   const reasons = [];
+  // Firme scoase din director de administrator: nu se reimporta (vezi directoryExclusionPolicy.js).
+  const exclusion = directoryExclusionReason(row);
+  if (exclusion) reasons.push(exclusion);
   const originalReadiness = clean(row.national_original_import_readiness || row.import_readiness, 120);
   const researchStatus = clean(row.research_status, 120);
   const operationalStatus = clean(row.operational_status, 120);
@@ -1022,6 +1026,8 @@ async function enrichRowsWithCanonicalGeography(svc, rows = [], existingMap = nu
 
 function automaticSelectionReasons(row = {}) {
   const reasons = [];
+  const exclusion = directoryExclusionReason(row);
+  if (exclusion) reasons.push(exclusion);
   if (clean(row.import_readiness, 80) !== 'candidate_for_manual_review') reasons.push('not_candidate_for_manual_review');
   if (clean(row.research_status, 80) !== 'official_confirmed') reasons.push('research_not_official_confirmed');
   if (clean(row.operational_status, 80) !== 'active_confirmed') reasons.push('operational_status_not_active_confirmed');
