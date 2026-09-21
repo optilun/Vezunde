@@ -76,6 +76,13 @@
       },
       "description": "Tag-uri OutreachContact tinta, gol = toate"
     },
+    "target_email_scope": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "location/organization (vezi OutreachContact.email_scope), gol = ambele. Permite o campanie separata, cu alt text, pentru adresele comune mai multor locatii."
+    },
     "status": {
       "type": "string",
       "enum": [
