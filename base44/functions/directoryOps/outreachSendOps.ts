@@ -256,6 +256,7 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
           city: contact.city,
           county: contact.county,
           chip: listingChipFor(contact.profile_control_status),
+          emailScope: contact.email_scope || 'location',
         },
       };
       const finalHtml = buildEmailHtml(bodyHtml, unsubHtml, campaign.subject || 'VIASEE', ctaOptions);

@@ -322,7 +322,7 @@ export function buildListingPreviewBlock(showcase = {}) {
   const alt = escapeHtml(`${showcase.name || 'Profilul dumneavoastra'} apare in rezultatele cautarii pe VIASEE`);
   return '<tr><td style="padding:26px 32px 2px;" class="vs-pad">'
     + `<img src="${url}" alt="${alt}" width="556" style="display:block;width:100%;max-width:556px;height:auto;border:0;border-radius:18px;" />`
-    + `<p style="margin:10px 2px 0;font-family:${FONT_SANS};font-size:11.5px;line-height:1.5;color:${WARM_GREY};">${name} \u2014 asa apare profilul dumneavoastra cand cineva cauta in zona.</p>`
+    + `<p style="margin:10px 2px 0;font-family:${FONT_SANS};font-size:11.5px;line-height:1.5;color:${WARM_GREY};">${name} \u2014 ${showcase.emailScope === 'organization' ? 'asa apar locatiile dumneavoastra' : 'asa apare profilul dumneavoastra'} cand cineva cauta in zona.</p>`
     + '</td></tr>';
 }
 
