@@ -70,6 +70,11 @@ function BillingCenter({ locationId, onSynced }) {
   const [cursors, setCursors] = useState([null]), [page, setPage] = useState(0);
   const lock = useRef(false), sequence = useRef(0), synced = useRef(onSynced);
   const profileInitialized = useRef(false);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   synced.current = onSynced;
   const cursor = cursors[page];
   const load = useCallback(async () => {
@@ -97,18 +102,20 @@ function BillingCenter({ locationId, onSynced }) {
   }, [billing, sessionId, locationId, cursor, setParams]);
   useEffect(() => { if (locationId) void load(); return () => { sequence.current++; }; }, [load, locationId, tick]);
   async function run(action, flow) {
-    if (lock.current) return;
+    if (lock.current || !mounted.current) return;
     lock.current = true; setBusy(action); setError(""); setNotice("");
     try {
       if (action === "save" || action === "checkout") {
         await invoke("providerBillingOps", { action: "save_details", location_id: locationId, ...profile });
+        if (!mounted.current) return;
         if (action === "save") { setEditingDetails(false); setNotice("Datele au fost salvate pentru facturile viitoare."); setTick(t => t + 1); return; }
       }
       const name = action === "checkout" ? "createProviderCheckoutSession" : "createProviderBillingPortalSession";
       const result = await invoke(name, { location_id: locationId, return_base_url: window.location.origin, flow });
-      window.location.assign(result.url);
-    } catch (err) { setError(err.message); }
-    finally { lock.current = false; setBusy(""); }
+      // A location switch remounts this panel. Never redirect a departed location.
+      if (mounted.current) window.location.assign(result.url);
+    } catch (err) { if (mounted.current) setError(err.message); }
+    finally { lock.current = false; if (mounted.current) setBusy(""); }
   }
   if (!locationId) return <p className="text-sm text-muted-foreground">Alege o locație pentru facturare.</p>;
   const subscription = data?.subscription;
