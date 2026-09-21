@@ -57,6 +57,21 @@
       "type": "number",
       "description": "In cate orase sunt locatiile care folosesc aceasta adresa. Alimenteaza campul de sablon [ORASE]."
     },
+    "email_domain_status": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "domain_missing",
+        "no_mail_server",
+        "dns_error"
+      ],
+      "description": "Rezultatul verificarii DNS (MX) a domeniului adresei, la sincronizare si inainte de fiecare trimitere. domain_missing / no_mail_server = adresa nu poate primi email: exclusa la aprobare si sarita la trimitere. dns_error = serverele DNS ale domeniului raspund cu eroare (poate fi trecator). Se recalculeaza la fiecare sincronizare, deci o adresa reparata redevine eligibila."
+    },
+    "email_domain_checked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Cand s-a schimbat ultima data email_domain_status"
+    },
     "status": {
       "type": "string",
       "enum": [
