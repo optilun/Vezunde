@@ -41,22 +41,29 @@ function clampDailyLimit(value) {
   return Math.min(DAILY_LIMIT_MAX, Math.max(DAILY_LIMIT_MIN, n));
 }
 
-function sendSchedule(total, limit, ramp) {
+// startDay = cate zile de trimitere au trecut deja; sentToday = cate au plecat azi. O zi de azi
+// deja plina nu apare in estimare (se vede separat mesajul "continua maine").
+function sendSchedule(total, limit, ramp, startDay = 0, sentToday = 0) {
   const days = [];
   let left = Math.max(0, Number(total) || 0);
   const base = clampDailyLimit(limit);
+  let day = Math.max(0, Number(startDay) || 0);
+  let first = true;
   while (left > 0 && days.length < 60) {
-    const cap = ramp ? Math.min(DAILY_LIMIT_MAX, base * 2 ** Math.min(days.length, 10)) : base;
-    const today = Math.min(cap, left);
-    days.push(today);
+    const cap = ramp ? Math.min(DAILY_LIMIT_MAX, base * 2 ** Math.min(day, 10)) : base;
+    const available = first ? Math.max(0, cap - (Number(sentToday) || 0)) : cap;
+    const today = Math.min(available, left);
+    if (today > 0) days.push(today);
     left -= today;
+    day += 1;
+    first = false;
   }
   return days;
 }
 
-function SendSchedulePreview({ total, limit, ramp }) {
+function SendSchedulePreview({ total, limit, ramp, startDay = 0, sentToday = 0 }) {
   if (!total) return null;
-  const days = sendSchedule(total, limit, ramp);
+  const days = sendSchedule(total, limit, ramp, startDay, sentToday);
   const shown = days.slice(0, 8).join(" · ");
   return (
     <p className="text-[11px] text-muted-foreground">
@@ -88,6 +95,7 @@ function StatCard({ label, value }) {
 export default function OutreachCampaignDetail({ campaignId, onBack }) {
   const [campaign, setCampaign] = useState(null);
   const [logs, setLogs] = useState([]);
+  const [sendStats, setSendStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -114,6 +122,7 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
     if (data.error) { setError(data.error); return; }
     setCampaign(data.campaign);
     setLogs(data.logs || []);
+    setSendStats(data.send_stats || null);
     setEditDraft({
       template_id: data.campaign.template_id || "",
       subject: data.campaign.subject || "",
@@ -191,6 +200,13 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
   const confirmApproval = async () => {
     setBusy(true);
     setError("");
+    // Ritmul afisat in estimare e cel care se aplica: il salvam pe campanie odata cu aprobarea.
+    const saved = await callOutreach("outreachCampaignOps", "update_campaign", {
+      id: campaignId,
+      daily_send_limit: editDraft.daily_send_limit,
+      daily_send_ramp: editDraft.daily_send_ramp,
+    });
+    if (saved.error) { setBusy(false); setError(saved.error); return; }
     const data = await callOutreach("outreachCampaignOps", "approve_campaign", { id: campaignId, confirmation_text: confirmationText });
     setBusy(false);
     if (data.error) { setError(data.error); return; }
@@ -332,6 +348,12 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
       {!isDraft && ["ready", "sending", "paused"].includes(campaign.status) && (
         <div className="space-y-2 rounded-2xl border border-border p-4">
           <p className="text-xs font-semibold text-foreground">Ritm de trimitere</p>
+          {sendStats && (
+            <p className="text-xs text-foreground">
+              Azi: <strong>{sendStats.sent_today}</strong> trimise din <strong>{sendStats.daily_limit_today}</strong> permise
+              {sendStats.prior_sending_days > 0 ? ` (a ${sendStats.prior_sending_days + 1}-a zi de trimitere)` : " (prima zi de trimitere)"}.
+            </p>
+          )}
           {waitingUntil && (
             <p className="rounded-lg bg-secondary/60 px-3 py-2 text-xs text-foreground">
               Limita de azi a fost atinsa. Trimiterea continua {waitingUntil.toLocaleString("ro-RO", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}.
@@ -339,7 +361,7 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
           )}
           <div className="flex flex-wrap items-end gap-3">
             <label className="block">
-              <span className="text-[11px] font-semibold text-foreground">Emailuri pe zi</span>
+              <span className="text-[11px] font-semibold text-foreground">{limitDraft.daily_send_ramp ? "Limita din prima zi" : "Emailuri pe zi"}</span>
               <input
                 id="outreach-daily-limit-live"
                 type="number"
@@ -362,7 +384,13 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
               Salveaza ritmul
             </button>
           </div>
-          <SendSchedulePreview total={remainingRecipients} limit={limitDraft.daily_send_limit} ramp={limitDraft.daily_send_ramp} />
+          <SendSchedulePreview
+            total={remainingRecipients}
+            limit={limitDraft.daily_send_limit}
+            ramp={limitDraft.daily_send_ramp}
+            startDay={sendStats?.prior_sending_days || 0}
+            sentToday={sendStats?.sent_today || 0}
+          />
         </div>
       )}
 
@@ -521,7 +549,7 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
                 </p>
                 <SendSchedulePreview total={approvalPreview.recipientCount} limit={editDraft.daily_send_limit} ramp={editDraft.daily_send_ramp} />
                 <p className="text-[11px] text-muted-foreground">
-                  Ritmul se aplica asa cum e salvat pe campanie: daca l-ai schimbat mai sus, apasa intai „Salveaza modificarile”.
+                  Ritmul de trimitere ales mai sus se salveaza odata cu aprobarea.
                 </p>
                 <p className="text-[11px] text-muted-foreground">
                   Tasteaza exact: <code className="rounded bg-background px-1 py-0.5">{approvalPreview.expected}</code>
