@@ -170,6 +170,23 @@ export function healthPausePatch(health, now = new Date()) {
   };
 }
 
+// Inregistrarea de audit pentru o oprire automata: aceeasi entitate ca pentru actiunile adminului,
+// cu autor "system", ca istoricul campaniei sa arate si cine a oprit-o.
+export function autoPauseAuditRecord(campaignId, health, source, now = new Date()) {
+  return {
+    entity_type: 'OutreachCampaign',
+    entity_id: campaignId || '',
+    action_type: 'outreach_campaign_auto_paused',
+    changed_fields: ['status', 'pause_reason', 'failure_message'],
+    previous_values: '',
+    new_values: JSON.stringify({ status: 'paused', pause_reason: health.reason, sent: health.sent, bounced: health.bounced, complained: health.complained }),
+    admin_user_id: 'system',
+    admin_email: '',
+    note: `${health.message} (sursa: ${source})`,
+    performed_at: now.toISOString(),
+  };
+}
+
 export function healthBaselineFrom(campaign = {}, now = new Date()) {
   return {
     sent: nonNegative(campaign.sent_count),
