@@ -11,6 +11,11 @@ import {
   getResendErrorMessage,
   SUPPRESSED_STATUSES,
 } from '../../shared/outreachEmailPolicy.js';
+import {
+  evaluateCampaignHealth,
+  healthPausePatch,
+  autoPauseAuditRecord,
+} from '../../shared/outreachSendSafety.js';
 
 // outreachWebhookOps — receptor webhook Resend (semnat Svix), portat din Optilun
 // (resendWebhook/entry.ts), adaptat la modelul de rute al VIASEE: NU e o functie fizica separata,
@@ -117,9 +122,9 @@ async function upsertSuppression(svc, log, email, status, event, errorMessage) {
 }
 
 async function updateCampaignCounters(svc, log, nextStatus) {
-  if (!log?.campaign_id || log.campaign_id === 'direct' || log.campaign_id === 'resend_webhook_unknown') return;
+  if (!log?.campaign_id || log.campaign_id === 'direct' || log.campaign_id === 'resend_webhook_unknown') return null;
   const campaign = await svc.entities.OutreachCampaign.get(log.campaign_id).catch(() => null);
-  if (!campaign) return;
+  if (!campaign) return null;
   const patch = {};
   if (nextStatus === 'delivered') patch.delivered_count = (campaign.delivered_count || 0) + 1;
   if (nextStatus === 'bounced') patch.bounced_count = (campaign.bounced_count || 0) + 1;
@@ -132,6 +137,22 @@ async function updateCampaignCounters(svc, log, nextStatus) {
       console.error('outreachWebhookOps campaign counter update failed', campaign.id, error?.message || error);
     });
   }
+  return { ...campaign, ...patch };
+}
+
+// Oprirea automata chiar in momentul in care vine respingerea / reclamatia: cronul de trimitere
+// ruleaza la 5 minute, iar intre timp nu trebuie sa mai plece niciun lot. Doar campaniile care
+// inca trimit; una terminata sau oprita deja de admin ramane cum e.
+async function autoPauseIfUnhealthy(svc, campaign, nextStatus) {
+  if (!campaign || !['bounced', 'complained'].includes(nextStatus)) return;
+  if (!['ready', 'sending'].includes(campaign.status)) return;
+  const health = evaluateCampaignHealth(campaign);
+  if (health.healthy) return;
+  await svc.entities.OutreachCampaign.update(campaign.id, healthPausePatch(health)).catch((error) => {
+    console.error('outreachWebhookOps auto-pause failed', campaign.id, error?.message || error);
+  });
+  await svc.entities.DirectoryAuditRecord.create(autoPauseAuditRecord(campaign.id, health, 'webhook Resend'))
+    .catch((error) => console.error('outreachWebhookOps auto-pause audit failed', campaign.id, error?.message || error));
 }
 
 export async function handle(req) {
@@ -225,7 +246,8 @@ export async function handle(req) {
 
     await updateContactFromEvent(svc, log, email, nextStatus, errorMessage);
     await upsertSuppression(svc, log, email, nextStatus, event, errorMessage);
-    await updateCampaignCounters(svc, log, nextStatus);
+    const campaign = await updateCampaignCounters(svc, log, nextStatus);
+    await autoPauseIfUnhealthy(svc, campaign, nextStatus);
 
     return json({ processed: true, event_id: eventId, type: event?.type, status: nextStatus, message_id: messageId || null });
   } catch (error) {
