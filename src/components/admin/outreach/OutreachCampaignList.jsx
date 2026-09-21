@@ -13,6 +13,20 @@ const STATUS_LABELS = {
   cancelled: "Anulata",
 };
 
+// O campanie oprita automat (prea multe respingeri / reclamatie de spam) trebuie sa sara in ochi
+// in lista, nu sa arate ca o pauza obisnuita.
+function isAutoPaused(campaign) {
+  return campaign.status === "paused" && ["bounce_rate", "complaints"].includes(campaign.pause_reason);
+}
+
+function campaignStatusLabel(campaign) {
+  if (isAutoPaused(campaign)) return "Oprita automat";
+  if (["ready", "sending"].includes(campaign.status) && campaign.next_send_after && new Date(campaign.next_send_after).getTime() > Date.now()) {
+    return "Continua maine";
+  }
+  return STATUS_LABELS[campaign.status] || campaign.status;
+}
+
 function statusClass(status) {
   if (status === "sent") return "bg-green-50 text-green-800";
   if (status === "sending" || status === "ready") return "bg-blue-50 text-blue-800";
@@ -224,8 +238,8 @@ export default function OutreachCampaignList({ onSelect }) {
                 >
                   <td className="px-3 py-2 font-medium text-foreground">{campaign.name}</td>
                   <td className="px-3 py-2">
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusClass(campaign.status)}`}>
-                      {STATUS_LABELS[campaign.status] || campaign.status}
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isAutoPaused(campaign) ? "bg-red-50 text-red-800" : statusClass(campaign.status)}`}>
+                      {campaignStatusLabel(campaign)}
                     </span>
                   </td>
                   <td className="px-3 py-2">{campaign.recipient_count || 0}</td>
