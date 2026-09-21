@@ -6,6 +6,7 @@ import { build } from 'esbuild';
 const output = await build({
   entryPoints: ['src/components/workspace/provider/leads/ProviderBillingPanel.jsx'],
   bundle: true, write: false, platform: 'node', format: 'esm', logLevel: 'silent',
+  jsx: 'transform', tsconfigRaw: { compilerOptions: { jsx: 'react' } },
   plugins: [{ name: 'billing-ui-host', setup(builder) {
     builder.onResolve({ filter: /^(react|react-router-dom|lucide-react|@\/api\/base44Client)$/ }, args => ({ path: args.path, namespace: 'host' }));
     builder.onLoad({ filter: /.*/, namespace: 'host' }, ({ path }) => ({
