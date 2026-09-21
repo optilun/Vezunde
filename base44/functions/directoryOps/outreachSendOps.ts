@@ -16,6 +16,19 @@ import {
   sendViaResend,
   legalConfig,
 } from '../../shared/outreachEmailPolicy.js';
+import {
+  summarizeSendsByDay,
+  effectiveDailyLimit,
+  nextSendResumeAt,
+  evaluateCampaignHealth,
+  healthPausePatch,
+  autoPauseAuditRecord,
+  emailDomain,
+  lookupEmailDomains,
+  isDomainUndeliverable,
+  domainStatusMessage,
+  DOMAIN_STATUSES,
+} from '../../shared/outreachSendSafety.js';
 
 // outreachSendOps — trimiterea efectiva a campaniilor de outreach, in loturi mici, apelata de
 // pe cron (`Outreach Campaign Scheduler`, la 5 minute) exact ca `directoryAutoImportOps` /
@@ -82,6 +95,7 @@ async function getSuppressionSet(svc) {
 // Intoarce si adresele deja atinse in aceasta campanie, nu doar id-urile de contact: doua
 // OutreachContact diferite (doua locatii ale aceleiasi firme) pot avea aceeasi adresa publica, iar
 // aceeasi persoana nu trebuie sa primeasca aceeasi campanie de doua ori.
+// Din acelasi jurnal iese si cat s-a trimis azi (limita zilnica): nicio citire in plus.
 async function getAlreadyProcessedContactIds(svc, campaignId) {
   const logs = await svc.entities.OutreachCampaignLog.filter({ campaign_id: campaignId }, '-created_date', 20000).catch(() => []);
   const contactIds = new Set();
@@ -92,7 +106,25 @@ async function getAlreadyProcessedContactIds(svc, campaignId) {
     const email = normalizeEmail(log.normalized_email || log.email);
     if (email) emails.add(email);
   }
-  return { contactIds, emails };
+  return { contactIds, emails, sends: summarizeSendsByDay(logs || []) };
+}
+
+// Oprirea automata: campania trece pe pauza cu motivul scris pentru admin, iar actiunea ramane
+// in auditul campaniei.
+async function pauseForHealth(svc, campaignId, health, extraPatch = {}) {
+  await releaseLock(svc, campaignId, { ...extraPatch, ...healthPausePatch(health) });
+  await svc.entities.DirectoryAuditRecord.create(autoPauseAuditRecord(campaignId, health, 'trimitere'))
+    .catch((error) => console.error('outreachSendOps auto-pause audit failed', campaignId, error?.message || error));
+}
+
+// Rezultatul verificarii domeniului se pastreaza pe contact (vizibil in lista de contacte) doar
+// cand s-a schimbat; 'lookup_failed' nu spune nimic despre domeniu si nu se scrie.
+async function rememberDomainStatus(svc, contact, status) {
+  if (!DOMAIN_STATUSES.includes(status) || contact.email_domain_status === status) return;
+  await svc.entities.OutreachContact.update(contact.id, {
+    email_domain_status: status,
+    email_domain_checked_at: new Date().toISOString(),
+  }).catch(() => null);
 }
 
 async function safeCampaignLog(svc, data) {
@@ -104,6 +136,11 @@ async function safeCampaignLog(svc, data) {
   }
 }
 
+function isWaitingForNextDay(campaign, nowMs = Date.now()) {
+  const resumeAt = campaign?.next_send_after ? new Date(campaign.next_send_after).getTime() : 0;
+  return Number.isFinite(resumeAt) && resumeAt > nowMs;
+}
+
 async function claimCampaignForSending(svc) {
   // O singura campanie "ready" sau "sending" cu lock expirat/lipsa e preluata per invocare.
   const candidates = await svc.entities.OutreachCampaign.filter({ status: 'ready' }, 'created_date', 10).catch(() => []);
@@ -113,10 +150,14 @@ async function claimCampaignForSending(svc) {
   for (const campaign of pool) {
     const lockExpired = !campaign.execution_lock_expires_at || new Date(campaign.execution_lock_expires_at).getTime() < nowMs;
     if (campaign.execution_lock_token && !lockExpired) continue; // blocata de alta invocare inca activa
+    // Limita zilei atinsa: campania asteapta ziua urmatoare si NU ocupa ciclul de cron, ca alta
+    // campanie aflata in trimitere sa poata avansa intre timp.
+    if (isWaitingForNextDay(campaign, nowMs)) continue;
     // Starea se re-citeste imediat inainte de preluare: lista de candidati poate fi veche de cateva
     // sute de milisecunde, iar o campanie pusa intre timp pe pauza nu trebuie repornita de noi.
     const fresh = await svc.entities.OutreachCampaign.get(campaign.id).catch(() => null);
     if (!fresh || !['ready', 'sending'].includes(fresh.status)) continue;
+    if (isWaitingForNextDay(fresh, nowMs)) continue;
     const token = crypto.randomUUID();
     const expiresAt = new Date(nowMs + LOCK_MINUTES * 60 * 1000).toISOString();
     await svc.entities.OutreachCampaign.update(campaign.id, {
