@@ -23,6 +23,14 @@ function statusClass(status) {
   return "bg-secondary text-muted-foreground";
 }
 
+// Rezultatul verificarii DNS (MX) a domeniului, facuta la sincronizare si inainte de trimitere.
+const DOMAIN_PROBLEM_LABELS = {
+  domain_missing: "Domeniul nu mai exista",
+  no_mail_server: "Domeniul nu primeste email",
+  dns_error: "DNS-ul domeniului da eroare",
+};
+const UNDELIVERABLE_DOMAIN = ["domain_missing", "no_mail_server"];
+
 const EMPTY_FILTERS = { target_counties: [], target_provider_types: [], target_profile_control_status: [], target_tags: [], target_email_scope: [] };
 
 // Distributia contactelor pe cele trei dimensiuni puse automat la materializare. Grupata pe
@@ -109,7 +117,9 @@ export default function OutreachContactsList() {
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return contacts.filter((contact) => {
-      if (statusFilter && contact.status !== statusFilter) return false;
+      if (statusFilter === "__domain_problem") {
+        if (!DOMAIN_PROBLEM_LABELS[contact.email_domain_status]) return false;
+      } else if (statusFilter && contact.status !== statusFilter) return false;
       if (scopeFilter && (contact.email_scope || "location") !== scopeFilter) return false;
       if (!term) return true;
       return [contact.company_name, contact.email, contact.city, contact.county]
@@ -123,7 +133,7 @@ export default function OutreachContactsList() {
     setError("");
     let cursor = 0;
     let hasMore = true;
-    const totals = { created: 0, updated: 0, unchanged: 0, skipped: 0 };
+    const totals = { created: 0, updated: 0, unchanged: 0, skipped: 0, undeliverable: 0, dnsErrors: 0 };
     const payload = {
       action: "sync_contacts_from_directory",
       target_counties: syncFilters.target_counties,
@@ -153,6 +163,8 @@ export default function OutreachContactsList() {
         totals.updated += data.updated || 0;
         totals.unchanged += data.unchanged || 0;
         totals.skipped += data.skipped || 0;
+        totals.undeliverable += data.undeliverable_domains || 0;
+        totals.dnsErrors += data.dns_error_domains || 0;
         cursor = data.next_cursor || cursor;
         hasMore = !!data.has_more;
         setSyncSummary({
@@ -200,6 +212,13 @@ export default function OutreachContactsList() {
                 ? ` — finalizat: ${syncSummary.total} locatii publicate cu email, ${syncSummary.uniqueEmails} adrese unice.`
                 : ` — in curs: ${syncSummary.processed} din ${syncSummary.uniqueEmails} adrese...`}
             </p>
+            {(syncSummary.undeliverable > 0 || syncSummary.dnsErrors > 0) && (
+              <p className="text-xs text-amber-700">
+                {syncSummary.undeliverable > 0 && `${syncSummary.undeliverable} adrese sunt pe domenii care nu pot primi email si nu vor primi campanii. `}
+                {syncSummary.dnsErrors > 0 && `${syncSummary.dnsErrors} domenii au raspuns cu eroare DNS; se reverifica inainte de trimitere. `}
+                Le gasesti cu filtrul „Probleme de domeniu”.
+              </p>
+            )}
             {syncSummary.breakdown && <TagBreakdown breakdown={syncSummary.breakdown} />}
           </div>
         )}
@@ -234,6 +253,7 @@ export default function OutreachContactsList() {
               {Object.entries(STATUS_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
+              <option value="__domain_problem">Probleme de domeniu</option>
             </select>
             <button type="button" onClick={load} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-secondary">
               Reincarca
@@ -269,7 +289,17 @@ export default function OutreachContactsList() {
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-2">{contact.email}</td>
+                    <td className="px-3 py-2">
+                      {contact.email}
+                      {DOMAIN_PROBLEM_LABELS[contact.email_domain_status] && (
+                        <span
+                          className={`ml-2 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold ${UNDELIVERABLE_DOMAIN.includes(contact.email_domain_status) ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-800"}`}
+                          title={UNDELIVERABLE_DOMAIN.includes(contact.email_domain_status) ? "Nu se trimite la aceasta adresa: ar fi respinsa sigur." : "Se reverifica inainte de fiecare trimitere."}
+                        >
+                          {DOMAIN_PROBLEM_LABELS[contact.email_domain_status]}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-3 py-2">{[contact.city, contact.county].filter(Boolean).join(", ") || "—"}</td>
                     <td className="px-3 py-2">
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusClass(contact.status)}`}>
