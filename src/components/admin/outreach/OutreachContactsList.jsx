@@ -118,27 +118,49 @@ export default function OutreachContactsList() {
     setError("");
     let cursor = 0;
     let hasMore = true;
-    const totals = { created: 0, updated: 0, skipped: 0 };
+    const totals = { created: 0, updated: 0, unchanged: 0, skipped: 0 };
+    const payload = {
+      action: "sync_contacts_from_directory",
+      target_counties: syncFilters.target_counties,
+      target_provider_types: syncFilters.target_provider_types,
+      target_profile_control_status: syncFilters.target_profile_control_status,
+    };
+    // Un lot care cade (timeout, limita de cereri) se reincearca de doua ori inainte sa oprim.
+    // Sincronizarea e idempotenta, deci reluarea aceluiasi lot nu dubleaza nimic.
+    const invokeChunk = async (chunkCursor) => {
+      let lastError = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const response = await base44.functions.invoke("outreachCampaignOps", { ...payload, cursor: chunkCursor });
+          return response.data || {};
+        } catch (err) {
+          lastError = err;
+          await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
+        }
+      }
+      throw lastError;
+    };
     try {
       while (hasMore) {
-        const response = await base44.functions.invoke("outreachCampaignOps", {
-          action: "sync_contacts_from_directory",
-          cursor,
-          target_counties: syncFilters.target_counties,
-          target_provider_types: syncFilters.target_provider_types,
-          target_profile_control_status: syncFilters.target_profile_control_status,
-        });
-        const data = response.data || {};
+        const data = await invokeChunk(cursor);
         if (data.error) { setError(data.error); break; }
         totals.created += data.created || 0;
         totals.updated += data.updated || 0;
+        totals.unchanged += data.unchanged || 0;
         totals.skipped += data.skipped || 0;
         cursor = data.next_cursor || cursor;
         hasMore = !!data.has_more;
-        setSyncSummary({ ...totals, done: !hasMore, breakdown: data.breakdown || null, total: data.total_candidates || 0 });
+        setSyncSummary({
+          ...totals,
+          done: !hasMore,
+          processed: cursor,
+          breakdown: data.breakdown || null,
+          total: data.total_candidates || 0,
+          uniqueEmails: data.unique_emails || 0,
+        });
       }
     } catch (err) {
-      setError(err.response?.data?.error || err.message);
+      setError(`Sincronizarea s-a oprit la ${cursor} locatii. Apasa din nou: continua fara dubluri. (${err.response?.data?.error || err.message})`);
     }
     setSyncing(false);
     load();
@@ -150,8 +172,8 @@ export default function OutreachContactsList() {
         <h3 className="text-sm font-bold text-foreground">Materializeaza contacte din director</h3>
         <p className="mt-1 text-xs text-muted-foreground">
           Creeaza sau actualizeaza contacte de outreach din locatiile publicate care au o adresa
-          publica de contact (public_email), completand automat temeiul legal si provenienta din
-          datele deja existente ale locatiei.
+          publica de contact, completand automat temeiul legal si provenienta din datele locatiei.
+          Lanturile cu aceeasi adresa pe mai multe locatii devin un singur contact.
         </p>
         <div className="mt-4">
           <OutreachAudienceBuilder filters={syncFilters} onChange={setSyncFilters} disabled={syncing} />
@@ -168,8 +190,10 @@ export default function OutreachContactsList() {
         {syncSummary && (
           <div className="mt-2 space-y-2">
             <p className="text-xs text-muted-foreground">
-              {syncSummary.created} create, {syncSummary.updated} actualizate, {syncSummary.skipped} sarite
-              {syncSummary.done ? ` — finalizat, ${syncSummary.total} locatii cu email in segment.` : " — in curs..."}
+              {syncSummary.created} create, {syncSummary.updated} actualizate, {syncSummary.unchanged} neschimbate, {syncSummary.skipped} sarite
+              {syncSummary.done
+                ? ` — finalizat: ${syncSummary.total} locatii publicate cu email, ${syncSummary.uniqueEmails} adrese unice.`
+                : ` — in curs: ${syncSummary.processed} din ${syncSummary.total} locatii...`}
             </p>
             {syncSummary.breakdown && <TagBreakdown breakdown={syncSummary.breakdown} />}
           </div>
