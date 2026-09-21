@@ -224,32 +224,59 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
     return { campaign_id: campaign.id, error: message };
   }
 
+  // Oprirea automata se verifica inainte de orice trimitere: respingerile si reclamatiile vin prin
+  // webhook intre doua cicluri de cron, iar webhook-ul poate sa nu fi apucat sa opreasca el campania.
+  const initialHealth = evaluateCampaignHealth(campaign);
+  if (!initialHealth.healthy) {
+    await pauseForHealth(svc, campaign.id, initialHealth);
+    return { campaign_id: campaign.id, sent: 0, skipped: 0, finished: false, auto_paused: initialHealth.reason };
+  }
+
   const processed = await getAlreadyProcessedContactIds(svc, campaign.id);
   const alreadyProcessed = processed.contactIds;
   const seenEmails = new Set(processed.emails);
   const suppressionSet = await getSuppressionSet(svc);
+
+  // Limita zilnica: cat mai are voie campania sa trimita azi (ora Romaniei).
+  const dailyLimit = effectiveDailyLimit(campaign, processed.sends.priorSendingDays);
+  let remainingToday = dailyLimit - processed.sends.sentToday;
+  // Un domeniu se verifica o singura data per rulare (gmail.com apare de zeci de ori).
+  const domainCache = new Map();
 
   let cursor = Number(campaign.current_cursor) || 0;
   let sentThisRun = 0;
   let skippedThisRun = 0;
   let stoppedByAdmin = '';
   let batchFailure = null;
+  let healthStop = null;
 
-  for (let batchNum = 0; batchNum < MAX_BATCHES_PER_RUN && cursor < ids.length; batchNum += 1) {
+  for (let batchNum = 0; batchNum < MAX_BATCHES_PER_RUN && cursor < ids.length && remainingToday > 0; batchNum += 1) {
     if (batchNum > 0) {
       // Pauza/anularea data de admin trebuie sa opreasca campania in maximum un lot, nu abia la
       // finalul rularii: re-citim starea inainte de fiecare lot urmator.
       const live = await svc.entities.OutreachCampaign.get(campaign.id).catch(() => null);
       if (live && ADMIN_STOP_STATUSES.has(live.status)) { stoppedByAdmin = live.status; break; }
+      // Si respingerile venite intre timp prin webhook: nu mai trimitem inca un lot peste prag.
+      const liveHealth = live ? evaluateCampaignHealth(live) : null;
+      if (liveHealth && !liveHealth.healthy) { healthStop = liveHealth; break; }
     }
-    const batchIds = ids.slice(cursor, cursor + BATCH_SIZE);
+    const batchIds = ids.slice(cursor, cursor + Math.min(BATCH_SIZE, remainingToday));
     const payloads = [];
     const meta = [];
 
+    const batchContacts = [];
     for (const contactId of batchIds) {
       if (alreadyProcessed.has(contactId)) continue; // idempotenta: deja procesat intr-o rulare anterioara
       const contact = await svc.entities.OutreachContact.get(contactId).catch(() => null);
       if (!contact) { skippedThisRun += 1; continue; }
+      batchContacts.push(contact);
+    }
+    await lookupEmailDomains(
+      batchContacts.map((contact) => emailDomain(normalizeEmail(contact.normalized_email || contact.email))),
+      { cache: domainCache },
+    );
+
+    for (const contact of batchContacts) {
       const email = normalizeEmail(contact.normalized_email || contact.email);
 
       if (!email || !isValidEmail(email)) {
@@ -277,6 +304,27 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
         await safeCampaignLog(svc, {
           campaign_id: campaign.id, contact_id: contact.id, email, normalized_email: email,
           status: 'skipped', reason: `missing_compliance_metadata:${missingCompliance.join(',')}`,
+        });
+        skippedThisRun += 1;
+        continue;
+      }
+      // Domeniul adresei trebuie sa poata primi email. Un domeniu disparut sau fara server de
+      // email inseamna un bounce sigur, iar bounce-urile sunt exact ce opreste contul Resend.
+      // 'lookup_failed' (n-am putut intreba DNS-ul) NU blocheaza: nu spune nimic despre adresa.
+      const domainStatus = domainCache.get(emailDomain(email)) || 'lookup_failed';
+      await rememberDomainStatus(svc, contact, domainStatus);
+      if (isDomainUndeliverable(domainStatus)) {
+        await safeCampaignLog(svc, {
+          campaign_id: campaign.id, contact_id: contact.id, email, normalized_email: email,
+          status: 'invalid', reason: `undeliverable_domain:${domainStatus}`, error: domainStatusMessage(domainStatus),
+        });
+        skippedThisRun += 1;
+        continue;
+      }
+      if (domainStatus === 'dns_error') {
+        await safeCampaignLog(svc, {
+          campaign_id: campaign.id, contact_id: contact.id, email, normalized_email: email,
+          status: 'skipped', reason: 'domain_dns_error', error: domainStatusMessage(domainStatus),
         });
         skippedThisRun += 1;
         continue;
@@ -356,6 +404,7 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
         }
         sentThisRun += 1;
       }
+      remainingToday -= meta.length;
     }
 
     cursor += batchIds.length;
@@ -374,6 +423,11 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
     sent_count: (campaign.sent_count || 0) + sentThisRun,
     skipped_count: (campaign.skipped_count || 0) + skippedThisRun,
   };
+
+  if (healthStop) {
+    await pauseForHealth(svc, campaign.id, healthStop, progressPatch);
+    return { campaign_id: campaign.id, sent: sentThisRun, skipped: skippedThisRun, finished: false, auto_paused: healthStop.reason };
+  }
 
   if (batchFailure) {
     const failures = (Number(campaign.consecutive_send_failures) || 0) + 1;
@@ -402,13 +456,19 @@ async function advanceOneCampaign(svc, campaign, resendApiKey) {
   }
 
   const finished = cursor >= ids.length;
+  // Limita zilei atinsa si mai sunt destinatari: reluare a doua zi la 09:00, ora Romaniei.
+  const dailyLimitReached = !finished && remainingToday <= 0;
+  const nextSendAfter = dailyLimitReached ? nextSendResumeAt(new Date()).toISOString() : null;
   const finalStatus = await releaseLockPreservingAdminStop(svc, campaign.id, {
     finished,
     previousSentAt: campaign.sent_at || null,
-    patch: { ...progressPatch, failure_message: '' },
+    patch: { ...progressPatch, failure_message: '', next_send_after: nextSendAfter },
   });
 
-  return { campaign_id: campaign.id, sent: sentThisRun, skipped: skippedThisRun, finished, status: finalStatus };
+  return {
+    campaign_id: campaign.id, sent: sentThisRun, skipped: skippedThisRun, finished, status: finalStatus,
+    daily_limit: dailyLimit, daily_limit_reached: dailyLimitReached, next_send_after: nextSendAfter,
+  };
 }
 
 async function actionAdvanceCampaignSends(svc) {
