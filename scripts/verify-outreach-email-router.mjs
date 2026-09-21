@@ -167,6 +167,39 @@ for (const providerType of ['optica_medicala', 'clinica_oftalmologica', 'cabinet
 assert.match(campaignOpsSource, /function networkTag\(/);
 assert.match(campaignOpsSource, /function mergeTags\(/);
 assert.match(campaignOpsSource, /AUTO_TAG_PREFIXES/, 'Tag-urile automate trebuie sa aiba prefixe rezervate, ca sa nu stearga tag-urile puse manual');
+
+// --- Sincronizarea contactelor din director ------------------------------------------------------
+// 2026-09-21: sincronizarea se oprea dupa 160 de contacte din ~1000 de locatii, pentru ca un lot de
+// 300 de scrieri depasea timpul maxim al functiei. Plus: campurile cu doua adrese ("a@x.ro / b@x.ro")
+// erau respinse in intregime, iar locatiile nepublicate primeau un email care spune ca "apar in
+// rezultate".
+{
+  const chunkMatch = campaignOpsSource.match(/const SYNC_CHUNK_SIZE = (\d+);/);
+  assert.ok(chunkMatch, 'SYNC_CHUNK_SIZE trebuie declarat explicit');
+  assert.ok(Number(chunkMatch[1]) <= 60, `Un lot de sincronizare de ${chunkMatch[1]} scrieri risca sa depaseasca timpul maxim al functiei`);
+
+  const policy = await import('../base44/shared/outreachEmailPolicy.js');
+  assert.equal(policy.firstValidEmail('programari@x.ro / secretariat@x.ro'), 'programari@x.ro');
+  assert.equal(policy.firstValidEmail('  Office@Exemplu.RO '), 'office@exemplu.ro');
+  assert.equal(policy.firstValidEmail('a@x.ro, b@x.ro'), 'a@x.ro');
+  assert.equal(policy.firstValidEmail('fara adresa'), '');
+  assert.equal(policy.firstValidEmail(''), '');
+
+  const syncBody = extractFunctionBody(campaignOpsSource, /async function actionSyncContactsFromDirectory\(/);
+  assert.match(syncBody, /everyLocation\.filter\(isOutreachCandidate\)/, 'Sincronizarea ia doar locatiile publice cu o adresa valida');
+  assert.match(syncBody, /const email = firstValidEmail\(location\.public_email\)/, 'Adresa se extrage cu firstValidEmail, nu se respinge tot campul');
+  assert.match(syncBody, /if \(!syncPatchChangesContact\(existing, patch\)\)/, 'Contactele neschimbate nu se rescriu la fiecare resincronizare');
+  assert.match(syncBody, /unique_emails:/, 'Raspunsul raporteaza cate adrese unice sunt, ca numarul final sa nu surprinda');
+
+  const publicBody = extractFunctionBody(campaignOpsSource, /function isLocationPublic\(/);
+  assert.match(publicBody, /status === 'publicata'/);
+  assert.match(publicBody, /profile_control_status !== 'suspended'/);
+  assert.match(publicBody, /active_status !== 'inactiva'/);
+
+  const contactsUi = source('src/components/admin/outreach/OutreachContactsList.jsx');
+  assert.match(contactsUi, /attempt < 3/, 'Un lot cazut se reincearca inainte ca sincronizarea sa se opreasca');
+  assert.match(contactsUi, /Sincronizarea s-a oprit la/, 'O oprire trebuie sa spuna unde s-a oprit si ca se poate relua');
+}
 const syncBody = extractFunctionBody(campaignOpsSource, /async function actionSyncContactsFromDirectory\(/);
 assert.match(syncBody, /provider_type: location\.provider_type/, 'Contactul trebuie sa poarte tipul locatiei, ca segmentarea sa functioneze');
 assert.match(syncBody, /profile_control_status: location\.profile_control_status/);
