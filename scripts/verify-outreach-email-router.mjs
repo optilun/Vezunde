@@ -208,6 +208,46 @@ assert.match(campaignOpsSource, /AUTO_TAG_PREFIXES/, 'Tag-urile automate trebuie
   assert.match(contactsUi, /attempt < 3/, 'Un lot cazut se reincearca inainte ca sincronizarea sa se opreasca');
   assert.match(contactsUi, /Sincronizarea s-a oprit la/, 'O oprire trebuie sa spuna unde s-a oprit si ca se poate relua');
 }
+
+// --- A cui e adresa: locatie sau organizatie ------------------------------------------------------
+// O adresa folosita de mai multe locatii (Lensa: 79) e a organizatiei. Se marcheaza separat, ca sa
+// poata primi o campanie cu alt text decat "profilul din [ORAS]".
+{
+  assert.match(campaignOpsSource, /const AUTO_TAG_PREFIXES = \[[^\]]*'adresa:'/, 'Tag-ul adresa: e automat si se reimprospateaza la sincronizare');
+  const scopeBody = extractFunctionBody(campaignOpsSource, /function groupAddressScope\(/);
+  assert.match(scopeBody, /sharedLocationCount > 1 \? 'organization' : 'location'/);
+  const segmentBody = extractFunctionBody(campaignOpsSource, /function contactMatchesSegment\(/);
+  assert.match(segmentBody, /filters\.target_email_scope/, 'Campaniile pot tinti separat adresele de organizatie');
+  assert.match(campaignOpsSource, /'target_tags', 'target_email_scope'\]/, 'Tipul adresei trebuie sa fie editabil pe campanie');
+  const syncBodyScope = extractFunctionBody(campaignOpsSource, /async function actionSyncContactsFromDirectory\(/);
+  for (const field of ['email_scope: scope.emailScope', 'shared_location_count: scope.sharedLocationCount', 'shared_city_count: scope.sharedCityCount']) {
+    assert.ok(syncBodyScope.includes(field), `Sincronizarea trebuie sa scrie ${field}`);
+  }
+  for (const field of ['email_scope', 'shared_location_count', 'shared_city_count']) {
+    assert.match(source('base44/entities/OutreachContact.jsonc'), new RegExp(`"${field}"`), `OutreachContact.${field} trebuie declarat in schema`);
+  }
+  assert.match(source('base44/entities/OutreachCampaign.jsonc'), /"target_email_scope"/);
+
+  const policy = await import('../base44/shared/outreachEmailPolicy.js');
+  const cases = [[1, 'o locatie'], [5, '5 locatii'], [19, '19 locatii'], [20, '20 de locatii'], [79, '79 de locatii'], [101, '101 locatii'], [120, '120 de locatii'], [200, '200 de locatii']];
+  for (const [count, expected] of cases) {
+    assert.equal(policy.formatRoCount(count, 'locatie', 'locatii', 'o'), expected, `Numeral gresit pentru ${count}`);
+  }
+  const text = '[FIRMA] apare cu [LOCATII] din [ORASE].';
+  assert.equal(
+    policy.renderTemplateMergeFields(text, { company_name: 'Lensa', shared_location_count: 79, shared_city_count: 34, city: 'Alba Iulia' }),
+    'Lensa apare cu 79 de locatii din 34 de orase.',
+  );
+  assert.equal(
+    policy.renderTemplateMergeFields(text, { company_name: 'Optica X', shared_location_count: 4, shared_city_count: 1, city: 'Bucuresti' }),
+    'Optica X apare cu 4 locatii din Bucuresti.',
+  );
+
+  const contactsUiScope = source('src/components/admin/outreach/OutreachContactsList.jsx');
+  assert.match(contactsUiScope, /"adresa:organizatie"/, 'Distributia de la sincronizare arata cate adrese sunt de organizatie');
+  assert.match(contactsUiScope, /contact\.email_scope === "organization"/, 'Lista de contacte marcheaza vizibil adresele de organizatie');
+  assert.match(contactsUiScope, /hideContactOnlyFilters/, 'La sincronizare nu se afiseaza filtre care nu se aplica acolo');
+}
 const syncBody = extractFunctionBody(campaignOpsSource, /async function actionSyncContactsFromDirectory\(/);
 assert.match(syncBody, /provider_type: location\.provider_type/, 'Contactul trebuie sa poarte tipul locatiei, ca segmentarea sa functioneze');
 assert.match(syncBody, /profile_control_status: location\.profile_control_status/);
