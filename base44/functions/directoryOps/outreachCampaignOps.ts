@@ -66,13 +66,15 @@ function contactMatchesSegment(contact, filters = {}) {
   if (counties.length && !counties.includes(contact.county)) return false;
   if (providerTypes.length && !providerTypes.includes(contact.provider_type)) return false;
   if (controlStatuses.length && !controlStatuses.includes(contact.profile_control_status || 'directory')) return false;
+  const emailScopes = Array.isArray(filters.target_email_scope) ? filters.target_email_scope : [];
+  if (emailScopes.length && !emailScopes.includes(contact.email_scope || 'location')) return false;
   return contactMatchesTags(contact, filters);
 }
 
 // ── Clasificarea contactelor materializate din director ──
 // Prefixele sunt stabile, ca segmentarea sa poata tinti direct ("tip:optica", "retea:lant").
 // Tag-urile puse manual de admin (fara prefix cunoscut) nu sunt atinse la resincronizare.
-const AUTO_TAG_PREFIXES = ['tip:', 'retea:', 'profil:'];
+const AUTO_TAG_PREFIXES = ['tip:', 'retea:', 'profil:', 'adresa:'];
 
 const PROVIDER_TYPE_TAGS = {
   optica_medicala: 'tip:optica',
@@ -147,6 +149,7 @@ const SYNC_COMPARED_FIELDS = [
   'location_id', 'organization_id', 'company_name', 'city', 'county', 'provider_type',
   'profile_control_status', 'organization_location_count', 'email', 'normalized_email',
   'source_url', 'collection_date', 'source_type', 'lawful_basis',
+  'email_scope', 'shared_location_count', 'shared_city_count',
 ];
 
 // La o resincronizare, marea majoritate a contactelor nu s-au schimbat (iar lanturile au zeci de
@@ -252,6 +255,7 @@ async function actionPreviewSegment(svc, payload) {
     target_provider_types: payload.target_provider_types,
     target_profile_control_status: payload.target_profile_control_status,
     target_tags: payload.target_tags,
+    target_email_scope: payload.target_email_scope,
   };
   const locations = await listAllLocationsWithEmail(svc);
   const matchingLocations = locations.filter((location) => locationMatchesSegment(location, filters));
@@ -305,6 +309,21 @@ function groupDisplayName(group, organizationsById) {
   return organization?.public_display_name || organization?.name || locationName;
 }
 
+// A cui e adresa. O adresa folosita de o singura locatie e a locatiei; una folosita de mai multe
+// locatii (Lensa: 79) e a organizatiei — de obicei sediul. Campaniile le pot tinti separat, cu alt
+// text: sediul unui lant nu trebuie sa primeasca un email despre "profilul din Alba Iulia".
+function groupAddressScope(group) {
+  const sharedLocationCount = group.locations.length;
+  const sharedCityCount = new Set(group.locations.map((row) => row.locality_name || row.city || '').filter(Boolean)).size || 1;
+  const emailScope = sharedLocationCount > 1 ? 'organization' : 'location';
+  return {
+    emailScope,
+    sharedLocationCount,
+    sharedCityCount,
+    tag: emailScope === 'organization' ? 'adresa:organizatie' : 'adresa:locatie',
+  };
+}
+
 async function listAllOrganizationsById(svc) {
   const rows = (await svc.entities.ProviderOrganization.list('name', DEFAULT_LOCATION_LIST_LIMIT)) || [];
   return new Map(rows.map((row) => [row.id, row]));
@@ -346,7 +365,8 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
     const existing = byNormalizedEmail.get(email)
       || group.locations.map((row) => byLocationId.get(row.id)).find(Boolean);
     const locationCount = location.organization_id ? (locationCounts.get(location.organization_id) || 1) : 1;
-    const autoTags = buildAutoTags(location, locationCount);
+    const scope = groupAddressScope(group);
+    const autoTags = [...buildAutoTags(location, locationCount), scope.tag];
     const descriptive = {
       location_id: location.id,
       organization_id: location.organization_id || '',
@@ -356,6 +376,9 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
       provider_type: location.provider_type || '',
       profile_control_status: location.profile_control_status || 'directory',
       organization_location_count: locationCount,
+      email_scope: scope.emailScope,
+      shared_location_count: scope.sharedLocationCount,
+      shared_city_count: scope.sharedCityCount,
       email,
       normalized_email: email,
     };
@@ -400,10 +423,13 @@ async function actionSyncContactsFromDirectory(svc, user, payload) {
   const hasMore = nextCursor < groups.length;
   // Distributia se calculeaza peste toate adresele, nu doar peste lotul curent, ca numerele sa
   // fie citibile ca imagine de ansamblu inca de la primul lot.
-  const breakdown = tallyTags(groups.map((group) => buildAutoTags(
-    group.locations[0],
-    group.locations[0].organization_id ? (locationCounts.get(group.locations[0].organization_id) || 1) : 1,
-  )));
+  const breakdown = tallyTags(groups.map((group) => [
+    ...buildAutoTags(
+      group.locations[0],
+      group.locations[0].organization_id ? (locationCounts.get(group.locations[0].organization_id) || 1) : 1,
+    ),
+    groupAddressScope(group).tag,
+  ]));
 
   return Response.json({
     created,
@@ -429,6 +455,7 @@ async function actionCreateCampaign(svc, user, payload) {
     target_provider_types: payload.target_provider_types,
     target_profile_control_status: payload.target_profile_control_status,
     target_tags: payload.target_tags,
+    target_email_scope: payload.target_email_scope,
   };
   const eligible = await eligibleContactsForSegment(svc, filters);
 
@@ -448,6 +475,7 @@ async function actionCreateCampaign(svc, user, payload) {
     target_provider_types: Array.isArray(payload.target_provider_types) ? payload.target_provider_types : [],
     target_profile_control_status: Array.isArray(payload.target_profile_control_status) ? payload.target_profile_control_status : [],
     target_tags: Array.isArray(payload.target_tags) ? payload.target_tags : [],
+    target_email_scope: Array.isArray(payload.target_email_scope) ? payload.target_email_scope : [],
     status: 'draft',
     recipient_count: eligible.length,
     created_by_user_id: user.id,
@@ -464,7 +492,7 @@ async function actionUpdateCampaign(svc, payload) {
   if (!campaign) return Response.json({ error: 'Campania nu a fost gasita' }, { status: 404 });
   if (campaign.status !== 'draft') return Response.json({ error: 'Doar campaniile in stare draft pot fi editate' }, { status: 409 });
 
-  const editable = ['name', 'campaign_type', 'template_id', 'subject', 'body_html', 'cta_label', 'cta_url', 'show_listing_preview', 'from_name', 'from_email', 'reply_to_email', 'target_counties', 'target_provider_types', 'target_profile_control_status', 'target_tags'];
+  const editable = ['name', 'campaign_type', 'template_id', 'subject', 'body_html', 'cta_label', 'cta_url', 'show_listing_preview', 'from_name', 'from_email', 'reply_to_email', 'target_counties', 'target_provider_types', 'target_profile_control_status', 'target_tags', 'target_email_scope'];
   const patch = {};
   for (const key of editable) if (payload[key] !== undefined) patch[key] = payload[key];
   const updated = await svc.entities.OutreachCampaign.update(id, patch);
@@ -501,6 +529,7 @@ async function actionApproveCampaign(svc, user, payload) {
     target_provider_types: campaign.target_provider_types,
     target_profile_control_status: campaign.target_profile_control_status,
     target_tags: campaign.target_tags,
+    target_email_scope: campaign.target_email_scope,
   };
   const eligible = await eligibleContactsForSegment(svc, filters);
   const expectedConfirmation = `TRIMITE ${campaign.name} ${eligible.length}`;

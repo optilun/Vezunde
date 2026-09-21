@@ -88,6 +88,7 @@ export default function OutreachCampaignDetail({ campaignId, onBack }) {
       target_provider_types: data.campaign.target_provider_types || [],
       target_profile_control_status: data.campaign.target_profile_control_status || [],
       target_tags: data.campaign.target_tags || [],
+      target_email_scope: data.campaign.target_email_scope || [],
     });
   };
 

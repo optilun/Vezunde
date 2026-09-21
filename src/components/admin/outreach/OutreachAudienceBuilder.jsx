@@ -36,12 +36,24 @@ const CONTROL_STATUS_OPTIONS = [
   { value: "suspended", label: "Suspendat" },
 ];
 
-export default function OutreachAudienceBuilder({ filters, onChange, disabled }) {
+const EMAIL_SCOPE_OPTIONS = [
+  { value: "location", label: "Adresa unei locatii" },
+  { value: "organization", label: "Adresa de organizatie" },
+];
+
+// hideContactOnlyFilters: la sincronizarea din director, tag-urile si tipul adresei inca nu exista
+// (se calculeaza chiar atunci), deci filtrele respective nu se afiseaza acolo.
+export default function OutreachAudienceBuilder({ filters, onChange, disabled, hideContactOnlyFilters = false }) {
   const patch = (key, val) => onChange({ ...filters, [key]: val });
   const toggleStatus = (value) => {
     const current = Array.isArray(filters.target_profile_control_status) ? filters.target_profile_control_status : [];
     const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
     patch("target_profile_control_status", next);
+  };
+  const toggleScope = (value) => {
+    const current = Array.isArray(filters.target_email_scope) ? filters.target_email_scope : [];
+    const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+    patch("target_email_scope", next);
   };
 
   return (
@@ -62,14 +74,14 @@ export default function OutreachAudienceBuilder({ filters, onChange, disabled })
         disabled={disabled}
         placeholder="optica, clinica_oftalmologica"
       />
-      <ListField
+      {!hideContactOnlyFilters && (<ListField
         label="Etichete contact (tags)"
         hint="Gol = toate contactele materializate"
         value={filters.target_tags}
         onChange={(val) => patch("target_tags", val)}
         disabled={disabled}
         placeholder="partener, eveniment_2026"
-      />
+      />)}
       <div>
         <span className="text-xs font-semibold text-foreground">Status profil tinta</span>
         <div className="mt-1 flex flex-wrap gap-2">
@@ -90,6 +102,28 @@ export default function OutreachAudienceBuilder({ filters, onChange, disabled })
         </div>
         <span className="mt-1 block text-[11px] text-muted-foreground">Gol = toate statusurile</span>
       </div>
+      {!hideContactOnlyFilters && (
+        <div>
+          <span className="text-xs font-semibold text-foreground">Tipul adresei</span>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {EMAIL_SCOPE_OPTIONS.map((option) => {
+              const active = Array.isArray(filters.target_email_scope) && filters.target_email_scope.includes(option.value);
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => toggleScope(option.value)}
+                  className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors disabled:opacity-60 ${active ? "border-foreground bg-foreground text-background" : "border-border hover:bg-secondary"}`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          <span className="mt-1 block text-[11px] text-muted-foreground">Gol = ambele. Adresa de organizatie = aceeasi adresa pentru mai multe locatii (de obicei sediul unui lant).</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -35,6 +35,7 @@ const EMPTY_DRAFT = {
   target_provider_types: [],
   target_profile_control_status: [],
   target_tags: [],
+  target_email_scope: [],
 };
 
 export default function OutreachCampaignList({ onSelect }) {

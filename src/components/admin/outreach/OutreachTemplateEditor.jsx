@@ -8,6 +8,8 @@ const MERGE_FIELDS = [
   { token: "[NUME]", desc: "Numele de contact (sau al firmei, daca nu exista)" },
   { token: "[FIRMA]", desc: "Numele firmei/locatiei" },
   { token: "[ORAS]", desc: "Localitatea" },
+  { token: "[LOCATII]", desc: "Cate locatii folosesc adresa: \"o locatie\", \"5 locatii\", \"79 de locatii\"" },
+  { token: "[ORASE]", desc: "Orasul, daca toate locatiile sunt in acelasi oras; altfel \"34 de orase\"" },
   { token: "[JUDET]", desc: "Judetul" },
   { token: "[UNSUBSCRIBE_LINK]", desc: "Loc unde apare linkul de dezabonare in corpul mesajului (optional - apare oricum in footer)" },
 ];

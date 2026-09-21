@@ -23,7 +23,7 @@ function statusClass(status) {
   return "bg-secondary text-muted-foreground";
 }
 
-const EMPTY_FILTERS = { target_counties: [], target_provider_types: [], target_profile_control_status: [], target_tags: [] };
+const EMPTY_FILTERS = { target_counties: [], target_provider_types: [], target_profile_control_status: [], target_tags: [], target_email_scope: [] };
 
 // Distributia contactelor pe cele trei dimensiuni puse automat la materializare. Grupata pe
 // prefix, ca sa se citeasca "ce tipuri am" / "cat de mari sunt retelele" dintr-o privire.
@@ -31,6 +31,7 @@ const TAG_GROUPS = [
   { prefix: "tip:", title: "Dupa tip" },
   { prefix: "retea:", title: "Dupa marimea retelei" },
   { prefix: "profil:", title: "Dupa starea profilului" },
+  { prefix: "adresa:", title: "A cui e adresa" },
 ];
 
 const TAG_LABELS = {
@@ -49,6 +50,8 @@ const TAG_LABELS = {
   "profil:claimed": "Revendicat",
   "profil:verified": "Verificat",
   "profil:suspended": "Suspendat",
+  "adresa:locatie": "Adresa unei singure locatii",
+  "adresa:organizatie": "Adresa de organizatie (mai multe locatii)",
 };
 
 function TagBreakdown({ breakdown }) {
@@ -83,6 +86,7 @@ export default function OutreachContactsList() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [scopeFilter, setScopeFilter] = useState("");
 
   const [syncFilters, setSyncFilters] = useState(EMPTY_FILTERS);
   const [syncing, setSyncing] = useState(false);
@@ -106,11 +110,12 @@ export default function OutreachContactsList() {
     const term = search.trim().toLowerCase();
     return contacts.filter((contact) => {
       if (statusFilter && contact.status !== statusFilter) return false;
+      if (scopeFilter && (contact.email_scope || "location") !== scopeFilter) return false;
       if (!term) return true;
       return [contact.company_name, contact.email, contact.city, contact.county]
         .some((value) => String(value || "").toLowerCase().includes(term));
     });
-  }, [contacts, search, statusFilter]);
+  }, [contacts, search, statusFilter, scopeFilter]);
 
   const runSync = async () => {
     setSyncing(true);
@@ -176,7 +181,7 @@ export default function OutreachContactsList() {
           Lanturile cu aceeasi adresa pe mai multe locatii devin un singur contact.
         </p>
         <div className="mt-4">
-          <OutreachAudienceBuilder filters={syncFilters} onChange={setSyncFilters} disabled={syncing} />
+          <OutreachAudienceBuilder filters={syncFilters} onChange={setSyncFilters} disabled={syncing} hideContactOnlyFilters />
         </div>
         <button
           type="button"
@@ -211,6 +216,15 @@ export default function OutreachContactsList() {
               onChange={(e) => setSearch(e.target.value)}
               className="rounded-lg border border-border px-3 py-1.5 text-xs"
             />
+            <select
+              value={scopeFilter}
+              onChange={(e) => setScopeFilter(e.target.value)}
+              className="rounded-lg border border-border px-3 py-1.5 text-xs"
+            >
+              <option value="">Toate adresele</option>
+              <option value="location">Adrese de locatie</option>
+              <option value="organization">Adrese de organizatie</option>
+            </select>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -247,7 +261,14 @@ export default function OutreachContactsList() {
               <tbody>
                 {filtered.slice(0, 500).map((contact) => (
                   <tr key={contact.id} className="border-t border-border">
-                    <td className="px-3 py-2 font-medium text-foreground">{contact.company_name || "—"}</td>
+                    <td className="px-3 py-2 font-medium text-foreground">
+                      {contact.company_name || "—"}
+                      {contact.email_scope === "organization" && (
+                        <span className="ml-2 whitespace-nowrap rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] font-semibold text-foreground" title="Aceeasi adresa e folosita de mai multe locatii din director">
+                          Organizatie · {contact.shared_location_count || "?"} locatii{(contact.shared_city_count || 0) > 1 ? ` · ${contact.shared_city_count} orase` : ""}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-3 py-2">{contact.email}</td>
                     <td className="px-3 py-2">{[contact.city, contact.county].filter(Boolean).join(", ") || "—"}</td>
                     <td className="px-3 py-2">

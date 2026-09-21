@@ -119,6 +119,29 @@ export function isPermanentEmailError(status, errorText = '') {
     || text.includes('permanent');
 }
 
+// Numerale in romana: "o locatie", "5 locatii", "79 de locatii", "101 locatii", "120 de locatii".
+// "de" apare de la 20 in sus, cand ultimele doua cifre sunt 00 sau >= 20.
+export function formatRoCount(count, singular, plural, singularArticle) {
+  const n = Math.max(0, Math.floor(Number(count) || 0));
+  if (n <= 1) return `${singularArticle} ${singular}`;
+  const tail = n % 100;
+  const needsDe = n >= 20 && (tail === 0 || tail >= 20);
+  return `${n}${needsDe ? ' de' : ''} ${plural}`;
+}
+
+// [LOCATII] -> "79 de locatii" / "o locatie". [ORASE] -> numele orasului cand toate locatiile sunt
+// in acelasi oras, altfel "34 de orase". Gandit pentru "cu [LOCATII] din [ORASE]", care sta bine si
+// pentru un lant national, si pentru un grup dintr-un singur oras.
+export function renderLocationCount(contact = {}) {
+  return formatRoCount(contact.shared_location_count || 1, 'locatie', 'locatii', 'o');
+}
+
+export function renderCityScope(contact = {}) {
+  const cities = Number(contact.shared_city_count) || 0;
+  if (cities <= 1) return contact.city || '';
+  return formatRoCount(cities, 'oras', 'orase', 'un');
+}
+
 export function renderTemplateMergeFields(bodyHtml, contact = {}) {
   const name = contact.contact_name || contact.company_name || '';
   const company = contact.company_name || '';
@@ -129,6 +152,8 @@ export function renderTemplateMergeFields(bodyHtml, contact = {}) {
     .replace(/\[NAME\]/g, name)
     .replace(/\[FIRMA\]/g, company)
     .replace(/\[ORAS\]/g, city)
+    .replace(/\[LOCATII\]/g, renderLocationCount(contact))
+    .replace(/\[ORASE\]/g, renderCityScope(contact))
     .replace(/\[JUDET\]/g, county);
 }
 
